@@ -34,7 +34,7 @@ class AssinaturaShopeeTests(TestCase):
 
         self.assertEqual(
             headers_enviados["Authorization"],
-            f"SHA256 Credential=app123, Timestamp=1700000000, Signature={assinatura_esperada}",
+            f"SHA256 Credential=app123, Signature={assinatura_esperada}, Timestamp=1700000000",
         )
 
     def test_sem_credenciais_configuradas_gera_erro_claro(self):

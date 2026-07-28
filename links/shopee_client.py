@@ -37,7 +37,7 @@ def executar_graphql(query: str, variables: dict | None = None) -> dict:
 
     headers = {
         "Content-Type": "application/json",
-        "Authorization": f"SHA256 Credential={app_id}, Timestamp={timestamp}, Signature={assinatura}",
+        "Authorization": f"SHA256 Credential={app_id}, Signature={assinatura}, Timestamp={timestamp}",
     }
 
     resposta = requests.post(
