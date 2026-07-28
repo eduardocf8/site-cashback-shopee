@@ -13,8 +13,12 @@ https://docs.djangoproject.com/en/5.2/ref/settings/
 import os
 from pathlib import Path
 
+from dotenv import load_dotenv
+
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
+
+load_dotenv(BASE_DIR / ".env")
 
 
 # Quick-start development settings - unsuitable for production
@@ -42,6 +46,7 @@ INSTALLED_APPS = [
     "django.contrib.messages",
     "django.contrib.staticfiles",
     "accounts",
+    "links",
 ]
 
 AUTH_USER_MODEL = "accounts.User"
@@ -49,6 +54,14 @@ AUTH_USER_MODEL = "accounts.User"
 LOGIN_URL = "login"
 LOGIN_REDIRECT_URL = "dashboard"
 LOGOUT_REDIRECT_URL = "login"
+
+# Credenciais da API oficial de afiliados da Shopee (ficam no arquivo .env, nunca no código)
+SHOPEE_AFFILIATE_APP_ID = os.environ.get("SHOPEE_AFFILIATE_APP_ID", "")
+SHOPEE_AFFILIATE_SECRET = os.environ.get("SHOPEE_AFFILIATE_SECRET", "")
+SHOPEE_AFFILIATE_API_URL = os.environ.get(
+    "SHOPEE_AFFILIATE_API_URL", "https://open-api.affiliate.shopee.com.br/graphql"
+)
+SHOPEE_HOME_URL = os.environ.get("SHOPEE_HOME_URL", "https://shopee.com.br/")
 
 MIDDLEWARE = [
     "django.middleware.security.SecurityMiddleware",

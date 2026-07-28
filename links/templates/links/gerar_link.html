@@ -1,0 +1,49 @@
+{% extends "accounts/base.html" %}
+{% block titulo %}Gerar link de cashback{% endblock %}
+{% block largura_container %}640px{% endblock %}
+{% block conteudo %}
+    <div class="nav-topo">
+        <a href="{% url 'dashboard' %}">&larr; Voltar ao painel</a>
+        <a href="{% url 'logout' %}" onclick="event.preventDefault(); document.getElementById('form-logout').submit();">Sair</a>
+    </div>
+    <form id="form-logout" method="post" action="{% url 'logout' %}" style="display:none;">{% csrf_token %}</form>
+
+    <h1>Gerar link com cashback</h1>
+
+    <h2 style="font-size:16px;">Opção 1 — Link de um produto específico</h2>
+    <form method="post">
+        {% csrf_token %}
+        <input type="hidden" name="acao" value="produto">
+        <label for="{{ form.url_produto.id_for_label }}">{{ form.url_produto.label }}</label>
+        {{ form.url_produto }}
+        {% if form.url_produto.errors %}<div class="erros">{{ form.url_produto.errors|striptags }}</div>{% endif %}
+        <button type="submit">Gerar link do produto</button>
+    </form>
+
+    <h2 style="font-size:16px; margin-top:32px;">Opção 2 — Link da página inicial da Shopee</h2>
+    <form method="post">
+        {% csrf_token %}
+        <input type="hidden" name="acao" value="home">
+        <button type="submit">Gerar link da página inicial</button>
+    </form>
+
+    <h2 style="font-size:16px; margin-top:32px;">Seus últimos links gerados</h2>
+    {% if clicks %}
+        <table>
+            <tr>
+                <th>Tipo</th>
+                <th>Link gerado</th>
+                <th>Data</th>
+            </tr>
+            {% for click in clicks %}
+                <tr>
+                    <td>{{ click.get_tipo_display }}</td>
+                    <td class="link-curto">{{ click.link_gerado|default:"—" }}</td>
+                    <td>{{ click.criado_em|date:"d/m/Y H:i" }}</td>
+                </tr>
+            {% endfor %}
+        </table>
+    {% else %}
+        <p style="color:#888;">Você ainda não gerou nenhum link.</p>
+    {% endif %}
+{% endblock %}

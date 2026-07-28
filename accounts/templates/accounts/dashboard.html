@@ -3,7 +3,8 @@
 {% block conteudo %}
     <h1>Olá, {{ user.username }}!</h1>
     <p>Bem-vindo(a) ao seu painel de cashback.</p>
-    <p style="color:#888; font-size:14px;">Em breve: geração de links, saldo e histórico de pedidos aparecerão aqui.</p>
+    <p><a href="{% url 'gerar_link' %}">Gerar link de cashback na Shopee &rarr;</a></p>
+    <p style="color:#888; font-size:14px;">Em breve: saldo e histórico de pedidos aparecerão aqui.</p>
     <form method="post" action="{% url 'logout' %}">
         {% csrf_token %}
         <button type="submit">Sair</button>
