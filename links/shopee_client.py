@@ -66,3 +66,41 @@ def gerar_link_curto(origin_url: str, sub_ids: list[str]) -> str:
     """
     dados = executar_graphql(query, {"input": {"originUrl": origin_url, "subIds": sub_ids}})
     return dados["generateShortLink"]["shortLink"]
+
+
+def buscar_conversoes(purchase_time_start: int, purchase_time_end: int, scroll_id: str | None = None, limit: int = 500) -> dict:
+    """Consulta a query conversionReport da Shopee para um período, com paginação por scrollId."""
+    query = """
+        query buscarConversoes($purchaseTimeStart: Int, $purchaseTimeEnd: Int, $limit: Int, $scrollId: String) {
+            conversionReport(
+                purchaseTimeStart: $purchaseTimeStart
+                purchaseTimeEnd: $purchaseTimeEnd
+                limit: $limit
+                scrollId: $scrollId
+            ) {
+                nodes {
+                    conversionId
+                    purchaseTime
+                    utmContent
+                    orders {
+                        orderId
+                        orderStatus
+                        completeTime
+                        netCommission
+                    }
+                }
+                pageInfo {
+                    hasNextPage
+                    scrollId
+                }
+            }
+        }
+    """
+    variaveis = {
+        "purchaseTimeStart": purchase_time_start,
+        "purchaseTimeEnd": purchase_time_end,
+        "limit": limit,
+        "scrollId": scroll_id,
+    }
+    dados = executar_graphql(query, variaveis)
+    return dados["conversionReport"]

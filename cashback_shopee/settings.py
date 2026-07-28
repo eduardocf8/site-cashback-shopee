@@ -47,6 +47,7 @@ INSTALLED_APPS = [
     "django.contrib.staticfiles",
     "accounts",
     "links",
+    "pedidos",
 ]
 
 AUTH_USER_MODEL = "accounts.User"
@@ -62,6 +63,10 @@ SHOPEE_AFFILIATE_API_URL = os.environ.get(
     "SHOPEE_AFFILIATE_API_URL", "https://open-api.affiliate.shopee.com.br/graphql"
 )
 SHOPEE_HOME_URL = os.environ.get("SHOPEE_HOME_URL", "https://shopee.com.br/")
+
+# Percentual da comissão da Shopee repassado ao usuário como cashback.
+# Ainda não definido pelo negócio - ajuste no .env quando decidido (ex: 100 = repassa tudo).
+SHOPEE_CASHBACK_PERCENTUAL = float(os.environ.get("SHOPEE_CASHBACK_PERCENTUAL", "100"))
 
 MIDDLEWARE = [
     "django.middleware.security.SecurityMiddleware",
