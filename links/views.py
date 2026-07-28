@@ -6,7 +6,7 @@ from django.shortcuts import redirect, render
 from .forms import LinkProdutoForm
 from .models import Click
 from .services import gerar_click
-from .shopee_client import ShopeeAPIError, ShopeeConfigError
+from .shopee_client import ShopeeAPIError, ShopeeConfigError, SubIdInvalidoError
 
 
 @login_required
@@ -34,6 +34,8 @@ def _criar_click_e_avisar(request, tipo, url_produto):
         gerar_click(request.user, tipo, url_produto)
         messages.success(request, "Link gerado com sucesso!")
     except ShopeeConfigError as erro:
+        messages.error(request, str(erro))
+    except SubIdInvalidoError as erro:
         messages.error(request, str(erro))
     except ShopeeAPIError as erro:
         messages.error(request, f"A Shopee recusou o pedido: {erro}")

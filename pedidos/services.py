@@ -10,8 +10,17 @@ from links.shopee_client import buscar_conversoes
 from .models import Pedido
 
 PADRAO_USUARIO = re.compile(r"^user(\d+)$")
-PADRAO_UUID = re.compile(r"^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$")
+PADRAO_UUID_HEX = re.compile(r"^[0-9a-fA-F]{32}$")
 
+# Valores confirmados em uso real pela API Shopee (vistos em produção em outra
+# integração). UNPAID entra como cancelado porque pedidos nesse status não
+# geram comissão (o valor já vem zerado da própria Shopee).
+STATUS_EXATO = {
+    "COMPLETED": Pedido.STATUS_VALIDADO,
+    "PENDING": Pedido.STATUS_PENDENTE,
+    "UNPAID": Pedido.STATUS_CANCELADO,
+    "CANCELLED": Pedido.STATUS_CANCELADO,
+}
 TERMOS_CANCELADO = ("CANCEL", "INVALID", "REJECT", "UNPAID", "FRAUD")
 TERMOS_VALIDADO = ("COMPLETE", "CONFIRM", "PAID", "SUCCESS")
 
@@ -19,11 +28,13 @@ TERMOS_VALIDADO = ("COMPLETE", "CONFIRM", "PAID", "SUCCESS")
 def mapear_status(status_bruto: str) -> str:
     """Mapeia o status textual da Shopee para nosso status interno.
 
-    Os valores exatos que a Shopee usa não são documentados publicamente;
-    esse mapeamento é uma aproximação por palavras-chave e deve ser ajustado
-    assim que virmos pedidos reais passando por aqui.
+    Usa primeiro os valores exatos já confirmados em uso real (STATUS_EXATO);
+    qualquer valor diferente desses cai numa aproximação por palavras-chave,
+    para não quebrar caso a Shopee use algum status ainda não visto.
     """
     valor = (status_bruto or "").upper()
+    if valor in STATUS_EXATO:
+        return STATUS_EXATO[valor]
     if any(termo in valor for termo in TERMOS_CANCELADO):
         return Pedido.STATUS_CANCELADO
     if any(termo in valor for termo in TERMOS_VALIDADO):
@@ -36,8 +47,8 @@ def resolver_click(utm_content: str) -> Click | None:
     if not utm_content:
         return None
 
-    partes = re.split(r"[^0-9a-fA-F\-]+", utm_content)
-    click_id = next((parte for parte in partes if PADRAO_UUID.match(parte)), None)
+    partes = re.split(r"[^0-9a-fA-F]+", utm_content)
+    click_id = next((parte for parte in partes if PADRAO_UUID_HEX.match(parte)), None)
     if not click_id:
         return None
 

@@ -26,7 +26,9 @@ class Click(models.Model):
         return f"user{self.usuario_id}"
 
     def sub_id_click(self) -> str:
-        return str(self.id)
+        # A API Shopee só aceita letras e números no subId (sem hífen/símbolo),
+        # por isso usamos o UUID em formato hexadecimal puro (sem os traços).
+        return self.id.hex
 
     def __str__(self):
         return f"{self.get_tipo_display()} - {self.usuario} - {self.criado_em:%d/%m/%Y}"
