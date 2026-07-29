@@ -89,7 +89,7 @@ class SincronizarTests(TestCase):
     @patch("pedidos.services.buscar_conversoes")
     def test_cria_pedido_pendente_e_calcula_cashback_com_100_por_cento(self, mock_buscar):
         mock_buscar.return_value = self._pagina(
-            [{"orderId": "ORD1", "orderStatus": "PENDING", "completeTime": None, "netCommission": "12.50"}]
+            [{"orderId": "ORD1", "orderStatus": "PENDING", "items": [{"completeTime": None, "itemTotalCommission": "12.50"}]}]
         )
 
         resultado = sincronizar(1690000000, 1700000000)
@@ -106,7 +106,7 @@ class SincronizarTests(TestCase):
     @patch("pedidos.services.buscar_conversoes")
     def test_calcula_cashback_com_percentual_configurado(self, mock_buscar):
         mock_buscar.return_value = self._pagina(
-            [{"orderId": "ORD2", "orderStatus": "PENDING", "completeTime": None, "netCommission": "10.00"}]
+            [{"orderId": "ORD2", "orderStatus": "PENDING", "items": [{"completeTime": None, "itemTotalCommission": "10.00"}]}]
         )
 
         sincronizar(1690000000, 1700000000)
@@ -117,12 +117,12 @@ class SincronizarTests(TestCase):
     @patch("pedidos.services.buscar_conversoes")
     def test_atualiza_pedido_existente_quando_status_muda(self, mock_buscar):
         mock_buscar.return_value = self._pagina(
-            [{"orderId": "ORD3", "orderStatus": "PENDING", "completeTime": None, "netCommission": "5.00"}]
+            [{"orderId": "ORD3", "orderStatus": "PENDING", "items": [{"completeTime": None, "itemTotalCommission": "5.00"}]}]
         )
         sincronizar(1690000000, 1700000000)
 
         mock_buscar.return_value = self._pagina(
-            [{"orderId": "ORD3", "orderStatus": "COMPLETED", "completeTime": 1700000500, "netCommission": "5.00"}]
+            [{"orderId": "ORD3", "orderStatus": "COMPLETED", "items": [{"completeTime": 1700000500, "itemTotalCommission": "5.00"}]}]
         )
         resultado = sincronizar(1690000000, 1700000000)
 
@@ -135,7 +135,7 @@ class SincronizarTests(TestCase):
     @patch("pedidos.services.buscar_conversoes")
     def test_pedido_sem_click_identificavel_fica_sem_usuario_mas_e_salvo(self, mock_buscar):
         pagina = self._pagina(
-            [{"orderId": "ORD4", "orderStatus": "PENDING", "completeTime": None, "netCommission": "3.00"}]
+            [{"orderId": "ORD4", "orderStatus": "PENDING", "items": [{"completeTime": None, "itemTotalCommission": "3.00"}]}]
         )
         pagina["nodes"][0]["utmContent"] = "origem-desconhecida"
         mock_buscar.return_value = pagina
@@ -150,12 +150,12 @@ class SincronizarTests(TestCase):
     @patch("pedidos.services.buscar_conversoes")
     def test_segue_paginacao_ate_acabar(self, mock_buscar):
         pagina1 = self._pagina(
-            [{"orderId": "ORD5", "orderStatus": "PENDING", "completeTime": None, "netCommission": "1.00"}],
+            [{"orderId": "ORD5", "orderStatus": "PENDING", "items": [{"completeTime": None, "itemTotalCommission": "1.00"}]}],
             has_next_page=True,
             scroll_id="cursor-1",
         )
         pagina2 = self._pagina(
-            [{"orderId": "ORD6", "orderStatus": "PENDING", "completeTime": None, "netCommission": "2.00"}],
+            [{"orderId": "ORD6", "orderStatus": "PENDING", "items": [{"completeTime": None, "itemTotalCommission": "2.00"}]}],
             has_next_page=False,
         )
         mock_buscar.side_effect = [pagina1, pagina2]

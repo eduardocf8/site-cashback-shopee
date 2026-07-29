@@ -82,7 +82,12 @@ def sincronizar(purchase_time_start: int, purchase_time_end: int) -> dict:
 
             for pedido_shopee in conversao.get("orders", []):
                 status = mapear_status(pedido_shopee.get("orderStatus"))
-                comissao = Decimal(str(pedido_shopee.get("netCommission") or "0"))
+                itens = pedido_shopee.get("items", [])
+                comissao = sum(
+                    (Decimal(str(item.get("itemTotalCommission") or "0")) for item in itens),
+                    Decimal("0"),
+                )
+                tempos_conclusao = [item["completeTime"] for item in itens if item.get("completeTime")]
 
                 _, criado = Pedido.objects.update_or_create(
                     order_id=pedido_shopee["orderId"],
@@ -95,7 +100,7 @@ def sincronizar(purchase_time_start: int, purchase_time_end: int) -> dict:
                         "valor_comissao": comissao,
                         "valor_cashback": (comissao * percentual).quantize(Decimal("0.01")),
                         "data_compra": data_compra,
-                        "data_validacao": _converter_timestamp(pedido_shopee.get("completeTime")),
+                        "data_validacao": _converter_timestamp(max(tempos_conclusao)) if tempos_conclusao else None,
                     },
                 )
                 novos += criado

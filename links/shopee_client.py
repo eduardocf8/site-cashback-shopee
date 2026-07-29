@@ -104,7 +104,7 @@ def buscar_conversoes(purchase_time_start: int, purchase_time_end: int, scroll_i
         "){"
         "nodes{"
         "conversionId purchaseTime utmContent "
-        "orders{orderId orderStatus completeTime netCommission}"
+        "orders{orderId orderStatus items{completeTime itemTotalCommission}}"
         "}"
         "pageInfo{scrollId hasNextPage}"
         "}"
