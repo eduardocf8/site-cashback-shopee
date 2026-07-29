@@ -101,6 +101,13 @@ def sincronizar(purchase_time_start: int, purchase_time_end: int) -> dict:
                 tempos_conclusao = [item["completeTime"] for item in itens if item.get("completeTime")]
                 data_validacao = _converter_timestamp(max(tempos_conclusao)) if tempos_conclusao else None
 
+                nomes_produto = []
+                for item in itens:
+                    nome = item.get("itemName") or ""
+                    if nome and nome not in nomes_produto:
+                        nomes_produto.append(nome)
+                imagem_produto = next((item.get("imageUrl") for item in itens if item.get("imageUrl")), "")
+
                 existente = Pedido.objects.filter(order_id=pedido_shopee["orderId"]).first()
                 # Uma vez liberado, o saldo já pode ter sido considerado disponível pro
                 # usuário - uma nova sincronização não pode "desliberar" o pedido só
@@ -109,6 +116,15 @@ def sincronizar(purchase_time_start: int, purchase_time_end: int) -> dict:
                     status_final = Pedido.STATUS_LIBERADO
                 else:
                     status_final = status_shopee
+
+                motivo_cancelamento = ""
+                if status_final == Pedido.STATUS_CANCELADO:
+                    motivos = []
+                    for item in itens:
+                        motivo = item.get("fraudReason") or ""
+                        if motivo and motivo not in motivos:
+                            motivos.append(motivo)
+                    motivo_cancelamento = "; ".join(motivos)[:255]
 
                 _, criado = Pedido.objects.update_or_create(
                     order_id=pedido_shopee["orderId"],
@@ -120,6 +136,9 @@ def sincronizar(purchase_time_start: int, purchase_time_end: int) -> dict:
                         "status_shopee_bruto": pedido_shopee.get("orderStatus") or "",
                         "valor_comissao": comissao,
                         "valor_cashback": (comissao * percentual).quantize(Decimal("0.01")),
+                        "produto_nome": ", ".join(nomes_produto)[:255],
+                        "produto_imagem_url": imagem_produto,
+                        "motivo_cancelamento": motivo_cancelamento,
                         "data_compra": data_compra,
                         "data_validacao": data_validacao,
                         "data_prevista_liberacao": calcular_data_prevista_liberacao(data_validacao),

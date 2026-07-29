@@ -30,6 +30,11 @@ class Pedido(models.Model):
     )
     valor_comissao = models.DecimalField(max_digits=10, decimal_places=2, default=Decimal("0"))
     valor_cashback = models.DecimalField(max_digits=10, decimal_places=2, default=Decimal("0"))
+    produto_nome = models.CharField(max_length=255, blank=True)
+    produto_imagem_url = models.URLField(blank=True)
+    motivo_cancelamento = models.CharField(
+        max_length=255, blank=True, help_text="Motivo informado pela Shopee (fraudReason), quando cancelado."
+    )
     data_compra = models.DateTimeField(null=True, blank=True)
     data_validacao = models.DateTimeField(null=True, blank=True)
     data_prevista_liberacao = models.DateField(

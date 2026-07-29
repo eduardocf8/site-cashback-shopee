@@ -1,12 +1,230 @@
-{% extends "accounts/base.html" %}
-{% block titulo %}Minha conta{% endblock %}
-{% block conteudo %}
-    <h1>Olá, {{ user.username }}!</h1>
-    <p>Bem-vindo(a) ao seu painel de cashback.</p>
-    <p><a href="{% url 'gerar_link' %}">Gerar link de cashback na Shopee &rarr;</a></p>
-    <p style="color:#888; font-size:14px;">Em breve: saldo e histórico de pedidos aparecerão aqui.</p>
-    <form method="post" action="{% url 'logout' %}">
-        {% csrf_token %}
-        <button type="submit">Sair</button>
-    </form>
-{% endblock %}
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Minha conta — Cashback Shopee</title>
+    <style>
+        :root {
+            --laranja: #ee4d2d;
+            --laranja-escuro: #d43f22;
+            --texto: #26221f;
+            --texto-suave: #6b6560;
+            --fundo-suave: #fff7f4;
+            --verde: #1e7e34;
+            --verde-fundo: #e6f4ea;
+            --azul: #1a6fb0;
+            --azul-fundo: #e8f2fa;
+            --vermelho: #c0392b;
+            --vermelho-fundo: #fdecea;
+        }
+        * { box-sizing: border-box; }
+        body {
+            font-family: -apple-system, "Segoe UI", Roboto, Arial, sans-serif;
+            margin: 0;
+            color: var(--texto);
+            background: #fafafa;
+        }
+        a { color: var(--laranja); text-decoration: none; }
+        .envolve { max-width: 1080px; margin: 0 auto; padding: 0 24px; }
+
+        .nav { position: sticky; top: 0; z-index: 10; background: #fff; border-bottom: 1px solid #f0e9e5; }
+        .nav .envolve { display: flex; align-items: center; justify-content: space-between; height: 64px; }
+        .marca { font-size: 19px; font-weight: 700; color: var(--laranja); }
+        .nav-links { display: flex; align-items: center; gap: 18px; font-size: 14px; }
+        .nav-links a { color: var(--texto); }
+        .nav-links form { margin: 0; }
+        .nav-links button.linkbtn { background: none; border: none; padding: 0; font: inherit; color: var(--texto); cursor: pointer; }
+        .botao-cta {
+            display: inline-block; background: var(--laranja); color: #fff !important;
+            padding: 10px 20px; border-radius: 24px; font-weight: 600; font-size: 14px; white-space: nowrap;
+        }
+        .botao-cta:hover { background: var(--laranja-escuro); }
+
+        .mensagens { list-style: none; padding: 0; margin: 16px 0 0 0; }
+        .mensagens li { padding: 10px 14px; border-radius: 6px; font-size: 14px; margin-bottom: 8px; }
+        .mensagens li.success { background: var(--verde-fundo); color: var(--verde); }
+        .mensagens li.error { background: var(--vermelho-fundo); color: var(--vermelho); }
+
+        .cabecalho { padding: 40px 0 8px; }
+        .cabecalho h1 { font-size: 26px; margin: 0 0 4px; }
+        .cabecalho p { color: var(--texto-suave); margin: 0; font-size: 15px; }
+
+        section { padding: 24px 0; }
+        h2.titulo-secao { font-size: 19px; margin: 0 0 16px; }
+
+        .saldos { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 16px; }
+        .saldo-cartao {
+            background: #fff; border: 1px solid #f0e9e5; border-radius: 12px; padding: 20px;
+            border-top: 4px solid var(--cor-cartao, #ccc);
+        }
+        .saldo-cartao .rotulo { font-size: 13px; color: var(--texto-suave); margin-bottom: 6px; }
+        .saldo-cartao .valor { font-size: 26px; font-weight: 700; }
+        .saldo-cartao .legenda { font-size: 12px; color: var(--texto-suave); margin-top: 6px; }
+        .saldo-cartao.pendente { --cor-cartao: #a19b95; }
+        .saldo-cartao.validado { --cor-cartao: var(--azul); }
+        .saldo-cartao.liberado { --cor-cartao: var(--verde); }
+        .saldo-cartao.cancelado { --cor-cartao: var(--vermelho); }
+
+        .acoes-rapidas { display: flex; gap: 12px; margin-top: 20px; flex-wrap: wrap; }
+        .acoes-rapidas a { font-size: 14px; }
+
+        table { width: 100%; border-collapse: collapse; background: #fff; border-radius: 12px; overflow: hidden; border: 1px solid #f0e9e5; }
+        th, td { text-align: left; padding: 12px 14px; border-bottom: 1px solid #f3ede9; font-size: 13px; }
+        th { background: var(--fundo-suave); font-weight: 600; color: var(--texto-suave); }
+        tr:last-child td { border-bottom: none; }
+        .link-curto { word-break: break-all; }
+
+        .produto { display: flex; align-items: center; gap: 10px; }
+        .produto img { width: 36px; height: 36px; object-fit: cover; border-radius: 6px; flex-shrink: 0; }
+        .produto .sem-nome { color: var(--texto-suave); }
+
+        .etiqueta-status {
+            display: inline-block; padding: 3px 10px; border-radius: 12px; font-size: 12px; font-weight: 600;
+        }
+        .etiqueta-status.pendente { background: #f0f0f0; color: #666; }
+        .etiqueta-status.validado { background: var(--azul-fundo); color: var(--azul); }
+        .etiqueta-status.liberado { background: var(--verde-fundo); color: var(--verde); }
+        .etiqueta-status.cancelado { background: var(--vermelho-fundo); color: var(--vermelho); }
+        .motivo { font-size: 12px; color: var(--texto-suave); margin-top: 2px; }
+
+        .vazio { color: var(--texto-suave); font-size: 14px; padding: 20px; text-align: center; }
+        .rolar-tabela { overflow-x: auto; }
+    </style>
+</head>
+<body>
+    <nav class="nav">
+        <div class="envolve">
+            <span class="marca">Cashback Shopee</span>
+            <div class="nav-links">
+                <a href="{% url 'home' %}">Início</a>
+                <form method="post" action="{% url 'logout' %}">
+                    {% csrf_token %}
+                    <button type="submit" class="linkbtn">Sair</button>
+                </form>
+                <a class="botao-cta" href="{% url 'ir_para_shopee' %}">Ir para a Shopee &rarr;</a>
+            </div>
+        </div>
+    </nav>
+
+    {% if messages %}
+        <div class="envolve">
+            <ul class="mensagens">
+                {% for message in messages %}
+                    <li class="{{ message.tags }}">{{ message }}</li>
+                {% endfor %}
+            </ul>
+        </div>
+    {% endif %}
+
+    <div class="envolve">
+        <div class="cabecalho">
+            <h1>Olá, {{ user.username }}!</h1>
+            <p>Aqui está o resumo do seu cashback.</p>
+        </div>
+
+        <section>
+            <h2 class="titulo-secao">Seu saldo</h2>
+            <div class="saldos">
+                <div class="saldo-cartao pendente">
+                    <div class="rotulo">Pendente</div>
+                    <div class="valor">R$ {{ saldo_pendente|floatformat:2 }}</div>
+                    <div class="legenda">Aguardando confirmação da Shopee.</div>
+                </div>
+                <div class="saldo-cartao validado">
+                    <div class="rotulo">Validado</div>
+                    <div class="valor">R$ {{ saldo_validado|floatformat:2 }}</div>
+                    <div class="legenda">Confirmado, aguardando o prazo de liberação.</div>
+                </div>
+                <div class="saldo-cartao liberado">
+                    <div class="rotulo">Liberado</div>
+                    <div class="valor">R$ {{ saldo_liberado|floatformat:2 }}</div>
+                    <div class="legenda">Confirmado e liberado. Em breve você poderá sacar via PIX.</div>
+                </div>
+                <div class="saldo-cartao cancelado">
+                    <div class="rotulo">Cancelado</div>
+                    <div class="valor">R$ {{ saldo_cancelado|floatformat:2 }}</div>
+                    <div class="legenda">Pedidos cancelados ou não pagos não geram cashback.</div>
+                </div>
+            </div>
+            <div class="acoes-rapidas">
+                <a class="botao-cta" href="{% url 'home' %}#converter-link">Gerar novo link de cashback</a>
+            </div>
+        </section>
+
+        <section>
+            <h2 class="titulo-secao">Meus pedidos</h2>
+            {% if pedidos %}
+                <div class="rolar-tabela">
+                <table>
+                    <tr>
+                        <th>Produto</th>
+                        <th>Status</th>
+                        <th>Cashback</th>
+                        <th>Data da compra</th>
+                        <th>Previsão de liberação</th>
+                    </tr>
+                    {% for pedido in pedidos %}
+                        <tr>
+                            <td>
+                                <div class="produto">
+                                    {% if pedido.produto_imagem_url %}
+                                        <img src="{{ pedido.produto_imagem_url }}" alt="">
+                                    {% endif %}
+                                    <span>
+                                        {% if pedido.produto_nome %}{{ pedido.produto_nome }}{% else %}<span class="sem-nome">Pedido {{ pedido.order_id }}</span>{% endif %}
+                                    </span>
+                                </div>
+                            </td>
+                            <td>
+                                <span class="etiqueta-status {{ pedido.status }}">{{ pedido.get_status_display }}</span>
+                                {% if pedido.status == "cancelado" %}
+                                    <div class="motivo">{{ pedido.motivo_cancelamento|default:"Motivo não informado pela Shopee." }}</div>
+                                {% endif %}
+                            </td>
+                            <td>R$ {{ pedido.valor_cashback|floatformat:2 }}</td>
+                            <td>{{ pedido.data_compra|date:"d/m/Y"|default:"—" }}</td>
+                            <td>
+                                {% if pedido.status == "validado" %}
+                                    {{ pedido.data_prevista_liberacao|date:"d/m/Y" }}
+                                {% elif pedido.status == "liberado" %}
+                                    Liberado em {{ pedido.data_liberacao|date:"d/m/Y" }}
+                                {% else %}
+                                    —
+                                {% endif %}
+                            </td>
+                        </tr>
+                    {% endfor %}
+                </table>
+                </div>
+            {% else %}
+                <p class="vazio">Você ainda não tem pedidos. Compre pela Shopee usando seus links de cashback e eles aparecem aqui.</p>
+            {% endif %}
+        </section>
+
+        <section>
+            <h2 class="titulo-secao">Meus links gerados</h2>
+            {% if clicks %}
+                <div class="rolar-tabela">
+                <table>
+                    <tr>
+                        <th>Tipo</th>
+                        <th>Link gerado</th>
+                        <th>Data</th>
+                    </tr>
+                    {% for click in clicks %}
+                        <tr>
+                            <td>{{ click.get_tipo_display }}</td>
+                            <td class="link-curto"><a href="{{ click.link_gerado }}" target="_blank" rel="noopener noreferrer">{{ click.link_gerado|default:"—" }}</a></td>
+                            <td>{{ click.criado_em|date:"d/m/Y H:i" }}</td>
+                        </tr>
+                    {% endfor %}
+                </table>
+                </div>
+            {% else %}
+                <p class="vazio">Você ainda não gerou nenhum link.</p>
+            {% endif %}
+        </section>
+    </div>
+</body>
+</html>

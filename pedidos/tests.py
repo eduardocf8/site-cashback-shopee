@@ -223,6 +223,45 @@ class SincronizarTests(TestCase):
         self.assertIsNotNone(pedido.data_liberacao)
         self.assertEqual(resultado, {"novos": 0, "atualizados": 1, "nao_identificados": 0})
 
+    @patch("pedidos.services.buscar_conversoes")
+    def test_guarda_nome_imagem_do_produto_e_motivo_de_cancelamento(self, mock_buscar):
+        mock_buscar.return_value = self._pagina(
+            [
+                {
+                    "orderId": "ORD9",
+                    "orderStatus": "CANCELLED",
+                    "items": [
+                        {
+                            "completeTime": None,
+                            "itemTotalCommission": "0",
+                            "itemName": "Fone de ouvido Bluetooth",
+                            "imageUrl": "https://cf.shopee.com.br/file/foto.jpg",
+                            "fraudReason": "Pedido cancelado pelo comprador",
+                        }
+                    ],
+                }
+            ]
+        )
+
+        sincronizar(1690000000, 1700000000)
+
+        pedido = Pedido.objects.get(order_id="ORD9")
+        self.assertEqual(pedido.status, Pedido.STATUS_CANCELADO)
+        self.assertEqual(pedido.produto_nome, "Fone de ouvido Bluetooth")
+        self.assertEqual(pedido.produto_imagem_url, "https://cf.shopee.com.br/file/foto.jpg")
+        self.assertEqual(pedido.motivo_cancelamento, "Pedido cancelado pelo comprador")
+
+    @patch("pedidos.services.buscar_conversoes")
+    def test_pedido_valido_nao_tem_motivo_de_cancelamento(self, mock_buscar):
+        mock_buscar.return_value = self._pagina(
+            [{"orderId": "ORD10", "orderStatus": "PENDING", "items": [{"completeTime": None, "itemTotalCommission": "1.00"}]}]
+        )
+
+        sincronizar(1690000000, 1700000000)
+
+        pedido = Pedido.objects.get(order_id="ORD10")
+        self.assertEqual(pedido.motivo_cancelamento, "")
+
 
 class LiberarSaldoTests(TestCase):
     def setUp(self):
