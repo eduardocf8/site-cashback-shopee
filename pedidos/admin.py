@@ -13,6 +13,9 @@ class PedidoAdmin(admin.ModelAdmin):
         "valor_comissao",
         "valor_cashback",
         "data_compra",
+        "data_validacao",
+        "data_prevista_liberacao",
+        "data_liberacao",
     )
     list_filter = ("status",)
     search_fields = ("order_id", "conversion_id", "usuario__username", "usuario__cpf")

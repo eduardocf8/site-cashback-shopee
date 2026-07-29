@@ -1,13 +1,15 @@
+from datetime import date, datetime, timedelta, timezone as dt_timezone
 from decimal import Decimal
 from unittest.mock import patch
 
 from django.contrib.auth import get_user_model
 from django.test import TestCase, override_settings
+from django.utils import timezone
 
 from links.models import Click
 
 from .models import Pedido
-from .services import mapear_status, resolver_click, sincronizar
+from .services import calcular_data_prevista_liberacao, liberar_saldo, mapear_status, resolver_click, sincronizar
 
 
 class MapearStatusTests(TestCase):
@@ -24,6 +26,28 @@ class MapearStatusTests(TestCase):
         self.assertEqual(mapear_status("ALGO_QUE_NUNCA_VIMOS"), Pedido.STATUS_PENDENTE)
         self.assertEqual(mapear_status(""), Pedido.STATUS_PENDENTE)
         self.assertEqual(mapear_status(None), Pedido.STATUS_PENDENTE)
+
+
+class CalcularDataPrevistaLiberacaoTests(TestCase):
+    def test_sem_data_validacao_retorna_none(self):
+        self.assertIsNone(calcular_data_prevista_liberacao(None))
+
+    def test_soma_dois_meses_dentro_do_mesmo_ano(self):
+        validacao = datetime(2026, 3, 15, tzinfo=dt_timezone.utc)
+        self.assertEqual(calcular_data_prevista_liberacao(validacao), date(2026, 5, 1))
+
+    def test_vira_o_ano_quando_ultrapassa_dezembro(self):
+        validacao = datetime(2026, 11, 20, tzinfo=dt_timezone.utc)
+        self.assertEqual(calcular_data_prevista_liberacao(validacao), date(2027, 1, 1))
+
+        validacao = datetime(2026, 12, 5, tzinfo=dt_timezone.utc)
+        self.assertEqual(calcular_data_prevista_liberacao(validacao), date(2027, 2, 1))
+
+    def test_dia_do_mes_da_validacao_nao_importa(self):
+        self.assertEqual(
+            calcular_data_prevista_liberacao(datetime(2026, 1, 31, tzinfo=dt_timezone.utc)),
+            calcular_data_prevista_liberacao(datetime(2026, 1, 1, tzinfo=dt_timezone.utc)),
+        )
 
 
 class ResolverClickTests(TestCase):
@@ -167,3 +191,88 @@ class SincronizarTests(TestCase):
         self.assertTrue(Pedido.objects.filter(order_id="ORD6").exists())
         mock_buscar.assert_any_call(1690000000, 1700000000, None)
         mock_buscar.assert_any_call(1690000000, 1700000000, "cursor-1")
+
+    @patch("pedidos.services.buscar_conversoes")
+    def test_define_data_prevista_liberacao_ao_validar(self, mock_buscar):
+        mock_buscar.return_value = self._pagina(
+            [{"orderId": "ORD7", "orderStatus": "COMPLETED", "items": [{"completeTime": 1700000500, "itemTotalCommission": "5.00"}]}]
+        )
+
+        sincronizar(1690000000, 1700000000)
+
+        pedido = Pedido.objects.get(order_id="ORD7")
+        self.assertEqual(pedido.status, Pedido.STATUS_VALIDADO)
+        esperado = calcular_data_prevista_liberacao(pedido.data_validacao)
+        self.assertEqual(pedido.data_prevista_liberacao, esperado)
+
+    @patch("pedidos.services.buscar_conversoes")
+    def test_pedido_ja_liberado_nao_regride_ao_ressincronizar(self, mock_buscar):
+        mock_buscar.return_value = self._pagina(
+            [{"orderId": "ORD8", "orderStatus": "COMPLETED", "items": [{"completeTime": 1700000500, "itemTotalCommission": "5.00"}]}]
+        )
+        sincronizar(1690000000, 1700000000)
+        Pedido.objects.filter(order_id="ORD8").update(
+            status=Pedido.STATUS_LIBERADO, data_liberacao=timezone.now()
+        )
+
+        # A Shopee continua reportando COMPLETED (ela não sabe que já liberamos o saldo).
+        resultado = sincronizar(1690000000, 1700000000)
+
+        pedido = Pedido.objects.get(order_id="ORD8")
+        self.assertEqual(pedido.status, Pedido.STATUS_LIBERADO)
+        self.assertIsNotNone(pedido.data_liberacao)
+        self.assertEqual(resultado, {"novos": 0, "atualizados": 1, "nao_identificados": 0})
+
+
+class LiberarSaldoTests(TestCase):
+    def setUp(self):
+        self.usuario = get_user_model().objects.create_user(
+            username="compradora", password="senha123", cpf="39053344705"
+        )
+
+    def _criar_pedido(self, order_id, status, data_prevista_liberacao):
+        return Pedido.objects.create(
+            order_id=order_id,
+            conversion_id="1",
+            usuario=self.usuario,
+            status=status,
+            status_shopee_bruto="COMPLETED",
+            valor_comissao=Decimal("10.00"),
+            valor_cashback=Decimal("10.00"),
+            data_prevista_liberacao=data_prevista_liberacao,
+        )
+
+    def test_libera_pedido_validado_com_data_ja_vencida(self):
+        ontem = timezone.localdate() - timedelta(days=1)
+        pedido = self._criar_pedido("ORD-VENCIDO", Pedido.STATUS_VALIDADO, ontem)
+
+        total = liberar_saldo()
+
+        pedido.refresh_from_db()
+        self.assertEqual(total, 1)
+        self.assertEqual(pedido.status, Pedido.STATUS_LIBERADO)
+        self.assertIsNotNone(pedido.data_liberacao)
+
+    def test_nao_libera_pedido_com_data_futura(self):
+        amanha = timezone.localdate() + timedelta(days=1)
+        pedido = self._criar_pedido("ORD-FUTURO", Pedido.STATUS_VALIDADO, amanha)
+
+        total = liberar_saldo()
+
+        pedido.refresh_from_db()
+        self.assertEqual(total, 0)
+        self.assertEqual(pedido.status, Pedido.STATUS_VALIDADO)
+        self.assertIsNone(pedido.data_liberacao)
+
+    def test_nao_mexe_em_pedido_pendente_ou_cancelado_mesmo_com_data_vencida(self):
+        ontem = timezone.localdate() - timedelta(days=1)
+        pendente = self._criar_pedido("ORD-PENDENTE", Pedido.STATUS_PENDENTE, ontem)
+        cancelado = self._criar_pedido("ORD-CANCELADO", Pedido.STATUS_CANCELADO, ontem)
+
+        total = liberar_saldo()
+
+        pendente.refresh_from_db()
+        cancelado.refresh_from_db()
+        self.assertEqual(total, 0)
+        self.assertEqual(pendente.status, Pedido.STATUS_PENDENTE)
+        self.assertEqual(cancelado.status, Pedido.STATUS_CANCELADO)

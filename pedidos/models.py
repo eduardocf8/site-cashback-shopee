@@ -9,10 +9,12 @@ from links.models import Click
 class Pedido(models.Model):
     STATUS_PENDENTE = "pendente"
     STATUS_VALIDADO = "validado"
+    STATUS_LIBERADO = "liberado"
     STATUS_CANCELADO = "cancelado"
     STATUS_CHOICES = [
         (STATUS_PENDENTE, "Pendente"),
         (STATUS_VALIDADO, "Validado"),
+        (STATUS_LIBERADO, "Liberado"),
         (STATUS_CANCELADO, "Cancelado"),
     ]
 
@@ -30,6 +32,12 @@ class Pedido(models.Model):
     valor_cashback = models.DecimalField(max_digits=10, decimal_places=2, default=Decimal("0"))
     data_compra = models.DateTimeField(null=True, blank=True)
     data_validacao = models.DateTimeField(null=True, blank=True)
+    data_prevista_liberacao = models.DateField(
+        null=True, blank=True, help_text="1º dia do mês em que o saldo deste pedido fica liberado (mês da validação + 2)."
+    )
+    data_liberacao = models.DateTimeField(
+        null=True, blank=True, help_text="Momento em que o comando liberar_saldo efetivamente liberou este pedido."
+    )
     criado_em = models.DateTimeField(auto_now_add=True)
     atualizado_em = models.DateTimeField(auto_now=True)
 

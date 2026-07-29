@@ -1,8 +1,9 @@
 import re
-from datetime import datetime, timezone as dt_timezone
+from datetime import date, datetime, timezone as dt_timezone
 from decimal import Decimal
 
 from django.conf import settings
+from django.utils import timezone
 
 from links.models import Click
 from links.shopee_client import buscar_conversoes
@@ -61,6 +62,16 @@ def _converter_timestamp(valor):
     return datetime.fromtimestamp(int(valor), tz=dt_timezone.utc)
 
 
+def calcular_data_prevista_liberacao(data_validacao):
+    """1º dia do mês seguinte a dois meses após a validação (mês N -> libera no mês N+2)."""
+    if not data_validacao:
+        return None
+    mes = data_validacao.month + 2
+    ano = data_validacao.year + (mes - 1) // 12
+    mes = (mes - 1) % 12 + 1
+    return date(ano, mes, 1)
+
+
 def sincronizar(purchase_time_start: int, purchase_time_end: int) -> dict:
     """Busca conversões da Shopee no período e cria/atualiza os Pedidos correspondentes."""
     percentual = Decimal(str(settings.SHOPEE_CASHBACK_PERCENTUAL)) / Decimal("100")
@@ -81,13 +92,23 @@ def sincronizar(purchase_time_start: int, purchase_time_end: int) -> dict:
             data_compra = _converter_timestamp(conversao.get("purchaseTime"))
 
             for pedido_shopee in conversao.get("orders", []):
-                status = mapear_status(pedido_shopee.get("orderStatus"))
+                status_shopee = mapear_status(pedido_shopee.get("orderStatus"))
                 itens = pedido_shopee.get("items", [])
                 comissao = sum(
                     (Decimal(str(item.get("itemTotalCommission") or "0")) for item in itens),
                     Decimal("0"),
                 )
                 tempos_conclusao = [item["completeTime"] for item in itens if item.get("completeTime")]
+                data_validacao = _converter_timestamp(max(tempos_conclusao)) if tempos_conclusao else None
+
+                existente = Pedido.objects.filter(order_id=pedido_shopee["orderId"]).first()
+                # Uma vez liberado, o saldo já pode ter sido considerado disponível pro
+                # usuário - uma nova sincronização não pode "desliberar" o pedido só
+                # porque a Shopee ainda reporta o status antigo (COMPLETED).
+                if existente and existente.status == Pedido.STATUS_LIBERADO:
+                    status_final = Pedido.STATUS_LIBERADO
+                else:
+                    status_final = status_shopee
 
                 _, criado = Pedido.objects.update_or_create(
                     order_id=pedido_shopee["orderId"],
@@ -95,12 +116,13 @@ def sincronizar(purchase_time_start: int, purchase_time_end: int) -> dict:
                         "conversion_id": str(conversao.get("conversionId", "")),
                         "click": click,
                         "usuario": click.usuario if click else None,
-                        "status": status,
+                        "status": status_final,
                         "status_shopee_bruto": pedido_shopee.get("orderStatus") or "",
                         "valor_comissao": comissao,
                         "valor_cashback": (comissao * percentual).quantize(Decimal("0.01")),
                         "data_compra": data_compra,
-                        "data_validacao": _converter_timestamp(max(tempos_conclusao)) if tempos_conclusao else None,
+                        "data_validacao": data_validacao,
+                        "data_prevista_liberacao": calcular_data_prevista_liberacao(data_validacao),
                     },
                 )
                 novos += criado
@@ -111,3 +133,12 @@ def sincronizar(purchase_time_start: int, purchase_time_end: int) -> dict:
             break
 
     return {"novos": novos, "atualizados": atualizados, "nao_identificados": nao_identificados}
+
+
+def liberar_saldo() -> int:
+    """Libera (muda para STATUS_LIBERADO) os pedidos validados cuja data prevista já chegou."""
+    hoje = timezone.localdate()
+    return Pedido.objects.filter(
+        status=Pedido.STATUS_VALIDADO,
+        data_prevista_liberacao__lte=hoje,
+    ).update(status=Pedido.STATUS_LIBERADO, data_liberacao=timezone.now())
