@@ -142,6 +142,17 @@
         .conversor button:hover { background: var(--laranja-escuro); }
         .conversor .erros { color: #c0392b; font-size: 13px; margin-top: 6px; }
         .conversor .ajuda { font-size: 13px; color: var(--texto-suave); margin-top: 14px; text-align: center; }
+        .resultado-link {
+            margin-top: 20px;
+            padding: 16px;
+            border-radius: 8px;
+            background: var(--fundo-suave);
+            border: 1px dashed #f0d5cb;
+            text-align: center;
+        }
+        .resultado-titulo { margin: 0 0 6px; font-size: 13px; color: var(--texto-suave); }
+        .resultado-titulo.resultado-ok { color: #1e7e34; font-weight: 600; }
+        .resultado-url { display: block; word-break: break-all; font-size: 14px; font-weight: 600; }
 
         /* ---------- Rodapé ---------- */
         footer { padding: 32px 0; text-align: center; font-size: 13px; color: var(--texto-suave); }
@@ -263,13 +274,17 @@
                     {% if form.url_produto.errors %}<div class="erros">{{ form.url_produto.errors|striptags }}</div>{% endif %}
                     <button type="submit">Gerar link com cashback</button>
                 </form>
-                <p class="ajuda">
-                    {% if user.is_authenticated %}
-                        O link aparece na lista da sua conta assim que for gerado.
+                <div class="resultado-link">
+                    {% if link_convertido %}
+                        <p class="resultado-titulo resultado-ok">Link convertido com sucesso:</p>
+                        <a href="{{ link_convertido }}" target="_blank" rel="noopener noreferrer" class="resultado-url">{{ link_convertido }}</a>
                     {% else %}
-                        Se você ainda não tiver login, vamos te pedir pra entrar (ou criar uma conta) antes de gerar o link.
+                        <p class="resultado-titulo">O link convertido aparecerá aqui.</p>
                     {% endif %}
-                </p>
+                </div>
+                {% if not user.is_authenticated %}
+                    <p class="ajuda">Se você ainda não tiver login, vamos te pedir pra entrar (ou criar uma conta) antes de gerar o link.</p>
+                {% endif %}
             </div>
         </div>
     </section>

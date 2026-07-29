@@ -13,6 +13,8 @@ from .shopee_client import ShopeeAPIError, ShopeeConfigError, SubIdInvalidoError
 
 
 def home(request):
+    link_convertido = None
+
     if request.method == "POST":
         if not request.user.is_authenticated:
             proximo = f"{reverse('home')}?{urlencode({'url_produto': request.POST.get('url_produto', '')})}"
@@ -20,20 +22,23 @@ def home(request):
 
         form = LinkProdutoForm(request.POST)
         if form.is_valid():
-            _criar_click_e_avisar(request, Click.TIPO_PRODUTO, form.cleaned_data["url_produto"])
-            return redirect("home")
+            click = _criar_click_e_avisar(
+                request, Click.TIPO_PRODUTO, form.cleaned_data["url_produto"], mensagem_sucesso=None
+            )
+            link_convertido = click.link_gerado if click else None
+            form = LinkProdutoForm()
     else:
         inicial = {}
         if request.GET.get("url_produto"):
             inicial["url_produto"] = request.GET["url_produto"]
         form = LinkProdutoForm(initial=inicial)
 
-    return render(request, "links/home.html", {"form": form})
+    return render(request, "links/home.html", {"form": form, "link_convertido": link_convertido})
 
 
 @login_required
 def ir_para_shopee(request):
-    click = _criar_click_e_avisar(request, Click.TIPO_HOME, None)
+    click = _criar_click_e_avisar(request, Click.TIPO_HOME, None, mensagem_sucesso=None)
     if click is None:
         return redirect("home")
     return redirect(click.link_gerado)
@@ -59,10 +64,11 @@ def gerar_link(request):
     return render(request, "links/gerar_link.html", {"form": form, "clicks": clicks})
 
 
-def _criar_click_e_avisar(request, tipo, url_produto):
+def _criar_click_e_avisar(request, tipo, url_produto, mensagem_sucesso="Link gerado com sucesso!"):
     try:
         click = gerar_click(request.user, tipo, url_produto)
-        messages.success(request, "Link gerado com sucesso!")
+        if mensagem_sucesso:
+            messages.success(request, mensagem_sucesso)
         return click
     except ShopeeConfigError as erro:
         messages.error(request, str(erro))
