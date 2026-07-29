@@ -1,0 +1,306 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Cashback Shopee — compre na Shopee e receba parte do dinheiro de volta</title>
+    <meta name="description" content="Gere seu link de afiliado Shopee e receba cashback de verdade em cada compra validada. Sem pegadinha, sem mensalidade.">
+    <style>
+        :root {
+            --laranja: #ee4d2d;
+            --laranja-escuro: #d43f22;
+            --texto: #26221f;
+            --texto-suave: #6b6560;
+            --fundo-suave: #fff7f4;
+        }
+        * { box-sizing: border-box; }
+        body {
+            font-family: -apple-system, "Segoe UI", Roboto, Arial, sans-serif;
+            margin: 0;
+            color: var(--texto);
+            background: #fff;
+        }
+        a { color: var(--laranja); text-decoration: none; }
+        .envolve { max-width: 1080px; margin: 0 auto; padding: 0 24px; }
+
+        /* ---------- Navegação ---------- */
+        .nav {
+            position: sticky;
+            top: 0;
+            z-index: 10;
+            background: #fff;
+            border-bottom: 1px solid #f0e9e5;
+        }
+        .nav .envolve {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            height: 64px;
+        }
+        .marca { font-size: 19px; font-weight: 700; color: var(--laranja); }
+        .nav-links { display: flex; align-items: center; gap: 18px; font-size: 14px; }
+        .nav-links a { color: var(--texto); }
+        .nav-links form { margin: 0; }
+        .nav-links button.linkbtn {
+            background: none; border: none; padding: 0; font: inherit; color: var(--texto);
+            cursor: pointer;
+        }
+        .botao-cta {
+            display: inline-block;
+            background: var(--laranja);
+            color: #fff !important;
+            padding: 10px 20px;
+            border-radius: 24px;
+            font-weight: 600;
+            font-size: 14px;
+            white-space: nowrap;
+        }
+        .botao-cta:hover { background: var(--laranja-escuro); }
+
+        /* ---------- Mensagens ---------- */
+        .mensagens { list-style: none; padding: 0; margin: 16px 0 0 0; }
+        .mensagens li { padding: 10px 14px; border-radius: 6px; font-size: 14px; margin-bottom: 8px; }
+        .mensagens li.success { background: #e6f4ea; color: #1e7e34; }
+        .mensagens li.error { background: #fdecea; color: #c0392b; }
+
+        /* ---------- Hero ---------- */
+        .hero { padding: 72px 0 56px; text-align: center; }
+        .hero h1 { font-size: 38px; line-height: 1.25; margin: 0 0 16px; }
+        .hero p.subtitulo { font-size: 18px; color: var(--texto-suave); max-width: 620px; margin: 0 auto 32px; }
+        .hero .botao-cta { font-size: 16px; padding: 14px 32px; }
+        .hero .selo {
+            display: inline-block; margin-top: 20px; font-size: 13px; color: var(--texto-suave);
+        }
+
+        /* ---------- Seção genérica ---------- */
+        section { padding: 56px 0; }
+        section.fundo-suave { background: var(--fundo-suave); }
+        h2.titulo-secao { font-size: 26px; text-align: center; margin: 0 0 40px; }
+
+        /* ---------- Benefícios (scroll reveal) ---------- */
+        .beneficios { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 24px; }
+        .beneficio {
+            background: #fff;
+            border: 1px solid #f0e9e5;
+            border-radius: 12px;
+            padding: 28px 22px;
+            text-align: center;
+        }
+        .beneficio .icone { font-size: 32px; margin-bottom: 12px; }
+        .beneficio h3 { font-size: 16px; margin: 0 0 8px; }
+        .beneficio p { font-size: 14px; color: var(--texto-suave); margin: 0; line-height: 1.5; }
+
+        .reveal { opacity: 0; transform: translateY(28px); transition: opacity 0.6s ease, transform 0.6s ease; }
+        .reveal.visivel { opacity: 1; transform: translateY(0); }
+        .beneficios .reveal:nth-child(2) { transition-delay: 0.08s; }
+        .beneficios .reveal:nth-child(3) { transition-delay: 0.16s; }
+        .beneficios .reveal:nth-child(4) { transition-delay: 0.24s; }
+        @media (prefers-reduced-motion: reduce) {
+            .reveal { transition: none; opacity: 1; transform: none; }
+        }
+
+        /* ---------- Comparação direta x indireta ---------- */
+        .comparativo { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 24px; }
+        .comparativo .cartao {
+            background: #fff;
+            border-radius: 12px;
+            padding: 28px;
+            border: 2px solid #f0e9e5;
+        }
+        .comparativo .cartao.destaque { border-color: var(--laranja); }
+        .comparativo .etiqueta {
+            display: inline-block;
+            font-size: 12px;
+            font-weight: 700;
+            padding: 4px 10px;
+            border-radius: 12px;
+            margin-bottom: 14px;
+        }
+        .comparativo .cartao.destaque .etiqueta { background: #fdece7; color: var(--laranja); }
+        .comparativo .cartao:not(.destaque) .etiqueta { background: #f0f0f0; color: #666; }
+        .comparativo h3 { font-size: 18px; margin: 0 0 10px; }
+        .comparativo p { font-size: 14px; color: var(--texto-suave); line-height: 1.6; }
+        .comparativo .obs { font-size: 12px; color: #a19b95; margin-top: 40px; text-align: center; }
+
+        /* ---------- Conversor de link ---------- */
+        .conversor {
+            max-width: 520px;
+            margin: 0 auto;
+            background: #fff;
+            border: 1px solid #f0e9e5;
+            border-radius: 14px;
+            padding: 32px;
+        }
+        .conversor label { display: block; font-size: 14px; margin-bottom: 6px; }
+        .conversor input[type="url"] {
+            width: 100%; padding: 12px; border: 1px solid #ddd; border-radius: 8px; font-size: 14px;
+        }
+        .conversor button {
+            margin-top: 16px; width: 100%; padding: 13px; background: var(--laranja); color: #fff;
+            border: none; border-radius: 8px; font-size: 15px; font-weight: 600; cursor: pointer;
+        }
+        .conversor button:hover { background: var(--laranja-escuro); }
+        .conversor .erros { color: #c0392b; font-size: 13px; margin-top: 6px; }
+        .conversor .ajuda { font-size: 13px; color: var(--texto-suave); margin-top: 14px; text-align: center; }
+
+        /* ---------- Rodapé ---------- */
+        footer { padding: 32px 0; text-align: center; font-size: 13px; color: var(--texto-suave); }
+    </style>
+</head>
+<body>
+    <nav class="nav">
+        <div class="envolve">
+            <span class="marca">Cashback Shopee</span>
+            <div class="nav-links">
+                {% if user.is_authenticated %}
+                    <a href="{% url 'dashboard' %}">Minha conta</a>
+                    <form method="post" action="{% url 'logout' %}">
+                        {% csrf_token %}
+                        <button type="submit" class="linkbtn">Sair</button>
+                    </form>
+                    <a class="botao-cta" href="{% url 'ir_para_shopee' %}">Ir para a Shopee &rarr;</a>
+                {% else %}
+                    <a href="{% url 'login' %}">Entrar</a>
+                    <a href="{% url 'registrar' %}">Cadastrar</a>
+                    <a class="botao-cta" href="{% url 'login' %}?next={% url 'ir_para_shopee' %}">Ir para a Shopee &rarr;</a>
+                {% endif %}
+            </div>
+        </div>
+    </nav>
+
+    {% if messages %}
+        <div class="envolve">
+            <ul class="mensagens">
+                {% for message in messages %}
+                    <li class="{{ message.tags }}">{{ message }}</li>
+                {% endfor %}
+            </ul>
+        </div>
+    {% endif %}
+
+    <header class="hero">
+        <div class="envolve">
+            <h1>Compre na Shopee.<br>Receba parte do dinheiro de volta.</h1>
+            <p class="subtitulo">
+                Sem pegadinha: você compra normalmente na Shopee através do nosso link,
+                e recebe cashback sobre a comissão que a Shopee já paga por essa venda.
+            </p>
+            {% if user.is_authenticated %}
+                <a class="botao-cta" href="{% url 'ir_para_shopee' %}">Ir para a Shopee agora &rarr;</a>
+            {% else %}
+                <a class="botao-cta" href="{% url 'login' %}?next={% url 'ir_para_shopee' %}">Ir para a Shopee agora &rarr;</a>
+            {% endif %}
+            <div class="selo">Sem custo. Sem mensalidade. Você só ganha.</div>
+        </div>
+    </header>
+
+    <section id="beneficios">
+        <div class="envolve">
+            <h2 class="titulo-secao">Por que usar o Cashback Shopee?</h2>
+            <div class="beneficios">
+                <div class="beneficio reveal">
+                    <div class="icone">🤝</div>
+                    <h3>Sem pegadinha</h3>
+                    <p>É só comprar normalmente pelo nosso link e receber o cashback quando a Shopee validar o pedido. Simples assim.</p>
+                </div>
+                <div class="beneficio reveal">
+                    <div class="icone">💸</div>
+                    <h3>Cashback de verdade</h3>
+                    <p>O valor vem direto da comissão que a Shopee paga por indicar sua compra — a gente repassa uma parte pra você.</p>
+                </div>
+                <div class="beneficio reveal">
+                    <div class="icone">⚡</div>
+                    <h3>Fácil de usar</h3>
+                    <p>Gere seu link em segundos, use no navegador ou no app da Shopee, e acompanhe tudo na sua conta.</p>
+                </div>
+                <div class="beneficio reveal">
+                    <div class="icone">🆓</div>
+                    <h3>Sem custo nenhum</h3>
+                    <p>Não cobramos nada de você. Você paga o mesmo preço da Shopee, só que com uma parte voltando pro seu bolso.</p>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <section class="fundo-suave" id="como-funciona">
+        <div class="envolve">
+            <h2 class="titulo-secao">Link de produto ou botão geral: qual usar?</h2>
+            <div class="comparativo">
+                <div class="cartao destaque reveal">
+                    <span class="etiqueta">VENDA DIRETA</span>
+                    <h3>Link de um produto específico</h3>
+                    <p>
+                        Você cola o link do produto que quer comprar e a gente converte num link de afiliado.
+                        Se a compra for exatamente daquele produto, ela conta como <strong>venda direta</strong>.
+                        Quando a Shopee está com uma campanha de comissão extra ativa para aquele produto,
+                        só a venda direta tem acesso a esse bônus — por isso, sempre que souber o que vai comprar,
+                        vale a pena converter o link do produto específico.
+                    </p>
+                </div>
+                <div class="cartao reveal">
+                    <span class="etiqueta">VENDA INDIRETA</span>
+                    <h3>Botão "Ir para a Shopee"</h3>
+                    <p>
+                        Você entra na Shopee pelo nosso botão e compra o que quiser, sem link específico de produto.
+                        Essa compra conta como <strong>venda indireta</strong>: ainda gera comissão e cashback
+                        normalmente, só que sem acesso a eventuais bônus de campanhas específicas.
+                        Ótimo pra quem só quer navegar e não sabe ainda o que vai levar.
+                    </p>
+                </div>
+            </div>
+            <p class="obs">A comissão padrão varia por categoria de produto e é a mesma nos dois casos — a diferença está só no acesso ao bônus de campanhas.</p>
+        </div>
+    </section>
+
+    <section id="converter-link">
+        <div class="envolve">
+            <h2 class="titulo-secao">Já sabe o que vai comprar?</h2>
+            <div class="conversor">
+                <form method="post">
+                    {% csrf_token %}
+                    <label for="{{ form.url_produto.id_for_label }}">{{ form.url_produto.label }}</label>
+                    {{ form.url_produto }}
+                    {% if form.url_produto.errors %}<div class="erros">{{ form.url_produto.errors|striptags }}</div>{% endif %}
+                    <button type="submit">Gerar link com cashback</button>
+                </form>
+                <p class="ajuda">
+                    {% if user.is_authenticated %}
+                        O link aparece na lista da sua conta assim que for gerado.
+                    {% else %}
+                        Se você ainda não tiver login, vamos te pedir pra entrar (ou criar uma conta) antes de gerar o link.
+                    {% endif %}
+                </p>
+            </div>
+        </div>
+    </section>
+
+    <footer>
+        <div class="envolve">
+            Cashback Shopee — não somos a Shopee, somos um afiliado independente do programa oficial.
+        </div>
+    </footer>
+
+    <script>
+        document.addEventListener("DOMContentLoaded", function () {
+            var alvos = document.querySelectorAll(".reveal");
+            var semAnimacao = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+
+            if (semAnimacao || !("IntersectionObserver" in window)) {
+                alvos.forEach(function (el) { el.classList.add("visivel"); });
+                return;
+            }
+
+            var observador = new IntersectionObserver(function (entradas) {
+                entradas.forEach(function (entrada) {
+                    if (entrada.isIntersecting) {
+                        entrada.target.classList.add("visivel");
+                        observador.unobserve(entrada.target);
+                    }
+                });
+            }, { threshold: 0.15 });
+
+            alvos.forEach(function (el) { observador.observe(el); });
+        });
+    </script>
+</body>
+</html>
