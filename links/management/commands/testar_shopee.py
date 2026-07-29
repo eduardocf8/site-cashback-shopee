@@ -1,7 +1,7 @@
 from django.conf import settings
 from django.core.management.base import BaseCommand
 
-from links.shopee_client import ShopeeAPIError, ShopeeConfigError, gerar_link_curto
+from links.shopee_client import ShopeeAPIError, ShopeeConfigError, SubIdInvalidoError, gerar_link_curto
 
 
 class Command(BaseCommand):
@@ -13,8 +13,11 @@ class Command(BaseCommand):
         self.stdout.write("Tentando gerar um link de afiliado para a página inicial da Shopee...\n")
 
         try:
-            link = gerar_link_curto(settings.SHOPEE_HOME_URL, ["teste-conexao"])
+            link = gerar_link_curto(settings.SHOPEE_HOME_URL, ["testeconexao"])
         except ShopeeConfigError as erro:
+            self.stderr.write(self.style.ERROR(str(erro)))
+            return
+        except SubIdInvalidoError as erro:
             self.stderr.write(self.style.ERROR(str(erro)))
             return
         except ShopeeAPIError as erro:
