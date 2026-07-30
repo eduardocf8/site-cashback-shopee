@@ -10,7 +10,7 @@ Site de cashback para compras na Shopee feitas através de links de afiliado ger
 - ✅ **Fase 4** — Regra de liberação de saldo, mês da validação + 2 (comando `liberar_saldo`)
 - ✅ **Fase 5** — Painel do usuário ("Minha conta"): saldo por status, histórico de pedidos e de links
 - ✅ **Fase 6** — Saque de saldo via PIX pela Asaas (sandbox), com aprovação manual no `/admin/`
-- ⬜ Fase 7 — Deploy em produção
+- ✅ **Fase 7** — Deploy em produção (Render, plano gratuito) com tarefas diárias automáticas
 
 ## Como rodar localmente
 
@@ -120,6 +120,101 @@ ASAAS_API_KEY=$aact_hmlg_sua_chave_aqui
 6. Se der certo, o status muda para "Pago". Se der erro, o status vira "Falhou" e o motivo fica registrado no campo "Resposta asaas" daquele saque — me manda a mensagem que ajusto com você.
 
 Se algum saque ficar muito tempo em "Processando" (raro, mas pode acontecer em processamento bancário), rode `python manage.py verificar_saques` para reconsultar o status na Asaas.
+
+## Colocando o site no ar (Fase 7)
+
+Vamos usar a **Render** (tem plano gratuito) pra hospedar o site, com um banco de dados Postgres (o SQLite que usamos localmente não funciona em produção lá, porque o plano gratuito não guarda arquivos entre reinicializações).
+
+**Sobre o plano gratuito**: o site "dorme" depois de uns 15 minutos sem acesso e demora uns 30-60 segundos pra "acordar" no primeiro acesso seguinte — tranquilo numa fase inicial. O banco de dados gratuito expira 30 dias após ser criado, mas você tem mais 14 dias de prazo pra fazer upgrade sem perder nada (44 dias no total) — a Render avisa por e-mail antes disso acontecer.
+
+**Importante sobre dinheiro real**: depois do deploy, a Shopee continua sendo a de verdade (como já é hoje), mas os saques continuam batendo na Asaas **sandbox** (não gera pagamento real) até você trocar `ASAAS_API_KEY`/`ASAAS_API_URL` pelas credenciais de produção da Asaas — o que é assunto pra quando você decidir abrir o site pra usuários de verdade, não precisa fazer isso agora.
+
+### 1. Criar a conta na Render e o banco de dados
+
+1. Acesse https://render.com/ e crie uma conta (dá pra usar login do GitHub).
+2. No painel, clique em **"New +"** → **"PostgreSQL"**.
+3. Dê um nome (ex: `cashback-shopee-db`), escolha o plano **Free** e crie.
+4. Quando o banco estiver pronto, copie o valor de **"Internal Database URL"** (vamos usar em breve) — não confunda com o "External Database URL" ainda.
+
+### 2. Criar o Web Service
+
+1. No painel, clique em **"New +"** → **"Web Service"**.
+2. Conecte sua conta do GitHub (se ainda não conectou) e selecione o repositório `site-cashback-shopee`.
+3. Escolha a branch que você quer publicar (a mesma que estamos usando pra desenvolver).
+4. Preencha:
+   - **Runtime**: Python 3
+   - **Build Command**:
+     ```
+     pip install -r requirements.txt && python manage.py collectstatic --noinput && python manage.py migrate
+     ```
+   - **Start Command**:
+     ```
+     gunicorn cashback_shopee.wsgi:application
+     ```
+   - **Plan**: Free
+5. **Não clique em criar ainda** — antes, desça até "Environment Variables" e configure a próxima seção.
+
+### 3. Configurar as variáveis de ambiente
+
+Adicione cada uma dessas (nomes exatamente iguais aos do seu `.env` local, mas com valores de produção):
+
+| Variável | Valor |
+|---|---|
+| `DJANGO_SECRET_KEY` | Um texto longo e aleatório (a própria Render tem um botão "Generate" pra isso) |
+| `DJANGO_DEBUG` | `False` |
+| `DATABASE_URL` | Cole aqui a "Internal Database URL" que você copiou no passo 1 |
+| `SHOPEE_AFFILIATE_APP_ID` | O mesmo valor do seu `.env` local |
+| `SHOPEE_AFFILIATE_SECRET` | O mesmo valor do seu `.env` local |
+| `SHOPEE_CASHBACK_PERCENTUAL` | O mesmo valor do seu `.env` local |
+| `ASAAS_API_KEY` | O mesmo valor do seu `.env` local (ainda o de sandbox) |
+| `SAQUE_VALOR_MINIMO` | O mesmo valor do seu `.env` local |
+| `TAREFAS_TOKEN` | Um texto longo e aleatório, só seu (não precisa ser igual a nenhum outro) — vamos usar no passo 5 |
+
+Não precisa configurar `DJANGO_ALLOWED_HOSTS` — a Render já informa o endereço do site automaticamente pro Django através de uma variável própria dela.
+
+Agora sim, clique em **"Create Web Service"**. A Render vai buildar e publicar o site — acompanhe o log; o primeiro deploy demora alguns minutos.
+
+### 4. Criar seu usuário administrador
+
+O plano gratuito não dá acesso a um terminal dentro da Render, então vamos criar o superusuário conectando do seu computador direto no banco de produção, só uma vez:
+
+1. Na página do banco de dados na Render, copie agora o **"External Database URL"** (esse sim, diferente do interno).
+2. No terminal do seu computador (com o `venv` ativado), rode, substituindo pela URL copiada:
+
+   PowerShell:
+   ```
+   $env:DATABASE_URL="cole_a_external_database_url_aqui"
+   python manage.py createsuperuser
+   ```
+   Cmd:
+   ```
+   set DATABASE_URL=cole_a_external_database_url_aqui
+   python manage.py createsuperuser
+   ```
+3. Preencha usuário, e-mail e senha normalmente.
+4. Feche esse terminal (ou abra um novo) depois — isso evita continuar usando o banco de produção sem querer nos próximos comandos locais.
+
+### 5. Automatizar as tarefas diárias (sincronizar pedidos, liberar saldo, verificar saques)
+
+Criei um endereço protegido por senha no site, `/tarefas/executar/`, que roda as três tarefas de uma vez. Ele só funciona se receber o `TAREFAS_TOKEN` certo:
+
+```
+https://seusite.onrender.com/tarefas/executar/?token=SEU_TAREFAS_TOKEN_AQUI
+```
+
+Já deixei configurado um agendamento gratuito no GitHub Actions (`.github/workflows/tarefas-diarias.yml`) pra acessar esse endereço todo dia às 01:00 (horário de Brasília). Falta só você configurar o segredo com a URL completa:
+
+1. No GitHub, abra o repositório → **Settings** → **Secrets and variables** → **Actions**.
+2. Clique em **"New repository secret"**.
+3. Nome: `TAREFAS_URL`
+4. Valor: a URL completa de cima, com o seu endereço da Render e o `TAREFAS_TOKEN` que você configurou no passo 3.
+5. Salve.
+
+Pra testar sem esperar até de madrugada: vá em **Actions** (no menu do repositório) → **"Tarefas diárias do site"** → **"Run workflow"** → confirme. Se ficar verde, funcionou; se ficar vermelho, clique no resultado pra ver a mensagem de erro.
+
+### 6. Conferir se está tudo certo
+
+Acesse `https://seusite.onrender.com` (ou o endereço que a Render te deu) e teste: cadastro/login, gerar link, `/admin/` com o superusuário criado no passo 4.
 
 ## Estrutura do projeto
 

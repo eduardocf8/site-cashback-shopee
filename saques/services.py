@@ -104,3 +104,16 @@ def atualizar_status_saque(saque: Saque) -> Saque:
         saque.pago_em = timezone.now()
     saque.save(update_fields=["status", "resposta_asaas", "pago_em", "atualizado_em"])
     return saque
+
+
+def verificar_saques_pendentes() -> dict:
+    """Reconsulta na Asaas todos os saques 'processando' e retorna um resumo do resultado."""
+    pendentes = Saque.objects.filter(status=Saque.STATUS_PROCESSANDO)
+    total = pendentes.count()
+    atualizados = 0
+    for saque in pendentes:
+        status_antes = saque.status
+        atualizar_status_saque(saque)
+        if saque.status != status_antes:
+            atualizados += 1
+    return {"verificados": total, "atualizados": atualizados}

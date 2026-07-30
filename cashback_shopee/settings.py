@@ -14,6 +14,7 @@ import os
 from decimal import Decimal
 from pathlib import Path
 
+import dj_database_url
 from dotenv import load_dotenv
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
@@ -35,6 +36,26 @@ SECRET_KEY = os.environ.get(
 DEBUG = os.environ.get("DJANGO_DEBUG", "True") == "True"
 
 ALLOWED_HOSTS = [h for h in os.environ.get("DJANGO_ALLOWED_HOSTS", "").split(",") if h]
+
+# A Render injeta esse valor automaticamente com o endereço público do serviço
+# (ex: seusite.onrender.com) - assim não precisamos configurar isso manualmente.
+RENDER_EXTERNAL_HOSTNAME = os.environ.get("RENDER_EXTERNAL_HOSTNAME")
+if RENDER_EXTERNAL_HOSTNAME:
+    ALLOWED_HOSTS.append(RENDER_EXTERNAL_HOSTNAME)
+
+CSRF_TRUSTED_ORIGINS = [f"https://{host}" for host in ALLOWED_HOSTS]
+
+# A Render fica na frente do site fazendo HTTPS -> HTTP internamente; esse cabeçalho
+# avisa o Django que a conexão original do usuário era HTTPS.
+SECURE_PROXY_SSL_HEADER = ("HTTP_X_FORWARDED_PROTO", "https")
+
+if not DEBUG:
+    SECURE_SSL_REDIRECT = True
+    SESSION_COOKIE_SECURE = True
+    CSRF_COOKIE_SECURE = True
+    # Começa com 1 hora (valor conservador); pode aumentar depois de confirmar que o
+    # HTTPS está estável, seguindo a documentação do Django antes de mudar.
+    SECURE_HSTS_SECONDS = 3600
 
 
 # Application definition
@@ -77,8 +98,14 @@ ASAAS_API_URL = os.environ.get("ASAAS_API_URL", "https://sandbox.asaas.com/api/v
 # Valor mínimo (em reais) que o usuário precisa ter de saldo liberado para poder solicitar saque.
 SAQUE_VALOR_MINIMO = Decimal(os.environ.get("SAQUE_VALOR_MINIMO", "20.00"))
 
+# Senha (token) que protege o endereço /tarefas/executar/, usado pelo agendamento
+# automático (GitHub Actions) para rodar as tarefas diárias em produção. Sem essa
+# variável configurada, o endereço fica sempre bloqueado.
+TAREFAS_TOKEN = os.environ.get("TAREFAS_TOKEN", "")
+
 MIDDLEWARE = [
     "django.middleware.security.SecurityMiddleware",
+    "whitenoise.middleware.WhiteNoiseMiddleware",
     "django.contrib.sessions.middleware.SessionMiddleware",
     "django.middleware.common.CommonMiddleware",
     "django.middleware.csrf.CsrfViewMiddleware",
@@ -111,10 +138,10 @@ WSGI_APPLICATION = "cashback_shopee.wsgi.application"
 # https://docs.djangoproject.com/en/5.2/ref/settings/#databases
 
 DATABASES = {
-    "default": {
-        "ENGINE": "django.db.backends.sqlite3",
-        "NAME": BASE_DIR / "db.sqlite3",
-    }
+    "default": dj_database_url.config(
+        default=f"sqlite:///{BASE_DIR / 'db.sqlite3'}",
+        conn_max_age=600,
+    )
 }
 
 
@@ -153,6 +180,16 @@ USE_TZ = True
 # https://docs.djangoproject.com/en/5.2/howto/static-files/
 
 STATIC_URL = "static/"
+STATIC_ROOT = BASE_DIR / "staticfiles"
+
+STORAGES = {
+    "default": {
+        "BACKEND": "django.core.files.storage.FileSystemStorage",
+    },
+    "staticfiles": {
+        "BACKEND": "whitenoise.storage.CompressedManifestStaticFilesStorage",
+    },
+}
 
 # Default primary key field type
 # https://docs.djangoproject.com/en/5.2/ref/settings/#default-auto-field
