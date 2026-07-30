@@ -113,10 +113,11 @@ ASAAS_API_KEY=$aact_hmlg_sua_chave_aqui
 ### 4. Testar o fluxo
 
 1. Rode `python manage.py migrate` (esse app é novo, tem migração pra aplicar).
-2. Faça login no site, vá em "Minha conta" e cadastre uma chave PIX de teste (na Asaas sandbox você pode criar uma chave PIX de teste na própria conta sandbox, em "Minha conta" > "Chaves Pix", pra ter algo real pra receber a transferência).
-3. Quando tiver saldo liberado (R$ 20,00 ou mais, valor configurável em `SAQUE_VALOR_MINIMO` no `.env`), clique em "Solicitar saque".
-4. No `/admin/`, entre em "Saques", marque a solicitação e rode a ação "Aprovar e pagar via PIX (Asaas)".
-5. Se der certo, o status muda para "Pago". Se der erro, o status vira "Falhou" e o motivo fica registrado no campo "Resposta asaas" daquele saque — me manda a mensagem que ajusto com você.
+2. Na Asaas sandbox, crie uma chave PIX de teste pelo menu "Pix" > "Minhas chaves" (a chave aleatória é a mais rápida de gerar). Você também pode usar uma chave fictícia oficial do Banco Central — veja https://docs.asaas.com/docs/testando-transferencias.
+3. Faça login no nosso site, vá em "Minha conta" e cadastre essa chave em "Cadastrar chave PIX" (escolha o tipo certo: E-mail, CPF, Telefone ou Aleatória).
+4. Quando tiver saldo liberado (R$ 20,00 ou mais, valor configurável em `SAQUE_VALOR_MINIMO` no `.env`), clique em "Solicitar saque".
+5. No `/admin/`, entre em "Saques", marque a solicitação e rode a ação "Aprovar e pagar via PIX (Asaas)".
+6. Se der certo, o status muda para "Pago". Se der erro, o status vira "Falhou" e o motivo fica registrado no campo "Resposta asaas" daquele saque — me manda a mensagem que ajusto com você.
 
 Se algum saque ficar muito tempo em "Processando" (raro, mas pode acontecer em processamento bancário), rode `python manage.py verificar_saques` para reconsultar o status na Asaas.
 
