@@ -3,7 +3,9 @@ from decimal import Decimal
 from unittest.mock import patch
 
 from django.contrib.auth import get_user_model
+from django.db import connection
 from django.test import TestCase, override_settings
+from django.test.utils import CaptureQueriesContext
 from django.utils import timezone
 
 from links.models import Click
@@ -261,6 +263,30 @@ class SincronizarTests(TestCase):
 
         pedido = Pedido.objects.get(order_id="ORD10")
         self.assertEqual(pedido.motivo_cancelamento, "")
+
+    @patch("pedidos.services.buscar_conversoes")
+    def test_sincroniza_muitos_pedidos_com_poucas_consultas_ao_banco(self, mock_buscar):
+        # Uma conta com uso real pode ter milhares de pedidos - se processarmos um por
+        # um, cada request estoura o tempo limite do servidor em produção (foi o que
+        # aconteceu). Esse teste garante que o número de consultas não cresce junto
+        # com a quantidade de pedidos.
+        quantidade = 300
+        orders = [
+            {
+                "orderId": f"ORD-LOTE-{i}",
+                "orderStatus": "PENDING",
+                "items": [{"completeTime": None, "itemTotalCommission": "1.00"}],
+            }
+            for i in range(quantidade)
+        ]
+        mock_buscar.return_value = self._pagina(orders)
+
+        with CaptureQueriesContext(connection) as contexto:
+            resultado = sincronizar(1690000000, 1700000000)
+
+        self.assertEqual(resultado["novos"], quantidade)
+        self.assertEqual(Pedido.objects.count(), quantidade)
+        self.assertLess(len(contexto), 20)
 
 
 class LiberarSaldoTests(TestCase):

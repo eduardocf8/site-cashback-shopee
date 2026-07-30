@@ -149,8 +149,9 @@ Vamos usar a **Render** (tem plano gratuito) pra hospedar o site, com um banco d
      ```
    - **Start Command**:
      ```
-     gunicorn cashback_shopee.wsgi:application
+     gunicorn cashback_shopee.wsgi:application --timeout 120
      ```
+     (o `--timeout 120` dá uma margem extra pra sincronizações com muitos pedidos não serem interrompidas no meio.)
    - **Plan**: Free
 5. **Não clique em criar ainda** — antes, desça até "Environment Variables" e configure a próxima seção.
 

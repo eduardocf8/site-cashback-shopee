@@ -72,14 +72,79 @@ def calcular_data_prevista_liberacao(data_validacao):
     return date(ano, mes, 1)
 
 
+CAMPOS_ATUALIZAVEIS = [
+    "conversion_id",
+    "click",
+    "usuario",
+    "status",
+    "status_shopee_bruto",
+    "valor_comissao",
+    "valor_cashback",
+    "produto_nome",
+    "produto_imagem_url",
+    "motivo_cancelamento",
+    "data_compra",
+    "data_validacao",
+    "data_prevista_liberacao",
+]
+
+
+def _montar_defaults(conversao, pedido_shopee, click, data_compra, percentual):
+    status_shopee = mapear_status(pedido_shopee.get("orderStatus"))
+    itens = pedido_shopee.get("items", [])
+    comissao = sum(
+        (Decimal(str(item.get("itemTotalCommission") or "0")) for item in itens),
+        Decimal("0"),
+    )
+    tempos_conclusao = [item["completeTime"] for item in itens if item.get("completeTime")]
+    data_validacao = _converter_timestamp(max(tempos_conclusao)) if tempos_conclusao else None
+
+    nomes_produto = []
+    for item in itens:
+        nome = item.get("itemName") or ""
+        if nome and nome not in nomes_produto:
+            nomes_produto.append(nome)
+    imagem_produto = next((item.get("imageUrl") for item in itens if item.get("imageUrl")), "")
+
+    motivo_cancelamento = ""
+    if status_shopee == Pedido.STATUS_CANCELADO:
+        motivos = []
+        for item in itens:
+            motivo = item.get("fraudReason") or ""
+            if motivo and motivo not in motivos:
+                motivos.append(motivo)
+        motivo_cancelamento = "; ".join(motivos)[:255]
+
+    return {
+        "conversion_id": str(conversao.get("conversionId", "")),
+        "click": click,
+        "usuario": click.usuario if click else None,
+        "status": status_shopee,
+        "status_shopee_bruto": pedido_shopee.get("orderStatus") or "",
+        "valor_comissao": comissao,
+        "valor_cashback": (comissao * percentual).quantize(Decimal("0.01")),
+        "produto_nome": ", ".join(nomes_produto)[:255],
+        "produto_imagem_url": imagem_produto,
+        "motivo_cancelamento": motivo_cancelamento,
+        "data_compra": data_compra,
+        "data_validacao": data_validacao,
+        "data_prevista_liberacao": calcular_data_prevista_liberacao(data_validacao),
+    }
+
+
 def sincronizar(purchase_time_start: int, purchase_time_end: int) -> dict:
-    """Busca conversões da Shopee no período e cria/atualiza os Pedidos correspondentes."""
+    """Busca conversões da Shopee no período e cria/atualiza os Pedidos correspondentes.
+
+    Processa tudo em lote (poucas consultas ao banco no total, em vez de várias por
+    pedido) porque uma conta com muitos pedidos reais pode ter milhares de linhas, e
+    fazer isso uma de cada vez é rápido demais no SQLite local mas estoura o tempo
+    limite do servidor contra um banco remoto de verdade.
+    """
     percentual = Decimal(str(settings.SHOPEE_CASHBACK_PERCENTUAL)) / Decimal("100")
 
-    novos = 0
-    atualizados = 0
     nao_identificados = 0
     scroll_id = None
+    linhas_por_order_id: dict[str, dict] = {}
 
     while True:
         pagina = buscar_conversoes(purchase_time_start, purchase_time_end, scroll_id)
@@ -92,64 +157,41 @@ def sincronizar(purchase_time_start: int, purchase_time_end: int) -> dict:
             data_compra = _converter_timestamp(conversao.get("purchaseTime"))
 
             for pedido_shopee in conversao.get("orders", []):
-                status_shopee = mapear_status(pedido_shopee.get("orderStatus"))
-                itens = pedido_shopee.get("items", [])
-                comissao = sum(
-                    (Decimal(str(item.get("itemTotalCommission") or "0")) for item in itens),
-                    Decimal("0"),
-                )
-                tempos_conclusao = [item["completeTime"] for item in itens if item.get("completeTime")]
-                data_validacao = _converter_timestamp(max(tempos_conclusao)) if tempos_conclusao else None
-
-                nomes_produto = []
-                for item in itens:
-                    nome = item.get("itemName") or ""
-                    if nome and nome not in nomes_produto:
-                        nomes_produto.append(nome)
-                imagem_produto = next((item.get("imageUrl") for item in itens if item.get("imageUrl")), "")
-
-                existente = Pedido.objects.filter(order_id=pedido_shopee["orderId"]).first()
-                # Uma vez liberado, o saldo já pode ter sido considerado disponível pro
-                # usuário - uma nova sincronização não pode "desliberar" o pedido só
-                # porque a Shopee ainda reporta o status antigo (COMPLETED).
-                if existente and existente.status == Pedido.STATUS_LIBERADO:
-                    status_final = Pedido.STATUS_LIBERADO
-                else:
-                    status_final = status_shopee
-
-                motivo_cancelamento = ""
-                if status_final == Pedido.STATUS_CANCELADO:
-                    motivos = []
-                    for item in itens:
-                        motivo = item.get("fraudReason") or ""
-                        if motivo and motivo not in motivos:
-                            motivos.append(motivo)
-                    motivo_cancelamento = "; ".join(motivos)[:255]
-
-                _, criado = Pedido.objects.update_or_create(
-                    order_id=pedido_shopee["orderId"],
-                    defaults={
-                        "conversion_id": str(conversao.get("conversionId", "")),
-                        "click": click,
-                        "usuario": click.usuario if click else None,
-                        "status": status_final,
-                        "status_shopee_bruto": pedido_shopee.get("orderStatus") or "",
-                        "valor_comissao": comissao,
-                        "valor_cashback": (comissao * percentual).quantize(Decimal("0.01")),
-                        "produto_nome": ", ".join(nomes_produto)[:255],
-                        "produto_imagem_url": imagem_produto,
-                        "motivo_cancelamento": motivo_cancelamento,
-                        "data_compra": data_compra,
-                        "data_validacao": data_validacao,
-                        "data_prevista_liberacao": calcular_data_prevista_liberacao(data_validacao),
-                    },
-                )
-                novos += criado
-                atualizados += not criado
+                defaults = _montar_defaults(conversao, pedido_shopee, click, data_compra, percentual)
+                # Se o mesmo pedido aparecer mais de uma vez nesta sincronização,
+                # fica valendo a última ocorrência.
+                linhas_por_order_id[pedido_shopee["orderId"]] = defaults
 
         scroll_id = pagina["pageInfo"].get("scrollId")
         if not pagina["pageInfo"].get("hasNextPage"):
             break
+
+    novos = 0
+    atualizados = 0
+    existentes = {p.order_id: p for p in Pedido.objects.filter(order_id__in=linhas_por_order_id.keys())}
+
+    novos_objs = []
+    atualizados_objs = []
+    for order_id, defaults in linhas_por_order_id.items():
+        existente = existentes.get(order_id)
+        if existente:
+            # Uma vez liberado, o saldo já pode ter sido considerado disponível pro
+            # usuário - uma nova sincronização não pode "desliberar" o pedido só
+            # porque a Shopee ainda reporta o status antigo (COMPLETED).
+            if existente.status == Pedido.STATUS_LIBERADO:
+                defaults = {**defaults, "status": Pedido.STATUS_LIBERADO, "motivo_cancelamento": ""}
+            for campo, valor in defaults.items():
+                setattr(existente, campo, valor)
+            atualizados_objs.append(existente)
+            atualizados += 1
+        else:
+            novos_objs.append(Pedido(order_id=order_id, **defaults))
+            novos += 1
+
+    if novos_objs:
+        Pedido.objects.bulk_create(novos_objs)
+    if atualizados_objs:
+        Pedido.objects.bulk_update(atualizados_objs, CAMPOS_ATUALIZAVEIS)
 
     return {"novos": novos, "atualizados": atualizados, "nao_identificados": nao_identificados}
 
