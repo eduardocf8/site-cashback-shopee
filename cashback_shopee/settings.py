@@ -11,6 +11,7 @@ https://docs.djangoproject.com/en/5.2/ref/settings/
 """
 
 import os
+from decimal import Decimal
 from pathlib import Path
 
 from dotenv import load_dotenv
@@ -48,6 +49,7 @@ INSTALLED_APPS = [
     "accounts",
     "links",
     "pedidos",
+    "saques",
 ]
 
 AUTH_USER_MODEL = "accounts.User"
@@ -67,6 +69,13 @@ SHOPEE_HOME_URL = os.environ.get("SHOPEE_HOME_URL", "https://shopee.com.br/")
 # Percentual da comissão da Shopee repassado ao usuário como cashback.
 # Ainda não definido pelo negócio - ajuste no .env quando decidido (ex: 100 = repassa tudo).
 SHOPEE_CASHBACK_PERCENTUAL = float(os.environ.get("SHOPEE_CASHBACK_PERCENTUAL", "100"))
+
+# Credenciais da API da Asaas para pagar os saques via PIX (ficam no arquivo .env, nunca no código)
+ASAAS_API_KEY = os.environ.get("ASAAS_API_KEY", "")
+ASAAS_API_URL = os.environ.get("ASAAS_API_URL", "https://sandbox.asaas.com/api/v3")
+
+# Valor mínimo (em reais) que o usuário precisa ter de saldo liberado para poder solicitar saque.
+SAQUE_VALOR_MINIMO = Decimal(os.environ.get("SAQUE_VALOR_MINIMO", "20.00"))
 
 MIDDLEWARE = [
     "django.middleware.security.SecurityMiddleware",

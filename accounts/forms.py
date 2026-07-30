@@ -29,3 +29,19 @@ class RegistroForm(UserCreationForm):
         if User.objects.filter(email=email).exists():
             raise forms.ValidationError("Já existe uma conta cadastrada com este e-mail.")
         return email
+
+
+class ChavePixForm(forms.ModelForm):
+    class Meta:
+        model = User
+        fields = ("tipo_chave_pix", "chave_pix")
+        labels = {"tipo_chave_pix": "Tipo da chave PIX", "chave_pix": "Chave PIX"}
+        widgets = {
+            "chave_pix": forms.TextInput(attrs={"placeholder": "Cole aqui sua chave PIX"}),
+        }
+
+    def clean(self):
+        cleaned = super().clean()
+        if cleaned.get("chave_pix") and not cleaned.get("tipo_chave_pix"):
+            raise forms.ValidationError("Selecione o tipo da chave PIX.")
+        return cleaned

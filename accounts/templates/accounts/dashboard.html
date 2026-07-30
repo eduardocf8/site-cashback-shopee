@@ -69,6 +69,10 @@
         .acoes-rapidas { display: flex; gap: 12px; margin-top: 20px; flex-wrap: wrap; }
         .acoes-rapidas a { font-size: 14px; }
 
+        .caixa-saque { background: #fff; border: 1px solid #f0e9e5; border-radius: 12px; padding: 20px; }
+        .caixa-saque p { margin: 0 0 12px; font-size: 14px; }
+        .caixa-saque .legenda { color: var(--texto-suave); font-size: 13px; }
+
         table { width: 100%; border-collapse: collapse; background: #fff; border-radius: 12px; overflow: hidden; border: 1px solid #f0e9e5; }
         th, td { text-align: left; padding: 12px 14px; border-bottom: 1px solid #f3ede9; font-size: 13px; }
         th { background: var(--fundo-suave); font-weight: 600; color: var(--texto-suave); }
@@ -84,8 +88,9 @@
         }
         .etiqueta-status.pendente { background: #f0f0f0; color: #666; }
         .etiqueta-status.validado { background: var(--azul-fundo); color: var(--azul); }
-        .etiqueta-status.liberado { background: var(--verde-fundo); color: var(--verde); }
-        .etiqueta-status.cancelado { background: var(--vermelho-fundo); color: var(--vermelho); }
+        .etiqueta-status.liberado, .etiqueta-status.pago { background: var(--verde-fundo); color: var(--verde); }
+        .etiqueta-status.cancelado, .etiqueta-status.falhou { background: var(--vermelho-fundo); color: var(--vermelho); }
+        .etiqueta-status.solicitado, .etiqueta-status.processando { background: #f0f0f0; color: #666; }
         .motivo { font-size: 12px; color: var(--texto-suave); margin-top: 2px; }
 
         .vazio { color: var(--texto-suave); font-size: 14px; padding: 20px; text-align: center; }
@@ -139,7 +144,7 @@
                 <div class="saldo-cartao liberado">
                     <div class="rotulo">Liberado</div>
                     <div class="valor">R$ {{ saldo_liberado|floatformat:2 }}</div>
-                    <div class="legenda">Confirmado e liberado. Em breve você poderá sacar via PIX.</div>
+                    <div class="legenda">Confirmado e liberado para saque via PIX.</div>
                 </div>
                 <div class="saldo-cartao cancelado">
                     <div class="rotulo">Cancelado</div>
@@ -149,6 +154,28 @@
             </div>
             <div class="acoes-rapidas">
                 <a class="botao-cta" href="{% url 'home' %}#converter-link">Gerar novo link de cashback</a>
+            </div>
+        </section>
+
+        <section>
+            <h2 class="titulo-secao">Saque via PIX</h2>
+            <div class="caixa-saque">
+                {% if not user.chave_pix %}
+                    <p>Você ainda não cadastrou uma chave PIX.</p>
+                    <a class="botao-cta" href="{% url 'editar_chave_pix' %}">Cadastrar chave PIX</a>
+                {% else %}
+                    <p>Chave PIX cadastrada: <strong>{{ user.get_tipo_chave_pix_display }}</strong> — {{ user.chave_pix }}
+                        (<a href="{% url 'editar_chave_pix' %}">alterar</a>)</p>
+                    <p>Saldo disponível para saque: <strong>R$ {{ saldo_disponivel|floatformat:2 }}</strong></p>
+                    {% if saldo_disponivel >= saque_valor_minimo %}
+                        <form method="post" action="{% url 'pedir_saque' %}">
+                            {% csrf_token %}
+                            <button type="submit" class="botao-cta">Solicitar saque de R$ {{ saldo_disponivel|floatformat:2 }}</button>
+                        </form>
+                    {% else %}
+                        <p class="legenda">O saque mínimo é de R$ {{ saque_valor_minimo|floatformat:2 }}. Continue comprando pra acumular saldo liberado.</p>
+                    {% endif %}
+                {% endif %}
             </div>
         </section>
 
@@ -199,6 +226,34 @@
                 </div>
             {% else %}
                 <p class="vazio">Você ainda não tem pedidos. Compre pela Shopee usando seus links de cashback e eles aparecem aqui.</p>
+            {% endif %}
+        </section>
+
+        <section>
+            <h2 class="titulo-secao">Meus saques</h2>
+            {% if saques %}
+                <div class="rolar-tabela">
+                <table>
+                    <tr>
+                        <th>Valor</th>
+                        <th>Chave PIX</th>
+                        <th>Status</th>
+                        <th>Solicitado em</th>
+                        <th>Pago em</th>
+                    </tr>
+                    {% for saque in saques %}
+                        <tr>
+                            <td>R$ {{ saque.valor|floatformat:2 }}</td>
+                            <td>{{ saque.chave_pix }}</td>
+                            <td><span class="etiqueta-status {{ saque.status }}">{{ saque.get_status_display }}</span></td>
+                            <td>{{ saque.criado_em|date:"d/m/Y H:i" }}</td>
+                            <td>{{ saque.pago_em|date:"d/m/Y H:i"|default:"—" }}</td>
+                        </tr>
+                    {% endfor %}
+                </table>
+                </div>
+            {% else %}
+                <p class="vazio">Você ainda não solicitou nenhum saque.</p>
             {% endif %}
         </section>
 

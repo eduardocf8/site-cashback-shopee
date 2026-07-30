@@ -7,9 +7,9 @@ Site de cashback para compras na Shopee feitas através de links de afiliado ger
 - ✅ **Fase 1** — Projeto Django rodando, com cadastro e login de usuário (incluindo CPF com validação)
 - ✅ **Fase 2** — Geração de link de afiliado Shopee com subID (produto específico ou página inicial)
 - ✅ **Fase 3** — Sincronização de pedidos com a Shopee (comando `sincronizar_pedidos`)
-- ⬜ Fase 4 — Regra de liberação de saldo (mês N+2)
-- ⬜ Fase 5 — Painel do usuário (extrato e saldo)
-- ⬜ Fase 6 — Pagamento via PIX (Asaas)
+- ✅ **Fase 4** — Regra de liberação de saldo, mês da validação + 2 (comando `liberar_saldo`)
+- ✅ **Fase 5** — Painel do usuário ("Minha conta"): saldo por status, histórico de pedidos e de links
+- ✅ **Fase 6** — Saque de saldo via PIX pela Asaas (sandbox), com aprovação manual no `/admin/`
 - ⬜ Fase 7 — Deploy em produção
 
 ## Como rodar localmente
@@ -77,9 +77,53 @@ Você pode conferir os pedidos sincronizados em `/admin/` (seção "Pedidos"), i
 
 O percentual de comissão repassado como cashback ainda não foi definido — está em `SHOPEE_CASHBACK_PERCENTUAL` no `.env` (100 = repassa 100% da comissão que a Shopee paga).
 
+## Liberando o saldo dos pedidos validados (Fase 4)
+
+Pedidos validados ficam disponíveis para saque no 1º dia do mês seguinte a dois meses depois da validação (ex: validou em março, libera em 1º de maio). Para efetivamente mudar o status desses pedidos de "validado" para "liberado":
+
+```bash
+python manage.py liberar_saldo
+```
+
+Assim como o `sincronizar_pedidos`, por enquanto esse comando precisa ser rodado manualmente (a automação fica pra Fase 7).
+
+## Configurando o pagamento de saques via PIX com a Asaas (Fase 6)
+
+O saque funciona assim: o usuário pede o saque do saldo liberado dentro do site → a solicitação fica pendente → você revisa e aprova no `/admin/` → só então o sistema chama a Asaas pra fazer a transferência PIX de verdade. Nada é pago automaticamente sem sua aprovação.
+
+### 1. Criar a conta sandbox na Asaas
+
+1. Acesse https://www.asaas.com/ e crie uma conta (é gratuito).
+2. Ao criar a conta, você já ganha acesso a um ambiente de testes ("sandbox") separado do ambiente real — é nele que vamos trabalhar por enquanto, sem mexer com dinheiro de verdade.
+3. Para acessar o sandbox diretamente: https://sandbox.asaas.com/ (o login costuma ser o mesmo da conta que você criou, mas se pedir para criar uma conta específica do sandbox, siga o fluxo indicado na tela).
+
+### 2. Gerar a chave de API
+
+1. Dentro do sandbox, procure por "Integrações" (ou "Configurações" > "Integrações" > "API") no menu.
+2. Gere/copie a chave de API. Ela começa com `$aact_hmlg_` (chaves de sandbox sempre começam assim — as de produção começam com `$aact_prod_`, nunca confunda as duas).
+
+### 3. Configurar no projeto
+
+No seu arquivo `.env`:
+```
+ASAAS_API_KEY=$aact_hmlg_sua_chave_aqui
+```
+(a `ASAAS_API_URL` já vem configurada por padrão para o sandbox, não precisa mexer.)
+
+### 4. Testar o fluxo
+
+1. Rode `python manage.py migrate` (esse app é novo, tem migração pra aplicar).
+2. Faça login no site, vá em "Minha conta" e cadastre uma chave PIX de teste (na Asaas sandbox você pode criar uma chave PIX de teste na própria conta sandbox, em "Minha conta" > "Chaves Pix", pra ter algo real pra receber a transferência).
+3. Quando tiver saldo liberado (R$ 20,00 ou mais, valor configurável em `SAQUE_VALOR_MINIMO` no `.env`), clique em "Solicitar saque".
+4. No `/admin/`, entre em "Saques", marque a solicitação e rode a ação "Aprovar e pagar via PIX (Asaas)".
+5. Se der certo, o status muda para "Pago". Se der erro, o status vira "Falhou" e o motivo fica registrado no campo "Resposta asaas" daquele saque — me manda a mensagem que ajusto com você.
+
+Se algum saque ficar muito tempo em "Processando" (raro, mas pode acontecer em processamento bancário), rode `python manage.py verificar_saques` para reconsultar o status na Asaas.
+
 ## Estrutura do projeto
 
 - `cashback_shopee/` — configurações gerais do site (settings, urls)
-- `accounts/` — cadastro, login e dados do usuário (CPF, etc.)
-- `links/` — geração de links de afiliado Shopee com subID (API oficial)
-- `pedidos/` — sincronização de pedidos/comissões com a Shopee
+- `accounts/` — cadastro, login, dados do usuário (CPF, chave PIX) e o painel "Minha conta"
+- `links/` — geração de links de afiliado Shopee com subID (API oficial) e a página inicial
+- `pedidos/` — sincronização de pedidos/comissões com a Shopee e liberação de saldo
+- `saques/` — solicitação e pagamento de saques via PIX pela Asaas

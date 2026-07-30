@@ -1,13 +1,16 @@
 from decimal import Decimal
 
+from django.conf import settings
+from django.contrib import messages
 from django.contrib.auth import login
 from django.contrib.auth.decorators import login_required
 from django.db.models import Sum
 from django.shortcuts import redirect, render
 
 from pedidos.models import Pedido
+from saques.services import calcular_saldo_disponivel
 
-from .forms import RegistroForm
+from .forms import ChavePixForm, RegistroForm
 
 
 def registrar(request):
@@ -39,7 +42,24 @@ def dashboard(request):
         "saldo_validado": saldos[Pedido.STATUS_VALIDADO],
         "saldo_liberado": saldos[Pedido.STATUS_LIBERADO],
         "saldo_cancelado": saldos[Pedido.STATUS_CANCELADO],
+        "saldo_disponivel": calcular_saldo_disponivel(request.user),
+        "saque_valor_minimo": settings.SAQUE_VALOR_MINIMO,
         "clicks": request.user.clicks.all()[:30],
         "pedidos": pedidos_usuario.order_by("-data_compra")[:30],
+        "saques": request.user.saques.all()[:20],
     }
     return render(request, "accounts/dashboard.html", contexto)
+
+
+@login_required
+def editar_chave_pix(request):
+    if request.method == "POST":
+        form = ChavePixForm(request.POST, instance=request.user)
+        if form.is_valid():
+            form.save()
+            messages.success(request, "Chave PIX atualizada com sucesso!")
+            return redirect("dashboard")
+    else:
+        form = ChavePixForm(instance=request.user)
+
+    return render(request, "accounts/chave_pix.html", {"form": form})
