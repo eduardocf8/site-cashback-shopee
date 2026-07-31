@@ -206,6 +206,7 @@ EMAIL_BACKEND = (
 EMAIL_HOST = os.environ.get("EMAIL_HOST", "smtp-relay.brevo.com")
 EMAIL_PORT = int(os.environ.get("EMAIL_PORT", "587"))
 EMAIL_USE_TLS = True
+EMAIL_TIMEOUT = int(os.environ.get("EMAIL_TIMEOUT", "10"))
 DEFAULT_FROM_EMAIL = os.environ.get("DEFAULT_FROM_EMAIL", "cash-b <contato@cash-b.com>")
 
 # Default primary key field type
