@@ -1,26 +1,21 @@
 <!DOCTYPE html>
+{% load static %}
 <html lang="pt-br">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Cashback Shopee — compre na Shopee e receba parte do dinheiro de volta</title>
+    <link rel="icon" type="image/svg+xml" href="{% static 'favicon.svg' %}">
+    <link rel="stylesheet" href="{% static 'css/brand.css' %}">
+    <title>cash-b — compre na Shopee e receba parte do dinheiro de volta</title>
     <meta name="description" content="Gere seu link de afiliado Shopee e receba cashback de verdade em cada compra validada. Sem pegadinha, sem mensalidade.">
     <style>
-        :root {
-            --laranja: #ee4d2d;
-            --laranja-escuro: #d43f22;
-            --texto: #26221f;
-            --texto-suave: #6b6560;
-            --fundo-suave: #fff7f4;
-        }
         * { box-sizing: border-box; }
         body {
-            font-family: -apple-system, "Segoe UI", Roboto, Arial, sans-serif;
             margin: 0;
-            color: var(--texto);
-            background: #fff;
+            color: var(--ink);
+            background: var(--paper);
         }
-        a { color: var(--laranja); text-decoration: none; }
+        a { color: var(--brand); text-decoration: none; }
         .envolve { max-width: 1080px; margin: 0 auto; padding: 0 24px; }
 
         /* ---------- Navegação ---------- */
@@ -28,8 +23,8 @@
             position: sticky;
             top: 0;
             z-index: 10;
-            background: #fff;
-            border-bottom: 1px solid #f0e9e5;
+            background: var(--paper);
+            border-bottom: 1px solid var(--line);
         }
         .nav .envolve {
             display: flex;
@@ -37,58 +32,58 @@
             justify-content: space-between;
             height: 64px;
         }
-        .marca { font-size: 19px; font-weight: 700; color: var(--laranja); }
+        .nav .marca { font-size: 19px; color: var(--brand); }
         .nav-links { display: flex; align-items: center; gap: 18px; font-size: 14px; }
-        .nav-links a { color: var(--texto); }
+        .nav-links a { color: var(--ink); }
         .nav-links form { margin: 0; }
         .nav-links button.linkbtn {
-            background: none; border: none; padding: 0; font: inherit; color: var(--texto);
+            background: none; border: none; padding: 0; font: inherit; color: var(--ink);
             cursor: pointer;
         }
         .botao-cta {
             display: inline-block;
-            background: var(--laranja);
-            color: #fff !important;
+            background: var(--brand);
+            color: var(--paper) !important;
             padding: 10px 20px;
             border-radius: 24px;
             font-weight: 600;
             font-size: 14px;
             white-space: nowrap;
         }
-        .botao-cta:hover { background: var(--laranja-escuro); }
+        .botao-cta:hover { background: var(--brand-strong); }
 
         /* ---------- Mensagens ---------- */
         .mensagens { list-style: none; padding: 0; margin: 16px 0 0 0; }
         .mensagens li { padding: 10px 14px; border-radius: 6px; font-size: 14px; margin-bottom: 8px; }
-        .mensagens li.success { background: #e6f4ea; color: #1e7e34; }
-        .mensagens li.error { background: #fdecea; color: #c0392b; }
+        .mensagens li.success { background: var(--success-bg); color: var(--success); }
+        .mensagens li.error { background: var(--danger-bg); color: var(--danger); }
 
         /* ---------- Hero ---------- */
         .hero { padding: 72px 0 56px; text-align: center; }
-        .hero h1 { font-size: 38px; line-height: 1.25; margin: 0 0 16px; }
-        .hero p.subtitulo { font-size: 18px; color: var(--texto-suave); max-width: 620px; margin: 0 auto 32px; }
+        .hero h1 { font-size: 40px; line-height: 1.2; letter-spacing: -0.015em; margin: 0 0 16px; }
+        .hero p.subtitulo { font-size: 18px; color: var(--muted); max-width: 620px; margin: 0 auto 32px; }
         .hero .botao-cta { font-size: 16px; padding: 14px 32px; }
         .hero .selo {
-            display: inline-block; margin-top: 20px; font-size: 13px; color: var(--texto-suave);
+            display: inline-block; margin-top: 20px; font-size: 13px; color: var(--muted);
         }
 
         /* ---------- Seção genérica ---------- */
         section { padding: 56px 0; }
-        section.fundo-suave { background: var(--fundo-suave); }
-        h2.titulo-secao { font-size: 26px; text-align: center; margin: 0 0 40px; }
+        section.fundo-suave { background: var(--paper-2); }
+        h2.titulo-secao { font-size: 26px; letter-spacing: -0.01em; text-align: center; margin: 0 0 40px; }
 
         /* ---------- Benefícios (scroll reveal) ---------- */
         .beneficios { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 24px; }
         .beneficio {
-            background: #fff;
-            border: 1px solid #f0e9e5;
+            background: var(--paper);
+            border: 1px solid var(--line);
             border-radius: 12px;
             padding: 28px 22px;
             text-align: center;
         }
         .beneficio .icone { font-size: 32px; margin-bottom: 12px; }
         .beneficio h3 { font-size: 16px; margin: 0 0 8px; }
-        .beneficio p { font-size: 14px; color: var(--texto-suave); margin: 0; line-height: 1.5; }
+        .beneficio p { font-size: 14px; color: var(--muted); margin: 0; line-height: 1.5; }
 
         .reveal { opacity: 0; transform: translateY(28px); transition: opacity 0.6s ease, transform 0.6s ease; }
         .reveal.visivel { opacity: 1; transform: translateY(0); }
@@ -102,12 +97,12 @@
         /* ---------- Comparação direta x indireta ---------- */
         .comparativo { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 24px; }
         .comparativo .cartao {
-            background: #fff;
+            background: var(--paper);
             border-radius: 12px;
             padding: 28px;
-            border: 2px solid #f0e9e5;
+            border: 2px solid var(--line);
         }
-        .comparativo .cartao.destaque { border-color: var(--laranja); }
+        .comparativo .cartao.destaque { border-color: var(--brand); }
         .comparativo .etiqueta {
             display: inline-block;
             font-size: 12px;
@@ -116,52 +111,53 @@
             border-radius: 12px;
             margin-bottom: 14px;
         }
-        .comparativo .cartao.destaque .etiqueta { background: #fdece7; color: var(--laranja); }
-        .comparativo .cartao:not(.destaque) .etiqueta { background: #f0f0f0; color: #666; }
+        .comparativo .cartao.destaque .etiqueta { background: var(--success-bg); color: var(--brand); }
+        .comparativo .cartao:not(.destaque) .etiqueta { background: var(--line-soft); color: var(--muted); }
         .comparativo h3 { font-size: 18px; margin: 0 0 10px; }
-        .comparativo p { font-size: 14px; color: var(--texto-suave); line-height: 1.6; }
-        .comparativo .obs { font-size: 12px; color: #a19b95; margin-top: 40px; text-align: center; }
+        .comparativo p { font-size: 14px; color: var(--muted); line-height: 1.6; }
+        .comparativo .obs { font-size: 12px; color: var(--muted); margin-top: 40px; text-align: center; }
 
         /* ---------- Conversor de link ---------- */
         .conversor {
             max-width: 520px;
             margin: 0 auto;
-            background: #fff;
-            border: 1px solid #f0e9e5;
+            background: var(--paper);
+            border: 1px solid var(--line);
             border-radius: 14px;
             padding: 32px;
         }
         .conversor label { display: block; font-size: 14px; margin-bottom: 6px; }
         .conversor input[type="url"] {
-            width: 100%; padding: 12px; border: 1px solid #ddd; border-radius: 8px; font-size: 14px;
+            width: 100%; padding: 12px; border: 1px solid var(--line); border-radius: 8px; font-size: 14px; font-family: inherit;
         }
+        .conversor input[type="url"]:focus { outline: 2px solid var(--brand); outline-offset: 1px; }
         .conversor button {
-            margin-top: 16px; width: 100%; padding: 13px; background: var(--laranja); color: #fff;
-            border: none; border-radius: 8px; font-size: 15px; font-weight: 600; cursor: pointer;
+            margin-top: 16px; width: 100%; padding: 13px; background: var(--brand); color: var(--paper);
+            border: none; border-radius: 8px; font-size: 15px; font-weight: 600; font-family: inherit; cursor: pointer;
         }
-        .conversor button:hover { background: var(--laranja-escuro); }
-        .conversor .erros { color: #c0392b; font-size: 13px; margin-top: 6px; }
-        .conversor .ajuda { font-size: 13px; color: var(--texto-suave); margin-top: 14px; text-align: center; }
+        .conversor button:hover { background: var(--brand-strong); }
+        .conversor .erros { color: var(--danger); font-size: 13px; margin-top: 6px; }
+        .conversor .ajuda { font-size: 13px; color: var(--muted); margin-top: 14px; text-align: center; }
         .resultado-link {
             margin-top: 20px;
             padding: 16px;
             border-radius: 8px;
-            background: var(--fundo-suave);
-            border: 1px dashed #f0d5cb;
+            background: var(--paper-2);
+            border: 1px dashed var(--line);
             text-align: center;
         }
-        .resultado-titulo { margin: 0 0 6px; font-size: 13px; color: var(--texto-suave); }
-        .resultado-titulo.resultado-ok { color: #1e7e34; font-weight: 600; }
-        .resultado-url { display: block; word-break: break-all; font-size: 14px; font-weight: 600; }
+        .resultado-titulo { margin: 0 0 6px; font-size: 13px; color: var(--muted); }
+        .resultado-titulo.resultado-ok { color: var(--success); font-weight: 600; }
+        .resultado-url { display: block; word-break: break-all; font-size: 14px; font-weight: 600; font-family: "JB Mono", ui-monospace, monospace; }
 
         /* ---------- Rodapé ---------- */
-        footer { padding: 32px 0; text-align: center; font-size: 13px; color: var(--texto-suave); }
+        footer { padding: 32px 0; text-align: center; font-size: 13px; color: var(--muted); }
     </style>
 </head>
 <body>
     <nav class="nav">
         <div class="envolve">
-            <span class="marca">Cashback Shopee</span>
+            <span class="marca">cash-b</span>
             <div class="nav-links">
                 {% if user.is_authenticated %}
                     <a href="{% url 'dashboard' %}">Minha conta</a>
@@ -191,7 +187,7 @@
 
     <header class="hero">
         <div class="envolve">
-            <h1>Compre na Shopee.<br>Receba parte do dinheiro de volta.</h1>
+            <h1>Compre na Shopee.<br>Receba parte do dinheiro <span class="mark">de volta</span>.</h1>
             <p class="subtitulo">
                 Sem pegadinha: você compra normalmente na Shopee através do nosso link,
                 e recebe cashback sobre a comissão que a Shopee já paga por essa venda.
@@ -207,7 +203,7 @@
 
     <section id="beneficios">
         <div class="envolve">
-            <h2 class="titulo-secao">Por que usar o Cashback Shopee?</h2>
+            <h2 class="titulo-secao">Por que usar o cash-b?</h2>
             <div class="beneficios">
                 <div class="beneficio reveal">
                     <div class="icone">🤝</div>
@@ -291,7 +287,7 @@
 
     <footer>
         <div class="envolve">
-            Cashback Shopee — não somos a Shopee, somos um afiliado independente do programa oficial.
+            cash-b — não somos a Shopee, somos um afiliado independente do programa oficial.
         </div>
     </footer>
 
