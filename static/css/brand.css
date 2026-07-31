@@ -52,6 +52,24 @@ body {
     letter-spacing: -0.03em;
 }
 
+/* ilustrações de marca — formas planas, sem foto, usadas nos painéis gráficos */
+.grafico-blob { fill: var(--highlight); opacity: 0.16; }
+.grafico-anel { fill: none; stroke: var(--highlight); stroke-width: 10; stroke-linecap: round; }
+.grafico-moeda { fill: var(--paper); }
+.grafico-cifrao {
+    fill: var(--brand-strong);
+    font-family: "Familjen", "Helvetica Neue", Arial, sans-serif;
+    font-weight: 700;
+}
+.grafico-sacola { fill: var(--paper); }
+.grafico-alca { fill: none; stroke: var(--brand-strong); stroke-width: 10; stroke-linecap: round; }
+.grafico-selo { fill: var(--highlight); }
+.grafico-selo-texto {
+    fill: var(--brand-strong);
+    font-family: "Familjen", "Helvetica Neue", Arial, sans-serif;
+    font-weight: 700;
+}
+
 /* destaque estilo marca-texto — usar no máximo uma vez por página */
 .mark {
     position: relative;

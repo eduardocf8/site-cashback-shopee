@@ -59,12 +59,27 @@
         .mensagens li.error { background: var(--danger-bg); color: var(--danger); }
 
         /* ---------- Hero ---------- */
-        .hero { padding: 72px 0 56px; text-align: center; }
-        .hero h1 { font-size: 40px; line-height: 1.2; letter-spacing: -0.015em; margin: 0 0 16px; }
-        .hero p.subtitulo { font-size: 18px; color: var(--muted); max-width: 620px; margin: 0 auto 32px; }
+        .hero { padding: 76px 0; }
+        .hero-grid { display: flex; align-items: center; gap: 56px; }
+        .hero-text { flex: 1 1 480px; }
+        .hero-text h1 { font-size: 42px; line-height: 1.18; letter-spacing: -0.015em; margin: 0 0 18px; }
+        .hero-text p.subtitulo { font-size: 18px; color: var(--muted); max-width: 480px; margin: 0 0 32px; }
         .hero .botao-cta { font-size: 16px; padding: 14px 32px; }
         .hero .selo {
-            display: inline-block; margin-top: 20px; font-size: 13px; color: var(--muted);
+            display: block; margin-top: 20px; font-size: 13px; color: var(--muted);
+        }
+        .hero-graphic { flex: 1 1 340px; display: flex; justify-content: center; }
+        .hero-graphic-panel {
+            width: 100%; max-width: 360px; aspect-ratio: 1 / 1; border-radius: 28px;
+            background: linear-gradient(160deg, var(--brand-strong), var(--brand));
+            display: flex; align-items: center; justify-content: center; overflow: hidden;
+        }
+        .hero-graphic-panel svg { width: 68%; height: auto; }
+        @media (max-width: 860px) {
+            .hero-grid { flex-direction: column; }
+            .hero-text { text-align: center; }
+            .hero-text p.subtitulo { margin-left: auto; margin-right: auto; }
+            .hero-graphic-panel { max-width: 280px; }
         }
 
         /* ---------- Seção genérica ---------- */
@@ -186,18 +201,31 @@
     {% endif %}
 
     <header class="hero">
-        <div class="envolve">
-            <h1>Compre na Shopee.<br>Receba parte do dinheiro <span class="mark">de volta</span>.</h1>
-            <p class="subtitulo">
-                Sem pegadinha: você compra normalmente na Shopee através do nosso link,
-                e recebe cashback sobre a comissão que a Shopee já paga por essa venda.
-            </p>
-            {% if user.is_authenticated %}
-                <a class="botao-cta" href="{% url 'ir_para_shopee' %}">Ir para a Shopee agora &rarr;</a>
-            {% else %}
-                <a class="botao-cta" href="{% url 'login' %}?next={% url 'ir_para_shopee' %}">Ir para a Shopee agora &rarr;</a>
-            {% endif %}
-            <div class="selo">Sem custo. Sem mensalidade. Você só ganha.</div>
+        <div class="envolve hero-grid">
+            <div class="hero-text">
+                <h1>Compre na Shopee.<br>Receba parte do dinheiro <span class="mark">de volta</span>.</h1>
+                <p class="subtitulo">
+                    Sem pegadinha: você compra normalmente na Shopee através do nosso link,
+                    e recebe cashback sobre a comissão que a Shopee já paga por essa venda.
+                </p>
+                {% if user.is_authenticated %}
+                    <a class="botao-cta" href="{% url 'ir_para_shopee' %}">Ir para a Shopee agora &rarr;</a>
+                {% else %}
+                    <a class="botao-cta" href="{% url 'login' %}?next={% url 'ir_para_shopee' %}">Ir para a Shopee agora &rarr;</a>
+                {% endif %}
+                <div class="selo">Sem custo. Sem mensalidade. Você só ganha.</div>
+            </div>
+            <div class="hero-graphic">
+                <div class="hero-graphic-panel">
+                    <svg viewBox="0 0 340 340" xmlns="http://www.w3.org/2000/svg" role="img" aria-hidden="true">
+                        <path class="grafico-blob" d="M50,150 C15,95 80,20 160,28 C230,35 290,15 315,80 C340,145 315,220 255,260 C200,296 110,310 55,265 C5,225 80,180 50,150 Z"/>
+                        <path class="grafico-alca" d="M135,140 C135,100 155,80 170,80 C185,80 205,100 205,140" fill="none"/>
+                        <path class="grafico-sacola" d="M108,140 L232,140 L252,296 Q252,306 242,306 L98,306 Q88,306 88,296 Z"/>
+                        <circle class="grafico-selo" cx="250" cy="270" r="40"/>
+                        <text class="grafico-selo-texto" x="250" y="282" text-anchor="middle" font-size="32">%</text>
+                    </svg>
+                </div>
+            </div>
         </div>
     </header>
 

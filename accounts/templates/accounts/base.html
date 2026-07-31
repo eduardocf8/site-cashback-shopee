@@ -38,9 +38,26 @@
         .link-curto { word-break: break-all; }
         .nav-topo { display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; font-size: 14px; }
         h2.titulo-bloco { font-size: 16px; margin-top: 32px; }
+
+        /* ---- layout dividido (login / cadastro) ---- */
+        .split { display: flex; min-height: 100vh; }
+        .split-form { flex: 1 1 480px; display: flex; align-items: center; justify-content: center; padding: 40px 24px; }
+        .split-form-inner { width: 100%; max-width: 380px; }
+        .split-marca { display: block; color: var(--brand); text-decoration: none; font-size: 22px; margin-bottom: 28px; }
+        .split-graphic {
+            flex: 1 1 55%; position: relative; overflow: hidden;
+            background: linear-gradient(160deg, var(--brand-strong), var(--brand));
+            display: flex; align-items: center; justify-content: center;
+        }
+        .grafico-svg { width: 62%; max-width: 320px; height: auto; }
+        @media (max-width: 860px) {
+            .split-graphic { display: none; }
+            .split-form { flex: 1 1 100%; }
+        }
     </style>
 </head>
 <body>
+    {% block layout %}
     <div class="topo"><a class="marca" href="{% url 'home' %}">cash-b</a></div>
     <div class="container">
         {% if messages %}
@@ -52,5 +69,6 @@
         {% endif %}
         {% block conteudo %}{% endblock %}
     </div>
+    {% endblock %}
 </body>
 </html>
