@@ -1,5 +1,5 @@
 {% extends "accounts/base.html" %}
-{% block titulo %}Entrar{% endblock %}
+{% block titulo %}Esqueceu sua senha?{% endblock %}
 {% block layout %}
 <div class="split">
     <div class="split-form">
@@ -12,17 +12,16 @@
                     {% endfor %}
                 </ul>
             {% endif %}
-            <h1>Entrar</h1>
+            <h1>Esqueceu sua senha?</h1>
+            <p class="legenda">Digite o e-mail da sua conta e a gente manda um link pra você criar uma senha nova.</p>
             <form method="post">
                 {% csrf_token %}
                 {% for field in form %}
                     {% include "accounts/_campo_formulario.html" with field=field %}
                 {% endfor %}
-                {% if form.non_field_errors %}<div class="erros">{{ form.non_field_errors|striptags }}</div>{% endif %}
-                <div class="esqueci-senha"><a href="{% url 'password_reset' %}">Esqueceu sua senha?</a></div>
-                <button type="submit">Entrar</button>
+                <button type="submit">Enviar link de recuperação</button>
             </form>
-            <p class="rodape">Não tem conta? <a href="{% url 'registrar' %}">Cadastre-se</a></p>
+            <p class="rodape"><a href="{% url 'login' %}">Voltar pro login</a></p>
         </div>
     </div>
     <div class="split-graphic">
