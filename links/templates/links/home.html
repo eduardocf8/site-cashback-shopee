@@ -32,7 +32,7 @@
             justify-content: space-between;
             height: 64px;
         }
-        .nav .marca { font-size: 19px; color: var(--brand); }
+        .nav .marca { font-size: 25px; color: var(--brand); }
         .nav-links { display: flex; align-items: center; gap: 18px; font-size: 14px; }
         .nav-links a { color: var(--ink); }
         .nav-links form { margin: 0; }
@@ -85,7 +85,9 @@
         /* ---------- Seção genérica ---------- */
         section { padding: 56px 0; }
         section.fundo-suave { background: var(--paper-2); }
-        h2.titulo-secao { font-size: 26px; letter-spacing: -0.01em; text-align: center; margin: 0 0 40px; }
+        h2.titulo-secao { font-size: 32px; letter-spacing: -0.01em; text-align: center; margin: 0 0 40px; }
+        h2.titulo-secao .destaque-marca { font-weight: 700; color: var(--brand); }
+        p.intro-secao { max-width: 560px; margin: -20px auto 40px; text-align: center; color: var(--muted); font-size: 15px; line-height: 1.6; }
 
         /* ---------- Benefícios (scroll reveal) ---------- */
         .beneficios { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 24px; }
@@ -141,7 +143,7 @@
             border-radius: 14px;
             padding: 32px;
         }
-        .conversor label { display: block; font-size: 14px; margin-bottom: 6px; }
+        .conversor label { display: block; font-size: 14px; margin-bottom: 6px; text-align: center; }
         .conversor input[type="url"] {
             width: 100%; padding: 12px; border: 1px solid var(--line); border-radius: 8px; font-size: 14px; font-family: inherit;
         }
@@ -152,7 +154,6 @@
         }
         .conversor button:hover { background: var(--brand-strong); }
         .conversor .erros { color: var(--danger); font-size: 13px; margin-top: 6px; }
-        .conversor .ajuda { font-size: 13px; color: var(--muted); margin-top: 14px; text-align: center; }
         .resultado-link {
             margin-top: 20px;
             padding: 16px;
@@ -205,8 +206,7 @@
             <div class="hero-text">
                 <h1>Compre na Shopee.<br>Receba parte do dinheiro <span class="mark">de volta</span>.</h1>
                 <p class="subtitulo">
-                    Sem pegadinha: você compra normalmente na Shopee através do nosso link,
-                    e recebe cashback sobre a comissão que a Shopee já paga por essa venda.
+                    Sem pegadinha: faça suas compras normalmente e ganhe cashback.
                 </p>
                 {% if user.is_authenticated %}
                     <a class="botao-cta" href="{% url 'ir_para_shopee' %}">Ir para a Shopee agora &rarr;</a>
@@ -231,7 +231,7 @@
 
     <section id="beneficios">
         <div class="envolve">
-            <h2 class="titulo-secao">Por que usar o cash-b?</h2>
+            <h2 class="titulo-secao">Por que usar o <span class="destaque-marca">cash-b</span>?</h2>
             <div class="beneficios">
                 <div class="beneficio reveal">
                     <div class="icone">🤝</div>
@@ -259,31 +259,33 @@
 
     <section class="fundo-suave" id="como-funciona">
         <div class="envolve">
-            <h2 class="titulo-secao">Link de produto ou botão geral: qual usar?</h2>
+            <h2 class="titulo-secao">Como ganhar mais cashback?</h2>
+            <p class="intro-secao">Gerar links de produtos te dá mais cashback do que somente clicar no botão de ir para a Shopee. Entenda abaixo o porquê.</p>
             <div class="comparativo">
                 <div class="cartao destaque reveal">
                     <span class="etiqueta">VENDA DIRETA</span>
                     <h3>Link de um produto específico</h3>
                     <p>
-                        Você cola o link do produto que quer comprar e a gente converte num link de afiliado.
-                        Se a compra for exatamente daquele produto, ela conta como <strong>venda direta</strong>.
+                        Você cola o link do produto que quer comprar e ele é convertido em um link de afiliado.
                         Quando a Shopee está com uma campanha de comissão extra ativa para aquele produto,
                         só a venda direta tem acesso a esse bônus — por isso, sempre que souber o que vai comprar,
                         vale a pena converter o link do produto específico.
+                        Lembrete: você <strong>precisa</strong> comprar o produto específico do link para ter acesso
+                        à comissão extra, caso ela esteja disponível.
                     </p>
                 </div>
                 <div class="cartao reveal">
                     <span class="etiqueta">VENDA INDIRETA</span>
                     <h3>Botão "Ir para a Shopee"</h3>
                     <p>
-                        Você entra na Shopee pelo nosso botão e compra o que quiser, sem link específico de produto.
-                        Essa compra conta como <strong>venda indireta</strong>: ainda gera comissão e cashback
-                        normalmente, só que sem acesso a eventuais bônus de campanhas específicas.
-                        Ótimo pra quem só quer navegar e não sabe ainda o que vai levar.
+                        Você clica no botão "Ir para a Shopee", é redirecionado para a página inicial e compra
+                        o que quiser, sem link específico de produto. Essa compra conta como <strong>venda indireta</strong>:
+                        ainda gera comissão e cashback normalmente, só que sem acesso a eventuais bônus de campanhas
+                        específicas. Ótimo pra quem só quer navegar e não sabe ainda o que vai comprar.
                     </p>
                 </div>
             </div>
-            <p class="obs">A comissão padrão varia por categoria de produto e é a mesma nos dois casos — a diferença está só no acesso ao bônus de campanhas.</p>
+            <p class="obs">Clicar em qualquer outro link de afiliado após utilizar os links do cash-b fará com que o cashback não seja pago a você. Portanto, após clicar em qualquer link nosso, garanta que a compra seja concluída o quanto antes.</p>
         </div>
     </section>
 
@@ -306,16 +308,13 @@
                         <p class="resultado-titulo">O link convertido aparecerá aqui.</p>
                     {% endif %}
                 </div>
-                {% if not user.is_authenticated %}
-                    <p class="ajuda">Se você ainda não tiver login, vamos te pedir pra entrar (ou criar uma conta) antes de gerar o link.</p>
-                {% endif %}
             </div>
         </div>
     </section>
 
     <footer>
         <div class="envolve">
-            cash-b — não somos a Shopee, somos um afiliado independente do programa oficial.
+            cash-b — afiliado independente Shopee
         </div>
     </footer>
 
