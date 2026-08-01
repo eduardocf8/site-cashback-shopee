@@ -11,7 +11,7 @@ urlpatterns = [
     path("chave-pix/", views.editar_chave_pix, name="editar_chave_pix"),
     path(
         "esqueci-senha/",
-        views.PasswordResetView.as_view(
+        auth_views.PasswordResetView.as_view(
             template_name="accounts/senha_resetar.html",
             email_template_name="accounts/email_senha_resetar.txt",
             subject_template_name="accounts/email_senha_resetar_assunto.txt",
