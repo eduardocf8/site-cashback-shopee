@@ -76,8 +76,7 @@ def publicar_story_ofertas(data, request) -> RegistroPublicacao | None:
 def publicar_story_dica(data, request) -> RegistroPublicacao:
     texto = conteudo.escolher_dica(data)
     imagem = gerar_imagem_texto_simples(
-        "cash-b explica", "Dica cash-b", texto,
-        bg=CORES["highlight"], cor_texto=CORES["ink"], cor_eyebrow=CORES["ink"], tamanho=(1080, 1920),
+        texto, bg=CORES["highlight"], cor_texto=CORES["ink"], tamanho=(1080, 1920),
     )
     return _publicar_ou_simular(
         imagem, texto, RegistroPublicacao.TIPO_STORY, RegistroPublicacao.CONTEUDO_DICA,
@@ -88,8 +87,7 @@ def publicar_story_dica(data, request) -> RegistroPublicacao:
 def publicar_story_lembrete(data, request) -> RegistroPublicacao:
     texto = conteudo.escolher_lembrete(data)
     imagem = gerar_imagem_texto_simples(
-        "cash-b", texto, "",
-        bg=CORES["brand"], cor_texto=CORES["paper"], cor_eyebrow=CORES["highlight"], tamanho=(1080, 1920),
+        texto, bg=CORES["brand"], cor_texto=CORES["paper"], cor_acento=CORES["highlight"], tamanho=(1080, 1920),
     )
     return _publicar_ou_simular(
         imagem, texto, RegistroPublicacao.TIPO_STORY, RegistroPublicacao.CONTEUDO_LEMBRETE,

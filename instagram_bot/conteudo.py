@@ -19,13 +19,13 @@ REPO_ROOT = Path(__file__).resolve().parent.parent
 PASTA_POSTS_SEMEADURA = REPO_ROOT / "marketing" / "instagram" / "posts-semeadura"
 
 DICAS = [
-    "Sempre confere se tem cupom disponível antes de finalizar a compra — cashback e cupom não se excluem.",
-    "Guarda o link convertido antes de sair navegando: se comprar por outro caminho, o cashback não é rastreado.",
-    "Produtos com campanha de comissão extra rendem mais — fica de olho nas ofertas em destaque.",
-    "O cashback só é confirmado depois que a Shopee valida o pedido — evita cancelar ou trocar, senão perde.",
+    "Sempre confira se tem cupom disponível antes de finalizar a compra: cashback e cupom não se excluem.",
+    "Guarde o link convertido antes de sair navegando — comprando por outro caminho, o cashback não é rastreado.",
+    "Produtos com campanha de comissão extra rendem mais cashback. Fique de olho nas ofertas em destaque.",
+    "O cashback só é confirmado depois que a Shopee valida o pedido, então evite cancelar ou trocar a compra.",
     "Compras maiores geram cashback maior. Vale juntar os itens do carrinho numa compra só.",
-    "Assim que o saldo aparece como \"Liberado\", já pode sacar — não precisa esperar mais nada.",
-    "Cadastra sua chave PIX com antecedência, assim o saque sai na hora que o saldo libera.",
+    "Assim que o saldo aparece como \"Liberado\", já dá pra sacar — não precisa esperar mais nada.",
+    "Cadastre sua chave PIX com antecedência: assim que o saldo é liberado, o saque já sai na hora.",
 ]
 
 LEMBRETES = [

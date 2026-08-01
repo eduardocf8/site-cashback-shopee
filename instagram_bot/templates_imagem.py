@@ -54,15 +54,21 @@ def _quebrar_texto(draw: ImageDraw.ImageDraw, texto: str, fonte, largura_max: in
 
 
 def _desenhar_bloco_texto(draw, linhas, fonte, x, y, cor, espacamento=1.25):
+    """y é o topo do bloco. Cada linha usa anchor="lm" (baseado nas métricas reais da
+    fonte) pra ficar centralizada dentro da sua própria fatia de altura_linha, em vez
+    de só encostada no topo - o que deixava o texto com aparência desalinhada."""
     altura_linha = int(fonte.size * espacamento)
     for i, linha in enumerate(linhas):
-        draw.text((x, y + i * altura_linha), linha, font=fonte, fill=cor)
+        draw.text((x, y + i * altura_linha + altura_linha / 2), linha, font=fonte, fill=cor, anchor="lm")
     return y + len(linhas) * altura_linha
 
 
 def _badge_marca(draw, tamanho_canvas, cor, margem=88):
+    """Selo "cash-b" no rodapé, alinhado à direita."""
     fonte = _fonte(30, negrito=True)
-    draw.text((margem, tamanho_canvas[1] - margem - 30), "cash-b", font=fonte, fill=cor)
+    draw.text(
+        (tamanho_canvas[0] - margem, tamanho_canvas[1] - margem - 15), "cash-b", font=fonte, fill=cor, anchor="rm",
+    )
 
 
 def _rounded_mask(size, raio):
@@ -102,67 +108,52 @@ def _textura_de_fundo(draw, tamanho, bg: str, cor_texto: str):
     draw.ellipse([(cx2 - raio2, cy2 - raio2), (cx2 + raio2, cy2 + raio2)], fill=tom)
 
 
+def _ajustar_fonte_ao_espaco(draw, texto, largura_max, altura_max, escala, tamanho_max=72, tamanho_min=32):
+    """Reduz o tamanho da fonte até o texto (já quebrado em linhas) caber dentro de
+    altura_max. Sem isso, uma frase curta (lembrete) e uma longa (dica) usando o
+    mesmo tamanho fixo davam resultados opostos: uma sobrava, a outra estourava."""
+    for tamanho in range(int(tamanho_max * escala), int(tamanho_min * escala) - 1, -4):
+        fonte = _fonte(tamanho, negrito=True)
+        linhas = _quebrar_texto(draw, texto, fonte, largura_max)
+        if len(linhas) * int(fonte.size * 1.25) <= altura_max:
+            return fonte, linhas
+    fonte = _fonte(int(tamanho_min * escala), negrito=True)
+    return fonte, _quebrar_texto(draw, texto, fonte, largura_max)
+
+
 def gerar_imagem_texto_simples(
-    eyebrow: str,
-    headline: str,
-    body: str,
+    texto: str,
     bg: str,
     cor_texto: str,
-    cor_eyebrow: str | None = None,
+    cor_acento: str | None = None,
     tamanho=(1080, 1080),
 ) -> Image.Image:
-    """Layout "statement": eyebrow em pílula + título + corpo. As fontes e espaçamentos
-    escalam com a altura do canvas - story (1080x1920) tem quase o dobro de altura do
-    feed (1080x1080), e usar os mesmos tamanhos fixos deixava o texto perdido numa área
-    vazia enorme em vez de preencher o espaço."""
+    """Layout "statement": uma frase em destaque, centralizada no espaço acima do
+    rodapé - sem selo/etiqueta no topo, pra não repetir "cash-b" várias vezes na
+    mesma imagem (o selo do rodapé já basta). O tamanho da fonte se ajusta ao
+    tamanho da frase e à altura do canvas, em vez de um valor fixo que sobrava
+    pra frases curtas e estourava pra frases longas."""
     img = Image.new("RGB", tamanho, bg)
     draw = ImageDraw.Draw(img)
     margem = 88
     largura_max = tamanho[0] - margem * 2
     escala = tamanho[1] / 1080
-    cor_eyebrow = cor_eyebrow or cor_texto
+    cor_acento = cor_acento or cor_texto
 
     _textura_de_fundo(draw, tamanho, bg, cor_texto)
 
-    fonte_eyebrow = _fonte(int(26 * escala), negrito=True)
-    fonte_headline = _fonte(int(64 * escala), negrito=True)
-    fonte_body = _fonte(int(38 * escala))
-
-    linhas_headline = _quebrar_texto(draw, headline, fonte_headline, largura_max) if headline else []
-    linhas_body = _quebrar_texto(draw, body, fonte_body, largura_max) if body else []
-
-    pad_pilula = int(16 * escala)
-    altura_pilula = fonte_eyebrow.size + pad_pilula * 2
-    altura_headline = len(linhas_headline) * int(fonte_headline.size * 1.2)
-    altura_body = (int(fonte_body.size * 0.7) + len(linhas_body) * int(fonte_body.size * 1.45)) if linhas_body else 0
-    altura_conteudo = altura_headline + altura_body
-
-    # A pílula fica ancorada perto do topo e a linha/selo perto do rodapé - o
-    # título+corpo ficam centralizados no espaço que sobra entre os dois, em vez de
-    # tudo virar um único bloco flutuando no meio de uma tela vazia.
     linha_y = tamanho[1] - int(margem * 1.6)
-    y_pilula = int(tamanho[1] * 0.13)
-    y = y_pilula
-    if eyebrow:
-        texto_eyebrow = eyebrow.upper()
-        largura_pilula = draw.textlength(texto_eyebrow, font=fonte_eyebrow) + pad_pilula * 2
-        draw.rounded_rectangle(
-            [(margem, y), (margem + largura_pilula, y + altura_pilula)],
-            radius=altura_pilula // 2, outline=cor_eyebrow, width=max(2, int(2 * escala)),
-        )
-        draw.text((margem + pad_pilula, y + pad_pilula), texto_eyebrow, font=fonte_eyebrow, fill=cor_eyebrow)
-        y += altura_pilula
+    reserva = int(margem * 0.7)
+    area_util = linha_y - reserva
+    fonte_texto, linhas = _ajustar_fonte_ao_espaco(
+        draw, texto, largura_max, altura_max=int(area_util * 0.62), escala=escala,
+    )
+    altura_conteudo = len(linhas) * int(fonte_texto.size * 1.25)
 
-    y_conteudo_inicio = y + int(56 * escala)
-    espaco_disponivel = (linha_y - int(48 * escala)) - y_conteudo_inicio
-    y = y_conteudo_inicio + max(0, (espaco_disponivel - altura_conteudo) // 2)
+    y = reserva + max(0, (area_util - altura_conteudo) // 2)
+    _desenhar_bloco_texto(draw, linhas, fonte_texto, margem, y, cor_texto, espacamento=1.25)
 
-    y = _desenhar_bloco_texto(draw, linhas_headline, fonte_headline, margem, y, cor_texto, espacamento=1.2)
-    if linhas_body:
-        y += int(fonte_body.size * 0.7)
-        y = _desenhar_bloco_texto(draw, linhas_body, fonte_body, margem, y, cor_texto, espacamento=1.45)
-
-    draw.line([(margem, linha_y), (tamanho[0] - margem, linha_y)], fill=cor_eyebrow, width=max(2, int(2 * escala)))
+    draw.line([(margem, linha_y), (tamanho[0] - margem, linha_y)], fill=cor_acento, width=max(2, int(2 * escala)))
     _badge_marca(draw, tamanho, cor_texto, margem)
     return img
 
@@ -175,15 +166,12 @@ def gerar_imagem_ofertas(ofertas, titulo="Ofertas de hoje", tamanho=(1080, 1920)
     draw = ImageDraw.Draw(img)
     margem = 72
 
-    fonte_eyebrow = _fonte(26, negrito=True)
     fonte_titulo = _fonte(56, negrito=True)
     fonte_nome = _fonte(30, negrito=True)
     fonte_preco = _fonte(34, mono=True, negrito=True)
     fonte_desconto = _fonte(24, negrito=True)
 
     y = 100
-    draw.text((margem, y), "CASH-B", font=fonte_eyebrow, fill=CORES["brand"])
-    y += 46
     for linha in _quebrar_texto(draw, titulo, fonte_titulo, tamanho[0] - margem * 2):
         draw.text((margem, y), linha, font=fonte_titulo, fill=CORES["ink"])
         y += int(fonte_titulo.size * 1.15)
