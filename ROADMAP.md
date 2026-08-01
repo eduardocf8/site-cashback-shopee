@@ -32,17 +32,15 @@ faz, mas não é aconselhamento jurídico — vale revisar com um advogado antes
 de contar 100% com isso legalmente, principalmente antes de aceitar
 pagamentos reais (hoje ainda em sandbox da Asaas).
 
-## Fase 9 — Suporte
+## Fase 9 — Suporte ✅
 
-- [ ] **FAQ / Perguntas frequentes** — cobrir dúvidas como "quanto tempo
-      demora o cashback", "por que meu pedido foi cancelado", "qual o valor
-      mínimo de saque", além de explicar os 4 tipos de saldo do dashboard
-      (pendente/validado/liberado/cancelado) com mais detalhe do que a legenda
-      curta que já existe em cada cartão.
-- [ ] **Fale conosco** — formulário de contato de verdade (hoje não existe
-      nenhum canal). Pode ser simples: formulário que manda e-mail pro
-      `contato@cash-b.com` usando a mesma infraestrutura de e-mail do Brevo
-      já configurada (ver `BRAND.md`).
+- [x] **FAQ / Perguntas frequentes** — accordion (`<details>`/`<summary>`,
+      sem JS) cobrindo os 4 tipos de saldo, prazos, cancelamento, saque,
+      senha e a regra de uma conta por CPF. (`paginas/templates/paginas/faq.html`)
+- [x] **Fale conosco** — formulário que manda e-mail pra `contato@cash-b.com`
+      via API do Brevo, com Reply-To pro e-mail de quem preencheu e um
+      honeypot simples contra spam. (`paginas/templates/paginas/contato.html`,
+      `paginas/forms.py`)
 
 ## Fase 10 — Conta do usuário
 
