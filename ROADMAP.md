@@ -4,24 +4,33 @@ Continuação das fases do `README.md` (que vai até a Fase 7 — deploy em prod
 Cada fase é um pacote de trabalho que pode virar uma conversa/sessão própria.
 Marca o checkbox conforme for implementando.
 
-## Fase 8 — Jurídico e confiança
+## Fase 8 — Jurídico e confiança ✅
 
 O mais urgente do roadmap: o site já coleta CPF, e-mail e chave PIX, e mexe
 com transferência de dinheiro (hoje em sandbox da Asaas) — isso deixa de ser
 "bom ter" e vira exigência básica antes de abrir pra usuários de verdade.
 
-- [ ] **Termos de Uso** — regras de cashback, prazos, motivos de cancelamento,
-      responsabilidades do cash-b e do usuário.
-- [ ] **Política de Privacidade (LGPD)** — quais dados são coletados (CPF,
+- [x] **Termos de Uso** — regras de cashback, prazos, motivos de cancelamento,
+      responsabilidades do cash-b e do usuário. (`paginas/templates/paginas/termos.html`)
+- [x] **Política de Privacidade (LGPD)** — quais dados são coletados (CPF,
       e-mail, chave PIX, histórico de cliques/pedidos), pra que servem, com
-      quem são compartilhados (Shopee, Asaas), e os direitos do titular.
-- [ ] **Aviso de cookies** — banner simples, exigido junto com a política de
-      privacidade.
-- [ ] **Página "Regras do cashback"** — versão mais completa do que já está
-      na home (venda direta x indireta), incluindo prazo de liberação e o que
-      cancela um pedido.
-- [ ] Links pra essas páginas no rodapé de `home.html` (hoje o rodapé só tem
-      uma linha de texto).
+      quem são compartilhados (Shopee, Asaas, Brevo), e os direitos do
+      titular. (`paginas/templates/paginas/privacidade.html`)
+- [x] **Política de Cookies** — hoje o site só usa cookies essenciais (sessão
+      de login e CSRF), então um aviso/página basta; se no futuro entrar
+      analytics ou pixel de anúncio, essa página precisa ser atualizada e aí
+      sim vira necessário um banner de consentimento de verdade.
+      (`paginas/templates/paginas/cookies.html`)
+- [x] **Página "Regras do cashback"** — versão mais completa do que já está
+      na home (venda direta x indireta), prazo de liberação, o que cancela um
+      pedido, percentual de repasse e valor mínimo de saque (puxados
+      dinamicamente das configurações). (`paginas/templates/paginas/regras_cashback.html`)
+- [x] Links pra essas páginas no rodapé de `home.html`.
+
+⚠️ **Atenção**: esse texto foi escrito pela Claude com base no que o site já
+faz, mas não é aconselhamento jurídico — vale revisar com um advogado antes
+de contar 100% com isso legalmente, principalmente antes de aceitar
+pagamentos reais (hoje ainda em sandbox da Asaas).
 
 ## Fase 9 — Suporte
 
