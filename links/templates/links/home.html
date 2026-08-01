@@ -32,7 +32,7 @@
             justify-content: space-between;
             height: 64px;
         }
-        .nav .marca { font-size: 33px; color: var(--brand); }
+        .nav .marca { font-size: 33px; color: var(--brand); flex-shrink: 0; white-space: nowrap; }
         .nav-links { display: flex; align-items: center; gap: 18px; font-size: 14px; }
         .nav-links a { color: var(--ink); }
         .nav-links form { margin: 0; }
@@ -65,8 +65,10 @@
         .hero-text h1 { font-size: 42px; line-height: 1.18; letter-spacing: -0.015em; margin: 0 0 18px; }
         .hero-text p.subtitulo { font-size: 18px; color: var(--muted); max-width: 480px; margin: 0 0 32px; }
         .hero .botao-cta { font-size: 16px; padding: 14px 32px; }
+        .hero-cta-row { display: flex; gap: 12px; flex-wrap: wrap; }
+        .hero-cta-row .botao-cta { flex: 1 1 200px; text-align: center; }
         .hero .selo {
-            display: block; margin-top: 20px; font-size: 13px; color: var(--muted);
+            display: block; margin-top: 20px; font-size: 13px; color: var(--muted); text-align: center;
         }
         .hero-graphic { flex: 1 1 340px; display: flex; justify-content: center; }
         .hero-graphic-panel {
@@ -79,7 +81,9 @@
             .hero-grid { flex-direction: column; }
             .hero-text { text-align: center; }
             .hero-text p.subtitulo { margin-left: auto; margin-right: auto; }
+            .hero-cta-row { justify-content: center; }
             .hero-graphic-panel { max-width: 280px; }
+            .nav .envolve { flex-wrap: wrap; height: auto; padding: 10px 0; row-gap: 10px; }
         }
 
         /* ---------- Seção genérica ---------- */
@@ -208,11 +212,14 @@
                 <p class="subtitulo">
                     Sem pegadinha: faça suas compras normalmente e ganhe cashback.
                 </p>
-                {% if user.is_authenticated %}
-                    <a class="botao-cta" href="{% url 'ir_para_shopee' %}">Ir para a Shopee agora &rarr;</a>
-                {% else %}
-                    <a class="botao-cta" href="{% url 'login' %}?next={% url 'ir_para_shopee' %}">Ir para a Shopee agora &rarr;</a>
-                {% endif %}
+                <div class="hero-cta-row">
+                    {% if user.is_authenticated %}
+                        <a class="botao-cta" href="{% url 'ir_para_shopee' %}">Ir para a Shopee agora</a>
+                    {% else %}
+                        <a class="botao-cta" href="{% url 'login' %}?next={% url 'ir_para_shopee' %}">Ir para a Shopee agora</a>
+                    {% endif %}
+                    <a class="botao-cta" href="#converter-link">Converter link de produto</a>
+                </div>
                 <div class="selo">Sem custo. Sem mensalidade. Você só ganha.</div>
             </div>
             <div class="hero-graphic">

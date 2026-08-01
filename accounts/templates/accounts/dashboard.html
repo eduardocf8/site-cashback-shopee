@@ -19,7 +19,7 @@
 
         .nav { position: sticky; top: 0; z-index: 10; background: var(--paper); border-bottom: 1px solid var(--line); }
         .nav .envolve { display: flex; align-items: center; justify-content: space-between; height: 64px; }
-        .nav .marca { font-size: 33px; color: var(--brand); text-decoration: none; }
+        .nav .marca { font-size: 33px; color: var(--brand); text-decoration: none; flex-shrink: 0; white-space: nowrap; }
         .nav-links { display: flex; align-items: center; gap: 18px; font-size: 14px; }
         .nav-links a { color: var(--ink); }
         .nav-links form { margin: 0; }
@@ -86,6 +86,10 @@
 
         .vazio { color: var(--muted); font-size: 14px; padding: 20px; text-align: center; }
         .rolar-tabela { overflow-x: auto; }
+
+        @media (max-width: 640px) {
+            .nav .envolve { flex-wrap: wrap; height: auto; padding: 10px 0; row-gap: 10px; }
+        }
     </style>
 </head>
 <body>
