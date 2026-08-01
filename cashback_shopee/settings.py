@@ -74,6 +74,7 @@ INSTALLED_APPS = [
     "saques",
     "paginas",
     "ofertas",
+    "instagram_bot",
 ]
 
 AUTH_USER_MODEL = "accounts.User"
@@ -105,6 +106,21 @@ SAQUE_VALOR_MINIMO = Decimal(os.environ.get("SAQUE_VALOR_MINIMO", "20.00"))
 # automático (GitHub Actions) para rodar as tarefas diárias em produção. Sem essa
 # variável configurada, o endereço fica sempre bloqueado.
 TAREFAS_TOKEN = os.environ.get("TAREFAS_TOKEN", "")
+
+# Credenciais do bot do Instagram (Instagram API com Login do Instagram - não usa
+# Página do Facebook). Ficam no .env / variáveis de ambiente do Render, nunca no
+# código. Ver marketing/instagram/README.md para o histórico completo da configuração.
+INSTAGRAM_APP_ID = os.environ.get("INSTAGRAM_APP_ID", "")
+INSTAGRAM_APP_SECRET = os.environ.get("INSTAGRAM_APP_SECRET", "")
+INSTAGRAM_ACCESS_TOKEN = os.environ.get("INSTAGRAM_ACCESS_TOKEN", "")
+INSTAGRAM_BUSINESS_ACCOUNT_ID = os.environ.get("INSTAGRAM_BUSINESS_ACCOUNT_ID", "")
+INSTAGRAM_GRAPH_API_URL = os.environ.get("INSTAGRAM_GRAPH_API_URL", "https://graph.instagram.com")
+
+# Interruptor mestre do bot: enquanto False, o bot gera o conteúdo do dia e
+# registra tudo (RegistroPublicacao) mas NÃO publica de verdade no Instagram
+# (modo "dry-run"). Vira True só quando o perfil já estiver semeado manualmente
+# com os posts institucionais iniciais (ver marketing/instagram/README.md).
+INSTAGRAM_BOT_ATIVO = os.environ.get("INSTAGRAM_BOT_ATIVO", "False") == "True"
 
 MIDDLEWARE = [
     "django.middleware.security.SecurityMiddleware",
@@ -185,6 +201,13 @@ USE_TZ = True
 STATIC_URL = "static/"
 STATIC_ROOT = BASE_DIR / "staticfiles"
 STATICFILES_DIRS = [BASE_DIR / "static"]
+
+# Imagens geradas pelo bot do Instagram precisam de uma URL pública (a API do
+# Instagram busca a imagem ela mesma a partir dessa URL, não aceita upload direto).
+# Disco da Render é efêmero, mas isso não é problema aqui: a imagem só precisa
+# existir o suficiente pro Instagram buscar logo depois de gerada.
+MEDIA_URL = "media/"
+MEDIA_ROOT = BASE_DIR / "media"
 
 STORAGES = {
     "default": {

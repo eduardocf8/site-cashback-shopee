@@ -1,6 +1,8 @@
+from django.conf import settings
 from django.contrib import admin
 from django.contrib.sitemaps.views import sitemap
 from django.urls import include, path
+from django.views.static import serve
 
 from paginas.sitemaps import PaginasEstaticasSitemap
 
@@ -18,4 +20,8 @@ urlpatterns = [
     path("tarefas/executar/", views.executar_tarefas_agendadas, name="executar_tarefas_agendadas"),
     path("robots.txt", views.robots_txt, name="robots_txt"),
     path("sitemap.xml", sitemap, {"sitemaps": sitemaps}, name="sitemap"),
+    # Serve as imagens geradas pelo bot do Instagram (precisam de URL pública pra API
+    # buscar). Só isso mora em MEDIA_ROOT - não é usado pra upload de usuário nenhum,
+    # então servir fora do modo DEBUG aqui é seguro.
+    path("media/<path:path>", serve, {"document_root": settings.MEDIA_ROOT}),
 ]

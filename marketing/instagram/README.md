@@ -7,11 +7,28 @@ do repo pra identidade visual geral do site.
 
 ## Contexto
 
-O objetivo final é um bot que publica automaticamente no Instagram
+O bot (app Django `instagram_bot/`) publica automaticamente no Instagram
 (stories diários + posts semanais no feed), usando a Instagram Graph API,
-puxando dados reais do site (tabela `Oferta`, ver app `ofertas/`). Antes de
-ligar a automação, o perfil precisou ser "semeado" manualmente com conteúdo
-institucional, pra não ficar vazio quando o bot começar a postar.
+puxando dados reais do site (tabela `Oferta`, ver app `ofertas/`). Ele já
+está construído e rodando em modo simulação (`INSTAGRAM_BOT_ATIVO=False`)
+enquanto o perfil é "semeado" manualmente com os posts institucionais desta
+pasta, pra não ficar vazio quando a automação for ligada de verdade — ver
+"Como ligar o bot" abaixo.
+
+## Onde cada coisa mora no código (app `instagram_bot/`)
+
+- `models.py` — `RegistroPublicacao`: log de cada publicação (real ou
+  simulada), visível no Django Admin.
+- `conteudo.py` — bancos de texto (`DICAS`, `LEMBRETES`,
+  `POSTS_INSTITUCIONAIS`) e a função que decide o que publicar em cada dia
+  da semana.
+- `templates_imagem.py` — geração de imagem via Pillow.
+- `instagram_client.py` — chamadas à Instagram Graph API
+  (`graph.instagram.com`).
+- `services.py` — orquestração: decide o que falta publicar hoje, gera a
+  imagem, salva em `MEDIA_ROOT`, publica (ou simula) e registra o resultado.
+  Chamado a partir de `cashback_shopee/views.py` (`executar_tarefas_agendadas`,
+  o mesmo endereço `/tarefas/executar/` que já roda a sincronização diária).
 
 ## Roadmap do bot (fases)
 
@@ -40,19 +57,71 @@ institucional, pra não ficar vazio quando o bot começar a postar.
      das melhores ofertas da semana.
 2.5. **Semear o perfil (manual, antes do bot)** — ✅ concluído (esta pasta).
    8 posts institucionais criados e aprovados pra postar manualmente antes
-   de ligar a automação, pra o perfil não começar vazio.
-3. **Templates de imagem parametrizados** — pendente. Vai reaproveitar o
-   mesmo motor de geração (ver abaixo), mas lendo dados reais da tabela
-   `Oferta` (nome, preço, desconto) em vez de texto fixo.
-4. **Integração com a API do Instagram** — pendente. App Django novo
-   (ex: `instagram_bot/`) que gera a imagem, publica via Graph API
-   (`graph.instagram.com`, host correto pro Login do Instagram) e cuida da
-   renovação do access token antes de expirar.
-5. **Agendamento** — pendente. Mesmo padrão já usado pra sincronização
-   diária (`/tarefas/executar/` chamado pelo GitHub Actions).
-6. **Modo de revisão** — pendente. Rodar um tempo gerando as imagens sem
-   publicar automaticamente, só pra aprovar antes de ativar 100%.
-7. **Monitoramento** — pendente.
+   de ligar a automação, pra o perfil não começar vazio. **Em andamento**:
+   você está postando esses 8 manualmente aos poucos (ver cronograma acima).
+3. **Templates de imagem parametrizados** — ✅ concluído. App Django
+   `instagram_bot/`, módulo `templates_imagem.py`: gera as imagens via
+   **Pillow** (não Playwright/Chromium — mais leve pro plano gratuito da
+   Render, testado e as fontes `.woff2` funcionam direto nele, inclusive os
+   eixos de peso variável Bold/Regular). Dois layouts:
+   - `gerar_imagem_texto_simples(...)` — statement centralizado (dica,
+     lembrete), reaproveita o layout dos posts de semeadura.
+   - `gerar_imagem_ofertas(...)` — cartões de produto empilhados (imagem +
+     nome + preço + selo de desconto), busca a imagem do produto via
+     `requests` a partir de `Oferta.imagem_url`; a altura dos cartões se
+     ajusta automaticamente pra caber tanto no formato quadrado (feed,
+     1080×1080) quanto vertical (story, 1080×1920).
+   Os posts institucionais de quarta-feira **não regeneram nada** — reusam
+   direto os 8 PNGs de `posts-semeadura/` em rotação (ver `conteudo.py`).
+4. **Integração com a API do Instagram** — ✅ concluído.
+   `instagram_bot/instagram_client.py` fala com `graph.instagram.com`
+   (host certo pro fluxo "Login do Instagram", sem Página do Facebook):
+   cria o container de mídia, publica, e tem uma função de renovar o
+   token de longa duração (`renovar_token_de_longa_duracao`, ainda não
+   chamada automaticamente — ver nota sobre renovação de token abaixo).
+   As imagens geradas são salvas em `MEDIA_ROOT` e servidas publicamente
+   em `/media/instagram/...` (a API do Instagram busca a imagem sozinha a
+   partir de uma URL pública, não aceita upload direto).
+5. **Agendamento** — ✅ concluído. Reaproveita a mesma tarefa diária que já
+   existia (`/tarefas/executar/`, chamada pelo GitHub Actions) — não foi
+   criado nenhum agendamento novo. `instagram_bot/conteudo.py` decide o
+   que publicar hoje a partir do dia da semana.
+6. **Modo de revisão** — ✅ concluído, é o estado atual. Interruptor
+   `INSTAGRAM_BOT_ATIVO` (variável de ambiente, `False` por padrão):
+   enquanto `False`, o bot gera a imagem, salva em `RegistroPublicacao`
+   com `modo_simulacao=True`, mas **não chama a API de verdade**. Ver
+   "Como ligar o bot" abaixo.
+7. **Monitoramento** — ✅ concluído. Toda publicação (real ou simulada)
+   vira uma linha em `RegistroPublicacao`, visível no Django Admin
+   (`/admin/instagram_bot/registropublicacao/`) — mostra sucesso/erro,
+   se foi simulação, a legenda e a URL da imagem gerada.
+
+## Como ligar o bot
+
+O bot já está pronto e rodando em modo simulação (não publica de verdade,
+só registra o que faria). Quando terminar de postar os 8 posts de
+semeadura manualmente:
+
+1. No Render, vá em **Environment** e adiciona/edita `INSTAGRAM_BOT_ATIVO=True`.
+2. A partir da próxima execução da tarefa diária, ele passa a publicar de
+   verdade no Instagram (`usecashb`), seguindo o calendário já definido.
+3. Confere pelo Django Admin (`RegistroPublicacao`) se as primeiras
+   publicações reais deram certo.
+
+Pra desligar de novo (ex: se algo sair errado), é só voltar
+`INSTAGRAM_BOT_ATIVO=False` — sem precisar mexer em código nenhum.
+
+## Renovação do token de acesso (manual por enquanto)
+
+O access token do Instagram dura 60 dias. `instagram_client.py` já tem a
+função `renovar_token_de_longa_duracao()` pronta, mas ela **não é chamada
+automaticamente** — automatizar isso exigiria o app conseguir escrever a
+variável de ambiente `INSTAGRAM_ACCESS_TOKEN` no Render sozinho (precisaria
+de uma chave de API do Render, mais uma credencial sensível pra gerenciar),
+e expor o valor novo do token nos logs seria um risco de segurança. Por
+enquanto, o processo é manual: antes dos 60 dias vencerem, repetir o passo
+"Gerar token" no painel da Meta (ver Fase 1 acima) e atualizar
+`INSTAGRAM_ACCESS_TOKEN` no Render. Vale colocar um lembrete recorrente.
 
 ## Posts de semeadura (pasta `posts-semeadura/`)
 

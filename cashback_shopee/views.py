@@ -4,6 +4,7 @@ from datetime import datetime, timedelta, timezone as dt_timezone
 from django.conf import settings
 from django.http import HttpResponse, HttpResponseForbidden, JsonResponse
 
+from instagram_bot.services import executar_publicacoes_do_dia
 from links.shopee_client import ShopeeAPIError, ShopeeConfigError
 from ofertas.services import sincronizar_ofertas
 from pedidos.services import liberar_saldo, sincronizar
@@ -58,5 +59,10 @@ def executar_tarefas_agendadas(request):
 
     resultado["saldos_liberados"] = liberar_saldo()
     resultado["saques_verificados"] = verificar_saques_pendentes()
+
+    try:
+        resultado["instagram"] = executar_publicacoes_do_dia(request)
+    except Exception as erro:
+        resultado["instagram_erro"] = str(erro)
 
     return JsonResponse(resultado)
