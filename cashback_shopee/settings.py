@@ -193,19 +193,17 @@ STORAGES = {
 }
 
 # E-mail (usado para o link de "esqueceu sua senha")
-# Sem EMAIL_HOST_USER/EMAIL_HOST_PASSWORD configurados, os e-mails só aparecem
-# no terminal (backend de console) - útil em desenvolvimento local.
+# O Render bloqueia conexões SMTP de saída, então o envio usa a API HTTP do
+# Brevo (veja cashback_shopee/brevo_email_backend.py) em vez de SMTP. Sem
+# BREVO_API_KEY configurada, os e-mails só aparecem no terminal (backend de
+# console) - útil em desenvolvimento local.
 
-EMAIL_HOST_USER = os.environ.get("EMAIL_HOST_USER", "")
-EMAIL_HOST_PASSWORD = os.environ.get("EMAIL_HOST_PASSWORD", "")
+BREVO_API_KEY = os.environ.get("BREVO_API_KEY", "")
 EMAIL_BACKEND = (
-    "django.core.mail.backends.smtp.EmailBackend"
-    if EMAIL_HOST_USER and EMAIL_HOST_PASSWORD
+    "cashback_shopee.brevo_email_backend.BrevoAPIEmailBackend"
+    if BREVO_API_KEY
     else "django.core.mail.backends.console.EmailBackend"
 )
-EMAIL_HOST = os.environ.get("EMAIL_HOST", "smtp-relay.brevo.com")
-EMAIL_PORT = int(os.environ.get("EMAIL_PORT", "587"))
-EMAIL_USE_TLS = True
 EMAIL_TIMEOUT = int(os.environ.get("EMAIL_TIMEOUT", "10"))
 DEFAULT_FROM_EMAIL = os.environ.get("DEFAULT_FROM_EMAIL", "cash-b <contato@cash-b.com>")
 
