@@ -1,0 +1,107 @@
+{% extends "accounts/base.html" %}
+{% block titulo %}Política de Privacidade{% endblock %}
+{% block largura_container %}760px{% endblock %}
+{% block conteudo %}
+    <div class="nav-topo">
+        <a href="{% url 'home' %}">&larr; Voltar pro início</a>
+    </div>
+    <h1>Política de Privacidade</h1>
+    <p class="atualizado-em">Última atualização: 1 de agosto de 2026.</p>
+
+    <div class="texto-legal">
+        <p>
+            Esta política explica quais dados o cash-b coleta, pra que servem, com
+            quem são compartilhados e quais são os seus direitos, conforme a Lei
+            Geral de Proteção de Dados (LGPD — Lei nº 13.709/2018).
+        </p>
+
+        <h2>1. Quem é o responsável pelos seus dados</h2>
+        <p>
+            O cash-b é o controlador dos dados pessoais tratados através do site
+            <strong>cash-b.com</strong>. Pra qualquer assunto sobre privacidade, fale
+            com a gente em <a href="mailto:contato@cash-b.com">contato@cash-b.com</a>.
+        </p>
+
+        <h2>2. Quais dados coletamos</h2>
+        <ul>
+            <li><strong>Dados de cadastro</strong>: nome de usuário, e-mail e CPF.</li>
+            <li><strong>Dados de pagamento</strong>: chave PIX cadastrada, pro pagamento dos seus saques.</li>
+            <li>
+                <strong>Dados de uso</strong>: links de afiliado gerados, cliques,
+                pedidos associados à sua conta e seus respectivos status e valores.
+            </li>
+        </ul>
+        <p>
+            Não coletamos dados de navegação de terceiros (como cookies de
+            publicidade ou rastreamento) — veja detalhes na nossa
+            <a href="{% url 'cookies' %}">Política de Cookies</a>.
+        </p>
+
+        <h2>3. Para que usamos seus dados</h2>
+        <ul>
+            <li>Criar e manter sua conta no cash-b;</li>
+            <li>Gerar seus links de afiliado e rastrear quais compras geram cashback pra você;</li>
+            <li>Calcular, liberar e pagar seu saldo de cashback via PIX;</li>
+            <li>Te enviar e-mails importantes sobre sua conta (ex: redefinição de senha);</li>
+            <li>Prevenir fraude e uso indevido da plataforma.</li>
+        </ul>
+
+        <h2>4. Com quem compartilhamos seus dados</h2>
+        <p>
+            Compartilhamos apenas o necessário pra operar o serviço, com estes
+            parceiros:
+        </p>
+        <ul>
+            <li>
+                <strong>Shopee</strong> — recebe um identificador do seu clique
+                (não o seu CPF ou e-mail) pra conseguir rastrear que a compra veio de
+                um link do cash-b e calcular a comissão de afiliado.
+            </li>
+            <li>
+                <strong>Asaas</strong> (instituição de pagamento) — recebe sua chave
+                PIX e o valor do saque, exclusivamente pra processar a transferência
+                quando você solicita um saque.
+            </li>
+            <li>
+                <strong>Brevo</strong> (provedor de e-mail) — recebe seu e-mail
+                exclusivamente pra enviar mensagens transacionais da sua conta (como
+                redefinição de senha).
+            </li>
+        </ul>
+        <p>Não vendemos nem alugamos seus dados pessoais pra ninguém.</p>
+
+        <h2>5. Por quanto tempo guardamos seus dados</h2>
+        <p>
+            Guardamos seus dados enquanto sua conta estiver ativa. Se você pedir a
+            exclusão da conta, removemos os dados pessoais que não precisamos manter
+            por obrigação legal (por exemplo, registros fiscais de valores já pagos).
+        </p>
+
+        <h2>6. Seus direitos</h2>
+        <p>De acordo com a LGPD, você pode a qualquer momento:</p>
+        <ul>
+            <li>confirmar se tratamos dados seus e acessá-los;</li>
+            <li>corrigir dados incompletos, desatualizados ou incorretos;</li>
+            <li>pedir a exclusão dos seus dados pessoais;</li>
+            <li>pedir a portabilidade dos seus dados pra outro serviço;</li>
+            <li>revogar consentimentos que você tenha dado.</li>
+        </ul>
+        <p>
+            Pra exercer qualquer um desses direitos, escreva pra
+            <a href="mailto:contato@cash-b.com">contato@cash-b.com</a>.
+        </p>
+
+        <h2>7. Segurança</h2>
+        <p>
+            Sua senha é armazenada de forma criptografada — nem a nossa equipe
+            consegue vê-la. O site usa HTTPS em todas as páginas, e o acesso a dados
+            de pagamento é restrito.
+        </p>
+
+        <h2>8. Alterações nesta política</h2>
+        <p>
+            Podemos atualizar esta política de tempos em tempos. Quando isso
+            acontecer, a data no topo desta página é atualizada.
+        </p>
+    </div>
+{% endblock %}

@@ -183,6 +183,7 @@
 
         /* ---------- Rodapé ---------- */
         footer { padding: 32px 0; text-align: center; font-size: 13px; color: var(--muted); }
+        .rodape-links { display: flex; justify-content: center; gap: 20px; flex-wrap: wrap; margin-bottom: 12px; }
     </style>
 </head>
 <body>
@@ -333,6 +334,12 @@
 
     <footer>
         <div class="envolve">
+            <div class="rodape-links">
+                <a href="{% url 'regras_cashback' %}">Regras do cashback</a>
+                <a href="{% url 'termos_de_uso' %}">Termos de Uso</a>
+                <a href="{% url 'privacidade' %}">Privacidade</a>
+                <a href="{% url 'cookies' %}">Cookies</a>
+            </div>
             cash-b — afiliado independente Shopee
         </div>
     </footer>

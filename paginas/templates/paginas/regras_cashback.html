@@ -1,0 +1,81 @@
+{% extends "accounts/base.html" %}
+{% block titulo %}Regras do cashback{% endblock %}
+{% block largura_container %}760px{% endblock %}
+{% block conteudo %}
+    <div class="nav-topo">
+        <a href="{% url 'home' %}">&larr; Voltar pro início</a>
+    </div>
+    <h1>Regras do cashback</h1>
+    <p class="atualizado-em">Última atualização: 1 de agosto de 2026.</p>
+
+    <div class="texto-legal">
+        <h2>Como funciona, em resumo</h2>
+        <p>
+            Você compra na Shopee através de um link gerado pelo cash-b. Quando a
+            Shopee confirma o pedido, ela paga uma comissão de afiliado pra gente —
+            e repassamos <strong>{{ percentual_repasse|floatformat:0 }}% dessa comissão</strong>
+            de volta pra você, como cashback.
+        </p>
+
+        <h2>Venda direta x venda indireta</h2>
+        <p>
+            O jeito que você chega até a Shopee muda o tipo de venda:
+        </p>
+        <ul>
+            <li>
+                <strong>Venda direta</strong> — você converte o link de um produto
+                específico (na home ou no seu painel) e compra exatamente aquele
+                produto. Sempre que a Shopee tiver uma campanha de comissão extra
+                ativa pra aquele produto, só a venda direta tem acesso a esse bônus.
+            </li>
+            <li>
+                <strong>Venda indireta</strong> — você clica no botão "Ir para a
+                Shopee" e compra o que quiser, sem link de produto específico. Ainda
+                gera cashback normalmente, mas sem acesso a bônus de campanhas
+                específicas.
+            </li>
+        </ul>
+        <p>
+            Por isso, sempre que você já souber o que vai comprar, vale mais a pena
+            converter o link do produto específico.
+        </p>
+
+        <h2>Os quatro status do seu saldo</h2>
+        <ul>
+            <li><strong>Pendente</strong> — a compra foi feita, aguardando confirmação da Shopee.</li>
+            <li><strong>Validado</strong> — a Shopee confirmou o pedido; o saldo aguarda o prazo de liberação.</li>
+            <li><strong>Liberado</strong> — o saldo já pode ser sacado via PIX.</li>
+            <li><strong>Cancelado</strong> — o pedido foi cancelado ou devolvido, e não gera cashback.</li>
+        </ul>
+
+        <h2>Prazo de liberação</h2>
+        <p>
+            O saldo validado é liberado no primeiro dia do mês seguinte a dois meses
+            após a validação. Por exemplo: um pedido validado em janeiro tem o saldo
+            liberado em 1º de abril. Esse prazo acompanha o próprio prazo que a
+            Shopee usa pra confirmar definitivamente as comissões de afiliado.
+        </p>
+
+        <h2>O que cancela o cashback</h2>
+        <ul>
+            <li>A compra é cancelada ou devolvida na Shopee.</li>
+            <li>O pagamento da compra não é confirmado.</li>
+            <li>
+                Você clica em outro link de afiliado (de outro site ou app de
+                cashback) depois de clicar num link do cash-b e antes de terminar a
+                compra — a comissão pode acabar indo pro outro afiliado.
+            </li>
+        </ul>
+        <p>
+            Por isso, depois de clicar num link do cash-b, o ideal é concluir a
+            compra o quanto antes, sem passar por outros links de afiliado.
+        </p>
+
+        <h2>Saque</h2>
+        <p>
+            O saldo liberado pode ser sacado via PIX a partir de
+            <strong>R$ {{ saque_valor_minimo|floatformat:2 }}</strong>. Os saques são
+            processados manualmente e enviados pra chave PIX cadastrada na sua conta.
+        </p>
+    </div>
+{% endblock %}

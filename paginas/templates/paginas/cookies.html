@@ -1,0 +1,55 @@
+{% extends "accounts/base.html" %}
+{% block titulo %}Política de Cookies{% endblock %}
+{% block largura_container %}760px{% endblock %}
+{% block conteudo %}
+    <div class="nav-topo">
+        <a href="{% url 'home' %}">&larr; Voltar pro início</a>
+    </div>
+    <h1>Política de Cookies</h1>
+    <p class="atualizado-em">Última atualização: 1 de agosto de 2026.</p>
+
+    <div class="texto-legal">
+        <h2>O que são cookies</h2>
+        <p>
+            Cookies são pequenos arquivos que um site guarda no seu navegador, usados
+            pra lembrar informações entre uma página e outra — por exemplo, manter
+            você logado enquanto navega.
+        </p>
+
+        <h2>Quais cookies o cash-b usa</h2>
+        <p>
+            Usamos apenas cookies <strong>estritamente necessários</strong> pro
+            funcionamento do site:
+        </p>
+        <ul>
+            <li>
+                <strong>Cookie de sessão</strong> — mantém você logado na sua conta
+                enquanto navega pelo site.
+            </li>
+            <li>
+                <strong>Cookie de segurança (CSRF)</strong> — protege os formulários
+                do site contra um tipo comum de ataque.
+            </li>
+        </ul>
+        <p>
+            Esses cookies são essenciais: sem eles, não é possível fazer login ou
+            usar formulários no cash-b (como gerar links ou pedir saque).
+        </p>
+
+        <h2>Cookies de terceiros</h2>
+        <p>
+            Hoje o cash-b <strong>não usa</strong> cookies de publicidade, redes
+            sociais ou ferramentas de analytics de terceiros (como Google Analytics
+            ou pixels de anúncio). Se isso mudar no futuro, esta página será
+            atualizada e, se exigido por lei, vamos pedir seu consentimento antes de
+            ativar qualquer cookie não essencial.
+        </p>
+
+        <h2>Como gerenciar cookies</h2>
+        <p>
+            Você pode bloquear ou apagar cookies nas configurações do seu navegador a
+            qualquer momento. Como os cookies do cash-b são essenciais, bloqueá-los
+            impede o funcionamento normal do login e dos formulários do site.
+        </p>
+    </div>
+{% endblock %}

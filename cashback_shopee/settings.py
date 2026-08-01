@@ -71,6 +71,7 @@ INSTALLED_APPS = [
     "links",
     "pedidos",
     "saques",
+    "paginas",
 ]
 
 AUTH_USER_MODEL = "accounts.User"
