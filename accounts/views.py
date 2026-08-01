@@ -1,3 +1,4 @@
+import logging
 import threading
 from decimal import Decimal
 
@@ -15,13 +16,23 @@ from saques.services import calcular_saldo_disponivel
 
 from .forms import ChavePixForm, RegistroForm
 
+logger = logging.getLogger(__name__)
+
+
+def _enviar_email_reset_senha(form, opts):
+    try:
+        form.save(**opts)
+    except Exception:
+        logger.exception("Falha ao enviar e-mail de redefinição de senha")
+
 
 class PasswordResetView(auth_views.PasswordResetView):
     """Manda o e-mail de redefinição de senha numa thread separada.
 
     O envio via SMTP pode levar vários segundos (conexão + handshake TLS
     com o servidor externo); sem isso, o usuário fica esperando a página
-    responder até o e-mail terminar de ser enviado.
+    responder até o e-mail terminar de ser enviado. Qualquer falha no
+    envio é registrada nos logs em vez de desaparecer silenciosamente.
     """
 
     def form_valid(self, form):
@@ -35,7 +46,7 @@ class PasswordResetView(auth_views.PasswordResetView):
             "html_email_template_name": self.html_email_template_name,
             "extra_email_context": self.extra_email_context,
         }
-        threading.Thread(target=form.save, kwargs=opts, daemon=True).start()
+        threading.Thread(target=_enviar_email_reset_senha, args=(form, opts), daemon=True).start()
         return HttpResponseRedirect(self.get_success_url())
 
 
