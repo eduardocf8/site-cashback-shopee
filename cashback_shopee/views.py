@@ -2,11 +2,32 @@ import hmac
 from datetime import datetime, timedelta, timezone as dt_timezone
 
 from django.conf import settings
-from django.http import HttpResponseForbidden, JsonResponse
+from django.http import HttpResponse, HttpResponseForbidden, JsonResponse
 
 from links.shopee_client import ShopeeAPIError, ShopeeConfigError
 from pedidos.services import liberar_saldo, sincronizar
 from saques.services import verificar_saques_pendentes
+
+ROBOTS_TXT = """User-agent: *
+Disallow: /admin/
+Disallow: /dashboard/
+Disallow: /chave-pix/
+Disallow: /editar-perfil/
+Disallow: /trocar-senha/
+Disallow: /verificar-email/
+Disallow: /reenviar-verificacao/
+Disallow: /esqueci-senha/
+Disallow: /resetar-senha/
+Disallow: /saques/
+Disallow: /tarefas/
+
+Sitemap: {scheme}://{host}/sitemap.xml
+"""
+
+
+def robots_txt(request):
+    conteudo = ROBOTS_TXT.format(scheme="https" if request.is_secure() else "http", host=request.get_host())
+    return HttpResponse(conteudo, content_type="text/plain")
 
 
 def executar_tarefas_agendadas(request):
