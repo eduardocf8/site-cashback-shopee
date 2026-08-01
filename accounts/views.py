@@ -4,16 +4,21 @@ from django.conf import settings
 from django.contrib import messages
 from django.contrib.auth import get_user_model, login
 from django.contrib.auth.decorators import login_required
+from django.core.paginator import Paginator
 from django.db.models import Sum
 from django.shortcuts import redirect, render
 
+from links.models import Click
 from pedidos.models import Pedido
+from saques.models import Saque
 from saques.services import calcular_saldo_disponivel
 
 from .forms import ChavePixForm, EditarPerfilForm, RegistroForm
 from .tokens import enviar_email_verificacao, validar_token_verificacao
 
 User = get_user_model()
+
+ITENS_POR_PAGINA = 10
 
 
 def registrar(request):
@@ -75,6 +80,24 @@ def dashboard(request):
     for linha in pedidos_usuario.values("status").annotate(total=Sum("valor_cashback")):
         saldos[linha["status"]] = linha["total"] or Decimal("0")
 
+    filtro_pedidos = request.GET.get("status_pedido", "")
+    pedidos_filtrados = pedidos_usuario.order_by("-data_compra")
+    if filtro_pedidos in dict(Pedido.STATUS_CHOICES):
+        pedidos_filtrados = pedidos_filtrados.filter(status=filtro_pedidos)
+    pedidos_pagina = Paginator(pedidos_filtrados, ITENS_POR_PAGINA).get_page(request.GET.get("pagina_pedidos"))
+
+    filtro_saques = request.GET.get("status_saque", "")
+    saques_filtrados = request.user.saques.all()
+    if filtro_saques in dict(Saque.STATUS_CHOICES):
+        saques_filtrados = saques_filtrados.filter(status=filtro_saques)
+    saques_pagina = Paginator(saques_filtrados, ITENS_POR_PAGINA).get_page(request.GET.get("pagina_saques"))
+
+    filtro_clicks = request.GET.get("tipo_click", "")
+    clicks_filtrados = request.user.clicks.all()
+    if filtro_clicks in dict(Click.TIPO_CHOICES):
+        clicks_filtrados = clicks_filtrados.filter(tipo=filtro_clicks)
+    clicks_pagina = Paginator(clicks_filtrados, ITENS_POR_PAGINA).get_page(request.GET.get("pagina_clicks"))
+
     contexto = {
         "saldo_pendente": saldos[Pedido.STATUS_PENDENTE],
         "saldo_validado": saldos[Pedido.STATUS_VALIDADO],
@@ -82,9 +105,15 @@ def dashboard(request):
         "saldo_cancelado": saldos[Pedido.STATUS_CANCELADO],
         "saldo_disponivel": calcular_saldo_disponivel(request.user),
         "saque_valor_minimo": settings.SAQUE_VALOR_MINIMO,
-        "clicks": request.user.clicks.all()[:30],
-        "pedidos": pedidos_usuario.order_by("-data_compra")[:30],
-        "saques": request.user.saques.all()[:20],
+        "clicks": clicks_pagina,
+        "pedidos": pedidos_pagina,
+        "saques": saques_pagina,
+        "filtro_pedidos": filtro_pedidos,
+        "filtro_saques": filtro_saques,
+        "filtro_clicks": filtro_clicks,
+        "status_pedidos_choices": Pedido.STATUS_CHOICES,
+        "status_saques_choices": Saque.STATUS_CHOICES,
+        "tipo_clicks_choices": Click.TIPO_CHOICES,
     }
     return render(request, "accounts/dashboard.html", contexto)
 
