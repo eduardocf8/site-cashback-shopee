@@ -56,22 +56,50 @@ institucional, pra não ficar vazio quando o bot começar a postar.
 
 ## Posts de semeadura (pasta `posts-semeadura/`)
 
-8 imagens 1080×1080, prontas pra postar manualmente no feed antes da
-automação começar. Conteúdo institucional (não puxa dado nenhum do banco):
+8 imagens 1080×1080 (arquivo real 2160×2160, renderizado em dobro pra
+ficar nítido), prontas pra postar manualmente no feed antes da automação
+começar. Conteúdo institucional (não puxa dado nenhum do banco). Artes e
+legendas aprovadas em 2026-08-01.
 
-| Arquivo | Tema |
-|---|---|
-| `01-o-que-e-cashb.png` | Apresentação da marca |
-| `02-como-funciona.png` | Passo a passo do cashback (3 passos) |
-| `03-venda-direta-indireta.png` | Link de produto x botão "Ir para a Shopee" |
-| `04-do-clique-ao-pix.png` | Status do pedido: pendente → validado → liberado |
-| `05-saque-pix.png` | Como sacar via PIX |
-| `06-sem-pegadinha.png` | Sem mensalidade, sem letra miúda |
-| `07-quanto-economizar.png` | Proposta de valor, sem prometer % específico |
-| `08-cadastre-se.png` | Chamada pra ação (cash-b.com) |
+Cronograma: 1 post por dia, na ordem abaixo (é a mesma ordem que conta uma
+narrativa se alguém rolar o grid inteiro — não embaralhar).
 
-Aprovados em 2026-08-01. Postar na ordem acima, indo 2–3 por dia até o
-perfil ficar razoavelmente populado, antes de ligar a automação.
+### Dia 1 — `01-o-que-e-cashb.png`
+> O cash-b é simples: você compra na Shopee do jeito que já compra, e recebe parte do dinheiro de volta. 💸 Sem mensalidade, sem pegadinha — só cashback de verdade caindo no seu saldo. 💚
+> Ainda não conhece? Link na bio.
+> #cashback #shopee #cashbackshopee #economia #dinheirodevolta
+
+### Dia 2 — `02-como-funciona.png`
+> Não tem mistério: 🔗 gera o link (ou vai direto pra Shopee), 🛍️ compra normalmente, e 💰 recebe parte de volta assim que a Shopee confirma o pedido. 3 passos, sem burocracia.
+> Testa você mesmo — link na bio.
+> #cashback #shopee #comofunciona #economia
+
+### Dia 3 — `03-venda-direta-indireta.png`
+> Sabia que converter o link do produto específico pode render mais cashback? ⚡ Quando a Shopee tem campanha de comissão extra ativa, só quem usa o link direto tem acesso ao bônus. Já quem prefere só entrar e comprar o que quiser, também garante cashback — sem escolher nada antes.
+> Duas formas, o mesmo cashback de verdade. ✅
+> #cashback #shopee #dicas
+
+### Dia 4 — `04-do-clique-ao-pix.png`
+> Depois da compra, seu cashback passa por 3 fases: ⏳ pendente (aguardando a Shopee confirmar), ✅ validado (compra confirmada, aguardando o prazo) e 💸 liberado (já pode sacar). Acompanha tudo direto no seu painel.
+> #cashback #shopee #transparencia
+
+### Dia 5 — `05-saque-pix.png`
+> Saldo liberado é saldo seu. 💸 Cadastra sua chave PIX e pede o saque — sem burocracia, direto na sua conta. 🏦
+> #cashback #pix #shopee #dinheirodevolta
+
+### Dia 6 — `06-sem-pegadinha.png`
+> 🚫 Sem mensalidade. 🚫 Sem letra miúda. 🚫 Sem "cashback" que nunca cai na conta. Você compra, a Shopee confirma, você recebe. Simples assim. ✅
+> #cashback #semmensalidade #shopee
+
+### Dia 7 — `07-quanto-economizar.png`
+> Você não precisa mudar nada no seu jeito de comprar — só ganhar mais no final. 📈 Toda compra que você já ia fazer na Shopee pode voltar parte do dinheiro pro seu bolso. 💰
+> Comece a economizar sem esforço — link na bio.
+> #cashback #economia #shopee #dinheirodevolta
+
+### Dia 8 — `08-cadastre-se.png`
+> 🚀 Cadastro grátis, sem custo nenhum. Compra na Shopee do jeito que já compra e começa a receber cashback de verdade.
+> 👉 cash-b.com
+> #cashback #shopee #cadastrese
 
 ## Como as imagens são geradas
 
