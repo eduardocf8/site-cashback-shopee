@@ -5,6 +5,7 @@ from django.conf import settings
 from django.http import HttpResponse, HttpResponseForbidden, JsonResponse
 
 from links.shopee_client import ShopeeAPIError, ShopeeConfigError
+from ofertas.services import sincronizar_ofertas
 from pedidos.services import liberar_saldo, sincronizar
 from saques.services import verificar_saques_pendentes
 
@@ -49,6 +50,11 @@ def executar_tarefas_agendadas(request):
         resultado["sincronizacao"] = sincronizar(int(inicio.timestamp()), int(agora.timestamp()))
     except (ShopeeConfigError, ShopeeAPIError) as erro:
         resultado["sincronizacao_erro"] = str(erro)
+
+    try:
+        resultado["ofertas_sincronizadas"] = sincronizar_ofertas()
+    except (ShopeeConfigError, ShopeeAPIError) as erro:
+        resultado["ofertas_erro"] = str(erro)
 
     resultado["saldos_liberados"] = liberar_saldo()
     resultado["saques_verificados"] = verificar_saques_pendentes()

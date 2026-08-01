@@ -73,6 +73,7 @@ INSTALLED_APPS = [
     "pedidos",
     "saques",
     "paginas",
+    "ofertas",
 ]
 
 AUTH_USER_MODEL = "accounts.User"

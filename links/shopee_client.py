@@ -92,6 +92,25 @@ def gerar_link_curto(origin_url: str, sub_ids: list[str]) -> str:
     return dados["generateShortLink"]["shortLink"]
 
 
+def buscar_ofertas_produtos(pagina: int, limite: int = 50) -> dict:
+    """Consulta a query productOfferV2 (listType ALL) para montar a página de ofertas."""
+    query = (
+        "query{"
+        "productOfferV2("
+        f"listType:0,page:{pagina},limit:{limite}"
+        "){"
+        "nodes{"
+        "itemId commissionRate sales priceMax priceMin productCatIds ratingStar "
+        "priceDiscountRate imageUrl productName shopName productLink offerLink"
+        "}"
+        "pageInfo{page limit hasNextPage}"
+        "}"
+        "}"
+    )
+    dados = executar_graphql(query)
+    return dados["productOfferV2"]
+
+
 def buscar_conversoes(purchase_time_start: int, purchase_time_end: int, scroll_id: str | None = None, limit: int = 500) -> dict:
     """Consulta a query conversionReport da Shopee para um período, com paginação por scrollId."""
     query = (

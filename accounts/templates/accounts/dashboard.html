@@ -134,6 +134,7 @@
             <a class="marca" href="{% url 'home' %}">cash-b</a>
             <div class="nav-links">
                 <a href="{% url 'home' %}">Início</a>
+                <a href="{% url 'ofertas_lista' %}">Ofertas</a>
                 <form method="post" action="{% url 'logout' %}">
                     {% csrf_token %}
                     <button type="submit" class="linkbtn">Sair</button>

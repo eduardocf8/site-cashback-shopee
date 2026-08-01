@@ -191,6 +191,7 @@
         <div class="envolve">
             <span class="marca">cash-b</span>
             <div class="nav-links">
+                <a href="{% url 'ofertas_lista' %}">Ofertas</a>
                 {% if user.is_authenticated %}
                     <a href="{% url 'dashboard' %}">Minha conta</a>
                     <form method="post" action="{% url 'logout' %}">
