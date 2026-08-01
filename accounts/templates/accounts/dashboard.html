@@ -68,9 +68,8 @@
             background: var(--paper); border: 1px solid var(--line); border-radius: 12px; padding: 20px;
             border-top: 4px solid var(--cor-cartao, var(--line));
         }
-        .saldo-cartao .rotulo { font-size: 13px; color: var(--muted); margin-bottom: 6px; }
-        .saldo-cartao .valor { font-family: "JB Mono", ui-monospace, monospace; font-size: 24px; font-weight: 500; font-variant-numeric: tabular-nums; }
-        .saldo-cartao .legenda { font-size: 12px; color: var(--muted); margin-top: 6px; }
+        .saldo-cartao .rotulo { font-size: 13px; color: var(--muted); margin-bottom: 10px; }
+        .saldo-cartao .valor { font-family: "JB Mono", ui-monospace, monospace; font-size: 34px; font-weight: 500; font-variant-numeric: tabular-nums; }
         .saldo-cartao.pendente { --cor-cartao: var(--muted); }
         .saldo-cartao.validado { --cor-cartao: var(--info); }
         .saldo-cartao.liberado { --cor-cartao: var(--brand); }
@@ -187,22 +186,18 @@
                 <div class="saldo-cartao pendente">
                     <div class="rotulo">Pendente</div>
                     <div class="valor">R$ {{ saldo_pendente|floatformat:2 }}</div>
-                    <div class="legenda">Aguardando confirmação da Shopee.</div>
                 </div>
                 <div class="saldo-cartao validado">
                     <div class="rotulo">Validado</div>
                     <div class="valor">R$ {{ saldo_validado|floatformat:2 }}</div>
-                    <div class="legenda">Confirmado, aguardando o prazo de liberação.</div>
                 </div>
                 <div class="saldo-cartao liberado">
                     <div class="rotulo">Liberado</div>
                     <div class="valor">R$ {{ saldo_liberado|floatformat:2 }}</div>
-                    <div class="legenda">Confirmado e liberado para saque via PIX.</div>
                 </div>
                 <div class="saldo-cartao cancelado">
                     <div class="rotulo">Cancelado</div>
                     <div class="valor">R$ {{ saldo_cancelado|floatformat:2 }}</div>
-                    <div class="legenda">Pedidos cancelados ou não pagos não geram cashback.</div>
                 </div>
             </div>
             <div class="acoes-rapidas">
