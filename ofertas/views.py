@@ -13,12 +13,33 @@ from .services import carregar_categorias_nivel1
 
 ITENS_POR_PAGINA = 24
 
+ORDENACOES = {
+    "vendidos": "-vendas",
+    "menor_preco": "preco_min",
+    "maior_preco": "-preco_min",
+    "maior_desconto": "-percentual_desconto",
+}
+ORDENACOES_ROTULOS = {
+    "vendidos": "Mais vendidos",
+    "menor_preco": "Menor preço",
+    "maior_preco": "Maior preço",
+    "maior_desconto": "Maior desconto",
+}
+
 
 def lista(request):
     categoria_id = request.GET.get("categoria", "")
+    busca = request.GET.get("q", "").strip()
+    ordenacao = request.GET.get("ordenar", "vendidos")
+    if ordenacao not in ORDENACOES:
+        ordenacao = "vendidos"
+
     ofertas = Oferta.objects.all()
     if categoria_id.isdigit():
         ofertas = ofertas.filter(categoria_id=int(categoria_id))
+    if busca:
+        ofertas = ofertas.filter(nome__icontains=busca)
+    ofertas = ofertas.order_by(ORDENACOES[ordenacao])
 
     pagina_ofertas = Paginator(ofertas, ITENS_POR_PAGINA).get_page(request.GET.get("pagina"))
     categorias = sorted(carregar_categorias_nivel1().items(), key=lambda item: item[1])
@@ -27,6 +48,9 @@ def lista(request):
         "ofertas": pagina_ofertas,
         "categorias": categorias,
         "categoria_selecionada": categoria_id,
+        "busca": busca,
+        "ordenacao_selecionada": ordenacao,
+        "ordenacoes": ORDENACOES_ROTULOS.items(),
     }
     return render(request, "ofertas/lista.html", contexto)
 

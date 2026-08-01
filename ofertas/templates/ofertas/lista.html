@@ -41,6 +41,11 @@
             padding: 8px 12px; border: 1px solid var(--line); border-radius: 6px;
             font-family: inherit; font-size: 14px; background: var(--paper); color: var(--ink); max-width: 280px;
         }
+        .filtro-secao input[type="search"] {
+            padding: 8px 12px; border: 1px solid var(--line); border-radius: 6px;
+            font-family: inherit; font-size: 14px; background: var(--paper); color: var(--ink);
+            width: 220px; max-width: 100%;
+        }
         .filtro-secao button {
             padding: 8px 18px; border: 1px solid var(--line); border-radius: 6px; background: var(--paper);
             color: var(--ink); font-family: inherit; font-size: 14px; cursor: pointer;
@@ -65,7 +70,7 @@
         .oferta-cartao .nome { font-size: 14px; line-height: 1.4; max-height: 2.8em; overflow: hidden; }
         .oferta-cartao .categoria { font-size: 12px; color: var(--muted); }
         .oferta-cartao .preco { font-family: "JB Mono", ui-monospace, monospace; font-size: 17px; font-weight: 500; margin-top: auto; }
-        .oferta-cartao .preco .de { font-size: 12px; color: var(--muted); font-weight: 400; }
+        .oferta-cartao .preco .de { font-size: 12px; color: var(--muted); font-weight: 400; text-decoration: line-through; margin-left: 6px; }
         .oferta-cartao .botao-cta { text-align: center; margin: 4px 14px 14px; }
 
         .vazio { color: var(--muted); font-size: 14px; padding: 60px 20px; text-align: center; }
@@ -113,11 +118,18 @@
         </div>
 
         <form method="get" action="{% url 'ofertas_lista' %}" class="filtro-secao">
+            <input type="search" name="q" placeholder="Buscar por palavra-chave" value="{{ busca }}">
             <label for="categoria" style="color: var(--muted);">Categoria:</label>
             <select name="categoria" id="categoria">
                 <option value="">Todas</option>
                 {% for id, nome in categorias %}
                     <option value="{{ id }}" {% if categoria_selecionada == id|stringformat:"s" %}selected{% endif %}>{{ nome }}</option>
+                {% endfor %}
+            </select>
+            <label for="ordenar" style="color: var(--muted);">Ordenar por:</label>
+            <select name="ordenar" id="ordenar">
+                {% for valor, rotulo in ordenacoes %}
+                    <option value="{{ valor }}" {% if ordenacao_selecionada == valor %}selected{% endif %}>{{ rotulo }}</option>
                 {% endfor %}
             </select>
             <button type="submit">Filtrar</button>
@@ -140,13 +152,13 @@
                             <div class="nome">{{ oferta.nome }}</div>
                             <div class="preco">
                                 {% if oferta.preco_min != oferta.preco_max %}
-                                    R$ {{ oferta.preco_min|floatformat:2 }} <span class="de">– R$ {{ oferta.preco_max|floatformat:2 }}</span>
+                                    R$ {{ oferta.preco_min|floatformat:2 }} <span class="de">R$ {{ oferta.preco_max|floatformat:2 }}</span>
                                 {% else %}
                                     R$ {{ oferta.preco_min|floatformat:2 }}
                                 {% endif %}
                             </div>
                         </div>
-                        <a class="botao-cta" href="{% url 'ofertas_ir' oferta.id %}">Ir para a oferta &rarr;</a>
+                        <a class="botao-cta" href="{% url 'ofertas_ir' oferta.id %}">Ir pra oferta</a>
                     </div>
                 {% endfor %}
             </div>
