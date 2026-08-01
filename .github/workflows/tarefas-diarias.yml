@@ -2,8 +2,9 @@ name: Tarefas diárias do site
 
 on:
   schedule:
-    # 04:00 UTC = 01:00 no horário de Brasília
-    - cron: "0 4 * * *"
+    # 14:00 UTC = 11:00 no horário de Brasília - horário melhor pro alcance
+    # das postagens do bot do Instagram (madrugada tinha pouco engajamento).
+    - cron: "0 14 * * *"
   workflow_dispatch: {}
 
 jobs:
