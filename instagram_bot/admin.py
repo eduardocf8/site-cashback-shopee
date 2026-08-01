@@ -9,11 +9,11 @@ class RegistroPublicacaoAdmin(admin.ModelAdmin):
         "data",
         "tipo",
         "conteudo_tipo",
-        "sucesso",
+        "status",
         "modo_simulacao",
         "criado_em",
     )
-    list_filter = ("tipo", "conteudo_tipo", "sucesso", "modo_simulacao")
+    list_filter = ("status", "tipo", "conteudo_tipo", "modo_simulacao")
     search_fields = ("legenda", "erro")
     readonly_fields = (
         "data",
@@ -23,6 +23,7 @@ class RegistroPublicacaoAdmin(admin.ModelAdmin):
         "imagem_url",
         "instagram_media_id",
         "modo_simulacao",
+        "status",
         "sucesso",
         "erro",
         "criado_em",

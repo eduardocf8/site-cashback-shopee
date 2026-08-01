@@ -91,6 +91,18 @@ pasta, pra não ficar vazio quando a automação for ligada de verdade — ver
    enquanto `False`, o bot gera a imagem, salva em `RegistroPublicacao`
    com `modo_simulacao=True`, mas **não chama a API de verdade**. Ver
    "Como ligar o bot" abaixo.
+6.1. **Aprovação por e-mail** — ✅ concluído. Além do interruptor mestre,
+   tem `INSTAGRAM_REQUER_APROVACAO` (`True` por padrão). Com o bot ligado
+   e essa variável em `True`, cada story/post gerado fica com
+   `status=pendente_aprovacao` e dispara um e-mail (via
+   `instagram_bot/aprovacao.py`) pro endereço em `INSTAGRAM_APROVADOR_EMAIL`,
+   com a imagem anexada, a legenda, e dois links ("Aprovar e publicar" /
+   "Rejeitar"). Cada link tem um token assinado (mesmo esquema do e-mail
+   de confirmação de cadastro, `accounts/tokens.py`) que expira em 36h.
+   Clicar em "Aprovar" chama a API do Instagram na hora; clicar em
+   "Rejeitar" só marca `status=rejeitado` e não publica nada. Com
+   `INSTAGRAM_REQUER_APROVACAO=False`, publica direto, sem passar por
+   aprovação (fluxo antigo).
 7. **Monitoramento** — ✅ concluído. Toda publicação (real ou simulada)
    vira uma linha em `RegistroPublicacao`, visível no Django Admin
    (`/admin/instagram_bot/registropublicacao/`) — mostra sucesso/erro,
@@ -103,10 +115,16 @@ só registra o que faria). Quando terminar de postar os 8 posts de
 semeadura manualmente:
 
 1. No Render, vá em **Environment** e adiciona/edita `INSTAGRAM_BOT_ATIVO=True`.
-2. A partir da próxima execução da tarefa diária, ele passa a publicar de
-   verdade no Instagram (`usecashb`), seguindo o calendário já definido.
-3. Confere pelo Django Admin (`RegistroPublicacao`) se as primeiras
-   publicações reais deram certo.
+2. Também defina `INSTAGRAM_APROVADOR_EMAIL` (seu e-mail) - é pra onde vai
+   o pedido de aprovação de cada story/post.
+3. `INSTAGRAM_REQUER_APROVACAO` já vem `True` por padrão, então a partir
+   da próxima execução da tarefa diária, cada conteúdo gerado chega no seu
+   e-mail (imagem anexada + legenda) com um link de "Aprovar e publicar" e
+   um de "Rejeitar" - só publica no Instagram (`usecashb`) depois que você
+   clicar em aprovar. Se preferir publicar direto sem revisar, defina
+   `INSTAGRAM_REQUER_APROVACAO=False`.
+4. Confere pelo Django Admin (`RegistroPublicacao`) o status de cada
+   publicação (`pendente_aprovacao`, `publicado`, `rejeitado`, `erro`).
 
 Pra desligar de novo (ex: se algo sair errado), é só voltar
 `INSTAGRAM_BOT_ATIVO=False` — sem precisar mexer em código nenhum.

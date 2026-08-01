@@ -1,3 +1,4 @@
+import io
 import logging
 import uuid
 from pathlib import Path
@@ -8,7 +9,7 @@ from PIL import Image
 
 from ofertas.models import Oferta
 
-from . import conteudo, instagram_client
+from . import aprovacao, conteudo, instagram_client
 from .models import RegistroPublicacao
 from .templates_imagem import CORES, gerar_imagem_ofertas, gerar_imagem_texto_simples
 
@@ -25,11 +26,25 @@ def _salvar_e_montar_url(imagem, request) -> str:
     return request.build_absolute_uri(f"{settings.MEDIA_URL}instagram/{nome_arquivo}")
 
 
-def _ja_publicado_hoje(data, conteudo_tipo: str) -> bool:
-    return RegistroPublicacao.objects.filter(data=data, conteudo_tipo=conteudo_tipo, sucesso=True).exists()
+def _bytes_png(imagem) -> bytes:
+    buffer = io.BytesIO()
+    imagem.save(buffer, "PNG")
+    return buffer.getvalue()
 
 
-def _registrar(data, tipo, conteudo_tipo, legenda, imagem_url, simulacao, sucesso, erro=""):
+def _ja_processado_hoje(data, conteudo_tipo: str) -> bool:
+    """True se já existe um registro de hoje pra esse tipo de conteúdo que não seja
+    um erro transitório - ou seja, já foi simulado, já está aguardando aprovação, já
+    foi publicado ou já foi rejeitado. Só erro não bloqueia, pra permitir nova
+    tentativa na próxima execução da tarefa diária."""
+    return (
+        RegistroPublicacao.objects.filter(data=data, conteudo_tipo=conteudo_tipo)
+        .exclude(status=RegistroPublicacao.STATUS_ERRO)
+        .exists()
+    )
+
+
+def _registrar(data, tipo, conteudo_tipo, legenda, imagem_url, simulacao, sucesso, status, erro=""):
     return RegistroPublicacao.objects.create(
         data=data,
         tipo=tipo,
@@ -37,27 +52,63 @@ def _registrar(data, tipo, conteudo_tipo, legenda, imagem_url, simulacao, sucess
         legenda=legenda,
         imagem_url=imagem_url,
         modo_simulacao=simulacao,
+        status=status,
         sucesso=sucesso,
         erro=erro,
     )
 
 
 def _publicar_ou_simular(imagem, legenda, tipo, conteudo_tipo, data, request, story: bool) -> RegistroPublicacao:
-    simulacao = not settings.INSTAGRAM_BOT_ATIVO
+    if not settings.INSTAGRAM_BOT_ATIVO:
+        return _simular(imagem, legenda, tipo, conteudo_tipo, data, request)
+    if settings.INSTAGRAM_REQUER_APROVACAO:
+        return _aguardar_aprovacao(imagem, legenda, tipo, conteudo_tipo, data, request)
+    return _publicar_direto(imagem, legenda, tipo, conteudo_tipo, data, request, story)
+
+
+def _simular(imagem, legenda, tipo, conteudo_tipo, data, request) -> RegistroPublicacao:
+    imagem_url = _salvar_e_montar_url(imagem, request)
+    logger.info(
+        "[instagram_bot] modo simulação (INSTAGRAM_BOT_ATIVO=False) - geraria %s/%s: %s",
+        tipo, conteudo_tipo, imagem_url,
+    )
+    return _registrar(
+        data, tipo, conteudo_tipo, legenda, imagem_url,
+        simulacao=True, sucesso=True, status=RegistroPublicacao.STATUS_SIMULADO,
+    )
+
+
+def _publicar_direto(imagem, legenda, tipo, conteudo_tipo, data, request, story: bool) -> RegistroPublicacao:
     imagem_url = ""
     try:
         imagem_url = _salvar_e_montar_url(imagem, request)
-        if simulacao:
-            logger.info(
-                "[instagram_bot] modo simulação (INSTAGRAM_BOT_ATIVO=False) - geraria %s/%s: %s",
-                tipo, conteudo_tipo, imagem_url,
-            )
-        else:
-            instagram_client.publicar_imagem(imagem_url, legenda=legenda, story=story)
-        return _registrar(data, tipo, conteudo_tipo, legenda, imagem_url, simulacao, sucesso=True)
+        media_id = instagram_client.publicar_imagem(imagem_url, legenda=legenda, story=story)
+        registro = _registrar(
+            data, tipo, conteudo_tipo, legenda, imagem_url,
+            simulacao=False, sucesso=True, status=RegistroPublicacao.STATUS_PUBLICADO,
+        )
+        registro.instagram_media_id = media_id
+        registro.save(update_fields=["instagram_media_id"])
+        return registro
     except Exception as erro:
         logger.exception("[instagram_bot] falha ao publicar %s/%s", tipo, conteudo_tipo)
-        return _registrar(data, tipo, conteudo_tipo, legenda, imagem_url, simulacao, sucesso=False, erro=str(erro))
+        return _registrar(
+            data, tipo, conteudo_tipo, legenda, imagem_url,
+            simulacao=False, sucesso=False, status=RegistroPublicacao.STATUS_ERRO, erro=str(erro),
+        )
+
+
+def _aguardar_aprovacao(imagem, legenda, tipo, conteudo_tipo, data, request) -> RegistroPublicacao:
+    imagem_url = _salvar_e_montar_url(imagem, request)
+    registro = _registrar(
+        data, tipo, conteudo_tipo, legenda, imagem_url,
+        simulacao=False, sucesso=False, status=RegistroPublicacao.STATUS_PENDENTE_APROVACAO,
+    )
+    try:
+        aprovacao.enviar_email_aprovacao(registro, _bytes_png(imagem), request)
+    except Exception:
+        logger.exception("[instagram_bot] falha ao enviar e-mail de aprovação (registro %s)", registro.pk)
+    return registro
 
 
 def publicar_story_ofertas(data, request) -> RegistroPublicacao | None:
@@ -137,14 +188,14 @@ def executar_publicacoes_do_dia(request) -> list[dict]:
     resultados = []
 
     for tipo in conteudo.tipo_de_conteudo_do_dia(hoje):
-        if _ja_publicado_hoje(hoje, tipo):
+        if _ja_processado_hoje(hoje, tipo):
             continue
         despachante = DESPACHANTES[tipo]
         registro = despachante(hoje, request)
         if registro:
             resultados.append({
                 "conteudo_tipo": registro.conteudo_tipo,
-                "sucesso": registro.sucesso,
+                "status": registro.status,
                 "simulado": registro.modo_simulacao,
             })
 

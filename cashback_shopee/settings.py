@@ -122,6 +122,12 @@ INSTAGRAM_GRAPH_API_URL = os.environ.get("INSTAGRAM_GRAPH_API_URL", "https://gra
 # com os posts institucionais iniciais (ver marketing/instagram/README.md).
 INSTAGRAM_BOT_ATIVO = os.environ.get("INSTAGRAM_BOT_ATIVO", "False") == "True"
 
+# Só importa quando INSTAGRAM_BOT_ATIVO=True. Se True, o bot gera a arte e manda um
+# e-mail de aprovação pro INSTAGRAM_APROVADOR_EMAIL em vez de publicar direto -
+# só publica depois de clicar em "aprovar" no e-mail. Se False, publica direto.
+INSTAGRAM_REQUER_APROVACAO = os.environ.get("INSTAGRAM_REQUER_APROVACAO", "True") == "True"
+INSTAGRAM_APROVADOR_EMAIL = os.environ.get("INSTAGRAM_APROVADOR_EMAIL", "")
+
 MIDDLEWARE = [
     "django.middleware.security.SecurityMiddleware",
     "whitenoise.middleware.WhiteNoiseMiddleware",

@@ -22,6 +22,19 @@ class RegistroPublicacao(models.Model):
         (CONTEUDO_OFERTAS_SEMANA, "Melhores ofertas da semana"),
     ]
 
+    STATUS_SIMULADO = "simulado"
+    STATUS_PENDENTE_APROVACAO = "pendente_aprovacao"
+    STATUS_PUBLICADO = "publicado"
+    STATUS_REJEITADO = "rejeitado"
+    STATUS_ERRO = "erro"
+    STATUS_CHOICES = [
+        (STATUS_SIMULADO, "Simulado (bot desligado)"),
+        (STATUS_PENDENTE_APROVACAO, "Aguardando aprovação"),
+        (STATUS_PUBLICADO, "Publicado"),
+        (STATUS_REJEITADO, "Rejeitado"),
+        (STATUS_ERRO, "Erro"),
+    ]
+
     data = models.DateField("Data de referência", db_index=True)
     tipo = models.CharField(max_length=10, choices=TIPO_CHOICES)
     conteudo_tipo = models.CharField(max_length=20, choices=CONTEUDO_CHOICES)
@@ -31,6 +44,7 @@ class RegistroPublicacao(models.Model):
     modo_simulacao = models.BooleanField(
         default=True, help_text="True quando o bot ainda estava desligado (INSTAGRAM_BOT_ATIVO=False)."
     )
+    status = models.CharField(max_length=20, choices=STATUS_CHOICES, default=STATUS_SIMULADO, db_index=True)
     sucesso = models.BooleanField(default=False)
     erro = models.TextField(blank=True)
     criado_em = models.DateTimeField(auto_now_add=True)
@@ -39,6 +53,5 @@ class RegistroPublicacao(models.Model):
         ordering = ["-criado_em"]
 
     def __str__(self):
-        status = "ok" if self.sucesso else "falhou"
         simulado = " (simulação)" if self.modo_simulacao else ""
-        return f"{self.data} - {self.get_tipo_display()}/{self.get_conteudo_tipo_display()} - {status}{simulado}"
+        return f"{self.data} - {self.get_tipo_display()}/{self.get_conteudo_tipo_display()} - {self.get_status_display()}{simulado}"
