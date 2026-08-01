@@ -36,21 +36,28 @@
         .cabecalho h1 { font-size: 30px; margin: 0 0 8px; letter-spacing: -0.01em; }
         .cabecalho p { color: var(--muted); margin: 0; font-size: 15px; }
 
-        .filtro-secao { display: flex; align-items: center; justify-content: center; gap: 8px; margin: 24px 0; flex-wrap: wrap; }
-        .filtro-secao select {
-            padding: 8px 12px; border: 1px solid var(--line); border-radius: 6px;
-            font-family: inherit; font-size: 14px; background: var(--paper); color: var(--ink); max-width: 280px;
+        .filtro-secao {
+            display: flex; flex-wrap: wrap; align-items: flex-end; gap: 16px 20px;
+            background: var(--paper); border: 1px solid var(--line); border-radius: 12px;
+            padding: 20px 24px; margin: 24px 0 32px;
         }
-        .filtro-secao input[type="search"] {
-            padding: 8px 12px; border: 1px solid var(--line); border-radius: 6px;
-            font-family: inherit; font-size: 14px; background: var(--paper); color: var(--ink);
-            width: 220px; max-width: 100%;
+        .campo-filtro { display: flex; flex-direction: column; gap: 6px; flex: 1 1 170px; }
+        .campo-filtro.campo-busca { flex: 2 1 260px; }
+        .filtro-secao label { font-size: 12px; font-weight: 600; color: var(--muted); }
+        .filtro-secao select, .filtro-secao input[type="search"] {
+            height: 40px; padding: 0 12px; border: 1px solid var(--line); border-radius: 8px;
+            font-family: inherit; font-size: 14px; background: var(--paper-2); color: var(--ink); width: 100%;
         }
         .filtro-secao button {
-            padding: 8px 18px; border: 1px solid var(--line); border-radius: 6px; background: var(--paper);
-            color: var(--ink); font-family: inherit; font-size: 14px; cursor: pointer;
+            height: 40px; padding: 0 24px; border: none; border-radius: 8px; background: var(--brand);
+            color: var(--paper); font-family: inherit; font-size: 14px; font-weight: 600; cursor: pointer;
+            flex: 0 0 auto;
         }
-        .filtro-secao button:hover { background: var(--paper-2); }
+        .filtro-secao button:hover { background: var(--brand-strong); }
+        @media (max-width: 640px) {
+            .filtro-secao { padding: 16px; }
+            .filtro-secao button { flex: 1 1 100%; }
+        }
 
         .grade-ofertas {
             display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 20px;
@@ -79,6 +86,10 @@
         .paginacao a { font-weight: 600; }
         .paginacao span.desabilitado { color: var(--muted); }
         .paginacao .pagina-atual { color: var(--muted); }
+
+        @media (max-width: 640px) {
+            .nav .envolve { flex-wrap: wrap; height: auto; padding: 10px 0; row-gap: 10px; }
+        }
     </style>
 </head>
 <body>
@@ -118,20 +129,27 @@
         </div>
 
         <form method="get" action="{% url 'ofertas_lista' %}" class="filtro-secao">
-            <input type="search" name="q" placeholder="Buscar por palavra-chave" value="{{ busca }}">
-            <label for="categoria" style="color: var(--muted);">Categoria:</label>
-            <select name="categoria" id="categoria">
-                <option value="">Todas</option>
-                {% for id, nome in categorias %}
-                    <option value="{{ id }}" {% if categoria_selecionada == id|stringformat:"s" %}selected{% endif %}>{{ nome }}</option>
-                {% endfor %}
-            </select>
-            <label for="ordenar" style="color: var(--muted);">Ordenar por:</label>
-            <select name="ordenar" id="ordenar">
-                {% for valor, rotulo in ordenacoes %}
-                    <option value="{{ valor }}" {% if ordenacao_selecionada == valor %}selected{% endif %}>{{ rotulo }}</option>
-                {% endfor %}
-            </select>
+            <div class="campo-filtro campo-busca">
+                <label for="q">Buscar</label>
+                <input type="search" name="q" id="q" placeholder="Palavra-chave" value="{{ busca }}">
+            </div>
+            <div class="campo-filtro">
+                <label for="categoria">Categoria</label>
+                <select name="categoria" id="categoria">
+                    <option value="">Todas</option>
+                    {% for id, nome in categorias %}
+                        <option value="{{ id }}" {% if categoria_selecionada == id|stringformat:"s" %}selected{% endif %}>{{ nome }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="campo-filtro">
+                <label for="ordenar">Ordenar por</label>
+                <select name="ordenar" id="ordenar">
+                    {% for valor, rotulo in ordenacoes %}
+                        <option value="{{ valor }}" {% if ordenacao_selecionada == valor %}selected{% endif %}>{{ rotulo }}</option>
+                    {% endfor %}
+                </select>
+            </div>
             <button type="submit">Filtrar</button>
         </form>
 
