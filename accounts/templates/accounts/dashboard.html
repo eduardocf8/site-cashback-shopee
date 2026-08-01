@@ -18,12 +18,12 @@
         .envolve { max-width: 1080px; margin: 0 auto; padding: 0 24px; }
 
         .nav { position: sticky; top: 0; z-index: 10; background: var(--paper); border-bottom: 1px solid var(--line); }
-        .nav .envolve { display: flex; align-items: center; justify-content: space-between; height: 64px; }
-        .nav .marca { font-size: 33px; color: var(--brand); text-decoration: none; flex-shrink: 0; white-space: nowrap; }
-        .nav-links { display: flex; align-items: center; gap: 32px; font-size: 14px; }
-        .nav-links a { color: var(--ink); }
-        .nav-links form { margin: 0; }
-        .nav-links button.linkbtn { background: none; border: none; padding: 0; font: inherit; color: var(--ink); cursor: pointer; }
+        .nav .envolve { display: flex; align-items: center; gap: 32px; height: 64px; }
+        .nav .marca { font-size: 33px; color: var(--brand); text-decoration: none; flex-shrink: 0; white-space: nowrap; margin-right: auto; }
+        .nav-secundario { display: flex; align-items: center; gap: 32px; font-size: 14px; }
+        .nav-secundario a { color: var(--ink); }
+        .nav-secundario form { margin: 0; }
+        .nav-secundario button.linkbtn { background: none; border: none; padding: 0; font: inherit; color: var(--ink); cursor: pointer; }
         .botao-cta {
             display: inline-block; background: var(--brand); color: var(--paper) !important;
             padding: 10px 20px; border-radius: 24px; font-weight: 600; font-size: 14px; white-space: nowrap;
@@ -124,7 +124,10 @@
         .paginacao .pagina-atual { color: var(--muted); }
 
         @media (max-width: 640px) {
-            .nav .envolve { flex-wrap: wrap; height: auto; padding: 10px 0; row-gap: 10px; }
+            .nav .envolve { flex-wrap: wrap; height: auto; padding: 10px 24px; row-gap: 10px; }
+            .nav .marca { order: 1; }
+            .nav .botao-cta { order: 2; }
+            .nav .nav-secundario { order: 3; flex-basis: 100%; }
         }
     </style>
 </head>
@@ -132,15 +135,15 @@
     <nav class="nav">
         <div class="envolve">
             <a class="marca" href="{% url 'home' %}">cash-b</a>
-            <div class="nav-links">
+            <div class="nav-secundario">
                 <a href="{% url 'home' %}">Início</a>
                 <a href="{% url 'ofertas_lista' %}">Ofertas</a>
                 <form method="post" action="{% url 'logout' %}">
                     {% csrf_token %}
                     <button type="submit" class="linkbtn">Sair</button>
                 </form>
-                <a class="botao-cta" href="{% url 'ir_para_shopee' %}">Ir para a Shopee &rarr;</a>
             </div>
+            <a class="botao-cta" href="{% url 'ir_para_shopee' %}">Ir pra Shopee &rarr;</a>
         </div>
     </nav>
 
