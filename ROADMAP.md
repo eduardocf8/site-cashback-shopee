@@ -68,15 +68,20 @@ Dá pra aproveitar a infraestrutura de e-mail que já está funcionando
       sinais do Django). (`pedidos/notificacoes.py`, `saques/notificacoes.py`,
       `pedidos/services.py`, `saques/services.py`)
 
-## Fase 11 — Polimento técnico
+## Fase 11 — Polimento técnico ✅
 
-- [ ] **Paginação/filtro no histórico** — hoje o dashboard mostra só os
-      últimos 30 pedidos, 20 saques e 30 links gerados, sem filtro nem
-      paginação.
-- [ ] **Páginas de erro 404/500 customizadas** — usando a identidade visual
-      do cash-b em vez da página padrão do Django.
-- [ ] **SEO básico** — meta tags (já tem uma description na home), sitemap.xml,
-      robots.txt.
+- [x] **Paginação/filtro no histórico** — pedidos, saques e links gerados
+      paginados (10 por página) e filtráveis por status/tipo, com query
+      params independentes por seção. (`accounts/views.py`,
+      `accounts/templates/accounts/dashboard.html`)
+- [x] **Páginas de erro 404/500 customizadas** — identidade visual do cash-b,
+      autocontidas (sem depender do manifesto de arquivos estáticos, pra
+      continuar funcionando mesmo se essa for a causa do erro).
+      (`templates/404.html`, `templates/500.html`)
+- [x] **SEO básico** — meta description por página, sitemap.xml (via
+      `django.contrib.sitemaps`) e robots.txt bloqueando áreas autenticadas.
+      (`accounts/templates/accounts/base.html`, `paginas/sitemaps.py`,
+      `cashback_shopee/urls.py`, `cashback_shopee/views.py`)
 
 ## Fase 12 — Crescimento (não essencial agora)
 
