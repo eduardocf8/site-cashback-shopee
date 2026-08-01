@@ -76,6 +76,6 @@ def sincronizar_ofertas(limite_por_pagina: int = 50, max_paginas: int = 40) -> d
 
     with transaction.atomic():
         Oferta.objects.all().delete()
-        Oferta.objects.bulk_create(por_item_id.values())
+        Oferta.objects.bulk_create(por_item_id.values(), batch_size=200)
 
     return {"total": len(por_item_id), "paginas_percorridas": pagina}

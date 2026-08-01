@@ -196,10 +196,13 @@ def sincronizar(purchase_time_start: int, purchase_time_end: int) -> dict:
             if novo.status == Pedido.STATUS_VALIDADO:
                 recem_validados.append(novo)
 
+    # batch_size evita um único UPDATE/INSERT gigante quando a janela de 60 dias
+    # acumula muitos pedidos - sem isso, o Postgres pode demorar a ponto de
+    # estourar o timeout do servidor (visto em produção com bulk_update sem lote).
     if novos_objs:
-        Pedido.objects.bulk_create(novos_objs)
+        Pedido.objects.bulk_create(novos_objs, batch_size=200)
     if atualizados_objs:
-        Pedido.objects.bulk_update(atualizados_objs, CAMPOS_ATUALIZAVEIS)
+        Pedido.objects.bulk_update(atualizados_objs, CAMPOS_ATUALIZAVEIS, batch_size=200)
 
     for pedido in recem_validados:
         if pedido.usuario_id:
