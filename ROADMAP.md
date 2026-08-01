@@ -42,19 +42,31 @@ pagamentos reais (hoje ainda em sandbox da Asaas).
       honeypot simples contra spam. (`paginas/templates/paginas/contato.html`,
       `paginas/forms.py`)
 
-## Fase 10 — Conta do usuário
+## Fase 10 — Conta do usuário ✅
 
 Dá pra aproveitar a infraestrutura de e-mail que já está funcionando
 (recuperação de senha) pra essas features.
 
-- [ ] **Confirmação de e-mail no cadastro** — hoje qualquer e-mail é aceito
-      sem verificar que o usuário tem acesso a ele.
-- [ ] **Trocar senha estando logado** — hoje só existe o fluxo de "esqueci
-      minha senha"; falta uma opção dentro da própria conta.
-- [ ] **Editar dados cadastrais** — nome, e-mail, CPF.
-- [ ] **E-mails automáticos de status** — avisar o usuário quando um pedido é
-      validado/liberado, ou quando um saque é pago. Hoje ele só descobre
-      entrando no dashboard.
+- [x] **Confirmação de e-mail no cadastro** — token assinado (expira em 3
+      dias) enviado no cadastro e reenviável pelo painel; saque bloqueado até
+      confirmar. (`accounts/tokens.py`, `accounts/views.py`,
+      `accounts/migrations/0003_user_email_verificado.py`,
+      `accounts/migrations/0004_verificar_usuarios_existentes.py`,
+      `saques/views.py`)
+- [x] **Trocar senha estando logado** — reaproveita as views padrão do
+      Django (`PasswordChangeView`/`PasswordChangeDoneView`) com templates
+      próprios. (`accounts/urls.py`,
+      `accounts/templates/accounts/senha_trocar.html`,
+      `accounts/templates/accounts/senha_trocar_concluido.html`)
+- [x] **Editar dados cadastrais** — nome, e-mail, CPF; trocar o e-mail marca
+      a conta como não verificada de novo e reenvia a confirmação.
+      (`accounts/forms.py`, `accounts/views.py`,
+      `accounts/templates/accounts/editar_perfil.html`)
+- [x] **E-mails automáticos de status** — pedido validado, cashback liberado
+      e saque pago, disparados nas transições de status (inclusive nos
+      caminhos em lote de `sincronizar()`/`liberar_saldo()`, que não geram
+      sinais do Django). (`pedidos/notificacoes.py`, `saques/notificacoes.py`,
+      `pedidos/services.py`, `saques/services.py`)
 
 ## Fase 11 — Polimento técnico
 
