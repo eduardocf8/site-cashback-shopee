@@ -1,0 +1,16 @@
+{% extends "accounts/base.html" %}
+{% block titulo %}Trocar senha{% endblock %}
+{% block conteudo %}
+    <div class="nav-topo">
+        <a href="{% url 'dashboard' %}">&larr; Voltar pro painel</a>
+    </div>
+    <h1>Trocar senha</h1>
+    <form method="post">
+        {% csrf_token %}
+        {% for field in form %}
+            {% include "accounts/_campo_formulario.html" with field=field %}
+        {% endfor %}
+        {% if form.non_field_errors %}<div class="erros">{{ form.non_field_errors|striptags }}</div>{% endif %}
+        <button type="submit">Salvar nova senha</button>
+    </form>
+{% endblock %}

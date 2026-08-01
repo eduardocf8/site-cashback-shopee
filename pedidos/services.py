@@ -9,6 +9,7 @@ from links.models import Click
 from links.shopee_client import buscar_conversoes
 
 from .models import Pedido
+from .notificacoes import notificar_pedido_liberado, notificar_pedido_validado
 
 PADRAO_USUARIO = re.compile(r"^user(\d+)$")
 PADRAO_UUID_HEX = re.compile(r"^[0-9a-fA-F]{32}$")
@@ -172,9 +173,11 @@ def sincronizar(purchase_time_start: int, purchase_time_end: int) -> dict:
 
     novos_objs = []
     atualizados_objs = []
+    recem_validados = []
     for order_id, defaults in linhas_por_order_id.items():
         existente = existentes.get(order_id)
         if existente:
+            status_antes = existente.status
             # Uma vez liberado, o saldo já pode ter sido considerado disponível pro
             # usuário - uma nova sincronização não pode "desliberar" o pedido só
             # porque a Shopee ainda reporta o status antigo (COMPLETED).
@@ -184,14 +187,23 @@ def sincronizar(purchase_time_start: int, purchase_time_end: int) -> dict:
                 setattr(existente, campo, valor)
             atualizados_objs.append(existente)
             atualizados += 1
+            if status_antes != Pedido.STATUS_VALIDADO and existente.status == Pedido.STATUS_VALIDADO:
+                recem_validados.append(existente)
         else:
-            novos_objs.append(Pedido(order_id=order_id, **defaults))
+            novo = Pedido(order_id=order_id, **defaults)
+            novos_objs.append(novo)
             novos += 1
+            if novo.status == Pedido.STATUS_VALIDADO:
+                recem_validados.append(novo)
 
     if novos_objs:
         Pedido.objects.bulk_create(novos_objs)
     if atualizados_objs:
         Pedido.objects.bulk_update(atualizados_objs, CAMPOS_ATUALIZAVEIS)
+
+    for pedido in recem_validados:
+        if pedido.usuario_id:
+            notificar_pedido_validado(pedido)
 
     return {"novos": novos, "atualizados": atualizados, "nao_identificados": nao_identificados}
 
@@ -199,7 +211,18 @@ def sincronizar(purchase_time_start: int, purchase_time_end: int) -> dict:
 def liberar_saldo() -> int:
     """Libera (muda para STATUS_LIBERADO) os pedidos validados cuja data prevista já chegou."""
     hoje = timezone.localdate()
-    return Pedido.objects.filter(
-        status=Pedido.STATUS_VALIDADO,
-        data_prevista_liberacao__lte=hoje,
-    ).update(status=Pedido.STATUS_LIBERADO, data_liberacao=timezone.now())
+    pedidos = list(
+        Pedido.objects.filter(
+            status=Pedido.STATUS_VALIDADO,
+            data_prevista_liberacao__lte=hoje,
+        ).select_related("usuario")
+    )
+    for pedido in pedidos:
+        if pedido.usuario_id:
+            notificar_pedido_liberado(pedido)
+
+    if not pedidos:
+        return 0
+    return Pedido.objects.filter(pk__in=[p.pk for p in pedidos]).update(
+        status=Pedido.STATUS_LIBERADO, data_liberacao=timezone.now()
+    )

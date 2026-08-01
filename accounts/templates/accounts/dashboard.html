@@ -38,6 +38,10 @@
         .cabecalho { padding: 40px 0 8px; }
         .cabecalho h1 { font-size: 26px; margin: 0 0 4px; letter-spacing: -0.01em; }
         .cabecalho p { color: var(--muted); margin: 0; font-size: 15px; }
+        .aviso-verificacao {
+            margin: 16px 0 0; padding: 12px 16px; border-radius: 8px;
+            background: var(--info-bg); color: var(--info); font-size: 14px;
+        }
 
         section { padding: 24px 0; }
         h2.titulo-secao { font-size: 19px; margin: 0 0 16px; letter-spacing: -0.01em; }
@@ -120,8 +124,18 @@
     <div class="envolve">
         <div class="cabecalho">
             <h1>Olá, {{ user.username }}!</h1>
-            <p>Aqui está o resumo do seu cashback.</p>
+            <p>Aqui está o resumo do seu cashback.
+                <a href="{% url 'editar_perfil' %}">Editar dados</a> ·
+                <a href="{% url 'password_change' %}">Trocar senha</a>
+            </p>
         </div>
+
+        {% if not user.email_verificado %}
+            <div class="aviso-verificacao">
+                Seu e-mail ainda não foi confirmado.
+                <a href="{% url 'reenviar_verificacao' %}">Reenviar e-mail de confirmação</a>
+            </div>
+        {% endif %}
 
         <section>
             <h2 class="titulo-secao">Seu saldo</h2>

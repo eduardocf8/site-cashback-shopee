@@ -10,6 +10,7 @@ from pedidos.models import Pedido
 
 from .asaas_client import AsaasAPIError, AsaasConfigError, consultar_transferencia, criar_transferencia_pix
 from .models import Saque
+from .notificacoes import notificar_saque_pago
 
 STATUS_QUE_RESERVAM_SALDO = [Saque.STATUS_SOLICITADO, Saque.STATUS_PROCESSANDO, Saque.STATUS_PAGO]
 
@@ -79,12 +80,15 @@ def processar_saque(saque: Saque) -> Saque:
         saque.save(update_fields=["status", "resposta_asaas", "atualizado_em"])
         return saque
 
+    status_antes = saque.status
     saque.status = _mapear_status_transferencia(resposta.get("status"))
     saque.asaas_transfer_id = str(resposta.get("id", ""))
     saque.resposta_asaas = str(resposta)
     if saque.status == Saque.STATUS_PAGO:
         saque.pago_em = timezone.now()
     saque.save(update_fields=["status", "asaas_transfer_id", "resposta_asaas", "pago_em", "atualizado_em"])
+    if saque.status == Saque.STATUS_PAGO and status_antes != Saque.STATUS_PAGO:
+        notificar_saque_pago(saque)
     return saque
 
 
@@ -98,11 +102,14 @@ def atualizar_status_saque(saque: Saque) -> Saque:
     except (AsaasConfigError, AsaasAPIError, requests.RequestException):
         return saque
 
+    status_antes = saque.status
     saque.status = _mapear_status_transferencia(resposta.get("status"))
     saque.resposta_asaas = str(resposta)
     if saque.status == Saque.STATUS_PAGO and not saque.pago_em:
         saque.pago_em = timezone.now()
     saque.save(update_fields=["status", "resposta_asaas", "pago_em", "atualizado_em"])
+    if saque.status == Saque.STATUS_PAGO and status_antes != Saque.STATUS_PAGO:
+        notificar_saque_pago(saque)
     return saque
 
 
