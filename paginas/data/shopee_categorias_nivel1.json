@@ -1,0 +1,110 @@
+[
+  {
+    "id": 100009,
+    "nome": "Acessórios de Moda"
+  },
+  {
+    "id": 100631,
+    "nome": "Animais Domésticos"
+  },
+  {
+    "id": 100640,
+    "nome": "Automóveis"
+  },
+  {
+    "id": 100630,
+    "nome": "Beleza"
+  },
+  {
+    "id": 100016,
+    "nome": "Bolsas Femininas"
+  },
+  {
+    "id": 100533,
+    "nome": "Bolsas Masculinas"
+  },
+  {
+    "id": 100636,
+    "nome": "Casa e Decoração"
+  },
+  {
+    "id": 100013,
+    "nome": "Celulares e Dispositivos"
+  },
+  {
+    "id": 100644,
+    "nome": "Computadores e Acessórios"
+  },
+  {
+    "id": 100635,
+    "nome": "Câmeras e Drones"
+  },
+  {
+    "id": 100010,
+    "nome": "Eletrodomésticos"
+  },
+  {
+    "id": 100637,
+    "nome": "Esportes e Atividades ao Ar Livre"
+  },
+  {
+    "id": 100639,
+    "nome": "Hobbies e Coleções"
+  },
+  {
+    "id": 100634,
+    "nome": "Jogos e Consoles"
+  },
+  {
+    "id": 100643,
+    "nome": "Livros e Revistas"
+  },
+  {
+    "id": 100633,
+    "nome": "Moda Infantil"
+  },
+  {
+    "id": 100641,
+    "nome": "Motocicletas"
+  },
+  {
+    "id": 100632,
+    "nome": "Mãe e Bebê"
+  },
+  {
+    "id": 100638,
+    "nome": "Papelaria"
+  },
+  {
+    "id": 100534,
+    "nome": "Relógios"
+  },
+  {
+    "id": 100017,
+    "nome": "Roupas Femininas"
+  },
+  {
+    "id": 100011,
+    "nome": "Roupas Masculinas"
+  },
+  {
+    "id": 100532,
+    "nome": "Sapatos Femininos"
+  },
+  {
+    "id": 100012,
+    "nome": "Sapatos Masculinos"
+  },
+  {
+    "id": 100001,
+    "nome": "Saúde"
+  },
+  {
+    "id": 100015,
+    "nome": "Viagens e Bagagens"
+  },
+  {
+    "id": 100535,
+    "nome": "Áudio"
+  }
+]
