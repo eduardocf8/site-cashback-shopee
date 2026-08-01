@@ -76,7 +76,7 @@ def publicar_story_ofertas(data, request) -> RegistroPublicacao | None:
 def publicar_story_dica(data, request) -> RegistroPublicacao:
     texto = conteudo.escolher_dica(data)
     imagem = gerar_imagem_texto_simples(
-        "cash-b explica", "Dica de economia", texto,
+        "cash-b explica", "Dica cash-b", texto,
         bg=CORES["highlight"], cor_texto=CORES["ink"], cor_eyebrow=CORES["ink"], tamanho=(1080, 1920),
     )
     return _publicar_ou_simular(

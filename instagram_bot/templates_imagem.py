@@ -8,7 +8,7 @@ import io
 from pathlib import Path
 
 import requests
-from PIL import Image, ImageDraw, ImageFont
+from PIL import Image, ImageColor, ImageDraw, ImageFont
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
 FONT_DIR = REPO_ROOT / "static" / "fonts"
@@ -80,6 +80,28 @@ def _baixar_imagem(url: str, timeout: int = 8):
         return None
 
 
+def _misturar_cor(cor_a: str, cor_b: str, t: float) -> tuple[int, int, int]:
+    """Interpola entre duas cores hex (t=0 -> cor_a, t=1 -> cor_b). Usado pra criar um
+    tom bem sutil da própria paleta, sem depender de canal alpha."""
+    a = ImageColor.getrgb(cor_a)
+    b = ImageColor.getrgb(cor_b)
+    return tuple(round(a[i] + (b[i] - a[i]) * t) for i in range(3))
+
+
+def _textura_de_fundo(draw, tamanho, bg: str, cor_texto: str):
+    """Dois círculos enormes e bem sutis, um em cada canto oposto, só pra dar textura
+    de marca e preencher o fundo - em vez de deixar uma área vazia lisa acima/abaixo
+    do texto."""
+    tom = _misturar_cor(bg, cor_texto, 0.06)
+    raio = int(tamanho[0] * 0.85)
+    cx, cy = tamanho[0] - int(tamanho[0] * 0.15), int(tamanho[1] * 0.08)
+    draw.ellipse([(cx - raio, cy - raio), (cx + raio, cy + raio)], fill=tom)
+
+    raio2 = int(tamanho[0] * 0.55)
+    cx2, cy2 = int(tamanho[0] * 0.05), tamanho[1] - int(tamanho[1] * 0.06)
+    draw.ellipse([(cx2 - raio2, cy2 - raio2), (cx2 + raio2, cy2 + raio2)], fill=tom)
+
+
 def gerar_imagem_texto_simples(
     eyebrow: str,
     headline: str,
@@ -89,34 +111,58 @@ def gerar_imagem_texto_simples(
     cor_eyebrow: str | None = None,
     tamanho=(1080, 1080),
 ) -> Image.Image:
-    """Layout "statement": eyebrow + título + corpo, centralizado verticalmente. Usado pra
-    dicas, lembretes e qualquer conteúdo de texto simples."""
+    """Layout "statement": eyebrow em pílula + título + corpo. As fontes e espaçamentos
+    escalam com a altura do canvas - story (1080x1920) tem quase o dobro de altura do
+    feed (1080x1080), e usar os mesmos tamanhos fixos deixava o texto perdido numa área
+    vazia enorme em vez de preencher o espaço."""
     img = Image.new("RGB", tamanho, bg)
     draw = ImageDraw.Draw(img)
     margem = 88
     largura_max = tamanho[0] - margem * 2
+    escala = tamanho[1] / 1080
+    cor_eyebrow = cor_eyebrow or cor_texto
 
-    fonte_eyebrow = _fonte(24, negrito=True)
-    fonte_headline = _fonte(58, negrito=True)
-    fonte_body = _fonte(32)
+    _textura_de_fundo(draw, tamanho, bg, cor_texto)
 
-    linhas_headline = _quebrar_texto(draw, headline, fonte_headline, largura_max)
+    fonte_eyebrow = _fonte(int(26 * escala), negrito=True)
+    fonte_headline = _fonte(int(64 * escala), negrito=True)
+    fonte_body = _fonte(int(38 * escala))
+
+    linhas_headline = _quebrar_texto(draw, headline, fonte_headline, largura_max) if headline else []
     linhas_body = _quebrar_texto(draw, body, fonte_body, largura_max) if body else []
 
-    altura_eyebrow = int(fonte_eyebrow.size * 1.6) if eyebrow else 0
-    altura_headline = len(linhas_headline) * int(fonte_headline.size * 1.18)
-    altura_body = (int(fonte_body.size * 0.5) + len(linhas_body) * int(fonte_body.size * 1.4)) if linhas_body else 0
-    altura_total = altura_eyebrow + altura_headline + altura_body
+    pad_pilula = int(16 * escala)
+    altura_pilula = fonte_eyebrow.size + pad_pilula * 2
+    altura_headline = len(linhas_headline) * int(fonte_headline.size * 1.2)
+    altura_body = (int(fonte_body.size * 0.7) + len(linhas_body) * int(fonte_body.size * 1.45)) if linhas_body else 0
+    altura_conteudo = altura_headline + altura_body
 
-    y = (tamanho[1] - altura_total) // 2
+    # A pílula fica ancorada perto do topo e a linha/selo perto do rodapé - o
+    # título+corpo ficam centralizados no espaço que sobra entre os dois, em vez de
+    # tudo virar um único bloco flutuando no meio de uma tela vazia.
+    linha_y = tamanho[1] - int(margem * 1.6)
+    y_pilula = int(tamanho[1] * 0.13)
+    y = y_pilula
     if eyebrow:
-        draw.text((margem, y), eyebrow.upper(), font=fonte_eyebrow, fill=cor_eyebrow or cor_texto)
-        y += altura_eyebrow
-    y = _desenhar_bloco_texto(draw, linhas_headline, fonte_headline, margem, y, cor_texto, espacamento=1.18)
-    if linhas_body:
-        y += int(fonte_body.size * 0.5)
-        _desenhar_bloco_texto(draw, linhas_body, fonte_body, margem, y, cor_texto, espacamento=1.4)
+        texto_eyebrow = eyebrow.upper()
+        largura_pilula = draw.textlength(texto_eyebrow, font=fonte_eyebrow) + pad_pilula * 2
+        draw.rounded_rectangle(
+            [(margem, y), (margem + largura_pilula, y + altura_pilula)],
+            radius=altura_pilula // 2, outline=cor_eyebrow, width=max(2, int(2 * escala)),
+        )
+        draw.text((margem + pad_pilula, y + pad_pilula), texto_eyebrow, font=fonte_eyebrow, fill=cor_eyebrow)
+        y += altura_pilula
 
+    y_conteudo_inicio = y + int(56 * escala)
+    espaco_disponivel = (linha_y - int(48 * escala)) - y_conteudo_inicio
+    y = y_conteudo_inicio + max(0, (espaco_disponivel - altura_conteudo) // 2)
+
+    y = _desenhar_bloco_texto(draw, linhas_headline, fonte_headline, margem, y, cor_texto, espacamento=1.2)
+    if linhas_body:
+        y += int(fonte_body.size * 0.7)
+        y = _desenhar_bloco_texto(draw, linhas_body, fonte_body, margem, y, cor_texto, espacamento=1.45)
+
+    draw.line([(margem, linha_y), (tamanho[0] - margem, linha_y)], fill=cor_eyebrow, width=max(2, int(2 * escala)))
     _badge_marca(draw, tamanho, cor_texto, margem)
     return img
 
