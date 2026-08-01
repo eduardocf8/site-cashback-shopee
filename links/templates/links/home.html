@@ -66,7 +66,17 @@
         .hero-text p.subtitulo { font-size: 18px; color: var(--muted); max-width: 480px; margin: 0 0 32px; }
         .hero .botao-cta { font-size: 16px; padding: 14px 32px; }
         .hero-cta-row { display: flex; gap: 12px; flex-wrap: wrap; }
-        .hero-cta-row .botao-cta { flex: 1 1 200px; text-align: center; }
+        .hero-cta-row .botao-cta {
+            flex: 1 1 200px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            gap: 3px;
+            padding: 18px 24px;
+            text-align: center;
+        }
+        .hero-cta-row .botao-subtexto { display: block; font-size: 11px; font-weight: 500; opacity: 0.82; }
         .hero .selo {
             display: block; margin-top: 20px; font-size: 13px; color: var(--muted); text-align: center;
         }
@@ -214,11 +224,11 @@
                 </p>
                 <div class="hero-cta-row">
                     {% if user.is_authenticated %}
-                        <a class="botao-cta" href="{% url 'ir_para_shopee' %}">Ir para a Shopee agora</a>
+                        <a class="botao-cta" href="{% url 'ir_para_shopee' %}">Ir para a Shopee agora<span class="botao-subtexto">Venda indireta</span></a>
                     {% else %}
-                        <a class="botao-cta" href="{% url 'login' %}?next={% url 'ir_para_shopee' %}">Ir para a Shopee agora</a>
+                        <a class="botao-cta" href="{% url 'login' %}?next={% url 'ir_para_shopee' %}">Ir para a Shopee agora<span class="botao-subtexto">Venda indireta</span></a>
                     {% endif %}
-                    <a class="botao-cta" href="#converter-link">Converter link de produto</a>
+                    <a class="botao-cta" href="#converter-link">Converter link de produto<span class="botao-subtexto">Venda direta (+ cashback)</span></a>
                 </div>
                 <div class="selo">Sem custo. Sem mensalidade. Você só ganha.</div>
             </div>
