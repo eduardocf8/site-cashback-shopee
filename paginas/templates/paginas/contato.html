@@ -1,0 +1,27 @@
+{% extends "accounts/base.html" %}
+{% block titulo %}Fale conosco{% endblock %}
+{% block largura_container %}560px{% endblock %}
+{% block conteudo %}
+    <div class="nav-topo">
+        <a href="{% url 'home' %}">&larr; Voltar pro início</a>
+    </div>
+    <h1>Fale conosco</h1>
+    <p class="legenda">
+        Dúvida, sugestão ou problema com sua conta? Manda uma mensagem que a gente
+        responde no seu e-mail. Se sua dúvida for comum, talvez já esteja nas
+        <a href="{% url 'faq' %}">perguntas frequentes</a>.
+    </p>
+    <form method="post">
+        {% csrf_token %}
+        {% for field in form %}
+            {% if field.is_hidden %}
+                {{ field }}
+            {% else %}
+                <label for="{{ field.id_for_label }}">{{ field.label }}</label>
+                {{ field }}
+                {% if field.errors %}<div class="erros">{{ field.errors|striptags }}</div>{% endif %}
+            {% endif %}
+        {% endfor %}
+        <button type="submit">Enviar mensagem</button>
+    </form>
+{% endblock %}

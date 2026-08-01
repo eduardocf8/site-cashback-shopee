@@ -1,0 +1,108 @@
+{% extends "accounts/base.html" %}
+{% block titulo %}Perguntas frequentes{% endblock %}
+{% block largura_container %}700px{% endblock %}
+{% block conteudo %}
+    <div class="nav-topo">
+        <a href="{% url 'home' %}">&larr; Voltar pro início</a>
+    </div>
+    <h1>Perguntas frequentes</h1>
+    <p class="legenda" style="margin-bottom: 24px;">
+        Não achou sua dúvida aqui? Manda pra gente pelo
+        <a href="{% url 'contato' %}">Fale conosco</a>.
+    </p>
+
+    <details class="faq-item">
+        <summary>O que é o cash-b?</summary>
+        <p class="faq-resposta">
+            É um serviço de cashback independente pra quem compra na Shopee. Você
+            gera um link de afiliado pelo cash-b, compra normalmente, e recebe de
+            volta uma parte da comissão que a Shopee paga por essa venda.
+        </p>
+    </details>
+
+    <details class="faq-item">
+        <summary>Custa alguma coisa pra usar?</summary>
+        <p class="faq-resposta">
+            Não. Você paga o mesmo preço de sempre na Shopee — a diferença é que uma
+            parte da comissão de afiliado volta pro seu bolso. Não cobramos
+            mensalidade nem taxa nenhuma.
+        </p>
+    </details>
+
+    <details class="faq-item">
+        <summary>Qual a diferença entre venda direta e venda indireta?</summary>
+        <p class="faq-resposta">
+            Venda direta é quando você converte o link de um produto específico e
+            compra exatamente aquele produto — dá acesso a bônus de campanhas de
+            comissão extra. Venda indireta é quando você entra pelo botão "Ir para a
+            Shopee" e compra o que quiser, sem link específico. As duas geram
+            cashback, mas só a venda direta tem acesso aos bônus. Veja mais detalhes
+            nas <a href="{% url 'regras_cashback' %}">regras do cashback</a>.
+        </p>
+    </details>
+
+    <details class="faq-item">
+        <summary>O que significam os status Pendente, Validado, Liberado e Cancelado?</summary>
+        <p class="faq-resposta">
+            <strong>Pendente</strong>: a compra foi feita, aguardando confirmação da
+            Shopee. <strong>Validado</strong>: a Shopee confirmou o pedido, e o saldo
+            aguarda o prazo de liberação. <strong>Liberado</strong>: o saldo já pode
+            ser sacado via PIX. <strong>Cancelado</strong>: o pedido foi cancelado ou
+            devolvido, e não gera cashback.
+        </p>
+    </details>
+
+    <details class="faq-item">
+        <summary>Quanto tempo demora pra meu cashback ser liberado?</summary>
+        <p class="faq-resposta">
+            O saldo validado é liberado no primeiro dia do mês seguinte a dois meses
+            após a validação do pedido. Por exemplo: um pedido validado em janeiro
+            libera o saldo em 1º de abril.
+        </p>
+    </details>
+
+    <details class="faq-item">
+        <summary>Por que meu pedido apareceu como Cancelado?</summary>
+        <p class="faq-resposta">
+            Isso acontece quando a compra é cancelada ou devolvida na Shopee, o
+            pagamento não é confirmado, ou você clicou em outro link de afiliado
+            (de outro site ou app) depois de clicar num link do cash-b e antes de
+            terminar a compra.
+        </p>
+    </details>
+
+    <details class="faq-item">
+        <summary>Minha compra na Shopee não apareceu no meu painel. O que faço?</summary>
+        <p class="faq-resposta">
+            Pode levar um tempo até a Shopee confirmar o pedido e ele aparecer como
+            "Pendente" no seu painel. Se já se passaram alguns dias e a compra
+            continua sem aparecer, entra em contato pelo
+            <a href="{% url 'contato' %}">Fale conosco</a> com o link que você usou e
+            a data da compra.
+        </p>
+    </details>
+
+    <details class="faq-item">
+        <summary>Qual o valor mínimo pra sacar?</summary>
+        <p class="faq-resposta">
+            O valor mínimo de saque aparece direto no seu painel, na seção "Saque via
+            PIX". Só é possível solicitar saque do saldo já liberado.
+        </p>
+    </details>
+
+    <details class="faq-item">
+        <summary>Esqueci minha senha. Como faço?</summary>
+        <p class="faq-resposta">
+            Na tela de login, clique em "Esqueceu sua senha?" e informe o e-mail
+            cadastrado na sua conta. A gente manda um link pra você criar uma senha
+            nova.
+        </p>
+    </details>
+
+    <details class="faq-item">
+        <summary>Posso ter mais de uma conta?</summary>
+        <p class="faq-resposta">
+            Não. Cada CPF só pode ter uma conta no cash-b.
+        </p>
+    </details>
+{% endblock %}

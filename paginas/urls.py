@@ -7,4 +7,6 @@ urlpatterns = [
     path("privacidade/", views.privacidade, name="privacidade"),
     path("cookies/", views.cookies, name="cookies"),
     path("regras-do-cashback/", views.regras_cashback, name="regras_cashback"),
+    path("perguntas-frequentes/", views.faq, name="faq"),
+    path("fale-conosco/", views.contato, name="contato"),
 ]

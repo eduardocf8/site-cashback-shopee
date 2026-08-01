@@ -38,6 +38,8 @@ class BrevoAPIEmailBackend(BaseEmailBackend):
             payload["cc"] = [{"email": destinatario} for destinatario in message.cc]
         if message.bcc:
             payload["bcc"] = [{"email": destinatario} for destinatario in message.bcc]
+        if getattr(message, "reply_to", None):
+            payload["replyTo"] = {"email": message.reply_to[0]}
 
         try:
             resposta = requests.post(
