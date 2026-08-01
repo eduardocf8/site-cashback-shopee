@@ -103,6 +103,9 @@ cores da marca antes de usar, pra não destoar do resto do sistema.
   de conta (login, cadastro, recuperação de senha, chave PIX, gerar link).
 - `links/templates/links/home.html` e `accounts/templates/accounts/dashboard.html`
   — páginas com HTML/CSS próprio (não usam `base.html`).
+- `marketing/instagram/` — histórico e decisões do Instagram do cash-b
+  (roadmap do bot de postagens, posts institucionais já aprovados, script
+  que gera as artes). Ver `marketing/instagram/README.md`.
 
 ## Infraestrutura ligada à marca
 
