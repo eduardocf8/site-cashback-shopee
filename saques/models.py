@@ -16,6 +16,13 @@ class Saque(models.Model):
         (STATUS_CANCELADO, "Cancelado"),
     ]
 
+    PROVEDOR_ASAAS = "asaas"
+    PROVEDOR_INTER = "inter"
+    PROVEDOR_CHOICES = [
+        (PROVEDOR_ASAAS, "Asaas"),
+        (PROVEDOR_INTER, "Inter"),
+    ]
+
     usuario = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name="saques")
     valor = models.DecimalField(max_digits=10, decimal_places=2)
     chave_pix = models.CharField(
@@ -23,9 +30,17 @@ class Saque(models.Model):
     )
     tipo_chave_pix = models.CharField(max_length=10)
     status = models.CharField(max_length=12, choices=STATUS_CHOICES, default=STATUS_SOLICITADO)
+    provedor = models.CharField(
+        max_length=10, choices=PROVEDOR_CHOICES, blank=True,
+        help_text="Qual provedor pagou (ou tentou pagar) este saque - definido na hora da aprovação manual.",
+    )
     asaas_transfer_id = models.CharField(max_length=64, blank=True)
     resposta_asaas = models.TextField(
         blank=True, help_text="Resposta (ou erro) bruta da Asaas, guardada para conferência."
+    )
+    inter_codigo_solicitacao = models.CharField(max_length=64, blank=True)
+    resposta_inter = models.TextField(
+        blank=True, help_text="Resposta (ou erro) bruta do Inter, guardada para conferência."
     )
     criado_em = models.DateTimeField(auto_now_add=True)
     atualizado_em = models.DateTimeField(auto_now=True)

@@ -99,6 +99,19 @@ SHOPEE_CASHBACK_PERCENTUAL = float(os.environ.get("SHOPEE_CASHBACK_PERCENTUAL", 
 ASAAS_API_KEY = os.environ.get("ASAAS_API_KEY", "")
 ASAAS_API_URL = os.environ.get("ASAAS_API_URL", "https://sandbox.asaas.com/api/v3")
 
+# Credenciais da API Banking do Inter, alternativa à Asaas pra pagar saques via PIX
+# (Internet Banking > Soluções para sua empresa > Nova integração). Autenticação é
+# OAuth2 + certificado mTLS (não só uma chave de API) - os arquivos de certificado
+# baixados no Internet Banking ficam fora do repositório (ver .gitignore) e o caminho
+# deles no disco é o que entra aqui.
+INTER_CLIENT_ID = os.environ.get("INTER_CLIENT_ID", "")
+INTER_CLIENT_SECRET = os.environ.get("INTER_CLIENT_SECRET", "")
+INTER_CERT_PATH = os.environ.get("INTER_CERT_PATH", "")
+INTER_KEY_PATH = os.environ.get("INTER_KEY_PATH", "")
+# Só precisa preencher se a aplicação estiver associada a mais de uma conta corrente.
+INTER_CONTA_CORRENTE = os.environ.get("INTER_CONTA_CORRENTE", "")
+INTER_API_URL = os.environ.get("INTER_API_URL", "https://cdpj-sandbox.partners.uatinter.co")
+
 # Valor mínimo (em reais) que o usuário precisa ter de saldo liberado para poder solicitar saque.
 SAQUE_VALOR_MINIMO = Decimal(os.environ.get("SAQUE_VALOR_MINIMO", "20.00"))
 

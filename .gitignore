@@ -5,3 +5,9 @@ db.sqlite3
 .env
 staticfiles/
 media/
+
+# Certificados mTLS da API do Inter (baixados no Internet Banking) - nunca no repositório
+*.pem
+*.crt
+*.key
+secrets/
