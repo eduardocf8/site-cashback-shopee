@@ -26,7 +26,7 @@ def aprovar_e_pagar_asaas(modeladmin, request, queryset):
     _aprovar_e_pagar(modeladmin, request, queryset, processar_saque_asaas, "Asaas")
 
 
-@admin.action(description="Aprovar e pagar via PIX (Inter)")
+@admin.action(description="Aprovar e pagar via PIX (Inter) - em pausa até virar Simples Nacional")
 def aprovar_e_pagar_inter(modeladmin, request, queryset):
     _aprovar_e_pagar(modeladmin, request, queryset, processar_saque_inter, "Inter")
 

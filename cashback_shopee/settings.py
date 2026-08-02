@@ -104,6 +104,12 @@ ASAAS_API_URL = os.environ.get("ASAAS_API_URL", "https://sandbox.asaas.com/api/v
 # OAuth2 + certificado mTLS (não só uma chave de API) - os arquivos de certificado
 # baixados no Internet Banking ficam fora do repositório (ver .gitignore) e o caminho
 # deles no disco é o que entra aqui.
+#
+# EM PAUSA por enquanto: conta MEI não tem acesso a "Soluções para sua empresa" nem
+# pode abrir conta PJ - só dá pra usar isso depois de migrar de MEI pra Simples
+# Nacional. Até lá, fica sem preencher e o botão "Aprovar e pagar via PIX (Inter)" no
+# Admin sempre falha com InterConfigError (de propósito - sem risco de tentar pagar
+# de verdade sem credencial). A Asaas continua sendo o único provedor em uso de fato.
 INTER_CLIENT_ID = os.environ.get("INTER_CLIENT_ID", "")
 INTER_CLIENT_SECRET = os.environ.get("INTER_CLIENT_SECRET", "")
 INTER_CERT_PATH = os.environ.get("INTER_CERT_PATH", "")
