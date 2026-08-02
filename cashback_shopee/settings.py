@@ -126,7 +126,7 @@ INSTAGRAM_BOT_ATIVO = os.environ.get("INSTAGRAM_BOT_ATIVO", "False") == "True"
 # e-mail de aprovação pro INSTAGRAM_APROVADOR_EMAIL em vez de publicar direto -
 # só publica depois de clicar em "aprovar" no e-mail. Se False, publica direto.
 INSTAGRAM_REQUER_APROVACAO = os.environ.get("INSTAGRAM_REQUER_APROVACAO", "True") == "True"
-INSTAGRAM_APROVADOR_EMAIL = os.environ.get("INSTAGRAM_APROVADOR_EMAIL", "")
+INSTAGRAM_APROVADOR_EMAIL = os.environ.get("INSTAGRAM_APROVADOR_EMAIL", "contato@cash-b.com")
 
 MIDDLEWARE = [
     "django.middleware.security.SecurityMiddleware",
