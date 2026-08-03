@@ -40,6 +40,10 @@ class RegistroPublicacao(models.Model):
     conteudo_tipo = models.CharField(max_length=20, choices=CONTEUDO_CHOICES)
     legenda = models.TextField(blank=True)
     imagem_url = models.URLField(blank=True)
+    imagem_urls = models.TextField(
+        blank=True,
+        help_text="Uma URL por linha - só usado quando é carrossel (várias imagens). Nesse caso imagem_url fica vazio.",
+    )
     instagram_media_id = models.CharField(max_length=64, blank=True)
     modo_simulacao = models.BooleanField(
         default=True, help_text="True quando o bot ainda estava desligado (INSTAGRAM_BOT_ATIVO=False)."

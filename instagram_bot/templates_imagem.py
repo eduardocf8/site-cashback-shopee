@@ -158,6 +158,68 @@ def gerar_imagem_texto_simples(
     return img
 
 
+def gerar_imagem_oferta_carrossel(oferta, indice: int, total: int, tamanho=(1080, 1080)) -> Image.Image:
+    """Um slide de carrossel com uma oferta só em destaque - foto grande, nome, preço. Usado no
+    resumo semanal de ofertas (um slide por oferta, em vez de todas espremidas numa imagem só)."""
+    bg = CORES["paper"]
+    img = Image.new("RGB", tamanho, bg)
+    draw = ImageDraw.Draw(img)
+    margem = 72
+
+    fonte_nome = _fonte(38, negrito=True)
+    fonte_preco = _fonte(46, mono=True, negrito=True)
+    fonte_desconto = _fonte(26, negrito=True)
+    fonte_indice = _fonte(24, mono=True)
+
+    reserva_texto = 250
+    reserva_rodape = 96
+    lado_imagem = min(tamanho[0] - margem * 2, tamanho[1] - margem - reserva_texto - reserva_rodape)
+    x_imagem = (tamanho[0] - lado_imagem) // 2
+    y_imagem = margem
+
+    imagem_produto = _baixar_imagem(oferta.imagem_url) if oferta.imagem_url else None
+    if imagem_produto:
+        imagem_produto = imagem_produto.resize((lado_imagem, lado_imagem))
+        mask = _rounded_mask((lado_imagem, lado_imagem), 24)
+        img.paste(imagem_produto, (x_imagem, y_imagem), mask)
+    else:
+        draw.rounded_rectangle(
+            [(x_imagem, y_imagem), (x_imagem + lado_imagem, y_imagem + lado_imagem)],
+            radius=24, fill=CORES["paper-2"],
+        )
+    draw.rounded_rectangle(
+        [(x_imagem, y_imagem), (x_imagem + lado_imagem, y_imagem + lado_imagem)],
+        radius=24, outline=CORES["line"], width=2,
+    )
+
+    if oferta.percentual_desconto:
+        selo = f"-{oferta.percentual_desconto}%"
+        largura_selo = draw.textlength(selo, font=fonte_desconto) + 28
+        draw.rounded_rectangle(
+            [(x_imagem + 20, y_imagem + 20), (x_imagem + 20 + largura_selo, y_imagem + 20 + 46)],
+            radius=14, fill=CORES["highlight"],
+        )
+        draw.text((x_imagem + 34, y_imagem + 30), selo, font=fonte_desconto, fill=CORES["ink"])
+
+    indicador = f"{indice}/{total}"
+    draw.text(
+        (tamanho[0] - margem - draw.textlength(indicador, font=fonte_indice), margem - 40),
+        indicador, font=fonte_indice, fill=CORES["muted"],
+    )
+
+    y_texto = y_imagem + lado_imagem + 44
+    linhas_nome = _quebrar_texto(draw, oferta.nome, fonte_nome, tamanho[0] - margem * 2)[:2]
+    for linha in linhas_nome:
+        draw.text((margem, y_texto), linha, font=fonte_nome, fill=CORES["ink"])
+        y_texto += int(fonte_nome.size * 1.3)
+
+    preco = f"R$ {oferta.preco_min:.2f}".replace(".", ",")
+    draw.text((margem, y_texto + 10), preco, font=fonte_preco, fill=CORES["brand"])
+
+    _badge_marca(draw, tamanho, CORES["brand"], margem)
+    return img
+
+
 def gerar_imagem_ofertas(ofertas, titulo="Ofertas de hoje", tamanho=(1080, 1920)) -> Image.Image:
     """Layout com cartões de produto empilhados - usado pro destaque diário de ofertas
     (formato story, 9:16) e pro resumo semanal (chamar com tamanho=(1080, 1080))."""

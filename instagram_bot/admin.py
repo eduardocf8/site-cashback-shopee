@@ -21,6 +21,7 @@ class RegistroPublicacaoAdmin(admin.ModelAdmin):
         "conteudo_tipo",
         "legenda",
         "imagem_url",
+        "imagem_urls",
         "instagram_media_id",
         "modo_simulacao",
         "status",

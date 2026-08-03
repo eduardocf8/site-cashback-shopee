@@ -60,6 +60,34 @@ def publicar_imagem(image_url: str, legenda: str = "", story: bool = False) -> s
     return publicar_container(creation_id)
 
 
+def criar_item_carrossel(image_url: str) -> str:
+    """Cria um item (uma imagem) de um carrossel - passo 1 de 3 pra publicar. Retorna o creation_id."""
+    _exigir_config()
+    dados = _chamar(
+        "POST", f"{settings.INSTAGRAM_BUSINESS_ACCOUNT_ID}/media",
+        image_url=image_url, is_carousel_item="true",
+    )
+    return dados["id"]
+
+
+def criar_container_carrossel(item_ids: list[str], legenda: str = "") -> str:
+    """Cria o container "pai" do carrossel, agrupando os itens já criados - passo 2 de 3. Retorna o creation_id."""
+    _exigir_config()
+    dados = _chamar(
+        "POST", f"{settings.INSTAGRAM_BUSINESS_ACCOUNT_ID}/media",
+        media_type="CAROUSEL", children=",".join(item_ids), caption=legenda,
+    )
+    return dados["id"]
+
+
+def publicar_carrossel(image_urls: list[str], legenda: str = "") -> str:
+    """Fluxo completo de carrossel: cria um container por imagem, agrupa num container "pai", e
+    publica. Retorna o media_id publicado. Máximo de 10 imagens (limite da própria API)."""
+    item_ids = [criar_item_carrossel(url) for url in image_urls]
+    creation_id = criar_container_carrossel(item_ids, legenda=legenda)
+    return publicar_container(creation_id)
+
+
 def renovar_token_de_longa_duracao(token_atual: str) -> dict:
     """Renova o access token de longa duração antes que ele expire (dura 60 dias).
 

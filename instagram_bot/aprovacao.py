@@ -25,7 +25,8 @@ def _validar_token(token: str) -> dict | None:
         return None
 
 
-def enviar_email_aprovacao(registro: RegistroPublicacao, imagem_bytes: bytes, request) -> None:
+def enviar_email_aprovacao(registro: RegistroPublicacao, imagens_bytes: list[bytes], request) -> None:
+    """imagens_bytes tem 1 item pra story/post normal, ou N itens (na ordem dos slides) pra carrossel."""
     destinatario = settings.INSTAGRAM_APROVADOR_EMAIL
     if not destinatario:
         logger.warning("[instagram_bot] INSTAGRAM_APROVADOR_EMAIL não configurado - não dá pra pedir aprovação")
@@ -33,10 +34,15 @@ def enviar_email_aprovacao(registro: RegistroPublicacao, imagem_bytes: bytes, re
 
     link_aprovar = request.build_absolute_uri(reverse("instagram_aprovar", args=[_gerar_token(registro.pk, "aprovar")]))
     link_rejeitar = request.build_absolute_uri(reverse("instagram_aprovar", args=[_gerar_token(registro.pk, "rejeitar")]))
+    linha_imagens = (
+        f"Carrossel com {len(imagens_bytes)} imagens (anexadas, na ordem dos slides)."
+        if len(imagens_bytes) > 1
+        else f"Ver imagem: {registro.imagem_url}"
+    )
     corpo = (
         f"{registro.get_tipo_display()} - {registro.get_conteudo_tipo_display()} ({registro.data})\n\n"
         f"Legenda:\n{registro.legenda}\n\n"
-        f"Ver imagem: {registro.imagem_url}\n\n"
+        f"{linha_imagens}\n\n"
         f"Aprovar e publicar: {link_aprovar}\n\n"
         f"Rejeitar (não publicar): {link_rejeitar}\n\n"
         "Esse link vale por 36h."
@@ -46,7 +52,8 @@ def enviar_email_aprovacao(registro: RegistroPublicacao, imagem_bytes: bytes, re
         body=corpo,
         to=[destinatario],
     )
-    email.attach(f"cash-b-{registro.pk}.png", imagem_bytes, "image/png")
+    for indice, imagem_bytes in enumerate(imagens_bytes, start=1):
+        email.attach(f"cash-b-{registro.pk}-{indice}.png", imagem_bytes, "image/png")
     email.send()
 
 
@@ -70,9 +77,14 @@ def processar_decisao(token: str) -> tuple[RegistroPublicacao | None, str]:
         registro.save(update_fields=["status"])
         return registro, "Rejeitado - essa arte não vai ser publicada no Instagram."
 
-    story = registro.tipo == RegistroPublicacao.TIPO_STORY
     try:
-        media_id = instagram_client.publicar_imagem(registro.imagem_url, legenda=registro.legenda, story=story)
+        if registro.imagem_urls:
+            media_id = instagram_client.publicar_carrossel(
+                registro.imagem_urls.splitlines(), legenda=registro.legenda,
+            )
+        else:
+            story = registro.tipo == RegistroPublicacao.TIPO_STORY
+            media_id = instagram_client.publicar_imagem(registro.imagem_url, legenda=registro.legenda, story=story)
         registro.status = RegistroPublicacao.STATUS_PUBLICADO
         registro.sucesso = True
         registro.instagram_media_id = media_id
