@@ -71,8 +71,16 @@ pasta, pra não ficar vazio quando a automação for ligada de verdade — ver
      `requests` a partir de `Oferta.imagem_url`; a altura dos cartões se
      ajusta automaticamente pra caber tanto no formato quadrado (feed,
      1080×1080) quanto vertical (story, 1080×1920).
-   Os posts institucionais de quarta-feira **não regeneram nada** — reusam
-   direto os 8 PNGs de `posts-semeadura/` em rotação (ver `conteudo.py`).
+   Os posts institucionais de quarta-feira usam os mesmos 8 temas da
+   semeadura, mas **geram uma arte nova via Pillow a cada rotação** (2
+   variações de texto/legenda por tema, 16 no total) em vez de reusar os
+   PNGs de `posts-semeadura/` - assim o bot não republica pro mesmo público
+   exatamente a mesma arte que já foi postada na mão (ver `conteudo.py`,
+   banco `POSTS_INSTITUCIONAIS`). Os PNGs de semeadura continuam guardados
+   como histórico da marca, só não são mais usados pelo bot.
+   O post semanal de ofertas (sexta) é um **carrossel**: uma capa +
+   8 ofertas (uma por slide) - carrossel tende a gerar mais salvamento que
+   um post único, o que ajuda o alcance mesmo pra quem não segue a conta.
 4. **Integração com a API do Instagram** — ✅ concluído.
    `instagram_bot/instagram_client.py` fala com `graph.instagram.com`
    (host certo pro fluxo "Login do Instagram", sem Página do Facebook):

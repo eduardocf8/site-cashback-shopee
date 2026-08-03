@@ -5,7 +5,6 @@ from pathlib import Path
 
 from django.conf import settings
 from django.utils import timezone
-from PIL import Image
 
 from ofertas.models import Oferta
 
@@ -217,7 +216,12 @@ def publicar_story_lembrete(data, request) -> RegistroPublicacao:
 
 def publicar_post_institucional(data, request) -> RegistroPublicacao:
     post = conteudo.escolher_post_institucional(data)
-    imagem = Image.open(post["caminho"])
+    if post["estilo"] == "brand":
+        imagem = gerar_imagem_texto_simples(
+            post["texto"], bg=CORES["brand"], cor_texto=CORES["paper"], cor_acento=CORES["highlight"],
+        )
+    else:
+        imagem = gerar_imagem_texto_simples(post["texto"], bg=CORES["highlight"], cor_texto=CORES["ink"])
     return _publicar_ou_simular(
         imagem, post["legenda"], RegistroPublicacao.TIPO_FEED, RegistroPublicacao.CONTEUDO_INSTITUCIONAL,
         data, request, story=False,
