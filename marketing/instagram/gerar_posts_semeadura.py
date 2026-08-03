@@ -40,7 +40,7 @@ html, body {{ width: {SIZE}px; height: {SIZE}px; font-family: "Familjen", Arial,
     display: flex; flex-direction: column; padding: 88px;
 }}
 .badge {{
-    position: absolute; left: 88px; bottom: 64px; font-size: 30px; font-weight: 700;
+    position: absolute; right: 88px; bottom: 64px; font-size: 30px; font-weight: 700;
     letter-spacing: -0.01em;
 }}
 .eyebrow {{
