@@ -1,5 +1,6 @@
 import json
 import logging
+import time
 from decimal import Decimal, InvalidOperation
 from pathlib import Path
 
@@ -16,6 +17,13 @@ logger = logging.getLogger(__name__)
 
 CAMINHO_CATEGORIAS_NIVEL1 = Path(__file__).resolve().parent / "data" / "shopee_categorias_nivel1.json"
 TAMANHO_LOTE_GEMINI = 50
+# O plano gratuito do Gemini libera só 15 requisições/minuto, e a tarefa diária inteira
+# (Shopee + saldo + saques + Instagram) tem 120s de orçamento antes do gunicorn matar o
+# worker (--timeout 120, ver README.md) - por isso processa só alguns lotes por execução
+# em vez do catálogo inteiro de uma vez. O NomeCurtoCache é permanente, então o que sobrar
+# fica pendente e é retomado sozinho na sincronização seguinte, sem perder progresso.
+LIMITE_LOTES_POR_EXECUCAO = 6
+PAUSA_ENTRE_LOTES_SEGUNDOS = 4.5
 
 _categorias_nivel1_cache: dict[int, str] | None = None
 
@@ -77,12 +85,24 @@ def _aplicar_nomes_curtos(ofertas: list[Oferta]) -> None:
             oferta.nome_curto = oferta.nome  # fallback, sobrescrito abaixo se o lote der certo
             pendentes.append(oferta)
 
+    lotes = [pendentes[i : i + TAMANHO_LOTE_GEMINI] for i in range(0, len(pendentes), TAMANHO_LOTE_GEMINI)]
+    lotes_a_processar = lotes[:LIMITE_LOTES_POR_EXECUCAO]
+    if len(lotes) > len(lotes_a_processar):
+        logger.info(
+            "[ofertas] %s produto(s) sem nome_curto ficam pra próxima sincronização (limite de %s lote(s) por execução)",
+            sum(len(lote) for lote in lotes[LIMITE_LOTES_POR_EXECUCAO:]), LIMITE_LOTES_POR_EXECUCAO,
+        )
+
     cache_pra_salvar = []
-    for inicio in range(0, len(pendentes), TAMANHO_LOTE_GEMINI):
-        lote = pendentes[inicio : inicio + TAMANHO_LOTE_GEMINI]
+    for indice, lote in enumerate(lotes_a_processar):
+        if indice > 0:
+            time.sleep(PAUSA_ENTRE_LOTES_SEGUNDOS)  # respeita o limite de requisições/minuto do plano gratuito
         try:
             nomes_curtos = gemini_client.encurtar_nomes([oferta.nome for oferta in lote])
-        except (GeminiConfigError, GeminiAPIError, requests.RequestException) as erro:
+        except GeminiConfigError as erro:
+            logger.warning("[ofertas] Gemini não configurado, pulando o resto do encurtamento: %s", erro)
+            break
+        except (GeminiAPIError, requests.RequestException) as erro:
             logger.warning("[ofertas] falha ao encurtar lote de %s nome(s) via Gemini: %s", len(lote), erro)
             continue
         for oferta, nome_curto in zip(lote, nomes_curtos):
