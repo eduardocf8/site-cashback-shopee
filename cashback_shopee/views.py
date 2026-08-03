@@ -6,7 +6,7 @@ from django.http import HttpResponse, HttpResponseForbidden, JsonResponse
 
 from instagram_bot.services import executar_publicacoes_do_dia
 from links.shopee_client import ShopeeAPIError, ShopeeConfigError
-from ofertas.services import sincronizar_ofertas
+from ofertas.services import encurtar_nomes_pendentes, sincronizar_ofertas
 from pedidos.services import liberar_saldo, sincronizar
 from saques.services import verificar_saques_pendentes
 
@@ -32,15 +32,19 @@ def robots_txt(request):
     return HttpResponse(conteudo, content_type="text/plain")
 
 
+def _token_valido(request) -> bool:
+    token_esperado = settings.TAREFAS_TOKEN
+    token_recebido = request.GET.get("token", "")
+    return bool(token_esperado) and hmac.compare_digest(token_esperado, token_recebido)
+
+
 def executar_tarefas_agendadas(request):
     """Roda a sincronização diária com a Shopee, a liberação de saldo e a checagem de saques.
 
     Protegido por um token (TAREFAS_TOKEN) em vez de exigir login, porque quem chama
     esse endereço é o agendamento automático (GitHub Actions), não uma pessoa logada.
     """
-    token_esperado = settings.TAREFAS_TOKEN
-    token_recebido = request.GET.get("token", "")
-    if not token_esperado or not hmac.compare_digest(token_esperado, token_recebido):
+    if not _token_valido(request):
         return HttpResponseForbidden("Token inválido ou não configurado.")
 
     agora = datetime.now(tz=dt_timezone.utc)
@@ -64,5 +68,25 @@ def executar_tarefas_agendadas(request):
         resultado["instagram"] = executar_publicacoes_do_dia(request)
     except Exception as erro:
         resultado["instagram_erro"] = str(erro)
+
+    return JsonResponse(resultado)
+
+
+def executar_encurtamento_nomes(request):
+    """Melhora aos poucos o nome_curto das ofertas via Gemini (ver ofertas/services.py).
+
+    É uma tarefa agendada separada de executar_tarefas_agendadas de propósito: a busca de
+    ofertas na Shopee já usa boa parte dos 120s de orçamento antes do timeout do gunicorn
+    (--timeout 120), e enfileirar as chamadas ao Gemini atrás dela na mesma requisição
+    estourava esse timeout quase toda vez. Assim, essa chamada tem os 120s só pra si.
+    """
+    if not _token_valido(request):
+        return HttpResponseForbidden("Token inválido ou não configurado.")
+
+    resultado = {}
+    try:
+        resultado["nomes_encurtados"] = encurtar_nomes_pendentes()
+    except Exception as erro:
+        resultado["nomes_encurtados_erro"] = str(erro)
 
     return JsonResponse(resultado)

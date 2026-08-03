@@ -17,12 +17,16 @@ logger = logging.getLogger(__name__)
 
 CAMINHO_CATEGORIAS_NIVEL1 = Path(__file__).resolve().parent / "data" / "shopee_categorias_nivel1.json"
 TAMANHO_LOTE_GEMINI = 50
-# O plano gratuito do Gemini libera só 15 requisições/minuto, e a tarefa diária inteira
-# (Shopee + saldo + saques + Instagram) tem 120s de orçamento antes do gunicorn matar o
-# worker (--timeout 120, ver README.md) - por isso processa só alguns lotes por execução
-# em vez do catálogo inteiro de uma vez. O NomeCurtoCache é permanente, então o que sobrar
-# fica pendente e é retomado sozinho na sincronização seguinte, sem perder progresso.
-LIMITE_LOTES_POR_EXECUCAO = 6
+# O plano gratuito do Gemini libera só 15 requisições/minuto, e qualquer requisição HTTP
+# nesse site tem 120s de orçamento antes do gunicorn matar o worker (--timeout 120, ver
+# README.md) - por isso processa só alguns lotes por execução em vez do catálogo inteiro
+# de uma vez. O NomeCurtoCache é permanente, então o que sobrar fica pendente e é
+# retomado sozinho na próxima chamada, sem perder progresso.
+# Isso roda numa tarefa agendada separada da sincronização com a Shopee (ver
+# encurtar_nomes_pendentes/executar_encurtamento_nomes) - a busca na Shopee sozinha já
+# usa boa parte do orçamento de 120s, então enfileirar o Gemini atrás dela nessa mesma
+# requisição estourava o timeout quase toda vez.
+LIMITE_LOTES_POR_EXECUCAO = 10
 PAUSA_ENTRE_LOTES_SEGUNDOS = 4.5
 
 _categorias_nivel1_cache: dict[int, str] | None = None
@@ -50,9 +54,11 @@ def _montar_oferta(node: dict, categorias_nivel1: dict[int, str]) -> Oferta:
     avaliacao_bruta = node.get("ratingStar")
     avaliacao = _decimal_seguro(avaliacao_bruta) if avaliacao_bruta else None
 
+    nome = (node.get("productName") or "")[:255]
     return Oferta(
         item_id=node["itemId"],
-        nome=(node.get("productName") or "")[:255],
+        nome=nome,
+        nome_curto=nome,  # melhorado depois por encurtar_nomes_pendentes(), numa tarefa separada
         imagem_url=node.get("imageUrl") or "",
         preco_min=_decimal_seguro(node.get("priceMin")),
         preco_max=_decimal_seguro(node.get("priceMax")),
@@ -120,6 +126,17 @@ def _aplicar_nomes_curtos(ofertas: list[Oferta]) -> None:
         )
 
 
+def encurtar_nomes_pendentes() -> dict:
+    """Melhora, aos poucos, o nome_curto das ofertas que ainda estão iguais ao nome
+    original (ou seja, ainda não passaram pelo Gemini com sucesso). Chamado por uma
+    tarefa agendada própria (ver cashback_shopee/views.py e tarefas-diarias.yml),
+    separada da sincronização com a Shopee, pra ter os 120s de orçamento só pra si."""
+    ofertas = list(Oferta.objects.all())
+    _aplicar_nomes_curtos(ofertas)
+    Oferta.objects.bulk_update(ofertas, ["nome_curto"], batch_size=200)
+    return {"total_ofertas": len(ofertas)}
+
+
 def sincronizar_ofertas(limite_por_pagina: int = 50, max_paginas: int = 40) -> dict:
     """Busca as ofertas de produtos (productOfferV2, listType ALL) e substitui a lista atual.
 
@@ -141,8 +158,6 @@ def sincronizar_ofertas(limite_por_pagina: int = 50, max_paginas: int = 40) -> d
     # Dedup por item_id (a Shopee pode repetir um item entre páginas se o feed
     # for atualizado no meio da sincronização).
     por_item_id = {oferta.item_id: oferta for oferta in ofertas_novas}
-
-    _aplicar_nomes_curtos(list(por_item_id.values()))
 
     with transaction.atomic():
         Oferta.objects.all().delete()

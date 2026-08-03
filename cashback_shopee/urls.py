@@ -19,6 +19,7 @@ urlpatterns = [
     path("", include("ofertas.urls")),
     path("", include("instagram_bot.urls")),
     path("tarefas/executar/", views.executar_tarefas_agendadas, name="executar_tarefas_agendadas"),
+    path("tarefas/encurtar-nomes/", views.executar_encurtamento_nomes, name="executar_encurtamento_nomes"),
     path("robots.txt", views.robots_txt, name="robots_txt"),
     path("sitemap.xml", sitemap, {"sitemaps": sitemaps}, name="sitemap"),
     # Serve as imagens geradas pelo bot do Instagram (precisam de URL pública pra API
