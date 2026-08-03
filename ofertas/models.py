@@ -4,6 +4,11 @@ from django.db import models
 class Oferta(models.Model):
     item_id = models.BigIntegerField("ID do produto na Shopee", unique=True)
     nome = models.CharField(max_length=255)
+    nome_curto = models.CharField(
+        max_length=255, blank=True,
+        help_text="Versão enxuta do nome (via Gemini) pra exibição - ver ofertas/gemini_client.py. "
+        "Sempre preenchido (cai pro nome original se o Gemini não estiver configurado/disponível).",
+    )
     imagem_url = models.URLField(blank=True)
     preco_min = models.DecimalField(max_digits=10, decimal_places=2, default=0)
     preco_max = models.DecimalField(max_digits=10, decimal_places=2, default=0)
@@ -28,3 +33,18 @@ class Oferta(models.Model):
 
     def __str__(self):
         return f"{self.nome} (R$ {self.preco_min}–{self.preco_max})"
+
+
+class NomeCurtoCache(models.Model):
+    """Cache de nomes já encurtados pelo Gemini, guardado à parte da Oferta porque a
+    sincronização apaga e recria todas as ofertas a cada execução (ver services.py) - sem
+    isso, todo produto seria reprocessado (e cobrado) de novo em toda sincronização, mesmo
+    quando o nome não mudou."""
+
+    item_id = models.BigIntegerField(unique=True)
+    nome_original = models.CharField(max_length=255)
+    nome_curto = models.CharField(max_length=255)
+    atualizado_em = models.DateTimeField(auto_now=True)
+
+    def __str__(self):
+        return f"{self.nome_original} -> {self.nome_curto}"

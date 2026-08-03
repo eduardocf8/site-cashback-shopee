@@ -1,14 +1,21 @@
 import json
+import logging
 from decimal import Decimal, InvalidOperation
 from pathlib import Path
 
+import requests
 from django.db import transaction
 
 from links.shopee_client import buscar_ofertas_produtos
 
-from .models import Oferta
+from . import gemini_client
+from .gemini_client import GeminiAPIError, GeminiConfigError
+from .models import NomeCurtoCache, Oferta
+
+logger = logging.getLogger(__name__)
 
 CAMINHO_CATEGORIAS_NIVEL1 = Path(__file__).resolve().parent / "data" / "shopee_categorias_nivel1.json"
+TAMANHO_LOTE_GEMINI = 50
 
 _categorias_nivel1_cache: dict[int, str] | None = None
 
@@ -52,6 +59,47 @@ def _montar_oferta(node: dict, categorias_nivel1: dict[int, str]) -> Oferta:
     )
 
 
+def _aplicar_nomes_curtos(ofertas: list[Oferta]) -> None:
+    """Preenche oferta.nome_curto pra cada oferta. Reaproveita o NomeCurtoCache (que
+    sobrevive entre sincronizações, diferente de Oferta - ver models.py) pra só chamar o
+    Gemini nos itens novos ou com nome mudado desde a última vez. nome_curto nunca fica
+    vazio: cai pro nome original se o Gemini falhar ou não estiver configurado."""
+    cache_por_item_id = {
+        c.item_id: c for c in NomeCurtoCache.objects.filter(item_id__in=[o.item_id for o in ofertas])
+    }
+
+    pendentes = []
+    for oferta in ofertas:
+        cache = cache_por_item_id.get(oferta.item_id)
+        if cache and cache.nome_original == oferta.nome:
+            oferta.nome_curto = cache.nome_curto
+        else:
+            oferta.nome_curto = oferta.nome  # fallback, sobrescrito abaixo se o lote der certo
+            pendentes.append(oferta)
+
+    cache_pra_salvar = []
+    for inicio in range(0, len(pendentes), TAMANHO_LOTE_GEMINI):
+        lote = pendentes[inicio : inicio + TAMANHO_LOTE_GEMINI]
+        try:
+            nomes_curtos = gemini_client.encurtar_nomes([oferta.nome for oferta in lote])
+        except (GeminiConfigError, GeminiAPIError, requests.RequestException) as erro:
+            logger.warning("[ofertas] falha ao encurtar lote de %s nome(s) via Gemini: %s", len(lote), erro)
+            continue
+        for oferta, nome_curto in zip(lote, nomes_curtos):
+            oferta.nome_curto = nome_curto or oferta.nome
+            cache_pra_salvar.append(
+                NomeCurtoCache(item_id=oferta.item_id, nome_original=oferta.nome, nome_curto=oferta.nome_curto)
+            )
+
+    if cache_pra_salvar:
+        NomeCurtoCache.objects.bulk_create(
+            cache_pra_salvar,
+            update_conflicts=True,
+            update_fields=["nome_original", "nome_curto", "atualizado_em"],
+            unique_fields=["item_id"],
+        )
+
+
 def sincronizar_ofertas(limite_por_pagina: int = 50, max_paginas: int = 40) -> dict:
     """Busca as ofertas de produtos (productOfferV2, listType ALL) e substitui a lista atual.
 
@@ -73,6 +121,8 @@ def sincronizar_ofertas(limite_por_pagina: int = 50, max_paginas: int = 40) -> d
     # Dedup por item_id (a Shopee pode repetir um item entre páginas se o feed
     # for atualizado no meio da sincronização).
     por_item_id = {oferta.item_id: oferta for oferta in ofertas_novas}
+
+    _aplicar_nomes_curtos(list(por_item_id.values()))
 
     with transaction.atomic():
         Oferta.objects.all().delete()

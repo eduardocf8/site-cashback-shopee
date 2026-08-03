@@ -95,6 +95,14 @@ SHOPEE_HOME_URL = os.environ.get("SHOPEE_HOME_URL", "https://shopee.com.br/")
 # Ainda não definido pelo negócio - ajuste no .env quando decidido (ex: 100 = repassa tudo).
 SHOPEE_CASHBACK_PERCENTUAL = float(os.environ.get("SHOPEE_CASHBACK_PERCENTUAL", "100"))
 
+# API do Gemini, usada só pra encurtar o nome dos produtos exibidos na aba Ofertas (os
+# títulos que vêm da Shopee costumam ser bem longos/cheios de palavra-chave repetida).
+# Sem GEMINI_API_KEY configurada, o site continua funcionando normal - só usa o nome
+# original sem encurtar (ver ofertas/gemini_client.py e ofertas/services.py).
+GEMINI_API_KEY = os.environ.get("GEMINI_API_KEY", "")
+GEMINI_API_URL = os.environ.get("GEMINI_API_URL", "https://generativelanguage.googleapis.com/v1beta")
+GEMINI_MODEL = os.environ.get("GEMINI_MODEL", "gemini-2.5-flash-lite")
+
 # Credenciais da API da Asaas para pagar os saques via PIX (ficam no arquivo .env, nunca no código)
 ASAAS_API_KEY = os.environ.get("ASAAS_API_KEY", "")
 ASAAS_API_URL = os.environ.get("ASAAS_API_URL", "https://sandbox.asaas.com/api/v3")

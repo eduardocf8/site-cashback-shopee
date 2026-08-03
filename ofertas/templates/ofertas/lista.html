@@ -177,7 +177,7 @@
                         </div>
                         <div class="corpo">
                             <div class="categoria">{{ oferta.categoria_nome|default:"—" }}</div>
-                            <div class="nome">{{ oferta.nome }}</div>
+                            <div class="nome">{{ oferta.nome_curto|default:oferta.nome }}</div>
                             <div class="preco">
                                 {% if oferta.preco_min != oferta.preco_max %}
                                     R$ {{ oferta.preco_min|floatformat:2 }} <span class="de">R$ {{ oferta.preco_max|floatformat:2 }}</span>
