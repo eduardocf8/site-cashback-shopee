@@ -237,10 +237,13 @@ STATICFILES_DIRS = [BASE_DIR / "static"]
 
 # Imagens geradas pelo bot do Instagram precisam de uma URL pública (a API do
 # Instagram busca a imagem ela mesma a partir dessa URL, não aceita upload direto).
-# Disco da Render é efêmero, mas isso não é problema aqui: a imagem só precisa
-# existir o suficiente pro Instagram buscar logo depois de gerada.
+# MEDIA_ROOT é configurável via variável de ambiente pra apontar pro disco persistente
+# do Render (Disk) quando ele existir - o disco precisa ser montado FORA da pasta do
+# código-fonte (ex: /var/data), então isso é diferente do caminho padrão do projeto.
+# Sem a variável configurada, cai no comportamento antigo (pasta "media" dentro do
+# próprio projeto - funciona, mas não persiste entre deploys/reinícios sem disco).
 MEDIA_URL = "media/"
-MEDIA_ROOT = BASE_DIR / "media"
+MEDIA_ROOT = Path(os.environ.get("MEDIA_ROOT", str(BASE_DIR / "media")))
 
 STORAGES = {
     "default": {
