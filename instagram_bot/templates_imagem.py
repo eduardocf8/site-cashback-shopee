@@ -208,7 +208,7 @@ def gerar_imagem_oferta_carrossel(oferta, indice: int, total: int, tamanho=(1080
     )
 
     y_texto = y_imagem + lado_imagem + 44
-    linhas_nome = _quebrar_texto(draw, oferta.nome, fonte_nome, tamanho[0] - margem * 2)[:2]
+    linhas_nome = _quebrar_texto(draw, oferta.nome_curto or oferta.nome, fonte_nome, tamanho[0] - margem * 2)[:2]
     for linha in linhas_nome:
         draw.text((margem, y_texto), linha, font=fonte_nome, fill=CORES["ink"])
         y_texto += int(fonte_nome.size * 1.3)
@@ -278,7 +278,7 @@ def gerar_imagem_ofertas(ofertas, titulo="Ofertas de hoje", tamanho=(1080, 1920)
             )
             draw.text((x_texto + 12, y + 28), selo, font=fonte_desconto, fill=CORES["ink"])
 
-        nome_linhas = _quebrar_texto(draw, oferta.nome, fonte_nome, largura_texto)[:2]
+        nome_linhas = _quebrar_texto(draw, oferta.nome_curto or oferta.nome, fonte_nome, largura_texto)[:2]
         y_nome = y + 76
         for linha in nome_linhas:
             draw.text((x_texto, y_nome), linha, font=fonte_nome, fill=CORES["ink"])
