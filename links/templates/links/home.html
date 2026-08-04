@@ -58,6 +58,15 @@
             white-space: nowrap;
         }
         .botao-cta:hover { background: var(--brand-strong); }
+        .botao-ofertas {
+            background: var(--highlight);
+            color: var(--highlight-ink) !important;
+            font-weight: 700;
+            padding: 7px 16px;
+            border-radius: 16px;
+            font-size: 15px;
+        }
+        .botao-ofertas:hover { filter: brightness(0.94); }
 
         /* ---------- Mensagens ---------- */
         .mensagens { list-style: none; padding: 0; margin: 16px 0 0 0; }
@@ -160,6 +169,14 @@
         .comparativo p { font-size: 14px; color: var(--muted); line-height: 1.6; }
         .obs { font-size: 12px; color: var(--muted); margin-top: 40px; text-align: center; }
 
+        /* ---------- Destaque das ofertas ---------- */
+        .ofertas-destaque { background: var(--brand); color: var(--paper); text-align: center; }
+        .ofertas-destaque .titulo-secao { color: var(--paper); margin-bottom: 12px; }
+        .ofertas-destaque .titulo-secao .destaque-marca { color: var(--highlight); }
+        .ofertas-destaque p { max-width: 560px; margin: 0 auto 28px; opacity: 0.88; font-size: 16px; line-height: 1.6; }
+        .ofertas-destaque .botao-cta { background: var(--highlight); color: var(--highlight-ink) !important; }
+        .ofertas-destaque .botao-cta:hover { filter: brightness(0.94); }
+
         /* ---------- Conversor de link ---------- */
         .conversor {
             max-width: 520px;
@@ -202,7 +219,7 @@
         <div class="envolve">
             <span class="marca">cash-b</span>
             <div class="nav-secundario">
-                <a href="{% url 'ofertas_lista' %}">Ofertas</a>
+                <a class="botao-ofertas" href="{% url 'ofertas_lista' %}">Ofertas</a>
                 {% if user.is_authenticated %}
                     <a href="{% url 'dashboard' %}">Minha conta</a>
                     <form method="post" action="{% url 'logout' %}">
@@ -320,6 +337,14 @@
                 </div>
             </div>
             <p class="obs">Clicar em qualquer outro link de afiliado após utilizar os links do cash-b fará com que o cashback não seja pago a você. Portanto, após clicar em qualquer link nosso, garanta que a compra seja concluída o quanto antes.</p>
+        </div>
+    </section>
+
+    <section class="ofertas-destaque">
+        <div class="envolve">
+            <h2 class="titulo-secao">Quer cashback mas não sabe o que <span class="destaque-marca">comprar</span>?</h2>
+            <p>Acesse nossa página de ofertas e veja os melhores produtos com o menor preço — cada um já com o cashback calculado.</p>
+            <a class="botao-cta" href="{% url 'ofertas_lista' %}">Ver ofertas &rarr;</a>
         </div>
     </section>
 

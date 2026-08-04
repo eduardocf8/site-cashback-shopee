@@ -1,3 +1,6 @@
+from decimal import Decimal
+
+from django.conf import settings
 from django.db import models
 
 
@@ -33,6 +36,13 @@ class Oferta(models.Model):
 
     def __str__(self):
         return f"{self.nome} (R$ {self.preco_min}–{self.preco_max})"
+
+    @property
+    def percentual_cashback(self) -> Decimal:
+        """% de cashback sobre o preço, na mesma fórmula usada de verdade em
+        pedidos/services.py pra calcular o valor_cashback (comissão x repasse do site)."""
+        repasse = Decimal(str(settings.SHOPEE_CASHBACK_PERCENTUAL)) / Decimal("100")
+        return (self.percentual_comissao * Decimal("100") * repasse).quantize(Decimal("0.1"))
 
 
 class NomeCurtoCache(models.Model):
