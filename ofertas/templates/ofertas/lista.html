@@ -88,7 +88,6 @@
         .oferta-cartao .nome { font-size: 14px; line-height: 1.4; max-height: 2.8em; overflow: hidden; }
         .oferta-cartao .categoria { font-size: 12px; color: var(--muted); }
         .oferta-cartao .preco { font-family: "JB Mono", ui-monospace, monospace; font-size: 17px; font-weight: 500; margin-top: auto; }
-        .oferta-cartao .preco .de { font-size: 12px; color: var(--muted); font-weight: 400; text-decoration: line-through; margin-left: 6px; }
         .oferta-cartao .botao-cta { text-align: center; margin: 4px 14px 14px; }
 
         .vazio { color: var(--muted); font-size: 14px; padding: 60px 20px; text-align: center; }
@@ -187,7 +186,7 @@
                             <div class="nome">{{ oferta.nome_curto|default:oferta.nome }}</div>
                             <div class="preco">
                                 {% if oferta.preco_min != oferta.preco_max %}
-                                    R$ {{ oferta.preco_min|floatformat:2 }} <span class="de">R$ {{ oferta.preco_max|floatformat:2 }}</span>
+                                    R$ {{ oferta.preco_min|floatformat:2 }} – R$ {{ oferta.preco_max|floatformat:2 }}
                                 {% else %}
                                     R$ {{ oferta.preco_min|floatformat:2 }}
                                 {% endif %}
