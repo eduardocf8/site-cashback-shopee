@@ -353,7 +353,7 @@
             <h2 class="titulo-secao" style="margin-bottom: 12px;">Já sabe o que vai comprar?</h2>
             <p class="intro-conversor">Converta o link do produto e ganhe mais cashback!</p>
             <div class="conversor">
-                <form method="post">
+                <form method="post" action="{% url 'home' %}#converter-link">
                     {% csrf_token %}
                     <label for="{{ form.url_produto.id_for_label }}">{{ form.url_produto.label }}</label>
                     {{ form.url_produto }}
