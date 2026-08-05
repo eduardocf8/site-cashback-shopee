@@ -169,60 +169,76 @@ gerar e atualizar o token novo no Render, é só abrir esse registro no
 Admin e rodar a ação "Marcar token como renovado hoje" (senão o lembrete
 continua chegando).
 
-## Automação de comentários e DM (app `automacao_instagram/`)
+## Automação de comentários e DM
 
-App separado do bot de publicação (`instagram_bot/`) — responde comentários
-com palavra-chave num post específico (resposta pública e/ou DM/resposta
-privada), com múltiplas automações rodando em paralelo (uma por post) e
-suporte a mais de uma conta do Instagram conectada.
+Virou um app à parte (`automacao_instagram/`), com seu próprio histórico de
+decisões — ver `automacao_instagram/README.md`. Só pra registrar aqui a
+separação: `instagram_bot/` publica conteúdo (stories/posts do calendário),
+`automacao_instagram/` reage a comentários (responde/manda DM) - são apps
+independentes, cada um com seu próprio token/conta configurável.
 
-- **Login separado** do painel de clientes do site — `/automacao/entrar/`,
-  só acessível por usuários com `is_staff=True` (criados via Django Admin,
-  não tem cadastro público). Cada usuário só vê e gerencia as próprias
-  contas/automações (`ContaInstagramConectada.usuario`).
-- **Múltiplas contas**: cada usuário conecta a(s) conta(s) do Instagram que
-  usa, colando o ID da conta comercial + o access token (gerado do mesmo
-  jeito que o token do `instagram_bot`, ver "Fase 1" acima). **Importante**:
-  como o App da Meta usa Standard Access (sem revisão), só contas com
-  função nesse App conseguem usar a API — pra conectar uma conta que não
-  seja a `usecashb`, primeiro adicione essa conta como pessoa/conta de
-  teste no painel do App (Meta for Developers → Funções), senão a chamada à
-  API falha com erro de permissão.
-- **Automações**: cada uma vinculada a um post (`instagram_media_id`,
-  escolhido numa lista dos posts recentes da conta - não precisa digitar o
-  ID na mão), com uma lista de palavras-chave (uma por linha, sem
-  diferenciar maiúscula/acento) e dois checkboxes independentes: responder
-  o comentário publicamente (com texto próprio) e/ou enviar DM/resposta
-  privada (com texto próprio). Dá pra ter várias automações ativas ao mesmo
-  tempo, cada uma no seu post.
-- **Indicadores**: por automação, contagem de comentários correspondidos,
-  respostas públicas enviadas, DMs enviadas e DMs respondidas (detectado
-  verificando se o autor mandou alguma mensagem na conversa depois da DM -
-  não é uma métrica pronta da API, é calculada aqui).
-- **Como funciona por baixo**: não usa webhook (exigiria um endereço
-  público com HTTPS) - um processo à parte faz *polling*: a cada
-  `AUTOMACAO_INSTAGRAM_INTERVALO_SEGUNDOS` (30s por padrão), verifica
-  comentários novos em todas as automações ativas. Ver `services.py`
-  (`processar_ciclo`) e o management command
-  `automacao_instagram_worker`.
+## Troubleshooting (incidentes já resolvidos)
 
-### Rodando o worker no Render (Background Worker)
+Histórico de problemas reais encontrados ao ligar o bot de publicação de
+verdade pela primeira vez (2026-08-05) - registrado aqui pra não perder
+tempo reinvestigando algo parecido no futuro.
 
-O polling precisa de um processo vivo 24h, o que o serviço **web** do
-Render (gunicorn, request-response) não oferece sozinho. Configuração:
+### "Only photo or video can be accepted as media type" ao aprovar/publicar
 
-1. No dashboard do Render, criar um novo serviço do tipo **Background
-   Worker**, apontando pro mesmo repositório/branch do site.
-2. Start Command: `python manage.py automacao_instagram_worker`
-3. Compartilhar as mesmas variáveis de ambiente do serviço web que
-   envolvem banco de dados (`DATABASE_URL`) e `DJANGO_SECRET_KEY` — o
-   worker usa o mesmo banco (lê/escreve `ContaInstagramConectada`,
-   `AutomacaoComentario`, `ComentarioProcessado`).
-4. Opcional: `AUTOMACAO_INSTAGRAM_INTERVALO_SEGUNDOS` pra mudar o intervalo
-   do polling (padrão 30).
+Apareceu na primeira publicação real (story e post no feed, os dois com o
+mesmo erro). Investigação eliminou, nessa ordem, until achar a causa real:
 
-Esse é um serviço com custo próprio no Render, separado do plano do site
-(ver preço atual no dashboard antes de criar).
+1. **Formato da arte** — o bot salvava em PNG; a Instagram Graph API só
+   aceita JPEG. Corrigido (`instagram_bot/services.py` agora salva/serve
+   sempre `.jpg`) - mas não era a causa raiz sozinha, o erro continuou.
+2. **Domínio da URL da imagem** — a URL usava o domínio de quem
+   disparava a publicação (`cash-b.com`, atrás de Cloudflare) em vez do
+   endereço direto do Render. Corrigido pra sempre usar
+   `RENDER_EXTERNAL_HOSTNAME` (bypassa qualquer proxy/CDN na frente do
+   domínio customizado) - também não era a causa raiz, mas é mais robusto
+   deixar assim de qualquer forma.
+3. **Causa raiz real**: `INSTAGRAM_BUSINESS_ACCOUNT_ID` no Render estava
+   com o ID errado (não era o mesmo ID associado ao
+   `INSTAGRAM_ACCESS_TOKEN`) - publicar num ig-user-id que não bate com o
+   token gera esse erro genérico de mídia, em vez de um erro claro de
+   permissão. Conferido e corrigido usando o **Depurador de Token de
+   Acesso** (link abaixo): o campo "ID do usuário no escopo do
+   aplicativo" mostra o ID de verdade associado ao token.
+
+**Ferramentas de diagnóstico que ajudaram** (guarda esse link, vale a pena
+pra qualquer erro parecido no futuro):
+- **Depurador de Compartilhamento** —
+  `https://developers.facebook.com/tools/debug/sharing/?q=<URL>` — mostra
+  exatamente o que o rastreador da Meta vê ao buscar uma URL (código de
+  resposta, dimensões da imagem, hash). Prova se o problema é de
+  alcançabilidade/formato ou não.
+- **Depurador de Token de Acesso** —
+  `https://developers.facebook.com/tools/debug/accesstoken/` — cola o
+  access token e mostra ID do usuário/conta associado, escopos
+  concedidos, validade e expiração. É o jeito mais rápido de conferir se
+  `INSTAGRAM_BUSINESS_ACCOUNT_ID` bate com o token de verdade.
+
+**Melhorias que ficaram** dessa investigação (valem independente do bug
+específico):
+- `instagram_client._chamar()` agora inclui `code`/`error_subcode`/`type`/
+  `fbtrace_id` na mensagem de erro, não só o texto genérico da Meta -
+  esses códigos numéricos ajudam bem mais a identificar a causa real do
+  que a mensagem sozinha (que costuma ser genérica e cobrir várias causas
+  diferentes).
+- Ação **"Tentar publicar de novo"** no Django Admin
+  (`RegistroPublicacao`) - reprocessa um registro com status Erro
+  (reconverte a arte pra JPEG se ainda estiver em PNG) sem precisar de
+  código nem estar no computador (funciona pelo navegador do celular).
+
+### Erro genérico "code=2, An unexpected error has occurred. Please retry your request later."
+
+Pode aparecer mesmo com tudo certo (token válido, ID certo, formato
+certo) - é o erro transitório genérico da própria Meta. Costuma resolver
+sozinho numa nova tentativa depois de um tempo; se persistir por várias
+tentativas seguidas, pode ser as próprias tentativas repetidas
+disparando alguma proteção temporária do lado da Meta - nesse caso, é
+melhor esperar mais (a próxima execução automática do dia seguinte, por
+exemplo) em vez de insistir.
 
 ## Posts de semeadura (pasta `posts-semeadura/`)
 
