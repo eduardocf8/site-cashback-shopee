@@ -59,6 +59,8 @@ class RegistroPublicacaoAdmin(admin.ModelAdmin):
                 services.tentar_publicar_de_novo(registro, request)
                 self.message_user(request, f"Registro {registro.pk}: publicado com sucesso!")
             except Exception as erro:
+                registro.erro = str(erro)
+                registro.save(update_fields=["erro"])
                 self.message_user(
                     request, f"Registro {registro.pk}: falhou de novo - {erro}", level="error"
                 )

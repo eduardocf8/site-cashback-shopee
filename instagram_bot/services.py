@@ -318,16 +318,22 @@ def _reconverter_para_jpeg(url: str, request) -> str:
 def tentar_publicar_de_novo(registro: RegistroPublicacao, request) -> None:
     """Reprocessa um registro que falhou (ex: erro 500 "Only photo or video can be
     accepted" por causa da arte antiga em PNG) - converte a(s) imagem(ns) pra JPEG e
-    tenta publicar de novo. Chamado pela ação "Tentar publicar de novo" no Admin."""
+    tenta publicar de novo. Chamado pela ação "Tentar publicar de novo" no Admin.
+
+    Salva a URL já convertida ANTES de chamar a API (não só depois de dar certo) -
+    assim, se falhar de novo, dá pra ver no Admin exatamente qual URL foi tentada
+    (pra testar ela mesma no Depurador de Compartilhamento da Meta, por exemplo)."""
     if registro.imagem_urls:
         urls_convertidas = [_reconverter_para_jpeg(url, request) for url in registro.imagem_urls.splitlines()]
-        media_id = instagram_client.publicar_carrossel(urls_convertidas, legenda=registro.legenda)
         registro.imagem_urls = "\n".join(urls_convertidas)
+        registro.save(update_fields=["imagem_urls"])
+        media_id = instagram_client.publicar_carrossel(urls_convertidas, legenda=registro.legenda)
     else:
         url_convertida = _reconverter_para_jpeg(registro.imagem_url, request)
+        registro.imagem_url = url_convertida
+        registro.save(update_fields=["imagem_url"])
         story = registro.tipo == RegistroPublicacao.TIPO_STORY
         media_id = instagram_client.publicar_imagem(url_convertida, legenda=registro.legenda, story=story)
-        registro.imagem_url = url_convertida
 
     registro.status = RegistroPublicacao.STATUS_PUBLICADO
     registro.sucesso = True
