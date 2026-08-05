@@ -1,11 +1,13 @@
 import json
 import logging
 import time
+import unicodedata
 from decimal import Decimal, InvalidOperation
 from pathlib import Path
 
 import requests
 from django.db import transaction
+from django.db.models import Sum
 
 from links.shopee_client import buscar_ofertas_produtos
 
@@ -164,3 +166,42 @@ def sincronizar_ofertas(limite_por_pagina: int = 50, max_paginas: int = 40) -> d
         Oferta.objects.bulk_create(por_item_id.values(), batch_size=200)
 
     return {"total": len(por_item_id), "paginas_percorridas": pagina}
+
+
+def normalizar_nome_produto(nome: str) -> str:
+    """minúsculas e sem acento, pra comparar nome de produto ignorando esse tipo de
+    diferença (usado pra não repetir o "mesmo" produto vindo de lojas diferentes -
+    ver selecionar_top_ofertas_sem_duplicar)."""
+    sem_acento = unicodedata.normalize("NFKD", nome).encode("ascii", "ignore").decode()
+    return sem_acento.lower().strip()
+
+
+def selecionar_top_ofertas_sem_duplicar(quantidade: int) -> list[Oferta]:
+    """As ofertas mais vendidas (Oferta.Meta.ordering = -vendas), sem repetir produto.
+
+    A Shopee pode anunciar o mesmo produto genérico (ex: "Percarbonato de sódio") em
+    lojas diferentes, cada uma com seu próprio item_id - sincronizar_ofertas só remove
+    duplicado por item_id, então sem essa checagem o mesmo produto pode aparecer mais
+    de uma vez no mesmo story/post."""
+    selecionadas = []
+    nomes_vistos = set()
+    for oferta in Oferta.objects.all():
+        nome_normalizado = normalizar_nome_produto(oferta.nome)
+        if nome_normalizado in nomes_vistos:
+            continue
+        nomes_vistos.add(nome_normalizado)
+        selecionadas.append(oferta)
+        if len(selecionadas) >= quantidade:
+            break
+    return selecionadas
+
+
+def categorias_mais_vendidas(quantidade: int) -> list[dict]:
+    """[{"categoria_id":.., "categoria_nome":.., "vendas_total":..}, ...], as
+    `quantidade` categorias (nível 1) com mais vendas somadas entre as ofertas
+    sincronizadas agora."""
+    return list(
+        Oferta.objects.values("categoria_id", "categoria_nome")
+        .annotate(vendas_total=Sum("vendas"))
+        .order_by("-vendas_total")[:quantidade]
+    )

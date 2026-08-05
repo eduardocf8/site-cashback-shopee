@@ -3,9 +3,10 @@ from datetime import datetime, timedelta, timezone as dt_timezone
 
 from django.conf import settings
 from django.http import HttpResponse, HttpResponseForbidden, JsonResponse
+from django.utils import timezone
 
 from instagram_bot.lembrete_token import verificar_validade_token
-from instagram_bot.services import executar_publicacoes_do_dia
+from instagram_bot.services import executar_publicacoes_do_dia, publicar_story_oferta_do_momento
 from links.shopee_client import ShopeeAPIError, ShopeeConfigError
 from ofertas.services import encurtar_nomes_pendentes, sincronizar_ofertas
 from pedidos.services import liberar_saldo, sincronizar
@@ -94,5 +95,26 @@ def executar_encurtamento_nomes(request):
         resultado["nomes_encurtados"] = encurtar_nomes_pendentes()
     except Exception as erro:
         resultado["nomes_encurtados_erro"] = str(erro)
+
+    return JsonResponse(resultado)
+
+
+def executar_story_oferta(request):
+    """Posta no máximo 1 story de oferta (ver instagram_bot/services.py,
+    publicar_story_oferta_do_momento). Chamado várias vezes ao dia por um cron
+    dedicado - separado de executar_tarefas_agendadas de propósito, já que roda numa
+    frequência bem diferente (várias vezes ao dia, não uma vez só)."""
+    if not _token_valido(request):
+        return HttpResponseForbidden("Token inválido ou não configurado.")
+
+    resultado = {}
+    try:
+        registro = publicar_story_oferta_do_momento(timezone.localdate(), request)
+        resultado["story_oferta"] = (
+            {"status": registro.status, "simulado": registro.modo_simulacao, "oferta": registro.oferta_nome}
+            if registro else None
+        )
+    except Exception as erro:
+        resultado["story_oferta_erro"] = str(erro)
 
     return JsonResponse(resultado)

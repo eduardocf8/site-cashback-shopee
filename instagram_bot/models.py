@@ -70,6 +70,17 @@ class RegistroPublicacao(models.Model):
         help_text="Uma URL por linha - só usado quando é carrossel (várias imagens). Nesse caso imagem_url fica vazio.",
     )
     instagram_media_id = models.CharField(max_length=64, blank=True)
+    oferta_categoria_id = models.PositiveIntegerField(
+        null=True, blank=True,
+        help_text="Só preenchido em stories de oferta - usado pra não repetir categoria no mesmo dia "
+        "(ver instagram_bot/services.py, publicar_story_oferta_do_momento).",
+    )
+    oferta_item_id = models.BigIntegerField(null=True, blank=True)
+    oferta_nome = models.CharField(
+        max_length=255, blank=True,
+        help_text="Nome do produto no momento da publicação - usado pra não repetir o mesmo produto "
+        "(vindo de lojas diferentes) no mesmo dia.",
+    )
     modo_simulacao = models.BooleanField(
         default=True, help_text="True quando o bot ainda estava desligado (INSTAGRAM_BOT_ATIVO=False)."
     )

@@ -7,6 +7,7 @@ from django.conf import settings
 from django.utils import timezone
 from PIL import Image
 
+from ofertas import services as ofertas_services
 from ofertas.models import Oferta
 
 from . import aprovacao, conteudo, instagram_client
@@ -21,6 +22,12 @@ from .templates_imagem import (
 logger = logging.getLogger(__name__)
 
 PASTA_MEDIA_BOT = Path(settings.MEDIA_ROOT) / "instagram"
+
+# Stories de oferta: em vez de 1 story só com 3 ofertas juntas, posta várias vezes ao
+# dia (ver /tarefas/postar-story-oferta/ e o cron dedicado) 1 story com 1 oferta só,
+# até completar esse número - assim o perfil não fica "bombardeado" de oferta de uma
+# vez, mas também não some do ar o resto do dia (a conta não é só sobre ofertas).
+NUMERO_STORIES_OFERTAS_POR_DIA = 5
 
 
 def _url_publica_da_midia(nome_arquivo: str, request) -> str:
@@ -193,17 +200,62 @@ def _aguardar_aprovacao_carrossel(imagens, legenda, tipo, conteudo_tipo, data, r
     return registro
 
 
-def publicar_story_ofertas(data, request) -> RegistroPublicacao | None:
-    ofertas = list(Oferta.objects.all()[:3])
-    if not ofertas:
-        logger.warning("[instagram_bot] sem ofertas sincronizadas, pulando story do dia")
+def _escolher_oferta_do_momento(data) -> Oferta | None:
+    """1 categoria (nível 1) por story, entre as NUMERO_STORIES_OFERTAS_POR_DIA
+    categorias mais vendidas - nunca repete categoria nem produto (por nome) já usados
+    hoje. Retorna None quando já bateu o número de stories do dia ou não sobra oferta
+    disponível nas categorias candidatas."""
+    ja_hoje = RegistroPublicacao.objects.filter(
+        data=data, conteudo_tipo=RegistroPublicacao.CONTEUDO_OFERTA_DIARIA,
+    ).exclude(status=RegistroPublicacao.STATUS_ERRO)
+
+    if ja_hoje.count() >= NUMERO_STORIES_OFERTAS_POR_DIA:
         return None
-    imagem = gerar_imagem_ofertas(ofertas, titulo="Ofertas de hoje", tamanho=(1080, 1920))
-    legenda = "As melhores ofertas de hoje no cash-b. Link na bio pra ver todas. 🛍️💸"
-    return _publicar_ou_simular(
+
+    categorias_usadas = set(
+        ja_hoje.exclude(oferta_categoria_id__isnull=True).values_list("oferta_categoria_id", flat=True)
+    )
+    nomes_usados = {
+        ofertas_services.normalizar_nome_produto(nome)
+        for nome in ja_hoje.exclude(oferta_nome="").values_list("oferta_nome", flat=True)
+    }
+
+    categorias_candidatas = [
+        categoria["categoria_id"]
+        for categoria in ofertas_services.categorias_mais_vendidas(NUMERO_STORIES_OFERTAS_POR_DIA)
+        if categoria["categoria_id"] not in categorias_usadas
+    ]
+
+    for categoria_id in categorias_candidatas:
+        for oferta in Oferta.objects.filter(categoria_id=categoria_id):
+            if ofertas_services.normalizar_nome_produto(oferta.nome) not in nomes_usados:
+                return oferta
+    return None
+
+
+def publicar_story_oferta_do_momento(data, request) -> RegistroPublicacao | None:
+    """Chamado várias vezes ao dia (não é a tarefa diária única) - posta no máximo 1
+    story de oferta por chamada. Ver NUMERO_STORIES_OFERTAS_POR_DIA."""
+    if data.weekday() not in conteudo.DIAS_COM_STORIES_DE_OFERTA:
+        return None
+
+    oferta = _escolher_oferta_do_momento(data)
+    if not oferta:
+        return None
+
+    imagem = gerar_imagem_ofertas([oferta], titulo="Oferta do momento", tamanho=(1080, 1920))
+    nome_exibido = oferta.nome_curto or oferta.nome
+    legenda = f"{nome_exibido} — cashback garantido no cash-b. Link na bio pra ver essa e outras ofertas. 🛍️💸"
+
+    registro = _publicar_ou_simular(
         imagem, legenda, RegistroPublicacao.TIPO_STORY, RegistroPublicacao.CONTEUDO_OFERTA_DIARIA,
         data, request, story=True,
     )
+    registro.oferta_categoria_id = oferta.categoria_id
+    registro.oferta_item_id = oferta.item_id
+    registro.oferta_nome = oferta.nome
+    registro.save(update_fields=["oferta_categoria_id", "oferta_item_id", "oferta_nome"])
+    return registro
 
 
 def publicar_story_dica(data, request) -> RegistroPublicacao:
@@ -245,7 +297,7 @@ def publicar_post_institucional(data, request) -> RegistroPublicacao:
 def publicar_post_ofertas_semana(data, request) -> RegistroPublicacao | None:
     """Carrossel com uma capa + 8 ofertas (uma por slide) - carrossel tende a gerar mais
     salvamentos que um post único, o que ajuda o alcance pra quem ainda não segue."""
-    ofertas = list(Oferta.objects.all()[:8])
+    ofertas = ofertas_services.selecionar_top_ofertas_sem_duplicar(8)
     if not ofertas:
         logger.warning("[instagram_bot] sem ofertas sincronizadas, pulando post semanal")
         return None
@@ -270,7 +322,6 @@ def publicar_post_ofertas_semana(data, request) -> RegistroPublicacao | None:
 
 
 DESPACHANTES = {
-    RegistroPublicacao.CONTEUDO_OFERTA_DIARIA: publicar_story_ofertas,
     RegistroPublicacao.CONTEUDO_DICA: publicar_story_dica,
     RegistroPublicacao.CONTEUDO_LEMBRETE: publicar_story_lembrete,
     RegistroPublicacao.CONTEUDO_INSTITUCIONAL: publicar_post_institucional,

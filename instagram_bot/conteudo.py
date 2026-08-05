@@ -1,8 +1,11 @@
 """Bancos de conteúdo e decisão do que publicar em cada dia.
 
 Calendário (ver marketing/instagram/README.md para o histórico da decisão):
-    - Stories, todo dia:
-        segunda a sexta -> destaque de ofertas do dia
+    - Stories:
+        segunda a sexta -> NUMERO_STORIES_OFERTAS_POR_DIA stories de oferta ao longo
+                           do dia (1 categoria mais vendida por story - ver
+                           instagram_bot/services.py, chamado várias vezes ao dia por
+                           um cron dedicado, não pela tarefa diária única)
         sábado          -> dica de economia (banco DICAS, rotativo)
         domingo         -> lembrete de cashback (banco LEMBRETES, rotativo)
     - Posts no feed, 2x por semana:
@@ -12,6 +15,11 @@ Calendário (ver marketing/instagram/README.md para o histórico da decisão):
 from .models import RegistroPublicacao
 
 SEGUNDA, TERCA, QUARTA, QUINTA, SEXTA, SABADO, DOMINGO = range(7)
+
+# Dias em que postamos stories de oferta (ver instagram_bot/services.py,
+# publicar_story_oferta_do_momento - chamado várias vezes ao dia, não é a tarefa
+# diária única).
+DIAS_COM_STORIES_DE_OFERTA = (SEGUNDA, TERCA, QUARTA, QUINTA, SEXTA)
 
 DICAS = [
     "Sempre confira se tem cupom disponível antes de finalizar a compra: cashback e cupom não se excluem.",
@@ -194,9 +202,10 @@ def tipo_de_conteudo_do_dia(data) -> list[str]:
     dia_semana = data.weekday()
     tipos = []
 
-    if dia_semana in (SEGUNDA, TERCA, QUARTA, QUINTA, SEXTA):
-        tipos.append(RegistroPublicacao.CONTEUDO_OFERTA_DIARIA)
-    elif dia_semana == SABADO:
+    # CONTEUDO_OFERTA_DIARIA não entra aqui - é postado várias vezes ao dia por um
+    # cron dedicado (ver publicar_story_oferta_do_momento), não uma vez só junto com
+    # o resto da tarefa diária.
+    if dia_semana == SABADO:
         tipos.append(RegistroPublicacao.CONTEUDO_DICA)
     elif dia_semana == DOMINGO:
         tipos.append(RegistroPublicacao.CONTEUDO_LEMBRETE)
