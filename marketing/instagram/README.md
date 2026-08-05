@@ -147,7 +147,17 @@ de uma chave de API do Render, mais uma credencial sensível pra gerenciar),
 e expor o valor novo do token nos logs seria um risco de segurança. Por
 enquanto, o processo é manual: antes dos 60 dias vencerem, repetir o passo
 "Gerar token" no painel da Meta (ver Fase 1 acima) e atualizar
-`INSTAGRAM_ACCESS_TOKEN` no Render. Vale colocar um lembrete recorrente.
+`INSTAGRAM_ACCESS_TOKEN` no Render.
+
+**Lembrete automático (✅ concluído)**: `instagram_bot/lembrete_token.py`
+roda junto da tarefa diária (`executar_tarefas_agendadas`) e manda um
+e-mail pro `INSTAGRAM_APROVADOR_EMAIL` quando faltarem 10 dias ou menos
+pro token vencer (repete a cada 3 dias até renovar, pra não deixar passar
+batido). O controle de quando o token foi renovado pela última vez fica no
+model `EstadoTokenInstagram` (Django Admin, `instagram_bot`) — depois de
+gerar e atualizar o token novo no Render, é só abrir esse registro no
+Admin e rodar a ação "Marcar token como renovado hoje" (senão o lembrete
+continua chegando).
 
 ## Posts de semeadura (pasta `posts-semeadura/`)
 

@@ -1,4 +1,29 @@
+from datetime import date
+
 from django.db import models
+
+
+class EstadoTokenInstagram(models.Model):
+    """Uma linha só (singleton) - controla o lembrete de renovação do
+    INSTAGRAM_ACCESS_TOKEN, que dura 60 dias e precisa ser renovado à mão (ver
+    marketing/instagram/README.md, seção "Renovação do token de acesso")."""
+
+    renovado_em = models.DateField(
+        default=date.today,
+        help_text="Data em que o INSTAGRAM_ACCESS_TOKEN foi gerado/renovado pela última "
+        "vez. Atualize sempre que trocar o token no Render (ou use a ação "
+        "\"Marcar token como renovado hoje\" aqui no Admin).",
+    )
+    ultimo_lembrete_em = models.DateField(
+        null=True, blank=True, help_text="Data do último e-mail de lembrete enviado (evita mandar um por dia)."
+    )
+
+    class Meta:
+        verbose_name = "Estado do token do Instagram"
+        verbose_name_plural = "Estado do token do Instagram"
+
+    def __str__(self):
+        return f"Token renovado em {self.renovado_em:%d/%m/%Y}"
 
 
 class RegistroPublicacao(models.Model):

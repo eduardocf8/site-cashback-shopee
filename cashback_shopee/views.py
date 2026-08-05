@@ -4,6 +4,7 @@ from datetime import datetime, timedelta, timezone as dt_timezone
 from django.conf import settings
 from django.http import HttpResponse, HttpResponseForbidden, JsonResponse
 
+from instagram_bot.lembrete_token import verificar_validade_token
 from instagram_bot.services import executar_publicacoes_do_dia
 from links.shopee_client import ShopeeAPIError, ShopeeConfigError
 from ofertas.services import encurtar_nomes_pendentes, sincronizar_ofertas
@@ -68,6 +69,11 @@ def executar_tarefas_agendadas(request):
         resultado["instagram"] = executar_publicacoes_do_dia(request)
     except Exception as erro:
         resultado["instagram_erro"] = str(erro)
+
+    try:
+        resultado["token_instagram"] = verificar_validade_token()
+    except Exception as erro:
+        resultado["token_instagram_erro"] = str(erro)
 
     return JsonResponse(resultado)
 
