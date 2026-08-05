@@ -3,7 +3,6 @@ import logging
 import uuid
 from pathlib import Path
 
-import requests
 from django.conf import settings
 from django.utils import timezone
 from PIL import Image
@@ -292,12 +291,16 @@ def executar_publicacoes_do_dia(request) -> list[dict]:
 
 def _reconverter_para_jpeg(url: str, request) -> str:
     """Se a URL já for .jpg (gerada depois da correção do formato), não mexe. Senão
-    (arte antiga, salva em PNG antes da correção), baixa, converte e salva de novo."""
+    (arte antiga, salva em PNG antes da correção), lê o arquivo do disco e reconverte.
+
+    Importante: lê do disco em vez de baixar a própria URL pública via HTTP - com só
+    1 worker do gunicorn, a requisição feita de dentro de uma requisição em andamento
+    fica esperando o próprio processo (que está ocupado) responder, e nunca sai do
+    lugar (timeout)."""
     if url.lower().endswith((".jpg", ".jpeg")):
         return url
-    resposta = requests.get(url, timeout=30)
-    resposta.raise_for_status()
-    imagem = Image.open(io.BytesIO(resposta.content)).convert("RGB")
+    nome_arquivo = url.rsplit("/", 1)[-1]
+    imagem = Image.open(PASTA_MEDIA_BOT / nome_arquivo).convert("RGB")
     return _salvar_e_montar_url(imagem, request)
 
 
