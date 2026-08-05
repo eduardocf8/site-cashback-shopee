@@ -23,16 +23,18 @@ PASTA_MEDIA_BOT = Path(settings.MEDIA_ROOT) / "instagram"
 
 
 def _salvar_e_montar_url(imagem, request) -> str:
+    # JPEG, não PNG: a Instagram Graph API só aceita JPEG pra publicar imagem
+    # (PNG gera o erro genérico "Only photo or video can be accepted as media type").
     PASTA_MEDIA_BOT.mkdir(parents=True, exist_ok=True)
-    nome_arquivo = f"{uuid.uuid4().hex}.png"
+    nome_arquivo = f"{uuid.uuid4().hex}.jpg"
     caminho = PASTA_MEDIA_BOT / nome_arquivo
-    imagem.save(caminho, "PNG")
+    imagem.save(caminho, "JPEG", quality=90)
     return request.build_absolute_uri(f"{settings.MEDIA_URL}instagram/{nome_arquivo}")
 
 
-def _bytes_png(imagem) -> bytes:
+def _bytes_jpeg(imagem) -> bytes:
     buffer = io.BytesIO()
-    imagem.save(buffer, "PNG")
+    imagem.save(buffer, "JPEG", quality=90)
     return buffer.getvalue()
 
 
@@ -116,7 +118,7 @@ def _aguardar_aprovacao(imagem, legenda, tipo, conteudo_tipo, data, request) -> 
         simulacao=False, sucesso=False, status=RegistroPublicacao.STATUS_PENDENTE_APROVACAO,
     )
     try:
-        aprovacao.enviar_email_aprovacao(registro, [_bytes_png(imagem)], request)
+        aprovacao.enviar_email_aprovacao(registro, [_bytes_jpeg(imagem)], request)
     except Exception:
         logger.exception("[instagram_bot] falha ao enviar e-mail de aprovação (registro %s)", registro.pk)
     return registro
@@ -173,7 +175,7 @@ def _aguardar_aprovacao_carrossel(imagens, legenda, tipo, conteudo_tipo, data, r
         imagem_urls="\n".join(imagem_urls),
     )
     try:
-        aprovacao.enviar_email_aprovacao(registro, [_bytes_png(imagem) for imagem in imagens], request)
+        aprovacao.enviar_email_aprovacao(registro, [_bytes_jpeg(imagem) for imagem in imagens], request)
     except Exception:
         logger.exception("[instagram_bot] falha ao enviar e-mail de aprovação (registro %s)", registro.pk)
     return registro

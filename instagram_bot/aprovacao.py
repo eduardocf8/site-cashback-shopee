@@ -53,7 +53,7 @@ def enviar_email_aprovacao(registro: RegistroPublicacao, imagens_bytes: list[byt
         to=[destinatario],
     )
     for indice, imagem_bytes in enumerate(imagens_bytes, start=1):
-        email.attach(f"cash-b-{registro.pk}-{indice}.png", imagem_bytes, "image/png")
+        email.attach(f"cash-b-{registro.pk}-{indice}.jpg", imagem_bytes, "image/jpeg")
     email.send()
 
 
