@@ -19,7 +19,12 @@ def _chamar(metodo: str, caminho: str, access_token: str, **params) -> dict:
     resposta = requests.request(metodo, _url(caminho), params=params, timeout=30)
     dados = resposta.json()
     if "error" in dados:
-        raise InstagramAPIError(dados["error"].get("message", str(dados["error"])))
+        erro = dados["error"]
+        mensagem = erro.get("message", str(erro))
+        detalhes = ", ".join(
+            f"{chave}={erro[chave]}" for chave in ("code", "error_subcode", "type", "fbtrace_id") if chave in erro
+        )
+        raise InstagramAPIError(f"{mensagem} [{detalhes}]" if detalhes else mensagem)
     resposta.raise_for_status()
     return dados
 

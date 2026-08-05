@@ -28,7 +28,15 @@ def _chamar(metodo: str, caminho: str, **params) -> dict:
     resposta = requests.request(metodo, _url(caminho), params=params, timeout=30)
     dados = resposta.json()
     if "error" in dados:
-        raise InstagramAPIError(dados["error"].get("message", str(dados["error"])))
+        erro = dados["error"]
+        mensagem = erro.get("message", str(erro))
+        # code/error_subcode/fbtrace_id ajudam a identificar a causa exata (a mensagem
+        # sozinha costuma ser genérica demais, ex: "Only photo or video can be
+        # accepted as media type" cobre várias causas bem diferentes entre si).
+        detalhes = ", ".join(
+            f"{chave}={erro[chave]}" for chave in ("code", "error_subcode", "type", "fbtrace_id") if chave in erro
+        )
+        raise InstagramAPIError(f"{mensagem} [{detalhes}]" if detalhes else mensagem)
     resposta.raise_for_status()
     return dados
 
