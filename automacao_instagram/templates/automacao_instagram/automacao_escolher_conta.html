@@ -1,0 +1,12 @@
+{% extends "accounts/base.html" %}
+{% block titulo %}Nova automação{% endblock %}
+{% block conteudo %}
+{% include "automacao_instagram/_nav.html" %}
+<h1>Nova automação</h1>
+<p class="legenda">Primeiro, escolha em qual conta fica o post:</p>
+<ul>
+    {% for conta in contas %}
+    <li><a href="{% url 'automacao_nova' %}?conta={{ conta.pk }}">{{ conta.nome_exibicao }}</a></li>
+    {% endfor %}
+</ul>
+{% endblock %}

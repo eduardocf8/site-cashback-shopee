@@ -159,6 +159,61 @@ gerar e atualizar o token novo no Render, é só abrir esse registro no
 Admin e rodar a ação "Marcar token como renovado hoje" (senão o lembrete
 continua chegando).
 
+## Automação de comentários e DM (app `automacao_instagram/`)
+
+App separado do bot de publicação (`instagram_bot/`) — responde comentários
+com palavra-chave num post específico (resposta pública e/ou DM/resposta
+privada), com múltiplas automações rodando em paralelo (uma por post) e
+suporte a mais de uma conta do Instagram conectada.
+
+- **Login separado** do painel de clientes do site — `/automacao/entrar/`,
+  só acessível por usuários com `is_staff=True` (criados via Django Admin,
+  não tem cadastro público). Cada usuário só vê e gerencia as próprias
+  contas/automações (`ContaInstagramConectada.usuario`).
+- **Múltiplas contas**: cada usuário conecta a(s) conta(s) do Instagram que
+  usa, colando o ID da conta comercial + o access token (gerado do mesmo
+  jeito que o token do `instagram_bot`, ver "Fase 1" acima). **Importante**:
+  como o App da Meta usa Standard Access (sem revisão), só contas com
+  função nesse App conseguem usar a API — pra conectar uma conta que não
+  seja a `usecashb`, primeiro adicione essa conta como pessoa/conta de
+  teste no painel do App (Meta for Developers → Funções), senão a chamada à
+  API falha com erro de permissão.
+- **Automações**: cada uma vinculada a um post (`instagram_media_id`,
+  escolhido numa lista dos posts recentes da conta - não precisa digitar o
+  ID na mão), com uma lista de palavras-chave (uma por linha, sem
+  diferenciar maiúscula/acento) e dois checkboxes independentes: responder
+  o comentário publicamente (com texto próprio) e/ou enviar DM/resposta
+  privada (com texto próprio). Dá pra ter várias automações ativas ao mesmo
+  tempo, cada uma no seu post.
+- **Indicadores**: por automação, contagem de comentários correspondidos,
+  respostas públicas enviadas, DMs enviadas e DMs respondidas (detectado
+  verificando se o autor mandou alguma mensagem na conversa depois da DM -
+  não é uma métrica pronta da API, é calculada aqui).
+- **Como funciona por baixo**: não usa webhook (exigiria um endereço
+  público com HTTPS) - um processo à parte faz *polling*: a cada
+  `AUTOMACAO_INSTAGRAM_INTERVALO_SEGUNDOS` (30s por padrão), verifica
+  comentários novos em todas as automações ativas. Ver `services.py`
+  (`processar_ciclo`) e o management command
+  `automacao_instagram_worker`.
+
+### Rodando o worker no Render (Background Worker)
+
+O polling precisa de um processo vivo 24h, o que o serviço **web** do
+Render (gunicorn, request-response) não oferece sozinho. Configuração:
+
+1. No dashboard do Render, criar um novo serviço do tipo **Background
+   Worker**, apontando pro mesmo repositório/branch do site.
+2. Start Command: `python manage.py automacao_instagram_worker`
+3. Compartilhar as mesmas variáveis de ambiente do serviço web que
+   envolvem banco de dados (`DATABASE_URL`) e `DJANGO_SECRET_KEY` — o
+   worker usa o mesmo banco (lê/escreve `ContaInstagramConectada`,
+   `AutomacaoComentario`, `ComentarioProcessado`).
+4. Opcional: `AUTOMACAO_INSTAGRAM_INTERVALO_SEGUNDOS` pra mudar o intervalo
+   do polling (padrão 30).
+
+Esse é um serviço com custo próprio no Render, separado do plano do site
+(ver preço atual no dashboard antes de criar).
+
 ## Posts de semeadura (pasta `posts-semeadura/`)
 
 8 imagens 1080×1080 (arquivo real 2160×2160, renderizado em dobro pra

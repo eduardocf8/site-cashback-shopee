@@ -18,6 +18,7 @@ urlpatterns = [
     path("", include("paginas.urls")),
     path("", include("ofertas.urls")),
     path("", include("instagram_bot.urls")),
+    path("", include("automacao_instagram.urls")),
     path("tarefas/executar/", views.executar_tarefas_agendadas, name="executar_tarefas_agendadas"),
     path("tarefas/encurtar-nomes/", views.executar_encurtamento_nomes, name="executar_encurtamento_nomes"),
     path("robots.txt", views.robots_txt, name="robots_txt"),

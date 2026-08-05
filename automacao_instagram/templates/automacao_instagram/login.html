@@ -1,0 +1,15 @@
+{% extends "accounts/base.html" %}
+{% block titulo %}Automação de comentários{% endblock %}
+{% block meta_descricao %}Login da automação de comentários e DM do Instagram.{% endblock %}
+{% block conteudo %}
+<h1>Automação de comentários</h1>
+<p class="legenda">Login separado do painel de clientes.</p>
+<form method="post">
+    {% csrf_token %}
+    {% for field in form %}
+        {% include "accounts/_campo_formulario.html" with field=field %}
+    {% endfor %}
+    {% if form.non_field_errors %}<div class="erros">{{ form.non_field_errors|striptags }}</div>{% endif %}
+    <button type="submit">Entrar</button>
+</form>
+{% endblock %}

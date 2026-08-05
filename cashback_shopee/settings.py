@@ -75,6 +75,7 @@ INSTALLED_APPS = [
     "paginas",
     "ofertas",
     "instagram_bot",
+    "automacao_instagram",
 ]
 
 AUTH_USER_MODEL = "accounts.User"
@@ -154,6 +155,13 @@ INSTAGRAM_BOT_ATIVO = os.environ.get("INSTAGRAM_BOT_ATIVO", "False") == "True"
 # só publica depois de clicar em "aprovar" no e-mail. Se False, publica direto.
 INSTAGRAM_REQUER_APROVACAO = os.environ.get("INSTAGRAM_REQUER_APROVACAO", "True") == "True"
 INSTAGRAM_APROVADOR_EMAIL = os.environ.get("INSTAGRAM_APROVADOR_EMAIL", "contato@cash-b.com")
+
+# App automacao_instagram: responde/envia DM em comentários com palavra-chave. Cada
+# conta conectada tem seu próprio token (guardado no banco, não aqui - ver
+# ContaInstagramConectada), então esse valor só controla o intervalo do worker
+# (rodado à parte, como Background Worker no Render - ver
+# automacao_instagram/management/commands/automacao_instagram_worker.py).
+AUTOMACAO_INSTAGRAM_INTERVALO_SEGUNDOS = int(os.environ.get("AUTOMACAO_INSTAGRAM_INTERVALO_SEGUNDOS", "30"))
 
 MIDDLEWARE = [
     "django.middleware.security.SecurityMiddleware",

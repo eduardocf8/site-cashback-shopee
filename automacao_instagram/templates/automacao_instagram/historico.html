@@ -1,0 +1,71 @@
+{% extends "accounts/base.html" %}
+{% block titulo %}Histórico{% endblock %}
+{% block largura_container %}960px{% endblock %}
+{% block conteudo %}
+<style>
+    .paginacao { display: flex; align-items: center; justify-content: center; gap: 16px; margin-top: 16px; font-size: 13px; }
+    .paginacao span.desabilitado { color: var(--muted); }
+    .badge-ok { color: var(--success, #1b5e44); }
+    .badge-erro { color: var(--danger, #b3261e); }
+</style>
+{% include "automacao_instagram/_nav.html" %}
+<h1>Histórico de comentários</h1>
+
+<form method="get" class="filtro-secao" style="margin-bottom:16px;">
+    <label style="display:inline;">Automação:</label>
+    <select name="automacao" onchange="this.form.submit()" style="width:auto;display:inline;">
+        <option value="">Todas</option>
+        {% for automacao in automacoes %}
+        <option value="{{ automacao.pk }}" {% if filtro_automacao == automacao.pk|stringformat:"s" %}selected{% endif %}>{{ automacao.nome }}</option>
+        {% endfor %}
+    </select>
+</form>
+
+{% if comentarios %}
+<table>
+    <tr>
+        <th>Data</th><th>Automação</th><th>Autor</th><th>Comentário</th><th>Palavra-chave</th>
+        <th>Resposta pública</th><th>DM</th><th>DM respondida</th>
+    </tr>
+    {% for c in comentarios %}
+    <tr>
+        <td>{{ c.criado_em|date:"d/m/Y H:i" }}</td>
+        <td>{{ c.automacao.nome }}</td>
+        <td>@{{ c.autor_username|default:"?" }}</td>
+        <td>{{ c.texto_comentario|truncatechars:60 }}</td>
+        <td>{{ c.palavra_chave_encontrada }}</td>
+        <td>
+            {% if c.resposta_publica_enviada %}<span class="badge-ok">enviada</span>
+            {% elif c.resposta_publica_erro %}<span class="badge-erro" title="{{ c.resposta_publica_erro }}">erro</span>
+            {% else %}—{% endif %}
+        </td>
+        <td>
+            {% if c.dm_enviada %}<span class="badge-ok">enviada</span>
+            {% elif c.dm_erro %}<span class="badge-erro" title="{{ c.dm_erro }}">erro</span>
+            {% else %}—{% endif %}
+        </td>
+        <td>{% if c.dm_respondida %}<span class="badge-ok">sim</span>{% else %}não{% endif %}</td>
+    </tr>
+    {% endfor %}
+</table>
+
+{% if comentarios.has_other_pages %}
+<div class="paginacao">
+    {% if comentarios.has_previous %}
+        <a href="{% querystring pagina=comentarios.previous_page_number %}">&larr; Anterior</a>
+    {% else %}
+        <span class="desabilitado">&larr; Anterior</span>
+    {% endif %}
+    <span>Página {{ comentarios.number }} de {{ comentarios.paginator.num_pages }}</span>
+    {% if comentarios.has_next %}
+        <a href="{% querystring pagina=comentarios.next_page_number %}">Próxima &rarr;</a>
+    {% else %}
+        <span class="desabilitado">Próxima &rarr;</span>
+    {% endif %}
+</div>
+{% endif %}
+
+{% else %}
+<p class="legenda">Nenhum comentário processado ainda.</p>
+{% endif %}
+{% endblock %}

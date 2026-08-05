@@ -1,0 +1,38 @@
+{% extends "accounts/base.html" %}
+{% block titulo %}Automações{% endblock %}
+{% block largura_container %}960px{% endblock %}
+{% block conteudo %}
+{% include "automacao_instagram/_nav.html" %}
+<h1>Automações</h1>
+<p><a href="{% url 'automacao_nova' %}">+ Nova automação</a></p>
+
+{% if automacoes %}
+<table>
+    <tr>
+        <th>Nome</th><th>Conta</th><th>Status</th>
+        <th>Comentários</th><th>Respostas</th><th>DMs enviadas</th><th>DMs respondidas</th>
+        <th></th>
+    </tr>
+    {% for automacao in automacoes %}
+    <tr>
+        <td>{{ automacao.nome }}{% if automacao.link_post %} <a href="{{ automacao.link_post }}" target="_blank" rel="noopener">(ver post)</a>{% endif %}</td>
+        <td>{{ automacao.conta.nome_exibicao }}</td>
+        <td>{% if automacao.ativa %}Ativa{% else %}Pausada{% endif %}</td>
+        <td>{{ automacao.total_comentarios }}</td>
+        <td>{{ automacao.respostas_enviadas }}</td>
+        <td>{{ automacao.dms_enviadas }}</td>
+        <td>{{ automacao.dms_respondidas }}</td>
+        <td>
+            <a href="{% url 'automacao_editar' automacao.pk %}">Editar</a>
+            <form method="post" action="{% url 'automacao_alternar_ativa' automacao.pk %}" style="display:inline;">
+                {% csrf_token %}
+                <button type="submit" style="width:auto;margin-left:8px;">{% if automacao.ativa %}Pausar{% else %}Ativar{% endif %}</button>
+            </form>
+        </td>
+    </tr>
+    {% endfor %}
+</table>
+{% else %}
+<p class="legenda">Nenhuma automação criada ainda.</p>
+{% endif %}
+{% endblock %}

@@ -1,0 +1,36 @@
+{% extends "accounts/base.html" %}
+{% block titulo %}Nova automação{% endblock %}
+{% block largura_container %}600px{% endblock %}
+{% block conteudo %}
+<style>input[type="checkbox"] { width: auto; display: inline-block; margin-right: 6px; }</style>
+{% include "automacao_instagram/_nav.html" %}
+<h1>Nova automação — {{ conta.nome_exibicao }}</h1>
+
+<form method="post">
+    {% csrf_token %}
+    <input type="hidden" name="conta" value="{{ conta.pk }}">
+
+    <label>Post</label>
+    {% if midias %}
+        {% for midia in midias %}
+        <label style="font-weight:normal;display:flex;gap:8px;align-items:flex-start;margin-top:8px;">
+            <input type="radio" name="post_selecionado" value="{{ midia.id }}|{{ midia.permalink }}" style="width:auto;margin-top:4px;" required>
+            <span>
+                {{ midia.timestamp|slice:":10" }} —
+                {{ midia.caption|default:"(sem legenda)"|truncatechars:80 }}
+                {% if midia.permalink %}<br><a href="{{ midia.permalink }}" target="_blank" rel="noopener">ver post</a>{% endif %}
+            </span>
+        </label>
+        {% endfor %}
+    {% else %}
+        <p class="legenda">Nenhum post encontrado nessa conta.</p>
+    {% endif %}
+
+    {% for field in form %}
+        {% include "accounts/_campo_formulario.html" with field=field %}
+    {% endfor %}
+    {% if form.non_field_errors %}<div class="erros">{{ form.non_field_errors|striptags }}</div>{% endif %}
+
+    <button type="submit">Criar automação</button>
+</form>
+{% endblock %}
