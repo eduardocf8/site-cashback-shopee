@@ -23,6 +23,17 @@ logger = logging.getLogger(__name__)
 PASTA_MEDIA_BOT = Path(settings.MEDIA_ROOT) / "instagram"
 
 
+def _url_publica_da_midia(nome_arquivo: str, request) -> str:
+    """Sempre usa o endereço direto do Render (onrender.com) quando disponível, nunca
+    o domínio customizado (ex: cash-b.com) - se houver Cloudflare ou outro proxy/CDN
+    na frente do domínio customizado, o rastreador da Meta pode não conseguir buscar
+    a imagem por ali (bot fight mode etc.), mesmo funcionando normal num navegador."""
+    caminho = f"{settings.MEDIA_URL}instagram/{nome_arquivo}"
+    if settings.RENDER_EXTERNAL_HOSTNAME:
+        return f"https://{settings.RENDER_EXTERNAL_HOSTNAME}{caminho}"
+    return request.build_absolute_uri(caminho)
+
+
 def _salvar_e_montar_url(imagem, request) -> str:
     # JPEG, não PNG: a Instagram Graph API só aceita JPEG pra publicar imagem
     # (PNG gera o erro genérico "Only photo or video can be accepted as media type").
@@ -30,7 +41,7 @@ def _salvar_e_montar_url(imagem, request) -> str:
     nome_arquivo = f"{uuid.uuid4().hex}.jpg"
     caminho = PASTA_MEDIA_BOT / nome_arquivo
     imagem.save(caminho, "JPEG", quality=90)
-    return request.build_absolute_uri(f"{settings.MEDIA_URL}instagram/{nome_arquivo}")
+    return _url_publica_da_midia(nome_arquivo, request)
 
 
 def _bytes_jpeg(imagem) -> bytes:
