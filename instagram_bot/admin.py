@@ -1,6 +1,7 @@
 from django.contrib import admin
 from django.utils import timezone
 
+from . import services
 from .models import EstadoTokenInstagram, RegistroPublicacao
 
 
@@ -44,3 +45,20 @@ class RegistroPublicacaoAdmin(admin.ModelAdmin):
         "erro",
         "criado_em",
     )
+    actions = ["tentar_publicar_de_novo"]
+
+    @admin.action(description="Tentar publicar de novo (converte a arte pra JPEG se precisar)")
+    def tentar_publicar_de_novo(self, request, queryset):
+        for registro in queryset:
+            if registro.status != RegistroPublicacao.STATUS_ERRO:
+                self.message_user(
+                    request, f"Registro {registro.pk}: ignorado (status não é 'Erro').", level="warning"
+                )
+                continue
+            try:
+                services.tentar_publicar_de_novo(registro, request)
+                self.message_user(request, f"Registro {registro.pk}: publicado com sucesso!")
+            except Exception as erro:
+                self.message_user(
+                    request, f"Registro {registro.pk}: falhou de novo - {erro}", level="error"
+                )

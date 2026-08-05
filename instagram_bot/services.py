@@ -3,8 +3,10 @@ import logging
 import uuid
 from pathlib import Path
 
+import requests
 from django.conf import settings
 from django.utils import timezone
+from PIL import Image
 
 from ofertas.models import Oferta
 
@@ -286,3 +288,35 @@ def executar_publicacoes_do_dia(request) -> list[dict]:
             })
 
     return resultados
+
+
+def _reconverter_para_jpeg(url: str, request) -> str:
+    """Se a URL já for .jpg (gerada depois da correção do formato), não mexe. Senão
+    (arte antiga, salva em PNG antes da correção), baixa, converte e salva de novo."""
+    if url.lower().endswith((".jpg", ".jpeg")):
+        return url
+    resposta = requests.get(url, timeout=30)
+    resposta.raise_for_status()
+    imagem = Image.open(io.BytesIO(resposta.content)).convert("RGB")
+    return _salvar_e_montar_url(imagem, request)
+
+
+def tentar_publicar_de_novo(registro: RegistroPublicacao, request) -> None:
+    """Reprocessa um registro que falhou (ex: erro 500 "Only photo or video can be
+    accepted" por causa da arte antiga em PNG) - converte a(s) imagem(ns) pra JPEG e
+    tenta publicar de novo. Chamado pela ação "Tentar publicar de novo" no Admin."""
+    if registro.imagem_urls:
+        urls_convertidas = [_reconverter_para_jpeg(url, request) for url in registro.imagem_urls.splitlines()]
+        media_id = instagram_client.publicar_carrossel(urls_convertidas, legenda=registro.legenda)
+        registro.imagem_urls = "\n".join(urls_convertidas)
+    else:
+        url_convertida = _reconverter_para_jpeg(registro.imagem_url, request)
+        story = registro.tipo == RegistroPublicacao.TIPO_STORY
+        media_id = instagram_client.publicar_imagem(url_convertida, legenda=registro.legenda, story=story)
+        registro.imagem_url = url_convertida
+
+    registro.status = RegistroPublicacao.STATUS_PUBLICADO
+    registro.sucesso = True
+    registro.erro = ""
+    registro.instagram_media_id = media_id
+    registro.save(update_fields=["status", "sucesso", "erro", "instagram_media_id", "imagem_url", "imagem_urls"])
