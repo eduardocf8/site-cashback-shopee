@@ -63,7 +63,7 @@ def conta_remover(request, pk):
 
 @staff_required
 def automacao_lista(request):
-    automacoes = (
+    automacoes = list(
         AutomacaoComentario.objects.filter(conta__usuario=request.user)
         .select_related("conta")
         .annotate(
@@ -75,7 +75,14 @@ def automacao_lista(request):
             dms_respondidas=Count("comentarios", filter=Q(comentarios__dm_respondida=True), distinct=True),
         )
     )
-    return render(request, "automacao_instagram/automacao_lista.html", {"automacoes": automacoes})
+    resumo = {
+        "total": len(automacoes),
+        "ativas": sum(1 for a in automacoes if a.ativa),
+        "comentarios": sum(a.total_comentarios for a in automacoes),
+        "dms_enviadas": sum(a.dms_enviadas for a in automacoes),
+        "dms_respondidas": sum(a.dms_respondidas for a in automacoes),
+    }
+    return render(request, "automacao_instagram/automacao_lista.html", {"automacoes": automacoes, "resumo": resumo})
 
 
 @staff_required

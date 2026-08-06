@@ -1,11 +1,14 @@
 {% extends "automacao_instagram/base.html" %}
 {% block titulo %}Editar automação{% endblock %}
-{% block largura_container %}600px{% endblock %}
+{% block largura_conteudo %}640px{% endblock %}
 {% block conteudo %}
-{% include "automacao_instagram/_nav.html" %}
-<h1>Editar automação</h1>
-<p class="legenda">Post: {{ automacao.link_post|default:automacao.instagram_media_id }} ({{ automacao.conta.nome_exibicao }})</p>
+<p class="legenda"><a href="{% url 'automacao_lista' %}">&larr; Automações</a></p>
+<div class="cabecalho-pagina">
+    <h1>Editar automação</h1>
+</div>
+<p class="legenda" style="margin-top:-10px;margin-bottom:20px;">Post: {{ automacao.link_post|default:automacao.instagram_media_id }} ({{ automacao.conta.nome_exibicao }})</p>
 
+<div class="cartao">
 <form method="post">
     {% csrf_token %}
     {% for field in form %}
@@ -14,4 +17,5 @@
     {% if form.non_field_errors %}<div class="erros">{{ form.non_field_errors|striptags }}</div>{% endif %}
     <button type="submit">Salvar</button>
 </form>
+</div>
 {% endblock %}
