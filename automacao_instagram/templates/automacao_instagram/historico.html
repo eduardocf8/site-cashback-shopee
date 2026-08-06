@@ -1,19 +1,22 @@
-{% extends "accounts/base.html" %}
+{% extends "automacao_instagram/base.html" %}
 {% block titulo %}Histórico{% endblock %}
-{% block largura_container %}960px{% endblock %}
-{% block conteudo %}
+{% block estilo_extra %}
 <style>
+    .filtro-secao { margin-bottom: 16px; display: flex; align-items: center; gap: 10px; }
+    .filtro-secao label { margin: 0; }
+    .filtro-secao select { width: auto; margin: 0; }
     .paginacao { display: flex; align-items: center; justify-content: center; gap: 16px; margin-top: 16px; font-size: 13px; }
     .paginacao span.desabilitado { color: var(--muted); }
-    .badge-ok { color: var(--success, #1b5e44); }
-    .badge-erro { color: var(--danger, #b3261e); }
 </style>
-{% include "automacao_instagram/_nav.html" %}
-<h1>Histórico de comentários</h1>
+{% endblock %}
+{% block conteudo %}
+<div class="cabecalho-pagina">
+    <h1>Histórico de comentários</h1>
+</div>
 
-<form method="get" class="filtro-secao" style="margin-bottom:16px;">
-    <label style="display:inline;">Automação:</label>
-    <select name="automacao" onchange="this.form.submit()" style="width:auto;display:inline;">
+<form method="get" class="filtro-secao">
+    <label for="filtro-automacao">Automação:</label>
+    <select id="filtro-automacao" name="automacao" onchange="this.form.submit()">
         <option value="">Todas</option>
         {% for automacao in automacoes %}
         <option value="{{ automacao.pk }}" {% if filtro_automacao == automacao.pk|stringformat:"s" %}selected{% endif %}>{{ automacao.nome }}</option>
@@ -21,7 +24,9 @@
     </select>
 </form>
 
+<div class="cartao">
 {% if comentarios %}
+<div class="tabela-scroll">
 <table>
     <tr>
         <th>Data</th><th>Automação</th><th>Autor</th><th>Comentário</th><th>Palavra-chave</th>
@@ -48,6 +53,7 @@
     </tr>
     {% endfor %}
 </table>
+</div>
 
 {% if comentarios.has_other_pages %}
 <div class="paginacao">
@@ -68,4 +74,5 @@
 {% else %}
 <p class="legenda">Nenhum comentário processado ainda.</p>
 {% endif %}
+</div>
 {% endblock %}

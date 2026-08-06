@@ -1,0 +1,144 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="{% block meta_descricao %}Painel de automação de comentários e DM do Instagram.{% endblock %}">
+    <meta name="theme-color" content="#322D29">
+    <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='7' fill='%2372383D'/%3E%3Cpath d='M8 10a2 2 0 0 1 2-2h12a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2h-8l-5 4v-4H10a2 2 0 0 1-2-2z' fill='%23EFE9E1'/%3E%3C/svg%3E">
+    <title>{% block titulo %}Automação de comentários{% endblock %} — automação IG</title>
+    {% include "automacao_instagram/_estilo_base.html" %}
+    <style>
+        .shell { display: flex; min-height: 100vh; }
+        .sidebar {
+            width: 232px; flex-shrink: 0; background: var(--shell); color: var(--shell-ink);
+            display: flex; flex-direction: column; padding: 20px 14px;
+            position: fixed; top: 0; bottom: 0; left: 0; z-index: 30;
+            transition: transform .18s ease;
+        }
+        .sidebar-marca {
+            display: flex; align-items: center; gap: 9px; padding: 6px 10px 22px;
+            font-size: 16px; font-weight: 700; letter-spacing: -0.01em; color: var(--shell-ink);
+        }
+        .sidebar-marca .quadrado {
+            width: 26px; height: 26px; border-radius: 7px; background: var(--brand);
+            display: flex; align-items: center; justify-content: center; flex-shrink: 0;
+        }
+        .sidebar-marca .quadrado svg { width: 15px; height: 15px; }
+        .sidebar-nav { display: flex; flex-direction: column; gap: 2px; flex: 1; }
+        .sidebar-nav a {
+            display: flex; align-items: center; gap: 10px; padding: 9px 10px; border-radius: 7px;
+            color: var(--shell-muted); font-size: 14px; font-weight: 500; text-decoration: none;
+        }
+        .sidebar-nav a:hover { background: var(--shell-soft); color: var(--shell-ink); }
+        .sidebar-nav a.ativo { background: var(--brand); color: #fff; }
+        .sidebar-rodape { border-top: 1px solid var(--shell-soft); padding-top: 12px; margin-top: 12px; }
+        .sidebar-usuario { padding: 0 10px 10px; font-size: 12.5px; color: var(--shell-muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+        .sidebar-sair {
+            display: flex; align-items: center; gap: 10px; width: 100%; padding: 9px 10px;
+            background: none; border: none; border-radius: 7px; color: var(--shell-muted);
+            font-size: 14px; font-weight: 500; margin: 0; cursor: pointer; text-align: left;
+        }
+        .sidebar-sair:hover { background: var(--shell-soft); color: var(--shell-ink); }
+
+        .app-main { flex: 1; margin-left: 232px; display: flex; flex-direction: column; min-width: 0; }
+        .topbar {
+            display: none; align-items: center; gap: 12px; padding: 14px 20px; background: var(--paper);
+            border-bottom: 1px solid var(--line); position: sticky; top: 0; z-index: 20;
+        }
+        .menu-toggle {
+            width: auto; margin: 0; padding: 6px; background: none; border: none; color: var(--ink);
+            display: flex; cursor: pointer;
+        }
+        .menu-toggle:hover { background: var(--paper-2); border-radius: 6px; }
+        .topbar-marca { font-size: 15px; font-weight: 700; color: var(--ink); }
+        .conteudo { padding: 32px; max-width: {% block largura_conteudo %}1240px{% endblock %}; width: 100%; }
+        .sidebar-fundo {
+            display: none; position: fixed; inset: 0; background: rgba(50, 45, 41, 0.45); z-index: 25;
+        }
+
+        @media (max-width: 880px) {
+            .sidebar { transform: translateX(-100%); }
+            body.menu-aberto .sidebar { transform: translateX(0); }
+            body.menu-aberto .sidebar-fundo { display: block; }
+            .app-main { margin-left: 0; }
+            .topbar { display: flex; }
+            .conteudo { padding: 20px; }
+        }
+    </style>
+    {% block estilo_extra %}{% endblock %}
+</head>
+<body>
+    <div class="shell">
+        <aside class="sidebar">
+            <a class="sidebar-marca" href="{% url 'automacao_lista' %}">
+                <span class="quadrado">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="#EFE9E1" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M13 2 4 14h6l-1 8 9-12h-6l1-8Z" fill="#EFE9E1" stroke="none"/></svg>
+                </span>
+                automação·ig
+            </a>
+            <nav class="sidebar-nav">
+                <a href="{% url 'automacao_lista' %}" class="{% if request.resolver_match.url_name == 'automacao_lista' or request.resolver_match.url_name == 'automacao_nova' or request.resolver_match.url_name == 'automacao_editar' %}ativo{% endif %}">
+                    <svg class="icone" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M13 2 4 14h6l-1 8 9-12h-6l1-8Z"/></svg>
+                    Automações
+                </a>
+                <a href="{% url 'automacao_historico' %}" class="{% if request.resolver_match.url_name == 'automacao_historico' %}ativo{% endif %}">
+                    <svg class="icone" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3.5 2"/></svg>
+                    Histórico
+                </a>
+                <a href="{% url 'automacao_contas' %}" class="{% if request.resolver_match.url_name == 'automacao_contas' %}ativo{% endif %}">
+                    <svg class="icone" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8.5" r="3.8"/><path d="M4.5 20.5c0-4 3.5-7 7.5-7s7.5 3 7.5 7"/></svg>
+                    Contas conectadas
+                </a>
+            </nav>
+            <div class="sidebar-rodape">
+                {% if request.user.is_authenticated %}<div class="sidebar-usuario">{{ request.user.get_username }}</div>{% endif %}
+                <form method="post" action="{% url 'automacao_logout' %}">
+                    {% csrf_token %}
+                    <button type="submit" class="sidebar-sair">
+                        <svg class="icone" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M14.5 4h3a2 2 0 0 1 2 2v12a2 2 0 0 1-2 2h-3"/><path d="M10 16.5 15 12l-5-4.5"/><path d="M15 12H3.5"/></svg>
+                        Sair
+                    </button>
+                </form>
+            </div>
+        </aside>
+        <div class="sidebar-fundo" data-fechar-menu></div>
+
+        <div class="app-main">
+            <header class="topbar">
+                <button type="button" class="menu-toggle" aria-label="Abrir menu" data-abrir-menu>
+                    <svg class="icone" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18M3 12h18M3 18h18"/></svg>
+                </button>
+                <span class="topbar-marca">automação·ig</span>
+            </header>
+            <main class="conteudo">
+                {% if messages %}
+                    <ul class="mensagens">
+                        {% for message in messages %}
+                            <li class="{{ message.tags }}">{{ message }}</li>
+                        {% endfor %}
+                    </ul>
+                {% endif %}
+                {% block conteudo %}{% endblock %}
+            </main>
+        </div>
+    </div>
+    <script>
+        document.querySelectorAll(".botao-olho").forEach(function (botao) {
+            botao.addEventListener("click", function () {
+                var campo = botao.previousElementSibling;
+                var vaiMostrar = campo.type === "password";
+                campo.type = vaiMostrar ? "text" : "password";
+                botao.classList.toggle("mostrando", vaiMostrar);
+                botao.setAttribute("aria-label", vaiMostrar ? botao.dataset.esconder : botao.dataset.mostrar);
+            });
+        });
+        var abrirBotao = document.querySelector("[data-abrir-menu]");
+        var fundo = document.querySelector("[data-fechar-menu]");
+        if (abrirBotao) {
+            abrirBotao.addEventListener("click", function () { document.body.classList.add("menu-aberto"); });
+            fundo.addEventListener("click", function () { document.body.classList.remove("menu-aberto"); });
+        }
+    </script>
+</body>
+</html>

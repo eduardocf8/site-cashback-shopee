@@ -1,18 +1,22 @@
-{% extends "accounts/base.html" %}
+{% extends "automacao_instagram/base.html" %}
 {% block titulo %}Editar automação{% endblock %}
-{% block largura_container %}600px{% endblock %}
 {% block conteudo %}
-<style>input[type="checkbox"] { width: auto; display: inline-block; margin-right: 6px; }</style>
-{% include "automacao_instagram/_nav.html" %}
-<h1>Editar automação</h1>
-<p class="legenda">Post: {{ automacao.link_post|default:automacao.instagram_media_id }} ({{ automacao.conta.nome_exibicao }})</p>
+<p class="legenda"><a href="{% url 'automacao_lista' %}">&larr; Automações</a></p>
+<div class="cabecalho-pagina">
+    <h1>Editar automação</h1>
+</div>
+<p class="legenda" style="margin-top:-10px;margin-bottom:20px;">Post: {{ automacao.link_post|default:automacao.instagram_media_id }} ({{ automacao.conta.nome_exibicao }})</p>
 
+<div class="caixa-central" style="max-width:680px;">
+<div class="cartao">
 <form method="post">
     {% csrf_token %}
     {% for field in form %}
-        {% include "accounts/_campo_formulario.html" with field=field %}
+        {% include "automacao_instagram/_campo_formulario.html" with field=field %}
     {% endfor %}
     {% if form.non_field_errors %}<div class="erros">{{ form.non_field_errors|striptags }}</div>{% endif %}
     <button type="submit">Salvar</button>
 </form>
+</div>
+</div>
 {% endblock %}

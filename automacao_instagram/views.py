@@ -4,7 +4,7 @@ from django.contrib.auth import views as auth_views
 from django.contrib.auth.decorators import user_passes_test
 from django.core.paginator import Paginator
 from django.db.models import Count, Q
-from django.shortcuts import get_object_or_404, redirect, render
+from django.shortcuts import get_object_or_404, redirect, render, resolve_url
 
 from . import instagram_api
 from .forms import AutomacaoComentarioForm, ContaInstagramForm
@@ -21,6 +21,9 @@ def staff_required(view_func):
 
 class AutomacaoLoginView(auth_views.LoginView):
     template_name = "automacao_instagram/login.html"
+
+    def get_default_redirect_url(self):
+        return resolve_url("automacao_contas")
 
     def form_valid(self, form):
         response = super().form_valid(form)
@@ -60,7 +63,7 @@ def conta_remover(request, pk):
 
 @staff_required
 def automacao_lista(request):
-    automacoes = (
+    automacoes = list(
         AutomacaoComentario.objects.filter(conta__usuario=request.user)
         .select_related("conta")
         .annotate(
@@ -72,7 +75,14 @@ def automacao_lista(request):
             dms_respondidas=Count("comentarios", filter=Q(comentarios__dm_respondida=True), distinct=True),
         )
     )
-    return render(request, "automacao_instagram/automacao_lista.html", {"automacoes": automacoes})
+    resumo = {
+        "total": len(automacoes),
+        "ativas": sum(1 for a in automacoes if a.ativa),
+        "comentarios": sum(a.total_comentarios for a in automacoes),
+        "dms_enviadas": sum(a.dms_enviadas for a in automacoes),
+        "dms_respondidas": sum(a.dms_respondidas for a in automacoes),
+    }
+    return render(request, "automacao_instagram/automacao_lista.html", {"automacoes": automacoes, "resumo": resumo})
 
 
 @staff_required

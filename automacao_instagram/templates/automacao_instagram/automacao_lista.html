@@ -1,12 +1,35 @@
-{% extends "accounts/base.html" %}
+{% extends "automacao_instagram/base.html" %}
 {% block titulo %}Automações{% endblock %}
-{% block largura_container %}960px{% endblock %}
 {% block conteudo %}
-{% include "automacao_instagram/_nav.html" %}
-<h1>Automações</h1>
-<p><a href="{% url 'automacao_nova' %}">+ Nova automação</a></p>
+<div class="cabecalho-pagina">
+    <h1>Automações</h1>
+    <a href="{% url 'automacao_nova' %}" class="botao botao-auto">+ Nova automação</a>
+</div>
 
+{% if resumo.total %}
+<div class="grade-resumo">
+    <div class="cartao cartao-resumo">
+        <span class="resumo-rotulo">Automações ativas</span>
+        <span class="resumo-valor">{{ resumo.ativas }}<span class="resumo-total">/{{ resumo.total }}</span></span>
+    </div>
+    <div class="cartao cartao-resumo">
+        <span class="resumo-rotulo">Comentários correspondidos</span>
+        <span class="resumo-valor">{{ resumo.comentarios }}</span>
+    </div>
+    <div class="cartao cartao-resumo">
+        <span class="resumo-rotulo">DMs enviadas</span>
+        <span class="resumo-valor">{{ resumo.dms_enviadas }}</span>
+    </div>
+    <div class="cartao cartao-resumo">
+        <span class="resumo-rotulo">DMs respondidas</span>
+        <span class="resumo-valor">{{ resumo.dms_respondidas }}</span>
+    </div>
+</div>
+{% endif %}
+
+<div class="cartao">
 {% if automacoes %}
+<div class="tabela-scroll">
 <table>
     <tr>
         <th>Nome</th><th>Conta</th><th>Status</th>
@@ -17,22 +40,26 @@
     <tr>
         <td>{{ automacao.nome }}{% if automacao.link_post %} <a href="{{ automacao.link_post }}" target="_blank" rel="noopener">(ver post)</a>{% endif %}</td>
         <td>{{ automacao.conta.nome_exibicao }}</td>
-        <td>{% if automacao.ativa %}Ativa{% else %}Pausada{% endif %}</td>
+        <td>{% if automacao.ativa %}<span class="pilula pilula-ativa">Ativa</span>{% else %}<span class="pilula pilula-pausada">Pausada</span>{% endif %}</td>
         <td>{{ automacao.total_comentarios }}</td>
         <td>{{ automacao.respostas_enviadas }}</td>
         <td>{{ automacao.dms_enviadas }}</td>
         <td>{{ automacao.dms_respondidas }}</td>
         <td>
-            <a href="{% url 'automacao_editar' automacao.pk %}">Editar</a>
-            <form method="post" action="{% url 'automacao_alternar_ativa' automacao.pk %}" style="display:inline;">
-                {% csrf_token %}
-                <button type="submit" style="width:auto;margin-left:8px;">{% if automacao.ativa %}Pausar{% else %}Ativar{% endif %}</button>
-            </form>
+            <div class="acoes-linha">
+                <a href="{% url 'automacao_editar' automacao.pk %}" class="botao botao-secundario botao-auto">Editar</a>
+                <form method="post" action="{% url 'automacao_alternar_ativa' automacao.pk %}">
+                    {% csrf_token %}
+                    <button type="submit" class="botao botao-secundario botao-auto">{% if automacao.ativa %}Pausar{% else %}Ativar{% endif %}</button>
+                </form>
+            </div>
         </td>
     </tr>
     {% endfor %}
 </table>
+</div>
 {% else %}
 <p class="legenda">Nenhuma automação criada ainda.</p>
 {% endif %}
+</div>
 {% endblock %}
