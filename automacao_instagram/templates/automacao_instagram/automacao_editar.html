@@ -1,7 +1,5 @@
 {% extends "automacao_instagram/base.html" %}
 {% block titulo %}Editar automação{% endblock %}
-{% block largura_conteudo %}680px{% endblock %}
-{% block alinhamento_conteudo %}margin: 0 auto;{% endblock %}
 {% block conteudo %}
 <p class="legenda"><a href="{% url 'automacao_lista' %}">&larr; Automações</a></p>
 <div class="cabecalho-pagina">
@@ -9,6 +7,7 @@
 </div>
 <p class="legenda" style="margin-top:-10px;margin-bottom:20px;">Post: {{ automacao.link_post|default:automacao.instagram_media_id }} ({{ automacao.conta.nome_exibicao }})</p>
 
+<div class="caixa-central" style="max-width:680px;">
 <div class="cartao">
 <form method="post">
     {% csrf_token %}
@@ -18,5 +17,6 @@
     {% if form.non_field_errors %}<div class="erros">{{ form.non_field_errors|striptags }}</div>{% endif %}
     <button type="submit">Salvar</button>
 </form>
+</div>
 </div>
 {% endblock %}

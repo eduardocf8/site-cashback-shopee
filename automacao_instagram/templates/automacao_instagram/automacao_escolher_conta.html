@@ -1,7 +1,5 @@
 {% extends "automacao_instagram/base.html" %}
 {% block titulo %}Nova automação{% endblock %}
-{% block largura_conteudo %}560px{% endblock %}
-{% block alinhamento_conteudo %}margin: 0 auto;{% endblock %}
 {% block estilo_extra %}
 <style>
     .opcao-conta {
@@ -16,10 +14,12 @@
 <div class="cabecalho-pagina">
     <h1>Nova automação</h1>
 </div>
+<div class="caixa-central caixa-central--desloc-pequeno" style="max-width:560px;">
 <div class="cartao">
     <p class="legenda" style="margin-top:0;">Primeiro, escolha em qual conta fica o post:</p>
     {% for conta in contas %}
     <a class="opcao-conta" href="{% url 'automacao_nova' %}?conta={{ conta.pk }}">{{ conta.nome_exibicao }}</a>
     {% endfor %}
+</div>
 </div>
 {% endblock %}

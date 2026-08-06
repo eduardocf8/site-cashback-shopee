@@ -1,7 +1,5 @@
 {% extends "automacao_instagram/base.html" %}
 {% block titulo %}Nova automação{% endblock %}
-{% block largura_conteudo %}720px{% endblock %}
-{% block alinhamento_conteudo %}margin: 0 auto;{% endblock %}
 {% block estilo_extra %}
 <style>
     .opcao-post {
@@ -19,6 +17,7 @@
     <h1>Nova automação — {{ conta.nome_exibicao }}</h1>
 </div>
 
+<div class="caixa-central caixa-central--desloc-pequeno" style="max-width:720px;">
 <div class="cartao">
 <form method="post">
     {% csrf_token %}
@@ -47,5 +46,6 @@
 
     <button type="submit">Criar automação</button>
 </form>
+</div>
 </div>
 {% endblock %}
