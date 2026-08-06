@@ -52,7 +52,7 @@
         }
         .menu-toggle:hover { background: var(--paper-2); border-radius: 6px; }
         .topbar-marca { font-size: 15px; font-weight: 700; color: var(--ink); }
-        .conteudo { padding: 32px; max-width: {% block largura_conteudo %}1240px{% endblock %}; width: 100%; }
+        .conteudo { padding: 32px; max-width: {% block largura_conteudo %}1240px{% endblock %}; width: 100%; {% block alinhamento_conteudo %}{% endblock %} }
         .sidebar-fundo {
             display: none; position: fixed; inset: 0; background: rgba(50, 45, 41, 0.45); z-index: 25;
         }
