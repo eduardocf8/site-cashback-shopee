@@ -20,7 +20,12 @@ class ContaInstagramConectada(models.Model):
     nome_exibicao = models.CharField(
         "Nome de exibição", max_length=100, help_text="Ex: @usecashb - só pra identificar a conta nas telas."
     )
-    instagram_business_account_id = models.CharField("ID da conta comercial do Instagram", max_length=64)
+    instagram_business_account_id = models.CharField(
+        "ID da conta comercial do Instagram",
+        max_length=64,
+        help_text="ID numérico da conta (não é o @usuário) - aparece no Meta Business Suite, em "
+        "Configurações > Contas > Instagram, ou é retornado pela Graph API.",
+    )
     access_token = models.CharField(
         "Access token",
         max_length=512,

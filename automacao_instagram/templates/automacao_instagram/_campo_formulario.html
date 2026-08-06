@@ -1,10 +1,26 @@
 {% if field.field.widget.input_type == "checkbox" %}
     <div class="campo-checkbox">
-        <label for="{{ field.id_for_label }}">{{ field.label }}</label>
+        <span class="rotulo-com-ajuda">
+            <label for="{{ field.id_for_label }}">{{ field.label }}</label>
+            {% if field.help_text %}
+            <span class="ajuda-tooltip">
+                <span class="ajuda-icone" tabindex="0" aria-label="Ajuda: {{ field.help_text }}">?</span>
+                <span class="ajuda-balao" role="tooltip">{{ field.help_text }}</span>
+            </span>
+            {% endif %}
+        </span>
         {{ field }}
     </div>
 {% else %}
-    <label for="{{ field.id_for_label }}">{{ field.label }}</label>
+    <span class="rotulo-com-ajuda">
+        <label for="{{ field.id_for_label }}">{{ field.label }}</label>
+        {% if field.help_text %}
+        <span class="ajuda-tooltip">
+            <span class="ajuda-icone" tabindex="0" aria-label="Ajuda: {{ field.help_text }}">?</span>
+            <span class="ajuda-balao" role="tooltip">{{ field.help_text }}</span>
+        </span>
+        {% endif %}
+    </span>
     {% if field.field.widget.input_type == "password" %}
         <div class="campo-senha">
             {{ field }}
