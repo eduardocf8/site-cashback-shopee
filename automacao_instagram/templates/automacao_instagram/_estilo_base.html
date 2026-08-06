@@ -31,15 +31,15 @@
     h2.titulo-bloco { font-size: 15px; margin: 32px 0 4px; color: var(--ink); font-weight: 600; }
     label { display: block; margin-top: 12px; font-size: 13px; color: var(--ink-soft); font-weight: 500; }
     input, select, textarea {
-        width: 100%; padding: 9px 10px; margin-top: 5px; box-sizing: border-box;
+        width: 100%; max-width: 640px; padding: 9px 10px; margin-top: 5px; box-sizing: border-box;
         border: 1px solid var(--line); border-radius: 6px; font-family: inherit; font-size: 14px;
         background: #fff; color: var(--ink);
     }
-    input[type="checkbox"] { width: auto; display: inline-block; margin-right: 6px; accent-color: var(--brand); }
+    input[type="checkbox"] { width: 18px; height: 18px; margin: 0; flex-shrink: 0; accent-color: var(--brand); }
     textarea { resize: vertical; }
     input:focus, select:focus, textarea:focus { outline: 2px solid var(--brand); outline-offset: 1px; }
     button, .botao {
-        margin-top: 20px; width: 100%; padding: 10px 16px; background: var(--brand); color: #fff;
+        margin-top: 20px; width: 100%; max-width: 640px; padding: 10px 16px; background: var(--brand); color: #fff;
         border: none; border-radius: 6px; font-size: 14px; font-weight: 600; font-family: inherit; cursor: pointer;
         display: inline-flex; align-items: center; justify-content: center; gap: 6px; transition: background .12s ease;
     }
@@ -78,6 +78,12 @@
 
     .acoes-linha { display: flex; gap: 8px; flex-wrap: nowrap; }
 
+    .campo-checkbox {
+        display: flex; align-items: center; justify-content: space-between; gap: 16px; max-width: 640px;
+        margin-top: 14px; padding: 12px 14px; border: 1px solid var(--line); border-radius: 8px; background: var(--paper-2);
+    }
+    .campo-checkbox label { margin: 0; font-size: 14px; color: var(--ink); font-weight: 500; }
+
     .cartao { background: var(--paper); border: 1px solid var(--line); border-radius: 12px; box-shadow: var(--shadow); padding: 24px; }
 
     .tabela-scroll { overflow-x: auto; -webkit-overflow-scrolling: touch; }
@@ -89,7 +95,7 @@
     .badge-ok { color: var(--success); font-weight: 600; }
     .badge-erro { color: var(--danger); font-weight: 600; cursor: help; }
 
-    .campo-senha { position: relative; }
+    .campo-senha { position: relative; max-width: 640px; }
     .campo-senha input { padding-right: 42px; }
     .botao-olho {
         position: absolute; top: 50%; right: 6px; transform: translateY(-50%);
