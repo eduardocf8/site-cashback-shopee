@@ -1,4 +1,4 @@
-{% extends "accounts/base.html" %}
+{% extends "automacao_instagram/base.html" %}
 {% block titulo %}Contas conectadas{% endblock %}
 {% block largura_container %}700px{% endblock %}
 {% block conteudo %}
@@ -6,6 +6,7 @@
 <h1>Contas conectadas</h1>
 
 {% if contas %}
+<div class="tabela-scroll">
 <table>
     <tr><th>Conta</th><th>ID da conta comercial</th><th></th></tr>
     {% for conta in contas %}
@@ -15,12 +16,13 @@
         <td>
             <form method="post" action="{% url 'automacao_conta_remover' conta.pk %}" onsubmit="return confirm('Remover essa conta? As automações vinculadas a ela também serão removidas.');">
                 {% csrf_token %}
-                <button type="submit" style="width:auto;background:var(--danger, #b3261e);">Remover</button>
+                <button type="submit" style="width:auto;background:var(--danger);">Remover</button>
             </form>
         </td>
     </tr>
     {% endfor %}
 </table>
+</div>
 {% else %}
 <p class="legenda">Nenhuma conta conectada ainda.</p>
 {% endif %}
@@ -34,7 +36,7 @@
 <form method="post">
     {% csrf_token %}
     {% for field in form %}
-        {% include "accounts/_campo_formulario.html" with field=field %}
+        {% include "automacao_instagram/_campo_formulario.html" with field=field %}
     {% endfor %}
     <button type="submit">Conectar conta</button>
 </form>

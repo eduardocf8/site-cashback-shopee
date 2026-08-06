@@ -1,4 +1,4 @@
-{% extends "accounts/base.html" %}
+{% extends "automacao_instagram/base.html" %}
 {% block titulo %}Automações{% endblock %}
 {% block largura_container %}960px{% endblock %}
 {% block conteudo %}
@@ -7,6 +7,7 @@
 <p><a href="{% url 'automacao_nova' %}">+ Nova automação</a></p>
 
 {% if automacoes %}
+<div class="tabela-scroll">
 <table>
     <tr>
         <th>Nome</th><th>Conta</th><th>Status</th>
@@ -32,6 +33,7 @@
     </tr>
     {% endfor %}
 </table>
+</div>
 {% else %}
 <p class="legenda">Nenhuma automação criada ainda.</p>
 {% endif %}

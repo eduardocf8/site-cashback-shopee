@@ -4,7 +4,7 @@ from django.contrib.auth import views as auth_views
 from django.contrib.auth.decorators import user_passes_test
 from django.core.paginator import Paginator
 from django.db.models import Count, Q
-from django.shortcuts import get_object_or_404, redirect, render
+from django.shortcuts import get_object_or_404, redirect, render, resolve_url
 
 from . import instagram_api
 from .forms import AutomacaoComentarioForm, ContaInstagramForm
@@ -21,6 +21,9 @@ def staff_required(view_func):
 
 class AutomacaoLoginView(auth_views.LoginView):
     template_name = "automacao_instagram/login.html"
+
+    def get_default_redirect_url(self):
+        return resolve_url("automacao_contas")
 
     def form_valid(self, form):
         response = super().form_valid(form)

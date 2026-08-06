@@ -1,8 +1,7 @@
-{% extends "accounts/base.html" %}
+{% extends "automacao_instagram/base.html" %}
 {% block titulo %}Nova automação{% endblock %}
 {% block largura_container %}600px{% endblock %}
 {% block conteudo %}
-<style>input[type="checkbox"] { width: auto; display: inline-block; margin-right: 6px; }</style>
 {% include "automacao_instagram/_nav.html" %}
 <h1>Nova automação — {{ conta.nome_exibicao }}</h1>
 
@@ -27,7 +26,7 @@
     {% endif %}
 
     {% for field in form %}
-        {% include "accounts/_campo_formulario.html" with field=field %}
+        {% include "automacao_instagram/_campo_formulario.html" with field=field %}
     {% endfor %}
     {% if form.non_field_errors %}<div class="erros">{{ form.non_field_errors|striptags }}</div>{% endif %}
 

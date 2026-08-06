@@ -1,0 +1,116 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="{% block meta_descricao %}Painel de automação de comentários e DM do Instagram.{% endblock %}">
+    <meta name="theme-color" content="#72383D">
+    <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='7' fill='%2372383D'/%3E%3Cpath d='M8 10a2 2 0 0 1 2-2h12a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2h-8l-5 4v-4H10a2 2 0 0 1-2-2z' fill='%23EFE9E1'/%3E%3C/svg%3E">
+    <title>{% block titulo %}Automação de comentários{% endblock %} — automação IG</title>
+    <style>
+        :root {
+            --ink: #322D29;
+            --ink-soft: #5b4f47;
+            --muted: #8f8478;
+            --brand: #72383D;
+            --brand-strong: #4a2226;
+            --accent: #AC9C8D;
+            --paper: #EFE9E1;
+            --paper-2: #D1C7BD;
+            --line: #D9D9D9;
+            --line-soft: #e2ded9;
+            --danger: #96402f;
+            --danger-bg: #f2e2dc;
+            --success: #4f6355;
+            --success-bg: #e6ebe4;
+        }
+        * { box-sizing: border-box; }
+        body {
+            margin: 0; padding: 0; background: var(--paper-2); color: var(--ink);
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+        }
+        .topo { text-align: center; padding: 40px 20px 0; }
+        .topo .marca {
+            font-size: 26px; font-weight: 700; letter-spacing: -0.02em; color: var(--ink);
+            text-decoration: none; display: inline-flex; align-items: center; gap: 8px;
+        }
+        .topo .marca .ponto { color: var(--brand); }
+        .container {
+            max-width: {% block largura_container %}420px{% endblock %}; margin: 24px auto 60px;
+            background: var(--paper); padding: 32px; border-radius: 10px; border: 1px solid var(--line);
+        }
+        h1 { color: var(--ink); font-size: 22px; letter-spacing: -0.01em; margin-top: 0; }
+        h2.titulo-bloco { font-size: 16px; margin-top: 32px; color: var(--ink); }
+        label { display: block; margin-top: 12px; font-size: 14px; color: var(--ink-soft); }
+        input, select, textarea {
+            width: 100%; padding: 8px; margin-top: 4px; box-sizing: border-box;
+            border: 1px solid var(--line); border-radius: 4px; font-family: inherit; font-size: 14px;
+            background: #fff; color: var(--ink);
+        }
+        input[type="checkbox"] { width: auto; display: inline-block; margin-right: 6px; }
+        textarea { resize: vertical; }
+        input:focus, select:focus, textarea:focus { outline: 2px solid var(--brand); outline-offset: 1px; }
+        button {
+            margin-top: 20px; width: 100%; padding: 10px; background: var(--brand); color: var(--paper);
+            border: none; border-radius: 4px; font-size: 15px; font-weight: 600; font-family: inherit; cursor: pointer;
+        }
+        button:hover { background: var(--brand-strong); }
+        .erros { color: var(--danger); font-size: 13px; }
+        .legenda { color: var(--muted); font-size: 14px; }
+        a { color: var(--brand); }
+        a:hover { color: var(--brand-strong); }
+        .mensagens { list-style: none; padding: 0; margin: 0 0 16px 0; }
+        .mensagens li { padding: 10px 12px; border-radius: 4px; font-size: 14px; margin-bottom: 8px; }
+        .mensagens li.success { background: var(--success-bg); color: var(--success); }
+        .mensagens li.error { background: var(--danger-bg); color: var(--danger); }
+        .mensagens li.info { background: var(--paper-2); color: var(--ink-soft); }
+        .tabela-scroll { overflow-x: auto; margin-top: 16px; -webkit-overflow-scrolling: touch; }
+        table { width: 100%; border-collapse: collapse; font-size: 13px; }
+        .tabela-scroll table { margin-top: 0; white-space: nowrap; }
+        th, td { text-align: left; padding: 8px; border-bottom: 1px solid var(--line-soft); }
+        .badge-ok { color: var(--success); }
+        .badge-erro { color: var(--danger); }
+        .nav-topo { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; gap: 8px 16px; margin-bottom: 8px; font-size: 14px; }
+        .nav-topo a { white-space: nowrap; }
+        .nav-topo button { width: auto; margin: 0; padding: 4px 10px; font-size: 13px; }
+
+        /* ---- mostrar/esconder senha ---- */
+        .campo-senha { position: relative; }
+        .campo-senha input { padding-right: 42px; }
+        .botao-olho {
+            position: absolute; top: 50%; right: 6px; transform: translateY(-50%);
+            width: auto; margin: 0; padding: 6px; background: none; border: none;
+            color: var(--muted); display: flex; cursor: pointer;
+        }
+        .botao-olho:hover { color: var(--ink); background: none; }
+        .icone-olho-fechado { display: none; }
+        .botao-olho.mostrando .icone-olho-aberto { display: none; }
+        .botao-olho.mostrando .icone-olho-fechado { display: block; }
+    </style>
+    {% block estilo_extra %}{% endblock %}
+</head>
+<body>
+    <div class="topo"><a class="marca" href="{% url 'automacao_lista' %}">automação<span class="ponto">·</span>ig</a></div>
+    <div class="container">
+        {% if messages %}
+            <ul class="mensagens">
+                {% for message in messages %}
+                    <li class="{{ message.tags }}">{{ message }}</li>
+                {% endfor %}
+            </ul>
+        {% endif %}
+        {% block conteudo %}{% endblock %}
+    </div>
+    <script>
+        document.querySelectorAll(".botao-olho").forEach(function (botao) {
+            botao.addEventListener("click", function () {
+                var campo = botao.previousElementSibling;
+                var vaiMostrar = campo.type === "password";
+                campo.type = vaiMostrar ? "text" : "password";
+                botao.classList.toggle("mostrando", vaiMostrar);
+                botao.setAttribute("aria-label", vaiMostrar ? botao.dataset.esconder : botao.dataset.mostrar);
+            });
+        });
+    </script>
+</body>
+</html>
