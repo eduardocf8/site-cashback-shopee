@@ -12,6 +12,51 @@ Site de cashback para compras na Shopee feitas através de links de afiliado ger
 - ✅ **Fase 6** — Saque de saldo via PIX pela Asaas (sandbox), com aprovação manual no `/admin/`
 - ✅ **Fase 7** — Deploy em produção (Render, plano gratuito) com tarefas diárias automáticas
 
+O site está no ar em **https://site-cashback-shopee.onrender.com**.
+
+## Funcionalidades
+
+### Para quem visita e usa o site
+
+- **Página inicial** com explicação de como o cashback funciona, painel de benefícios com animação ao rolar a página, e comparação entre gerar o link de um produto específico (venda direta) ou usar o botão geral (venda indireta).
+- **Botão "Ir para a Shopee"** no topo: se você já estiver logado, vai direto pro seu link de afiliado; se não estiver, pede login primeiro e te leva pra Shopee automaticamente depois, sem precisar clicar de novo.
+- **Cadastro e login** de usuário, com validação de CPF.
+- **Conversor de link de produto**: cole o link de um produto da Shopee e receba de volta um link de afiliado rastreado — disponível na própria página inicial.
+- **Painel "Minha conta"**, com:
+  - Saldo separado por status: pendente, validado, liberado e cancelado.
+  - Histórico de pedidos (produto, foto, valor de cashback, status, e o motivo quando um pedido é cancelado).
+  - Histórico de todos os links gerados.
+  - Cadastro da sua chave PIX (CPF, e-mail, telefone ou chave aleatória).
+  - Botão pra solicitar saque do saldo liberado (quando atingir o valor mínimo).
+
+### Regras de negócio por trás do site
+
+- **Cálculo de cashback**: soma a comissão que a Shopee paga por item comprado (`itemTotalCommission`), aplicando o percentual repassado ao usuário (`SHOPEE_CASHBACK_PERCENTUAL`).
+- **Liberação de saldo**: pedidos validados ficam disponíveis pra saque no 1º dia do mês seguinte a dois meses após a validação (ex: validou em março, libera em 1º de maio).
+- **Saque via PIX**: o usuário solicita o saque do saldo liberado disponível; a solicitação fica pendente até você aprovar manualmente — só então o sistema chama a Asaas pra pagar de verdade. Valor mínimo configurável (`SAQUE_VALOR_MINIMO`).
+
+### Para quem administra o site (você)
+
+Tudo isso fica em `/admin/`:
+
+- Gerenciar usuários, links gerados, pedidos e saques.
+- Ver o status bruto que a Shopee retornou pra cada pedido (útil pra conferência).
+- Aprovar (e pagar de fato via PIX) ou cancelar solicitações de saque, com um clique.
+- Acompanhar o motivo de cancelamento de pedidos, quando a Shopee informa.
+
+E por trás dos panos, três tarefas rodam sozinhas todo dia (via GitHub Actions, sem custo):
+
+1. **Sincronizar pedidos** com a Shopee (novos pedidos, mudanças de status, valores).
+2. **Liberar saldo** dos pedidos validados cuja data já chegou.
+3. **Verificar saques** que ficaram "processando" na Asaas.
+
+Também dá pra rodar cada uma manualmente (útil pra testar ou conferir algo pontual):
+```bash
+python manage.py sincronizar_pedidos
+python manage.py liberar_saldo
+python manage.py verificar_saques
+```
+
 ## Como rodar localmente
 
 1. Crie e ative o ambiente virtual (só precisa criar uma vez):
