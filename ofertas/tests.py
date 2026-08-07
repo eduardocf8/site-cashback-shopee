@@ -4,6 +4,7 @@ from django.test import TestCase
 from django.urls import reverse
 
 from .models import Oferta
+from .services import _montar_oferta
 
 
 class OrdenarPorCashbackTests(TestCase):
@@ -35,3 +36,21 @@ class OrdenarPorCashbackTests(TestCase):
 
         valores = [valor for valor, _rotulo in resposta.context["ordenacoes"]]
         self.assertIn("maior_cashback", valores)
+
+
+class MontarOfertaTests(TestCase):
+    def test_usa_shopeeCommissionRate_e_nao_o_bonus_de_vendedor(self):
+        # commissionRate = shopeeCommissionRate + sellerCommissionRate (bônus de campanha
+        # do vendedor, temporário e não confirmado pra toda conta de afiliado - ver
+        # links/shopee_client.py). Usar o combinado infla o cashback exibido bem acima
+        # do que a Shopee garante de fato.
+        node = {
+            "itemId": 26142718061,
+            "shopeeCommissionRate": "0.08",
+            "productName": "Cama Cabana Pet",
+            "productCatIds": [100629],
+        }
+
+        oferta = _montar_oferta(node, categorias_nivel1={100629: "Casa"})
+
+        self.assertEqual(oferta.percentual_comissao, Decimal("0.08"))

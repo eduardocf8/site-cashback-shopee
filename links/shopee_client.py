@@ -93,14 +93,22 @@ def gerar_link_curto(origin_url: str, sub_ids: list[str]) -> str:
 
 
 def buscar_ofertas_produtos(pagina: int, limite: int = 50) -> dict:
-    """Consulta a query productOfferV2 (listType ALL) para montar a página de ofertas."""
+    """Consulta a query productOfferV2 (listType ALL) para montar a página de ofertas.
+
+    Usa shopeeCommissionRate (comissão paga pela própria Shopee), não commissionRate.
+    commissionRate = shopeeCommissionRate + sellerCommissionRate, e esse segundo é um
+    bônus de campanha do vendedor, com prazo de validade (periodStartTime/periodEndTime)
+    e sem confirmação de que é realmente pago pra qualquer conta de afiliado (pode
+    depender de vínculo com MCN) - exibir isso como cashback "prometido" arrisca mostrar
+    um valor bem mais alto do que o usuário realmente vai receber.
+    """
     query = (
         "query{"
         "productOfferV2("
         f"listType:0,page:{pagina},limit:{limite}"
         "){"
         "nodes{"
-        "itemId commissionRate sales priceMax priceMin productCatIds ratingStar "
+        "itemId shopeeCommissionRate sales priceMax priceMin productCatIds ratingStar "
         "priceDiscountRate imageUrl productName shopName productLink offerLink"
         "}"
         "pageInfo{page limit hasNextPage}"
