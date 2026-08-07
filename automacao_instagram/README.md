@@ -85,11 +85,19 @@ Django Admin.
 
 O App da Meta usado (o mesmo do `instagram_bot`, caso de uso "Gerenciar
 mensagens e conteúdo no Instagram") usa **Standard Access** (sem revisão
-de app) - isso só funciona enquanto quem usa a API tiver função nesse
-mesmo App. Pra conectar uma conta que não seja a original (`usecashb`):
+de app) - isso é suficiente pra publicar conteúdo (`instagram_bot`), mas
+**não é suficiente pra ler comentários de terceiros** (ver "Análise do
+app" abaixo) mesmo com a conta tendo função de Testador nesse mesmo App -
+achado real, documentado depois de investigar o worker rodando sem erro
+nenhum mas sem nunca achar comentário nenhum (ver histórico de commits/
+conversa que motivou essa seção). Pra conectar uma conta que não seja a
+original (`usecashb`):
 
 1. No painel Meta for Developers do App, ir em **Funções** e adicionar a
-   nova conta do Instagram como pessoa/conta de teste.
+   nova conta do Instagram como pessoa/conta de teste - a pessoa dona da
+   conta precisa **aceitar o convite** dentro do próprio app do Instagram
+   (Configurações > Aplicativos e sites), não basta só adicionar pelo
+   painel da Meta.
 2. Gerar o access token de longa duração pra essa conta (mesmo processo
    do `instagram_bot` - ver `marketing/instagram/README.md`, "Fase 1").
 3. Em `/automacao/contas/`, adicionar a conta com o ID da conta comercial
@@ -97,6 +105,51 @@ mesmo App. Pra conectar uma conta que não seja a original (`usecashb`):
 
 Sem o passo 1, qualquer chamada à API com o token dessa conta nova falha
 com erro de permissão.
+
+## Análise do app (App Review) - necessária pra funcionar de verdade
+
+**Descoberto em 2026-08-06, depois de o worker rodar sem erro nenhum mas
+nunca encontrar os comentários de teste**: a permissão
+`instagram_business_manage_comments` fica com o selo **"Pronto para
+teste"** no painel do App enquanto ele não passa pela Análise do App -
+nesse estado, `GET /{media-id}/comments` sempre retorna `"data": []`,
+mesmo com token válido, escopo concedido, ID do post certo e a conta que
+comentou sendo Testadora confirmada do App. O campo `comments_count` do
+próprio post bate certo (prova que a Meta sabe que o comentário existe);
+só a listagem em si fica vazia - sinal de que é Standard Access mesmo,
+não erro de configuração daqui. Confirmado via Depurador de Token de
+Acesso e testes diretos no Graph API Explorer antes de chegar nessa
+conclusão.
+
+**Alternativa gratuita considerada e descartada**: o recurso nativo do
+Meta Business Suite/Instagram ("Comment to message", em Automations) faz
+a mesma coisa sem precisar de revisão nenhuma, mas só permite automação
+pra **conta inteira**, não pra um post específico - não serve pro caso de
+uso daqui (várias automações em paralelo, uma por post/campanha, ver
+"Contexto de por que foi feito assim" no topo deste arquivo).
+
+**Enquanto a Análise do App não é feita**, a automação só reage a
+comentários de contas que sejam, ao mesmo tempo, Testadoras do App **e**
+o próprio dono do App - na prática, inutilizável pra qualquer comentário
+de cliente de verdade. Passos pra pedir Acesso Avançado dessa permissão:
+
+1. **Verificação de Empresa** no Meta Business Manager (documentos do
+   CNPJ do cash-b).
+2. Política de Privacidade publicada, cobrindo especificamente o que é
+   coletado/usado nessa automação - já feito, ver
+   `paginas/templates/paginas/privacidade.html`, seção "Automação de
+   comentários e DM no Instagram".
+3. Vídeo de tela mostrando o fluxo completo: criar a automação num post,
+   alguém comentando a palavra-chave, e a resposta pública/DM chegando.
+4. Justificativa escrita de uso pra cada permissão pedida (ver texto
+   pronto que ficou registrado na conversa que motivou essa seção, ou
+   pedir pra reescrever numa conversa futura).
+5. Enviar pelo botão "Ir para a análise do app" (aparece ao lado da
+   permissão, em Casos de uso > Permissões).
+
+A mesma limitação provavelmente vale pra `instagram_business_manage_messages`
+(enviar DM) - só foi confirmada a `manage_comments` até agora, mas vale
+testar a DM também antes de assumir que só falta revisar uma permissão.
 
 ## Rodando o worker no Render (Background Worker)
 
@@ -202,6 +255,10 @@ tráfego real ainda, mesma cautela já registrada aqui pra
 
 ## Limitações conhecidas / não implementado
 
+- **Não funciona com comentários de terceiros até a Análise do App ser
+  aprovada** (ver seção "Análise do app" acima) - hoje só reage a
+  comentários de contas que sejam Testadoras do App e ao mesmo tempo o
+  dono dele, o que na prática não cobre clientes de verdade.
 - Resposta privada (DM) só funciona até 7 dias após o comentário, e uma
   vez só por comentário (regra da própria API, não dá pra contornar).
 - Sem tela de cadastro público pra usuários - só via Django Admin
