@@ -31,6 +31,37 @@ class RegistroForm(UserCreationForm):
         return email
 
 
+class EditarPerfilForm(forms.ModelForm):
+    cpf = forms.CharField(
+        required=True,
+        label="CPF",
+        max_length=14,
+        widget=forms.TextInput(attrs={"placeholder": "000.000.000-00"}),
+    )
+
+    class Meta:
+        model = User
+        fields = ("username", "email", "cpf")
+
+    def clean_cpf(self):
+        cpf = validar_cpf(self.cleaned_data["cpf"])
+        if User.objects.filter(cpf=cpf).exclude(pk=self.instance.pk).exists():
+            raise forms.ValidationError("Já existe uma conta cadastrada com este CPF.")
+        return cpf
+
+    def clean_email(self):
+        email = self.cleaned_data["email"]
+        if User.objects.filter(email=email).exclude(pk=self.instance.pk).exists():
+            raise forms.ValidationError("Já existe uma conta cadastrada com este e-mail.")
+        return email
+
+    def clean_username(self):
+        username = self.cleaned_data["username"]
+        if User.objects.filter(username=username).exclude(pk=self.instance.pk).exists():
+            raise forms.ValidationError("Esse nome de usuário já está em uso.")
+        return username
+
+
 class ChavePixForm(forms.ModelForm):
     class Meta:
         model = User

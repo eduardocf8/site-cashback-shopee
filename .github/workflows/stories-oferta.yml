@@ -1,0 +1,26 @@
+name: Stories de oferta ao longo do dia
+
+# Separado de tarefas-diarias.yml de propósito: esse aqui roda várias vezes ao dia
+# (não uma vez só), postando no máximo 1 story de oferta por chamada - ver
+# instagram_bot/services.py (publicar_story_oferta_do_momento) e
+# NUMERO_STORIES_OFERTAS_POR_DIA. A ideia é espalhar as ofertas ao longo do dia em vez
+# de "bombardear" o Instagram com todas de uma vez - o perfil não é só sobre ofertas.
+
+on:
+  schedule:
+    # Horários em UTC (Brasília = UTC-3): 09:00, 11:30, 14:00, 16:30, 19:00 no Brasil.
+    - cron: "0 12 * * *"
+    - cron: "30 14 * * *"
+    - cron: "0 17 * * *"
+    - cron: "30 19 * * *"
+    - cron: "0 22 * * *"
+  workflow_dispatch: {}
+
+jobs:
+  postar-story-oferta:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Chamar o endereço de story de oferta do site
+        run: |
+          story_url=$(echo "${{ secrets.TAREFAS_URL }}" | sed 's#/tarefas/executar/#/tarefas/postar-story-oferta/#')
+          curl -f -sS --retry 3 --retry-delay 15 --max-time 60 "$story_url"

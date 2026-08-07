@@ -1,0 +1,29 @@
+{% extends "accounts/base.html" %}
+{% block titulo %}Nova senha{% endblock %}
+{% block layout %}
+<div class="split">
+    <div class="split-form">
+        <div class="split-form-inner">
+            <a class="marca split-marca" href="{% url 'home' %}">cash-b</a>
+            {% if validlink %}
+                <h1>Escolha uma nova senha</h1>
+                <form method="post">
+                    {% csrf_token %}
+                    {% for field in form %}
+                        {% include "accounts/_campo_formulario.html" with field=field %}
+                    {% endfor %}
+                    {% if form.non_field_errors %}<div class="erros">{{ form.non_field_errors|striptags }}</div>{% endif %}
+                    <button type="submit">Salvar nova senha</button>
+                </form>
+            {% else %}
+                <h1>Link inválido ou expirado</h1>
+                <p class="legenda">Esse link de redefinição de senha já foi usado ou expirou.</p>
+                <p class="rodape"><a href="{% url 'password_reset' %}">Solicitar um novo link</a></p>
+            {% endif %}
+        </div>
+    </div>
+    <div class="split-graphic">
+        {% include "accounts/_ilustracao_auth.html" %}
+    </div>
+</div>
+{% endblock %}

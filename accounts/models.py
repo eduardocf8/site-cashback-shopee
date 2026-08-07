@@ -28,6 +28,7 @@ class User(AbstractUser):
     tipo_chave_pix = models.CharField(
         "Tipo da chave PIX", max_length=10, choices=TIPO_CHAVE_CHOICES, blank=True
     )
+    email_verificado = models.BooleanField("E-mail verificado", default=False)
 
     def clean(self):
         super().clean()

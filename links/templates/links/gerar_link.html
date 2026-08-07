@@ -10,7 +10,7 @@
 
     <h1>Gerar link com cashback</h1>
 
-    <h2 style="font-size:16px;">Opção 1 — Link de um produto específico</h2>
+    <h2 class="titulo-bloco" style="margin-top:0;">Opção 1 — Link de um produto específico</h2>
     <form method="post">
         {% csrf_token %}
         <input type="hidden" name="acao" value="produto">
@@ -20,14 +20,14 @@
         <button type="submit">Gerar link do produto</button>
     </form>
 
-    <h2 style="font-size:16px; margin-top:32px;">Opção 2 — Link da página inicial da Shopee</h2>
+    <h2 class="titulo-bloco">Opção 2 — Link da página inicial da Shopee</h2>
     <form method="post">
         {% csrf_token %}
         <input type="hidden" name="acao" value="home">
         <button type="submit">Gerar link da página inicial</button>
     </form>
 
-    <h2 style="font-size:16px; margin-top:32px;">Seus últimos links gerados</h2>
+    <h2 class="titulo-bloco">Seus últimos links gerados</h2>
     {% if clicks %}
         <table>
             <tr>
@@ -44,6 +44,6 @@
             {% endfor %}
         </table>
     {% else %}
-        <p style="color:#888;">Você ainda não gerou nenhum link.</p>
+        <p class="legenda">Você ainda não gerou nenhum link.</p>
     {% endif %}
 {% endblock %}

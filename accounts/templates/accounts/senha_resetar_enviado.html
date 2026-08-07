@@ -1,0 +1,9 @@
+{% extends "accounts/base.html" %}
+{% block titulo %}Verifique seu e-mail{% endblock %}
+{% block conteudo %}
+    <div class="conteudo-centralizado">
+        <h1>Verifique seu e-mail</h1>
+        <p class="legenda">Se existir uma conta cash-b com esse e-mail, logo chegará um link nele para redefinir sua senha. Caso não encontre na caixa de entrada, verifique na caixa de spam.</p>
+        <p class="rodape"><a href="{% url 'login' %}">Voltar pro login</a></p>
+    </div>
+{% endblock %}

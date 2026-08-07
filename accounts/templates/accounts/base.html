@@ -1,31 +1,114 @@
 <!DOCTYPE html>
+{% load static %}
 <html lang="pt-br">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>{% block titulo %}Cashback Shopee{% endblock %}</title>
+    <meta name="description" content="{% block meta_descricao %}cash-b é um serviço de cashback independente pra quem compra na Shopee: gere seu link, compre e receba parte do dinheiro de volta.{% endblock %}">
+    <link rel="icon" type="image/svg+xml" href="{% static 'favicon.svg' %}">
+    <link rel="apple-touch-icon" href="{% static 'icons/icon-180.png' %}">
+    <link rel="manifest" href="{% static 'manifest.json' %}">
+    <meta name="theme-color" content="#1b5e44">
+    <meta name="mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="default">
+    <meta name="apple-mobile-web-app-title" content="cash-b">
+    <link rel="stylesheet" href="{% static 'css/brand.css' %}">
+    <title>{% block titulo %}cash-b{% endblock %} — cash-b</title>
     <style>
-        body { font-family: Arial, sans-serif; background: #f5f5f5; margin: 0; padding: 0; }
-        .container { max-width: {% block largura_container %}420px{% endblock %}; margin: 60px auto; background: #fff; padding: 32px; border-radius: 8px; box-shadow: 0 2px 8px rgba(0,0,0,0.1); }
-        h1 { color: #ee4d2d; font-size: 22px; }
-        label { display: block; margin-top: 12px; font-size: 14px; color: #333; }
-        input, select { width: 100%; padding: 8px; margin-top: 4px; box-sizing: border-box; border: 1px solid #ccc; border-radius: 4px; }
-        button { margin-top: 20px; width: 100%; padding: 10px; background: #ee4d2d; color: #fff; border: none; border-radius: 4px; font-size: 15px; cursor: pointer; }
-        button:hover { background: #d43f22; }
-        .erros { color: #c0392b; font-size: 13px; }
-        .rodape { text-align: center; margin-top: 16px; font-size: 14px; }
-        a { color: #ee4d2d; }
+        * { box-sizing: border-box; }
+        body { margin: 0; padding: 0; background: var(--paper-2); color: var(--ink); }
+        .topo { text-align: center; padding: 40px 20px 0; }
+        .topo a.marca { font-size: 34px; color: var(--brand); text-decoration: none; }
+        .conteudo-centralizado { text-align: center; }
+        .container { max-width: {% block largura_container %}420px{% endblock %}; margin: 24px auto 60px; background: var(--paper); padding: 32px; border-radius: 10px; border: 1px solid var(--line); }
+        h1 { color: var(--ink); font-size: 22px; letter-spacing: -0.01em; }
+        label { display: block; margin-top: 12px; font-size: 14px; color: var(--ink-soft); }
+        input, select, textarea {
+            width: 100%; padding: 8px; margin-top: 4px; box-sizing: border-box;
+            border: 1px solid var(--line); border-radius: 4px; font-family: inherit; font-size: 14px;
+        }
+        textarea { resize: vertical; }
+        input:focus, select:focus, textarea:focus { outline: 2px solid var(--brand); outline-offset: 1px; }
+        button {
+            margin-top: 20px; width: 100%; padding: 10px; background: var(--brand); color: var(--paper);
+            border: none; border-radius: 4px; font-size: 15px; font-weight: 600; font-family: inherit; cursor: pointer;
+        }
+        button:hover { background: var(--brand-strong); }
+        .erros { color: var(--danger); font-size: 13px; }
+        .legenda { color: var(--muted); font-size: 14px; }
+        .rodape { text-align: center; margin-top: 16px; font-size: 14px; color: var(--ink-soft); }
+        a { color: var(--brand); }
         .mensagens { list-style: none; padding: 0; margin: 0 0 16px 0; }
         .mensagens li { padding: 10px 12px; border-radius: 4px; font-size: 14px; margin-bottom: 8px; }
-        .mensagens li.success { background: #e6f4ea; color: #1e7e34; }
-        .mensagens li.error { background: #fdecea; color: #c0392b; }
+        .mensagens li.success { background: var(--success-bg); color: var(--success); }
+        .mensagens li.error { background: var(--danger-bg); color: var(--danger); }
         table { width: 100%; border-collapse: collapse; margin-top: 16px; font-size: 13px; }
-        th, td { text-align: left; padding: 8px; border-bottom: 1px solid #eee; }
+        th, td { text-align: left; padding: 8px; border-bottom: 1px solid var(--line-soft); }
         .link-curto { word-break: break-all; }
         .nav-topo { display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; font-size: 14px; }
+        h2.titulo-bloco { font-size: 16px; margin-top: 32px; }
+
+        /* ---- texto corrido (termos, privacidade, cookies, regras) ---- */
+        .atualizado-em { font-size: 12px; color: var(--muted); margin-bottom: 24px; }
+        .texto-legal h2 { font-size: 19px; letter-spacing: -0.01em; margin: 32px 0 12px; }
+        .texto-legal h2:first-child { margin-top: 0; }
+        .texto-legal p { margin: 0 0 14px; line-height: 1.65; color: var(--ink-soft); }
+        .texto-legal ul { margin: 0 0 14px; padding-left: 20px; }
+        .texto-legal li { margin-bottom: 6px; line-height: 1.6; color: var(--ink-soft); }
+        .texto-legal strong { color: var(--ink); }
+
+        /* ---- FAQ (accordion) ---- */
+        .faq-item { border-bottom: 1px solid var(--line); }
+        .faq-item:first-of-type { border-top: 1px solid var(--line); }
+        .faq-item summary {
+            cursor: pointer; padding: 16px 30px 16px 0; font-weight: 600; color: var(--ink);
+            position: relative; list-style: none;
+        }
+        .faq-item summary::-webkit-details-marker { display: none; }
+        .faq-item summary::after {
+            content: "+"; position: absolute; right: 4px; top: 14px;
+            color: var(--brand); font-weight: 700; font-size: 20px;
+        }
+        .faq-item[open] summary::after { content: "\2013"; }
+        .faq-item .faq-resposta { margin: 0 0 18px; color: var(--ink-soft); line-height: 1.6; }
+
+        /* ---- layout dividido (login / cadastro) ---- */
+        .split { display: flex; min-height: 100vh; }
+        .split-form { flex: 1 1 480px; display: flex; align-items: center; justify-content: center; padding: 40px 24px; }
+        .split-form-inner { width: 100%; max-width: 380px; }
+        .split-marca { display: block; text-align: center; color: var(--brand); text-decoration: none; font-size: 42px; margin-bottom: 32px; }
+        .split-graphic {
+            flex: 1 1 55%; position: relative; overflow: hidden;
+            background: linear-gradient(160deg, var(--brand-strong), var(--brand));
+            display: flex; align-items: center; justify-content: center;
+        }
+        .grafico-svg { width: 62%; max-width: 320px; height: auto; }
+        @media (max-width: 860px) {
+            .split-graphic { display: none; }
+            .split-form { flex: 1 1 100%; }
+        }
+
+        /* ---- mostrar/esconder senha ---- */
+        .campo-senha { position: relative; }
+        .campo-senha input { padding-right: 42px; }
+        .botao-olho {
+            position: absolute; top: 50%; right: 6px; transform: translateY(-50%);
+            width: auto; margin: 0; padding: 6px; background: none; border: none;
+            color: var(--muted); display: flex; cursor: pointer;
+        }
+        .botao-olho:hover { color: var(--ink); background: none; }
+        .icone-olho-fechado { display: none; }
+        .botao-olho.mostrando .icone-olho-aberto { display: none; }
+        .botao-olho.mostrando .icone-olho-fechado { display: block; }
+
+        /* ---- esqueceu a senha ---- */
+        .esqueci-senha { text-align: right; margin-top: 8px; font-size: 13px; }
     </style>
 </head>
 <body>
+    {% block layout %}
+    <div class="topo"><a class="marca" href="{% url 'home' %}">cash-b</a></div>
     <div class="container">
         {% if messages %}
             <ul class="mensagens">
@@ -36,5 +119,24 @@
         {% endif %}
         {% block conteudo %}{% endblock %}
     </div>
+    {% endblock %}
+    <script>
+        document.querySelectorAll(".botao-olho").forEach(function (botao) {
+            botao.addEventListener("click", function () {
+                var campo = botao.previousElementSibling;
+                var vaiMostrar = campo.type === "password";
+                campo.type = vaiMostrar ? "text" : "password";
+                botao.classList.toggle("mostrando", vaiMostrar);
+                botao.setAttribute("aria-label", vaiMostrar ? botao.dataset.esconder : botao.dataset.mostrar);
+            });
+        });
+    </script>
+
+    <div id="pwa-banner" class="pwa-banner" hidden>
+        <span class="pwa-banner-texto"></span>
+        <button type="button" class="pwa-banner-acao" hidden>Instalar</button>
+        <button type="button" class="pwa-banner-fechar" aria-label="Fechar">&times;</button>
+    </div>
+    <script src="{% static 'js/pwa-instalar.js' %}"></script>
 </body>
 </html>

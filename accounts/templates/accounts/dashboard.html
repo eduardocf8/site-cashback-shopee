@@ -1,114 +1,168 @@
 <!DOCTYPE html>
+{% load static %}
 <html lang="pt-br">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Minha conta — Cashback Shopee</title>
+    <link rel="icon" type="image/svg+xml" href="{% static 'favicon.svg' %}">
+    <link rel="apple-touch-icon" href="{% static 'icons/icon-180.png' %}">
+    <link rel="manifest" href="{% static 'manifest.json' %}">
+    <meta name="theme-color" content="#1b5e44">
+    <meta name="mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="default">
+    <meta name="apple-mobile-web-app-title" content="cash-b">
+    <link rel="stylesheet" href="{% static 'css/brand.css' %}">
+    <title>cash-b — minha conta</title>
     <style>
-        :root {
-            --laranja: #ee4d2d;
-            --laranja-escuro: #d43f22;
-            --texto: #26221f;
-            --texto-suave: #6b6560;
-            --fundo-suave: #fff7f4;
-            --verde: #1e7e34;
-            --verde-fundo: #e6f4ea;
-            --azul: #1a6fb0;
-            --azul-fundo: #e8f2fa;
-            --vermelho: #c0392b;
-            --vermelho-fundo: #fdecea;
-        }
         * { box-sizing: border-box; }
         body {
-            font-family: -apple-system, "Segoe UI", Roboto, Arial, sans-serif;
             margin: 0;
-            color: var(--texto);
-            background: #fafafa;
+            color: var(--ink);
+            background: var(--paper-2);
         }
-        a { color: var(--laranja); text-decoration: none; }
+        a { color: var(--brand); text-decoration: none; }
         .envolve { max-width: 1080px; margin: 0 auto; padding: 0 24px; }
 
-        .nav { position: sticky; top: 0; z-index: 10; background: #fff; border-bottom: 1px solid #f0e9e5; }
-        .nav .envolve { display: flex; align-items: center; justify-content: space-between; height: 64px; }
-        .marca { font-size: 19px; font-weight: 700; color: var(--laranja); }
-        .nav-links { display: flex; align-items: center; gap: 18px; font-size: 14px; }
-        .nav-links a { color: var(--texto); }
-        .nav-links form { margin: 0; }
-        .nav-links button.linkbtn { background: none; border: none; padding: 0; font: inherit; color: var(--texto); cursor: pointer; }
+        .nav { position: sticky; top: 0; z-index: 10; background: var(--paper); border-bottom: 1px solid var(--line); }
+        .nav .envolve { display: flex; align-items: center; gap: 32px; height: 64px; }
+        .nav .marca { font-size: 33px; color: var(--brand); text-decoration: none; flex-shrink: 0; white-space: nowrap; margin-right: auto; }
+        .nav-secundario { display: flex; align-items: center; gap: 32px; font-size: 14px; }
+        .nav-secundario a { color: var(--ink); }
+        .nav-secundario form { margin: 0; }
+        .nav-secundario button.linkbtn { background: none; border: none; padding: 0; font: inherit; color: var(--ink); cursor: pointer; }
         .botao-cta {
-            display: inline-block; background: var(--laranja); color: #fff !important;
+            display: inline-block; background: var(--brand); color: var(--paper) !important;
             padding: 10px 20px; border-radius: 24px; font-weight: 600; font-size: 14px; white-space: nowrap;
         }
-        .botao-cta:hover { background: var(--laranja-escuro); }
+        .botao-cta:hover { background: var(--brand-strong); }
+        .botao-ofertas {
+            background: var(--highlight);
+            color: var(--highlight-ink) !important;
+            font-weight: 700;
+            padding: 7px 16px;
+            border-radius: 16px;
+            font-size: 15px;
+        }
+        .botao-ofertas:hover { filter: brightness(0.94); }
 
         .mensagens { list-style: none; padding: 0; margin: 16px 0 0 0; }
         .mensagens li { padding: 10px 14px; border-radius: 6px; font-size: 14px; margin-bottom: 8px; }
-        .mensagens li.success { background: var(--verde-fundo); color: var(--verde); }
-        .mensagens li.error { background: var(--vermelho-fundo); color: var(--vermelho); }
+        .mensagens li.success { background: var(--success-bg); color: var(--success); }
+        .mensagens li.error { background: var(--danger-bg); color: var(--danger); }
 
         .cabecalho { padding: 40px 0 8px; }
-        .cabecalho h1 { font-size: 26px; margin: 0 0 4px; }
-        .cabecalho p { color: var(--texto-suave); margin: 0; font-size: 15px; }
+        .cabecalho h1 { font-size: 26px; margin: 0 0 4px; letter-spacing: -0.01em; }
+        .cabecalho p { color: var(--muted); margin: 0; font-size: 15px; }
+        .aviso-verificacao {
+            margin: 16px 0 0; padding: 12px 16px; border-radius: 8px;
+            background: var(--info-bg); color: var(--info); font-size: 14px;
+        }
 
         section { padding: 24px 0; }
-        h2.titulo-secao { font-size: 19px; margin: 0 0 16px; }
+        h2.titulo-secao { font-size: 19px; margin: 0 0 16px; letter-spacing: -0.01em; }
+
+        .ajuda { position: relative; display: inline-flex; vertical-align: middle; margin-left: 6px; }
+        .ajuda .icone-ajuda {
+            display: inline-flex; align-items: center; justify-content: center;
+            width: 18px; height: 18px; border-radius: 50%; background: var(--line-soft); color: var(--muted);
+            font-size: 12px; font-weight: 700; font-family: inherit; cursor: help; border: none;
+        }
+        .ajuda .balao-ajuda {
+            display: none; position: absolute; top: 26px; left: 0; z-index: 20;
+            width: 280px; max-width: 80vw; background: var(--ink); color: var(--paper);
+            font-size: 13px; font-weight: 400; letter-spacing: normal; line-height: 1.5;
+            padding: 12px 14px; border-radius: 8px; box-shadow: 0 8px 24px rgba(0, 0, 0, 0.18);
+        }
+        .ajuda .balao-ajuda p { margin: 0 0 8px; }
+        .ajuda .balao-ajuda p:last-child { margin-bottom: 0; }
+        .ajuda .balao-ajuda strong { color: var(--paper); }
+        .ajuda:hover .balao-ajuda, .ajuda:focus-within .balao-ajuda { display: block; }
 
         .saldos { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 16px; }
         .saldo-cartao {
-            background: #fff; border: 1px solid #f0e9e5; border-radius: 12px; padding: 20px;
-            border-top: 4px solid var(--cor-cartao, #ccc);
+            background: var(--paper); border: 1px solid var(--line); border-radius: 12px; padding: 20px;
+            border-top: 4px solid var(--cor-cartao, var(--line));
         }
-        .saldo-cartao .rotulo { font-size: 13px; color: var(--texto-suave); margin-bottom: 6px; }
-        .saldo-cartao .valor { font-size: 26px; font-weight: 700; }
-        .saldo-cartao .legenda { font-size: 12px; color: var(--texto-suave); margin-top: 6px; }
-        .saldo-cartao.pendente { --cor-cartao: #a19b95; }
-        .saldo-cartao.validado { --cor-cartao: var(--azul); }
-        .saldo-cartao.liberado { --cor-cartao: var(--verde); }
-        .saldo-cartao.cancelado { --cor-cartao: var(--vermelho); }
+        .saldo-cartao .rotulo { font-size: 13px; color: var(--muted); margin-bottom: 10px; }
+        .saldo-cartao .valor { font-family: "JB Mono", ui-monospace, monospace; font-size: 34px; font-weight: 500; font-variant-numeric: tabular-nums; }
+        .saldo-cartao.pendente { --cor-cartao: var(--muted); }
+        .saldo-cartao.validado { --cor-cartao: var(--info); }
+        .saldo-cartao.liberado { --cor-cartao: var(--brand); }
+        .saldo-cartao.cancelado { --cor-cartao: var(--danger); }
 
         .acoes-rapidas { display: flex; gap: 12px; margin-top: 20px; flex-wrap: wrap; }
         .acoes-rapidas a { font-size: 14px; }
 
-        .caixa-saque { background: #fff; border: 1px solid #f0e9e5; border-radius: 12px; padding: 20px; }
+        .caixa-saque { background: var(--paper); border: 1px solid var(--line); border-radius: 12px; padding: 20px; }
         .caixa-saque p { margin: 0 0 12px; font-size: 14px; }
-        .caixa-saque .legenda { color: var(--texto-suave); font-size: 13px; }
+        .caixa-saque .legenda { color: var(--muted); font-size: 13px; }
+        .caixa-saque strong { font-family: "JB Mono", ui-monospace, monospace; font-weight: 500; }
 
-        table { width: 100%; border-collapse: collapse; background: #fff; border-radius: 12px; overflow: hidden; border: 1px solid #f0e9e5; }
-        th, td { text-align: left; padding: 12px 14px; border-bottom: 1px solid #f3ede9; font-size: 13px; }
-        th { background: var(--fundo-suave); font-weight: 600; color: var(--texto-suave); }
+        table { width: 100%; border-collapse: collapse; background: var(--paper); border-radius: 12px; overflow: hidden; border: 1px solid var(--line); }
+        th, td { text-align: left; padding: 12px 14px; border-bottom: 1px solid var(--line-soft); font-size: 13px; }
+        th { background: var(--paper-2); font-weight: 600; color: var(--muted); }
         tr:last-child td { border-bottom: none; }
         .link-curto { word-break: break-all; }
+        td.valor-cel { font-family: "JB Mono", ui-monospace, monospace; }
 
         .produto { display: flex; align-items: center; gap: 10px; }
         .produto img { width: 36px; height: 36px; object-fit: cover; border-radius: 6px; flex-shrink: 0; }
-        .produto .sem-nome { color: var(--texto-suave); }
+        .produto .sem-nome { color: var(--muted); }
 
         .etiqueta-status {
             display: inline-block; padding: 3px 10px; border-radius: 12px; font-size: 12px; font-weight: 600;
         }
-        .etiqueta-status.pendente { background: #f0f0f0; color: #666; }
-        .etiqueta-status.validado { background: var(--azul-fundo); color: var(--azul); }
-        .etiqueta-status.liberado, .etiqueta-status.pago { background: var(--verde-fundo); color: var(--verde); }
-        .etiqueta-status.cancelado, .etiqueta-status.falhou { background: var(--vermelho-fundo); color: var(--vermelho); }
-        .etiqueta-status.solicitado, .etiqueta-status.processando { background: #f0f0f0; color: #666; }
-        .motivo { font-size: 12px; color: var(--texto-suave); margin-top: 2px; }
+        .etiqueta-status.pendente { background: var(--line-soft); color: var(--muted); }
+        .etiqueta-status.validado { background: var(--info-bg); color: var(--info); }
+        .etiqueta-status.liberado, .etiqueta-status.pago { background: var(--success-bg); color: var(--success); }
+        .etiqueta-status.cancelado, .etiqueta-status.falhou { background: var(--danger-bg); color: var(--danger); }
+        .etiqueta-status.solicitado, .etiqueta-status.processando { background: var(--line-soft); color: var(--muted); }
+        .motivo { font-size: 12px; color: var(--muted); margin-top: 2px; }
 
-        .vazio { color: var(--texto-suave); font-size: 14px; padding: 20px; text-align: center; }
+        .vazio { color: var(--muted); font-size: 14px; padding: 20px; text-align: center; }
         .rolar-tabela { overflow-x: auto; }
+
+        .filtro-secao { display: flex; align-items: center; gap: 8px; margin-bottom: 16px; }
+        .filtro-secao select {
+            padding: 6px 10px; border: 1px solid var(--line); border-radius: 6px;
+            font-family: inherit; font-size: 13px; background: var(--paper); color: var(--ink);
+        }
+        .filtro-secao button {
+            padding: 6px 14px; border: 1px solid var(--line); border-radius: 6px; background: var(--paper);
+            color: var(--ink); font-family: inherit; font-size: 13px; cursor: pointer;
+        }
+        .filtro-secao button:hover { background: var(--paper-2); }
+
+        .paginacao { display: flex; align-items: center; justify-content: center; gap: 16px; margin-top: 16px; font-size: 13px; }
+        .paginacao a { font-weight: 600; }
+        .paginacao span.desabilitado { color: var(--muted); }
+        .paginacao .pagina-atual { color: var(--muted); }
+
+        @media (max-width: 640px) {
+            .nav .envolve { flex-wrap: wrap; height: auto; padding: 10px 24px; row-gap: 10px; }
+            .nav .marca { order: 1; }
+            .nav .botao-cta { order: 2; }
+            .nav .nav-secundario { order: 3; flex-basis: 100%; justify-content: space-between; }
+            h2.titulo-secao { position: relative; }
+            .ajuda { position: static; }
+            .ajuda .balao-ajuda { left: 0; right: 0; width: auto; max-width: none; }
+        }
     </style>
 </head>
 <body>
     <nav class="nav">
         <div class="envolve">
-            <span class="marca">Cashback Shopee</span>
-            <div class="nav-links">
+            <a class="marca" href="{% url 'home' %}">cash-b</a>
+            <div class="nav-secundario">
                 <a href="{% url 'home' %}">Início</a>
+                <a class="botao-ofertas" href="{% url 'ofertas_lista' %}">Ofertas</a>
                 <form method="post" action="{% url 'logout' %}">
                     {% csrf_token %}
                     <button type="submit" class="linkbtn">Sair</button>
                 </form>
-                <a class="botao-cta" href="{% url 'ir_para_shopee' %}">Ir para a Shopee &rarr;</a>
             </div>
+            <a class="botao-cta" href="{% url 'ir_para_shopee' %}">Ir pra Shopee &rarr;</a>
         </div>
     </nav>
 
@@ -125,31 +179,48 @@
     <div class="envolve">
         <div class="cabecalho">
             <h1>Olá, {{ user.username }}!</h1>
-            <p>Aqui está o resumo do seu cashback.</p>
+            <p>Aqui está o resumo do seu cashback.
+                <a href="{% url 'editar_perfil' %}">Editar dados</a> ·
+                <a href="{% url 'password_change' %}">Trocar senha</a>
+            </p>
         </div>
 
+        {% if not user.email_verificado %}
+            <div class="aviso-verificacao">
+                Seu e-mail ainda não foi confirmado.
+                <a href="{% url 'reenviar_verificacao' %}">Reenviar e-mail de confirmação</a>
+            </div>
+        {% endif %}
+
         <section>
-            <h2 class="titulo-secao">Seu saldo</h2>
+            <h2 class="titulo-secao">
+                Seu saldo
+                <span class="ajuda">
+                    <button type="button" class="icone-ajuda" tabindex="0" aria-describedby="ajuda-saldo-texto">?</button>
+                    <span class="balao-ajuda" id="ajuda-saldo-texto" role="tooltip">
+                        <p><strong>Pendente</strong>: aguardando confirmação da Shopee.</p>
+                        <p><strong>Validado</strong>: confirmado, aguardando o prazo de liberação.</p>
+                        <p><strong>Liberado</strong>: confirmado e liberado para saque via PIX.</p>
+                        <p><strong>Cancelado</strong>: pedidos cancelados ou não pagos não geram cashback.</p>
+                    </span>
+                </span>
+            </h2>
             <div class="saldos">
                 <div class="saldo-cartao pendente">
                     <div class="rotulo">Pendente</div>
                     <div class="valor">R$ {{ saldo_pendente|floatformat:2 }}</div>
-                    <div class="legenda">Aguardando confirmação da Shopee.</div>
                 </div>
                 <div class="saldo-cartao validado">
                     <div class="rotulo">Validado</div>
                     <div class="valor">R$ {{ saldo_validado|floatformat:2 }}</div>
-                    <div class="legenda">Confirmado, aguardando o prazo de liberação.</div>
                 </div>
                 <div class="saldo-cartao liberado">
                     <div class="rotulo">Liberado</div>
                     <div class="valor">R$ {{ saldo_liberado|floatformat:2 }}</div>
-                    <div class="legenda">Confirmado e liberado para saque via PIX.</div>
                 </div>
                 <div class="saldo-cartao cancelado">
                     <div class="rotulo">Cancelado</div>
                     <div class="valor">R$ {{ saldo_cancelado|floatformat:2 }}</div>
-                    <div class="legenda">Pedidos cancelados ou não pagos não geram cashback.</div>
                 </div>
             </div>
             <div class="acoes-rapidas">
@@ -179,8 +250,18 @@
             </div>
         </section>
 
-        <section>
+        <section id="pedidos">
             <h2 class="titulo-secao">Meus pedidos</h2>
+            <form method="get" action="{% url 'dashboard' %}#pedidos" class="filtro-secao">
+                <label for="status_pedido" style="margin: 0; color: var(--muted);">Status:</label>
+                <select name="status_pedido" id="status_pedido">
+                    <option value="">Todos</option>
+                    {% for valor, rotulo in status_pedidos_choices %}
+                        <option value="{{ valor }}" {% if filtro_pedidos == valor %}selected{% endif %}>{{ rotulo }}</option>
+                    {% endfor %}
+                </select>
+                <button type="submit">Filtrar</button>
+            </form>
             {% if pedidos %}
                 <div class="rolar-tabela">
                 <table>
@@ -209,7 +290,7 @@
                                     <div class="motivo">{{ pedido.motivo_cancelamento|default:"Motivo não informado pela Shopee." }}</div>
                                 {% endif %}
                             </td>
-                            <td>R$ {{ pedido.valor_cashback|floatformat:2 }}</td>
+                            <td class="valor-cel">R$ {{ pedido.valor_cashback|floatformat:2 }}</td>
                             <td>{{ pedido.data_compra|date:"d/m/Y"|default:"—" }}</td>
                             <td>
                                 {% if pedido.status == "validado" %}
@@ -224,13 +305,38 @@
                     {% endfor %}
                 </table>
                 </div>
+                {% if pedidos.has_other_pages %}
+                    <div class="paginacao">
+                        {% if pedidos.has_previous %}
+                            <a href="{% querystring pagina_pedidos=pedidos.previous_page_number %}#pedidos">&larr; Anterior</a>
+                        {% else %}
+                            <span class="desabilitado">&larr; Anterior</span>
+                        {% endif %}
+                        <span class="pagina-atual">Página {{ pedidos.number }} de {{ pedidos.paginator.num_pages }}</span>
+                        {% if pedidos.has_next %}
+                            <a href="{% querystring pagina_pedidos=pedidos.next_page_number %}#pedidos">Próxima &rarr;</a>
+                        {% else %}
+                            <span class="desabilitado">Próxima &rarr;</span>
+                        {% endif %}
+                    </div>
+                {% endif %}
             {% else %}
-                <p class="vazio">Você ainda não tem pedidos. Compre pela Shopee usando seus links de cashback e eles aparecem aqui.</p>
+                <p class="vazio">Você ainda não tem pedidos{% if filtro_pedidos %} com esse status{% endif %}. Compre pela Shopee usando seus links de cashback e eles aparecem aqui.</p>
             {% endif %}
         </section>
 
-        <section>
+        <section id="saques">
             <h2 class="titulo-secao">Meus saques</h2>
+            <form method="get" action="{% url 'dashboard' %}#saques" class="filtro-secao">
+                <label for="status_saque" style="margin: 0; color: var(--muted);">Status:</label>
+                <select name="status_saque" id="status_saque">
+                    <option value="">Todos</option>
+                    {% for valor, rotulo in status_saques_choices %}
+                        <option value="{{ valor }}" {% if filtro_saques == valor %}selected{% endif %}>{{ rotulo }}</option>
+                    {% endfor %}
+                </select>
+                <button type="submit">Filtrar</button>
+            </form>
             {% if saques %}
                 <div class="rolar-tabela">
                 <table>
@@ -243,7 +349,7 @@
                     </tr>
                     {% for saque in saques %}
                         <tr>
-                            <td>R$ {{ saque.valor|floatformat:2 }}</td>
+                            <td class="valor-cel">R$ {{ saque.valor|floatformat:2 }}</td>
                             <td>{{ saque.chave_pix }}</td>
                             <td><span class="etiqueta-status {{ saque.status }}">{{ saque.get_status_display }}</span></td>
                             <td>{{ saque.criado_em|date:"d/m/Y H:i" }}</td>
@@ -252,13 +358,38 @@
                     {% endfor %}
                 </table>
                 </div>
+                {% if saques.has_other_pages %}
+                    <div class="paginacao">
+                        {% if saques.has_previous %}
+                            <a href="{% querystring pagina_saques=saques.previous_page_number %}#saques">&larr; Anterior</a>
+                        {% else %}
+                            <span class="desabilitado">&larr; Anterior</span>
+                        {% endif %}
+                        <span class="pagina-atual">Página {{ saques.number }} de {{ saques.paginator.num_pages }}</span>
+                        {% if saques.has_next %}
+                            <a href="{% querystring pagina_saques=saques.next_page_number %}#saques">Próxima &rarr;</a>
+                        {% else %}
+                            <span class="desabilitado">Próxima &rarr;</span>
+                        {% endif %}
+                    </div>
+                {% endif %}
             {% else %}
-                <p class="vazio">Você ainda não solicitou nenhum saque.</p>
+                <p class="vazio">Você ainda não solicitou nenhum saque{% if filtro_saques %} com esse status{% endif %}.</p>
             {% endif %}
         </section>
 
-        <section>
+        <section id="clicks">
             <h2 class="titulo-secao">Meus links gerados</h2>
+            <form method="get" action="{% url 'dashboard' %}#clicks" class="filtro-secao">
+                <label for="tipo_click" style="margin: 0; color: var(--muted);">Tipo:</label>
+                <select name="tipo_click" id="tipo_click">
+                    <option value="">Todos</option>
+                    {% for valor, rotulo in tipo_clicks_choices %}
+                        <option value="{{ valor }}" {% if filtro_clicks == valor %}selected{% endif %}>{{ rotulo }}</option>
+                    {% endfor %}
+                </select>
+                <button type="submit">Filtrar</button>
+            </form>
             {% if clicks %}
                 <div class="rolar-tabela">
                 <table>
@@ -276,10 +407,32 @@
                     {% endfor %}
                 </table>
                 </div>
+                {% if clicks.has_other_pages %}
+                    <div class="paginacao">
+                        {% if clicks.has_previous %}
+                            <a href="{% querystring pagina_clicks=clicks.previous_page_number %}#clicks">&larr; Anterior</a>
+                        {% else %}
+                            <span class="desabilitado">&larr; Anterior</span>
+                        {% endif %}
+                        <span class="pagina-atual">Página {{ clicks.number }} de {{ clicks.paginator.num_pages }}</span>
+                        {% if clicks.has_next %}
+                            <a href="{% querystring pagina_clicks=clicks.next_page_number %}#clicks">Próxima &rarr;</a>
+                        {% else %}
+                            <span class="desabilitado">Próxima &rarr;</span>
+                        {% endif %}
+                    </div>
+                {% endif %}
             {% else %}
-                <p class="vazio">Você ainda não gerou nenhum link.</p>
+                <p class="vazio">Você ainda não gerou nenhum link{% if filtro_clicks %} desse tipo{% endif %}.</p>
             {% endif %}
         </section>
     </div>
+
+    <div id="pwa-banner" class="pwa-banner" hidden>
+        <span class="pwa-banner-texto"></span>
+        <button type="button" class="pwa-banner-acao" hidden>Instalar</button>
+        <button type="button" class="pwa-banner-fechar" aria-label="Fechar">&times;</button>
+    </div>
+    <script src="{% static 'js/pwa-instalar.js' %}"></script>
 </body>
 </html>

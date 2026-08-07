@@ -2,8 +2,9 @@ name: Tarefas diárias do site
 
 on:
   schedule:
-    # 04:00 UTC = 01:00 no horário de Brasília
-    - cron: "0 4 * * *"
+    # 14:00 UTC = 11:00 no horário de Brasília - horário melhor pro alcance
+    # das postagens do bot do Instagram (madrugada tinha pouco engajamento).
+    - cron: "0 14 * * *"
   workflow_dispatch: {}
 
 jobs:
@@ -13,3 +14,14 @@ jobs:
       - name: Chamar o endereço de tarefas agendadas do site
         run: |
           curl -f -sS --retry 3 --retry-delay 15 --max-time 300 "${{ secrets.TAREFAS_URL }}"
+      # Chamada separada de propósito: a busca de ofertas na Shopee, sozinha, já usa boa
+      # parte dos 120s de orçamento antes do timeout do gunicorn - enfileirar o
+      # encurtamento de nomes via Gemini atrás dela na mesma requisição estourava esse
+      # timeout quase toda vez. Essa chamada tem os 120s só pra si. continue-on-error
+      # porque isso é só uma melhoria cosmética (nome mais curto) - uma falha aqui (ex:
+      # cota do Gemini esgotada) não deve marcar a tarefa diária inteira como falha.
+      - name: Encurtar nomes de ofertas pendentes (Gemini)
+        continue-on-error: true
+        run: |
+          encurtar_url=$(echo "${{ secrets.TAREFAS_URL }}" | sed 's#/tarefas/executar/#/tarefas/encurtar-nomes/#')
+          curl -f -sS --retry 3 --retry-delay 15 --max-time 300 "$encurtar_url"

@@ -1,0 +1,218 @@
+"""Bancos de conteúdo e decisão do que publicar em cada dia.
+
+Calendário (ver marketing/instagram/README.md para o histórico da decisão):
+    - Stories:
+        segunda a sexta -> NUMERO_STORIES_OFERTAS_POR_DIA stories de oferta ao longo
+                           do dia (1 categoria mais vendida por story - ver
+                           instagram_bot/services.py, chamado várias vezes ao dia por
+                           um cron dedicado, não pela tarefa diária única)
+        sábado          -> dica de economia (banco DICAS, rotativo)
+        domingo         -> lembrete de cashback (banco LEMBRETES, rotativo)
+    - Posts no feed, 2x por semana:
+        quarta -> institucional (banco POSTS_INSTITUCIONAIS, rotativo)
+        sexta  -> melhores ofertas da semana
+"""
+from .models import RegistroPublicacao
+
+SEGUNDA, TERCA, QUARTA, QUINTA, SEXTA, SABADO, DOMINGO = range(7)
+
+# Dias em que postamos stories de oferta (ver instagram_bot/services.py,
+# publicar_story_oferta_do_momento - chamado várias vezes ao dia, não é a tarefa
+# diária única).
+DIAS_COM_STORIES_DE_OFERTA = (SEGUNDA, TERCA, QUARTA, QUINTA, SEXTA)
+
+DICAS = [
+    "Sempre confira se tem cupom disponível antes de finalizar a compra: cashback e cupom não se excluem.",
+    "Guarde o link convertido antes de sair navegando — comprando por outro caminho, o cashback não é rastreado.",
+    "Produtos com campanha de comissão extra rendem mais cashback. Fique de olho nas ofertas em destaque.",
+    "O cashback só é confirmado depois que a Shopee valida o pedido, então evite cancelar ou trocar a compra.",
+    "Compras maiores geram cashback maior. Vale juntar os itens do carrinho numa compra só.",
+    "Assim que o saldo aparece como \"Liberado\", já dá pra sacar — não precisa esperar mais nada.",
+    "Cadastre sua chave PIX com antecedência: assim que o saldo é liberado, o saque já sai na hora.",
+]
+
+LEMBRETES = [
+    "Cashback de verdade: sem pegadinha, sem mensalidade.",
+    "Toda compra na Shopee pode voltar parte do dinheiro pro seu bolso.",
+    "Cadastro grátis, cashback de verdade. Simples assim.",
+    "Você compra do jeito que já compra — a diferença é que parte volta pra você.",
+    "Sem letra miúda. O que você vê é o que você recebe.",
+    "Já usou o cash-b essa semana?",
+]
+
+# Cada um dos 8 temas institucionais originais (ver marketing/instagram/README.md pro
+# histórico da semeadura manual) entra aqui com 2 variações de texto/legenda - assim o
+# bot não republica pro mesmo público exatamente a mesma arte que você já postou na mão.
+# "texto" é a frase curta desenhada na imagem (gerar_imagem_texto_simples não usa emoji
+# aqui - ver services.py); "legenda" é o texto completo do post no Instagram.
+POSTS_INSTITUCIONAIS = [
+    {
+        "texto": "Cash-b: parte do que você gasta na Shopee volta pro seu bolso.",
+        "legenda": (
+            "O cash-b é simples: você compra na Shopee do jeito que já compra, e recebe parte do "
+            "dinheiro de volta. 💸 Sem mensalidade, sem pegadinha — só cashback de verdade caindo "
+            "no seu saldo. 💚\nAinda não conhece? Link na bio.\n"
+            "#cashback #shopee #cashbackshopee #economia #dinheirodevolta"
+        ),
+    },
+    {
+        "texto": "Compra na Shopee do seu jeito. Cashback de verdade no fim.",
+        "legenda": (
+            "Não é papo de vendedor: você compra normalmente na Shopee, e uma parte do valor volta "
+            "pra você. 💚 Sem mensalidade, sem enrolação, sem mudar nada no seu jeito de comprar.\n"
+            "Quer testar? Link na bio.\n#cashback #shopee #economia #cashbackshopee"
+        ),
+    },
+    {
+        "texto": "3 passos: gera o link, compra normal, recebe cashback.",
+        "legenda": (
+            "Não tem mistério: 🔗 gera o link (ou vai direto pra Shopee), 🛍️ compra normalmente, e "
+            "💰 recebe parte de volta assim que a Shopee confirma o pedido. 3 passos, sem burocracia.\n"
+            "Testa você mesmo — link na bio.\n#cashback #shopee #comofunciona #economia"
+        ),
+    },
+    {
+        "texto": "Sem burocracia: link, compra, e o cashback cai sozinho.",
+        "legenda": (
+            "Resumindo o cash-b em uma frase: gera o link, compra na Shopee, e o cashback aparece "
+            "no seu saldo assim que a Shopee confirma. 🔗🛍️💰 Nenhum passo a mais que isso.\n"
+            "Link na bio pra começar.\n#cashback #shopee #comofunciona"
+        ),
+    },
+    {
+        "texto": "Link do produto específico pode render cashback extra.",
+        "legenda": (
+            "Sabia que converter o link do produto específico pode render mais cashback? ⚡ Quando a "
+            "Shopee tem campanha de comissão extra ativa, só quem usa o link direto tem acesso ao "
+            "bônus. Já quem prefere só entrar e comprar o que quiser, também garante cashback — sem "
+            "escolher nada antes.\nDuas formas, o mesmo cashback de verdade. ✅\n#cashback #shopee #dicas"
+        ),
+    },
+    {
+        "texto": "Campanha de comissão extra? Só quem usa o link direto garante.",
+        "legenda": (
+            "Uma dica pra quem quer render mais: quando a Shopee ativa comissão extra num produto, "
+            "o bônus só vale pra quem converteu o link daquele produto específico. ⚡ Fora isso, "
+            "comprar do jeito que preferir também garante cashback normal.\n#cashback #shopee #dicas"
+        ),
+    },
+    {
+        "texto": "Pendente, validado, liberado: acompanhe seu cashback em 3 fases.",
+        "legenda": (
+            "Depois da compra, seu cashback passa por 3 fases: ⏳ pendente (aguardando a Shopee "
+            "confirmar), ✅ validado (compra confirmada, aguardando o prazo) e 💸 liberado (já pode "
+            "sacar). Acompanha tudo direto no seu painel.\n#cashback #shopee #transparencia"
+        ),
+    },
+    {
+        "texto": "Do clique ao PIX: total transparência em cada fase.",
+        "legenda": (
+            "Você sabe exatamente em que fase seu cashback está, o tempo todo: pendente, validado ou "
+            "liberado. 📊 Nada de saldo que aparece do nada ou some sem explicação — tudo visível no "
+            "seu painel.\n#cashback #shopee #transparencia"
+        ),
+    },
+    {
+        "texto": "Saldo liberado é seu. Peça o saque via PIX quando quiser.",
+        "legenda": (
+            "Saldo liberado é saldo seu. 💸 Cadastra sua chave PIX e pede o saque — sem burocracia, "
+            "direto na sua conta. 🏦\n#cashback #pix #shopee #dinheirodevolta"
+        ),
+    },
+    {
+        "texto": "Chave PIX cadastrada, saque liberado na hora que você pedir.",
+        "legenda": (
+            "Assim que o saldo é liberado, o saque é rapidinho: com a chave PIX já cadastrada, "
+            "cai direto na sua conta. 🏦💸 Sem enrolação nenhuma.\n#cashback #pix #shopee"
+        ),
+    },
+    {
+        "texto": "Sem mensalidade. Sem letra miúda. Cashback de verdade.",
+        "legenda": (
+            "🚫 Sem mensalidade. 🚫 Sem letra miúda. 🚫 Sem \"cashback\" que nunca cai na conta. Você "
+            "compra, a Shopee confirma, você recebe. Simples assim. ✅\n#cashback #semmensalidade #shopee"
+        ),
+    },
+    {
+        "texto": "Cashback que realmente cai na sua conta. Sem pegadinha.",
+        "legenda": (
+            "Zero taxa escondida, zero mensalidade, zero desculpa. O cash-b existe pra uma coisa só: "
+            "colocar parte do que você já gasta na Shopee de volta no seu bolso. ✅\n"
+            "#cashback #semmensalidade #shopee"
+        ),
+    },
+    {
+        "texto": "Compre do seu jeito. Economize sem esforço nenhum.",
+        "legenda": (
+            "Você não precisa mudar nada no seu jeito de comprar — só ganhar mais no final. 📈 Toda "
+            "compra que você já ia fazer na Shopee pode voltar parte do dinheiro pro seu bolso. 💰\n"
+            "Comece a economizar sem esforço — link na bio.\n#cashback #economia #shopee #dinheirodevolta"
+        ),
+    },
+    {
+        "texto": "Todo real que você já ia gastar pode voltar pro seu bolso.",
+        "legenda": (
+            "A conta é simples: você já compra na Shopee de qualquer jeito — com o cash-b, parte "
+            "desse dinheiro volta pra você em vez de ficar só na loja. 💰📈\n"
+            "#cashback #economia #shopee #dinheirodevolta"
+        ),
+    },
+    {
+        "texto": "Cadastro grátis. Cashback de verdade. Comece agora.",
+        "legenda": (
+            "🚀 Cadastro grátis, sem custo nenhum. Compra na Shopee do jeito que já compra e começa a "
+            "receber cashback de verdade.\n👉 cash-b.com\n#cashback #shopee #cadastrese"
+        ),
+    },
+    {
+        "texto": "Sem custo pra começar: cadastre-se e ganhe cashback.",
+        "legenda": (
+            "Criar sua conta no cash-b não custa nada e leva menos de um minuto. 🚀 Depois é só "
+            "comprar na Shopee normalmente e ver o saldo crescer.\n👉 cash-b.com\n#cashback #shopee #cadastrese"
+        ),
+    },
+]
+
+
+def _escolher_da_lista(lista: list, data) -> "str | dict":
+    """Roda pela lista usando o número ordinal do dia (dia do ano), sem repetir em sequência."""
+    indice = data.toordinal() % len(lista)
+    return lista[indice]
+
+
+def escolher_dica(data) -> str:
+    return _escolher_da_lista(DICAS, data)
+
+
+def escolher_lembrete(data) -> str:
+    return _escolher_da_lista(LEMBRETES, data)
+
+
+def escolher_post_institucional(data) -> dict:
+    indice = data.toordinal() % len(POSTS_INSTITUCIONAIS)
+    post = POSTS_INSTITUCIONAIS[indice]
+    # Alterna o fundo entre as duas variações de cada tema, pra também não repetir a
+    # mesma paleta toda vez que o mesmo tema voltar.
+    estilo = "highlight" if indice % 2 == 0 else "brand"
+    return {**post, "estilo": estilo}
+
+
+def tipo_de_conteudo_do_dia(data) -> list[str]:
+    """Retorna os tipos de conteúdo previstos pro calendário nesse dia (pode ter mais de um)."""
+    dia_semana = data.weekday()
+    tipos = []
+
+    # CONTEUDO_OFERTA_DIARIA não entra aqui - é postado várias vezes ao dia por um
+    # cron dedicado (ver publicar_story_oferta_do_momento), não uma vez só junto com
+    # o resto da tarefa diária.
+    if dia_semana == SABADO:
+        tipos.append(RegistroPublicacao.CONTEUDO_DICA)
+    elif dia_semana == DOMINGO:
+        tipos.append(RegistroPublicacao.CONTEUDO_LEMBRETE)
+
+    if dia_semana == QUARTA:
+        tipos.append(RegistroPublicacao.CONTEUDO_INSTITUCIONAL)
+    elif dia_semana == SEXTA:
+        tipos.append(RegistroPublicacao.CONTEUDO_OFERTAS_SEMANA)
+
+    return tipos

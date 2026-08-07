@@ -1,0 +1,31 @@
+{% extends "accounts/base.html" %}
+{% block titulo %}Esqueceu sua senha?{% endblock %}
+{% block layout %}
+<div class="split">
+    <div class="split-form">
+        <div class="split-form-inner">
+            <a class="marca split-marca" href="{% url 'home' %}">cash-b</a>
+            {% if messages %}
+                <ul class="mensagens">
+                    {% for message in messages %}
+                        <li class="{{ message.tags }}">{{ message }}</li>
+                    {% endfor %}
+                </ul>
+            {% endif %}
+            <h1>Esqueceu sua senha?</h1>
+            <p class="legenda">Digite o e-mail da sua conta e a gente manda um link pra você criar uma senha nova.</p>
+            <form method="post">
+                {% csrf_token %}
+                {% for field in form %}
+                    {% include "accounts/_campo_formulario.html" with field=field %}
+                {% endfor %}
+                <button type="submit">Enviar link de recuperação</button>
+            </form>
+            <p class="rodape"><a href="{% url 'login' %}">Voltar pro login</a></p>
+        </div>
+    </div>
+    <div class="split-graphic">
+        {% include "accounts/_ilustracao_auth.html" %}
+    </div>
+</div>
+{% endblock %}

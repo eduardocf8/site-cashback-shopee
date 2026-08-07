@@ -1,0 +1,57 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="{% block meta_descricao %}Login da automação de comentários e DM do Instagram.{% endblock %}">
+    <meta name="theme-color" content="#322D29">
+    <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='7' fill='%2372383D'/%3E%3Cpath d='M8 10a2 2 0 0 1 2-2h12a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2h-8l-5 4v-4H10a2 2 0 0 1-2-2z' fill='%23EFE9E1'/%3E%3C/svg%3E">
+    <title>{% block titulo %}Entrar{% endblock %} — automação IG</title>
+    {% include "automacao_instagram/_estilo_base.html" %}
+    <style>
+        body { background: var(--shell); min-height: 100vh; display: flex; align-items: center; justify-content: center; padding: 24px; }
+        .login-marca {
+            display: flex; align-items: center; justify-content: center; gap: 10px;
+            font-size: 19px; font-weight: 700; color: var(--shell-ink); margin-bottom: 24px;
+        }
+        .login-marca .quadrado {
+            width: 32px; height: 32px; border-radius: 8px; background: var(--brand);
+            display: flex; align-items: center; justify-content: center;
+        }
+        .login-marca .quadrado svg { width: 18px; height: 18px; }
+        .login-cartao { width: 100%; max-width: 380px; }
+        .cartao { background: var(--paper); }
+    </style>
+</head>
+<body>
+    <div class="login-cartao">
+        <div class="login-marca">
+            <span class="quadrado">
+                <svg viewBox="0 0 24 24"><path d="M13 2 4 14h6l-1 8 9-12h-6l1-8Z" fill="#EFE9E1"/></svg>
+            </span>
+            automação·ig
+        </div>
+        <div class="cartao">
+            {% if messages %}
+                <ul class="mensagens">
+                    {% for message in messages %}
+                        <li class="{{ message.tags }}">{{ message }}</li>
+                    {% endfor %}
+                </ul>
+            {% endif %}
+            {% block conteudo %}{% endblock %}
+        </div>
+    </div>
+    <script>
+        document.querySelectorAll(".botao-olho").forEach(function (botao) {
+            botao.addEventListener("click", function () {
+                var campo = botao.previousElementSibling;
+                var vaiMostrar = campo.type === "password";
+                campo.type = vaiMostrar ? "text" : "password";
+                botao.classList.toggle("mostrando", vaiMostrar);
+                botao.setAttribute("aria-label", vaiMostrar ? botao.dataset.esconder : botao.dataset.mostrar);
+            });
+        });
+    </script>
+</body>
+</html>

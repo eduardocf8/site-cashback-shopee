@@ -1,0 +1,230 @@
+<!DOCTYPE html>
+{% load static %}
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="icon" type="image/svg+xml" href="{% static 'favicon.svg' %}">
+    <link rel="apple-touch-icon" href="{% static 'icons/icon-180.png' %}">
+    <link rel="manifest" href="{% static 'manifest.json' %}">
+    <meta name="theme-color" content="#1b5e44">
+    <meta name="mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="default">
+    <meta name="apple-mobile-web-app-title" content="cash-b">
+    <link rel="stylesheet" href="{% static 'css/brand.css' %}">
+    <title>Ofertas — cash-b</title>
+    <meta name="description" content="Ofertas da Shopee com cashback automático: navegue por categoria e já saia com o link rastreado.">
+    <style>
+        * { box-sizing: border-box; }
+        body { margin: 0; color: var(--ink); background: var(--paper-2); }
+        a { color: var(--brand); text-decoration: none; }
+        .envolve { max-width: 1080px; margin: 0 auto; padding: 0 24px; }
+
+        .nav { position: sticky; top: 0; z-index: 10; background: var(--paper); border-bottom: 1px solid var(--line); }
+        .nav .envolve { display: flex; align-items: center; gap: 32px; height: 64px; }
+        .nav .marca { font-size: 33px; color: var(--brand); text-decoration: none; flex-shrink: 0; white-space: nowrap; margin-right: auto; }
+        .nav-secundario { display: flex; align-items: center; gap: 32px; font-size: 14px; }
+        .nav-secundario a { color: var(--ink); }
+        .nav-secundario form { margin: 0; }
+        .nav-secundario button.linkbtn { background: none; border: none; padding: 0; font: inherit; color: var(--ink); cursor: pointer; }
+        .botao-cta {
+            display: inline-block; background: var(--brand); color: var(--paper) !important;
+            padding: 10px 20px; border-radius: 24px; font-weight: 600; font-size: 14px; white-space: nowrap;
+        }
+        .botao-cta:hover { background: var(--brand-strong); }
+
+        .mensagens { list-style: none; padding: 0; margin: 16px 0 0 0; }
+        .mensagens li { padding: 10px 14px; border-radius: 6px; font-size: 14px; margin-bottom: 8px; }
+        .mensagens li.success { background: var(--success-bg); color: var(--success); }
+        .mensagens li.error { background: var(--danger-bg); color: var(--danger); }
+
+        .cabecalho { padding: 40px 0 8px; text-align: center; }
+        .cabecalho h1 { font-size: 30px; margin: 0 0 8px; letter-spacing: -0.01em; }
+        .cabecalho p { color: var(--muted); margin: 0; font-size: 15px; }
+
+        .filtro-secao {
+            display: flex; flex-wrap: wrap; align-items: flex-end; gap: 16px 20px;
+            background: var(--paper); border: 1px solid var(--line); border-radius: 12px;
+            padding: 20px 24px; margin: 24px 0 32px;
+        }
+        .campo-filtro { display: flex; flex-direction: column; gap: 6px; flex: 1 1 170px; }
+        .campo-filtro.campo-busca { flex: 2 1 260px; }
+        .filtro-secao label { font-size: 12px; font-weight: 600; color: var(--muted); }
+        .filtro-secao select, .filtro-secao input[type="search"] {
+            height: 40px; padding: 0 12px; border: 1px solid var(--line); border-radius: 8px;
+            font-family: inherit; font-size: 14px; background: var(--paper-2); color: var(--ink); width: 100%;
+        }
+        .filtro-secao button {
+            height: 40px; padding: 0 24px; border: none; border-radius: 8px; background: var(--brand);
+            color: var(--paper); font-family: inherit; font-size: 14px; font-weight: 600; cursor: pointer;
+            flex: 0 0 auto;
+        }
+        .filtro-secao button:hover { background: var(--brand-strong); }
+        @media (max-width: 640px) {
+            .filtro-secao { padding: 16px; }
+            .filtro-secao button { flex: 1 1 100%; }
+        }
+
+        .grade-ofertas {
+            display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 20px;
+            padding: 8px 0 40px;
+        }
+        .oferta-cartao {
+            background: var(--paper); border: 1px solid var(--line); border-radius: 12px; overflow: hidden;
+            display: flex; flex-direction: column;
+        }
+        .oferta-cartao .imagem { position: relative; aspect-ratio: 1 / 1; background: var(--paper-2); }
+        .oferta-cartao .imagem img { width: 100%; height: 100%; object-fit: cover; display: block; }
+        .oferta-cartao .desconto {
+            position: absolute; top: 8px; left: 8px; background: var(--danger); color: #fff;
+            font-size: 12px; font-weight: 700; padding: 3px 8px; border-radius: 10px;
+        }
+        .oferta-cartao .cashback {
+            position: absolute; top: 8px; right: 8px; background: var(--highlight); color: var(--highlight-ink);
+            font-size: 12px; font-weight: 700; padding: 3px 8px; border-radius: 10px;
+        }
+        .oferta-cartao .corpo { padding: 14px; display: flex; flex-direction: column; gap: 6px; flex: 1; }
+        .oferta-cartao .nome { font-size: 14px; line-height: 1.4; max-height: 2.8em; overflow: hidden; }
+        .oferta-cartao .categoria { font-size: 12px; color: var(--muted); }
+        .oferta-cartao .preco { font-family: "JB Mono", ui-monospace, monospace; font-size: 17px; font-weight: 500; margin-top: auto; }
+        .oferta-cartao .botao-cta { text-align: center; margin: 4px 14px 14px; }
+
+        .vazio { color: var(--muted); font-size: 14px; padding: 60px 20px; text-align: center; }
+
+        .paginacao { display: flex; align-items: center; justify-content: center; gap: 16px; margin: 8px 0 48px; font-size: 13px; }
+        .paginacao a { font-weight: 600; }
+        .paginacao span.desabilitado { color: var(--muted); }
+        .paginacao .pagina-atual { color: var(--muted); }
+
+        @media (max-width: 640px) {
+            .nav .envolve { flex-wrap: wrap; height: auto; padding: 10px 24px; row-gap: 10px; }
+            .nav .marca { order: 1; }
+            .nav .botao-cta { order: 2; }
+            .nav .nav-secundario { order: 3; flex-basis: 100%; justify-content: space-between; }
+        }
+    </style>
+</head>
+<body>
+    <nav class="nav">
+        <div class="envolve">
+            <a class="marca" href="{% url 'home' %}">cash-b</a>
+            <div class="nav-secundario">
+                {% if user.is_authenticated %}
+                    <a href="{% url 'dashboard' %}">Minha conta</a>
+                    <form method="post" action="{% url 'logout' %}">
+                        {% csrf_token %}
+                        <button type="submit" class="linkbtn">Sair</button>
+                    </form>
+                {% else %}
+                    <a href="{% url 'login' %}">Entrar</a>
+                    <a href="{% url 'registrar' %}">Cadastrar</a>
+                {% endif %}
+            </div>
+            <a class="botao-cta" href="{% url 'ir_para_shopee' %}">Ir pra Shopee &rarr;</a>
+        </div>
+    </nav>
+
+    {% if messages %}
+        <div class="envolve">
+            <ul class="mensagens">
+                {% for message in messages %}
+                    <li class="{{ message.tags }}">{{ message }}</li>
+                {% endfor %}
+            </ul>
+        </div>
+    {% endif %}
+
+    <div class="envolve">
+        <div class="cabecalho">
+            <h1>Ofertas da Shopee</h1>
+            <p>Clique em qualquer oferta e já saia com o cashback rastreado.</p>
+        </div>
+
+        <form method="get" action="{% url 'ofertas_lista' %}" class="filtro-secao">
+            <div class="campo-filtro campo-busca">
+                <label for="q">Buscar</label>
+                <input type="search" name="q" id="q" placeholder="Palavra-chave" value="{{ busca }}">
+            </div>
+            <div class="campo-filtro">
+                <label for="categoria">Categoria</label>
+                <select name="categoria" id="categoria">
+                    <option value="">Todas</option>
+                    {% for id, nome in categorias %}
+                        <option value="{{ id }}" {% if categoria_selecionada == id|stringformat:"s" %}selected{% endif %}>{{ nome }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="campo-filtro">
+                <label for="ordenar">Ordenar por</label>
+                <select name="ordenar" id="ordenar">
+                    {% for valor, rotulo in ordenacoes %}
+                        <option value="{{ valor }}" {% if ordenacao_selecionada == valor %}selected{% endif %}>{{ rotulo }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <button type="submit">Filtrar</button>
+        </form>
+
+        {% if ofertas %}
+            <div class="grade-ofertas">
+                {% for oferta in ofertas %}
+                    <div class="oferta-cartao">
+                        <div class="imagem">
+                            {% if oferta.percentual_desconto %}
+                                <span class="desconto">-{{ oferta.percentual_desconto }}%</span>
+                            {% endif %}
+                            {% if oferta.percentual_cashback %}
+                                <span class="cashback">{{ oferta.percentual_cashback }}% cashback</span>
+                            {% endif %}
+                            {% if oferta.imagem_url %}
+                                <img src="{{ oferta.imagem_url }}" alt="" loading="lazy">
+                            {% endif %}
+                        </div>
+                        <div class="corpo">
+                            <div class="categoria">{{ oferta.categoria_nome|default:"—" }}</div>
+                            <div class="nome">{{ oferta.nome_curto|default:oferta.nome }}</div>
+                            <div class="preco">
+                                {% if oferta.preco_min != oferta.preco_max %}
+                                    R$ {{ oferta.preco_min|floatformat:2 }} – R$ {{ oferta.preco_max|floatformat:2 }}
+                                {% else %}
+                                    R$ {{ oferta.preco_min|floatformat:2 }}
+                                {% endif %}
+                            </div>
+                        </div>
+                        <a class="botao-cta" href="{% url 'ofertas_ir' oferta.id %}">Ir pra oferta</a>
+                    </div>
+                {% endfor %}
+            </div>
+
+            {% if ofertas.has_other_pages %}
+                <div class="paginacao">
+                    {% if ofertas.has_previous %}
+                        <a href="{% querystring pagina=ofertas.previous_page_number %}">&larr; Anterior</a>
+                    {% else %}
+                        <span class="desabilitado">&larr; Anterior</span>
+                    {% endif %}
+                    <span class="pagina-atual">Página {{ ofertas.number }} de {{ ofertas.paginator.num_pages }}</span>
+                    {% if ofertas.has_next %}
+                        <a href="{% querystring pagina=ofertas.next_page_number %}">Próxima &rarr;</a>
+                    {% else %}
+                        <span class="desabilitado">Próxima &rarr;</span>
+                    {% endif %}
+                </div>
+            {% endif %}
+        {% else %}
+            <p class="vazio">
+                Nenhuma oferta disponível{% if categoria_selecionada %} nessa categoria{% endif %} no momento.
+                Volta mais tarde — a lista é atualizada todo dia.
+            </p>
+        {% endif %}
+    </div>
+
+    <div id="pwa-banner" class="pwa-banner" hidden>
+        <span class="pwa-banner-texto"></span>
+        <button type="button" class="pwa-banner-acao" hidden>Instalar</button>
+        <button type="button" class="pwa-banner-fechar" aria-label="Fechar">&times;</button>
+    </div>
+    <script src="{% static 'js/pwa-instalar.js' %}"></script>
+</body>
+</html>

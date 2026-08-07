@@ -1,0 +1,49 @@
+{% extends "automacao_instagram/base.html" %}
+{% block titulo %}Contas conectadas{% endblock %}
+{% block conteudo %}
+<div class="cabecalho-pagina">
+    <h1>Contas conectadas</h1>
+</div>
+
+<div class="caixa-central caixa-central--desloc-grande" style="max-width:720px;">
+<div class="cartao" style="margin-bottom:20px;">
+{% if contas %}
+<div class="tabela-scroll">
+<table>
+    <tr><th>Conta</th><th>ID da conta comercial</th><th></th></tr>
+    {% for conta in contas %}
+    <tr>
+        <td>{{ conta.nome_exibicao }}</td>
+        <td>{{ conta.instagram_business_account_id }}</td>
+        <td>
+            <form method="post" action="{% url 'automacao_conta_remover' conta.pk %}" onsubmit="return confirm('Remover essa conta? As automações vinculadas a ela também serão removidas.');">
+                {% csrf_token %}
+                <button type="submit" class="botao botao-perigo botao-auto">Remover</button>
+            </form>
+        </td>
+    </tr>
+    {% endfor %}
+</table>
+</div>
+{% else %}
+<p class="legenda">Nenhuma conta conectada ainda.</p>
+{% endif %}
+</div>
+
+<div class="cartao">
+    <h2 class="titulo-bloco" style="margin-top:0;">Conectar uma nova conta</h2>
+    <p class="legenda">
+        O token de acesso é gerado no painel da Meta for Developers, na mesma conta usada
+        pra automação de posts do cash-b — veja <code>marketing/instagram/README.md</code>
+        pra saber como adicionar essa nova conta do Instagram como conta de teste no App.
+    </p>
+    <form method="post">
+        {% csrf_token %}
+        {% for field in form %}
+            {% include "automacao_instagram/_campo_formulario.html" with field=field %}
+        {% endfor %}
+        <button type="submit">Conectar conta</button>
+    </form>
+</div>
+</div>
+{% endblock %}

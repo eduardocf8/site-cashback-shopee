@@ -9,6 +9,9 @@ from .services import ChavePixNaoConfiguradaError, ValorAbaixoDoMinimoError, sol
 @login_required
 def pedir_saque(request):
     if request.method == "POST":
+        if not request.user.email_verificado:
+            messages.error(request, "Confirme seu e-mail antes de solicitar um saque.")
+            return redirect("dashboard")
         try:
             saque = solicitar_saque(request.user)
             valor_formatado = number_format(saque.valor, decimal_pos=2)

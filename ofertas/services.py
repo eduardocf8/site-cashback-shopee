@@ -1,0 +1,207 @@
+import json
+import logging
+import time
+import unicodedata
+from decimal import Decimal, InvalidOperation
+from pathlib import Path
+
+import requests
+from django.db import transaction
+from django.db.models import Sum
+
+from links.shopee_client import buscar_ofertas_produtos
+
+from . import gemini_client
+from .gemini_client import GeminiAPIError, GeminiConfigError
+from .models import NomeCurtoCache, Oferta
+
+logger = logging.getLogger(__name__)
+
+CAMINHO_CATEGORIAS_NIVEL1 = Path(__file__).resolve().parent / "data" / "shopee_categorias_nivel1.json"
+TAMANHO_LOTE_GEMINI = 50
+# O plano gratuito do Gemini libera só 15 requisições/minuto, e qualquer requisição HTTP
+# nesse site tem 120s de orçamento antes do gunicorn matar o worker (--timeout 120, ver
+# README.md) - por isso processa só alguns lotes por execução em vez do catálogo inteiro
+# de uma vez. O NomeCurtoCache é permanente, então o que sobrar fica pendente e é
+# retomado sozinho na próxima chamada, sem perder progresso.
+# Isso roda numa tarefa agendada separada da sincronização com a Shopee (ver
+# encurtar_nomes_pendentes/executar_encurtamento_nomes) - a busca na Shopee sozinha já
+# usa boa parte do orçamento de 120s, então enfileirar o Gemini atrás dela nessa mesma
+# requisição estourava o timeout quase toda vez.
+LIMITE_LOTES_POR_EXECUCAO = 10
+PAUSA_ENTRE_LOTES_SEGUNDOS = 4.5
+
+_categorias_nivel1_cache: dict[int, str] | None = None
+
+
+def carregar_categorias_nivel1() -> dict[int, str]:
+    global _categorias_nivel1_cache
+    if _categorias_nivel1_cache is None:
+        with open(CAMINHO_CATEGORIAS_NIVEL1, encoding="utf-8") as f:
+            lista = json.load(f)
+        _categorias_nivel1_cache = {item["id"]: item["nome"] for item in lista}
+    return _categorias_nivel1_cache
+
+
+def _decimal_seguro(valor, padrao=Decimal("0")):
+    try:
+        return Decimal(str(valor))
+    except (InvalidOperation, TypeError):
+        return padrao
+
+
+def _montar_oferta(node: dict, categorias_nivel1: dict[int, str]) -> Oferta:
+    categoria_ids = node.get("productCatIds") or []
+    categoria_id = categoria_ids[0] if categoria_ids else 0
+    avaliacao_bruta = node.get("ratingStar")
+    avaliacao = _decimal_seguro(avaliacao_bruta) if avaliacao_bruta else None
+
+    nome = (node.get("productName") or "")[:255]
+    return Oferta(
+        item_id=node["itemId"],
+        nome=nome,
+        nome_curto=nome,  # melhorado depois por encurtar_nomes_pendentes(), numa tarefa separada
+        imagem_url=node.get("imageUrl") or "",
+        preco_min=_decimal_seguro(node.get("priceMin")),
+        preco_max=_decimal_seguro(node.get("priceMax")),
+        percentual_desconto=int(node.get("priceDiscountRate") or 0),
+        percentual_comissao=_decimal_seguro(node.get("commissionRate")),
+        avaliacao=avaliacao,
+        vendas=int(node.get("sales") or 0),
+        categoria_id=categoria_id,
+        categoria_nome=categorias_nivel1.get(categoria_id, ""),
+        loja_nome=(node.get("shopName") or "")[:255],
+        product_link=node.get("productLink") or "",
+    )
+
+
+def _aplicar_nomes_curtos(ofertas: list[Oferta]) -> None:
+    """Preenche oferta.nome_curto pra cada oferta. Reaproveita o NomeCurtoCache (que
+    sobrevive entre sincronizações, diferente de Oferta - ver models.py) pra só chamar o
+    Gemini nos itens novos ou com nome mudado desde a última vez. nome_curto nunca fica
+    vazio: cai pro nome original se o Gemini falhar ou não estiver configurado."""
+    cache_por_item_id = {
+        c.item_id: c for c in NomeCurtoCache.objects.filter(item_id__in=[o.item_id for o in ofertas])
+    }
+
+    pendentes = []
+    for oferta in ofertas:
+        cache = cache_por_item_id.get(oferta.item_id)
+        if cache and cache.nome_original == oferta.nome:
+            oferta.nome_curto = cache.nome_curto
+        else:
+            oferta.nome_curto = oferta.nome  # fallback, sobrescrito abaixo se o lote der certo
+            pendentes.append(oferta)
+
+    lotes = [pendentes[i : i + TAMANHO_LOTE_GEMINI] for i in range(0, len(pendentes), TAMANHO_LOTE_GEMINI)]
+    lotes_a_processar = lotes[:LIMITE_LOTES_POR_EXECUCAO]
+    if len(lotes) > len(lotes_a_processar):
+        logger.info(
+            "[ofertas] %s produto(s) sem nome_curto ficam pra próxima sincronização (limite de %s lote(s) por execução)",
+            sum(len(lote) for lote in lotes[LIMITE_LOTES_POR_EXECUCAO:]), LIMITE_LOTES_POR_EXECUCAO,
+        )
+
+    cache_pra_salvar = []
+    for indice, lote in enumerate(lotes_a_processar):
+        if indice > 0:
+            time.sleep(PAUSA_ENTRE_LOTES_SEGUNDOS)  # respeita o limite de requisições/minuto do plano gratuito
+        try:
+            nomes_curtos = gemini_client.encurtar_nomes([oferta.nome for oferta in lote])
+        except GeminiConfigError as erro:
+            logger.warning("[ofertas] Gemini não configurado, pulando o resto do encurtamento: %s", erro)
+            break
+        except (GeminiAPIError, requests.RequestException) as erro:
+            logger.warning("[ofertas] falha ao encurtar lote de %s nome(s) via Gemini: %s", len(lote), erro)
+            continue
+        for oferta, nome_curto in zip(lote, nomes_curtos):
+            oferta.nome_curto = nome_curto or oferta.nome
+            cache_pra_salvar.append(
+                NomeCurtoCache(item_id=oferta.item_id, nome_original=oferta.nome, nome_curto=oferta.nome_curto)
+            )
+
+    if cache_pra_salvar:
+        NomeCurtoCache.objects.bulk_create(
+            cache_pra_salvar,
+            update_conflicts=True,
+            update_fields=["nome_original", "nome_curto", "atualizado_em"],
+            unique_fields=["item_id"],
+        )
+
+
+def encurtar_nomes_pendentes() -> dict:
+    """Melhora, aos poucos, o nome_curto das ofertas que ainda estão iguais ao nome
+    original (ou seja, ainda não passaram pelo Gemini com sucesso). Chamado por uma
+    tarefa agendada própria (ver cashback_shopee/views.py e tarefas-diarias.yml),
+    separada da sincronização com a Shopee, pra ter os 120s de orçamento só pra si."""
+    ofertas = list(Oferta.objects.all())
+    _aplicar_nomes_curtos(ofertas)
+    Oferta.objects.bulk_update(ofertas, ["nome_curto"], batch_size=200)
+    return {"total_ofertas": len(ofertas)}
+
+
+def sincronizar_ofertas(limite_por_pagina: int = 50, max_paginas: int = 40) -> dict:
+    """Busca as ofertas de produtos (productOfferV2, listType ALL) e substitui a lista atual.
+
+    Full-replace (não incremental): uma "oferta" é só uma foto do que a Shopee está
+    oferecendo hoje, sem status a preservar entre sincronizações (diferente de Pedido/Saque).
+    """
+    categorias_nivel1 = carregar_categorias_nivel1()
+
+    ofertas_novas = []
+    pagina = 1
+    while pagina <= max_paginas:
+        resultado = buscar_ofertas_produtos(pagina, limite_por_pagina)
+        for node in resultado["nodes"]:
+            ofertas_novas.append(_montar_oferta(node, categorias_nivel1))
+        if not resultado["pageInfo"].get("hasNextPage"):
+            break
+        pagina += 1
+
+    # Dedup por item_id (a Shopee pode repetir um item entre páginas se o feed
+    # for atualizado no meio da sincronização).
+    por_item_id = {oferta.item_id: oferta for oferta in ofertas_novas}
+
+    with transaction.atomic():
+        Oferta.objects.all().delete()
+        Oferta.objects.bulk_create(por_item_id.values(), batch_size=200)
+
+    return {"total": len(por_item_id), "paginas_percorridas": pagina}
+
+
+def normalizar_nome_produto(nome: str) -> str:
+    """minúsculas e sem acento, pra comparar nome de produto ignorando esse tipo de
+    diferença (usado pra não repetir o "mesmo" produto vindo de lojas diferentes -
+    ver selecionar_top_ofertas_sem_duplicar)."""
+    sem_acento = unicodedata.normalize("NFKD", nome).encode("ascii", "ignore").decode()
+    return sem_acento.lower().strip()
+
+
+def selecionar_top_ofertas_sem_duplicar(quantidade: int) -> list[Oferta]:
+    """As ofertas mais vendidas (Oferta.Meta.ordering = -vendas), sem repetir produto.
+
+    A Shopee pode anunciar o mesmo produto genérico (ex: "Percarbonato de sódio") em
+    lojas diferentes, cada uma com seu próprio item_id - sincronizar_ofertas só remove
+    duplicado por item_id, então sem essa checagem o mesmo produto pode aparecer mais
+    de uma vez no mesmo story/post."""
+    selecionadas = []
+    nomes_vistos = set()
+    for oferta in Oferta.objects.all():
+        nome_normalizado = normalizar_nome_produto(oferta.nome)
+        if nome_normalizado in nomes_vistos:
+            continue
+        nomes_vistos.add(nome_normalizado)
+        selecionadas.append(oferta)
+        if len(selecionadas) >= quantidade:
+            break
+    return selecionadas
+
+
+def categorias_mais_vendidas(quantidade: int) -> list[dict]:
+    """[{"categoria_id":.., "categoria_nome":.., "vendas_total":..}, ...], as
+    `quantidade` categorias (nível 1) com mais vendas somadas entre as ofertas
+    sincronizadas agora."""
+    return list(
+        Oferta.objects.values("categoria_id", "categoria_nome")
+        .annotate(vendas_total=Sum("vendas"))
+        .order_by("-vendas_total")[:quantidade]
+    )

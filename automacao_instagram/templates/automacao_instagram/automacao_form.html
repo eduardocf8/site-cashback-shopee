@@ -1,0 +1,51 @@
+{% extends "automacao_instagram/base.html" %}
+{% block titulo %}Nova automação{% endblock %}
+{% block estilo_extra %}
+<style>
+    .opcao-post {
+        display: flex; gap: 10px; align-items: flex-start; margin-top: 8px; padding: 12px;
+        border: 1px solid var(--line); border-radius: 8px; cursor: pointer; font-weight: normal;
+    }
+    .opcao-post:hover { background: var(--paper-2); }
+    .opcao-post:has(input:checked) { border-color: var(--brand); background: var(--brand-soft); }
+    .opcao-post input { width: auto; margin: 3px 0 0; }
+</style>
+{% endblock %}
+{% block conteudo %}
+<p class="legenda"><a href="{% url 'automacao_lista' %}">&larr; Automações</a></p>
+<div class="cabecalho-pagina">
+    <h1>Nova automação — {{ conta.nome_exibicao }}</h1>
+</div>
+
+<div class="caixa-central caixa-central--desloc-pequeno" style="max-width:720px;">
+<div class="cartao">
+<form method="post">
+    {% csrf_token %}
+    <input type="hidden" name="conta" value="{{ conta.pk }}">
+
+    <label>Post</label>
+    {% if midias %}
+        {% for midia in midias %}
+        <label class="opcao-post">
+            <input type="radio" name="post_selecionado" value="{{ midia.id }}|{{ midia.permalink }}" required>
+            <span>
+                {{ midia.timestamp|slice:":10" }} —
+                {{ midia.caption|default:"(sem legenda)"|truncatechars:80 }}
+                {% if midia.permalink %}<br><a href="{{ midia.permalink }}" target="_blank" rel="noopener">ver post</a>{% endif %}
+            </span>
+        </label>
+        {% endfor %}
+    {% else %}
+        <p class="legenda">Nenhum post encontrado nessa conta.</p>
+    {% endif %}
+
+    {% for field in form %}
+        {% include "automacao_instagram/_campo_formulario.html" with field=field %}
+    {% endfor %}
+    {% if form.non_field_errors %}<div class="erros">{{ form.non_field_errors|striptags }}</div>{% endif %}
+
+    <button type="submit">Criar automação</button>
+</form>
+</div>
+</div>
+{% endblock %}

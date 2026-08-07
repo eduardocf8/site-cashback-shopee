@@ -67,10 +67,15 @@ INSTALLED_APPS = [
     "django.contrib.sessions",
     "django.contrib.messages",
     "django.contrib.staticfiles",
+    "django.contrib.sitemaps",
     "accounts",
     "links",
     "pedidos",
     "saques",
+    "paginas",
+    "ofertas",
+    "instagram_bot",
+    "automacao_instagram",
 ]
 
 AUTH_USER_MODEL = "accounts.User"
@@ -91,9 +96,36 @@ SHOPEE_HOME_URL = os.environ.get("SHOPEE_HOME_URL", "https://shopee.com.br/")
 # Ainda não definido pelo negócio - ajuste no .env quando decidido (ex: 100 = repassa tudo).
 SHOPEE_CASHBACK_PERCENTUAL = float(os.environ.get("SHOPEE_CASHBACK_PERCENTUAL", "100"))
 
+# API do Gemini, usada só pra encurtar o nome dos produtos exibidos na aba Ofertas (os
+# títulos que vêm da Shopee costumam ser bem longos/cheios de palavra-chave repetida).
+# Sem GEMINI_API_KEY configurada, o site continua funcionando normal - só usa o nome
+# original sem encurtar (ver ofertas/gemini_client.py e ofertas/services.py).
+GEMINI_API_KEY = os.environ.get("GEMINI_API_KEY", "")
+GEMINI_API_URL = os.environ.get("GEMINI_API_URL", "https://generativelanguage.googleapis.com/v1beta")
+GEMINI_MODEL = os.environ.get("GEMINI_MODEL", "gemini-3.1-flash-lite")
+
 # Credenciais da API da Asaas para pagar os saques via PIX (ficam no arquivo .env, nunca no código)
 ASAAS_API_KEY = os.environ.get("ASAAS_API_KEY", "")
 ASAAS_API_URL = os.environ.get("ASAAS_API_URL", "https://sandbox.asaas.com/api/v3")
+
+# Credenciais da API Banking do Inter, alternativa à Asaas pra pagar saques via PIX
+# (Internet Banking > Soluções para sua empresa > Nova integração). Autenticação é
+# OAuth2 + certificado mTLS (não só uma chave de API) - os arquivos de certificado
+# baixados no Internet Banking ficam fora do repositório (ver .gitignore) e o caminho
+# deles no disco é o que entra aqui.
+#
+# EM PAUSA por enquanto: conta MEI não tem acesso a "Soluções para sua empresa" nem
+# pode abrir conta PJ - só dá pra usar isso depois de migrar de MEI pra Simples
+# Nacional. Até lá, fica sem preencher e o botão "Aprovar e pagar via PIX (Inter)" no
+# Admin sempre falha com InterConfigError (de propósito - sem risco de tentar pagar
+# de verdade sem credencial). A Asaas continua sendo o único provedor em uso de fato.
+INTER_CLIENT_ID = os.environ.get("INTER_CLIENT_ID", "")
+INTER_CLIENT_SECRET = os.environ.get("INTER_CLIENT_SECRET", "")
+INTER_CERT_PATH = os.environ.get("INTER_CERT_PATH", "")
+INTER_KEY_PATH = os.environ.get("INTER_KEY_PATH", "")
+# Só precisa preencher se a aplicação estiver associada a mais de uma conta corrente.
+INTER_CONTA_CORRENTE = os.environ.get("INTER_CONTA_CORRENTE", "")
+INTER_API_URL = os.environ.get("INTER_API_URL", "https://cdpj-sandbox.partners.uatinter.co")
 
 # Valor mínimo (em reais) que o usuário precisa ter de saldo liberado para poder solicitar saque.
 SAQUE_VALOR_MINIMO = Decimal(os.environ.get("SAQUE_VALOR_MINIMO", "20.00"))
@@ -102,6 +134,34 @@ SAQUE_VALOR_MINIMO = Decimal(os.environ.get("SAQUE_VALOR_MINIMO", "20.00"))
 # automático (GitHub Actions) para rodar as tarefas diárias em produção. Sem essa
 # variável configurada, o endereço fica sempre bloqueado.
 TAREFAS_TOKEN = os.environ.get("TAREFAS_TOKEN", "")
+
+# Credenciais do bot do Instagram (Instagram API com Login do Instagram - não usa
+# Página do Facebook). Ficam no .env / variáveis de ambiente do Render, nunca no
+# código. Ver marketing/instagram/README.md para o histórico completo da configuração.
+INSTAGRAM_APP_ID = os.environ.get("INSTAGRAM_APP_ID", "")
+INSTAGRAM_APP_SECRET = os.environ.get("INSTAGRAM_APP_SECRET", "")
+INSTAGRAM_ACCESS_TOKEN = os.environ.get("INSTAGRAM_ACCESS_TOKEN", "")
+INSTAGRAM_BUSINESS_ACCOUNT_ID = os.environ.get("INSTAGRAM_BUSINESS_ACCOUNT_ID", "")
+INSTAGRAM_GRAPH_API_URL = os.environ.get("INSTAGRAM_GRAPH_API_URL", "https://graph.instagram.com")
+
+# Interruptor mestre do bot: enquanto False, o bot gera o conteúdo do dia e
+# registra tudo (RegistroPublicacao) mas NÃO publica de verdade no Instagram
+# (modo "dry-run"). Vira True só quando o perfil já estiver semeado manualmente
+# com os posts institucionais iniciais (ver marketing/instagram/README.md).
+INSTAGRAM_BOT_ATIVO = os.environ.get("INSTAGRAM_BOT_ATIVO", "False") == "True"
+
+# Só importa quando INSTAGRAM_BOT_ATIVO=True. Se True, o bot gera a arte e manda um
+# e-mail de aprovação pro INSTAGRAM_APROVADOR_EMAIL em vez de publicar direto -
+# só publica depois de clicar em "aprovar" no e-mail. Se False, publica direto.
+INSTAGRAM_REQUER_APROVACAO = os.environ.get("INSTAGRAM_REQUER_APROVACAO", "True") == "True"
+INSTAGRAM_APROVADOR_EMAIL = os.environ.get("INSTAGRAM_APROVADOR_EMAIL", "contato@cash-b.com")
+
+# App automacao_instagram: responde/envia DM em comentários com palavra-chave. Cada
+# conta conectada tem seu próprio token (guardado no banco, não aqui - ver
+# ContaInstagramConectada), então esse valor só controla o intervalo do worker
+# (rodado à parte, como Background Worker no Render - ver
+# automacao_instagram/management/commands/automacao_instagram_worker.py).
+AUTOMACAO_INSTAGRAM_INTERVALO_SEGUNDOS = int(os.environ.get("AUTOMACAO_INSTAGRAM_INTERVALO_SEGUNDOS", "30"))
 
 MIDDLEWARE = [
     "django.middleware.security.SecurityMiddleware",
@@ -119,7 +179,7 @@ ROOT_URLCONF = "cashback_shopee.urls"
 TEMPLATES = [
     {
         "BACKEND": "django.template.backends.django.DjangoTemplates",
-        "DIRS": [],
+        "DIRS": [BASE_DIR / "templates"],
         "APP_DIRS": True,
         "OPTIONS": {
             "context_processors": [
@@ -181,6 +241,17 @@ USE_TZ = True
 
 STATIC_URL = "static/"
 STATIC_ROOT = BASE_DIR / "staticfiles"
+STATICFILES_DIRS = [BASE_DIR / "static"]
+
+# Imagens geradas pelo bot do Instagram precisam de uma URL pública (a API do
+# Instagram busca a imagem ela mesma a partir dessa URL, não aceita upload direto).
+# MEDIA_ROOT é configurável via variável de ambiente pra apontar pro disco persistente
+# do Render (Disk) quando ele existir - o disco precisa ser montado FORA da pasta do
+# código-fonte (ex: /var/data), então isso é diferente do caminho padrão do projeto.
+# Sem a variável configurada, cai no comportamento antigo (pasta "media" dentro do
+# próprio projeto - funciona, mas não persiste entre deploys/reinícios sem disco).
+MEDIA_URL = "media/"
+MEDIA_ROOT = Path(os.environ.get("MEDIA_ROOT", str(BASE_DIR / "media")))
 
 STORAGES = {
     "default": {
@@ -188,6 +259,36 @@ STORAGES = {
     },
     "staticfiles": {
         "BACKEND": "whitenoise.storage.CompressedManifestStaticFilesStorage",
+    },
+}
+
+# E-mail (usado para o link de "esqueceu sua senha")
+# O Render bloqueia conexões SMTP de saída, então o envio usa a API HTTP do
+# Brevo (veja cashback_shopee/brevo_email_backend.py) em vez de SMTP. Sem
+# BREVO_API_KEY configurada, os e-mails só aparecem no terminal (backend de
+# console) - útil em desenvolvimento local.
+
+BREVO_API_KEY = os.environ.get("BREVO_API_KEY", "")
+EMAIL_BACKEND = (
+    "cashback_shopee.brevo_email_backend.BrevoAPIEmailBackend"
+    if BREVO_API_KEY
+    else "django.core.mail.backends.console.EmailBackend"
+)
+EMAIL_TIMEOUT = int(os.environ.get("EMAIL_TIMEOUT", "10"))
+DEFAULT_FROM_EMAIL = os.environ.get("DEFAULT_FROM_EMAIL", "cash-b <contato@cash-b.com>")
+
+# Por padrão, o Django só manda os próprios logs de erro (ex: falha ao enviar
+# e-mail de redefinição de senha) pro console quando DEBUG=True - em produção
+# eles ficam invisíveis. Isso garante que sempre apareçam nos logs do Render.
+LOGGING = {
+    "version": 1,
+    "disable_existing_loggers": False,
+    "handlers": {
+        "console": {"class": "logging.StreamHandler"},
+    },
+    "root": {
+        "handlers": ["console"],
+        "level": "WARNING",
     },
 }
 

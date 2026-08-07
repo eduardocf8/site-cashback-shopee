@@ -1,16 +1,33 @@
 {% extends "accounts/base.html" %}
 {% block titulo %}Entrar{% endblock %}
-{% block conteudo %}
-    <h1>Entrar</h1>
-    <form method="post">
-        {% csrf_token %}
-        {% for field in form %}
-            <label for="{{ field.id_for_label }}">{{ field.label }}</label>
-            {{ field }}
-            {% if field.errors %}<div class="erros">{{ field.errors|striptags }}</div>{% endif %}
-        {% endfor %}
-        {% if form.non_field_errors %}<div class="erros">{{ form.non_field_errors|striptags }}</div>{% endif %}
-        <button type="submit">Entrar</button>
-    </form>
-    <p class="rodape">Não tem conta? <a href="{% url 'registrar' %}">Cadastre-se</a></p>
+{% block meta_descricao %}Acesse sua conta cash-b pra acompanhar seu saldo de cashback e solicitar saque via PIX.{% endblock %}
+{% block layout %}
+<div class="split">
+    <div class="split-form">
+        <div class="split-form-inner">
+            <a class="marca split-marca" href="{% url 'home' %}">cash-b</a>
+            {% if messages %}
+                <ul class="mensagens">
+                    {% for message in messages %}
+                        <li class="{{ message.tags }}">{{ message }}</li>
+                    {% endfor %}
+                </ul>
+            {% endif %}
+            <h1>Entrar</h1>
+            <form method="post">
+                {% csrf_token %}
+                {% for field in form %}
+                    {% include "accounts/_campo_formulario.html" with field=field %}
+                {% endfor %}
+                {% if form.non_field_errors %}<div class="erros">{{ form.non_field_errors|striptags }}</div>{% endif %}
+                <div class="esqueci-senha"><a href="{% url 'password_reset' %}">Esqueceu sua senha?</a></div>
+                <button type="submit">Entrar</button>
+            </form>
+            <p class="rodape">Não tem conta? <a href="{% url 'registrar' %}">Cadastre-se</a></p>
+        </div>
+    </div>
+    <div class="split-graphic">
+        {% include "accounts/_ilustracao_auth.html" %}
+    </div>
+</div>
 {% endblock %}
