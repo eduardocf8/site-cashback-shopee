@@ -240,6 +240,41 @@ disparando alguma proteção temporária do lado da Meta - nesse caso, é
 melhor esperar mais (a próxima execução automática do dia seguinte, por
 exemplo) em vez de insistir.
 
+**Atualização (ver incidente abaixo, 2026-08-07)**: esse mesmo erro
+genérico também pode ser só `INSTAGRAM_BUSINESS_ACCOUNT_ID` errado de
+novo - não é só instabilidade transitória da Meta. Antes de esperar,
+confere primeiro no Depurador de Token de Acesso.
+
+### `INSTAGRAM_BUSINESS_ACCOUNT_ID` errado de novo, mascarado como erro genérico (2026-08-07)
+
+Um dia depois do incidente acima (2026-08-05), o bot voltou a falhar -
+dessa vez em **todas** as execuções automáticas do dia (várias chamadas
+distintas, `fbtrace_id` diferente em cada uma), com a mensagem genérica
+"code=2, type=OAuthException" (não o erro claro de mídia de antes).
+Pareceu, a princípio, o caso "instabilidade transitória da Meta" descrito
+acima - mas persistir o dia inteiro, em chamadas independentes, não bate
+com esse padrão.
+
+**Causa raiz**: `INSTAGRAM_BUSINESS_ACCOUNT_ID` no Render tinha sido
+corrigido errado no incidente anterior - `271062287872382357` em vez de
+`271062878872382357` (dois dígitos trocados de posição no meio do
+número). Confirmado comparando com o "ID do usuário no escopo do
+aplicativo" no Depurador de Token de Acesso. Ou seja: o mesmo tipo de
+erro (ID incorreto) pode aparecer tanto como o erro claro de mídia
+("Only photo or video...") quanto como esse erro genérico de OAuth -
+depende de qual validação a API do Instagram bate primeiro.
+
+**Melhoria que ficou**: `instagram_client.verificar_configuracao()` -
+antes de qualquer publicação real (`publicar_imagem`/`publicar_carrossel`,
+chamadas tanto pelo fluxo normal quanto por "Tentar publicar de novo"),
+compara o `INSTAGRAM_BUSINESS_ACCOUNT_ID` configurado com o ID retornado
+por uma chamada `GET /me` usando o próprio `INSTAGRAM_ACCESS_TOKEN`. Se
+não bater, falha com uma mensagem específica e direta (ID configurado x
+ID esperado) em vez de deixar a Meta devolver um erro genérico que
+mascara a causa - da próxima vez que os dois valores ficarem
+dessincronizados, o campo `erro` do `RegistroPublicacao` já vai apontar
+exatamente isso, sem precisar repetir essa investigação inteira.
+
 ## Posts de semeadura (pasta `posts-semeadura/`)
 
 8 imagens 1080×1080 (arquivo real 2160×2160, renderizado em dobro pra

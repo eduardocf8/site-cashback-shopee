@@ -41,6 +41,23 @@ def _chamar(metodo: str, caminho: str, **params) -> dict:
     return dados
 
 
+def verificar_configuracao() -> None:
+    """Confere se o INSTAGRAM_BUSINESS_ACCOUNT_ID configurado bate com o ID de
+    verdade associado ao INSTAGRAM_ACCESS_TOKEN antes de publicar. Sem essa checagem,
+    um ID errado gera um erro genérico da própria API ("Only photo or video can be
+    accepted", ou "code=2, type=OAuthException") que não aponta a causa raiz - já
+    aconteceu 2x (ver marketing/instagram/README.md, troubleshooting)."""
+    _exigir_config()
+    dados = _chamar("GET", "me", fields="id")
+    id_do_token = dados["id"]
+    if id_do_token != settings.INSTAGRAM_BUSINESS_ACCOUNT_ID:
+        raise InstagramConfigError(
+            f"INSTAGRAM_BUSINESS_ACCOUNT_ID configurado ({settings.INSTAGRAM_BUSINESS_ACCOUNT_ID}) "
+            f"não bate com o ID associado ao INSTAGRAM_ACCESS_TOKEN ({id_do_token}) - "
+            "corrija a variável de ambiente no Render."
+        )
+
+
 def criar_container_midia(image_url: str, legenda: str = "", story: bool = False) -> str:
     """Cria o container de mídia (passo 1 de 2 pra publicar). Retorna o creation_id."""
     _exigir_config()
@@ -64,6 +81,7 @@ def publicar_container(creation_id: str) -> str:
 
 def publicar_imagem(image_url: str, legenda: str = "", story: bool = False) -> str:
     """Fluxo completo: cria o container e publica. Retorna o media_id publicado."""
+    verificar_configuracao()
     creation_id = criar_container_midia(image_url, legenda=legenda, story=story)
     return publicar_container(creation_id)
 
@@ -91,6 +109,7 @@ def criar_container_carrossel(item_ids: list[str], legenda: str = "") -> str:
 def publicar_carrossel(image_urls: list[str], legenda: str = "") -> str:
     """Fluxo completo de carrossel: cria um container por imagem, agrupa num container "pai", e
     publica. Retorna o media_id publicado. Máximo de 10 imagens (limite da própria API)."""
+    verificar_configuracao()
     item_ids = [criar_item_carrossel(url) for url in image_urls]
     creation_id = criar_container_carrossel(item_ids, legenda=legenda)
     return publicar_container(creation_id)
