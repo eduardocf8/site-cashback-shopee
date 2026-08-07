@@ -241,7 +241,8 @@ def gerar_imagem_oferta_story(oferta, tamanho=(1080, 1920)) -> Image.Image:
     fonte_nome = _fonte(46, negrito=True)
     fonte_preco = _fonte(58, mono=True, negrito=True)
     fonte_desconto = _fonte(30, negrito=True)
-    fonte_marca = _fonte(34, negrito=True)
+    fonte_marca = _fonte(28, negrito=True)
+    fonte_link_bio = _fonte(32, negrito=True)
 
     largura_util = tamanho[0] - margem * 2
     nome = oferta.nome_curto or oferta.nome
@@ -254,12 +255,13 @@ def gerar_imagem_oferta_story(oferta, tamanho=(1080, 1920)) -> Image.Image:
     area_util = tamanho[1] - topo_seguro - rodape_seguro
     lado_imagem = min(largura_util, area_util - altura_eyebrow - altura_nome - altura_preco - espacos)
 
-    # "cash-b" fica fora desse bloco (desenhado depois, centralizado e perto do
+    # "link na bio" fica fora desse bloco (desenhado depois, centralizado e perto do
     # rodapé seguro) - só eyebrow/imagem/nome/preço centralizam juntos aqui.
     altura_bloco = altura_eyebrow + 28 + lado_imagem + 28 + altura_nome + 20 + altura_preco
     y = topo_seguro + max(0, (area_util - altura_bloco) // 2)
 
     draw.text((margem, y), "OFERTA DO MOMENTO", font=fonte_eyebrow, fill=CORES["brand"])
+    draw.text((tamanho[0] - margem, y), "cash-b", font=fonte_marca, fill=CORES["brand"], anchor="ra")
     y += altura_eyebrow + 28
 
     x_imagem = (tamanho[0] - lado_imagem) // 2
@@ -297,11 +299,11 @@ def gerar_imagem_oferta_story(oferta, tamanho=(1080, 1920)) -> Image.Image:
     preco = f"R$ {oferta.preco_min:.2f}".replace(".", ",")
     draw.text((margem, y), preco, font=fonte_preco, fill=CORES["brand"])
 
-    # Centralizada na largura toda (não alinhada com o resto do bloco, que é à
-    # esquerda) e perto do limite inferior da área segura, não colada no preço.
+    # Centralizado na largura toda (não alinhado com o resto do bloco, que é à
+    # esquerda) e perto do limite inferior da área segura, não colado no preço.
     draw.text(
-        (tamanho[0] / 2, tamanho[1] - rodape_seguro - 30),
-        "cash-b", font=fonte_marca, fill=CORES["ink-soft"], anchor="ms",
+        (tamanho[0] / 2, tamanho[1] - rodape_seguro - 10),
+        "link na bio", font=fonte_link_bio, fill=CORES["ink-soft"], anchor="ms",
     )
 
     return img
