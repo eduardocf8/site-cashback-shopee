@@ -76,11 +76,13 @@ pasta, pra não ficar vazio quando a automação for ligada de verdade — ver
    eixos de peso variável Bold/Regular). Dois layouts:
    - `gerar_imagem_texto_simples(...)` — statement centralizado (dica,
      lembrete), reaproveita o layout dos posts de semeadura.
-   - `gerar_imagem_ofertas(...)` — cartões de produto empilhados (imagem +
-     nome + preço + selo de desconto), busca a imagem do produto via
-     `requests` a partir de `Oferta.imagem_url`; a altura dos cartões se
-     ajusta automaticamente pra caber tanto no formato quadrado (feed,
-     1080×1080) quanto vertical (story, 1080×1920).
+   - `gerar_imagem_oferta_story(...)` — layout "hero" pra 1 oferta só
+     ocupando o story inteiro (imagem grande + nome + preço + selo de
+     desconto, no estilo do cartão de oferta do site), busca a imagem do
+     produto via `requests` a partir de `Oferta.imagem_url`. Reserva
+     margem de segurança no topo e no rodapé pra não ficar atrás do
+     ícone/nome da conta nem da barra de resposta do próprio Instagram
+     (ver "Ajuste de layout do story de oferta" no troubleshooting).
    Os posts institucionais de quarta-feira usam os mesmos 8 temas da
    semeadura, mas **geram uma arte nova via Pillow a cada rotação** (2
    variações de texto/legenda por tema, 16 no total) em vez de reusar os
@@ -274,6 +276,62 @@ ID esperado) em vez de deixar a Meta devolver um erro genérico que
 mascara a causa - da próxima vez que os dois valores ficarem
 dessincronizados, o campo `erro` do `RegistroPublicacao` já vai apontar
 exatamente isso, sem precisar repetir essa investigação inteira.
+
+### Erro "code=9004, error_subcode=2207052" (media could not be fetched) - self-deadlock de 1 worker só (2026-08-07)
+
+Depois de corrigir o `INSTAGRAM_BUSINESS_ACCOUNT_ID` (incidente acima), a
+publicação continuou falhando - agora com "Only photo or video can be
+accepted as media type" de novo, mas com `code=9004,
+error_subcode=2207052`, que a própria Meta documenta como "a mídia não
+pôde ser buscada nessa URI" (fetch da imagem falhou, não é erro de
+formato).
+
+**Causa raiz**: o serviço web no Render roda com `gunicorn
+cashback_shopee.wsgi:application --timeout 120`, sem `--workers` nem
+`--threads` (então cai no padrão: 1 worker síncrono). O fluxo de
+publicação faz uma chamada de dentro de uma requisição (aprovar por
+e-mail, ou o cron chamando `/tarefas/postar-story-oferta/`) pra API do
+Instagram; a API do Instagram, pra criar o container de mídia, busca a
+imagem de volta na própria URL pública do site (`RENDER_EXTERNAL_HOSTNAME`)
+- ou seja, faz uma requisição de volta pro mesmo servidor. Com 1 worker
+só, ele está ocupado esperando a resposta da Meta e não sobra ninguém
+pra atender essa busca - a Meta espera, não consegue, e devolve esse
+erro. É o mesmo tipo de deadlock que o comentário de
+`_reconverter_para_jpeg` (ver acima) já descrevia pra um outro caminho de
+código - só que esse aqui pegava o fluxo principal de publicação.
+
+**Correção**: Start Command no Render trocado pra
+`gunicorn cashback_shopee.wsgi:application --workers 1 --threads 4 --worker-class gthread --timeout 120`
+- `gthread` mantém o mesmo processo (mesmo consumo de memória base), mas
+libera até 4 requisições concorrentes dentro dele, então uma thread pode
+atender a busca da imagem enquanto a outra espera a resposta da Meta.
+Não é uma mudança versionada no repositório (não tem `Procfile` nem
+`render.yaml` - o Start Command é só configuração manual no dashboard do
+Render, em Settings). Confirmado resolvido: aprovação de story funcionou
+e publicou normalmente depois da troca.
+
+### Ajuste de layout do story de oferta do momento (2026-08-07)
+
+Depois da primeira publicação real bem-sucedida, dois problemas visuais
+apareceram no layout antigo (`gerar_imagem_ofertas`, pensado pra
+empilhar vários cartões pequenos, mas na prática sempre chamado com 1
+oferta só pro story):
+
+1. O conteúdo ficava todo colado no topo do story, desperdiçando o resto
+   da tela vertical (1080×1920) - sem motivo pra isso quando é só 1
+   oferta.
+2. A arte começava encostada na borda superior, sem nenhuma margem de
+   segurança - o ícone e o nome da conta (UI do próprio Instagram, não
+   faz parte da arte) ficavam sobrepostos ao conteúdo.
+
+Substituído por `gerar_imagem_oferta_story(oferta)` (ver "Onde cada coisa
+mora no código" acima): layout "hero" de 1 oferta só, no estilo do
+cartão de oferta do site (`ofertas/templates/ofertas/lista.html`,
+`.oferta-cartao`) - imagem grande, selo de desconto sobre a imagem, nome
+e preço em destaque. O bloco inteiro é centralizado dentro de uma área
+que já reserva 260px de margem de segurança no topo e no rodapé (onde a
+UI do Instagram cobre a arte), em vez de conteúdo fixo colado nas
+bordas.
 
 ## Posts de semeadura (pasta `posts-semeadura/`)
 

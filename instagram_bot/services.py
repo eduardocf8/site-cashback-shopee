@@ -15,7 +15,7 @@ from .models import RegistroPublicacao
 from .templates_imagem import (
     CORES,
     gerar_imagem_oferta_carrossel,
-    gerar_imagem_ofertas,
+    gerar_imagem_oferta_story,
     gerar_imagem_texto_simples,
 )
 
@@ -243,7 +243,7 @@ def publicar_story_oferta_do_momento(data, request) -> RegistroPublicacao | None
     if not oferta:
         return None
 
-    imagem = gerar_imagem_ofertas([oferta], titulo="Oferta do momento", tamanho=(1080, 1920))
+    imagem = gerar_imagem_oferta_story(oferta)
     nome_exibido = oferta.nome_curto or oferta.nome
     legenda = f"{nome_exibido} — cashback garantido no cash-b. Link na bio pra ver essa e outras ofertas. 🛍️💸"
 

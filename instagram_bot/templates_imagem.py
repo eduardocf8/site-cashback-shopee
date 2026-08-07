@@ -220,74 +220,83 @@ def gerar_imagem_oferta_carrossel(oferta, indice: int, total: int, tamanho=(1080
     return img
 
 
-def gerar_imagem_ofertas(ofertas, titulo="Ofertas de hoje", tamanho=(1080, 1920)) -> Image.Image:
-    """Layout com cartões de produto empilhados - usado pro destaque diário de ofertas
-    (formato story, 9:16) e pro resumo semanal (chamar com tamanho=(1080, 1080))."""
+def gerar_imagem_oferta_story(oferta, tamanho=(1080, 1920)) -> Image.Image:
+    """Layout "hero" pra 1 oferta só ocupando o story inteiro - é sempre 1 oferta por
+    story (ver publicar_story_oferta_do_momento/NUMERO_STORIES_OFERTAS_POR_DIA), então
+    não faz sentido empilhar cartões pequenos encostados no topo. Estilo do cartão de
+    oferta do site (ver ofertas/templates/ofertas/lista.html, .oferta-cartao): imagem
+    grande, selo de desconto sobre a imagem, nome e preço em destaque.
+
+    topo_seguro/rodape_seguro reservam espaço pra UI do próprio Instagram (ícone/nome
+    da conta no topo, barra de resposta embaixo) não sobrepor a arte - o bloco inteiro
+    (selo + imagem + texto) é centralizado dentro dessa área segura, em vez de fixo
+    encostado nas bordas."""
     bg = CORES["paper"]
     img = Image.new("RGB", tamanho, bg)
     draw = ImageDraw.Draw(img)
     margem = 72
+    topo_seguro, rodape_seguro = 260, 260
 
-    fonte_titulo = _fonte(56, negrito=True)
-    fonte_nome = _fonte(30, negrito=True)
-    fonte_preco = _fonte(34, mono=True, negrito=True)
-    fonte_desconto = _fonte(24, negrito=True)
+    fonte_eyebrow = _fonte(30, mono=True, negrito=True)
+    fonte_nome = _fonte(46, negrito=True)
+    fonte_preco = _fonte(58, mono=True, negrito=True)
+    fonte_desconto = _fonte(30, negrito=True)
+    fonte_marca = _fonte(30, negrito=True)
 
-    y = 100
-    for linha in _quebrar_texto(draw, titulo, fonte_titulo, tamanho[0] - margem * 2):
-        draw.text((margem, y), linha, font=fonte_titulo, fill=CORES["ink"])
-        y += int(fonte_titulo.size * 1.15)
-    y += 40
+    largura_util = tamanho[0] - margem * 2
+    nome = oferta.nome_curto or oferta.nome
+    linhas_nome = _quebrar_texto(draw, nome, fonte_nome, largura_util)[:2]
 
-    largura_card = tamanho[0] - margem * 2
-    espaco_entre_cards = 28
-    ofertas_exibidas = ofertas[:3]
+    altura_eyebrow = int(fonte_eyebrow.size * 1.6)
+    altura_nome = len(linhas_nome) * int(fonte_nome.size * 1.25)
+    altura_preco = int(fonte_preco.size * 1.3)
+    altura_marca = int(fonte_marca.size * 1.8)
+    espacos = 28 * 4
+    area_util = tamanho[1] - topo_seguro - rodape_seguro
+    lado_imagem = min(largura_util, area_util - altura_eyebrow - altura_nome - altura_preco - altura_marca - espacos)
 
-    # A altura de cada cartão se ajusta ao espaço disponível, pra caber tanto no
-    # formato quadrado (feed) quanto no vertical (story) sem estourar o canvas.
-    reserva_rodape = margem + 90  # espaço pro selo "cash-b" no rodapé
-    espaco_disponivel = tamanho[1] - y - reserva_rodape - espaco_entre_cards * (len(ofertas_exibidas) - 1)
-    altura_imagem = max(140, min(260, espaco_disponivel // max(len(ofertas_exibidas), 1) - 40))
+    altura_bloco = altura_eyebrow + 28 + lado_imagem + 28 + altura_nome + 20 + altura_preco + 28 + altura_marca
+    y = topo_seguro + max(0, (area_util - altura_bloco) // 2)
 
-    for oferta in ofertas_exibidas:
-        altura_card = altura_imagem + 40
+    draw.text((margem, y), "OFERTA DO MOMENTO", font=fonte_eyebrow, fill=CORES["brand"])
+    y += altura_eyebrow + 28
+
+    x_imagem = (tamanho[0] - lado_imagem) // 2
+    y_imagem = y
+    imagem_produto = _baixar_imagem(oferta.imagem_url) if oferta.imagem_url else None
+    if imagem_produto:
+        imagem_produto = imagem_produto.resize((lado_imagem, lado_imagem))
+        mask = _rounded_mask((lado_imagem, lado_imagem), 32)
+        img.paste(imagem_produto, (x_imagem, y_imagem), mask)
+    else:
         draw.rounded_rectangle(
-            [(margem, y), (margem + largura_card, y + altura_card)], radius=20, outline=CORES["line"], width=2
+            [(x_imagem, y_imagem), (x_imagem + lado_imagem, y_imagem + lado_imagem)],
+            radius=32, fill=CORES["paper-2"],
         )
+    draw.rounded_rectangle(
+        [(x_imagem, y_imagem), (x_imagem + lado_imagem, y_imagem + lado_imagem)],
+        radius=32, outline=CORES["line"], width=2,
+    )
 
-        imagem_produto = _baixar_imagem(oferta.imagem_url) if oferta.imagem_url else None
-        area_imagem = altura_imagem
-        if imagem_produto:
-            imagem_produto = imagem_produto.resize((area_imagem, area_imagem))
-            mask = _rounded_mask((area_imagem, area_imagem), 16)
-            img.paste(imagem_produto, (margem + 20, y + 20), mask)
-        else:
-            draw.rounded_rectangle(
-                [(margem + 20, y + 20), (margem + 20 + area_imagem, y + 20 + area_imagem)],
-                radius=16, fill=CORES["paper-2"],
-            )
+    if oferta.percentual_desconto:
+        selo = f"-{oferta.percentual_desconto}%"
+        largura_selo = draw.textlength(selo, font=fonte_desconto) + 32
+        draw.rounded_rectangle(
+            [(x_imagem + 24, y_imagem + 24), (x_imagem + 24 + largura_selo, y_imagem + 24 + 52)],
+            radius=16, fill=CORES["highlight"],
+        )
+        draw.text((x_imagem + 40, y_imagem + 36), selo, font=fonte_desconto, fill=CORES["ink"])
 
-        x_texto = margem + 20 + area_imagem + 32
-        largura_texto = largura_card - (20 + area_imagem + 32 + 20)
+    y = y_imagem + lado_imagem + 28
+    for linha in linhas_nome:
+        draw.text((margem, y), linha, font=fonte_nome, fill=CORES["ink"])
+        y += int(fonte_nome.size * 1.25)
 
-        if oferta.percentual_desconto:
-            selo = f"-{oferta.percentual_desconto}%"
-            draw.rounded_rectangle(
-                [(x_texto, y + 20), (x_texto + draw.textlength(selo, font=fonte_desconto) + 24, y + 20 + 40)],
-                radius=12, fill=CORES["highlight"],
-            )
-            draw.text((x_texto + 12, y + 28), selo, font=fonte_desconto, fill=CORES["ink"])
+    y += 20
+    preco = f"R$ {oferta.preco_min:.2f}".replace(".", ",")
+    draw.text((margem, y), preco, font=fonte_preco, fill=CORES["brand"])
 
-        nome_linhas = _quebrar_texto(draw, oferta.nome_curto or oferta.nome, fonte_nome, largura_texto)[:2]
-        y_nome = y + 76
-        for linha in nome_linhas:
-            draw.text((x_texto, y_nome), linha, font=fonte_nome, fill=CORES["ink"])
-            y_nome += int(fonte_nome.size * 1.3)
+    y += altura_preco + 28
+    draw.text((margem, y), "cash-b · link na bio", font=fonte_marca, fill=CORES["ink-soft"])
 
-        preco = f"R$ {oferta.preco_min:.2f}".replace(".", ",")
-        draw.text((x_texto, y + altura_card - 56), preco, font=fonte_preco, fill=CORES["brand"])
-
-        y += altura_card + espaco_entre_cards
-
-    _badge_marca(draw, tamanho, CORES["brand"], margem)
     return img
