@@ -241,7 +241,7 @@ def gerar_imagem_oferta_story(oferta, tamanho=(1080, 1920)) -> Image.Image:
     fonte_nome = _fonte(46, negrito=True)
     fonte_preco = _fonte(58, mono=True, negrito=True)
     fonte_desconto = _fonte(30, negrito=True)
-    fonte_marca = _fonte(28, negrito=True)
+    fonte_marca = _fonte(42, negrito=True)
     fonte_link_bio = _fonte(32, negrito=True)
 
     largura_util = tamanho[0] - margem * 2
