@@ -266,7 +266,7 @@ class AtualizarStatusSaqueInterTests(TestCase):
 class PedirSaqueViewTests(TestCase):
     def setUp(self):
         self.usuario = get_user_model().objects.create_user(
-            username="compradora", password="senha123", cpf="39053344705"
+            username="compradora", password="senha123", cpf="39053344705", email_verificado=True
         )
         self.client.login(username="compradora", password="senha123")
 
@@ -275,6 +275,19 @@ class PedirSaqueViewTests(TestCase):
         resposta = self.client.post(reverse("pedir_saque"))
         self.assertEqual(resposta.status_code, 302)
         self.assertIn("/login/", resposta.url)
+
+    def test_email_nao_verificado_bloqueia_e_nao_cria_saque(self):
+        self.usuario.email_verificado = False
+        self.usuario.save()
+        Pedido.objects.create(
+            order_id="P0", conversion_id="1", usuario=self.usuario, status=Pedido.STATUS_LIBERADO,
+            status_shopee_bruto="COMPLETED", valor_comissao=Decimal("50.00"), valor_cashback=Decimal("50.00"),
+        )
+        resposta = self.client.post(reverse("pedir_saque"), follow=True)
+
+        self.assertEqual(Saque.objects.count(), 0)
+        mensagens = [str(m) for m in resposta.context["messages"]]
+        self.assertTrue(any("e-mail" in m for m in mensagens))
 
     def test_sem_chave_pix_mostra_erro_e_nao_cria_saque(self):
         Pedido.objects.create(

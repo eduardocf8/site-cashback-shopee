@@ -1,6 +1,8 @@
-# Cashback Shopee
+# cash-b
 
-Site de cashback para compras na Shopee feitas através de links de afiliado gerados pela API oficial da Shopee.
+Site de cashback para compras na Shopee feitas através de links de afiliado gerados pela API oficial da Shopee. Domínio: **cash-b.com**.
+
+> Este README cobre as Fases 1–7 (a base do site). O que veio depois (jurídico/LGPD, conta do usuário, SEO, aba de Ofertas, bot do Instagram) está documentado em [`ROADMAP.md`](ROADMAP.md) e [`BRAND.md`](BRAND.md) — comece por eles se for continuar o projeto numa conversa nova.
 
 ## Status do projeto
 
@@ -10,9 +12,11 @@ Site de cashback para compras na Shopee feitas através de links de afiliado ger
 - ✅ **Fase 4** — Regra de liberação de saldo, mês da validação + 2 (comando `liberar_saldo`)
 - ✅ **Fase 5** — Painel do usuário ("Minha conta"): saldo por status, histórico de pedidos e de links
 - ✅ **Fase 6** — Saque de saldo via PIX pela Asaas (sandbox), com aprovação manual no `/admin/`
-- ✅ **Fase 7** — Deploy em produção (Render, plano gratuito) com tarefas diárias automáticas
+- ✅ **Fase 7** — Deploy em produção (Render) com tarefas diárias automáticas
+- ✅ **Fases 8–11** — jurídico/LGPD, suporte, conta do usuário, polimento técnico — ver [`ROADMAP.md`](ROADMAP.md)
+- ⬜ **Fase 12** — crescimento (programa de indicação) — ainda não iniciada
 
-O site está no ar em **https://site-cashback-shopee.onrender.com**.
+O site está no ar em **https://cash-b.com**.
 
 ## Funcionalidades
 
@@ -20,42 +24,46 @@ O site está no ar em **https://site-cashback-shopee.onrender.com**.
 
 - **Página inicial** com explicação de como o cashback funciona, painel de benefícios com animação ao rolar a página, e comparação entre gerar o link de um produto específico (venda direta) ou usar o botão geral (venda indireta).
 - **Botão "Ir para a Shopee"** no topo: se você já estiver logado, vai direto pro seu link de afiliado; se não estiver, pede login primeiro e te leva pra Shopee automaticamente depois, sem precisar clicar de novo.
-- **Cadastro e login** de usuário, com validação de CPF.
-- **Conversor de link de produto**: cole o link de um produto da Shopee e receba de volta um link de afiliado rastreado — disponível na própria página inicial.
+- **Cadastro e login** de usuário, com validação de CPF, confirmação de e-mail (token que expira em 3 dias) e recuperação/troca de senha.
+- **Conversor de link de produto**: cole o link de um produto da Shopee (inclusive links curtos `shp.ee`) e receba de volta um link de afiliado rastreado — disponível na própria página inicial.
+- **Aba de Ofertas**: catálogo com os produtos mais vendidos da Shopee por categoria, sincronizado diariamente, com busca, ordenação e filtro — cada oferta já sai com o link de afiliado convertido no clique.
 - **Painel "Minha conta"**, com:
-  - Saldo separado por status: pendente, validado, liberado e cancelado.
-  - Histórico de pedidos (produto, foto, valor de cashback, status, e o motivo quando um pedido é cancelado).
-  - Histórico de todos os links gerados.
+  - Saldo separado por status: pendente, validado, liberado e cancelado (com explicação de cada um).
+  - Histórico de pedidos, saques e links gerados, paginado e filtrável por status/tipo.
+  - Edição de dados cadastrais (nome, e-mail, CPF) e troca de senha estando logado.
   - Cadastro da sua chave PIX (CPF, e-mail, telefone ou chave aleatória).
   - Botão pra solicitar saque do saldo liberado (quando atingir o valor mínimo).
+- **Páginas institucionais**: Termos de Uso, Política de Privacidade (LGPD), Política de Cookies, Regras do Cashback, FAQ e Fale Conosco (formulário que manda e-mail de verdade).
+- **PWA**: dá pra instalar o site como app no celular (Android/iOS).
+- **SEO básico**: meta description por página, sitemap.xml e robots.txt.
 
 ### Regras de negócio por trás do site
 
 - **Cálculo de cashback**: soma a comissão que a Shopee paga por item comprado (`itemTotalCommission`), aplicando o percentual repassado ao usuário (`SHOPEE_CASHBACK_PERCENTUAL`).
 - **Liberação de saldo**: pedidos validados ficam disponíveis pra saque no 1º dia do mês seguinte a dois meses após a validação (ex: validou em março, libera em 1º de maio).
-- **Saque via PIX**: o usuário solicita o saque do saldo liberado disponível; a solicitação fica pendente até você aprovar manualmente — só então o sistema chama a Asaas pra pagar de verdade. Valor mínimo configurável (`SAQUE_VALOR_MINIMO`).
+- **Saque via PIX**: o usuário solicita o saque do saldo liberado disponível; a solicitação fica pendente até você aprovar manualmente — só então o sistema chama a Asaas (ou o Inter, em pausa — ver `saques/inter_client.py`) pra pagar de verdade. Valor mínimo configurável (`SAQUE_VALOR_MINIMO`).
+- **E-mails automáticos**: usuário recebe e-mail quando um pedido é validado, quando o cashback é liberado e quando um saque é pago.
 
 ### Para quem administra o site (você)
 
 Tudo isso fica em `/admin/`:
 
-- Gerenciar usuários, links gerados, pedidos e saques.
+- Gerenciar usuários, links gerados, pedidos, saques e ofertas.
 - Ver o status bruto que a Shopee retornou pra cada pedido (útil pra conferência).
 - Aprovar (e pagar de fato via PIX) ou cancelar solicitações de saque, com um clique.
 - Acompanhar o motivo de cancelamento de pedidos, quando a Shopee informa.
 
-E por trás dos panos, três tarefas rodam sozinhas todo dia (via GitHub Actions, sem custo):
-
-1. **Sincronizar pedidos** com a Shopee (novos pedidos, mudanças de status, valores).
-2. **Liberar saldo** dos pedidos validados cuja data já chegou.
-3. **Verificar saques** que ficaram "processando" na Asaas.
-
-Também dá pra rodar cada uma manualmente (útil pra testar ou conferir algo pontual):
+E por trás dos panos, tarefas rodam sozinhas todo dia (via GitHub Actions, sem custo) pra: sincronizar pedidos com a Shopee, liberar saldo, verificar saques pendentes, sincronizar a aba de Ofertas e (opcionalmente) publicar no Instagram. Também dá pra rodar cada uma manualmente:
 ```bash
 python manage.py sincronizar_pedidos
 python manage.py liberar_saldo
 python manage.py verificar_saques
 ```
+
+### Instagram (marketing) — dois apps separados
+
+- **`instagram_bot/`** — publica sozinho no Instagram (@usecashb): stories diários com ofertas e posts semanais no feed, gerados via Pillow com a identidade visual do cash-b. Roda em modo simulação até ser ligado de propósito (`INSTAGRAM_BOT_ATIVO`), com aprovação por e-mail opcional antes de cada publicação. Ver `marketing/instagram/README.md`.
+- **`automacao_instagram/`** — ferramenta à parte (não é de marketing do cash-b em si): responde comentários com palavra-chave num post e/ou manda DM automaticamente, com suporte a múltiplas contas/automações e login próprio. Ver `automacao_instagram/README.md`.
 
 ## Como rodar localmente
 
