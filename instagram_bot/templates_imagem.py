@@ -25,6 +25,7 @@ CORES = {
     "paper": "#f6f7f1",
     "paper-2": "#eef1e8",
     "line": "#cdd6c5",
+    "danger": "#b23b3b",
 }
 
 
@@ -249,20 +250,26 @@ def gerar_imagem_oferta_story(oferta, tamanho=(1080, 1920)) -> Image.Image:
     linhas_nome = _quebrar_texto(draw, nome, fonte_nome, largura_util)[:2]
 
     altura_eyebrow = int(fonte_eyebrow.size * 1.6)
+    altura_marca = int(fonte_marca.size * 1.6)
+    altura_cabecalho = max(altura_eyebrow, altura_marca)
     altura_nome = len(linhas_nome) * int(fonte_nome.size * 1.25)
     altura_preco = int(fonte_preco.size * 1.3)
     espacos = 28 * 3
     area_util = tamanho[1] - topo_seguro - rodape_seguro
-    lado_imagem = min(largura_util, area_util - altura_eyebrow - altura_nome - altura_preco - espacos)
+    lado_imagem = min(largura_util, area_util - altura_cabecalho - altura_nome - altura_preco - espacos)
 
     # "link na bio" fica fora desse bloco (desenhado depois, centralizado e perto do
-    # rodapé seguro) - só eyebrow/imagem/nome/preço centralizam juntos aqui.
-    altura_bloco = altura_eyebrow + 28 + lado_imagem + 28 + altura_nome + 20 + altura_preco
+    # rodapé seguro) - só cabeçalho/imagem/nome/preço centralizam juntos aqui.
+    altura_bloco = altura_cabecalho + 28 + lado_imagem + 28 + altura_nome + 20 + altura_preco
     y = topo_seguro + max(0, (area_util - altura_bloco) // 2)
 
-    draw.text((margem, y), "OFERTA DO MOMENTO", font=fonte_eyebrow, fill=CORES["brand"])
-    draw.text((tamanho[0] - margem, y), "cash-b", font=fonte_marca, fill=CORES["brand"], anchor="ra")
-    y += altura_eyebrow + 28
+    # anchor "m" (middle) nos dois - não "a" (ascender) - pra alinhar pelo centro
+    # visual da linha, já que "OFERTA DO MOMENTO" e "cash-b" usam tamanhos de fonte
+    # diferentes (se alinhasse pelo topo, o maior pareceria "descer" mais que o outro).
+    y_centro_cabecalho = y + altura_cabecalho / 2
+    draw.text((margem, y_centro_cabecalho), "OFERTA DO MOMENTO", font=fonte_eyebrow, fill=CORES["brand"], anchor="lm")
+    draw.text((tamanho[0] - margem, y_centro_cabecalho), "cash-b", font=fonte_marca, fill=CORES["brand"], anchor="rm")
+    y += altura_cabecalho + 28
 
     x_imagem = (tamanho[0] - lado_imagem) // 2
     y_imagem = y
@@ -281,14 +288,26 @@ def gerar_imagem_oferta_story(oferta, tamanho=(1080, 1920)) -> Image.Image:
         radius=32, outline=CORES["line"], width=2,
     )
 
+    # Mesmas cores/posições do selo de desconto (esquerda) e cashback (direita) do
+    # cartão de oferta do site - ver ofertas/templates/ofertas/lista.html, .desconto/.cashback.
     if oferta.percentual_desconto:
         selo = f"-{oferta.percentual_desconto}%"
         largura_selo = draw.textlength(selo, font=fonte_desconto) + 32
         draw.rounded_rectangle(
             [(x_imagem + 24, y_imagem + 24), (x_imagem + 24 + largura_selo, y_imagem + 24 + 52)],
+            radius=16, fill=CORES["danger"],
+        )
+        draw.text((x_imagem + 40, y_imagem + 36), selo, font=fonte_desconto, fill="#ffffff")
+
+    if oferta.percentual_cashback:
+        selo_cashback = f"{oferta.percentual_cashback}% cashback"
+        largura_selo_cashback = draw.textlength(selo_cashback, font=fonte_desconto) + 32
+        x_selo_cashback = x_imagem + lado_imagem - 24 - largura_selo_cashback
+        draw.rounded_rectangle(
+            [(x_selo_cashback, y_imagem + 24), (x_selo_cashback + largura_selo_cashback, y_imagem + 24 + 52)],
             radius=16, fill=CORES["highlight"],
         )
-        draw.text((x_imagem + 40, y_imagem + 36), selo, font=fonte_desconto, fill=CORES["ink"])
+        draw.text((x_selo_cashback + 16, y_imagem + 36), selo_cashback, font=fonte_desconto, fill=CORES["ink"])
 
     y = y_imagem + lado_imagem + 28
     for linha in linhas_nome:
