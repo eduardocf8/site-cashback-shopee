@@ -15,12 +15,14 @@ ITENS_POR_PAGINA = 24
 
 ORDENACOES = {
     "vendidos": "-vendas",
+    "maior_cashback": "-percentual_comissao",
     "menor_preco": "preco_min",
     "maior_preco": "-preco_min",
     "maior_desconto": "-percentual_desconto",
 }
 ORDENACOES_ROTULOS = {
     "vendidos": "Mais vendidos",
+    "maior_cashback": "Maior cashback",
     "menor_preco": "Menor preço",
     "maior_preco": "Maior preço",
     "maior_desconto": "Maior desconto",
