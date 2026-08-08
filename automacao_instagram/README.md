@@ -139,6 +139,13 @@ comentário automaticamente não tem como acontecer antes da aprovação) -
 ver "Vídeo de demonstração" e "Texto de explicação" abaixo, ajustados pra
 essa realidade.
 
+**Status (2026-08-07)**: Verificação de Empresa enviada pra análise (App
+vinculado ao portfólio empresarial "Decorações Personalizadas" - portfólio
+já existente, reaproveitado, não precisou criar um novo). Falta ainda
+gravar o vídeo (roteiro abaixo) e submeter a Análise do App em si (Casos
+de uso > Permissões > "Ir para a análise do app") depois que a
+Verificação de Empresa for aprovada.
+
 Passos pra pedir Acesso Avançado dessa permissão:
 
 1. **Verificação de Empresa** no Meta Business Manager (documentos do
