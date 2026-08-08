@@ -290,24 +290,35 @@ def gerar_imagem_oferta_story(oferta, tamanho=(1080, 1920)) -> Image.Image:
 
     # Mesmas cores/posições do selo de desconto (esquerda) e cashback (direita) do
     # cartão de oferta do site - ver ofertas/templates/ofertas/lista.html, .desconto/.cashback.
+    # anchor="mm" (não "la") pra centralizar o texto de verdade dentro da caixa nos
+    # dois eixos - "la" ancora pelo ascender da fonte, que sobra espaço embaixo em
+    # texto sem descendente (números/maiúsculas), ficando visualmente subido/torto.
+    y0_selo, y1_selo = y_imagem + 24, y_imagem + 24 + 52
+    y_centro_selo = (y0_selo + y1_selo) / 2
+
     if oferta.percentual_desconto:
         selo = f"-{oferta.percentual_desconto}%"
         largura_selo = draw.textlength(selo, font=fonte_desconto) + 32
         draw.rounded_rectangle(
-            [(x_imagem + 24, y_imagem + 24), (x_imagem + 24 + largura_selo, y_imagem + 24 + 52)],
+            [(x_imagem + 24, y0_selo), (x_imagem + 24 + largura_selo, y1_selo)],
             radius=16, fill=CORES["danger"],
         )
-        draw.text((x_imagem + 40, y_imagem + 36), selo, font=fonte_desconto, fill="#ffffff")
+        draw.text(
+            (x_imagem + 24 + largura_selo / 2, y_centro_selo), selo, font=fonte_desconto, fill="#ffffff", anchor="mm",
+        )
 
     if oferta.percentual_cashback:
         selo_cashback = f"{oferta.percentual_cashback}% cashback"
         largura_selo_cashback = draw.textlength(selo_cashback, font=fonte_desconto) + 32
         x_selo_cashback = x_imagem + lado_imagem - 24 - largura_selo_cashback
         draw.rounded_rectangle(
-            [(x_selo_cashback, y_imagem + 24), (x_selo_cashback + largura_selo_cashback, y_imagem + 24 + 52)],
+            [(x_selo_cashback, y0_selo), (x_selo_cashback + largura_selo_cashback, y1_selo)],
             radius=16, fill=CORES["highlight"],
         )
-        draw.text((x_selo_cashback + 16, y_imagem + 36), selo_cashback, font=fonte_desconto, fill=CORES["ink"])
+        draw.text(
+            (x_selo_cashback + largura_selo_cashback / 2, y_centro_selo),
+            selo_cashback, font=fonte_desconto, fill=CORES["ink"], anchor="mm",
+        )
 
     y = y_imagem + lado_imagem + 28
     for linha in linhas_nome:
