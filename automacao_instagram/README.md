@@ -128,10 +128,18 @@ pra **conta inteira**, não pra um post específico - não serve pro caso de
 uso daqui (várias automações em paralelo, uma por post/campanha, ver
 "Contexto de por que foi feito assim" no topo deste arquivo).
 
-**Enquanto a Análise do App não é feita**, a automação só reage a
-comentários de contas que sejam, ao mesmo tempo, Testadoras do App **e**
-o próprio dono do App - na prática, inutilizável pra qualquer comentário
-de cliente de verdade. Passos pra pedir Acesso Avançado dessa permissão:
+**Testado também com autocomentário** (a própria `usecashb` comentando no
+próprio post, não só terceiros) - mesmo resultado, `"data": []`. Ou seja,
+**enquanto a Análise do App não é feita, a listagem de comentários não
+funciona pra ninguém**, nem pro próprio dono da conta - não é uma questão
+de quem comentou, é o recurso inteiro bloqueado nesse estado. Isso também
+significa que não dá pra gravar o vídeo de demonstração mostrando o
+fluxo completo funcionando de ponta a ponta (a etapa de detectar o
+comentário automaticamente não tem como acontecer antes da aprovação) -
+ver "Vídeo de demonstração" e "Texto de explicação" abaixo, ajustados pra
+essa realidade.
+
+Passos pra pedir Acesso Avançado dessa permissão:
 
 1. **Verificação de Empresa** no Meta Business Manager (documentos do
    CNPJ do cash-b).
@@ -139,17 +147,40 @@ de cliente de verdade. Passos pra pedir Acesso Avançado dessa permissão:
    coletado/usado nessa automação - já feito, ver
    `paginas/templates/paginas/privacidade.html`, seção "Automação de
    comentários e DM no Instagram".
-3. Vídeo de tela mostrando o fluxo completo: criar a automação num post,
-   alguém comentando a palavra-chave, e a resposta pública/DM chegando.
-4. Justificativa escrita de uso pra cada permissão pedida (ver texto
-   pronto que ficou registrado na conversa que motivou essa seção, ou
-   pedir pra reescrever numa conversa futura).
-5. Enviar pelo botão "Ir para a análise do app" (aparece ao lado da
+3. Vídeo de tela (roteiro abaixo) + o texto de explicação (abaixo) colado
+   no campo de contexto de uso da permissão.
+4. Enviar pelo botão "Ir para a análise do app" (aparece ao lado da
    permissão, em Casos de uso > Permissões).
 
 A mesma limitação provavelmente vale pra `instagram_business_manage_messages`
 (enviar DM) - só foi confirmada a `manage_comments` até agora, mas vale
 testar a DM também antes de assumir que só falta revisar uma permissão.
+
+### Vídeo de demonstração (roteiro)
+
+Só mostra o que já funciona hoje, sem depender da permissão em revisão:
+
+1. Login em `/automacao/entrar/`.
+2. Criar uma automação nova: escolher um post real, cadastrar as
+   palavras-chave e os textos de resposta pública/DM.
+3. Mostrar a automação criada na lista (`/automacao/`) e o histórico
+   vazio (`/automacao/historico/`), deixando claro que a estrutura está
+   pronta e só falta a permissão pra detectar comentários novos.
+
+Não mostra (não tem como, é justamente o que está bloqueado): um
+comentário sendo detectado e a resposta/DM chegando de verdade.
+
+### Texto de explicação (colar no campo de contexto de uso da permissão)
+
+> The comment-detection step currently returns empty results
+> (`GET /{media-id}/comments` returns `"data": []`) for any commenter,
+> including our own connected account, because this permission is still
+> in Standard Access / pending review - `comments_count` on the same
+> media confirms the comment exists, only the listing itself is empty.
+> This is expected, and is exactly why we're requesting Advanced Access:
+> once granted, this same call will return real comments from any user,
+> triggering the automated public reply / private reply flow configured
+> in the automation shown in the video.
 
 ## Rodando o worker no Render (Background Worker)
 
