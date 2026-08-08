@@ -139,12 +139,15 @@ comentário automaticamente não tem como acontecer antes da aprovação) -
 ver "Vídeo de demonstração" e "Texto de explicação" abaixo, ajustados pra
 essa realidade.
 
-**Status (2026-08-07)**: Verificação de Empresa enviada pra análise (App
-vinculado ao portfólio empresarial "Decorações Personalizadas" - portfólio
-já existente, reaproveitado, não precisou criar um novo). Falta ainda
-gravar o vídeo (roteiro abaixo) e submeter a Análise do App em si (Casos
-de uso > Permissões > "Ir para a análise do app") depois que a
-Verificação de Empresa for aprovada.
+**Status (2026-08-07)**: Verificação de Empresa **aprovada** (App
+vinculado ao portfólio empresarial "Decorações Personalizadas" -
+portfólio já existente, reaproveitado, não precisou criar um novo; nome
+da verificação ficou "EDUARDO CARREAO FREIRE", não "cash-b", já que é a
+pessoa física por trás do MEI - tudo bem, não precisa bater com o nome
+fantasia). Aprovada no mesmo dia da submissão. Falta gravar o vídeo
+(roteiro abaixo) e submeter a Análise do App em si (Casos de uso >
+Permissões > "Ir para a análise do app", em `instagram_business_manage_comments`
+e provavelmente `instagram_business_manage_messages` também).
 
 Passos pra pedir Acesso Avançado dessa permissão:
 
