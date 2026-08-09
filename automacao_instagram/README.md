@@ -144,10 +144,21 @@ vinculado ao portfólio empresarial "Decorações Personalizadas" -
 portfólio já existente, reaproveitado, não precisou criar um novo; nome
 da verificação ficou "EDUARDO CARREAO FREIRE", não "cash-b", já que é a
 pessoa física por trás do MEI - tudo bem, não precisa bater com o nome
-fantasia). Aprovada no mesmo dia da submissão. Falta gravar o vídeo
-(roteiro abaixo) e submeter a Análise do App em si (Casos de uso >
-Permissões > "Ir para a análise do app", em `instagram_business_manage_comments`
-e provavelmente `instagram_business_manage_messages` também).
+fantasia). Aprovada no mesmo dia da submissão.
+
+**Análise do App enviada** no mesmo dia, pras três permissões
+(`instagram_business_basic`, `instagram_business_manage_comments`,
+`instagram_business_manage_messages`) - as outras da lista padrão
+(`instagram_business_content_publish`, `instagram_business_manage_insights`
+e os nomes antigos tipo `instagram_manage_comments`/`instagram_basic`/
+`public_profile`) foram removidas da submissão por não serem usadas de
+verdade por esse app. Vídeo único (conectar conta + criar automação +
+lista/histórico) reaproveitado nas três. Criado um usuário só pro
+revisor da Meta testar (`revisormeta`, `is_staff=True`, senha **não**
+guardada aqui de propósito - nunca commitar credencial, mesmo
+descartável). Agora é esperar o resultado (a Meta pode aprovar, pedir
+ajuste ou rejeitar com motivo - qualquer resultado, ver essa seção pra
+retomar o contexto).
 
 Passos pra pedir Acesso Avançado dessa permissão:
 
