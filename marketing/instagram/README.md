@@ -333,6 +333,32 @@ que já reserva 260px de margem de segurança no topo e no rodapé (onde a
 UI do Instagram cobre a arte), em vez de conteúdo fixo colado nas
 bordas.
 
+### Erro "Media ID is not available" (code=9007, error_subcode=2207027) (2026-08-10)
+
+Depois do deploy com o fix do gunicorn (incidente acima), a publicação
+seguiu falhando às vezes - dessa vez com uma mensagem diferente: "Media
+ID is not available" (`code=9007, error_subcode=2207027`), documentado
+pela própria Meta como "a mídia ainda não está pronta pra publicar,
+aguarde um momento".
+
+**Causa raiz**: `instagram_client.publicar_imagem`/`publicar_carrossel`
+chamavam `publicar_container` (passo 2, `/media_publish`) logo em
+seguida à criação do container (passo 1, `/media`), sem esperar a Meta
+terminar de baixar/validar a imagem do lado dela - a criação do
+container só inicia esse processamento, não garante que ele já
+terminou. Publicar rápido demais nem sempre falha (por isso funcionou
+antes em alguns testes), mas é uma corrida - a chance de falhar aumenta
+com imagens maiores ou o serviço da Meta mais devagar no momento.
+
+**Correção**: nova função `instagram_client._aguardar_processamento()`
+- depois de criar um container (imagem, story, ou cada item de
+carrossel + o container "pai"), consulta `GET /{creation_id}?fields=status_code`
+a cada 2s (até 10 tentativas) até a Meta devolver `status_code=FINISHED`,
+só então chama `/media_publish`. É o fluxo que a própria documentação da
+Meta recomenda pra publicação de mídia.
+
+Sources: [Media ID is not available - Meta for Developers Community](https://developers.facebook.com/community/threads/1958342851674113/)
+
 ## Posts de semeadura (pasta `posts-semeadura/`)
 
 8 imagens 1080×1080 (arquivo real 2160×2160, renderizado em dobro pra
