@@ -33,7 +33,7 @@ DICAS = [
 
 LEMBRETES = [
     "Cashback de verdade: sem pegadinha, sem mensalidade.",
-    "Toda compra na Shopee pode voltar parte do dinheiro pro seu bolso.",
+    "Toda compra na Shopee volta parte do dinheiro pro seu bolso.",
     "Cadastro grátis, cashback de verdade. Simples assim.",
     "Você compra do jeito que já compra — a diferença é que parte volta pra você.",
     "Sem letra miúda. O que você vê é o que você recebe.",
@@ -68,7 +68,7 @@ POSTS_INSTITUCIONAIS = [
         "legenda": (
             "Não tem mistério: 🔗 gera o link (ou vai direto pra Shopee), 🛍️ compra normalmente, e "
             "💰 recebe parte de volta assim que a Shopee confirma o pedido. 3 passos, sem burocracia.\n"
-            "Testa você mesmo — link na bio.\n#cashback #shopee #comofunciona #economia"
+            "Teste você mesmo — link na bio.\n#cashback #shopee #comofunciona #economia"
         ),
     },
     {
@@ -101,7 +101,7 @@ POSTS_INSTITUCIONAIS = [
         "legenda": (
             "Depois da compra, seu cashback passa por 3 fases: ⏳ pendente (aguardando a Shopee "
             "confirmar), ✅ validado (compra confirmada, aguardando o prazo) e 💸 liberado (já pode "
-            "sacar). Acompanha tudo direto no seu painel.\n#cashback #shopee #transparencia"
+            "sacar). Acompanhe tudo direto no seu painel.\n#cashback #shopee #transparencia"
         ),
     },
     {
@@ -115,7 +115,7 @@ POSTS_INSTITUCIONAIS = [
     {
         "texto": "Saldo liberado é seu. Peça o saque via PIX quando quiser.",
         "legenda": (
-            "Saldo liberado é saldo seu. 💸 Cadastra sua chave PIX e pede o saque — sem burocracia, "
+            "Saldo liberado é saldo seu. 💸 Cadastre sua chave PIX e peça o saque — sem burocracia, "
             "direto na sua conta. 🏦\n#cashback #pix #shopee #dinheirodevolta"
         ),
     },
@@ -145,12 +145,12 @@ POSTS_INSTITUCIONAIS = [
         "texto": "Compre do seu jeito. Economize sem esforço nenhum.",
         "legenda": (
             "Você não precisa mudar nada no seu jeito de comprar — só ganhar mais no final. 📈 Toda "
-            "compra que você já ia fazer na Shopee pode voltar parte do dinheiro pro seu bolso. 💰\n"
+            "compra que você já ia fazer na Shopee volta parte do dinheiro pro seu bolso. 💰\n"
             "Comece a economizar sem esforço — link na bio.\n#cashback #economia #shopee #dinheirodevolta"
         ),
     },
     {
-        "texto": "Todo real que você já ia gastar pode voltar pro seu bolso.",
+        "texto": "Todo real que você já ia gastar volta pro seu bolso.",
         "legenda": (
             "A conta é simples: você já compra na Shopee de qualquer jeito — com o cash-b, parte "
             "desse dinheiro volta pra você em vez de ficar só na loja. 💰📈\n"

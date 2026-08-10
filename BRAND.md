@@ -106,6 +106,9 @@ cores da marca antes de usar, pra não destoar do resto do sistema.
 - `marketing/instagram/` — histórico e decisões do Instagram do cash-b
   (roadmap do bot de postagens, posts institucionais já aprovados, script
   que gera as artes). Ver `marketing/instagram/README.md`.
+- `VOZ.md` — guia de tom de voz (como o cash-b escreve, verbos e
+  expressões a evitar). Separado deste arquivo porque trata de texto, não
+  de identidade visual.
 
 ## Infraestrutura ligada à marca
 
