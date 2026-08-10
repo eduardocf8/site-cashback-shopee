@@ -1,3 +1,5 @@
+import time
+
 import requests
 from django.conf import settings
 
@@ -39,6 +41,25 @@ def _chamar(metodo: str, caminho: str, **params) -> dict:
         raise InstagramAPIError(f"{mensagem} [{detalhes}]" if detalhes else mensagem)
     resposta.raise_for_status()
     return dados
+
+
+def _aguardar_processamento(creation_id: str, tentativas: int = 10, intervalo: float = 2.0) -> None:
+    """Espera o container terminar de processar (baixar/validar a imagem do lado da
+    Meta) antes de publicar. Sem isso, publicar_container logo em seguida à criação às
+    vezes devolve "Media ID is not available" [code=9007, error_subcode=2207027] -
+    a Meta documenta esse erro como "a mídia ainda não está pronta pra publicar,
+    aguarde um momento" (ver marketing/instagram/README.md, troubleshooting)."""
+    for _ in range(tentativas):
+        dados = _chamar("GET", creation_id, fields="status_code")
+        status = dados.get("status_code")
+        if status == "FINISHED":
+            return
+        if status == "ERROR":
+            raise InstagramAPIError(f"Processamento do container {creation_id} falhou (status_code=ERROR).")
+        time.sleep(intervalo)
+    raise InstagramAPIError(
+        f"Container {creation_id} não terminou de processar a tempo (status_code ainda não é FINISHED)."
+    )
 
 
 def verificar_configuracao() -> None:
@@ -83,6 +104,7 @@ def publicar_imagem(image_url: str, legenda: str = "", story: bool = False) -> s
     """Fluxo completo: cria o container e publica. Retorna o media_id publicado."""
     verificar_configuracao()
     creation_id = criar_container_midia(image_url, legenda=legenda, story=story)
+    _aguardar_processamento(creation_id)
     return publicar_container(creation_id)
 
 
@@ -111,7 +133,10 @@ def publicar_carrossel(image_urls: list[str], legenda: str = "") -> str:
     publica. Retorna o media_id publicado. Máximo de 10 imagens (limite da própria API)."""
     verificar_configuracao()
     item_ids = [criar_item_carrossel(url) for url in image_urls]
+    for item_id in item_ids:
+        _aguardar_processamento(item_id)
     creation_id = criar_container_carrossel(item_ids, legenda=legenda)
+    _aguardar_processamento(creation_id)
     return publicar_container(creation_id)
 
 
