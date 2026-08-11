@@ -115,10 +115,12 @@ implementando. Cada item pode virar uma conversa própria.
       seja pago") por uma dica direta; ficou na home (seção "Como ganhar
       mais cashback?") porque já é o lugar mais relevante pro contexto, e a
       regra completa continua documentada no FAQ e em regras_cashback.html.
-- [ ] **13.5 Identidade jurídica no rodapé** (rápido, mas depende de você) —
-      CNPJ/razão social visível pra quem vai confiar CPF e chave PIX ao
-      site. Só dá pra implementar depois que você decidir/tiver o CNPJ
-      (MEI já resolveria) - me avisa quando tiver esse dado.
+- [ ] **13.5 Identidade jurídica no rodapé** (rápido, adiado por decisão sua) —
+      já tem CNPJ (63.842.267/0001-46, MEI), mas a razão social hoje é só
+      "63.842.267 EDUARDO CARREÃO FREIRE" (padrão feio de MEI). Combinamos
+      esperar a migração pro Simples Nacional (prevista pra este mês) pra
+      não trocar o texto do rodapé duas vezes - me avisa quando sair a
+      razão social nova.
 - [ ] **13.6 Timeline visual de status do pedido** (médio) — hoje o prazo
       de liberação (até ~3 meses) só existe em texto corrido. Uma barra
       visual "Pendente → Validado → Liberado → PIX enviado" no dashboard
