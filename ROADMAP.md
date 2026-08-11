@@ -110,10 +110,11 @@ implementando. Cada item pode virar uma conversa própria.
       continua existindo mais abaixo, como conteúdo de apoio.
 - [x] **13.3 "Cadastrar" como botão sólido, "Entrar" como link** (muito
       rápido) — feito na home e na página de Ofertas (mesmo padrão de nav).
-- [ ] **13.4 Suavizar o aviso de cancelamento por outro link de afiliado**
-      (rápido) — hoje é uma frase em tom de aviso legal na home; reescrever
-      em tom de dica útil e considerar mover pro FAQ (regra já documentada
-      lá também).
+- [x] **13.4 Suavizar o aviso de cancelamento por outro link de afiliado**
+      (rápido) — trocado o tom de aviso legal ("fará com que o cashback não
+      seja pago") por uma dica direta; ficou na home (seção "Como ganhar
+      mais cashback?") porque já é o lugar mais relevante pro contexto, e a
+      regra completa continua documentada no FAQ e em regras_cashback.html.
 - [ ] **13.5 Identidade jurídica no rodapé** (rápido, mas depende de você) —
       CNPJ/razão social visível pra quem vai confiar CPF e chave PIX ao
       site. Só dá pra implementar depois que você decidir/tiver o CNPJ
