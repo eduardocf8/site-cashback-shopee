@@ -266,7 +266,7 @@
                         {% endif %}
                     </div>
                 </div>
-                <div class="selo">Sem custo. Sem mensalidade. Saque via PIX a partir de R$ {{ saque_valor_minimo|floatformat:2 }}.</div>
+                <div class="selo">Sem custo. Sem mensalidade.</div>
                 {% if user.is_authenticated %}
                     <a class="link-secundario" href="{% url 'ir_para_shopee' %}">ou só quero navegar, sem link específico &rarr;</a>
                 {% else %}
