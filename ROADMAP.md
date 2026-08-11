@@ -86,7 +86,76 @@ Dá pra aproveitar a infraestrutura de e-mail que já está funcionando
 ## Fase 12 — Crescimento (não essencial agora)
 
 - [ ] **Programa de indicação** — "chame um amigo, ganhe X de cashback" ou
-      similar.
+      similar. Absorvido pela Fase 13.9, ver abaixo.
+
+## Fase 13 — Conversão e confiança (CRO)
+
+Baseado numa análise de UX/conversão do site pronto (home, `/ofertas/`,
+`/regras-do-cashback/`), comparando com concorrentes estabelecidos
+(Méliuz, Cuponomia). Confirmei os pontos contra o código antes de
+transformar em roadmap — duas correções relevantes: o "%" na ilustração
+do hero é decorativo (SVG do `BRAND.md`), não um bug de template; e a
+notificação de status por e-mail já existe desde a Fase 10. O resto se
+sustentou contra o código.
+
+Ordem sugerida por impacto/esforço - marca o checkbox conforme for
+implementando. Cada item pode virar uma conversa própria.
+
+- [ ] **13.1 Trazer confiança pro hero** (rápido) — mostrar o percentual
+      real de repasse (`settings.SHOPEE_CASHBACK_PERCENTUAL`, já é
+      dinâmico) e a mecânica básica (saque via PIX, valor mínimo) acima
+      da dobra, em vez de só no rodapé de `/regras-do-cashback/`. É a
+      informação que resolve a objeção nº1 de quem desconfia de site de
+      cashback.
+- [ ] **13.2 Simplificar o hero pra 1 CTA primário** (rápido/médio) —
+      hoje são dois botões de peso igual com jargão interno ("venda
+      direta"/"venda indireta") que o usuário não conhece. CTA principal
+      vira "colar link e ganhar cashback"; "Ir pra Shopee" fica
+      secundário. A explicação direta/indireta continua existindo, mas
+      como conteúdo de apoio, não como decisão de entrada.
+- [ ] **13.3 "Cadastrar" como botão sólido, "Entrar" como link** (muito
+      rápido) — hoje os dois têm o mesmo peso visual na navegação; o
+      cadastro é o evento que mais importa pro negócio (usuário logado e
+      rastreável).
+- [ ] **13.4 Suavizar o aviso de cancelamento por outro link de afiliado**
+      (rápido) — hoje é uma frase em tom de aviso legal na home; reescrever
+      em tom de dica útil e considerar mover pro FAQ (regra já documentada
+      lá também).
+- [ ] **13.5 Identidade jurídica no rodapé** (rápido, mas depende de você) —
+      CNPJ/razão social visível pra quem vai confiar CPF e chave PIX ao
+      site. Só dá pra implementar depois que você decidir/tiver o CNPJ
+      (MEI já resolveria) - me avisa quando tiver esse dado.
+- [ ] **13.6 Timeline visual de status do pedido** (médio) — hoje o prazo
+      de liberação (até ~3 meses) só existe em texto corrido. Uma barra
+      visual "Pendente → Validado → Liberado → PIX enviado" no dashboard
+      (e talvez uma versão simplificada pública) reduz a sensação de
+      opacidade sem mudar a regra em si.
+- [ ] **13.7 Badge "comissão extra ativa" nas ofertas em campanha**
+      (médio) — a API já retorna `periodStartTime`/`periodEndTime` da
+      comissão de vendedor (descobrimos isso investigando o bug do
+      percentual errado). Dá pra usar como gatilho de urgência real,
+      declarado com transparência (ex: "+bônus até 31/08"), em vez de
+      simplesmente ignorar esse dado.
+- [ ] **13.8 Prova social real** (médio, depende de ter dado/canal) —
+      contador de "R$ já pago via PIX", print de um saque real
+      anonimizado, ou link pro grupo de WhatsApp/Instagram do cash-b no
+      rodapé. Precisa ter volume mínimo pra não soar fraco.
+- [ ] **13.9 Programa de indicação** (grande) — "indique um amigo, ganhe
+      R$X quando ele comprar". Herda o item que já estava reservado na
+      Fase 12.
+- [ ] **13.10 Duplicar o conversor de link no topo do hero** (rápido) —
+      quem já sabe o que vai comprar não deveria rolar a página toda pra
+      achar o campo de conversão.
+- [ ] **13.11 Reduzir a fricção do login-wall** (grande, mexe na
+      arquitetura) — hoje clicar em "Ir pra Shopee" ou converter um link
+      exige login antes de qualquer valor percebido. Precisa de um
+      desenho novo: mostrar uma prévia/estimativa de cashback sem exigir
+      conta, e só pedir login no momento do clique real que gera o link
+      rastreado de verdade (a lógica atual de `gerar_click` está acoplada
+      a um usuário autenticado desde a raiz).
+- [ ] **13.12 Prévia do dashboard na home** (rápido/médio, menor
+      prioridade) — print ou mockup da tela de saldo/histórico, pra
+      reduzir a incerteza de quem ainda não decidiu se cadastra.
 
 ---
 
