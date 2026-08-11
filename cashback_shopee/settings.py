@@ -96,11 +96,15 @@ SHOPEE_HOME_URL = os.environ.get("SHOPEE_HOME_URL", "https://shopee.com.br/")
 # Ainda não definido pelo negócio - ajuste no .env quando decidido (ex: 100 = repassa tudo).
 SHOPEE_CASHBACK_PERCENTUAL = float(os.environ.get("SHOPEE_CASHBACK_PERCENTUAL", "100"))
 
-# Percentual "até X%" anunciado no hero da home. É um número comercial, não calculado
-# em tempo real - a Shopee reajusta mensalmente a comissão de vendas diretas (hoje entre
-# 8% e 10%), e repassamos 30% dela. Atualize manualmente no .env/Render quando a faixa
-# de comissão da Shopee mudar (ex: comissão mínima 8% x repasse 30% = 2.4).
-CASHBACK_MAXIMO_ANUNCIADO = os.environ.get("CASHBACK_MAXIMO_ANUNCIADO", "2.4")
+# Percentual de comissão que a Shopee paga pra vendas diretas, sem contar o bônus de
+# campanha do vendedor (esse é instável e por produto - não entra na conta do hero).
+# A Shopee reajusta esse valor todo mês (hoje a faixa é 8% a 10%) - atualize aqui com o
+# piso do mês pra nunca prometer mais cashback do que a gente de fato vai conseguir pagar.
+SHOPEE_COMISSAO_VENDA_DIRETA = float(os.environ.get("SHOPEE_COMISSAO_VENDA_DIRETA", "8"))
+
+# Percentual "até X%" anunciado no hero da home = repasse x comissão de venda direta.
+# Calculado automaticamente a partir dos dois valores acima - não precisa mexer aqui.
+CASHBACK_MAXIMO_ANUNCIADO = round(SHOPEE_CASHBACK_PERCENTUAL / 100 * SHOPEE_COMISSAO_VENDA_DIRETA, 2)
 
 # API do Gemini, usada só pra encurtar o nome dos produtos exibidos na aba Ofertas (os
 # títulos que vêm da Shopee costumam ser bem longos/cheios de palavra-chave repetida).
