@@ -86,13 +86,39 @@
         .hero-graphic-panel svg { width: 68%; height: auto; }
 
         /* ---------- Banner de campanha/anúncio ---------- */
-        .banner-carrossel { background: var(--brand); }
-        .banner-carrossel .envolve { position: relative; padding: 12px 24px; min-height: 20px; }
+        .banner-carrossel { padding: 20px 24px 0; }
+        .banner-carrossel .faixa { position: relative; border-radius: 16px; overflow: hidden; height: 220px; }
         .banner-slide {
-            display: none; text-align: center; font-size: 14px; font-weight: 600; color: var(--paper);
+            display: none; position: absolute; inset: 0; background-color: var(--brand-strong);
+            background-size: cover; background-position: center; text-decoration: none; color: inherit;
         }
         .banner-slide.ativo { display: block; }
-        .banner-slide a { color: var(--paper); text-decoration: underline; }
+        a.banner-slide { cursor: pointer; }
+        .banner-slide::before {
+            content: ""; position: absolute; inset: 0;
+            background: linear-gradient(90deg, rgba(18, 62, 45, 0.88) 0%, rgba(18, 62, 45, 0.55) 45%, rgba(18, 62, 45, 0.15) 100%);
+        }
+        .banner-slide-conteudo {
+            position: relative; height: 100%; max-width: 460px; padding: 0 32px;
+            display: flex; flex-direction: column; justify-content: center; gap: 6px; color: #fff;
+        }
+        .banner-slide-conteudo .titulo { font-size: 24px; font-weight: 700; margin: 0; letter-spacing: -0.01em; }
+        .banner-slide-conteudo .subtitulo { font-size: 15px; margin: 0; opacity: 0.92; }
+        a.banner-slide:hover .titulo { text-decoration: underline; }
+        .banner-dots {
+            position: absolute; left: 0; right: 0; bottom: 12px; z-index: 2;
+            display: flex; justify-content: center; gap: 6px;
+        }
+        .banner-dot {
+            width: 7px; height: 7px; border-radius: 50%; background: rgba(255, 255, 255, 0.45);
+            border: none; padding: 0; cursor: pointer;
+        }
+        .banner-dot.ativo { background: #fff; }
+        @media (max-width: 640px) {
+            .banner-carrossel .faixa { height: 260px; }
+            .banner-slide-conteudo { padding: 0 20px; max-width: 100%; }
+            .banner-slide-conteudo .titulo { font-size: 20px; }
+        }
 
         /* ---------- Conversor de link no hero ---------- */
         .conversor-hero {
@@ -222,27 +248,67 @@
     {% if banners %}
         <div class="banner-carrossel">
             <div class="envolve">
-                {% for banner in banners %}
-                    <div class="banner-slide{% if forloop.first %} ativo{% endif %}">
+                <div class="faixa">
+                    {% for banner in banners %}
                         {% if banner.link %}
-                            <a href="{{ banner.link }}">{{ banner.texto }}</a>
+                            <a class="banner-slide{% if forloop.first %} ativo{% endif %}" href="{{ banner.link }}"
+                               {% if banner.imagem_estatica %}style="background-image: url('{% static banner.imagem_estatica %}')"{% endif %}>
+                                <div class="banner-slide-conteudo">
+                                    <p class="titulo">{{ banner.texto }}</p>
+                                    {% if banner.subtexto %}<p class="subtitulo">{{ banner.subtexto }}</p>{% endif %}
+                                </div>
+                            </a>
                         {% else %}
-                            {{ banner.texto }}
+                            <div class="banner-slide{% if forloop.first %} ativo{% endif %}"
+                                 {% if banner.imagem_estatica %}style="background-image: url('{% static banner.imagem_estatica %}')"{% endif %}>
+                                <div class="banner-slide-conteudo">
+                                    <p class="titulo">{{ banner.texto }}</p>
+                                    {% if banner.subtexto %}<p class="subtitulo">{{ banner.subtexto }}</p>{% endif %}
+                                </div>
+                            </div>
                         {% endif %}
-                    </div>
-                {% endfor %}
+                    {% endfor %}
+                    {% if banners|length > 1 %}
+                        <div class="banner-dots">
+                            {% for banner in banners %}
+                                <button type="button" class="banner-dot{% if forloop.first %} ativo{% endif %}" aria-label="Banner {{ forloop.counter }}"></button>
+                            {% endfor %}
+                        </div>
+                    {% endif %}
+                </div>
             </div>
         </div>
         {% if banners|length > 1 %}
             <script>
                 (function () {
                     var slides = document.querySelectorAll(".banner-slide");
+                    var dots = document.querySelectorAll(".banner-dot");
                     var atual = 0;
-                    setInterval(function () {
+                    var intervalo;
+
+                    function mostrar(indice) {
                         slides[atual].classList.remove("ativo");
-                        atual = (atual + 1) % slides.length;
+                        dots[atual].classList.remove("ativo");
+                        atual = indice;
                         slides[atual].classList.add("ativo");
-                    }, 5000);
+                        dots[atual].classList.add("ativo");
+                    }
+
+                    function iniciar() {
+                        intervalo = setInterval(function () {
+                            mostrar((atual + 1) % slides.length);
+                        }, 5000);
+                    }
+
+                    dots.forEach(function (dot, indice) {
+                        dot.addEventListener("click", function () {
+                            clearInterval(intervalo);
+                            mostrar(indice);
+                            iniciar();
+                        });
+                    });
+
+                    iniciar();
                 })();
             </script>
         {% endif %}

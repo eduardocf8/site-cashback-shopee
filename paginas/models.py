@@ -2,7 +2,14 @@ from django.db import models
 
 
 class Banner(models.Model):
-    texto = models.CharField(max_length=200)
+    texto = models.CharField(max_length=200, help_text="Título grande, sobre a imagem.")
+    subtexto = models.CharField(max_length=200, blank=True, help_text="Linha menor, opcional, abaixo do título.")
+    imagem_estatica = models.CharField(
+        max_length=200,
+        blank=True,
+        help_text="Caminho dentro de static/, ex: images/banners/inauguracao.jpg. "
+        "Vazio = mostra só o degradê de fundo, sem foto.",
+    )
     link = models.CharField(
         max_length=300,
         blank=True,
