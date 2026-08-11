@@ -166,6 +166,11 @@ class GerarLinkViewTests(TestCase):
 
 
 class HomeBannerTests(TestCase):
+    def setUp(self):
+        # A migração de dados 0003 semeia 2 banners reais (inauguração/ofertas) - os testes
+        # abaixo querem controlar o estado deles diretamente, então partem de uma base limpa.
+        Banner.objects.all().delete()
+
     def test_sem_banners_ativos_nao_mostra_a_faixa(self):
         resposta = self.client.get("/")
         self.assertNotContains(resposta, '<div class="banner-carrossel">')
