@@ -1,6 +1,7 @@
 from urllib.parse import urlencode
 
 import requests
+from django.conf import settings
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
 from django.shortcuts import redirect, render
@@ -33,7 +34,13 @@ def home(request):
             inicial["url_produto"] = request.GET["url_produto"]
         form = LinkProdutoForm(initial=inicial)
 
-    return render(request, "links/home.html", {"form": form, "link_convertido": link_convertido})
+    contexto = {
+        "form": form,
+        "link_convertido": link_convertido,
+        "percentual_repasse": settings.SHOPEE_CASHBACK_PERCENTUAL,
+        "saque_valor_minimo": settings.SAQUE_VALOR_MINIMO,
+    }
+    return render(request, "links/home.html", contexto)
 
 
 @login_required

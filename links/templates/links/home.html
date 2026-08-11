@@ -67,6 +67,17 @@
             font-size: 15px;
         }
         .botao-ofertas:hover { filter: brightness(0.94); }
+        .botao-secundario {
+            display: inline-block;
+            background: var(--brand);
+            color: var(--paper) !important;
+            padding: 6px 14px;
+            border-radius: 16px;
+            font-weight: 600;
+            font-size: 13px;
+            white-space: nowrap;
+        }
+        .botao-secundario:hover { background: var(--brand-strong); }
 
         /* ---------- Mensagens ---------- */
         .mensagens { list-style: none; padding: 0; margin: 16px 0 0 0; }
@@ -81,21 +92,11 @@
         .hero-text h1 { font-size: 42px; line-height: 1.18; letter-spacing: -0.015em; margin: 0 0 18px; }
         .hero-text p.subtitulo { font-size: 18px; color: var(--muted); max-width: 480px; margin: 0 0 32px; }
         .hero .botao-cta { font-size: 16px; padding: 14px 32px; }
-        .hero-cta-row { display: flex; gap: 12px; flex-wrap: wrap; }
-        .hero-cta-row .botao-cta {
-            flex: 1 1 200px;
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            justify-content: center;
-            gap: 3px;
-            padding: 18px 24px;
-            text-align: center;
-        }
-        .hero-cta-row .botao-subtexto { display: block; font-size: 11px; font-weight: 500; opacity: 0.82; }
         .hero .selo {
-            display: block; margin-top: 20px; font-size: 13px; color: var(--muted); text-align: center;
+            display: block; margin-top: 14px; font-size: 13px; color: var(--muted); text-align: center;
         }
+        .link-secundario { display: inline-block; margin-top: 14px; font-size: 14px; text-align: center; width: 100%; color: var(--muted); }
+        .link-secundario:hover { color: var(--ink); }
         .hero-graphic { flex: 1 1 340px; display: flex; justify-content: center; }
         .hero-graphic-panel {
             width: 100%; max-width: 360px; aspect-ratio: 1 / 1; border-radius: 28px;
@@ -103,11 +104,34 @@
             display: flex; align-items: center; justify-content: center; overflow: hidden;
         }
         .hero-graphic-panel svg { width: 68%; height: auto; }
+
+        /* ---------- Conversor de link no hero ---------- */
+        .conversor-hero {
+            background: var(--paper); border: 1px solid var(--line); border-radius: 14px; padding: 24px;
+        }
+        .conversor-hero label { display: block; font-size: 13px; font-weight: 600; margin-bottom: 6px; }
+        .conversor-hero input[type="url"] {
+            width: 100%; padding: 12px; border: 1px solid var(--line); border-radius: 8px; font-size: 14px; font-family: inherit;
+        }
+        .conversor-hero input[type="url"]:focus { outline: 2px solid var(--brand); outline-offset: 1px; }
+        .conversor-hero button {
+            margin-top: 12px; width: 100%; padding: 13px; background: var(--brand); color: var(--paper);
+            border: none; border-radius: 8px; font-size: 15px; font-weight: 600; font-family: inherit; cursor: pointer;
+        }
+        .conversor-hero button:hover { background: var(--brand-strong); }
+        .conversor-hero .erros { color: var(--danger); font-size: 13px; margin-top: 6px; }
+        .conversor-hero .resultado-link {
+            margin-top: 14px; padding: 8px; border-radius: 8px; background: var(--paper-2);
+            border: 1px dashed var(--line); text-align: center;
+        }
+        .conversor-hero .resultado-titulo { margin: 0 0 6px; font-size: 13px; color: var(--muted); }
+        .conversor-hero .resultado-titulo.resultado-ok { color: var(--success); font-weight: 600; }
+        .conversor-hero .resultado-url { display: block; word-break: break-all; font-size: 13px; font-weight: 600; font-family: "JB Mono", ui-monospace, monospace; }
+
         @media (max-width: 860px) {
             .hero-grid { flex-direction: column; }
             .hero-text { text-align: center; }
             .hero-text p.subtitulo { margin-left: auto; margin-right: auto; }
-            .hero-cta-row { justify-content: center; }
             .hero-graphic-panel { max-width: 280px; }
             .nav .envolve { flex-wrap: wrap; height: auto; padding: 10px 24px; row-gap: 10px; }
             .nav .marca { order: 1; }
@@ -122,7 +146,6 @@
         h2.titulo-secao { font-size: 32px; letter-spacing: -0.01em; text-align: center; margin: 0 0 40px; }
         h2.titulo-secao .destaque-marca { font-weight: 700; color: var(--brand); white-space: nowrap; }
         p.intro-secao { max-width: 560px; margin: -20px auto 40px; text-align: center; color: var(--muted); font-size: 15px; line-height: 1.6; }
-        p.intro-conversor { max-width: 460px; margin: 0 auto 32px; text-align: center; color: var(--muted); font-size: 18px; line-height: 1.5; }
 
         /* ---------- Benefícios (scroll reveal) ---------- */
         .beneficios { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 24px; }
@@ -177,37 +200,6 @@
         .ofertas-destaque .botao-cta { background: var(--highlight); color: var(--highlight-ink) !important; }
         .ofertas-destaque .botao-cta:hover { filter: brightness(0.94); }
 
-        /* ---------- Conversor de link ---------- */
-        .conversor {
-            max-width: 520px;
-            margin: 0 auto;
-            background: var(--paper);
-            border: 1px solid var(--line);
-            border-radius: 14px;
-            padding: 32px;
-        }
-        .conversor label { display: block; font-size: 14px; margin-bottom: 6px; text-align: center; }
-        .conversor input[type="url"] {
-            width: 100%; padding: 12px; border: 1px solid var(--line); border-radius: 8px; font-size: 14px; font-family: inherit;
-        }
-        .conversor input[type="url"]:focus { outline: 2px solid var(--brand); outline-offset: 1px; }
-        .conversor button {
-            margin-top: 16px; width: 100%; padding: 13px; background: var(--brand); color: var(--paper);
-            border: none; border-radius: 8px; font-size: 15px; font-weight: 600; font-family: inherit; cursor: pointer;
-        }
-        .conversor button:hover { background: var(--brand-strong); }
-        .conversor .erros { color: var(--danger); font-size: 13px; margin-top: 6px; }
-        .resultado-link {
-            margin-top: 20px;
-            padding: 8px;
-            border-radius: 8px;
-            background: var(--paper-2);
-            border: 1px dashed var(--line);
-            text-align: center;
-        }
-        .resultado-titulo { margin: 0 0 6px; font-size: 13px; color: var(--muted); }
-        .resultado-titulo.resultado-ok { color: var(--success); font-weight: 600; }
-        .resultado-url { display: block; word-break: break-all; font-size: 14px; font-weight: 600; font-family: "JB Mono", ui-monospace, monospace; }
 
         /* ---------- Rodapé ---------- */
         footer { padding: 32px 0; text-align: center; font-size: 13px; color: var(--muted); }
@@ -228,7 +220,7 @@
                     </form>
                 {% else %}
                     <a href="{% url 'login' %}">Entrar</a>
-                    <a href="{% url 'registrar' %}">Cadastrar</a>
+                    <a class="botao-secundario" href="{% url 'registrar' %}">Cadastrar</a>
                 {% endif %}
             </div>
             {% if user.is_authenticated %}
@@ -254,17 +246,32 @@
             <div class="hero-text">
                 <h1>Compre na Shopee.<br>Receba parte do dinheiro <span class="mark">de volta</span>.</h1>
                 <p class="subtitulo">
-                    Sem pegadinha: faça suas compras normalmente e ganhe cashback.
+                    Cole o link do produto e receba {{ percentual_repasse|floatformat:"-2" }}% da nossa
+                    comissão de volta, direto no seu PIX assim que a Shopee validar a compra.
                 </p>
-                <div class="hero-cta-row">
-                    {% if user.is_authenticated %}
-                        <a class="botao-cta" href="{% url 'ir_para_shopee' %}">Ir pra Shopee agora<span class="botao-subtexto">Venda indireta</span></a>
-                    {% else %}
-                        <a class="botao-cta" href="{% url 'login' %}?next={% url 'ir_para_shopee' %}">Ir pra Shopee agora<span class="botao-subtexto">Venda indireta</span></a>
-                    {% endif %}
-                    <a class="botao-cta" href="#converter-link">Converter link de produto<span class="botao-subtexto">Venda direta (+ cashback)</span></a>
+                <div class="conversor-hero" id="converter-link">
+                    <form method="post" action="{% url 'home' %}#converter-link">
+                        {% csrf_token %}
+                        <label for="{{ form.url_produto.id_for_label }}">{{ form.url_produto.label }}</label>
+                        {{ form.url_produto }}
+                        {% if form.url_produto.errors %}<div class="erros">{{ form.url_produto.errors|striptags }}</div>{% endif %}
+                        <button type="submit">Gerar link com cashback</button>
+                    </form>
+                    <div class="resultado-link">
+                        {% if link_convertido %}
+                            <p class="resultado-titulo resultado-ok">Link convertido com sucesso:</p>
+                            <a href="{{ link_convertido }}" target="_blank" rel="noopener noreferrer" class="resultado-url">{{ link_convertido }}</a>
+                        {% else %}
+                            <p class="resultado-titulo">O link convertido aparecerá aqui.</p>
+                        {% endif %}
+                    </div>
                 </div>
-                <div class="selo">Sem custo. Sem mensalidade. Você só ganha.</div>
+                <div class="selo">Sem custo. Sem mensalidade. Saque via PIX a partir de R$ {{ saque_valor_minimo|floatformat:2 }}.</div>
+                {% if user.is_authenticated %}
+                    <a class="link-secundario" href="{% url 'ir_para_shopee' %}">ou só quero navegar, sem link específico &rarr;</a>
+                {% else %}
+                    <a class="link-secundario" href="{% url 'login' %}?next={% url 'ir_para_shopee' %}">ou só quero navegar, sem link específico &rarr;</a>
+                {% endif %}
             </div>
             <div class="hero-graphic">
                 <div class="hero-graphic-panel">
@@ -345,30 +352,6 @@
             <h2 class="titulo-secao">Quer cashback mas não sabe o que <span class="destaque-marca">comprar</span>?</h2>
             <p>Acesse nossa página de ofertas e veja os melhores produtos com o menor preço — cada um já com o cashback calculado.</p>
             <a class="botao-cta" href="{% url 'ofertas_lista' %}">Ver ofertas &rarr;</a>
-        </div>
-    </section>
-
-    <section id="converter-link">
-        <div class="envolve">
-            <h2 class="titulo-secao" style="margin-bottom: 12px;">Já sabe o que vai comprar?</h2>
-            <p class="intro-conversor">Converta o link do produto e ganhe mais cashback!</p>
-            <div class="conversor">
-                <form method="post" action="{% url 'home' %}#converter-link">
-                    {% csrf_token %}
-                    <label for="{{ form.url_produto.id_for_label }}">{{ form.url_produto.label }}</label>
-                    {{ form.url_produto }}
-                    {% if form.url_produto.errors %}<div class="erros">{{ form.url_produto.errors|striptags }}</div>{% endif %}
-                    <button type="submit">Gerar link com cashback</button>
-                </form>
-                <div class="resultado-link">
-                    {% if link_convertido %}
-                        <p class="resultado-titulo resultado-ok">Link convertido com sucesso:</p>
-                        <a href="{{ link_convertido }}" target="_blank" rel="noopener noreferrer" class="resultado-url">{{ link_convertido }}</a>
-                    {% else %}
-                        <p class="resultado-titulo">O link convertido aparecerá aqui.</p>
-                    {% endif %}
-                </div>
-            </div>
         </div>
     </section>
 
