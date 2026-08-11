@@ -33,11 +33,6 @@
             padding: 10px 20px; border-radius: 24px; font-weight: 600; font-size: 14px; white-space: nowrap;
         }
         .botao-cta:hover { background: var(--brand-strong); }
-        .botao-secundario {
-            display: inline-block; background: var(--brand); color: var(--paper) !important;
-            padding: 6px 14px; border-radius: 16px; font-weight: 600; font-size: 13px; white-space: nowrap;
-        }
-        .botao-secundario:hover { background: var(--brand-strong); }
 
         .mensagens { list-style: none; padding: 0; margin: 16px 0 0 0; }
         .mensagens li { padding: 10px 14px; border-radius: 6px; font-size: 14px; margin-bottom: 8px; }
@@ -123,10 +118,13 @@
                     </form>
                 {% else %}
                     <a href="{% url 'login' %}">Entrar</a>
-                    <a class="botao-secundario" href="{% url 'registrar' %}">Cadastrar</a>
                 {% endif %}
             </div>
-            <a class="botao-cta" href="{% url 'ir_para_shopee' %}">Ir pra Shopee &rarr;</a>
+            {% if user.is_authenticated %}
+                <a class="botao-cta" href="{% url 'ir_para_shopee' %}">Ir pra Shopee &rarr;</a>
+            {% else %}
+                <a class="botao-cta" href="{% url 'registrar' %}">Cadastrar</a>
+            {% endif %}
         </div>
     </nav>
 

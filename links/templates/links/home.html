@@ -58,26 +58,6 @@
             white-space: nowrap;
         }
         .botao-cta:hover { background: var(--brand-strong); }
-        .botao-ofertas {
-            background: var(--highlight);
-            color: var(--highlight-ink) !important;
-            font-weight: 700;
-            padding: 7px 16px;
-            border-radius: 16px;
-            font-size: 15px;
-        }
-        .botao-ofertas:hover { filter: brightness(0.94); }
-        .botao-secundario {
-            display: inline-block;
-            background: var(--brand);
-            color: var(--paper) !important;
-            padding: 6px 14px;
-            border-radius: 16px;
-            font-weight: 600;
-            font-size: 13px;
-            white-space: nowrap;
-        }
-        .botao-secundario:hover { background: var(--brand-strong); }
 
         /* ---------- Mensagens ---------- */
         .mensagens { list-style: none; padding: 0; margin: 16px 0 0 0; }
@@ -211,7 +191,7 @@
         <div class="envolve">
             <span class="marca">cash-b</span>
             <div class="nav-secundario">
-                <a class="botao-ofertas" href="{% url 'ofertas_lista' %}">Ofertas</a>
+                <a href="{% url 'ofertas_lista' %}">Ofertas</a>
                 {% if user.is_authenticated %}
                     <a href="{% url 'dashboard' %}">Minha conta</a>
                     <form method="post" action="{% url 'logout' %}">
@@ -220,13 +200,12 @@
                     </form>
                 {% else %}
                     <a href="{% url 'login' %}">Entrar</a>
-                    <a class="botao-secundario" href="{% url 'registrar' %}">Cadastrar</a>
                 {% endif %}
             </div>
             {% if user.is_authenticated %}
                 <a class="botao-cta" href="{% url 'ir_para_shopee' %}">Ir pra Shopee &rarr;</a>
             {% else %}
-                <a class="botao-cta" href="{% url 'login' %}?next={% url 'ir_para_shopee' %}">Ir pra Shopee &rarr;</a>
+                <a class="botao-cta" href="{% url 'registrar' %}">Cadastrar</a>
             {% endif %}
         </div>
     </nav>
