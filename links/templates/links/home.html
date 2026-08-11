@@ -247,7 +247,7 @@
                 <h1>Compre na Shopee.<br>Receba parte do dinheiro <span class="mark">de volta</span>.</h1>
                 <p class="subtitulo">
                     Cole o link do produto e receba até {{ cashback_maximo_anunciado|floatformat:"-1" }}% de
-                    cashback quando a Shopee confirmar a compra — sacável via PIX assim que liberado.
+                    cashback. Após atingir o saldo de R$ {{ saque_valor_minimo|floatformat:2 }}, saque via Pix.
                 </p>
                 <div class="conversor-hero" id="converter-link">
                     <form method="post" action="{% url 'home' %}#converter-link">
