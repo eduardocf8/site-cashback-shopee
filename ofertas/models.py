@@ -41,7 +41,11 @@ class Oferta(models.Model):
     def percentual_cashback(self) -> Decimal:
         """% de cashback sobre o preço, na mesma fórmula usada de verdade em
         pedidos/services.py pra calcular o valor_cashback (comissão x repasse do site)."""
-        repasse = Decimal(str(settings.SHOPEE_CASHBACK_PERCENTUAL)) / Decimal("100")
+        repasse = (
+            Decimal(str(settings.SHOPEE_CASHBACK_PERCENTUAL))
+            / Decimal("100")
+            * Decimal(str(settings.CASHBACK_MULTIPLICADOR_CAMPANHA))
+        )
         return (self.percentual_comissao * Decimal("100") * repasse).quantize(Decimal("0.1"))
 
 

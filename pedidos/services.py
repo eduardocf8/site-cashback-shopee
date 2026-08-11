@@ -141,7 +141,11 @@ def sincronizar(purchase_time_start: int, purchase_time_end: int) -> dict:
     fazer isso uma de cada vez é rápido demais no SQLite local mas estoura o tempo
     limite do servidor contra um banco remoto de verdade.
     """
-    percentual = Decimal(str(settings.SHOPEE_CASHBACK_PERCENTUAL)) / Decimal("100")
+    percentual = (
+        Decimal(str(settings.SHOPEE_CASHBACK_PERCENTUAL))
+        / Decimal("100")
+        * Decimal(str(settings.CASHBACK_MULTIPLICADOR_CAMPANHA))
+    )
 
     nao_identificados = 0
     scroll_id = None

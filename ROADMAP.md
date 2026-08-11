@@ -130,12 +130,21 @@ implementando. Cada item pode virar uma conversa própria.
       caminho antes da lista de status. "PIX enviado" não virou uma etapa
       porque o saque não é vinculado a um pedido específico no modelo de
       dados (é sacado do saldo agregado).
-- [ ] **13.7 Badge "comissão extra ativa" nas ofertas em campanha**
-      (médio) — a API já retorna `periodStartTime`/`periodEndTime` da
-      comissão de vendedor (descobrimos isso investigando o bug do
-      percentual errado). Dá pra usar como gatilho de urgência real,
-      declarado com transparência (ex: "+bônus até 31/08"), em vez de
-      simplesmente ignorar esse dado.
+- [x] ~~13.7 Badge "comissão extra ativa" nas ofertas em campanha~~ —
+      **cancelado.** Dependia de `sellerCommissionRate` (bônus do
+      vendedor), o mesmo campo que já provou ser não confiável no bug do
+      percentual errado (17,8% na API vs. 8% no app da Shopee, indício de
+      que é "MCN-gated" e talvez nem esteja disponível pra essa conta).
+      Anunciar urgência em cima de um dado em que já não confiamos o
+      bastante pra calcular cashback quebraria a mesma promessa que
+      corrigimos antes.
+      Em vez disso, virou **13.7b Multiplicador de campanha própria**
+      (`CASHBACK_MULTIPLICADOR_CAMPANHA`, padrão 1) — uma alavanca pro
+      negócio rodar campanhas de verdade (ex: "cashback em dobro" no
+      aniversário do site), sem depender de dado nenhum da Shopee. Afeta
+      o cashback pago de verdade em `pedidos/services.py` e
+      `ofertas/models.py`, e o hero/regras_cashback.html refletem o mesmo
+      valor automaticamente.
 - [ ] **13.8 Prova social real** (médio, depende de ter dado/canal) —
       contador de "R$ já pago via PIX", print de um saque real
       anonimizado, ou link pro grupo de WhatsApp/Instagram do cash-b no

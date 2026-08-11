@@ -102,9 +102,17 @@ SHOPEE_CASHBACK_PERCENTUAL = float(os.environ.get("SHOPEE_CASHBACK_PERCENTUAL", 
 # piso do mês pra nunca prometer mais cashback do que a gente de fato vai conseguir pagar.
 SHOPEE_COMISSAO_VENDA_DIRETA = float(os.environ.get("SHOPEE_COMISSAO_VENDA_DIRETA", "8"))
 
-# Percentual "até X%" anunciado no hero da home = repasse x comissão de venda direta.
-# Calculado automaticamente a partir dos dois valores acima - não precisa mexer aqui.
-CASHBACK_MAXIMO_ANUNCIADO = round(SHOPEE_CASHBACK_PERCENTUAL / 100 * SHOPEE_COMISSAO_VENDA_DIRETA, 2)
+# Multiplicador pra campanhas promocionais próprias do cash-b (não tem nada a ver com
+# bônus de vendedor da Shopee) - ex: 2 = "cashback em dobro" no mês de aniversário do
+# site. Fica em 1 o resto do tempo. Afeta o valor de cashback pago de verdade (não é só
+# um número de propaganda) - usado em pedidos/services.py, ofertas/models.py e no hero.
+CASHBACK_MULTIPLICADOR_CAMPANHA = float(os.environ.get("CASHBACK_MULTIPLICADOR_CAMPANHA", "1"))
+
+# Percentual "até X%" anunciado no hero da home = repasse x comissão de venda direta x
+# multiplicador de campanha. Calculado automaticamente - não precisa mexer aqui.
+CASHBACK_MAXIMO_ANUNCIADO = round(
+    SHOPEE_CASHBACK_PERCENTUAL / 100 * SHOPEE_COMISSAO_VENDA_DIRETA * CASHBACK_MULTIPLICADOR_CAMPANHA, 2
+)
 
 # API do Gemini, usada só pra encurtar o nome dos produtos exibidos na aba Ofertas (os
 # títulos que vêm da Shopee costumam ser bem longos/cheios de palavra-chave repetida).
