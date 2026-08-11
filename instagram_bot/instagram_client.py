@@ -1,3 +1,5 @@
+import time
+
 import requests
 from django.conf import settings
 
@@ -41,6 +43,42 @@ def _chamar(metodo: str, caminho: str, **params) -> dict:
     return dados
 
 
+def _aguardar_processamento(creation_id: str, tentativas: int = 10, intervalo: float = 2.0) -> None:
+    """Espera o container terminar de processar (baixar/validar a imagem do lado da
+    Meta) antes de publicar. Sem isso, publicar_container logo em seguida à criação às
+    vezes devolve "Media ID is not available" [code=9007, error_subcode=2207027] -
+    a Meta documenta esse erro como "a mídia ainda não está pronta pra publicar,
+    aguarde um momento" (ver marketing/instagram/README.md, troubleshooting)."""
+    for _ in range(tentativas):
+        dados = _chamar("GET", creation_id, fields="status_code")
+        status = dados.get("status_code")
+        if status == "FINISHED":
+            return
+        if status == "ERROR":
+            raise InstagramAPIError(f"Processamento do container {creation_id} falhou (status_code=ERROR).")
+        time.sleep(intervalo)
+    raise InstagramAPIError(
+        f"Container {creation_id} não terminou de processar a tempo (status_code ainda não é FINISHED)."
+    )
+
+
+def verificar_configuracao() -> None:
+    """Confere se o INSTAGRAM_BUSINESS_ACCOUNT_ID configurado bate com o ID de
+    verdade associado ao INSTAGRAM_ACCESS_TOKEN antes de publicar. Sem essa checagem,
+    um ID errado gera um erro genérico da própria API ("Only photo or video can be
+    accepted", ou "code=2, type=OAuthException") que não aponta a causa raiz - já
+    aconteceu 2x (ver marketing/instagram/README.md, troubleshooting)."""
+    _exigir_config()
+    dados = _chamar("GET", "me", fields="id")
+    id_do_token = dados["id"]
+    if id_do_token != settings.INSTAGRAM_BUSINESS_ACCOUNT_ID:
+        raise InstagramConfigError(
+            f"INSTAGRAM_BUSINESS_ACCOUNT_ID configurado ({settings.INSTAGRAM_BUSINESS_ACCOUNT_ID}) "
+            f"não bate com o ID associado ao INSTAGRAM_ACCESS_TOKEN ({id_do_token}) - "
+            "corrija a variável de ambiente no Render."
+        )
+
+
 def criar_container_midia(image_url: str, legenda: str = "", story: bool = False) -> str:
     """Cria o container de mídia (passo 1 de 2 pra publicar). Retorna o creation_id."""
     _exigir_config()
@@ -64,7 +102,9 @@ def publicar_container(creation_id: str) -> str:
 
 def publicar_imagem(image_url: str, legenda: str = "", story: bool = False) -> str:
     """Fluxo completo: cria o container e publica. Retorna o media_id publicado."""
+    verificar_configuracao()
     creation_id = criar_container_midia(image_url, legenda=legenda, story=story)
+    _aguardar_processamento(creation_id)
     return publicar_container(creation_id)
 
 
@@ -91,8 +131,12 @@ def criar_container_carrossel(item_ids: list[str], legenda: str = "") -> str:
 def publicar_carrossel(image_urls: list[str], legenda: str = "") -> str:
     """Fluxo completo de carrossel: cria um container por imagem, agrupa num container "pai", e
     publica. Retorna o media_id publicado. Máximo de 10 imagens (limite da própria API)."""
+    verificar_configuracao()
     item_ids = [criar_item_carrossel(url) for url in image_urls]
+    for item_id in item_ids:
+        _aguardar_processamento(item_id)
     creation_id = criar_container_carrossel(item_ids, legenda=legenda)
+    _aguardar_processamento(creation_id)
     return publicar_container(creation_id)
 
 

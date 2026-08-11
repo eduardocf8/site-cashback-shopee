@@ -76,11 +76,13 @@ pasta, pra não ficar vazio quando a automação for ligada de verdade — ver
    eixos de peso variável Bold/Regular). Dois layouts:
    - `gerar_imagem_texto_simples(...)` — statement centralizado (dica,
      lembrete), reaproveita o layout dos posts de semeadura.
-   - `gerar_imagem_ofertas(...)` — cartões de produto empilhados (imagem +
-     nome + preço + selo de desconto), busca a imagem do produto via
-     `requests` a partir de `Oferta.imagem_url`; a altura dos cartões se
-     ajusta automaticamente pra caber tanto no formato quadrado (feed,
-     1080×1080) quanto vertical (story, 1080×1920).
+   - `gerar_imagem_oferta_story(...)` — layout "hero" pra 1 oferta só
+     ocupando o story inteiro (imagem grande + nome + preço + selo de
+     desconto, no estilo do cartão de oferta do site), busca a imagem do
+     produto via `requests` a partir de `Oferta.imagem_url`. Reserva
+     margem de segurança no topo e no rodapé pra não ficar atrás do
+     ícone/nome da conta nem da barra de resposta do próprio Instagram
+     (ver "Ajuste de layout do story de oferta" no troubleshooting).
    Os posts institucionais de quarta-feira usam os mesmos 8 temas da
    semeadura, mas **geram uma arte nova via Pillow a cada rotação** (2
    variações de texto/legenda por tema, 16 no total) em vez de reusar os
@@ -239,6 +241,123 @@ tentativas seguidas, pode ser as próprias tentativas repetidas
 disparando alguma proteção temporária do lado da Meta - nesse caso, é
 melhor esperar mais (a próxima execução automática do dia seguinte, por
 exemplo) em vez de insistir.
+
+**Atualização (ver incidente abaixo, 2026-08-07)**: esse mesmo erro
+genérico também pode ser só `INSTAGRAM_BUSINESS_ACCOUNT_ID` errado de
+novo - não é só instabilidade transitória da Meta. Antes de esperar,
+confere primeiro no Depurador de Token de Acesso.
+
+### `INSTAGRAM_BUSINESS_ACCOUNT_ID` errado de novo, mascarado como erro genérico (2026-08-07)
+
+Um dia depois do incidente acima (2026-08-05), o bot voltou a falhar -
+dessa vez em **todas** as execuções automáticas do dia (várias chamadas
+distintas, `fbtrace_id` diferente em cada uma), com a mensagem genérica
+"code=2, type=OAuthException" (não o erro claro de mídia de antes).
+Pareceu, a princípio, o caso "instabilidade transitória da Meta" descrito
+acima - mas persistir o dia inteiro, em chamadas independentes, não bate
+com esse padrão.
+
+**Causa raiz**: `INSTAGRAM_BUSINESS_ACCOUNT_ID` no Render tinha sido
+corrigido errado no incidente anterior - `271062287872382357` em vez de
+`271062878872382357` (dois dígitos trocados de posição no meio do
+número). Confirmado comparando com o "ID do usuário no escopo do
+aplicativo" no Depurador de Token de Acesso. Ou seja: o mesmo tipo de
+erro (ID incorreto) pode aparecer tanto como o erro claro de mídia
+("Only photo or video...") quanto como esse erro genérico de OAuth -
+depende de qual validação a API do Instagram bate primeiro.
+
+**Melhoria que ficou**: `instagram_client.verificar_configuracao()` -
+antes de qualquer publicação real (`publicar_imagem`/`publicar_carrossel`,
+chamadas tanto pelo fluxo normal quanto por "Tentar publicar de novo"),
+compara o `INSTAGRAM_BUSINESS_ACCOUNT_ID` configurado com o ID retornado
+por uma chamada `GET /me` usando o próprio `INSTAGRAM_ACCESS_TOKEN`. Se
+não bater, falha com uma mensagem específica e direta (ID configurado x
+ID esperado) em vez de deixar a Meta devolver um erro genérico que
+mascara a causa - da próxima vez que os dois valores ficarem
+dessincronizados, o campo `erro` do `RegistroPublicacao` já vai apontar
+exatamente isso, sem precisar repetir essa investigação inteira.
+
+### Erro "code=9004, error_subcode=2207052" (media could not be fetched) - self-deadlock de 1 worker só (2026-08-07)
+
+Depois de corrigir o `INSTAGRAM_BUSINESS_ACCOUNT_ID` (incidente acima), a
+publicação continuou falhando - agora com "Only photo or video can be
+accepted as media type" de novo, mas com `code=9004,
+error_subcode=2207052`, que a própria Meta documenta como "a mídia não
+pôde ser buscada nessa URI" (fetch da imagem falhou, não é erro de
+formato).
+
+**Causa raiz**: o serviço web no Render roda com `gunicorn
+cashback_shopee.wsgi:application --timeout 120`, sem `--workers` nem
+`--threads` (então cai no padrão: 1 worker síncrono). O fluxo de
+publicação faz uma chamada de dentro de uma requisição (aprovar por
+e-mail, ou o cron chamando `/tarefas/postar-story-oferta/`) pra API do
+Instagram; a API do Instagram, pra criar o container de mídia, busca a
+imagem de volta na própria URL pública do site (`RENDER_EXTERNAL_HOSTNAME`)
+- ou seja, faz uma requisição de volta pro mesmo servidor. Com 1 worker
+só, ele está ocupado esperando a resposta da Meta e não sobra ninguém
+pra atender essa busca - a Meta espera, não consegue, e devolve esse
+erro. É o mesmo tipo de deadlock que o comentário de
+`_reconverter_para_jpeg` (ver acima) já descrevia pra um outro caminho de
+código - só que esse aqui pegava o fluxo principal de publicação.
+
+**Correção**: Start Command no Render trocado pra
+`gunicorn cashback_shopee.wsgi:application --workers 1 --threads 4 --worker-class gthread --timeout 120`
+- `gthread` mantém o mesmo processo (mesmo consumo de memória base), mas
+libera até 4 requisições concorrentes dentro dele, então uma thread pode
+atender a busca da imagem enquanto a outra espera a resposta da Meta.
+Não é uma mudança versionada no repositório (não tem `Procfile` nem
+`render.yaml` - o Start Command é só configuração manual no dashboard do
+Render, em Settings). Confirmado resolvido: aprovação de story funcionou
+e publicou normalmente depois da troca.
+
+### Ajuste de layout do story de oferta do momento (2026-08-07)
+
+Depois da primeira publicação real bem-sucedida, dois problemas visuais
+apareceram no layout antigo (`gerar_imagem_ofertas`, pensado pra
+empilhar vários cartões pequenos, mas na prática sempre chamado com 1
+oferta só pro story):
+
+1. O conteúdo ficava todo colado no topo do story, desperdiçando o resto
+   da tela vertical (1080×1920) - sem motivo pra isso quando é só 1
+   oferta.
+2. A arte começava encostada na borda superior, sem nenhuma margem de
+   segurança - o ícone e o nome da conta (UI do próprio Instagram, não
+   faz parte da arte) ficavam sobrepostos ao conteúdo.
+
+Substituído por `gerar_imagem_oferta_story(oferta)` (ver "Onde cada coisa
+mora no código" acima): layout "hero" de 1 oferta só, no estilo do
+cartão de oferta do site (`ofertas/templates/ofertas/lista.html`,
+`.oferta-cartao`) - imagem grande, selo de desconto sobre a imagem, nome
+e preço em destaque. O bloco inteiro é centralizado dentro de uma área
+que já reserva 260px de margem de segurança no topo e no rodapé (onde a
+UI do Instagram cobre a arte), em vez de conteúdo fixo colado nas
+bordas.
+
+### Erro "Media ID is not available" (code=9007, error_subcode=2207027) (2026-08-10)
+
+Depois do deploy com o fix do gunicorn (incidente acima), a publicação
+seguiu falhando às vezes - dessa vez com uma mensagem diferente: "Media
+ID is not available" (`code=9007, error_subcode=2207027`), documentado
+pela própria Meta como "a mídia ainda não está pronta pra publicar,
+aguarde um momento".
+
+**Causa raiz**: `instagram_client.publicar_imagem`/`publicar_carrossel`
+chamavam `publicar_container` (passo 2, `/media_publish`) logo em
+seguida à criação do container (passo 1, `/media`), sem esperar a Meta
+terminar de baixar/validar a imagem do lado dela - a criação do
+container só inicia esse processamento, não garante que ele já
+terminou. Publicar rápido demais nem sempre falha (por isso funcionou
+antes em alguns testes), mas é uma corrida - a chance de falhar aumenta
+com imagens maiores ou o serviço da Meta mais devagar no momento.
+
+**Correção**: nova função `instagram_client._aguardar_processamento()`
+- depois de criar um container (imagem, story, ou cada item de
+carrossel + o container "pai"), consulta `GET /{creation_id}?fields=status_code`
+a cada 2s (até 10 tentativas) até a Meta devolver `status_code=FINISHED`,
+só então chama `/media_publish`. É o fluxo que a própria documentação da
+Meta recomenda pra publicação de mídia.
+
+Sources: [Media ID is not available - Meta for Developers Community](https://developers.facebook.com/community/threads/1958342851674113/)
 
 ## Posts de semeadura (pasta `posts-semeadura/`)
 
