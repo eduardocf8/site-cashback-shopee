@@ -111,6 +111,12 @@
         .etiqueta-status.solicitado, .etiqueta-status.processando { background: var(--line-soft); color: var(--muted); }
         .motivo { font-size: 12px; color: var(--muted); margin-top: 2px; }
 
+        .mini-timeline { display: flex; align-items: center; gap: 3px; margin-top: 6px; width: 120px; }
+        .mini-timeline .ponto { width: 7px; height: 7px; border-radius: 50%; background: var(--line); flex-shrink: 0; }
+        .mini-timeline .ponto.ativo { background: var(--brand); }
+        .mini-timeline .traco { flex: 1; height: 2px; background: var(--line); }
+        .mini-timeline .traco.ativo { background: var(--brand); }
+
         .vazio { color: var(--muted); font-size: 14px; padding: 20px; text-align: center; }
         .rolar-tabela { overflow-x: auto; }
 
@@ -279,6 +285,14 @@
                                 <span class="etiqueta-status {{ pedido.status }}">{{ pedido.get_status_display }}</span>
                                 {% if pedido.status == "cancelado" %}
                                     <div class="motivo">{{ pedido.motivo_cancelamento|default:"Motivo não informado pela Shopee." }}</div>
+                                {% else %}
+                                    <div class="mini-timeline" title="Pendente → Validado → Liberado">
+                                        <span class="ponto ativo" title="Pendente"></span>
+                                        <span class="traco {% if pedido.status == 'validado' or pedido.status == 'liberado' %}ativo{% endif %}"></span>
+                                        <span class="ponto {% if pedido.status == 'validado' or pedido.status == 'liberado' %}ativo{% endif %}" title="Validado"></span>
+                                        <span class="traco {% if pedido.status == 'liberado' %}ativo{% endif %}"></span>
+                                        <span class="ponto {% if pedido.status == 'liberado' %}ativo{% endif %}" title="Liberado"></span>
+                                    </div>
                                 {% endif %}
                             </td>
                             <td class="valor-cel">R$ {{ pedido.valor_cashback|floatformat:2 }}</td>

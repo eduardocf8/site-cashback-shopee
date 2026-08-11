@@ -121,11 +121,15 @@ implementando. Cada item pode virar uma conversa própria.
       esperar a migração pro Simples Nacional (prevista pra este mês) pra
       não trocar o texto do rodapé duas vezes - me avisa quando sair a
       razão social nova.
-- [ ] **13.6 Timeline visual de status do pedido** (médio) — hoje o prazo
-      de liberação (até ~3 meses) só existe em texto corrido. Uma barra
-      visual "Pendente → Validado → Liberado → PIX enviado" no dashboard
-      (e talvez uma versão simplificada pública) reduz a sensação de
-      opacidade sem mudar a regra em si.
+- [x] **13.6 Timeline visual de status do pedido** (médio) — mini-timeline
+      de pontos (Pendente → Validado → Liberado) em cada linha da tabela
+      de pedidos no dashboard, junto da etiqueta de status já existente;
+      pedidos cancelados continuam só com a etiqueta + motivo, sem a
+      timeline (não dá pra saber em que ponto exato cancelou). Versão
+      pública equivalente em `regras_cashback.html`, ilustrando o mesmo
+      caminho antes da lista de status. "PIX enviado" não virou uma etapa
+      porque o saque não é vinculado a um pedido específico no modelo de
+      dados (é sacado do saldo agregado).
 - [ ] **13.7 Badge "comissão extra ativa" nas ofertas em campanha**
       (médio) — a API já retorna `periodStartTime`/`periodEndTime` da
       comissão de vendedor (descobrimos isso investigando o bug do
