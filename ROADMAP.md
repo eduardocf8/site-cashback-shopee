@@ -145,6 +145,14 @@ implementando. Cada item pode virar uma conversa própria.
       o cashback pago de verdade em `pedidos/services.py` e
       `ofertas/models.py`, e o hero/regras_cashback.html refletem o mesmo
       valor automaticamente.
+      E **13.7c Banner de anúncio na home** (`paginas.Banner`, gerenciado
+      pelo Django admin) — o multiplicador muda o número, mas não
+      anunciava a campanha pra ninguém. Faixa fina logo abaixo do hero,
+      com texto+link opcionais por banner, ativo/inativo e ordem editáveis
+      no admin (mesmo padrão já usado pra aprovar saques); com 2+ banners
+      ativos, alterna sozinha a cada 5s. Zero banners ativos = a faixa
+      simplesmente não aparece. Serve tanto pra campanhas de cashback
+      quanto pra qualquer outro anúncio (destaque de ofertas, etc.).
 - [ ] **13.8 Prova social real** (médio, depende de ter dado/canal) —
       contador de "R$ já pago via PIX", print de um saque real
       anonimizado, ou link pro grupo de WhatsApp/Instagram do cash-b no

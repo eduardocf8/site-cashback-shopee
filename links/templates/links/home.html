@@ -85,6 +85,15 @@
         }
         .hero-graphic-panel svg { width: 68%; height: auto; }
 
+        /* ---------- Banner de campanha/anúncio ---------- */
+        .banner-carrossel { background: var(--brand); }
+        .banner-carrossel .envolve { position: relative; padding: 12px 24px; min-height: 20px; }
+        .banner-slide {
+            display: none; text-align: center; font-size: 14px; font-weight: 600; color: var(--paper);
+        }
+        .banner-slide.ativo { display: block; }
+        .banner-slide a { color: var(--paper); text-decoration: underline; }
+
         /* ---------- Conversor de link no hero ---------- */
         .conversor-hero {
             background: var(--paper); border: 1px solid var(--line); border-radius: 14px; padding: 24px;
@@ -265,6 +274,35 @@
             </div>
         </div>
     </header>
+
+    {% if banners %}
+        <div class="banner-carrossel">
+            <div class="envolve">
+                {% for banner in banners %}
+                    <div class="banner-slide{% if forloop.first %} ativo{% endif %}">
+                        {% if banner.link %}
+                            <a href="{{ banner.link }}">{{ banner.texto }}</a>
+                        {% else %}
+                            {{ banner.texto }}
+                        {% endif %}
+                    </div>
+                {% endfor %}
+            </div>
+        </div>
+        {% if banners|length > 1 %}
+            <script>
+                (function () {
+                    var slides = document.querySelectorAll(".banner-slide");
+                    var atual = 0;
+                    setInterval(function () {
+                        slides[atual].classList.remove("ativo");
+                        atual = (atual + 1) % slides.length;
+                        slides[atual].classList.add("ativo");
+                    }, 5000);
+                })();
+            </script>
+        {% endif %}
+    {% endif %}
 
     <section id="beneficios">
         <div class="envolve">

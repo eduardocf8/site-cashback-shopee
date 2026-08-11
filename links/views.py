@@ -7,6 +7,8 @@ from django.contrib.auth.decorators import login_required
 from django.shortcuts import redirect, render
 from django.urls import reverse
 
+from paginas.models import Banner
+
 from .forms import LinkProdutoForm
 from .models import Click
 from .services import gerar_click
@@ -39,6 +41,7 @@ def home(request):
         "link_convertido": link_convertido,
         "cashback_maximo_anunciado": settings.CASHBACK_MAXIMO_ANUNCIADO,
         "saque_valor_minimo": settings.SAQUE_VALOR_MINIMO,
+        "banners": Banner.objects.filter(ativo=True),
     }
     return render(request, "links/home.html", contexto)
 
