@@ -101,22 +101,15 @@ sustentou contra o código.
 Ordem sugerida por impacto/esforço - marca o checkbox conforme for
 implementando. Cada item pode virar uma conversa própria.
 
-- [ ] **13.1 Trazer confiança pro hero** (rápido) — mostrar o percentual
-      real de repasse (`settings.SHOPEE_CASHBACK_PERCENTUAL`, já é
-      dinâmico) e a mecânica básica (saque via PIX, valor mínimo) acima
-      da dobra, em vez de só no rodapé de `/regras-do-cashback/`. É a
-      informação que resolve a objeção nº1 de quem desconfia de site de
-      cashback.
-- [ ] **13.2 Simplificar o hero pra 1 CTA primário** (rápido/médio) —
-      hoje são dois botões de peso igual com jargão interno ("venda
-      direta"/"venda indireta") que o usuário não conhece. CTA principal
-      vira "colar link e ganhar cashback"; "Ir pra Shopee" fica
-      secundário. A explicação direta/indireta continua existindo, mas
-      como conteúdo de apoio, não como decisão de entrada.
-- [ ] **13.3 "Cadastrar" como botão sólido, "Entrar" como link** (muito
-      rápido) — hoje os dois têm o mesmo peso visual na navegação; o
-      cadastro é o evento que mais importa pro negócio (usuário logado e
-      rastreável).
+- [x] **13.1 Trazer confiança pro hero** (rápido) — mostra o percentual
+      real de repasse (`settings.SHOPEE_CASHBACK_PERCENTUAL`, dinâmico) e
+      a mecânica básica (saque via PIX, valor mínimo) direto no hero.
+- [x] **13.2 Simplificar o hero pra 1 CTA primário** (rápido/médio) — o
+      conversor de link virou o CTA único e primário; "Ir pra Shopee"
+      agora é um link secundário e discreto. A explicação direta/indireta
+      continua existindo mais abaixo, como conteúdo de apoio.
+- [x] **13.3 "Cadastrar" como botão sólido, "Entrar" como link** (muito
+      rápido) — feito na home e na página de Ofertas (mesmo padrão de nav).
 - [ ] **13.4 Suavizar o aviso de cancelamento por outro link de afiliado**
       (rápido) — hoje é uma frase em tom de aviso legal na home; reescrever
       em tom de dica útil e considerar mover pro FAQ (regra já documentada
@@ -143,9 +136,9 @@ implementando. Cada item pode virar uma conversa própria.
 - [ ] **13.9 Programa de indicação** (grande) — "indique um amigo, ganhe
       R$X quando ele comprar". Herda o item que já estava reservado na
       Fase 12.
-- [ ] **13.10 Duplicar o conversor de link no topo do hero** (rápido) —
-      quem já sabe o que vai comprar não deveria rolar a página toda pra
-      achar o campo de conversão.
+- [x] **13.10 Conversor de link no topo do hero** (rápido) — em vez de
+      duplicar, o conversor virou o próprio CTA principal do hero (ver
+      13.2) e a seção antiga, redundante, foi removida.
 - [ ] **13.11 Reduzir a fricção do login-wall** (grande, mexe na
       arquitetura) — hoje clicar em "Ir pra Shopee" ou converter um link
       exige login antes de qualquer valor percebido. Precisa de um
