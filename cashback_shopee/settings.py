@@ -96,6 +96,12 @@ SHOPEE_HOME_URL = os.environ.get("SHOPEE_HOME_URL", "https://shopee.com.br/")
 # Ainda não definido pelo negócio - ajuste no .env quando decidido (ex: 100 = repassa tudo).
 SHOPEE_CASHBACK_PERCENTUAL = float(os.environ.get("SHOPEE_CASHBACK_PERCENTUAL", "100"))
 
+# Percentual "até X%" anunciado no hero da home. É um número comercial, não calculado
+# em tempo real - a Shopee reajusta mensalmente a comissão de vendas diretas (hoje entre
+# 8% e 10%), e repassamos 30% dela. Atualize manualmente no .env/Render quando a faixa
+# de comissão da Shopee mudar (ex: comissão mínima 8% x repasse 30% = 2.4).
+CASHBACK_MAXIMO_ANUNCIADO = os.environ.get("CASHBACK_MAXIMO_ANUNCIADO", "2.4")
+
 # API do Gemini, usada só pra encurtar o nome dos produtos exibidos na aba Ofertas (os
 # títulos que vêm da Shopee costumam ser bem longos/cheios de palavra-chave repetida).
 # Sem GEMINI_API_KEY configurada, o site continua funcionando normal - só usa o nome

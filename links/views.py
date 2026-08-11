@@ -37,7 +37,7 @@ def home(request):
     contexto = {
         "form": form,
         "link_convertido": link_convertido,
-        "percentual_repasse": settings.SHOPEE_CASHBACK_PERCENTUAL,
+        "cashback_maximo_anunciado": settings.CASHBACK_MAXIMO_ANUNCIADO,
         "saque_valor_minimo": settings.SAQUE_VALOR_MINIMO,
     }
     return render(request, "links/home.html", contexto)
