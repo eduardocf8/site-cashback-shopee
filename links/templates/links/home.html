@@ -219,6 +219,35 @@
         </div>
     </nav>
 
+    {% if banners %}
+        <div class="banner-carrossel">
+            <div class="envolve">
+                {% for banner in banners %}
+                    <div class="banner-slide{% if forloop.first %} ativo{% endif %}">
+                        {% if banner.link %}
+                            <a href="{{ banner.link }}">{{ banner.texto }}</a>
+                        {% else %}
+                            {{ banner.texto }}
+                        {% endif %}
+                    </div>
+                {% endfor %}
+            </div>
+        </div>
+        {% if banners|length > 1 %}
+            <script>
+                (function () {
+                    var slides = document.querySelectorAll(".banner-slide");
+                    var atual = 0;
+                    setInterval(function () {
+                        slides[atual].classList.remove("ativo");
+                        atual = (atual + 1) % slides.length;
+                        slides[atual].classList.add("ativo");
+                    }, 5000);
+                })();
+            </script>
+        {% endif %}
+    {% endif %}
+
     {% if messages %}
         <div class="envolve">
             <ul class="mensagens">
@@ -274,35 +303,6 @@
             </div>
         </div>
     </header>
-
-    {% if banners %}
-        <div class="banner-carrossel">
-            <div class="envolve">
-                {% for banner in banners %}
-                    <div class="banner-slide{% if forloop.first %} ativo{% endif %}">
-                        {% if banner.link %}
-                            <a href="{{ banner.link }}">{{ banner.texto }}</a>
-                        {% else %}
-                            {{ banner.texto }}
-                        {% endif %}
-                    </div>
-                {% endfor %}
-            </div>
-        </div>
-        {% if banners|length > 1 %}
-            <script>
-                (function () {
-                    var slides = document.querySelectorAll(".banner-slide");
-                    var atual = 0;
-                    setInterval(function () {
-                        slides[atual].classList.remove("ativo");
-                        atual = (atual + 1) % slides.length;
-                        slides[atual].classList.add("ativo");
-                    }, 5000);
-                })();
-            </script>
-        {% endif %}
-    {% endif %}
 
     <section id="beneficios">
         <div class="envolve">
