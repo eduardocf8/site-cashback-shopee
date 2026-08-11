@@ -97,13 +97,18 @@
             content: ""; position: absolute; inset: 0;
             background: linear-gradient(90deg, rgba(18, 62, 45, 0.88) 0%, rgba(18, 62, 45, 0.55) 45%, rgba(18, 62, 45, 0.15) 100%);
         }
+        .banner-slide.texto-direita::before {
+            background: linear-gradient(270deg, rgba(18, 62, 45, 0.88) 0%, rgba(18, 62, 45, 0.55) 45%, rgba(18, 62, 45, 0.15) 100%);
+        }
         .banner-slide-conteudo {
             position: relative; height: 100%; max-width: 1080px; margin: 0 auto; padding: 0 24px;
             display: flex; align-items: center;
         }
-        .banner-slide-texto { max-width: 460px; display: flex; flex-direction: column; gap: 6px; color: #fff; }
-        .banner-slide-texto .titulo { font-size: 24px; font-weight: 700; margin: 0; letter-spacing: -0.01em; }
-        .banner-slide-texto .subtitulo { font-size: 15px; margin: 0; opacity: 0.92; }
+        .banner-slide-conteudo.texto-direita { justify-content: flex-end; }
+        .banner-slide-texto { max-width: 540px; display: flex; flex-direction: column; gap: 10px; color: #fff; }
+        .banner-slide-conteudo.texto-direita .banner-slide-texto { text-align: right; }
+        .banner-slide-texto .titulo { font-size: 34px; font-weight: 700; margin: 0; letter-spacing: -0.015em; line-height: 1.15; }
+        .banner-slide-texto .subtitulo { font-size: 19px; margin: 0; opacity: 0.92; line-height: 1.35; }
         a.banner-slide:hover .titulo { text-decoration: underline; }
         .banner-dots {
             position: absolute; left: 0; right: 0; bottom: 12px; z-index: 2;
@@ -118,7 +123,8 @@
             .banner-carrossel { height: 260px; }
             .banner-slide-conteudo { padding: 0 20px; }
             .banner-slide-texto { max-width: 100%; }
-            .banner-slide-texto .titulo { font-size: 20px; }
+            .banner-slide-texto .titulo { font-size: 26px; }
+            .banner-slide-texto .subtitulo { font-size: 16px; }
         }
 
         /* ---------- Conversor de link no hero ---------- */
@@ -250,9 +256,9 @@
         <div class="banner-carrossel">
             {% for banner in banners %}
                 {% if banner.link %}
-                    <a class="banner-slide{% if forloop.first %} ativo{% endif %}" href="{{ banner.link }}"
+                    <a class="banner-slide{% if forloop.first %} ativo{% endif %}{% if banner.alinhamento == "direita" %} texto-direita{% endif %}" href="{{ banner.link }}"
                        {% if banner.imagem_estatica %}style="background-image: url('{% static banner.imagem_estatica %}')"{% endif %}>
-                        <div class="banner-slide-conteudo">
+                        <div class="banner-slide-conteudo{% if banner.alinhamento == "direita" %} texto-direita{% endif %}">
                             <div class="banner-slide-texto">
                                 <p class="titulo">{{ banner.texto }}</p>
                                 {% if banner.subtexto %}<p class="subtitulo">{{ banner.subtexto }}</p>{% endif %}
@@ -260,9 +266,9 @@
                         </div>
                     </a>
                 {% else %}
-                    <div class="banner-slide{% if forloop.first %} ativo{% endif %}"
+                    <div class="banner-slide{% if forloop.first %} ativo{% endif %}{% if banner.alinhamento == "direita" %} texto-direita{% endif %}"
                          {% if banner.imagem_estatica %}style="background-image: url('{% static banner.imagem_estatica %}')"{% endif %}>
-                        <div class="banner-slide-conteudo">
+                        <div class="banner-slide-conteudo{% if banner.alinhamento == "direita" %} texto-direita{% endif %}">
                             <div class="banner-slide-texto">
                                 <p class="titulo">{{ banner.texto }}</p>
                                 {% if banner.subtexto %}<p class="subtitulo">{{ banner.subtexto }}</p>{% endif %}
