@@ -114,8 +114,35 @@
             border: 1px dashed var(--line); text-align: center;
         }
         .conversor-hero .resultado-titulo { margin: 0 0 6px; font-size: 13px; color: var(--muted); }
-        .conversor-hero .resultado-titulo.resultado-ok { color: var(--success); font-weight: 600; }
+        .conversor-hero .resultado-titulo.resultado-ok { color: var(--success); font-weight: 600; font-size: 14px; }
+        .conversor-hero .resultado-sub { margin: 0 0 8px; font-size: 12px; color: var(--muted); }
         .conversor-hero .resultado-url { display: block; word-break: break-all; font-size: 13px; font-weight: 600; font-family: "JB Mono", ui-monospace, monospace; }
+
+        .selo-sucesso { position: relative; width: 28px; height: 28px; margin: 0 auto 8px; }
+        .selo-sucesso svg { animation: selo-pop 0.5s cubic-bezier(0.34, 1.56, 0.64, 1) both; }
+        .confete {
+            position: absolute; top: 50%; left: 50%; width: 5px; height: 5px; border-radius: 50%;
+            opacity: 0; animation: confete-burst 0.7s ease-out both;
+        }
+        .confete-1 { background: var(--brand); animation-delay: 0.05s; --tx: -22px; --ty: -18px; }
+        .confete-2 { background: var(--success); animation-delay: 0.08s; --tx: 20px; --ty: -20px; }
+        .confete-3 { background: var(--highlight); animation-delay: 0.02s; --tx: -26px; --ty: 6px; }
+        .confete-4 { background: var(--brand); animation-delay: 0.12s; --tx: 26px; --ty: 4px; }
+        .confete-5 { background: var(--success); animation-delay: 0.1s; --tx: -10px; --ty: -28px; }
+        .confete-6 { background: var(--highlight); animation-delay: 0.06s; --tx: 12px; --ty: -26px; }
+        @keyframes selo-pop {
+            0% { transform: scale(0); opacity: 0; }
+            60% { transform: scale(1.15); opacity: 1; }
+            100% { transform: scale(1); opacity: 1; }
+        }
+        @keyframes confete-burst {
+            0% { transform: translate(-50%, -50%) translate(0, 0) scale(1); opacity: 1; }
+            100% { transform: translate(-50%, -50%) translate(var(--tx), var(--ty)) scale(0.4); opacity: 0; }
+        }
+        @media (prefers-reduced-motion: reduce) {
+            .selo-sucesso svg { animation: none; }
+            .confete { display: none; }
+        }
 
         @media (max-width: 860px) {
             .hero { padding-top: 32px; }
@@ -298,7 +325,20 @@
                     </form>
                     <div class="resultado-link">
                         {% if link_convertido %}
-                            <p class="resultado-titulo resultado-ok">Link convertido com sucesso:</p>
+                            <div class="selo-sucesso">
+                                <svg viewBox="0 0 24 24" width="28" height="28" fill="none" aria-hidden="true">
+                                    <circle cx="12" cy="12" r="11" fill="var(--success)"/>
+                                    <path d="M7 12.5l3 3 7-7" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                                </svg>
+                                <span class="confete confete-1"></span>
+                                <span class="confete confete-2"></span>
+                                <span class="confete confete-3"></span>
+                                <span class="confete confete-4"></span>
+                                <span class="confete confete-5"></span>
+                                <span class="confete confete-6"></span>
+                            </div>
+                            <p class="resultado-titulo resultado-ok">Cashback ativado! 🎉</p>
+                            <p class="resultado-sub">Agora é só concluir sua compra na Shopee.</p>
                             <a href="{{ link_convertido }}" target="_blank" rel="noopener noreferrer" class="resultado-url">{{ link_convertido }}</a>
                         {% else %}
                             <p class="resultado-titulo">O link convertido aparecerá aqui.</p>
