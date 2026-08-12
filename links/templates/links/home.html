@@ -122,7 +122,7 @@
             .hero-grid { flex-direction: column; }
             .hero-text { text-align: center; }
             .hero-text p.subtitulo { margin-left: auto; margin-right: auto; }
-            .hero-graphic-panel { max-width: 280px; }
+            .hero-graphic { display: none; }
             .nav .envolve { flex-wrap: wrap; height: auto; padding: 10px 24px; row-gap: 10px; }
             .nav .marca { order: 1; }
             .nav .botao-cta { order: 2; margin-left: auto; }
@@ -185,6 +185,7 @@
 
         /* ---------- Oferta em destaque ---------- */
         #oferta-destaque { padding-top: 8px; }
+        #oferta-destaque .titulo-secao { margin-bottom: 20px; }
         .destaque-cartao {
             display: flex; background: var(--paper); border: 1px solid var(--line); border-radius: 20px;
             overflow: hidden; align-items: stretch;
@@ -196,11 +197,7 @@
             font-size: 14px; font-weight: 700; padding: 5px 12px; border-radius: 12px;
         }
         .destaque-corpo { flex: 1; padding: 36px 40px; display: flex; flex-direction: column; justify-content: center; gap: 12px; }
-        .destaque-eyebrow {
-            display: inline-flex; align-self: flex-start; background: var(--highlight); color: var(--highlight-ink);
-            font-size: 12px; font-weight: 700; padding: 5px 12px; border-radius: 12px; letter-spacing: 0.02em;
-        }
-        .destaque-corpo h2 { font-size: 24px; line-height: 1.35; margin: 0; letter-spacing: -0.01em; }
+        .destaque-corpo h3 { font-size: 24px; line-height: 1.35; margin: 0; letter-spacing: -0.01em; font-weight: 700; }
         .destaque-preco-linha { display: flex; align-items: baseline; gap: 12px; flex-wrap: wrap; }
         .destaque-preco { font-family: "JB Mono", ui-monospace, monospace; font-size: 30px; font-weight: 500; }
         .destaque-cashback { color: var(--success); font-weight: 700; font-size: 15px; }
@@ -315,6 +312,7 @@
     {% if oferta_destaque %}
     <section id="oferta-destaque">
         <div class="envolve">
+            <h2 class="titulo-secao">Oferta do dia</h2>
             <div class="destaque-cartao">
                 <div class="destaque-imagem">
                     {% if oferta_destaque.percentual_desconto %}
@@ -325,8 +323,7 @@
                     {% endif %}
                 </div>
                 <div class="destaque-corpo">
-                    <span class="destaque-eyebrow">Oferta do dia</span>
-                    <h2>{{ oferta_destaque.nome_curto|default:oferta_destaque.nome }}</h2>
+                    <h3>{{ oferta_destaque.nome_curto|default:oferta_destaque.nome }}</h3>
                     <div class="destaque-preco-linha">
                         <span class="destaque-preco">R$ {{ oferta_destaque.preco_min|floatformat:2 }}</span>
                         {% if oferta_destaque.percentual_cashback %}
