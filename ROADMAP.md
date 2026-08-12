@@ -206,6 +206,11 @@ paralelo (ver acima) — as duas foram reconciliadas em 2026-08-12, ver
       venda direta x indireta), com link direto na nav. O id `#como-funciona`
       antigo (venda direta x indireta) virou `#maximizar-cashback`, mais
       fiel ao conteúdo dele. (`links/templates/links/home.html`)
+- [x] **Microanimação de recompensa** — depois de gerar o link no conversor
+      do hero: selo verde com check faz um "pop", acompanhado de confete
+      discreto (nas cores da marca). Copy trocada pra "Cashback ativado! 🎉"
+      / "Agora é só concluir sua compra na Shopee." Respeita
+      `prefers-reduced-motion`. (`links/templates/links/home.html`)
 - [x] **Barra de progresso de saque** — "R$ X de R$ Y pra sacar" no painel
       (`accounts/templates/accounts/dashboard.html`), usando
       `SAQUE_VALOR_MINIMO` que já existe.
