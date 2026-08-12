@@ -104,7 +104,7 @@ completo e as opções de identidade comparadas antes de escolher.
 - [x] **Cashback em R$ além de %** — `Oferta.valor_cashback_estimado`,
       mostrado nos cards de oferta (home e `/ofertas/`, via partial
       compartilhado `ofertas/templates/ofertas/_card.html`).
-- [ ] **Barra de progresso de saque** — "R$ X de R$ Y pra sacar" no painel
+- [x] **Barra de progresso de saque** — "R$ X de R$ Y pra sacar" no painel
       (`accounts/templates/accounts/dashboard.html`), usando
       `SAQUE_VALOR_MINIMO` que já existe.
 - [ ] **Busca na navegação** — hoje a busca só existe dentro de `/ofertas/`;
