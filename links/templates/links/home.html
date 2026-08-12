@@ -39,7 +39,13 @@
             gap: 32px;
             height: 64px;
         }
-        .nav .marca { font-size: 33px; color: var(--brand); flex-shrink: 0; white-space: nowrap; margin-right: auto; }
+        .nav .marca { font-size: 33px; color: var(--brand); flex-shrink: 0; white-space: nowrap; }
+        .nav-busca { flex: 1 1 auto; max-width: 360px; margin-right: auto; }
+        .nav-busca input {
+            width: 100%; height: 36px; padding: 0 16px; border: 1px solid var(--line); border-radius: 18px;
+            font-family: inherit; font-size: 13px; background: var(--paper-2); color: var(--ink);
+        }
+        .nav-busca input:focus { outline: 2px solid var(--brand); outline-offset: 1px; }
         .nav-secundario { display: flex; align-items: center; gap: 32px; font-size: 14px; }
         .nav-secundario a { color: var(--ink); }
         .nav-secundario form { margin: 0; }
@@ -113,6 +119,7 @@
             .nav .marca { order: 1; }
             .nav .botao-cta { order: 2; }
             .nav .nav-secundario { order: 3; flex-basis: 100%; justify-content: space-between; }
+            .nav-busca { order: 4; flex-basis: 100%; max-width: none; margin-right: 0; }
         }
 
         /* ---------- Seção genérica ---------- */
@@ -250,6 +257,9 @@
     <nav class="nav">
         <div class="envolve">
             <span class="marca">cash-b</span>
+            <form class="nav-busca" method="get" action="{% url 'ofertas_lista' %}">
+                <input type="search" name="q" placeholder="Buscar produtos ou ofertas..." aria-label="Buscar ofertas">
+            </form>
             <div class="nav-secundario">
                 <a class="botao-ofertas" href="{% url 'ofertas_lista' %}">Ofertas</a>
                 {% if user.is_authenticated %}

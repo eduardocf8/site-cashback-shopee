@@ -107,8 +107,9 @@ completo e as opções de identidade comparadas antes de escolher.
 - [x] **Barra de progresso de saque** — "R$ X de R$ Y pra sacar" no painel
       (`accounts/templates/accounts/dashboard.html`), usando
       `SAQUE_VALOR_MINIMO` que já existe.
-- [ ] **Busca na navegação** — hoje a busca só existe dentro de `/ofertas/`;
-      o documento de pesquisa sugere um campo de busca já no header.
+- [x] **Busca na navegação** — campo de busca no header da home
+      (`links/templates/links/home.html`), submete pra
+      `/ofertas/?q=...` (reaproveita o filtro `q` que já existia lá).
 - [ ] **Cashback turbinado / campanhas** — badges de urgência reais (ex:
       comissão extra ativa numa categoria) usando o âmbar — só quando for
       informação verdadeira, nunca inventada.
