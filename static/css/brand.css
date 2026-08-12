@@ -90,6 +90,40 @@ body {
     z-index: -1;
 }
 
+/* card de oferta — compartilhado entre a home (Em alta) e /ofertas/ (grade completa).
+   Ver ofertas/templates/ofertas/_card.html pro markup. */
+.grade-ofertas {
+    display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 20px;
+}
+.oferta-cartao {
+    background: var(--paper); border: 1px solid var(--line); border-radius: 12px; overflow: hidden;
+    display: flex; flex-direction: column;
+}
+.oferta-cartao .imagem { position: relative; aspect-ratio: 1 / 1; background: var(--paper-2); }
+.oferta-cartao .imagem img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.oferta-cartao .desconto {
+    position: absolute; top: 8px; left: 8px; background: var(--danger); color: #fff;
+    font-size: 12px; font-weight: 700; padding: 3px 8px; border-radius: 10px;
+}
+.oferta-cartao .cashback {
+    position: absolute; top: 8px; right: 8px; background: var(--success); color: #fff;
+    font-size: 11px; font-weight: 700; padding: 4px 8px; border-radius: 10px;
+    line-height: 1.3; text-align: right;
+}
+.oferta-cartao .cashback .valor-rs { display: block; font-family: "JB Mono", monospace; }
+.oferta-cartao .corpo { padding: 14px; display: flex; flex-direction: column; gap: 6px; flex: 1; }
+.oferta-cartao .nome { font-size: 14px; line-height: 1.4; max-height: 2.8em; overflow: hidden; color: var(--ink); }
+.oferta-cartao .categoria { font-size: 12px; color: var(--muted); }
+.oferta-cartao .preco { font-family: "JB Mono", monospace; font-size: 17px; font-weight: 500; margin-top: auto; color: var(--ink); }
+.oferta-cartao .botao-cta { text-align: center; margin: 4px 14px 14px; }
+
+/* carrossel horizontal (Em alta, na home) */
+.carrossel-ofertas {
+    display: flex; gap: 16px; overflow-x: auto; padding: 4px 4px 12px; scroll-snap-type: x proximity;
+    -webkit-overflow-scrolling: touch;
+}
+.carrossel-ofertas .oferta-cartao { flex: 0 0 200px; scroll-snap-align: start; }
+
 /* banner de instalação do PWA (Android: botão real; iOS: instrução) */
 .pwa-banner {
     position: fixed;

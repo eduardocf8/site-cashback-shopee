@@ -1,0 +1,25 @@
+<div class="oferta-cartao">
+    <div class="imagem">
+        {% if oferta.percentual_desconto %}
+            <span class="desconto">-{{ oferta.percentual_desconto }}%</span>
+        {% endif %}
+        {% if oferta.percentual_cashback %}
+            <span class="cashback">{{ oferta.percentual_cashback }}%<span class="valor-rs">R$ {{ oferta.valor_cashback_estimado|floatformat:2 }}</span></span>
+        {% endif %}
+        {% if oferta.imagem_url %}
+            <img src="{{ oferta.imagem_url }}" alt="" loading="lazy">
+        {% endif %}
+    </div>
+    <div class="corpo">
+        <div class="categoria">{{ oferta.categoria_nome|default:"—" }}</div>
+        <div class="nome">{{ oferta.nome_curto|default:oferta.nome }}</div>
+        <div class="preco">
+            {% if oferta.preco_min != oferta.preco_max %}
+                R$ {{ oferta.preco_min|floatformat:2 }} – R$ {{ oferta.preco_max|floatformat:2 }}
+            {% else %}
+                R$ {{ oferta.preco_min|floatformat:2 }}
+            {% endif %}
+        </div>
+    </div>
+    <a class="botao-cta" href="{% url 'ofertas_ir' oferta.id %}">Ir pra oferta</a>
+</div>

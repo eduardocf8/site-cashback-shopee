@@ -44,6 +44,13 @@ class Oferta(models.Model):
         repasse = Decimal(str(settings.SHOPEE_CASHBACK_PERCENTUAL)) / Decimal("100")
         return (self.percentual_comissao * Decimal("100") * repasse).quantize(Decimal("0.1"))
 
+    @property
+    def valor_cashback_estimado(self) -> Decimal:
+        """Estimativa em R$ do cashback sobre o preço mínimo, pra mostrar o valor junto
+        do percentual (percentual sozinho é mais abstrato) - mesma fórmula de
+        percentual_cashback, só que aplicada em cima do preço em vez de só o percentual."""
+        return (self.preco_min * self.percentual_cashback / Decimal("100")).quantize(Decimal("0.01"))
+
 
 class NomeCurtoCache(models.Model):
     """Cache de nomes já encurtados pelo Gemini, guardado à parte da Oferta porque a

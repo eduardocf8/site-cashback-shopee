@@ -6,10 +6,15 @@ from django.contrib.auth.decorators import login_required
 from django.shortcuts import redirect, render
 from django.urls import reverse
 
+from ofertas.services import categorias_mais_vendidas, selecionar_top_ofertas_sem_duplicar
+
 from .forms import LinkProdutoForm
 from .models import Click
 from .services import gerar_click
 from .shopee_client import ShopeeAPIError, ShopeeConfigError, SubIdInvalidoError
+
+NUMERO_OFERTAS_EM_ALTA = 8
+NUMERO_CATEGORIAS_HOME = 6
 
 
 def home(request):
@@ -33,7 +38,20 @@ def home(request):
             inicial["url_produto"] = request.GET["url_produto"]
         form = LinkProdutoForm(initial=inicial)
 
-    return render(request, "links/home.html", {"form": form, "link_convertido": link_convertido})
+    # A oferta em destaque é a mais vendida do momento; "em alta" são as próximas,
+    # sem repetir o mesmo produto (ver selecionar_top_ofertas_sem_duplicar).
+    top_ofertas = selecionar_top_ofertas_sem_duplicar(1 + NUMERO_OFERTAS_EM_ALTA)
+    oferta_destaque = top_ofertas[0] if top_ofertas else None
+    ofertas_em_alta = top_ofertas[1:]
+    categorias_home = categorias_mais_vendidas(NUMERO_CATEGORIAS_HOME)
+
+    return render(request, "links/home.html", {
+        "form": form,
+        "link_convertido": link_convertido,
+        "oferta_destaque": oferta_destaque,
+        "ofertas_em_alta": ofertas_em_alta,
+        "categorias_home": categorias_home,
+    })
 
 
 @login_required

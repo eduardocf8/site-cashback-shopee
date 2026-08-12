@@ -66,29 +66,7 @@
             .filtro-secao button { flex: 1 1 100%; }
         }
 
-        .grade-ofertas {
-            display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 20px;
-            padding: 8px 0 40px;
-        }
-        .oferta-cartao {
-            background: var(--paper); border: 1px solid var(--line); border-radius: 12px; overflow: hidden;
-            display: flex; flex-direction: column;
-        }
-        .oferta-cartao .imagem { position: relative; aspect-ratio: 1 / 1; background: var(--paper-2); }
-        .oferta-cartao .imagem img { width: 100%; height: 100%; object-fit: cover; display: block; }
-        .oferta-cartao .desconto {
-            position: absolute; top: 8px; left: 8px; background: var(--danger); color: #fff;
-            font-size: 12px; font-weight: 700; padding: 3px 8px; border-radius: 10px;
-        }
-        .oferta-cartao .cashback {
-            position: absolute; top: 8px; right: 8px; background: var(--success); color: #fff;
-            font-size: 12px; font-weight: 700; padding: 3px 8px; border-radius: 10px;
-        }
-        .oferta-cartao .corpo { padding: 14px; display: flex; flex-direction: column; gap: 6px; flex: 1; }
-        .oferta-cartao .nome { font-size: 14px; line-height: 1.4; max-height: 2.8em; overflow: hidden; }
-        .oferta-cartao .categoria { font-size: 12px; color: var(--muted); }
-        .oferta-cartao .preco { font-family: "JB Mono", ui-monospace, monospace; font-size: 17px; font-weight: 500; margin-top: auto; }
-        .oferta-cartao .botao-cta { text-align: center; margin: 4px 14px 14px; }
+        .grade-ofertas { padding: 8px 0 40px; }
 
         .vazio { color: var(--muted); font-size: 14px; padding: 60px 20px; text-align: center; }
 
@@ -169,31 +147,7 @@
         {% if ofertas %}
             <div class="grade-ofertas">
                 {% for oferta in ofertas %}
-                    <div class="oferta-cartao">
-                        <div class="imagem">
-                            {% if oferta.percentual_desconto %}
-                                <span class="desconto">-{{ oferta.percentual_desconto }}%</span>
-                            {% endif %}
-                            {% if oferta.percentual_cashback %}
-                                <span class="cashback">{{ oferta.percentual_cashback }}% cashback</span>
-                            {% endif %}
-                            {% if oferta.imagem_url %}
-                                <img src="{{ oferta.imagem_url }}" alt="" loading="lazy">
-                            {% endif %}
-                        </div>
-                        <div class="corpo">
-                            <div class="categoria">{{ oferta.categoria_nome|default:"—" }}</div>
-                            <div class="nome">{{ oferta.nome_curto|default:oferta.nome }}</div>
-                            <div class="preco">
-                                {% if oferta.preco_min != oferta.preco_max %}
-                                    R$ {{ oferta.preco_min|floatformat:2 }} – R$ {{ oferta.preco_max|floatformat:2 }}
-                                {% else %}
-                                    R$ {{ oferta.preco_min|floatformat:2 }}
-                                {% endif %}
-                            </div>
-                        </div>
-                        <a class="botao-cta" href="{% url 'ofertas_ir' oferta.id %}">Ir pra oferta</a>
-                    </div>
+                    {% include "ofertas/_card.html" %}
                 {% endfor %}
             </div>
 
