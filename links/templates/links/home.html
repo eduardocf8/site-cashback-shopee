@@ -160,6 +160,22 @@
             .reveal { transition: none; opacity: 1; transform: none; }
         }
 
+        /* ---------- Como funciona (3 passos) ---------- */
+        .passos { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 24px; }
+        .passo {
+            background: var(--paper); border: 1px solid var(--line); border-radius: 12px;
+            padding: 28px 22px; text-align: center;
+        }
+        .passo-numero {
+            display: flex; align-items: center; justify-content: center; width: 36px; height: 36px;
+            margin: 0 auto 14px; border-radius: 50%; background: var(--brand); color: var(--paper);
+            font-weight: 700; font-size: 15px;
+        }
+        .passo h3 { font-size: 16px; margin: 0 0 8px; }
+        .passo p { font-size: 14px; color: var(--muted); margin: 0; line-height: 1.5; }
+        .passos .reveal:nth-child(2) { transition-delay: 0.08s; }
+        .passos .reveal:nth-child(3) { transition-delay: 0.16s; }
+
         /* ---------- Comparação direta x indireta ---------- */
         .comparativo { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 24px; }
         .comparativo .cartao {
@@ -235,6 +251,7 @@
             </form>
             <div class="nav-secundario">
                 <a href="{% url 'ofertas_lista' %}">Ofertas</a>
+                <a href="#como-funciona">Como funciona</a>
                 {% if user.is_authenticated %}
                     <a href="{% url 'dashboard' %}">Minha conta</a>
                     <form method="post" action="{% url 'logout' %}">
@@ -364,6 +381,29 @@
     </section>
     {% endif %}
 
+    <section id="como-funciona" class="fundo-suave">
+        <div class="envolve">
+            <h2 class="titulo-secao">Como funciona</h2>
+            <div class="passos">
+                <div class="passo reveal">
+                    <span class="passo-numero">1</span>
+                    <h3>Encontre a oferta</h3>
+                    <p>Explore a vitrine aqui na home ou cole o link de um produto específico da Shopee.</p>
+                </div>
+                <div class="passo reveal">
+                    <span class="passo-numero">2</span>
+                    <h3>Compre pelo cash-b</h3>
+                    <p>Finalize a compra normalmente, usando o link gerado ou a oferta que você acessou por aqui.</p>
+                </div>
+                <div class="passo reveal">
+                    <span class="passo-numero">3</span>
+                    <h3>Receba seu cashback</h3>
+                    <p>Depois que a Shopee validar o pedido, o valor cai na sua conta — é só sacar via PIX.</p>
+                </div>
+            </div>
+        </div>
+    </section>
+
     <section id="beneficios">
         <div class="envolve">
             <h2 class="titulo-secao">Por que usar o <span class="destaque-marca">cash-b</span>?</h2>
@@ -392,7 +432,7 @@
         </div>
     </section>
 
-    <section class="fundo-suave" id="como-funciona">
+    <section class="fundo-suave" id="maximizar-cashback">
         <div class="envolve">
             <h2 class="titulo-secao">Como ganhar mais cashback?</h2>
             <p class="intro-secao">Gerar links de produtos te dá mais cashback do que somente clicar no botão de ir pra Shopee. Entenda abaixo o porquê.</p>
