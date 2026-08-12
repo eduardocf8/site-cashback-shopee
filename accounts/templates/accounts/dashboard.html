@@ -283,7 +283,7 @@
                     <a class="botao-cta" href="{% url 'editar_chave_pix' %}">Cadastrar chave PIX</a>
                 {% else %}
                     <div class="chave-pix-linha">
-                        <span class="chave-pix-label">Chave PIX</span>
+                        <span class="chave-pix-label">Chave PIX:</span>
                         <span class="chave-pix-tipo">{{ user.get_tipo_chave_pix_display }}</span>
                         <span class="chave-pix-valor">{{ user.chave_pix }}</span>
                         <button type="button" class="botao-editar-chave" onclick="modalChavePix.showModal()">Editar</button>
