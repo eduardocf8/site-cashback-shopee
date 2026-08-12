@@ -106,9 +106,8 @@ body {
     font-size: 12px; font-weight: 700; padding: 3px 8px; border-radius: 10px;
 }
 .oferta-cartao .cashback {
-    position: absolute; top: 8px; right: 8px; left: 44px; background: var(--success); color: #fff;
-    font-size: 10.5px; font-weight: 700; padding: 4px 8px; border-radius: 10px;
-    line-height: 1.25; text-align: right;
+    position: absolute; top: 8px; right: 8px; background: var(--success); color: #fff;
+    font-size: 12px; font-weight: 700; padding: 3px 8px; border-radius: 10px;
 }
 .oferta-cartao .corpo { padding: 14px; display: flex; flex-direction: column; gap: 6px; flex: 1; }
 .oferta-cartao .nome { font-size: 14px; line-height: 1.4; max-height: 2.8em; overflow: hidden; color: var(--ink); }
