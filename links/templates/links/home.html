@@ -273,6 +273,10 @@
         /* ---------- Rodapé ---------- */
         footer { padding: 32px 0; text-align: center; font-size: 13px; color: var(--muted); }
         .rodape-links { display: flex; justify-content: center; gap: 20px; flex-wrap: wrap; margin-bottom: 12px; }
+        .rodape-redes { display: flex; justify-content: center; gap: 14px; margin-bottom: 12px; }
+        .rodape-redes a { display: inline-flex; color: var(--muted); }
+        .rodape-redes a:hover { color: var(--brand); }
+        .rodape-redes svg { width: 20px; height: 20px; }
     </style>
 </head>
 <body>
@@ -522,6 +526,15 @@
                 <a href="{% url 'termos_de_uso' %}">Termos de Uso</a>
                 <a href="{% url 'privacidade' %}">Privacidade</a>
                 <a href="{% url 'cookies' %}">Cookies</a>
+            </div>
+            <div class="rodape-redes">
+                <a href="https://www.instagram.com/usecashback/" target="_blank" rel="noopener noreferrer" aria-label="cash-b no Instagram">
+                    <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+                        <rect x="3" y="3" width="18" height="18" rx="5" stroke="currentColor" stroke-width="1.8"/>
+                        <circle cx="12" cy="12" r="4" stroke="currentColor" stroke-width="1.8"/>
+                        <circle cx="17.5" cy="6.5" r="1.2" fill="currentColor"/>
+                    </svg>
+                </a>
             </div>
             cash-b — afiliado independente Shopee
         </div>
