@@ -5,8 +5,6 @@ from unittest.mock import patch
 from django.contrib.auth import get_user_model
 from django.test import TestCase, override_settings
 
-from paginas.models import Banner
-
 from .models import Click
 from .shopee_client import (
     ShopeeAPIError,
@@ -163,45 +161,3 @@ class GerarLinkViewTests(TestCase):
         self.client.logout()
         resposta = self.client.get("/links/")
         self.assertRedirects(resposta, "/login/?next=/links/")
-
-
-class HomeBannerTests(TestCase):
-    def setUp(self):
-        # A migração de dados 0003 semeia 2 banners reais (inauguração/ofertas) - os testes
-        # abaixo querem controlar o estado deles diretamente, então partem de uma base limpa.
-        Banner.objects.all().delete()
-
-    def test_sem_banners_ativos_nao_mostra_a_faixa(self):
-        resposta = self.client.get("/")
-        self.assertNotContains(resposta, '<div class="banner-carrossel">')
-
-    def test_banner_inativo_nao_aparece(self):
-        Banner.objects.create(texto="Promoção escondida", ativo=False)
-        resposta = self.client.get("/")
-        self.assertNotContains(resposta, "Promoção escondida")
-
-    def test_banner_ativo_aparece_com_botao(self):
-        Banner.objects.create(
-            texto="Cashback em dobro!", botao_texto="Ver ofertas", botao_link="/ofertas/", ativo=True
-        )
-        resposta = self.client.get("/")
-        self.assertContains(resposta, "Cashback em dobro!")
-        self.assertContains(resposta, "Ver ofertas")
-        self.assertContains(resposta, 'href="/ofertas/"')
-
-    def test_banner_sem_imagem_usa_layout_centralizado(self):
-        Banner.objects.create(texto="Sem foto", ativo=True)
-        resposta = self.client.get("/")
-        self.assertContains(resposta, 'class="banner-slide ativo centro"')
-
-    def test_titulo_permite_mark_pra_destacar_palavra(self):
-        Banner.objects.create(texto="Cashback em <mark>DOBRO</mark>", ativo=True)
-        resposta = self.client.get("/")
-        self.assertContains(resposta, "Cashback em <mark>DOBRO</mark>")
-
-    def test_banners_aparecem_na_ordem_configurada(self):
-        Banner.objects.create(texto="Segundo", ordem=2, ativo=True)
-        Banner.objects.create(texto="Primeiro", ordem=1, ativo=True)
-        resposta = self.client.get("/")
-        conteudo = resposta.content.decode()
-        self.assertLess(conteudo.index("Primeiro"), conteudo.index("Segundo"))

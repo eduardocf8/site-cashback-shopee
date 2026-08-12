@@ -7,7 +7,7 @@
     <link rel="icon" type="image/svg+xml" href="{% static 'favicon.svg' %}">
     <link rel="apple-touch-icon" href="{% static 'icons/icon-180.png' %}">
     <link rel="manifest" href="{% static 'manifest.json' %}">
-    <meta name="theme-color" content="#1b5e44">
+    <meta name="theme-color" content="#6d28d9">
     <meta name="mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="default">
@@ -39,7 +39,16 @@
             gap: 32px;
             height: 64px;
         }
-        .nav .marca { font-size: 33px; color: var(--brand); flex-shrink: 0; white-space: nowrap; margin-right: auto; }
+        .nav .marca {
+            font-size: 33px; line-height: 1; color: var(--brand); flex-shrink: 0; white-space: nowrap;
+            transform: translateY(-1.5px);
+        }
+        .nav-busca { flex: 1 1 auto; max-width: 360px; margin-right: auto; }
+        .nav-busca input {
+            width: 100%; height: 36px; padding: 0 16px; border: 1px solid var(--line); border-radius: 18px;
+            font-family: inherit; font-size: 13px; background: var(--paper-2); color: var(--ink);
+        }
+        .nav-busca input:focus { outline: 2px solid var(--brand); outline-offset: 1px; }
         .nav-secundario { display: flex; align-items: center; gap: 32px; font-size: 14px; }
         .nav-secundario a { color: var(--ink); }
         .nav-secundario form { margin: 0; }
@@ -85,67 +94,6 @@
         }
         .hero-graphic-panel svg { width: 68%; height: auto; }
 
-        /* ---------- Banner de campanha/anúncio ---------- */
-        .banner-carrossel { position: relative; height: 300px; overflow: hidden; }
-        .banner-slide {
-            display: none; position: absolute; inset: 0; background-color: var(--brand-strong);
-            background-size: cover; background-position: center;
-        }
-        .banner-slide.ativo { display: block; }
-        .banner-slide::before {
-            content: ""; position: absolute; inset: 0;
-            background: linear-gradient(90deg, rgba(18, 62, 45, 0.88) 0%, rgba(18, 62, 45, 0.55) 45%, rgba(18, 62, 45, 0.15) 100%);
-        }
-        .banner-slide.texto-direita::before {
-            background: linear-gradient(270deg, rgba(18, 62, 45, 0.88) 0%, rgba(18, 62, 45, 0.55) 45%, rgba(18, 62, 45, 0.15) 100%);
-        }
-        .banner-slide.centro { background: linear-gradient(135deg, var(--brand), var(--brand-strong)); }
-        .banner-slide.centro::before { content: none; }
-        .banner-slide-conteudo {
-            position: relative; height: 100%; max-width: 1080px; margin: 0 auto; padding: 0 24px;
-            display: flex; align-items: center;
-        }
-        .banner-slide-conteudo.texto-direita { justify-content: flex-end; }
-        .banner-slide-conteudo.centralizado { justify-content: center; text-align: center; }
-        .banner-slide-texto { max-width: 540px; display: flex; flex-direction: column; gap: 12px; color: #fff; }
-        .banner-slide-conteudo.texto-direita .banner-slide-texto { text-align: right; }
-        .banner-slide-conteudo.centralizado .banner-slide-texto { max-width: 620px; align-items: center; }
-        .banner-slide-texto .selo {
-            font-size: 13px; font-weight: 700; letter-spacing: 0.04em; text-transform: uppercase; opacity: 0.85;
-        }
-        .banner-slide-texto .titulo { font-size: 34px; font-weight: 700; margin: 0; letter-spacing: -0.015em; line-height: 1.15; }
-        .banner-slide-texto .titulo mark {
-            background: var(--highlight); color: var(--highlight-ink); padding: 0 8px; border-radius: 6px;
-        }
-        .banner-slide-texto .subtitulo { font-size: 18px; margin: 0; opacity: 0.92; line-height: 1.4; }
-        .banner-slide-texto .botoes { display: flex; align-items: center; gap: 20px; flex-wrap: wrap; margin-top: 4px; }
-        .banner-slide-conteudo.centralizado .banner-slide-texto .botoes { justify-content: center; }
-        .banner-slide-texto .botoes .botao-cta {
-            background: var(--highlight); color: var(--highlight-ink) !important; text-decoration: none;
-            font-size: 15px; padding: 12px 26px;
-        }
-        .banner-slide-texto .botoes .botao-cta:hover { filter: brightness(0.94); }
-        .banner-slide-texto .botoes .link-secundario-banner {
-            color: #fff; font-size: 15px; font-weight: 600; text-decoration: underline;
-        }
-        .banner-slide-texto .botoes .link-secundario-banner:hover { opacity: 0.85; }
-        .banner-dots {
-            position: absolute; left: 0; right: 0; bottom: 12px; z-index: 2;
-            display: flex; justify-content: center; gap: 6px;
-        }
-        .banner-dot {
-            width: 7px; height: 7px; border-radius: 50%; background: rgba(255, 255, 255, 0.45);
-            border: none; padding: 0; cursor: pointer;
-        }
-        .banner-dot.ativo { background: #fff; }
-        @media (max-width: 640px) {
-            .banner-carrossel { height: 380px; }
-            .banner-slide-conteudo { padding: 0 20px; }
-            .banner-slide-texto { max-width: 100%; }
-            .banner-slide-texto .titulo { font-size: 26px; }
-            .banner-slide-texto .subtitulo { font-size: 16px; }
-        }
-
         /* ---------- Conversor de link no hero ---------- */
         .conversor-hero {
             background: var(--paper); border: 1px solid var(--line); border-radius: 14px; padding: 24px;
@@ -178,6 +126,7 @@
             .nav .marca { order: 1; }
             .nav .botao-cta { order: 2; }
             .nav .nav-secundario { order: 3; flex-basis: 100%; justify-content: space-between; }
+            .nav-busca { order: 4; flex-basis: 100%; max-width: none; margin-right: 0; }
         }
 
         /* ---------- Seção genérica ---------- */
@@ -233,13 +182,45 @@
         .comparativo p { font-size: 14px; color: var(--muted); line-height: 1.6; }
         .obs { font-size: 12px; color: var(--muted); margin-top: 40px; text-align: center; }
 
-        /* ---------- Destaque das ofertas ---------- */
-        .ofertas-destaque { background: var(--brand); color: var(--paper); text-align: center; }
-        .ofertas-destaque .titulo-secao { color: var(--paper); margin-bottom: 12px; }
-        .ofertas-destaque .titulo-secao .destaque-marca { color: var(--highlight); }
-        .ofertas-destaque p { max-width: 560px; margin: 0 auto 28px; opacity: 0.88; font-size: 16px; line-height: 1.6; }
-        .ofertas-destaque .botao-cta { background: var(--highlight); color: var(--highlight-ink) !important; }
-        .ofertas-destaque .botao-cta:hover { filter: brightness(0.94); }
+        /* ---------- Oferta em destaque ---------- */
+        #oferta-destaque { padding-top: 8px; }
+        .destaque-cartao {
+            display: flex; background: var(--paper); border: 1px solid var(--line); border-radius: 20px;
+            overflow: hidden; align-items: stretch;
+        }
+        .destaque-imagem { position: relative; flex: 0 0 320px; background: var(--paper-2); aspect-ratio: 1 / 1; }
+        .destaque-imagem img { width: 100%; height: 100%; object-fit: cover; display: block; }
+        .destaque-imagem .desconto {
+            position: absolute; top: 14px; left: 14px; background: var(--danger); color: #fff;
+            font-size: 14px; font-weight: 700; padding: 5px 12px; border-radius: 12px;
+        }
+        .destaque-corpo { flex: 1; padding: 36px 40px; display: flex; flex-direction: column; justify-content: center; gap: 12px; }
+        .destaque-eyebrow {
+            display: inline-flex; align-self: flex-start; background: var(--highlight); color: var(--highlight-ink);
+            font-size: 12px; font-weight: 700; padding: 5px 12px; border-radius: 12px; letter-spacing: 0.02em;
+        }
+        .destaque-corpo h2 { font-size: 24px; line-height: 1.35; margin: 0; letter-spacing: -0.01em; }
+        .destaque-preco-linha { display: flex; align-items: baseline; gap: 12px; flex-wrap: wrap; }
+        .destaque-preco { font-family: "JB Mono", ui-monospace, monospace; font-size: 30px; font-weight: 500; }
+        .destaque-cashback { color: var(--success); font-weight: 700; font-size: 15px; }
+        .destaque-corpo .botao-cta { align-self: flex-start; font-size: 15px; padding: 13px 28px; margin-top: 6px; }
+        @media (max-width: 720px) {
+            .destaque-cartao { flex-direction: column; }
+            .destaque-imagem { flex-basis: auto; }
+            .destaque-corpo { padding: 24px; }
+        }
+
+        /* ---------- Em alta (carrossel) ---------- */
+        #em-alta .titulo-secao { margin-bottom: 20px; }
+        .ver-todas-ofertas { display: block; text-align: center; margin-top: 4px; font-weight: 600; font-size: 14px; }
+
+        /* ---------- Categorias ---------- */
+        .categorias-lista { display: flex; flex-wrap: wrap; gap: 10px; justify-content: center; }
+        .categoria-pill {
+            background: var(--paper); border: 1px solid var(--line); color: var(--ink);
+            font-size: 14px; font-weight: 600; padding: 10px 20px; border-radius: 20px;
+        }
+        .categoria-pill:hover { border-color: var(--brand); color: var(--brand); }
 
 
         /* ---------- Rodapé ---------- */
@@ -251,6 +232,9 @@
     <nav class="nav">
         <div class="envolve">
             <span class="marca">cash-b</span>
+            <form class="nav-busca" method="get" action="{% url 'ofertas_lista' %}">
+                <input type="search" name="q" placeholder="Buscar produtos ou ofertas..." aria-label="Buscar ofertas">
+            </form>
             <div class="nav-secundario">
                 <a href="{% url 'ofertas_lista' %}">Ofertas</a>
                 {% if user.is_authenticated %}
@@ -270,70 +254,6 @@
             {% endif %}
         </div>
     </nav>
-
-    {% if banners %}
-        <div class="banner-carrossel">
-            {% for banner in banners %}
-                <div class="banner-slide{% if forloop.first %} ativo{% endif %}{% if not banner.imagem_estatica %} centro{% elif banner.alinhamento == "direita" %} texto-direita{% endif %}"
-                     {% if banner.imagem_estatica %}style="background-image: url('{% static banner.imagem_estatica %}')"{% endif %}>
-                    <div class="banner-slide-conteudo{% if not banner.imagem_estatica %} centralizado{% elif banner.alinhamento == "direita" %} texto-direita{% endif %}">
-                        <div class="banner-slide-texto">
-                            {% if banner.selo %}<span class="selo">{{ banner.selo }}</span>{% endif %}
-                            <p class="titulo">{{ banner.texto|safe }}</p>
-                            {% if banner.subtexto %}<p class="subtitulo">{{ banner.subtexto }}</p>{% endif %}
-                            {% if banner.botao_texto or banner.botao2_texto %}
-                                <div class="botoes">
-                                    {% if banner.botao_texto %}<a class="botao-cta" href="{{ banner.botao_link }}">{{ banner.botao_texto }}</a>{% endif %}
-                                    {% if banner.botao2_texto %}<a class="link-secundario-banner" href="{{ banner.botao2_link }}">{{ banner.botao2_texto }}</a>{% endif %}
-                                </div>
-                            {% endif %}
-                        </div>
-                    </div>
-                </div>
-            {% endfor %}
-            {% if banners|length > 1 %}
-                <div class="banner-dots">
-                    {% for banner in banners %}
-                        <button type="button" class="banner-dot{% if forloop.first %} ativo{% endif %}" aria-label="Banner {{ forloop.counter }}"></button>
-                    {% endfor %}
-                </div>
-            {% endif %}
-        </div>
-        {% if banners|length > 1 %}
-            <script>
-                (function () {
-                    var slides = document.querySelectorAll(".banner-slide");
-                    var dots = document.querySelectorAll(".banner-dot");
-                    var atual = 0;
-                    var intervalo;
-
-                    function mostrar(indice) {
-                        slides[atual].classList.remove("ativo");
-                        dots[atual].classList.remove("ativo");
-                        atual = indice;
-                        slides[atual].classList.add("ativo");
-                        dots[atual].classList.add("ativo");
-                    }
-
-                    function iniciar() {
-                        intervalo = setInterval(function () {
-                            mostrar((atual + 1) % slides.length);
-                        }, 5000);
-                    }
-
-                    dots.forEach(function (dot, indice) {
-                        dot.addEventListener("click", function () {
-                            clearInterval(intervalo);
-                            mostrar(indice);
-                            iniciar();
-                        });
-                    });
-
-                    iniciar();
-                })();
-            </script>
-        {% endif %}
-    {% endif %}
 
     {% if messages %}
         <div class="envolve">
@@ -390,6 +310,61 @@
             </div>
         </div>
     </header>
+
+    {% if oferta_destaque %}
+    <section id="oferta-destaque">
+        <div class="envolve">
+            <div class="destaque-cartao">
+                <div class="destaque-imagem">
+                    {% if oferta_destaque.percentual_desconto %}
+                        <span class="desconto">-{{ oferta_destaque.percentual_desconto }}%</span>
+                    {% endif %}
+                    {% if oferta_destaque.imagem_url %}
+                        <img src="{{ oferta_destaque.imagem_url }}" alt="" loading="lazy">
+                    {% endif %}
+                </div>
+                <div class="destaque-corpo">
+                    <span class="destaque-eyebrow">Oferta do dia</span>
+                    <h2>{{ oferta_destaque.nome_curto|default:oferta_destaque.nome }}</h2>
+                    <div class="destaque-preco-linha">
+                        <span class="destaque-preco">R$ {{ oferta_destaque.preco_min|floatformat:2 }}</span>
+                        {% if oferta_destaque.percentual_cashback %}
+                            <span class="destaque-cashback">+ R$ {{ oferta_destaque.valor_cashback_estimado|floatformat:2 }} de volta ({{ oferta_destaque.percentual_cashback }}% cashback)</span>
+                        {% endif %}
+                    </div>
+                    <a class="botao-cta" href="{% url 'ofertas_ir' oferta_destaque.id %}">Comprar com cashback &rarr;</a>
+                </div>
+            </div>
+        </div>
+    </section>
+    {% endif %}
+
+    {% if ofertas_em_alta %}
+    <section id="em-alta" class="fundo-suave">
+        <div class="envolve">
+            <h2 class="titulo-secao">Ofertas <span class="destaque-marca">em alta</span></h2>
+            <div class="carrossel-ofertas">
+                {% for oferta in ofertas_em_alta %}
+                    {% include "ofertas/_card.html" %}
+                {% endfor %}
+            </div>
+            <a class="ver-todas-ofertas" href="{% url 'ofertas_lista' %}">Ver todas as ofertas &rarr;</a>
+        </div>
+    </section>
+    {% endif %}
+
+    {% if categorias_home %}
+    <section id="categorias">
+        <div class="envolve">
+            <h2 class="titulo-secao">Navegue por <span class="destaque-marca">categoria</span></h2>
+            <div class="categorias-lista">
+                {% for categoria in categorias_home %}
+                    <a class="categoria-pill" href="{% url 'ofertas_lista' %}?categoria={{ categoria.categoria_id }}">{{ categoria.categoria_nome }}</a>
+                {% endfor %}
+            </div>
+        </div>
+    </section>
+    {% endif %}
 
     <section id="beneficios">
         <div class="envolve">
@@ -448,14 +423,6 @@
                 </div>
             </div>
             <p class="obs">Dica: depois de clicar num link do cash-b, finalize a compra sem passar por outros links de afiliado (de outro site ou app) — assim seu cashback fica garantido.</p>
-        </div>
-    </section>
-
-    <section class="ofertas-destaque">
-        <div class="envolve">
-            <h2 class="titulo-secao">Quer cashback mas não sabe o que <span class="destaque-marca">comprar</span>?</h2>
-            <p>Acesse nossa página de ofertas e veja os melhores produtos com o menor preço — cada um já com o cashback calculado.</p>
-            <a class="botao-cta" href="{% url 'ofertas_lista' %}">Ver ofertas &rarr;</a>
         </div>
     </section>
 

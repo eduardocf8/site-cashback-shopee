@@ -11,15 +11,15 @@ OUT_DIR = Path(__file__).resolve().parent / "posts-semeadura"
 SIZE = 1080
 
 COLORS = {
-    "ink": "#12211a",
-    "ink-soft": "#3c4a41",
-    "muted": "#667069",
-    "brand": "#1b5e44",
-    "brand-strong": "#123e2d",
-    "highlight": "#d8ff5e",
-    "paper": "#f6f7f1",
-    "paper-2": "#eef1e8",
-    "line": "#cdd6c5",
+    "ink": "#111827",
+    "ink-soft": "#374151",
+    "muted": "#6b7280",
+    "brand": "#6d28d9",
+    "brand-strong": "#4c1d95",
+    "highlight": "#f59e0b",
+    "paper": "#f8fafc",
+    "paper-2": "#f1eefb",
+    "line": "#e0dcef",
 }
 
 BASE_CSS = f"""
@@ -144,9 +144,9 @@ render("timeline", f"""
     <div style="display:flex; align-items:center; gap:16px; margin-top:64px;">
         {status_pill("Pendente", COLORS['line'], COLORS['ink-soft'])}
         <div style="font-size:34px; color:{COLORS['muted']};">&rarr;</div>
-        {status_pill("Validado", "#e8f2fa", "#1a6fb0")}
+        {status_pill("Validado", "#eef2ff", "#2563eb")}
         <div style="font-size:34px; color:{COLORS['muted']};">&rarr;</div>
-        {status_pill("Liberado", "#e3f3ea", COLORS['brand'])}
+        {status_pill("Liberado", "#ecfdf5", "#059669")}
     </div>
     <div style="margin-top:36px; font-size:22px; color:{COLORS['muted']}; line-height:1.5; max-width:820px;">
         Pendente: aguardando confirmação da Shopee. Validado: compra confirmada, aguardando prazo. Liberado: já pode sacar via PIX.

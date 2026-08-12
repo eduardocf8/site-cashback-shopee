@@ -98,13 +98,20 @@ def dashboard(request):
         clicks_filtrados = clicks_filtrados.filter(tipo=filtro_clicks)
     clicks_pagina = Paginator(clicks_filtrados, ITENS_POR_PAGINA).get_page(request.GET.get("pagina_clicks"))
 
+    saldo_disponivel = calcular_saldo_disponivel(request.user)
+    saque_valor_minimo = settings.SAQUE_VALOR_MINIMO
+    progresso_saque_percentual = (
+        min(100, int(saldo_disponivel / saque_valor_minimo * 100)) if saque_valor_minimo else 100
+    )
+
     contexto = {
         "saldo_pendente": saldos[Pedido.STATUS_PENDENTE],
         "saldo_validado": saldos[Pedido.STATUS_VALIDADO],
         "saldo_liberado": saldos[Pedido.STATUS_LIBERADO],
         "saldo_cancelado": saldos[Pedido.STATUS_CANCELADO],
-        "saldo_disponivel": calcular_saldo_disponivel(request.user),
-        "saque_valor_minimo": settings.SAQUE_VALOR_MINIMO,
+        "saldo_disponivel": saldo_disponivel,
+        "saque_valor_minimo": saque_valor_minimo,
+        "progresso_saque_percentual": progresso_saque_percentual,
         "clicks": clicks_pagina,
         "pedidos": pedidos_pagina,
         "saques": saques_pagina,
@@ -114,6 +121,7 @@ def dashboard(request):
         "status_pedidos_choices": Pedido.STATUS_CHOICES,
         "status_saques_choices": Saque.STATUS_CHOICES,
         "tipo_clicks_choices": Click.TIPO_CHOICES,
+        "chave_pix_form": ChavePixForm(instance=request.user),
     }
     return render(request, "accounts/dashboard.html", contexto)
 
@@ -130,6 +138,17 @@ def editar_chave_pix(request):
         form = ChavePixForm(instance=request.user)
 
     return render(request, "accounts/chave_pix.html", {"form": form})
+
+
+@login_required
+def excluir_chave_pix(request):
+    if request.method == "POST":
+        request.user.chave_pix = ""
+        request.user.tipo_chave_pix = ""
+        request.user.save(update_fields=["chave_pix", "tipo_chave_pix"])
+        messages.success(request, "Chave PIX removida.")
+
+    return redirect("dashboard")
 
 
 @login_required

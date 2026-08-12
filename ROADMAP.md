@@ -153,6 +153,13 @@ implementando. Cada item pode virar uma conversa própria.
       ativos, alterna sozinha a cada 5s. Zero banners ativos = a faixa
       simplesmente não aparece. Serve tanto pra campanhas de cashback
       quanto pra qualquer outro anúncio (destaque de ofertas, etc.).
+      **Removido em 2026-08-12** (ver Fase 14) — por decisão do dono do
+      produto, na reconciliação com o redesign da vitrine de ofertas: o
+      antigo lugar do banner virou a seção de ofertas em destaque, e não
+      fazia sentido manter as duas coisas competindo pelo mesmo espaço
+      logo abaixo do hero. O multiplicador de campanha (13.7b) continua
+      valendo normalmente, só sem uma forma de anunciar a campanha na
+      home por enquanto.
 - [ ] **13.8 Prova social real** (médio, depende de ter dado/canal) —
       contador de "R$ já pago via PIX", print de um saque real
       anonimizado, ou link pro grupo de WhatsApp/Instagram do cash-b no
@@ -173,6 +180,44 @@ implementando. Cada item pode virar uma conversa própria.
 - [ ] **13.12 Prévia do dashboard na home** (rápido/médio, menor
       prioridade) — print ou mockup da tela de saldo/histórico, pra
       reduzir a incerteza de quem ainda não decidiu se cadastra.
+
+## Fase 14 — Redesign: de "gerador de link" a vitrine de ofertas ✅ (pausada por decisão do dono, ver abaixo)
+
+Motivada por uma pesquisa de UI/UX comparando o cash-b com portais grandes de
+cashback/ofertas (ShopBack, Rakuten, Méliuz, Zoom etc.), trazida pelo dono do
+produto — ver `BRAND.md`, seção "Histórico do redesign", pro racional
+completo e as opções de identidade comparadas antes de escolher. Numerada
+como Fase 14 (não 13) porque, sem essa conversa saber, a branch de produção
+já tinha uma "Fase 13 — Conversão e confiança (CRO)" própria rodando em
+paralelo (ver acima) — as duas foram reconciliadas em 2026-08-12, ver
+`BRAND.md` seção "Reconciliação com a Fase 13 de CRO".
+
+- [x] **Rebrand de identidade visual** — nova paleta roxo (marca/CTA) + verde
+      (dinheiro/cashback) + âmbar (destaque/campanha), substituindo o
+      verde+lima original. (`static/css/brand.css`, `BRAND.md`)
+- [x] **Home vira vitrine** — oferta em destaque, carrossel "Em alta" e
+      categorias mais vendidas logo após o hero, antes da explicação de como
+      funciona. (`links/views.py`, `links/templates/links/home.html`)
+- [x] **Cashback em R$ além de %** — `Oferta.valor_cashback_estimado`,
+      mostrado nos cards de oferta (home e `/ofertas/`, via partial
+      compartilhado `ofertas/templates/ofertas/_card.html`).
+- [x] **Barra de progresso de saque** — "R$ X de R$ Y pra sacar" no painel
+      (`accounts/templates/accounts/dashboard.html`), usando
+      `SAQUE_VALOR_MINIMO` que já existe.
+- [x] **Busca na navegação** — campo de busca no header da home
+      (`links/templates/links/home.html`), submete pra
+      `/ofertas/?q=...` (reaproveita o filtro `q` que já existia lá).
+- [ ] ~~**Cashback turbinado / campanhas**~~ — badges de urgência reais (ex:
+      comissão extra ativa numa categoria) usando o âmbar — só quando for
+      informação verdadeira, nunca inventada. **Pulado por decisão do dono do
+      produto (2026-08-12)** — não é prioridade agora.
+- [ ] ~~**Retenção**~~ (favoritos/alertas de categoria, gamificação só se
+      tiver relação econômica real por trás). **Pulado pelo mesmo motivo** —
+      avaliar de novo quando a base de usuários crescer.
+
+Esses dois itens ficam registrados aqui só pra não serem "reinventados" numa
+conversa futura sem contexto — se quiser retomá-los, é só apontar pra esse
+trecho do roadmap.
 
 ---
 

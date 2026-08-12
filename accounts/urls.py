@@ -9,6 +9,7 @@ urlpatterns = [
     path("logout/", auth_views.LogoutView.as_view(next_page="login"), name="logout"),
     path("dashboard/", views.dashboard, name="dashboard"),
     path("chave-pix/", views.editar_chave_pix, name="editar_chave_pix"),
+    path("chave-pix/excluir/", views.excluir_chave_pix, name="excluir_chave_pix"),
     path("editar-perfil/", views.editar_perfil, name="editar_perfil"),
     path("verificar-email/<str:token>/", views.verificar_email, name="verificar_email"),
     path("reenviar-verificacao/", views.reenviar_verificacao, name="reenviar_verificacao"),
