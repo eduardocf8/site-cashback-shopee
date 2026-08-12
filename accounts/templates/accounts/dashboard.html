@@ -99,6 +99,14 @@
         .caixa-saque .legenda { color: var(--muted); font-size: 13px; }
         .caixa-saque strong { font-family: "JB Mono", ui-monospace, monospace; font-weight: 500; }
 
+        .progresso-saque { margin-bottom: 14px; }
+        .progresso-saque-legenda {
+            display: flex; justify-content: space-between; font-size: 12.5px; color: var(--muted);
+            margin-bottom: 6px; font-family: "JB Mono", ui-monospace, monospace;
+        }
+        .progresso-saque-barra { height: 8px; border-radius: 4px; background: var(--line-soft); overflow: hidden; }
+        .progresso-saque-barra span { display: block; height: 100%; background: var(--success); border-radius: 4px; }
+
         table { width: 100%; border-collapse: collapse; background: var(--paper); border-radius: 12px; overflow: hidden; border: 1px solid var(--line); }
         th, td { text-align: left; padding: 12px 14px; border-bottom: 1px solid var(--line-soft); font-size: 13px; }
         th { background: var(--paper-2); font-weight: 600; color: var(--muted); }
@@ -244,7 +252,14 @@
                             <button type="submit" class="botao-cta">Solicitar saque de R$ {{ saldo_disponivel|floatformat:2 }}</button>
                         </form>
                     {% else %}
-                        <p class="legenda">O saque mínimo é de R$ {{ saque_valor_minimo|floatformat:2 }}. Continue comprando pra acumular saldo liberado.</p>
+                        <div class="progresso-saque">
+                            <div class="progresso-saque-legenda">
+                                <span>R$ {{ saldo_disponivel|floatformat:2 }} de R$ {{ saque_valor_minimo|floatformat:2 }} pra sacar</span>
+                                <span>{{ progresso_saque_percentual }}%</span>
+                            </div>
+                            <div class="progresso-saque-barra"><span style="width: {{ progresso_saque_percentual }}%;"></span></div>
+                        </div>
+                        <p class="legenda">Continue comprando pra acumular saldo liberado.</p>
                     {% endif %}
                 {% endif %}
             </div>
