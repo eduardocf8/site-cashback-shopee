@@ -52,9 +52,30 @@
         .nav-secundario { display: flex; align-items: center; gap: 32px; font-size: 14px; }
         .nav-secundario a { color: var(--ink); }
         .nav-secundario form { margin: 0; }
-        .icone-conta { display: inline-flex; color: var(--ink); }
+        .menu-conta { position: relative; display: inline-flex; }
+        .icone-conta {
+            display: inline-flex; color: var(--ink); background: none; border: none; padding: 0; cursor: pointer;
+        }
         .icone-conta:hover { color: var(--brand); }
         .icone-conta svg { width: 22px; height: 22px; }
+        .painel-conta {
+            position: absolute; top: calc(100% + 14px); right: 0; z-index: 30; min-width: 220px;
+            background: var(--paper); border: 1px solid var(--line); border-radius: 12px;
+            box-shadow: 0 12px 28px rgba(17, 24, 39, 0.14); padding: 8px; display: flex; flex-direction: column;
+        }
+        .painel-conta[hidden] { display: none; }
+        .painel-conta-saldo { padding: 12px 10px 10px; border-bottom: 1px solid var(--line-soft); margin-bottom: 6px; }
+        .painel-conta-saldo-valor {
+            font-family: "JB Mono", ui-monospace, monospace; font-size: 22px; font-weight: 600; color: var(--success);
+        }
+        .painel-conta-saldo-rotulo { font-size: 12px; color: var(--muted); margin-top: 2px; }
+        .painel-conta-saldo-outros { font-size: 11px; color: var(--muted); margin-top: 8px; }
+        .painel-conta-link {
+            display: block; width: 100%; text-align: left; padding: 10px; border-radius: 8px;
+            font-size: 14px; color: var(--ink); background: none; border: none; font-family: inherit; cursor: pointer;
+        }
+        .painel-conta-link:hover { background: var(--paper-2); }
+        .painel-conta-form { margin: 0; }
         .nav-secundario button.linkbtn {
             background: none; border: none; padding: 0; font: inherit; color: var(--ink);
             cursor: pointer;
@@ -292,25 +313,31 @@
             <div class="nav-secundario">
                 <a href="{% url 'ofertas_lista' %}">Ofertas</a>
                 <a href="#como-funciona">Como funciona</a>
-                {% if user.is_authenticated %}
-                    <a class="icone-conta" href="{% url 'dashboard' %}" aria-label="Minha conta">
+                <div class="menu-conta">
+                    <button type="button" class="icone-conta" id="botao-conta" aria-haspopup="true" aria-expanded="false" aria-controls="painel-conta" aria-label="Conta">
                         <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
                             <circle cx="12" cy="8" r="3.5" stroke="currentColor" stroke-width="1.8"/>
                             <path d="M5 20c0-3.5 3-6 7-6s7 2.5 7 6" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/>
                         </svg>
-                    </a>
-                    <form method="post" action="{% url 'logout' %}">
-                        {% csrf_token %}
-                        <button type="submit" class="linkbtn">Sair</button>
-                    </form>
-                {% else %}
-                    <a class="icone-conta" href="{% url 'login' %}" aria-label="Entrar">
-                        <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
-                            <circle cx="12" cy="8" r="3.5" stroke="currentColor" stroke-width="1.8"/>
-                            <path d="M5 20c0-3.5 3-6 7-6s7 2.5 7 6" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/>
-                        </svg>
-                    </a>
-                {% endif %}
+                    </button>
+                    <div class="painel-conta" id="painel-conta" role="menu" hidden>
+                        {% if user.is_authenticated %}
+                            <div class="painel-conta-saldo">
+                                <div class="painel-conta-saldo-valor">R$ {{ saldo_liberado_nav|floatformat:2 }}</div>
+                                <div class="painel-conta-saldo-rotulo">Saldo liberado</div>
+                                <div class="painel-conta-saldo-outros">+ R$ {{ saldo_outros_nav|floatformat:2 }} em outros saldos</div>
+                            </div>
+                            <a class="painel-conta-link" href="{% url 'dashboard' %}" role="menuitem">Minha conta</a>
+                            <form class="painel-conta-form" method="post" action="{% url 'logout' %}">
+                                {% csrf_token %}
+                                <button type="submit" class="painel-conta-link" role="menuitem">Sair</button>
+                            </form>
+                        {% else %}
+                            <a class="painel-conta-link" href="{% url 'login' %}" role="menuitem">Entrar</a>
+                            <a class="painel-conta-link" href="{% url 'registrar' %}" role="menuitem">Cadastrar</a>
+                        {% endif %}
+                    </div>
+                </div>
             </div>
             {% if user.is_authenticated %}
                 <a class="botao-cta" href="{% url 'ir_para_shopee' %}">Ir pra Shopee &rarr;</a>
@@ -605,6 +632,34 @@
 
             input.addEventListener("input", atualizar);
             atualizar();
+        })();
+
+        (function () {
+            var botao = document.getElementById("botao-conta");
+            var painel = document.getElementById("painel-conta");
+            if (!botao || !painel) return;
+
+            function fechar() {
+                painel.hidden = true;
+                botao.setAttribute("aria-expanded", "false");
+            }
+            function abrir() {
+                painel.hidden = false;
+                botao.setAttribute("aria-expanded", "true");
+            }
+
+            botao.addEventListener("click", function (evento) {
+                evento.stopPropagation();
+                if (painel.hidden) { abrir(); } else { fechar(); }
+            });
+            document.addEventListener("click", function (evento) {
+                if (!painel.hidden && !painel.contains(evento.target) && evento.target !== botao) {
+                    fechar();
+                }
+            });
+            document.addEventListener("keydown", function (evento) {
+                if (evento.key === "Escape") fechar();
+            });
         })();
     </script>
 

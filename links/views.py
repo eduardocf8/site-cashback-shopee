@@ -8,6 +8,7 @@ from django.shortcuts import redirect, render
 from django.urls import reverse
 
 from ofertas.services import categorias_mais_vendidas, selecionar_top_ofertas_sem_duplicar
+from saques.services import calcular_resumo_saldo_nav
 
 from .forms import LinkProdutoForm
 from .models import Click
@@ -55,6 +56,8 @@ def home(request):
         "ofertas_em_alta": ofertas_em_alta,
         "categorias_home": categorias_home,
     }
+    if request.user.is_authenticated:
+        contexto.update(calcular_resumo_saldo_nav(request.user))
     return render(request, "links/home.html", contexto)
 
 

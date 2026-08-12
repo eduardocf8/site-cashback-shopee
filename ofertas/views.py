@@ -7,6 +7,7 @@ from django.shortcuts import get_object_or_404, redirect, render
 from links.models import Click
 from links.services import gerar_click
 from links.shopee_client import ShopeeAPIError, ShopeeConfigError, SubIdInvalidoError
+from saques.services import calcular_resumo_saldo_nav
 
 from .models import Oferta
 from .services import carregar_categorias_nivel1
@@ -54,6 +55,8 @@ def lista(request):
         "ordenacao_selecionada": ordenacao,
         "ordenacoes": ORDENACOES_ROTULOS.items(),
     }
+    if request.user.is_authenticated:
+        contexto.update(calcular_resumo_saldo_nav(request.user))
     return render(request, "ofertas/lista.html", contexto)
 
 
