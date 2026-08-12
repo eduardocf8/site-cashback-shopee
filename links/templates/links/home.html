@@ -52,6 +52,9 @@
         .nav-secundario { display: flex; align-items: center; gap: 32px; font-size: 14px; }
         .nav-secundario a { color: var(--ink); }
         .nav-secundario form { margin: 0; }
+        .icone-conta { display: inline-flex; color: var(--ink); }
+        .icone-conta:hover { color: var(--brand); }
+        .icone-conta svg { width: 22px; height: 22px; }
         .nav-secundario button.linkbtn {
             background: none; border: none; padding: 0; font: inherit; color: var(--ink);
             cursor: pointer;
@@ -290,13 +293,23 @@
                 <a href="{% url 'ofertas_lista' %}">Ofertas</a>
                 <a href="#como-funciona">Como funciona</a>
                 {% if user.is_authenticated %}
-                    <a href="{% url 'dashboard' %}">Minha conta</a>
+                    <a class="icone-conta" href="{% url 'dashboard' %}" aria-label="Minha conta">
+                        <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+                            <circle cx="12" cy="8" r="3.5" stroke="currentColor" stroke-width="1.8"/>
+                            <path d="M5 20c0-3.5 3-6 7-6s7 2.5 7 6" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/>
+                        </svg>
+                    </a>
                     <form method="post" action="{% url 'logout' %}">
                         {% csrf_token %}
                         <button type="submit" class="linkbtn">Sair</button>
                     </form>
                 {% else %}
-                    <a href="{% url 'login' %}">Entrar</a>
+                    <a class="icone-conta" href="{% url 'login' %}" aria-label="Entrar">
+                        <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+                            <circle cx="12" cy="8" r="3.5" stroke="currentColor" stroke-width="1.8"/>
+                            <path d="M5 20c0-3.5 3-6 7-6s7 2.5 7 6" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/>
+                        </svg>
+                    </a>
                 {% endif %}
             </div>
             {% if user.is_authenticated %}
