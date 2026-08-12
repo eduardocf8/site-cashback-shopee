@@ -36,7 +36,7 @@ class Banner(models.Model):
         max_length=300, blank=True, help_text="Caminho interno (ex: /ofertas/) ou URL completa."
     )
     botao2_texto = models.CharField(
-        max_length=40, blank=True, help_text="Texto do botão secundário (contorno, opcional)."
+        max_length=40, blank=True, help_text="Texto do link secundário, sem caixa (opcional)."
     )
     botao2_link = models.CharField(max_length=300, blank=True, help_text="Caminho interno ou URL completa.")
     ativo = models.BooleanField(default=True)

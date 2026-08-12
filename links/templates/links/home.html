@@ -111,25 +111,24 @@
         .banner-slide-conteudo.texto-direita .banner-slide-texto { text-align: right; }
         .banner-slide-conteudo.centralizado .banner-slide-texto { max-width: 620px; align-items: center; }
         .banner-slide-texto .selo {
-            display: inline-block; background: rgba(255, 255, 255, 0.16); font-size: 12px; font-weight: 700;
-            padding: 5px 12px; border-radius: 12px; letter-spacing: 0.03em; text-transform: uppercase; width: fit-content;
+            font-size: 13px; font-weight: 700; letter-spacing: 0.04em; text-transform: uppercase; opacity: 0.85;
         }
         .banner-slide-texto .titulo { font-size: 34px; font-weight: 700; margin: 0; letter-spacing: -0.015em; line-height: 1.15; }
         .banner-slide-texto .titulo mark {
             background: var(--highlight); color: var(--highlight-ink); padding: 0 8px; border-radius: 6px;
         }
         .banner-slide-texto .subtitulo { font-size: 18px; margin: 0; opacity: 0.92; line-height: 1.4; }
-        .banner-slide-texto .botoes { display: flex; gap: 12px; flex-wrap: wrap; margin-top: 4px; }
+        .banner-slide-texto .botoes { display: flex; align-items: center; gap: 20px; flex-wrap: wrap; margin-top: 4px; }
         .banner-slide-conteudo.centralizado .banner-slide-texto .botoes { justify-content: center; }
         .banner-slide-texto .botoes .botao-cta {
             background: var(--highlight); color: var(--highlight-ink) !important; text-decoration: none;
             font-size: 15px; padding: 12px 26px;
         }
         .banner-slide-texto .botoes .botao-cta:hover { filter: brightness(0.94); }
-        .banner-slide-texto .botoes .botao-cta.contorno {
-            background: transparent; border: 2px solid #fff; color: #fff !important; padding: 10px 24px; font-size: 15px;
+        .banner-slide-texto .botoes .link-secundario-banner {
+            color: #fff; font-size: 15px; font-weight: 600; text-decoration: underline;
         }
-        .banner-slide-texto .botoes .botao-cta.contorno:hover { background: rgba(255, 255, 255, 0.15); }
+        .banner-slide-texto .botoes .link-secundario-banner:hover { opacity: 0.85; }
         .banner-dots {
             position: absolute; left: 0; right: 0; bottom: 12px; z-index: 2;
             display: flex; justify-content: center; gap: 6px;
@@ -285,7 +284,7 @@
                             {% if banner.botao_texto or banner.botao2_texto %}
                                 <div class="botoes">
                                     {% if banner.botao_texto %}<a class="botao-cta" href="{{ banner.botao_link }}">{{ banner.botao_texto }}</a>{% endif %}
-                                    {% if banner.botao2_texto %}<a class="botao-cta contorno" href="{{ banner.botao2_link }}">{{ banner.botao2_texto }}</a>{% endif %}
+                                    {% if banner.botao2_texto %}<a class="link-secundario-banner" href="{{ banner.botao2_link }}">{{ banner.botao2_texto }}</a>{% endif %}
                                 </div>
                             {% endif %}
                         </div>
