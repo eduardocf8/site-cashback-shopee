@@ -201,6 +201,11 @@ paralelo (ver acima) — as duas foram reconciliadas em 2026-08-12, ver
 - [x] **Cashback em R$ além de %** — `Oferta.valor_cashback_estimado`,
       mostrado nos cards de oferta (home e `/ofertas/`, via partial
       compartilhado `ofertas/templates/ofertas/_card.html`).
+- [x] **Seção "Como funciona" (3 passos)** — encontre → compre → receba,
+      logo depois da vitrine e antes dos blocos mais profundos (benefícios,
+      venda direta x indireta), com link direto na nav. O id `#como-funciona`
+      antigo (venda direta x indireta) virou `#maximizar-cashback`, mais
+      fiel ao conteúdo dele. (`links/templates/links/home.html`)
 - [x] **Barra de progresso de saque** — "R$ X de R$ Y pra sacar" no painel
       (`accounts/templates/accounts/dashboard.html`), usando
       `SAQUE_VALOR_MINIMO` que já existe.
