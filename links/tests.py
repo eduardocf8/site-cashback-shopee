@@ -180,11 +180,24 @@ class HomeBannerTests(TestCase):
         resposta = self.client.get("/")
         self.assertNotContains(resposta, "Promoção escondida")
 
-    def test_banner_ativo_aparece_com_link(self):
-        Banner.objects.create(texto="Cashback em dobro!", link="/ofertas/", ativo=True)
+    def test_banner_ativo_aparece_com_botao(self):
+        Banner.objects.create(
+            texto="Cashback em dobro!", botao_texto="Ver ofertas", botao_link="/ofertas/", ativo=True
+        )
         resposta = self.client.get("/")
         self.assertContains(resposta, "Cashback em dobro!")
+        self.assertContains(resposta, "Ver ofertas")
         self.assertContains(resposta, 'href="/ofertas/"')
+
+    def test_banner_sem_imagem_usa_layout_centralizado(self):
+        Banner.objects.create(texto="Sem foto", ativo=True)
+        resposta = self.client.get("/")
+        self.assertContains(resposta, 'class="banner-slide ativo centro"')
+
+    def test_titulo_permite_mark_pra_destacar_palavra(self):
+        Banner.objects.create(texto="Cashback em <mark>DOBRO</mark>", ativo=True)
+        resposta = self.client.get("/")
+        self.assertContains(resposta, "Cashback em <mark>DOBRO</mark>")
 
     def test_banners_aparecem_na_ordem_configurada(self):
         Banner.objects.create(texto="Segundo", ordem=2, ativo=True)

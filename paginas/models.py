@@ -9,26 +9,36 @@ class Banner(models.Model):
         (ALINHAMENTO_DIREITA, "Direita"),
     ]
 
-    texto = models.CharField(max_length=200, help_text="Título grande, sobre a imagem.")
+    selo = models.CharField(
+        max_length=60, blank=True, help_text="Etiqueta pequena acima do título (ex: MÊS DE INAUGURAÇÃO). Opcional."
+    )
+    texto = models.CharField(
+        max_length=200,
+        help_text="Título grande. Pode usar &lt;mark&gt;palavra&lt;/mark&gt; pra destacar uma palavra "
+        "com fundo verde-limão (ex: Cashback em &lt;mark&gt;DOBRO&lt;/mark&gt;).",
+    )
     subtexto = models.CharField(max_length=200, blank=True, help_text="Linha menor, opcional, abaixo do título.")
     alinhamento = models.CharField(
         max_length=10,
         choices=ALINHAMENTO_CHOICES,
         default=ALINHAMENTO_ESQUERDA,
-        help_text="De que lado o texto aparece sobre a imagem - escolha o lado onde a foto não tem o "
-        "assunto principal (rosto, produto), pra não cobrir.",
+        help_text="Só vale quando tem imagem: de que lado o texto aparece sobre a foto - escolha o lado "
+        "onde a foto não tem o assunto principal (rosto, produto), pra não cobrir.",
     )
     imagem_estatica = models.CharField(
         max_length=200,
         blank=True,
         help_text="Caminho dentro de static/, ex: images/banners/inauguracao.jpg. "
-        "Vazio = mostra só o degradê de fundo, sem foto.",
+        "Vazio = banner sem foto, com fundo em degradê da marca e texto centralizado.",
     )
-    link = models.CharField(
-        max_length=300,
-        blank=True,
-        help_text="Opcional. Caminho interno (ex: /ofertas/) ou URL completa. Vazio = banner não é clicável.",
+    botao_texto = models.CharField(max_length=40, blank=True, help_text="Texto do botão principal. Vazio = sem botão.")
+    botao_link = models.CharField(
+        max_length=300, blank=True, help_text="Caminho interno (ex: /ofertas/) ou URL completa."
     )
+    botao2_texto = models.CharField(
+        max_length=40, blank=True, help_text="Texto do botão secundário (contorno, opcional)."
+    )
+    botao2_link = models.CharField(max_length=300, blank=True, help_text="Caminho interno ou URL completa.")
     ativo = models.BooleanField(default=True)
     ordem = models.PositiveIntegerField(default=0, help_text="Banners com número menor aparecem primeiro.")
     criado_em = models.DateTimeField(auto_now_add=True)
