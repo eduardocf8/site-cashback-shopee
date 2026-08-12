@@ -4,7 +4,7 @@
             <span class="desconto">-{{ oferta.percentual_desconto }}%</span>
         {% endif %}
         {% if oferta.percentual_cashback %}
-            <span class="cashback">{{ oferta.percentual_cashback }}%<span class="valor-rs">R$ {{ oferta.valor_cashback_estimado|floatformat:2 }}</span></span>
+            <span class="cashback">Receba {{ oferta.percentual_cashback }}% de cashback</span>
         {% endif %}
         {% if oferta.imagem_url %}
             <img src="{{ oferta.imagem_url }}" alt="" loading="lazy">
@@ -20,6 +20,9 @@
                 R$ {{ oferta.preco_min|floatformat:2 }}
             {% endif %}
         </div>
+        {% if oferta.percentual_cashback %}
+            <div class="cashback-valor">+ R$ {{ oferta.valor_cashback_estimado|floatformat:2 }} de cashback</div>
+        {% endif %}
     </div>
     <a class="botao-cta" href="{% url 'ofertas_ir' oferta.id %}">Ir pra oferta</a>
 </div>
