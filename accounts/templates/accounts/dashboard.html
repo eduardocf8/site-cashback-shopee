@@ -108,15 +108,17 @@
         .progresso-saque-barra span { display: block; height: 100%; background: var(--success); border-radius: 4px; }
 
         .chave-pix-linha { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; margin-bottom: 12px; }
+        .chave-pix-label { font-size: 14px; font-weight: 600; color: var(--ink); }
         .chave-pix-tipo {
+            display: inline-flex; align-items: center; line-height: 1;
             background: var(--brand); color: #fff; font-size: 12px; font-weight: 700;
-            padding: 4px 10px; border-radius: 8px; white-space: nowrap;
+            padding: 5px 10px; border-radius: 8px; white-space: nowrap;
         }
-        .chave-pix-valor { font-family: "JB Mono", ui-monospace, monospace; font-size: 14px; }
+        .chave-pix-valor { font-family: "JB Mono", ui-monospace, monospace; font-size: 14px; line-height: 1; }
         .botao-editar-chave {
-            margin-left: auto; background: none; border: 1px solid var(--line); color: var(--brand);
+            background: none; border: 1px solid var(--line); color: var(--brand);
             font-family: inherit; font-size: 13px; font-weight: 600; padding: 5px 14px; border-radius: 16px;
-            cursor: pointer;
+            cursor: pointer; line-height: 1;
         }
         .botao-editar-chave:hover { border-color: var(--brand); background: var(--paper-2); }
 
@@ -281,6 +283,7 @@
                     <a class="botao-cta" href="{% url 'editar_chave_pix' %}">Cadastrar chave PIX</a>
                 {% else %}
                     <div class="chave-pix-linha">
+                        <span class="chave-pix-label">Chave PIX</span>
                         <span class="chave-pix-tipo">{{ user.get_tipo_chave_pix_display }}</span>
                         <span class="chave-pix-valor">{{ user.chave_pix }}</span>
                         <button type="button" class="botao-editar-chave" onclick="modalChavePix.showModal()">Editar</button>
