@@ -88,7 +88,7 @@ Dá pra aproveitar a infraestrutura de e-mail que já está funcionando
 - [ ] **Programa de indicação** — "chame um amigo, ganhe X de cashback" ou
       similar.
 
-## Fase 13 — Redesign: de "gerador de link" a vitrine de ofertas (em andamento)
+## Fase 13 — Redesign: de "gerador de link" a vitrine de ofertas ✅ (pausada por decisão do dono, ver abaixo)
 
 Motivada por uma pesquisa de UI/UX comparando o cash-b com portais grandes de
 cashback/ofertas (ShopBack, Rakuten, Méliuz, Zoom etc.), trazida pelo dono do
@@ -110,12 +110,17 @@ completo e as opções de identidade comparadas antes de escolher.
 - [x] **Busca na navegação** — campo de busca no header da home
       (`links/templates/links/home.html`), submete pra
       `/ofertas/?q=...` (reaproveita o filtro `q` que já existia lá).
-- [ ] **Cashback turbinado / campanhas** — badges de urgência reais (ex:
+- [ ] ~~**Cashback turbinado / campanhas**~~ — badges de urgência reais (ex:
       comissão extra ativa numa categoria) usando o âmbar — só quando for
-      informação verdadeira, nunca inventada.
-- [ ] **Retenção** (fase mais distante, avaliar se faz sentido pro tamanho
-      atual da base de usuários): favoritos/alertas de categoria, e
-      gamificação só se tiver relação econômica real por trás.
+      informação verdadeira, nunca inventada. **Pulado por decisão do dono do
+      produto (2026-08-12)** — não é prioridade agora.
+- [ ] ~~**Retenção**~~ (favoritos/alertas de categoria, gamificação só se
+      tiver relação econômica real por trás). **Pulado pelo mesmo motivo** —
+      avaliar de novo quando a base de usuários crescer.
+
+Esses dois itens ficam registrados aqui só pra não serem "reinventados" numa
+conversa futura sem contexto — se quiser retomá-los, é só apontar pra esse
+trecho do roadmap.
 
 ---
 
