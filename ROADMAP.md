@@ -88,6 +88,34 @@ Dá pra aproveitar a infraestrutura de e-mail que já está funcionando
 - [ ] **Programa de indicação** — "chame um amigo, ganhe X de cashback" ou
       similar.
 
+## Fase 13 — Redesign: de "gerador de link" a vitrine de ofertas (em andamento)
+
+Motivada por uma pesquisa de UI/UX comparando o cash-b com portais grandes de
+cashback/ofertas (ShopBack, Rakuten, Méliuz, Zoom etc.), trazida pelo dono do
+produto — ver `BRAND.md`, seção "Histórico do redesign", pro racional
+completo e as opções de identidade comparadas antes de escolher.
+
+- [x] **Rebrand de identidade visual** — nova paleta roxo (marca/CTA) + verde
+      (dinheiro/cashback) + âmbar (destaque/campanha), substituindo o
+      verde+lima original. (`static/css/brand.css`, `BRAND.md`)
+- [x] **Home vira vitrine** — oferta em destaque, carrossel "Em alta" e
+      categorias mais vendidas logo após o hero, antes da explicação de como
+      funciona. (`links/views.py`, `links/templates/links/home.html`)
+- [x] **Cashback em R$ além de %** — `Oferta.valor_cashback_estimado`,
+      mostrado nos cards de oferta (home e `/ofertas/`, via partial
+      compartilhado `ofertas/templates/ofertas/_card.html`).
+- [ ] **Barra de progresso de saque** — "R$ X de R$ Y pra sacar" no painel
+      (`accounts/templates/accounts/dashboard.html`), usando
+      `SAQUE_VALOR_MINIMO` que já existe.
+- [ ] **Busca na navegação** — hoje a busca só existe dentro de `/ofertas/`;
+      o documento de pesquisa sugere um campo de busca já no header.
+- [ ] **Cashback turbinado / campanhas** — badges de urgência reais (ex:
+      comissão extra ativa numa categoria) usando o âmbar — só quando for
+      informação verdadeira, nunca inventada.
+- [ ] **Retenção** (fase mais distante, avaliar se faz sentido pro tamanho
+      atual da base de usuários): favoritos/alertas de categoria, e
+      gamificação só se tiver relação econômica real por trás.
+
 ---
 
 Pra continuar esse roadmap numa conversa nova, basta apontar esse arquivo
