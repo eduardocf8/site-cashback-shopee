@@ -107,6 +107,43 @@
         .progresso-saque-barra { height: 8px; border-radius: 4px; background: var(--line-soft); overflow: hidden; }
         .progresso-saque-barra span { display: block; height: 100%; background: var(--success); border-radius: 4px; }
 
+        .chave-pix-linha { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; margin-bottom: 12px; }
+        .chave-pix-tipo {
+            background: var(--brand); color: #fff; font-size: 12px; font-weight: 700;
+            padding: 4px 10px; border-radius: 8px; white-space: nowrap;
+        }
+        .chave-pix-valor { font-family: "JB Mono", ui-monospace, monospace; font-size: 14px; }
+        .botao-editar-chave {
+            margin-left: auto; background: none; border: 1px solid var(--line); color: var(--brand);
+            font-family: inherit; font-size: 13px; font-weight: 600; padding: 5px 14px; border-radius: 16px;
+            cursor: pointer;
+        }
+        .botao-editar-chave:hover { border-color: var(--brand); background: var(--paper-2); }
+
+        .modal-chave-pix {
+            border: none; border-radius: 14px; padding: 26px; max-width: 380px; width: 90vw;
+            background: var(--paper); color: var(--ink); box-shadow: 0 12px 32px rgba(0, 0, 0, 0.18);
+        }
+        .modal-chave-pix::backdrop { background: rgba(17, 24, 39, 0.45); }
+        .modal-chave-pix h3 { margin: 0 0 18px; font-size: 18px; }
+        .modal-chave-pix label { display: block; font-size: 13px; font-weight: 600; margin-bottom: 6px; }
+        .modal-chave-pix select, .modal-chave-pix input[type="text"] {
+            width: 100%; height: 42px; padding: 0 12px; margin-bottom: 16px; border: 1px solid var(--line);
+            border-radius: 8px; font-family: inherit; font-size: 14px; background: var(--paper-2); color: var(--ink);
+        }
+        .modal-chave-pix-acoes { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin-top: 4px; flex-wrap: wrap; }
+        .modal-chave-pix-acoes-direita { display: flex; gap: 10px; }
+        .botao-excluir-chave {
+            background: none; border: none; color: var(--danger); font-family: inherit; font-size: 13px;
+            font-weight: 600; cursor: pointer; padding: 8px 4px;
+        }
+        .botao-excluir-chave:hover { text-decoration: underline; }
+        .botao-cancelar-chave {
+            background: none; border: 1px solid var(--line); color: var(--ink-soft); font-family: inherit;
+            font-size: 14px; font-weight: 600; padding: 9px 18px; border-radius: 20px; cursor: pointer;
+        }
+        .botao-cancelar-chave:hover { background: var(--paper-2); }
+
         table { width: 100%; border-collapse: collapse; background: var(--paper); border-radius: 12px; overflow: hidden; border: 1px solid var(--line); }
         th, td { text-align: left; padding: 12px 14px; border-bottom: 1px solid var(--line-soft); font-size: 13px; }
         th { background: var(--paper-2); font-weight: 600; color: var(--muted); }
@@ -243,8 +280,30 @@
                     <p>Você ainda não cadastrou uma chave PIX.</p>
                     <a class="botao-cta" href="{% url 'editar_chave_pix' %}">Cadastrar chave PIX</a>
                 {% else %}
-                    <p>Chave PIX cadastrada: <strong>{{ user.get_tipo_chave_pix_display }}</strong> — {{ user.chave_pix }}
-                        (<a href="{% url 'editar_chave_pix' %}">alterar</a>)</p>
+                    <div class="chave-pix-linha">
+                        <span class="chave-pix-tipo">{{ user.get_tipo_chave_pix_display }}</span>
+                        <span class="chave-pix-valor">{{ user.chave_pix }}</span>
+                        <button type="button" class="botao-editar-chave" onclick="modalChavePix.showModal()">Editar</button>
+                    </div>
+
+                    <dialog id="modalChavePix" class="modal-chave-pix">
+                        <form method="post" action="{% url 'editar_chave_pix' %}">
+                            {% csrf_token %}
+                            <h3>Editar chave PIX</h3>
+                            <label for="{{ chave_pix_form.tipo_chave_pix.id_for_label }}">{{ chave_pix_form.tipo_chave_pix.label }}</label>
+                            {{ chave_pix_form.tipo_chave_pix }}
+                            <label for="{{ chave_pix_form.chave_pix.id_for_label }}">{{ chave_pix_form.chave_pix.label }}</label>
+                            {{ chave_pix_form.chave_pix }}
+                            <div class="modal-chave-pix-acoes">
+                                <button type="submit" formaction="{% url 'excluir_chave_pix' %}" formnovalidate class="botao-excluir-chave">Apenas excluir chave</button>
+                                <div class="modal-chave-pix-acoes-direita">
+                                    <button type="button" class="botao-cancelar-chave" onclick="modalChavePix.close()">Cancelar</button>
+                                    <button type="submit" class="botao-cta">Salvar</button>
+                                </div>
+                            </div>
+                        </form>
+                    </dialog>
+
                     <p>Saldo disponível para saque: <strong>R$ {{ saldo_disponivel|floatformat:2 }}</strong></p>
                     {% if saldo_disponivel >= saque_valor_minimo %}
                         <form method="post" action="{% url 'pedir_saque' %}">

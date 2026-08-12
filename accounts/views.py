@@ -121,6 +121,7 @@ def dashboard(request):
         "status_pedidos_choices": Pedido.STATUS_CHOICES,
         "status_saques_choices": Saque.STATUS_CHOICES,
         "tipo_clicks_choices": Click.TIPO_CHOICES,
+        "chave_pix_form": ChavePixForm(instance=request.user),
     }
     return render(request, "accounts/dashboard.html", contexto)
 
@@ -137,6 +138,17 @@ def editar_chave_pix(request):
         form = ChavePixForm(instance=request.user)
 
     return render(request, "accounts/chave_pix.html", {"form": form})
+
+
+@login_required
+def excluir_chave_pix(request):
+    if request.method == "POST":
+        request.user.chave_pix = ""
+        request.user.tipo_chave_pix = ""
+        request.user.save(update_fields=["chave_pix", "tipo_chave_pix"])
+        messages.success(request, "Chave PIX removida.")
+
+    return redirect("dashboard")
 
 
 @login_required
