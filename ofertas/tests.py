@@ -5,7 +5,7 @@ from django.test import TestCase, override_settings
 from django.urls import reverse
 
 from .models import Oferta
-from .services import _montar_oferta, obter_faixa_cashback_anunciada, sincronizar_ofertas
+from .services import _montar_oferta, obter_cashback_maximo_anunciado, sincronizar_ofertas
 
 
 class OrdenarPorCashbackTests(TestCase):
@@ -127,7 +127,7 @@ class TetoCashbackPorProdutoTests(TestCase):
     SHOPEE_CASHBACK_PERCENTUAL=100, CASHBACK_MULTIPLICADOR_CAMPANHA=1,
     CASHBACK_MAXIMO_POR_PRODUTO=10, CASHBACK_MAXIMO_ANUNCIADO=2.4,
 )
-class FaixaCashbackAnunciadaTests(TestCase):
+class CashbackMaximoAnunciadoTests(TestCase):
     def _pagina(self, nodes, has_next_page=False):
         return {"nodes": nodes, "pageInfo": {"page": 1, "limit": 50, "hasNextPage": has_next_page}}
 
@@ -142,13 +142,12 @@ class FaixaCashbackAnunciadaTests(TestCase):
         }
 
     def test_sem_sincronizacao_ainda_cai_pro_fallback_configurado(self):
-        minimo, maximo = obter_faixa_cashback_anunciada()
+        maximo = obter_cashback_maximo_anunciado()
 
-        self.assertEqual(minimo, Decimal("2.4"))
         self.assertEqual(maximo, Decimal("2.4"))
 
     @patch("ofertas.services.buscar_ofertas_produtos")
-    def test_sincronizacao_calcula_faixa_real_do_catalogo(self, mock_buscar):
+    def test_sincronizacao_calcula_o_maximo_real_do_catalogo(self, mock_buscar):
         mock_buscar.return_value = self._pagina(
             [
                 self._node(1, "0.03", "100.00"),  # 3% de R$100 = R$3, abaixo do teto
@@ -157,54 +156,48 @@ class FaixaCashbackAnunciadaTests(TestCase):
         )
 
         sincronizar_ofertas()
-        minimo, maximo = obter_faixa_cashback_anunciada()
+        maximo = obter_cashback_maximo_anunciado()
 
-        self.assertEqual(minimo, Decimal("3.0"))
         self.assertEqual(maximo, Decimal("8.0"))
 
     @patch("ofertas.services.buscar_ofertas_produtos")
-    def test_produto_no_limite_nao_distorce_a_faixa_anunciada(self, mock_buscar):
+    def test_produto_no_limite_nao_rouba_o_topo_com_valor_menor(self, mock_buscar):
         # Produto caro com comissão bruta alta, capado a R$10, viraria só 2% exibido -
-        # isso não pode puxar o mínimo anunciado pra baixo (a pessoa nem daria uma
-        # chance pro site vendo "0,1%" ou "2%" logo de cara). Continua aparecendo
-        # normal no catálogo, com a nota de "máximo por produto" - só fica de fora
-        # da conta da faixa do hero.
+        # isso não pode virar o "máximo" anunciado, escondendo o produto que realmente
+        # rende mais (8%, sem teto).
         mock_buscar.return_value = self._pagina(
             [
-                self._node(1, "0.05", "100.00"),  # 5% de R$100 = R$5, abaixo do teto
+                self._node(1, "0.08", "100.00"),  # 8% de R$100 = R$8, abaixo do teto
                 self._node(2, "0.15", "500.00"),  # 15% de R$500 = R$75, capado a R$10 (= 2%)
             ]
         )
 
         sincronizar_ofertas()
-        minimo, maximo = obter_faixa_cashback_anunciada()
+        maximo = obter_cashback_maximo_anunciado()
 
-        self.assertEqual(minimo, Decimal("5.0"))
-        self.assertEqual(maximo, Decimal("5.0"))
+        self.assertEqual(maximo, Decimal("8.0"))
 
     @patch("ofertas.services.buscar_ofertas_produtos")
-    def test_oferta_sem_preco_nao_entra_na_conta_da_faixa(self, mock_buscar):
+    def test_oferta_sem_preco_nao_entra_na_conta_do_maximo(self, mock_buscar):
         mock_buscar.return_value = self._pagina(
             [
-                self._node(1, "0.05", "0"),  # sem preço sincronizado - fica de fora
+                self._node(1, "0.20", "0"),  # sem preço sincronizado - fica de fora
                 self._node(2, "0.08", "50.00"),
             ]
         )
 
         sincronizar_ofertas()
-        minimo, maximo = obter_faixa_cashback_anunciada()
+        maximo = obter_cashback_maximo_anunciado()
 
-        self.assertEqual(minimo, Decimal("8.0"))
         self.assertEqual(maximo, Decimal("8.0"))
 
     @patch("ofertas.services.buscar_ofertas_produtos")
-    def test_resincronizar_atualiza_a_faixa_anterior(self, mock_buscar):
+    def test_resincronizar_atualiza_o_maximo_anterior(self, mock_buscar):
         mock_buscar.return_value = self._pagina([self._node(1, "0.05", "100.00")])
         sincronizar_ofertas()
 
         mock_buscar.return_value = self._pagina([self._node(2, "0.09", "100.00")])
         sincronizar_ofertas()
 
-        minimo, maximo = obter_faixa_cashback_anunciada()
-        self.assertEqual(minimo, Decimal("9.0"))
+        maximo = obter_cashback_maximo_anunciado()
         self.assertEqual(maximo, Decimal("9.0"))

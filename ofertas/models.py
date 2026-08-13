@@ -75,29 +75,27 @@ class Oferta(models.Model):
         return valor_bruto > limite
 
 
-class FaixaCashbackCache(models.Model):
-    """Faixa (mín-máx) de % de cashback entre as ofertas sincronizadas na última
-    execução, ignorando ofertas onde o teto por produto reduziu o valor (ver
-    ofertas/services.py::_atualizar_faixa_cashback) - calculada uma vez por
+class CashbackMaximoCache(models.Model):
+    """Maior % de cashback real entre as ofertas sincronizadas na última execução,
+    ignorando ofertas onde o teto por produto reduziu o valor (ver
+    ofertas/services.py::_atualizar_cashback_maximo) - senão um produto caro e capado
+    poderia "roubar" o topo com um valor artificialmente baixo. Calculado uma vez por
     sincronização, não a cada visita à home. Singleton - só existe uma linha (pk=1),
     sobrescrita a cada sincronização."""
 
-    percentual_minimo = models.DecimalField(max_digits=6, decimal_places=1, default=0)
     percentual_maximo = models.DecimalField(max_digits=6, decimal_places=1, default=0)
     atualizado_em = models.DateTimeField(auto_now=True)
 
     @classmethod
-    def atualizar(cls, percentual_minimo: Decimal, percentual_maximo: Decimal) -> None:
-        cls.objects.update_or_create(
-            pk=1, defaults={"percentual_minimo": percentual_minimo, "percentual_maximo": percentual_maximo}
-        )
+    def atualizar(cls, percentual_maximo: Decimal) -> None:
+        cls.objects.update_or_create(pk=1, defaults={"percentual_maximo": percentual_maximo})
 
     @classmethod
-    def obter(cls) -> "FaixaCashbackCache | None":
+    def obter(cls) -> "CashbackMaximoCache | None":
         return cls.objects.filter(pk=1).first()
 
     def __str__(self):
-        return f"{self.percentual_minimo}% – {self.percentual_maximo}%"
+        return f"até {self.percentual_maximo}%"
 
 
 class NomeCurtoCache(models.Model):

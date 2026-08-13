@@ -290,26 +290,29 @@ seja, o usuário às vezes recebia mais cashback do que o site anunciava.
       explicando o teto com exemplo.
 - [x] Ferramenta de diagnóstico (`consultar_comissoes`) que originou essa
       descoberta permanece no projeto pra futuras verificações.
-- [x] **Faixa "de X% a Y%" no hero, calculada do catálogo real** — o "até
-      2,4%" fixo era contestado assim que a pessoa entrava no catálogo e via
-      ofertas com comissão de campanha bem maior. Agora `sincronizar_ofertas()`
-      calcula o mínimo e o máximo real entre as ofertas sincronizadas (já com
-      o teto por produto aplicado) e salva num cache pequeno
-      (`ofertas.FaixaCashbackCache`, 1x por dia, não recalculado a cada
-      visita) - a home lê esse valor, então nunca diverge do catálogo. Se
-      não houver nenhuma sincronização ainda, cai pro piso fixo
+- [x] **"Até X%" no hero, calculado do catálogo real** — o "até 2,4%" fixo
+      era contestado assim que a pessoa entrava no catálogo e via ofertas com
+      comissão de campanha bem maior. Agora `sincronizar_ofertas()` calcula o
+      maior % de cashback real entre as ofertas sincronizadas (excluindo
+      ofertas onde o teto por produto reduziu o valor - senão um produto caro
+      e capado poderia "roubar" o topo com um número artificialmente baixo) e
+      salva num cache pequeno (`ofertas.CashbackMaximoCache`, 1x por dia, não
+      recalculado a cada visita) - a home lê esse valor, então nunca diverge
+      do catálogo. Sem nenhuma sincronização ainda, cai pro piso fixo
       `CASHBACK_MAXIMO_ANUNCIADO` como fallback. Nova seção nas regras do
-      cashback explica por que a faixa varia (reajuste mensal da Shopee,
-      mais ofertas em campanha aumentam o topo). (`ofertas/models.py`,
+      cashback explica por que esse número varia (reajuste mensal da Shopee,
+      mais ofertas em campanha aumentam o valor). (`ofertas/models.py`,
       `ofertas/services.py`, `links/views.py`,
       `links/templates/links/home.html`)
-      **Refinado em seguida:** produtos onde o teto por produto reduziu bastante
-      o percentual (comum em produtos caros, ex: R$10 de teto sobre R$1000 vira
-      1%) ficam de fora da conta dessa faixa - continuam com o valor real e o
-      aviso de "máximo por produto" no catálogo, só não puxam o "de X% a Y%" do
-      hero pra baixo de um jeito que não representa a experiência típica (e
-      esconderia o diferencial do cash-b: % de cashback maior que concorrentes
-      como Méliuz, especialmente com comissão de campanha ativa).
+
+      Chegou a virar uma faixa ("de X% a Y%") numa primeira tentativa, mas o
+      dono do produto pediu pra reverter pra só o máximo - decisão de negócio
+      importante: mostrar o mínimo dava a entender que a maioria das ofertas
+      rende pouco, o oposto do diferencial do cash-b (% de cashback maior que
+      concorrentes como Méliuz, especialmente com comissão de campanha ativa).
+      **Lição registrada:** esse tipo de decisão de copy/apresentação deve ser
+      perguntada ao dono do produto antes de implementar, não decidida e
+      corrigida depois.
 - [x] **Ordenação "Maior cashback" corrigida** — ordenava pela comissão
       bruta no banco (`percentual_comissao`), que diverge do % exibido
       (`percentual_cashback`, já com o teto aplicado) assim que um produto

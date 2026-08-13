@@ -58,24 +58,23 @@
 
         <h2>Por que o percentual anunciado muda de um dia pro outro?</h2>
         <p>
-            A faixa de cashback mostrada na home ("de X% a Y%") não é um número fixo —
-            ela é recalculada todo dia a partir das ofertas que a Shopee está oferecendo
-            naquele momento, então sempre bate com o que você vê no catálogo. Isso
-            também significa que ela pode variar bastante: a Shopee costuma reajustar a
-            comissão de venda direta uma vez por mês, e é comum os primeiros dias do mês
-            ainda não terem esse reajuste aplicado — nesses dias, a faixa anunciada pode
-            aparecer mais baixa do que em outros momentos do mês. E quanto mais ofertas
-            tiverem campanha de comissão extra ativa (só disponível na venda direta), maior
-            tende a ser o topo da faixa.
+            O "até X%" mostrado na home não é um número fixo — é o maior percentual de
+            cashback real entre as ofertas que a Shopee está oferecendo naquele momento,
+            recalculado todo dia. Isso significa que ele pode variar bastante: a Shopee
+            costuma reajustar a comissão de venda direta uma vez por mês, e é comum os
+            primeiros dias do mês ainda não terem esse reajuste aplicado — nesses dias, o
+            percentual anunciado pode aparecer mais baixo do que em outros momentos do
+            mês. E quanto mais ofertas tiverem campanha de comissão extra ativa (só
+            disponível na venda direta), maior tende a ser esse número.
         </p>
         <p>
             Um detalhe: produtos onde o limite de
             R$ {{ cashback_maximo_por_produto|floatformat:2 }} por produto reduziu bastante
-            o percentual (geralmente produtos mais caros) não entram na conta dessa faixa —
-            senão o número anunciado ficaria artificialmente baixo, sem representar a
-            experiência típica de quem usa o site. Isso não muda o cashback pago: esses
-            produtos continuam com o valor real e o aviso de "máximo por produto" ao
-            navegar no catálogo, só não influenciam o "de X% a Y%" da home.
+            o percentual (geralmente produtos mais caros) não entram nessa conta — senão
+            um produto caro e capado poderia "roubar" o topo com um número bem menor do
+            que o real máximo sem teto. Isso não muda o cashback pago: esses produtos
+            continuam com o valor real e o aviso de "máximo por produto" ao navegar no
+            catálogo, só não influenciam o "até X%" da home.
         </p>
 
         <h2>Os quatro status do seu saldo</h2>
