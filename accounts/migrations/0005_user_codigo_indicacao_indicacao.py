@@ -40,15 +40,19 @@ class Migration(migrations.Migration):
     ]
 
     operations = [
+        # Sem unique=True ainda - com usuários já existentes, todos ganhariam o
+        # mesmo valor em branco ao mesmo tempo nessa etapa, e o UNIQUE quebraria
+        # antes mesmo do RunPython abaixo ter a chance de gerar códigos distintos.
         migrations.AddField(
             model_name="user",
             name="codigo_indicacao",
             field=models.CharField(
                 blank=True,
                 max_length=8,
-                unique=True,
+                default="",
                 verbose_name="Código de indicação",
             ),
+            preserve_default=False,
         ),
         migrations.CreateModel(
             name="Indicacao",
@@ -107,4 +111,16 @@ class Migration(migrations.Migration):
             },
         ),
         migrations.RunPython(gerar_codigos_para_usuarios_existentes, reverter),
+        # Só agora, com todo mundo já tendo um código distinto, é seguro exigir
+        # unicidade no banco.
+        migrations.AlterField(
+            model_name="user",
+            name="codigo_indicacao",
+            field=models.CharField(
+                blank=True,
+                max_length=8,
+                unique=True,
+                verbose_name="Código de indicação",
+            ),
+        ),
     ]
