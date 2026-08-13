@@ -235,6 +235,16 @@ def sincronizar(purchase_time_start: int, purchase_time_end: int) -> dict:
     return {"novos": novos, "atualizados": atualizados, "nao_identificados": nao_identificados}
 
 
+def _limite_cashback_indicacao() -> Decimal:
+    """Teto do cashback num pedido com bônus de indicação: o teto normal por produto
+    (CASHBACK_MAXIMO_POR_PRODUTO) x o multiplicador de indicação. Existe porque o teto
+    normal é por produto, não por pedido - um pedido com mais de um item já pode somar
+    mais que o teto de um produto só antes do dobro entrar em cena (ex: 2 itens capados
+    a R$10 cada = R$20 no pedido), e sem esse teto o dobro multiplicaria esse total em
+    vez de dobrar só o limite de um produto."""
+    return Decimal(str(settings.CASHBACK_MAXIMO_POR_PRODUTO)) * Decimal(str(settings.CASHBACK_MULTIPLICADOR_INDICACAO))
+
+
 def _reaplicar_bonus_ja_concedido(linhas_por_order_id: dict[str, dict]) -> None:
     """A Shopee reenvia o mesmo pedido validado em toda sincronização seguinte, e
     _montar_defaults recalcula valor_cashback do zero a cada vez - sem isso, o dobro
@@ -250,11 +260,14 @@ def _reaplicar_bonus_ja_concedido(linhas_por_order_id: dict[str, dict]) -> None:
     ).select_related("pedido_bonus_indicado", "pedido_bonus_indicador")
 
     multiplicador = Decimal(str(settings.CASHBACK_MULTIPLICADOR_INDICACAO))
+    limite = _limite_cashback_indicacao()
     for indicacao in indicacoes:
         for pedido_bonus in (indicacao.pedido_bonus_indicado, indicacao.pedido_bonus_indicador):
             if pedido_bonus and pedido_bonus.order_id in linhas_por_order_id:
                 defaults = linhas_por_order_id[pedido_bonus.order_id]
-                defaults["valor_cashback"] = (defaults["valor_cashback"] * multiplicador).quantize(Decimal("0.01"))
+                defaults["valor_cashback"] = min(
+                    (defaults["valor_cashback"] * multiplicador).quantize(Decimal("0.01")), limite
+                )
 
 
 def _selecionar_bonus_indicacao(recem_validados: list[Pedido]) -> list[tuple[Indicacao, str, str]]:
@@ -286,16 +299,17 @@ def _selecionar_bonus_indicacao(recem_validados: list[Pedido]) -> list[tuple[Ind
             indicador_fila[i.indicador_id].append(i)
 
     multiplicador = Decimal(str(settings.CASHBACK_MULTIPLICADOR_INDICACAO))
+    limite = _limite_cashback_indicacao()
     epoca_minima = datetime.min.replace(tzinfo=dt_timezone.utc)
     vinculos = []
     for pedido in sorted(recem_validados, key=lambda p: p.data_compra or epoca_minima):
         if pedido.usuario_id in indicado_pendente:
             indicacao = indicado_pendente.pop(pedido.usuario_id)
-            pedido.valor_cashback = (pedido.valor_cashback * multiplicador).quantize(Decimal("0.01"))
+            pedido.valor_cashback = min((pedido.valor_cashback * multiplicador).quantize(Decimal("0.01")), limite)
             vinculos.append((indicacao, "pedido_bonus_indicado", pedido.order_id))
         elif indicador_fila.get(pedido.usuario_id):
             indicacao = indicador_fila[pedido.usuario_id].pop(0)
-            pedido.valor_cashback = (pedido.valor_cashback * multiplicador).quantize(Decimal("0.01"))
+            pedido.valor_cashback = min((pedido.valor_cashback * multiplicador).quantize(Decimal("0.01")), limite)
             vinculos.append((indicacao, "pedido_bonus_indicador", pedido.order_id))
 
     return vinculos

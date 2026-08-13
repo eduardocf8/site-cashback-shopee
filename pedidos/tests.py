@@ -504,6 +504,33 @@ class SincronizarBonusIndicacaoTests(TestCase):
         self.assertEqual(indicacao2.pedido_bonus_indicador.order_id, "ORD-REF-1")
 
     @patch("pedidos.services.buscar_conversoes")
+    def test_bonus_em_pedido_com_varios_itens_e_limitado_a_20(self, mock_buscar):
+        # Pedido com 2 itens, cada um já no teto de R$10 (R$20 no total antes do dobro).
+        # O dobro de indicação não pode multiplicar esse total pra R$40 - o teto do
+        # pedido bonificado precisa acompanhar o teto por produto x o multiplicador.
+        node = {
+            "conversionId": "ORD-IND-MULTI",
+            "purchaseTime": 1700000000,
+            "utmContent": f"{self.click_indicado.sub_id_usuario()},{self.click_indicado.sub_id_click()}",
+            "orders": [
+                {
+                    "orderId": "ORD-IND-MULTI",
+                    "orderStatus": "COMPLETED",
+                    "items": [
+                        {"completeTime": 1700000500, "itemTotalCommission": "15.00"},
+                        {"completeTime": 1700000500, "itemTotalCommission": "15.00"},
+                    ],
+                }
+            ],
+        }
+        mock_buscar.return_value = self._pagina([node])
+
+        sincronizar(1690000000, 1700000000)
+
+        pedido = Pedido.objects.get(order_id="ORD-IND-MULTI")
+        self.assertEqual(pedido.valor_cashback, Decimal("20.00"))
+
+    @patch("pedidos.services.buscar_conversoes")
     def test_usuario_sem_indicacao_nao_e_afetado(self, mock_buscar):
         avulso = get_user_model().objects.create_user(username="avulso", password="senha123", cpf="94834869092")
         click_avulso = Click.objects.create(

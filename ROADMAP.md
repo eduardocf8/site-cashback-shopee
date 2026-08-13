@@ -259,6 +259,15 @@ seguinte validada de quem indicou, depois disso.
       `pedido_bonus_indicador`, pra reaplicar o dobro em toda sincronização
       seguinte sem duplicar (a Shopee reenvia o mesmo pedido validado
       indefinidamente). (`pedidos/services.py`)
+- [x] **Teto de R$ 20 no pedido bonificado** — o teto normal (Fase 16) é por
+      produto, não por pedido, então um pedido com vários itens já pode somar
+      mais que R$10 antes do dobro entrar em cena (ex: 2 itens capados a R$10
+      cada = R$20 no pedido). Sem um teto próprio pro pedido bonificado, o
+      dobro multiplicaria esse total pra R$40 em vez de dobrar só o limite de
+      um produto (`_limite_cashback_indicacao()` = `CASHBACK_MAXIMO_POR_PRODUTO`
+      × `CASHBACK_MULTIPLICADOR_INDICACAO`, aplicado nas duas sincronizações -
+      quando o bônus é concedido pela 1ª vez e quando é reaplicado depois).
+      (`pedidos/services.py`)
 - [x] **Painel "Indique e ganhe"** — seção no dashboard com o link (botão
       copiar), quantas indicações foram feitas e concluídas, e uma tabela
       com o status de cada uma. (`accounts/templates/accounts/dashboard.html`)
