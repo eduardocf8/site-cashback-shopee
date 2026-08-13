@@ -72,7 +72,7 @@ render("cover", f"""
 <div class="canvas" style="background:{COLORS['brand']}; color:{COLORS['paper']}; justify-content:center; align-items:center; text-align:center;">
     <div style="font-size:130px; font-weight:700; letter-spacing:-0.02em;">cash-b</div>
     <div style="font-size:36px; margin-top:24px; max-width:760px; color:{COLORS['paper']}; opacity:0.92; line-height:1.4;">
-        Um jeito simples de ganhar dinheiro de volta comprando na Shopee.
+        O jeito mais simples de ganhar dinheiro comprando na Shopee.
     </div>
 </div>
 """, "01-o-que-e-cashb.png")
