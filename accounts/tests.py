@@ -1,7 +1,7 @@
 from django.test import TestCase
 from django.urls import reverse
 
-from .models import Indicacao, User
+from .models import ConfiguracaoIndicacao, Indicacao, User
 
 
 class CodigoIndicacaoTests(TestCase):
@@ -62,6 +62,14 @@ class RegistrarComIndicacaoTests(TestCase):
         resposta = self.client.get(reverse("registrar"), {"ref": self.indicador.codigo_indicacao})
         self.assertContains(resposta, f'name="ref" value="{self.indicador.codigo_indicacao}"')
 
+    def test_campanha_pausada_nao_cria_indicacao_mesmo_com_codigo_valido(self):
+        ConfiguracaoIndicacao.objects.update_or_create(pk=1, defaults={"ativa": False})
+
+        self.client.post(reverse("registrar"), self._dados_cadastro(ref=self.indicador.codigo_indicacao))
+
+        novo_usuario = User.objects.get(username="novaconta")
+        self.assertFalse(Indicacao.objects.filter(indicado=novo_usuario).exists())
+
 
 class DashboardIndicacaoTests(TestCase):
     def setUp(self):
@@ -80,3 +88,30 @@ class DashboardIndicacaoTests(TestCase):
 
         self.assertEqual(len(resposta.context["indicacoes"]), 1)
         self.assertEqual(resposta.context["indicacoes_concluidas"], 0)
+
+    def test_secao_indique_e_ganhe_aparece_por_padrao(self):
+        resposta = self.client.get(reverse("dashboard"))
+        self.assertTrue(resposta.context["indicacao_ativa"])
+        self.assertContains(resposta, "Indique e ganhe")
+
+    def test_secao_indique_e_ganhe_some_quando_campanha_pausada(self):
+        ConfiguracaoIndicacao.objects.update_or_create(pk=1, defaults={"ativa": False})
+
+        resposta = self.client.get(reverse("dashboard"))
+
+        self.assertFalse(resposta.context["indicacao_ativa"])
+        self.assertNotContains(resposta, "Indique e ganhe")
+        self.assertNotContains(resposta, self.usuario.codigo_indicacao)
+
+
+class ConfiguracaoIndicacaoTests(TestCase):
+    def test_esta_ativa_por_padrao(self):
+        self.assertTrue(ConfiguracaoIndicacao.esta_ativa())
+
+    def test_esta_ativa_reflete_a_linha_unica_pausada_pelo_admin(self):
+        ConfiguracaoIndicacao.objects.update_or_create(pk=1, defaults={"ativa": False})
+        self.assertFalse(ConfiguracaoIndicacao.esta_ativa())
+
+    def test_esta_ativa_sem_nenhuma_linha_cai_pro_padrao_ligado(self):
+        ConfiguracaoIndicacao.objects.all().delete()
+        self.assertTrue(ConfiguracaoIndicacao.esta_ativa())

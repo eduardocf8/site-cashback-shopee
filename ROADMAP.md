@@ -271,6 +271,17 @@ seguinte validada de quem indicou, depois disso.
 - [x] **Painel "Indique e ganhe"** — seção no dashboard com o link (botão
       copiar), quantas indicações foram feitas e concluídas, e uma tabela
       com o status de cada uma. (`accounts/templates/accounts/dashboard.html`)
+- [x] **Liga/pausa a campanha pelo admin, sem deploy** — pensado pro mês de
+      inauguração: se o cashback já está em dobro por uma campanha geral
+      (`CASHBACK_MULTIPLICADOR_CAMPANHA`), empilhar o dobro de indicação em
+      cima ficaria inviável (120% da comissão em cashback). `accounts.
+      ConfiguracaoIndicacao` é uma linha única (pk=1, criada pela migração)
+      editável só pelo admin - pausada, bloqueia a criação de indicações
+      *novas* (cadastro com `?ref=`) e esconde a seção/link inteira do
+      dashboard; indicações que já existiam continuam recebendo o dobro
+      normalmente, porque o cálculo do bônus não depende desse flag, só a
+      criação de vínculos novos. (`accounts/models.py`, `accounts/views.py`,
+      `accounts/admin.py`)
 
 ## Fase 16 — Comissão de campanha do vendedor + teto por produto ✅
 

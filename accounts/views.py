@@ -15,7 +15,7 @@ from saques.models import Saque
 from saques.services import calcular_saldo_disponivel
 
 from .forms import ChavePixForm, EditarPerfilForm, RegistroForm
-from .models import Indicacao
+from .models import ConfiguracaoIndicacao, Indicacao
 from .tokens import enviar_email_verificacao, validar_token_verificacao
 
 User = get_user_model()
@@ -44,7 +44,7 @@ def registrar(request):
 
 
 def _criar_indicacao_se_valida(usuario, codigo_indicacao):
-    if not codigo_indicacao:
+    if not codigo_indicacao or not ConfiguracaoIndicacao.esta_ativa():
         return
     indicador = User.objects.filter(codigo_indicacao=codigo_indicacao).exclude(pk=usuario.pk).first()
     if indicador:
@@ -117,6 +117,7 @@ def dashboard(request):
         min(100, int(saldo_disponivel / saque_valor_minimo * 100)) if saque_valor_minimo else 100
     )
 
+    indicacao_ativa = ConfiguracaoIndicacao.esta_ativa()
     link_indicacao = request.build_absolute_uri(f"{reverse('registrar')}?ref={request.user.codigo_indicacao}")
     indicacoes = request.user.indicacoes_feitas.select_related("indicado").all()
     indicacoes_concluidas = sum(1 for indicacao in indicacoes if indicacao.pedido_bonus_indicador_id)
@@ -139,6 +140,7 @@ def dashboard(request):
         "status_saques_choices": Saque.STATUS_CHOICES,
         "tipo_clicks_choices": Click.TIPO_CHOICES,
         "chave_pix_form": ChavePixForm(instance=request.user),
+        "indicacao_ativa": indicacao_ativa,
         "link_indicacao": link_indicacao,
         "indicacoes": indicacoes,
         "indicacoes_concluidas": indicacoes_concluidas,

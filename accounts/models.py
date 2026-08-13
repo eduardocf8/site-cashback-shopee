@@ -86,3 +86,28 @@ class Indicacao(models.Model):
 
     def __str__(self):
         return f"{self.indicador} indicou {self.indicado}"
+
+
+class ConfiguracaoIndicacao(models.Model):
+    """Liga/pausa a campanha "indique e ganhe" pelo admin, sem precisar de deploy -
+    pensado pra situações como um mês de campanha com cashback em dobro, onde somar o
+    dobro de indicação em cima também inviabilizaria o custo. Linha única (pk=1).
+
+    Pausada: só bloqueia indicações NOVAS (cadastro com ?ref=, ver
+    accounts/views.py::_criar_indicacao_se_valida) e esconde a seção/link no dashboard.
+    Indicações já existentes continuam recebendo o dobro normalmente - o cálculo do
+    bônus em pedidos/services.py não lê esse flag, só a criação de vínculos novos."""
+
+    ativa = models.BooleanField("Campanha ativa", default=True)
+
+    class Meta:
+        verbose_name = "Configuração de indicação"
+        verbose_name_plural = "Configuração de indicação"
+
+    def __str__(self):
+        return "Ativa" if self.ativa else "Pausada"
+
+    @classmethod
+    def esta_ativa(cls) -> bool:
+        config = cls.objects.filter(pk=1).first()
+        return config.ativa if config else True

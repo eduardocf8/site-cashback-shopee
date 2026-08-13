@@ -1,7 +1,7 @@
 from django.contrib import admin
 from django.contrib.auth.admin import UserAdmin as BaseUserAdmin
 
-from .models import Indicacao, User
+from .models import ConfiguracaoIndicacao, Indicacao, User
 
 
 class UserAdmin(BaseUserAdmin):
@@ -20,6 +20,19 @@ class IndicacaoAdmin(admin.ModelAdmin):
     list_filter = ("criado_em",)
     search_fields = ("indicador__username", "indicado__username")
     autocomplete_fields = ("indicador", "indicado")
+
+
+@admin.register(ConfiguracaoIndicacao)
+class ConfiguracaoIndicacaoAdmin(admin.ModelAdmin):
+    # Linha única (pk=1, criada pela migração 0006) - só dá pra editar o campo "ativa",
+    # não criar outra linha nem apagar a que existe.
+    list_display = ("ativa",)
+
+    def has_add_permission(self, request):
+        return False
+
+    def has_delete_permission(self, request, obj=None):
+        return False
 
 
 admin.site.register(User, UserAdmin)
