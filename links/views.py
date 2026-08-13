@@ -51,6 +51,7 @@ def home(request):
         "form": form,
         "link_convertido": link_convertido,
         "cashback_maximo_anunciado": settings.CASHBACK_MAXIMO_ANUNCIADO,
+        "cashback_maximo_por_produto": settings.CASHBACK_MAXIMO_POR_PRODUTO,
         "saque_valor_minimo": settings.SAQUE_VALOR_MINIMO,
         "oferta_destaque": oferta_destaque,
         "ofertas_em_alta": ofertas_em_alta,

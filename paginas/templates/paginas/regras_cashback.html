@@ -14,8 +14,10 @@
         <p>
             Você compra na Shopee através de um link gerado pelo cash-b. Quando a
             Shopee confirma o pedido, ela paga uma comissão de afiliado pra gente —
-            e repassamos <strong>{{ percentual_repasse|floatformat:0 }}% dessa comissão</strong>
-            de volta pra você, como cashback.
+            e repassamos <strong>parte dessa comissão</strong> de volta pra você,
+            como cashback (respeitando o limite de
+            R$ {{ cashback_maximo_por_produto|floatformat:2 }} por produto explicado
+            mais abaixo).
         </p>
 
         <h2>Venda direta x venda indireta</h2>
@@ -39,6 +41,19 @@
         <p>
             Por isso, sempre que você já souber o que vai comprar, vale mais a pena
             converter o link do produto específico.
+        </p>
+
+        <h2>Limite de cashback por produto</h2>
+        <p>
+            Pra cashback ficar sustentável mesmo quando um produto tem uma campanha de
+            comissão extra bem alta, o valor pago por produto é limitado a
+            <strong>R$ {{ cashback_maximo_por_produto|floatformat:2 }}</strong>. Por
+            exemplo: se um produto de R$ 100 tivesse 20% de comissão total (R$ 20 de
+            cashback), o valor pago fica limitado a R$ {{ cashback_maximo_por_produto|floatformat:2 }}.
+            Esse limite é por produto, não por pedido — uma compra com vários produtos
+            diferentes pode ultrapassar esse valor somando o cashback de cada um. Sempre
+            que esse limite se aplica, o percentual e o valor mostrados no site já vêm
+            ajustados, então o que você vê é sempre o que você recebe.
         </p>
 
         <h2>Os quatro status do seu saldo</h2>

@@ -65,7 +65,7 @@ def _montar_oferta(node: dict, categorias_nivel1: dict[int, str]) -> Oferta:
         preco_min=_decimal_seguro(node.get("priceMin")),
         preco_max=_decimal_seguro(node.get("priceMax")),
         percentual_desconto=int(node.get("priceDiscountRate") or 0),
-        percentual_comissao=_decimal_seguro(node.get("shopeeCommissionRate")),
+        percentual_comissao=_decimal_seguro(node.get("commissionRate")),
         avaliacao=avaliacao,
         vendas=int(node.get("sales") or 0),
         categoria_id=categoria_id,

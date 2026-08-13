@@ -263,6 +263,49 @@ seguinte validada de quem indicou, depois disso.
       copiar), quantas indicações foram feitas e concluídas, e uma tabela
       com o status de cada uma. (`accounts/templates/accounts/dashboard.html`)
 
+## Fase 16 — Comissão de campanha do vendedor + teto por produto ✅
+
+Descoberto ao investigar por que os builds recentes no Render estavam
+falhando: comparando um pedido real sincronizado com o painel oficial de
+afiliados da Shopee (ver `pedidos/management/commands/consultar_comissoes.py`),
+confirmamos que `itemTotalCommission` (usado no cálculo real do cashback pago)
+**já inclui** a comissão extra de campanha do vendedor, não só a comissão
+base da Shopee. Antes disso, o catálogo de ofertas mostrava só a comissão
+base (decisão da Fase 13/14, achando que o bônus não era garantido) - ou
+seja, o usuário às vezes recebia mais cashback do que o site anunciava.
+
+- [x] **Catálogo passa a contar a comissão de campanha** — `commissionRate`
+      (Shopee + vendedor) em vez de só `shopeeCommissionRate`.
+      (`links/shopee_client.py`, `ofertas/services.py`)
+- [x] **Teto de R$ 10 por produto** (`CASHBACK_MAXIMO_POR_PRODUTO`, novo
+      setting) — sem isso, um produto com comissão de campanha muito alta
+      pagaria um cashback desproporcional ao preço. Aplicado tanto no
+      cálculo real (`pedidos/services.py`, item a item, não por pedido) 
+      quanto na estimativa mostrada no site (`ofertas/models.py`).
+- [x] **Site sempre mostra o valor já ajustado pelo teto** — badge de %,
+      valor em R$ nos cards (home e `/ofertas/`) e no card "Oferta do dia"
+      já vêm reduzidos quando o teto se aplica, com uma nota "(máximo por
+      produto)" pra transparência. Nova seção nas
+      [regras do cashback](paginas/templates/paginas/regras_cashback.html)
+      explicando o teto com exemplo.
+- [x] Ferramenta de diagnóstico (`consultar_comissoes`) que originou essa
+      descoberta permanece no projeto pra futuras verificações.
+
+**Risco conhecido e aceito conscientemente:** a Fase 13.7 (mais acima) já
+tinha cancelado o uso de `sellerCommissionRate` no catálogo por um motivo
+concreto - um bug anterior viu 17,8% via API contra 8% no app da Shopee pro
+mesmo produto, indício de que esse campo pode ser "MCN-gated" (não confiável
+pra essa conta) *especificamente na query `productOfferV2`* (catálogo,
+estimativa pré-compra). O que confirmamos agora com `consultar_comissoes` foi
+a query **diferente** `conversionReport` (`itemTotalCommission`, pedido real
+já concluído) - que bateu exatamente com o painel da Shopee. Ou seja: temos
+certeza que o **pagamento real** está correto, mas **não** verificamos se o
+`commissionRate` do catálogo é igualmente confiável pra essa conta. Decisão
+do dono do produto (2026-08-13): usar mesmo assim, aceitando o risco de o
+catálogo mostrar um % inflado se aquele bug antigo ainda se aplicar. Vale
+revisitar comparando alguns itens do catálogo com o app da Shopee, se algum
+usuário reportar um percentual anunciado que não bateu com o que recebeu.
+
 ---
 
 Pra continuar esse roadmap numa conversa nova, basta apontar esse arquivo

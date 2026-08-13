@@ -96,10 +96,19 @@ CAMPOS_ATUALIZAVEIS = [
 def _montar_defaults(conversao, pedido_shopee, click, data_compra, percentual):
     status_shopee = mapear_status(pedido_shopee.get("orderStatus"))
     itens = pedido_shopee.get("items", [])
-    comissao = sum(
-        (Decimal(str(item.get("itemTotalCommission") or "0")) for item in itens),
-        Decimal("0"),
-    )
+    limite_por_produto = Decimal(str(settings.CASHBACK_MAXIMO_POR_PRODUTO))
+
+    # O teto é por produto, não por pedido - por isso cada item é limitado individualmente
+    # antes de somar. itemTotalCommission já inclui o bônus de campanha do vendedor quando
+    # ativo (confirmado comparando com o painel oficial de afiliados da Shopee), então sem
+    # esse teto um único item de comissão alta pagaria um cashback desproporcional ao preço.
+    comissao = Decimal("0")
+    cashback = Decimal("0")
+    for item in itens:
+        comissao_item = Decimal(str(item.get("itemTotalCommission") or "0"))
+        comissao += comissao_item
+        cashback += min(comissao_item * percentual, limite_por_produto).quantize(Decimal("0.01"))
+
     tempos_conclusao = [item["completeTime"] for item in itens if item.get("completeTime")]
     data_validacao = _converter_timestamp(max(tempos_conclusao)) if tempos_conclusao else None
 
@@ -126,7 +135,7 @@ def _montar_defaults(conversao, pedido_shopee, click, data_compra, percentual):
         "status": status_shopee,
         "status_shopee_bruto": pedido_shopee.get("orderStatus") or "",
         "valor_comissao": comissao,
-        "valor_cashback": (comissao * percentual).quantize(Decimal("0.01")),
+        "valor_cashback": cashback,
         "produto_nome": ", ".join(nomes_produto)[:255],
         "produto_imagem_url": imagem_produto,
         "motivo_cancelamento": motivo_cancelamento,

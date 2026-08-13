@@ -21,7 +21,10 @@
             {% endif %}
         </div>
         {% if oferta.percentual_cashback %}
-            <div class="cashback-valor">Receba R$ {{ oferta.valor_cashback_estimado|floatformat:2 }} de cashback</div>
+            <div class="cashback-valor">
+                Receba R$ {{ oferta.valor_cashback_estimado|floatformat:2 }} de cashback
+                {% if oferta.cashback_no_limite %}<span class="cashback-limite" title="Cashback limitado a R$ {{ cashback_maximo_por_produto|floatformat:0 }} por produto">(máximo por produto)</span>{% endif %}
+            </div>
         {% endif %}
     </div>
     <a class="botao-cta" href="{% url 'ofertas_ir' oferta.id %}">Ir pra oferta</a>

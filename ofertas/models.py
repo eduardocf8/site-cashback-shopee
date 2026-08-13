@@ -38,22 +38,41 @@ class Oferta(models.Model):
         return f"{self.nome} (R$ {self.preco_min}–{self.preco_max})"
 
     @property
-    def percentual_cashback(self) -> Decimal:
-        """% de cashback sobre o preço, na mesma fórmula usada de verdade em
-        pedidos/services.py pra calcular o valor_cashback (comissão x repasse do site)."""
+    def _percentual_cashback_bruto(self) -> Decimal:
+        """% de cashback sobre o preço, sem aplicar o teto por produto - mesma fórmula
+        usada de verdade em pedidos/services.py (comissão x repasse do site), antes do
+        min() com CASHBACK_MAXIMO_POR_PRODUTO."""
         repasse = (
             Decimal(str(settings.SHOPEE_CASHBACK_PERCENTUAL))
             / Decimal("100")
             * Decimal(str(settings.CASHBACK_MULTIPLICADOR_CAMPANHA))
         )
-        return (self.percentual_comissao * Decimal("100") * repasse).quantize(Decimal("0.1"))
+        return self.percentual_comissao * Decimal("100") * repasse
 
     @property
     def valor_cashback_estimado(self) -> Decimal:
-        """Estimativa em R$ do cashback sobre o preço mínimo, pra mostrar o valor junto
-        do percentual (percentual sozinho é mais abstrato) - mesma fórmula de
-        percentual_cashback, só que aplicada em cima do preço em vez de só o percentual."""
-        return (self.preco_min * self.percentual_cashback / Decimal("100")).quantize(Decimal("0.01"))
+        """Estimativa em R$ do cashback sobre o preço mínimo, já limitada a
+        CASHBACK_MAXIMO_POR_PRODUTO - mesmo teto aplicado de verdade em
+        pedidos/services.py, pra nunca mostrar um valor maior do que o que é pago."""
+        limite = Decimal(str(settings.CASHBACK_MAXIMO_POR_PRODUTO))
+        valor_bruto = self.preco_min * self._percentual_cashback_bruto / Decimal("100")
+        return min(valor_bruto, limite).quantize(Decimal("0.01"))
+
+    @property
+    def percentual_cashback(self) -> Decimal:
+        """% de cashback exibida - já reduzida quando valor_cashback_estimado bate no
+        teto por produto, pra badge (%) e valor (R$) sempre baterem um com o outro."""
+        if not self.preco_min:
+            return self._percentual_cashback_bruto.quantize(Decimal("0.1"))
+        return (self.valor_cashback_estimado / self.preco_min * Decimal("100")).quantize(Decimal("0.1"))
+
+    @property
+    def cashback_no_limite(self) -> bool:
+        """True quando o teto por produto reduziu o cashback abaixo do que a comissão
+        real permitiria - usado pra mostrar um aviso de transparência no site."""
+        limite = Decimal(str(settings.CASHBACK_MAXIMO_POR_PRODUTO))
+        valor_bruto = self.preco_min * self._percentual_cashback_bruto / Decimal("100")
+        return valor_bruto > limite
 
 
 class NomeCurtoCache(models.Model):

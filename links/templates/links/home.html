@@ -370,7 +370,8 @@
                         {{ form.url_produto }}
                         {% if form.url_produto.errors %}<div class="erros">{{ form.url_produto.errors|striptags }}</div>{% endif %}
                         <p class="estimativa-cashback" id="estimativa-cashback">
-                            💰 Essa compra pode gerar até {{ cashback_maximo_anunciado|floatformat:"-1" }}% de cashback.
+                            💰 Essa compra pode gerar até {{ cashback_maximo_anunciado|floatformat:"-1" }}% de cashback
+                            (limitado a R$ {{ cashback_maximo_por_produto|floatformat:0 }} por produto).
                         </p>
                         <button type="submit">Gerar link com cashback</button>
                     </form>
@@ -435,7 +436,10 @@
                     <div class="destaque-preco-linha">
                         <span class="destaque-preco">R$ {{ oferta_destaque.preco_min|floatformat:2 }}</span>
                         {% if oferta_destaque.percentual_cashback %}
-                            <span class="destaque-cashback">+ R$ {{ oferta_destaque.valor_cashback_estimado|floatformat:2 }} de volta ({{ oferta_destaque.percentual_cashback }}% cashback)</span>
+                            <span class="destaque-cashback">
+                                + R$ {{ oferta_destaque.valor_cashback_estimado|floatformat:2 }} de volta ({{ oferta_destaque.percentual_cashback }}% cashback)
+                                {% if oferta_destaque.cashback_no_limite %}<span class="cashback-limite" title="Cashback limitado a R$ {{ cashback_maximo_por_produto|floatformat:0 }} por produto">(máximo por produto)</span>{% endif %}
+                            </span>
                         {% endif %}
                     </div>
                     <a class="botao-cta" href="{% url 'ofertas_ir' oferta_destaque.id %}">Comprar com cashback &rarr;</a>

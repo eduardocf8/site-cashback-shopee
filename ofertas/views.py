@@ -1,4 +1,5 @@
 import requests
+from django.conf import settings
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
 from django.core.paginator import Paginator
@@ -54,6 +55,7 @@ def lista(request):
         "busca": busca,
         "ordenacao_selecionada": ordenacao,
         "ordenacoes": ORDENACOES_ROTULOS.items(),
+        "cashback_maximo_por_produto": settings.CASHBACK_MAXIMO_POR_PRODUTO,
     }
     if request.user.is_authenticated:
         contexto.update(calcular_resumo_saldo_nav(request.user))
