@@ -303,6 +303,22 @@ seja, o usuário às vezes recebia mais cashback do que o site anunciava.
       mais ofertas em campanha aumentam o topo). (`ofertas/models.py`,
       `ofertas/services.py`, `links/views.py`,
       `links/templates/links/home.html`)
+      **Refinado em seguida:** produtos onde o teto por produto reduziu bastante
+      o percentual (comum em produtos caros, ex: R$10 de teto sobre R$1000 vira
+      1%) ficam de fora da conta dessa faixa - continuam com o valor real e o
+      aviso de "máximo por produto" no catálogo, só não puxam o "de X% a Y%" do
+      hero pra baixo de um jeito que não representa a experiência típica (e
+      esconderia o diferencial do cash-b: % de cashback maior que concorrentes
+      como Méliuz, especialmente com comissão de campanha ativa).
+- [x] **Ordenação "Maior cashback" corrigida** — ordenava pela comissão
+      bruta no banco (`percentual_comissao`), que diverge do % exibido
+      (`percentual_cashback`, já com o teto aplicado) assim que um produto
+      caro tem a comissão bruta reduzida pelo teto. Sintomas: ofertas fora
+      de ordem na listagem, e a última página nunca chegando no mínimo real
+      da faixa anunciada (o item de comissão mínima ficava escondido no meio
+      da lista, com comissão bruta alta mas % exibido baixo por causa do
+      teto). Esse ordering agora é feito em Python pelo valor exibido de
+      verdade, não mais `.order_by()` no banco. (`ofertas/views.py`)
 
 **Risco conhecido e aceito conscientemente:** a Fase 13.7 (mais acima) já
 tinha cancelado o uso de `sellerCommissionRate` no catálogo por um motivo

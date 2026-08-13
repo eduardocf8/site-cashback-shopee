@@ -77,10 +77,10 @@ class Oferta(models.Model):
 
 class FaixaCashbackCache(models.Model):
     """Faixa (mín-máx) de % de cashback entre as ofertas sincronizadas na última
-    execução - calculada uma vez por sincronização (ver sincronizar_ofertas), não a cada
-    visita à home, e usada lá pro "de X% a Y% de cashback" sempre bater com o que a
-    pessoa realmente vê no catálogo (já com o teto por produto aplicado). Singleton -
-    só existe uma linha (pk=1), sobrescrita a cada sincronização."""
+    execução, ignorando ofertas onde o teto por produto reduziu o valor (ver
+    ofertas/services.py::_atualizar_faixa_cashback) - calculada uma vez por
+    sincronização, não a cada visita à home. Singleton - só existe uma linha (pk=1),
+    sobrescrita a cada sincronização."""
 
     percentual_minimo = models.DecimalField(max_digits=6, decimal_places=1, default=0)
     percentual_maximo = models.DecimalField(max_digits=6, decimal_places=1, default=0)

@@ -152,7 +152,7 @@ class FaixaCashbackAnunciadaTests(TestCase):
         mock_buscar.return_value = self._pagina(
             [
                 self._node(1, "0.03", "100.00"),  # 3% de R$100 = R$3, abaixo do teto
-                self._node(2, "0.15", "100.00"),  # 15% de R$100 = R$15, limitado a R$10 (= 10%)
+                self._node(2, "0.08", "100.00"),  # 8% de R$100 = R$8, abaixo do teto
             ]
         )
 
@@ -160,7 +160,27 @@ class FaixaCashbackAnunciadaTests(TestCase):
         minimo, maximo = obter_faixa_cashback_anunciada()
 
         self.assertEqual(minimo, Decimal("3.0"))
-        self.assertEqual(maximo, Decimal("10.0"))  # já reduzido pelo teto, igual ao catálogo
+        self.assertEqual(maximo, Decimal("8.0"))
+
+    @patch("ofertas.services.buscar_ofertas_produtos")
+    def test_produto_no_limite_nao_distorce_a_faixa_anunciada(self, mock_buscar):
+        # Produto caro com comissão bruta alta, capado a R$10, viraria só 2% exibido -
+        # isso não pode puxar o mínimo anunciado pra baixo (a pessoa nem daria uma
+        # chance pro site vendo "0,1%" ou "2%" logo de cara). Continua aparecendo
+        # normal no catálogo, com a nota de "máximo por produto" - só fica de fora
+        # da conta da faixa do hero.
+        mock_buscar.return_value = self._pagina(
+            [
+                self._node(1, "0.05", "100.00"),  # 5% de R$100 = R$5, abaixo do teto
+                self._node(2, "0.15", "500.00"),  # 15% de R$500 = R$75, capado a R$10 (= 2%)
+            ]
+        )
+
+        sincronizar_ofertas()
+        minimo, maximo = obter_faixa_cashback_anunciada()
+
+        self.assertEqual(minimo, Decimal("5.0"))
+        self.assertEqual(maximo, Decimal("5.0"))
 
     @patch("ofertas.services.buscar_ofertas_produtos")
     def test_oferta_sem_preco_nao_entra_na_conta_da_faixa(self, mock_buscar):

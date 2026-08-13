@@ -184,12 +184,21 @@ def obter_faixa_cashback_anunciada() -> tuple[Decimal, Decimal]:
 
 
 def _atualizar_faixa_cashback(ofertas) -> None:
-    """Recalcula o mín-máx de % de cashback (já com o teto por produto aplicado) entre
-    as ofertas recém-sincronizadas, pra home mostrar uma faixa que sempre bate com o que
-    a pessoa vê de verdade no catálogo. Chamado uma vez por sincronização, não por
-    request - ver FaixaCashbackCache."""
+    """Recalcula o mín-máx de % de cashback anunciado na home a partir das ofertas
+    recém-sincronizadas. Chamado uma vez por sincronização, não por request - ver
+    FaixaCashbackCache.
+
+    Só considera ofertas onde o teto por produto NÃO reduziu o valor (cashback_no_limite
+    é False). Isso não muda o cashback pago de verdade - continua limitado a
+    CASHBACK_MAXIMO_POR_PRODUTO igual sempre - só evita que produtos caros e capados
+    (ex: R$10 de teto sobre um item de R$1000 vira 1%) puxem a faixa anunciada pra baixo
+    de um jeito que não representa a experiência típica. Esses produtos continuam
+    aparecendo normalmente no catálogo, com o valor real e a nota "(máximo por
+    produto)" - só ficam de fora da conta da faixa do hero."""
     percentuais = [
-        oferta.percentual_cashback for oferta in ofertas if oferta.preco_min and oferta.percentual_comissao
+        oferta.percentual_cashback
+        for oferta in ofertas
+        if oferta.preco_min and oferta.percentual_comissao and not oferta.cashback_no_limite
     ]
     if not percentuais:
         return
