@@ -95,9 +95,9 @@ render("steps", f"""
 <div class="canvas" style="background:{COLORS['paper']}; color:{COLORS['ink']}; justify-content:center;">
     <div class="eyebrow" style="color:{COLORS['brand']};">cash-b explica</div>
     <div class="headline">Como funciona<br>o cashback?</div>
-    {step_row('1', 'Gere seu link (ou vá direto)', 'Cole o link do produto que quer comprar ou clique em “Ir pra Shopee”.')}
-    {step_row("2", "Compre normalmente", "Você compra do jeito que sempre comprou, sem passo a mais.")}
-    {step_row("3", "Receba parte de volta", "Depois que a Shopee confirma o pedido, seu cashback cai no seu saldo.")}
+    {step_row('1', 'Encontre o produto', 'Converta o link do produto, acesse o produto pela nossa vitrine ou simplesmente clique em "Ir pra Shopee."')}
+    {step_row("2", "Compre normalmente", "Você compra do jeito que sempre comprou, sem precisar fazer nada a mais.")}
+    {step_row("3", "Receba cashback", "Depois que o pedido for validado, o dinheiro vai pro seu saldo liberado e você pode sacar direto pra sua conta.")}
     <div class="badge" style="color:{COLORS['brand']};">cash-b</div>
 </div>
 """, "02-como-funciona.png")
