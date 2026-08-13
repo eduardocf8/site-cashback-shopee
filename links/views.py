@@ -16,7 +16,7 @@ from .services import gerar_click
 from .shopee_client import ShopeeAPIError, ShopeeConfigError, SubIdInvalidoError
 
 NUMERO_OFERTAS_EM_ALTA = 8
-NUMERO_CATEGORIAS_HOME = 6
+NUMERO_CATEGORIAS_HOME = 12
 
 
 def home(request):
