@@ -6,6 +6,7 @@ from decimal import Decimal, InvalidOperation
 from pathlib import Path
 
 import requests
+from django.conf import settings
 from django.db import transaction
 from django.db.models import Sum
 
@@ -13,7 +14,7 @@ from links.shopee_client import buscar_ofertas_produtos
 
 from . import gemini_client
 from .gemini_client import GeminiAPIError, GeminiConfigError
-from .models import NomeCurtoCache, Oferta
+from .models import FaixaCashbackCache, NomeCurtoCache, Oferta
 
 logger = logging.getLogger(__name__)
 
@@ -165,7 +166,34 @@ def sincronizar_ofertas(limite_por_pagina: int = 50, max_paginas: int = 40) -> d
         Oferta.objects.all().delete()
         Oferta.objects.bulk_create(por_item_id.values(), batch_size=200)
 
+    _atualizar_faixa_cashback(por_item_id.values())
+
     return {"total": len(por_item_id), "paginas_percorridas": pagina}
+
+
+def obter_faixa_cashback_anunciada() -> tuple[Decimal, Decimal]:
+    """(mínimo, máximo) de % de cashback pra anunciar na home - vem do
+    FaixaCashbackCache (calculado na última sincronização de ofertas). Se ainda não
+    houve nenhuma sincronização (instalação nova), cai pro piso configurado manualmente
+    em CASHBACK_MAXIMO_ANUNCIADO, repetido como mínimo e máximo."""
+    faixa = FaixaCashbackCache.obter()
+    if faixa and faixa.percentual_maximo:
+        return faixa.percentual_minimo, faixa.percentual_maximo
+    padrao = Decimal(str(settings.CASHBACK_MAXIMO_ANUNCIADO))
+    return padrao, padrao
+
+
+def _atualizar_faixa_cashback(ofertas) -> None:
+    """Recalcula o mín-máx de % de cashback (já com o teto por produto aplicado) entre
+    as ofertas recém-sincronizadas, pra home mostrar uma faixa que sempre bate com o que
+    a pessoa vê de verdade no catálogo. Chamado uma vez por sincronização, não por
+    request - ver FaixaCashbackCache."""
+    percentuais = [
+        oferta.percentual_cashback for oferta in ofertas if oferta.preco_min and oferta.percentual_comissao
+    ]
+    if not percentuais:
+        return
+    FaixaCashbackCache.atualizar(min(percentuais), max(percentuais))
 
 
 def normalizar_nome_produto(nome: str) -> str:

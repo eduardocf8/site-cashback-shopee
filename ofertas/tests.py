@@ -1,10 +1,11 @@
 from decimal import Decimal
+from unittest.mock import patch
 
 from django.test import TestCase, override_settings
 from django.urls import reverse
 
 from .models import Oferta
-from .services import _montar_oferta
+from .services import _montar_oferta, obter_faixa_cashback_anunciada, sincronizar_ofertas
 
 
 class OrdenarPorCashbackTests(TestCase):
@@ -96,3 +97,70 @@ class TetoCashbackPorProdutoTests(TestCase):
         self.assertEqual(oferta.valor_cashback_estimado, Decimal("0.00"))
         self.assertEqual(oferta.percentual_cashback, Decimal("5.0"))
         self.assertFalse(oferta.cashback_no_limite)
+
+
+@override_settings(
+    SHOPEE_CASHBACK_PERCENTUAL=100, CASHBACK_MULTIPLICADOR_CAMPANHA=1,
+    CASHBACK_MAXIMO_POR_PRODUTO=10, CASHBACK_MAXIMO_ANUNCIADO=2.4,
+)
+class FaixaCashbackAnunciadaTests(TestCase):
+    def _pagina(self, nodes, has_next_page=False):
+        return {"nodes": nodes, "pageInfo": {"page": 1, "limit": 50, "hasNextPage": has_next_page}}
+
+    def _node(self, item_id, commission_rate, price):
+        return {
+            "itemId": item_id,
+            "commissionRate": commission_rate,
+            "productName": f"Produto {item_id}",
+            "priceMin": price,
+            "priceMax": price,
+            "productCatIds": [100],
+        }
+
+    def test_sem_sincronizacao_ainda_cai_pro_fallback_configurado(self):
+        minimo, maximo = obter_faixa_cashback_anunciada()
+
+        self.assertEqual(minimo, Decimal("2.4"))
+        self.assertEqual(maximo, Decimal("2.4"))
+
+    @patch("ofertas.services.buscar_ofertas_produtos")
+    def test_sincronizacao_calcula_faixa_real_do_catalogo(self, mock_buscar):
+        mock_buscar.return_value = self._pagina(
+            [
+                self._node(1, "0.03", "100.00"),  # 3% de R$100 = R$3, abaixo do teto
+                self._node(2, "0.15", "100.00"),  # 15% de R$100 = R$15, limitado a R$10 (= 10%)
+            ]
+        )
+
+        sincronizar_ofertas()
+        minimo, maximo = obter_faixa_cashback_anunciada()
+
+        self.assertEqual(minimo, Decimal("3.0"))
+        self.assertEqual(maximo, Decimal("10.0"))  # já reduzido pelo teto, igual ao catálogo
+
+    @patch("ofertas.services.buscar_ofertas_produtos")
+    def test_oferta_sem_preco_nao_entra_na_conta_da_faixa(self, mock_buscar):
+        mock_buscar.return_value = self._pagina(
+            [
+                self._node(1, "0.05", "0"),  # sem preço sincronizado - fica de fora
+                self._node(2, "0.08", "50.00"),
+            ]
+        )
+
+        sincronizar_ofertas()
+        minimo, maximo = obter_faixa_cashback_anunciada()
+
+        self.assertEqual(minimo, Decimal("8.0"))
+        self.assertEqual(maximo, Decimal("8.0"))
+
+    @patch("ofertas.services.buscar_ofertas_produtos")
+    def test_resincronizar_atualiza_a_faixa_anterior(self, mock_buscar):
+        mock_buscar.return_value = self._pagina([self._node(1, "0.05", "100.00")])
+        sincronizar_ofertas()
+
+        mock_buscar.return_value = self._pagina([self._node(2, "0.09", "100.00")])
+        sincronizar_ofertas()
+
+        minimo, maximo = obter_faixa_cashback_anunciada()
+        self.assertEqual(minimo, Decimal("9.0"))
+        self.assertEqual(maximo, Decimal("9.0"))

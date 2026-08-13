@@ -1,9 +1,13 @@
 import hashlib
 import json
+from decimal import Decimal
 from unittest.mock import patch
 
 from django.contrib.auth import get_user_model
 from django.test import TestCase, override_settings
+from django.urls import reverse
+
+from ofertas.models import FaixaCashbackCache
 
 from .models import Click
 from .shopee_client import (
@@ -161,3 +165,22 @@ class GerarLinkViewTests(TestCase):
         self.client.logout()
         resposta = self.client.get("/links/")
         self.assertRedirects(resposta, "/login/?next=/links/")
+
+
+class HomeFaixaCashbackTests(TestCase):
+    def test_faixa_diferente_mostra_de_x_a_y(self):
+        FaixaCashbackCache.atualizar(Decimal("3.0"), Decimal("10.0"))
+
+        resposta = self.client.get(reverse("home"))
+
+        self.assertEqual(resposta.context["cashback_percentual_minimo"], Decimal("3.0"))
+        self.assertEqual(resposta.context["cashback_percentual_maximo"], Decimal("10.0"))
+        self.assertContains(resposta, "de 3% a 10%")
+
+    def test_faixa_igual_mostra_ate_x(self):
+        FaixaCashbackCache.atualizar(Decimal("5.0"), Decimal("5.0"))
+
+        resposta = self.client.get(reverse("home"))
+
+        self.assertContains(resposta, "até 5%")
+        self.assertNotContains(resposta, "de 5% a 5%")

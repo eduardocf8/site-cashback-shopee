@@ -108,8 +108,10 @@ SHOPEE_COMISSAO_VENDA_DIRETA = float(os.environ.get("SHOPEE_COMISSAO_VENDA_DIRET
 # um número de propaganda) - usado em pedidos/services.py, ofertas/models.py e no hero.
 CASHBACK_MULTIPLICADOR_CAMPANHA = float(os.environ.get("CASHBACK_MULTIPLICADOR_CAMPANHA", "1"))
 
-# Percentual "até X%" anunciado no hero da home = repasse x comissão de venda direta x
-# multiplicador de campanha. Calculado automaticamente - não precisa mexer aqui.
+# Fallback do "de X% a Y%" anunciado no hero da home, só usado antes da primeira
+# sincronização de ofertas (instalação nova, ainda sem FaixaCashbackCache calculado -
+# ver ofertas/services.py::obter_faixa_cashback_anunciada). Em uso normal, a home mostra
+# a faixa real calculada a partir do catálogo sincronizado, não esse valor fixo.
 CASHBACK_MAXIMO_ANUNCIADO = round(
     SHOPEE_CASHBACK_PERCENTUAL / 100 * SHOPEE_COMISSAO_VENDA_DIRETA * CASHBACK_MULTIPLICADOR_CAMPANHA, 2
 )

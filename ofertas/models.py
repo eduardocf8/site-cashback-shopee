@@ -75,6 +75,31 @@ class Oferta(models.Model):
         return valor_bruto > limite
 
 
+class FaixaCashbackCache(models.Model):
+    """Faixa (mín-máx) de % de cashback entre as ofertas sincronizadas na última
+    execução - calculada uma vez por sincronização (ver sincronizar_ofertas), não a cada
+    visita à home, e usada lá pro "de X% a Y% de cashback" sempre bater com o que a
+    pessoa realmente vê no catálogo (já com o teto por produto aplicado). Singleton -
+    só existe uma linha (pk=1), sobrescrita a cada sincronização."""
+
+    percentual_minimo = models.DecimalField(max_digits=6, decimal_places=1, default=0)
+    percentual_maximo = models.DecimalField(max_digits=6, decimal_places=1, default=0)
+    atualizado_em = models.DateTimeField(auto_now=True)
+
+    @classmethod
+    def atualizar(cls, percentual_minimo: Decimal, percentual_maximo: Decimal) -> None:
+        cls.objects.update_or_create(
+            pk=1, defaults={"percentual_minimo": percentual_minimo, "percentual_maximo": percentual_maximo}
+        )
+
+    @classmethod
+    def obter(cls) -> "FaixaCashbackCache | None":
+        return cls.objects.filter(pk=1).first()
+
+    def __str__(self):
+        return f"{self.percentual_minimo}% – {self.percentual_maximo}%"
+
+
 class NomeCurtoCache(models.Model):
     """Cache de nomes já encurtados pelo Gemini, guardado à parte da Oferta porque a
     sincronização apaga e recria todas as ofertas a cada execução (ver services.py) - sem

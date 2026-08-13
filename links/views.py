@@ -7,7 +7,11 @@ from django.contrib.auth.decorators import login_required
 from django.shortcuts import redirect, render
 from django.urls import reverse
 
-from ofertas.services import categorias_mais_vendidas, selecionar_top_ofertas_sem_duplicar
+from ofertas.services import (
+    categorias_mais_vendidas,
+    obter_faixa_cashback_anunciada,
+    selecionar_top_ofertas_sem_duplicar,
+)
 from saques.services import calcular_resumo_saldo_nav
 
 from .forms import LinkProdutoForm
@@ -46,11 +50,13 @@ def home(request):
     oferta_destaque = top_ofertas[0] if top_ofertas else None
     ofertas_em_alta = top_ofertas[1:]
     categorias_home = categorias_mais_vendidas(NUMERO_CATEGORIAS_HOME)
+    cashback_percentual_minimo, cashback_percentual_maximo = obter_faixa_cashback_anunciada()
 
     contexto = {
         "form": form,
         "link_convertido": link_convertido,
-        "cashback_maximo_anunciado": settings.CASHBACK_MAXIMO_ANUNCIADO,
+        "cashback_percentual_minimo": cashback_percentual_minimo,
+        "cashback_percentual_maximo": cashback_percentual_maximo,
         "cashback_maximo_por_produto": settings.CASHBACK_MAXIMO_POR_PRODUTO,
         "saque_valor_minimo": settings.SAQUE_VALOR_MINIMO,
         "oferta_destaque": oferta_destaque,

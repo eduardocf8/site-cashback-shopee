@@ -290,6 +290,19 @@ seja, o usuário às vezes recebia mais cashback do que o site anunciava.
       explicando o teto com exemplo.
 - [x] Ferramenta de diagnóstico (`consultar_comissoes`) que originou essa
       descoberta permanece no projeto pra futuras verificações.
+- [x] **Faixa "de X% a Y%" no hero, calculada do catálogo real** — o "até
+      2,4%" fixo era contestado assim que a pessoa entrava no catálogo e via
+      ofertas com comissão de campanha bem maior. Agora `sincronizar_ofertas()`
+      calcula o mínimo e o máximo real entre as ofertas sincronizadas (já com
+      o teto por produto aplicado) e salva num cache pequeno
+      (`ofertas.FaixaCashbackCache`, 1x por dia, não recalculado a cada
+      visita) - a home lê esse valor, então nunca diverge do catálogo. Se
+      não houver nenhuma sincronização ainda, cai pro piso fixo
+      `CASHBACK_MAXIMO_ANUNCIADO` como fallback. Nova seção nas regras do
+      cashback explica por que a faixa varia (reajuste mensal da Shopee,
+      mais ofertas em campanha aumentam o topo). (`ofertas/models.py`,
+      `ofertas/services.py`, `links/views.py`,
+      `links/templates/links/home.html`)
 
 **Risco conhecido e aceito conscientemente:** a Fase 13.7 (mais acima) já
 tinha cancelado o uso de `sellerCommissionRate` no catálogo por um motivo
