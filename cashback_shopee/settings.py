@@ -114,6 +114,12 @@ CASHBACK_MAXIMO_ANUNCIADO = round(
     SHOPEE_CASHBACK_PERCENTUAL / 100 * SHOPEE_COMISSAO_VENDA_DIRETA * CASHBACK_MULTIPLICADOR_CAMPANHA, 2
 )
 
+# Multiplicador do programa "indique e ganhe": aplicado só ao pedido que dispara o
+# bônus (1ª compra validada do indicado, e a compra seguinte de quem indicou) - não é
+# um valor fixo em R$, dobra o cashback daquele pedido específico. Ver
+# pedidos/services.py (_selecionar_bonus_indicacao).
+CASHBACK_MULTIPLICADOR_INDICACAO = float(os.environ.get("CASHBACK_MULTIPLICADOR_INDICACAO", "2"))
+
 # API do Gemini, usada só pra encurtar o nome dos produtos exibidos na aba Ofertas (os
 # títulos que vêm da Shopee costumam ser bem longos/cheios de palavra-chave repetida).
 # Sem GEMINI_API_KEY configurada, o site continua funcionando normal - só usa o nome

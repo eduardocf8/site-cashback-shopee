@@ -237,6 +237,32 @@ Esses dois itens ficam registrados aqui só pra não serem "reinventados" numa
 conversa futura sem contexto — se quiser retomá-los, é só apontar pra esse
 trecho do roadmap.
 
+## Fase 15 — Indique e ganhe ✅
+
+Programa de indicação: não é um valor fixo em R$, é um multiplicador (2x,
+configurável via `CASHBACK_MULTIPLICADOR_INDICACAO`) aplicado a dois pedidos
+reais específicos — a 1ª compra validada de quem foi indicado, e a compra
+seguinte validada de quem indicou, depois disso.
+
+- [x] **Código e link de indicação** — `User.codigo_indicacao` (gerado
+      automaticamente, único). Link `‹site›/registrar/?ref=CODIGO` preenche
+      um campo oculto no formulário de cadastro; se o código bater com um
+      usuário existente, cria um `accounts.Indicacao` vinculando os dois.
+      (`accounts/models.py`, `accounts/views.py::registrar`)
+- [x] **Cashback em dobro nos dois lados** — durante a sincronização diária
+      de pedidos, quando um pedido vira "validado": se é a 1ª compra
+      validada de um indicado, dobra o cashback *daquele pedido* e marca a
+      indicação; se quem comprou já indicou alguém cujo indicado validou a
+      1ª compra, o próximo pedido validado dele recebe o dobro (fila FIFO
+      se a pessoa tiver várias indicações pendentes ao mesmo tempo). O
+      vínculo fica gravado em `Indicacao.pedido_bonus_indicado` /
+      `pedido_bonus_indicador`, pra reaplicar o dobro em toda sincronização
+      seguinte sem duplicar (a Shopee reenvia o mesmo pedido validado
+      indefinidamente). (`pedidos/services.py`)
+- [x] **Painel "Indique e ganhe"** — seção no dashboard com o link (botão
+      copiar), quantas indicações foram feitas e concluídas, e uma tabela
+      com o status de cada uma. (`accounts/templates/accounts/dashboard.html`)
+
 ---
 
 Pra continuar esse roadmap numa conversa nova, basta apontar esse arquivo

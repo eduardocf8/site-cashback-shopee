@@ -16,6 +16,9 @@
             <h1>Criar conta</h1>
             <form method="post">
                 {% csrf_token %}
+                {% if codigo_indicacao %}
+                    <input type="hidden" name="ref" value="{{ codigo_indicacao }}">
+                {% endif %}
                 {% for field in form %}
                     {% include "accounts/_campo_formulario.html" with field=field %}
                 {% endfor %}

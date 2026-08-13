@@ -7,6 +7,7 @@ from django.contrib.auth.decorators import login_required
 from django.core.paginator import Paginator
 from django.db.models import Sum
 from django.shortcuts import redirect, render
+from django.urls import reverse
 
 from links.models import Click
 from pedidos.models import Pedido
@@ -14,6 +15,7 @@ from saques.models import Saque
 from saques.services import calcular_saldo_disponivel
 
 from .forms import ChavePixForm, EditarPerfilForm, RegistroForm
+from .models import Indicacao
 from .tokens import enviar_email_verificacao, validar_token_verificacao
 
 User = get_user_model()
@@ -25,17 +27,28 @@ def registrar(request):
     if request.user.is_authenticated:
         return redirect("dashboard")
 
+    codigo_indicacao = request.POST.get("ref") or request.GET.get("ref", "")
+
     if request.method == "POST":
         form = RegistroForm(request.POST)
         if form.is_valid():
             usuario = form.save()
+            _criar_indicacao_se_valida(usuario, codigo_indicacao)
             enviar_email_verificacao(usuario, request)
             login(request, usuario)
             return redirect("dashboard")
     else:
         form = RegistroForm()
 
-    return render(request, "accounts/registrar.html", {"form": form})
+    return render(request, "accounts/registrar.html", {"form": form, "codigo_indicacao": codigo_indicacao})
+
+
+def _criar_indicacao_se_valida(usuario, codigo_indicacao):
+    if not codigo_indicacao:
+        return
+    indicador = User.objects.filter(codigo_indicacao=codigo_indicacao).exclude(pk=usuario.pk).first()
+    if indicador:
+        Indicacao.objects.create(indicador=indicador, indicado=usuario)
 
 
 def verificar_email(request, token):
@@ -104,6 +117,10 @@ def dashboard(request):
         min(100, int(saldo_disponivel / saque_valor_minimo * 100)) if saque_valor_minimo else 100
     )
 
+    link_indicacao = request.build_absolute_uri(f"{reverse('registrar')}?ref={request.user.codigo_indicacao}")
+    indicacoes = request.user.indicacoes_feitas.select_related("indicado").all()
+    indicacoes_concluidas = sum(1 for indicacao in indicacoes if indicacao.pedido_bonus_indicador_id)
+
     contexto = {
         "saldo_pendente": saldos[Pedido.STATUS_PENDENTE],
         "saldo_validado": saldos[Pedido.STATUS_VALIDADO],
@@ -122,6 +139,9 @@ def dashboard(request):
         "status_saques_choices": Saque.STATUS_CHOICES,
         "tipo_clicks_choices": Click.TIPO_CHOICES,
         "chave_pix_form": ChavePixForm(instance=request.user),
+        "link_indicacao": link_indicacao,
+        "indicacoes": indicacoes,
+        "indicacoes_concluidas": indicacoes_concluidas,
     }
     return render(request, "accounts/dashboard.html", contexto)
 

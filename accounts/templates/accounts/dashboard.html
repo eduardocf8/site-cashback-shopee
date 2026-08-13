@@ -90,6 +90,12 @@
         .caixa-saque .legenda { color: var(--muted); font-size: 13px; }
         .caixa-saque strong { font-family: "JB Mono", ui-monospace, monospace; font-weight: 500; }
 
+        .indicacao-link-linha { display: flex; gap: 10px; flex-wrap: wrap; margin-bottom: 4px; }
+        .indicacao-link-campo {
+            flex: 1 1 260px; height: 40px; padding: 0 12px; border: 1px solid var(--line); border-radius: 8px;
+            font-family: "JB Mono", ui-monospace, monospace; font-size: 13px; background: var(--paper-2); color: var(--ink);
+        }
+
         .progresso-saque { margin-bottom: 14px; }
         .progresso-saque-legenda {
             display: flex; justify-content: space-between; font-size: 12.5px; color: var(--muted);
@@ -324,6 +330,50 @@
             </div>
         </section>
 
+        <section id="indicacoes">
+            <h2 class="titulo-secao">Indique e ganhe</h2>
+            <div class="caixa-saque">
+                <p>
+                    Compartilhe seu link. Quando seu indicado faz a 1ª compra confirmada, ele recebe o
+                    dobro do cashback — e você recebe o dobro na sua próxima compra confirmada depois disso.
+                </p>
+                <div class="indicacao-link-linha">
+                    <input type="text" class="indicacao-link-campo" id="linkIndicacao" value="{{ link_indicacao }}" readonly>
+                    <button type="button" class="botao-editar-chave" id="botaoCopiarIndicacao">Copiar</button>
+                </div>
+                {% if indicacoes %}
+                    <p class="legenda" style="margin-top: 14px;">
+                        {{ indicacoes|length }} indicaç{{ indicacoes|length|pluralize:"ão,ões" }} ·
+                        {{ indicacoes_concluidas }} concluída{{ indicacoes_concluidas|pluralize }}
+                    </p>
+                    <div class="rolar-tabela">
+                    <table>
+                        <tr>
+                            <th>Indicado</th>
+                            <th>Status</th>
+                        </tr>
+                        {% for indicacao in indicacoes %}
+                            <tr>
+                                <td>{{ indicacao.indicado.username }}</td>
+                                <td>
+                                    {% if indicacao.pedido_bonus_indicador_id %}
+                                        <span class="etiqueta-status liberado">Concluída</span>
+                                    {% elif indicacao.pedido_bonus_indicado_id %}
+                                        <span class="etiqueta-status validado">Indicado confirmou — aguardando sua próxima compra</span>
+                                    {% else %}
+                                        <span class="etiqueta-status pendente">Aguardando 1ª compra do indicado</span>
+                                    {% endif %}
+                                </td>
+                            </tr>
+                        {% endfor %}
+                    </table>
+                    </div>
+                {% else %}
+                    <p class="vazio">Você ainda não indicou ninguém.</p>
+                {% endif %}
+            </div>
+        </section>
+
         <section id="pedidos">
             <h2 class="titulo-secao">Meus pedidos</h2>
             <form method="get" action="{% url 'dashboard' %}#pedidos" class="filtro-secao">
@@ -516,5 +566,28 @@
         <button type="button" class="pwa-banner-fechar" aria-label="Fechar">&times;</button>
     </div>
     <script src="{% static 'js/pwa-instalar.js' %}"></script>
+    <script>
+        (function () {
+            var botao = document.getElementById("botaoCopiarIndicacao");
+            var campo = document.getElementById("linkIndicacao");
+            if (!botao || !campo) return;
+
+            botao.addEventListener("click", function () {
+                var textoOriginal = botao.textContent;
+                function avisarCopiado() {
+                    botao.textContent = "Copiado!";
+                    setTimeout(function () { botao.textContent = textoOriginal; }, 2000);
+                }
+
+                if (navigator.clipboard && navigator.clipboard.writeText) {
+                    navigator.clipboard.writeText(campo.value).then(avisarCopiado);
+                    return;
+                }
+                campo.select();
+                document.execCommand("copy");
+                avisarCopiado();
+            });
+        })();
+    </script>
 </body>
 </html>

@@ -8,6 +8,7 @@ from django.test import TestCase, override_settings
 from django.test.utils import CaptureQueriesContext
 from django.utils import timezone
 
+from accounts.models import Indicacao
 from links.models import Click
 
 from .models import Pedido
@@ -287,6 +288,148 @@ class SincronizarTests(TestCase):
         self.assertEqual(resultado["novos"], quantidade)
         self.assertEqual(Pedido.objects.count(), quantidade)
         self.assertLess(len(contexto), 20)
+
+
+class SincronizarBonusIndicacaoTests(TestCase):
+    def setUp(self):
+        self.indicador = get_user_model().objects.create_user(
+            username="indicador", password="senha123", cpf="39053344705"
+        )
+        self.indicado = get_user_model().objects.create_user(
+            username="indicado", password="senha123", cpf="14783246947"
+        )
+        self.indicacao = Indicacao.objects.create(indicador=self.indicador, indicado=self.indicado)
+
+        self.click_indicador = Click.objects.create(
+            usuario=self.indicador, tipo=Click.TIPO_HOME,
+            url_original="https://shopee.com.br/", link_gerado="https://shope.ee/indicador",
+        )
+        self.click_indicado = Click.objects.create(
+            usuario=self.indicado, tipo=Click.TIPO_HOME,
+            url_original="https://shopee.com.br/", link_gerado="https://shope.ee/indicado",
+        )
+
+    def _no(self, click, order_id, comissao, order_status="COMPLETED", purchase_time=1700000000, complete_time=1700000500):
+        return {
+            "conversionId": order_id,
+            "purchaseTime": purchase_time,
+            "utmContent": f"{click.sub_id_usuario()},{click.sub_id_click()}",
+            "orders": [
+                {"orderId": order_id, "orderStatus": order_status, "items": [{"completeTime": complete_time, "itemTotalCommission": comissao}]}
+            ],
+        }
+
+    def _pagina(self, nodes):
+        return {"nodes": nodes, "pageInfo": {"hasNextPage": False, "scrollId": ""}}
+
+    @patch("pedidos.services.buscar_conversoes")
+    def test_primeira_compra_validada_do_indicado_dobra_cashback(self, mock_buscar):
+        mock_buscar.return_value = self._pagina([self._no(self.click_indicado, "ORD-IND-1", "10.00")])
+
+        sincronizar(1690000000, 1700000000)
+
+        pedido = Pedido.objects.get(order_id="ORD-IND-1")
+        self.assertEqual(pedido.valor_cashback, Decimal("20.00"))
+        self.indicacao.refresh_from_db()
+        self.assertEqual(self.indicacao.pedido_bonus_indicado, pedido)
+        self.assertIsNone(self.indicacao.pedido_bonus_indicador)
+
+    @patch("pedidos.services.buscar_conversoes")
+    def test_indicador_ganha_dobro_na_proxima_compra_apos_indicado_validar(self, mock_buscar):
+        mock_buscar.return_value = self._pagina([self._no(self.click_indicado, "ORD-IND-1", "10.00")])
+        sincronizar(1690000000, 1700000000)
+
+        mock_buscar.return_value = self._pagina([self._no(self.click_indicador, "ORD-REF-1", "5.00")])
+        sincronizar(1690000000, 1700000000)
+
+        pedido_indicador = Pedido.objects.get(order_id="ORD-REF-1")
+        self.assertEqual(pedido_indicador.valor_cashback, Decimal("10.00"))
+        self.indicacao.refresh_from_db()
+        self.assertEqual(self.indicacao.pedido_bonus_indicador, pedido_indicador)
+
+    @patch("pedidos.services.buscar_conversoes")
+    def test_segunda_compra_do_indicador_nao_recebe_bonus_de_novo(self, mock_buscar):
+        mock_buscar.return_value = self._pagina([self._no(self.click_indicado, "ORD-IND-1", "10.00")])
+        sincronizar(1690000000, 1700000000)
+        mock_buscar.return_value = self._pagina([self._no(self.click_indicador, "ORD-REF-1", "5.00")])
+        sincronizar(1690000000, 1700000000)
+
+        mock_buscar.return_value = self._pagina([self._no(self.click_indicador, "ORD-REF-2", "7.00")])
+        sincronizar(1690000000, 1700000000)
+
+        pedido_seguinte = Pedido.objects.get(order_id="ORD-REF-2")
+        self.assertEqual(pedido_seguinte.valor_cashback, Decimal("7.00"))
+
+    @patch("pedidos.services.buscar_conversoes")
+    def test_ressincronizar_o_mesmo_pedido_nao_dobra_de_novo(self, mock_buscar):
+        mock_buscar.return_value = self._pagina([self._no(self.click_indicado, "ORD-IND-1", "10.00")])
+        sincronizar(1690000000, 1700000000)
+        # A Shopee reenvia o mesmo pedido validado em toda sincronização seguinte.
+        sincronizar(1690000000, 1700000000)
+
+        pedido = Pedido.objects.get(order_id="ORD-IND-1")
+        self.assertEqual(pedido.valor_cashback, Decimal("20.00"))
+
+    @patch("pedidos.services.buscar_conversoes")
+    def test_pedido_ainda_pendente_do_indicado_nao_recebe_bonus(self, mock_buscar):
+        mock_buscar.return_value = self._pagina(
+            [self._no(self.click_indicado, "ORD-IND-1", "10.00", order_status="PENDING", complete_time=None)]
+        )
+
+        sincronizar(1690000000, 1700000000)
+
+        pedido = Pedido.objects.get(order_id="ORD-IND-1")
+        self.assertEqual(pedido.valor_cashback, Decimal("10.00"))
+        self.indicacao.refresh_from_db()
+        self.assertIsNone(self.indicacao.pedido_bonus_indicado)
+
+    @patch("pedidos.services.buscar_conversoes")
+    def test_fila_fifo_quando_indicador_tem_duas_indicacoes_pendentes(self, mock_buscar):
+        indicado2 = get_user_model().objects.create_user(
+            username="indicado2", password="senha123", cpf="52914637837"
+        )
+        indicacao2 = Indicacao.objects.create(indicador=self.indicador, indicado=indicado2)
+        click_indicado2 = Click.objects.create(
+            usuario=indicado2, tipo=Click.TIPO_HOME,
+            url_original="https://shopee.com.br/", link_gerado="https://shope.ee/indicado2",
+        )
+
+        mock_buscar.return_value = self._pagina(
+            [
+                self._no(self.click_indicado, "ORD-IND-1", "10.00"),
+                self._no(click_indicado2, "ORD-IND-2", "10.00"),
+            ]
+        )
+        sincronizar(1690000000, 1700000000)
+
+        # O indicador faz duas compras que validam na mesma sincronização - a mais
+        # antiga (por purchaseTime) deve atender a indicação mais antiga primeiro.
+        mock_buscar.return_value = self._pagina(
+            [
+                self._no(self.click_indicador, "ORD-REF-1", "5.00", purchase_time=1700000200),
+                self._no(self.click_indicador, "ORD-REF-2", "5.00", purchase_time=1700000100),
+            ]
+        )
+        sincronizar(1690000000, 1700000000)
+
+        self.indicacao.refresh_from_db()
+        indicacao2.refresh_from_db()
+        self.assertEqual(self.indicacao.pedido_bonus_indicador.order_id, "ORD-REF-2")
+        self.assertEqual(indicacao2.pedido_bonus_indicador.order_id, "ORD-REF-1")
+
+    @patch("pedidos.services.buscar_conversoes")
+    def test_usuario_sem_indicacao_nao_e_afetado(self, mock_buscar):
+        avulso = get_user_model().objects.create_user(username="avulso", password="senha123", cpf="94834869092")
+        click_avulso = Click.objects.create(
+            usuario=avulso, tipo=Click.TIPO_HOME,
+            url_original="https://shopee.com.br/", link_gerado="https://shope.ee/avulso",
+        )
+        mock_buscar.return_value = self._pagina([self._no(click_avulso, "ORD-AVULSO-1", "8.00")])
+
+        sincronizar(1690000000, 1700000000)
+
+        pedido = Pedido.objects.get(order_id="ORD-AVULSO-1")
+        self.assertEqual(pedido.valor_cashback, Decimal("8.00"))
 
 
 class LiberarSaldoTests(TestCase):
