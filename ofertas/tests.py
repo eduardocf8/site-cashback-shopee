@@ -38,6 +38,30 @@ class OrdenarPorCashbackTests(TestCase):
         valores = [valor for valor, _rotulo in resposta.context["ordenacoes"]]
         self.assertIn("maior_cashback", valores)
 
+    @override_settings(SHOPEE_CASHBACK_PERCENTUAL=100, CASHBACK_MULTIPLICADOR_CAMPANHA=1, CASHBACK_MAXIMO_POR_PRODUTO=10)
+    def test_ordena_pelo_percentual_exibido_nao_pela_comissao_bruta(self):
+        # Produto caro com comissão bruta alta, mas que o teto por produto reduz na
+        # exibição - não pode ficar ordenado como se ainda tivesse o valor bruto alto.
+        Oferta.objects.create(
+            item_id=10, nome="Caro com comissão alta (capado)", categoria_id=1,
+            product_link="https://shopee.com.br/produto-10-i.10.10",
+            preco_min=Decimal("200.00"), percentual_comissao=Decimal("0.20"),  # bruto 20%, exibido 5% (R$10/200)
+            vendas=1,
+        )
+        Oferta.objects.create(
+            item_id=11, nome="Barato sem teto", categoria_id=1,
+            product_link="https://shopee.com.br/produto-11-i.11.11",
+            preco_min=Decimal("50.00"), percentual_comissao=Decimal("0.10"),  # bruto e exibido 10%, sem teto
+            vendas=1,
+        )
+
+        resposta = self.client.get(reverse("ofertas_lista"), {"ordenar": "maior_cashback"})
+
+        nomes = [oferta.nome for oferta in resposta.context["ofertas"]]
+        indice_barato = nomes.index("Barato sem teto")
+        indice_caro = nomes.index("Caro com comissão alta (capado)")
+        self.assertLess(indice_barato, indice_caro)
+
 
 class MontarOfertaTests(TestCase):
     def test_usa_commissionRate_combinado_com_bonus_de_vendedor(self):
