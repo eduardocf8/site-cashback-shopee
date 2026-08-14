@@ -374,20 +374,22 @@ class WebhookValidacaoAsaasTests(TestCase):
         )
 
     def test_sem_token_correto_recusa_com_403(self):
-        resposta = self._postar({"id": "tr_conhecida"}, token="token-errado")
+        resposta = self._postar(
+            {"type": "TRANSFER", "transfer": {"id": "tr_conhecida"}}, token="token-errado"
+        )
         self.assertEqual(resposta.status_code, 403)
 
     def test_transferencia_conhecida_e_autorizada(self):
-        resposta = self._postar({"id": "tr_conhecida"})
+        resposta = self._postar({"type": "TRANSFER", "transfer": {"id": "tr_conhecida"}})
         self.assertEqual(resposta.status_code, 200)
-        self.assertEqual(resposta.json(), {"status": "AUTHORIZED"})
+        self.assertEqual(resposta.json(), {"status": "APPROVED"})
 
     def test_transferencia_desconhecida_e_recusada(self):
-        resposta = self._postar({"id": "tr_desconhecida"})
+        resposta = self._postar({"type": "TRANSFER", "transfer": {"id": "tr_desconhecida"}})
         self.assertEqual(resposta.status_code, 200)
         self.assertEqual(resposta.json()["status"], "REFUSED")
 
     @override_settings(ASAAS_WEBHOOK_TOKEN="")
     def test_sem_token_configurado_recusa_com_403(self):
-        resposta = self._postar({"id": "tr_conhecida"})
+        resposta = self._postar({"type": "TRANSFER", "transfer": {"id": "tr_conhecida"}})
         self.assertEqual(resposta.status_code, 403)

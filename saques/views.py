@@ -41,10 +41,11 @@ def pedir_saque(request):
 @require_POST
 def webhook_validacao_asaas(request):
     """Mecanismo de segurança da Asaas alternativo ao código por SMS: a Asaas chama essa
-    URL uns segundos depois de criar uma transferência PIX e espera de volta "AUTHORIZED"
-    ou "REFUSED". Só autoriza transferências cujo id já está gravado num Saque (ou seja,
-    que a gente mesmo criou via processar_saque_asaas, depois de uma aprovação manual no
-    admin) - qualquer id desconhecido é recusado."""
+    URL uns segundos depois de criar uma transferência PIX e espera de volta "APPROVED" ou
+    "REFUSED". O payload vem aninhado - {"type": "TRANSFER", "transfer": {"id": ..., ...}}
+    - por isso o id não está na raiz. Só autoriza transferências cujo id já está gravado
+    num Saque (ou seja, que a gente mesmo criou via processar_saque_asaas, depois de uma
+    aprovação manual no admin) - qualquer id desconhecido é recusado."""
     token_esperado = settings.ASAAS_WEBHOOK_TOKEN
     if not token_esperado or request.headers.get("asaas-access-token") != token_esperado:
         return HttpResponseForbidden("Token inválido.")
@@ -54,10 +55,11 @@ def webhook_validacao_asaas(request):
     except (ValueError, TypeError):
         return JsonResponse({"status": "REFUSED", "refuseReason": "Payload inválido."}, status=400)
 
-    transfer_id = str(payload.get("id", ""))
+    transferencia = payload.get("transfer") or payload
+    transfer_id = str(transferencia.get("id", ""))
     if transfer_id and Saque.objects.filter(asaas_transfer_id=transfer_id).exists():
         logger.info("Webhook Asaas: transferência %s autorizada.", transfer_id)
-        return JsonResponse({"status": "AUTHORIZED"})
+        return JsonResponse({"status": "APPROVED"})
 
     logger.warning("Webhook Asaas: transferência %s não reconhecida, recusando.", transfer_id)
     return JsonResponse({"status": "REFUSED", "refuseReason": "Transferência não reconhecida."})
