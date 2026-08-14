@@ -2,6 +2,7 @@ import hmac
 from datetime import datetime, timedelta, timezone as dt_timezone
 
 from django.conf import settings
+from django.db import connection
 from django.http import HttpResponse, HttpResponseForbidden, JsonResponse
 from django.utils import timezone
 
@@ -24,9 +25,27 @@ Disallow: /esqueci-senha/
 Disallow: /resetar-senha/
 Disallow: /saques/
 Disallow: /tarefas/
+Disallow: /healthz/
 
 Sitemap: {scheme}://{host}/sitemap.xml
 """
+
+
+def healthcheck(request):
+    """Endpoint pra configurar como "Health Check Path" no serviço web da Render.
+
+    Sem um health check configurado, a Render só confere se a porta está aberta antes
+    de considerar a instância nova pronta e desligar a antiga - isso pode achar a
+    instância "pronta" antes do banco estar de fato acessível, deixando os primeiros
+    usuários depois de cada deploy verem um 502/500 por alguns segundos. Consultando o
+    banco aqui garante que só vira "pronta" quando estiver mesmo.
+    """
+    try:
+        with connection.cursor() as cursor:
+            cursor.execute("SELECT 1")
+    except Exception:
+        return HttpResponse("unhealthy", status=503)
+    return HttpResponse("ok")
 
 
 def robots_txt(request):

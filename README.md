@@ -205,6 +205,12 @@ Vamos usar a **Render** (tem plano gratuito) pra hospedar o site, com um banco d
      gunicorn cashback_shopee.wsgi:application --timeout 120
      ```
      (o `--timeout 120` dá uma margem extra pra sincronizações com muitos pedidos não serem interrompidas no meio.)
+   - **Health Check Path**: `/healthz/`
+     (sem isso, a Render só confere se a porta abriu antes de trocar pra instância nova
+     em cada deploy, o que pode considerá-la "pronta" antes do banco estar de fato
+     acessível — os primeiros acessos depois do deploy caem num 502/500 por alguns
+     segundos. Com o health check configurado, a Render só desliga a instância antiga
+     quando a nova responder 200 de verdade nesse endereço.)
    - **Plan**: Free
 5. **Não clique em criar ainda** — antes, desça até "Environment Variables" e configure a próxima seção.
 

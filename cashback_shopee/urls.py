@@ -19,6 +19,7 @@ urlpatterns = [
     path("", include("ofertas.urls")),
     path("", include("instagram_bot.urls")),
     path("", include("automacao_instagram.urls")),
+    path("healthz/", views.healthcheck, name="healthcheck"),
     path("tarefas/executar/", views.executar_tarefas_agendadas, name="executar_tarefas_agendadas"),
     path("tarefas/encurtar-nomes/", views.executar_encurtamento_nomes, name="executar_encurtamento_nomes"),
     path("tarefas/postar-story-oferta/", views.executar_story_oferta, name="executar_story_oferta"),

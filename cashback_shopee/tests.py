@@ -4,6 +4,19 @@ from django.test import TestCase, override_settings
 from django.urls import reverse
 
 
+class HealthcheckTests(TestCase):
+    def test_banco_acessivel_retorna_ok(self):
+        resposta = self.client.get(reverse("healthcheck"))
+        self.assertEqual(resposta.status_code, 200)
+        self.assertEqual(resposta.content.decode(), "ok")
+
+    @patch("cashback_shopee.views.connection")
+    def test_banco_inacessivel_retorna_503(self, mock_connection):
+        mock_connection.cursor.side_effect = Exception("sem conexão")
+        resposta = self.client.get(reverse("healthcheck"))
+        self.assertEqual(resposta.status_code, 503)
+
+
 @override_settings(TAREFAS_TOKEN="segredo-de-teste")
 class ExecutarTarefasAgendadasTests(TestCase):
     def test_sem_token_retorna_forbidden(self):

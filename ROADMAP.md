@@ -392,6 +392,22 @@ com filtro por período (via `data_compra`) e status do pedido, e exportação e
       pedidos sincronizados dali pra frente. Fica pra uma iteração futura, se
       for necessário.
 
+## Fase 18 — Health check pra evitar 502 durante deploy ✅
+
+Usuário reportou ver a página de erro 502 da própria Render (não personalizável -
+é a página de infraestrutura deles, servida antes da requisição chegar no Django)
+sempre que um deploy estava rolando. Causa: sem um "Health Check Path" configurado,
+a Render só confere se a porta abriu antes de desligar a instância antiga e mandar
+tráfego pra nova - o que pode considerar a instância nova "pronta" antes do banco
+estar de fato acessível.
+
+- [x] **`/healthz/`** — consulta o banco (`SELECT 1`) antes de responder 200;
+      responde 503 se o banco não estiver acessível. (`cashback_shopee/views.py`)
+- [x] **Configurar no dashboard da Render** — campo "Health Check Path" do serviço
+      web, valor `/healthz/` (documentado no `README.md`, seção de deploy). **Isso
+      precisa ser feito manualmente no dashboard da Render** - não tem como
+      configurar por código/env var nesse projeto (não usa `render.yaml`).
+
 ---
 
 Pra continuar esse roadmap numa conversa nova, basta apontar esse arquivo
