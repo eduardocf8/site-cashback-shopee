@@ -120,7 +120,7 @@ render("split", f"""
     <div class="eyebrow" style="color:{COLORS['brand']};">cash-b explica</div>
     <div class="headline">2 formas de<br>ganhar cashback</div>
     <div style="display:flex; gap:28px; margin-top:56px;">
-        {split_card("Venda direta", COLORS['highlight'], "Link de um produto específico", "Cola o link do produto e converte. Se tiver campanha de comissão extra ativa, só essa forma tem acesso ao bônus.", destaque=True)}
+        {split_card("Venda direta", COLORS['highlight'], "Link de um produto específico", "Converta o link de um produto específico ou acesse pela nossa vitrine de ofertas. Caso haja uma campanha de comissão extra para o produto, só a venda direta tem acesso a esse bônus.", destaque=True)}
         {split_card("Venda indireta", COLORS['line'], 'Botão "Ir pra Shopee"', "Você entra pela home e compra o que quiser. Cashback garantido, sem escolher produto antes.")}
     </div>
     <div class="badge" style="color:{COLORS['brand']};">cash-b</div>
