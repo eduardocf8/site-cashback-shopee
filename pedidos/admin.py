@@ -6,7 +6,7 @@ from django.http import HttpResponse
 from django.template.response import TemplateResponse
 from django.urls import path
 
-from .analytics import obter_analytics, obter_pedidos_filtrados
+from .analytics import gerar_planilha_analytics, obter_analytics, obter_pedidos_filtrados
 from .models import Pedido
 
 
@@ -79,6 +79,11 @@ class PedidoAdmin(admin.ModelAdmin):
                 self.admin_site.admin_view(self.analytics_exportar_csv),
                 name="pedidos_analytics_exportar",
             ),
+            path(
+                "analytics/exportar-excel/",
+                self.admin_site.admin_view(self.analytics_exportar_excel),
+                name="pedidos_analytics_exportar_excel",
+            ),
         ]
         return urls + super().get_urls()
 
@@ -125,6 +130,17 @@ class PedidoAdmin(admin.ModelAdmin):
                     pedido.data_liberacao.strftime("%Y-%m-%d %H:%M") if pedido.data_liberacao else "",
                 ]
             )
+        return resposta
+
+    def analytics_exportar_excel(self, request):
+        data_inicio, data_fim, status = self._filtros_da_request(request)
+        livro = gerar_planilha_analytics(data_inicio, data_fim, status)
+
+        resposta = HttpResponse(
+            content_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+        )
+        resposta["Content-Disposition"] = 'attachment; filename="analytics.xlsx"'
+        livro.save(resposta)
         return resposta
 
 

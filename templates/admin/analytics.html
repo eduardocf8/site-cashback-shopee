@@ -108,6 +108,9 @@
     </div>
     <div class="acoes">
         <input type="submit" class="button" value="Filtrar">
+        <a class="button" href="{% url 'admin:pedidos_analytics_exportar_excel' %}?data_inicio={{ filtro_data_inicio }}&data_fim={{ filtro_data_fim }}&status={{ filtro_status }}">
+            ⬇ Exportar Excel
+        </a>
         <a class="button" href="{% url 'admin:pedidos_analytics_exportar' %}?data_inicio={{ filtro_data_inicio }}&data_fim={{ filtro_data_fim }}&status={{ filtro_status }}">
             ⬇ Exportar CSV
         </a>

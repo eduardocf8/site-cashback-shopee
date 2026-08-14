@@ -1,6 +1,9 @@
 from datetime import date, datetime, timedelta, timezone as dt_timezone
 from decimal import Decimal
+from io import BytesIO
 from unittest.mock import patch
+
+from openpyxl import load_workbook
 
 from django.contrib.auth import get_user_model
 from django.db import connection
@@ -753,3 +756,34 @@ class AnalyticsAdminViewTests(TestCase):
         conteudo = resposta.content.decode()
         self.assertIn("ORD-1", conteudo)
         self.assertNotIn("ORD-CANCELADO", conteudo)
+
+    def test_exportar_excel_traz_resumo_e_pedidos_formatados(self):
+        self.client.force_login(self.staff)
+        resposta = self.client.get(reverse("admin:pedidos_analytics_exportar_excel"))
+
+        self.assertEqual(resposta.status_code, 200)
+        self.assertEqual(
+            resposta["Content-Type"],
+            "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+        )
+
+        livro = load_workbook(BytesIO(resposta.content))
+        self.assertEqual(livro.sheetnames, ["Resumo", "Pedidos"])
+
+        resumo = livro["Resumo"]
+        self.assertEqual(resumo["A1"].value, "Analytics — cash-b")
+
+        aba_pedidos = livro["Pedidos"]
+        cabecalho = [celula.value for celula in aba_pedidos[1]]
+        self.assertEqual(cabecalho[0], "Order ID")
+        linhas = list(aba_pedidos.iter_rows(min_row=2, values_only=True))
+        self.assertEqual(len(linhas), 1)
+        self.assertEqual(linhas[0][0], "ORD-1")
+        self.assertEqual(linhas[0][3], Decimal("10.00"))
+        celula_comissao = aba_pedidos.cell(row=2, column=4)
+        self.assertEqual(celula_comissao.number_format, '"R$" #,##0.00')
+
+    def test_exportar_excel_usuario_comum_e_redirecionado(self):
+        self.client.force_login(self.usuario_comum)
+        resposta = self.client.get(reverse("admin:pedidos_analytics_exportar_excel"))
+        self.assertEqual(resposta.status_code, 302)

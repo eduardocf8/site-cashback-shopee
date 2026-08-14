@@ -2,11 +2,19 @@ from decimal import Decimal
 
 from django.contrib.auth import get_user_model
 from django.db.models import Count, Q, QuerySet, Sum
+from django.utils import timezone
 
 from accounts.models import Indicacao
 from saques.models import Saque
 
 from .models import Pedido
+
+FORMATO_MOEDA = '"R$" #,##0.00'
+FORMATO_DATA = "dd/mm/yyyy hh:mm"
+# "%" sem aspas faz o Excel multiplicar o valor por 100 (formato nativo de percentual,
+# pensado pra frações tipo 0.5). Nosso percentual já vem calculado (ex: 170.6), então
+# precisa do símbolo entre aspas - texto literal, sem a multiplicação automática.
+FORMATO_PERCENTUAL = '0.0"%"'
 
 
 def _no_periodo(queryset: QuerySet, campo_data: str, data_inicio, data_fim) -> QuerySet:
@@ -109,3 +117,134 @@ def obter_analytics(data_inicio=None, data_fim=None, status=None) -> dict:
         "ranking_indicadores": ranking_indicadores,
         "novos_usuarios": novos_usuarios,
     }
+
+
+def gerar_planilha_analytics(data_inicio=None, data_fim=None, status=None):
+    """Gera a planilha (.xlsx) de analytics já formatada - mesma base de dados de
+    obter_analytics()/obter_pedidos_filtrados(), pra bater exatamente com o que a tela
+    mostra. Import do openpyxl fica dentro da função de propósito: só é usado aqui, não
+    precisa pagar esse custo de import em todo o resto do admin."""
+    from openpyxl import Workbook
+    from openpyxl.styles import Font, PatternFill
+    from openpyxl.utils import get_column_letter
+
+    dados = obter_analytics(data_inicio, data_fim, status)
+    pedidos = (
+        obter_pedidos_filtrados(data_inicio, data_fim, status).select_related("usuario").order_by("-data_compra")
+    )
+
+    fonte_titulo = Font(bold=True, size=14)
+    fonte_subtitulo = Font(italic=True, color="666666")
+    fonte_secao = Font(bold=True, size=12)
+    fonte_cabecalho = Font(bold=True, color="FFFFFF")
+    preenchimento_cabecalho = PatternFill("solid", fgColor="205067")
+
+    def escrever_cabecalho(planilha, linha, coluna_inicial, titulos):
+        for deslocamento, titulo in enumerate(titulos):
+            celula = planilha.cell(row=linha, column=coluna_inicial + deslocamento, value=titulo)
+            celula.font = fonte_cabecalho
+            celula.fill = preenchimento_cabecalho
+        return linha + 1
+
+    def definir_larguras(planilha, valores):
+        for indice, valor in enumerate(valores, start=1):
+            planilha.column_dimensions[get_column_letter(indice)].width = valor
+
+    livro = Workbook()
+
+    resumo = livro.active
+    resumo.title = "Resumo"
+    definir_larguras(resumo, [32, 16, 16, 16])
+    resumo["A1"] = "Analytics — cash-b"
+    resumo["A1"].font = fonte_titulo
+    periodo = "{} a {}".format(
+        data_inicio.strftime("%d/%m/%Y") if data_inicio else "—",
+        data_fim.strftime("%d/%m/%Y") if data_fim else "—",
+    )
+    status_label = dict(Pedido.STATUS_CHOICES).get(status, "todos") if status else "todos"
+    resumo["A2"] = f"Período: {periodo}  ·  Status do pedido: {status_label}"
+    resumo["A2"].font = fonte_subtitulo
+
+    linha = 4
+    resumo.cell(row=linha, column=1, value="Indicadores gerais").font = fonte_secao
+    linha += 1
+    linha = escrever_cabecalho(resumo, linha, 1, ["Indicador", "Valor"])
+    kpis = [
+        ("Comissão total", dados["total_comissao"], FORMATO_MOEDA),
+        ("Cashback repassado", dados["total_cashback"], FORMATO_MOEDA),
+        ("Margem retida", dados["margem_retida"], FORMATO_MOEDA),
+        ("% da comissão repassado", dados["percentual_repassado"], FORMATO_PERCENTUAL),
+        ("Total de pedidos", dados["total_pedidos"], "0"),
+        ("Ticket médio de cashback", dados["ticket_medio_cashback"], FORMATO_MOEDA),
+        ("Saldo a liberar (pendente + validado)", dados["saldo_a_liberar"], FORMATO_MOEDA),
+        ("Saldo liberado", dados["saldo_liberado"], FORMATO_MOEDA),
+        ("Total sacado", dados["total_saques_valor"], FORMATO_MOEDA),
+        ("Nº de saques no período", dados["total_saques"], "0"),
+        ("Novos usuários no período", dados["novos_usuarios"], "0"),
+        ("Indicações no período", dados["total_indicacoes"], "0"),
+        ("Indicações concluídas (dobro pago)", dados["indicacoes_concluidas"], "0"),
+    ]
+    for rotulo, valor, formato in kpis:
+        resumo.cell(row=linha, column=1, value=rotulo)
+        resumo.cell(row=linha, column=2, value=valor).number_format = formato
+        linha += 1
+
+    linha += 2
+    resumo.cell(row=linha, column=1, value="Pedidos por status").font = fonte_secao
+    linha += 1
+    linha = escrever_cabecalho(resumo, linha, 1, ["Status", "Pedidos", "Comissão", "Cashback"])
+    for item in dados["resumo_status"]:
+        resumo.cell(row=linha, column=1, value=item["status_label"])
+        resumo.cell(row=linha, column=2, value=item["total"])
+        resumo.cell(row=linha, column=3, value=item["comissao"]).number_format = FORMATO_MOEDA
+        resumo.cell(row=linha, column=4, value=item["cashback"]).number_format = FORMATO_MOEDA
+        linha += 1
+
+    linha += 2
+    resumo.cell(row=linha, column=1, value="Saques por status").font = fonte_secao
+    linha += 1
+    linha = escrever_cabecalho(resumo, linha, 1, ["Status", "Saques", "Valor"])
+    for item in dados["saques_por_status"]:
+        resumo.cell(row=linha, column=1, value=item["status_label"])
+        resumo.cell(row=linha, column=2, value=item["total"])
+        resumo.cell(row=linha, column=3, value=item["valor"]).number_format = FORMATO_MOEDA
+        linha += 1
+
+    linha += 2
+    resumo.cell(row=linha, column=1, value="Ranking de indicadores").font = fonte_secao
+    linha += 1
+    if dados["ranking_indicadores"]:
+        linha = escrever_cabecalho(resumo, linha, 1, ["Usuário", "Indicações", "Concluídas"])
+        for item in dados["ranking_indicadores"]:
+            resumo.cell(row=linha, column=1, value=item["indicador__username"])
+            resumo.cell(row=linha, column=2, value=item["total_indicacoes"])
+            resumo.cell(row=linha, column=3, value=item["concluidas"])
+            linha += 1
+    else:
+        resumo.cell(row=linha, column=1, value="Nenhuma indicação no período filtrado.")
+
+    aba_pedidos = livro.create_sheet("Pedidos")
+    definir_larguras(aba_pedidos, [22, 20, 14, 14, 14, 20, 20, 20])
+    escrever_cabecalho(
+        aba_pedidos,
+        1,
+        1,
+        ["Order ID", "Usuário", "Status", "Comissão", "Cashback", "Data da compra", "Data de validação", "Data de liberação"],
+    )
+    aba_pedidos.freeze_panes = "A2"
+    linha = 2
+    for pedido in pedidos.iterator():
+        aba_pedidos.cell(row=linha, column=1, value=pedido.order_id)
+        aba_pedidos.cell(row=linha, column=2, value=pedido.usuario.username if pedido.usuario else "")
+        aba_pedidos.cell(row=linha, column=3, value=pedido.get_status_display())
+        aba_pedidos.cell(row=linha, column=4, value=pedido.valor_comissao).number_format = FORMATO_MOEDA
+        aba_pedidos.cell(row=linha, column=5, value=pedido.valor_cashback).number_format = FORMATO_MOEDA
+        for coluna, valor_data in ((6, pedido.data_compra), (7, pedido.data_validacao), (8, pedido.data_liberacao)):
+            # Excel não aceita datetime com timezone - convertemos pro horário local e
+            # removemos o tzinfo antes de escrever na célula.
+            if valor_data:
+                celula = aba_pedidos.cell(row=linha, column=coluna, value=timezone.localtime(valor_data).replace(tzinfo=None))
+                celula.number_format = FORMATO_DATA
+        linha += 1
+
+    return livro

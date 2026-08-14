@@ -374,6 +374,13 @@ com filtro por período (via `data_compra`) e status do pedido, e exportação e
       indicações já viraram bônus concluído.
 - [x] **Exportar CSV** — mesma base filtrada da tela (`obter_pedidos_filtrados`),
       pra abrir no Excel/Sheets.
+- [x] **Exportar Excel (.xlsx) já formatado** — `openpyxl` (novo em
+      `requirements.txt`). Planilha com 2 abas: "Resumo" (os mesmos KPIs e
+      tabelas da tela) e "Pedidos" (lista bruta filtrada, igual ao CSV).
+      Cabeçalho em negrito com fundo azul, moeda/percentual/data com
+      `number_format` de verdade (célula numérica formatada, não texto com
+      "R$" grudado), largura de coluna ajustada e primeira linha da aba
+      "Pedidos" congelada. (`pedidos/analytics.py::gerar_planilha_analytics`)
 - [x] **Sem view/rota nova fora do admin** — usa `ModelAdmin.get_urls()` (técnica
       documentada pelo Django) em `PedidoAdmin`, então herda a autenticação e
       permissão de staff do admin de graça. Link "Ver analytics" no topo da
