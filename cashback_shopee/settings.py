@@ -126,6 +126,13 @@ GEMINI_MODEL = os.environ.get("GEMINI_MODEL", "gemini-3.1-flash-lite")
 ASAAS_API_KEY = os.environ.get("ASAAS_API_KEY", "")
 ASAAS_API_URL = os.environ.get("ASAAS_API_URL", "https://sandbox.asaas.com/api/v3")
 
+# Token do mecanismo de segurança "webhook de validação de transferência" da Asaas,
+# usado como alternativa ao código por SMS pra autorizar as transferências PIX dos saques.
+# Configurado em Menu do usuário > Integrações > Mecanismos de segurança, na conta Asaas
+# (a URL do endpoint é /saques/webhook/validacao/, ver saques/urls.py). O mesmo token
+# preenchido lá tem que estar aqui, pra validar o header "asaas-access-token" recebido.
+ASAAS_WEBHOOK_TOKEN = os.environ.get("ASAAS_WEBHOOK_TOKEN", "")
+
 # Credenciais da API Banking do Inter, alternativa à Asaas pra pagar saques via PIX
 # (Internet Banking > Soluções para sua empresa > Nova integração). Autenticação é
 # OAuth2 + certificado mTLS (não só uma chave de API) - os arquivos de certificado

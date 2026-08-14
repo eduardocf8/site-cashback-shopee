@@ -313,3 +313,43 @@ class PedirSaqueViewTests(TestCase):
 
         self.assertEqual(Saque.objects.count(), 1)
         self.assertEqual(Saque.objects.first().valor, Decimal("50.00"))
+
+
+@override_settings(ASAAS_WEBHOOK_TOKEN="token-secreto-de-teste")
+class WebhookValidacaoAsaasTests(TestCase):
+    def setUp(self):
+        self.usuario = get_user_model().objects.create_user(
+            username="compradora", password="senha123", cpf="39053344705"
+        )
+        self.saque = Saque.objects.create(
+            usuario=self.usuario, valor=Decimal("50.00"), chave_pix="fulano@example.com",
+            tipo_chave_pix="EMAIL", status=Saque.STATUS_PROCESSANDO,
+            provedor=Saque.PROVEDOR_ASAAS, asaas_transfer_id="tr_conhecida",
+        )
+
+    def _postar(self, payload, token="token-secreto-de-teste"):
+        return self.client.post(
+            reverse("webhook_validacao_asaas"),
+            data=payload,
+            content_type="application/json",
+            HTTP_ASAAS_ACCESS_TOKEN=token,
+        )
+
+    def test_sem_token_correto_recusa_com_403(self):
+        resposta = self._postar({"id": "tr_conhecida"}, token="token-errado")
+        self.assertEqual(resposta.status_code, 403)
+
+    def test_transferencia_conhecida_e_autorizada(self):
+        resposta = self._postar({"id": "tr_conhecida"})
+        self.assertEqual(resposta.status_code, 200)
+        self.assertEqual(resposta.json(), {"status": "AUTHORIZED"})
+
+    def test_transferencia_desconhecida_e_recusada(self):
+        resposta = self._postar({"id": "tr_desconhecida"})
+        self.assertEqual(resposta.status_code, 200)
+        self.assertEqual(resposta.json()["status"], "REFUSED")
+
+    @override_settings(ASAAS_WEBHOOK_TOKEN="")
+    def test_sem_token_configurado_recusa_com_403(self):
+        resposta = self._postar({"id": "tr_conhecida"})
+        self.assertEqual(resposta.status_code, 403)
