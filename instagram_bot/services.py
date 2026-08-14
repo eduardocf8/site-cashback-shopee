@@ -1,6 +1,7 @@
 import io
 import logging
 import uuid
+from datetime import timedelta
 from pathlib import Path
 
 from django.conf import settings
@@ -28,6 +29,12 @@ PASTA_MEDIA_BOT = Path(settings.MEDIA_ROOT) / "instagram"
 # até completar esse número - assim o perfil não fica "bombardeado" de oferta de uma
 # vez, mas também não some do ar o resto do dia (a conta não é só sobre ofertas).
 NUMERO_STORIES_OFERTAS_POR_DIA = 5
+
+# A Shopee tende a devolver sempre os mesmos best-sellers de um dia pro outro (a
+# sincronização é um "retrato" diário, sem histórico - ver ofertas/services.py,
+# sincronizar_ofertas), então sem um intervalo mínimo entre repetições o mesmo produto
+# aparecia quase todo dia. 7 dias = não repete a mesma oferta na mesma semana.
+DIAS_SEM_REPETIR_OFERTA = 7
 
 
 def _url_publica_da_midia(nome_arquivo: str, request) -> str:
@@ -202,9 +209,10 @@ def _aguardar_aprovacao_carrossel(imagens, legenda, tipo, conteudo_tipo, data, r
 
 def _escolher_oferta_do_momento(data) -> Oferta | None:
     """1 categoria (nível 1) por story, entre as NUMERO_STORIES_OFERTAS_POR_DIA
-    categorias mais vendidas - nunca repete categoria nem produto (por nome) já usados
-    hoje. Retorna None quando já bateu o número de stories do dia ou não sobra oferta
-    disponível nas categorias candidatas."""
+    categorias mais vendidas - nunca repete categoria já usada hoje, nem produto (por
+    nome) já usado nos últimos DIAS_SEM_REPETIR_OFERTA dias. Retorna None quando já
+    bateu o número de stories do dia ou não sobra oferta disponível nas categorias
+    candidatas."""
     ja_hoje = RegistroPublicacao.objects.filter(
         data=data, conteudo_tipo=RegistroPublicacao.CONTEUDO_OFERTA_DIARIA,
     ).exclude(status=RegistroPublicacao.STATUS_ERRO)
@@ -212,12 +220,20 @@ def _escolher_oferta_do_momento(data) -> Oferta | None:
     if ja_hoje.count() >= NUMERO_STORIES_OFERTAS_POR_DIA:
         return None
 
+    # Categoria só não repete no mesmo dia (categorias são poucas - se valesse pra
+    # semana inteira, esgotava as candidatas logo no 2º dia). Produto não repete numa
+    # janela maior, é o que evita a mesma oferta voltando quase todo dia.
     categorias_usadas = set(
         ja_hoje.exclude(oferta_categoria_id__isnull=True).values_list("oferta_categoria_id", flat=True)
     )
+    ja_na_semana = RegistroPublicacao.objects.filter(
+        data__gte=data - timedelta(days=DIAS_SEM_REPETIR_OFERTA),
+        data__lte=data,
+        conteudo_tipo=RegistroPublicacao.CONTEUDO_OFERTA_DIARIA,
+    ).exclude(status=RegistroPublicacao.STATUS_ERRO)
     nomes_usados = {
         ofertas_services.normalizar_nome_produto(nome)
-        for nome in ja_hoje.exclude(oferta_nome="").values_list("oferta_nome", flat=True)
+        for nome in ja_na_semana.exclude(oferta_nome="").values_list("oferta_nome", flat=True)
     }
 
     categorias_candidatas = [
