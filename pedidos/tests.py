@@ -6,11 +6,14 @@ from django.contrib.auth import get_user_model
 from django.db import connection
 from django.test import TestCase, override_settings
 from django.test.utils import CaptureQueriesContext
+from django.urls import reverse
 from django.utils import timezone
 
 from accounts.models import Indicacao
 from links.models import Click
+from saques.models import Saque
 
+from .analytics import obter_analytics
 from .models import Pedido
 from .services import calcular_data_prevista_liberacao, liberar_saldo, mapear_status, resolver_click, sincronizar
 
@@ -597,3 +600,156 @@ class LiberarSaldoTests(TestCase):
         self.assertEqual(total, 0)
         self.assertEqual(pendente.status, Pedido.STATUS_PENDENTE)
         self.assertEqual(cancelado.status, Pedido.STATUS_CANCELADO)
+
+
+class ObterAnalyticsTests(TestCase):
+    def setUp(self):
+        self.usuario = get_user_model().objects.create_user(
+            username="compradora", password="senha123", cpf="39053344705"
+        )
+
+    def _criar_pedido(self, order_id, status, comissao, cashback, data_compra, usuario=None):
+        return Pedido.objects.create(
+            order_id=order_id,
+            conversion_id="1",
+            usuario=usuario if usuario is not None else self.usuario,
+            status=status,
+            status_shopee_bruto="COMPLETED",
+            valor_comissao=Decimal(comissao),
+            valor_cashback=Decimal(cashback),
+            data_compra=data_compra,
+        )
+
+    def test_soma_comissao_e_cashback_de_todos_os_pedidos(self):
+        self._criar_pedido("A1", Pedido.STATUS_VALIDADO, "20.00", "10.00", timezone.now())
+        self._criar_pedido("A2", Pedido.STATUS_PENDENTE, "8.00", "4.00", timezone.now())
+
+        dados = obter_analytics()
+
+        self.assertEqual(dados["total_comissao"], Decimal("28.00"))
+        self.assertEqual(dados["total_cashback"], Decimal("14.00"))
+        self.assertEqual(dados["total_pedidos"], 2)
+        self.assertEqual(dados["margem_retida"], Decimal("14.00"))
+
+    def test_filtro_por_periodo_exclui_pedido_fora_do_intervalo(self):
+        dentro = timezone.make_aware(datetime(2026, 3, 15))
+        fora = timezone.make_aware(datetime(2026, 5, 1))
+        self._criar_pedido("DENTRO", Pedido.STATUS_VALIDADO, "10.00", "5.00", dentro)
+        self._criar_pedido("FORA", Pedido.STATUS_VALIDADO, "10.00", "5.00", fora)
+
+        dados = obter_analytics(data_inicio=date(2026, 3, 1), data_fim=date(2026, 3, 31))
+
+        self.assertEqual(dados["total_pedidos"], 1)
+        self.assertEqual(dados["total_comissao"], Decimal("10.00"))
+
+    def test_filtro_por_status(self):
+        self._criar_pedido("VALIDADO", Pedido.STATUS_VALIDADO, "10.00", "5.00", timezone.now())
+        self._criar_pedido("CANCELADO", Pedido.STATUS_CANCELADO, "10.00", "5.00", timezone.now())
+
+        dados = obter_analytics(status=Pedido.STATUS_VALIDADO)
+
+        self.assertEqual(dados["total_pedidos"], 1)
+
+    def test_saldo_a_liberar_soma_pendente_e_validado_mas_nao_liberado(self):
+        self._criar_pedido("PEND", Pedido.STATUS_PENDENTE, "10.00", "5.00", timezone.now())
+        self._criar_pedido("VALID", Pedido.STATUS_VALIDADO, "10.00", "3.00", timezone.now())
+        self._criar_pedido("LIB", Pedido.STATUS_LIBERADO, "10.00", "7.00", timezone.now())
+
+        dados = obter_analytics()
+
+        self.assertEqual(dados["saldo_a_liberar"], Decimal("8.00"))
+        self.assertEqual(dados["saldo_liberado"], Decimal("7.00"))
+
+    def test_resumo_status_inclui_status_sem_nenhum_pedido_zerado(self):
+        self._criar_pedido("VALID", Pedido.STATUS_VALIDADO, "10.00", "5.00", timezone.now())
+
+        dados = obter_analytics()
+        por_chave = {linha["status"]: linha for linha in dados["resumo_status"]}
+
+        self.assertEqual(por_chave[Pedido.STATUS_CANCELADO]["total"], 0)
+        self.assertEqual(por_chave[Pedido.STATUS_CANCELADO]["cashback"], Decimal("0"))
+
+    def test_ranking_indicadores_conta_indicacoes_e_concluidas(self):
+        indicador = get_user_model().objects.create_user(username="indicador", password="senha123", cpf="14783246947")
+        indicado1 = get_user_model().objects.create_user(username="ind1", password="senha123", cpf="52914637837")
+        indicado2 = get_user_model().objects.create_user(username="ind2", password="senha123", cpf="91234567873")
+        pedido_bonus = self._criar_pedido("BONUS", Pedido.STATUS_VALIDADO, "10.00", "20.00", timezone.now(), usuario=indicador)
+        Indicacao.objects.create(indicador=indicador, indicado=indicado1, pedido_bonus_indicado=pedido_bonus, pedido_bonus_indicador=pedido_bonus)
+        Indicacao.objects.create(indicador=indicador, indicado=indicado2)
+
+        dados = obter_analytics()
+
+        self.assertEqual(dados["total_indicacoes"], 2)
+        self.assertEqual(dados["indicacoes_concluidas"], 1)
+        self.assertEqual(dados["ranking_indicadores"][0]["indicador__username"], "indicador")
+        self.assertEqual(dados["ranking_indicadores"][0]["total_indicacoes"], 2)
+        self.assertEqual(dados["ranking_indicadores"][0]["concluidas"], 1)
+
+    def test_total_saques_por_status(self):
+        Saque.objects.create(
+            usuario=self.usuario, valor=Decimal("50.00"), chave_pix="a@a.com",
+            tipo_chave_pix="EMAIL", status=Saque.STATUS_PAGO,
+        )
+        Saque.objects.create(
+            usuario=self.usuario, valor=Decimal("30.00"), chave_pix="a@a.com",
+            tipo_chave_pix="EMAIL", status=Saque.STATUS_SOLICITADO,
+        )
+
+        dados = obter_analytics()
+
+        self.assertEqual(dados["total_saques"], 2)
+        self.assertEqual(dados["total_saques_valor"], Decimal("80.00"))
+        por_status = {linha["status"]: linha for linha in dados["saques_por_status"]}
+        self.assertEqual(por_status[Saque.STATUS_PAGO]["valor"], Decimal("50.00"))
+        self.assertEqual(por_status[Saque.STATUS_SOLICITADO]["valor"], Decimal("30.00"))
+
+
+class AnalyticsAdminViewTests(TestCase):
+    def setUp(self):
+        self.staff = get_user_model().objects.create_user(
+            username="equipe", password="senha123", cpf="39053344705", is_staff=True
+        )
+        self.usuario_comum = get_user_model().objects.create_user(
+            username="comum", password="senha123", cpf="14783246947"
+        )
+        Pedido.objects.create(
+            order_id="ORD-1", conversion_id="1", usuario=self.usuario_comum,
+            status=Pedido.STATUS_VALIDADO, status_shopee_bruto="COMPLETED",
+            valor_comissao=Decimal("10.00"), valor_cashback=Decimal("5.00"), data_compra=timezone.now(),
+        )
+
+    def test_staff_acessa_a_tela_de_analytics(self):
+        self.client.force_login(self.staff)
+        resposta = self.client.get(reverse("admin:pedidos_analytics"))
+        self.assertEqual(resposta.status_code, 200)
+        self.assertContains(resposta, "Comissão total")
+
+    def test_usuario_comum_nao_acessa_analytics(self):
+        self.client.force_login(self.usuario_comum)
+        resposta = self.client.get(reverse("admin:pedidos_analytics"))
+        self.assertEqual(resposta.status_code, 302)
+
+    def test_anonimo_e_redirecionado_para_login(self):
+        resposta = self.client.get(reverse("admin:pedidos_analytics"))
+        self.assertEqual(resposta.status_code, 302)
+
+    def test_exportar_csv_traz_o_pedido_filtrado(self):
+        self.client.force_login(self.staff)
+        resposta = self.client.get(reverse("admin:pedidos_analytics_exportar"))
+        self.assertEqual(resposta.status_code, 200)
+        self.assertEqual(resposta["Content-Type"], "text/csv")
+        conteudo = resposta.content.decode()
+        self.assertIn("ORD-1", conteudo)
+        self.assertIn("comum", conteudo)
+
+    def test_exportar_csv_respeita_filtro_de_status(self):
+        Pedido.objects.create(
+            order_id="ORD-CANCELADO", conversion_id="2", usuario=self.usuario_comum,
+            status=Pedido.STATUS_CANCELADO, status_shopee_bruto="CANCELLED",
+            valor_comissao=Decimal("0"), valor_cashback=Decimal("0"), data_compra=timezone.now(),
+        )
+        self.client.force_login(self.staff)
+        resposta = self.client.get(reverse("admin:pedidos_analytics_exportar"), {"status": Pedido.STATUS_VALIDADO})
+        conteudo = resposta.content.decode()
+        self.assertIn("ORD-1", conteudo)
+        self.assertNotIn("ORD-CANCELADO", conteudo)

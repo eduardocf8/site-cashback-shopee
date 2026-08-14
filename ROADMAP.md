@@ -358,6 +358,33 @@ catálogo mostrar um % inflado se aquele bug antigo ainda se aplicar. Vale
 revisitar comparando alguns itens do catálogo com o app da Shopee, se algum
 usuário reportar um percentual anunciado que não bateu com o que recebeu.
 
+## Fase 17 — Analytics no admin ✅
+
+Painel de números do negócio dentro do Django admin (`/admin/pedidos/pedido/analytics/`),
+com filtro por período (via `data_compra`) e status do pedido, e exportação em CSV.
+
+- [x] **Cards de KPI** — comissão total, cashback repassado (e % da comissão),
+      margem retida, ticket médio de cashback, saldo a liberar (pendente +
+      validado), saldo liberado, total sacado, novos usuários e indicações
+      (total e concluídas). (`pedidos/analytics.py::obter_analytics`)
+- [x] **Detalhamento por status** — tabelas de pedidos por status e saques por
+      status, incluindo status sem nenhum registro no período (zerado, não
+      omitido).
+- [x] **Ranking de indicadores** — quem mais indicou no período e quantas
+      indicações já viraram bônus concluído.
+- [x] **Exportar CSV** — mesma base filtrada da tela (`obter_pedidos_filtrados`),
+      pra abrir no Excel/Sheets.
+- [x] **Sem view/rota nova fora do admin** — usa `ModelAdmin.get_urls()` (técnica
+      documentada pelo Django) em `PedidoAdmin`, então herda a autenticação e
+      permissão de staff do admin de graça. Link "Ver analytics" no topo da
+      página inicial do admin via `AdminSite.index_template`.
+- [x] **Faturamento (GMV) ficou de fora por decisão do dono do produto** — hoje
+      só guardamos `valor_comissao` e `valor_cashback` por pedido, não o valor
+      de venda do produto. Adicionar isso exigiria um campo novo + descobrir se
+      a query `conversionReport` da Shopee expõe esse dado, e só valeria pra
+      pedidos sincronizados dali pra frente. Fica pra uma iteração futura, se
+      for necessário.
+
 ---
 
 Pra continuar esse roadmap numa conversa nova, basta apontar esse arquivo
