@@ -70,13 +70,13 @@
         .ajuda .balao-ajuda strong { color: var(--paper); }
         .ajuda:hover .balao-ajuda, .ajuda:focus-within .balao-ajuda { display: block; }
 
-        .saldos { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 16px; }
+        .saldos { display: grid; grid-template-columns: repeat(auto-fit, minmax(170px, 1fr)); gap: 12px; }
         .saldo-cartao {
-            background: var(--paper); border: 1px solid var(--line); border-radius: 12px; padding: 20px;
+            background: var(--paper); border: 1px solid var(--line); border-radius: 12px; padding: 16px;
             border-top: 4px solid var(--cor-cartao, var(--line));
         }
         .saldo-cartao .rotulo { font-size: 13px; color: var(--muted); margin-bottom: 10px; }
-        .saldo-cartao .valor { font-family: "JB Mono", ui-monospace, monospace; font-size: 34px; font-weight: 500; font-variant-numeric: tabular-nums; }
+        .saldo-cartao .valor { font-family: "JB Mono", ui-monospace, monospace; font-size: 26px; font-weight: 500; font-variant-numeric: tabular-nums; }
         .saldo-cartao.pendente { --cor-cartao: var(--muted); }
         .saldo-cartao.validado { --cor-cartao: var(--info); }
         .saldo-cartao.liberado { --cor-cartao: var(--success); }
