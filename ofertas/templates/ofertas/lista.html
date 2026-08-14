@@ -40,7 +40,8 @@
             box-shadow: 0 12px 28px rgba(17, 24, 39, 0.14); padding: 8px; display: flex; flex-direction: column;
         }
         .painel-conta[hidden] { display: none; }
-        .painel-conta-saldo { padding: 12px 10px 10px; border-bottom: 1px solid var(--line-soft); margin-bottom: 6px; }
+        .painel-conta-saudacao { padding: 10px 10px 0; font-size: 14px; font-weight: 600; color: var(--ink); }
+        .painel-conta-saldo { padding: 8px 10px 10px; border-bottom: 1px solid var(--line-soft); margin-bottom: 6px; }
         .painel-conta-saldo-valor {
             font-family: "JB Mono", ui-monospace, monospace; font-size: 22px; font-weight: 600; color: var(--success);
         }
@@ -122,6 +123,7 @@
                     </button>
                     <div class="painel-conta" id="painel-conta" role="menu" hidden>
                         {% if user.is_authenticated %}
+                            <div class="painel-conta-saudacao">Olá, {{ user.username }}!</div>
                             <div class="painel-conta-saldo">
                                 <div class="painel-conta-saldo-valor">R$ {{ saldo_liberado_nav|floatformat:2 }}</div>
                                 <div class="painel-conta-saldo-rotulo">Saldo liberado</div>
