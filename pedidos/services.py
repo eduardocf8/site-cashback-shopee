@@ -12,7 +12,7 @@ from links.models import Click
 from links.shopee_client import buscar_conversoes
 
 from .models import Pedido
-from .notificacoes import notificar_pedido_liberado, notificar_pedido_validado
+from .notificacoes import notificar_indicador_bonus_pendente, notificar_pedido_liberado, notificar_pedido_validado
 
 PADRAO_USUARIO = re.compile(r"^user(\d+)$")
 PADRAO_UUID_HEX = re.compile(r"^[0-9a-fA-F]{32}$")
@@ -234,6 +234,10 @@ def sincronizar(purchase_time_start: int, purchase_time_end: int) -> dict:
         Pedido.objects.bulk_update(atualizados_objs, CAMPOS_ATUALIZAVEIS, batch_size=200)
 
     _persistir_vinculos_indicacao(vinculos_indicacao)
+
+    for indicacao, campo, _order_id in vinculos_indicacao:
+        if campo == "pedido_bonus_indicado":
+            notificar_indicador_bonus_pendente(indicacao)
 
     for pedido in recem_validados:
         if pedido.usuario_id:

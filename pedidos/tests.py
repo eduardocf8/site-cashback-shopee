@@ -6,6 +6,7 @@ from unittest.mock import patch
 from openpyxl import load_workbook
 
 from django.contrib.auth import get_user_model
+from django.core import mail
 from django.db import connection
 from django.test import TestCase, override_settings
 from django.test.utils import CaptureQueriesContext
@@ -18,6 +19,7 @@ from saques.models import Saque
 
 from .analytics import obter_analytics
 from .models import Pedido
+from .notificacoes import notificar_indicador_bonus_pendente
 from .services import calcular_data_prevista_liberacao, liberar_saldo, mapear_status, resolver_click, sincronizar
 
 
@@ -432,6 +434,31 @@ class SincronizarBonusIndicacaoTests(TestCase):
         self.assertIsNone(self.indicacao.pedido_bonus_indicador)
 
     @patch("pedidos.services.buscar_conversoes")
+    def test_primeira_compra_validada_do_indicado_notifica_o_indicador_por_email(self, mock_buscar):
+        self.indicador.email = "indicador@example.com"
+        self.indicador.save()
+        mock_buscar.return_value = self._pagina([self._no(self.click_indicado, "ORD-IND-EMAIL", "10.00")])
+
+        sincronizar(1690000000, 1700000000)
+
+        self.assertEqual(len(mail.outbox), 1)
+        email = mail.outbox[0]
+        self.assertEqual(email.to, ["indicador@example.com"])
+        self.assertIn(self.indicado.username, email.body)
+        self.assertIn("dobro", email.subject.lower())
+
+    @patch("pedidos.services.buscar_conversoes")
+    def test_ressincronizar_o_mesmo_pedido_nao_notifica_de_novo(self, mock_buscar):
+        self.indicador.email = "indicador@example.com"
+        self.indicador.save()
+        mock_buscar.return_value = self._pagina([self._no(self.click_indicado, "ORD-IND-EMAIL2", "10.00")])
+
+        sincronizar(1690000000, 1700000000)
+        sincronizar(1690000000, 1700000000)
+
+        self.assertEqual(len(mail.outbox), 1)
+
+    @patch("pedidos.services.buscar_conversoes")
     def test_indicador_ganha_dobro_na_proxima_compra_apos_indicado_validar(self, mock_buscar):
         mock_buscar.return_value = self._pagina([self._no(self.click_indicado, "ORD-IND-1", "10.00")])
         sincronizar(1690000000, 1700000000)
@@ -554,6 +581,34 @@ class SincronizarBonusIndicacaoTests(TestCase):
 
         pedido = Pedido.objects.get(order_id="ORD-AVULSO-1")
         self.assertEqual(pedido.valor_cashback, Decimal("8.00"))
+
+
+class NotificarIndicadorBonusPendenteTests(TestCase):
+    def setUp(self):
+        self.indicador = get_user_model().objects.create_user(
+            username="indicador", password="senha123", cpf="39053344705", email="indicador@example.com"
+        )
+        self.indicado = get_user_model().objects.create_user(
+            username="indicado", password="senha123", cpf="14783246947"
+        )
+        self.indicacao = Indicacao.objects.create(indicador=self.indicador, indicado=self.indicado)
+
+    def test_envia_email_pro_indicador_com_o_nome_do_indicado(self):
+        notificar_indicador_bonus_pendente(self.indicacao)
+
+        self.assertEqual(len(mail.outbox), 1)
+        email = mail.outbox[0]
+        self.assertEqual(email.to, ["indicador@example.com"])
+        self.assertIn(self.indicado.username, email.body)
+        self.assertIn("dobro", email.subject.lower())
+
+    def test_indicador_sem_email_nao_envia_nada(self):
+        self.indicador.email = ""
+        self.indicador.save()
+
+        notificar_indicador_bonus_pendente(self.indicacao)
+
+        self.assertEqual(len(mail.outbox), 0)
 
 
 class LiberarSaldoTests(TestCase):

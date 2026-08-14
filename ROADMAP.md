@@ -486,6 +486,22 @@ KPIs do analytics.
       a Shopee reenviar aquele pedido numa sincronização (dentro da janela de 60 dias
       que `sincronizar()` olha pra trás).
 
+## Fase 22 — E-mail avisando o indicador sobre o bônus pendente ✅
+
+Levantamento de todos os e-mails que o site manda pro usuário (verificação de
+cadastro/troca de e-mail, esqueci a senha, pedido validado, cashback liberado, saque
+pago) mostrou uma lacuna: quem indica alguém não é avisado quando a indicação "ativa" o
+bônus - só descobre o dobro de cashback quando o próximo pedido já validou (ou olhando
+o painel "Indique e ganhe" manualmente).
+
+- [x] **`notificar_indicador_bonus_pendente(indicacao)`** — dispara quando a 1ª
+      compra do indicado valida, avisando o indicador que o *próximo* pedido dele vem
+      com o dobro. (`pedidos/notificacoes.py`)
+- [x] **Dispara uma vez só** — ligado em `sincronizar()` a partir dos vínculos que
+      `_selecionar_bonus_indicacao` acabou de decidir NESSA sincronização (não a cada
+      vez que a Shopee reenvia o mesmo pedido validado) - mesma garantia que já
+      existia pra não duplicar o bônus em si. (`pedidos/services.py`)
+
 ---
 
 Pra continuar esse roadmap numa conversa nova, basta apontar esse arquivo
