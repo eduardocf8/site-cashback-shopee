@@ -60,6 +60,14 @@ pasta, pra não ficar vazio quando a automação for ligada de verdade — ver
      `instagram_bot/services.py`, `publicar_story_oferta_do_momento`). De
      propósito **não** é 1 story só com várias ofertas juntas: o perfil
      não é só sobre ofertas, então evita "bombardear" o feed de stories.
+     **Não repete produto em `DIAS_SEM_REPETIR_OFERTA` (7) dias** (só
+     dentro do mesmo dia não é suficiente - a sincronização diária com a
+     Shopee é um "retrato" sem histórico, ver `sincronizar_ofertas`, e
+     tende a devolver os mesmos best-sellers de um dia pro outro, então
+     sem esse intervalo o mesmo produto aparecia quase todo dia - ver
+     `_escolher_oferta_do_momento`). Categoria continua só sem repetir no
+     mesmo dia (são poucas categorias - valer pra semana esgotaria as
+     candidatas logo no 2º dia).
      Sábado dica de economia (rotativo); domingo lembrete de cashback
      (mensagem de marca) - esses dois continuam na tarefa diária única.
    - **Posts no feed (2x por semana)**: quarta = post institucional
