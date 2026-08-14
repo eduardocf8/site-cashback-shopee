@@ -431,6 +431,26 @@ teoricamente a mesma coisa, um deles enganoso).
       reaproveitando `calcular_saldo_disponivel()`. (`saques/services.py::
       calcular_resumo_saldo_nav`)
 
+## Fase 20 — Separar a tarefa diária (dinheiro) dos posts do Instagram ✅
+
+Usuário testou 2 saques, aprovou e a Asaas pagou os dois - mas o site continuou
+mostrando "Processando", porque a checagem de status (`verificar_saques_pendentes`)
+só roda dentro da tarefa diária agendada, uma vez por dia. Ao perguntar sobre esse
+horário, o usuário pediu pra mover pra madrugada (11h podia ter gente usando o site
+na hora da sincronização) - só que o mesmo endpoint também dispara os posts diários do
+Instagram, cujo horário (11h) foi escolhido de propósito por causa do alcance (de
+madrugada o engajamento era baixo). Resolvido separando as duas coisas.
+
+- [x] **`executar_tarefas_agendadas` agora só cuida de dinheiro** — sincronizar
+      pedidos, sincronizar ofertas, liberar saldo e verificar saques. Passou a rodar
+      às **03:00 (Brasília)**, não mais 11h. (`cashback_shopee/views.py`,
+      `.github/workflows/tarefas-diarias.yml`)
+- [x] **Nova `executar_publicacoes_instagram`** — só os posts do Instagram e a
+      checagem de validade do token, num endpoint próprio (`/tarefas/publicar-
+      instagram/`), continuando às **11:00 (Brasília)** no workflow dedicado
+      `.github/workflows/instagram-diario.yml`. Mesmo segredo `TAREFAS_URL`, só troca
+      o caminho da URL.
+
 ---
 
 Pra continuar esse roadmap numa conversa nova, basta apontar esse arquivo

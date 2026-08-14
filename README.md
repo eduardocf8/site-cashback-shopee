@@ -262,7 +262,7 @@ Criei um endereço protegido por senha no site, `/tarefas/executar/`, que roda a
 https://seusite.onrender.com/tarefas/executar/?token=SEU_TAREFAS_TOKEN_AQUI
 ```
 
-Já deixei configurado um agendamento gratuito no GitHub Actions (`.github/workflows/tarefas-diarias.yml`) pra acessar esse endereço todo dia às 01:00 (horário de Brasília). Falta só você configurar o segredo com a URL completa:
+Já deixei configurado um agendamento gratuito no GitHub Actions (`.github/workflows/tarefas-diarias.yml`) pra acessar esse endereço todo dia às 03:00 (horário de Brasília) - de madrugada de propósito, já que essa tarefa mexe com saldo e saques de gente de verdade. Falta só você configurar o segredo com a URL completa:
 
 1. No GitHub, abra o repositório → **Settings** → **Secrets and variables** → **Actions**.
 2. Clique em **"New repository secret"**.
@@ -271,6 +271,8 @@ Já deixei configurado um agendamento gratuito no GitHub Actions (`.github/workf
 5. Salve.
 
 Pra testar sem esperar até de madrugada: vá em **Actions** (no menu do repositório) → **"Tarefas diárias do site"** → **"Run workflow"** → confirme. Se ficar verde, funcionou; se ficar vermelho, clique no resultado pra ver a mensagem de erro.
+
+As publicações diárias do Instagram (opcional, ver Fase 12) usam o mesmo segredo `TAREFAS_URL`, mas rodam num workflow separado (`.github/workflows/instagram-diario.yml`) às 11:00 (horário de Brasília) - horário de bom alcance, diferente da tarefa acima que roda de madrugada de propósito.
 
 ### 6. Conferir se está tudo certo
 

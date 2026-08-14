@@ -1,0 +1,20 @@
+name: Publicações diárias do Instagram
+
+# Separado de tarefas-diarias.yml de propósito: aquele mexe com dinheiro (saldo,
+# saques) e por isso roda de madrugada, enquanto esse aqui precisa de um horário de
+# bom alcance - de madrugada o engajamento das postagens era baixo.
+
+on:
+  schedule:
+    # 14:00 UTC = 11:00 no horário de Brasília.
+    - cron: "0 14 * * *"
+  workflow_dispatch: {}
+
+jobs:
+  publicar-instagram:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Chamar o endereço de publicações diárias do Instagram
+        run: |
+          publicar_url=$(echo "${{ secrets.TAREFAS_URL }}" | sed 's#/tarefas/executar/#/tarefas/publicar-instagram/#')
+          curl -f -sS --retry 3 --retry-delay 15 --max-time 300 "$publicar_url"

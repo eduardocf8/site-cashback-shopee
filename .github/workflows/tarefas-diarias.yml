@@ -1,10 +1,14 @@
 name: Tarefas diárias do site
 
+# Roda de madrugada de propósito: essa tarefa mexe com dinheiro de gente de verdade
+# (sincroniza pedidos, libera saldo, confere status de saques) - não faz sentido rodar
+# num horário em que as pessoas podem estar usando o site. Os posts do Instagram têm
+# workflow próprio (instagram-diario.yml), com um horário pensado pro alcance deles.
+
 on:
   schedule:
-    # 14:00 UTC = 11:00 no horário de Brasília - horário melhor pro alcance
-    # das postagens do bot do Instagram (madrugada tinha pouco engajamento).
-    - cron: "0 14 * * *"
+    # 06:00 UTC = 03:00 no horário de Brasília.
+    - cron: "0 6 * * *"
   workflow_dispatch: {}
 
 jobs:
