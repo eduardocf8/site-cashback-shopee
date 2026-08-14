@@ -133,6 +133,11 @@
 
 <div class="analytics-cards">
     <div class="analytics-card">
+        <h3>Quantidade de pedidos</h3>
+        <div class="valor">{{ dados.total_pedidos }}</div>
+        <div class="legenda">no período filtrado</div>
+    </div>
+    <div class="analytics-card">
         <h3>Comissão total</h3>
         <div class="valor">R$ {{ dados.total_comissao|floatformat:2 }}</div>
         <div class="legenda">{{ dados.total_pedidos }} pedido{{ dados.total_pedidos|pluralize }}</div>

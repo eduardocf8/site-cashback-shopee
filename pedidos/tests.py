@@ -770,6 +770,7 @@ class AnalyticsAdminViewTests(TestCase):
         resposta = self.client.get(reverse("admin:pedidos_analytics"))
         self.assertEqual(resposta.status_code, 200)
         self.assertContains(resposta, "Comissão total")
+        self.assertContains(resposta, "Quantidade de pedidos")
 
     def test_usuario_comum_nao_acessa_analytics(self):
         self.client.force_login(self.usuario_comum)

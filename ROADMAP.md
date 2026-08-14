@@ -363,10 +363,11 @@ usuário reportar um percentual anunciado que não bateu com o que recebeu.
 Painel de números do negócio dentro do Django admin (`/admin/pedidos/pedido/analytics/`),
 com filtro por período (via `data_compra`) e status do pedido, e exportação em CSV.
 
-- [x] **Cards de KPI** — comissão total, cashback repassado (e % da comissão),
-      margem retida, ticket médio de cashback, saldo a liberar (pendente +
-      validado), saldo liberado, total sacado, novos usuários e indicações
-      (total e concluídas). (`pedidos/analytics.py::obter_analytics`)
+- [x] **Cards de KPI** — quantidade de pedidos, comissão total, cashback
+      repassado (e % da comissão), margem retida, ticket médio de cashback,
+      saldo a liberar (pendente + validado), saldo liberado, total sacado,
+      novos usuários e indicações (total e concluídas).
+      (`pedidos/analytics.py::obter_analytics`)
 - [x] **Detalhamento por status** — tabelas de pedidos por status e saques por
       status, incluindo status sem nenhum registro no período (zerado, não
       omitido).
@@ -399,6 +400,14 @@ com filtro por período (via `data_compra`) e status do pedido, e exportação e
       a query `conversionReport` da Shopee expõe esse dado, e só valeria pra
       pedidos sincronizados dali pra frente. Fica pra uma iteração futura, se
       for necessário.
+- [ ] **Quantidade de produtos vendidos ficou de fora por decisão do dono do
+      produto** — a query `conversionReport` não retorna quantidade por item,
+      só uma entrada por linha de item (sem confirmação de que comprar várias
+      unidades do mesmo produto vira mais de uma linha), e esse dado nem é
+      guardado hoje no banco. Precisaria de um campo novo (contando linhas de
+      item por pedido, a única aproximação disponível hoje) + só valeria pra
+      pedidos sincronizados dali pra frente. Fica pra decidir numa conversa
+      futura, se for necessário.
 
 ## Fase 18 — Health check pra evitar 502 durante deploy ✅
 
