@@ -181,6 +181,11 @@ class SincronizarTests(TestCase):
         self.assertIsNone(pedido.usuario)
         self.assertIsNone(pedido.click)
         self.assertEqual(resultado["nao_identificados"], 1)
+        # Sem Click não tem usuário pra receber o cashback - não faz sentido calcular um
+        # valor que nunca vai ser pago a ninguém. valor_comissao (o que a Shopee realmente
+        # paga) continua sendo somado normalmente, independente da origem do pedido.
+        self.assertEqual(pedido.valor_comissao, Decimal("3.00"))
+        self.assertEqual(pedido.valor_cashback, Decimal("0"))
 
     @patch("pedidos.services.buscar_conversoes")
     def test_segue_paginacao_ate_acabar(self, mock_buscar):

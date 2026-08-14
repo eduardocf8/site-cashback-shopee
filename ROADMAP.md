@@ -459,6 +459,24 @@ madrugada o engajamento era baixo). Resolvido separando as duas coisas.
       `.github/workflows/instagram-diario.yml`. Mesmo segredo `TAREFAS_URL`, só troca
       o caminho da URL.
 
+## Fase 21 — Pedido "fora do site" não deve ter cashback calculado ✅
+
+Usuário notou, testando o filtro de origem do analytics (Fase anterior): pedidos "fora
+do site" (sem Click vinculado) continuavam com `valor_cashback` calculado, mesmo não
+tendo usuário nenhum pra receber esse dinheiro. Fazia sentido pro `valor_comissao` (é o
+que a Shopee realmente paga pra conta de afiliado, não depende de quem comprou), mas
+não pro `valor_cashback` - um número que nunca vai ser pago é só ruído inflando os
+KPIs do analytics.
+
+- [x] **`_montar_defaults` só soma cashback quando tem Click** — `valor_comissao`
+      continua sendo calculado normalmente pra todos os pedidos; `valor_cashback` fica
+      zerado quando não há Click (e, por consequência, não há usuário) vinculado.
+      (`pedidos/services.py`)
+- [x] **Só vale pra pedidos sincronizados dali pra frente** — pedidos "fora do site"
+      já existentes no banco só ficam com `valor_cashback` zerado na próxima vez que
+      a Shopee reenviar aquele pedido numa sincronização (dentro da janela de 60 dias
+      que `sincronizar()` olha pra trás).
+
 ---
 
 Pra continuar esse roadmap numa conversa nova, basta apontar esse arquivo

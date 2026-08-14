@@ -102,12 +102,19 @@ def _montar_defaults(conversao, pedido_shopee, click, data_compra, percentual):
     # antes de somar. itemTotalCommission já inclui o bônus de campanha do vendedor quando
     # ativo (confirmado comparando com o painel oficial de afiliados da Shopee), então sem
     # esse teto um único item de comissão alta pagaria um cashback desproporcional ao preço.
+    #
+    # Sem Click identificado, o pedido não veio daqui (outra campanha, compra pessoal etc.
+    # - ver OrigemFilter em pedidos/admin.py) e não tem usuário pra receber o cashback, então
+    # não faz sentido calcular um valor que nunca vai ser pago a ninguém. valor_comissao
+    # continua sendo somado normalmente - é o que a Shopee realmente paga pra conta de
+    # afiliado, independente da origem do pedido.
     comissao = Decimal("0")
     cashback = Decimal("0")
     for item in itens:
         comissao_item = Decimal(str(item.get("itemTotalCommission") or "0"))
         comissao += comissao_item
-        cashback += min(comissao_item * percentual, limite_por_produto).quantize(Decimal("0.01"))
+        if click:
+            cashback += min(comissao_item * percentual, limite_por_produto).quantize(Decimal("0.01"))
 
     tempos_conclusao = [item["completeTime"] for item in itens if item.get("completeTime")]
     data_validacao = _converter_timestamp(max(tempos_conclusao)) if tempos_conclusao else None
