@@ -6,7 +6,7 @@ from django.http import HttpResponse
 from django.template.response import TemplateResponse
 from django.urls import path
 
-from .analytics import gerar_planilha_analytics, obter_analytics, obter_pedidos_filtrados
+from .analytics import ORIGEM_FORA, ORIGEM_SITE, gerar_planilha_analytics, obter_analytics, obter_pedidos_filtrados
 from .models import Pedido
 
 
@@ -88,28 +88,37 @@ class PedidoAdmin(admin.ModelAdmin):
         return urls + super().get_urls()
 
     def _filtros_da_request(self, request):
+        origem = request.GET.get("origem") or None
+        if origem not in (ORIGEM_SITE, ORIGEM_FORA):
+            origem = None
         return (
             _parse_data(request.GET.get("data_inicio")),
             _parse_data(request.GET.get("data_fim")),
             request.GET.get("status") or None,
+            origem,
         )
 
     def analytics_view(self, request):
-        data_inicio, data_fim, status = self._filtros_da_request(request)
+        data_inicio, data_fim, status, origem = self._filtros_da_request(request)
         contexto = {
             **self.admin_site.each_context(request),
             "title": "Analytics",
-            "dados": obter_analytics(data_inicio, data_fim, status),
+            "dados": obter_analytics(data_inicio, data_fim, status, origem),
             "status_choices": Pedido.STATUS_CHOICES,
             "filtro_data_inicio": request.GET.get("data_inicio", ""),
             "filtro_data_fim": request.GET.get("data_fim", ""),
             "filtro_status": status or "",
+            "filtro_origem": origem or "",
         }
         return TemplateResponse(request, "admin/analytics.html", contexto)
 
     def analytics_exportar_csv(self, request):
-        data_inicio, data_fim, status = self._filtros_da_request(request)
-        pedidos = obter_pedidos_filtrados(data_inicio, data_fim, status).select_related("usuario").order_by("-data_compra")
+        data_inicio, data_fim, status, origem = self._filtros_da_request(request)
+        pedidos = (
+            obter_pedidos_filtrados(data_inicio, data_fim, status, origem)
+            .select_related("usuario")
+            .order_by("-data_compra")
+        )
 
         resposta = HttpResponse(content_type="text/csv")
         resposta["Content-Disposition"] = 'attachment; filename="pedidos_analytics.csv"'
@@ -133,8 +142,8 @@ class PedidoAdmin(admin.ModelAdmin):
         return resposta
 
     def analytics_exportar_excel(self, request):
-        data_inicio, data_fim, status = self._filtros_da_request(request)
-        livro = gerar_planilha_analytics(data_inicio, data_fim, status)
+        data_inicio, data_fim, status, origem = self._filtros_da_request(request)
+        livro = gerar_planilha_analytics(data_inicio, data_fim, status, origem)
 
         resposta = HttpResponse(
             content_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"

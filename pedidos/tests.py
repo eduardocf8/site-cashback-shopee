@@ -611,17 +611,56 @@ class ObterAnalyticsTests(TestCase):
             username="compradora", password="senha123", cpf="39053344705"
         )
 
-    def _criar_pedido(self, order_id, status, comissao, cashback, data_compra, usuario=None):
+    def _criar_pedido(self, order_id, status, comissao, cashback, data_compra, usuario=None, click=None):
         return Pedido.objects.create(
             order_id=order_id,
             conversion_id="1",
             usuario=usuario if usuario is not None else self.usuario,
+            click=click,
             status=status,
             status_shopee_bruto="COMPLETED",
             valor_comissao=Decimal(comissao),
             valor_cashback=Decimal(cashback),
             data_compra=data_compra,
         )
+
+    def test_filtro_origem_site_traz_so_pedidos_com_click(self):
+        click = Click.objects.create(
+            usuario=self.usuario, tipo=Click.TIPO_HOME,
+            url_original="https://shopee.com.br/", link_gerado="https://shope.ee/abc",
+        )
+        self._criar_pedido("COM-CLICK", Pedido.STATUS_VALIDADO, "10.00", "5.00", timezone.now(), click=click)
+        self._criar_pedido("SEM-CLICK", Pedido.STATUS_VALIDADO, "10.00", "5.00", timezone.now())
+
+        dados = obter_analytics(origem="site")
+
+        self.assertEqual(dados["total_pedidos"], 1)
+        self.assertEqual(dados["total_comissao"], Decimal("10.00"))
+
+    def test_filtro_origem_fora_traz_so_pedidos_sem_click(self):
+        click = Click.objects.create(
+            usuario=self.usuario, tipo=Click.TIPO_HOME,
+            url_original="https://shopee.com.br/", link_gerado="https://shope.ee/abc",
+        )
+        self._criar_pedido("COM-CLICK", Pedido.STATUS_VALIDADO, "10.00", "5.00", timezone.now(), click=click)
+        self._criar_pedido("SEM-CLICK", Pedido.STATUS_VALIDADO, "20.00", "8.00", timezone.now())
+
+        dados = obter_analytics(origem="fora")
+
+        self.assertEqual(dados["total_pedidos"], 1)
+        self.assertEqual(dados["total_comissao"], Decimal("20.00"))
+
+    def test_sem_filtro_origem_traz_tudo(self):
+        click = Click.objects.create(
+            usuario=self.usuario, tipo=Click.TIPO_HOME,
+            url_original="https://shopee.com.br/", link_gerado="https://shope.ee/abc",
+        )
+        self._criar_pedido("COM-CLICK", Pedido.STATUS_VALIDADO, "10.00", "5.00", timezone.now(), click=click)
+        self._criar_pedido("SEM-CLICK", Pedido.STATUS_VALIDADO, "20.00", "8.00", timezone.now())
+
+        dados = obter_analytics()
+
+        self.assertEqual(dados["total_pedidos"], 2)
 
     def test_soma_comissao_e_cashback_de_todos_os_pedidos(self):
         self._criar_pedido("A1", Pedido.STATUS_VALIDADO, "20.00", "10.00", timezone.now())
@@ -744,6 +783,24 @@ class AnalyticsAdminViewTests(TestCase):
         conteudo = resposta.content.decode()
         self.assertIn("ORD-1", conteudo)
         self.assertIn("comum", conteudo)
+
+    def test_filtro_origem_site_exclui_pedido_sem_click(self):
+        # ORD-1 (setUp) não tem Click vinculado - é "fora do site".
+        self.client.force_login(self.staff)
+        resposta = self.client.get(reverse("admin:pedidos_analytics"), {"origem": "site"})
+        self.assertEqual(resposta.context["dados"]["total_pedidos"], 0)
+        self.assertEqual(resposta.context["filtro_origem"], "site")
+
+    def test_filtro_origem_fora_inclui_pedido_sem_click(self):
+        self.client.force_login(self.staff)
+        resposta = self.client.get(reverse("admin:pedidos_analytics"), {"origem": "fora"})
+        self.assertEqual(resposta.context["dados"]["total_pedidos"], 1)
+
+    def test_filtro_origem_invalido_e_ignorado(self):
+        self.client.force_login(self.staff)
+        resposta = self.client.get(reverse("admin:pedidos_analytics"), {"origem": "lixo"})
+        self.assertEqual(resposta.context["dados"]["total_pedidos"], 1)
+        self.assertEqual(resposta.context["filtro_origem"], "")
 
     def test_exportar_csv_respeita_filtro_de_status(self):
         Pedido.objects.create(

@@ -106,16 +106,30 @@
             {% endfor %}
         </select>
     </div>
+    <div class="campo">
+        <label for="id_origem">Origem</label>
+        <select name="origem" id="id_origem">
+            <option value="">Todos</option>
+            <option value="site" {% if filtro_origem == "site" %}selected{% endif %}>Gerados no site (com cashback)</option>
+            <option value="fora" {% if filtro_origem == "fora" %}selected{% endif %}>Fora do site (sem cashback)</option>
+        </select>
+    </div>
     <div class="acoes">
         <input type="submit" class="button" value="Filtrar">
-        <a class="button" href="{% url 'admin:pedidos_analytics_exportar_excel' %}?data_inicio={{ filtro_data_inicio }}&data_fim={{ filtro_data_fim }}&status={{ filtro_status }}">
+        <a class="button" href="{% url 'admin:pedidos_analytics_exportar_excel' %}?data_inicio={{ filtro_data_inicio }}&data_fim={{ filtro_data_fim }}&status={{ filtro_status }}&origem={{ filtro_origem }}">
             ⬇ Exportar Excel
         </a>
-        <a class="button" href="{% url 'admin:pedidos_analytics_exportar' %}?data_inicio={{ filtro_data_inicio }}&data_fim={{ filtro_data_fim }}&status={{ filtro_status }}">
+        <a class="button" href="{% url 'admin:pedidos_analytics_exportar' %}?data_inicio={{ filtro_data_inicio }}&data_fim={{ filtro_data_fim }}&status={{ filtro_status }}&origem={{ filtro_origem }}">
             ⬇ Exportar CSV
         </a>
     </div>
 </form>
+<p class="help" style="margin: -10px 0 20px;">
+    "Fora do site" são pedidos que a sincronização trouxe da conta de afiliado Shopee
+    mas não têm um Click daqui vinculado (outras campanhas, compras pessoais etc.) -
+    o valor de cashback deles fica calculado no banco, mas não é pago a ninguém de
+    verdade.
+</p>
 
 <div class="analytics-cards">
     <div class="analytics-card">

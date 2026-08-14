@@ -372,6 +372,14 @@ com filtro por período (via `data_compra`) e status do pedido, e exportação e
       omitido).
 - [x] **Ranking de indicadores** — quem mais indicou no período e quantas
       indicações já viraram bônus concluído.
+- [x] **Filtro de origem** — separa pedidos "gerados no site" (têm um Click
+      vinculado, geram cashback pago de verdade) de "fora do site" (a
+      sincronização traz TODOS os pedidos da conta de afiliado Shopee, não só
+      os daqui - o que sobra sem Click tem um valor_cashback calculado no
+      banco mas não é pago a ninguém, mesma lógica do `OrigemFilter` já usado
+      na listagem de Pedidos do admin). Sem filtro, conta todos - filtrar é
+      opt-in, não muda o comportamento padrão que já existia.
+      (`pedidos/analytics.py::obter_pedidos_filtrados`)
 - [x] **Exportar CSV** — mesma base filtrada da tela (`obter_pedidos_filtrados`),
       pra abrir no Excel/Sheets.
 - [x] **Exportar Excel (.xlsx) já formatado** — `openpyxl` (novo em

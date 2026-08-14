@@ -25,23 +25,38 @@ def _no_periodo(queryset: QuerySet, campo_data: str, data_inicio, data_fim) -> Q
     return queryset
 
 
-def obter_pedidos_filtrados(data_inicio=None, data_fim=None, status=None) -> QuerySet:
-    """Pedidos filtrados por período (via data_compra) e status - base compartilhada
-    entre a tela de analytics e a exportação em CSV, pra manter os dois sempre batendo."""
+ORIGEM_SITE = "site"
+ORIGEM_FORA = "fora"
+
+
+def obter_pedidos_filtrados(data_inicio=None, data_fim=None, status=None, origem=None) -> QuerySet:
+    """Pedidos filtrados por período (via data_compra), status e origem - base
+    compartilhada entre a tela de analytics e as exportações, pra manter tudo batendo.
+
+    "origem" distingue pedidos gerados por aqui (têm um Click vinculado, geram cashback
+    de verdade pra um usuário) dos que sobram sem Click - outras campanhas, compras
+    pessoais etc. (ver pedidos/admin.py::OrigemFilter) - continuam guardados no banco
+    com um valor_cashback calculado, mas não são pagos a ninguém de verdade."""
     pedidos = _no_periodo(Pedido.objects.all(), "data_compra", data_inicio, data_fim)
     if status:
         pedidos = pedidos.filter(status=status)
+    if origem == ORIGEM_SITE:
+        pedidos = pedidos.filter(click__isnull=False)
+    elif origem == ORIGEM_FORA:
+        pedidos = pedidos.filter(click__isnull=True)
     return pedidos
 
 
-def obter_analytics(data_inicio=None, data_fim=None, status=None) -> dict:
-    """Agrega os números do negócio pro período/status informado - usado pela tela
-    /admin/pedidos/pedido/analytics/. Cada bloco filtra pela sua própria data "natural"
-    (pedido por data_compra, saque por criado_em, indicação por criado_em, usuário por
-    date_joined), porque não faz sentido contar, por exemplo, um saque solicitado fora
-    do período só porque o pedido que originou aquele cashback foi comprado dentro dele.
+def obter_analytics(data_inicio=None, data_fim=None, status=None, origem=None) -> dict:
+    """Agrega os números do negócio pro período/status/origem informado - usado pela
+    tela /admin/pedidos/pedido/analytics/. Cada bloco filtra pela sua própria data
+    "natural" (pedido por data_compra, saque por criado_em, indicação por criado_em,
+    usuário por date_joined), porque não faz sentido contar, por exemplo, um saque
+    solicitado fora do período só porque o pedido que originou aquele cashback foi
+    comprado dentro dele. O filtro de origem só se aplica aos pedidos - saques,
+    indicações e novos usuários não têm essa distinção.
     """
-    pedidos = obter_pedidos_filtrados(data_inicio, data_fim, status)
+    pedidos = obter_pedidos_filtrados(data_inicio, data_fim, status, origem)
 
     totais_pedidos = pedidos.aggregate(
         total_comissao=Sum("valor_comissao"), total_cashback=Sum("valor_cashback"), total=Count("id")
@@ -119,7 +134,7 @@ def obter_analytics(data_inicio=None, data_fim=None, status=None) -> dict:
     }
 
 
-def gerar_planilha_analytics(data_inicio=None, data_fim=None, status=None):
+def gerar_planilha_analytics(data_inicio=None, data_fim=None, status=None, origem=None):
     """Gera a planilha (.xlsx) de analytics já formatada - mesma base de dados de
     obter_analytics()/obter_pedidos_filtrados(), pra bater exatamente com o que a tela
     mostra. Import do openpyxl fica dentro da função de propósito: só é usado aqui, não
@@ -128,9 +143,11 @@ def gerar_planilha_analytics(data_inicio=None, data_fim=None, status=None):
     from openpyxl.styles import Font, PatternFill
     from openpyxl.utils import get_column_letter
 
-    dados = obter_analytics(data_inicio, data_fim, status)
+    dados = obter_analytics(data_inicio, data_fim, status, origem)
     pedidos = (
-        obter_pedidos_filtrados(data_inicio, data_fim, status).select_related("usuario").order_by("-data_compra")
+        obter_pedidos_filtrados(data_inicio, data_fim, status, origem)
+        .select_related("usuario")
+        .order_by("-data_compra")
     )
 
     fonte_titulo = Font(bold=True, size=14)
@@ -162,7 +179,8 @@ def gerar_planilha_analytics(data_inicio=None, data_fim=None, status=None):
         data_fim.strftime("%d/%m/%Y") if data_fim else "—",
     )
     status_label = dict(Pedido.STATUS_CHOICES).get(status, "todos") if status else "todos"
-    resumo["A2"] = f"Período: {periodo}  ·  Status do pedido: {status_label}"
+    origem_label = {ORIGEM_SITE: "gerados no site", ORIGEM_FORA: "fora do site"}.get(origem, "todos")
+    resumo["A2"] = f"Período: {periodo}  ·  Status do pedido: {status_label}  ·  Origem: {origem_label}"
     resumo["A2"].font = fonte_subtitulo
 
     linha = 4
