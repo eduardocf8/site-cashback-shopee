@@ -80,6 +80,7 @@
         .saldo-cartao.pendente { --cor-cartao: var(--muted); }
         .saldo-cartao.validado { --cor-cartao: var(--info); }
         .saldo-cartao.liberado { --cor-cartao: var(--success); }
+        .saldo-cartao.sacado { --cor-cartao: var(--brand); }
         .saldo-cartao.cancelado { --cor-cartao: var(--danger); }
 
         .acoes-rapidas { display: flex; gap: 12px; margin-top: 20px; flex-wrap: wrap; }
@@ -250,7 +251,8 @@
                     <span class="balao-ajuda" id="ajuda-saldo-texto" role="tooltip">
                         <p><strong>Pendente</strong>: aguardando confirmação da Shopee.</p>
                         <p><strong>Validado</strong>: confirmado, aguardando o prazo de liberação.</p>
-                        <p><strong>Liberado</strong>: confirmado e liberado para saque via PIX.</p>
+                        <p><strong>Liberado</strong>: confirmado e ainda disponível pra saque via PIX.</p>
+                        <p><strong>Já sacado</strong>: já solicitado ou pago em algum saque anterior.</p>
                         <p><strong>Cancelado</strong>: pedidos cancelados ou não pagos não geram cashback.</p>
                     </span>
                 </span>
@@ -267,6 +269,10 @@
                 <div class="saldo-cartao liberado">
                     <div class="rotulo">Liberado</div>
                     <div class="valor">R$ {{ saldo_liberado|floatformat:2 }}</div>
+                </div>
+                <div class="saldo-cartao sacado">
+                    <div class="rotulo">Já sacado</div>
+                    <div class="valor">R$ {{ saldo_sacado|floatformat:2 }}</div>
                 </div>
                 <div class="saldo-cartao cancelado">
                     <div class="rotulo">Cancelado</div>

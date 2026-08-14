@@ -14,6 +14,7 @@ from .services import (
     ChavePixNaoConfiguradaError,
     ValorAbaixoDoMinimoError,
     atualizar_status_saque,
+    calcular_resumo_saldo_nav,
     calcular_saldo_disponivel,
     processar_saque_asaas,
     processar_saque_inter,
@@ -71,6 +72,43 @@ class CalcularSaldoDisponivelTests(TestCase):
         )
 
         self.assertEqual(calcular_saldo_disponivel(self.usuario), Decimal("100.00"))
+
+
+class CalcularResumoSaldoNavTests(TestCase):
+    def setUp(self):
+        self.usuario = get_user_model().objects.create_user(
+            username="compradora", password="senha123", cpf="39053344705"
+        )
+
+    def _criar_pedido(self, order_id, status, valor):
+        return Pedido.objects.create(
+            order_id=order_id,
+            conversion_id="1",
+            usuario=self.usuario,
+            status=status,
+            status_shopee_bruto="COMPLETED",
+            valor_comissao=valor,
+            valor_cashback=valor,
+        )
+
+    def test_liberado_desconta_o_ja_sacado(self):
+        self._criar_pedido("P1", Pedido.STATUS_LIBERADO, Decimal("40.00"))
+        Saque.objects.create(
+            usuario=self.usuario, valor=Decimal("20.00"), chave_pix="x", tipo_chave_pix="EVP",
+            status=Saque.STATUS_PAGO,
+        )
+
+        resumo = calcular_resumo_saldo_nav(self.usuario)
+
+        self.assertEqual(resumo["saldo_liberado_nav"], Decimal("20.00"))
+
+    def test_outros_soma_pendente_e_validado(self):
+        self._criar_pedido("P2", Pedido.STATUS_PENDENTE, Decimal("5.00"))
+        self._criar_pedido("P3", Pedido.STATUS_VALIDADO, Decimal("7.00"))
+
+        resumo = calcular_resumo_saldo_nav(self.usuario)
+
+        self.assertEqual(resumo["saldo_outros_nav"], Decimal("12.00"))
 
 
 @override_settings(SAQUE_VALOR_MINIMO=Decimal("20.00"))

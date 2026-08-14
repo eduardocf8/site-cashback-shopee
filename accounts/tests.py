@@ -1,5 +1,10 @@
+from decimal import Decimal
+
 from django.test import TestCase
 from django.urls import reverse
+
+from pedidos.models import Pedido
+from saques.models import Saque
 
 from .models import ConfiguracaoIndicacao, Indicacao, User
 
@@ -115,3 +120,37 @@ class ConfiguracaoIndicacaoTests(TestCase):
     def test_esta_ativa_sem_nenhuma_linha_cai_pro_padrao_ligado(self):
         ConfiguracaoIndicacao.objects.all().delete()
         self.assertTrue(ConfiguracaoIndicacao.esta_ativa())
+
+
+class DashboardSaldoTests(TestCase):
+    def setUp(self):
+        self.usuario = User.objects.create_user(username="ana", password="senha123", cpf="39053344705")
+        self.client.force_login(self.usuario)
+
+    def test_liberado_mostra_so_o_que_ainda_da_pra_sacar(self):
+        Pedido.objects.create(
+            order_id="P1", conversion_id="1", usuario=self.usuario,
+            status=Pedido.STATUS_LIBERADO, status_shopee_bruto="COMPLETED",
+            valor_comissao=Decimal("40.00"), valor_cashback=Decimal("40.00"),
+        )
+        Saque.objects.create(
+            usuario=self.usuario, valor=Decimal("20.00"), chave_pix="x", tipo_chave_pix="EVP",
+            status=Saque.STATUS_PAGO,
+        )
+
+        resposta = self.client.get(reverse("dashboard"))
+
+        self.assertEqual(resposta.context["saldo_liberado"], Decimal("20.00"))
+        self.assertEqual(resposta.context["saldo_sacado"], Decimal("20.00"))
+
+    def test_sem_saque_o_ja_sacado_fica_zerado(self):
+        Pedido.objects.create(
+            order_id="P2", conversion_id="1", usuario=self.usuario,
+            status=Pedido.STATUS_LIBERADO, status_shopee_bruto="COMPLETED",
+            valor_comissao=Decimal("15.00"), valor_cashback=Decimal("15.00"),
+        )
+
+        resposta = self.client.get(reverse("dashboard"))
+
+        self.assertEqual(resposta.context["saldo_liberado"], Decimal("15.00"))
+        self.assertEqual(resposta.context["saldo_sacado"], Decimal("0"))

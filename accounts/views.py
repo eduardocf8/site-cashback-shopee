@@ -125,7 +125,11 @@ def dashboard(request):
     contexto = {
         "saldo_pendente": saldos[Pedido.STATUS_PENDENTE],
         "saldo_validado": saldos[Pedido.STATUS_VALIDADO],
-        "saldo_liberado": saldos[Pedido.STATUS_LIBERADO],
+        # "Liberado" mostra só o que ainda pode ser sacado (saldo_disponivel), não o total
+        # histórico já liberado - senão o valor nunca baixava depois de um saque, dando a
+        # impressão errada de que ainda tinha mais pra sacar do que realmente tem.
+        "saldo_liberado": saldo_disponivel,
+        "saldo_sacado": saldos[Pedido.STATUS_LIBERADO] - saldo_disponivel,
         "saldo_cancelado": saldos[Pedido.STATUS_CANCELADO],
         "saldo_disponivel": saldo_disponivel,
         "saque_valor_minimo": saque_valor_minimo,

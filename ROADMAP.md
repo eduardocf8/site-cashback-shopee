@@ -408,6 +408,29 @@ estar de fato acessível.
       precisa ser feito manualmente no dashboard da Render** - não tem como
       configurar por código/env var nesse projeto (não usa `render.yaml`).
 
+## Fase 19 — "Liberado" não descontava o que já foi sacado ✅
+
+Usuário reportou: depois de sacar R$20 com R$40 liberado, o saldo "Liberado" no
+dashboard continuava mostrando R$40 - dando a impressão de que ainda tinha R$40 pra
+sacar, quando na real só restavam R$20. O card "Liberado" mostrava a soma bruta
+histórica de `valor_cashback` dos pedidos com `status=liberado`, sem descontar saques
+já feitos (a única conta que já descontava isso, `calcular_saldo_disponivel`, só
+aparecia embaixo como "Saldo disponível pra saque" - dois números diferentes pra
+teoricamente a mesma coisa, um deles enganoso).
+
+- [x] **"Liberado" agora mostra `calcular_saldo_disponivel()`** — o mesmo valor de
+      "Saldo disponível pra saque" mais embaixo na página, sempre em sincronia.
+      (`accounts/views.py::dashboard`)
+- [x] **Nova caixa "Já sacado"** — a diferença entre o total histórico liberado e o
+      saldo disponível (ou seja, tudo que já foi solicitado, está processando ou já
+      foi pago em algum saque). Decisão do dono do produto: contar solicitado e
+      processando também, não só pago - assim os dois números (Liberado + Já sacado)
+      sempre somam o total histórico liberado, sem parecer que sumiu dinheiro.
+- [x] **Mesmo ajuste no menu de conta no topo do site** (`saldo_liberado_nav`, usado
+      no dropdown da home e de `/ofertas/`) — tinha o mesmo problema, corrigido
+      reaproveitando `calcular_saldo_disponivel()`. (`saques/services.py::
+      calcular_resumo_saldo_nav`)
+
 ---
 
 Pra continuar esse roadmap numa conversa nova, basta apontar esse arquivo
