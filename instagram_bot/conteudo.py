@@ -2,12 +2,12 @@
 
 Calendário (ver marketing/instagram/README.md para o histórico da decisão):
     - Stories:
-        segunda a sexta -> NUMERO_STORIES_OFERTAS_POR_DIA stories de oferta ao longo
-                           do dia (1 categoria mais vendida por story - ver
-                           instagram_bot/services.py, chamado várias vezes ao dia por
-                           um cron dedicado, não pela tarefa diária única)
-        sábado          -> dica de economia (banco DICAS, rotativo)
-        domingo         -> lembrete de cashback (banco LEMBRETES, rotativo)
+        todo dia -> NUMERO_STORIES_OFERTAS_POR_DIA stories de oferta ao longo do dia
+                    (1 categoria mais vendida por story - ver instagram_bot/services.py,
+                    chamado várias vezes ao dia por um cron dedicado, não pela tarefa
+                    diária única)
+        sábado    -> além das ofertas, 1 dica de economia (banco DICAS, rotativo)
+        domingo   -> além das ofertas, 1 lembrete de cashback (banco LEMBRETES, rotativo)
     - Posts no feed, 2x por semana:
         quarta -> institucional (banco POSTS_INSTITUCIONAIS, rotativo)
         sexta  -> melhores ofertas da semana
@@ -18,8 +18,8 @@ SEGUNDA, TERCA, QUARTA, QUINTA, SEXTA, SABADO, DOMINGO = range(7)
 
 # Dias em que postamos stories de oferta (ver instagram_bot/services.py,
 # publicar_story_oferta_do_momento - chamado várias vezes ao dia, não é a tarefa
-# diária única).
-DIAS_COM_STORIES_DE_OFERTA = (SEGUNDA, TERCA, QUARTA, QUINTA, SEXTA)
+# diária única). Todo dia da semana, incluindo fim de semana.
+DIAS_COM_STORIES_DE_OFERTA = (SEGUNDA, TERCA, QUARTA, QUINTA, SEXTA, SABADO, DOMINGO)
 
 DICAS = [
     "Sempre confira se tem cupom disponível antes de finalizar a compra: cashback e cupom não se excluem.",
