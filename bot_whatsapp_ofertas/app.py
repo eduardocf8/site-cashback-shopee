@@ -445,10 +445,9 @@ class MainWindow(QMainWindow):
         self.destinos_input = QLineEdit()
         self.destinos_input.setMinimumHeight(44)
         self.destinos_input.setPlaceholderText("Exemplo: Ofertas @vegrassi; Ofertas shopee")
-        self.destino_tipo_input = QComboBox()
-        self.destino_tipo_input.setMinimumHeight(44)
-        self.destino_tipo_input.addItem("Grupo normal do WhatsApp", "grupo")
-        self.destino_tipo_input.addItem("Canal do WhatsApp (WhatsApp Channels)", "canal")
+        self.canais_destino_input = QLineEdit()
+        self.canais_destino_input.setMinimumHeight(44)
+        self.canais_destino_input.setPlaceholderText("Opcional: nome exato do(s) canal(is) do WhatsApp")
         self.app_id_input = QLineEdit()
         self.app_id_input.setMinimumHeight(44)
         self.app_id_input.setPlaceholderText("AppID da API Shopee")
@@ -659,19 +658,19 @@ class MainWindow(QMainWindow):
         ), 0, 0)
         timing_grid.addWidget(self.modo_origem_ofertas_input, 0, 1)
         timing_grid.addWidget(self.label_with_help(
-            "Tipo de destino",
-            "Grupo normal: os nomes abaixo são conversas/grupos do WhatsApp, na aba "
-            "padrão de Conversas. Canal: os nomes abaixo são canais do WhatsApp "
-            "(WhatsApp Channels), que ficam em outra aba do app (\"Canais\") e só "
-            "aceitam postagem de quem administra o canal.",
+            "Grupos de destino",
+            "Grupos/conversas normais do WhatsApp (aba padrão \"Conversas\") que "
+            "receberão as ofertas. Separe mais de um usando ponto e vírgula.",
         ), 1, 0)
-        timing_grid.addWidget(self.destino_tipo_input, 1, 1)
+        timing_grid.addWidget(self.destinos_input, 1, 1)
         timing_grid.addWidget(self.label_with_help(
-            "Grupos/canais de destino",
-            "Destinos que receberão as ofertas (conforme o tipo escolhido acima). "
-            "Separe mais de um usando ponto e vírgula.",
+            "Canais de destino",
+            "Opcional. Canais do WhatsApp (WhatsApp Channels), que ficam em outra aba "
+            "do app (\"Canais\") e só aceitam postagem de quem administra o canal. "
+            "Pode ser usado junto com os grupos acima: a mesma oferta é enviada para "
+            "os dois. Separe mais de um canal usando ponto e vírgula.",
         ), 2, 0)
-        timing_grid.addWidget(self.destinos_input, 2, 1)
+        timing_grid.addWidget(self.canais_destino_input, 2, 1)
         timing_grid.setRowMinimumHeight(0, 44)
         timing_grid.setRowMinimumHeight(1, 44)
         timing_grid.setRowMinimumHeight(2, 44)
@@ -1521,9 +1520,8 @@ class MainWindow(QMainWindow):
     def load_fields(self):
         s = self.settings
         self.grupo_origem_input.setText(s.grupo_origem)
-        destino_tipo_index = self.destino_tipo_input.findData(s.destino_tipo)
-        self.destino_tipo_input.setCurrentIndex(destino_tipo_index if destino_tipo_index >= 0 else 0)
         self.destinos_input.setText("; ".join(s.grupos_destino))
+        self.canais_destino_input.setText("; ".join(s.canais_destino))
         self.app_id_input.setText(s.shopee_api_app_id)
         self.secret_input.setText(s.shopee_api_secret)
         self.sub_ids_input.setText(", ".join(s.shopee_api_sub_ids))
@@ -1595,6 +1593,12 @@ class MainWindow(QMainWindow):
             for item in destinos_texto.split(";")
             if item.strip()
         ]
+        canais_texto = self.canais_destino_input.text().replace("\n", ";")
+        canais = [
+            item.strip()
+            for item in canais_texto.split(";")
+            if item.strip()
+        ]
         sub_ids = [
             item.strip()
             for item in self.sub_ids_input.text().split(",")
@@ -1602,7 +1606,7 @@ class MainWindow(QMainWindow):
         ]
 
         self.settings.grupo_origem = self.grupo_origem_input.text().strip()
-        self.settings.destino_tipo = self.destino_tipo_input.currentData() or "grupo"
+        self.settings.canais_destino = canais
         self.settings.grupos_destino = destinos
         self.settings.shopee_api_app_id = self.app_id_input.text().strip()
         self.settings.shopee_api_secret = self.secret_input.text().strip()
@@ -1695,9 +1699,10 @@ class MainWindow(QMainWindow):
             errors.append("Informe o grupo de origem.")
             invalid_widgets.append(self.grupo_origem_input)
 
-        if not s.normalized_destinos():
-            errors.append("Informe pelo menos um grupo/canal de destino.")
+        if not s.normalized_destinos() and not s.normalized_canais_destino():
+            errors.append("Informe pelo menos um grupo ou canal de destino.")
             invalid_widgets.append(self.destinos_input)
+            invalid_widgets.append(self.canais_destino_input)
 
         if not s.shopee_api_app_id:
             errors.append("Informe o AppID da API Shopee.")
@@ -1777,9 +1782,10 @@ class MainWindow(QMainWindow):
             errors.append("Informe o grupo de origem.")
             invalid_widgets.append(self.grupo_origem_input)
 
-        if not s.normalized_destinos():
-            errors.append("Informe pelo menos um grupo/canal de destino.")
+        if not s.normalized_destinos() and not s.normalized_canais_destino():
+            errors.append("Informe pelo menos um grupo ou canal de destino.")
             invalid_widgets.append(self.destinos_input)
+            invalid_widgets.append(self.canais_destino_input)
 
         self.mark_field_errors(invalid_widgets)
         return errors
@@ -1807,8 +1813,8 @@ class MainWindow(QMainWindow):
         missing = []
         if s.modo_origem_ofertas == "whatsapp" and not s.grupo_origem:
             missing.append("grupo de origem")
-        if not s.normalized_destinos():
-            missing.append("canal de destino" if s.destino_tipo == "canal" else "grupo de destino")
+        if not s.normalized_destinos() and not s.normalized_canais_destino():
+            missing.append("grupo ou canal de destino")
         if not s.shopee_api_app_id:
             missing.append("AppID Shopee")
         if not s.shopee_api_secret:
@@ -1955,8 +1961,8 @@ class MainWindow(QMainWindow):
         self.mark_field_errors(
             [
                 self.grupo_origem_input,
-                self.destino_tipo_input,
                 self.destinos_input,
+                self.canais_destino_input,
                 self.app_id_input,
                 self.secret_input,
                 self.sub_ids_input,
@@ -2237,10 +2243,10 @@ class MainWindow(QMainWindow):
             zap.preparar_monitoramento_origem(self.settings.grupo_origem)
             self.signals.log.emit("Grupo de origem encontrado.")
 
-            rotulo_destino = "canal" if self.settings.destino_tipo == "canal" else "grupo"
-            for grupo in self.settings.normalized_destinos():
+            for grupo, tipo_destino in self.settings.normalized_destinos_com_tipo():
+                rotulo_destino = "canal" if tipo_destino == "canal" else "grupo"
                 self.signals.log.emit(f"Testando {rotulo_destino} de destino: {grupo}")
-                zap.abrir_destino_para_envio(grupo, tipo=self.settings.destino_tipo, timeout_ms=20000)
+                zap.abrir_destino_para_envio(grupo, tipo=tipo_destino, timeout_ms=20000)
                 self.signals.log.emit(f"{rotulo_destino.capitalize()} de destino encontrado: {grupo}")
 
             self.settings.grupos_validados_em = datetime.now().isoformat(timespec="minutes")
@@ -2435,8 +2441,8 @@ class MainWindow(QMainWindow):
     def set_form_enabled(self, enabled):
         for widget in (
             self.grupo_origem_input,
-            self.destino_tipo_input,
             self.destinos_input,
+            self.canais_destino_input,
             self.app_id_input,
             self.secret_input,
             self.sub_ids_input,
@@ -2654,6 +2660,7 @@ class MainWindow(QMainWindow):
             self.add_log(f"{prefix} - {message}")
 
         destinos = self.settings.normalized_destinos()
+        canais = self.settings.normalized_canais_destino()
         sub_ids = self.settings.normalized_sub_ids()
         sub_id_errors = self.validate_sub_ids(sub_ids)
 
@@ -2662,11 +2669,10 @@ class MainWindow(QMainWindow):
             f"Grupo de origem informado: {self.settings.grupo_origem}",
             "Grupo de origem não informado.",
         )
-        rotulo_destino = "canal" if self.settings.destino_tipo == "canal" else "grupo"
         log_check(
-            bool(destinos),
-            f"{len(destinos)} {rotulo_destino}(s) de destino informado(s).",
-            f"Nenhum {rotulo_destino} de destino informado.",
+            bool(destinos or canais),
+            f"{len(destinos)} grupo(s) e {len(canais)} canal(is) de destino informado(s).",
+            "Nenhum grupo ou canal de destino informado.",
         )
         log_check(
             bool(self.settings.shopee_api_app_id),

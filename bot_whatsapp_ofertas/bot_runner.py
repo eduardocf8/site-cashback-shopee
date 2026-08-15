@@ -352,7 +352,7 @@ class BotRunner:
             msg["links_shopee"] = links_shopee
 
             if self.settings.ignorar_links_ja_enviados:
-                destinos_atuais = self.settings.normalized_destinos()
+                destinos_atuais = [nome for nome, _ in self.settings.normalized_destinos_com_tipo()]
                 link_repetido = next(
                     (
                         link for link in links_shopee
@@ -361,7 +361,7 @@ class BotRunner:
                     None,
                 )
                 if link_repetido:
-                    self._log("Oferta ignorada: link ja enviado anteriormente para todos os grupos de destino atuais.")
+                    self._log("Oferta ignorada: link ja enviado anteriormente para todos os grupos/canais de destino atuais.")
                     self._log(link_repetido)
                     continue
 
@@ -435,7 +435,7 @@ class BotRunner:
                     self._log("MODO SIMULACAO: envio no WhatsApp ignorado.")
                     self._log("MODO SIMULACAO: link nao gravado no historico de enviados.")
                 else:
-                    for grupo in self.settings.normalized_destinos():
+                    for grupo, tipo_destino in self.settings.normalized_destinos_com_tipo():
                         if self.stop_event.is_set():
                             break
 
@@ -443,7 +443,7 @@ class BotRunner:
                             self.settings.ignorar_links_ja_enviados
                             and db.link_ja_enviado(oferta.link_original, grupo)
                         ):
-                            self._log(f"Oferta ja enviada anteriormente para {grupo}; pulando esse grupo.")
+                            self._log(f"Oferta ja enviada anteriormente para {grupo}; pulando esse destino.")
                             continue
 
                         self._status(f"Enviando oferta para {grupo}...")
@@ -455,7 +455,7 @@ class BotRunner:
                             caminho_imagem=imagem_fallback,
                             aguardar_previa=self.settings.aguardar_previa_link,
                             timeout_previa_ms=self.settings.timeout_previa_link_ms,
-                            tipo_destino=self.settings.destino_tipo,
+                            tipo_destino=tipo_destino,
                         )
                         if tipo_envio == "imagem":
                             self._log("Previa do link nao carregou. Imagem baixada da API Shopee enviada como fallback.")
@@ -573,10 +573,13 @@ class BotRunner:
 
                 if (
                     self.settings.shopee_ofertas_nao_repetir
-                    and db.link_ja_enviado_para_todos(link_original, self.settings.normalized_destinos())
+                    and db.link_ja_enviado_para_todos(
+                        link_original,
+                        [nome for nome, _ in self.settings.normalized_destinos_com_tipo()],
+                    )
                 ):
                     ignoradas_repetidas += 1
-                    self._log("Oferta Shopee ignorada: produto/link ja enviado anteriormente para todos os grupos de destino atuais.")
+                    self._log("Oferta Shopee ignorada: produto/link ja enviado anteriormente para todos os grupos/canais de destino atuais.")
                     self._log(link_original)
                     continue
 
@@ -611,7 +614,7 @@ class BotRunner:
                 imagem_fallback = self._baixar_imagem_produto_via_api(oferta_shopee)
                 oferta_enviada_whatsapp = False
                 try:
-                    for grupo in self.settings.normalized_destinos():
+                    for grupo, tipo_destino in self.settings.normalized_destinos_com_tipo():
                         if self.stop_event.is_set():
                             break
 
@@ -619,7 +622,7 @@ class BotRunner:
                             self.settings.shopee_ofertas_nao_repetir
                             and db.link_ja_enviado(link_original, grupo)
                         ):
-                            self._log(f"Oferta ja enviada anteriormente para {grupo}; pulando esse grupo.")
+                            self._log(f"Oferta ja enviada anteriormente para {grupo}; pulando esse destino.")
                             continue
 
                         self._status(f"Enviando oferta Shopee para {grupo}...")
@@ -629,7 +632,7 @@ class BotRunner:
                             caminho_imagem=imagem_fallback,
                             aguardar_previa=self.settings.aguardar_previa_link,
                             timeout_previa_ms=self.settings.timeout_previa_link_ms,
-                            tipo_destino=self.settings.destino_tipo,
+                            tipo_destino=tipo_destino,
                         )
                         if tipo_envio == "imagem":
                             self._log("Previa do link nao carregou. Imagem da API Shopee enviada como fallback.")
@@ -822,7 +825,10 @@ class BotRunner:
                     continue
                 elif (
                     self.settings.shopee_ofertas_nao_repetir
-                    and db.link_ja_enviado_para_todos(link_original, self.settings.normalized_destinos())
+                    and db.link_ja_enviado_para_todos(
+                        link_original,
+                        [nome for nome, _ in self.settings.normalized_destinos_com_tipo()],
+                    )
                 ):
                     ignoradas_repetidas += 1
                     continue

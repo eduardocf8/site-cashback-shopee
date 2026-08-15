@@ -22,8 +22,8 @@ python app.py
 3. Preencha:
 
 - grupo de origem
-- tipo de destino: grupo normal do WhatsApp ou canal do WhatsApp (WhatsApp Channels)
-- grupos/canais de destino, separados por ponto e virgula
+- grupos de destino, separados por ponto e virgula
+- canais de destino, se quiser (opcional; tambem separados por ponto e virgula)
 - AppID da Shopee
 - Secret da Shopee
 - tempos em segundos
@@ -33,12 +33,20 @@ python app.py
 4. Use os botoes `Testar API Shopee` e `Testar grupos` se quiser conferir tudo antes de iniciar.
 5. Clique em `Salvar configuracoes` e depois em `Iniciar bot`.
 
-## Enviar para canal do WhatsApp em vez de grupo
+## Enviar para grupo e para canal do WhatsApp ao mesmo tempo
 
-Na aba "Execução", o campo "Tipo de destino" define se os nomes preenchidos em
-"Grupos/canais de destino" sao abertos como conversas/grupos normais (aba
-padrao "Conversas" do WhatsApp) ou como canais (aba "Canais", que fica em
-outro lugar da interface do WhatsApp, separada dos grupos).
+Na aba "Execução" existem dois campos de destino separados:
+
+- **Grupos de destino**: conversas/grupos normais do WhatsApp, na aba padrão
+  "Conversas".
+- **Canais de destino** (opcional): canais do WhatsApp (WhatsApp Channels),
+  que ficam em outro lugar da interface do WhatsApp, na aba "Canais" -
+  separada dos grupos normais.
+
+Os dois campos podem ser preenchidos ao mesmo tempo: quando isso acontece, o
+bot envia a mesma oferta para todos os grupos E para todos os canais, no
+mesmo ciclo. Se só um dos campos estiver preenchido, o bot envia só para
+esse.
 
 Pontos importantes sobre canais:
 
@@ -46,8 +54,8 @@ Pontos importantes sobre canais:
 - Só quem administra o canal consegue publicar nele; se a conta usada pelo
   bot não for admin do canal, o envio falha.
 - O campo "Grupo de origem" (de onde o bot lê as ofertas) continua sendo
-  sempre um grupo/conversa normal - o tipo de destino só afeta para onde as
-  ofertas são enviadas.
+  sempre um grupo/conversa normal - os campos de destino é que definem para
+  onde as ofertas são enviadas.
 - Como o layout de Canais no WhatsApp Web muda com certa frequência, use o
   botão `Testar grupos` após configurar para confirmar que o bot encontra o
   canal antes de deixar o envio automático rodando.

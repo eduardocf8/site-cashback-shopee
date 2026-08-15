@@ -76,12 +76,14 @@ def backup_user_config(path=USER_CONFIG_PATH, max_backups=10):
 @dataclass
 class AppSettings:
     grupo_origem: str = "OLAPROMOS"
+    # Conversas/grupos normais do WhatsApp (aba "Conversas") que recebem as ofertas.
     grupos_destino: list[str] = field(default_factory=lambda: ["Ofertas @vegrassi"])
-    # "grupo": os nomes em grupos_destino sao conversas/grupos normais do
-    # WhatsApp (aba "Conversas"). "canal": os mesmos nomes sao canais do
-    # WhatsApp (aba "Canais"/"Updates"), que ficam em outra area do app e
-    # so aceitam post de quem administra o canal.
-    destino_tipo: str = "grupo"
+    # Canais do WhatsApp (WhatsApp Channels, aba "Canais"/"Updates" - area
+    # separada dos grupos normais) que tambem recebem as ofertas. So quem
+    # administra o canal consegue publicar nele. Pode ser usado junto com
+    # grupos_destino: quando os dois estao preenchidos, o bot envia a mesma
+    # oferta para os grupos E para os canais no mesmo ciclo.
+    canais_destino: list[str] = field(default_factory=list)
     shopee_api_app_id: str = ""
     shopee_api_secret: str = ""
     shopee_api_sub_ids: list[str] = field(default_factory=list)
@@ -176,6 +178,19 @@ class AppSettings:
 
     def normalized_destinos(self):
         return [g.strip() for g in self.grupos_destino if str(g).strip()]
+
+    def normalized_canais_destino(self):
+        return [c.strip() for c in self.canais_destino if str(c).strip()]
+
+    def normalized_destinos_com_tipo(self):
+        """Todos os destinos (grupos + canais) como tuplas (nome, tipo),
+        onde tipo e "grupo" ou "canal". Usado para enviar a mesma oferta
+        para os dois de uma vez, e para checagens de link ja enviado que
+        precisam considerar todos os destinos configurados."""
+        return (
+            [(nome, "grupo") for nome in self.normalized_destinos()]
+            + [(nome, "canal") for nome in self.normalized_canais_destino()]
+        )
 
     def normalized_sub_ids(self):
         return [s.strip() for s in self.shopee_api_sub_ids if str(s).strip()]
