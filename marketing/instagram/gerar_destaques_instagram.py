@@ -234,8 +234,10 @@ render_story("03-ofertas", "01-intro.png", f"""
      justify-content:center; align-items:center; text-align:center; padding:0 100px;">
     <div style="font-size:74px; font-weight:700; line-height:1.15; letter-spacing:-0.02em;">As melhores<br>ofertas da Shopee</div>
     <div style="font-size:34px; margin-top:32px; opacity:0.85; line-height:1.55; max-width:760px;">
-        Direto na nossa vitrine, com cashback incluso. Arraste pra cima pra conferir.
+        Direto na nossa vitrine, com cashback incluso.
     </div>
+    <div style="margin-top:48px; display:inline-flex; padding:22px 44px; border-radius:32px; background:{COLORS['ink']};
+                color:{COLORS['paper']}; font-weight:700; font-size:30px;">Toque no link</div>
 </div>
 """)
 
