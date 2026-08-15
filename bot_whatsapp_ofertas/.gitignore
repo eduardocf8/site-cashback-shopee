@@ -1,0 +1,11 @@
+config_usuario.json
+mensagens_app.db
+backups/
+logs/
+diagnosticos_whatsapp/
+perfil_whatsapp_app/
+__pycache__/
+*.pyc
+build/
+dist/
+installer/
