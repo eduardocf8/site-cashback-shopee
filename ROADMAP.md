@@ -11,7 +11,7 @@ com transferência de dinheiro (hoje em sandbox da Asaas) — isso deixa de ser
 "bom ter" e vira exigência básica antes de abrir pra usuários de verdade.
 
 - [x] **Termos de Uso** — regras de cashback, prazos, motivos de cancelamento,
-      responsabilidades do cash-b e do usuário. (`paginas/templates/paginas/termos.html`)
+      responsabilidades da cash-b e do usuário. (`paginas/templates/paginas/termos.html`)
 - [x] **Política de Privacidade (LGPD)** — quais dados são coletados (CPF,
       e-mail, chave PIX, histórico de cliques/pedidos), pra que servem, com
       quem são compartilhados (Shopee, Asaas, Brevo), e os direitos do
@@ -74,7 +74,7 @@ Dá pra aproveitar a infraestrutura de e-mail que já está funcionando
       paginados (10 por página) e filtráveis por status/tipo, com query
       params independentes por seção. (`accounts/views.py`,
       `accounts/templates/accounts/dashboard.html`)
-- [x] **Páginas de erro 404/500 customizadas** — identidade visual do cash-b,
+- [x] **Páginas de erro 404/500 customizadas** — identidade visual da cash-b,
       autocontidas (sem depender do manifesto de arquivos estáticos, pra
       continuar funcionando mesmo se essa for a causa do erro).
       (`templates/404.html`, `templates/500.html`)
@@ -162,7 +162,7 @@ implementando. Cada item pode virar uma conversa própria.
       home por enquanto.
 - [ ] **13.8 Prova social real** (médio, depende de ter dado/canal) —
       contador de "R$ já pago via PIX", print de um saque real
-      anonimizado, ou link pro grupo de WhatsApp/Instagram do cash-b no
+      anonimizado, ou link pro grupo de WhatsApp/Instagram da cash-b no
       rodapé. Precisa ter volume mínimo pra não soar fraco.
 - [ ] **13.9 Programa de indicação** (grande) — "indique um amigo, ganhe
       R$X quando ele comprar". Herda o item que já estava reservado na
@@ -183,7 +183,7 @@ implementando. Cada item pode virar uma conversa própria.
 
 ## Fase 14 — Redesign: de "gerador de link" a vitrine de ofertas ✅ (pausada por decisão do dono, ver abaixo)
 
-Motivada por uma pesquisa de UI/UX comparando o cash-b com portais grandes de
+Motivada por uma pesquisa de UI/UX comparando a cash-b com portais grandes de
 cashback/ofertas (ShopBack, Rakuten, Méliuz, Zoom etc.), trazida pelo dono do
 produto — ver `BRAND.md`, seção "Histórico do redesign", pro racional
 completo e as opções de identidade comparadas antes de escolher. Numerada
@@ -328,7 +328,7 @@ seja, o usuário às vezes recebia mais cashback do que o site anunciava.
       Chegou a virar uma faixa ("de X% a Y%") numa primeira tentativa, mas o
       dono do produto pediu pra reverter pra só o máximo - decisão de negócio
       importante: mostrar o mínimo dava a entender que a maioria das ofertas
-      rende pouco, o oposto do diferencial do cash-b (% de cashback maior que
+      rende pouco, o oposto do diferencial da cash-b (% de cashback maior que
       concorrentes como Méliuz, especialmente com comissão de campanha ativa).
       **Lição registrada:** esse tipo de decisão de copy/apresentação deve ser
       perguntada ao dono do produto antes de implementar, não decidida e

@@ -261,7 +261,7 @@ def publicar_story_oferta_do_momento(data, request) -> RegistroPublicacao | None
 
     imagem = gerar_imagem_oferta_story(oferta)
     nome_exibido = oferta.nome_curto or oferta.nome
-    legenda = f"{nome_exibido} — cashback garantido no cash-b. Link na bio pra ver essa e outras ofertas. 🛍️💸"
+    legenda = f"{nome_exibido} — cashback garantido na cash-b. Link na bio pra ver essa e outras ofertas. 🛍️💸"
 
     registro = _publicar_ou_simular(
         imagem, legenda, RegistroPublicacao.TIPO_STORY, RegistroPublicacao.CONTEUDO_OFERTA_DIARIA,
@@ -321,14 +321,14 @@ def publicar_post_ofertas_semana(data, request) -> RegistroPublicacao | None:
     # some com o caractere sem erro nenhum - o emoji fica só na legenda (o Instagram
     # renderiza a legenda com a fonte dele, aí sim com suporte a emoji).
     capa = gerar_imagem_texto_simples(
-        "Top da semana no cash-b", bg=CORES["brand"], cor_texto=CORES["paper"], cor_acento=CORES["highlight"],
+        "Top da semana na cash-b", bg=CORES["brand"], cor_texto=CORES["paper"], cor_acento=CORES["highlight"],
     )
     slides = [
         gerar_imagem_oferta_carrossel(oferta, indice, len(ofertas))
         for indice, oferta in enumerate(ofertas, start=1)
     ]
     legenda = (
-        "As ofertas em destaque essa semana no cash-b — cashback garantido em cada uma. "
+        "As ofertas em destaque essa semana na cash-b — cashback garantido em cada uma. "
         "Link na bio pra ver todas. 🔥\n#cashback #shopee #ofertas"
     )
     return _publicar_ou_simular_carrossel(

@@ -62,8 +62,8 @@ python manage.py verificar_saques
 
 ### Instagram (marketing) — dois apps separados
 
-- **`instagram_bot/`** — publica sozinho no Instagram (@usecashb): stories diários com ofertas e posts semanais no feed, gerados via Pillow com a identidade visual do cash-b. Roda em modo simulação até ser ligado de propósito (`INSTAGRAM_BOT_ATIVO`), com aprovação por e-mail opcional antes de cada publicação. Ver `marketing/instagram/README.md`.
-- **`automacao_instagram/`** — ferramenta à parte (não é de marketing do cash-b em si): responde comentários com palavra-chave num post e/ou manda DM automaticamente, com suporte a múltiplas contas/automações e login próprio. Ver `automacao_instagram/README.md`.
+- **`instagram_bot/`** — publica sozinho no Instagram (@usecashb): stories diários com ofertas e posts semanais no feed, gerados via Pillow com a identidade visual da cash-b. Roda em modo simulação até ser ligado de propósito (`INSTAGRAM_BOT_ATIVO`), com aprovação por e-mail opcional antes de cada publicação. Ver `marketing/instagram/README.md`.
+- **`automacao_instagram/`** — ferramenta à parte (não é de marketing da cash-b em si): responde comentários com palavra-chave num post e/ou manda DM automaticamente, com suporte a múltiplas contas/automações e login próprio. Ver `automacao_instagram/README.md`.
 
 ## Como rodar localmente
 

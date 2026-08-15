@@ -102,7 +102,7 @@ SHOPEE_CASHBACK_PERCENTUAL = float(os.environ.get("SHOPEE_CASHBACK_PERCENTUAL", 
 # piso do mês pra nunca prometer mais cashback do que a gente de fato vai conseguir pagar.
 SHOPEE_COMISSAO_VENDA_DIRETA = float(os.environ.get("SHOPEE_COMISSAO_VENDA_DIRETA", "8"))
 
-# Multiplicador pra campanhas promocionais próprias do cash-b (não tem nada a ver com
+# Multiplicador pra campanhas promocionais próprias da cash-b (não tem nada a ver com
 # bônus de vendedor da Shopee) - ex: 2 = "cashback em dobro" no mês de aniversário do
 # site. Fica em 1 o resto do tempo. Afeta o valor de cashback pago de verdade (não é só
 # um número de propaganda) - usado em pedidos/services.py, ofertas/models.py e no hero.

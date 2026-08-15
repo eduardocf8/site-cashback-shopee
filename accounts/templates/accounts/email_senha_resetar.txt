@@ -1,6 +1,6 @@
 Olá, {{ user.username }}.
 
-Recebemos um pedido para redefinir a senha da sua conta no cash-b.
+Recebemos um pedido para redefinir a senha da sua conta na cash-b.
 
 Clique no link abaixo para escolher uma nova senha:
 {{ protocol }}://{{ domain }}{% url 'password_reset_confirm' uidb64=uid token=token %}
