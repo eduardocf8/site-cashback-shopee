@@ -1036,6 +1036,83 @@ class WhatsApp:
         self.page.wait_for_timeout(1200)
         return True
 
+    def _clicar_item_lateral_generico_por_titulo(self, nome):
+        """Clica em um item de lista lateral (canal, comunidade etc.) cujo
+        texto bata com o nome informado, SEM depender do container
+        `#pane-side` - que é específico da lista de Conversas/Grupos e
+        continua presente no DOM (com o conteúdo antigo) mesmo quando outra
+        aba, como "Canais", está sendo exibida por cima dele.
+
+        Em vez disso, procura em todo o documento por elementos-folha
+        (sem filhos) visíveis, restritos à faixa esquerda da tela (onde
+        ficam as listas), comparando tanto o atributo `title` quanto o
+        texto do próprio elemento.
+        """
+        termo = self._normalizar_texto_dom(nome)
+        resultado = self.page.evaluate("""
+        (termo) => {
+            const norm = (s) => String(s || '')
+                .toLowerCase()
+                .replace(/[\\u202a\\u202c\\u200e\\u200f\\ufe0f]/g, '')
+                .replace(/\\s+/g, ' ')
+                .trim();
+
+            const candidatosBrutos = [...document.querySelectorAll('span, div')]
+                .filter(el => el.children.length === 0);
+
+            const visiveisEsquerda = [];
+            const candidatos = [];
+
+            for (const el of candidatosBrutos) {
+                const r = el.getBoundingClientRect();
+                if (r.width <= 0 || r.height <= 0) continue;
+                if (r.left >= window.innerWidth * 0.42) continue;
+
+                const texto = (el.getAttribute('title') || el.textContent || '').trim();
+                if (!texto) continue;
+
+                visiveisEsquerda.push(texto);
+                if (norm(texto).includes(termo)) {
+                    candidatos.push({el, r, texto});
+                }
+            }
+
+            if (!candidatos.length) {
+                return {
+                    ok: false,
+                    motivo: 'titulo nao encontrado (busca generica)',
+                    titulos: [...new Set(visiveisEsquerda)].slice(0, 40),
+                };
+            }
+
+            candidatos.sort((a, b) => a.r.top - b.r.top);
+            const alvo = candidatos[0];
+            const cell = alvo.el.closest('[role="listitem"]') ||
+                         alvo.el.closest('[role="row"]') ||
+                         alvo.el.closest('[tabindex]') ||
+                         alvo.el.parentElement ||
+                         alvo.el;
+
+            cell.scrollIntoView({block: 'center', inline: 'nearest'});
+            const r = cell.getBoundingClientRect();
+            return {
+                ok: true,
+                titulo: alvo.texto,
+                x: Math.round(r.left + Math.min(180, Math.max(60, r.width / 2))),
+                y: Math.round(r.top + r.height / 2),
+            };
+        }
+        """, termo)
+
+        if not resultado or not resultado.get("ok"):
+            print("DEBUG item lateral (busca genérica) não encontrado:", resultado)
+            return False
+
+        print(f"Item lateral encontrado (busca genérica) pelo título/texto: {resultado.get('titulo')}")
+        self.page.mouse.click(resultado["x"], resultado["y"])
+        self.page.wait_for_timeout(1200)
+        return True
+
     def _clicar_aba_navegacao(self, termos, timeout_ms=8000):
         """Clica em um item da navegação lateral esquerda do WhatsApp Web
         (ícones de Conversas/Status/Canais/Comunidades) cujo aria-label ou
@@ -1150,10 +1227,17 @@ class WhatsApp:
 
             tentativa += 1
             if tentativa <= 5:
-                if not self._clicar_conversa_lateral_por_titulo(nome) and tipo == "canal":
-                    # Reforça a troca de aba: em alguns fluxos o clique no
-                    # ícone de Canais some quando reaberto o app.
-                    self.ir_para_aba_canais()
+                if tipo == "canal":
+                    # A lista de Canais não fica dentro do #pane-side (esse
+                    # container é específico da lista de Conversas/Grupos),
+                    # por isso usa a busca genérica em vez da busca de
+                    # conversa normal.
+                    if not self._clicar_item_lateral_generico_por_titulo(nome):
+                        # Reforça a troca de aba: em alguns fluxos o clique
+                        # no ícone de Canais some quando reaberto o app.
+                        self.ir_para_aba_canais()
+                else:
+                    self._clicar_conversa_lateral_por_titulo(nome)
             else:
                 self.page.wait_for_timeout(700)
 
