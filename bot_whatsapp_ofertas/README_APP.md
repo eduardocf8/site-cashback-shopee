@@ -56,6 +56,12 @@ Pontos importantes sobre canais:
 - O campo "Grupo de origem" (de onde o bot lê as ofertas) continua sendo
   sempre um grupo/conversa normal - os campos de destino é que definem para
   onde as ofertas são enviadas.
+- Logo depois que o WhatsApp Web carrega/loga, o ícone de "Canais" na
+  lateral pode demorar até ~1 minuto pra aparecer (o WhatsApp está
+  sincronizando esse recurso com o celular) - isso acontece mesmo com a
+  conta já administrando um canal. O bot aguarda até 90 segundos por esse
+  ícone antes de desistir, então a primeira tentativa após abrir o
+  WhatsApp pode demorar um pouco mais que o normal; isso é esperado.
 - Como o layout de Canais no WhatsApp Web muda com certa frequência, use o
   botão `Testar grupos` após configurar para confirmar que o bot encontra o
   canal antes de deixar o envio automático rodando.

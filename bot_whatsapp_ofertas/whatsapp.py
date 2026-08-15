@@ -1092,13 +1092,20 @@ class WhatsApp:
 
         return False
 
-    def ir_para_aba_canais(self):
+    def ir_para_aba_canais(self, timeout_ms=90000):
         """Muda a navegação lateral para a aba de Canais do WhatsApp
         ("Updates"/"Canais"), que fica separada da aba normal de conversas
         e grupos. É nela que ficam listados os canais que a conta administra.
+
+        O ícone de Canais só é adicionado à barra lateral depois que o
+        WhatsApp Web termina de sincronizar esse recurso com o celular -
+        isso pode levar cerca de 1 minuto após o login/carregamento
+        inicial, mesmo com a conta já administrando um canal. Por isso o
+        timeout aqui é bem maior que o das outras trocas de aba.
         """
+        print("Procurando o ícone de 'Canais' na lateral (pode levar até 1 minuto após o WhatsApp Web carregar)...")
         self.fechar_dialogos_sobrepostos()
-        if self._clicar_aba_navegacao(["canais", "channels", "updates", "atualizacoes"]):
+        if self._clicar_aba_navegacao(["canais", "channels", "updates", "atualizacoes"], timeout_ms=timeout_ms):
             self.page.wait_for_timeout(500)
             return True
         print("DEBUG: não encontrei o ícone de navegação para 'Canais' na lateral esquerda.")
