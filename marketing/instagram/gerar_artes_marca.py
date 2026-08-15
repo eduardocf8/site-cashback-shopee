@@ -81,10 +81,14 @@ def render(body_html, filename, width=1080, height=1080):
 
 
 # ---------- 1. Foto de perfil - "cb" sobre roxo com anel âmbar (paleta mesclada) ----------
+# O flex centraliza a CAIXA da linha de texto, não a tinta do glifo - como "cb" não tem
+# descendente, sobra espaço embaixo (reservado pra letras como "g"/"p") e o "cb" fica
+# visualmente baixo/deslocado. line-height:1 reduz a caixa, e o transform compensa o
+# resto (medido em pixel real via screenshot até a tinta ficar centralizada no anel).
 render(f"""
 <div class="canvas" style="background:{COLORS['brand']}; align-items:center; justify-content:center;">
     <div style="position:absolute; width:760px; height:760px; border-radius:50%; border:26px solid {COLORS['highlight']}; opacity:0.9;"></div>
-    <div style="font-size:340px; font-weight:700; letter-spacing:-0.03em; color:{COLORS['paper']};">cb</div>
+    <div style="font-size:340px; line-height:1; font-weight:700; letter-spacing:-0.03em; color:{COLORS['paper']}; transform:translate(-5px, -25px);">cb</div>
 </div>
 """, "01-perfil-cb-roxo-ambar.png")
 
