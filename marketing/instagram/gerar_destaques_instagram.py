@@ -70,7 +70,7 @@ def render(body_html, out_path, width, height):
 def render_capa(nome_arquivo, cor_fundo, icone_svg):
     render(f"""
     <div class="canvas" style="background:{cor_fundo}; align-items:center; justify-content:center;">
-        <div style="width:400px; height:400px;">{icone_svg}</div>
+        <div style="width:640px; height:640px;">{icone_svg}</div>
     </div>
     """, CAPAS_DIR / nome_arquivo, 1080, 1080)
 
@@ -78,7 +78,7 @@ def render_capa(nome_arquivo, cor_fundo, icone_svg):
 def render_glifo_capa(nome_arquivo, cor_fundo, glifo, transform):
     render(f"""
     <div class="canvas" style="background:{cor_fundo}; align-items:center; justify-content:center;">
-        <div style="font-size:210px; line-height:1; font-weight:700; color:{COLORS['paper']}; transform:{transform};">{glifo}</div>
+        <div style="font-size:340px; line-height:1; font-weight:700; color:{COLORS['paper']}; transform:{transform};">{glifo}</div>
     </div>
     """, CAPAS_DIR / nome_arquivo, 1080, 1080)
 
@@ -107,10 +107,10 @@ ICONE_PESSOA = f"""<svg viewBox="0 0 400 400" xmlns="http://www.w3.org/2000/svg"
 
 render_capa("01-como-funciona.png", COLORS["brand"], ICONE_PASSOS)
 render_capa("02-saque-pix.png", COLORS["success"], ICONE_PIX)
-render_glifo_capa("03-ofertas.png", COLORS["highlight"], "%", "translate(0px, -18px)")
+render_glifo_capa("03-ofertas.png", COLORS["highlight"], "%", "translate(0px, -25px)")
 render_capa("04-sem-pegadinha.png", COLORS["brand"], ICONE_CHECK)
 render_capa("05-cadastre-se.png", COLORS["success"], ICONE_PESSOA)
-render_glifo_capa("06-duvidas.png", COLORS["highlight"], "?", "translate(0px, -18px)")
+render_glifo_capa("06-duvidas.png", COLORS["highlight"], "?", "translate(0px, -25px)")
 
 
 # ============================================================
