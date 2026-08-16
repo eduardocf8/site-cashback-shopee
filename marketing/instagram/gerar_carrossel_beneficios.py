@@ -364,3 +364,51 @@ dots.forEach(d => d.addEventListener('click', () => goTo(parseInt(d.dataset.i)))
 preview_path = OUT_DIR / "preview.html"
 preview_path.write_text(HTML, encoding="utf-8")
 print("preview gerado:", preview_path)
+
+
+def exportar_slides():
+    """Exporta cada slide como PNG 1080x1350 (4:5), a resolução padrão de
+    carrossel do Instagram - só roda depois do preview aprovado."""
+    from playwright.sync_api import sync_playwright
+
+    largura_slide = 420
+    escala = 1080 / largura_slide
+
+    with sync_playwright() as p:
+        browser = p.chromium.launch(executable_path="/opt/pw-browsers/chromium")
+        # viewport da página bem maior que o quadro (420x525) - o cartão
+        # inteiro (cabeçalho + carrossel + rodapé) é mais alto que só o
+        # slide, e precisa caber tudo dentro da área visível pra recortar
+        # certo com clip=
+        page = browser.new_page(viewport={"width": 500, "height": 1000}, device_scale_factor=escala)
+        page.goto(f"file://{preview_path}")
+        page.wait_for_timeout(300)
+        # desliga o ajuste de escala pra celular (que também tinha travado
+        # frameWrap num width/height menor, calculado pro innerWidth de
+        # quando a página carregou) e a transição de swipe, pra exportar
+        # cada slide no tamanho real, sem animação no meio do print
+        page.evaluate("""
+            igFrame.style.transform = 'none';
+            frameWrap.style.width = '';
+            frameWrap.style.height = '';
+            track.style.transition = 'none';
+        """)
+        page.wait_for_timeout(50)
+        viewport_el = page.query_selector("#viewport")
+        box = viewport_el.bounding_box()
+
+        for i in range(TOTAL):
+            page.evaluate(f"goTo({i})")
+            page.wait_for_timeout(150)
+            destino = OUT_DIR / f"slide_{i+1}.png"
+            page.screenshot(path=str(destino), clip=box)
+            print("exportado:", destino.relative_to(OUT_DIR))
+
+        browser.close()
+
+
+if __name__ == "__main__":
+    import sys
+
+    if "--export" in sys.argv:
+        exportar_slides()
