@@ -259,13 +259,16 @@ HTML = f"""<!doctype html>
 <style>
 {FONT_FACES}
 * {{ box-sizing:border-box; }}
+html {{ overflow-x:hidden; }}
 body {{
-    margin:0; padding:48px 16px; min-height:100vh; display:flex; align-items:center; justify-content:center;
-    background:#efeef2; font-family:Familjen, Arial, sans-serif;
+    margin:0; padding:24px 12px; min-height:100vh; display:flex; align-items:flex-start; justify-content:center;
+    background:#efeef2; font-family:Familjen, Arial, sans-serif; overflow-x:hidden;
 }}
+.frame-wrap {{ position:relative; }}
 .ig-frame {{
     width:420px; background:#fff; border-radius:16px; overflow:hidden;
     box-shadow:0 12px 40px rgba(17,24,39,0.16); border:1px solid #e5e7eb;
+    transform-origin: top left;
 }}
 .ig-header {{ display:flex; align-items:center; gap:10px; padding:12px 14px; border-bottom:1px solid #f0f0f0; }}
 .ig-avatar {{ width:34px; height:34px; border-radius:50%; background:{BRAND_PRIMARY}; display:flex; align-items:center; justify-content:center; }}
@@ -284,7 +287,8 @@ body {{
 </style>
 </head>
 <body>
-<div class="ig-frame">
+<div class="frame-wrap" id="frameWrap">
+<div class="ig-frame" id="igFrame">
     <div class="ig-header">
         <div class="ig-avatar">
             <span style="font-family:Familjen; font-weight:700; font-size:14px; color:#fff;">cb</span>
@@ -310,12 +314,28 @@ body {{
         <span class="time">2 horas atrás</span>
     </div>
 </div>
+</div>
 <script>
 const track = document.getElementById('track');
 const viewport = document.getElementById('viewport');
 const dots = [...document.querySelectorAll('.ig-dot')];
 const SLIDE_W = 420, TOTAL = {TOTAL};
 let current = 0, startX = 0, deltaX = 0, dragging = false;
+
+// Em telas estreitas (celular), escala o quadro pra caber sem cortar nem
+// precisar rolar de lado - transform:scale (não zoom) pra não afetar a
+// quebra de linha do texto, só o tamanho visual.
+const frameWrap = document.getElementById('frameWrap');
+const igFrame = document.getElementById('igFrame');
+function ajustarEscala() {{
+    const larguraDisponivel = window.innerWidth - 24;
+    const escala = Math.min(1, larguraDisponivel / 420);
+    igFrame.style.transform = `scale(${{escala}})`;
+    frameWrap.style.width = (420 * escala) + 'px';
+    frameWrap.style.height = (igFrame.offsetHeight * escala) + 'px';
+}}
+ajustarEscala();
+window.addEventListener('resize', ajustarEscala);
 
 function goTo(i) {{
     current = Math.max(0, Math.min(TOTAL - 1, i));
