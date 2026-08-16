@@ -424,6 +424,22 @@ estar de fato acessível.
       web, valor `/healthz/` (documentado no `README.md`, seção de deploy). **Isso
       precisa ser feito manualmente no dashboard da Render** - não tem como
       configurar por código/env var nesse projeto (não usa `render.yaml`).
+- [x] **Investigado 502 residual mesmo com health check + plano Starter** — o
+      log do deploy mostrou a instância antiga desligando (`SIGTERM`) e só uns
+      15s depois a nova começando a subir - sequencial, não simultâneo. Causa:
+      o serviço tem um **Disk** (disco persistente) anexado na Render, usado
+      pelo `MEDIA_ROOT` (imagens do bot do Instagram - ver
+      `cashback_shopee/settings.py`). Um disco só pode estar montado numa
+      instância por vez, então a Render **não consegue fazer deploy sem
+      downtime nesse caso** - precisa desligar a antiga (soltando o disco)
+      antes de montar na nova. É uma trava da própria Render, documentada,
+      **não depende de plano nem de health check**. Decisão do dono do
+      produto: aceitar os poucos segundos de indisponibilidade por deploy por
+      enquanto, em vez de migrar as imagens pra um armazenamento externo tipo
+      Cloudflare R2 (que eliminaria o downtime, mas exige mudança de código
+      com `django-storages` + criar/configurar o bucket). Se um dia isso virar
+      um problema real (deploys mais frequentes, por exemplo), essa é a opção
+      a considerar.
 
 ## Fase 19 — "Liberado" não descontava o que já foi sacado ✅
 
