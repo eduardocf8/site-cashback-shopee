@@ -195,10 +195,10 @@ slide4 = slide(LIGHT_BG, f"""
 slide5 = slide(DARK_BG, f"""
 {tag_label("sem complicação", "rgba(255,255,255,0.5)")}
 <div style="font-family:Familjen; font-size:30px; font-weight:700; line-height:1.18; letter-spacing:-0.02em; color:#fff;">
-    Sem letra miúda.<br>Sem pegadinha.
+    Sem pegadinha.
 </div>
 <div style="font-family:Familjen; font-size:14px; color:rgba(255,255,255,0.7); margin-top:16px; line-height:1.5; max-width:300px;">
-    Sem mensalidade. Sem taxa escondida. Você só ganha.
+    Você não paga nada, apenas ganha.
 </div>
 <div style="display:flex; gap:10px; margin-top:24px; flex-wrap:wrap;">
     {pill("Sem mensalidade", BRAND_LIGHT, "rgba(255,255,255,0.08)")}
@@ -222,14 +222,8 @@ slide6 = slide(LIGHT_BG, f"""
 
 # ---------- Slide 7: CTA (brand gradient, sem seta) ----------
 slide7 = slide(BRAND_GRADIENT, f"""
-<div style="display:flex; justify-content:center; margin-bottom:28px;">
-    {logo_lockup("#fff")}
-</div>
 <div style="font-family:Familjen; font-size:32px; font-weight:700; line-height:1.15; letter-spacing:-0.02em; color:#fff; text-align:center;">
     Bora começar?
-</div>
-<div style="font-family:Familjen; font-size:14.5px; color:rgba(255,255,255,0.88); margin-top:14px; line-height:1.5; text-align:center; max-width:290px; margin-left:auto; margin-right:auto;">
-    Cadastro grátis. Compre na Shopee do jeito que já compra.
 </div>
 <div style="display:flex; justify-content:center; margin-top:28px;">
     <div style="display:inline-flex; align-items:center; padding:13px 30px; background:{LIGHT_BG};
