@@ -1,5 +1,5 @@
 """Gera o carrossel de Instagram "Benefícios de usar o cash-b" - primeiro o
-preview HTML "arrastável" (pra revisão), depois a exportação dos 7 slides em
+preview HTML "arrastável" (para revisão), depois a exportação dos 7 slides em
 PNG 1080x1350. Segue a skill instagram-carousel (~/.claude/skills/), com a
 paleta e as fontes reais da marca (ver BRAND.md/brand.css) no lugar da
 paleta genérica derivada que a skill sugere por padrão.
@@ -84,27 +84,31 @@ def tag_label(texto, cor):
 
 
 def check_item(titulo, texto, cor_check):
+    icone_largura, gap = 18, 14
+    indent = icone_largura + gap
     return f"""
-    <div style="display:flex; align-items:flex-start; gap:14px; padding:12px 0; border-bottom:1px solid {LIGHT_BORDER};">
-        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" style="flex-shrink:0; margin-top:3px;">
-            <path d="M4 12.5l5 5L20 6" stroke="{cor_check}" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
-        </svg>
-        <div>
-            <div style="font-family:Familjen; font-size:14.5px; font-weight:700; color:{DARK_BG};">{titulo}</div>
-            <div style="font-family:Familjen; font-size:12.5px; color:{MUTED}; margin-top:2px; line-height:1.4;">{texto}</div>
+    <div style="padding:12px 0; border-bottom:1px solid {LIGHT_BORDER};">
+        <div style="display:flex; align-items:center; gap:{gap}px;">
+            <svg width="{icone_largura}" height="{icone_largura}" viewBox="0 0 24 24" fill="none" style="flex-shrink:0;">
+                <path d="M4 12.5l5 5L20 6" stroke="{cor_check}" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
+            </svg>
+            <span style="font-family:Familjen; font-size:14.5px; font-weight:700; color:{DARK_BG};">{titulo}</span>
         </div>
+        <div style="font-family:Familjen; font-size:12.5px; color:{MUTED}; margin-top:4px; margin-left:{indent}px; line-height:1.4;">{texto}</div>
     </div>
     """
 
 
 def numbered_step(numero, titulo, texto):
+    numero_largura, gap = 32, 16
+    indent = numero_largura + gap
     return f"""
-    <div style="display:flex; align-items:flex-start; gap:16px; padding:14px 0; border-bottom:1px solid {LIGHT_BORDER};">
-        <span style="font-family:'JB Mono'; font-size:24px; font-weight:700; color:{BRAND_PRIMARY}; min-width:32px; line-height:1;">{numero}</span>
-        <div>
-            <div style="font-family:Familjen; font-size:14.5px; font-weight:700; color:{DARK_BG};">{titulo}</div>
-            <div style="font-family:Familjen; font-size:12.5px; color:{MUTED}; margin-top:2px; line-height:1.45; max-width:280px;">{texto}</div>
+    <div style="padding:14px 0; border-bottom:1px solid {LIGHT_BORDER};">
+        <div style="display:flex; align-items:center; gap:{gap}px;">
+            <span style="font-family:'JB Mono'; font-size:24px; font-weight:700; color:{BRAND_PRIMARY}; min-width:{numero_largura}px; line-height:1;">{numero}</span>
+            <span style="font-family:Familjen; font-size:14.5px; font-weight:700; color:{DARK_BG};">{titulo}</span>
         </div>
+        <div style="font-family:Familjen; font-size:12.5px; color:{MUTED}; margin-top:4px; margin-left:{indent}px; line-height:1.45; max-width:280px;">{texto}</div>
     </div>
     """
 
@@ -126,13 +130,12 @@ def logo_lockup(cor_texto, cor_circulo="#fff", cor_letra=None):
     """
 
 
-def slide(bg, content_html, index, is_light, show_arrow=True, justify="flex-end"):
+def slide(bg, content_html, index, is_light, show_arrow=True, justify="center"):
     arrow = swipe_arrow(is_light) if show_arrow else ""
-    pad_bottom = "52px" if index < TOTAL - 1 or True else "36px"
     return f"""
     <div class="slide" style="background:{bg};">
         <div style="position:relative; flex:1; display:flex; flex-direction:column; justify-content:{justify};
-                    padding:44px 36px {pad_bottom};">
+                    padding:44px 36px 52px;">
             {content_html}
         </div>
         {arrow}
@@ -145,7 +148,7 @@ def slide(bg, content_html, index, is_light, show_arrow=True, justify="flex-end"
 slide1 = slide(LIGHT_BG, f"""
 {tag_label("cash-b explica", BRAND_PRIMARY)}
 <div style="font-family:Familjen; font-size:34px; font-weight:700; line-height:1.14; letter-spacing:-0.03em; color:{DARK_BG};">
-    Toda compra na Shopee gera cashback pra você.
+    Toda compra na Shopee gera cashback para você.
 </div>
 <div style="font-family:Familjen; font-size:15px; color:{MUTED}; margin-top:16px; line-height:1.5; max-width:300px;">
     E a maioria das pessoas nem sabe disso.
@@ -159,7 +162,7 @@ slide2 = slide(DARK_BG, f"""
     Toda vez que você compra, alguém ganha uma comissão.
 </div>
 <div style="font-family:Familjen; font-size:14px; color:rgba(255,255,255,0.65); margin-top:16px; line-height:1.55; max-width:310px;">
-    A Shopee paga essa comissão pra quem te levou até o produto. Raramente ela volta pra quem realmente comprou.
+    A Shopee paga essa comissão para quem te levou até o produto. Raramente ela volta para quem realmente comprou.
 </div>
 """, 1, False)
 
@@ -167,7 +170,7 @@ slide2 = slide(DARK_BG, f"""
 slide3 = slide(BRAND_GRADIENT, f"""
 {tag_label("a solução", "rgba(255,255,255,0.75)")}
 <div style="font-family:Familjen; font-size:30px; font-weight:700; line-height:1.18; letter-spacing:-0.02em; color:#fff;">
-    O cash-b devolve essa comissão pra você.
+    O cash-b devolve essa comissão para você.
 </div>
 <div style="font-family:Familjen; font-size:14.5px; color:rgba(255,255,255,0.88); margin-top:16px; line-height:1.55; max-width:300px;">
     Você compra do jeito que já compra na Shopee. A diferença é que parte do dinheiro cai de volta na sua conta, via PIX.
@@ -288,7 +291,7 @@ body {{
         </div>
         <div class="ig-header-text">
             <div class="handle">cash.b</div>
-            <div class="sub">Cashback pra suas compras na Shopee</div>
+            <div class="sub">Cashback para suas compras na Shopee</div>
         </div>
     </div>
     <div class="carousel-viewport" id="viewport">

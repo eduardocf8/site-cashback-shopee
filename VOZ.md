@@ -18,13 +18,24 @@ o dono da marca aponta o que soa diferente do jeito dele de falar.
   Usar a forma "você" (teste, cadastre, peça, acompanhe) — é o padrão que
   já era seguido no banco `DICAS` de `instagram_bot/conteudo.py`, só o
   banco `POSTS_INSTITUCIONAIS` que tinha fugido dele.
+- **"Pra" só quando for contração de "para" + "a" (artigo feminino).**
+  Ex: "pra revisão" está errado porque não existe "para a revisão" por trás
+  — o certo é "para revisão". Já "pra próxima sincronização" está certo,
+  porque é "para a próxima sincronização". Na dúvida, escrever por extenso
+  ("para você", "para quem comprou") e só contrair pra "pra" se sobrar um
+  "a" antes do substantivo/pronome feminino.
+  - Exceção: citação literal de um texto que já existe no site (ex: o
+    botão "Ir pra Shopee") não muda, mesmo fugindo da regra — é o nome
+    real do elemento, não prosa livre.
 
 ## Onde essas regras já foram aplicadas
 
 - `instagram_bot/conteudo.py` — bancos `LEMBRETES` e `POSTS_INSTITUCIONAIS`
   (2026-08-10).
+- `marketing/instagram/gerar_carrossel_beneficios.py` — regra do "pra"
+  (2026-08-16).
 
-## Pra pedir ajustes de voz numa conversa nova
+## Para pedir ajustes de voz numa conversa nova
 
 Aponta esse arquivo junto com `BRAND.md`. Se notar algo soando diferente
 do seu jeito de falar, aponta o trecho específico (ou onde ele está no
