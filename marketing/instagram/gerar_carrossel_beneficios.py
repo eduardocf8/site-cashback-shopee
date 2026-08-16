@@ -1,4 +1,4 @@
-"""Gera o carrossel de Instagram "Benefícios de usar o cash-b" - primeiro o
+"""Gera o carrossel de Instagram "Benefícios de usar a cash-b" - primeiro o
 preview HTML "arrastável" (para revisão), depois a exportação dos 7 slides em
 PNG 1080x1350. Segue a skill instagram-carousel (~/.claude/skills/), com a
 paleta e as fontes reais da marca (ver BRAND.md/brand.css) no lugar da
@@ -170,7 +170,7 @@ slide2 = slide(DARK_BG, f"""
 slide3 = slide(BRAND_GRADIENT, f"""
 {tag_label("a solução", "rgba(255,255,255,0.75)")}
 <div style="font-family:Familjen; font-size:30px; font-weight:700; line-height:1.18; letter-spacing:-0.02em; color:#fff;">
-    O cash-b devolve essa comissão para você.
+    A cash-b devolve essa comissão para você.
 </div>
 <div style="font-family:Familjen; font-size:14.5px; color:rgba(255,255,255,0.88); margin-top:16px; line-height:1.55; max-width:300px;">
     Você compra do jeito que já compra na Shopee. A diferença é que parte do dinheiro cai de volta na sua conta, via PIX.
@@ -306,7 +306,7 @@ body {{
         <svg width="24" height="24" viewBox="0 0 24 24" fill="none"><path d="M6 4h12v17l-6-4-6 4V4z" stroke="#111827" stroke-width="1.6" stroke-linejoin="round"/></svg>
     </div>
     <div class="ig-caption">
-        <b>cash.b</b> Os benefícios de usar o cash-b, direto ao ponto. Cadastro grátis, link na bio.
+        <b>cash.b</b> Os benefícios de usar a cash-b, direto ao ponto. Cadastro grátis, link na bio.
         <span class="time">2 horas atrás</span>
     </div>
 </div>
