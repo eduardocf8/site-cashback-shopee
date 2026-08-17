@@ -154,3 +154,42 @@ class DashboardSaldoTests(TestCase):
 
         self.assertEqual(resposta.context["saldo_liberado"], Decimal("15.00"))
         self.assertEqual(resposta.context["saldo_sacado"], Decimal("0"))
+
+
+class LoginForcaBrutaTests(TestCase):
+    """django-axes: protege /login/ contra tentativas repetidas de senha (ver
+    cashback_shopee/settings.py, AXES_FAILURE_LIMIT=5)."""
+
+    def setUp(self):
+        self.usuario = User.objects.create_user(
+            username="protegida", password="senha-correta-123", cpf="91234567873"
+        )
+
+    def _tentar_login(self, senha):
+        return self.client.post(reverse("login"), {"username": "protegida", "password": senha})
+
+    def test_apos_o_limite_de_tentativas_bloqueia_mesmo_com_senha_certa(self):
+        for _ in range(5):
+            self._tentar_login("senha-errada")
+
+        resposta = self._tentar_login("senha-correta-123")
+
+        self.assertNotEqual(resposta.status_code, 302)
+        self.assertFalse(resposta.wsgi_request.user.is_authenticated)
+
+    def test_antes_do_limite_login_correto_ainda_funciona(self):
+        for _ in range(4):
+            self._tentar_login("senha-errada")
+
+        resposta = self._tentar_login("senha-correta-123")
+
+        self.assertRedirects(resposta, reverse("dashboard"))
+
+    def test_bloqueio_e_por_usuario_mais_ip_nao_afeta_outra_conta(self):
+        User.objects.create_user(username="outra", password="outra-senha-123", cpf="52914637837")
+        for _ in range(5):
+            self._tentar_login("senha-errada")
+
+        resposta = self.client.post(reverse("login"), {"username": "outra", "password": "outra-senha-123"})
+
+        self.assertRedirects(resposta, reverse("dashboard"))

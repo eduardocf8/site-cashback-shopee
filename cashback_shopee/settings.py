@@ -76,6 +76,7 @@ INSTALLED_APPS = [
     "ofertas",
     "instagram_bot",
     "automacao_instagram",
+    "axes",
 ]
 
 AUTH_USER_MODEL = "accounts.User"
@@ -83,6 +84,26 @@ AUTH_USER_MODEL = "accounts.User"
 LOGIN_URL = "login"
 LOGIN_REDIRECT_URL = "dashboard"
 LOGOUT_REDIRECT_URL = "login"
+
+# django-axes: bloqueia tentativas de login por força bruta. AxesBackend precisa vir
+# ANTES do ModelBackend padrão (ele intercepta a autenticação pra checar o bloqueio
+# antes de validar a senha de verdade).
+AUTHENTICATION_BACKENDS = [
+    "axes.backends.AxesBackend",
+    "django.contrib.auth.backends.ModelBackend",
+]
+
+# Trava por par (usuário, IP) - não usuário sozinho, pra um atacante não conseguir
+# bloquear a conta de outra pessoa de propósito só errando a senha dela várias vezes
+# de um IP diferente (negação de serviço via bloqueio).
+AXES_LOCKOUT_PARAMETERS = [["username", "ip_address"]]
+AXES_FAILURE_LIMIT = 5
+AXES_COOLOFF_TIME = 1  # horas até o bloqueio expirar sozinho
+AXES_RESET_ON_SUCCESS = True
+# Página com a identidade visual do site em vez da resposta padrão em texto puro/inglês
+# do django-axes. O texto "cerca de 1 hora" nela é fixo, então se AXES_COOLOFF_TIME
+# mudar, atualizar o texto junto (accounts/templates/accounts/login_bloqueado.html).
+AXES_LOCKOUT_TEMPLATE = "accounts/login_bloqueado.html"
 
 # Credenciais da API oficial de afiliados da Shopee (ficam no arquivo .env, nunca no código)
 SHOPEE_AFFILIATE_APP_ID = os.environ.get("SHOPEE_AFFILIATE_APP_ID", "")
@@ -213,6 +234,7 @@ MIDDLEWARE = [
     "django.contrib.auth.middleware.AuthenticationMiddleware",
     "django.contrib.messages.middleware.MessageMiddleware",
     "django.middleware.clickjacking.XFrameOptionsMiddleware",
+    "axes.middleware.AxesMiddleware",  # precisa ser o último da lista (exigência do django-axes)
 ]
 
 ROOT_URLCONF = "cashback_shopee.urls"

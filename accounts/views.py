@@ -35,7 +35,10 @@ def registrar(request):
             usuario = form.save()
             _criar_indicacao_se_valida(usuario, codigo_indicacao)
             enviar_email_verificacao(usuario, request)
-            login(request, usuario)
+            # Backend explícito: já temos o objeto usuario (não veio de authenticate()),
+            # e com o AxesBackend adicionado (proteção de força bruta no login) o Django
+            # não consegue mais inferir sozinho qual backend usar com 2 configurados.
+            login(request, usuario, backend="django.contrib.auth.backends.ModelBackend")
             return redirect("dashboard")
     else:
         form = RegistroForm()

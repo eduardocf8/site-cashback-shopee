@@ -67,7 +67,7 @@ def _converter_timestamp(valor):
 
 
 def calcular_data_prevista_liberacao(data_validacao):
-    """1º dia do mês seguinte a dois meses após a validação (mês N -> libera no mês N+2)."""
+    """Dia 1º do segundo mês seguinte ao mês da validação (mês N -> libera no mês N+2)."""
     if not data_validacao:
         return None
     mes = data_validacao.month + 2

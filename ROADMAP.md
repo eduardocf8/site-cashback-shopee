@@ -518,6 +518,61 @@ o painel "Indique e ganhe" manualmente).
       vez que a Shopee reenvia o mesmo pedido validado) - mesma garantia que já
       existia pra não duplicar o bônus em si. (`pedidos/services.py`)
 
+## Fase 23 — Auditoria de segurança + proteção contra força bruta no login ✅
+
+Usuário pediu uma auditoria de segurança geral. Cobrimos: settings de segurança do
+Django, uso de SQL raw/`|safe`/`mark_safe` (nenhum encontrado), `csrf_exempt` (só o
+webhook da Asaas, protegido por token com `hmac.compare_digest`), IDOR (consultas de
+dado privado sempre filtradas por `usuario=request.user`), segredos hardcoded no
+código atual (nenhum) e **no histórico do Git**.
+
+- [x] **🔴 Achado crítico, já resolvido pelo dono do produto**: um `.env` com
+      credenciais reais da Shopee (`SHOPEE_AFFILIATE_APP_ID`/`_SECRET`) foi commitado
+      em 28/07 e removido no dia seguinte - mas removido do commit atual não apaga do
+      histórico (`git show <commit-antigo>:.env` ainda recupera o valor). Ação: girar
+      o `SHOPEE_AFFILIATE_SECRET` no painel da Shopee (invalida o valor exposto,
+      independente de reescrever o histórico do Git - o que não foi feito de
+      propósito, já que a branch está compartilhada com outra sessão trabalhando nela
+      ao mesmo tempo, e um force-push seria muito disruptivo). Só essas duas
+      credenciais estavam nesse `.env` - nada de `DJANGO_SECRET_KEY`, Asaas ou
+      `TAREFAS_TOKEN`.
+- [x] **Proteção contra força bruta no login (`django-axes`)** — sem isso, `/login/`
+      não tinha limite de tentativas. `AXES_LOCKOUT_PARAMETERS = [["username",
+      "ip_address"]]` (não só username, pra um atacante não conseguir bloquear a
+      conta de outra pessoa de propósito de um IP diferente), 5 tentativas, 1h de
+      cooloff. Como o `AUTHENTICATION_BACKENDS` é global, também protege
+      `/admin/login/` de graça. (`cashback_shopee/settings.py`)
+- [x] **Página de bloqueio com a identidade visual do site** — o padrão do
+      django-axes é texto puro em inglês; trocado por
+      `accounts/templates/accounts/login_bloqueado.html` (mesmo estilo do
+      404/500), com link direto pra "Esqueci minha senha" (esse fluxo não passa
+      pelo axes, continua liberado mesmo com o login bloqueado).
+- [x] **Bug real encontrado ao testar**: com 2 backends de autenticação
+      configurados, o `login(request, usuario)` direto em `registrar()` (depois de
+      criar a conta) parou de funcionar - o Django não consegue mais inferir sozinho
+      qual backend usar. Corrigido passando `backend=` explicitamente.
+      (`accounts/views.py`)
+- [ ] **Achado de menor gravidade, ainda não endereçado**: `DEBUG`/`SECRET_KEY` têm
+      fallback inseguro se a variável de ambiente sumir (degrada silenciosamente em
+      vez de travar o startup) - baixo risco enquanto as variáveis da Render
+      continuarem configuradas certinho. Fica registrado pra decidir numa conversa
+      futura se vale a pena travar o startup nesse caso.
+
+## Fase 24 — Exemplo errado no texto do prazo de liberação ✅
+
+Usuário notou: o texto de "Regras do cashback", Termos de Uso e FAQ dava um exemplo
+errado pro prazo de liberação de saldo ("validado em janeiro libera em 1º de abril").
+O código (`calcular_data_prevista_liberacao`) sempre esteve certo (mês N -> libera no
+mês N+2, confirmado pelos testes existentes) - o bug era só no texto, que descrevia
+"o mês seguinte a dois meses após a validação" (N+3) só nesses 3 exemplos, enquanto o
+README (com outro exemplo, março -> maio) batia certinho com N+2.
+
+- [x] **Reescrita a frase ambígua** — "o dia 1º do segundo mês seguinte ao mês da
+      validação" no lugar de "o primeiro dia do mês seguinte a dois meses após a
+      validação", nos 3 lugares que tinham o exemplo errado (`regras_cashback.html`,
+      `termos.html`, `faq.html`) e nos 2 do README que já estavam certos (só pra
+      manter a frase consistente). Exemplo corrigido pra "janeiro -> março".
+
 ---
 
 Pra continuar esse roadmap numa conversa nova, basta apontar esse arquivo

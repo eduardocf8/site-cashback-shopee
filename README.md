@@ -40,7 +40,7 @@ O site está no ar em **https://cash-b.com**.
 ### Regras de negócio por trás do site
 
 - **Cálculo de cashback**: soma a comissão que a Shopee paga por item comprado (`itemTotalCommission`), aplicando o percentual repassado ao usuário (`SHOPEE_CASHBACK_PERCENTUAL`).
-- **Liberação de saldo**: pedidos validados ficam disponíveis pra saque no 1º dia do mês seguinte a dois meses após a validação (ex: validou em março, libera em 1º de maio).
+- **Liberação de saldo**: pedidos validados ficam disponíveis pra saque no dia 1º do segundo mês seguinte ao mês da validação (ex: validou em março, libera em 1º de maio).
 - **Saque via PIX**: o usuário solicita o saque do saldo liberado disponível; a solicitação fica pendente até você aprovar manualmente — só então o sistema chama a Asaas (ou o Inter, em pausa — ver `saques/inter_client.py`) pra pagar de verdade. Valor mínimo configurável (`SAQUE_VALOR_MINIMO`).
 - **E-mails automáticos**: usuário recebe e-mail quando um pedido é validado, quando o cashback é liberado e quando um saque é pago.
 
@@ -132,7 +132,7 @@ O percentual de comissão repassado como cashback ainda não foi definido — es
 
 ## Liberando o saldo dos pedidos validados (Fase 4)
 
-Pedidos validados ficam disponíveis para saque no 1º dia do mês seguinte a dois meses depois da validação (ex: validou em março, libera em 1º de maio). Para efetivamente mudar o status desses pedidos de "validado" para "liberado":
+Pedidos validados ficam disponíveis para saque no dia 1º do segundo mês seguinte ao mês da validação (ex: validou em março, libera em 1º de maio). Para efetivamente mudar o status desses pedidos de "validado" para "liberado":
 
 ```bash
 python manage.py liberar_saldo

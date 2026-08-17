@@ -306,7 +306,7 @@ class PedirSaqueViewTests(TestCase):
         self.usuario = get_user_model().objects.create_user(
             username="compradora", password="senha123", cpf="39053344705", email_verificado=True
         )
-        self.client.login(username="compradora", password="senha123")
+        self.client.force_login(self.usuario)
 
     def test_exige_login(self):
         self.client.logout()
