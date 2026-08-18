@@ -1,0 +1,68 @@
+{% extends "accounts/base.html" %}
+{% load static %}
+{% block titulo %}Cashback na Shopee vale a pena?{% endblock %}
+{% block meta_descricao %}Entenda de onde vem o dinheiro do cashback na Shopee, quanto dá pra receber de volta e quando realmente vale a pena usar.{% endblock %}
+{% block largura_container %}760px{% endblock %}
+{% block meta_social %}
+    {% include "_meta_social.html" with titulo="Cashback na Shopee vale a pena? — cash-b" descricao="Entenda de onde vem o dinheiro do cashback, quanto dá pra receber de volta e quando realmente vale a pena usar." %}
+{% endblock %}
+{% block conteudo %}
+    <div class="nav-topo">
+        <a href="{% url 'home' %}">&larr; Voltar pro início</a>
+    </div>
+    <h1>Cashback na Shopee vale a pena?</h1>
+    <p class="atualizado-em">Última atualização: 18 de agosto de 2026.</p>
+
+    <div class="texto-legal">
+        <p>
+            Sim, vale — e a razão é simples: o dinheiro do cashback não sai do seu
+            bolso. Ele já existe antes mesmo de você decidir usar, e a única
+            pergunta é quem fica com ele.
+        </p>
+
+        <h2>De onde vem esse dinheiro</h2>
+        <p>
+            Toda vez que alguém compra através de um link de afiliado, a loja paga
+            uma comissão pra quem gerou aquele link — é assim que sites de cupom,
+            blogs de review e páginas de "achadinhos" se sustentam. Normalmente essa
+            comissão fica inteira com o afiliado. Um site de cashback como a cash-b
+            faz diferente: pega parte dessa comissão e devolve pra quem realmente
+            comprou, em vez de ficar com ela inteira.
+        </p>
+
+        <h2>Quanto dá pra receber de volta</h2>
+        <p>
+            Hoje a cash-b devolve <strong>até {{ cashback_maximo_anunciado }}%</strong>
+            do valor da compra, dependendo do produto e de campanhas de comissão
+            extra que a Shopee ativa de tempos em tempos. Numa compra de
+            R$ {{ exemplo_compra|floatformat:0 }}, isso pode significar
+            R$ {{ exemplo_cashback }} voltando pra sua conta — sem fazer nada
+            diferente do que você já faria pra comprar na Shopee normalmente.
+        </p>
+        <p>
+            Esse percentual varia porque a comissão que a Shopee paga também varia
+            por produto e muda ao longo do mês — por isso "até X%" e não um número
+            fixo. O valor exato de cada produto aparece na
+            <a href="{% url 'ofertas_lista' %}">vitrine de ofertas</a> antes de você
+            comprar.
+        </p>
+
+        <h2>Tem pegadinha?</h2>
+        <p>
+            Não. Cadastro é grátis, não tem mensalidade e não existe nenhuma taxa
+            escondida. Você compra do jeito que já compra na Shopee — a única
+            diferença é que parte do dinheiro da comissão volta pra você em vez de
+            ficar só com o afiliado.
+        </p>
+
+        <h2>Quando cashback não é motivo suficiente pra comprar</h2>
+        <p>
+            Vale ser honesto aqui: cashback é um bônus sobre uma compra que você já
+            ia fazer, não um motivo pra comprar algo que você não precisa. Receber
+            uma parte do dinheiro de volta numa compra planejada é lucro real; correr
+            atrás de um cashback pequeno pra justificar uma compra por impulso, não.
+        </p>
+
+        <a class="botao-primario" href="{% url 'registrar' %}">Criar conta grátis</a>
+    </div>
+{% endblock %}

@@ -10,6 +10,11 @@ class PaginasEstaticasSitemap(Sitemap):
         "ofertas_lista": 0.8,
         "faq": 0.6,
         "regras_cashback": 0.6,
+        # Páginas de conteúdo pra busca (ex: "cashback shopee vale a pena"), não
+        # institucionais - concorrem por tráfego de topo de funil, por isso mesma
+        # prioridade da FAQ/regras.
+        "cashback_vale_a_pena": 0.6,
+        "e_confiavel": 0.6,
         "registrar": 0.5,
         "contato": 0.5,
         "termos_de_uso": 0.3,

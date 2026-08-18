@@ -20,7 +20,9 @@
     login, senha, cadastro e institucionais - quase nunca compartilhadas. Home e
     Ofertas, que são as que circulam, montam o card com texto próprio.
     {% endcomment %}
+    {% block meta_social %}
     {% include "_meta_social.html" with titulo="cash-b — cashback nas suas compras da Shopee" descricao="Compre na Shopee do jeito que você já compra e receba parte do dinheiro de volta, via PIX." %}
+    {% endblock %}
     <title>{% block titulo %}cash-b{% endblock %} — cash-b</title>
     <style>
         * { box-sizing: border-box; }

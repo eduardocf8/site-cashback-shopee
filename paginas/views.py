@@ -1,9 +1,12 @@
 import logging
+from decimal import Decimal
 
 from django.conf import settings
 from django.contrib import messages
 from django.core.mail import EmailMessage
 from django.shortcuts import redirect, render
+
+from ofertas.services import obter_cashback_maximo_anunciado
 
 from .forms import ContatoForm
 
@@ -32,6 +35,25 @@ def regras_cashback(request):
 
 def faq(request):
     return render(request, "paginas/faq.html")
+
+
+def cashback_vale_a_pena(request):
+    # Mesma fonte usada no "até X%" da home (obter_cashback_maximo_anunciado) - pra
+    # nunca ter um número diferente prometido em duas páginas do mesmo site.
+    cashback_maximo_anunciado = obter_cashback_maximo_anunciado()
+    exemplo_compra = Decimal("100")
+    exemplo_cashback = (exemplo_compra * cashback_maximo_anunciado / Decimal("100")).quantize(Decimal("0.01"))
+    contexto = {
+        "cashback_maximo_anunciado": cashback_maximo_anunciado,
+        "exemplo_compra": exemplo_compra,
+        "exemplo_cashback": exemplo_cashback,
+    }
+    return render(request, "paginas/cashback_vale_a_pena.html", contexto)
+
+
+def e_confiavel(request):
+    contexto = {"saque_valor_minimo": settings.SAQUE_VALOR_MINIMO}
+    return render(request, "paginas/e_confiavel.html", contexto)
 
 
 def contato(request):
