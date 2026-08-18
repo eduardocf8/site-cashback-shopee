@@ -63,21 +63,23 @@ ILUSTRACAO_MOEDA = f"""
 """
 
 
-def render(body_html, filename, width=1080, height=1080):
+def render(body_html, filename, width=1080, height=1080, destino=None, escala=2):
     html = f"""<html><head><style>
         {FONT_FACES}
         * {{ box-sizing: border-box; margin: 0; padding: 0; }}
         html, body {{ width: {width}px; height: {height}px; font-family: "Familjen", Arial, sans-serif; }}
         .canvas {{ width: {width}px; height: {height}px; position: relative; overflow: hidden; display: flex; }}
     </style></head><body>{body_html}</body></html>"""
+    destino = destino or OUT_DIR
+    destino.mkdir(parents=True, exist_ok=True)
     with sync_playwright() as p:
         browser = p.chromium.launch(executable_path="/opt/pw-browsers/chromium")
-        page = browser.new_page(viewport={"width": width, "height": height}, device_scale_factor=2)
+        page = browser.new_page(viewport={"width": width, "height": height}, device_scale_factor=escala)
         page.set_content(html)
         page.wait_for_timeout(150)
-        page.screenshot(path=str(OUT_DIR / filename))
+        page.screenshot(path=str(destino / filename))
         browser.close()
-    print("gerado:", filename)
+    print("gerado:", (destino / filename).relative_to(REPO_ROOT))
 
 
 # ---------- 1. Foto de perfil - "cb" sobre roxo com anel âmbar (paleta mesclada) ----------
@@ -140,5 +142,22 @@ render(f"""
     <div style="width:340px; flex-shrink:0;">{ILUSTRACAO_SACOLA}</div>
 </div>
 """, "07-capa-horizontal.png", width=1600, height=900)
+
+# ---------- 8. Imagem de compartilhamento (Open Graph) ----------
+# Vai direto pro static/ porque é servida pelo site, não é peça de social. 1200x630 é o
+# tamanho que WhatsApp/Facebook/Twitter esperam; escala 1 de propósito, pra manter o
+# arquivo leve (a prévia do link precisa carregar rápido) - eles reduzem a imagem de
+# qualquer jeito.
+render(f"""
+<div class="canvas" style="background:linear-gradient(120deg, {COLORS['brand-strong']}, {COLORS['brand']}); align-items:center; padding:0 90px; gap:60px;">
+    <div style="flex:1;">
+        <div style="font-size:118px; font-weight:700; letter-spacing:-0.02em; color:{COLORS['paper']};">cash-b</div>
+        <div style="font-size:32px; color:{COLORS['paper']}; opacity:0.92; margin-top:14px; line-height:1.35;">
+            Compre na Shopee do jeito que você já compra<br>e receba parte do dinheiro de volta.
+        </div>
+    </div>
+    <div style="width:260px; flex-shrink:0;">{ILUSTRACAO_SACOLA}</div>
+</div>
+""", "og-cash-b.png", width=1200, height=630, destino=REPO_ROOT / "static" / "images", escala=1)
 
 print("todas as artes geradas")

@@ -15,6 +15,13 @@
     <link rel="stylesheet" href="{% static 'css/brand.css' %}">
     <title>Ofertas — cash-b</title>
     <meta name="description" content="Ofertas da Shopee com cashback automático: navegue por categoria e já saia com o link rastreado.">
+    {% comment %}
+    Canônica sempre na URL limpa: categoria, busca, ordenação e página são todos query
+    params sobre o mesmo conteúdo. Sem isso o Google veria dezenas de URLs quase
+    idênticas e dividiria a relevância entre elas em vez de somar numa só.
+    {% endcomment %}
+    <link rel="canonical" href="{{ request.scheme }}://{{ request.get_host }}{% url 'ofertas_lista' %}">
+    {% include "_meta_social.html" with titulo="Ofertas da Shopee com cashback — cash-b" descricao="Veja as ofertas mais vendidas da Shopee já com o cashback calculado. Compre pelo link e receba parte do dinheiro de volta." %}
     <style>
         * { box-sizing: border-box; }
         body { margin: 0; color: var(--ink); background: var(--paper-2); }
