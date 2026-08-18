@@ -84,6 +84,7 @@ CAMPOS_ATUALIZAVEIS = [
     "status_shopee_bruto",
     "valor_comissao",
     "valor_cashback",
+    "multiplicador_campanha",
     "produto_nome",
     "produto_imagem_url",
     "motivo_cancelamento",
@@ -152,6 +153,40 @@ def _montar_defaults(conversao, pedido_shopee, click, data_compra, percentual):
     }
 
 
+def _montar_linhas(brutos_por_order_id: dict[str, tuple], percentual_base: Decimal) -> dict[str, dict]:
+    """Monta os defaults de cada pedido já com o multiplicador de campanha correto.
+
+    Pedido novo usa o multiplicador vigente agora; pedido que já existe reusa o que
+    ficou gravado nele na primeira vez. Isso é o que impede a campanha de vazar pros
+    dois lados - a Shopee reenvia o mesmo pedido em toda sincronização seguinte, e o
+    _montar_defaults recalcula valor_cashback do zero a cada vez, então sem congelar
+    o multiplicador:
+
+    - o dobro prometido numa campanha sumiria na primeira sincronização depois dela
+      acabar, justamente pra quem comprou por causa da campanha;
+    - ligar uma campanha dobraria retroativamente pedidos antigos que ainda estejam
+      dentro da janela de sincronização.
+
+    É o mesmo cuidado que _reaplicar_bonus_ja_concedido tem com o bônus de indicação.
+    """
+    multiplicador_atual = Decimal(str(settings.CASHBACK_MULTIPLICADOR_CAMPANHA))
+    ja_gravados = dict(
+        Pedido.objects.filter(order_id__in=brutos_por_order_id.keys()).values_list(
+            "order_id", "multiplicador_campanha"
+        )
+    )
+
+    linhas: dict[str, dict] = {}
+    for order_id, (conversao, pedido_shopee, click, data_compra) in brutos_por_order_id.items():
+        multiplicador = ja_gravados.get(order_id, multiplicador_atual)
+        defaults = _montar_defaults(
+            conversao, pedido_shopee, click, data_compra, percentual_base * multiplicador
+        )
+        defaults["multiplicador_campanha"] = multiplicador
+        linhas[order_id] = defaults
+    return linhas
+
+
 def sincronizar(purchase_time_start: int, purchase_time_end: int) -> dict:
     """Busca conversões da Shopee no período e cria/atualiza os Pedidos correspondentes.
 
@@ -160,15 +195,14 @@ def sincronizar(purchase_time_start: int, purchase_time_end: int) -> dict:
     fazer isso uma de cada vez é rápido demais no SQLite local mas estoura o tempo
     limite do servidor contra um banco remoto de verdade.
     """
-    percentual = (
-        Decimal(str(settings.SHOPEE_CASHBACK_PERCENTUAL))
-        / Decimal("100")
-        * Decimal(str(settings.CASHBACK_MULTIPLICADOR_CAMPANHA))
-    )
+    percentual_base = Decimal(str(settings.SHOPEE_CASHBACK_PERCENTUAL)) / Decimal("100")
 
     nao_identificados = 0
     scroll_id = None
-    linhas_por_order_id: dict[str, dict] = {}
+    # Guarda os dados crus da Shopee em vez dos defaults já calculados: o cashback só
+    # pode ser calculado depois de saber quais desses pedidos já existem no banco, pra
+    # cada um usar o multiplicador de campanha certo (ver _montar_linhas).
+    brutos_por_order_id: dict[str, tuple] = {}
 
     while True:
         pagina = buscar_conversoes(purchase_time_start, purchase_time_end, scroll_id)
@@ -181,14 +215,15 @@ def sincronizar(purchase_time_start: int, purchase_time_end: int) -> dict:
             data_compra = _converter_timestamp(conversao.get("purchaseTime"))
 
             for pedido_shopee in conversao.get("orders", []):
-                defaults = _montar_defaults(conversao, pedido_shopee, click, data_compra, percentual)
                 # Se o mesmo pedido aparecer mais de uma vez nesta sincronização,
                 # fica valendo a última ocorrência.
-                linhas_por_order_id[pedido_shopee["orderId"]] = defaults
+                brutos_por_order_id[pedido_shopee["orderId"]] = (conversao, pedido_shopee, click, data_compra)
 
         scroll_id = pagina["pageInfo"].get("scrollId")
         if not pagina["pageInfo"].get("hasNextPage"):
             break
+
+    linhas_por_order_id = _montar_linhas(brutos_por_order_id, percentual_base)
 
     _reaplicar_bonus_ja_concedido(linhas_por_order_id)
 

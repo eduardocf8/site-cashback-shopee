@@ -30,6 +30,18 @@ class Pedido(models.Model):
     )
     valor_comissao = models.DecimalField(max_digits=10, decimal_places=2, default=Decimal("0"))
     valor_cashback = models.DecimalField(max_digits=10, decimal_places=2, default=Decimal("0"))
+    multiplicador_campanha = models.DecimalField(
+        max_digits=4,
+        decimal_places=2,
+        default=Decimal("1"),
+        help_text=(
+            "Multiplicador de campanha (CASHBACK_MULTIPLICADOR_CAMPANHA) que valia quando este "
+            "pedido foi registrado pela primeira vez. Fica congelado aqui de propósito: a Shopee "
+            "reenvia o mesmo pedido em toda sincronização seguinte, e sem isso o cashback seria "
+            "recalculado com o multiplicador vigente naquele momento - o dobro prometido numa "
+            "campanha sumiria assim que ela acabasse. Ver pedidos/services.py::sincronizar."
+        ),
+    )
     produto_nome = models.CharField(max_length=255, blank=True)
     produto_imagem_url = models.URLField(blank=True)
     motivo_cancelamento = models.CharField(

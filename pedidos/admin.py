@@ -63,12 +63,15 @@ class PedidoAdmin(admin.ModelAdmin):
         "motivo_cancelamento",
         "valor_comissao",
         "valor_cashback",
+        "multiplicador_campanha",
         "data_compra",
         "data_validacao",
         "data_prevista_liberacao",
         "data_liberacao",
     )
-    list_filter = (OrigemFilter, "status")
+    # Filtrar por multiplicador é o jeito de conferir quais pedidos entraram numa
+    # campanha de cashback extra (e que continuam com o valor dobrado depois dela).
+    list_filter = (OrigemFilter, "status", "multiplicador_campanha")
     search_fields = ("order_id", "conversion_id", "usuario__username", "usuario__cpf", "produto_nome")
 
     def get_urls(self):

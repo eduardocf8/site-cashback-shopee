@@ -305,6 +305,99 @@ class SincronizarTests(TestCase):
         self.assertLess(len(contexto), 20)
 
 
+@override_settings(SHOPEE_CASHBACK_PERCENTUAL=20, CASHBACK_MAXIMO_POR_PRODUTO=10)
+class MultiplicadorCampanhaTests(TestCase):
+    """O multiplicador de campanha fica congelado no pedido quando ele é registrado.
+
+    Sem isso, como a Shopee reenvia o mesmo pedido em toda sincronização seguinte e o
+    cashback é recalculado do zero a cada vez, uma campanha de "cashback em dobro"
+    seria desfeita sozinha assim que acabasse.
+    """
+
+    def setUp(self):
+        self.usuario = get_user_model().objects.create_user(
+            username="compradora", password="senha123", cpf="39053344705"
+        )
+        self.click = Click.objects.create(
+            usuario=self.usuario,
+            tipo=Click.TIPO_HOME,
+            url_original="https://shopee.com.br/",
+            link_gerado="https://shope.ee/abc",
+        )
+
+    def _pagina(self, order_id, status="PENDING"):
+        return {
+            "nodes": [
+                {
+                    "conversionId": "999",
+                    "purchaseTime": 1700000000,
+                    "utmContent": f"{self.click.sub_id_usuario()},{self.click.sub_id_click()}",
+                    "orders": [
+                        {
+                            "orderId": order_id,
+                            "orderStatus": status,
+                            "items": [{"completeTime": None, "itemTotalCommission": "20.00"}],
+                        }
+                    ],
+                }
+            ],
+            "pageInfo": {"hasNextPage": False, "scrollId": ""},
+        }
+
+    @override_settings(CASHBACK_MULTIPLICADOR_CAMPANHA=2)
+    @patch("pedidos.services.buscar_conversoes")
+    def test_pedido_comprado_durante_a_campanha_recebe_o_dobro(self, mock_buscar):
+        mock_buscar.return_value = self._pagina("ORD-CAMP-1")
+
+        sincronizar(1690000000, 1700000000)
+
+        pedido = Pedido.objects.get(order_id="ORD-CAMP-1")
+        # 20% de R$20 = R$4, dobrado pela campanha = R$8
+        self.assertEqual(pedido.valor_cashback, Decimal("8.00"))
+        self.assertEqual(pedido.multiplicador_campanha, Decimal("2"))
+
+    @patch("pedidos.services.buscar_conversoes")
+    def test_campanha_encerrada_nao_reduz_cashback_de_pedido_ja_registrado(self, mock_buscar):
+        mock_buscar.return_value = self._pagina("ORD-CAMP-2")
+        with override_settings(CASHBACK_MULTIPLICADOR_CAMPANHA=2):
+            sincronizar(1690000000, 1700000000)
+
+        # Campanha acabou (voltou pra 1) e a Shopee reenvia o mesmo pedido, agora validado.
+        mock_buscar.return_value = self._pagina("ORD-CAMP-2", status="COMPLETED")
+        with override_settings(CASHBACK_MULTIPLICADOR_CAMPANHA=1):
+            sincronizar(1690000000, 1700000000)
+
+        pedido = Pedido.objects.get(order_id="ORD-CAMP-2")
+        self.assertEqual(pedido.status, Pedido.STATUS_VALIDADO)
+        self.assertEqual(pedido.valor_cashback, Decimal("8.00"))
+        self.assertEqual(pedido.multiplicador_campanha, Decimal("2"))
+
+    @patch("pedidos.services.buscar_conversoes")
+    def test_campanha_nova_nao_dobra_retroativamente_pedido_antigo(self, mock_buscar):
+        mock_buscar.return_value = self._pagina("ORD-CAMP-3")
+        with override_settings(CASHBACK_MULTIPLICADOR_CAMPANHA=1):
+            sincronizar(1690000000, 1700000000)
+
+        # Campanha começa depois, e o pedido antigo ainda está na janela de sincronização.
+        mock_buscar.return_value = self._pagina("ORD-CAMP-3", status="COMPLETED")
+        with override_settings(CASHBACK_MULTIPLICADOR_CAMPANHA=2):
+            sincronizar(1690000000, 1700000000)
+
+        pedido = Pedido.objects.get(order_id="ORD-CAMP-3")
+        self.assertEqual(pedido.valor_cashback, Decimal("4.00"))
+        self.assertEqual(pedido.multiplicador_campanha, Decimal("1"))
+
+    @patch("pedidos.services.buscar_conversoes")
+    def test_pedido_registrado_fora_da_campanha_guarda_multiplicador_1(self, mock_buscar):
+        mock_buscar.return_value = self._pagina("ORD-CAMP-4")
+
+        sincronizar(1690000000, 1700000000)
+
+        pedido = Pedido.objects.get(order_id="ORD-CAMP-4")
+        self.assertEqual(pedido.valor_cashback, Decimal("4.00"))
+        self.assertEqual(pedido.multiplicador_campanha, Decimal("1"))
+
+
 @override_settings(CASHBACK_MAXIMO_POR_PRODUTO=10)
 class TetoCashbackPorProdutoTests(TestCase):
     def setUp(self):
