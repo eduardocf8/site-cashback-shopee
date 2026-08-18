@@ -294,10 +294,11 @@ def _limite_cashback_indicacao(multiplicador_campanha: Decimal) -> Decimal:
     a R$10 cada = R$20 no pedido), e sem esse teto o dobro multiplicaria esse total em
     vez de dobrar só o limite de um produto.
 
-    Os dois multiplicadores se compõem: num pedido feito durante uma campanha de
-    cashback em dobro, o teto por item já dobrou em _montar_defaults, então o teto da
-    indicação precisa dobrar junto - senão o bônus de indicação seria inteiramente
-    engolido pelo teto e a segunda promessa não pagaria nada."""
+    O multiplicador de campanha entra junto como salvaguarda. No fluxo normal ele é
+    sempre 1 aqui, porque _selecionar_bonus_indicacao não concede bônus em pedido que
+    já pegou o extra de uma campanha (o bônus fica na fila até depois dela). Mas se
+    algum dia um pedido com campanha for bonificado - por edição manual no admin, ou
+    se a regra da fila mudar - o teto acompanha em vez de engolir o bônus inteiro."""
     return (
         Decimal(str(settings.CASHBACK_MAXIMO_POR_PRODUTO))
         * multiplicador_campanha
@@ -362,6 +363,16 @@ def _selecionar_bonus_indicacao(recem_validados: list[Pedido]) -> list[tuple[Ind
     epoca_minima = datetime.min.replace(tzinfo=dt_timezone.utc)
     vinculos = []
     for pedido in sorted(recem_validados, key=lambda p: p.data_compra or epoca_minima):
+        # Pedido que já leva o extra de uma campanha não consome o bônus de indicação:
+        # a Indicacao continua pendente (é ela mesma a fila) e o próximo pedido fora de
+        # campanha pega o bônus. Sem isso os dois dobros se somariam no mesmo pedido.
+        #
+        # A checagem é no multiplicador gravado no pedido, não no setting atual: um
+        # pedido comprado durante a campanha pode só validar semanas depois, já com a
+        # campanha desligada - e ele continua sendo um pedido que ganhou o extra dela.
+        if pedido.multiplicador_campanha > 1:
+            continue
+
         limite = _limite_cashback_indicacao(pedido.multiplicador_campanha)
         if pedido.usuario_id in indicado_pendente:
             indicacao = indicado_pendente.pop(pedido.usuario_id)

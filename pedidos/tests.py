@@ -545,19 +545,43 @@ class SincronizarBonusIndicacaoTests(TestCase):
 
     @override_settings(CASHBACK_MULTIPLICADOR_CAMPANHA=2)
     @patch("pedidos.services.buscar_conversoes")
-    def test_bonus_de_indicacao_compoe_com_a_campanha_em_vez_de_ser_engolido(self, mock_buscar):
-        # Comissão alta o bastante pra bater no teto nos dois casos. Com campanha em
-        # dobro o teto do item vira R$20; o bônus de indicação dobra em cima disso e o
-        # teto dele precisa virar R$40 (10 x 2 campanha x 2 indicação). Se o teto da
-        # indicação ignorasse a campanha, ele ficaria em R$20 - o mesmo valor que o
-        # pedido já teria sem indicação nenhuma, ou seja, o bônus não pagaria nada.
-        mock_buscar.return_value = self._pagina([self._no(self.click_indicado, "ORD-IND-CAMP", "100.00")])
+    def test_pedido_em_campanha_nao_consome_o_bonus_de_indicacao(self, mock_buscar):
+        # O pedido leva só o extra da campanha (5.00 x 2 = 10.00, abaixo do teto
+        # dobrado de R$20), e a indicação continua pendente esperando a campanha acabar.
+        mock_buscar.return_value = self._pagina([self._no(self.click_indicado, "ORD-IND-CAMP", "5.00")])
 
         sincronizar(1690000000, 1700000000)
 
         pedido = Pedido.objects.get(order_id="ORD-IND-CAMP")
         self.assertEqual(pedido.multiplicador_campanha, Decimal("2"))
-        self.assertEqual(pedido.valor_cashback, Decimal("40.00"))
+        self.assertEqual(pedido.valor_cashback, Decimal("10.00"))
+        self.indicacao.refresh_from_db()
+        self.assertIsNone(self.indicacao.pedido_bonus_indicado)
+
+    @patch("pedidos.services.buscar_conversoes")
+    def test_bonus_na_fila_entra_no_proximo_pedido_depois_da_campanha(self, mock_buscar):
+        mock_buscar.return_value = self._pagina([self._no(self.click_indicado, "ORD-FILA-1", "5.00")])
+        with override_settings(CASHBACK_MULTIPLICADOR_CAMPANHA=2):
+            sincronizar(1690000000, 1700000000)
+
+        # Campanha acabou. O pedido seguinte do indicado pega o bônus que ficou na fila.
+        mock_buscar.return_value = self._pagina(
+            [
+                self._no(self.click_indicado, "ORD-FILA-1", "5.00"),
+                self._no(self.click_indicado, "ORD-FILA-2", "5.00", purchase_time=1700000600),
+            ]
+        )
+        with override_settings(CASHBACK_MULTIPLICADOR_CAMPANHA=1):
+            sincronizar(1690000000, 1700000000)
+
+        # O pedido da campanha continua com o valor da campanha, sem ganhar o bônus depois.
+        pedido_campanha = Pedido.objects.get(order_id="ORD-FILA-1")
+        self.assertEqual(pedido_campanha.valor_cashback, Decimal("10.00"))
+
+        pedido_pos_campanha = Pedido.objects.get(order_id="ORD-FILA-2")
+        self.assertEqual(pedido_pos_campanha.valor_cashback, Decimal("10.00"))  # 5.00 x 2 de indicação
+        self.indicacao.refresh_from_db()
+        self.assertEqual(self.indicacao.pedido_bonus_indicado, pedido_pos_campanha)
 
     @patch("pedidos.services.buscar_conversoes")
     def test_primeira_compra_validada_do_indicado_dobra_cashback(self, mock_buscar):
