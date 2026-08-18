@@ -1,0 +1,77 @@
+{% extends "accounts/base.html" %}
+{% block titulo %}Como saber se um site de cashback é confiável{% endblock %}
+{% block meta_descricao %}Um checklist prático com 5 pontos pra avaliar qualquer site de cashback antes de cadastrar seus dados — e como a cash-b se encaixa em cada um.{% endblock %}
+{% block largura_container %}760px{% endblock %}
+{% block meta_social %}
+    {% include "_meta_social.html" with titulo="Como saber se um site de cashback é confiável — cash-b" descricao="Um checklist prático com 5 pontos pra avaliar qualquer site de cashback antes de cadastrar seus dados." %}
+{% endblock %}
+{% block conteudo %}
+    <div class="nav-topo">
+        <a href="{% url 'home' %}">&larr; Voltar pro início</a>
+    </div>
+    <h1>Como saber se um site de cashback é confiável</h1>
+    <p class="atualizado-em">Última atualização: 18 de agosto de 2026.</p>
+
+    <div class="texto-legal">
+        <p>
+            Cadastrar CPF e chave PIX num site novo pede um mínimo de desconfiança
+            saudável. Esses são cinco pontos que valem a pena checar antes de usar
+            qualquer site de cashback — não só a cash-b.
+        </p>
+
+        <h2>1. O cashback vem de uma comissão real</h2>
+        <p>
+            Todo site de cashback sério devolve parte de uma comissão de afiliado
+            que a própria loja paga — o dinheiro não é "criado" pelo site. Se um
+            site promete um percentual muito mais alto do que faz sentido pra
+            comissão de afiliado daquela loja, vale desconfiar: ou o número não é
+            real, ou ele não vai se sustentar por muito tempo.
+        </p>
+
+        <h2>2. As regras de prazo e status são públicas e claras</h2>
+        <p>
+            Cashback não cai na hora — a loja precisa confirmar a compra primeiro,
+            e isso leva tempo. Um site confiável explica esse prazo com todos os
+            detalhes, em vez de deixar você adivinhar por que seu saldo ainda
+            está "pendente".
+        </p>
+
+        <h2>3. O saque é simples e sem taxa escondida</h2>
+        <p>
+            Preste atenção em valor mínimo de saque, prazo de pagamento e se existe
+            alguma taxa cobrada em cima do que você já ganhou. Cashback que você não
+            consegue sacar de verdade não é cashback.
+        </p>
+
+        <h2>4. Existe uma política de privacidade real</h2>
+        <p>
+            O site precisa dizer, com todas as letras, quais dados coleta, pra que
+            usa e com quem compartilha — não só um texto genérico copiado de
+            algum lugar. Esse é um dos sinais mais fáceis de checar antes de
+            cadastrar qualquer coisa.
+        </p>
+
+        <h2>5. Fica claro que é um afiliado, não a própria loja</h2>
+        <p>
+            Sites de cashback não são a Amazon, a Shopee ou qualquer outra loja —
+            são parceiros de afiliados independentes. Um site sério deixa isso
+            claro, em vez de dar a entender que tem alguma ligação oficial que não
+            existe.
+        </p>
+
+        <h2>Como a cash-b se encaixa nesses pontos</h2>
+        <p>
+            A cash-b é um afiliado independente da Shopee — sem nenhuma ligação
+            oficial com a loja. O cashback vem da comissão real que a Shopee paga
+            por cada venda (mais detalhes em
+            <a href="{% url 'cashback_vale_a_pena' %}">cashback na Shopee vale a
+            pena?</a>), os quatro status do saldo e o prazo de liberação estão
+            documentados nas <a href="{% url 'regras_cashback' %}">regras do
+            cashback</a>, o saque é feito via PIX sem taxa e a política de
+            privacidade detalha exatamente quais dados são coletados — tudo isso
+            explicado em <a href="{% url 'e_confiavel' %}">a cash-b é confiável?</a>
+        </p>
+
+        <a class="botao-primario" href="{% url 'registrar' %}">Criar conta grátis</a>
+    </div>
+{% endblock %}

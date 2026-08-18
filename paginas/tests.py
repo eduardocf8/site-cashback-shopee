@@ -19,6 +19,7 @@ class MetaSocialTests(TestCase):
             ("regras", reverse("regras_cashback")),
             ("vale a pena", reverse("cashback_vale_a_pena")),
             ("e confiavel", reverse("e_confiavel")),
+            ("checklist confiavel", reverse("checklist_cashback_confiavel")),
         ]
 
     def test_paginas_publicas_respondem_200(self):
@@ -57,6 +58,8 @@ class MetaSocialTests(TestCase):
         self.assertIn('content="Cashback na Shopee vale a pena? — cash-b"', html)
         html = self.client.get(reverse("e_confiavel")).content.decode()
         self.assertIn('content="A cash-b é confiável? — cash-b"', html)
+        html = self.client.get(reverse("checklist_cashback_confiavel")).content.decode()
+        self.assertIn('content="Como saber se um site de cashback é confiável — cash-b"', html)
 
     def test_canonica_das_ofertas_ignora_filtros(self):
         # Categoria, busca e ordenação são query params sobre o mesmo conteúdo: todas

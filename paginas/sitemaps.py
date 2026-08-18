@@ -15,6 +15,7 @@ class PaginasEstaticasSitemap(Sitemap):
         # prioridade da FAQ/regras.
         "cashback_vale_a_pena": 0.6,
         "e_confiavel": 0.6,
+        "checklist_cashback_confiavel": 0.6,
         "registrar": 0.5,
         "contato": 0.5,
         "termos_de_uso": 0.3,

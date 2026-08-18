@@ -56,6 +56,10 @@ def e_confiavel(request):
     return render(request, "paginas/e_confiavel.html", contexto)
 
 
+def checklist_cashback_confiavel(request):
+    return render(request, "paginas/checklist_cashback_confiavel.html")
+
+
 def contato(request):
     if request.method == "POST":
         form = ContatoForm(request.POST)
