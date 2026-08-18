@@ -90,6 +90,16 @@ body {
     z-index: -1;
 }
 
+/* botão de call-to-action — usado nas páginas de conteúdo (ex: /cash-b-e-confiavel/)
+   pra converter quem chegou via busca, diferente das páginas legais ao lado que só
+   têm link de texto. */
+.botao-primario {
+    display: inline-block; background: var(--brand); color: var(--paper);
+    padding: 12px 24px; border-radius: 8px; text-decoration: none; font-weight: 600;
+    margin-top: 8px;
+}
+.botao-primario:hover { background: var(--brand-strong); }
+
 /* card de oferta — compartilhado entre a home (Em alta) e /ofertas/ (grade completa).
    Ver ofertas/templates/ofertas/_card.html pro markup. */
 .grade-ofertas {

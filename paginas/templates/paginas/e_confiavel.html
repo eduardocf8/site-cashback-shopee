@@ -1,0 +1,67 @@
+{% extends "accounts/base.html" %}
+{% block titulo %}A cash-b é confiável?{% endblock %}
+{% block meta_descricao %}Como a cash-b calcula o cashback, protege seus dados e paga o saque — de forma transparente, sem letras miúdas.{% endblock %}
+{% block largura_container %}760px{% endblock %}
+{% block meta_social %}
+    {% include "_meta_social.html" with titulo="A cash-b é confiável? — cash-b" descricao="Como a cash-b calcula o cashback, protege seus dados e paga o saque — de forma transparente, sem letras miúdas." %}
+{% endblock %}
+{% block conteudo %}
+    <div class="nav-topo">
+        <a href="{% url 'home' %}">&larr; Voltar pro início</a>
+    </div>
+    <h1>A cash-b é confiável?</h1>
+    <p class="atualizado-em">Última atualização: 18 de agosto de 2026.</p>
+
+    <div class="texto-legal">
+        <p>
+            É uma pergunta justa antes de cadastrar seu CPF e sua chave PIX em
+            qualquer site novo. Aqui está exatamente como a cash-b funciona por
+            trás, sem enrolação.
+        </p>
+
+        <h2>O cashback vem de onde você já compra</h2>
+        <p>
+            A cash-b não inventa nem estima o cashback: ele nasce da comissão de
+            afiliado que a própria Shopee paga quando você compra através de um
+            link gerado pela cash-b. Os detalhes de como esse valor é calculado,
+            os quatro status do saldo (pendente, validado, liberado, cancelado) e
+            o prazo de liberação estão explicados, com exemplos, nas
+            <a href="{% url 'regras_cashback' %}">regras do cashback</a>.
+        </p>
+
+        <h2>Como o saque é pago</h2>
+        <p>
+            O saldo liberado pode ser sacado via PIX a partir de
+            R$ {{ saque_valor_minimo|floatformat:2 }}, direto pra chave PIX
+            cadastrada na sua conta. O pagamento é processado através da Asaas,
+            uma instituição de pagamento — a cash-b nunca guarda dados de cartão
+            nem movimenta o saque por fora desse processo.
+        </p>
+
+        <h2>Seus dados são protegidos</h2>
+        <p>
+            Sua senha fica criptografada — nem a nossa equipe consegue vê-la — e o
+            site usa HTTPS em todas as páginas. A Shopee recebe só um identificador
+            do seu clique pra rastrear a compra, não o seu CPF ou e-mail. Os
+            detalhes completos de quais dados coletamos e com quem são
+            compartilhados estão na <a href="{% url 'privacidade' %}">política de
+            privacidade</a>.
+        </p>
+
+        <h2>Usar custa alguma coisa?</h2>
+        <p>
+            Não. Cadastro é grátis, não tem mensalidade, taxa de saque ou qualquer
+            cobrança escondida. Você só recebe dinheiro de volta, nunca paga nada
+            pra usar a cash-b.
+        </p>
+
+        <h2>Ainda com dúvida?</h2>
+        <p>
+            Dá uma olhada nas <a href="{% url 'faq' %}">perguntas frequentes</a> ou
+            <a href="{% url 'contato' %}">fale com a gente</a> diretamente — a
+            gente responde.
+        </p>
+
+        <a class="botao-primario" href="{% url 'registrar' %}">Criar conta grátis</a>
+    </div>
+{% endblock %}
