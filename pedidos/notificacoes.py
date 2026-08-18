@@ -57,6 +57,9 @@ def notificar_indicador_bonus_pendente(indicacao):
         "validada! 🎉\n\n"
         "Isso significa que o SEU próximo pedido validado vai vir com o dobro de "
         "cashback. Aproveite!\n\n"
+        "Se estiver rolando uma campanha de cashback extra, seu pedido já vem com o "
+        "valor aumentado da campanha e o bônus da indicação fica guardado para o "
+        "pedido seguinte, depois que ela terminar.\n\n"
         "Equipe cash-b"
     )
     _enviar(indicador, "cash-b — sua indicação validou! seu próximo pedido vem em dobro", corpo)
