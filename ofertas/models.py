@@ -50,13 +50,22 @@ class Oferta(models.Model):
         return self.percentual_comissao * Decimal("100") * repasse
 
     @property
+    def _limite_por_produto(self) -> Decimal:
+        """Teto por produto vigente, já com o multiplicador de campanha - numa campanha
+        de cashback em dobro o teto dobra junto, igual a pedidos/services.py. Usa o
+        multiplicador atual (e não um congelado) porque aqui é estimativa de uma compra
+        que ainda vai acontecer, então vale o que estiver valendo na hora da compra."""
+        return Decimal(str(settings.CASHBACK_MAXIMO_POR_PRODUTO)) * Decimal(
+            str(settings.CASHBACK_MULTIPLICADOR_CAMPANHA)
+        )
+
+    @property
     def valor_cashback_estimado(self) -> Decimal:
-        """Estimativa em R$ do cashback sobre o preço mínimo, já limitada a
-        CASHBACK_MAXIMO_POR_PRODUTO - mesmo teto aplicado de verdade em
-        pedidos/services.py, pra nunca mostrar um valor maior do que o que é pago."""
-        limite = Decimal(str(settings.CASHBACK_MAXIMO_POR_PRODUTO))
+        """Estimativa em R$ do cashback sobre o preço mínimo, já limitada ao teto por
+        produto - mesmo teto aplicado de verdade em pedidos/services.py, pra nunca
+        mostrar um valor diferente do que é pago."""
         valor_bruto = self.preco_min * self._percentual_cashback_bruto / Decimal("100")
-        return min(valor_bruto, limite).quantize(Decimal("0.01"))
+        return min(valor_bruto, self._limite_por_produto).quantize(Decimal("0.01"))
 
     @property
     def percentual_cashback(self) -> Decimal:
@@ -70,9 +79,8 @@ class Oferta(models.Model):
     def cashback_no_limite(self) -> bool:
         """True quando o teto por produto reduziu o cashback abaixo do que a comissão
         real permitiria - usado pra mostrar um aviso de transparência no site."""
-        limite = Decimal(str(settings.CASHBACK_MAXIMO_POR_PRODUTO))
         valor_bruto = self.preco_min * self._percentual_cashback_bruto / Decimal("100")
-        return valor_bruto > limite
+        return valor_bruto > self._limite_por_produto
 
 
 class CashbackMaximoCache(models.Model):

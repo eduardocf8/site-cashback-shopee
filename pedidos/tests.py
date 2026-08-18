@@ -387,6 +387,35 @@ class MultiplicadorCampanhaTests(TestCase):
         self.assertEqual(pedido.valor_cashback, Decimal("4.00"))
         self.assertEqual(pedido.multiplicador_campanha, Decimal("1"))
 
+    @override_settings(CASHBACK_MULTIPLICADOR_CAMPANHA=2)
+    @patch("pedidos.services.buscar_conversoes")
+    def test_teto_por_produto_dobra_junto_com_a_campanha(self, mock_buscar):
+        # Comissão de R$100: 20% = R$20, que passaria do teto normal de R$10. Numa
+        # campanha de cashback em dobro o teto vira R$20, senão o item de comissão alta
+        # ficaria capado no mesmo valor de sempre e não veria a campanha.
+        mock_buscar.return_value = {
+            "nodes": [
+                {
+                    "conversionId": "999",
+                    "purchaseTime": 1700000000,
+                    "utmContent": f"{self.click.sub_id_usuario()},{self.click.sub_id_click()}",
+                    "orders": [
+                        {
+                            "orderId": "ORD-TETO-CAMP",
+                            "orderStatus": "PENDING",
+                            "items": [{"completeTime": None, "itemTotalCommission": "100.00"}],
+                        }
+                    ],
+                }
+            ],
+            "pageInfo": {"hasNextPage": False, "scrollId": ""},
+        }
+
+        sincronizar(1690000000, 1700000000)
+
+        pedido = Pedido.objects.get(order_id="ORD-TETO-CAMP")
+        self.assertEqual(pedido.valor_cashback, Decimal("20.00"))
+
     @patch("pedidos.services.buscar_conversoes")
     def test_pedido_registrado_fora_da_campanha_guarda_multiplicador_1(self, mock_buscar):
         mock_buscar.return_value = self._pagina("ORD-CAMP-4")
@@ -513,6 +542,22 @@ class SincronizarBonusIndicacaoTests(TestCase):
 
     def _pagina(self, nodes):
         return {"nodes": nodes, "pageInfo": {"hasNextPage": False, "scrollId": ""}}
+
+    @override_settings(CASHBACK_MULTIPLICADOR_CAMPANHA=2)
+    @patch("pedidos.services.buscar_conversoes")
+    def test_bonus_de_indicacao_compoe_com_a_campanha_em_vez_de_ser_engolido(self, mock_buscar):
+        # Comissão alta o bastante pra bater no teto nos dois casos. Com campanha em
+        # dobro o teto do item vira R$20; o bônus de indicação dobra em cima disso e o
+        # teto dele precisa virar R$40 (10 x 2 campanha x 2 indicação). Se o teto da
+        # indicação ignorasse a campanha, ele ficaria em R$20 - o mesmo valor que o
+        # pedido já teria sem indicação nenhuma, ou seja, o bônus não pagaria nada.
+        mock_buscar.return_value = self._pagina([self._no(self.click_indicado, "ORD-IND-CAMP", "100.00")])
+
+        sincronizar(1690000000, 1700000000)
+
+        pedido = Pedido.objects.get(order_id="ORD-IND-CAMP")
+        self.assertEqual(pedido.multiplicador_campanha, Decimal("2"))
+        self.assertEqual(pedido.valor_cashback, Decimal("40.00"))
 
     @patch("pedidos.services.buscar_conversoes")
     def test_primeira_compra_validada_do_indicado_dobra_cashback(self, mock_buscar):

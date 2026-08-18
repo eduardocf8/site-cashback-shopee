@@ -94,10 +94,15 @@ CAMPOS_ATUALIZAVEIS = [
 ]
 
 
-def _montar_defaults(conversao, pedido_shopee, click, data_compra, percentual):
+def _montar_defaults(conversao, pedido_shopee, click, data_compra, percentual_base, multiplicador):
     status_shopee = mapear_status(pedido_shopee.get("orderStatus"))
     itens = pedido_shopee.get("items", [])
-    limite_por_produto = Decimal(str(settings.CASHBACK_MAXIMO_POR_PRODUTO))
+    # O teto acompanha o multiplicador de campanha: numa campanha de cashback em dobro,
+    # o teto também dobra. Sem isso, item de comissão alta ficaria capado no mesmo valor
+    # de sempre e não veria diferença nenhuma na campanha. Mesma lógica que
+    # _limite_cashback_indicacao aplica ao bônus de indicação.
+    percentual = percentual_base * multiplicador
+    limite_por_produto = Decimal(str(settings.CASHBACK_MAXIMO_POR_PRODUTO)) * multiplicador
 
     # O teto é por produto, não por pedido - por isso cada item é limitado individualmente
     # antes de somar. itemTotalCommission já inclui o bônus de campanha do vendedor quando
@@ -180,7 +185,7 @@ def _montar_linhas(brutos_por_order_id: dict[str, tuple], percentual_base: Decim
     for order_id, (conversao, pedido_shopee, click, data_compra) in brutos_por_order_id.items():
         multiplicador = ja_gravados.get(order_id, multiplicador_atual)
         defaults = _montar_defaults(
-            conversao, pedido_shopee, click, data_compra, percentual_base * multiplicador
+            conversao, pedido_shopee, click, data_compra, percentual_base, multiplicador
         )
         defaults["multiplicador_campanha"] = multiplicador
         linhas[order_id] = defaults
@@ -281,14 +286,23 @@ def sincronizar(purchase_time_start: int, purchase_time_end: int) -> dict:
     return {"novos": novos, "atualizados": atualizados, "nao_identificados": nao_identificados}
 
 
-def _limite_cashback_indicacao() -> Decimal:
+def _limite_cashback_indicacao(multiplicador_campanha: Decimal) -> Decimal:
     """Teto do cashback num pedido com bônus de indicação: o teto normal por produto
     (CASHBACK_MAXIMO_POR_PRODUTO) x o multiplicador de indicação. Existe porque o teto
     normal é por produto, não por pedido - um pedido com mais de um item já pode somar
     mais que o teto de um produto só antes do dobro entrar em cena (ex: 2 itens capados
     a R$10 cada = R$20 no pedido), e sem esse teto o dobro multiplicaria esse total em
-    vez de dobrar só o limite de um produto."""
-    return Decimal(str(settings.CASHBACK_MAXIMO_POR_PRODUTO)) * Decimal(str(settings.CASHBACK_MULTIPLICADOR_INDICACAO))
+    vez de dobrar só o limite de um produto.
+
+    Os dois multiplicadores se compõem: num pedido feito durante uma campanha de
+    cashback em dobro, o teto por item já dobrou em _montar_defaults, então o teto da
+    indicação precisa dobrar junto - senão o bônus de indicação seria inteiramente
+    engolido pelo teto e a segunda promessa não pagaria nada."""
+    return (
+        Decimal(str(settings.CASHBACK_MAXIMO_POR_PRODUTO))
+        * multiplicador_campanha
+        * Decimal(str(settings.CASHBACK_MULTIPLICADOR_INDICACAO))
+    )
 
 
 def _reaplicar_bonus_ja_concedido(linhas_por_order_id: dict[str, dict]) -> None:
@@ -306,11 +320,11 @@ def _reaplicar_bonus_ja_concedido(linhas_por_order_id: dict[str, dict]) -> None:
     ).select_related("pedido_bonus_indicado", "pedido_bonus_indicador")
 
     multiplicador = Decimal(str(settings.CASHBACK_MULTIPLICADOR_INDICACAO))
-    limite = _limite_cashback_indicacao()
     for indicacao in indicacoes:
         for pedido_bonus in (indicacao.pedido_bonus_indicado, indicacao.pedido_bonus_indicador):
             if pedido_bonus and pedido_bonus.order_id in linhas_por_order_id:
                 defaults = linhas_por_order_id[pedido_bonus.order_id]
+                limite = _limite_cashback_indicacao(defaults["multiplicador_campanha"])
                 defaults["valor_cashback"] = min(
                     (defaults["valor_cashback"] * multiplicador).quantize(Decimal("0.01")), limite
                 )
@@ -345,10 +359,10 @@ def _selecionar_bonus_indicacao(recem_validados: list[Pedido]) -> list[tuple[Ind
             indicador_fila[i.indicador_id].append(i)
 
     multiplicador = Decimal(str(settings.CASHBACK_MULTIPLICADOR_INDICACAO))
-    limite = _limite_cashback_indicacao()
     epoca_minima = datetime.min.replace(tzinfo=dt_timezone.utc)
     vinculos = []
     for pedido in sorted(recem_validados, key=lambda p: p.data_compra or epoca_minima):
+        limite = _limite_cashback_indicacao(pedido.multiplicador_campanha)
         if pedido.usuario_id in indicado_pendente:
             indicacao = indicado_pendente.pop(pedido.usuario_id)
             pedido.valor_cashback = min((pedido.valor_cashback * multiplicador).quantize(Decimal("0.01")), limite)
