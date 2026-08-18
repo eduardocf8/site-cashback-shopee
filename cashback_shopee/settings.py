@@ -345,6 +345,15 @@ EMAIL_BACKEND = (
 EMAIL_TIMEOUT = int(os.environ.get("EMAIL_TIMEOUT", "10"))
 DEFAULT_FROM_EMAIL = os.environ.get("DEFAULT_FROM_EMAIL", "cash-b <contato@cash-b.com>")
 
+# Notificações push do PWA (Web Push/VAPID). Sem as duas chaves configuradas, o botão
+# "Ativar notificações" no painel some e nenhum push é enviado - só os e-mails de
+# sempre continuam funcionando. Gerar um par novo com:
+#   python -c "from py_vapid import Vapid02; v = Vapid02(); v.generate_keys(); ..."
+# (ver accounts/push.py para o helper completo de geração).
+VAPID_PUBLIC_KEY = os.environ.get("VAPID_PUBLIC_KEY", "")
+VAPID_PRIVATE_KEY = os.environ.get("VAPID_PRIVATE_KEY", "")
+VAPID_CLAIMS_EMAIL = os.environ.get("VAPID_CLAIMS_EMAIL", "contato@cash-b.com")
+
 # Por padrão, o Django só manda os próprios logs de erro (ex: falha ao enviar
 # e-mail de redefinição de senha) pro console quando DEBUG=True - em produção
 # eles ficam invisíveis. Isso garante que sempre apareçam nos logs do Render.

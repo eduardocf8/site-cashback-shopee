@@ -5,6 +5,7 @@ from django.conf import settings
 from django.db import connection
 from django.http import HttpResponse, HttpResponseForbidden, JsonResponse
 from django.utils import timezone
+from django.views.decorators.cache import cache_control
 
 from instagram_bot.lembrete_token import verificar_validade_token
 from instagram_bot.services import executar_publicacoes_do_dia, publicar_story_oferta_do_momento
@@ -51,6 +52,21 @@ def healthcheck(request):
 def robots_txt(request):
     conteudo = ROBOTS_TXT.format(scheme="https" if request.is_secure() else "http", host=request.get_host())
     return HttpResponse(conteudo, content_type="text/plain")
+
+
+@cache_control(max_age=0, no_cache=True)
+def service_worker(request):
+    """Serve o arquivo em /sw.js (raiz do site), não em /static/sw.js.
+
+    Escopo de um service worker é limitado à pasta de onde ele é servido - registrado
+    em /static/sw.js ele só enxergaria páginas dentro de /static/. Servido na raiz,
+    cobre o site inteiro, que é o que a notificação push precisa (o evento "push"
+    chega no service worker mesmo com o site fechado, então ele não pode estar restrito
+    a uma rota específica). "no-cache" evita o navegador prender numa versão antiga do
+    arquivo depois de um deploy - sem isso, dá pra levar até 24h pra pegar uma atualização.
+    """
+    caminho = settings.BASE_DIR / "static" / "sw.js"
+    return HttpResponse(caminho.read_text(), content_type="application/javascript")
 
 
 def _token_valido(request) -> bool:

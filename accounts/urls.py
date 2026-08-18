@@ -11,6 +11,8 @@ urlpatterns = [
     path("chave-pix/", views.editar_chave_pix, name="editar_chave_pix"),
     path("chave-pix/excluir/", views.excluir_chave_pix, name="excluir_chave_pix"),
     path("editar-perfil/", views.editar_perfil, name="editar_perfil"),
+    path("notificacoes/inscrever/", views.inscrever_push, name="inscrever_push"),
+    path("notificacoes/desinscrever/", views.desinscrever_push, name="desinscrever_push"),
     path("verificar-email/<str:token>/", views.verificar_email, name="verificar_email"),
     path("reenviar-verificacao/", views.reenviar_verificacao, name="reenviar_verificacao"),
     path(

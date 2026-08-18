@@ -17,6 +17,21 @@ class HealthcheckTests(TestCase):
         self.assertEqual(resposta.status_code, 503)
 
 
+class ServiceWorkerTests(TestCase):
+    def test_servido_na_raiz_com_content_type_de_javascript(self):
+        # Precisa estar em /sw.js (raiz), não em /static/sw.js - o escopo de um service
+        # worker é limitado à pasta de onde ele é servido, e o push precisa alcançar o
+        # site inteiro, não só /static/.
+        resposta = self.client.get("/sw.js")
+        self.assertEqual(resposta.status_code, 200)
+        self.assertEqual(resposta["Content-Type"], "application/javascript")
+        self.assertIn(b'addEventListener("push"', resposta.content)
+
+    def test_nao_fica_em_cache(self):
+        resposta = self.client.get("/sw.js")
+        self.assertIn("no-cache", resposta["Cache-Control"])
+
+
 @override_settings(TAREFAS_TOKEN="segredo-de-teste")
 class ExecutarTarefasAgendadasTests(TestCase):
     def test_sem_token_retorna_forbidden(self):

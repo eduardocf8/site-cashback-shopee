@@ -1,7 +1,7 @@
 from django.contrib import admin
 from django.contrib.auth.admin import UserAdmin as BaseUserAdmin
 
-from .models import ConfiguracaoIndicacao, Indicacao, User
+from .models import ConfiguracaoIndicacao, Indicacao, PushSubscription, User
 
 
 class UserAdmin(BaseUserAdmin):
@@ -33,6 +33,13 @@ class ConfiguracaoIndicacaoAdmin(admin.ModelAdmin):
 
     def has_delete_permission(self, request, obj=None):
         return False
+
+
+@admin.register(PushSubscription)
+class PushSubscriptionAdmin(admin.ModelAdmin):
+    list_display = ("usuario", "criado_em")
+    search_fields = ("usuario__username",)
+    autocomplete_fields = ("usuario",)
 
 
 admin.site.register(User, UserAdmin)
