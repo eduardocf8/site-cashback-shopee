@@ -127,6 +127,11 @@ SHOPEE_COMISSAO_VENDA_DIRETA = float(os.environ.get("SHOPEE_COMISSAO_VENDA_DIRET
 # bônus de vendedor da Shopee) - ex: 2 = "cashback em dobro" no mês de aniversário do
 # site. Fica em 1 o resto do tempo. Afeta o valor de cashback pago de verdade (não é só
 # um número de propaganda) - usado em pedidos/services.py, ofertas/models.py e no hero.
+#
+# Vale só pros pedidos registrados ENQUANTO a campanha está ligada: cada Pedido guarda
+# o multiplicador que valia quando entrou (campo multiplicador_campanha) e continua com
+# ele pra sempre. Ou seja, desligar a campanha não tira o dobro de quem comprou durante
+# ela, e ligar não dobra retroativamente quem comprou antes.
 CASHBACK_MULTIPLICADOR_CAMPANHA = float(os.environ.get("CASHBACK_MULTIPLICADOR_CAMPANHA", "1"))
 
 # Fallback do "até X%" anunciado no hero da home, só usado antes da primeira
