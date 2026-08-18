@@ -11,3 +11,8 @@ media/
 *.crt
 *.key
 secrets/
+
+# Emissor de NFS-e (nfse_emissor/) - dados reais e certificado A1, nunca no repositório
+nfse_emissor/comissoes.csv
+nfse_emissor/notas_emitidas/
+*.pfx
