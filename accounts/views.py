@@ -1,3 +1,4 @@
+import json
 from decimal import Decimal
 
 from django.conf import settings
@@ -6,8 +7,10 @@ from django.contrib.auth import get_user_model, login
 from django.contrib.auth.decorators import login_required
 from django.core.paginator import Paginator
 from django.db.models import Sum
+from django.http import JsonResponse
 from django.shortcuts import redirect, render
 from django.urls import reverse
+from django.views.decorators.http import require_POST
 
 from links.models import Click
 from pedidos.models import Pedido
@@ -15,7 +18,7 @@ from saques.models import Saque
 from saques.services import calcular_saldo_disponivel
 
 from .forms import ChavePixForm, EditarPerfilForm, RegistroForm
-from .models import ConfiguracaoIndicacao, Indicacao
+from .models import ConfiguracaoIndicacao, Indicacao, PushSubscription
 from .tokens import enviar_email_verificacao, validar_token_verificacao
 
 User = get_user_model()
@@ -151,6 +154,7 @@ def dashboard(request):
         "link_indicacao": link_indicacao,
         "indicacoes": indicacoes,
         "indicacoes_concluidas": indicacoes_concluidas,
+        "vapid_public_key": settings.VAPID_PUBLIC_KEY,
     }
     return render(request, "accounts/dashboard.html", contexto)
 
@@ -209,3 +213,33 @@ def editar_perfil(request):
         form = EditarPerfilForm(instance=request.user)
 
     return render(request, "accounts/editar_perfil.html", {"form": form})
+
+
+@login_required
+@require_POST
+def inscrever_push(request):
+    try:
+        dados = json.loads(request.body)
+        endpoint = dados["endpoint"]
+        chave_p256dh = dados["keys"]["p256dh"]
+        chave_auth = dados["keys"]["auth"]
+    except (KeyError, ValueError, TypeError):
+        return JsonResponse({"erro": "Dados de inscrição inválidos."}, status=400)
+
+    PushSubscription.objects.update_or_create(
+        endpoint=endpoint,
+        defaults={"usuario": request.user, "chave_p256dh": chave_p256dh, "chave_auth": chave_auth},
+    )
+    return JsonResponse({"ok": True})
+
+
+@login_required
+@require_POST
+def desinscrever_push(request):
+    try:
+        endpoint = json.loads(request.body)["endpoint"]
+    except (KeyError, ValueError, TypeError):
+        return JsonResponse({"erro": "Dados de inscrição inválidos."}, status=400)
+
+    PushSubscription.objects.filter(usuario=request.user, endpoint=endpoint).delete()
+    return JsonResponse({"ok": True})

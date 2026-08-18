@@ -3,6 +3,8 @@ import logging
 from django.core.mail import EmailMessage
 from django.utils.formats import number_format
 
+from accounts.push import enviar_push
+
 logger = logging.getLogger(__name__)
 
 
@@ -31,6 +33,12 @@ def notificar_pedido_validado(pedido):
         "Equipe cash-b"
     )
     _enviar(pedido.usuario, "cash-b — seu pedido foi validado", corpo)
+    enviar_push(
+        pedido.usuario,
+        "Pedido validado!",
+        f'"{produto}" — R$ {valor} de cashback, liberado pra saque em {prazo}.',
+        url="/dashboard/#pedidos",
+    )
 
 
 def notificar_pedido_liberado(pedido):
@@ -43,6 +51,12 @@ def notificar_pedido_liberado(pedido):
         "Equipe cash-b"
     )
     _enviar(pedido.usuario, "cash-b — cashback liberado pra saque", corpo)
+    enviar_push(
+        pedido.usuario,
+        "Cashback liberado!",
+        f'R$ {valor} de "{produto}" já pode ser sacado via PIX.',
+        url="/dashboard/#saques",
+    )
 
 
 def notificar_indicador_bonus_pendente(indicacao):
@@ -63,3 +77,9 @@ def notificar_indicador_bonus_pendente(indicacao):
         "Equipe cash-b"
     )
     _enviar(indicador, "cash-b — sua indicação validou! seu próximo pedido vem em dobro", corpo)
+    enviar_push(
+        indicador,
+        "Sua indicação validou!",
+        f"@{indicacao.indicado.username} teve a 1ª compra validada — seu próximo pedido vem em dobro.",
+        url="/dashboard/#indicacoes",
+    )
