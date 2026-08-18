@@ -25,7 +25,7 @@
     window.addEventListener("beforeinstallprompt", function (evento) {
         evento.preventDefault();
         eventoInstalacao = evento;
-        texto.textContent = "Instale o cash-b na tela inicial pra acessar mais rápido.";
+        texto.textContent = "Instale a cash-b na tela inicial pra acessar mais rápido.";
         botaoAcao.hidden = false;
         botaoAcao.textContent = "Instalar";
         banner.hidden = false;
@@ -43,7 +43,7 @@
     window.addEventListener("appinstalled", fechar);
 
     if (ehIOS && ehSafari) {
-        texto.innerHTML = 'Instale o cash-b: toque em <strong>Compartilhar</strong> e depois em <strong>"Adicionar à Tela de Início"</strong>.';
+        texto.innerHTML = 'Instale a cash-b: toque em <strong>Compartilhar</strong> e depois em <strong>"Adicionar à Tela de Início"</strong>.';
         botaoAcao.hidden = true;
         banner.hidden = false;
     }

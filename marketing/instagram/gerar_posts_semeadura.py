@@ -67,7 +67,7 @@ def render(name, body_html, filename):
         browser.close()
     print("gerado:", filename)
 
-# ---------- Post 1: O que é o cash-b (cover) ----------
+# ---------- Post 1: O que é a cash-b (cover) ----------
 render("cover", f"""
 <div class="canvas" style="background:{COLORS['brand']}; color:{COLORS['paper']}; justify-content:center; align-items:center; text-align:center;">
     <div style="font-size:130px; font-weight:700; letter-spacing:-0.02em;">cash-b</div>

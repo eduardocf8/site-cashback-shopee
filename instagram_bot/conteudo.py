@@ -2,12 +2,12 @@
 
 Calendário (ver marketing/instagram/README.md para o histórico da decisão):
     - Stories:
-        segunda a sexta -> NUMERO_STORIES_OFERTAS_POR_DIA stories de oferta ao longo
-                           do dia (1 categoria mais vendida por story - ver
-                           instagram_bot/services.py, chamado várias vezes ao dia por
-                           um cron dedicado, não pela tarefa diária única)
-        sábado          -> dica de economia (banco DICAS, rotativo)
-        domingo         -> lembrete de cashback (banco LEMBRETES, rotativo)
+        todo dia -> NUMERO_STORIES_OFERTAS_POR_DIA stories de oferta ao longo do dia
+                    (1 categoria mais vendida por story - ver instagram_bot/services.py,
+                    chamado várias vezes ao dia por um cron dedicado, não pela tarefa
+                    diária única)
+        sábado    -> além das ofertas, 1 dica de economia (banco DICAS, rotativo)
+        domingo   -> além das ofertas, 1 lembrete de cashback (banco LEMBRETES, rotativo)
     - Posts no feed, 2x por semana:
         quarta -> institucional (banco POSTS_INSTITUCIONAIS, rotativo)
         sexta  -> melhores ofertas da semana
@@ -18,8 +18,8 @@ SEGUNDA, TERCA, QUARTA, QUINTA, SEXTA, SABADO, DOMINGO = range(7)
 
 # Dias em que postamos stories de oferta (ver instagram_bot/services.py,
 # publicar_story_oferta_do_momento - chamado várias vezes ao dia, não é a tarefa
-# diária única).
-DIAS_COM_STORIES_DE_OFERTA = (SEGUNDA, TERCA, QUARTA, QUINTA, SEXTA)
+# diária única). Todo dia da semana, incluindo fim de semana.
+DIAS_COM_STORIES_DE_OFERTA = (SEGUNDA, TERCA, QUARTA, QUINTA, SEXTA, SABADO, DOMINGO)
 
 DICAS = [
     "Sempre confira se tem cupom disponível antes de finalizar a compra: cashback e cupom não se excluem.",
@@ -37,7 +37,7 @@ LEMBRETES = [
     "Cadastro grátis, cashback de verdade. Simples assim.",
     "Você compra do jeito que já compra — a diferença é que parte volta pra você.",
     "Sem letra miúda. O que você vê é o que você recebe.",
-    "Já usou o cash-b essa semana?",
+    "Já usou a cash-b essa semana?",
 ]
 
 # Cada um dos 8 temas institucionais originais (ver marketing/instagram/README.md pro
@@ -49,7 +49,7 @@ POSTS_INSTITUCIONAIS = [
     {
         "texto": "Cash-b: parte do que você gasta na Shopee volta pro seu bolso.",
         "legenda": (
-            "O cash-b é simples: você compra na Shopee do jeito que já compra, e recebe parte do "
+            "A cash-b é simples: você compra na Shopee do jeito que já compra, e recebe parte do "
             "dinheiro de volta. 💸 Sem mensalidade, sem pegadinha — só cashback de verdade caindo "
             "no seu saldo. 💚\nAinda não conhece? Link na bio.\n"
             "#cashback #shopee #cashbackshopee #economia #dinheirodevolta"
@@ -74,7 +74,7 @@ POSTS_INSTITUCIONAIS = [
     {
         "texto": "Sem burocracia: link, compra, e o cashback cai sozinho.",
         "legenda": (
-            "Resumindo o cash-b em uma frase: gera o link, compra na Shopee, e o cashback aparece "
+            "Resumindo a cash-b em uma frase: gera o link, compra na Shopee, e o cashback aparece "
             "no seu saldo assim que a Shopee confirma. 🔗🛍️💰 Nenhum passo a mais que isso.\n"
             "Link na bio pra começar.\n#cashback #shopee #comofunciona"
         ),
@@ -136,7 +136,7 @@ POSTS_INSTITUCIONAIS = [
     {
         "texto": "Cashback que realmente cai na sua conta. Sem pegadinha.",
         "legenda": (
-            "Zero taxa escondida, zero mensalidade, zero desculpa. O cash-b existe pra uma coisa só: "
+            "Zero taxa escondida, zero mensalidade, zero desculpa. A cash-b existe pra uma coisa só: "
             "colocar parte do que você já gasta na Shopee de volta no seu bolso. ✅\n"
             "#cashback #semmensalidade #shopee"
         ),
@@ -152,7 +152,7 @@ POSTS_INSTITUCIONAIS = [
     {
         "texto": "Todo real que você já ia gastar volta pro seu bolso.",
         "legenda": (
-            "A conta é simples: você já compra na Shopee de qualquer jeito — com o cash-b, parte "
+            "A conta é simples: você já compra na Shopee de qualquer jeito — com a cash-b, parte "
             "desse dinheiro volta pra você em vez de ficar só na loja. 💰📈\n"
             "#cashback #economia #shopee #dinheirodevolta"
         ),
@@ -167,7 +167,7 @@ POSTS_INSTITUCIONAIS = [
     {
         "texto": "Sem custo pra começar: cadastre-se e ganhe cashback.",
         "legenda": (
-            "Criar sua conta no cash-b não custa nada e leva menos de um minuto. 🚀 Depois é só "
+            "Criar sua conta na cash-b não custa nada e leva menos de um minuto. 🚀 Depois é só "
             "comprar na Shopee normalmente e ver o saldo crescer.\n👉 cash-b.com\n#cashback #shopee #cadastrese"
         ),
     },

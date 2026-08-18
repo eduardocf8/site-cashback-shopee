@@ -49,8 +49,9 @@ pasta, pra não ficar vazio quando a automação for ligada de verdade — ver
      no repositório. O access token dura 60 dias e precisa de renovação
      (tratar isso na Fase 4).
 2. **Definir conteúdo e frequência** — ✅ concluído. Calendário definido:
-   - **Stories**: seg–sex, `NUMERO_STORIES_OFERTAS_POR_DIA` (5) stories de
-     oferta espalhados ao longo do dia (cron dedicado,
+   - **Stories**: todo dia (`DIAS_COM_STORIES_DE_OFERTA`, inclui fim de
+     semana desde 2026-08-14), `NUMERO_STORIES_OFERTAS_POR_DIA` (5) stories
+     de oferta espalhados ao longo do dia (cron dedicado,
      `.github/workflows/stories-oferta.yml`, chama
      `/tarefas/postar-story-oferta/` várias vezes ao dia) - 1 oferta por
      story, 1 categoria (nível 1) diferente por vez, entre as categorias
@@ -60,8 +61,18 @@ pasta, pra não ficar vazio quando a automação for ligada de verdade — ver
      `instagram_bot/services.py`, `publicar_story_oferta_do_momento`). De
      propósito **não** é 1 story só com várias ofertas juntas: o perfil
      não é só sobre ofertas, então evita "bombardear" o feed de stories.
-     Sábado dica de economia (rotativo); domingo lembrete de cashback
-     (mensagem de marca) - esses dois continuam na tarefa diária única.
+     **Não repete produto em `DIAS_SEM_REPETIR_OFERTA` (7) dias** (só
+     dentro do mesmo dia não é suficiente - a sincronização diária com a
+     Shopee é um "retrato" sem histórico, ver `sincronizar_ofertas`, e
+     tende a devolver os mesmos best-sellers de um dia pro outro, então
+     sem esse intervalo o mesmo produto aparecia quase todo dia - ver
+     `_escolher_oferta_do_momento`). Categoria continua só sem repetir no
+     mesmo dia (são poucas categorias - valer pra semana esgotaria as
+     candidatas logo no 2º dia).
+     Sábado tem, além das ofertas, 1 dica de economia (rotativo);
+     domingo tem, além das ofertas, 1 lembrete de cashback (mensagem de
+     marca) - esses dois continuam vindo da tarefa diária única, não do
+     cron de ofertas.
    - **Posts no feed (2x por semana)**: quarta = post institucional
      (benefícios, curiosidades, como funciona, como usar); sexta = resumo
      das melhores ofertas da semana.

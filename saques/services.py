@@ -43,6 +43,24 @@ def calcular_saldo_disponivel(usuario) -> Decimal:
     return liberado - reservado
 
 
+def calcular_resumo_saldo_nav(usuario) -> dict:
+    """Saldo ainda disponível pra saque e a soma de pendente+validado, para o menu de
+    conta no topo do site."""
+    saldos_por_status = {
+        linha["status"]: linha["total"] or Decimal("0")
+        for linha in Pedido.objects.filter(usuario=usuario).values("status").annotate(total=Sum("valor_cashback"))
+    }
+    return {
+        # Saldo disponível, não o total histórico já liberado - senão continuava
+        # mostrando um valor que a pessoa já sacou como se ainda desse pra sacar de novo.
+        "saldo_liberado_nav": calcular_saldo_disponivel(usuario),
+        "saldo_outros_nav": (
+            saldos_por_status.get(Pedido.STATUS_PENDENTE, Decimal("0"))
+            + saldos_por_status.get(Pedido.STATUS_VALIDADO, Decimal("0"))
+        ),
+    }
+
+
 def solicitar_saque(usuario) -> Saque:
     """Cria uma solicitação de saque do saldo disponível total do usuário."""
     if not usuario.chave_pix or not usuario.tipo_chave_pix:

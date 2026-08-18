@@ -24,8 +24,8 @@ def cookies(request):
 
 def regras_cashback(request):
     contexto = {
-        "percentual_repasse": settings.SHOPEE_CASHBACK_PERCENTUAL * settings.CASHBACK_MULTIPLICADOR_CAMPANHA,
         "saque_valor_minimo": settings.SAQUE_VALOR_MINIMO,
+        "cashback_maximo_por_produto": settings.CASHBACK_MAXIMO_POR_PRODUTO,
     }
     return render(request, "paginas/regras_cashback.html", contexto)
 

@@ -1,15 +1,18 @@
 import re
+from collections import defaultdict
 from datetime import date, datetime, timezone as dt_timezone
 from decimal import Decimal
 
 from django.conf import settings
+from django.db.models import Q
 from django.utils import timezone
 
+from accounts.models import Indicacao
 from links.models import Click
 from links.shopee_client import buscar_conversoes
 
 from .models import Pedido
-from .notificacoes import notificar_pedido_liberado, notificar_pedido_validado
+from .notificacoes import notificar_indicador_bonus_pendente, notificar_pedido_liberado, notificar_pedido_validado
 
 PADRAO_USUARIO = re.compile(r"^user(\d+)$")
 PADRAO_UUID_HEX = re.compile(r"^[0-9a-fA-F]{32}$")
@@ -64,7 +67,7 @@ def _converter_timestamp(valor):
 
 
 def calcular_data_prevista_liberacao(data_validacao):
-    """1º dia do mês seguinte a dois meses após a validação (mês N -> libera no mês N+2)."""
+    """Dia 1º do segundo mês seguinte ao mês da validação (mês N -> libera no mês N+2)."""
     if not data_validacao:
         return None
     mes = data_validacao.month + 2
@@ -93,10 +96,26 @@ CAMPOS_ATUALIZAVEIS = [
 def _montar_defaults(conversao, pedido_shopee, click, data_compra, percentual):
     status_shopee = mapear_status(pedido_shopee.get("orderStatus"))
     itens = pedido_shopee.get("items", [])
-    comissao = sum(
-        (Decimal(str(item.get("itemTotalCommission") or "0")) for item in itens),
-        Decimal("0"),
-    )
+    limite_por_produto = Decimal(str(settings.CASHBACK_MAXIMO_POR_PRODUTO))
+
+    # O teto é por produto, não por pedido - por isso cada item é limitado individualmente
+    # antes de somar. itemTotalCommission já inclui o bônus de campanha do vendedor quando
+    # ativo (confirmado comparando com o painel oficial de afiliados da Shopee), então sem
+    # esse teto um único item de comissão alta pagaria um cashback desproporcional ao preço.
+    #
+    # Sem Click identificado, o pedido não veio daqui (outra campanha, compra pessoal etc.
+    # - ver OrigemFilter em pedidos/admin.py) e não tem usuário pra receber o cashback, então
+    # não faz sentido calcular um valor que nunca vai ser pago a ninguém. valor_comissao
+    # continua sendo somado normalmente - é o que a Shopee realmente paga pra conta de
+    # afiliado, independente da origem do pedido.
+    comissao = Decimal("0")
+    cashback = Decimal("0")
+    for item in itens:
+        comissao_item = Decimal(str(item.get("itemTotalCommission") or "0"))
+        comissao += comissao_item
+        if click:
+            cashback += min(comissao_item * percentual, limite_por_produto).quantize(Decimal("0.01"))
+
     tempos_conclusao = [item["completeTime"] for item in itens if item.get("completeTime")]
     data_validacao = _converter_timestamp(max(tempos_conclusao)) if tempos_conclusao else None
 
@@ -123,7 +142,7 @@ def _montar_defaults(conversao, pedido_shopee, click, data_compra, percentual):
         "status": status_shopee,
         "status_shopee_bruto": pedido_shopee.get("orderStatus") or "",
         "valor_comissao": comissao,
-        "valor_cashback": (comissao * percentual).quantize(Decimal("0.01")),
+        "valor_cashback": cashback,
         "produto_nome": ", ".join(nomes_produto)[:255],
         "produto_imagem_url": imagem_produto,
         "motivo_cancelamento": motivo_cancelamento,
@@ -171,6 +190,8 @@ def sincronizar(purchase_time_start: int, purchase_time_end: int) -> dict:
         if not pagina["pageInfo"].get("hasNextPage"):
             break
 
+    _reaplicar_bonus_ja_concedido(linhas_por_order_id)
+
     novos = 0
     atualizados = 0
     existentes = {p.order_id: p for p in Pedido.objects.filter(order_id__in=linhas_por_order_id.keys())}
@@ -200,6 +221,10 @@ def sincronizar(purchase_time_start: int, purchase_time_end: int) -> dict:
             if novo.status == Pedido.STATUS_VALIDADO:
                 recem_validados.append(novo)
 
+    # Dobra o cashback dos pedidos que disparam bônus de indicação antes de salvar -
+    # os objetos em recem_validados são os mesmos que estão em novos_objs/atualizados_objs.
+    vinculos_indicacao = _selecionar_bonus_indicacao(recem_validados)
+
     # batch_size evita um único UPDATE/INSERT gigante quando a janela de 60 dias
     # acumula muitos pedidos - sem isso, o Postgres pode demorar a ponto de
     # estourar o timeout do servidor (visto em produção com bulk_update sem lote).
@@ -208,11 +233,113 @@ def sincronizar(purchase_time_start: int, purchase_time_end: int) -> dict:
     if atualizados_objs:
         Pedido.objects.bulk_update(atualizados_objs, CAMPOS_ATUALIZAVEIS, batch_size=200)
 
+    _persistir_vinculos_indicacao(vinculos_indicacao)
+
+    for indicacao, campo, _order_id in vinculos_indicacao:
+        if campo == "pedido_bonus_indicado":
+            notificar_indicador_bonus_pendente(indicacao)
+
     for pedido in recem_validados:
         if pedido.usuario_id:
             notificar_pedido_validado(pedido)
 
     return {"novos": novos, "atualizados": atualizados, "nao_identificados": nao_identificados}
+
+
+def _limite_cashback_indicacao() -> Decimal:
+    """Teto do cashback num pedido com bônus de indicação: o teto normal por produto
+    (CASHBACK_MAXIMO_POR_PRODUTO) x o multiplicador de indicação. Existe porque o teto
+    normal é por produto, não por pedido - um pedido com mais de um item já pode somar
+    mais que o teto de um produto só antes do dobro entrar em cena (ex: 2 itens capados
+    a R$10 cada = R$20 no pedido), e sem esse teto o dobro multiplicaria esse total em
+    vez de dobrar só o limite de um produto."""
+    return Decimal(str(settings.CASHBACK_MAXIMO_POR_PRODUTO)) * Decimal(str(settings.CASHBACK_MULTIPLICADOR_INDICACAO))
+
+
+def _reaplicar_bonus_ja_concedido(linhas_por_order_id: dict[str, dict]) -> None:
+    """A Shopee reenvia o mesmo pedido validado em toda sincronização seguinte, e
+    _montar_defaults recalcula valor_cashback do zero a cada vez - sem isso, o dobro
+    de cashback já concedido por indicação seria substituído pelo valor normal na
+    primeira sincronização depois de concedido. Muta linhas_por_order_id em memória,
+    antes de qualquer Pedido ser criado/atualizado."""
+    order_ids = list(linhas_por_order_id.keys())
+    if not order_ids:
+        return
+
+    indicacoes = Indicacao.objects.filter(
+        Q(pedido_bonus_indicado__order_id__in=order_ids) | Q(pedido_bonus_indicador__order_id__in=order_ids)
+    ).select_related("pedido_bonus_indicado", "pedido_bonus_indicador")
+
+    multiplicador = Decimal(str(settings.CASHBACK_MULTIPLICADOR_INDICACAO))
+    limite = _limite_cashback_indicacao()
+    for indicacao in indicacoes:
+        for pedido_bonus in (indicacao.pedido_bonus_indicado, indicacao.pedido_bonus_indicador):
+            if pedido_bonus and pedido_bonus.order_id in linhas_por_order_id:
+                defaults = linhas_por_order_id[pedido_bonus.order_id]
+                defaults["valor_cashback"] = min(
+                    (defaults["valor_cashback"] * multiplicador).quantize(Decimal("0.01")), limite
+                )
+
+
+def _selecionar_bonus_indicacao(recem_validados: list[Pedido]) -> list[tuple[Indicacao, str, str]]:
+    """Decide quais pedidos recém-validados NESTA sincronização ganham o dobro de
+    cashback do programa "indique e ganhe", e já dobra o valor_cashback deles.
+
+    Só considera pedidos validando pela primeira vez agora (não todo pedido validado
+    já existente) - o vínculo gravado em Indicacao garante que o mesmo pedido continue
+    dobrado nas sincronizações seguintes, mesmo que a Shopee reenvie o mesmo pedido
+    validado repetidas vezes.
+
+    Retorna uma lista de (indicacao, nome_do_campo, order_id) pra gravar depois que os
+    Pedidos existirem de verdade no banco (bulk_create ainda não rodou nesse ponto).
+    """
+    usuario_ids = {pedido.usuario_id for pedido in recem_validados if pedido.usuario_id}
+    if not usuario_ids:
+        return []
+
+    indicacoes = list(
+        Indicacao.objects.filter(
+            Q(indicado_id__in=usuario_ids, pedido_bonus_indicado__isnull=True)
+            | Q(indicador_id__in=usuario_ids, pedido_bonus_indicado__isnull=False, pedido_bonus_indicador__isnull=True)
+        ).order_by("criado_em")
+    )
+    indicado_pendente = {i.indicado_id: i for i in indicacoes if i.pedido_bonus_indicado_id is None}
+    indicador_fila = defaultdict(list)
+    for i in indicacoes:
+        if i.pedido_bonus_indicado_id is not None and i.pedido_bonus_indicador_id is None:
+            indicador_fila[i.indicador_id].append(i)
+
+    multiplicador = Decimal(str(settings.CASHBACK_MULTIPLICADOR_INDICACAO))
+    limite = _limite_cashback_indicacao()
+    epoca_minima = datetime.min.replace(tzinfo=dt_timezone.utc)
+    vinculos = []
+    for pedido in sorted(recem_validados, key=lambda p: p.data_compra or epoca_minima):
+        if pedido.usuario_id in indicado_pendente:
+            indicacao = indicado_pendente.pop(pedido.usuario_id)
+            pedido.valor_cashback = min((pedido.valor_cashback * multiplicador).quantize(Decimal("0.01")), limite)
+            vinculos.append((indicacao, "pedido_bonus_indicado", pedido.order_id))
+        elif indicador_fila.get(pedido.usuario_id):
+            indicacao = indicador_fila[pedido.usuario_id].pop(0)
+            pedido.valor_cashback = min((pedido.valor_cashback * multiplicador).quantize(Decimal("0.01")), limite)
+            vinculos.append((indicacao, "pedido_bonus_indicador", pedido.order_id))
+
+    return vinculos
+
+
+def _persistir_vinculos_indicacao(vinculos: list[tuple[Indicacao, str, str]]) -> None:
+    """Grava em Indicacao qual Pedido concreto disparou cada bônus - roda depois do
+    bulk_create/bulk_update, quando os Pedidos já existem de verdade no banco."""
+    if not vinculos:
+        return
+
+    order_ids = [order_id for _, _, order_id in vinculos]
+    pedidos_por_order_id = Pedido.objects.in_bulk(order_ids, field_name="order_id")
+    for indicacao, campo, order_id in vinculos:
+        setattr(indicacao, campo, pedidos_por_order_id[order_id])
+
+    Indicacao.objects.bulk_update(
+        [indicacao for indicacao, _, _ in vinculos], ["pedido_bonus_indicado", "pedido_bonus_indicador"]
+    )
 
 
 def liberar_saldo() -> int:

@@ -1,6 +1,6 @@
 from django.contrib import admin
 
-from .models import NomeCurtoCache, Oferta
+from .models import CashbackMaximoCache, NomeCurtoCache, Oferta
 
 
 @admin.register(Oferta)
@@ -30,4 +30,16 @@ class NomeCurtoCacheAdmin(admin.ModelAdmin):
     readonly_fields = ("item_id", "nome_original", "nome_curto", "atualizado_em")
 
     def has_add_permission(self, request):
+        return False
+
+
+@admin.register(CashbackMaximoCache)
+class CashbackMaximoCacheAdmin(admin.ModelAdmin):
+    list_display = ("percentual_maximo", "atualizado_em")
+    readonly_fields = ("percentual_maximo", "atualizado_em")
+
+    def has_add_permission(self, request):
+        return False
+
+    def has_delete_permission(self, request, obj=None):
         return False

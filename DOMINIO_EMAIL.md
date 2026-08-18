@@ -1,4 +1,4 @@
-# Domínio e e-mail do cash-b — histórico e decisões
+# Domínio e e-mail da cash-b — histórico e decisões
 
 Este arquivo documenta a configuração do domínio próprio (`cash-b.com`) e
 do e-mail `contato@cash-b.com`, feita fora do repositório (painéis do

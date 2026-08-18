@@ -76,6 +76,7 @@ INSTALLED_APPS = [
     "ofertas",
     "instagram_bot",
     "automacao_instagram",
+    "axes",
 ]
 
 AUTH_USER_MODEL = "accounts.User"
@@ -83,6 +84,26 @@ AUTH_USER_MODEL = "accounts.User"
 LOGIN_URL = "login"
 LOGIN_REDIRECT_URL = "dashboard"
 LOGOUT_REDIRECT_URL = "login"
+
+# django-axes: bloqueia tentativas de login por força bruta. AxesBackend precisa vir
+# ANTES do ModelBackend padrão (ele intercepta a autenticação pra checar o bloqueio
+# antes de validar a senha de verdade).
+AUTHENTICATION_BACKENDS = [
+    "axes.backends.AxesBackend",
+    "django.contrib.auth.backends.ModelBackend",
+]
+
+# Trava por par (usuário, IP) - não usuário sozinho, pra um atacante não conseguir
+# bloquear a conta de outra pessoa de propósito só errando a senha dela várias vezes
+# de um IP diferente (negação de serviço via bloqueio).
+AXES_LOCKOUT_PARAMETERS = [["username", "ip_address"]]
+AXES_FAILURE_LIMIT = 5
+AXES_COOLOFF_TIME = 1  # horas até o bloqueio expirar sozinho
+AXES_RESET_ON_SUCCESS = True
+# Página com a identidade visual do site em vez da resposta padrão em texto puro/inglês
+# do django-axes. O texto "cerca de 1 hora" nela é fixo, então se AXES_COOLOFF_TIME
+# mudar, atualizar o texto junto (accounts/templates/accounts/login_bloqueado.html).
+AXES_LOCKOUT_TEMPLATE = "accounts/login_bloqueado.html"
 
 # Credenciais da API oficial de afiliados da Shopee (ficam no arquivo .env, nunca no código)
 SHOPEE_AFFILIATE_APP_ID = os.environ.get("SHOPEE_AFFILIATE_APP_ID", "")
@@ -102,17 +123,33 @@ SHOPEE_CASHBACK_PERCENTUAL = float(os.environ.get("SHOPEE_CASHBACK_PERCENTUAL", 
 # piso do mês pra nunca prometer mais cashback do que a gente de fato vai conseguir pagar.
 SHOPEE_COMISSAO_VENDA_DIRETA = float(os.environ.get("SHOPEE_COMISSAO_VENDA_DIRETA", "8"))
 
-# Multiplicador pra campanhas promocionais próprias do cash-b (não tem nada a ver com
+# Multiplicador pra campanhas promocionais próprias da cash-b (não tem nada a ver com
 # bônus de vendedor da Shopee) - ex: 2 = "cashback em dobro" no mês de aniversário do
 # site. Fica em 1 o resto do tempo. Afeta o valor de cashback pago de verdade (não é só
 # um número de propaganda) - usado em pedidos/services.py, ofertas/models.py e no hero.
 CASHBACK_MULTIPLICADOR_CAMPANHA = float(os.environ.get("CASHBACK_MULTIPLICADOR_CAMPANHA", "1"))
 
-# Percentual "até X%" anunciado no hero da home = repasse x comissão de venda direta x
-# multiplicador de campanha. Calculado automaticamente - não precisa mexer aqui.
+# Fallback do "até X%" anunciado no hero da home, só usado antes da primeira
+# sincronização de ofertas (instalação nova, ainda sem CashbackMaximoCache calculado -
+# ver ofertas/services.py::obter_cashback_maximo_anunciado). Em uso normal, a home
+# mostra o maior % real calculado a partir do catálogo sincronizado, não esse valor fixo.
 CASHBACK_MAXIMO_ANUNCIADO = round(
     SHOPEE_CASHBACK_PERCENTUAL / 100 * SHOPEE_COMISSAO_VENDA_DIRETA * CASHBACK_MULTIPLICADOR_CAMPANHA, 2
 )
+
+# Teto de cashback em R$ por produto (não por pedido - um pedido com vários produtos
+# pode ter o teto aplicado várias vezes, um por item). Existe porque agora contamos a
+# comissão extra de campanha do vendedor no cálculo (ver SHOPEE_COMISSAO_VENDA_DIRETA
+# acima e links/shopee_client.py) - sem um teto, um produto com comissão de campanha
+# muito alta pagaria um cashback desproporcional ao preço. Usado em pedidos/services.py
+# (valor pago de verdade) e ofertas/models.py (estimativa mostrada no site).
+CASHBACK_MAXIMO_POR_PRODUTO = float(os.environ.get("CASHBACK_MAXIMO_POR_PRODUTO", "10"))
+
+# Multiplicador do programa "indique e ganhe": aplicado só ao pedido que dispara o
+# bônus (1ª compra validada do indicado, e a compra seguinte de quem indicou) - não é
+# um valor fixo em R$, dobra o cashback daquele pedido específico. Ver
+# pedidos/services.py (_selecionar_bonus_indicacao).
+CASHBACK_MULTIPLICADOR_INDICACAO = float(os.environ.get("CASHBACK_MULTIPLICADOR_INDICACAO", "2"))
 
 # API do Gemini, usada só pra encurtar o nome dos produtos exibidos na aba Ofertas (os
 # títulos que vêm da Shopee costumam ser bem longos/cheios de palavra-chave repetida).
@@ -197,6 +234,7 @@ MIDDLEWARE = [
     "django.contrib.auth.middleware.AuthenticationMiddleware",
     "django.contrib.messages.middleware.MessageMiddleware",
     "django.middleware.clickjacking.XFrameOptionsMiddleware",
+    "axes.middleware.AxesMiddleware",  # precisa ser o último da lista (exigência do django-axes)
 ]
 
 ROOT_URLCONF = "cashback_shopee.urls"

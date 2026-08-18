@@ -2,6 +2,7 @@ import hmac
 from datetime import datetime, timedelta, timezone as dt_timezone
 
 from django.conf import settings
+from django.db import connection
 from django.http import HttpResponse, HttpResponseForbidden, JsonResponse
 from django.utils import timezone
 
@@ -24,9 +25,27 @@ Disallow: /esqueci-senha/
 Disallow: /resetar-senha/
 Disallow: /saques/
 Disallow: /tarefas/
+Disallow: /healthz/
 
 Sitemap: {scheme}://{host}/sitemap.xml
 """
+
+
+def healthcheck(request):
+    """Endpoint pra configurar como "Health Check Path" no serviço web da Render.
+
+    Sem um health check configurado, a Render só confere se a porta está aberta antes
+    de considerar a instância nova pronta e desligar a antiga - isso pode achar a
+    instância "pronta" antes do banco estar de fato acessível, deixando os primeiros
+    usuários depois de cada deploy verem um 502/500 por alguns segundos. Consultando o
+    banco aqui garante que só vira "pronta" quando estiver mesmo.
+    """
+    try:
+        with connection.cursor() as cursor:
+            cursor.execute("SELECT 1")
+    except Exception:
+        return HttpResponse("unhealthy", status=503)
+    return HttpResponse("ok")
 
 
 def robots_txt(request):
@@ -45,6 +64,11 @@ def executar_tarefas_agendadas(request):
 
     Protegido por um token (TAREFAS_TOKEN) em vez de exigir login, porque quem chama
     esse endereço é o agendamento automático (GitHub Actions), não uma pessoa logada.
+
+    Separado de propósito dos posts do Instagram (executar_publicacoes_instagram) -
+    essa tarefa mexe com dinheiro de gente de verdade (saldo, saques), então roda de
+    madrugada, enquanto os posts do Instagram têm um horário próprio pensado pro
+    alcance (de madrugada o engajamento é baixo).
     """
     if not _token_valido(request):
         return HttpResponseForbidden("Token inválido ou não configurado.")
@@ -66,6 +90,17 @@ def executar_tarefas_agendadas(request):
     resultado["saldos_liberados"] = liberar_saldo()
     resultado["saques_verificados"] = verificar_saques_pendentes()
 
+    return JsonResponse(resultado)
+
+
+def executar_publicacoes_instagram(request):
+    """Posta o(s) conteúdo(s) do dia no Instagram e confere a validade do token de
+    acesso. Separado de executar_tarefas_agendadas de propósito - ver o comentário lá:
+    esse aqui precisa rodar num horário de bom alcance (11h), não de madrugada."""
+    if not _token_valido(request):
+        return HttpResponseForbidden("Token inválido ou não configurado.")
+
+    resultado = {}
     try:
         resultado["instagram"] = executar_publicacoes_do_dia(request)
     except Exception as erro:

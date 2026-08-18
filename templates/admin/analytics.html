@@ -1,0 +1,246 @@
+{% extends "admin/base_site.html" %}
+
+{% block extrastyle %}
+{{ block.super }}
+<style>
+    .analytics-filtros {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 12px;
+        align-items: end;
+        margin: 0 0 20px;
+        padding: 14px;
+        border: 1px solid var(--border-color);
+        border-radius: 4px;
+        background: var(--darkened-bg);
+    }
+    .analytics-filtros label {
+        display: block;
+        font-size: 11px;
+        text-transform: uppercase;
+        color: var(--body-quiet-color);
+        margin-bottom: 4px;
+    }
+    .analytics-filtros .campo {
+        display: flex;
+        flex-direction: column;
+    }
+    .analytics-filtros input, .analytics-filtros select {
+        padding: 6px;
+    }
+    .analytics-filtros .acoes {
+        display: flex;
+        gap: 8px;
+    }
+    .analytics-cards {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(190px, 1fr));
+        gap: 14px;
+        margin-bottom: 28px;
+    }
+    .analytics-card {
+        border: 1px solid var(--border-color);
+        border-radius: 4px;
+        padding: 14px 16px;
+        background: var(--body-bg);
+    }
+    .analytics-card h3 {
+        margin: 0 0 6px;
+        font-size: 11px;
+        text-transform: uppercase;
+        letter-spacing: .03em;
+        color: var(--body-quiet-color);
+        font-weight: 600;
+    }
+    .analytics-card .valor {
+        font-size: 22px;
+        font-weight: 600;
+        color: var(--body-loud-color);
+    }
+    .analytics-card .legenda {
+        margin-top: 4px;
+        font-size: 12px;
+        color: var(--body-quiet-color);
+    }
+    .analytics-secao {
+        margin-bottom: 30px;
+    }
+    .analytics-secao h2 {
+        font-size: 15px;
+        margin-bottom: 10px;
+    }
+    .analytics-secao table {
+        width: 100%;
+        border-collapse: collapse;
+    }
+    .analytics-secao th, .analytics-secao td {
+        text-align: left;
+        padding: 8px 10px;
+        border-bottom: 1px solid var(--hairline-color);
+    }
+    .analytics-secao th {
+        color: var(--body-quiet-color);
+        font-weight: 600;
+        font-size: 12px;
+        text-transform: uppercase;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<form class="analytics-filtros" method="get">
+    <div class="campo">
+        <label for="id_data_inicio">De</label>
+        <input type="date" name="data_inicio" id="id_data_inicio" value="{{ filtro_data_inicio }}">
+    </div>
+    <div class="campo">
+        <label for="id_data_fim">Até</label>
+        <input type="date" name="data_fim" id="id_data_fim" value="{{ filtro_data_fim }}">
+    </div>
+    <div class="campo">
+        <label for="id_status">Status do pedido</label>
+        <select name="status" id="id_status">
+            <option value="">Todos</option>
+            {% for chave, label in status_choices %}
+                <option value="{{ chave }}" {% if filtro_status == chave %}selected{% endif %}>{{ label }}</option>
+            {% endfor %}
+        </select>
+    </div>
+    <div class="campo">
+        <label for="id_origem">Origem</label>
+        <select name="origem" id="id_origem">
+            <option value="">Todos</option>
+            <option value="site" {% if filtro_origem == "site" %}selected{% endif %}>Gerados no site (com cashback)</option>
+            <option value="fora" {% if filtro_origem == "fora" %}selected{% endif %}>Fora do site (sem cashback)</option>
+        </select>
+    </div>
+    <div class="acoes">
+        <input type="submit" class="button" value="Filtrar">
+        <a class="button" href="{% url 'admin:pedidos_analytics_exportar_excel' %}?data_inicio={{ filtro_data_inicio }}&data_fim={{ filtro_data_fim }}&status={{ filtro_status }}&origem={{ filtro_origem }}">
+            ⬇ Exportar Excel
+        </a>
+        <a class="button" href="{% url 'admin:pedidos_analytics_exportar' %}?data_inicio={{ filtro_data_inicio }}&data_fim={{ filtro_data_fim }}&status={{ filtro_status }}&origem={{ filtro_origem }}">
+            ⬇ Exportar CSV
+        </a>
+    </div>
+</form>
+<p class="help" style="margin: -10px 0 20px;">
+    "Fora do site" são pedidos que a sincronização trouxe da conta de afiliado Shopee
+    mas não têm um Click daqui vinculado (outras campanhas, compras pessoais etc.) -
+    o valor de cashback deles fica calculado no banco, mas não é pago a ninguém de
+    verdade.
+</p>
+
+<div class="analytics-cards">
+    <div class="analytics-card">
+        <h3>Quantidade de pedidos</h3>
+        <div class="valor">{{ dados.total_pedidos }}</div>
+        <div class="legenda">no período filtrado</div>
+    </div>
+    <div class="analytics-card">
+        <h3>Comissão total</h3>
+        <div class="valor">R$ {{ dados.total_comissao|floatformat:2 }}</div>
+        <div class="legenda">{{ dados.total_pedidos }} pedido{{ dados.total_pedidos|pluralize }}</div>
+    </div>
+    <div class="analytics-card">
+        <h3>Cashback repassado</h3>
+        <div class="valor">R$ {{ dados.total_cashback|floatformat:2 }}</div>
+        <div class="legenda">{{ dados.percentual_repassado|floatformat:1 }}% da comissão</div>
+    </div>
+    <div class="analytics-card">
+        <h3>Margem retida</h3>
+        <div class="valor">R$ {{ dados.margem_retida|floatformat:2 }}</div>
+        <div class="legenda">comissão − cashback</div>
+    </div>
+    <div class="analytics-card">
+        <h3>Ticket médio de cashback</h3>
+        <div class="valor">R$ {{ dados.ticket_medio_cashback|floatformat:2 }}</div>
+        <div class="legenda">por pedido</div>
+    </div>
+    <div class="analytics-card">
+        <h3>Saldo a liberar</h3>
+        <div class="valor">R$ {{ dados.saldo_a_liberar|floatformat:2 }}</div>
+        <div class="legenda">pendente + validado</div>
+    </div>
+    <div class="analytics-card">
+        <h3>Saldo liberado</h3>
+        <div class="valor">R$ {{ dados.saldo_liberado|floatformat:2 }}</div>
+        <div class="legenda">disponível pra saque</div>
+    </div>
+    <div class="analytics-card">
+        <h3>Total sacado</h3>
+        <div class="valor">R$ {{ dados.total_saques_valor|floatformat:2 }}</div>
+        <div class="legenda">{{ dados.total_saques }} saque{{ dados.total_saques|pluralize }} no período</div>
+    </div>
+    <div class="analytics-card">
+        <h3>Novos usuários</h3>
+        <div class="valor">{{ dados.novos_usuarios }}</div>
+        <div class="legenda">cadastrados no período</div>
+    </div>
+    <div class="analytics-card">
+        <h3>Indicações</h3>
+        <div class="valor">{{ dados.total_indicacoes }}</div>
+        <div class="legenda">{{ dados.indicacoes_concluidas }} concluída{{ dados.indicacoes_concluidas|pluralize }} (dobro pago)</div>
+    </div>
+</div>
+
+<div class="analytics-secao">
+    <h2>Pedidos por status</h2>
+    <table>
+        <tr>
+            <th>Status</th>
+            <th>Pedidos</th>
+            <th>Comissão</th>
+            <th>Cashback</th>
+        </tr>
+        {% for linha in dados.resumo_status %}
+            <tr>
+                <td>{{ linha.status_label }}</td>
+                <td>{{ linha.total }}</td>
+                <td>R$ {{ linha.comissao|floatformat:2 }}</td>
+                <td>R$ {{ linha.cashback|floatformat:2 }}</td>
+            </tr>
+        {% endfor %}
+    </table>
+</div>
+
+<div class="analytics-secao">
+    <h2>Saques por status</h2>
+    <table>
+        <tr>
+            <th>Status</th>
+            <th>Saques</th>
+            <th>Valor</th>
+        </tr>
+        {% for linha in dados.saques_por_status %}
+            <tr>
+                <td>{{ linha.status_label }}</td>
+                <td>{{ linha.total }}</td>
+                <td>R$ {{ linha.valor|floatformat:2 }}</td>
+            </tr>
+        {% endfor %}
+    </table>
+</div>
+
+<div class="analytics-secao">
+    <h2>Ranking de indicadores</h2>
+    {% if dados.ranking_indicadores %}
+        <table>
+            <tr>
+                <th>Usuário</th>
+                <th>Indicações</th>
+                <th>Concluídas</th>
+            </tr>
+            {% for linha in dados.ranking_indicadores %}
+                <tr>
+                    <td>{{ linha.indicador__username }}</td>
+                    <td>{{ linha.total_indicacoes }}</td>
+                    <td>{{ linha.concluidas }}</td>
+                </tr>
+            {% endfor %}
+        </table>
+    {% else %}
+        <p class="help">Nenhuma indicação no período filtrado.</p>
+    {% endif %}
+</div>
+{% endblock %}

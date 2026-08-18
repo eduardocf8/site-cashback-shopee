@@ -43,3 +43,20 @@ def notificar_pedido_liberado(pedido):
         "Equipe cash-b"
     )
     _enviar(pedido.usuario, "cash-b — cashback liberado pra saque", corpo)
+
+
+def notificar_indicador_bonus_pendente(indicacao):
+    """Avisa quem indicou que a 1ª compra do indicado acabou de validar - o próximo
+    pedido validado do indicador vem com o dobro de cashback (ver
+    services.py::_selecionar_bonus_indicacao). Dispara só uma vez, no momento em que
+    esse vínculo é decidido pela primeira vez - não a cada resync do mesmo pedido."""
+    indicador = indicacao.indicador
+    corpo = (
+        f"Olá, {indicador.username}!\n\n"
+        f"A pessoa que você indicou (@{indicacao.indicado.username}) teve a 1ª compra "
+        "validada! 🎉\n\n"
+        "Isso significa que o SEU próximo pedido validado vai vir com o dobro de "
+        "cashback. Aproveite!\n\n"
+        "Equipe cash-b"
+    )
+    _enviar(indicador, "cash-b — sua indicação validou! seu próximo pedido vem em dobro", corpo)

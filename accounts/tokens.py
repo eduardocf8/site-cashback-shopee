@@ -28,7 +28,7 @@ def enviar_email_verificacao(usuario, request) -> None:
         f"Olá, {usuario.username}!\n\n"
         "Confirme seu e-mail clicando no link abaixo (vale por 3 dias):\n"
         f"{link}\n\n"
-        "Se você não criou uma conta no cash-b, pode ignorar este e-mail.\n\n"
+        "Se você não criou uma conta na cash-b, pode ignorar este e-mail.\n\n"
         "Equipe cash-b"
     )
     try:

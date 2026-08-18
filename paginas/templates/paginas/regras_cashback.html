@@ -1,6 +1,6 @@
 {% extends "accounts/base.html" %}
 {% block titulo %}Regras do cashback{% endblock %}
-{% block meta_descricao %}Entenda venda direta x indireta, prazo de liberação, o que cancela um pedido e o percentual de cashback do cash-b.{% endblock %}
+{% block meta_descricao %}Entenda venda direta x indireta, prazo de liberação, o que cancela um pedido e o percentual de cashback da cash-b.{% endblock %}
 {% block largura_container %}760px{% endblock %}
 {% block conteudo %}
     <div class="nav-topo">
@@ -12,10 +12,12 @@
     <div class="texto-legal">
         <h2>Como funciona, em resumo</h2>
         <p>
-            Você compra na Shopee através de um link gerado pelo cash-b. Quando a
+            Você compra na Shopee através de um link gerado pela cash-b. Quando a
             Shopee confirma o pedido, ela paga uma comissão de afiliado pra gente —
-            e repassamos <strong>{{ percentual_repasse|floatformat:0 }}% dessa comissão</strong>
-            de volta pra você, como cashback.
+            e repassamos <strong>parte dessa comissão</strong> de volta pra você,
+            como cashback (respeitando o limite de
+            R$ {{ cashback_maximo_por_produto|floatformat:2 }} por produto explicado
+            mais abaixo).
         </p>
 
         <h2>Venda direta x venda indireta</h2>
@@ -41,6 +43,40 @@
             converter o link do produto específico.
         </p>
 
+        <h2>Limite de cashback por produto</h2>
+        <p>
+            Pra cashback ficar sustentável mesmo quando um produto tem uma campanha de
+            comissão extra bem alta, o valor pago por produto é limitado a
+            <strong>R$ {{ cashback_maximo_por_produto|floatformat:2 }}</strong>. Por
+            exemplo: se um produto de R$ 100 tivesse 20% de comissão total (R$ 20 de
+            cashback), o valor pago fica limitado a R$ {{ cashback_maximo_por_produto|floatformat:2 }}.
+            Esse limite é por produto, não por pedido — uma compra com vários produtos
+            diferentes pode ultrapassar esse valor somando o cashback de cada um. Sempre
+            que esse limite se aplica, o percentual e o valor mostrados no site já vêm
+            ajustados, então o que você vê é sempre o que você recebe.
+        </p>
+
+        <h2>Por que o percentual anunciado muda de um dia pro outro?</h2>
+        <p>
+            O "até X%" mostrado na home não é um número fixo — é o maior percentual de
+            cashback real entre as ofertas que a Shopee está oferecendo naquele momento,
+            recalculado todo dia. Isso significa que ele pode variar bastante: a Shopee
+            costuma reajustar a comissão de venda direta uma vez por mês, e é comum os
+            primeiros dias do mês ainda não terem esse reajuste aplicado — nesses dias, o
+            percentual anunciado pode aparecer mais baixo do que em outros momentos do
+            mês. E quanto mais ofertas tiverem campanha de comissão extra ativa (só
+            disponível na venda direta), maior tende a ser esse número.
+        </p>
+        <p>
+            Um detalhe: produtos onde o limite de
+            R$ {{ cashback_maximo_por_produto|floatformat:2 }} por produto reduziu bastante
+            o percentual (geralmente produtos mais caros) não entram nessa conta — senão
+            um produto caro e capado poderia "roubar" o topo com um número bem menor do
+            que o real máximo sem teto. Isso não muda o cashback pago: esses produtos
+            continuam com o valor real e o aviso de "máximo por produto" ao navegar no
+            catálogo, só não influenciam o "até X%" da home.
+        </p>
+
         <h2>Os quatro status do seu saldo</h2>
         <div class="timeline-status">
             <div class="etapa"><span class="ponto"></span><span class="rotulo">Pendente</span></div>
@@ -60,9 +96,9 @@
 
         <h2>Prazo de liberação</h2>
         <p>
-            O saldo validado é liberado no primeiro dia do mês seguinte a dois meses
-            após a validação. Por exemplo: um pedido validado em janeiro tem o saldo
-            liberado em 1º de abril. Esse prazo acompanha o próprio prazo que a
+            O saldo validado é liberado no dia 1º do segundo mês seguinte ao mês da
+            validação. Por exemplo: um pedido validado em janeiro tem o saldo
+            liberado em 1º de março. Esse prazo acompanha o próprio prazo que a
             Shopee usa pra confirmar definitivamente as comissões de afiliado.
         </p>
 
@@ -72,12 +108,12 @@
             <li>O pagamento da compra não é confirmado.</li>
             <li>
                 Você clica em outro link de afiliado (de outro site ou app de
-                cashback) depois de clicar num link do cash-b e antes de terminar a
+                cashback) depois de clicar num link da cash-b e antes de terminar a
                 compra — a comissão pode acabar indo pro outro afiliado.
             </li>
         </ul>
         <p>
-            Por isso, depois de clicar num link do cash-b, o ideal é concluir a
+            Por isso, depois de clicar num link da cash-b, o ideal é concluir a
             compra o quanto antes, sem passar por outros links de afiliado.
         </p>
 

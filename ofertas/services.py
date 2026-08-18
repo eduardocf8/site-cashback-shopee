@@ -6,6 +6,7 @@ from decimal import Decimal, InvalidOperation
 from pathlib import Path
 
 import requests
+from django.conf import settings
 from django.db import transaction
 from django.db.models import Sum
 
@@ -13,7 +14,7 @@ from links.shopee_client import buscar_ofertas_produtos
 
 from . import gemini_client
 from .gemini_client import GeminiAPIError, GeminiConfigError
-from .models import NomeCurtoCache, Oferta
+from .models import CashbackMaximoCache, NomeCurtoCache, Oferta
 
 logger = logging.getLogger(__name__)
 
@@ -65,7 +66,7 @@ def _montar_oferta(node: dict, categorias_nivel1: dict[int, str]) -> Oferta:
         preco_min=_decimal_seguro(node.get("priceMin")),
         preco_max=_decimal_seguro(node.get("priceMax")),
         percentual_desconto=int(node.get("priceDiscountRate") or 0),
-        percentual_comissao=_decimal_seguro(node.get("shopeeCommissionRate")),
+        percentual_comissao=_decimal_seguro(node.get("commissionRate")),
         avaliacao=avaliacao,
         vendas=int(node.get("sales") or 0),
         categoria_id=categoria_id,
@@ -165,7 +166,41 @@ def sincronizar_ofertas(limite_por_pagina: int = 50, max_paginas: int = 40) -> d
         Oferta.objects.all().delete()
         Oferta.objects.bulk_create(por_item_id.values(), batch_size=200)
 
+    _atualizar_cashback_maximo(por_item_id.values())
+
     return {"total": len(por_item_id), "paginas_percorridas": pagina}
+
+
+def obter_cashback_maximo_anunciado() -> Decimal:
+    """Maior % de cashback real pra anunciar na home ("até X%") - vem do
+    CashbackMaximoCache (calculado na última sincronização de ofertas). Se ainda não
+    houve nenhuma sincronização (instalação nova), cai pro piso configurado manualmente
+    em CASHBACK_MAXIMO_ANUNCIADO."""
+    cache = CashbackMaximoCache.obter()
+    if cache and cache.percentual_maximo:
+        return cache.percentual_maximo
+    return Decimal(str(settings.CASHBACK_MAXIMO_ANUNCIADO))
+
+
+def _atualizar_cashback_maximo(ofertas) -> None:
+    """Recalcula o maior % de cashback anunciado na home a partir das ofertas
+    recém-sincronizadas. Chamado uma vez por sincronização, não por request - ver
+    CashbackMaximoCache.
+
+    Só considera ofertas onde o teto por produto NÃO reduziu o valor (cashback_no_limite
+    é False) - senão um produto caro e capado (ex: R$10 de teto sobre um item de R$1000
+    vira 1%) poderia acabar "roubando" o topo com um valor bem menor do que o real
+    máximo sem teto. Isso não muda o cashback pago de verdade - continua limitado a
+    CASHBACK_MAXIMO_POR_PRODUTO igual sempre; esses produtos continuam aparecendo
+    normalmente no catálogo, com o valor real e a nota "(máximo por produto)"."""
+    percentuais = [
+        oferta.percentual_cashback
+        for oferta in ofertas
+        if oferta.preco_min and oferta.percentual_comissao and not oferta.cashback_no_limite
+    ]
+    if not percentuais:
+        return
+    CashbackMaximoCache.atualizar(max(percentuais))
 
 
 def normalizar_nome_produto(nome: str) -> str:

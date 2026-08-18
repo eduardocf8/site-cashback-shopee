@@ -7,7 +7,12 @@ from django.contrib.auth.decorators import login_required
 from django.shortcuts import redirect, render
 from django.urls import reverse
 
-from ofertas.services import categorias_mais_vendidas, selecionar_top_ofertas_sem_duplicar
+from ofertas.services import (
+    categorias_mais_vendidas,
+    obter_cashback_maximo_anunciado,
+    selecionar_top_ofertas_sem_duplicar,
+)
+from saques.services import calcular_resumo_saldo_nav
 
 from .forms import LinkProdutoForm
 from .models import Click
@@ -15,7 +20,7 @@ from .services import gerar_click
 from .shopee_client import ShopeeAPIError, ShopeeConfigError, SubIdInvalidoError
 
 NUMERO_OFERTAS_EM_ALTA = 8
-NUMERO_CATEGORIAS_HOME = 6
+NUMERO_CATEGORIAS_HOME = 12
 
 
 def home(request):
@@ -45,16 +50,20 @@ def home(request):
     oferta_destaque = top_ofertas[0] if top_ofertas else None
     ofertas_em_alta = top_ofertas[1:]
     categorias_home = categorias_mais_vendidas(NUMERO_CATEGORIAS_HOME)
+    cashback_percentual_maximo = obter_cashback_maximo_anunciado()
 
     contexto = {
         "form": form,
         "link_convertido": link_convertido,
-        "cashback_maximo_anunciado": settings.CASHBACK_MAXIMO_ANUNCIADO,
+        "cashback_percentual_maximo": cashback_percentual_maximo,
+        "cashback_maximo_por_produto": settings.CASHBACK_MAXIMO_POR_PRODUTO,
         "saque_valor_minimo": settings.SAQUE_VALOR_MINIMO,
         "oferta_destaque": oferta_destaque,
         "ofertas_em_alta": ofertas_em_alta,
         "categorias_home": categorias_home,
     }
+    if request.user.is_authenticated:
+        contexto.update(calcular_resumo_saldo_nav(request.user))
     return render(request, "links/home.html", contexto)
 
 

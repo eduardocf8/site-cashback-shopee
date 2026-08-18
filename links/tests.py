@@ -1,9 +1,13 @@
 import hashlib
 import json
+from decimal import Decimal
 from unittest.mock import patch
 
 from django.contrib.auth import get_user_model
 from django.test import TestCase, override_settings
+from django.urls import reverse
+
+from ofertas.models import CashbackMaximoCache
 
 from .models import Click
 from .shopee_client import (
@@ -161,3 +165,13 @@ class GerarLinkViewTests(TestCase):
         self.client.logout()
         resposta = self.client.get("/links/")
         self.assertRedirects(resposta, "/login/?next=/links/")
+
+
+class HomeCashbackMaximoTests(TestCase):
+    def test_home_mostra_o_maximo_calculado(self):
+        CashbackMaximoCache.atualizar(Decimal("10.0"))
+
+        resposta = self.client.get(reverse("home"))
+
+        self.assertEqual(resposta.context["cashback_percentual_maximo"], Decimal("10.0"))
+        self.assertContains(resposta, "até 10%")

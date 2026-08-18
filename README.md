@@ -40,7 +40,7 @@ O site está no ar em **https://cash-b.com**.
 ### Regras de negócio por trás do site
 
 - **Cálculo de cashback**: soma a comissão que a Shopee paga por item comprado (`itemTotalCommission`), aplicando o percentual repassado ao usuário (`SHOPEE_CASHBACK_PERCENTUAL`).
-- **Liberação de saldo**: pedidos validados ficam disponíveis pra saque no 1º dia do mês seguinte a dois meses após a validação (ex: validou em março, libera em 1º de maio).
+- **Liberação de saldo**: pedidos validados ficam disponíveis pra saque no dia 1º do segundo mês seguinte ao mês da validação (ex: validou em março, libera em 1º de maio).
 - **Saque via PIX**: o usuário solicita o saque do saldo liberado disponível; a solicitação fica pendente até você aprovar manualmente — só então o sistema chama a Asaas (ou o Inter, em pausa — ver `saques/inter_client.py`) pra pagar de verdade. Valor mínimo configurável (`SAQUE_VALOR_MINIMO`).
 - **E-mails automáticos**: usuário recebe e-mail quando um pedido é validado, quando o cashback é liberado e quando um saque é pago.
 
@@ -62,8 +62,8 @@ python manage.py verificar_saques
 
 ### Instagram (marketing) — dois apps separados
 
-- **`instagram_bot/`** — publica sozinho no Instagram (@usecashb): stories diários com ofertas e posts semanais no feed, gerados via Pillow com a identidade visual do cash-b. Roda em modo simulação até ser ligado de propósito (`INSTAGRAM_BOT_ATIVO`), com aprovação por e-mail opcional antes de cada publicação. Ver `marketing/instagram/README.md`.
-- **`automacao_instagram/`** — ferramenta à parte (não é de marketing do cash-b em si): responde comentários com palavra-chave num post e/ou manda DM automaticamente, com suporte a múltiplas contas/automações e login próprio. Ver `automacao_instagram/README.md`.
+- **`instagram_bot/`** — publica sozinho no Instagram (@usecashb): stories diários com ofertas e posts semanais no feed, gerados via Pillow com a identidade visual da cash-b. Roda em modo simulação até ser ligado de propósito (`INSTAGRAM_BOT_ATIVO`), com aprovação por e-mail opcional antes de cada publicação. Ver `marketing/instagram/README.md`.
+- **`automacao_instagram/`** — ferramenta à parte (não é de marketing da cash-b em si): responde comentários com palavra-chave num post e/ou manda DM automaticamente, com suporte a múltiplas contas/automações e login próprio. Ver `automacao_instagram/README.md`.
 
 ## Como rodar localmente
 
@@ -132,7 +132,7 @@ O percentual de comissão repassado como cashback ainda não foi definido — es
 
 ## Liberando o saldo dos pedidos validados (Fase 4)
 
-Pedidos validados ficam disponíveis para saque no 1º dia do mês seguinte a dois meses depois da validação (ex: validou em março, libera em 1º de maio). Para efetivamente mudar o status desses pedidos de "validado" para "liberado":
+Pedidos validados ficam disponíveis para saque no dia 1º do segundo mês seguinte ao mês da validação (ex: validou em março, libera em 1º de maio). Para efetivamente mudar o status desses pedidos de "validado" para "liberado":
 
 ```bash
 python manage.py liberar_saldo
@@ -205,6 +205,12 @@ Vamos usar a **Render** (tem plano gratuito) pra hospedar o site, com um banco d
      gunicorn cashback_shopee.wsgi:application --timeout 120
      ```
      (o `--timeout 120` dá uma margem extra pra sincronizações com muitos pedidos não serem interrompidas no meio.)
+   - **Health Check Path**: `/healthz/`
+     (sem isso, a Render só confere se a porta abriu antes de trocar pra instância nova
+     em cada deploy, o que pode considerá-la "pronta" antes do banco estar de fato
+     acessível — os primeiros acessos depois do deploy caem num 502/500 por alguns
+     segundos. Com o health check configurado, a Render só desliga a instância antiga
+     quando a nova responder 200 de verdade nesse endereço.)
    - **Plan**: Free
 5. **Não clique em criar ainda** — antes, desça até "Environment Variables" e configure a próxima seção.
 
@@ -256,7 +262,7 @@ Criei um endereço protegido por senha no site, `/tarefas/executar/`, que roda a
 https://seusite.onrender.com/tarefas/executar/?token=SEU_TAREFAS_TOKEN_AQUI
 ```
 
-Já deixei configurado um agendamento gratuito no GitHub Actions (`.github/workflows/tarefas-diarias.yml`) pra acessar esse endereço todo dia às 01:00 (horário de Brasília). Falta só você configurar o segredo com a URL completa:
+Já deixei configurado um agendamento gratuito no GitHub Actions (`.github/workflows/tarefas-diarias.yml`) pra acessar esse endereço todo dia às 03:00 (horário de Brasília) - de madrugada de propósito, já que essa tarefa mexe com saldo e saques de gente de verdade. Falta só você configurar o segredo com a URL completa:
 
 1. No GitHub, abra o repositório → **Settings** → **Secrets and variables** → **Actions**.
 2. Clique em **"New repository secret"**.
@@ -265,6 +271,8 @@ Já deixei configurado um agendamento gratuito no GitHub Actions (`.github/workf
 5. Salve.
 
 Pra testar sem esperar até de madrugada: vá em **Actions** (no menu do repositório) → **"Tarefas diárias do site"** → **"Run workflow"** → confirme. Se ficar verde, funcionou; se ficar vermelho, clique no resultado pra ver a mensagem de erro.
+
+As publicações diárias do Instagram (opcional, ver Fase 12) usam o mesmo segredo `TAREFAS_URL`, mas rodam num workflow separado (`.github/workflows/instagram-diario.yml`) às 11:00 (horário de Brasília) - horário de bom alcance, diferente da tarefa acima que roda de madrugada de propósito.
 
 ### 6. Conferir se está tudo certo
 

@@ -52,6 +52,31 @@
         .nav-secundario { display: flex; align-items: center; gap: 32px; font-size: 14px; }
         .nav-secundario a { color: var(--ink); }
         .nav-secundario form { margin: 0; }
+        .menu-conta { position: relative; display: inline-flex; }
+        .icone-conta {
+            display: inline-flex; color: var(--ink); background: none; border: none; padding: 0; cursor: pointer;
+        }
+        .icone-conta:hover { color: var(--brand); }
+        .icone-conta svg { width: 22px; height: 22px; }
+        .painel-conta {
+            position: absolute; top: calc(100% + 14px); right: 0; z-index: 30; min-width: 220px;
+            background: var(--paper); border: 1px solid var(--line); border-radius: 12px;
+            box-shadow: 0 12px 28px rgba(17, 24, 39, 0.14); padding: 8px; display: flex; flex-direction: column;
+        }
+        .painel-conta[hidden] { display: none; }
+        .painel-conta-saudacao { padding: 10px 10px 0; font-size: 14px; font-weight: 600; color: var(--ink); }
+        .painel-conta-saldo { padding: 8px 10px 10px; border-bottom: 1px solid var(--line-soft); margin-bottom: 6px; }
+        .painel-conta-saldo-valor {
+            font-family: "JB Mono", ui-monospace, monospace; font-size: 22px; font-weight: 600; color: var(--success);
+        }
+        .painel-conta-saldo-rotulo { font-size: 12px; color: var(--muted); margin-top: 2px; }
+        .painel-conta-saldo-outros { font-size: 11px; color: var(--muted); margin-top: 8px; }
+        .painel-conta-link {
+            display: block; width: 100%; text-align: left; padding: 10px; border-radius: 8px;
+            font-size: 14px; color: var(--ink); background: none; border: none; font-family: inherit; cursor: pointer;
+        }
+        .painel-conta-link:hover { background: var(--paper-2); }
+        .painel-conta-form { margin: 0; }
         .nav-secundario button.linkbtn {
             background: none; border: none; padding: 0; font: inherit; color: var(--ink);
             cursor: pointer;
@@ -88,7 +113,7 @@
         .link-secundario:hover { color: var(--ink); }
         .hero-graphic { flex: 1 1 340px; display: flex; justify-content: center; }
         .hero-graphic-panel {
-            width: 100%; max-width: 360px; aspect-ratio: 1 / 1; border-radius: 28px;
+            width: 100%; max-width: 420px; aspect-ratio: 4 / 5; border-radius: 28px;
             background: linear-gradient(160deg, var(--brand-strong), var(--brand));
             display: flex; align-items: center; justify-content: center; overflow: hidden;
         }
@@ -109,22 +134,57 @@
         }
         .conversor-hero button:hover { background: var(--brand-strong); }
         .conversor-hero .erros { color: var(--danger); font-size: 13px; margin-top: 6px; }
+        .conversor-hero .estimativa-cashback {
+            margin-top: 8px; padding: 8px 12px; border-radius: 8px; background: var(--success-bg);
+            color: var(--success); font-size: 13px; font-weight: 600;
+            opacity: 0; max-height: 0; overflow: hidden; transition: opacity 0.25s ease, max-height 0.25s ease;
+        }
+        .conversor-hero .estimativa-cashback.visivel { opacity: 1; max-height: 60px; margin-top: 8px; }
         .conversor-hero .resultado-link {
             margin-top: 14px; padding: 8px; border-radius: 8px; background: var(--paper-2);
             border: 1px dashed var(--line); text-align: center;
         }
         .conversor-hero .resultado-titulo { margin: 0 0 6px; font-size: 13px; color: var(--muted); }
-        .conversor-hero .resultado-titulo.resultado-ok { color: var(--success); font-weight: 600; }
+        .conversor-hero .resultado-titulo:only-child { margin-bottom: 0; }
+        .conversor-hero .resultado-titulo.resultado-ok { color: var(--success); font-weight: 600; font-size: 14px; }
+        .conversor-hero .resultado-sub { margin: 0 0 8px; font-size: 12px; color: var(--muted); }
         .conversor-hero .resultado-url { display: block; word-break: break-all; font-size: 13px; font-weight: 600; font-family: "JB Mono", ui-monospace, monospace; }
 
+        .selo-sucesso { position: relative; width: 28px; height: 28px; margin: 0 auto 8px; }
+        .selo-sucesso svg { animation: selo-pop 0.5s cubic-bezier(0.34, 1.56, 0.64, 1) both; }
+        .confete {
+            position: absolute; top: 50%; left: 50%; width: 5px; height: 5px; border-radius: 50%;
+            opacity: 0; animation: confete-burst 0.7s ease-out both;
+        }
+        .confete-1 { background: var(--brand); animation-delay: 0.05s; --tx: -22px; --ty: -18px; }
+        .confete-2 { background: var(--success); animation-delay: 0.08s; --tx: 20px; --ty: -20px; }
+        .confete-3 { background: var(--highlight); animation-delay: 0.02s; --tx: -26px; --ty: 6px; }
+        .confete-4 { background: var(--brand); animation-delay: 0.12s; --tx: 26px; --ty: 4px; }
+        .confete-5 { background: var(--success); animation-delay: 0.1s; --tx: -10px; --ty: -28px; }
+        .confete-6 { background: var(--highlight); animation-delay: 0.06s; --tx: 12px; --ty: -26px; }
+        @keyframes selo-pop {
+            0% { transform: scale(0); opacity: 0; }
+            60% { transform: scale(1.15); opacity: 1; }
+            100% { transform: scale(1); opacity: 1; }
+        }
+        @keyframes confete-burst {
+            0% { transform: translate(-50%, -50%) translate(0, 0) scale(1); opacity: 1; }
+            100% { transform: translate(-50%, -50%) translate(var(--tx), var(--ty)) scale(0.4); opacity: 0; }
+        }
+        @media (prefers-reduced-motion: reduce) {
+            .selo-sucesso svg { animation: none; }
+            .confete { display: none; }
+        }
+
         @media (max-width: 860px) {
+            .hero { padding-top: 32px; }
             .hero-grid { flex-direction: column; }
             .hero-text { text-align: center; }
             .hero-text p.subtitulo { margin-left: auto; margin-right: auto; }
-            .hero-graphic-panel { max-width: 280px; }
+            .hero-graphic { display: none; }
             .nav .envolve { flex-wrap: wrap; height: auto; padding: 10px 24px; row-gap: 10px; }
             .nav .marca { order: 1; }
-            .nav .botao-cta { order: 2; }
+            .nav .botao-cta { order: 2; margin-left: auto; }
             .nav .nav-secundario { order: 3; flex-basis: 100%; justify-content: space-between; }
             .nav-busca { order: 4; flex-basis: 100%; max-width: none; margin-right: 0; }
         }
@@ -159,6 +219,22 @@
             .reveal { transition: none; opacity: 1; transform: none; }
         }
 
+        /* ---------- Como funciona (3 passos) ---------- */
+        .passos { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 24px; }
+        .passo {
+            background: var(--paper); border: 1px solid var(--line); border-radius: 12px;
+            padding: 28px 22px; text-align: center;
+        }
+        .passo-numero {
+            display: flex; align-items: center; justify-content: center; width: 36px; height: 36px;
+            margin: 0 auto 14px; border-radius: 50%; background: var(--brand); color: var(--paper);
+            font-weight: 700; font-size: 15px;
+        }
+        .passo h3 { font-size: 16px; margin: 0 0 8px; }
+        .passo p { font-size: 14px; color: var(--muted); margin: 0; line-height: 1.5; }
+        .passos .reveal:nth-child(2) { transition-delay: 0.08s; }
+        .passos .reveal:nth-child(3) { transition-delay: 0.16s; }
+
         /* ---------- Comparação direta x indireta ---------- */
         .comparativo { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 24px; }
         .comparativo .cartao {
@@ -184,6 +260,7 @@
 
         /* ---------- Oferta em destaque ---------- */
         #oferta-destaque { padding-top: 8px; }
+        #oferta-destaque .titulo-secao { margin-bottom: 20px; }
         .destaque-cartao {
             display: flex; background: var(--paper); border: 1px solid var(--line); border-radius: 20px;
             overflow: hidden; align-items: stretch;
@@ -195,11 +272,7 @@
             font-size: 14px; font-weight: 700; padding: 5px 12px; border-radius: 12px;
         }
         .destaque-corpo { flex: 1; padding: 36px 40px; display: flex; flex-direction: column; justify-content: center; gap: 12px; }
-        .destaque-eyebrow {
-            display: inline-flex; align-self: flex-start; background: var(--highlight); color: var(--highlight-ink);
-            font-size: 12px; font-weight: 700; padding: 5px 12px; border-radius: 12px; letter-spacing: 0.02em;
-        }
-        .destaque-corpo h2 { font-size: 24px; line-height: 1.35; margin: 0; letter-spacing: -0.01em; }
+        .destaque-corpo h3 { font-size: 24px; line-height: 1.35; margin: 0; letter-spacing: -0.01em; font-weight: 700; }
         .destaque-preco-linha { display: flex; align-items: baseline; gap: 12px; flex-wrap: wrap; }
         .destaque-preco { font-family: "JB Mono", ui-monospace, monospace; font-size: 30px; font-weight: 500; }
         .destaque-cashback { color: var(--success); font-weight: 700; font-size: 15px; }
@@ -208,11 +281,13 @@
             .destaque-cartao { flex-direction: column; }
             .destaque-imagem { flex-basis: auto; }
             .destaque-corpo { padding: 24px; }
+            .destaque-cashback { flex-basis: 100%; text-align: center; }
+            .destaque-corpo .botao-cta { align-self: center; }
         }
 
         /* ---------- Em alta (carrossel) ---------- */
         #em-alta .titulo-secao { margin-bottom: 20px; }
-        .ver-todas-ofertas { display: block; text-align: center; margin-top: 4px; font-weight: 600; font-size: 14px; }
+        .ver-todas-ofertas { display: block; text-align: center; margin-top: 24px; font-weight: 600; font-size: 14px; }
 
         /* ---------- Categorias ---------- */
         .categorias-lista { display: flex; flex-wrap: wrap; gap: 10px; justify-content: center; }
@@ -226,6 +301,10 @@
         /* ---------- Rodapé ---------- */
         footer { padding: 32px 0; text-align: center; font-size: 13px; color: var(--muted); }
         .rodape-links { display: flex; justify-content: center; gap: 20px; flex-wrap: wrap; margin-bottom: 12px; }
+        .rodape-redes { display: flex; justify-content: center; gap: 14px; margin-bottom: 12px; }
+        .rodape-redes a { display: inline-flex; color: var(--muted); }
+        .rodape-redes a:hover { color: var(--brand); }
+        .rodape-redes svg { width: 20px; height: 20px; }
     </style>
 </head>
 <body>
@@ -237,20 +316,36 @@
             </form>
             <div class="nav-secundario">
                 <a href="{% url 'ofertas_lista' %}">Ofertas</a>
-                {% if user.is_authenticated %}
-                    <a href="{% url 'dashboard' %}">Minha conta</a>
-                    <form method="post" action="{% url 'logout' %}">
-                        {% csrf_token %}
-                        <button type="submit" class="linkbtn">Sair</button>
-                    </form>
-                {% else %}
-                    <a href="{% url 'login' %}">Entrar</a>
-                {% endif %}
+                <a href="#como-funciona">Como funciona</a>
+                <div class="menu-conta">
+                    <button type="button" class="icone-conta" id="botao-conta" aria-haspopup="true" aria-expanded="false" aria-controls="painel-conta" aria-label="Conta">
+                        <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+                            <circle cx="12" cy="8" r="3.5" stroke="currentColor" stroke-width="1.8"/>
+                            <path d="M5 20c0-3.5 3-6 7-6s7 2.5 7 6" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/>
+                        </svg>
+                    </button>
+                    <div class="painel-conta" id="painel-conta" role="menu" hidden>
+                        {% if user.is_authenticated %}
+                            <div class="painel-conta-saudacao">Olá, {{ user.username }}!</div>
+                            <div class="painel-conta-saldo">
+                                <div class="painel-conta-saldo-valor">R$ {{ saldo_liberado_nav|floatformat:2 }}</div>
+                                <div class="painel-conta-saldo-rotulo">Saldo liberado</div>
+                                <div class="painel-conta-saldo-outros">+ R$ {{ saldo_outros_nav|floatformat:2 }} em outros saldos</div>
+                            </div>
+                            <a class="painel-conta-link" href="{% url 'dashboard' %}" role="menuitem">Minha conta</a>
+                            <form class="painel-conta-form" method="post" action="{% url 'logout' %}">
+                                {% csrf_token %}
+                                <button type="submit" class="painel-conta-link" role="menuitem">Sair</button>
+                            </form>
+                        {% else %}
+                            <a class="painel-conta-link" href="{% url 'login' %}" role="menuitem">Entrar</a>
+                            <a class="painel-conta-link" href="{% url 'registrar' %}" role="menuitem">Cadastrar</a>
+                        {% endif %}
+                    </div>
+                </div>
             </div>
             {% if user.is_authenticated %}
                 <a class="botao-cta" href="{% url 'ir_para_shopee' %}">Ir pra Shopee &rarr;</a>
-            {% else %}
-                <a class="botao-cta" href="{% url 'registrar' %}">Cadastrar</a>
             {% endif %}
         </div>
     </nav>
@@ -268,10 +363,11 @@
     <header class="hero">
         <div class="envolve hero-grid">
             <div class="hero-text">
-                <h1>Compre na Shopee.<br>Receba parte do dinheiro <span class="mark">de volta</span>.</h1>
+                <h1>Compre na Shopee.<br>Receba parte do dinheiro <span class="mark">de volta.</span></h1>
                 <p class="subtitulo">
-                    Cole o link do produto e receba até {{ cashback_maximo_anunciado|floatformat:"-1" }}% de
-                    cashback. Após atingir o saldo de R$ {{ saque_valor_minimo|floatformat:2 }}, saque via Pix.
+                    Faça suas compras e receba até {{ cashback_percentual_maximo|floatformat:"-1" }}% de
+                    cashback (limitado a R$ {{ cashback_maximo_por_produto|floatformat:0 }} por produto).
+                    Após atingir o saldo de R$ {{ saque_valor_minimo|floatformat:2 }}, saque via Pix.
                 </p>
                 <div class="conversor-hero" id="converter-link">
                     <form method="post" action="{% url 'home' %}#converter-link">
@@ -279,11 +375,28 @@
                         <label for="{{ form.url_produto.id_for_label }}">{{ form.url_produto.label }}</label>
                         {{ form.url_produto }}
                         {% if form.url_produto.errors %}<div class="erros">{{ form.url_produto.errors|striptags }}</div>{% endif %}
+                        <p class="estimativa-cashback" id="estimativa-cashback">
+                            💰 Essa compra pode gerar até {{ cashback_percentual_maximo|floatformat:"-1" }}% de cashback
+                            (limitado a R$ {{ cashback_maximo_por_produto|floatformat:0 }} por produto).
+                        </p>
                         <button type="submit">Gerar link com cashback</button>
                     </form>
                     <div class="resultado-link">
                         {% if link_convertido %}
-                            <p class="resultado-titulo resultado-ok">Link convertido com sucesso:</p>
+                            <div class="selo-sucesso">
+                                <svg viewBox="0 0 24 24" width="28" height="28" fill="none" aria-hidden="true">
+                                    <circle cx="12" cy="12" r="11" fill="var(--success)"/>
+                                    <path d="M7 12.5l3 3 7-7" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                                </svg>
+                                <span class="confete confete-1"></span>
+                                <span class="confete confete-2"></span>
+                                <span class="confete confete-3"></span>
+                                <span class="confete confete-4"></span>
+                                <span class="confete confete-5"></span>
+                                <span class="confete confete-6"></span>
+                            </div>
+                            <p class="resultado-titulo resultado-ok">Cashback ativado! 🎉</p>
+                            <p class="resultado-sub">Agora é só concluir sua compra na Shopee.</p>
                             <a href="{{ link_convertido }}" target="_blank" rel="noopener noreferrer" class="resultado-url">{{ link_convertido }}</a>
                         {% else %}
                             <p class="resultado-titulo">O link convertido aparecerá aqui.</p>
@@ -314,6 +427,7 @@
     {% if oferta_destaque %}
     <section id="oferta-destaque">
         <div class="envolve">
+            <h2 class="titulo-secao">Oferta do dia</h2>
             <div class="destaque-cartao">
                 <div class="destaque-imagem">
                     {% if oferta_destaque.percentual_desconto %}
@@ -324,12 +438,14 @@
                     {% endif %}
                 </div>
                 <div class="destaque-corpo">
-                    <span class="destaque-eyebrow">Oferta do dia</span>
-                    <h2>{{ oferta_destaque.nome_curto|default:oferta_destaque.nome }}</h2>
+                    <h3>{{ oferta_destaque.nome_curto|default:oferta_destaque.nome }}</h3>
                     <div class="destaque-preco-linha">
                         <span class="destaque-preco">R$ {{ oferta_destaque.preco_min|floatformat:2 }}</span>
                         {% if oferta_destaque.percentual_cashback %}
-                            <span class="destaque-cashback">+ R$ {{ oferta_destaque.valor_cashback_estimado|floatformat:2 }} de volta ({{ oferta_destaque.percentual_cashback }}% cashback)</span>
+                            <span class="destaque-cashback">
+                                + R$ {{ oferta_destaque.valor_cashback_estimado|floatformat:2 }} de volta ({{ oferta_destaque.percentual_cashback }}% cashback)
+                                {% if oferta_destaque.cashback_no_limite %}<span class="cashback-limite" title="Cashback limitado a R$ {{ cashback_maximo_por_produto|floatformat:0 }} por produto">(máximo por produto)</span>{% endif %}
+                            </span>
                         {% endif %}
                     </div>
                     <a class="botao-cta" href="{% url 'ofertas_ir' oferta_destaque.id %}">Comprar com cashback &rarr;</a>
@@ -366,6 +482,29 @@
     </section>
     {% endif %}
 
+    <section id="como-funciona" class="fundo-suave">
+        <div class="envolve">
+            <h2 class="titulo-secao">Como funciona</h2>
+            <div class="passos">
+                <div class="passo reveal">
+                    <span class="passo-numero">1</span>
+                    <h3>Encontre a oferta</h3>
+                    <p>Explore a vitrine do site, converta o link de um produto específico ou simplesmente clique em "Ir pra Shopee" e navegue por lá.</p>
+                </div>
+                <div class="passo reveal">
+                    <span class="passo-numero">2</span>
+                    <h3>Compre pela cash-b</h3>
+                    <p>Finalize a compra normalmente, usando o link gerado ou a oferta que você acessou por aqui.</p>
+                </div>
+                <div class="passo reveal">
+                    <span class="passo-numero">3</span>
+                    <h3>Receba seu cashback</h3>
+                    <p>Depois que a Shopee validar o pedido, o valor cai na sua conta — é só sacar via PIX.</p>
+                </div>
+            </div>
+        </div>
+    </section>
+
     <section id="beneficios">
         <div class="envolve">
             <h2 class="titulo-secao">Por que usar o <span class="destaque-marca">cash-b</span>?</h2>
@@ -394,21 +533,22 @@
         </div>
     </section>
 
-    <section class="fundo-suave" id="como-funciona">
+    <section class="fundo-suave" id="maximizar-cashback">
         <div class="envolve">
             <h2 class="titulo-secao">Como ganhar mais cashback?</h2>
-            <p class="intro-secao">Gerar links de produtos te dá mais cashback do que somente clicar no botão de ir pra Shopee. Entenda abaixo o porquê.</p>
+            <p class="intro-secao">Comprar um produto específico — seja colando o link ou escolhendo direto na vitrine — te dá mais cashback do que somente clicar no botão de ir pra Shopee. Entenda abaixo o porquê.</p>
             <div class="comparativo">
                 <div class="cartao destaque reveal">
                     <span class="etiqueta">VENDA DIRETA</span>
-                    <h3>Link de um produto específico</h3>
+                    <h3>Produto específico</h3>
                     <p>
-                        Você cola o link do produto que quer comprar e ele é convertido em um link de afiliado.
-                        Quando a Shopee está com uma campanha de comissão extra ativa para aquele produto,
+                        Você cola o link de um produto específico <strong>ou</strong> clica em "Ir pra oferta"
+                        num card da vitrine — nos dois casos, o clique fica associado àquele produto.
+                        Quando a Shopee está com uma campanha de comissão extra ativa para ele,
                         só a venda direta tem acesso a esse bônus — por isso, sempre que souber o que vai comprar,
-                        vale a pena converter o link diretamente.
-                        Lembrete: você <strong>precisa</strong> comprar o produto específico do link para ter acesso
-                        à comissão extra, caso ela esteja disponível.
+                        vale a pena ir direto pelo link ou pela oferta específica.
+                        Lembrete: você <strong>precisa</strong> comprar o produto específico do link/oferta para ter
+                        acesso à comissão extra, caso ela esteja disponível.
                     </p>
                 </div>
                 <div class="cartao reveal">
@@ -422,7 +562,7 @@
                     </p>
                 </div>
             </div>
-            <p class="obs">Dica: depois de clicar num link do cash-b, finalize a compra sem passar por outros links de afiliado (de outro site ou app) — assim seu cashback fica garantido.</p>
+            <p class="obs">Dica: depois de clicar num link da cash-b, finalize a compra sem passar por outros links de afiliado (de outro site ou app) — assim seu cashback fica garantido.</p>
         </div>
     </section>
 
@@ -435,6 +575,21 @@
                 <a href="{% url 'termos_de_uso' %}">Termos de Uso</a>
                 <a href="{% url 'privacidade' %}">Privacidade</a>
                 <a href="{% url 'cookies' %}">Cookies</a>
+            </div>
+            <div class="rodape-redes">
+                <a href="https://www.instagram.com/usecashb/" target="_blank" rel="noopener noreferrer" aria-label="cash-b no Instagram">
+                    <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+                        <rect x="3" y="3" width="18" height="18" rx="5" stroke="currentColor" stroke-width="1.8"/>
+                        <circle cx="12" cy="12" r="4" stroke="currentColor" stroke-width="1.8"/>
+                        <circle cx="17.5" cy="6.5" r="1.2" fill="currentColor"/>
+                    </svg>
+                </a>
+                <a href="https://whatsapp.com/channel/0029VbDWeuU29754O2At6g1m" target="_blank" rel="noopener noreferrer" aria-label="Canal da cash-b no WhatsApp">
+                    <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+                        <path d="M12 3a9 9 0 0 0-7.75 13.5L3 21l4.65-1.22A9 9 0 1 0 12 3Z" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/>
+                        <path d="M8.5 8.7c.2-.5.4-.5.6-.5h.5c.15 0 .35 0 .5.4.2.5.6 1.5.65 1.6.05.1.1.25 0 .4-.5.75-1 .75-.5 1.55.55.9 1.4 1.65 2.3 2.05.85.4.85.05 1.35-.45.15-.15.3-.35.5-.3.2.05 1.25.6 1.45.7.2.1.35.15.4.25.05.1.05.6-.15 1.15-.2.55-1.2 1.05-1.65 1.1-.4.05-.9.1-3.35-.9-2.6-1.1-4.25-3.75-4.35-3.95-.1-.2-.85-1.2-.85-2.25s.55-1.6.75-1.8Z" fill="currentColor"/>
+                    </svg>
+                </a>
             </div>
             cash-b — afiliado independente Shopee
         </div>
@@ -461,6 +616,60 @@
 
             alvos.forEach(function (el) { observador.observe(el); });
         });
+
+        (function () {
+            var input = document.getElementById("{{ form.url_produto.id_for_label }}");
+            var estimativa = document.getElementById("estimativa-cashback");
+            if (!input || !estimativa) return;
+
+            var dominiosValidos = ["shopee.com.br", "shp.ee"];
+
+            function pareceLinkShopee(valor) {
+                try {
+                    var host = new URL(valor).hostname.toLowerCase();
+                    return dominiosValidos.some(function (dominio) {
+                        return host === dominio || host.endsWith("." + dominio);
+                    });
+                } catch (e) {
+                    return false;
+                }
+            }
+
+            function atualizar() {
+                estimativa.classList.toggle("visivel", pareceLinkShopee(input.value.trim()));
+            }
+
+            input.addEventListener("input", atualizar);
+            atualizar();
+        })();
+
+        (function () {
+            var botao = document.getElementById("botao-conta");
+            var painel = document.getElementById("painel-conta");
+            if (!botao || !painel) return;
+
+            function fechar() {
+                painel.hidden = true;
+                botao.setAttribute("aria-expanded", "false");
+            }
+            function abrir() {
+                painel.hidden = false;
+                botao.setAttribute("aria-expanded", "true");
+            }
+
+            botao.addEventListener("click", function (evento) {
+                evento.stopPropagation();
+                if (painel.hidden) { abrir(); } else { fechar(); }
+            });
+            document.addEventListener("click", function (evento) {
+                if (!painel.hidden && !painel.contains(evento.target) && evento.target !== botao) {
+                    fechar();
+                }
+            });
+            document.addEventListener("keydown", function (evento) {
+                if (evento.key === "Escape") fechar();
+            });
+        })();
     </script>
 
     <div id="pwa-banner" class="pwa-banner" hidden>

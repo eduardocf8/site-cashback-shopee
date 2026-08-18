@@ -108,10 +108,10 @@ cores da marca antes de usar, pra não destoar do resto do sistema.
   de conta (login, cadastro, recuperação de senha, chave PIX, gerar link).
 - `links/templates/links/home.html` e `accounts/templates/accounts/dashboard.html`
   — páginas com HTML/CSS próprio (não usam `base.html`).
-- `marketing/instagram/` — histórico e decisões do Instagram do cash-b
+- `marketing/instagram/` — histórico e decisões do Instagram da cash-b
   (roadmap do bot de postagens, posts institucionais já aprovados, script
   que gera as artes). Ver `marketing/instagram/README.md`.
-- `VOZ.md` — guia de tom de voz (como o cash-b escreve, verbos e
+- `VOZ.md` — guia de tom de voz (como a cash-b escreve, verbos e
   expressões a evitar). Separado deste arquivo porque trata de texto, não
   de identidade visual.
 
@@ -152,9 +152,9 @@ cores da marca antes de usar, pra não destoar do resto do sistema.
 
 ## Histórico do redesign (2026-08)
 
-O dono do produto trouxe um documento de pesquisa de UI/UX comparando o cash-b
+O dono do produto trouxe um documento de pesquisa de UI/UX comparando a cash-b
 com portais grandes de cashback/ofertas (ShopBack, Rakuten, Méliuz, Zoom, etc.)
-com o objetivo de transformar o cash-b de "ferramenta de gerar link" em uma
+com o objetivo de transformar a cash-b de "ferramenta de gerar link" em uma
 vitrine de ofertas. Duas decisões saíram dessa conversa:
 
 1. **Identidade visual**: foram desenhadas 3 opções (manter verde+lima, adotar
