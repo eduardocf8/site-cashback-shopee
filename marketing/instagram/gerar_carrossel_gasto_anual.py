@@ -26,6 +26,7 @@ from carrossel_base import (
     MUTED,
     Slide,
     cta_pill,
+    destaque,
     fonte,
     gerar,
     linha_valor,
@@ -69,17 +70,18 @@ SLIDES = [
     <div style="font-family:'JB Mono'; font-size:52px; font-weight:700; color:{HIGHLIGHT}; margin-top:24px; letter-spacing:-0.03em;">R$ 0,00</div>
     """, False),
 
+    # O "no mínimo" aparece em três lugares de propósito (título, o "+" colado no
+    # valor e a caixa de destaque): a versão anterior deixava isso só numa nota
+    # cinza no rodapé, que é justamente onde a informação morre.
     Slide(LIGHT_BG, f"""
     {tag_label("com a cash-b", BRAND_PRIMARY)}
-    {titulo("O que voltaria para a sua conta", 24, DARK_BG)}
+    {titulo("O mínimo que volta para a sua conta", 24, DARK_BG)}
     <div style="margin-top:14px;">
-        {linha_valor("Gastando R$ 100 por mês", "R$ 19/ano")}
-        {linha_valor("Gastando R$ 300 por mês", "R$ 57/ano")}
-        {linha_valor("Gastando R$ 500 por mês", "R$ 96/ano")}
+        {linha_valor("Gastando R$ 100 por mês", "R$ 19+ /ano")}
+        {linha_valor("Gastando R$ 300 por mês", "R$ 57+ /ano")}
+        {linha_valor("Gastando R$ 500 por mês", "R$ 96+ /ano")}
     </div>
-    <div style="font-family:Familjen; font-size:12.5px; color:{MUTED}; margin-top:14px; line-height:1.45;">
-        E esse é o piso: muitos produtos têm comissão extra e devolvem bem mais.
-    </div>
+    {destaque("<b>Isso é o piso, não o teto.</b> Produtos com comissão extra devolvem bem mais que esses valores.")}
     """, True),
 
     Slide(BRAND_GRADIENT, f"""
