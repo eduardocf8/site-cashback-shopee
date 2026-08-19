@@ -127,6 +127,15 @@ def numero_gigante(valor, legenda, cor=HIGHLIGHT, cor_legenda="rgba(255,255,255,
     """
 
 
+def realce(texto):
+    """Marca-texto no estilo da marca (equivalente ao .mark do brand.css). Usar no
+    máximo uma vez por slide - o efeito só funciona enquanto for exceção."""
+    return (
+        f'<span style="background:{HIGHLIGHT}; color:{DARK_BG}; padding:0 0.1em; '
+        f'border-radius:3px; box-decoration-break:clone; -webkit-box-decoration-break:clone;">{texto}</span>'
+    )
+
+
 def caso(situacao, resultado, escuro=False):
     """Bloco "situação -> resultado", para comparar cenários lado a lado (ex: comprar
     direto na Shopee x comprar pelo link de alguém)."""
