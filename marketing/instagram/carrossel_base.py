@@ -127,6 +127,17 @@ def numero_gigante(valor, legenda, cor=HIGHLIGHT, cor_legenda="rgba(255,255,255,
     """
 
 
+def fonte(texto, escuro=False):
+    """Crédito da fonte, em corpo bem pequeno no pé do slide. Todo slide que mostra
+    número de pesquisa externa leva um - dado sem origem é o tipo de coisa que
+    derruba a confiança justamente em quem lê com atenção."""
+    cor = "rgba(255,255,255,0.4)" if escuro else "rgba(17,24,39,0.35)"
+    return (
+        f'<div style="font-family:Familjen; font-size:9.5px; color:{cor}; margin-top:20px; '
+        f'line-height:1.4; letter-spacing:0.01em;">{texto}</div>'
+    )
+
+
 def pill(texto, cor_texto, cor_fundo):
     return (
         f'<span style="font-family:Familjen; font-size:11px; font-weight:600; padding:6px 14px; '

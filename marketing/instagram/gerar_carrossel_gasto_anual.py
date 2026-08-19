@@ -1,27 +1,34 @@
-"""Carrossel "Quanto você gastou na Shopee esse ano?".
+"""Carrossel "O que o brasileiro gasta na Shopee em um ano".
 
-Conteúdo de topo de funil: o gancho é um número que a pessoa não sabe de cabeça e
-consegue descobrir na hora, no próprio celular. A cash-b só aparece no fim, como
-desfecho - carrossel que começa falando da marca não alcança quem ainda não segue.
+Primeira versão pedia para a pessoa somar o próprio histórico de pedidos no app - ideia
+descartada: a Shopee não tem relatório de gastos, as únicas formas de chegar nesse
+número são extensão de navegador ou colar script no console (que, além de técnico
+demais, é exatamente o formato de golpe que se ensina a não fazer). Sem esse caminho,
+o carrossel passou a ser informativo: mostra o dado público e o que ele renderia.
 
-Números: pesquisa Klavi 2025 (50 mil consumidores) - 18 pedidos/ano na Shopee, ticket
-médio de R$ 83,88, o que dá R$ 1.509/ano. O piso de 1,6% vem de
-SHOPEE_CASHBACK_PERCENTUAL (20%) x SHOPEE_COMISSAO_VENDA_DIRETA (8%).
+Números (fontes creditadas no próprio slide):
+- 18 pedidos/ano na Shopee, ticket médio R$ 83,88 = R$ 1.509/ano - Klavi, 2025,
+  50 mil consumidores.
+- R$ 130 bilhões movimentados por Shopee, Shein e TikTok no Brasil em 2025, ou
+  R$ 356 milhões por dia - EY e Klavi, 2025.
+- Piso de 1,6%: SHOPEE_CASHBACK_PERCENTUAL (20%) x SHOPEE_COMISSAO_VENDA_DIRETA (8%).
+
+Só usa dado de Shopee, não de e-commerce em geral: a cash-b devolve cashback de compra
+na Shopee, então citar o gasto total do brasileiro em marketplaces prometeria uma
+conta que a gente não entrega.
 """
 from carrossel_base import (
     BRAND_GRADIENT,
-    BRAND_LIGHT,
     BRAND_PRIMARY,
     DARK_BG,
     HIGHLIGHT,
     LIGHT_BG,
     MUTED,
-    SUCCESS,
     Slide,
     cta_pill,
+    fonte,
     gerar,
     linha_valor,
-    numbered_step,
     numero_gigante,
     subtitulo,
     tag_label,
@@ -30,38 +37,35 @@ from carrossel_base import (
 
 SLIDES = [
     Slide(LIGHT_BG, f"""
-    {tag_label("faça as contas", BRAND_PRIMARY)}
-    {titulo("Quanto você gastou na Shopee esse ano?", 34, DARK_BG)}
-    {subtitulo("Quase ninguém sabe responder de cabeça.", MUTED, 300, 15)}
+    {tag_label("os números", BRAND_PRIMARY)}
+    {titulo("O que o brasileiro gasta na Shopee em um ano", 34, DARK_BG)}
+    {subtitulo("O valor é maior do que quase todo mundo imagina.", MUTED, 300, 15)}
     """, True),
 
-    Slide(DARK_BG, f"""
-    {tag_label("o dado", "rgba(255,255,255,0.5)")}
-    {titulo("O brasileiro faz 18 compras por ano na Shopee.", 28)}
-    {subtitulo(
-        "Com ticket médio de R$ 84 por compra. É pouco de cada vez — "
-        "o que engana é a soma.",
-        "rgba(255,255,255,0.65)", 310, 14)}
+    Slide(BRAND_GRADIENT, f"""
+    {tag_label("por pessoa, por ano", "rgba(255,255,255,0.75)")}
+    {numero_gigante("R$ 1.509", "São 18 compras por ano, de R$ 84 em média. Pouco de cada vez — o que engana é a soma.", "#fff", "rgba(255,255,255,0.85)")}
+    {fonte("Fonte: pesquisa Klavi (2025), com 50 mil consumidores.", escuro=True)}
     """, False),
 
-    Slide(BRAND_GRADIENT, f"""
-    {tag_label("a soma", "rgba(255,255,255,0.75)")}
-    {numero_gigante("R$ 1.509", "É quanto a média gasta por ano na Shopee, sem perceber.", "#fff", "rgba(255,255,255,0.85)")}
+    Slide(DARK_BG, f"""
+    {tag_label("no país inteiro", "rgba(255,255,255,0.5)")}
+    {numero_gigante("R$ 356 mi", "É quanto os brasileiros gastam POR DIA em Shopee, Shein e TikTok. R$ 130 bilhões no ano.", HIGHLIGHT, "rgba(255,255,255,0.7)")}
+    {fonte("Fonte: estudo EY e Klavi (2025).", escuro=True)}
     """, False),
 
     Slide(LIGHT_BG, f"""
-    {tag_label("descubra o seu", BRAND_PRIMARY)}
-    {titulo("Como ver o seu número agora", 25, DARK_BG)}
-    <div style="margin-top:14px;">
-        {numbered_step("01", "Abra o app da Shopee", "No canto inferior direito, toque em “Eu”.")}
-        {numbered_step("02", "Entre em Minhas Compras", "Ali fica o histórico completo dos seus pedidos.")}
-        {numbered_step("03", "Role até janeiro", "E some. Prepare-se para o susto.")}
-    </div>
+    {tag_label("o detalhe", BRAND_PRIMARY)}
+    {titulo("Em toda essa movimentação, existe comissão de afiliado.", 28, DARK_BG)}
+    {subtitulo(
+        "A Shopee paga uma parte de cada venda para quem levou o cliente até o "
+        "produto. É assim que canais de oferta e páginas de achadinhos se sustentam.",
+        MUTED, 305, 14.5)}
     """, True),
 
     Slide(DARK_BG, f"""
     {tag_label("a pergunta que importa", "rgba(255,255,255,0.5)")}
-    {titulo("Desse dinheiro todo, quanto voltou para você?", 28)}
+    {titulo("Quanto dessa comissão volta para quem comprou?", 28)}
     <div style="font-family:'JB Mono'; font-size:52px; font-weight:700; color:{HIGHLIGHT}; margin-top:24px; letter-spacing:-0.03em;">R$ 0,00</div>
     """, False),
 
@@ -79,15 +83,16 @@ SLIDES = [
     """, True),
 
     Slide(BRAND_GRADIENT, f"""
-    {titulo("O dinheiro já é gasto de qualquer jeito.", 30)}
+    {titulo("O dinheiro sai da sua conta de qualquer jeito.", 30)}
     {subtitulo("A diferença é uma parte dele voltar.", "rgba(255,255,255,0.9)", 300, 15)}
     {cta_pill()}
     """, False, seta=False),
 ]
 
 LEGENDA = (
-    "Faça o teste: abra o app da Shopee, vá em Minhas Compras e role até janeiro. "
-    "O número assusta — e nada dele voltou para você. Salve para fazer depois. 💸"
+    "R$ 1.509 por ano, por pessoa, só na Shopee — e R$ 356 milhões por dia no país "
+    "inteiro. Em toda essa movimentação existe uma comissão que nunca volta para "
+    "quem comprou. Salve para lembrar. 📊"
 )
 
 if __name__ == "__main__":
