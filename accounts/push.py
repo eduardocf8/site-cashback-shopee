@@ -14,11 +14,16 @@ def enviar_push(usuario, titulo, corpo, url="/"):
     o push não sair - assim como o e-mail (ver pedidos/notificacoes.py), notificação é
     um extra, nunca pode travar a operação principal. Inscrições que o navegador já
     invalidou (404/410 - usuário desinstalou o app, limpou o site, etc.) são apagadas
-    na hora, pra não ficar tentando mandar pra elas pra sempre."""
+    na hora, pra não ficar tentando mandar pra elas pra sempre.
+
+    Retorna quantas inscrições receberam o push com sucesso - a ação de teste no admin
+    (ver accounts/admin.py) usa esse número pra avisar quando o envio falhou de verdade
+    no servidor, em vez de dizer "enviado" mesmo quando não saiu nada."""
     if not settings.VAPID_PRIVATE_KEY or not usuario:
-        return
+        return 0
 
     dados = json.dumps({"titulo": titulo, "corpo": corpo, "url": url})
+    enviados = 0
     for inscricao in usuario.push_subscriptions.all():
         try:
             webpush(
@@ -30,8 +35,10 @@ def enviar_push(usuario, titulo, corpo, url="/"):
                 vapid_private_key=settings.VAPID_PRIVATE_KEY,
                 vapid_claims={"sub": f"mailto:{settings.VAPID_CLAIMS_EMAIL}"},
             )
+            enviados += 1
         except WebPushException as erro:
             if erro.response is not None and erro.response.status_code in (404, 410):
                 inscricao.delete()
             else:
                 logger.exception("Falha ao enviar push pro usuário %s", usuario.pk)
+    return enviados
