@@ -301,3 +301,27 @@ class EnviarPushTests(TestCase):
         enviar_push(self.usuario, "Título", "Corpo")
 
         self.assertTrue(PushSubscription.objects.filter(pk=self.inscricao.pk).exists())
+
+
+class AcaoDeTesteDoPushNoAdminTests(TestCase):
+    def setUp(self):
+        self.staff = User.objects.create_user(
+            username="staff", password="senha123", cpf="39053344705", is_staff=True, is_superuser=True
+        )
+        self.usuario = User.objects.create_user(username="ana", password="senha123", cpf="14783246947")
+        self.inscricao = PushSubscription.objects.create(
+            usuario=self.usuario,
+            endpoint="https://push.exemplo.com/abc",
+            chave_p256dh="chave-p256dh",
+            chave_auth="chave-auth",
+        )
+        self.client.force_login(self.staff)
+
+    @patch("accounts.admin.enviar_push")
+    def test_manda_pro_usuario_da_inscricao_selecionada(self, mock_enviar_push):
+        self.client.post(
+            reverse("admin:accounts_pushsubscription_changelist"),
+            {"action": "mandar_notificacao_de_teste", "_selected_action": [self.inscricao.pk]},
+        )
+        mock_enviar_push.assert_called_once()
+        self.assertEqual(mock_enviar_push.call_args.args[0], self.usuario)
