@@ -79,11 +79,15 @@ SLIDES = [
     """, False, seta=False),
 ]
 
-LEGENDA = (
-    "Uma marca de cashback falando para você não comprar por causa do cashback. "
-    "Porque na compra que você já ia fazer de qualquer jeito, aí sim é ganho de "
-    "verdade — e é essa que vale ativar. 💜"
-)
+LEGENDA = """Uma marca de cashback falando para você não comprar por causa do cashback. 💜
+
+Comprar algo de R$ 200 que você não precisava para receber R$ 3 de volta não é ganhar R$ 3. É gastar R$ 197.
+
+Agora, na compra que você já ia fazer de qualquer jeito, aí sim é ganho de verdade — e é essa que vale ativar.
+
+Concorda ou acha exagero? Conta nos comentários. 👇
+
+#cashback #shopeebrasil #consumoconsciente #economizar #dinheirodevolta"""
 
 if __name__ == "__main__":
     import sys

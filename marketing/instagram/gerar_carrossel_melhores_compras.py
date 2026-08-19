@@ -94,10 +94,13 @@ SLIDES = [
     """, False, seta=False),
 ]
 
-LEGENDA = (
-    "Não são as compras mais caras que rendem mais cashback — e o motivo surpreende. "
-    "Salve para consultar antes da próxima compra na Shopee. 📌"
-)
+LEGENDA = """Não são as compras mais caras que rendem mais cashback — e o motivo surpreende. 📌
+
+Tem teto de R$ 10 por produto, então acima de R$ 625 o valor trava. Por isso a lista das melhores é outra: as que se repetem todo mês, as da faixa de R$ 100 a R$ 600 e o carrinho cheio (o teto é por produto, não por pedido — 5 itens são 5 cashbacks).
+
+Salve para consultar antes da próxima compra na Shopee.
+
+#cashback #shopeebrasil #achadinhosshopee #economizar #comprasinteligentes"""
 
 if __name__ == "__main__":
     import sys

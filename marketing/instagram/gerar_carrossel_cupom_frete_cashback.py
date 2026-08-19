@@ -85,10 +85,13 @@ SLIDES = [
     """, False, seta=False),
 ]
 
-LEGENDA = (
-    "Muita gente acha que precisa escolher entre cupom, frete grátis e cashback. "
-    "Não precisa — os três entram na mesma compra. Salve para lembrar na próxima. 🛒"
-)
+LEGENDA = """Muita gente acha que precisa escolher entre cupom, frete grátis e cashback. Não precisa — os três entram na mesma compra. 🛒
+
+Cupom e frete grátis são da Shopee. O cashback é da cash-b. Um não anula o outro.
+
+Salve para lembrar na hora da próxima compra.
+
+#cashback #shopeebrasil #cupomdedesconto #economizar #comprasonline"""
 
 if __name__ == "__main__":
     import sys

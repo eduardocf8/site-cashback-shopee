@@ -436,6 +436,38 @@ Gera os 8 PNGs em `posts-semeadura/`, sobrescrevendo os existentes. Esse
 script é a base que a Fase 3 (templates parametrizados com dados reais de
 ofertas) vai estender.
 
+## Carrosséis (`carrossel_base.py` + `gerar_carrossel_*.py`)
+
+Cada carrossel é um script `gerar_carrossel_<tema>.py` que só descreve o
+próprio conteúdo (lista de `Slide` + a variável `LEGENDA`) e chama
+`gerar()`. Todo o resto — paleta, fontes embutidas, componentes de slide,
+moldura de preview no estilo Instagram e exportação — mora em
+`carrossel_base.py`. Antes isso vivia dentro de
+`gerar_carrossel_beneficios.py` (o primeiro, que ficou como estava);
+replicar ~400 linhas por carrossel seria impossível de manter.
+
+```bash
+cd marketing/instagram
+python3 gerar_carrossel_<tema>.py            # só o preview + legenda
+python3 gerar_carrossel_<tema>.py --export   # também os PNGs 1080x1350
+```
+
+Cada carrossel gera na própria pasta:
+
+- `preview.html` — o carrossel arrastável, para revisar antes de exportar
+- `legenda.txt` — a legenda do post, escrita automaticamente por `gerar()`
+- `slide_N.png` — os slides em 1080×1350 (4:5), só com `--export`
+
+**Convenção da legenda:** todo carrossel tem a legenda salva em
+`legenda.txt` na mesma pasta dos slides, para que na hora de postar tudo
+que o post precisa esteja junto — sem abrir o script para caçar a
+variável. Isso é automático: basta preencher `LEGENDA` no script.
+
+Estrutura que as legendas seguem: abertura com o gancho, o argumento em
+um ou dois parágrafos curtos, uma chamada (salvar ou comentar) e 5
+hashtags. Chamada para comentário só onde a pergunta é natural — pedir
+comentário em todo post soa desesperado e o Instagram não recompensa.
+
 ## Decisões de conteúdo (não repetir)
 
 - **Não afirmar valor de saque mínimo inexistente.** O site tem um valor
