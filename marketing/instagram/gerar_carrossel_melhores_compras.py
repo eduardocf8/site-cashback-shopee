@@ -54,7 +54,7 @@ SLIDES = [
 
     Slide(LIGHT_BG, item(
         "1", "O que você compra todo mês",
-        "Limpeza, higiene, item de casa. Sozinha cada compra é pequena, mas ela se "
+        "Limpeza, higiene, item de casa. Sozinha, cada compra é pequena, mas ela se "
         "repete o ano inteiro — e o cashback se repete junto.",
         "12 compras por ano rendem 12 vezes.",
     ), True),
@@ -62,7 +62,7 @@ SLIDES = [
     Slide(LIGHT_BG, item(
         "2", "A faixa de R$ 100 a R$ 600",
         "É onde o percentual rende inteiro, sem chegar perto do teto. O ponto ideal "
-        "para eletrônico, roupa, item de casa maior.",
+        "para eletrônicos, roupas, itens pra casa.",
         "Uma compra de R$ 600 rende o percentual cheio.",
     ), True),
 
@@ -74,10 +74,10 @@ SLIDES = [
     ), True),
 
     Slide(LIGHT_BG, item(
-        "4", "Presente e lista de fim de ano",
-        "Época de comprar várias coisas de uma vez, para várias pessoas. Cada item "
-        "da lista gera o seu.",
-        "A lista inteira volta um pouco.",
+        "4", "Presentes e lista de fim de ano",
+        "Época de comprar várias coisas de uma vez para várias pessoas. Cada item "
+        "da lista gera cashback.",
+        "A lista toda te dá dinheiro de volta.",
     ), True),
 
     Slide(LIGHT_BG, item(
@@ -88,8 +88,8 @@ SLIDES = [
     ), True),
 
     Slide(BRAND_GRADIENT, f"""
-    {titulo("Comece pela próxima da lista.", 30)}
-    {subtitulo("Provavelmente é uma dessas cinco.", "rgba(255,255,255,0.9)", 300, 15)}
+    {titulo("Comece pela próxima compra.", 30)}
+    {subtitulo("É hora de receber dinheiro de volta.", "rgba(255,255,255,0.9)", 300, 15)}
     {cta_pill()}
     """, False, seta=False),
 ]
