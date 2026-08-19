@@ -4,8 +4,10 @@ Diferente do carrossel de gasto anual (que é um exercício pessoal, "descubra o
 número"), esse aqui explica o mecanismo: a comissão de afiliado existe em toda venda
 e sempre vai para alguém. O "erro" é nunca ter sido esse alguém.
 
-Números: pesquisa Klavi 2025 - 18 pedidos/ano na Shopee, ticket médio R$ 83,88. O piso
-de 1,6% vem de SHOPEE_CASHBACK_PERCENTUAL (20%) x SHOPEE_COMISSAO_VENDA_DIRETA (8%).
+Os valores da escala são conta própria (gasto mensal hipotético x 1,6%), não dado de
+pesquisa - por isso nenhum slide leva crédito de fonte, diferente do carrossel de gasto
+anual. O piso de 1,6% vem de SHOPEE_CASHBACK_PERCENTUAL (20%) x
+SHOPEE_COMISSAO_VENDA_DIRETA (8%).
 """
 from carrossel_base import (
     BRAND_GRADIENT,
@@ -17,6 +19,7 @@ from carrossel_base import (
     SUCCESS,
     Slide,
     cta_pill,
+    destaque,
     gerar,
     linha_valor,
     numero_gigante,
@@ -50,17 +53,18 @@ SLIDES = [
         "rgba(255,255,255,0.7)", 300, 14.5)}
     """, False),
 
+    # Mesmo tratamento do carrossel de gasto anual: "no mínimo" no título, "+" colado
+    # no valor e caixa de destaque. Aqui o destaque fica curto de propósito - quem
+    # explica o piso é o slide seguinte, que abre com o 1,6% em corpo gigante.
     Slide(LIGHT_BG, f"""
     {tag_label("o tamanho disso", BRAND_PRIMARY)}
-    {titulo("Quanto poderia ter sido seu", 24, DARK_BG)}
+    {titulo("O mínimo que poderia ter sido seu", 24, DARK_BG)}
     <div style="margin-top:14px;">
-        {linha_valor("Comprando R$ 100 por mês", "R$ 19/ano")}
-        {linha_valor("Comprando R$ 300 por mês", "R$ 57/ano")}
-        {linha_valor("Comprando R$ 500 por mês", "R$ 96/ano")}
+        {linha_valor("Comprando R$ 100 por mês", "R$ 19+ /ano")}
+        {linha_valor("Comprando R$ 300 por mês", "R$ 57+ /ano")}
+        {linha_valor("Comprando R$ 500 por mês", "R$ 96+ /ano")}
     </div>
-    <div style="font-family:Familjen; font-size:12.5px; color:{MUTED}; margin-top:14px; line-height:1.45;">
-        Calculado sobre 1,6%, que é o mínimo que a cash-b devolve.
-    </div>
+    {destaque("<b>Isso é o piso, não o teto.</b> E o piso tem nome — arrasta para ver.")}
     """, True),
 
     Slide(BRAND_GRADIENT, f"""
