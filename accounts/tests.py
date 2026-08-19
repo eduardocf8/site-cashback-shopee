@@ -319,9 +319,29 @@ class AcaoDeTesteDoPushNoAdminTests(TestCase):
 
     @patch("accounts.admin.enviar_push")
     def test_manda_pro_usuario_da_inscricao_selecionada(self, mock_enviar_push):
-        self.client.post(
+        mock_enviar_push.return_value = 1
+
+        resposta = self.client.post(
             reverse("admin:accounts_pushsubscription_changelist"),
             {"action": "mandar_notificacao_de_teste", "_selected_action": [self.inscricao.pk]},
+            follow=True,
         )
+
         mock_enviar_push.assert_called_once()
         self.assertEqual(mock_enviar_push.call_args.args[0], self.usuario)
+        self.assertContains(resposta, "enviada com sucesso")
+
+    @patch("accounts.admin.enviar_push")
+    def test_falha_no_envio_avisa_em_vez_de_dizer_que_deu_certo(self, mock_enviar_push):
+        # enviar_push retorna 0 quando o push falhou no servidor pra todo mundo (ex:
+        # chave VAPID errada) - sem checar isso, a ação sempre dizia "enviado" mesmo
+        # quando não saiu nada, escondendo o erro de quem só olha o admin.
+        mock_enviar_push.return_value = 0
+
+        resposta = self.client.post(
+            reverse("admin:accounts_pushsubscription_changelist"),
+            {"action": "mandar_notificacao_de_teste", "_selected_action": [self.inscricao.pk]},
+            follow=True,
+        )
+
+        self.assertContains(resposta, "Não saiu nenhuma notificação")
