@@ -88,11 +88,13 @@ SLIDES = [
     """, False, seta=False),
 ]
 
-LEGENDA = (
-    "Quando a compra na Shopee passa por um link de afiliado, alguém recebe uma "
-    "comissão. Nas suas, nunca foi você — e se você entrou direto no app, ela nem "
-    "chegou a existir. Dá para mudar isso a partir da próxima. 👀"
-)
+LEGENDA = """Quando a compra na Shopee passa por um link de afiliado, alguém recebe uma comissão. 👀
+
+Nas suas, nunca foi você — e se você entrou direto no app, ela nem chegou a existir.
+
+Dá para mudar isso a partir da próxima compra.
+
+#cashback #shopeebrasil #economizar #dinheirodevolta #comprasonline"""
 
 if __name__ == "__main__":
     import sys

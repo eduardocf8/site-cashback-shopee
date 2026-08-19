@@ -100,12 +100,13 @@ SLIDES = [
     """, False, seta=False),
 ]
 
-LEGENDA = (
-    "R$ 1.509 por ano, por pessoa, só na Shopee — e R$ 356 milhões por dia no país "
-    "inteiro. Quando a compra passa por um link de afiliado, existe uma comissão aí "
-    "dentro. Ela vai para o dono do link, ou nem chega a existir se você entrou "
-    "direto. Nunca para quem pagou a conta. Salve para lembrar. 📊"
-)
+LEGENDA = """R$ 1.509 por ano, por pessoa, só na Shopee — e R$ 356 milhões por dia no país inteiro. 📊
+
+Quando a compra passa por um link de afiliado, existe uma comissão aí dentro. Ela vai para o dono do link, ou nem chega a existir se você entrou direto. Nunca para quem pagou a conta.
+
+Chuta aí nos comentários: quanto VOCÊ acha que gastou na Shopee esse ano? 👇
+
+#cashback #shopeebrasil #economizar #dinheirodevolta #achadinhosshopee"""
 
 if __name__ == "__main__":
     import sys

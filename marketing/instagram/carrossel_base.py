@@ -260,6 +260,9 @@ ACTION_ICONS = """
 
 def _montar_html(slides, legenda):
     total = len(slides)
+    # HTML engole quebra de linha; sem isso a legenda com hashtags e chamada aparece
+    # tudo grudado no preview, diferente de como o Instagram vai mostrar.
+    legenda = legenda.strip().replace("\n", "<br>")
     corpo = "".join(s.render(i, total) for i, s in enumerate(slides))
     dots = "".join(
         f'<div class="ig-dot" data-i="{i}" style="width:6px; height:6px; border-radius:50%; '
@@ -415,13 +418,21 @@ def _exportar(preview_path, out_dir, total):
 
 
 def gerar(nome_pasta, slides, legenda, exportar=False):
-    """Escreve o preview HTML e, com exportar=True, também os PNGs dos slides."""
+    """Escreve o preview HTML, a legenda em texto e, com exportar=True, os PNGs.
+
+    A legenda vai para legenda.txt na mesma pasta dos slides de propósito: na hora de
+    postar, tudo que o post precisa está junto, sem ter que abrir o script e caçar a
+    variável. Todo carrossel novo já nasce com esse arquivo."""
     out_dir = Path(__file__).resolve().parent / nome_pasta
     out_dir.mkdir(exist_ok=True)
 
     preview_path = out_dir / "preview.html"
     preview_path.write_text(_montar_html(slides, legenda), encoding="utf-8")
     print("preview gerado:", preview_path.relative_to(REPO_ROOT))
+
+    legenda_path = out_dir / "legenda.txt"
+    legenda_path.write_text(legenda.strip() + "\n", encoding="utf-8")
+    print("legenda gerada:", legenda_path.relative_to(REPO_ROOT))
 
     if exportar:
         _exportar(preview_path, out_dir, len(slides))
