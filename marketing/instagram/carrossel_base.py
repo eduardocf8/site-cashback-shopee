@@ -127,13 +127,29 @@ def numero_gigante(valor, legenda, cor=HIGHLIGHT, cor_legenda="rgba(255,255,255,
     """
 
 
-def destaque(texto, cor=HIGHLIGHT):
+def caso(situacao, resultado, escuro=False):
+    """Bloco "situação -> resultado", para comparar cenários lado a lado (ex: comprar
+    direto na Shopee x comprar pelo link de alguém)."""
+    cor_situacao = "rgba(255,255,255,0.55)" if escuro else MUTED
+    cor_resultado = "#fff" if escuro else DARK_BG
+    borda = "rgba(255,255,255,0.12)" if escuro else LIGHT_BORDER
+    return f"""
+    <div style="padding:13px 0; border-bottom:1px solid {borda};">
+        <div style="font-family:Familjen; font-size:12.5px; color:{cor_situacao}; line-height:1.4;">{situacao}</div>
+        <div style="font-family:Familjen; font-size:15px; font-weight:700; color:{cor_resultado}; margin-top:4px; line-height:1.35;">{resultado}</div>
+    </div>
+    """
+
+
+def destaque(texto, escuro=False, cor=HIGHLIGHT):
     """Caixa de destaque com barra colorida à esquerda. Para a informação que não pode
     passar batida - nota em cinza pequeno no rodapé do slide quase ninguém lê."""
+    fundo = "rgba(245,158,11,0.16)" if escuro else "rgba(245,158,11,0.14)"
+    cor_texto = "#fff" if escuro else DARK_BG
     return f"""
-    <div style="margin-top:18px; padding:13px 16px; background:rgba(245,158,11,0.14);
+    <div style="margin-top:18px; padding:13px 16px; background:{fundo};
                 border-left:3px solid {cor}; border-radius:6px; font-family:Familjen;
-                font-size:13.5px; color:{DARK_BG}; line-height:1.5;">
+                font-size:13.5px; color:{cor_texto}; line-height:1.5;">
         {texto}
     </div>
     """
