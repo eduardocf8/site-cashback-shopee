@@ -2,6 +2,7 @@ from django.contrib import admin
 from django.contrib.auth.admin import UserAdmin as BaseUserAdmin
 
 from .models import ConfiguracaoIndicacao, Indicacao, PushSubscription, User
+from .push import enviar_push
 
 
 class UserAdmin(BaseUserAdmin):
@@ -40,6 +41,19 @@ class PushSubscriptionAdmin(admin.ModelAdmin):
     list_display = ("usuario", "criado_em")
     search_fields = ("usuario__username",)
     autocomplete_fields = ("usuario",)
+    actions = ["mandar_notificacao_de_teste"]
+
+    @admin.action(description="Mandar notificação de teste")
+    def mandar_notificacao_de_teste(self, request, queryset):
+        usuarios = {inscricao.usuario for inscricao in queryset}
+        for usuario in usuarios:
+            enviar_push(
+                usuario,
+                "Notificação de teste",
+                "Se você recebeu isso, as notificações da cash-b estão funcionando!",
+                url="/dashboard/",
+            )
+        self.message_user(request, f"Notificação de teste mandada pra {len(usuarios)} usuário(s).")
 
 
 admin.site.register(User, UserAdmin)
