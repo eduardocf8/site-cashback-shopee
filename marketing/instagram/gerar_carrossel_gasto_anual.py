@@ -95,7 +95,7 @@ SLIDES = [
 
     Slide(BRAND_GRADIENT, f"""
     {titulo("Você ia comprar de qualquer jeito.", 30)}
-    {subtitulo("A diferença é que você pode ter dinheiro de volta.", "rgba(255,255,255,0.9)", 300, 15)}
+    {subtitulo("A diferença é que uma parte volta para você.", "rgba(255,255,255,0.9)", 300, 15)}
     {cta_pill()}
     """, False, seta=False),
 ]
