@@ -25,6 +25,7 @@ from carrossel_base import (
     LIGHT_BG,
     MUTED,
     Slide,
+    caso,
     cta_pill,
     destaque,
     fonte,
@@ -55,19 +56,26 @@ SLIDES = [
     {fonte("Fonte: estudo EY e Klavi (2025).", escuro=True)}
     """, False),
 
+    # Os dois cenários são diferentes de verdade: sem link de afiliado não existe
+    # comissão nenhuma (a Shopee fica com tudo), e não "uma comissão que vai para
+    # outra pessoa". Dizer que toda venda paga comissão seria simplesmente falso.
     Slide(LIGHT_BG, f"""
     {tag_label("o detalhe", BRAND_PRIMARY)}
-    {titulo("Em toda essa movimentação, existe comissão de afiliado.", 28, DARK_BG)}
-    {subtitulo(
-        "A Shopee paga uma parte de cada venda para quem levou o cliente até o "
-        "produto. É assim que canais de oferta e páginas de achadinhos se sustentam.",
-        MUTED, 305, 14.5)}
+    {titulo("Quem ganha comissão na sua compra?", 26, DARK_BG)}
+    <div style="margin-top:12px;">
+        {caso("Você abre o app e compra direto", "Ninguém. A Shopee fica com tudo.")}
+        {caso("Você entra pelo link de um canal de ofertas", "A comissão vai para esse canal.")}
+    </div>
+    {destaque("<b>Nos dois casos, R$ 0,00 para você</b> — que é quem pagou a conta.")}
     """, True),
 
     Slide(DARK_BG, f"""
-    {tag_label("a pergunta que importa", "rgba(255,255,255,0.5)")}
-    {titulo("Quanto dessa comissão volta para quem comprou?", 28)}
-    <div style="font-family:'JB Mono'; font-size:52px; font-weight:700; color:{HIGHLIGHT}; margin-top:24px; letter-spacing:-0.03em;">R$ 0,00</div>
+    {tag_label("o que muda", "rgba(255,255,255,0.5)")}
+    {titulo("A cash-b muda quem recebe.", 30)}
+    {subtitulo(
+        "Comprando pelo link da cash-b, você vira o afiliado da própria compra. "
+        "A comissão passa a existir — e uma parte dela cai na sua conta.",
+        "rgba(255,255,255,0.7)", 305, 14.5)}
     """, False),
 
     # O "no mínimo" aparece em três lugares de propósito (título, o "+" colado no
@@ -93,8 +101,9 @@ SLIDES = [
 
 LEGENDA = (
     "R$ 1.509 por ano, por pessoa, só na Shopee — e R$ 356 milhões por dia no país "
-    "inteiro. Em toda essa movimentação existe uma comissão que nunca volta para "
-    "quem comprou. Salve para lembrar. 📊"
+    "inteiro. Quando a compra passa por um link de afiliado, existe uma comissão aí "
+    "dentro. Ela vai para o dono do link, ou nem chega a existir se você entrou "
+    "direto. Nunca para quem pagou a conta. Salve para lembrar. 📊"
 )
 
 if __name__ == "__main__":

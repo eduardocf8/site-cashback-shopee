@@ -18,6 +18,7 @@ from carrossel_base import (
     MUTED,
     SUCCESS,
     Slide,
+    caso,
     cta_pill,
     destaque,
     gerar,
@@ -37,20 +38,24 @@ SLIDES = [
 
     Slide(LIGHT_BG, f"""
     {tag_label("como funciona", BRAND_PRIMARY)}
-    {titulo("Toda venda na Shopee paga uma comissão.", 28, DARK_BG)}
+    {titulo("Venda que passa por link de afiliado paga comissão.", 27, DARK_BG)}
     {subtitulo(
-        "É assim que blogs de review, páginas de achadinhos e canais de oferta se "
-        "sustentam. A Shopee paga quem levou o cliente até o produto.",
+        "A Shopee paga uma parte para quem levou o cliente até o produto. É assim "
+        "que blogs de review, páginas de achadinhos e canais de oferta se sustentam.",
         MUTED, 305, 14.5)}
     """, True),
 
+    # Sem link de afiliado não existe comissão nenhuma - a Shopee simplesmente fica
+    # com essa parte. Dizer que em toda compra o dinheiro "foi para outra pessoa"
+    # seria falso para quem compra entrando direto no app.
     Slide(DARK_BG, f"""
     {tag_label("na sua compra", "rgba(255,255,255,0.5)")}
-    {titulo("Quem recebeu essa comissão?", 30)}
-    {subtitulo(
-        "Alguém que você nunca viu. Em toda compra sua, dos últimos anos, "
-        "esse dinheiro foi para outra pessoa.",
-        "rgba(255,255,255,0.7)", 300, 14.5)}
+    {titulo("E quando você compra sem link nenhum?", 26)}
+    <div style="margin-top:12px;">
+        {caso("Entrando direto no app da Shopee", "A comissão nem chega a existir.", escuro=True)}
+        {caso("Entrando pelo link de outra pessoa", "Ela recebe, você não.", escuro=True)}
+    </div>
+    {destaque("<b>Nunca sobrou nada para você</b> — e você é quem pagou a conta.", escuro=True)}
     """, False),
 
     # Mesmo tratamento do carrossel de gasto anual: "no mínimo" no título, "+" colado
@@ -84,8 +89,9 @@ SLIDES = [
 ]
 
 LEGENDA = (
-    "Em toda compra na Shopee alguém recebe uma comissão. Nas suas, nunca foi você. "
-    "Dá para mudar isso a partir da próxima. 👀"
+    "Quando a compra na Shopee passa por um link de afiliado, alguém recebe uma "
+    "comissão. Nas suas, nunca foi você — e se você entrou direto no app, ela nem "
+    "chegou a existir. Dá para mudar isso a partir da próxima. 👀"
 )
 
 if __name__ == "__main__":
