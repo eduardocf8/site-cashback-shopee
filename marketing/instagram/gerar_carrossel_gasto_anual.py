@@ -32,6 +32,7 @@ from carrossel_base import (
     gerar,
     linha_valor,
     numero_gigante,
+    realce,
     subtitulo,
     tag_label,
     titulo,
@@ -64,17 +65,17 @@ SLIDES = [
     {titulo("Quem ganha comissão na sua compra?", 26, DARK_BG)}
     <div style="margin-top:12px;">
         {caso("Você abre o app e compra direto", "Ninguém. A Shopee fica com tudo.")}
-        {caso("Você entra pelo link de um canal de ofertas", "A comissão vai para esse canal.")}
+        {caso("Você entra pelo link de um afiliado", "A comissão vai pro afiliado.")}
     </div>
     {destaque("<b>Nos dois casos, R$ 0,00 para você</b> — que é quem pagou a conta.")}
     """, True),
 
     Slide(DARK_BG, f"""
     {tag_label("o que muda", "rgba(255,255,255,0.5)")}
-    {titulo("A cash-b muda quem recebe.", 30)}
+    {titulo("A cash-b te devolve parte da comissão", 29)}
     {subtitulo(
-        "Comprando pelo link da cash-b, você vira o afiliado da própria compra. "
-        "A comissão passa a existir — e uma parte dela cai na sua conta.",
+        "Comprando pelo link da cash-b, a comissão passa a existir e você recebe "
+        "parte dela como cashback.",
         "rgba(255,255,255,0.7)", 305, 14.5)}
     """, False),
 
@@ -83,7 +84,7 @@ SLIDES = [
     # cinza no rodapé, que é justamente onde a informação morre.
     Slide(LIGHT_BG, f"""
     {tag_label("com a cash-b", BRAND_PRIMARY)}
-    {titulo("O mínimo que volta para a sua conta", 24, DARK_BG)}
+    {titulo(f"O {realce('mínimo')} que volta para a sua conta", 24, DARK_BG)}
     <div style="margin-top:14px;">
         {linha_valor("Gastando R$ 100 por mês", "R$ 19+ /ano")}
         {linha_valor("Gastando R$ 300 por mês", "R$ 57+ /ano")}
@@ -93,8 +94,8 @@ SLIDES = [
     """, True),
 
     Slide(BRAND_GRADIENT, f"""
-    {titulo("O dinheiro sai da sua conta de qualquer jeito.", 30)}
-    {subtitulo("A diferença é uma parte dele voltar.", "rgba(255,255,255,0.9)", 300, 15)}
+    {titulo("Você ia comprar de qualquer jeito.", 30)}
+    {subtitulo("A diferença é que você pode ter dinheiro de volta.", "rgba(255,255,255,0.9)", 300, 15)}
     {cta_pill()}
     """, False, seta=False),
 ]
