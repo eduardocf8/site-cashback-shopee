@@ -127,6 +127,18 @@ def numero_gigante(valor, legenda, cor=HIGHLIGHT, cor_legenda="rgba(255,255,255,
     """
 
 
+def destaque(texto, cor=HIGHLIGHT):
+    """Caixa de destaque com barra colorida à esquerda. Para a informação que não pode
+    passar batida - nota em cinza pequeno no rodapé do slide quase ninguém lê."""
+    return f"""
+    <div style="margin-top:18px; padding:13px 16px; background:rgba(245,158,11,0.14);
+                border-left:3px solid {cor}; border-radius:6px; font-family:Familjen;
+                font-size:13.5px; color:{DARK_BG}; line-height:1.5;">
+        {texto}
+    </div>
+    """
+
+
 def fonte(texto, escuro=False):
     """Crédito da fonte, em corpo bem pequeno no pé do slide. Todo slide que mostra
     número de pesquisa externa leva um - dado sem origem é o tipo de coisa que
