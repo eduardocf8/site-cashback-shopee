@@ -1,7 +1,0 @@
-tomador_cnpj_cpf,tomador_nome,tomador_email,valor_comissao,descricao
-11444777000161,Loja Exemplo Um LTDA,contato@lojaum.com.br,12.50,
-22555888000199,Comercio Exemplo Dois ME,,8.30,Comissao extra sobre vendas de julho
-33666999000133,Vendedor Exemplo Tres LTDA,vendas@tres.com.br,45.00,
-12345678909,Vendedor Pessoa Fisica,pf@exemplo.com,3.75,
-00000000000000,Linha Com Erro Documento,,10.00,
-44777000000155,Loja Valor Invalido,,abc,
