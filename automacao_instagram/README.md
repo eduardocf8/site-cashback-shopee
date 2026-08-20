@@ -156,9 +156,68 @@ verdade por esse app. Vídeo único (conectar conta + criar automação +
 lista/histórico) reaproveitado nas três. Criado um usuário só pro
 revisor da Meta testar (`revisormeta`, `is_staff=True`, senha **não**
 guardada aqui de propósito - nunca commitar credencial, mesmo
-descartável). Agora é esperar o resultado (a Meta pode aprovar, pedir
-ajuste ou rejeitar com motivo - qualquer resultado, ver essa seção pra
-retomar o contexto).
+descartável).
+
+**Rejeitada em 2026-08-09** (as três permissões, mesmo motivo): "Screencast
+não alinhado com detalhes do caso de uso" (Política do Desenvolvedor 1.6) -
+o vídeo mostrava só a configuração, não uma ação de envio de verdade
+acontecendo com o resultado aparecendo no Instagram. Nota específica do
+analista em `manage_messages`: precisa mostrar (1) a conta selecionada,
+(2) um envio ao vivo a partir da tela do app, (3) a mensagem entregue no
+cliente nativo do Instagram.
+
+**Investigação de como demonstrar isso** (o worker de verdade não consegue
+detectar comentário nenhum sem a própria permissão que estamos pedindo -
+problema de ovo e galinha):
+
+- `POST /{comment_id}/replies` e `POST /{business_account_id}/messages`
+  **funcionam** mesmo em Standard Access, desde que você já tenha um
+  `comment_id` válido - a restrição é só na *listagem* (`GET .../comments`),
+  não nessas ações de escrita. Confirmado responder um comentário de
+  verdade (apareceu no Instagram).
+- **DM pra si mesmo não entrega** (`usecashb` respondendo um comentário
+  dela própria) - a API aceita a chamada e devolve `message_id`, mas não
+  existe conversa de verdade entre a conta e ela mesma, então não chega
+  nada de verdade. "Sucesso fantasma" - não confiar nesse sinal sozinho,
+  sempre confirmar a entrega de verdade no destino.
+- **Não dá pra criar comentário via API em nome de outra conta** -
+  `POST /{media-id}/comments` só funciona com o token da conta **dona do
+  post** (nesse caso `usecashb`); tentar postar como `vegrassi` num post
+  da `usecashb` retorna erro 100/subcode 33 (mesmo erro genérico da
+  listagem bloqueada). Ou seja, não dá pra fabricar um comentário de
+  terceiro via API pra testar - precisa ser um comentário de verdade,
+  feito pelo app do Instagram mesmo.
+- **Como conseguir o ID de um comentário de terceiro sem a API**: abre o
+  post num navegador desktop, `F12` → aba **Network** → filtra
+  **Fetch/XHR** → recarrega a página com os comentários visíveis →
+  procura (Ctrl+F na aba Network, ou dentro de cada resposta) pelo texto
+  do comentário → o campo **`pk`** no JSON da resposta é o ID de
+  verdade, no mesmo formato que a Graph API usa - funciona direto nas
+  chamadas de resposta/DM.
+- Com um ID de comentário real de terceiro (`vegrassi` comentando de
+  verdade pelo app do Instagram, ID achado pelo Network), tanto a
+  resposta pública quanto a DM **funcionaram e foram entregues de
+  verdade** - confirmado visualmente no Instagram dos dois lados.
+
+**Ferramenta nova**: `services.processar_comentario_manual()` +
+tela em "Editar automação" (`automacao_processar_manual`) - deixa reprocessar
+manualmente um comentário (ID + texto + autor) pelo mesmo caminho de
+código do worker automático. Serve pra dois propósitos: reprocessar um
+comentário que o polling perdeu por algum motivo, e gravar o vídeo da
+Análise do App mostrando um envio de verdade acontecendo pela tela do
+app (em vez de só pelo Graph API Explorer, que não conta como "ação a
+partir da UI do app" pro revisor).
+
+**Sobre o requisito de interface em inglês** (Política do Desenvolvedor,
+ponto 4 do feedback): a própria Meta aceita **narração/legendas em inglês
+explicando os elementos** como alternativa a traduzir o app inteiro -
+decidido não traduzir a interface (é ferramenta interna, só 2 usuários,
+em português) e em vez disso narrar o vídeo em inglês explicando cada
+botão/tela em português conforme aparece.
+
+Próximo passo: gravar o vídeo novo (roteiro atualizado abaixo) e reenviar
+("Solicitar novamente" na tela de Analisar) com os textos de justificativa
+atualizados, mencionando a ferramenta de processamento manual.
 
 Passos pra pedir Acesso Avançado dessa permissão:
 
@@ -177,31 +236,40 @@ A mesma limitação provavelmente vale pra `instagram_business_manage_messages`
 (enviar DM) - só foi confirmada a `manage_comments` até agora, mas vale
 testar a DM também antes de assumir que só falta revisar uma permissão.
 
-### Vídeo de demonstração (roteiro)
+### Vídeo de demonstração (roteiro v2, pós-rejeição)
 
-Só mostra o que já funciona hoje, sem depender da permissão em revisão:
+Narrado em inglês (ver "Sobre o requisito de interface em inglês" acima) -
+mostra a experiência completa de ponta a ponta, incluindo um envio real:
 
-1. Login em `/automacao/entrar/`.
-2. Criar uma automação nova: escolher um post real, cadastrar as
-   palavras-chave e os textos de resposta pública/DM.
-3. Mostrar a automação criada na lista (`/automacao/`) e o histórico
-   vazio (`/automacao/historico/`), deixando claro que a estrutura está
-   pronta e só falta a permissão pra detectar comentários novos.
-
-Não mostra (não tem como, é justamente o que está bloqueado): um
-comentário sendo detectado e a resposta/DM chegando de verdade.
+1. **Conectar a conta**: mostrar o fluxo completo desde gerar o token no
+   painel da Meta (a tela de autorização de verdade) até colar em
+   `/automacao/contas/` e o perfil conectado aparecer na lista.
+2. Login em `/automacao/entrar/` (se não fez ainda no passo 1) e criar/
+   abrir uma automação com palavras-chave e textos de resposta/DM
+   configurados.
+3. Um comentário real, de outra conta (ex: `vegrassi`), comentado pelo
+   app do Instagram numa das palavras-chave.
+4. Usar a tela **"Processar comentário manualmente"** (dentro de "Editar
+   automação") com o ID desse comentário (achado via DevTools do
+   navegador, ver "Investigação" acima) - isso dispara o mesmo código de
+   produção do worker automático.
+5. Mostrar a resposta pública e a DM aparecendo de verdade no Instagram
+   (troca de tela pro Instagram/app pra provar a entrega).
 
 ### Texto de explicação (colar no campo de contexto de uso da permissão)
 
-> The comment-detection step currently returns empty results
+> The automatic comment-detection step currently returns empty results
 > (`GET /{media-id}/comments` returns `"data": []`) for any commenter,
 > including our own connected account, because this permission is still
 > in Standard Access / pending review - `comments_count` on the same
 > media confirms the comment exists, only the listing itself is empty.
-> This is expected, and is exactly why we're requesting Advanced Access:
-> once granted, this same call will return real comments from any user,
-> triggering the automated public reply / private reply flow configured
-> in the automation shown in the video.
+> This is expected, and is exactly why we're requesting Advanced Access.
+> To demonstrate the actual send/reply flow in the meantime, we added a
+> "process comment manually" tool that takes a known comment ID (found
+> via the post itself) and runs it through the exact same production
+> code path used by the automatic worker - shown live in the attached
+> video, with the resulting public reply and private message appearing
+> on Instagram.
 
 ## Rodando o worker no Render (Background Worker)
 
