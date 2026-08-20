@@ -1,12 +1,15 @@
+import json
 from decimal import Decimal
+from unittest.mock import Mock, patch
 
-from django.test import TestCase
+from django.test import TestCase, override_settings
 from django.urls import reverse
 
 from pedidos.models import Pedido
 from saques.models import Saque
 
-from .models import ConfiguracaoIndicacao, Indicacao, User
+from .models import ConfiguracaoIndicacao, Indicacao, PushSubscription, User
+from .push import enviar_push
 
 
 class CodigoIndicacaoTests(TestCase):
@@ -193,3 +196,152 @@ class LoginForcaBrutaTests(TestCase):
         resposta = self.client.post(reverse("login"), {"username": "outra", "password": "outra-senha-123"})
 
         self.assertRedirects(resposta, reverse("dashboard"))
+
+
+class InscreverPushTests(TestCase):
+    def setUp(self):
+        self.usuario = User.objects.create_user(username="ana", password="senha123", cpf="39053344705")
+        self.client.force_login(self.usuario)
+
+    def _inscricao(self, endpoint="https://push.exemplo.com/abc"):
+        return {"endpoint": endpoint, "keys": {"p256dh": "chave-p256dh", "auth": "chave-auth"}}
+
+    def test_cria_inscricao_pro_usuario_logado(self):
+        resposta = self.client.post(
+            reverse("inscrever_push"), data=json.dumps(self._inscricao()), content_type="application/json"
+        )
+        self.assertEqual(resposta.status_code, 200)
+        inscricao = PushSubscription.objects.get(usuario=self.usuario)
+        self.assertEqual(inscricao.endpoint, "https://push.exemplo.com/abc")
+
+    def test_reenviar_a_mesma_inscricao_nao_duplica(self):
+        for _ in range(2):
+            self.client.post(
+                reverse("inscrever_push"), data=json.dumps(self._inscricao()), content_type="application/json"
+            )
+        self.assertEqual(PushSubscription.objects.filter(usuario=self.usuario).count(), 1)
+
+    def test_dados_invalidos_retorna_400(self):
+        resposta = self.client.post(
+            reverse("inscrever_push"), data=json.dumps({"endpoint": "sem-keys"}), content_type="application/json"
+        )
+        self.assertEqual(resposta.status_code, 400)
+
+    def test_exige_login(self):
+        self.client.logout()
+        resposta = self.client.post(
+            reverse("inscrever_push"), data=json.dumps(self._inscricao()), content_type="application/json"
+        )
+        self.assertEqual(resposta.status_code, 302)
+
+    def test_desinscrever_remove_a_inscricao(self):
+        self.client.post(
+            reverse("inscrever_push"), data=json.dumps(self._inscricao()), content_type="application/json"
+        )
+        resposta = self.client.post(
+            reverse("desinscrever_push"),
+            data=json.dumps({"endpoint": "https://push.exemplo.com/abc"}),
+            content_type="application/json",
+        )
+        self.assertEqual(resposta.status_code, 200)
+        self.assertFalse(PushSubscription.objects.filter(usuario=self.usuario).exists())
+
+
+@override_settings(VAPID_PRIVATE_KEY="chave-privada-de-teste", VAPID_CLAIMS_EMAIL="contato@cash-b.com")
+class EnviarPushTests(TestCase):
+    def setUp(self):
+        self.usuario = User.objects.create_user(username="ana", password="senha123", cpf="39053344705")
+        self.inscricao = PushSubscription.objects.create(
+            usuario=self.usuario,
+            endpoint="https://push.exemplo.com/abc",
+            chave_p256dh="chave-p256dh",
+            chave_auth="chave-auth",
+        )
+
+    @patch("accounts.push.webpush")
+    def test_manda_pra_cada_inscricao_do_usuario(self, mock_webpush):
+        enviar_push(self.usuario, "Título", "Corpo", url="/dashboard/")
+
+        mock_webpush.assert_called_once()
+        kwargs = mock_webpush.call_args.kwargs
+        self.assertEqual(kwargs["subscription_info"]["endpoint"], self.inscricao.endpoint)
+        self.assertEqual(kwargs["vapid_private_key"], "chave-privada-de-teste")
+        dados = json.loads(kwargs["data"])
+        self.assertEqual(dados, {"titulo": "Título", "corpo": "Corpo", "url": "/dashboard/"})
+
+    @patch("accounts.push.webpush")
+    def test_sem_vapid_configurado_nao_manda_nada(self, mock_webpush):
+        with override_settings(VAPID_PRIVATE_KEY=""):
+            enviar_push(self.usuario, "Título", "Corpo")
+        mock_webpush.assert_not_called()
+
+    @patch("accounts.push.webpush")
+    def test_sem_usuario_nao_falha(self, mock_webpush):
+        enviar_push(None, "Título", "Corpo")
+        mock_webpush.assert_not_called()
+
+    @patch("accounts.push.webpush")
+    def test_inscricao_expirada_e_apagada(self, mock_webpush):
+        from pywebpush import WebPushException
+
+        resposta_410 = Mock(status_code=410)
+        mock_webpush.side_effect = WebPushException("gone", response=resposta_410)
+
+        enviar_push(self.usuario, "Título", "Corpo")
+
+        self.assertFalse(PushSubscription.objects.filter(pk=self.inscricao.pk).exists())
+
+    @patch("accounts.push.webpush")
+    def test_erro_diferente_de_410_mantem_a_inscricao(self, mock_webpush):
+        from pywebpush import WebPushException
+
+        resposta_500 = Mock(status_code=500)
+        mock_webpush.side_effect = WebPushException("erro no servidor", response=resposta_500)
+
+        enviar_push(self.usuario, "Título", "Corpo")
+
+        self.assertTrue(PushSubscription.objects.filter(pk=self.inscricao.pk).exists())
+
+
+class AcaoDeTesteDoPushNoAdminTests(TestCase):
+    def setUp(self):
+        self.staff = User.objects.create_user(
+            username="staff", password="senha123", cpf="39053344705", is_staff=True, is_superuser=True
+        )
+        self.usuario = User.objects.create_user(username="ana", password="senha123", cpf="14783246947")
+        self.inscricao = PushSubscription.objects.create(
+            usuario=self.usuario,
+            endpoint="https://push.exemplo.com/abc",
+            chave_p256dh="chave-p256dh",
+            chave_auth="chave-auth",
+        )
+        self.client.force_login(self.staff)
+
+    @patch("accounts.admin.enviar_push")
+    def test_manda_pro_usuario_da_inscricao_selecionada(self, mock_enviar_push):
+        mock_enviar_push.return_value = 1
+
+        resposta = self.client.post(
+            reverse("admin:accounts_pushsubscription_changelist"),
+            {"action": "mandar_notificacao_de_teste", "_selected_action": [self.inscricao.pk]},
+            follow=True,
+        )
+
+        mock_enviar_push.assert_called_once()
+        self.assertEqual(mock_enviar_push.call_args.args[0], self.usuario)
+        self.assertContains(resposta, "enviada com sucesso")
+
+    @patch("accounts.admin.enviar_push")
+    def test_falha_no_envio_avisa_em_vez_de_dizer_que_deu_certo(self, mock_enviar_push):
+        # enviar_push retorna 0 quando o push falhou no servidor pra todo mundo (ex:
+        # chave VAPID errada) - sem checar isso, a ação sempre dizia "enviado" mesmo
+        # quando não saiu nada, escondendo o erro de quem só olha o admin.
+        mock_enviar_push.return_value = 0
+
+        resposta = self.client.post(
+            reverse("admin:accounts_pushsubscription_changelist"),
+            {"action": "mandar_notificacao_de_teste", "_selected_action": [self.inscricao.pk]},
+            follow=True,
+        )
+
+        self.assertContains(resposta, "Não saiu nenhuma notificação")

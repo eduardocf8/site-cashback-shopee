@@ -61,6 +61,26 @@ class User(AbstractUser):
         return self.username
 
 
+class PushSubscription(models.Model):
+    """Uma inscrição de push por navegador/dispositivo (ver accounts/push.py).
+
+    Um usuário pode ter várias - uma por navegador/aparelho onde ele clicou em "Ativar
+    notificações". O endpoint por si só já identifica o dispositivo de forma única
+    (é gerado pelo próprio navegador), por isso a unicidade fica nele, não no par
+    (usuario, endpoint)."""
+
+    usuario = models.ForeignKey(
+        settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name="push_subscriptions"
+    )
+    endpoint = models.URLField(max_length=500, unique=True)
+    chave_p256dh = models.CharField(max_length=255)
+    chave_auth = models.CharField(max_length=255)
+    criado_em = models.DateTimeField(auto_now_add=True)
+
+    def __str__(self):
+        return f"Inscrição push de {self.usuario}"
+
+
 class Indicacao(models.Model):
     """Vínculo entre quem indicou e quem se cadastrou pelo link - e os pedidos que
     dispararam o bônus de cashback em dobro de cada lado (ver pedidos/services.py)."""

@@ -1,7 +1,8 @@
-from django.contrib import admin
+from django.contrib import admin, messages
 from django.contrib.auth.admin import UserAdmin as BaseUserAdmin
 
-from .models import ConfiguracaoIndicacao, Indicacao, User
+from .models import ConfiguracaoIndicacao, Indicacao, PushSubscription, User
+from .push import enviar_push
 
 
 class UserAdmin(BaseUserAdmin):
@@ -33,6 +34,36 @@ class ConfiguracaoIndicacaoAdmin(admin.ModelAdmin):
 
     def has_delete_permission(self, request, obj=None):
         return False
+
+
+@admin.register(PushSubscription)
+class PushSubscriptionAdmin(admin.ModelAdmin):
+    list_display = ("usuario", "criado_em")
+    search_fields = ("usuario__username",)
+    autocomplete_fields = ("usuario",)
+    actions = ["mandar_notificacao_de_teste"]
+
+    @admin.action(description="Mandar notificação de teste")
+    def mandar_notificacao_de_teste(self, request, queryset):
+        usuarios = {inscricao.usuario for inscricao in queryset}
+        total_enviado = sum(
+            enviar_push(
+                usuario,
+                "Notificação de teste",
+                "Se você recebeu isso, as notificações da cash-b estão funcionando!",
+                url="/dashboard/",
+            )
+            for usuario in usuarios
+        )
+        if total_enviado:
+            self.message_user(request, f"Notificação de teste enviada com sucesso ({total_enviado}).")
+        else:
+            self.message_user(
+                request,
+                "Não saiu nenhuma notificação - o envio falhou no servidor. Procure por "
+                '"Falha ao enviar push" nos logs do Render pra ver o erro exato.',
+                level=messages.WARNING,
+            )
 
 
 admin.site.register(User, UserAdmin)

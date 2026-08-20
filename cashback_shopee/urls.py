@@ -25,6 +25,7 @@ urlpatterns = [
     path("tarefas/encurtar-nomes/", views.executar_encurtamento_nomes, name="executar_encurtamento_nomes"),
     path("tarefas/postar-story-oferta/", views.executar_story_oferta, name="executar_story_oferta"),
     path("robots.txt", views.robots_txt, name="robots_txt"),
+    path("sw.js", views.service_worker, name="service_worker"),
     path("sitemap.xml", sitemap, {"sitemaps": sitemaps}, name="sitemap"),
     # Serve as imagens geradas pelo bot do Instagram (precisam de URL pública pra API
     # buscar). Só isso mora em MEDIA_ROOT - não é usado pra upload de usuário nenhum,

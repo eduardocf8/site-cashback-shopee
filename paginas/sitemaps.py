@@ -3,12 +3,19 @@ from django.urls import reverse
 
 
 class PaginasEstaticasSitemap(Sitemap):
-    changefreq = "monthly"
-
     prioridades = {
         "home": 1.0,
+        # A vitrine renova sozinha a cada sincronização com a Shopee, então é a página
+        # que mais muda depois da home - por isso prioridade alta e changefreq próprio.
+        "ofertas_lista": 0.8,
         "faq": 0.6,
         "regras_cashback": 0.6,
+        # Páginas de conteúdo pra busca (ex: "cashback shopee vale a pena"), não
+        # institucionais - concorrem por tráfego de topo de funil, por isso mesma
+        # prioridade da FAQ/regras.
+        "cashback_vale_a_pena": 0.6,
+        "e_confiavel": 0.6,
+        "checklist_cashback_confiavel": 0.6,
         "registrar": 0.5,
         "contato": 0.5,
         "termos_de_uso": 0.3,
@@ -25,3 +32,9 @@ class PaginasEstaticasSitemap(Sitemap):
 
     def priority(self, item):
         return self.prioridades[item]
+
+    def changefreq(self, item):
+        # A vitrine é remontada a cada sincronização com a Shopee; a home mostra as
+        # ofertas em alta e muda junto. O resto é texto institucional, que raramente
+        # muda - dizer "monthly" nesses evita gastar rastreamento à toa.
+        return "daily" if item in {"home", "ofertas_lista"} else "monthly"

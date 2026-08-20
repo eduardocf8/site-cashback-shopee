@@ -15,6 +15,8 @@
     <link rel="stylesheet" href="{% static 'css/brand.css' %}">
     <title>cash-b — compre na Shopee e receba parte do dinheiro de volta</title>
     <meta name="description" content="Gere seu link de afiliado Shopee e receba cashback de verdade em cada compra validada. Sem pegadinha, sem mensalidade.">
+    <link rel="canonical" href="{{ request.scheme }}://{{ request.get_host }}{% url 'home' %}">
+    {% include "_meta_social.html" with titulo="cash-b — compre na Shopee e receba parte do dinheiro de volta" descricao="Cashback de verdade em cada compra validada na Shopee. Cadastro grátis, sem mensalidade, saque via PIX." %}
     <style>
         * { box-sizing: border-box; }
         body {
@@ -574,6 +576,9 @@
     <footer>
         <div class="envolve">
             <div class="rodape-links">
+                <a href="{% url 'cashback_vale_a_pena' %}">Vale a pena?</a>
+                <a href="{% url 'e_confiavel' %}">É confiável?</a>
+                <a href="{% url 'checklist_cashback_confiavel' %}">Como saber se é confiável</a>
                 <a href="{% url 'faq' %}">Perguntas frequentes</a>
                 <a href="{% url 'contato' %}">Fale conosco</a>
                 <a href="{% url 'regras_cashback' %}">Regras do cashback</a>

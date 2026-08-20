@@ -84,6 +84,7 @@ CAMPOS_ATUALIZAVEIS = [
     "status_shopee_bruto",
     "valor_comissao",
     "valor_cashback",
+    "multiplicador_campanha",
     "produto_nome",
     "produto_imagem_url",
     "motivo_cancelamento",
@@ -93,10 +94,15 @@ CAMPOS_ATUALIZAVEIS = [
 ]
 
 
-def _montar_defaults(conversao, pedido_shopee, click, data_compra, percentual):
+def _montar_defaults(conversao, pedido_shopee, click, data_compra, percentual_base, multiplicador):
     status_shopee = mapear_status(pedido_shopee.get("orderStatus"))
     itens = pedido_shopee.get("items", [])
-    limite_por_produto = Decimal(str(settings.CASHBACK_MAXIMO_POR_PRODUTO))
+    # O teto acompanha o multiplicador de campanha: numa campanha de cashback em dobro,
+    # o teto também dobra. Sem isso, item de comissão alta ficaria capado no mesmo valor
+    # de sempre e não veria diferença nenhuma na campanha. Mesma lógica que
+    # _limite_cashback_indicacao aplica ao bônus de indicação.
+    percentual = percentual_base * multiplicador
+    limite_por_produto = Decimal(str(settings.CASHBACK_MAXIMO_POR_PRODUTO)) * multiplicador
 
     # O teto é por produto, não por pedido - por isso cada item é limitado individualmente
     # antes de somar. itemTotalCommission já inclui o bônus de campanha do vendedor quando
@@ -152,6 +158,40 @@ def _montar_defaults(conversao, pedido_shopee, click, data_compra, percentual):
     }
 
 
+def _montar_linhas(brutos_por_order_id: dict[str, tuple], percentual_base: Decimal) -> dict[str, dict]:
+    """Monta os defaults de cada pedido já com o multiplicador de campanha correto.
+
+    Pedido novo usa o multiplicador vigente agora; pedido que já existe reusa o que
+    ficou gravado nele na primeira vez. Isso é o que impede a campanha de vazar pros
+    dois lados - a Shopee reenvia o mesmo pedido em toda sincronização seguinte, e o
+    _montar_defaults recalcula valor_cashback do zero a cada vez, então sem congelar
+    o multiplicador:
+
+    - o dobro prometido numa campanha sumiria na primeira sincronização depois dela
+      acabar, justamente pra quem comprou por causa da campanha;
+    - ligar uma campanha dobraria retroativamente pedidos antigos que ainda estejam
+      dentro da janela de sincronização.
+
+    É o mesmo cuidado que _reaplicar_bonus_ja_concedido tem com o bônus de indicação.
+    """
+    multiplicador_atual = Decimal(str(settings.CASHBACK_MULTIPLICADOR_CAMPANHA))
+    ja_gravados = dict(
+        Pedido.objects.filter(order_id__in=brutos_por_order_id.keys()).values_list(
+            "order_id", "multiplicador_campanha"
+        )
+    )
+
+    linhas: dict[str, dict] = {}
+    for order_id, (conversao, pedido_shopee, click, data_compra) in brutos_por_order_id.items():
+        multiplicador = ja_gravados.get(order_id, multiplicador_atual)
+        defaults = _montar_defaults(
+            conversao, pedido_shopee, click, data_compra, percentual_base, multiplicador
+        )
+        defaults["multiplicador_campanha"] = multiplicador
+        linhas[order_id] = defaults
+    return linhas
+
+
 def sincronizar(purchase_time_start: int, purchase_time_end: int) -> dict:
     """Busca conversões da Shopee no período e cria/atualiza os Pedidos correspondentes.
 
@@ -160,15 +200,14 @@ def sincronizar(purchase_time_start: int, purchase_time_end: int) -> dict:
     fazer isso uma de cada vez é rápido demais no SQLite local mas estoura o tempo
     limite do servidor contra um banco remoto de verdade.
     """
-    percentual = (
-        Decimal(str(settings.SHOPEE_CASHBACK_PERCENTUAL))
-        / Decimal("100")
-        * Decimal(str(settings.CASHBACK_MULTIPLICADOR_CAMPANHA))
-    )
+    percentual_base = Decimal(str(settings.SHOPEE_CASHBACK_PERCENTUAL)) / Decimal("100")
 
     nao_identificados = 0
     scroll_id = None
-    linhas_por_order_id: dict[str, dict] = {}
+    # Guarda os dados crus da Shopee em vez dos defaults já calculados: o cashback só
+    # pode ser calculado depois de saber quais desses pedidos já existem no banco, pra
+    # cada um usar o multiplicador de campanha certo (ver _montar_linhas).
+    brutos_por_order_id: dict[str, tuple] = {}
 
     while True:
         pagina = buscar_conversoes(purchase_time_start, purchase_time_end, scroll_id)
@@ -181,14 +220,15 @@ def sincronizar(purchase_time_start: int, purchase_time_end: int) -> dict:
             data_compra = _converter_timestamp(conversao.get("purchaseTime"))
 
             for pedido_shopee in conversao.get("orders", []):
-                defaults = _montar_defaults(conversao, pedido_shopee, click, data_compra, percentual)
                 # Se o mesmo pedido aparecer mais de uma vez nesta sincronização,
                 # fica valendo a última ocorrência.
-                linhas_por_order_id[pedido_shopee["orderId"]] = defaults
+                brutos_por_order_id[pedido_shopee["orderId"]] = (conversao, pedido_shopee, click, data_compra)
 
         scroll_id = pagina["pageInfo"].get("scrollId")
         if not pagina["pageInfo"].get("hasNextPage"):
             break
+
+    linhas_por_order_id = _montar_linhas(brutos_por_order_id, percentual_base)
 
     _reaplicar_bonus_ja_concedido(linhas_por_order_id)
 
@@ -246,14 +286,24 @@ def sincronizar(purchase_time_start: int, purchase_time_end: int) -> dict:
     return {"novos": novos, "atualizados": atualizados, "nao_identificados": nao_identificados}
 
 
-def _limite_cashback_indicacao() -> Decimal:
+def _limite_cashback_indicacao(multiplicador_campanha: Decimal) -> Decimal:
     """Teto do cashback num pedido com bônus de indicação: o teto normal por produto
     (CASHBACK_MAXIMO_POR_PRODUTO) x o multiplicador de indicação. Existe porque o teto
     normal é por produto, não por pedido - um pedido com mais de um item já pode somar
     mais que o teto de um produto só antes do dobro entrar em cena (ex: 2 itens capados
     a R$10 cada = R$20 no pedido), e sem esse teto o dobro multiplicaria esse total em
-    vez de dobrar só o limite de um produto."""
-    return Decimal(str(settings.CASHBACK_MAXIMO_POR_PRODUTO)) * Decimal(str(settings.CASHBACK_MULTIPLICADOR_INDICACAO))
+    vez de dobrar só o limite de um produto.
+
+    O multiplicador de campanha entra junto como salvaguarda. No fluxo normal ele é
+    sempre 1 aqui, porque _selecionar_bonus_indicacao não concede bônus em pedido que
+    já pegou o extra de uma campanha (o bônus fica na fila até depois dela). Mas se
+    algum dia um pedido com campanha for bonificado - por edição manual no admin, ou
+    se a regra da fila mudar - o teto acompanha em vez de engolir o bônus inteiro."""
+    return (
+        Decimal(str(settings.CASHBACK_MAXIMO_POR_PRODUTO))
+        * multiplicador_campanha
+        * Decimal(str(settings.CASHBACK_MULTIPLICADOR_INDICACAO))
+    )
 
 
 def _reaplicar_bonus_ja_concedido(linhas_por_order_id: dict[str, dict]) -> None:
@@ -271,11 +321,11 @@ def _reaplicar_bonus_ja_concedido(linhas_por_order_id: dict[str, dict]) -> None:
     ).select_related("pedido_bonus_indicado", "pedido_bonus_indicador")
 
     multiplicador = Decimal(str(settings.CASHBACK_MULTIPLICADOR_INDICACAO))
-    limite = _limite_cashback_indicacao()
     for indicacao in indicacoes:
         for pedido_bonus in (indicacao.pedido_bonus_indicado, indicacao.pedido_bonus_indicador):
             if pedido_bonus and pedido_bonus.order_id in linhas_por_order_id:
                 defaults = linhas_por_order_id[pedido_bonus.order_id]
+                limite = _limite_cashback_indicacao(defaults["multiplicador_campanha"])
                 defaults["valor_cashback"] = min(
                     (defaults["valor_cashback"] * multiplicador).quantize(Decimal("0.01")), limite
                 )
@@ -310,10 +360,20 @@ def _selecionar_bonus_indicacao(recem_validados: list[Pedido]) -> list[tuple[Ind
             indicador_fila[i.indicador_id].append(i)
 
     multiplicador = Decimal(str(settings.CASHBACK_MULTIPLICADOR_INDICACAO))
-    limite = _limite_cashback_indicacao()
     epoca_minima = datetime.min.replace(tzinfo=dt_timezone.utc)
     vinculos = []
     for pedido in sorted(recem_validados, key=lambda p: p.data_compra or epoca_minima):
+        # Pedido que já leva o extra de uma campanha não consome o bônus de indicação:
+        # a Indicacao continua pendente (é ela mesma a fila) e o próximo pedido fora de
+        # campanha pega o bônus. Sem isso os dois dobros se somariam no mesmo pedido.
+        #
+        # A checagem é no multiplicador gravado no pedido, não no setting atual: um
+        # pedido comprado durante a campanha pode só validar semanas depois, já com a
+        # campanha desligada - e ele continua sendo um pedido que ganhou o extra dela.
+        if pedido.multiplicador_campanha > 1:
+            continue
+
+        limite = _limite_cashback_indicacao(pedido.multiplicador_campanha)
         if pedido.usuario_id in indicado_pendente:
             indicacao = indicado_pendente.pop(pedido.usuario_id)
             pedido.valor_cashback = min((pedido.valor_cashback * multiplicador).quantize(Decimal("0.01")), limite)

@@ -127,6 +127,11 @@ SHOPEE_COMISSAO_VENDA_DIRETA = float(os.environ.get("SHOPEE_COMISSAO_VENDA_DIRET
 # bônus de vendedor da Shopee) - ex: 2 = "cashback em dobro" no mês de aniversário do
 # site. Fica em 1 o resto do tempo. Afeta o valor de cashback pago de verdade (não é só
 # um número de propaganda) - usado em pedidos/services.py, ofertas/models.py e no hero.
+#
+# Vale só pros pedidos registrados ENQUANTO a campanha está ligada: cada Pedido guarda
+# o multiplicador que valia quando entrou (campo multiplicador_campanha) e continua com
+# ele pra sempre. Ou seja, desligar a campanha não tira o dobro de quem comprou durante
+# ela, e ligar não dobra retroativamente quem comprou antes.
 CASHBACK_MULTIPLICADOR_CAMPANHA = float(os.environ.get("CASHBACK_MULTIPLICADOR_CAMPANHA", "1"))
 
 # Fallback do "até X%" anunciado no hero da home, só usado antes da primeira
@@ -339,6 +344,15 @@ EMAIL_BACKEND = (
 )
 EMAIL_TIMEOUT = int(os.environ.get("EMAIL_TIMEOUT", "10"))
 DEFAULT_FROM_EMAIL = os.environ.get("DEFAULT_FROM_EMAIL", "cash-b <contato@cash-b.com>")
+
+# Notificações push do PWA (Web Push/VAPID). Sem as duas chaves configuradas, o botão
+# "Ativar notificações" no painel some e nenhum push é enviado - só os e-mails de
+# sempre continuam funcionando. Gerar um par novo com:
+#   python -c "from py_vapid import Vapid02; v = Vapid02(); v.generate_keys(); ..."
+# (ver accounts/push.py para o helper completo de geração).
+VAPID_PUBLIC_KEY = os.environ.get("VAPID_PUBLIC_KEY", "")
+VAPID_PRIVATE_KEY = os.environ.get("VAPID_PRIVATE_KEY", "")
+VAPID_CLAIMS_EMAIL = os.environ.get("VAPID_CLAIMS_EMAIL", "contato@cash-b.com")
 
 # Por padrão, o Django só manda os próprios logs de erro (ex: falha ao enviar
 # e-mail de redefinição de senha) pro console quando DEBUG=True - em produção
