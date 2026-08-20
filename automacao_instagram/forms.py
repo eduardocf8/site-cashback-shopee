@@ -80,3 +80,13 @@ class AutomacaoStoryForm(forms.ModelForm):
         if cleaned.get("modo_resposta") == AutomacaoStory.MODO_PERSONALIZADA and not cleaned.get("texto_personalizado"):
             self.add_error("texto_personalizado", "Preencha o texto da mensagem.")
         return cleaned
+
+
+class ProcessarComentarioManualForm(forms.Form):
+    """Reprocessa um comentário que o worker não pegou sozinho (ex: perdido por
+    alguma falha temporária) - o ID e o texto precisam ser conferidos manualmente
+    (na própria página do post, ou no código-fonte/rede do navegador)."""
+
+    instagram_comment_id = forms.CharField(label="ID do comentário")
+    texto_comentario = forms.CharField(label="Texto do comentário", widget=forms.Textarea(attrs={"rows": 2}))
+    autor_username = forms.CharField(label="Usuário de quem comentou", required=False)

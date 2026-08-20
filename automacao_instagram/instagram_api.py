@@ -16,8 +16,19 @@ def _url(caminho: str) -> str:
 
 def _chamar(metodo: str, caminho: str, access_token: str, **params) -> dict:
     params["access_token"] = access_token
-    resposta = requests.request(metodo, _url(caminho), params=params, timeout=30)
-    dados = resposta.json()
+    try:
+        resposta = requests.request(metodo, _url(caminho), params=params, timeout=30)
+        dados = resposta.json()
+    except requests.exceptions.RequestException as erro:
+        # Falha de rede (timeout, DNS, proxy etc.) - não é erro "de negócio" da API, mas
+        # precisa virar InstagramAPIError mesmo assim, senão escapa dos try/except que só
+        # esperam InstagramAPIError (ex: services._processar_comentario_correspondido) e
+        # pode deixar um comentário sem o registro salvo, reprocessando (e respondendo)
+        # ele de novo no próximo ciclo.
+        raise InstagramAPIError(f"Falha de conexão com a API do Instagram: {erro}") from erro
+    except ValueError as erro:
+        raise InstagramAPIError(f"Resposta inválida da API do Instagram: {erro}") from erro
+
     if "error" in dados:
         erro = dados["error"]
         mensagem = erro.get("message", str(erro))

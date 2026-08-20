@@ -13,9 +13,20 @@ from django.views.decorators.csrf import csrf_exempt
 
 from instagram_bot.models import RegistroPublicacao
 
-from . import instagram_api, webhook
-from .forms import AutomacaoComentarioForm, AutomacaoStoryForm, ContaInstagramForm
-from .models import AutomacaoComentario, AutomacaoStory, ComentarioProcessado, ContaInstagramConectada, RespostaStoryProcessada
+from . import instagram_api, services, webhook
+from .forms import (
+    AutomacaoComentarioForm,
+    AutomacaoStoryForm,
+    ContaInstagramForm,
+    ProcessarComentarioManualForm,
+)
+from .models import (
+    AutomacaoComentario,
+    AutomacaoStory,
+    ComentarioProcessado,
+    ContaInstagramConectada,
+    RespostaStoryProcessada,
+)
 
 ITENS_POR_PAGINA = 20
 TIPO_POST = "post"
@@ -251,7 +262,41 @@ def automacao_editar(request, pk):
     else:
         form = AutomacaoComentarioForm(instance=automacao)
 
-    return render(request, "automacao_instagram/automacao_editar.html", {"form": form, "automacao": automacao})
+    return render(
+        request, "automacao_instagram/automacao_editar.html",
+        {"form": form, "automacao": automacao, "form_manual": ProcessarComentarioManualForm()},
+    )
+
+
+@staff_required
+def automacao_processar_manual(request, pk):
+    automacao = get_object_or_404(AutomacaoComentario, pk=pk, conta__usuario=request.user)
+    if request.method == "POST":
+        form = ProcessarComentarioManualForm(request.POST)
+        if form.is_valid():
+            try:
+                registro = services.processar_comentario_manual(
+                    automacao,
+                    form.cleaned_data["instagram_comment_id"],
+                    form.cleaned_data["texto_comentario"],
+                    form.cleaned_data["autor_username"],
+                )
+            except ValueError as erro:
+                messages.error(request, str(erro))
+            else:
+                partes = []
+                if registro.resposta_publica_enviada:
+                    partes.append("resposta pública enviada")
+                elif registro.resposta_publica_erro:
+                    partes.append(f"erro na resposta pública: {registro.resposta_publica_erro}")
+                if registro.dm_enviada:
+                    partes.append("DM enviada")
+                elif registro.dm_erro:
+                    partes.append(f"erro na DM: {registro.dm_erro}")
+                messages.success(request, "Comentário processado - " + ("; ".join(partes) if partes else "nada a enviar."))
+        else:
+            messages.error(request, "Preencha o ID e o texto do comentário.")
+    return redirect("automacao_editar", pk=pk)
 
 
 @staff_required
