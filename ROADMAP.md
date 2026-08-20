@@ -575,6 +575,32 @@ README (com outro exemplo, março -> maio) batia certinho com N+2.
 
 ---
 
+## Fase 25 — Ajustes finos de CSS na home (desktop) ✅
+
+Usuário mandou 4 prints da home ao vivo com 5 ajustes pontuais, todos escopados
+pra versão desktop.
+
+- [x] **Conversor de link centralizado** — label "Link do produto na Shopee" e
+      o texto (placeholder/valor) do campo de URL agora ficam centralizados
+      dentro da caixa, só em desktop (`@media (min-width: 861px)`, o inverso
+      exato do breakpoint mobile de 860px já usado no resto do arquivo) —
+      mobile continua alinhado à esquerda, sem mudança.
+- [x] **Fonte do label maior** — `font-size` de 13px pra 15px, mesmo escopo
+      desktop-only acima.
+- [x] **"do dia" roxo em "Oferta do dia"**, **"funciona" roxo em "Como
+      funciona"** e **"cashback" roxo em "Como ganhar mais cashback?"** —
+      reaproveitado o `<span class="destaque-marca">` já usado em "Ofertas em
+      alta" e "Por que usar a cash-b?", sem CSS novo.
+- [x] **Bônus**: encontrado de passagem um "Por que usar o cash-b?" que tinha
+      escapado da varredura de gênero da Fase anterior — corrigido pra "usar
+      a cash-b", conforme regra já validada em `VOZ.md`.
+
+Verificado com Playwright em 1400px (desktop) e 390px (mobile) antes de
+commitar — mobile idêntico ao anterior, desktop com os 5 ajustes aplicados.
+Suite completa (`links`, `pedidos`, `accounts`, `saques`, 122 testes) verde.
+
+---
+
 Pra continuar esse roadmap numa conversa nova, basta apontar esse arquivo
 (`ROADMAP.md`) e o `BRAND.md` — juntos eles dão o contexto de identidade
 visual e do que falta implementar, sem precisar reconstruir o histórico da

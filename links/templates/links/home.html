@@ -150,6 +150,11 @@
         .conversor-hero .resultado-sub { margin: 0 0 8px; font-size: 12px; color: var(--muted); }
         .conversor-hero .resultado-url { display: block; word-break: break-all; font-size: 13px; font-weight: 600; font-family: "JB Mono", ui-monospace, monospace; }
 
+        @media (min-width: 861px) {
+            .conversor-hero label { text-align: center; font-size: 15px; }
+            .conversor-hero input[type="url"] { text-align: center; }
+        }
+
         .selo-sucesso { position: relative; width: 28px; height: 28px; margin: 0 auto 8px; }
         .selo-sucesso svg { animation: selo-pop 0.5s cubic-bezier(0.34, 1.56, 0.64, 1) both; }
         .confete {
@@ -427,7 +432,7 @@
     {% if oferta_destaque %}
     <section id="oferta-destaque">
         <div class="envolve">
-            <h2 class="titulo-secao">Oferta do dia</h2>
+            <h2 class="titulo-secao">Oferta <span class="destaque-marca">do dia</span></h2>
             <div class="destaque-cartao">
                 <div class="destaque-imagem">
                     {% if oferta_destaque.percentual_desconto %}
@@ -484,7 +489,7 @@
 
     <section id="como-funciona" class="fundo-suave">
         <div class="envolve">
-            <h2 class="titulo-secao">Como funciona</h2>
+            <h2 class="titulo-secao">Como <span class="destaque-marca">funciona</span></h2>
             <div class="passos">
                 <div class="passo reveal">
                     <span class="passo-numero">1</span>
@@ -507,7 +512,7 @@
 
     <section id="beneficios">
         <div class="envolve">
-            <h2 class="titulo-secao">Por que usar o <span class="destaque-marca">cash-b</span>?</h2>
+            <h2 class="titulo-secao">Por que usar a <span class="destaque-marca">cash-b</span>?</h2>
             <div class="beneficios">
                 <div class="beneficio reveal">
                     <div class="icone">🤝</div>
@@ -535,7 +540,7 @@
 
     <section class="fundo-suave" id="maximizar-cashback">
         <div class="envolve">
-            <h2 class="titulo-secao">Como ganhar mais cashback?</h2>
+            <h2 class="titulo-secao">Como ganhar mais <span class="destaque-marca">cashback</span>?</h2>
             <p class="intro-secao">Comprar um produto específico — seja colando o link ou escolhendo direto na vitrine — te dá mais cashback do que somente clicar no botão de ir pra Shopee. Entenda abaixo o porquê.</p>
             <div class="comparativo">
                 <div class="cartao destaque reveal">
