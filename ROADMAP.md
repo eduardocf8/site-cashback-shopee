@@ -601,6 +601,30 @@ Suite completa (`links`, `pedidos`, `accounts`, `saques`, 122 testes) verde.
 
 ---
 
+## Fase 26 — Guardar o valor do pedido (não só comissão e cashback) ✅
+
+Usuário perguntou se dava pra guardar, além da comissão e do cashback, o
+valor da compra em si ao consultar pedidos no admin. A API da Shopee nunca
+foi consultada com esse dado - a query `conversionReport` só pedia
+`itemTotalCommission` de cada item.
+
+- [x] **Campo novo** — `Pedido.valor_pedido` (migração `0005`), somando o
+      `actualAmount` (valor realmente pago pelo comprador, já descontando
+      cupom/desconto - mesma base de cálculo da comissão) de cada item do
+      pedido, igual já era feito com `itemTotalCommission`.
+- [x] **Query GraphQL** (`links/shopee_client.py`) passou a pedir
+      `actualAmount` também.
+- [x] Aparece no `list_display` do admin, na exportação CSV e na aba
+      "Pedidos" do Excel de analytics - sempre ao lado de comissão e
+      cashback, na mesma ordem que a Shopee reporta.
+- [x] Somado independente de ter Click vinculado (igual `valor_comissao`) -
+      é o que o comprador realmente pagou, não depende de quem recebe
+      cashback.
+
+Suite completa (`pedidos`, 68 testes) verde.
+
+---
+
 Pra continuar esse roadmap numa conversa nova, basta apontar esse arquivo
 (`ROADMAP.md`) e o `BRAND.md` — juntos eles dão o contexto de identidade
 visual e do que falta implementar, sem precisar reconstruir o histórico da

@@ -242,12 +242,22 @@ def gerar_planilha_analytics(data_inicio=None, data_fim=None, status=None, orige
         resumo.cell(row=linha, column=1, value="Nenhuma indicação no período filtrado.")
 
     aba_pedidos = livro.create_sheet("Pedidos")
-    definir_larguras(aba_pedidos, [22, 20, 14, 14, 14, 20, 20, 20])
+    definir_larguras(aba_pedidos, [22, 20, 14, 14, 14, 14, 20, 20, 20])
     escrever_cabecalho(
         aba_pedidos,
         1,
         1,
-        ["Order ID", "Usuário", "Status", "Comissão", "Cashback", "Data da compra", "Data de validação", "Data de liberação"],
+        [
+            "Order ID",
+            "Usuário",
+            "Status",
+            "Valor do pedido",
+            "Comissão",
+            "Cashback",
+            "Data da compra",
+            "Data de validação",
+            "Data de liberação",
+        ],
     )
     aba_pedidos.freeze_panes = "A2"
     linha = 2
@@ -255,9 +265,10 @@ def gerar_planilha_analytics(data_inicio=None, data_fim=None, status=None, orige
         aba_pedidos.cell(row=linha, column=1, value=pedido.order_id)
         aba_pedidos.cell(row=linha, column=2, value=pedido.usuario.username if pedido.usuario else "")
         aba_pedidos.cell(row=linha, column=3, value=pedido.get_status_display())
-        aba_pedidos.cell(row=linha, column=4, value=pedido.valor_comissao).number_format = FORMATO_MOEDA
-        aba_pedidos.cell(row=linha, column=5, value=pedido.valor_cashback).number_format = FORMATO_MOEDA
-        for coluna, valor_data in ((6, pedido.data_compra), (7, pedido.data_validacao), (8, pedido.data_liberacao)):
+        aba_pedidos.cell(row=linha, column=4, value=pedido.valor_pedido).number_format = FORMATO_MOEDA
+        aba_pedidos.cell(row=linha, column=5, value=pedido.valor_comissao).number_format = FORMATO_MOEDA
+        aba_pedidos.cell(row=linha, column=6, value=pedido.valor_cashback).number_format = FORMATO_MOEDA
+        for coluna, valor_data in ((7, pedido.data_compra), (8, pedido.data_validacao), (9, pedido.data_liberacao)):
             # Excel não aceita datetime com timezone - convertemos pro horário local e
             # removemos o tzinfo antes de escrever na célula.
             if valor_data:

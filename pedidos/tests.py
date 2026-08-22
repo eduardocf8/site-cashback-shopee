@@ -126,7 +126,13 @@ class SincronizarTests(TestCase):
         # Comissão abaixo do teto por produto (R$10, ver TetoCashbackPorProdutoTests
         # abaixo) - esse teste é sobre o repasse de 100%, não sobre o teto.
         mock_buscar.return_value = self._pagina(
-            [{"orderId": "ORD1", "orderStatus": "PENDING", "items": [{"completeTime": None, "itemTotalCommission": "8.00"}]}]
+            [
+                {
+                    "orderId": "ORD1",
+                    "orderStatus": "PENDING",
+                    "items": [{"completeTime": None, "itemTotalCommission": "8.00", "actualAmount": "100.00"}],
+                }
+            ]
         )
 
         resultado = sincronizar(1690000000, 1700000000)
@@ -135,9 +141,30 @@ class SincronizarTests(TestCase):
         self.assertEqual(pedido.status, Pedido.STATUS_PENDENTE)
         self.assertEqual(pedido.usuario, self.usuario)
         self.assertEqual(pedido.click, self.click)
+        self.assertEqual(pedido.valor_pedido, Decimal("100.00"))
         self.assertEqual(pedido.valor_comissao, Decimal("8.00"))
         self.assertEqual(pedido.valor_cashback, Decimal("8.00"))
         self.assertEqual(resultado, {"novos": 1, "atualizados": 0, "nao_identificados": 0})
+
+    @patch("pedidos.services.buscar_conversoes")
+    def test_valor_pedido_soma_actual_amount_de_todos_os_itens(self, mock_buscar):
+        mock_buscar.return_value = self._pagina(
+            [
+                {
+                    "orderId": "ORD-VALOR",
+                    "orderStatus": "PENDING",
+                    "items": [
+                        {"completeTime": None, "itemTotalCommission": "1.00", "actualAmount": "50.00"},
+                        {"completeTime": None, "itemTotalCommission": "2.00", "actualAmount": "30.00"},
+                    ],
+                }
+            ]
+        )
+
+        sincronizar(1690000000, 1700000000)
+
+        pedido = Pedido.objects.get(order_id="ORD-VALOR")
+        self.assertEqual(pedido.valor_pedido, Decimal("80.00"))
 
     @override_settings(SHOPEE_CASHBACK_PERCENTUAL=80)
     @patch("pedidos.services.buscar_conversoes")
@@ -172,7 +199,13 @@ class SincronizarTests(TestCase):
     @patch("pedidos.services.buscar_conversoes")
     def test_pedido_sem_click_identificavel_fica_sem_usuario_mas_e_salvo(self, mock_buscar):
         pagina = self._pagina(
-            [{"orderId": "ORD4", "orderStatus": "PENDING", "items": [{"completeTime": None, "itemTotalCommission": "3.00"}]}]
+            [
+                {
+                    "orderId": "ORD4",
+                    "orderStatus": "PENDING",
+                    "items": [{"completeTime": None, "itemTotalCommission": "3.00", "actualAmount": "40.00"}],
+                }
+            ]
         )
         pagina["nodes"][0]["utmContent"] = "origem-desconhecida"
         mock_buscar.return_value = pagina
@@ -184,8 +217,10 @@ class SincronizarTests(TestCase):
         self.assertIsNone(pedido.click)
         self.assertEqual(resultado["nao_identificados"], 1)
         # Sem Click não tem usuário pra receber o cashback - não faz sentido calcular um
-        # valor que nunca vai ser pago a ninguém. valor_comissao (o que a Shopee realmente
-        # paga) continua sendo somado normalmente, independente da origem do pedido.
+        # valor que nunca vai ser pago a ninguém. valor_comissao e valor_pedido (o que a
+        # Shopee realmente paga/o que o comprador realmente pagou) continuam sendo
+        # somados normalmente, independente da origem do pedido.
+        self.assertEqual(pedido.valor_pedido, Decimal("40.00"))
         self.assertEqual(pedido.valor_comissao, Decimal("3.00"))
         self.assertEqual(pedido.valor_cashback, Decimal("0"))
 
@@ -1059,8 +1094,8 @@ class AnalyticsAdminViewTests(TestCase):
         linhas = list(aba_pedidos.iter_rows(min_row=2, values_only=True))
         self.assertEqual(len(linhas), 1)
         self.assertEqual(linhas[0][0], "ORD-1")
-        self.assertEqual(linhas[0][3], Decimal("10.00"))
-        celula_comissao = aba_pedidos.cell(row=2, column=4)
+        self.assertEqual(linhas[0][4], Decimal("10.00"))
+        celula_comissao = aba_pedidos.cell(row=2, column=5)
         self.assertEqual(celula_comissao.number_format, '"R$" #,##0.00')
 
     def test_exportar_excel_usuario_comum_e_redirecionado(self):

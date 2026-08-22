@@ -82,6 +82,7 @@ CAMPOS_ATUALIZAVEIS = [
     "usuario",
     "status",
     "status_shopee_bruto",
+    "valor_pedido",
     "valor_comissao",
     "valor_cashback",
     "multiplicador_campanha",
@@ -114,9 +115,11 @@ def _montar_defaults(conversao, pedido_shopee, click, data_compra, percentual_ba
     # não faz sentido calcular um valor que nunca vai ser pago a ninguém. valor_comissao
     # continua sendo somado normalmente - é o que a Shopee realmente paga pra conta de
     # afiliado, independente da origem do pedido.
+    pedido_valor = Decimal("0")
     comissao = Decimal("0")
     cashback = Decimal("0")
     for item in itens:
+        pedido_valor += Decimal(str(item.get("actualAmount") or "0"))
         comissao_item = Decimal(str(item.get("itemTotalCommission") or "0"))
         comissao += comissao_item
         if click:
@@ -147,6 +150,7 @@ def _montar_defaults(conversao, pedido_shopee, click, data_compra, percentual_ba
         "usuario": click.usuario if click else None,
         "status": status_shopee,
         "status_shopee_bruto": pedido_shopee.get("orderStatus") or "",
+        "valor_pedido": pedido_valor,
         "valor_comissao": comissao,
         "valor_cashback": cashback,
         "produto_nome": ", ".join(nomes_produto)[:255],

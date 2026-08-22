@@ -28,6 +28,12 @@ class Pedido(models.Model):
     status_shopee_bruto = models.CharField(
         max_length=64, help_text="Valor original retornado pela Shopee, guardado para conferência."
     )
+    valor_pedido = models.DecimalField(
+        max_digits=10,
+        decimal_places=2,
+        default=Decimal("0"),
+        help_text="Valor realmente pago pelo comprador (actualAmount da Shopee, já descontando cupom/desconto).",
+    )
     valor_comissao = models.DecimalField(max_digits=10, decimal_places=2, default=Decimal("0"))
     valor_cashback = models.DecimalField(max_digits=10, decimal_places=2, default=Decimal("0"))
     multiplicador_campanha = models.DecimalField(

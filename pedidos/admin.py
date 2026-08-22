@@ -61,6 +61,7 @@ class PedidoAdmin(admin.ModelAdmin):
         "status",
         "status_shopee_bruto",
         "motivo_cancelamento",
+        "valor_pedido",
         "valor_comissao",
         "valor_cashback",
         "multiplicador_campanha",
@@ -127,7 +128,17 @@ class PedidoAdmin(admin.ModelAdmin):
         resposta["Content-Disposition"] = 'attachment; filename="pedidos_analytics.csv"'
         escritor = csv.writer(resposta)
         escritor.writerow(
-            ["order_id", "usuario", "status", "valor_comissao", "valor_cashback", "data_compra", "data_validacao", "data_liberacao"]
+            [
+                "order_id",
+                "usuario",
+                "status",
+                "valor_pedido",
+                "valor_comissao",
+                "valor_cashback",
+                "data_compra",
+                "data_validacao",
+                "data_liberacao",
+            ]
         )
         for pedido in pedidos.iterator():
             escritor.writerow(
@@ -135,6 +146,7 @@ class PedidoAdmin(admin.ModelAdmin):
                     pedido.order_id,
                     pedido.usuario.username if pedido.usuario else "",
                     pedido.get_status_display(),
+                    pedido.valor_pedido,
                     pedido.valor_comissao,
                     pedido.valor_cashback,
                     pedido.data_compra.strftime("%Y-%m-%d %H:%M") if pedido.data_compra else "",
