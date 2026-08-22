@@ -10,6 +10,15 @@ JBMONO_B64 = base64.b64encode((FONT_DIR / "jetbrains-mono.woff2").read_bytes()).
 OUT_DIR = Path(__file__).resolve().parent / "posts-semeadura"
 SIZE = 1080
 
+# Margem lateral ditada pelo recorte da grade do perfil: o Instagram mostra a
+# miniatura como um 3:4 do quadrado central, o que come 135px de cada lado de uma
+# imagem 1080x1080 (12,5%). Com os 88px de antes, o texto aparecia cortado na grade
+# ("Sem pegadinha" virava "em pegadinha") - o post aberto ficava certo, só a grade
+# quebrava. 152px deixa ~17px de folga visível depois do recorte.
+# Medição e detalhes no README, seção "O recorte da grade do perfil".
+PADDING_LATERAL = 152
+LARGURA_UTIL = SIZE - 2 * PADDING_LATERAL
+
 COLORS = {
     "ink": "#111827",
     "ink-soft": "#374151",
@@ -37,10 +46,10 @@ BASE_CSS = f"""
 html, body {{ width: {SIZE}px; height: {SIZE}px; font-family: "Familjen", Arial, sans-serif; }}
 .canvas {{
     width: {SIZE}px; height: {SIZE}px; position: relative; overflow: hidden;
-    display: flex; flex-direction: column; padding: 88px;
+    display: flex; flex-direction: column; padding: 88px {PADDING_LATERAL}px;
 }}
 .badge {{
-    position: absolute; right: 88px; bottom: 64px; font-size: 30px; font-weight: 700;
+    position: absolute; right: {PADDING_LATERAL}px; bottom: 64px; font-size: 30px; font-weight: 700;
     letter-spacing: -0.01em;
 }}
 .eyebrow {{
@@ -48,7 +57,7 @@ html, body {{ width: {SIZE}px; height: {SIZE}px; font-family: "Familjen", Arial,
     margin-bottom: 20px;
 }}
 .headline {{ font-size: 64px; font-weight: 700; line-height: 1.12; letter-spacing: -0.02em; }}
-.body {{ font-size: 32px; line-height: 1.5; margin-top: 28px; max-width: 820px; }}
+.body {{ font-size: 32px; line-height: 1.5; margin-top: 28px; max-width: {LARGURA_UTIL}px; }}
 .mark {{ position: relative; z-index: 0; display: inline-block; white-space: nowrap; padding: 0 0.1em; color: {COLORS['ink']}; }}
 .mark::before {{
     content: ""; position: absolute; left: -0.06em; right: -0.06em; top: 0.08em; bottom: 0;
@@ -71,7 +80,7 @@ def render(name, body_html, filename):
 render("cover", f"""
 <div class="canvas" style="background:{COLORS['brand']}; color:{COLORS['paper']}; justify-content:center; align-items:center; text-align:center;">
     <div style="font-size:130px; font-weight:700; letter-spacing:-0.02em;">cash-b</div>
-    <div style="font-size:36px; margin-top:24px; max-width:760px; color:{COLORS['paper']}; opacity:0.92; line-height:1.4;">
+    <div style="font-size:36px; margin-top:24px; max-width:{LARGURA_UTIL}px; color:{COLORS['paper']}; opacity:0.92; line-height:1.4;">
         O jeito mais simples de ganhar dinheiro comprando na Shopee.
     </div>
 </div>
@@ -86,7 +95,7 @@ def step_row(numero, titulo, texto):
                     display:flex; align-items:center; justify-content:center;">{numero}</div>
         <div>
             <div style="font-size:34px; font-weight:700; color:{COLORS['ink']};">{titulo}</div>
-            <div style="font-size:26px; color:{COLORS['ink-soft']}; margin-top:6px; line-height:1.45; max-width:640px;">{texto}</div>
+            <div style="font-size:26px; color:{COLORS['ink-soft']}; margin-top:6px; line-height:1.45;">{texto}</div>
         </div>
     </div>
     """
@@ -107,7 +116,7 @@ def split_card(etiqueta, cor_etiqueta, titulo, texto, destaque=False):
     borda = COLORS['brand'] if destaque else COLORS['line']
     largura_borda = "3px" if destaque else "2px"
     return f"""
-    <div style="flex:1; background:{COLORS['paper']}; border:{largura_borda} solid {borda}; border-radius:20px; padding:36px;">
+    <div style="flex:1; background:{COLORS['paper']}; border:{largura_borda} solid {borda}; border-radius:20px; padding:28px;">
         <div style="display:inline-block; font-size:18px; font-weight:700; letter-spacing:0.04em; text-transform:uppercase;
                     padding:6px 14px; border-radius:12px; background:{cor_etiqueta}; color:{COLORS['ink']}; margin-bottom:18px;">{etiqueta}</div>
         <div style="font-size:32px; font-weight:700; color:{COLORS['ink']}; line-height:1.25;">{titulo}</div>
@@ -119,7 +128,7 @@ render("split", f"""
 <div class="canvas" style="background:{COLORS['paper-2']}; color:{COLORS['ink']}; justify-content:center;">
     <div class="eyebrow" style="color:{COLORS['brand']};">cash-b explica</div>
     <div class="headline">2 formas de<br>ganhar cashback</div>
-    <div style="display:flex; gap:28px; margin-top:56px;">
+    <div style="display:flex; gap:20px; margin-top:56px;">
         {split_card("Venda direta", COLORS['highlight'], "Link de um produto específico", "Converta o link de um produto específico ou acesse pela nossa vitrine de ofertas. Caso haja uma campanha de comissão extra para o produto, só a venda direta tem acesso a esse bônus.", destaque=True)}
         {split_card("Venda indireta", COLORS['line'], 'Botão "Ir pra Shopee"', "Você entra pela home e compra o que quiser. Cashback garantido, sem escolher produto antes.")}
     </div>
@@ -148,7 +157,7 @@ render("timeline", f"""
         <div style="font-size:34px; color:{COLORS['muted']};">&rarr;</div>
         {status_pill("Liberado", "#ecfdf5", "#059669")}
     </div>
-    <div style="margin-top:36px; font-size:22px; color:{COLORS['muted']}; line-height:1.5; max-width:820px;">
+    <div style="margin-top:36px; font-size:22px; color:{COLORS['muted']}; line-height:1.5;">
         Pendente: aguardando confirmação da Shopee. Validado: compra confirmada, aguardando prazo. Liberado: já pode sacar via PIX.
     </div>
     <div class="badge" style="color:{COLORS['brand']};">cash-b</div>
@@ -182,7 +191,7 @@ render("pegadinha", f"""
 render("economizar", f"""
 <div class="canvas" style="background:{COLORS['highlight']}; color:{COLORS['ink']}; justify-content:center;">
     <div class="eyebrow" style="color:{COLORS['ink']};">cash-b explica</div>
-    <div class="headline" style="font-size:58px;">Toda compra que você já ia fazer,<br>agora te devolve uma parte do dinheiro.</div>
+    <div class="headline" style="font-size:56px;">Toda compra que você já ia fazer, agora te devolve uma parte do dinheiro.</div>
     <div class="body" style="color:{COLORS['ink']}; opacity:0.85;">
         Sem mudar seu jeito de comprar — só ganhando mais no final.
     </div>
