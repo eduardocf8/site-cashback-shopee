@@ -6,7 +6,14 @@ from django.http import HttpResponse
 from django.template.response import TemplateResponse
 from django.urls import path
 
-from .analytics import ORIGEM_FORA, ORIGEM_SITE, gerar_planilha_analytics, obter_analytics, obter_pedidos_filtrados
+from .analytics import (
+    ORIGEM_FORA,
+    ORIGEM_SITE,
+    gerar_planilha_analytics,
+    obter_analytics,
+    obter_pedidos_filtrados,
+    origem_detalhada as origem_detalhada_pedido,
+)
 from .models import Pedido
 
 
@@ -58,6 +65,7 @@ class PedidoAdmin(admin.ModelAdmin):
         "order_id",
         "produto_nome",
         "usuario",
+        "origem_detalhada",
         "status",
         "status_shopee_bruto",
         "motivo_cancelamento",
@@ -72,8 +80,13 @@ class PedidoAdmin(admin.ModelAdmin):
     )
     # Filtrar por multiplicador é o jeito de conferir quais pedidos entraram numa
     # campanha de cashback extra (e que continuam com o valor dobrado depois dela).
-    list_filter = (OrigemFilter, "status", "multiplicador_campanha")
+    list_filter = (OrigemFilter, "click__tipo", "status", "multiplicador_campanha")
     search_fields = ("order_id", "conversion_id", "usuario__username", "usuario__cpf", "produto_nome")
+    list_select_related = ("click", "usuario")
+
+    @admin.display(description="Origem")
+    def origem_detalhada(self, obj):
+        return origem_detalhada_pedido(obj)
 
     def get_urls(self):
         urls = [
@@ -120,7 +133,7 @@ class PedidoAdmin(admin.ModelAdmin):
         data_inicio, data_fim, status, origem = self._filtros_da_request(request)
         pedidos = (
             obter_pedidos_filtrados(data_inicio, data_fim, status, origem)
-            .select_related("usuario")
+            .select_related("usuario", "click")
             .order_by("-data_compra")
         )
 
@@ -131,6 +144,7 @@ class PedidoAdmin(admin.ModelAdmin):
             [
                 "order_id",
                 "usuario",
+                "origem",
                 "status",
                 "valor_pedido",
                 "valor_comissao",
@@ -145,6 +159,7 @@ class PedidoAdmin(admin.ModelAdmin):
                 [
                     pedido.order_id,
                     pedido.usuario.username if pedido.usuario else "",
+                    origem_detalhada_pedido(pedido),
                     pedido.get_status_display(),
                     pedido.valor_pedido,
                     pedido.valor_comissao,

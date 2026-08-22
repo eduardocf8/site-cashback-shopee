@@ -77,7 +77,7 @@ def ir_para_oferta(request, oferta_id):
     oferta = get_object_or_404(Oferta, pk=oferta_id)
 
     try:
-        click = gerar_click(request.user, Click.TIPO_PRODUTO, oferta.product_link)
+        click = gerar_click(request.user, Click.TIPO_VITRINE, oferta.product_link)
     except ShopeeConfigError as erro:
         messages.error(request, str(erro))
         return redirect("ofertas_lista")

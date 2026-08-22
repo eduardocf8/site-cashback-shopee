@@ -625,6 +625,34 @@ Suite completa (`pedidos`, 68 testes) verde.
 
 ---
 
+## Fase 27 — Diferenciar a origem de cada pedido ✅
+
+Usuário pediu pra diferenciar de onde veio cada pedido: conversão de link
+direto, clique na vitrine de ofertas ou venda indireta (botão "Ir pra
+Shopee"). O `Click.tipo` já existia, mas só tinha 2 valores - `produto`
+cobria tanto o conversor de link quanto o clique num card da vitrine
+(`ofertas/views.py::ir_para_oferta`), misturando as duas origens.
+
+- [x] **`Click.TIPO_VITRINE`** — terceiro valor de `tipo` (migração
+      `links/0002`), usado só por `ir_para_oferta`. O conversor de link
+      (`links/views.py`) continua gerando `TIPO_PRODUTO`; o botão "Ir pra
+      Shopee" continua `TIPO_HOME`. `gerar_click` ajustado pra tratar
+      qualquer tipo != `TIPO_HOME` como "usa a URL informada", não só
+      `TIPO_PRODUTO`.
+- [x] **`origem_detalhada(pedido)`** (`pedidos/analytics.py`) — rótulo por
+      pedido: "Link direto", "Vitrine de ofertas", "Venda indireta (Ir pra
+      Shopee)" ou "Fora do site" (sem Click). Reaproveitado no
+      `list_display` do admin, na exportação CSV e na aba "Pedidos" do
+      Excel de analytics.
+- [x] **Filtro nativo por `click__tipo`** no admin, ao lado do filtro
+      "origem" (site/fora) que já existia - dá pra cruzar as duas
+      granularidades.
+
+Suite completa (179 testes) verde; conferido visualmente no admin com
+Playwright (4 pedidos de exemplo, um de cada origem).
+
+---
+
 Pra continuar esse roadmap numa conversa nova, basta apontar esse arquivo
 (`ROADMAP.md`) e o `BRAND.md` — juntos eles dão o contexto de identidade
 visual e do que falta implementar, sem precisar reconstruir o histórico da

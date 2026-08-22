@@ -5,9 +5,25 @@ from django.db.models import Count, Q, QuerySet, Sum
 from django.utils import timezone
 
 from accounts.models import Indicacao
+from links.models import Click
 from saques.models import Saque
 
 from .models import Pedido
+
+ORIGEM_DETALHADA_LABELS = {
+    Click.TIPO_PRODUTO: "Link direto",
+    Click.TIPO_VITRINE: "Vitrine de ofertas",
+    Click.TIPO_HOME: "Venda indireta (Ir pra Shopee)",
+}
+
+
+def origem_detalhada(pedido: Pedido) -> str:
+    """Rótulo de origem por pedido - distingue conversão de link direto, clique num
+    card da vitrine de ofertas e venda indireta (botão "Ir pra Shopee"), além do caso
+    sem Click (pedido não gerado por aqui - ver OrigemFilter em pedidos/admin.py)."""
+    if not pedido.click:
+        return "Fora do site"
+    return ORIGEM_DETALHADA_LABELS.get(pedido.click.tipo, pedido.click.tipo)
 
 FORMATO_MOEDA = '"R$" #,##0.00'
 FORMATO_DATA = "dd/mm/yyyy hh:mm"
@@ -146,7 +162,7 @@ def gerar_planilha_analytics(data_inicio=None, data_fim=None, status=None, orige
     dados = obter_analytics(data_inicio, data_fim, status, origem)
     pedidos = (
         obter_pedidos_filtrados(data_inicio, data_fim, status, origem)
-        .select_related("usuario")
+        .select_related("usuario", "click")
         .order_by("-data_compra")
     )
 
@@ -242,7 +258,7 @@ def gerar_planilha_analytics(data_inicio=None, data_fim=None, status=None, orige
         resumo.cell(row=linha, column=1, value="Nenhuma indicação no período filtrado.")
 
     aba_pedidos = livro.create_sheet("Pedidos")
-    definir_larguras(aba_pedidos, [22, 20, 14, 14, 14, 14, 20, 20, 20])
+    definir_larguras(aba_pedidos, [22, 20, 22, 14, 14, 14, 14, 20, 20, 20])
     escrever_cabecalho(
         aba_pedidos,
         1,
@@ -250,6 +266,7 @@ def gerar_planilha_analytics(data_inicio=None, data_fim=None, status=None, orige
         [
             "Order ID",
             "Usuário",
+            "Origem",
             "Status",
             "Valor do pedido",
             "Comissão",
@@ -264,11 +281,12 @@ def gerar_planilha_analytics(data_inicio=None, data_fim=None, status=None, orige
     for pedido in pedidos.iterator():
         aba_pedidos.cell(row=linha, column=1, value=pedido.order_id)
         aba_pedidos.cell(row=linha, column=2, value=pedido.usuario.username if pedido.usuario else "")
-        aba_pedidos.cell(row=linha, column=3, value=pedido.get_status_display())
-        aba_pedidos.cell(row=linha, column=4, value=pedido.valor_pedido).number_format = FORMATO_MOEDA
-        aba_pedidos.cell(row=linha, column=5, value=pedido.valor_comissao).number_format = FORMATO_MOEDA
-        aba_pedidos.cell(row=linha, column=6, value=pedido.valor_cashback).number_format = FORMATO_MOEDA
-        for coluna, valor_data in ((7, pedido.data_compra), (8, pedido.data_validacao), (9, pedido.data_liberacao)):
+        aba_pedidos.cell(row=linha, column=3, value=origem_detalhada(pedido))
+        aba_pedidos.cell(row=linha, column=4, value=pedido.get_status_display())
+        aba_pedidos.cell(row=linha, column=5, value=pedido.valor_pedido).number_format = FORMATO_MOEDA
+        aba_pedidos.cell(row=linha, column=6, value=pedido.valor_comissao).number_format = FORMATO_MOEDA
+        aba_pedidos.cell(row=linha, column=7, value=pedido.valor_cashback).number_format = FORMATO_MOEDA
+        for coluna, valor_data in ((8, pedido.data_compra), (9, pedido.data_validacao), (10, pedido.data_liberacao)):
             # Excel não aceita datetime com timezone - convertemos pro horário local e
             # removemos o tzinfo antes de escrever na célula.
             if valor_data:

@@ -6,7 +6,7 @@ from .shopee_client import gerar_link_curto
 
 def gerar_click(usuario, tipo: str, url_original: str | None) -> Click:
     """Cria um Click com subIds próprios e obtém o link de afiliado na API Shopee."""
-    url_alvo = url_original if tipo == Click.TIPO_PRODUTO else settings.SHOPEE_HOME_URL
+    url_alvo = url_original if tipo != Click.TIPO_HOME else settings.SHOPEE_HOME_URL
 
     click = Click.objects.create(
         usuario=usuario,

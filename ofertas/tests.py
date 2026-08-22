@@ -1,11 +1,20 @@
 from decimal import Decimal
 from unittest.mock import patch
 
+from django.contrib.auth import get_user_model
 from django.test import TestCase, override_settings
 from django.urls import reverse
 
+from links.models import Click
+
 from .models import Oferta
 from .services import _montar_oferta, obter_cashback_maximo_anunciado, sincronizar_ofertas
+
+CREDENCIAIS_TESTE = {
+    "SHOPEE_AFFILIATE_APP_ID": "app123",
+    "SHOPEE_AFFILIATE_SECRET": "segredo123",
+    "SHOPEE_AFFILIATE_API_URL": "https://open-api.affiliate.shopee.com.br/graphql",
+}
 
 
 class OrdenarPorCashbackTests(TestCase):
@@ -201,3 +210,32 @@ class CashbackMaximoAnunciadoTests(TestCase):
 
         maximo = obter_cashback_maximo_anunciado()
         self.assertEqual(maximo, Decimal("9.0"))
+
+
+@override_settings(**CREDENCIAIS_TESTE)
+class IrParaOfertaTests(TestCase):
+    """Clicar num card da vitrine precisa gerar um Click TIPO_VITRINE - diferente do
+    TIPO_PRODUTO usado pelo conversor de link (ver links/views.py) - pra permitir
+    diferenciar a origem do pedido depois em pedidos/admin.py::origem_detalhada."""
+
+    def setUp(self):
+        self.usuario = get_user_model().objects.create_user(
+            username="compradora", password="senha123", cpf="39053344705"
+        )
+        self.client.force_login(self.usuario)
+        self.oferta = Oferta.objects.create(
+            item_id=1, nome="Produto vitrine", categoria_id=1,
+            product_link="https://shopee.com.br/produto-vitrine-i.1.1",
+            percentual_comissao=Decimal("0.05"), vendas=10,
+        )
+
+    @patch("links.services.gerar_link_curto")
+    def test_cria_click_tipo_vitrine_e_redireciona_pro_link_gerado(self, mock_gerar_link):
+        mock_gerar_link.return_value = "https://shope.ee/vitrine123"
+
+        resposta = self.client.get(reverse("ofertas_ir", args=[self.oferta.id]))
+
+        click = Click.objects.get()
+        self.assertEqual(click.tipo, Click.TIPO_VITRINE)
+        self.assertEqual(click.url_original, self.oferta.product_link)
+        self.assertRedirects(resposta, "https://shope.ee/vitrine123", fetch_redirect_response=False)

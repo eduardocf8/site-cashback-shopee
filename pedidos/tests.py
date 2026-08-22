@@ -17,7 +17,7 @@ from accounts.models import Indicacao
 from links.models import Click
 from saques.models import Saque
 
-from .analytics import obter_analytics
+from .analytics import obter_analytics, origem_detalhada
 from .models import Pedido
 from .notificacoes import notificar_indicador_bonus_pendente
 from .services import calcular_data_prevista_liberacao, liberar_saldo, mapear_status, resolver_click, sincronizar
@@ -1003,6 +1003,51 @@ class ObterAnalyticsTests(TestCase):
         self.assertEqual(por_status[Saque.STATUS_SOLICITADO]["valor"], Decimal("30.00"))
 
 
+class OrigemDetalhadaTests(TestCase):
+    """Diferencia a origem de cada pedido: conversão de link direto, clique num card da
+    vitrine de ofertas ou venda indireta (botão "Ir pra Shopee") - além do caso sem
+    Click (pedido não gerado por aqui, ver OrigemFilter em pedidos/admin.py)."""
+
+    def setUp(self):
+        self.usuario = get_user_model().objects.create_user(
+            username="compradora", password="senha123", cpf="39053344705"
+        )
+
+    def _pedido(self, order_id, click=None):
+        return Pedido.objects.create(
+            order_id=order_id, conversion_id="1", usuario=self.usuario, click=click,
+            status=Pedido.STATUS_VALIDADO, status_shopee_bruto="COMPLETED",
+        )
+
+    def test_sem_click_e_fora_do_site(self):
+        pedido = self._pedido("ORD-SEM-CLICK")
+        self.assertEqual(origem_detalhada(pedido), "Fora do site")
+
+    def test_click_tipo_produto_e_link_direto(self):
+        click = Click.objects.create(
+            usuario=self.usuario, tipo=Click.TIPO_PRODUTO,
+            url_original="https://shopee.com.br/produto-i.1.1", link_gerado="https://shope.ee/a",
+        )
+        pedido = self._pedido("ORD-LINK-DIRETO", click=click)
+        self.assertEqual(origem_detalhada(pedido), "Link direto")
+
+    def test_click_tipo_vitrine_e_vitrine_de_ofertas(self):
+        click = Click.objects.create(
+            usuario=self.usuario, tipo=Click.TIPO_VITRINE,
+            url_original="https://shopee.com.br/produto-i.2.2", link_gerado="https://shope.ee/b",
+        )
+        pedido = self._pedido("ORD-VITRINE", click=click)
+        self.assertEqual(origem_detalhada(pedido), "Vitrine de ofertas")
+
+    def test_click_tipo_home_e_venda_indireta(self):
+        click = Click.objects.create(
+            usuario=self.usuario, tipo=Click.TIPO_HOME,
+            url_original="https://shopee.com.br/", link_gerado="https://shope.ee/c",
+        )
+        pedido = self._pedido("ORD-INDIRETA", click=click)
+        self.assertEqual(origem_detalhada(pedido), "Venda indireta (Ir pra Shopee)")
+
+
 class AnalyticsAdminViewTests(TestCase):
     def setUp(self):
         self.staff = get_user_model().objects.create_user(
@@ -1094,8 +1139,9 @@ class AnalyticsAdminViewTests(TestCase):
         linhas = list(aba_pedidos.iter_rows(min_row=2, values_only=True))
         self.assertEqual(len(linhas), 1)
         self.assertEqual(linhas[0][0], "ORD-1")
-        self.assertEqual(linhas[0][4], Decimal("10.00"))
-        celula_comissao = aba_pedidos.cell(row=2, column=5)
+        self.assertEqual(linhas[0][2], "Fora do site")
+        self.assertEqual(linhas[0][5], Decimal("10.00"))
+        celula_comissao = aba_pedidos.cell(row=2, column=6)
         self.assertEqual(celula_comissao.number_format, '"R$" #,##0.00')
 
     def test_exportar_excel_usuario_comum_e_redirecionado(self):

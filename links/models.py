@@ -6,9 +6,11 @@ from django.db import models
 
 class Click(models.Model):
     TIPO_PRODUTO = "produto"
+    TIPO_VITRINE = "vitrine"
     TIPO_HOME = "home"
     TIPO_CHOICES = [
-        (TIPO_PRODUTO, "Produto específico"),
+        (TIPO_PRODUTO, "Link de produto convertido"),
+        (TIPO_VITRINE, "Vitrine de ofertas"),
         (TIPO_HOME, "Página inicial da Shopee"),
     ]
 
