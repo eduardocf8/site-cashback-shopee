@@ -224,4 +224,40 @@ render(f"""
 </div>
 """, "og-cash-b.png", width=1200, height=630, destino=REPO_ROOT / "static" / "images", escala=1)
 
+# ---------- 9. Capa do canal do YouTube (@usecashb) ----------
+# 2560x1440 é o tamanho recomendado, mas só a faixa central de 1546x423 aparece em
+# TODOS os aparelhos - no celular o resto some, na TV aparece tudo. Então a marca e a
+# tagline ficam dentro dessa faixa, e as laterais levam só decoração: enriquecem a
+# visualização grande sem fazer falta nenhuma quando o corte acontece.
+# Escala 1 de propósito - 2560x1440 já é o tamanho final, e o YouTube limita em 6 MB.
+CAPA_YT_SEGURA_L, CAPA_YT_SEGURA_A = 1546, 423
+
+
+def _anel_decorativo(lado, tamanho, opacidade):
+    """Anel âmbar solto no fundo, fora da área segura. Some no celular por definição -
+    serve só para a capa não ficar um retângulo chapado em TV e desktop."""
+    return (
+        f'<div style="position:absolute; {lado}; width:{tamanho}px; height:{tamanho}px; '
+        f'border-radius:50%; border:{tamanho*0.055:.0f}px solid {COLORS["highlight"]}; '
+        f'opacity:{opacidade};"></div>'
+    )
+
+
+render(f"""
+<div class="canvas" style="background:linear-gradient(120deg, {COLORS['brand-strong']}, {COLORS['brand']}); align-items:center; justify-content:center;">
+    {_anel_decorativo("left:-150px; top:120px", 620, 0.16)}
+    {_anel_decorativo("left:60px; bottom:-190px", 420, 0.10)}
+    {_anel_decorativo("right:-190px; bottom:80px", 700, 0.16)}
+    {_anel_decorativo("right:120px; top:-160px", 400, 0.10)}
+    <div style="width:{CAPA_YT_SEGURA_L}px; height:{CAPA_YT_SEGURA_A}px; display:flex;
+                align-items:center; justify-content:center; gap:90px; position:relative;">
+        <div style="width:310px; flex-shrink:0;">{ILUSTRACAO_SACOLA}</div>
+        <div>
+            <div style="font-size:165px; line-height:1; font-weight:700; letter-spacing:-0.02em; color:{COLORS['paper']};">cash-b</div>
+            <div style="font-size:50px; color:{COLORS['paper']}; opacity:0.92; margin-top:24px;">Compre na Shopee. Receba dinheiro de volta.</div>
+        </div>
+    </div>
+</div>
+""", "09-capa-youtube.png", width=2560, height=1440, escala=1)
+
 print("todas as artes geradas")
