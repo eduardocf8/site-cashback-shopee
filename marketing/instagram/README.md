@@ -478,9 +478,12 @@ aconteceu com os primeiros posts. Por isso o primeiro slide leva
 aparece na grade, então os internos seguem com a margem padrão: abertos,
 eles aparecem inteiros.
 
-Os posts de semeadura (`posts-semeadura/`, 1080×1080) sofrem ainda mais com
-isso: um quadrado dentro de uma célula 3:4 perde 12,5% de cada lado. Quem
-for refazê-los precisa considerar essa margem.
+Os posts de semeadura (`posts-semeadura/`, 1080×1080) sofriam do mesmo
+problema: um quadrado dentro de uma célula 3:4 perde 135px (12,5%) de cada
+lado, e a margem era de 88px. Já foram refeitos com
+`PADDING_LATERAL = 152` em `gerar_posts_semeadura.py` — os arquivos no
+repositório são a versão corrigida, mas **os que estão publicados no perfil
+ainda são os antigos** e precisam ser repostados para o corte sumir.
 
 Para conferir sem postar: rode com `--export` e olhe o `grade.png` gerado.
 
