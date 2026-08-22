@@ -148,7 +148,7 @@ def status_pill(nome, cor_fundo, cor_texto):
 render("timeline", f"""
 <div class="canvas" style="background:{COLORS['paper']}; color:{COLORS['ink']}; justify-content:center;">
     <div class="eyebrow" style="color:{COLORS['brand']};">cash-b explica</div>
-    <div class="headline">Do clique<br>ao PIX</div>
+    <div class="headline">Do clique ao PIX</div>
     <div class="body" style="color:{COLORS['ink-soft']};">Depois da compra, seu cashback passa por 3 fases até virar dinheiro de verdade:</div>
     <div style="display:flex; align-items:center; gap:16px; margin-top:64px;">
         {status_pill("Pendente", COLORS['line'], COLORS['ink-soft'])}
@@ -156,9 +156,6 @@ render("timeline", f"""
         {status_pill("Validado", "#eef2ff", "#2563eb")}
         <div style="font-size:34px; color:{COLORS['muted']};">&rarr;</div>
         {status_pill("Liberado", "#ecfdf5", "#059669")}
-    </div>
-    <div style="margin-top:36px; font-size:22px; color:{COLORS['muted']}; line-height:1.5;">
-        Pendente: aguardando confirmação da Shopee. Validado: compra confirmada, aguardando prazo. Liberado: já pode sacar via PIX.
     </div>
     <div class="badge" style="color:{COLORS['brand']};">cash-b</div>
 </div>
