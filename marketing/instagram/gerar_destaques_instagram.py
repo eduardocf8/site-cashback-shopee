@@ -75,10 +75,20 @@ def render_capa(nome_arquivo, cor_fundo, icone_svg):
     """, CAPAS_DIR / nome_arquivo, 1080, 1080)
 
 
-def render_glifo_capa(nome_arquivo, cor_fundo, glifo, transform):
+def render_glifo_capa(nome_arquivo, cor_fundo, glifo, deslocamento_y, tamanho):
+    """Capa feita com um caractere em vez de SVG.
+
+    O tamanho é por glifo porque cada caractere ocupa uma fração diferente da própria
+    caixa de fonte: no mesmo font-size, o "?" desenha bem menos tinta que o "%". Com um
+    valor único os dois ficavam visivelmente menores que as capas de ícone SVG (448 e
+    504px de extensão contra 744-948 das outras). Os valores abaixo foram calibrados
+    medindo o desenho renderizado, não a caixa de texto.
+
+    O deslocamento vertical corrige o centro óptico - a caixa da fonte inclui espaço
+    para descendentes que esses glifos não usam."""
     render(f"""
     <div class="canvas" style="background:{cor_fundo}; align-items:center; justify-content:center;">
-        <div style="font-size:340px; line-height:1; font-weight:700; color:{COLORS['paper']}; transform:{transform};">{glifo}</div>
+        <div style="font-size:{tamanho}px; line-height:1; font-weight:700; color:{COLORS['paper']}; transform:translate(0px, {deslocamento_y}px);">{glifo}</div>
     </div>
     """, CAPAS_DIR / nome_arquivo, 1080, 1080)
 
@@ -107,10 +117,10 @@ ICONE_PESSOA = f"""<svg viewBox="0 0 400 400" xmlns="http://www.w3.org/2000/svg"
 
 render_capa("01-como-funciona.png", COLORS["brand"], ICONE_PASSOS)
 render_capa("02-saque-pix.png", COLORS["success"], ICONE_PIX)
-render_glifo_capa("03-ofertas.png", COLORS["highlight"], "%", "translate(0px, -25px)")
+render_glifo_capa("03-ofertas.png", COLORS["highlight"], "%", -40, 540)
 render_capa("04-sem-pegadinha.png", COLORS["brand"], ICONE_CHECK)
 render_capa("05-cadastre-se.png", COLORS["success"], ICONE_PESSOA)
-render_glifo_capa("06-duvidas.png", COLORS["highlight"], "?", "translate(0px, -25px)")
+render_glifo_capa("06-duvidas.png", COLORS["highlight"], "?", -45, 610)
 
 
 # ============================================================

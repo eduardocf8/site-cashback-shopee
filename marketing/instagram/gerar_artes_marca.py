@@ -4,6 +4,10 @@ capa/banner. Reaproveita a mesma infra de gerar_posts_semeadura.py (Playwright
 + fontes da marca embutidas) e os mesmos motivos de ilustração de
 static/css/brand.css (sacola+selo do hero, moeda+anel das páginas de conta) -
 nada de fotografia, só forma geométrica plana, conforme BRAND.md.
+
+Cada arte quadrada sai em duas versões: o arquivo normal e um `-zoom`, com o
+desenho maior, para foto de perfil (que o Instagram recorta em círculo). Ver o
+comentário em "Artes quadradas" para o porquê dos fatores.
 """
 import base64
 from pathlib import Path
@@ -82,55 +86,115 @@ def render(body_html, filename, width=1080, height=1080, destino=None, escala=2)
     print("gerado:", (destino / filename).relative_to(REPO_ROOT))
 
 
-# ---------- 1. Foto de perfil - "cb" sobre roxo com anel âmbar (paleta mesclada) ----------
-# O flex centraliza a CAIXA da linha de texto, não a tinta do glifo - como "cb" não tem
-# descendente, sobra espaço embaixo (reservado pra letras como "g"/"p") e o "cb" fica
-# visualmente baixo/deslocado. line-height:1 reduz a caixa, e o transform compensa o
-# resto (medido em pixel real via screenshot até a tinta ficar centralizada no anel).
-render(f"""
-<div class="canvas" style="background:{COLORS['brand']}; align-items:center; justify-content:center;">
-    <div style="position:absolute; width:760px; height:760px; border-radius:50%; border:26px solid {COLORS['highlight']}; opacity:0.9;"></div>
-    <div style="font-size:340px; line-height:1; font-weight:700; letter-spacing:-0.03em; color:{COLORS['paper']}; transform:translate(-5px, -25px);">cb</div>
-</div>
-""", "01-perfil-cb-roxo-ambar.png")
+# ---------- Artes quadradas (perfil / marca) ----------
+# Cada arte é função de um fator de escala k porque a mesma peça é gerada duas vezes:
+# em k=1 (o arquivo original, para uso geral) e num k maior, para foto de perfil.
+#
+# O motivo do k maior: a foto de perfil do Instagram é recortada em CÍRCULO, e o
+# desenho dessas artes foi dimensionado para um quadrado. Medindo a tinta renderizada,
+# elas ocupavam de 38% a 56% da diagonal do círculo - por isso "ficava pequeno". Os
+# valores de ZOOM abaixo levam cada uma para ~75%, que enche o círculo sem encostar
+# na borda. Ampliar na mão pelo app perde qualidade e desalinha; aqui o desenho é
+# rasterizado já no tamanho certo.
+#
+# Um k único não serviria: cada arte parte de uma ocupação diferente, então cada uma
+# precisa do seu fator para todas chegarem no mesmo destino.
 
-# ---------- 2. Foto de perfil - "cb" sobre verde (variante dinheiro/cashback) ----------
-render(f"""
-<div class="canvas" style="background:{COLORS['success']}; align-items:center; justify-content:center;">
-    <div style="font-size:340px; font-weight:700; letter-spacing:-0.03em; color:{COLORS['paper']};">cb</div>
-</div>
-""", "02-perfil-cb-verde.png")
+def _glifo_cb(k, cor=None):
+    """O monograma "cb" com o centro óptico corrigido.
 
-# ---------- 3. Wordmark limpo sobre roxo sólido ----------
-render(f"""
-<div class="canvas" style="background:{COLORS['brand']}; align-items:center; justify-content:center;">
-    <div style="font-size:200px; font-weight:700; letter-spacing:-0.02em; color:{COLORS['paper']};">cash-b</div>
-</div>
-""", "03-wordmark-roxo.png")
+    O flex centraliza a CAIXA da linha de texto, não a tinta do glifo - como "cb" não
+    tem descendente, sobra espaço embaixo (reservado pra letras como "g"/"p") e o "cb"
+    fica visualmente baixo e um pouco à direita. line-height:1 reduz a caixa e o
+    transform compensa o resto (medido em pixel real via screenshot).
 
-# ---------- 4. Wordmark sobre fundo claro, com sublinhado âmbar (paleta mesclada) ----------
-render(f"""
-<div class="canvas" style="background:{COLORS['paper']}; align-items:center; justify-content:center; flex-direction:column;">
-    <div style="font-size:200px; font-weight:700; letter-spacing:-0.02em; color:{COLORS['brand']};">cash-b</div>
-    <div style="width:280px; height:14px; border-radius:7px; background:{COLORS['highlight']}; margin-top:28px;"></div>
-</div>
-""", "04-wordmark-claro.png")
+    Virou função compartilhada porque a correção existia só na arte do anel: a versão
+    verde saía 49px baixo e 10px à direita, o que num recorte circular aparece."""
+    cor = cor or COLORS["paper"]
+    return (
+        f'<div style="font-size:{340*k:.0f}px; line-height:1; font-weight:700; '
+        f'letter-spacing:-0.03em; color:{cor}; '
+        f'transform:translate({-5*k:.0f}px, {-25*k:.0f}px);">cb</div>'
+    )
 
-# ---------- 5. Lockup com a ilustração da sacola (hero), degradê roxo ----------
-render(f"""
-<div class="canvas" style="background:linear-gradient(160deg, {COLORS['brand-strong']}, {COLORS['brand']}); align-items:center; justify-content:center; flex-direction:column; gap:56px;">
-    <div style="width:460px;">{ILUSTRACAO_SACOLA}</div>
-    <div style="font-size:120px; font-weight:700; letter-spacing:-0.02em; color:{COLORS['paper']};">cash-b</div>
-</div>
-""", "05-lockup-sacola.png")
 
-# ---------- 6. Lockup com a ilustração da moeda (contas), degradê roxo ----------
-render(f"""
-<div class="canvas" style="background:linear-gradient(160deg, {COLORS['brand-strong']}, {COLORS['brand']}); align-items:center; justify-content:center; flex-direction:column; gap:56px;">
-    <div style="width:420px;">{ILUSTRACAO_MOEDA}</div>
-    <div style="font-size:120px; font-weight:700; letter-spacing:-0.02em; color:{COLORS['paper']};">cash-b</div>
-</div>
-""", "06-lockup-moeda.png")
+def arte_perfil_cb_anel(k=1):
+    return f"""
+    <div class="canvas" style="background:{COLORS['brand']}; align-items:center; justify-content:center;">
+        <div style="position:absolute; width:{760*k:.0f}px; height:{760*k:.0f}px; border-radius:50%; border:{26*k:.0f}px solid {COLORS['highlight']}; opacity:0.9;"></div>
+        {_glifo_cb(k)}
+    </div>
+    """
+
+
+def arte_perfil_cb_roxo(k=1):
+    """Igual à do anel, sem o anel - o monograma sozinho sobre o roxo da marca."""
+    return f"""
+    <div class="canvas" style="background:{COLORS['brand']}; align-items:center; justify-content:center;">
+        {_glifo_cb(k)}
+    </div>
+    """
+
+
+def arte_perfil_cb_verde(k=1):
+    return f"""
+    <div class="canvas" style="background:{COLORS['success']}; align-items:center; justify-content:center;">
+        {_glifo_cb(k)}
+    </div>
+    """
+
+
+def arte_wordmark_roxo(k=1):
+    return f"""
+    <div class="canvas" style="background:{COLORS['brand']}; align-items:center; justify-content:center;">
+        <div style="font-size:{200*k:.0f}px; font-weight:700; letter-spacing:-0.02em; color:{COLORS['paper']};">cash-b</div>
+    </div>
+    """
+
+
+def arte_wordmark_claro(k=1):
+    return f"""
+    <div class="canvas" style="background:{COLORS['paper']}; align-items:center; justify-content:center; flex-direction:column;">
+        <div style="font-size:{200*k:.0f}px; font-weight:700; letter-spacing:-0.02em; color:{COLORS['brand']};">cash-b</div>
+        <div style="width:{280*k:.0f}px; height:{14*k:.0f}px; border-radius:{7*k:.0f}px; background:{COLORS['highlight']}; margin-top:{28*k:.0f}px;"></div>
+    </div>
+    """
+
+
+def arte_lockup_sacola(k=1):
+    return f"""
+    <div class="canvas" style="background:linear-gradient(160deg, {COLORS['brand-strong']}, {COLORS['brand']}); align-items:center; justify-content:center; flex-direction:column; gap:{56*k:.0f}px;">
+        <div style="width:{460*k:.0f}px;">{ILUSTRACAO_SACOLA}</div>
+        <div style="font-size:{120*k:.0f}px; font-weight:700; letter-spacing:-0.02em; color:{COLORS['paper']};">cash-b</div>
+    </div>
+    """
+
+
+def arte_lockup_moeda(k=1):
+    return f"""
+    <div class="canvas" style="background:linear-gradient(160deg, {COLORS['brand-strong']}, {COLORS['brand']}); align-items:center; justify-content:center; flex-direction:column; gap:{56*k:.0f}px;">
+        <div style="width:{420*k:.0f}px;">{ILUSTRACAO_MOEDA}</div>
+        <div style="font-size:{120*k:.0f}px; font-weight:700; letter-spacing:-0.02em; color:{COLORS['paper']};">cash-b</div>
+    </div>
+    """
+
+
+# (função, nome base, fator de zoom da versão para foto de perfil)
+ARTES_QUADRADAS = [
+    (arte_perfil_cb_anel, "01-perfil-cb-roxo-ambar", 1.21),
+    (arte_perfil_cb_verde, "02-perfil-cb-verde", 1.98),
+    (arte_wordmark_roxo, "03-wordmark-roxo", 1.39),
+    (arte_wordmark_claro, "04-wordmark-claro", 1.33),
+    (arte_lockup_sacola, "05-lockup-sacola", 1.44),
+    (arte_lockup_moeda, "06-lockup-moeda", 1.35),
+    # Mesmo glifo e mesmo corpo da versão verde, então mesmo fator de zoom.
+    (arte_perfil_cb_roxo, "08-perfil-cb-roxo", 1.98),
+]
+
+for construir, nome, zoom in ARTES_QUADRADAS:
+    render(construir(), f"{nome}.png")
+    render(construir(zoom), f"{nome}-zoom.png")
+
 
 # ---------- 7. Capa horizontal (header/banner) - wordmark + tagline + ilustração ----------
 render(f"""
@@ -159,5 +223,41 @@ render(f"""
     <div style="width:260px; flex-shrink:0;">{ILUSTRACAO_SACOLA}</div>
 </div>
 """, "og-cash-b.png", width=1200, height=630, destino=REPO_ROOT / "static" / "images", escala=1)
+
+# ---------- 9. Capa do canal do YouTube (@usecashb) ----------
+# 2560x1440 é o tamanho recomendado, mas só a faixa central de 1546x423 aparece em
+# TODOS os aparelhos - no celular o resto some, na TV aparece tudo. Então a marca e a
+# tagline ficam dentro dessa faixa, e as laterais levam só decoração: enriquecem a
+# visualização grande sem fazer falta nenhuma quando o corte acontece.
+# Escala 1 de propósito - 2560x1440 já é o tamanho final, e o YouTube limita em 6 MB.
+CAPA_YT_SEGURA_L, CAPA_YT_SEGURA_A = 1546, 423
+
+
+def _anel_decorativo(lado, tamanho, opacidade):
+    """Anel âmbar solto no fundo, fora da área segura. Some no celular por definição -
+    serve só para a capa não ficar um retângulo chapado em TV e desktop."""
+    return (
+        f'<div style="position:absolute; {lado}; width:{tamanho}px; height:{tamanho}px; '
+        f'border-radius:50%; border:{tamanho*0.055:.0f}px solid {COLORS["highlight"]}; '
+        f'opacity:{opacidade};"></div>'
+    )
+
+
+render(f"""
+<div class="canvas" style="background:linear-gradient(120deg, {COLORS['brand-strong']}, {COLORS['brand']}); align-items:center; justify-content:center;">
+    {_anel_decorativo("left:-150px; top:120px", 620, 0.16)}
+    {_anel_decorativo("left:60px; bottom:-190px", 420, 0.10)}
+    {_anel_decorativo("right:-190px; bottom:80px", 700, 0.16)}
+    {_anel_decorativo("right:120px; top:-160px", 400, 0.10)}
+    <div style="width:{CAPA_YT_SEGURA_L}px; height:{CAPA_YT_SEGURA_A}px; display:flex;
+                align-items:center; justify-content:center; gap:90px; position:relative;">
+        <div style="width:310px; flex-shrink:0;">{ILUSTRACAO_SACOLA}</div>
+        <div>
+            <div style="font-size:165px; line-height:1; font-weight:700; letter-spacing:-0.02em; color:{COLORS['paper']};">cash-b</div>
+            <div style="font-size:50px; color:{COLORS['paper']}; opacity:0.92; margin-top:24px;">Compre na Shopee. Receba dinheiro de volta.</div>
+        </div>
+    </div>
+</div>
+""", "09-capa-youtube.png", width=2560, height=1440, escala=1)
 
 print("todas as artes geradas")

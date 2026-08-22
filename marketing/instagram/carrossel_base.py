@@ -226,23 +226,39 @@ def _swipe_arrow(is_light):
     """
 
 
+# Recorte da grade do perfil no Instagram: a miniatura NÃO é o 4:5 inteiro. O app
+# recorta primeiro um quadrado central e depois pega um 3:4 desse quadrado, o que come
+# 138px de cada lado e 135px em cima/baixo de um PNG 1080x1350 - medido comparando a
+# célula real da grade com o nosso slide, bate pixel a pixel (ver _simular_grade).
+# Em coordenadas do slide (420x525) isso dá ~54px nas laterais e ~52px em cima/baixo.
+# Só o primeiro slide aparece na grade, então só ele precisa dessa margem: usar isso
+# em todos deixaria os internos apertados à toa, já que abertos eles aparecem inteiros.
+PADDING_PADRAO = "44px 36px 52px"
+PADDING_CAPA = "64px 70px 64px"
+
+
 class Slide:
     """Um slide do carrossel. Guarda o conteúdo e o fundo; a numeração (barra de
-    progresso e seta) é resolvida na hora de montar, quando o total já é conhecido."""
+    progresso e seta) é resolvida na hora de montar, quando o total já é conhecido.
 
-    def __init__(self, bg, conteudo, is_light, justify="center", seta=True):
+    capa=True usa margens maiores, para o conteúdo sobreviver ao recorte da grade do
+    perfil - ver PADDING_CAPA acima."""
+
+    def __init__(self, bg, conteudo, is_light, justify="center", seta=True, capa=False):
         self.bg = bg
         self.conteudo = conteudo
         self.is_light = is_light
         self.justify = justify
         self.seta = seta
+        self.capa = capa
 
     def render(self, index, total):
         arrow = _swipe_arrow(self.is_light) if self.seta else ""
+        padding = PADDING_CAPA if self.capa else PADDING_PADRAO
         return f"""
         <div class="slide" style="background:{self.bg};">
             <div style="position:relative; flex:1; display:flex; flex-direction:column; justify-content:{self.justify};
-                        padding:44px 36px 52px;">
+                        padding:{padding};">
                 {self.conteudo}
             </div>
             {arrow}
@@ -417,6 +433,29 @@ def _exportar(preview_path, out_dir, total):
         browser.close()
 
 
+def _simular_grade(out_dir):
+    """Gera grade.png: como o slide 1 aparece na grade do perfil, já recortado.
+
+    Existe porque o recorte só dava para conferir postando de verdade e olhando no
+    celular - agora dá para ver antes. Reproduz o recorte medido: quadrado central,
+    depois 3:4 dele."""
+    from PIL import Image
+
+    capa = Image.open(out_dir / "slide_1.png")
+    largura, altura = capa.size
+    lado = min(largura, altura)
+    topo = (altura - lado) // 2
+    quadrado = capa.crop((0, topo, largura, topo + lado))
+
+    largura_3x4 = int(quadrado.height * 3 / 4)
+    esquerda = (quadrado.width - largura_3x4) // 2
+    recorte = quadrado.crop((esquerda, 0, esquerda + largura_3x4, quadrado.height))
+
+    destino = out_dir / "grade.png"
+    recorte.save(destino)
+    print("  grade simulada:", destino.name)
+
+
 def gerar(nome_pasta, slides, legenda, exportar=False):
     """Escreve o preview HTML, a legenda em texto e, com exportar=True, os PNGs.
 
@@ -436,4 +475,5 @@ def gerar(nome_pasta, slides, legenda, exportar=False):
 
     if exportar:
         _exportar(preview_path, out_dir, len(slides))
+        _simular_grade(out_dir)
     return preview_path
