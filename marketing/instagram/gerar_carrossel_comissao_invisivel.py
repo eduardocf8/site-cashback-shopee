@@ -33,8 +33,8 @@ SLIDES = [
     Slide(DARK_BG, f"""
     {tag_label("o erro", "rgba(255,255,255,0.5)")}
     {titulo("Você não está perdendo dinheiro.", 32)}
-    {subtitulo("Está deixando de ganhar. E a diferença é enorme.", "rgba(255,255,255,0.7)", 300, 15)}
-    """, False),
+    {subtitulo("Está deixando de ganhar. E a diferença é enorme.", "rgba(255,255,255,0.7)", 280, 15)}
+    """, False, capa=True),
 
     Slide(LIGHT_BG, f"""
     {tag_label("como funciona", BRAND_PRIMARY)}

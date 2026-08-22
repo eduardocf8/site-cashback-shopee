@@ -42,8 +42,8 @@ SLIDES = [
     Slide(LIGHT_BG, f"""
     {tag_label("os números", BRAND_PRIMARY)}
     {titulo("O que o brasileiro gasta na Shopee em um ano", 34, DARK_BG)}
-    {subtitulo("O valor é maior do que quase todo mundo imagina.", MUTED, 300, 15)}
-    """, True),
+    {subtitulo("O valor é maior do que quase todo mundo imagina.", MUTED, 280, 15)}
+    """, True, capa=True),
 
     Slide(BRAND_GRADIENT, f"""
     {tag_label("por pessoa, por ano", "rgba(255,255,255,0.75)")}

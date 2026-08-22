@@ -31,7 +31,7 @@ SLIDES = [
     Slide(LIGHT_BG, f"""
     {tag_label("conversa franca", BRAND_PRIMARY)}
     {titulo("Cashback não é motivo para comprar.", 34, DARK_BG)}
-    """, True),
+    """, True, capa=True),
 
     Slide(DARK_BG, f"""
     {titulo("Sim, quem está falando isso é uma marca de cashback.", 28)}
