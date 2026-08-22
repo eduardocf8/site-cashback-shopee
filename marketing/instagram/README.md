@@ -457,6 +457,32 @@ Cada carrossel gera na própria pasta:
 - `preview.html` — o carrossel arrastável, para revisar antes de exportar
 - `legenda.txt` — a legenda do post, escrita automaticamente por `gerar()`
 - `slide_N.png` — os slides em 1080×1350 (4:5), só com `--export`
+- `grade.png` — como a capa aparece na grade do perfil, já recortada
+
+### O recorte da grade do perfil (medido, não estimado)
+
+A miniatura da grade **não** é o 4:5 inteiro. O Instagram recorta um
+**quadrado central primeiro e depois pega um 3:4 desse quadrado**. Num PNG
+1080×1350 isso come **138px de cada lado e 135px em cima e embaixo** — a
+área que sobra é 810×1080 centralizada.
+
+Isso foi medido comparando uma célula real da grade (print do celular) com
+o nosso slide: simulando esse recorte, o resultado bate pixel a pixel com o
+que o app mostra. Uma estimativa ingênua de "3:4 do 4:5" corta bem menos
+(38px por lado) e não explica o que acontece na prática.
+
+Consequência: conteúdo com a margem padrão (36px nas laterais, em
+coordenadas de slide 420×525) **fica cortado na grade** — foi o que
+aconteceu com os primeiros posts. Por isso o primeiro slide leva
+`capa=True`, que usa `PADDING_CAPA` (70px nas laterais). Só o primeiro
+aparece na grade, então os internos seguem com a margem padrão: abertos,
+eles aparecem inteiros.
+
+Os posts de semeadura (`posts-semeadura/`, 1080×1080) sofrem ainda mais com
+isso: um quadrado dentro de uma célula 3:4 perde 12,5% de cada lado. Quem
+for refazê-los precisa considerar essa margem.
+
+Para conferir sem postar: rode com `--export` e olhe o `grade.png` gerado.
 
 **Convenção da legenda:** todo carrossel tem a legenda salva em
 `legenda.txt` na mesma pasta dos slides, para que na hora de postar tudo

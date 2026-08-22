@@ -41,7 +41,7 @@ SLIDES = [
     Slide(LIGHT_BG, f"""
     {tag_label("guia rápido", BRAND_PRIMARY)}
     {titulo("5 compras em que o cashback vale muito mais a pena", 32, DARK_BG)}
-    """, True),
+    """, True, capa=True),
 
     Slide(DARK_BG, f"""
     {tag_label("spoiler", "rgba(255,255,255,0.5)")}

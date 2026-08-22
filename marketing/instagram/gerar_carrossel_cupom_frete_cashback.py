@@ -25,8 +25,8 @@ SLIDES = [
     Slide(LIGHT_BG, f"""
     {tag_label("cash-b explica", BRAND_PRIMARY)}
     {titulo("Cupom, frete grátis ou cashback: qual economiza mais?", 32, DARK_BG)}
-    {subtitulo("A resposta não é a que você está pensando.", MUTED, 300, 15)}
-    """, True),
+    {subtitulo("A resposta não é a que você está pensando.", MUTED, 280, 15)}
+    """, True, capa=True),
 
     Slide(LIGHT_BG, f"""
     {tag_label("opção 1", BRAND_PRIMARY)}
