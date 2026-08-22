@@ -443,8 +443,10 @@ próprio conteúdo (lista de `Slide` + a variável `LEGENDA`) e chama
 `gerar()`. Todo o resto — paleta, fontes embutidas, componentes de slide,
 moldura de preview no estilo Instagram e exportação — mora em
 `carrossel_base.py`. Antes isso vivia dentro de
-`gerar_carrossel_beneficios.py` (o primeiro, que ficou como estava);
-replicar ~400 linhas por carrossel seria impossível de manter.
+`gerar_carrossel_beneficios.py` (o primeiro de todos); replicar ~400 linhas
+por carrossel seria impossível de manter, e esse arquivo também já foi
+migrado — manter duas cópias fez com que correções feitas nos outros
+carrosséis (o recorte da grade, o `legenda.txt`) não chegassem nele.
 
 ```bash
 cd marketing/instagram
