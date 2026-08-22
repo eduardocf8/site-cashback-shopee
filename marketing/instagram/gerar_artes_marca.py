@@ -100,15 +100,38 @@ def render(body_html, filename, width=1080, height=1080, destino=None, escala=2)
 # Um k único não serviria: cada arte parte de uma ocupação diferente, então cada uma
 # precisa do seu fator para todas chegarem no mesmo destino.
 
+def _glifo_cb(k, cor=None):
+    """O monograma "cb" com o centro óptico corrigido.
+
+    O flex centraliza a CAIXA da linha de texto, não a tinta do glifo - como "cb" não
+    tem descendente, sobra espaço embaixo (reservado pra letras como "g"/"p") e o "cb"
+    fica visualmente baixo e um pouco à direita. line-height:1 reduz a caixa e o
+    transform compensa o resto (medido em pixel real via screenshot).
+
+    Virou função compartilhada porque a correção existia só na arte do anel: a versão
+    verde saía 49px baixo e 10px à direita, o que num recorte circular aparece."""
+    cor = cor or COLORS["paper"]
+    return (
+        f'<div style="font-size:{340*k:.0f}px; line-height:1; font-weight:700; '
+        f'letter-spacing:-0.03em; color:{cor}; '
+        f'transform:translate({-5*k:.0f}px, {-25*k:.0f}px);">cb</div>'
+    )
+
+
 def arte_perfil_cb_anel(k=1):
-    # O flex centraliza a CAIXA da linha de texto, não a tinta do glifo - como "cb" não
-    # tem descendente, sobra espaço embaixo (reservado pra letras como "g"/"p") e o "cb"
-    # fica visualmente baixo. line-height:1 reduz a caixa, e o transform compensa o resto
-    # (medido em pixel real via screenshot até a tinta ficar centralizada no anel).
     return f"""
     <div class="canvas" style="background:{COLORS['brand']}; align-items:center; justify-content:center;">
         <div style="position:absolute; width:{760*k:.0f}px; height:{760*k:.0f}px; border-radius:50%; border:{26*k:.0f}px solid {COLORS['highlight']}; opacity:0.9;"></div>
-        <div style="font-size:{340*k:.0f}px; line-height:1; font-weight:700; letter-spacing:-0.03em; color:{COLORS['paper']}; transform:translate({-5*k:.0f}px, {-25*k:.0f}px);">cb</div>
+        {_glifo_cb(k)}
+    </div>
+    """
+
+
+def arte_perfil_cb_roxo(k=1):
+    """Igual à do anel, sem o anel - o monograma sozinho sobre o roxo da marca."""
+    return f"""
+    <div class="canvas" style="background:{COLORS['brand']}; align-items:center; justify-content:center;">
+        {_glifo_cb(k)}
     </div>
     """
 
@@ -116,7 +139,7 @@ def arte_perfil_cb_anel(k=1):
 def arte_perfil_cb_verde(k=1):
     return f"""
     <div class="canvas" style="background:{COLORS['success']}; align-items:center; justify-content:center;">
-        <div style="font-size:{340*k:.0f}px; font-weight:700; letter-spacing:-0.03em; color:{COLORS['paper']};">cb</div>
+        {_glifo_cb(k)}
     </div>
     """
 
@@ -164,6 +187,8 @@ ARTES_QUADRADAS = [
     (arte_wordmark_claro, "04-wordmark-claro", 1.33),
     (arte_lockup_sacola, "05-lockup-sacola", 1.44),
     (arte_lockup_moeda, "06-lockup-moeda", 1.35),
+    # Mesmo glifo e mesmo corpo da versão verde, então mesmo fator de zoom.
+    (arte_perfil_cb_roxo, "08-perfil-cb-roxo", 1.98),
 ]
 
 for construir, nome, zoom in ARTES_QUADRADAS:
