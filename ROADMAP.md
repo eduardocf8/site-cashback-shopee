@@ -653,6 +653,32 @@ Playwright (4 pedidos de exemplo, um de cada origem).
 
 ---
 
+## Fase 28 — Avisar sobre o atraso da Shopee em reportar pedidos ✅
+
+Usuário relatou um caso real: alguém converteu um link e comprou à noite,
+achou que o pedido ia aparecer na sincronização das 03h e não apareceu.
+Investigado: não é bug - a Shopee normalmente leva **alguns dias** (não
+horas) pra reportar um pedido na API de afiliados, atraso do lado deles,
+fora do nosso controle. O site nunca deixava isso explícito, então quem
+passasse por isso podia achar que o site "sumiu" com o pedido ou é falso.
+
+- [x] **Nota fixa em "Meus pedidos"** (`accounts/templates/accounts/dashboard.html`)
+      — sempre visível, não só quando a lista está vazia: "Sua compra não
+      aparece na hora nem no dia seguinte: a Shopee pode levar alguns dias
+      pra confirmar o pedido pra gente. É normal, não precisa se preocupar."
+- [x] **Estado vazio reforçado** — "...e eles aparecem aqui em alguns
+      dias" (antes não dizia quanto tempo).
+- [x] **FAQ** ("Minha compra na Shopee não apareceu no meu painel")
+      reescrito pra ser concreto em vez de vago: "não aparece na hora, nem
+      no dia seguinte" + limiar de quando vale entrar em contato subiu de
+      "alguns dias" pra "mais de uma semana", pra não gerar contato de
+      suporte por algo que ainda está dentro do prazo normal.
+
+Suite completa (`accounts`, `paginas`, 40 testes) verde; conferido
+visualmente com Playwright (nota fixa, estado vazio e FAQ expandido).
+
+---
+
 Pra continuar esse roadmap numa conversa nova, basta apontar esse arquivo
 (`ROADMAP.md`) e o `BRAND.md` — juntos eles dão o contexto de identidade
 visual e do que falta implementar, sem precisar reconstruir o histórico da
