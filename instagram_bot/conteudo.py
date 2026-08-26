@@ -303,3 +303,67 @@ def a_conta_de_uma_oferta() -> "dict | None":
         "destaque": ("Saiu por", _formatar_reais(oferta.preco_min - volta)),
         "rodape": "Mesmo preço, mesma loja. A diferença é o que volta depois.",
     }
+
+
+# Rótulo exato da ordenação na vitrine (ver ofertas/views.py, ORDENACOES_ROTULOS) - se
+# mudar lá, o passo a passo do story passa a ensinar um caminho que não existe mais.
+ORDENACAO_MAIOR_CASHBACK = "Maior cashback"
+
+
+def como_achar_na_vitrine() -> dict:
+    """O último story do combo: como chegar no produto que acabou de ser mostrado.
+
+    A API de stories do Instagram não aceita sticker de link, então o bot publica a
+    imagem mas não consegue deixar nada clicável. Sem esse passo a passo, a pessoa vê um
+    produto devolvendo 8% e não tem como chegar nele - os stories anteriores viram beco
+    sem saída. Ensinar a ordenação também vale por si: quem aprende a ordenar por maior
+    cashback volta sozinho depois."""
+    return {
+        "titulo": "Como achar esse produto",
+        "passos": [
+            "Abra cash-b.com",
+            "Toque em Ofertas",
+            f'Ordene por "{ORDENACAO_MAIOR_CASHBACK}"',
+        ],
+        "rodape": "Ele vai estar no topo da lista. Link na bio.",
+    }
+
+
+def combo_de_stories_do_dia() -> "list[dict] | None":
+    """A sequência do dia: abre com a foto e o número, mostra a conta, e fecha ensinando
+    onde achar. Devolve None quando não há catálogo - ver o comentário no topo da seção.
+
+    Só o primeiro story leva foto do produto: ela serve pra abrir e dar cara ao número.
+    Repetida nos três, a sequência fica monótona e parece catálogo."""
+    from ofertas.models import Oferta
+
+    oferta = max(
+        (o for o in Oferta.objects.exclude(preco_min=0)[:400]),
+        key=lambda o: o.valor_cashback_estimado,
+        default=None,
+    )
+    if oferta is None:
+        return None
+
+    nome = (oferta.nome_curto or oferta.nome).strip().rstrip(".")
+    volta = oferta.valor_cashback_estimado
+    return [
+        {
+            "formato": "numero_com_produto",
+            "numero": _formatar_percentual(oferta.percentual_cashback),
+            "rotulo": "o maior cashback de hoje",
+            "apoio": f"É quanto volta comprando {nome}.",
+            "imagem_url": oferta.imagem_url,
+        },
+        {
+            "formato": "conta",
+            "titulo": f"A conta de {nome}",
+            "linhas": [
+                ("Preço na Shopee", _formatar_reais(oferta.preco_min)),
+                ("Volta pra você", _formatar_reais(volta)),
+            ],
+            "destaque": ("Saiu por", _formatar_reais(oferta.preco_min - volta)),
+            "rodape": "Mesmo preço, mesma loja. A diferença é o que volta depois.",
+        },
+        {"formato": "passos", **como_achar_na_vitrine()},
+    ]

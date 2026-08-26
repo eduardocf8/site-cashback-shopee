@@ -491,3 +491,148 @@ def gerar_imagem_conta(
     draw.line([(margem, linha_y), (tamanho[0] - margem, linha_y)], fill=CORES["brand"], width=max(2, int(2 * escala)))
     _badge_marca(draw, tamanho, cor_texto, margem)
     return img
+
+
+def _cartao_produto(img, draw, imagem_url: str, centro_x: int, topo: int, lado: int) -> bool:
+    """Foto do produto num cartão arredondado. Devolve False quando a imagem não veio -
+    aí quem chama segue sem ela, em vez de deixar um buraco cinza no story."""
+    foto = _baixar_imagem(imagem_url) if imagem_url else None
+    if foto is None:
+        return False
+    foto = foto.resize((lado, lado), Image.LANCZOS)
+    x = centro_x - lado // 2
+    img.paste(foto, (x, topo), _rounded_mask((lado, lado), int(lado * 0.06)))
+    return True
+
+
+def gerar_imagem_numero_com_produto(
+    numero: str,
+    rotulo: str,
+    apoio: str,
+    imagem_url: str,
+    bg: str | None = None,
+    cor_texto: str | None = None,
+    cor_numero: str | None = None,
+    tamanho=(1080, 1920),
+) -> Image.Image:
+    """A foto do produto junto com o número que ele devolve.
+
+    Só o primeiro story do combo leva foto: repetir a mesma imagem em todos deixa a
+    sequência monótona, e o papel dela é abrir - dar cara ao número que vem depois.
+    Sem a foto o número fica abstrato ("8,4% de quê?"), com ela em todos vira catálogo.
+
+    Se a foto não baixar, cai no layout sem imagem em vez de falhar."""
+    bg = bg or CORES["brand"]
+    cor_texto = cor_texto or CORES["paper"]
+    cor_numero = cor_numero or CORES["highlight"]
+    img = Image.new("RGB", tamanho, bg)
+    draw = ImageDraw.Draw(img)
+
+    escala = tamanho[1] / 1080
+    margem = 88
+    topo_seguro, rodape_seguro = 260, 260
+    largura_max = tamanho[0] - margem * 2
+
+    _textura_de_fundo(draw, tamanho, bg, cor_texto)
+
+    lado_foto = min(largura_max, 620)
+    fonte_numero = _fonte(int(150 * min(escala, 1.4)), mono=True, negrito=True)
+    while draw.textlength(numero, font=fonte_numero) > largura_max and fonte_numero.size > 70:
+        fonte_numero = _fonte(fonte_numero.size - 6, mono=True, negrito=True)
+    fonte_apoio = _fonte(int(36 * min(escala, 1.4)))
+    linhas_apoio = _quebrar_texto(draw, apoio, fonte_apoio, largura_max)
+
+    altura_numero = int(fonte_numero.size * 1.05)
+    altura_apoio = len(linhas_apoio) * int(fonte_apoio.size * 1.35)
+    area_util = tamanho[1] - topo_seguro - rodape_seguro
+
+    altura_bloco = lado_foto + 44 + altura_numero + 28 + altura_apoio
+    y = topo_seguro + max(0, (area_util - altura_bloco) // 2)
+
+    _cabecalho_rodape(draw, tamanho, margem, cor_texto, cor_numero, rotulo, y - 46)
+    if _cartao_produto(img, draw, imagem_url, tamanho[0] // 2, y, lado_foto):
+        y += lado_foto + 44
+    else:
+        y += max(0, (lado_foto + 44) // 2)
+
+    draw.text((tamanho[0] // 2, y + altura_numero / 2), numero, font=fonte_numero, fill=cor_numero, anchor="mm")
+    y += altura_numero + 28
+    altura_linha = int(fonte_apoio.size * 1.35)
+    for i, linha in enumerate(linhas_apoio):
+        draw.text(
+            (tamanho[0] // 2, y + i * altura_linha + altura_linha / 2),
+            linha, font=fonte_apoio, fill=cor_texto, anchor="mm",
+        )
+    return img
+
+
+def gerar_imagem_passos(
+    titulo: str,
+    passos: list[str],
+    rodape: str = "",
+    bg: str | None = None,
+    cor_texto: str | None = None,
+    tamanho=(1080, 1920),
+) -> Image.Image:
+    """Passo a passo numerado - fecha o combo mostrando como chegar no produto.
+
+    Existe porque a API de stories não aceita link clicável: o bot consegue publicar a
+    imagem, mas não o sticker de link. Sem esse último story, a pessoa vê um produto que
+    devolve 8% e não tem como chegar nele - o combo inteiro vira beco sem saída."""
+    bg = bg or CORES["paper"]
+    cor_texto = cor_texto or CORES["ink"]
+    img = Image.new("RGB", tamanho, bg)
+    draw = ImageDraw.Draw(img)
+
+    escala = tamanho[1] / 1080
+    margem = 88
+    story = tamanho[1] > tamanho[0] * 1.2
+    topo_seguro = 260 if story else margem
+    rodape_seguro = 260 if story else int(margem * 2.2)
+    largura_max = tamanho[0] - margem * 2
+
+    fonte_titulo = _fonte(int(54 * min(escala, 1.4)), negrito=True)
+    fonte_passo = _fonte(int(38 * min(escala, 1.4)), negrito=True)
+    fonte_numero = _fonte(int(34 * min(escala, 1.4)), mono=True, negrito=True)
+    fonte_rodape = _fonte(int(28 * min(escala, 1.4)))
+
+    diametro = int(72 * min(escala, 1.4))
+    recuo = diametro + 32
+
+    linhas_titulo = _quebrar_texto(draw, titulo, fonte_titulo, largura_max)
+    altura_titulo = len(linhas_titulo) * int(fonte_titulo.size * 1.2)
+
+    blocos = [_quebrar_texto(draw, p, fonte_passo, largura_max - recuo) for p in passos]
+    alturas = [max(diametro, len(b) * int(fonte_passo.size * 1.3)) + 40 for b in blocos]
+    linhas_rodape = _quebrar_texto(draw, rodape, fonte_rodape, largura_max) if rodape else []
+    altura_rodape = len(linhas_rodape) * int(fonte_rodape.size * 1.4)
+
+    altura_bloco = altura_titulo + 48 + sum(alturas)
+    if linhas_rodape:
+        altura_bloco += 32 + altura_rodape
+
+    area_util = tamanho[1] - topo_seguro - rodape_seguro
+    y = topo_seguro + max(0, (area_util - altura_bloco) // 2)
+
+    _desenhar_bloco_texto(draw, linhas_titulo, fonte_titulo, margem, y, cor_texto, espacamento=1.2)
+    y += altura_titulo + 48
+
+    for i, (bloco, altura) in enumerate(zip(blocos, alturas), start=1):
+        draw.ellipse(
+            [(margem, y), (margem + diametro, y + diametro)],
+            fill=CORES["brand"],
+        )
+        draw.text(
+            (margem + diametro / 2, y + diametro / 2), str(i),
+            font=fonte_numero, fill=CORES["paper"], anchor="mm",
+        )
+        _desenhar_bloco_texto(draw, bloco, fonte_passo, margem + recuo, y, cor_texto, espacamento=1.3)
+        y += altura
+
+    if linhas_rodape:
+        _desenhar_bloco_texto(draw, linhas_rodape, fonte_rodape, margem, y + 32, CORES["muted"], espacamento=1.4)
+
+    linha_y = tamanho[1] - int(margem * 1.6)
+    draw.line([(margem, linha_y), (tamanho[0] - margem, linha_y)], fill=CORES["brand"], width=max(2, int(2 * escala)))
+    _badge_marca(draw, tamanho, cor_texto, margem)
+    return img

@@ -77,3 +77,51 @@ class ConteudoDoCatalogoTests(TestCase):
         resultado = conteudo.maior_valor_de_volta_hoje()
 
         self.assertEqual(resultado["numero"], "R$ 10,00")
+
+
+@override_settings(
+    SHOPEE_CASHBACK_PERCENTUAL=20,
+    CASHBACK_MAXIMO_POR_PRODUTO=10,
+    CASHBACK_MULTIPLICADOR_CAMPANHA=1,
+)
+class ComboDeStoriesTests(TestCase):
+    def setUp(self):
+        self.oferta = Oferta.objects.create(
+            item_id=1, nome="Fone de Ouvido Bluetooth TWS", nome_curto="fone bluetooth",
+            preco_min=Decimal("89.90"), preco_max=Decimal("89.90"),
+            imagem_url="https://exemplo.com/fone.jpg",
+            percentual_comissao=Decimal("0.4200"), categoria_id=1,
+        )
+
+    def test_sequencia_abre_com_produto_e_fecha_ensinando_o_caminho(self):
+        combo = conteudo.combo_de_stories_do_dia()
+
+        self.assertEqual(
+            [s["formato"] for s in combo],
+            ["numero_com_produto", "conta", "passos"],
+        )
+
+    def test_so_o_primeiro_story_leva_foto(self):
+        # A foto abre e dá cara ao número; repetida nos três, a sequência vira catálogo.
+        combo = conteudo.combo_de_stories_do_dia()
+
+        self.assertEqual(combo[0]["imagem_url"], self.oferta.imagem_url)
+        self.assertNotIn("imagem_url", combo[1])
+        self.assertNotIn("imagem_url", combo[2])
+
+    def test_sem_catalogo_nao_monta_combo(self):
+        Oferta.objects.all().delete()
+        self.assertIsNone(conteudo.combo_de_stories_do_dia())
+
+    def test_passo_a_passo_usa_o_rotulo_real_da_vitrine(self):
+        """Trava o acoplamento com ofertas/views.py: o story ensina a ordenar por um
+        rótulo específico, e se alguém renomear a ordenação lá, o passo a passo passa a
+        mandar a pessoa procurar uma opção que não existe mais."""
+        from ofertas.views import ORDENACOES_ROTULOS
+
+        self.assertEqual(
+            conteudo.ORDENACAO_MAIOR_CASHBACK,
+            ORDENACOES_ROTULOS["maior_cashback"],
+        )
+        passos = conteudo.como_achar_na_vitrine()["passos"]
+        self.assertTrue(any(conteudo.ORDENACAO_MAIOR_CASHBACK in p for p in passos))
