@@ -4,7 +4,7 @@ from django.test import TestCase, override_settings
 
 from ofertas.models import Oferta
 
-from . import conteudo
+from . import conteudo, templates_imagem
 
 
 @override_settings(
@@ -136,3 +136,68 @@ class ComboDeStoriesTests(TestCase):
         )
         passos = conteudo.como_achar_na_vitrine()["passos"]
         self.assertTrue(any(conteudo.ORDENACAO_MAIOR_CASHBACK in p for p in passos))
+
+
+class AlinhamentoDosPassosTests(TestCase):
+    """Mede o alinhamento entre o número e o texto de cada passo.
+
+    O círculo é mais alto que uma linha de texto, então desenhar os dois a partir do
+    mesmo topo deixa o texto visivelmente mais alto que o número. É um desalinhamento
+    pequeno o bastante pra voltar despercebido num ajuste futuro - por isso vale medir
+    em vez de confiar no olho.
+    """
+
+    def _centros_do_primeiro_passo(self, imagem):
+        from PIL import ImageColor
+
+        largura, altura = imagem.size
+        px = imagem.convert("RGB").load()
+        roxo = ImageColor.getrgb(templates_imagem.CORES["brand"])
+        margem, diametro = 88, int(72 * min(altura / 1080, 1.4))
+
+        def proximo(p, alvo, tol=60):
+            return sum(abs(p[i] - alvo[i]) for i in range(3)) < tol
+
+        # o círculo: única mancha roxa na coluna da esquerda (a linha do rodapé fica
+        # fora dessa faixa de x porque é fina e atravessa a largura toda)
+        linhas_circulo = [
+            y for y in range(altura)
+            if any(proximo(px[x, y], roxo) for x in range(margem, margem + diametro, 4))
+        ]
+        # só a primeira mancha contígua = passo 1
+        primeira = [linhas_circulo[0]]
+        for y in linhas_circulo[1:]:
+            if y - primeira[-1] > 5:
+                break
+            primeira.append(y)
+
+        topo, base = primeira[0], primeira[-1]
+        tinta = [
+            y for y in range(topo - 30, base + 30)
+            if any(proximo(px[x, y], (17, 24, 39), 90) for x in range(margem + diametro + 40, largura - 88, 4))
+        ]
+        return (topo + base) / 2, (tinta[0] + tinta[-1]) / 2
+
+    def test_numero_e_texto_ficam_no_mesmo_centro(self):
+        imagem = templates_imagem.gerar_imagem_passos(
+            "Como achar esse produto",
+            ["Abra cash-b.com", "Toque em Ofertas", 'Ordene por "Maior cashback"'],
+        )
+
+        centro_circulo, centro_texto = self._centros_do_primeiro_passo(imagem)
+
+        # 4px é o resíduo normal entre o centro óptico da fonte e o centro do
+        # desenho; desalinhado de verdade dá 12. O limite separa os dois casos.
+        self.assertLess(abs(centro_circulo - centro_texto), 7)
+
+    def test_alinhamento_se_mantem_com_passo_de_duas_linhas(self):
+        imagem = templates_imagem.gerar_imagem_passos(
+            "Como achar esse produto",
+            ["Abra cash-b.com no navegador do celular e entre na sua conta", "Toque em Ofertas"],
+        )
+
+        centro_circulo, centro_texto = self._centros_do_primeiro_passo(imagem)
+
+        # 4px é o resíduo normal entre o centro óptico da fonte e o centro do
+        # desenho; desalinhado de verdade dá 12. O limite separa os dois casos.
+        self.assertLess(abs(centro_circulo - centro_texto), 7)
