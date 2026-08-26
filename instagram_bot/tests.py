@@ -109,6 +109,17 @@ class ComboDeStoriesTests(TestCase):
         self.assertNotIn("imagem_url", combo[1])
         self.assertNotIn("imagem_url", combo[2])
 
+    def test_nome_do_produto_aparece_so_como_legenda_da_foto(self):
+        """O nome vem do Gemini e às vezes é longo. Repetido no texto de apoio e no
+        título da conta, ocupava o espaço três vezes sem acrescentar nada - a foto já
+        diz do que se trata."""
+        combo = conteudo.combo_de_stories_do_dia()
+        nome = self.oferta.nome_curto
+
+        self.assertEqual(combo[0]["legenda_produto"], nome)
+        self.assertNotIn(nome, combo[0]["apoio"])
+        self.assertNotIn(nome, combo[1]["titulo"])
+
     def test_sem_catalogo_nao_monta_combo(self):
         Oferta.objects.all().delete()
         self.assertIsNone(conteudo.combo_de_stories_do_dia())

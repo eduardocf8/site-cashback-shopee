@@ -351,12 +351,15 @@ def gerar_imagem_oferta_story(oferta, tamanho=(1080, 1920)) -> Image.Image:
 # ---------------------------------------------------------------------------
 
 
-def _cabecalho_rodape(draw, tamanho, margem, cor_texto, cor_acento, rotulo, y_rotulo):
+def _cabecalho_rodape(draw, tamanho, margem, cor_texto, cor_acento, rotulo, y_rotulo, centralizado=False):
     """Rótulo pequeno no topo do bloco + risco e selo da marca no rodapé - a moldura
-    comum dos dois formatos abaixo."""
+    comum dos formatos abaixo. Centralizado quando o conteúdo do bloco também é (caso
+    do layout com foto do produto), pra não ficar um rótulo à esquerda sobre uma
+    composição centralizada."""
     escala = tamanho[1] / 1080
     fonte_rotulo = _fonte(int(30 * min(escala, 1.4)), mono=True, negrito=True)
-    draw.text((margem, y_rotulo), rotulo.upper(), font=fonte_rotulo, fill=cor_acento, anchor="lm")
+    x, ancora = (tamanho[0] / 2, "mm") if centralizado else (margem, "lm")
+    draw.text((x, y_rotulo), rotulo.upper(), font=fonte_rotulo, fill=cor_acento, anchor=ancora)
     linha_y = tamanho[1] - int(margem * 1.6)
     draw.line([(margem, linha_y), (tamanho[0] - margem, linha_y)], fill=cor_acento, width=max(2, int(2 * escala)))
     _badge_marca(draw, tamanho, cor_texto, margem)
@@ -510,6 +513,7 @@ def gerar_imagem_numero_com_produto(
     rotulo: str,
     apoio: str,
     imagem_url: str,
+    legenda_produto: str = "",
     bg: str | None = None,
     cor_texto: str | None = None,
     cor_numero: str | None = None,
@@ -540,21 +544,48 @@ def gerar_imagem_numero_com_produto(
     while draw.textlength(numero, font=fonte_numero) > largura_max and fonte_numero.size > 70:
         fonte_numero = _fonte(fonte_numero.size - 6, mono=True, negrito=True)
     fonte_apoio = _fonte(int(36 * min(escala, 1.4)))
+    fonte_legenda = _fonte(int(30 * min(escala, 1.4)))
     linhas_apoio = _quebrar_texto(draw, apoio, fonte_apoio, largura_max)
+    # O nome do produto aparece só aqui, como legenda da foto - é o lugar onde ele
+    # explica a imagem sem disputar espaço com o número, que é o que segura o dedo.
+    linhas_legenda = _quebrar_texto(draw, legenda_produto, fonte_legenda, lado_foto)[:2] if legenda_produto else []
 
     altura_numero = int(fonte_numero.size * 1.05)
     altura_apoio = len(linhas_apoio) * int(fonte_apoio.size * 1.35)
+    altura_legenda = len(linhas_legenda) * int(fonte_legenda.size * 1.3)
     area_util = tamanho[1] - topo_seguro - rodape_seguro
 
-    altura_bloco = lado_foto + 44 + altura_numero + 28 + altura_apoio
+    # Espaço reservado ao rótulo acima da foto. O rótulo fica centralizado nessa faixa,
+    # então o valor precisa ser bem maior que a altura dele - senão sobra pouco entre a
+    # base do texto e o topo do cartão, e o rótulo parece colado na imagem.
+    respiro_rotulo = 130
+    altura_bloco = respiro_rotulo + lado_foto + altura_legenda + 40 + altura_numero + 28 + altura_apoio
+    if linhas_legenda:
+        altura_bloco += 20
     y = topo_seguro + max(0, (area_util - altura_bloco) // 2)
 
-    _cabecalho_rodape(draw, tamanho, margem, cor_texto, cor_numero, rotulo, y - 46)
-    if _cartao_produto(img, draw, imagem_url, tamanho[0] // 2, y, lado_foto):
-        y += lado_foto + 44
-    else:
-        y += max(0, (lado_foto + 44) // 2)
+    _cabecalho_rodape(
+        draw, tamanho, margem, cor_texto, cor_numero, rotulo,
+        y + respiro_rotulo / 2, centralizado=True,
+    )
+    y += respiro_rotulo
 
+    if _cartao_produto(img, draw, imagem_url, tamanho[0] // 2, y, lado_foto):
+        y += lado_foto
+    else:
+        y += lado_foto // 2
+
+    if linhas_legenda:
+        y += 20
+        altura_linha_legenda = int(fonte_legenda.size * 1.3)
+        for i, linha in enumerate(linhas_legenda):
+            draw.text(
+                (tamanho[0] // 2, y + i * altura_linha_legenda + altura_linha_legenda / 2),
+                linha, font=fonte_legenda, fill=cor_texto, anchor="mm",
+            )
+        y += altura_legenda
+
+    y += 40
     draw.text((tamanho[0] // 2, y + altura_numero / 2), numero, font=fonte_numero, fill=cor_numero, anchor="mm")
     y += altura_numero + 28
     altura_linha = int(fonte_apoio.size * 1.35)

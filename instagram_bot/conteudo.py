@@ -347,17 +347,21 @@ def combo_de_stories_do_dia() -> "list[dict] | None":
 
     nome = (oferta.nome_curto or oferta.nome).strip().rstrip(".")
     volta = oferta.valor_cashback_estimado
+    # O nome do produto entra uma vez só, como legenda da foto: repetido no texto de
+    # apoio e no título da conta, ocupava o espaço três vezes sem acrescentar nada - a
+    # foto já diz do que se trata, e o nome vindo do Gemini às vezes é longo.
     return [
         {
             "formato": "numero_com_produto",
             "numero": _formatar_percentual(oferta.percentual_cashback),
             "rotulo": "o maior cashback de hoje",
-            "apoio": f"É quanto volta comprando {nome}.",
+            "apoio": "É quanto volta para você aproveitando essa oferta.",
+            "legenda_produto": nome,
             "imagem_url": oferta.imagem_url,
         },
         {
             "formato": "conta",
-            "titulo": f"A conta de {nome}",
+            "titulo": "A conta do produto",
             "linhas": [
                 ("Preço na Shopee", _formatar_reais(oferta.preco_min)),
                 ("Volta pra você", _formatar_reais(volta)),
