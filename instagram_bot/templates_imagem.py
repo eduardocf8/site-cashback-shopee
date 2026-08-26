@@ -648,16 +648,27 @@ def gerar_imagem_passos(
     _desenhar_bloco_texto(draw, linhas_titulo, fonte_titulo, margem, y, cor_texto, espacamento=1.2)
     y += altura_titulo + 48
 
+    # O círculo e o texto do passo têm alturas diferentes (o círculo é maior que uma
+    # linha de texto), então cada um é centralizado dentro da altura do passo em vez de
+    # os dois começarem no mesmo topo - encostados no topo, o texto fica visivelmente
+    # mais alto que o número. Centralizar os dois também mantém o alinhamento quando o
+    # passo quebra em duas linhas e fica mais alto que o círculo.
+    altura_linha_passo = int(fonte_passo.size * 1.3)
     for i, (bloco, altura) in enumerate(zip(blocos, alturas), start=1):
+        altura_texto = len(bloco) * altura_linha_passo
+        altura_conteudo = max(diametro, altura_texto)
+        topo_circulo = y + (altura_conteudo - diametro) / 2
+        topo_texto = y + (altura_conteudo - altura_texto) / 2
+
         draw.ellipse(
-            [(margem, y), (margem + diametro, y + diametro)],
+            [(margem, topo_circulo), (margem + diametro, topo_circulo + diametro)],
             fill=CORES["brand"],
         )
         draw.text(
-            (margem + diametro / 2, y + diametro / 2), str(i),
+            (margem + diametro / 2, topo_circulo + diametro / 2), str(i),
             font=fonte_numero, fill=CORES["paper"], anchor="mm",
         )
-        _desenhar_bloco_texto(draw, bloco, fonte_passo, margem + recuo, y, cor_texto, espacamento=1.3)
+        _desenhar_bloco_texto(draw, bloco, fonte_passo, margem + recuo, topo_texto, cor_texto, espacamento=1.3)
         y += altura
 
     if linhas_rodape:
