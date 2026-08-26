@@ -216,3 +216,90 @@ def tipo_de_conteudo_do_dia(data) -> list[str]:
         tipos.append(RegistroPublicacao.CONTEUDO_OFERTAS_SEMANA)
 
     return tipos
+
+
+# ---------------------------------------------------------------------------
+# Conteúdo com dado real do catálogo
+#
+# O resto deste arquivo é texto fixo escrito à mão, e por isso repete: são listas
+# finitas que voltam do começo. Estas funções montam o conteúdo a partir das ofertas
+# sincronizadas, então mudam sozinhas todo dia sem ninguém escrever nada - o que é o
+# que torna viável postar mais de uma vez por semana.
+#
+# Todas devolvem None quando não há catálogo (sincronização falhou, banco vazio), pra
+# quem chama simplesmente pular esse conteúdo em vez de publicar uma imagem com número
+# errado ou zerado.
+# ---------------------------------------------------------------------------
+
+
+def _formatar_reais(valor) -> str:
+    return f"R$ {valor:.2f}".replace(".", ",")
+
+
+def _formatar_percentual(valor) -> str:
+    return f"{valor:.1f}".replace(".", ",") + "%"
+
+
+def maior_cashback_de_hoje() -> "dict | None":
+    """A oferta que mais devolve agora, em %. É o número que melhor segura o dedo de
+    quem está passando o story - e é dado nosso, que nenhum concorrente tem."""
+    from ofertas.models import Oferta
+
+    oferta = max(
+        (o for o in Oferta.objects.exclude(preco_min=0)[:400]),
+        key=lambda o: o.percentual_cashback,
+        default=None,
+    )
+    if oferta is None:
+        return None
+    nome = (oferta.nome_curto or oferta.nome).strip().rstrip(".")
+    return {
+        "numero": _formatar_percentual(oferta.percentual_cashback),
+        "rotulo": "o maior cashback de hoje",
+        "apoio": f"É quanto volta pra você comprando {nome} pela cash-b.",
+    }
+
+
+def maior_valor_de_volta_hoje() -> "dict | None":
+    """Mesma ideia, mas em reais. Fala com quem entende melhor "R$ 9" do que "6,5%"."""
+    from ofertas.models import Oferta
+
+    oferta = max(
+        (o for o in Oferta.objects.exclude(preco_min=0)[:400]),
+        key=lambda o: o.valor_cashback_estimado,
+        default=None,
+    )
+    if oferta is None:
+        return None
+    nome = (oferta.nome_curto or oferta.nome).strip().rstrip(".")
+    return {
+        "numero": _formatar_reais(oferta.valor_cashback_estimado),
+        "rotulo": "quanto volta hoje",
+        "apoio": f"É o que cai no seu saldo comprando {nome}.",
+    }
+
+
+def a_conta_de_uma_oferta() -> "dict | None":
+    """A conta armada de um produto real do catálogo: o que você paga, o que volta e
+    quanto a compra custou de verdade. Mostrar a conta convence mais que afirmar o
+    resultado - a pessoa acompanha em vez de ter que acreditar."""
+    from ofertas.models import Oferta
+
+    oferta = max(
+        (o for o in Oferta.objects.exclude(preco_min=0)[:400]),
+        key=lambda o: o.valor_cashback_estimado,
+        default=None,
+    )
+    if oferta is None:
+        return None
+    volta = oferta.valor_cashback_estimado
+    nome = (oferta.nome_curto or oferta.nome).strip().rstrip(".")
+    return {
+        "titulo": f"A conta de {nome}",
+        "linhas": [
+            ("Preço na Shopee", _formatar_reais(oferta.preco_min)),
+            ("Volta pra você", _formatar_reais(volta)),
+        ],
+        "destaque": ("Saiu por", _formatar_reais(oferta.preco_min - volta)),
+        "rodape": "Mesmo preço, mesma loja. A diferença é o que volta depois.",
+    }
