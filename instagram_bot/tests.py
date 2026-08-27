@@ -124,6 +124,15 @@ class ComboDeStoriesTests(TestCase):
         Oferta.objects.all().delete()
         self.assertIsNone(conteudo.combo_de_stories_do_dia())
 
+    def test_chamada_para_a_bio_fica_solta_e_nao_dentro_da_frase(self):
+        """Dentro do rodapé, "link na bio" lê como parte da explicação; solto e
+        centralizado, lê como a ação a tomar - e cai na mesma posição do story de
+        oferta, então a chamada fica sempre no mesmo lugar."""
+        passo_a_passo = conteudo.como_achar_na_vitrine()
+
+        self.assertTrue(passo_a_passo["link_bio"])
+        self.assertNotIn("bio", passo_a_passo["rodape"].lower())
+
     def test_passo_a_passo_usa_o_rotulo_real_da_vitrine(self):
         """Trava o acoplamento com ofertas/views.py: o story ensina a ordenar por um
         rótulo específico, e se alguém renomear a ordenação lá, o passo a passo passa a
