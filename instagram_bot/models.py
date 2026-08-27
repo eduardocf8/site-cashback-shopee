@@ -39,12 +39,14 @@ class RegistroPublicacao(models.Model):
     CONTEUDO_LEMBRETE = "lembrete"
     CONTEUDO_INSTITUCIONAL = "institucional"
     CONTEUDO_OFERTAS_SEMANA = "ofertas_semana"
+    CONTEUDO_COMBO_DIARIO = "combo_diario"
     CONTEUDO_CHOICES = [
         (CONTEUDO_OFERTA_DIARIA, "Destaque de ofertas do dia"),
         (CONTEUDO_DICA, "Dica de economia"),
         (CONTEUDO_LEMBRETE, "Lembrete de cashback"),
         (CONTEUDO_INSTITUCIONAL, "Institucional"),
         (CONTEUDO_OFERTAS_SEMANA, "Melhores ofertas da semana"),
+        (CONTEUDO_COMBO_DIARIO, "Combo do dia (3 stories)"),
     ]
 
     STATUS_SIMULADO = "simulado"

@@ -205,6 +205,14 @@ def tipo_de_conteudo_do_dia(data) -> list[str]:
     # CONTEUDO_OFERTA_DIARIA não entra aqui - é postado várias vezes ao dia por um
     # cron dedicado (ver publicar_story_oferta_do_momento), não uma vez só junto com
     # o resto da tarefa diária.
+
+    # O combo sai todo dia. Diferente das dicas e lembretes (listas fixas escritas à
+    # mão, que repetem quando a lista dá a volta), ele é montado a partir do catálogo
+    # sincronizado - muda sozinho a cada dia, então a frequência diária não vira
+    # repetição. Se a sincronização falhar, o publicador devolve vazio e o dia
+    # simplesmente não tem combo.
+    tipos.append(RegistroPublicacao.CONTEUDO_COMBO_DIARIO)
+
     if dia_semana == SABADO:
         tipos.append(RegistroPublicacao.CONTEUDO_DICA)
     elif dia_semana == DOMINGO:

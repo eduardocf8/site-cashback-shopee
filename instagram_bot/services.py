@@ -15,8 +15,11 @@ from . import aprovacao, conteudo, instagram_client
 from .models import RegistroPublicacao
 from .templates_imagem import (
     CORES,
+    gerar_imagem_conta,
+    gerar_imagem_numero_com_produto,
     gerar_imagem_oferta_carrossel,
     gerar_imagem_oferta_story,
+    gerar_imagem_passos,
     gerar_imagem_texto_simples,
 )
 
@@ -337,11 +340,50 @@ def publicar_post_ofertas_semana(data, request) -> RegistroPublicacao | None:
     )
 
 
+def publicar_combo_de_stories(data, request) -> list[RegistroPublicacao]:
+    """Publica a sequência do dia: abre com a foto e o número da melhor oferta, mostra a
+    conta e fecha ensinando como achar o produto na vitrine.
+
+    É o único despachante que devolve mais de um registro - os três stories são um
+    conteúdo só, e é por isso que _ja_processado_hoje continua bloqueando o dia inteiro
+    com um único conteudo_tipo: ou o combo sai completo, ou não sai.
+
+    Devolve lista vazia quando não há catálogo, pra não publicar um story anunciando
+    "0%" de cashback (ver conteudo.combo_de_stories_do_dia)."""
+    combo = conteudo.combo_de_stories_do_dia()
+    if not combo:
+        return []
+
+    construtores = {
+        "numero_com_produto": lambda s: gerar_imagem_numero_com_produto(
+            s["numero"], s["rotulo"], s["apoio"], s["imagem_url"],
+            legenda_produto=s["legenda_produto"],
+        ),
+        "conta": lambda s: gerar_imagem_conta(
+            s["titulo"], s["linhas"], s["destaque"], s["rodape"], tamanho=(1080, 1920),
+        ),
+        "passos": lambda s: gerar_imagem_passos(
+            s["titulo"], s["passos"], s["rodape"], link_bio=s.get("link_bio", False),
+        ),
+    }
+
+    registros = []
+    for story in combo:
+        imagem = construtores[story["formato"]](story)
+        registros.append(_publicar_ou_simular(
+            imagem, story.get("apoio") or story["titulo"],
+            RegistroPublicacao.TIPO_STORY, RegistroPublicacao.CONTEUDO_COMBO_DIARIO,
+            data, request, story=True,
+        ))
+    return registros
+
+
 DESPACHANTES = {
     RegistroPublicacao.CONTEUDO_DICA: publicar_story_dica,
     RegistroPublicacao.CONTEUDO_LEMBRETE: publicar_story_lembrete,
     RegistroPublicacao.CONTEUDO_INSTITUCIONAL: publicar_post_institucional,
     RegistroPublicacao.CONTEUDO_OFERTAS_SEMANA: publicar_post_ofertas_semana,
+    RegistroPublicacao.CONTEUDO_COMBO_DIARIO: publicar_combo_de_stories,
 }
 
 
@@ -356,8 +398,10 @@ def executar_publicacoes_do_dia(request) -> list[dict]:
         if _ja_processado_hoje(hoje, tipo):
             continue
         despachante = DESPACHANTES[tipo]
-        registro = despachante(hoje, request)
-        if registro:
+        # o combo diário devolve os 3 stories de uma vez; os outros, um registro só
+        retorno = despachante(hoje, request)
+        registros = retorno if isinstance(retorno, list) else [retorno] if retorno else []
+        for registro in registros:
             resultados.append({
                 "conteudo_tipo": registro.conteudo_tipo,
                 "status": registro.status,
