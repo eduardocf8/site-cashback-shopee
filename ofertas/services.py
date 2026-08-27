@@ -108,6 +108,10 @@ def buscar_oferta_por_link(url: str) -> Oferta:
     postar uma oferta escolhida na mão, fora do calendário automático - ver
     instagram_bot/services.py, publicar_story_oferta_especifica). Não salva no banco -
     é só um Oferta em memória, pros mesmos geradores de imagem que já usam Oferta."""
+    # Tira espaço e o embrulho de "<...>" / aspas que aparece quando cola o link de
+    # algum app que formata como link (WhatsApp, Markdown) - sem isso, requests.get dá
+    # "No connection adapters were found for '<https://...>'" em vez de abrir a URL.
+    url = url.strip().strip("<>\"' ")
     item_id = _resolver_item_id(url)
     node = buscar_oferta_por_item_id(item_id)
     if node is None:
