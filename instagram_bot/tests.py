@@ -1,10 +1,13 @@
+from datetime import timedelta
 from decimal import Decimal
 
-from django.test import TestCase, override_settings
+from django.test import RequestFactory, TestCase, override_settings
+from django.utils import timezone
 
 from ofertas.models import Oferta
 
-from . import conteudo, templates_imagem
+from . import conteudo, services, templates_imagem
+from .models import RegistroPublicacao
 
 
 @override_settings(
@@ -210,3 +213,77 @@ class AlinhamentoDosPassosTests(TestCase):
         # 4px é o resíduo normal entre o centro óptico da fonte e o centro do
         # desenho; desalinhado de verdade dá 12. O limite separa os dois casos.
         self.assertLess(abs(centro_circulo - centro_texto), 7)
+
+
+@override_settings(
+    SHOPEE_CASHBACK_PERCENTUAL=20,
+    CASHBACK_MAXIMO_POR_PRODUTO=10,
+    CASHBACK_MULTIPLICADOR_CAMPANHA=1,
+    INSTAGRAM_BOT_ATIVO=False,
+)
+class PublicacaoDoComboTests(TestCase):
+    """O combo ligado no calendário e no executor diário.
+
+    Vale testar porque ele é o único despachante que publica mais de um registro por
+    execução - o executor foi feito esperando um só, e um combo pela metade é pior que
+    nenhum (a pessoa vê o número sem saber onde achar o produto).
+    """
+
+    def setUp(self):
+        Oferta.objects.create(
+            item_id=1, nome="Fone de Ouvido Bluetooth TWS", nome_curto="fone bluetooth",
+            preco_min=Decimal("89.90"), preco_max=Decimal("89.90"),
+            imagem_url="https://exemplo.com/fone.jpg",
+            percentual_comissao=Decimal("0.4200"), categoria_id=1,
+        )
+        # Mesmo em simulação a imagem é salva em disco e a URL pública é montada a
+        # partir do request, então ele precisa ser real - não None.
+        self.request = RequestFactory().get("/")
+
+    def test_combo_entra_no_calendario_todo_dia(self):
+        from datetime import date
+
+        # uma semana inteira, pra garantir que não depende do dia
+        for dia in range(7):
+            data = date(2026, 8, 24) + timedelta(days=dia)
+            with self.subTest(dia=data.strftime("%A")):
+                self.assertIn(
+                    RegistroPublicacao.CONTEUDO_COMBO_DIARIO,
+                    conteudo.tipo_de_conteudo_do_dia(data),
+                )
+
+    def test_publica_os_tres_stories(self):
+        registros = services.publicar_combo_de_stories(timezone.localdate(), self.request)
+
+        self.assertEqual(len(registros), 3)
+        for registro in registros:
+            self.assertEqual(registro.tipo, RegistroPublicacao.TIPO_STORY)
+            self.assertEqual(registro.conteudo_tipo, RegistroPublicacao.CONTEUDO_COMBO_DIARIO)
+
+    def test_sem_catalogo_nao_publica_nada(self):
+        Oferta.objects.all().delete()
+
+        self.assertEqual(services.publicar_combo_de_stories(timezone.localdate(), self.request), [])
+
+    def test_executor_diario_reporta_os_tres(self):
+        """O executor esperava um registro por despachante; com o combo ele precisa
+        reportar os três, senão o retorno da tarefa esconde o que foi publicado."""
+        resultados = services.executar_publicacoes_do_dia(self.request)
+
+        do_combo = [r for r in resultados if r["conteudo_tipo"] == RegistroPublicacao.CONTEUDO_COMBO_DIARIO]
+        self.assertEqual(len(do_combo), 3)
+
+    def test_nao_republica_o_combo_no_mesmo_dia(self):
+        services.executar_publicacoes_do_dia(self.request)
+        antes = RegistroPublicacao.objects.filter(
+            conteudo_tipo=RegistroPublicacao.CONTEUDO_COMBO_DIARIO
+        ).count()
+
+        services.executar_publicacoes_do_dia(self.request)
+
+        self.assertEqual(
+            RegistroPublicacao.objects.filter(
+                conteudo_tipo=RegistroPublicacao.CONTEUDO_COMBO_DIARIO
+            ).count(),
+            antes,
+        )
