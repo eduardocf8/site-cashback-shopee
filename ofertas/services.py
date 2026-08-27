@@ -87,18 +87,38 @@ PADRAO_ITEM_ID_NA_URL = re.compile(r"-i\.\d+\.(\d+)")
 
 
 def _resolver_item_id(url: str) -> int:
-    """Extrai o item_id de um link de produto da Shopee. Se for link curto (shp.ee),
-    o padrão -i.<shopId>.<itemId> só aparece depois do redirecionamento, então segue
-    ele primeiro."""
+    """Extrai o item_id de um link de produto da Shopee. Se for link curto (shp.ee,
+    s.shopee.com.br), o padrão -i.<shopId>.<itemId> só aparece depois do
+    redirecionamento, então segue ele primeiro - com um User-Agent de navegador de
+    verdade, porque o padrão do requests (python-requests/x.x) pode receber uma
+    página diferente da Shopee (ex: aviso pra abrir o app em vez do produto). Se a URL
+    final ainda não tiver o padrão (ex: caiu numa página intermediária de
+    abrir-app/landing em vez do produto direto), procura o mesmo padrão no HTML da
+    página - o link real do produto costuma aparecer em algum lugar do conteúdo
+    mesmo quando a URL do navegador não muda."""
     match = PADRAO_ITEM_ID_NA_URL.search(url)
+    if match:
+        return int(match.group(1))
+
+    cabecalhos = {
+        "User-Agent": (
+            "Mozilla/5.0 (Linux; Android 13; Mobile) AppleWebKit/537.36 "
+            "(KHTML, like Gecko) Chrome/124.0 Mobile Safari/537.36"
+        )
+    }
+    try:
+        resposta = requests.get(url, allow_redirects=True, timeout=10, headers=cabecalhos)
+    except requests.RequestException as erro:
+        raise LinkProdutoInvalidoError(f"Não consegui abrir o link {url}: {erro}") from erro
+
+    match = PADRAO_ITEM_ID_NA_URL.search(resposta.url) or PADRAO_ITEM_ID_NA_URL.search(resposta.text)
     if not match:
-        try:
-            resposta = requests.get(url, allow_redirects=True, timeout=10)
-        except requests.RequestException as erro:
-            raise LinkProdutoInvalidoError(f"Não consegui abrir o link {url}: {erro}") from erro
-        match = PADRAO_ITEM_ID_NA_URL.search(resposta.url)
-    if not match:
-        raise LinkProdutoInvalidoError(f"Não consegui identificar o produto a partir do link: {url}")
+        raise LinkProdutoInvalidoError(
+            f"Não consegui identificar o produto a partir do link {url} "
+            f"(redirecionou pra {resposta.url}, mas não achei o padrão -i.<loja>.<item> "
+            "nem na URL final nem no conteúdo da página - talvez esse link precise ser "
+            "aberto no navegador/app pra chegar na página do produto)."
+        )
     return int(match.group(1))
 
 
