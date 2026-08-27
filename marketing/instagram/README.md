@@ -29,6 +29,9 @@ pasta, pra não ficar vazio quando a automação for ligada de verdade — ver
   imagem, salva em `MEDIA_ROOT`, publica (ou simula) e registra o resultado.
   Chamado a partir de `cashback_shopee/views.py` (`executar_tarefas_agendadas`,
   o mesmo endereço `/tarefas/executar/` que já roda a sincronização diária).
+- `management/commands/postar_oferta_especifica.py` — posta um story pra 1
+  produto escolhido na mão a partir do link (ver "Postar uma oferta
+  específica na mão" abaixo).
 
 ## Roadmap do bot (fases)
 
@@ -181,6 +184,34 @@ model `EstadoTokenInstagram` (Django Admin, `instagram_bot`) — depois de
 gerar e atualizar o token novo no Render, é só abrir esse registro no
 Admin e rodar a ação "Marcar token como renovado hoje" (senão o lembrete
 continua chegando).
+
+## Postar uma oferta específica na mão (2026-08-27)
+
+Pra postar no Instagram uma oferta específica vista na Shopee (ex: um
+achado bom demais pra esperar o calendário automático), sem precisar
+esperar ela aparecer sozinha na seleção por categoria/mais vendida:
+
+```bash
+python manage.py postar_oferta_especifica "<link do produto>"
+```
+
+Roda pelo **Shell do Render** (aba lateral do serviço web). Aceita link
+completo (`shopee.com.br/produto-i.123.456`) ou link curto (`shp.ee/...`
+- segue o redirecionamento sozinho pra achar o `itemId`). Busca os dados
+desse produto na API da Shopee (`productOfferV2` filtrado por `itemId`,
+ver `links/shopee_client.py`, `buscar_oferta_por_item_id`), gera a arte
+com o mesmo layout hero dos stories automáticos, e segue o fluxo normal
+de aprovação por e-mail (`INSTAGRAM_REQUER_APROVACAO`) - não publica
+direto.
+
+Usa de propósito o mesmo `CONTEUDO_OFERTA_DIARIA` dos stories
+automáticos: conta pro limite diário (`NUMERO_STORIES_OFERTAS_POR_DIA`)
+e entra na janela de `DIAS_SEM_REPETIR_OFERTA` (7) dias - mantém o
+cuidado de não "bombardear" o perfil de oferta, mesmo pra um post
+manual. `nome_curto` não passa pelo Gemini nesse fluxo (cai pro nome
+original da Shopee) - é só 1 produto, então não valia a complexidade
+extra pra um encurtamento que o layout já trunca em 2 linhas de
+qualquer forma.
 
 ## Automação de comentários e DM
 
