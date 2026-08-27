@@ -601,6 +601,7 @@ def gerar_imagem_passos(
     titulo: str,
     passos: list[str],
     rodape: str = "",
+    link_bio: bool = False,
     bg: str | None = None,
     cor_texto: str | None = None,
     tamanho=(1080, 1920),
@@ -609,7 +610,11 @@ def gerar_imagem_passos(
 
     Existe porque a API de stories não aceita link clicável: o bot consegue publicar a
     imagem, mas não o sticker de link. Sem esse último story, a pessoa vê um produto que
-    devolve 8% e não tem como chegar nele - o combo inteiro vira beco sem saída."""
+    devolve 8% e não tem como chegar nele - o combo inteiro vira beco sem saída.
+
+    link_bio desenha o "link na bio" solto e centralizado perto do rodapé, na mesma
+    posição usada no story de oferta - misturado na frase de rodapé ele lê como parte da
+    explicação, e não como a ação a tomar."""
     bg = bg or CORES["paper"]
     cor_texto = cor_texto or CORES["ink"]
     img = Image.new("RGB", tamanho, bg)
@@ -673,6 +678,15 @@ def gerar_imagem_passos(
 
     if linhas_rodape:
         _desenhar_bloco_texto(draw, linhas_rodape, fonte_rodape, margem, y + 32, CORES["muted"], espacamento=1.4)
+
+    if link_bio:
+        # mesma posição do story de oferta (ver gerar_imagem_oferta_story), pra chamada
+        # cair sempre no mesmo lugar independente do story que a pessoa está vendo
+        draw.text(
+            (tamanho[0] / 2, tamanho[1] - rodape_seguro - 10),
+            "link na bio", font=_fonte(int(32 * min(escala, 1.4)), negrito=True),
+            fill=CORES["ink-soft"], anchor="ms",
+        )
 
     linha_y = tamanho[1] - int(margem * 1.6)
     draw.line([(margem, linha_y), (tamanho[0] - margem, linha_y)], fill=CORES["brand"], width=max(2, int(2 * escala)))

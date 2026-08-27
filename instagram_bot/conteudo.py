@@ -325,7 +325,10 @@ def como_achar_na_vitrine() -> dict:
             "Toque em Ofertas",
             f'Ordene por "{ORDENACAO_MAIOR_CASHBACK}"',
         ],
-        "rodape": "Ele vai estar no topo da lista. Link na bio.",
+        # O "link na bio" sai daqui e vira elemento próprio no template (link_bio=True):
+        # dentro da frase ele lê como parte da explicação, não como a ação a tomar.
+        "rodape": "Ele vai estar no topo da lista.",
+        "link_bio": True,
     }
 
 
