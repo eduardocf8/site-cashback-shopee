@@ -252,16 +252,10 @@ def _escolher_oferta_do_momento(data) -> Oferta | None:
     return None
 
 
-def publicar_story_oferta_do_momento(data, request) -> RegistroPublicacao | None:
-    """Chamado várias vezes ao dia (não é a tarefa diária única) - posta no máximo 1
-    story de oferta por chamada. Ver NUMERO_STORIES_OFERTAS_POR_DIA."""
-    if data.weekday() not in conteudo.DIAS_COM_STORIES_DE_OFERTA:
-        return None
-
-    oferta = _escolher_oferta_do_momento(data)
-    if not oferta:
-        return None
-
+def _publicar_story_de_oferta(oferta: Oferta, data, request) -> RegistroPublicacao:
+    """Gera a arte e publica (ou simula/aguarda aprovação) o story de UMA oferta já
+    escolhida - reaproveitado tanto pela escolha automática quanto pela manual
+    (publicar_story_oferta_especifica)."""
     imagem = gerar_imagem_oferta_story(oferta)
     nome_exibido = oferta.nome_curto or oferta.nome
     legenda = f"{nome_exibido} — cashback garantido na cash-b. Link na bio pra ver essa e outras ofertas. 🛍️💸"
@@ -275,6 +269,30 @@ def publicar_story_oferta_do_momento(data, request) -> RegistroPublicacao | None
     registro.oferta_nome = oferta.nome
     registro.save(update_fields=["oferta_categoria_id", "oferta_item_id", "oferta_nome"])
     return registro
+
+
+def publicar_story_oferta_do_momento(data, request) -> RegistroPublicacao | None:
+    """Chamado várias vezes ao dia (não é a tarefa diária única) - posta no máximo 1
+    story de oferta por chamada. Ver NUMERO_STORIES_OFERTAS_POR_DIA."""
+    if data.weekday() not in conteudo.DIAS_COM_STORIES_DE_OFERTA:
+        return None
+
+    oferta = _escolher_oferta_do_momento(data)
+    if not oferta:
+        return None
+
+    return _publicar_story_de_oferta(oferta, data, request)
+
+
+def publicar_story_oferta_especifica(url_produto: str, request) -> RegistroPublicacao:
+    """Posta um story pra UM produto escolhido na mão (fora do calendário automático) -
+    ver ofertas/services.py, buscar_oferta_por_link. Chamado pelo management command
+    postar_oferta_especifica (rodado pelo Shell do Render). De propósito usa o mesmo
+    CONTEUDO_OFERTA_DIARIA dos stories automáticos: conta pro limite diário
+    (NUMERO_STORIES_OFERTAS_POR_DIA) e entra na janela de DIAS_SEM_REPETIR_OFERTA dias -
+    mantém o cuidado de não "bombardear" o perfil de oferta, mesmo pra posts manuais."""
+    oferta = ofertas_services.buscar_oferta_por_link(url_produto)
+    return _publicar_story_de_oferta(oferta, timezone.localdate(), request)
 
 
 def publicar_story_dica(data, request) -> RegistroPublicacao:

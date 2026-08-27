@@ -122,6 +122,29 @@ def buscar_ofertas_produtos(pagina: int, limite: int = 50) -> dict:
     return dados["productOfferV2"]
 
 
+def buscar_oferta_por_item_id(item_id: int) -> dict | None:
+    """Busca os dados de UM produto específico (mesmos campos de buscar_ofertas_produtos)
+    - usado pra postar uma oferta escolhida na mão a partir de um link, fora da
+    sincronização em lote (ver ofertas/services.py, buscar_oferta_por_link). None se a
+    Shopee não retornar nenhum node pra esse item_id (ex: sem comissão de afiliado
+    ativa no momento)."""
+    query = (
+        "query{"
+        "productOfferV2("
+        f"listType:0,itemId:{item_id},page:1,limit:1"
+        "){"
+        "nodes{"
+        "itemId commissionRate sales priceMax priceMin productCatIds ratingStar "
+        "priceDiscountRate imageUrl productName shopName productLink offerLink"
+        "}"
+        "}"
+        "}"
+    )
+    dados = executar_graphql(query)
+    nodes = dados["productOfferV2"]["nodes"]
+    return nodes[0] if nodes else None
+
+
 def buscar_conversoes(purchase_time_start: int, purchase_time_end: int, scroll_id: str | None = None, limit: int = 500) -> dict:
     """Consulta a query conversionReport da Shopee para um período, com paginação por scrollId."""
     query = (

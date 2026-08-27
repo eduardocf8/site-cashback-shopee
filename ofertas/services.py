@@ -1,5 +1,6 @@
 import json
 import logging
+import re
 import time
 import unicodedata
 from decimal import Decimal, InvalidOperation
@@ -10,7 +11,7 @@ from django.conf import settings
 from django.db import transaction
 from django.db.models import Sum
 
-from links.shopee_client import buscar_ofertas_produtos
+from links.shopee_client import buscar_oferta_por_item_id, buscar_ofertas_produtos
 
 from . import gemini_client
 from .gemini_client import GeminiAPIError, GeminiConfigError
@@ -74,6 +75,47 @@ def _montar_oferta(node: dict, categorias_nivel1: dict[int, str]) -> Oferta:
         loja_nome=(node.get("shopName") or "")[:255],
         product_link=node.get("productLink") or "",
     )
+
+
+class LinkProdutoInvalidoError(Exception):
+    """A URL não é reconhecível como link de produto da Shopee, ou a Shopee não
+    retornou nenhuma oferta pra ela (ver buscar_oferta_por_link)."""
+
+
+# Padrão dos links de produto da Shopee: .../produto-exemplo-i.<shopId>.<itemId> -
+# mesmo padrão documentado em links/forms.py (LinkProdutoForm).
+PADRAO_ITEM_ID_NA_URL = re.compile(r"-i\.\d+\.(\d+)")
+
+
+def _resolver_item_id(url: str) -> int:
+    """Extrai o item_id de um link de produto da Shopee. Se for link curto (shp.ee),
+    o padrão -i.<shopId>.<itemId> só aparece depois do redirecionamento, então segue
+    ele primeiro."""
+    match = PADRAO_ITEM_ID_NA_URL.search(url)
+    if not match:
+        try:
+            resposta = requests.get(url, allow_redirects=True, timeout=10)
+        except requests.RequestException as erro:
+            raise LinkProdutoInvalidoError(f"Não consegui abrir o link {url}: {erro}") from erro
+        match = PADRAO_ITEM_ID_NA_URL.search(resposta.url)
+    if not match:
+        raise LinkProdutoInvalidoError(f"Não consegui identificar o produto a partir do link: {url}")
+    return int(match.group(1))
+
+
+def buscar_oferta_por_link(url: str) -> Oferta:
+    """Busca os dados de UM produto específico na Shopee a partir do link (usado pra
+    postar uma oferta escolhida na mão, fora do calendário automático - ver
+    instagram_bot/services.py, publicar_story_oferta_especifica). Não salva no banco -
+    é só um Oferta em memória, pros mesmos geradores de imagem que já usam Oferta."""
+    item_id = _resolver_item_id(url)
+    node = buscar_oferta_por_item_id(item_id)
+    if node is None:
+        raise LinkProdutoInvalidoError(
+            f"A Shopee não retornou nenhuma oferta pra esse produto (item_id={item_id}) - "
+            "pode não ter comissão de afiliado ativa nesse momento."
+        )
+    return _montar_oferta(node, carregar_categorias_nivel1())
 
 
 def _aplicar_nomes_curtos(ofertas: list[Oferta]) -> None:
