@@ -351,12 +351,20 @@ def combo_de_stories_do_dia() -> "list[dict] | None":
     onde achar. Devolve None quando não há catálogo - ver o comentário no topo da seção.
 
     Só o primeiro story leva foto do produto: ela serve pra abrir e dar cara ao número.
-    Repetida nos três, a sequência fica monótona e parece catálogo."""
+    Repetida nos três, a sequência fica monótona e parece catálogo.
+
+    A escolha é por percentual_cashback (não valor_cashback_estimado) - o primeiro
+    story chama a oferta de "o maior cashback de hoje" e mostra o %, então escolher por
+    R$ e rotular como "%" descasa os dois (um produto caro pode ter o maior valor em R$
+    e ainda assim um % baixo). Ignora ofertas onde o teto por produto já reduziu o
+    valor (cashback_no_limite) pelo mesmo motivo de maior_cashback_de_hoje() - senão um
+    produto caro e capado (ex: R$10 de teto sobre R$700 vira ~1,4%) rouba o topo com um
+    % artificialmente baixo."""
     from ofertas.models import Oferta
 
     oferta = max(
-        (o for o in Oferta.objects.exclude(preco_min=0)[:400]),
-        key=lambda o: o.valor_cashback_estimado,
+        (o for o in Oferta.objects.exclude(preco_min=0)[:400] if not o.cashback_no_limite),
+        key=lambda o: o.percentual_cashback,
         default=None,
     )
     if oferta is None:

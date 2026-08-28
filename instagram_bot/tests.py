@@ -122,6 +122,22 @@ class ComboDeStoriesTests(TestCase):
             ["numero_com_produto", "conta", "passos"],
         )
 
+    def test_produto_capado_nao_vira_o_maior_cashback_do_combo(self):
+        # combo_de_stories_do_dia() tem sua própria query, separada de
+        # maior_cashback_de_hoje() (ver ConteudoDoCatalogoTests) - mesmo bug, mesma
+        # correção precisa valer aqui também (caso real: bicicleta de R$700+ virando
+        # "o maior cashback de hoje" com 1,4% em vez do fone bluetooth, 8,4%).
+        Oferta.objects.create(
+            item_id=2, nome="Bicicleta MTB Aro 29", nome_curto="bicicleta",
+            preco_min=Decimal("700.00"), preco_max=Decimal("700.00"),
+            percentual_comissao=Decimal("0.4200"), categoria_id=1,
+        )
+
+        combo = conteudo.combo_de_stories_do_dia()
+
+        self.assertEqual(combo[0]["numero"], "8,4%")
+        self.assertEqual(combo[0]["legenda_produto"], "fone bluetooth")
+
     def test_so_o_primeiro_story_leva_foto(self):
         # A foto abre e dá cara ao número; repetida nos três, a sequência vira catálogo.
         combo = conteudo.combo_de_stories_do_dia()
