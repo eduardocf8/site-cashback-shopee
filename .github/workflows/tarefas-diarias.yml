@@ -4,11 +4,14 @@ name: Tarefas diárias do site
 # (sincroniza pedidos, libera saldo, confere status de saques) - não faz sentido rodar
 # num horário em que as pessoas podem estar usando o site. Os posts do Instagram têm
 # workflow próprio (instagram-diario.yml), com um horário pensado pro alcance deles.
+#
+# Sem "schedule" de propósito (2026-08-28): o agendador gratuito do GitHub Actions
+# atrasava demais pra esse repositório (às vezes várias horas) - migrado pra Cron Job
+# do Render, que roda na mesma infra do site. Ver "Cron Jobs do Render" em
+# marketing/instagram/README.md. workflow_dispatch continua aqui só pra disparo manual
+# de emergência (ex: debug).
 
 on:
-  schedule:
-    # 06:00 UTC = 03:00 no horário de Brasília.
-    - cron: "0 6 * * *"
   workflow_dispatch: {}
 
 jobs:

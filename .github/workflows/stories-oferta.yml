@@ -6,14 +6,13 @@ name: Stories de oferta ao longo do dia
 # NUMERO_STORIES_OFERTAS_POR_DIA. A ideia é espalhar as ofertas ao longo do dia em vez
 # de "bombardear" o Instagram com todas de uma vez - o perfil não é só sobre ofertas.
 
+# Sem "schedule" de propósito (2026-08-28): o agendador gratuito do GitHub Actions
+# atrasava demais pra esse repositório (às vezes várias horas) - migrado pra Cron Job
+# do Render, que roda na mesma infra do site (novos horários: 08h, 10h, 15h, 18h, 20h
+# no Brasil). Ver "Cron Jobs do Render" em marketing/instagram/README.md.
+# workflow_dispatch continua aqui só pra disparo manual de emergência (ex: debug).
+
 on:
-  schedule:
-    # Horários em UTC (Brasília = UTC-3): 09:00, 11:30, 14:00, 16:30, 19:00 no Brasil.
-    - cron: "0 12 * * *"
-    - cron: "30 14 * * *"
-    - cron: "0 17 * * *"
-    - cron: "30 19 * * *"
-    - cron: "0 22 * * *"
   workflow_dispatch: {}
 
 jobs:
