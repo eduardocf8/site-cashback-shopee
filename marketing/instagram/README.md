@@ -213,6 +213,31 @@ original da Shopee) - é só 1 produto, então não valia a complexidade
 extra pra um encurtamento que o layout já trunca em 2 linhas de
 qualquer forma.
 
+### Botão "Criar story" nas ofertas curadas à mão (2026-08-29)
+
+Pras ofertas já cadastradas no admin como "Oferta manual" (carrossel
+"Ofertas em alta" da home) ou "Oferta do dia (destaque manual)" - ver
+`ofertas/models.py`, `OfertaManual`/`OfertaDestaqueManual` - tem um jeito
+de postar story delas sem passar pelo comando acima nem digitar o link
+de novo:
+
+- **Oferta manual**: na lista do admin, seleciona uma ou mais e usa a
+  ação **"Criar story dessa(s) oferta(s) e mandar pra aprovação"**.
+- **Oferta do dia (destaque manual)**: na tela de edição (é singleton,
+  não tem lista - ver docstring de `OfertaDestaqueManualAdmin`), botão
+  **"Criar story e mandar pra aprovação"** no canto superior direito.
+
+Diferença importante pro comando `postar_oferta_especifica`: esse botão
+**não busca nada na Shopee** - usa exatamente o preço/desconto/comissão
+já digitados naquele registro do admin, pra bater com o que já está
+publicado no site pra essa mesma oferta (o comando, em vez disso, busca
+os dados atuais na API a partir do link). `_OfertaCuradaBase` (base
+comum dos dois models) ganhou 4 properties só pra isso funcionar -
+`nome_curto`/`preco_min`/`categoria_id`/`item_id` - fazendo a oferta
+curada "passar por" `Oferta` (o model do catálogo sincronizado) sem
+duplicar o gerador de imagem nem o fluxo de aprovação. Mesmo
+`CONTEUDO_OFERTA_DIARIA`/limite diário/janela de 7 dias do resto.
+
 ## Cron Jobs do Render (2026-08-28)
 
 ✅ **Criados e testados em produção em 2026-08-29** - os 4 disparados
