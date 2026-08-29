@@ -318,8 +318,14 @@ STATICFILES_DIRS = [BASE_DIR / "static"]
 # código-fonte (ex: /var/data), então isso é diferente do caminho padrão do projeto.
 # Sem a variável configurada, cai no comportamento antigo (pasta "media" dentro do
 # próprio projeto - funciona, mas não persiste entre deploys/reinícios sem disco).
+#
+# O "or" cobre a variável DEFINIDA E VAZIA, que é como o .env.example a distribui:
+# os.environ.get devolve "" nesse caso (não o padrão), Path("") vira Path(".") e a
+# mídia passa a ser gravada na RAIZ do projeto - fora da pasta "media/", que é a que
+# o .gitignore cobre. O resultado é imagem gerada pelo bot aparecendo como arquivo
+# novo do repositório.
 MEDIA_URL = "media/"
-MEDIA_ROOT = Path(os.environ.get("MEDIA_ROOT", str(BASE_DIR / "media")))
+MEDIA_ROOT = Path(os.environ.get("MEDIA_ROOT") or BASE_DIR / "media")
 
 STORAGES = {
     "default": {

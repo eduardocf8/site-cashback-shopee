@@ -205,6 +205,14 @@ def tipo_de_conteudo_do_dia(data) -> list[str]:
     # CONTEUDO_OFERTA_DIARIA não entra aqui - é postado várias vezes ao dia por um
     # cron dedicado (ver publicar_story_oferta_do_momento), não uma vez só junto com
     # o resto da tarefa diária.
+
+    # O combo sai todo dia. Diferente das dicas e lembretes (listas fixas escritas à
+    # mão, que repetem quando a lista dá a volta), ele é montado a partir do catálogo
+    # sincronizado - muda sozinho a cada dia, então a frequência diária não vira
+    # repetição. Se a sincronização falhar, o publicador devolve vazio e o dia
+    # simplesmente não tem combo.
+    tipos.append(RegistroPublicacao.CONTEUDO_COMBO_DIARIO)
+
     if dia_semana == SABADO:
         tipos.append(RegistroPublicacao.CONTEUDO_DICA)
     elif dia_semana == DOMINGO:
@@ -216,3 +224,175 @@ def tipo_de_conteudo_do_dia(data) -> list[str]:
         tipos.append(RegistroPublicacao.CONTEUDO_OFERTAS_SEMANA)
 
     return tipos
+
+
+# ---------------------------------------------------------------------------
+# Conteúdo com dado real do catálogo
+#
+# O resto deste arquivo é texto fixo escrito à mão, e por isso repete: são listas
+# finitas que voltam do começo. Estas funções montam o conteúdo a partir das ofertas
+# sincronizadas, então mudam sozinhas todo dia sem ninguém escrever nada - o que é o
+# que torna viável postar mais de uma vez por semana.
+#
+# Todas devolvem None quando não há catálogo (sincronização falhou, banco vazio), pra
+# quem chama simplesmente pular esse conteúdo em vez de publicar uma imagem com número
+# errado ou zerado.
+# ---------------------------------------------------------------------------
+
+
+def _formatar_reais(valor) -> str:
+    return f"R$ {valor:.2f}".replace(".", ",")
+
+
+def _formatar_percentual(valor) -> str:
+    return f"{valor:.1f}".replace(".", ",") + "%"
+
+
+def maior_cashback_de_hoje() -> "dict | None":
+    """A oferta que mais devolve agora, em %. É o número que melhor segura o dedo de
+    quem está passando o story - e é dado nosso, que nenhum concorrente tem.
+
+    Ignora ofertas onde o teto por produto reduziu o valor (cashback_no_limite) - senão
+    um produto caro e capado (ex: R$10 de teto sobre um item de R$700 vira ~1,4%) rouba
+    o topo com um % artificialmente baixo, mesmo sem ser o melhor negócio de verdade.
+    Mesmo filtro que o site já usa pro "até X%" da home - ver
+    ofertas/services.py::_atualizar_cashback_maximo."""
+    from ofertas.models import Oferta
+
+    oferta = max(
+        (o for o in Oferta.objects.exclude(preco_min=0)[:400] if not o.cashback_no_limite),
+        key=lambda o: o.percentual_cashback,
+        default=None,
+    )
+    if oferta is None:
+        return None
+    nome = (oferta.nome_curto or oferta.nome).strip().rstrip(".")
+    return {
+        "numero": _formatar_percentual(oferta.percentual_cashback),
+        "rotulo": "o maior cashback de hoje",
+        "apoio": f"É quanto volta pra você comprando {nome} pela cash-b.",
+    }
+
+
+def maior_valor_de_volta_hoje() -> "dict | None":
+    """Mesma ideia, mas em reais. Fala com quem entende melhor "R$ 9" do que "6,5%"."""
+    from ofertas.models import Oferta
+
+    oferta = max(
+        (o for o in Oferta.objects.exclude(preco_min=0)[:400]),
+        key=lambda o: o.valor_cashback_estimado,
+        default=None,
+    )
+    if oferta is None:
+        return None
+    nome = (oferta.nome_curto or oferta.nome).strip().rstrip(".")
+    return {
+        "numero": _formatar_reais(oferta.valor_cashback_estimado),
+        "rotulo": "quanto volta hoje",
+        "apoio": f"É o que cai no seu saldo comprando {nome}.",
+    }
+
+
+def a_conta_de_uma_oferta() -> "dict | None":
+    """A conta armada de um produto real do catálogo: o que você paga, o que volta e
+    quanto a compra custou de verdade. Mostrar a conta convence mais que afirmar o
+    resultado - a pessoa acompanha em vez de ter que acreditar."""
+    from ofertas.models import Oferta
+
+    oferta = max(
+        (o for o in Oferta.objects.exclude(preco_min=0)[:400]),
+        key=lambda o: o.valor_cashback_estimado,
+        default=None,
+    )
+    if oferta is None:
+        return None
+    volta = oferta.valor_cashback_estimado
+    nome = (oferta.nome_curto or oferta.nome).strip().rstrip(".")
+    return {
+        "titulo": f"A conta de {nome}",
+        "linhas": [
+            ("Preço na Shopee", _formatar_reais(oferta.preco_min)),
+            ("Volta pra você", _formatar_reais(volta)),
+        ],
+        "destaque": ("Saiu por", _formatar_reais(oferta.preco_min - volta)),
+        "rodape": "Mesmo preço, mesma loja. A diferença é o que volta depois.",
+    }
+
+
+# Rótulo exato da ordenação na vitrine (ver ofertas/views.py, ORDENACOES_ROTULOS) - se
+# mudar lá, o passo a passo do story passa a ensinar um caminho que não existe mais.
+ORDENACAO_MAIOR_CASHBACK = "Maior cashback"
+
+
+def como_achar_na_vitrine() -> dict:
+    """O último story do combo: como chegar no produto que acabou de ser mostrado.
+
+    A API de stories do Instagram não aceita sticker de link, então o bot publica a
+    imagem mas não consegue deixar nada clicável. Sem esse passo a passo, a pessoa vê um
+    produto devolvendo 8% e não tem como chegar nele - os stories anteriores viram beco
+    sem saída. Ensinar a ordenação também vale por si: quem aprende a ordenar por maior
+    cashback volta sozinho depois."""
+    return {
+        "titulo": "Como achar esse produto",
+        "passos": [
+            "Abra cash-b.com",
+            "Toque em Ofertas",
+            f'Ordene por "{ORDENACAO_MAIOR_CASHBACK}"',
+        ],
+        # O "link na bio" sai daqui e vira elemento próprio no template (link_bio=True):
+        # dentro da frase ele lê como parte da explicação, não como a ação a tomar.
+        "rodape": "Ele vai estar no topo da lista.",
+        "link_bio": True,
+    }
+
+
+def combo_de_stories_do_dia() -> "list[dict] | None":
+    """A sequência do dia: abre com a foto e o número, mostra a conta, e fecha ensinando
+    onde achar. Devolve None quando não há catálogo - ver o comentário no topo da seção.
+
+    Só o primeiro story leva foto do produto: ela serve pra abrir e dar cara ao número.
+    Repetida nos três, a sequência fica monótona e parece catálogo.
+
+    A escolha é por percentual_cashback (não valor_cashback_estimado) - o primeiro
+    story chama a oferta de "o maior cashback de hoje" e mostra o %, então escolher por
+    R$ e rotular como "%" descasa os dois (um produto caro pode ter o maior valor em R$
+    e ainda assim um % baixo). Ignora ofertas onde o teto por produto já reduziu o
+    valor (cashback_no_limite) pelo mesmo motivo de maior_cashback_de_hoje() - senão um
+    produto caro e capado (ex: R$10 de teto sobre R$700 vira ~1,4%) rouba o topo com um
+    % artificialmente baixo."""
+    from ofertas.models import Oferta
+
+    oferta = max(
+        (o for o in Oferta.objects.exclude(preco_min=0)[:400] if not o.cashback_no_limite),
+        key=lambda o: o.percentual_cashback,
+        default=None,
+    )
+    if oferta is None:
+        return None
+
+    nome = (oferta.nome_curto or oferta.nome).strip().rstrip(".")
+    volta = oferta.valor_cashback_estimado
+    # O nome do produto entra uma vez só, como legenda da foto: repetido no texto de
+    # apoio e no título da conta, ocupava o espaço três vezes sem acrescentar nada - a
+    # foto já diz do que se trata, e o nome vindo do Gemini às vezes é longo.
+    return [
+        {
+            "formato": "numero_com_produto",
+            "numero": _formatar_percentual(oferta.percentual_cashback),
+            "rotulo": "o maior cashback de hoje",
+            "apoio": "É quanto volta para você aproveitando essa oferta.",
+            "legenda_produto": nome,
+            "imagem_url": oferta.imagem_url,
+        },
+        {
+            "formato": "conta",
+            "titulo": "A conta do produto",
+            "linhas": [
+                ("Preço na Shopee", _formatar_reais(oferta.preco_min)),
+                ("Volta pra você", _formatar_reais(volta)),
+            ],
+            "destaque": ("Saiu por", _formatar_reais(oferta.preco_min - volta)),
+            "rodape": "Mesmo preço, mesma loja. A diferença é o que volta depois.",
+        },
+        {"formato": "passos", **como_achar_na_vitrine()},
+    ]

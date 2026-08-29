@@ -337,3 +337,358 @@ def gerar_imagem_oferta_story(oferta, tamanho=(1080, 1920)) -> Image.Image:
     )
 
     return img
+
+
+# ---------------------------------------------------------------------------
+# Formatos com dado real (número do catálogo e "a conta")
+#
+# Existem porque todo o conteúdo diário do bot passava por gerar_imagem_texto_simples:
+# uma frase centralizada sobre cor chapada. Com um layout só, o post do dia 1 e o do
+# dia 30 têm a mesma cara, e o conteúdo acaba sendo a marca falando bem de si mesma
+# ("cashback de verdade, sem pegadinha") em vez de informação que a pessoa ganha algo
+# em ler. Estes dois preenchem com número real - do catálogo ou de uma conta feita na
+# hora -, então mudam sozinhos todo dia e dão o que olhar.
+# ---------------------------------------------------------------------------
+
+
+def _cabecalho_rodape(draw, tamanho, margem, cor_texto, cor_acento, rotulo, y_rotulo, centralizado=False):
+    """Rótulo pequeno no topo do bloco + risco e selo da marca no rodapé - a moldura
+    comum dos formatos abaixo. Centralizado quando o conteúdo do bloco também é (caso
+    do layout com foto do produto), pra não ficar um rótulo à esquerda sobre uma
+    composição centralizada."""
+    escala = tamanho[1] / 1080
+    fonte_rotulo = _fonte(int(30 * min(escala, 1.4)), mono=True, negrito=True)
+    x, ancora = (tamanho[0] / 2, "mm") if centralizado else (margem, "lm")
+    draw.text((x, y_rotulo), rotulo.upper(), font=fonte_rotulo, fill=cor_acento, anchor=ancora)
+    linha_y = tamanho[1] - int(margem * 1.6)
+    draw.line([(margem, linha_y), (tamanho[0] - margem, linha_y)], fill=cor_acento, width=max(2, int(2 * escala)))
+    _badge_marca(draw, tamanho, cor_texto, margem)
+
+
+def gerar_imagem_numero_destaque(
+    numero: str,
+    rotulo: str,
+    apoio: str,
+    bg: str | None = None,
+    cor_texto: str | None = None,
+    cor_numero: str | None = None,
+    tamanho=(1080, 1080),
+) -> Image.Image:
+    """Um número enorme como protagonista, com uma linha de apoio explicando de onde
+    ele vem. O número é o gancho: quem passa o dedo pelo story para num "8,4%" muito
+    antes de parar numa frase.
+
+    O corpo do número se ajusta ao comprimento porque "8,4%" e "R$ 1.509" ocupam
+    larguras bem diferentes - com tamanho fixo, um sobrava e o outro estourava."""
+    bg = bg or CORES["brand"]
+    cor_texto = cor_texto or CORES["paper"]
+    cor_numero = cor_numero or CORES["highlight"]
+    img = Image.new("RGB", tamanho, bg)
+    draw = ImageDraw.Draw(img)
+
+    escala = tamanho[1] / 1080
+    margem = 88
+    story = tamanho[1] > tamanho[0] * 1.2
+    topo_seguro = 260 if story else margem
+    rodape_seguro = 260 if story else int(margem * 2.2)
+    largura_max = tamanho[0] - margem * 2
+
+    _textura_de_fundo(draw, tamanho, bg, cor_texto)
+
+    # o número usa a mono da marca (mesma dos valores no site) e encolhe até caber
+    for corpo in range(int(200 * min(escala, 1.6)), 60, -6):
+        fonte_numero = _fonte(corpo, mono=True, negrito=True)
+        if draw.textlength(numero, font=fonte_numero) <= largura_max:
+            break
+
+    fonte_apoio = _fonte(int(38 * min(escala, 1.5)), negrito=False)
+    linhas_apoio = _quebrar_texto(draw, apoio, fonte_apoio, largura_max)
+
+    altura_numero = int(fonte_numero.size * 1.05)
+    altura_apoio = len(linhas_apoio) * int(fonte_apoio.size * 1.35)
+    altura_bloco = altura_numero + 36 + altura_apoio
+
+    area_util = tamanho[1] - topo_seguro - rodape_seguro
+    y = topo_seguro + max(0, (area_util - altura_bloco) // 2)
+
+    _cabecalho_rodape(draw, tamanho, margem, cor_texto, cor_numero, rotulo, y - 46)
+    draw.text((margem, y + altura_numero / 2), numero, font=fonte_numero, fill=cor_numero, anchor="lm")
+    _desenhar_bloco_texto(draw, linhas_apoio, fonte_apoio, margem, y + altura_numero + 36, cor_texto, espacamento=1.35)
+    return img
+
+
+def gerar_imagem_conta(
+    titulo: str,
+    linhas: list[tuple[str, str]],
+    destaque: tuple[str, str],
+    rodape: str = "",
+    bg: str | None = None,
+    cor_texto: str | None = None,
+    tamanho=(1080, 1080),
+) -> Image.Image:
+    """Formato "a conta": rótulo à esquerda, valor à direita, uma linha por vez, com a
+    última destacada. Serve pra qualquer comparação em que o ponto é o resultado -
+    quanto você paga contra quanto volta, com cashback contra sem.
+
+    Mostrar a conta armada convence mais que afirmar o resultado pronto: a pessoa
+    acompanha o raciocínio em vez de ter que acreditar."""
+    bg = bg or CORES["paper"]
+    cor_texto = cor_texto or CORES["ink"]
+    img = Image.new("RGB", tamanho, bg)
+    draw = ImageDraw.Draw(img)
+
+    escala = tamanho[1] / 1080
+    margem = 88
+    story = tamanho[1] > tamanho[0] * 1.2
+    topo_seguro = 260 if story else margem
+    rodape_seguro = 260 if story else int(margem * 2.2)
+    largura_max = tamanho[0] - margem * 2
+
+    fonte_titulo = _fonte(int(52 * min(escala, 1.4)), negrito=True)
+    fonte_rotulo = _fonte(int(34 * min(escala, 1.4)))
+    fonte_valor = _fonte(int(38 * min(escala, 1.4)), mono=True, negrito=True)
+    fonte_destaque_rotulo = _fonte(int(36 * min(escala, 1.4)), negrito=True)
+    fonte_destaque_valor = _fonte(int(56 * min(escala, 1.5)), mono=True, negrito=True)
+    fonte_rodape = _fonte(int(28 * min(escala, 1.4)))
+
+    linhas_titulo = _quebrar_texto(draw, titulo, fonte_titulo, largura_max)
+    altura_titulo = len(linhas_titulo) * int(fonte_titulo.size * 1.2)
+    altura_linha = int(fonte_valor.size * 2.2)
+    altura_destaque = int(fonte_destaque_valor.size * 1.9)
+    linhas_rodape = _quebrar_texto(draw, rodape, fonte_rodape, largura_max) if rodape else []
+    altura_rodape = len(linhas_rodape) * int(fonte_rodape.size * 1.4)
+
+    altura_bloco = altura_titulo + 40 + len(linhas) * altura_linha + altura_destaque
+    if linhas_rodape:
+        altura_bloco += 28 + altura_rodape
+
+    area_util = tamanho[1] - topo_seguro - rodape_seguro
+    y = topo_seguro + max(0, (area_util - altura_bloco) // 2)
+
+    _desenhar_bloco_texto(draw, linhas_titulo, fonte_titulo, margem, y, cor_texto, espacamento=1.2)
+    y += altura_titulo + 40
+
+    for rotulo, valor in linhas:
+        centro = y + altura_linha / 2
+        draw.text((margem, centro), rotulo, font=fonte_rotulo, fill=CORES["muted"], anchor="lm")
+        draw.text((tamanho[0] - margem, centro), valor, font=fonte_valor, fill=cor_texto, anchor="rm")
+        draw.line(
+            [(margem, y + altura_linha), (tamanho[0] - margem, y + altura_linha)],
+            fill=CORES["line"], width=max(1, int(escala)),
+        )
+        y += altura_linha
+
+    # a última linha é o ponto do post, então ganha corpo maior e a cor de destaque
+    centro = y + altura_destaque / 2
+    draw.text((margem, centro), destaque[0], font=fonte_destaque_rotulo, fill=cor_texto, anchor="lm")
+    draw.text(
+        (tamanho[0] - margem, centro), destaque[1],
+        font=fonte_destaque_valor, fill=CORES["brand"], anchor="rm",
+    )
+    y += altura_destaque
+
+    if linhas_rodape:
+        _desenhar_bloco_texto(draw, linhas_rodape, fonte_rodape, margem, y + 28, CORES["muted"], espacamento=1.4)
+
+    linha_y = tamanho[1] - int(margem * 1.6)
+    draw.line([(margem, linha_y), (tamanho[0] - margem, linha_y)], fill=CORES["brand"], width=max(2, int(2 * escala)))
+    _badge_marca(draw, tamanho, cor_texto, margem)
+    return img
+
+
+def _cartao_produto(img, draw, imagem_url: str, centro_x: int, topo: int, lado: int) -> bool:
+    """Foto do produto num cartão arredondado. Devolve False quando a imagem não veio -
+    aí quem chama segue sem ela, em vez de deixar um buraco cinza no story."""
+    foto = _baixar_imagem(imagem_url) if imagem_url else None
+    if foto is None:
+        return False
+    foto = foto.resize((lado, lado), Image.LANCZOS)
+    x = centro_x - lado // 2
+    img.paste(foto, (x, topo), _rounded_mask((lado, lado), int(lado * 0.06)))
+    return True
+
+
+def gerar_imagem_numero_com_produto(
+    numero: str,
+    rotulo: str,
+    apoio: str,
+    imagem_url: str,
+    legenda_produto: str = "",
+    bg: str | None = None,
+    cor_texto: str | None = None,
+    cor_numero: str | None = None,
+    tamanho=(1080, 1920),
+) -> Image.Image:
+    """A foto do produto junto com o número que ele devolve.
+
+    Só o primeiro story do combo leva foto: repetir a mesma imagem em todos deixa a
+    sequência monótona, e o papel dela é abrir - dar cara ao número que vem depois.
+    Sem a foto o número fica abstrato ("8,4% de quê?"), com ela em todos vira catálogo.
+
+    Se a foto não baixar, cai no layout sem imagem em vez de falhar."""
+    bg = bg or CORES["brand"]
+    cor_texto = cor_texto or CORES["paper"]
+    cor_numero = cor_numero or CORES["highlight"]
+    img = Image.new("RGB", tamanho, bg)
+    draw = ImageDraw.Draw(img)
+
+    escala = tamanho[1] / 1080
+    margem = 88
+    topo_seguro, rodape_seguro = 260, 260
+    largura_max = tamanho[0] - margem * 2
+
+    _textura_de_fundo(draw, tamanho, bg, cor_texto)
+
+    lado_foto = min(largura_max, 620)
+    fonte_numero = _fonte(int(150 * min(escala, 1.4)), mono=True, negrito=True)
+    while draw.textlength(numero, font=fonte_numero) > largura_max and fonte_numero.size > 70:
+        fonte_numero = _fonte(fonte_numero.size - 6, mono=True, negrito=True)
+    fonte_apoio = _fonte(int(36 * min(escala, 1.4)))
+    fonte_legenda = _fonte(int(30 * min(escala, 1.4)))
+    linhas_apoio = _quebrar_texto(draw, apoio, fonte_apoio, largura_max)
+    # O nome do produto aparece só aqui, como legenda da foto - é o lugar onde ele
+    # explica a imagem sem disputar espaço com o número, que é o que segura o dedo.
+    linhas_legenda = _quebrar_texto(draw, legenda_produto, fonte_legenda, lado_foto)[:2] if legenda_produto else []
+
+    altura_numero = int(fonte_numero.size * 1.05)
+    altura_apoio = len(linhas_apoio) * int(fonte_apoio.size * 1.35)
+    altura_legenda = len(linhas_legenda) * int(fonte_legenda.size * 1.3)
+    area_util = tamanho[1] - topo_seguro - rodape_seguro
+
+    # Espaço reservado ao rótulo acima da foto. O rótulo fica centralizado nessa faixa,
+    # então o valor precisa ser bem maior que a altura dele - senão sobra pouco entre a
+    # base do texto e o topo do cartão, e o rótulo parece colado na imagem.
+    respiro_rotulo = 130
+    altura_bloco = respiro_rotulo + lado_foto + altura_legenda + 40 + altura_numero + 28 + altura_apoio
+    if linhas_legenda:
+        altura_bloco += 20
+    y = topo_seguro + max(0, (area_util - altura_bloco) // 2)
+
+    _cabecalho_rodape(
+        draw, tamanho, margem, cor_texto, cor_numero, rotulo,
+        y + respiro_rotulo / 2, centralizado=True,
+    )
+    y += respiro_rotulo
+
+    if _cartao_produto(img, draw, imagem_url, tamanho[0] // 2, y, lado_foto):
+        y += lado_foto
+    else:
+        y += lado_foto // 2
+
+    if linhas_legenda:
+        y += 20
+        altura_linha_legenda = int(fonte_legenda.size * 1.3)
+        for i, linha in enumerate(linhas_legenda):
+            draw.text(
+                (tamanho[0] // 2, y + i * altura_linha_legenda + altura_linha_legenda / 2),
+                linha, font=fonte_legenda, fill=cor_texto, anchor="mm",
+            )
+        y += altura_legenda
+
+    y += 40
+    draw.text((tamanho[0] // 2, y + altura_numero / 2), numero, font=fonte_numero, fill=cor_numero, anchor="mm")
+    y += altura_numero + 28
+    altura_linha = int(fonte_apoio.size * 1.35)
+    for i, linha in enumerate(linhas_apoio):
+        draw.text(
+            (tamanho[0] // 2, y + i * altura_linha + altura_linha / 2),
+            linha, font=fonte_apoio, fill=cor_texto, anchor="mm",
+        )
+    return img
+
+
+def gerar_imagem_passos(
+    titulo: str,
+    passos: list[str],
+    rodape: str = "",
+    link_bio: bool = False,
+    bg: str | None = None,
+    cor_texto: str | None = None,
+    tamanho=(1080, 1920),
+) -> Image.Image:
+    """Passo a passo numerado - fecha o combo mostrando como chegar no produto.
+
+    Existe porque a API de stories não aceita link clicável: o bot consegue publicar a
+    imagem, mas não o sticker de link. Sem esse último story, a pessoa vê um produto que
+    devolve 8% e não tem como chegar nele - o combo inteiro vira beco sem saída.
+
+    link_bio desenha o "link na bio" solto e centralizado perto do rodapé, na mesma
+    posição usada no story de oferta - misturado na frase de rodapé ele lê como parte da
+    explicação, e não como a ação a tomar."""
+    bg = bg or CORES["paper"]
+    cor_texto = cor_texto or CORES["ink"]
+    img = Image.new("RGB", tamanho, bg)
+    draw = ImageDraw.Draw(img)
+
+    escala = tamanho[1] / 1080
+    margem = 88
+    story = tamanho[1] > tamanho[0] * 1.2
+    topo_seguro = 260 if story else margem
+    rodape_seguro = 260 if story else int(margem * 2.2)
+    largura_max = tamanho[0] - margem * 2
+
+    fonte_titulo = _fonte(int(54 * min(escala, 1.4)), negrito=True)
+    fonte_passo = _fonte(int(38 * min(escala, 1.4)), negrito=True)
+    fonte_numero = _fonte(int(34 * min(escala, 1.4)), mono=True, negrito=True)
+    fonte_rodape = _fonte(int(28 * min(escala, 1.4)))
+
+    diametro = int(72 * min(escala, 1.4))
+    recuo = diametro + 32
+
+    linhas_titulo = _quebrar_texto(draw, titulo, fonte_titulo, largura_max)
+    altura_titulo = len(linhas_titulo) * int(fonte_titulo.size * 1.2)
+
+    blocos = [_quebrar_texto(draw, p, fonte_passo, largura_max - recuo) for p in passos]
+    alturas = [max(diametro, len(b) * int(fonte_passo.size * 1.3)) + 40 for b in blocos]
+    linhas_rodape = _quebrar_texto(draw, rodape, fonte_rodape, largura_max) if rodape else []
+    altura_rodape = len(linhas_rodape) * int(fonte_rodape.size * 1.4)
+
+    altura_bloco = altura_titulo + 48 + sum(alturas)
+    if linhas_rodape:
+        altura_bloco += 32 + altura_rodape
+
+    area_util = tamanho[1] - topo_seguro - rodape_seguro
+    y = topo_seguro + max(0, (area_util - altura_bloco) // 2)
+
+    _desenhar_bloco_texto(draw, linhas_titulo, fonte_titulo, margem, y, cor_texto, espacamento=1.2)
+    y += altura_titulo + 48
+
+    # O círculo e o texto do passo têm alturas diferentes (o círculo é maior que uma
+    # linha de texto), então cada um é centralizado dentro da altura do passo em vez de
+    # os dois começarem no mesmo topo - encostados no topo, o texto fica visivelmente
+    # mais alto que o número. Centralizar os dois também mantém o alinhamento quando o
+    # passo quebra em duas linhas e fica mais alto que o círculo.
+    altura_linha_passo = int(fonte_passo.size * 1.3)
+    for i, (bloco, altura) in enumerate(zip(blocos, alturas), start=1):
+        altura_texto = len(bloco) * altura_linha_passo
+        altura_conteudo = max(diametro, altura_texto)
+        topo_circulo = y + (altura_conteudo - diametro) / 2
+        topo_texto = y + (altura_conteudo - altura_texto) / 2
+
+        draw.ellipse(
+            [(margem, topo_circulo), (margem + diametro, topo_circulo + diametro)],
+            fill=CORES["brand"],
+        )
+        draw.text(
+            (margem + diametro / 2, topo_circulo + diametro / 2), str(i),
+            font=fonte_numero, fill=CORES["paper"], anchor="mm",
+        )
+        _desenhar_bloco_texto(draw, bloco, fonte_passo, margem + recuo, topo_texto, cor_texto, espacamento=1.3)
+        y += altura
+
+    if linhas_rodape:
+        _desenhar_bloco_texto(draw, linhas_rodape, fonte_rodape, margem, y + 32, CORES["muted"], espacamento=1.4)
+
+    if link_bio:
+        # mesma posição do story de oferta (ver gerar_imagem_oferta_story), pra chamada
+        # cair sempre no mesmo lugar independente do story que a pessoa está vendo
+        draw.text(
+            (tamanho[0] / 2, tamanho[1] - rodape_seguro - 10),
+            "link na bio", font=_fonte(int(32 * min(escala, 1.4)), negrito=True),
+            fill=CORES["ink-soft"], anchor="ms",
+        )
+
+    linha_y = tamanho[1] - int(margem * 1.6)
+    draw.line([(margem, linha_y), (tamanho[0] - margem, linha_y)], fill=CORES["brand"], width=max(2, int(2 * escala)))
+    _badge_marca(draw, tamanho, cor_texto, margem)
+    return img
