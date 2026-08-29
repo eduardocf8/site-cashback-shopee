@@ -7,7 +7,7 @@ from django.urls import reverse
 
 from links.models import Click
 
-from .models import Oferta, OfertaManual
+from .models import Oferta, OfertaDestaqueManual, OfertaManual
 from .services import (
     _montar_oferta,
     obter_cashback_maximo_anunciado,
@@ -370,3 +370,131 @@ class IrParaOfertaManualTests(TestCase):
 
         self.assertRedirects(resposta, reverse("home"))
         self.assertContains(resposta, "sem credenciais")
+
+
+class OfertaDestaqueManualTests(TestCase):
+    """Singleton: só existe um registro (pk sempre 1), ver OfertaDestaqueManual.save."""
+
+    def _dados(self, **kwargs):
+        padrao = dict(
+            product_link="https://shopee.com.br/produto-destaque-i.1.1",
+            nome="Produto destaque", imagem_url="https://exemplo.com/img.jpg",
+            preco_antigo=Decimal("100.00"), preco_novo=Decimal("80.00"),
+            percentual_comissao=Decimal("0.10"),
+        )
+        padrao.update(kwargs)
+        return padrao
+
+    def test_editar_em_pe_atualiza_a_mesma_linha(self):
+        destaque = OfertaDestaqueManual.objects.create(**self._dados(nome="Primeiro"))
+
+        destaque.nome = "Segundo"
+        destaque.save()
+
+        self.assertEqual(OfertaDestaqueManual.objects.count(), 1)
+        self.assertEqual(OfertaDestaqueManual.objects.get().nome, "Segundo")
+
+    def test_cashback_usa_o_mesmo_mixin_de_ofertamanual(self):
+        destaque = OfertaDestaqueManual(**self._dados())
+        self.assertEqual(destaque.preco_base_cashback, Decimal("80.00"))
+        self.assertEqual(destaque.valor_cashback_estimado, Decimal("8.00"))
+
+
+class SelecionarCarrosselHomeComDestaqueManualTests(TestCase):
+    def _oferta_sincronizada(self, item_id, vendas):
+        return Oferta.objects.create(
+            item_id=item_id, nome=f"Produto sincronizado {item_id}", categoria_id=1,
+            product_link=f"https://shopee.com.br/produto-{item_id}-i.{item_id}.{item_id}",
+            percentual_comissao=Decimal("0.05"), vendas=vendas,
+        )
+
+    def _destaque_manual(self):
+        return OfertaDestaqueManual.objects.create(
+            product_link="https://shopee.com.br/produto-destaque-i.1.1",
+            nome="Produto destaque", imagem_url="https://exemplo.com/img.jpg",
+            preco_antigo=Decimal("100.00"), preco_novo=Decimal("80.00"),
+            percentual_comissao=Decimal("0.10"),
+        )
+
+    def test_destaque_manual_substitui_a_hero_e_libera_uma_vaga_a_mais_no_carrossel(self):
+        for i in range(1, 10):
+            self._oferta_sincronizada(i, vendas=10 - i)
+        destaque_manual = self._destaque_manual()
+
+        destaque, carrossel = selecionar_carrossel_home(8)
+
+        self.assertEqual(destaque, destaque_manual)
+        # sem destaque manual, o item_id=1 (mais vendido) seria a hero e ficaria de fora
+        # do carrossel - com a hero vindo da manual, ele agora cabe como a 8ª vaga.
+        self.assertEqual(len(carrossel), 8)
+        self.assertEqual(carrossel[0].item_id, 1)
+
+    def test_sem_nenhuma_oferta_organica_destaque_manual_ainda_aparece(self):
+        destaque_manual = self._destaque_manual()
+
+        destaque, carrossel = selecionar_carrossel_home(8)
+
+        self.assertEqual(destaque, destaque_manual)
+        self.assertEqual(carrossel, [])
+
+
+@override_settings(**CREDENCIAIS_TESTE)
+class IrParaOfertaDestaqueManualTests(TestCase):
+    def setUp(self):
+        self.usuario = get_user_model().objects.create_user(
+            username="compradora", password="senha123", cpf="39053344705"
+        )
+        self.client.force_login(self.usuario)
+        self.oferta = OfertaDestaqueManual.objects.create(
+            product_link="https://shopee.com.br/produto-destaque-i.1.1",
+            nome="Produto destaque", imagem_url="https://exemplo.com/img.jpg",
+            preco_antigo=Decimal("100.00"), preco_novo=Decimal("80.00"),
+            percentual_comissao=Decimal("0.10"),
+        )
+
+    @patch("links.services.gerar_link_curto")
+    def test_cria_click_tipo_vitrine_e_redireciona_pro_link_gerado(self, mock_gerar_link):
+        mock_gerar_link.return_value = "https://shope.ee/destaque123"
+
+        resposta = self.client.get(reverse("ofertas_destaque_manual_ir", args=[self.oferta.id]))
+
+        click = Click.objects.get()
+        self.assertEqual(click.tipo, Click.TIPO_VITRINE)
+        self.assertEqual(click.url_original, self.oferta.product_link)
+        self.assertRedirects(resposta, "https://shope.ee/destaque123", fetch_redirect_response=False)
+
+
+class OfertaDestaqueManualAdminTests(TestCase):
+    def setUp(self):
+        self.staff = get_user_model().objects.create_user(
+            username="equipe", password="senha123", cpf="39053344705", is_staff=True, is_superuser=True
+        )
+        self.client.force_login(self.staff)
+
+    def test_changelist_redireciona_pro_formulario_de_criacao_quando_nao_existe_nenhuma(self):
+        resposta = self.client.get(reverse("admin:ofertas_ofertadestaquemanual_changelist"))
+        self.assertRedirects(resposta, reverse("admin:ofertas_ofertadestaquemanual_add"))
+
+    def test_changelist_redireciona_pro_formulario_de_edicao_quando_ja_existe_uma(self):
+        destaque = OfertaDestaqueManual.objects.create(
+            product_link="https://shopee.com.br/produto-destaque-i.1.1",
+            nome="Produto destaque", imagem_url="https://exemplo.com/img.jpg",
+            preco_antigo=Decimal("100.00"), preco_novo=Decimal("80.00"),
+            percentual_comissao=Decimal("0.10"),
+        )
+
+        resposta = self.client.get(reverse("admin:ofertas_ofertadestaquemanual_changelist"))
+
+        self.assertRedirects(resposta, reverse("admin:ofertas_ofertadestaquemanual_change", args=[destaque.pk]))
+
+    def test_nao_deixa_adicionar_uma_segunda_quando_ja_existe_uma(self):
+        OfertaDestaqueManual.objects.create(
+            product_link="https://shopee.com.br/produto-destaque-i.1.1",
+            nome="Produto destaque", imagem_url="https://exemplo.com/img.jpg",
+            preco_antigo=Decimal("100.00"), preco_novo=Decimal("80.00"),
+            percentual_comissao=Decimal("0.10"),
+        )
+
+        resposta = self.client.get(reverse("admin:ofertas_ofertadestaquemanual_add"))
+
+        self.assertEqual(resposta.status_code, 403)

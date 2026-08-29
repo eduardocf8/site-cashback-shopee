@@ -7,7 +7,7 @@ from django.contrib.auth import get_user_model
 from django.test import TestCase, override_settings
 from django.urls import reverse
 
-from ofertas.models import CashbackMaximoCache, OfertaManual
+from ofertas.models import CashbackMaximoCache, OfertaDestaqueManual, OfertaManual
 
 from .models import Click
 from .shopee_client import (
@@ -194,3 +194,21 @@ class HomeCarrosselOfertaManualTests(TestCase):
         self.assertContains(resposta, "Oferta imperdível")
         self.assertContains(resposta, "R$ 100,00")  # preço antigo riscado
         self.assertContains(resposta, reverse("ofertas_manual_ir", args=[OfertaManual.objects.get().id]))
+
+
+class HomeDestaqueManualTests(TestCase):
+    def test_destaque_manual_substitui_a_oferta_do_dia(self):
+        destaque = OfertaDestaqueManual.objects.create(
+            product_link="https://shopee.com.br/produto-destaque-i.1.1",
+            nome="Produto do dia manual", imagem_url="https://exemplo.com/img.jpg",
+            preco_antigo=Decimal("150.00"), preco_novo=Decimal("99.90"),
+            preco_avista=Decimal("89.90"), percentual_comissao=Decimal("0.10"),
+        )
+
+        resposta = self.client.get(reverse("home"))
+
+        self.assertEqual(resposta.context["oferta_destaque"], destaque)
+        self.assertContains(resposta, "Produto do dia manual")
+        self.assertContains(resposta, "R$ 150,00")  # preço antigo riscado
+        self.assertContains(resposta, "R$ 89,90 à vista")
+        self.assertContains(resposta, reverse("ofertas_destaque_manual_ir", args=[destaque.id]))

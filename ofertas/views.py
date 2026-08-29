@@ -10,7 +10,7 @@ from links.services import gerar_click
 from links.shopee_client import ShopeeAPIError, ShopeeConfigError, SubIdInvalidoError
 from saques.services import calcular_resumo_saldo_nav
 
-from .models import Oferta, OfertaManual
+from .models import Oferta, OfertaDestaqueManual, OfertaManual
 from .services import carregar_categorias_nivel1
 
 ITENS_POR_PAGINA = 24
@@ -103,4 +103,12 @@ def ir_para_oferta_manual(request, oferta_manual_id):
     essas só aparecem no carrossel da home, então o erro volta pra lá, não pra
     /ofertas/."""
     oferta = get_object_or_404(OfertaManual, pk=oferta_manual_id)
+    return _ir_com_click_ou_erro(request, oferta.product_link, "home")
+
+
+@login_required
+def ir_para_oferta_destaque_manual(request, oferta_destaque_manual_id):
+    """Mesmo fluxo de ir_para_oferta, mas pra OfertaDestaqueManual (a "Oferta do dia"
+    manual, cadastrada na página dedicada do admin) - só aparece na home."""
+    oferta = get_object_or_404(OfertaDestaqueManual, pk=oferta_destaque_manual_id)
     return _ir_com_click_ou_erro(request, oferta.product_link, "home")

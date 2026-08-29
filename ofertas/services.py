@@ -15,7 +15,7 @@ from links.shopee_client import buscar_oferta_por_item_id, buscar_ofertas_produt
 
 from . import gemini_client
 from .gemini_client import GeminiAPIError, GeminiConfigError
-from .models import CashbackMaximoCache, NomeCurtoCache, Oferta, OfertaManual
+from .models import CashbackMaximoCache, NomeCurtoCache, Oferta, OfertaDestaqueManual, OfertaManual
 
 logger = logging.getLogger(__name__)
 
@@ -297,21 +297,32 @@ def selecionar_top_ofertas_sem_duplicar(quantidade: int) -> list[Oferta]:
     return selecionadas
 
 
-def selecionar_carrossel_home(quantidade_carrossel: int) -> tuple[Oferta | None, list]:
-    """Oferta destaque (a mais vendida) + lista pro carrossel "Ofertas em alta" da home.
+def selecionar_carrossel_home(quantidade_carrossel: int) -> tuple[object | None, list]:
+    """Oferta destaque (hero "Oferta do dia") + lista pro carrossel "Ofertas em alta" da home.
 
     O carrossel prioriza as ofertas manuais cadastradas no admin (as mais recentes
     primeiro - ver OfertaManual.Meta.ordering), completando as vagas restantes com as
     mais vendidas do catálogo sincronizado. Sem limite de ofertas manuais: se houver
     mais do que `quantidade_carrossel`, todas aparecem mesmo assim (o carrossel cresce
-    em vez de descartar alguma). A oferta destaque nunca vem de uma oferta manual - só
-    do catálogo sincronizado, igual sempre foi.
+    em vez de descartar alguma).
+
+    A oferta destaque normalmente também vem do catálogo sincronizado (a mais vendida),
+    mas um OfertaDestaqueManual cadastrado no admin (ver página dedicada em
+    OfertaDestaqueManualAdmin) a substitui - nesse caso nenhuma vaga extra do catálogo
+    precisa ser reservada pra ela, sobrando uma vaga a mais pro carrossel.
     """
-    ofertas_manuais = list(OfertaManual.objects.all())
-    vagas_organicas = max(quantidade_carrossel - len(ofertas_manuais), 0)
-    top_organicas = selecionar_top_ofertas_sem_duplicar(1 + vagas_organicas)
-    oferta_destaque = top_organicas[0] if top_organicas else None
-    ofertas_em_alta = ofertas_manuais + top_organicas[1:]
+    destaque_manual = OfertaDestaqueManual.objects.first()
+    ofertas_manuais_carrossel = list(OfertaManual.objects.all())
+    vagas_organicas = max(quantidade_carrossel - len(ofertas_manuais_carrossel), 0)
+    quantidade_a_buscar = vagas_organicas if destaque_manual else 1 + vagas_organicas
+    top_organicas = selecionar_top_ofertas_sem_duplicar(quantidade_a_buscar)
+
+    if destaque_manual:
+        oferta_destaque = destaque_manual
+        ofertas_em_alta = ofertas_manuais_carrossel + top_organicas
+    else:
+        oferta_destaque = top_organicas[0] if top_organicas else None
+        ofertas_em_alta = ofertas_manuais_carrossel + top_organicas[1:]
     return oferta_destaque, ofertas_em_alta
 
 

@@ -730,6 +730,51 @@ carrossel da home com o selo, borda e preços).
 
 ---
 
+## Fase 30 — "Oferta do dia" manual, numa página separada ✅
+
+Mesma ideia da Fase 29 (produto cadastrado à mão, preço antigo/novo/à
+vista, % de desconto, comissão digitada e cashback calculado
+normalmente), agora pro hero "Oferta do dia" - só que numa página
+própria no admin, já que só existe UM destaque por vez (diferente do
+carrossel, que é uma lista sem limite).
+
+- [x] **`_OfertaCuradaBase`** — extraídos os campos comuns entre
+      `OfertaManual` e o novo `OfertaDestaqueManual` (link, nome, imagem,
+      preços, % desconto, % comissão) pra uma model abstrata, sem
+      duplicar. `OfertaManual` ganhou de volta só o `imperdivel` (não faz
+      sentido pro destaque, que já é o único item da seção).
+- [x] **`OfertaDestaqueManual`** — sem campo de tipo/flag pra marcar
+      "singleton": a garantia de que só existe um registro é só no admin
+      (`has_add_permission` só libera "Adicionar" quando não existe
+      nenhum ainda). Cheguei a tentar forçar `pk=1` no `save()` pra
+      garantir isso no model, mas isso quebra `criado_em`
+      (`auto_now_add`) numa instância nova sendo "salva por cima" de uma
+      já existente (vira `UPDATE` com o campo vazio, em vez de `INSERT`)
+      - desisti dessa abordagem e vali só do admin mesmo, como o
+      `has_add_permission` já garante na prática.
+- [x] **Página dedicada** (`OfertaDestaqueManualAdmin.changelist_view`) —
+      clicar em "Oferta do dia (destaque manual)" no menu do admin nunca
+      mostra uma lista: vai direto pro formulário de criação (se ainda
+      não existe nenhuma) ou de edição (se já existe) - sem passo
+      intermediário. Trocar de produto é editar os campos da mesma
+      página; remover a oferta cadastrada (botão "Remover" já nativo do
+      admin) volta a "Oferta do dia" pro automático (mais vendido do
+      catálogo sincronizado).
+- [x] **`selecionar_carrossel_home()`** atualizado — quando existe uma
+      `OfertaDestaqueManual`, ela vira a hero e nenhuma vaga extra do
+      catálogo sincronizado precisa ser reservada pra isso, sobrando uma
+      vaga a mais pro carrossel "Ofertas em alta".
+- [x] **`ir_para_oferta_destaque_manual`** (view + `ofertas_destaque_manual_ir`
+      em `urls.py`) e markup do hero (`home.html`) com o mesmo tratamento
+      de preço riscado/novo/à vista já usado no carrossel.
+
+Suite completa (221 testes) verde; conferido visualmente com Playwright
+(menu do admin indo direto pra página dedicada, formulário de criação e
+depois de edição com "Cashback calculado" e botão "Remover", e o hero
+da home com o produto manual).
+
+---
+
 Pra continuar esse roadmap numa conversa nova, basta apontar esse arquivo
 (`ROADMAP.md`) e o `BRAND.md` — juntos eles dão o contexto de identidade
 visual e do que falta implementar, sem precisar reconstruir o histórico da

@@ -134,12 +134,11 @@ class NomeCurtoCache(models.Model):
         return f"{self.nome_original} -> {self.nome_curto}"
 
 
-class OfertaManual(_CashbackEstimadoMixin, models.Model):
-    """Oferta cadastrada à mão no admin (não vem do catálogo sincronizado com a
-    Shopee). Entra no carrossel "Ofertas em alta" da home, ocupando vaga antes das
-    ofertas mais vendidas - ver ofertas/services.py::selecionar_carrossel_home. Nunca é
-    apagada por sincronizar_ofertas() (que só mexe em Oferta), fica até alguém remover
-    aqui no admin."""
+class _OfertaCuradaBase(_CashbackEstimadoMixin, models.Model):
+    """Campos comuns entre OfertaManual (carrossel "Ofertas em alta") e
+    OfertaDestaqueManual (hero "Oferta do dia") - produtos cadastrados à mão no admin,
+    fora do catálogo sincronizado com a Shopee. Nunca são apagados por
+    sincronizar_ofertas() (que só mexe em Oferta)."""
 
     product_link = models.URLField("Link do produto na Shopee")
     nome = models.CharField(max_length=255)
@@ -154,7 +153,7 @@ class OfertaManual(_CashbackEstimadoMixin, models.Model):
         "usado como base do cashback quando preenchido (senão usa o preço novo).",
     )
     percentual_desconto = models.PositiveIntegerField(
-        "% de desconto", default=0, blank=True, help_text="Desconto mostrado no selo do card, ex: 10 representa 10%."
+        "% de desconto", default=0, blank=True, help_text="Desconto mostrado no selo, ex: 10 representa 10%."
     )
     percentual_comissao = models.DecimalField(
         "% de comissão", max_digits=5, decimal_places=4,
@@ -162,15 +161,10 @@ class OfertaManual(_CashbackEstimadoMixin, models.Model):
         "afiliado ou no app da Shopee. O % de cashback exibido é calculado a partir daqui, igual às "
         "ofertas sincronizadas.",
     )
-    imperdivel = models.BooleanField(
-        "Oferta imperdível", default=False, help_text="Mostra um selo de destaque no card, no carrossel da home."
-    )
     criado_em = models.DateTimeField(auto_now_add=True)
 
     class Meta:
-        verbose_name = "Oferta manual"
-        verbose_name_plural = "Ofertas manuais"
-        ordering = ["-criado_em"]
+        abstract = True
 
     def __str__(self):
         return f"{self.nome} (R$ {self.preco_novo})"
@@ -179,6 +173,41 @@ class OfertaManual(_CashbackEstimadoMixin, models.Model):
     def preco_base_cashback(self) -> Decimal:
         return self.preco_avista or self.preco_novo
 
+
+class OfertaManual(_OfertaCuradaBase):
+    """Entra no carrossel "Ofertas em alta" da home, ocupando vaga antes das ofertas
+    mais vendidas - ver ofertas/services.py::selecionar_carrossel_home. Fica até
+    alguém remover aqui no admin; sem limite de quantas podem existir."""
+
+    imperdivel = models.BooleanField(
+        "Oferta imperdível", default=False, help_text="Mostra um selo de destaque no card, no carrossel da home."
+    )
+
+    class Meta:
+        verbose_name = "Oferta manual"
+        verbose_name_plural = "Ofertas manuais"
+        ordering = ["-criado_em"]
+
     @property
     def url_ir(self) -> str:
         return reverse("ofertas_manual_ir", args=[self.id])
+
+
+class OfertaDestaqueManual(_OfertaCuradaBase):
+    """Substitui a "Oferta do dia" (hero da home) por um produto escolhido à mão, no
+    lugar do mais vendido do catálogo sincronizado - ver
+    ofertas/services.py::selecionar_carrossel_home. Singleton na prática: nunca existe
+    mais de um registro, mas isso é garantido em OfertaDestaqueManualAdmin
+    (has_add_permission só libera "adicionar" quando não existe nenhuma ainda) - não
+    aqui no model, pra evitar forçar um pk fixo e corromper o auto_now_add de
+    criado_em num "salvar por cima" de uma instância nova. Editar em vez de trocar já
+    atualiza a mesma linha; trocar de produto é excluir e cadastrar de novo. Excluir a
+    única que existe volta a "Oferta do dia" pro automático."""
+
+    class Meta:
+        verbose_name = "Oferta do dia (destaque manual)"
+        verbose_name_plural = "Oferta do dia (destaque manual)"
+
+    @property
+    def url_ir(self) -> str:
+        return reverse("ofertas_destaque_manual_ir", args=[self.id])
