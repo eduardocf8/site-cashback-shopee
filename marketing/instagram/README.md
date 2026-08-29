@@ -215,6 +215,16 @@ qualquer forma.
 
 ## Cron Jobs do Render (2026-08-28)
 
+✅ **Criados e testados em produção em 2026-08-29** - os 4 disparados
+manualmente pelo dashboard (aba "Trigger Run"/logs), todos retornando
+`200` e fazendo o esperado: `cron-stories-oferta` gerou um story
+pendente de aprovação, `cron-instagram-diario` confirmou a correção do
+teto de cashback (produto diferente da bicicleta, sem bater no teto),
+`cron-encurtar-nomes` processou 1550 ofertas, `cron-tarefas-financeiras`
+sincronizou pedidos/ofertas normalmente. Só falta observar o disparo
+automático (pelo `schedule` de cada um) acontecer sozinho no horário
+certo, sem precisar de disparo manual.
+
 Os agendamentos automáticos (tarefa financeira, publicações do Instagram,
 stories de oferta) saíram do GitHub Actions e viraram **Cron Jobs do
 Render**. Motivo: o agendador gratuito do GitHub Actions atrasava demais
