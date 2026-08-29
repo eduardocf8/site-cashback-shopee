@@ -295,6 +295,17 @@ def publicar_story_oferta_especifica(url_produto: str, request) -> RegistroPubli
     return _publicar_story_de_oferta(oferta, timezone.localdate(), request)
 
 
+def publicar_story_oferta_curada(oferta_curada, request) -> RegistroPublicacao:
+    """Posta um story pra uma oferta cadastrada à mão no admin (OfertaManual ou
+    OfertaDestaqueManual - ver ofertas/models.py, _OfertaCuradaBase) - botão "Criar
+    story" em ofertas/admin.py. Ao contrário de publicar_story_oferta_especifica, não
+    busca dado nenhum na Shopee: usa exatamente o que foi digitado no admin (preço,
+    desconto, comissão), pra bater com o que já está publicado no site pra essa mesma
+    oferta. Mesmo CONTEUDO_OFERTA_DIARIA das outras formas de publicar story de oferta -
+    mesmo motivo (ver publicar_story_oferta_especifica)."""
+    return _publicar_story_de_oferta(oferta_curada, timezone.localdate(), request)
+
+
 def publicar_story_dica(data, request) -> RegistroPublicacao:
     texto = conteudo.escolher_dica(data)
     imagem = gerar_imagem_texto_simples(

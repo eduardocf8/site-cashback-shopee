@@ -5,6 +5,7 @@ from django.contrib.auth import get_user_model
 from django.test import TestCase, override_settings
 from django.urls import reverse
 
+from instagram_bot.models import RegistroPublicacao
 from links.models import Click
 
 from .models import Oferta, OfertaDestaqueManual, OfertaManual
@@ -282,6 +283,18 @@ class OfertaManualCashbackTests(TestCase):
         self.assertEqual(oferta.valor_cashback_estimado, Decimal("5.00"))
         self.assertTrue(oferta.cashback_no_limite)
 
+    def test_aliases_pro_gerador_de_story_do_catalogo(self):
+        # nome_curto/preco_min/categoria_id/item_id existem só pra reaproveitar
+        # instagram_bot/templates_imagem.py::gerar_imagem_oferta_story e
+        # instagram_bot/services.py::_publicar_story_de_oferta (escritos pro catálogo
+        # sincronizado, Oferta) sem duplicar - ver "Criar story" em ofertas/admin.py.
+        oferta = self._oferta_manual(preco_avista=Decimal("70.00"))
+
+        self.assertEqual(oferta.nome_curto, oferta.nome)
+        self.assertEqual(oferta.preco_min, Decimal("70.00"))  # preco_base_cashback
+        self.assertIsNone(oferta.categoria_id)
+        self.assertIsNone(oferta.item_id)
+
 
 class SelecionarCarrosselHomeTests(TestCase):
     def _oferta_sincronizada(self, item_id, vendas):
@@ -498,3 +511,60 @@ class OfertaDestaqueManualAdminTests(TestCase):
         resposta = self.client.get(reverse("admin:ofertas_ofertadestaquemanual_add"))
 
         self.assertEqual(resposta.status_code, 403)
+
+    def test_botao_criar_story_aparece_na_tela_de_edicao(self):
+        destaque = OfertaDestaqueManual.objects.create(
+            product_link="https://shopee.com.br/produto-destaque-i.1.1",
+            nome="Produto destaque", imagem_url="https://exemplo.com/img.jpg",
+            preco_antigo=Decimal("100.00"), preco_novo=Decimal("80.00"),
+            percentual_comissao=Decimal("0.10"),
+        )
+
+        resposta = self.client.get(reverse("admin:ofertas_ofertadestaquemanual_change", args=[destaque.pk]))
+
+        self.assertContains(resposta, "Criar story e mandar pra aprovação")
+
+    def test_botao_criar_story_gera_registro_pendente_e_volta_pra_edicao(self):
+        destaque = OfertaDestaqueManual.objects.create(
+            product_link="https://shopee.com.br/produto-destaque-i.1.1",
+            nome="Produto destaque", imagem_url="https://exemplo.com/img.jpg",
+            preco_antigo=Decimal("100.00"), preco_novo=Decimal("80.00"),
+            percentual_comissao=Decimal("0.10"),
+        )
+
+        # INSTAGRAM_BOT_ATIVO=False por padrão nos testes -> vira simulação, sem chamar
+        # a API do Instagram nem mandar e-mail de aprovação de verdade.
+        resposta = self.client.get(
+            reverse("admin:ofertas_ofertadestaquemanual_criar_story", args=[destaque.pk])
+        )
+
+        self.assertRedirects(resposta, reverse("admin:ofertas_ofertadestaquemanual_change", args=[destaque.pk]))
+        registro = RegistroPublicacao.objects.get(oferta_nome="Produto destaque")
+        self.assertEqual(registro.status, RegistroPublicacao.STATUS_SIMULADO)
+        self.assertEqual(registro.conteudo_tipo, RegistroPublicacao.CONTEUDO_OFERTA_DIARIA)
+
+
+class CriarStoryDeOfertaManualAdminTests(TestCase):
+    def setUp(self):
+        self.staff = get_user_model().objects.create_user(
+            username="equipe3", password="senha123", cpf="39053344705", is_staff=True, is_superuser=True
+        )
+        self.client.force_login(self.staff)
+        self.oferta = OfertaManual.objects.create(
+            product_link="https://shopee.com.br/produto-manual-i.1.1",
+            nome="Produto manual", imagem_url="https://exemplo.com/img.jpg",
+            preco_antigo=Decimal("100.00"), preco_novo=Decimal("80.00"),
+            percentual_comissao=Decimal("0.10"),
+        )
+
+    def test_acao_em_lote_gera_registro_pendente_por_oferta_selecionada(self):
+        resposta = self.client.post(
+            reverse("admin:ofertas_ofertamanual_changelist"),
+            {"action": "criar_story_de_oferta", "_selected_action": [self.oferta.pk]},
+            follow=True,
+        )
+
+        self.assertEqual(resposta.status_code, 200)
+        registro = RegistroPublicacao.objects.get(oferta_nome="Produto manual")
+        self.assertEqual(registro.status, RegistroPublicacao.STATUS_SIMULADO)
+        self.assertEqual(registro.conteudo_tipo, RegistroPublicacao.CONTEUDO_OFERTA_DIARIA)
