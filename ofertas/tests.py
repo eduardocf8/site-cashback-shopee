@@ -7,8 +7,13 @@ from django.urls import reverse
 
 from links.models import Click
 
-from .models import Oferta
-from .services import _montar_oferta, obter_cashback_maximo_anunciado, sincronizar_ofertas
+from .models import Oferta, OfertaManual
+from .services import (
+    _montar_oferta,
+    obter_cashback_maximo_anunciado,
+    selecionar_carrossel_home,
+    sincronizar_ofertas,
+)
 
 CREDENCIAIS_TESTE = {
     "SHOPEE_AFFILIATE_APP_ID": "app123",
@@ -239,3 +244,129 @@ class IrParaOfertaTests(TestCase):
         self.assertEqual(click.tipo, Click.TIPO_VITRINE)
         self.assertEqual(click.url_original, self.oferta.product_link)
         self.assertRedirects(resposta, "https://shope.ee/vitrine123", fetch_redirect_response=False)
+
+
+class OfertaManualCashbackTests(TestCase):
+    """A matemática do cashback é a mesma da Oferta sincronizada (_CashbackEstimadoMixin)
+    - só a base de preço muda: usa preco_avista quando preenchido, senão preco_novo."""
+
+    def _oferta_manual(self, **kwargs):
+        padrao = dict(
+            product_link="https://shopee.com.br/produto-manual-i.1.1",
+            nome="Produto manual",
+            imagem_url="https://exemplo.com/img.jpg",
+            preco_antigo=Decimal("100.00"),
+            preco_novo=Decimal("80.00"),
+            percentual_comissao=Decimal("0.10"),
+        )
+        padrao.update(kwargs)
+        return OfertaManual(**padrao)
+
+    def test_usa_preco_novo_quando_nao_ha_preco_avista(self):
+        oferta = self._oferta_manual()
+        self.assertEqual(oferta.preco_base_cashback, Decimal("80.00"))
+
+    def test_usa_preco_avista_quando_preenchido(self):
+        oferta = self._oferta_manual(preco_avista=Decimal("70.00"))
+        self.assertEqual(oferta.preco_base_cashback, Decimal("70.00"))
+
+    def test_cashback_segue_percentual_comissao_e_repasse_configurado(self):
+        # comissão 10%, repasse 100% (padrão dos testes) -> 10% de cashback sobre 80.00 = 8.00
+        oferta = self._oferta_manual()
+        self.assertEqual(oferta.valor_cashback_estimado, Decimal("8.00"))
+        self.assertEqual(oferta.percentual_cashback, Decimal("10.0"))
+
+    @override_settings(CASHBACK_MAXIMO_POR_PRODUTO=5)
+    def test_respeita_o_teto_por_produto(self):
+        oferta = self._oferta_manual()
+        self.assertEqual(oferta.valor_cashback_estimado, Decimal("5.00"))
+        self.assertTrue(oferta.cashback_no_limite)
+
+
+class SelecionarCarrosselHomeTests(TestCase):
+    def _oferta_sincronizada(self, item_id, vendas):
+        return Oferta.objects.create(
+            item_id=item_id, nome=f"Produto sincronizado {item_id}", categoria_id=1,
+            product_link=f"https://shopee.com.br/produto-{item_id}-i.{item_id}.{item_id}",
+            percentual_comissao=Decimal("0.05"), vendas=vendas,
+        )
+
+    def _oferta_manual(self, nome):
+        return OfertaManual.objects.create(
+            product_link="https://shopee.com.br/produto-manual-i.1.1",
+            nome=nome, imagem_url="https://exemplo.com/img.jpg",
+            preco_antigo=Decimal("100.00"), preco_novo=Decimal("80.00"),
+            percentual_comissao=Decimal("0.10"),
+        )
+
+    def test_sem_oferta_manual_carrossel_e_so_organico(self):
+        for i in range(1, 10):
+            self._oferta_sincronizada(i, vendas=10 - i)
+
+        destaque, carrossel = selecionar_carrossel_home(8)
+
+        self.assertEqual(destaque.item_id, 1)
+        self.assertEqual(len(carrossel), 8)
+        self.assertNotIn(destaque, carrossel)
+
+    def test_uma_oferta_manual_substitui_uma_vaga_do_carrossel(self):
+        for i in range(1, 10):
+            self._oferta_sincronizada(i, vendas=10 - i)
+        manual = self._oferta_manual("Produto manual único")
+
+        destaque, carrossel = selecionar_carrossel_home(8)
+
+        self.assertEqual(len(carrossel), 8)
+        self.assertEqual(carrossel[0], manual)
+        # a destaque continua vindo só do catálogo sincronizado, nunca de uma manual.
+        self.assertEqual(destaque.item_id, 1)
+
+    def test_ofertas_manuais_nao_tem_limite_mesmo_acima_do_tamanho_do_carrossel(self):
+        for i in range(1, 3):
+            self._oferta_sincronizada(i, vendas=10 - i)
+        manuais = [self._oferta_manual(f"Manual {i}") for i in range(10)]
+
+        destaque, carrossel = selecionar_carrossel_home(8)
+
+        self.assertEqual(len(carrossel), 10)
+        self.assertEqual(set(carrossel), set(manuais))
+
+    def test_sem_nenhuma_oferta_retorna_vazio(self):
+        destaque, carrossel = selecionar_carrossel_home(8)
+        self.assertIsNone(destaque)
+        self.assertEqual(carrossel, [])
+
+
+@override_settings(**CREDENCIAIS_TESTE)
+class IrParaOfertaManualTests(TestCase):
+    def setUp(self):
+        self.usuario = get_user_model().objects.create_user(
+            username="compradora", password="senha123", cpf="39053344705"
+        )
+        self.client.force_login(self.usuario)
+        self.oferta = OfertaManual.objects.create(
+            product_link="https://shopee.com.br/produto-manual-i.1.1",
+            nome="Produto manual", imagem_url="https://exemplo.com/img.jpg",
+            preco_antigo=Decimal("100.00"), preco_novo=Decimal("80.00"),
+            percentual_comissao=Decimal("0.10"),
+        )
+
+    @patch("links.services.gerar_link_curto")
+    def test_cria_click_tipo_vitrine_e_redireciona_pro_link_gerado(self, mock_gerar_link):
+        mock_gerar_link.return_value = "https://shope.ee/manual123"
+
+        resposta = self.client.get(reverse("ofertas_manual_ir", args=[self.oferta.id]))
+
+        click = Click.objects.get()
+        self.assertEqual(click.tipo, Click.TIPO_VITRINE)
+        self.assertEqual(click.url_original, self.oferta.product_link)
+        self.assertRedirects(resposta, "https://shope.ee/manual123", fetch_redirect_response=False)
+
+    def test_erro_da_shopee_redireciona_pra_home_nao_pra_vitrine(self):
+        from links.shopee_client import ShopeeConfigError
+
+        with patch("links.services.gerar_link_curto", side_effect=ShopeeConfigError("sem credenciais")):
+            resposta = self.client.get(reverse("ofertas_manual_ir", args=[self.oferta.id]), follow=True)
+
+        self.assertRedirects(resposta, reverse("home"))
+        self.assertContains(resposta, "sem credenciais")

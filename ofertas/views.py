@@ -10,7 +10,7 @@ from links.services import gerar_click
 from links.shopee_client import ShopeeAPIError, ShopeeConfigError, SubIdInvalidoError
 from saques.services import calcular_resumo_saldo_nav
 
-from .models import Oferta
+from .models import Oferta, OfertaManual
 from .services import carregar_categorias_nivel1
 
 ITENS_POR_PAGINA = 24
@@ -72,23 +72,35 @@ def lista(request):
     return render(request, "ofertas/lista.html", contexto)
 
 
+def _ir_com_click_ou_erro(request, product_link, nome_da_view_de_erro):
+    try:
+        click = gerar_click(request.user, Click.TIPO_VITRINE, product_link)
+    except ShopeeConfigError as erro:
+        messages.error(request, str(erro))
+        return redirect(nome_da_view_de_erro)
+    except SubIdInvalidoError as erro:
+        messages.error(request, str(erro))
+        return redirect(nome_da_view_de_erro)
+    except ShopeeAPIError as erro:
+        messages.error(request, f"A Shopee recusou o pedido: {erro}")
+        return redirect(nome_da_view_de_erro)
+    except requests.RequestException:
+        messages.error(request, "Não foi possível abrir essa oferta agora. Tenta de novo em instantes.")
+        return redirect(nome_da_view_de_erro)
+
+    return redirect(click.link_gerado)
+
+
 @login_required
 def ir_para_oferta(request, oferta_id):
     oferta = get_object_or_404(Oferta, pk=oferta_id)
+    return _ir_com_click_ou_erro(request, oferta.product_link, "ofertas_lista")
 
-    try:
-        click = gerar_click(request.user, Click.TIPO_VITRINE, oferta.product_link)
-    except ShopeeConfigError as erro:
-        messages.error(request, str(erro))
-        return redirect("ofertas_lista")
-    except SubIdInvalidoError as erro:
-        messages.error(request, str(erro))
-        return redirect("ofertas_lista")
-    except ShopeeAPIError as erro:
-        messages.error(request, f"A Shopee recusou o pedido: {erro}")
-        return redirect("ofertas_lista")
-    except requests.RequestException:
-        messages.error(request, "Não foi possível abrir essa oferta agora. Tenta de novo em instantes.")
-        return redirect("ofertas_lista")
 
-    return redirect(click.link_gerado)
+@login_required
+def ir_para_oferta_manual(request, oferta_manual_id):
+    """Mesmo fluxo de ir_para_oferta, mas pra uma OfertaManual (cadastrada no admin) -
+    essas só aparecem no carrossel da home, então o erro volta pra lá, não pra
+    /ofertas/."""
+    oferta = get_object_or_404(OfertaManual, pk=oferta_manual_id)
+    return _ir_com_click_ou_erro(request, oferta.product_link, "home")

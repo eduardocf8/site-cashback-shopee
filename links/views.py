@@ -10,7 +10,7 @@ from django.urls import reverse
 from ofertas.services import (
     categorias_mais_vendidas,
     obter_cashback_maximo_anunciado,
-    selecionar_top_ofertas_sem_duplicar,
+    selecionar_carrossel_home,
 )
 from saques.services import calcular_resumo_saldo_nav
 
@@ -44,11 +44,10 @@ def home(request):
             inicial["url_produto"] = request.GET["url_produto"]
         form = LinkProdutoForm(initial=inicial)
 
-    # A oferta em destaque é a mais vendida do momento; "em alta" são as próximas,
-    # sem repetir o mesmo produto (ver selecionar_top_ofertas_sem_duplicar).
-    top_ofertas = selecionar_top_ofertas_sem_duplicar(1 + NUMERO_OFERTAS_EM_ALTA)
-    oferta_destaque = top_ofertas[0] if top_ofertas else None
-    ofertas_em_alta = top_ofertas[1:]
+    # A oferta em destaque é a mais vendida do momento; "em alta" prioriza as ofertas
+    # manuais cadastradas no admin, completando o resto com as mais vendidas do
+    # catálogo sincronizado - ver selecionar_carrossel_home.
+    oferta_destaque, ofertas_em_alta = selecionar_carrossel_home(NUMERO_OFERTAS_EM_ALTA)
     categorias_home = categorias_mais_vendidas(NUMERO_CATEGORIAS_HOME)
     cashback_percentual_maximo = obter_cashback_maximo_anunciado()
 

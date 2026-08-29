@@ -679,6 +679,57 @@ visualmente com Playwright (nota fixa, estado vazio e FAQ expandido).
 
 ---
 
+## Fase 29 — Ofertas manuais no carrossel da home ✅
+
+Usuário pediu uma forma de inserir manualmente produtos no carrossel "Ofertas
+em alta" da home, sem depender só do catálogo sincronizado com a Shopee -
+com preço antigo/novo/à vista e desconto digitados à mão, cashback calculado
+normalmente, e um selo de "oferta imperdível" opcional.
+
+Duas decisões de design perguntadas ao usuário antes de implementar:
+- **% de comissão**: digitada manualmente no cadastro (não busca ao vivo na
+  API da Shopee) - a Shopee não oferece um jeito confiável de consultar a
+  comissão de um produto específico por link/ID, só catálogo paginado. O
+  cashback continua calculado pela mesma fórmula de sempre a partir daí.
+- **Cadastro**: admin padrão do Django (uma oferta por tela, com "Salvar e
+  adicionar outro(a)") em vez de um formulário customizado com JS pra
+  empilhar campos numa página só - menos código novo pra manter, e a
+  lista de ofertas manuais já cadastradas fica pronta pra editar/remover.
+
+- [x] **`OfertaManual`** (`ofertas/models.py`) — link, nome, imagem, preço
+      antigo/novo/à vista (opcional), % desconto, % comissão e o checkbox
+      "imperdível". Nunca é apagada por `sincronizar_ofertas()` (que só
+      mexe em `Oferta`) - fica até alguém remover no admin.
+- [x] **Fórmula de cashback compartilhada** — extraído
+      `_CashbackEstimadoMixin` de dentro de `Oferta` (mesma matemática,
+      zero duplicação) - `OfertaManual` usa `preco_avista` (ou `preco_novo`
+      se não preenchido) como base, `Oferta` continua usando `preco_min`.
+- [x] **`selecionar_carrossel_home()`** (`ofertas/services.py`) — ofertas
+      manuais entram primeiro (mais recentes primeiro), preenchendo o
+      resto das vagas com as mais vendidas do catálogo sincronizado. Sem
+      limite de manuais: se houver mais que o tamanho do carrossel, todas
+      aparecem (ele cresce). A "Oferta do dia" (destaque) nunca vem de uma
+      manual, só do catálogo sincronizado, como sempre foi.
+- [x] **`ir_para_oferta_manual`** (`ofertas/views.py` + `ofertas_manual_ir`
+      em `urls.py`) — mesmo fluxo de clique/gerar link de
+      `ir_para_oferta`, com `Click.TIPO_VITRINE` (mesma origem "vitrine de
+      ofertas" das ofertas sincronizadas - ver Fase 27); erro redireciona
+      pra home (não pra `/ofertas/`, já que só aparece lá).
+- [x] **`OfertaManualAdmin`** — cadastro padrão do Django, com um campo
+      readonly "Cashback calculado" mostrando o % e o R$ resultante (só
+      atualiza depois de salvar, sem JS ao vivo - é uma property Python).
+- [x] **`ofertas/_card.html`** — selo "🔥 Oferta imperdível" + borda
+      destacada quando `imperdivel=True`; preço riscado/novo quando
+      `preco_antigo` preenchido; linha "à vista" quando `preco_avista`
+      preenchido - tudo condicional, então o card das ofertas sincronizadas
+      (sem esses campos) continua exatamente igual.
+
+Suite completa (190 testes) verde; conferido visualmente com Playwright
+(formulário do admin, lista com o cashback calculado, e o card no
+carrossel da home com o selo, borda e preços).
+
+---
+
 Pra continuar esse roadmap numa conversa nova, basta apontar esse arquivo
 (`ROADMAP.md`) e o `BRAND.md` — juntos eles dão o contexto de identidade
 visual e do que falta implementar, sem precisar reconstruir o histórico da

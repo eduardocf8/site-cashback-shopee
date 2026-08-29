@@ -2,9 +2,59 @@ from decimal import Decimal
 
 from django.conf import settings
 from django.db import models
+from django.urls import reverse
 
 
-class Oferta(models.Model):
+class _CashbackEstimadoMixin:
+    """Fórmulas de cashback estimado compartilhadas entre Oferta (sincronizada com a
+    Shopee) e OfertaManual (cadastrada à mão no admin) - mesma matemática usada de
+    verdade em pedidos/services.py (comissão x repasse do site, com teto por produto).
+    Cada subclasse só precisa expor `percentual_comissao` e `preco_base_cashback`."""
+
+    @property
+    def _percentual_cashback_bruto(self) -> Decimal:
+        """% de cashback sobre o preço, sem aplicar o teto por produto."""
+        repasse = (
+            Decimal(str(settings.SHOPEE_CASHBACK_PERCENTUAL))
+            / Decimal("100")
+            * Decimal(str(settings.CASHBACK_MULTIPLICADOR_CAMPANHA))
+        )
+        return self.percentual_comissao * Decimal("100") * repasse
+
+    @property
+    def _limite_por_produto(self) -> Decimal:
+        """Teto por produto vigente, já com o multiplicador de campanha - numa campanha
+        de cashback em dobro o teto dobra junto. Usa o multiplicador atual (e não um
+        congelado) porque aqui é estimativa de uma compra que ainda vai acontecer."""
+        return Decimal(str(settings.CASHBACK_MAXIMO_POR_PRODUTO)) * Decimal(
+            str(settings.CASHBACK_MULTIPLICADOR_CAMPANHA)
+        )
+
+    @property
+    def valor_cashback_estimado(self) -> Decimal:
+        """Estimativa em R$ do cashback, já limitada ao teto por produto - mesmo teto
+        aplicado de verdade em pedidos/services.py, pra nunca mostrar um valor diferente
+        do que é pago."""
+        valor_bruto = self.preco_base_cashback * self._percentual_cashback_bruto / Decimal("100")
+        return min(valor_bruto, self._limite_por_produto).quantize(Decimal("0.01"))
+
+    @property
+    def percentual_cashback(self) -> Decimal:
+        """% de cashback exibida - já reduzida quando valor_cashback_estimado bate no
+        teto por produto, pra badge (%) e valor (R$) sempre baterem um com o outro."""
+        if not self.preco_base_cashback:
+            return self._percentual_cashback_bruto.quantize(Decimal("0.1"))
+        return (self.valor_cashback_estimado / self.preco_base_cashback * Decimal("100")).quantize(Decimal("0.1"))
+
+    @property
+    def cashback_no_limite(self) -> bool:
+        """True quando o teto por produto reduziu o cashback abaixo do que a comissão
+        real permitiria - usado pra mostrar um aviso de transparência no site."""
+        valor_bruto = self.preco_base_cashback * self._percentual_cashback_bruto / Decimal("100")
+        return valor_bruto > self._limite_por_produto
+
+
+class Oferta(_CashbackEstimadoMixin, models.Model):
     item_id = models.BigIntegerField("ID do produto na Shopee", unique=True)
     nome = models.CharField(max_length=255)
     nome_curto = models.CharField(
@@ -38,49 +88,12 @@ class Oferta(models.Model):
         return f"{self.nome} (R$ {self.preco_min}–{self.preco_max})"
 
     @property
-    def _percentual_cashback_bruto(self) -> Decimal:
-        """% de cashback sobre o preço, sem aplicar o teto por produto - mesma fórmula
-        usada de verdade em pedidos/services.py (comissão x repasse do site), antes do
-        min() com CASHBACK_MAXIMO_POR_PRODUTO."""
-        repasse = (
-            Decimal(str(settings.SHOPEE_CASHBACK_PERCENTUAL))
-            / Decimal("100")
-            * Decimal(str(settings.CASHBACK_MULTIPLICADOR_CAMPANHA))
-        )
-        return self.percentual_comissao * Decimal("100") * repasse
+    def preco_base_cashback(self) -> Decimal:
+        return self.preco_min
 
     @property
-    def _limite_por_produto(self) -> Decimal:
-        """Teto por produto vigente, já com o multiplicador de campanha - numa campanha
-        de cashback em dobro o teto dobra junto, igual a pedidos/services.py. Usa o
-        multiplicador atual (e não um congelado) porque aqui é estimativa de uma compra
-        que ainda vai acontecer, então vale o que estiver valendo na hora da compra."""
-        return Decimal(str(settings.CASHBACK_MAXIMO_POR_PRODUTO)) * Decimal(
-            str(settings.CASHBACK_MULTIPLICADOR_CAMPANHA)
-        )
-
-    @property
-    def valor_cashback_estimado(self) -> Decimal:
-        """Estimativa em R$ do cashback sobre o preço mínimo, já limitada ao teto por
-        produto - mesmo teto aplicado de verdade em pedidos/services.py, pra nunca
-        mostrar um valor diferente do que é pago."""
-        valor_bruto = self.preco_min * self._percentual_cashback_bruto / Decimal("100")
-        return min(valor_bruto, self._limite_por_produto).quantize(Decimal("0.01"))
-
-    @property
-    def percentual_cashback(self) -> Decimal:
-        """% de cashback exibida - já reduzida quando valor_cashback_estimado bate no
-        teto por produto, pra badge (%) e valor (R$) sempre baterem um com o outro."""
-        if not self.preco_min:
-            return self._percentual_cashback_bruto.quantize(Decimal("0.1"))
-        return (self.valor_cashback_estimado / self.preco_min * Decimal("100")).quantize(Decimal("0.1"))
-
-    @property
-    def cashback_no_limite(self) -> bool:
-        """True quando o teto por produto reduziu o cashback abaixo do que a comissão
-        real permitiria - usado pra mostrar um aviso de transparência no site."""
-        valor_bruto = self.preco_min * self._percentual_cashback_bruto / Decimal("100")
-        return valor_bruto > self._limite_por_produto
+    def url_ir(self) -> str:
+        return reverse("ofertas_ir", args=[self.id])
 
 
 class CashbackMaximoCache(models.Model):
@@ -119,3 +132,53 @@ class NomeCurtoCache(models.Model):
 
     def __str__(self):
         return f"{self.nome_original} -> {self.nome_curto}"
+
+
+class OfertaManual(_CashbackEstimadoMixin, models.Model):
+    """Oferta cadastrada à mão no admin (não vem do catálogo sincronizado com a
+    Shopee). Entra no carrossel "Ofertas em alta" da home, ocupando vaga antes das
+    ofertas mais vendidas - ver ofertas/services.py::selecionar_carrossel_home. Nunca é
+    apagada por sincronizar_ofertas() (que só mexe em Oferta), fica até alguém remover
+    aqui no admin."""
+
+    product_link = models.URLField("Link do produto na Shopee")
+    nome = models.CharField(max_length=255)
+    imagem_url = models.URLField("URL da imagem do produto")
+    preco_antigo = models.DecimalField(
+        "Preço antigo", max_digits=10, decimal_places=2, help_text="Preço original, exibido riscado."
+    )
+    preco_novo = models.DecimalField("Preço novo", max_digits=10, decimal_places=2)
+    preco_avista = models.DecimalField(
+        "Preço à vista (com desconto)", max_digits=10, decimal_places=2, null=True, blank=True,
+        help_text="Ex: preço no Pix/boleto, se for menor que o preço novo. Opcional - "
+        "usado como base do cashback quando preenchido (senão usa o preço novo).",
+    )
+    percentual_desconto = models.PositiveIntegerField(
+        "% de desconto", default=0, blank=True, help_text="Desconto mostrado no selo do card, ex: 10 representa 10%."
+    )
+    percentual_comissao = models.DecimalField(
+        "% de comissão", max_digits=5, decimal_places=4,
+        help_text="% de comissão desse produto (ex: 0.0500 representa 5%) - confira no seu extrato de "
+        "afiliado ou no app da Shopee. O % de cashback exibido é calculado a partir daqui, igual às "
+        "ofertas sincronizadas.",
+    )
+    imperdivel = models.BooleanField(
+        "Oferta imperdível", default=False, help_text="Mostra um selo de destaque no card, no carrossel da home."
+    )
+    criado_em = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        verbose_name = "Oferta manual"
+        verbose_name_plural = "Ofertas manuais"
+        ordering = ["-criado_em"]
+
+    def __str__(self):
+        return f"{self.nome} (R$ {self.preco_novo})"
+
+    @property
+    def preco_base_cashback(self) -> Decimal:
+        return self.preco_avista or self.preco_novo
+
+    @property
+    def url_ir(self) -> str:
+        return reverse("ofertas_manual_ir", args=[self.id])

@@ -7,7 +7,7 @@ from django.contrib.auth import get_user_model
 from django.test import TestCase, override_settings
 from django.urls import reverse
 
-from ofertas.models import CashbackMaximoCache
+from ofertas.models import CashbackMaximoCache, OfertaManual
 
 from .models import Click
 from .shopee_client import (
@@ -175,3 +175,22 @@ class HomeCashbackMaximoTests(TestCase):
 
         self.assertEqual(resposta.context["cashback_percentual_maximo"], Decimal("10.0"))
         self.assertContains(resposta, "até 10%")
+
+
+class HomeCarrosselOfertaManualTests(TestCase):
+    def test_oferta_manual_aparece_no_carrossel_com_selo_imperdivel(self):
+        OfertaManual.objects.create(
+            product_link="https://shopee.com.br/produto-manual-i.1.1",
+            nome="Produto imperdível", imagem_url="https://exemplo.com/img.jpg",
+            preco_antigo=Decimal("100.00"), preco_novo=Decimal("80.00"),
+            percentual_comissao=Decimal("0.10"), imperdivel=True,
+        )
+
+        resposta = self.client.get(reverse("home"))
+
+        nomes_carrossel = [oferta.nome for oferta in resposta.context["ofertas_em_alta"]]
+        self.assertIn("Produto imperdível", nomes_carrossel)
+        self.assertContains(resposta, "Produto imperdível")
+        self.assertContains(resposta, "Oferta imperdível")
+        self.assertContains(resposta, "R$ 100,00")  # preço antigo riscado
+        self.assertContains(resposta, reverse("ofertas_manual_ir", args=[OfertaManual.objects.get().id]))

@@ -1,6 +1,6 @@
 from django.contrib import admin
 
-from .models import CashbackMaximoCache, NomeCurtoCache, Oferta
+from .models import CashbackMaximoCache, NomeCurtoCache, Oferta, OfertaManual
 
 
 @admin.register(Oferta)
@@ -31,6 +31,39 @@ class NomeCurtoCacheAdmin(admin.ModelAdmin):
 
     def has_add_permission(self, request):
         return False
+
+
+@admin.register(OfertaManual)
+class OfertaManualAdmin(admin.ModelAdmin):
+    list_display = (
+        "nome",
+        "preco_novo",
+        "percentual_comissao",
+        "preview_cashback",
+        "imperdivel",
+        "criado_em",
+    )
+    list_filter = ("imperdivel",)
+    search_fields = ("nome",)
+    readonly_fields = ("preview_cashback",)
+    fields = (
+        "product_link",
+        "nome",
+        "imagem_url",
+        "preco_antigo",
+        "preco_novo",
+        "preco_avista",
+        "percentual_desconto",
+        "percentual_comissao",
+        "preview_cashback",
+        "imperdivel",
+    )
+
+    @admin.display(description="Cashback calculado")
+    def preview_cashback(self, obj):
+        if not obj.percentual_comissao:
+            return "—"
+        return f"{obj.percentual_cashback}% (R$ {obj.valor_cashback_estimado} de volta)"
 
 
 @admin.register(CashbackMaximoCache)

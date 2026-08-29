@@ -14,7 +14,7 @@ from links.shopee_client import buscar_ofertas_produtos
 
 from . import gemini_client
 from .gemini_client import GeminiAPIError, GeminiConfigError
-from .models import CashbackMaximoCache, NomeCurtoCache, Oferta
+from .models import CashbackMaximoCache, NomeCurtoCache, Oferta, OfertaManual
 
 logger = logging.getLogger(__name__)
 
@@ -229,6 +229,24 @@ def selecionar_top_ofertas_sem_duplicar(quantidade: int) -> list[Oferta]:
         if len(selecionadas) >= quantidade:
             break
     return selecionadas
+
+
+def selecionar_carrossel_home(quantidade_carrossel: int) -> tuple[Oferta | None, list]:
+    """Oferta destaque (a mais vendida) + lista pro carrossel "Ofertas em alta" da home.
+
+    O carrossel prioriza as ofertas manuais cadastradas no admin (as mais recentes
+    primeiro - ver OfertaManual.Meta.ordering), completando as vagas restantes com as
+    mais vendidas do catálogo sincronizado. Sem limite de ofertas manuais: se houver
+    mais do que `quantidade_carrossel`, todas aparecem mesmo assim (o carrossel cresce
+    em vez de descartar alguma). A oferta destaque nunca vem de uma oferta manual - só
+    do catálogo sincronizado, igual sempre foi.
+    """
+    ofertas_manuais = list(OfertaManual.objects.all())
+    vagas_organicas = max(quantidade_carrossel - len(ofertas_manuais), 0)
+    top_organicas = selecionar_top_ofertas_sem_duplicar(1 + vagas_organicas)
+    oferta_destaque = top_organicas[0] if top_organicas else None
+    ofertas_em_alta = ofertas_manuais + top_organicas[1:]
+    return oferta_destaque, ofertas_em_alta
 
 
 def categorias_mais_vendidas(quantidade: int) -> list[dict]:

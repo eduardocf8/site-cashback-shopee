@@ -1,4 +1,5 @@
-<div class="oferta-cartao">
+<div class="oferta-cartao{% if oferta.imperdivel %} imperdivel{% endif %}">
+    {% if oferta.imperdivel %}<div class="selo-imperdivel">🔥 Oferta imperdível</div>{% endif %}
     <div class="imagem">
         {% if oferta.percentual_desconto %}
             <span class="desconto">-{{ oferta.percentual_desconto }}%</span>
@@ -14,12 +15,18 @@
         <div class="categoria">{{ oferta.categoria_nome|default:"—" }}</div>
         <div class="nome">{{ oferta.nome_curto|default:oferta.nome }}</div>
         <div class="preco">
-            {% if oferta.preco_min != oferta.preco_max %}
+            {% if oferta.preco_antigo %}
+                <span class="preco-riscado">R$ {{ oferta.preco_antigo|floatformat:2 }}</span>
+                R$ {{ oferta.preco_novo|floatformat:2 }}
+            {% elif oferta.preco_min != oferta.preco_max %}
                 R$ {{ oferta.preco_min|floatformat:2 }} – R$ {{ oferta.preco_max|floatformat:2 }}
             {% else %}
                 R$ {{ oferta.preco_min|floatformat:2 }}
             {% endif %}
         </div>
+        {% if oferta.preco_avista %}
+            <div class="preco-avista">ou R$ {{ oferta.preco_avista|floatformat:2 }} à vista</div>
+        {% endif %}
         {% if oferta.percentual_cashback %}
             <div class="cashback-valor">
                 Receba R$ {{ oferta.valor_cashback_estimado|floatformat:2 }} de cashback
@@ -27,5 +34,5 @@
             </div>
         {% endif %}
     </div>
-    <a class="botao-cta" href="{% url 'ofertas_ir' oferta.id %}">Ir pra oferta</a>
+    <a class="botao-cta" href="{{ oferta.url_ir }}">Ir pra oferta</a>
 </div>
