@@ -47,11 +47,35 @@ class OrdenarPorCashbackTests(TestCase):
         nomes = [oferta.nome for oferta in resposta.context["ofertas"]]
         self.assertEqual(nomes, ["Comissão alta", "Comissão média", "Comissão baixa"])
 
+    def test_ordena_por_maior_cashback_em_reais_diferente_do_percentual(self):
+        # Preço e comissão desenhados pra dar ordens DIFERENTES entre % e R$, provando
+        # que são duas ordenações de fato distintas, não a mesma coisa disfarçada:
+        # - "Caro comissão baixa": 2% de R$1000 = R$20 (menor % da tabela, maior R$)
+        # - "Barato comissão alta": 10% de R$100 = R$10 (maior % da tabela, menor R$)
+        Oferta.objects.create(
+            item_id=10, nome="Caro comissão baixa", categoria_id=1,
+            product_link="https://shopee.com.br/produto-10-i.10.10",
+            preco_min=Decimal("1000.00"), percentual_comissao=Decimal("0.02"), vendas=1,
+        )
+        Oferta.objects.create(
+            item_id=11, nome="Barato comissão alta", categoria_id=1,
+            product_link="https://shopee.com.br/produto-11-i.11.11",
+            preco_min=Decimal("100.00"), percentual_comissao=Decimal("0.10"), vendas=1,
+        )
+
+        resposta = self.client.get(reverse("ofertas_lista"), {"ordenar": "maior_cashback_reais"})
+
+        nomes = [oferta.nome for oferta in resposta.context["ofertas"]]
+        indice_caro = nomes.index("Caro comissão baixa")
+        indice_barato = nomes.index("Barato comissão alta")
+        self.assertLess(indice_caro, indice_barato)
+
     def test_maior_cashback_aparece_nas_opcoes_de_ordenacao(self):
         resposta = self.client.get(reverse("ofertas_lista"))
 
         valores = [valor for valor, _rotulo in resposta.context["ordenacoes"]]
         self.assertIn("maior_cashback", valores)
+        self.assertIn("maior_cashback_reais", valores)
 
 
 class MontarOfertaTests(TestCase):

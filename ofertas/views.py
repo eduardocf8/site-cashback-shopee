@@ -2,6 +2,7 @@ import requests
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
 from django.core.paginator import Paginator
+from django.db.models import F
 from django.shortcuts import get_object_or_404, redirect, render
 
 from links.models import Click
@@ -17,13 +18,15 @@ ITENS_POR_PAGINA = 24
 ORDENACOES = {
     "vendidos": "-vendas",
     "maior_cashback": "-percentual_comissao",
+    "maior_cashback_reais": "-cashback_reais",  # precisa de annotate, ver lista()
     "menor_preco": "preco_min",
     "maior_preco": "-preco_min",
     "maior_desconto": "-percentual_desconto",
 }
 ORDENACOES_ROTULOS = {
     "vendidos": "Mais vendidos",
-    "maior_cashback": "Maior cashback",
+    "maior_cashback": "Maior cashback (%)",
+    "maior_cashback_reais": "Maior cashback (R$)",
     "menor_preco": "Menor preço",
     "maior_preco": "Maior preço",
     "maior_desconto": "Maior desconto",
@@ -43,6 +46,12 @@ def lista(request):
     if busca:
         ofertas = ofertas.filter(nome__icontains=busca)
 
+    if ordenacao == "maior_cashback_reais":
+        # valor_cashback_estimado (property em Python) = preco_min x percentual_comissao
+        # x repasse - repasse é constante pra todo mundo na mesma consulta, então
+        # ordenar por preco_min x percentual_comissao dá a mesma ordem, direto no banco
+        # (sem precisar calcular item por item em Python, ver Fase 31 do ROADMAP).
+        ofertas = ofertas.annotate(cashback_reais=F("preco_min") * F("percentual_comissao"))
     ofertas = ofertas.order_by(ORDENACOES[ordenacao])
 
     pagina_ofertas = Paginator(ofertas, ITENS_POR_PAGINA).get_page(request.GET.get("pagina"))

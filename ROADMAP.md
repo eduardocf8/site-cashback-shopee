@@ -822,6 +822,33 @@ Suite completa (212 testes) verde.
 
 ---
 
+## Fase 32 — Ordenar a vitrine por maior cashback em R$ ✅
+
+Usuário pediu uma segunda ordenação na vitrine de ofertas: além de "maior
+cashback" por %, agora também por valor em R$ - as duas dão ordens
+diferentes (produto caro com % baixo pode valer mais em R$ que um barato com
+% alto).
+
+- [x] **`maior_cashback_reais`** em `ORDENACOES`/`ORDENACOES_ROTULOS`
+      (`ofertas/views.py`) - rótulos existentes renomeados pra "Maior
+      cashback (%)" e "Maior cashback (R$)", pra distinguir as duas.
+- [x] Ordenado direto no banco via `annotate(cashback_reais=F("preco_min") *
+      F("percentual_comissao"))` - `valor_cashback_estimado` (a property
+      real) multiplica esses dois campos por um repasse que é constante pra
+      toda a consulta, então a ordem bate sem precisar calcular a property
+      item por item em Python (mesma simplificação da Fase 31).
+- [x] Corrigido `instagram_bot/conteudo.py::ORDENACAO_MAIOR_CASHBACK`
+      ("Maior cashback" → "Maior cashback (%)") - o rótulo usado no
+      passo a passo do story pra ensinar a ordenar na vitrine, pra continuar
+      batendo com a opção real do dropdown (um teste já existente
+      (`test_passo_a_passo_usa_o_rotulo_real_da_vitrine`) pegou a
+      divergência sozinho).
+
+Suite completa (213 testes) verde; conferido visualmente com Playwright as
+duas ordenações dando ordens opostas com os mesmos dois produtos de teste.
+
+---
+
 Pra continuar esse roadmap numa conversa nova, basta apontar esse arquivo
 (`ROADMAP.md`) e o `BRAND.md` — juntos eles dão o contexto de identidade
 visual e do que falta implementar, sem precisar reconstruir o histórico da

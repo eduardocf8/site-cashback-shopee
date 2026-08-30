@@ -315,7 +315,7 @@ def a_conta_de_uma_oferta() -> "dict | None":
 
 # Rótulo exato da ordenação na vitrine (ver ofertas/views.py, ORDENACOES_ROTULOS) - se
 # mudar lá, o passo a passo do story passa a ensinar um caminho que não existe mais.
-ORDENACAO_MAIOR_CASHBACK = "Maior cashback"
+ORDENACAO_MAIOR_CASHBACK = "Maior cashback (%)"
 
 
 def como_achar_na_vitrine() -> dict:
