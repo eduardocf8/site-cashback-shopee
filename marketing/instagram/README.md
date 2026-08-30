@@ -213,6 +213,93 @@ original da Shopee) - é só 1 produto, então não valia a complexidade
 extra pra um encurtamento que o layout já trunca em 2 linhas de
 qualquer forma.
 
+### Botão "Criar story" nas ofertas curadas à mão (2026-08-29)
+
+Pras ofertas já cadastradas no admin como "Oferta manual" (carrossel
+"Ofertas em alta" da home) ou "Oferta do dia (destaque manual)" - ver
+`ofertas/models.py`, `OfertaManual`/`OfertaDestaqueManual` - tem um jeito
+de postar story delas sem passar pelo comando acima nem digitar o link
+de novo:
+
+- **Oferta manual**: na lista do admin, seleciona uma ou mais e usa a
+  ação **"Criar story dessa(s) oferta(s) e mandar pra aprovação"**.
+- **Oferta do dia (destaque manual)**: na tela de edição (é singleton,
+  não tem lista - ver docstring de `OfertaDestaqueManualAdmin`), botão
+  **"Criar story e mandar pra aprovação"** no canto superior direito.
+
+Diferença importante pro comando `postar_oferta_especifica`: esse botão
+**não busca nada na Shopee** - usa exatamente o preço/desconto/comissão
+já digitados naquele registro do admin, pra bater com o que já está
+publicado no site pra essa mesma oferta (o comando, em vez disso, busca
+os dados atuais na API a partir do link). `_OfertaCuradaBase` (base
+comum dos dois models) ganhou 4 properties só pra isso funcionar -
+`nome_curto`/`preco_min`/`categoria_id`/`item_id` - fazendo a oferta
+curada "passar por" `Oferta` (o model do catálogo sincronizado) sem
+duplicar o gerador de imagem nem o fluxo de aprovação. Mesmo
+`CONTEUDO_OFERTA_DIARIA`/limite diário/janela de 7 dias do resto.
+
+## Cron Jobs do Render (2026-08-28)
+
+✅ **Criados e testados em produção em 2026-08-29** - os 4 disparados
+manualmente pelo dashboard (aba "Trigger Run"/logs), todos retornando
+`200` e fazendo o esperado: `cron-stories-oferta` gerou um story
+pendente de aprovação, `cron-instagram-diario` confirmou a correção do
+teto de cashback (produto diferente da bicicleta, sem bater no teto),
+`cron-encurtar-nomes` processou 1550 ofertas, `cron-tarefas-financeiras`
+sincronizou pedidos/ofertas normalmente. Só falta observar o disparo
+automático (pelo `schedule` de cada um) acontecer sozinho no horário
+certo, sem precisar de disparo manual.
+
+Os agendamentos automáticos (tarefa financeira, publicações do Instagram,
+stories de oferta) saíram do GitHub Actions e viraram **Cron Jobs do
+Render**. Motivo: o agendador gratuito do GitHub Actions atrasava demais
+pra esse repositório - às vezes várias horas (ver "Troubleshooting"
+abaixo pra detalhes do diagnóstico). Os workflows
+(`.github/workflows/tarefas-diarias.yml`, `instagram-diario.yml`,
+`stories-oferta.yml`) continuam no repositório, mas sem `schedule` - só
+`workflow_dispatch` pra disparo manual de emergência.
+
+Cada Cron Job chama `scripts/chamar_tarefa_agendada.py <caminho>` - um
+script standalone (não depende do Django, só de `requests` e da
+variável `TAREFAS_TOKEN`) que faz a chamada HTTP pro endereço de tarefa
+correspondente, com retry (3 tentativas, 15s de intervalo). Fica fora do
+Django de propósito: um Cron Job só precisa fazer 1 chamada HTTP, não
+vale a pena configurar todas as variáveis de ambiente do app (banco,
+chaves de API) só pra isso.
+
+**Os 4 Cron Jobs** (criados manualmente no dashboard do Render - Blueprint
+`render.yaml` não foi usado de propósito, pra não arriscar afetar os
+serviços existentes caso eles não tenham sido criados originalmente a
+partir de um blueprint):
+
+| Nome | Horário (UTC) | Horário (Brasília) | Build Command | Start Command |
+|---|---|---|---|---|
+| `cron-tarefas-financeiras` | `0 6 * * *` | 03:00 | `pip install requests` | `python3 scripts/chamar_tarefa_agendada.py /tarefas/executar/` |
+| `cron-encurtar-nomes` | `10 6 * * *` | 03:10 | `pip install requests` | `python3 scripts/chamar_tarefa_agendada.py /tarefas/encurtar-nomes/` |
+| `cron-instagram-diario` | `0 14 * * *` | 11:00 | `pip install requests` | `python3 scripts/chamar_tarefa_agendada.py /tarefas/publicar-instagram/` |
+| `cron-stories-oferta` | `0 11,13,18,21,23 * * *` | 08h, 10h, 15h, 18h, 20h | `pip install requests` | `python3 scripts/chamar_tarefa_agendada.py /tarefas/postar-story-oferta/` |
+
+`cron-stories-oferta` simplificou os horários de propósito (antes eram
+09:00/11:30/14:00/16:30/19:00 BRT, com minutos quebrados pra evitar o
+topo da hora - truque que só fazia sentido pro agendador do GitHub, não
+pro Render) e mudou pro novo horário pedido (08h, 10h, 15h, 18h, 20h) -
+1 Cron Job só, 5 horários no mesmo campo `schedule` (cron padrão aceita
+lista separada por vírgula no campo de hora).
+
+`cron-encurtar-nomes` roda 10 minutos depois de `cron-tarefas-financeiras`
+de propósito - mesmo motivo de sempre terem sido chamadas HTTP separadas
+(ver comentário em `tarefas-diarias.yml`): a sincronização com a Shopee
+sozinha já usa boa parte do orçamento de 120s antes do timeout do
+gunicorn, então enfileirar o encurtamento via Gemini atrás dela na mesma
+chamada estourava o timeout quase toda vez. 10 minutos é folga de sobra
+pra tarefa financeira terminar antes.
+
+**Configuração de cada Cron Job** (dashboard do Render → New → Cron Job):
+- Repositório/branch: os mesmos do serviço web.
+- Environment: variável `TAREFAS_TOKEN` com o mesmo valor já configurado
+  no serviço web (Render → serviço web → Environment → copiar o valor).
+- Runtime: Python 3 (mesmo runtime do serviço web).
+
 ## Automação de comentários e DM
 
 Virou um app à parte (`automacao_instagram/`), com seu próprio histórico de
@@ -400,6 +487,30 @@ só então chama `/media_publish`. É o fluxo que a própria documentação da
 Meta recomenda pra publicação de mídia.
 
 Sources: [Media ID is not available - Meta for Developers Community](https://developers.facebook.com/community/threads/1958342851674113/)
+
+### Agendamentos atrasando várias horas (2026-08-27/28)
+
+Depois de tudo funcionando, os e-mails de aprovação pararam de chegar
+nos horários esperados. Diagnóstico: comparar o histórico de execuções
+dos 3 workflows (`stories-oferta.yml`, `instagram-diario.yml`,
+`tarefas-diarias.yml`) via API do GitHub Actions - cada um tem cron
+diferente, então se os 3 estivessem igualmente atrasados (não só 1),
+seria sinal de problema do lado do GitHub, não de algo específico de um
+workflow. Foi exatamente isso: os 3 apareceram atrasados, um chegou a
+rodar **11h depois** do horário programado.
+
+**Causa**: o agendador gratuito do GitHub Actions não garante o horário
+exato - a própria documentação deles registra que pode atrasar (mais em
+horário de pico, ex: topo da hora), e não é algo que dá pra configurar
+pra corrigir. Não é bug em código nenhum daqui.
+
+**Correção**: migrado pra Cron Job do Render (ver seção "Cron Jobs do
+Render" acima) - roda na mesma infra que já hospeda o site, sem
+depender do agendador compartilhado e gratuito do GitHub.
+
+**Enquanto não migra** (ou se precisar de novo por qualquer motivo): dá
+pra disparar manualmente pela aba Actions do GitHub (ou via API,
+`workflow_dispatch`) sem esperar o agendador.
 
 ## Posts de semeadura (pasta `posts-semeadura/`)
 

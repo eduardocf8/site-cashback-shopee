@@ -173,6 +173,28 @@ class _OfertaCuradaBase(_CashbackEstimadoMixin, models.Model):
     def preco_base_cashback(self) -> Decimal:
         return self.preco_avista or self.preco_novo
 
+    # Aliases pra reaproveitar instagram_bot/templates_imagem.py::gerar_imagem_oferta_story
+    # e instagram_bot/services.py::_publicar_story_de_oferta sem duplicar - esses dois
+    # foram escritos pro catálogo sincronizado (Oferta) e esperam esses nomes/campos, que
+    # uma oferta curada à mão não tem por natureza (não veio da sincronização com item_id
+    # nem categoria, e não passa pelo encurtamento via Gemini que gera nome_curto). Ver
+    # "Criar story" em ofertas/admin.py.
+    @property
+    def nome_curto(self) -> str:
+        return self.nome
+
+    @property
+    def preco_min(self) -> Decimal:
+        return self.preco_base_cashback
+
+    @property
+    def categoria_id(self):
+        return None
+
+    @property
+    def item_id(self):
+        return None
+
 
 class OfertaManual(_OfertaCuradaBase):
     """Entra no carrossel "Ofertas em alta" da home, ocupando vaga antes das ofertas
