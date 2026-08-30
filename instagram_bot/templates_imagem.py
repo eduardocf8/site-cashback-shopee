@@ -521,9 +521,10 @@ def gerar_imagem_numero_com_produto(
 ) -> Image.Image:
     """A foto do produto junto com o número que ele devolve.
 
-    Só o primeiro story do combo leva foto: repetir a mesma imagem em todos deixa a
-    sequência monótona, e o papel dela é abrir - dar cara ao número que vem depois.
-    Sem a foto o número fica abstrato ("8,4% de quê?"), com ela em todos vira catálogo.
+    Usado nos dois stories de número do combo diário (maior % e maior R$) - cada um
+    com a foto do seu próprio produto, já que podem ser produtos diferentes. Os outros
+    stories do combo (capa, conta, passos) não levam foto, pra não repetir imagem e
+    virar catálogo.
 
     Se a foto não baixar, cai no layout sem imagem em vez de falhar."""
     bg = bg or CORES["brand"]

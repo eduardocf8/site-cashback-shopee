@@ -86,48 +86,53 @@ class ComboDeStoriesTests(TestCase):
             percentual_comissao=Decimal("0.4200"), categoria_id=1,
         )
 
-    def test_sequencia_abre_com_produto_e_fecha_ensinando_o_caminho(self):
+    def test_sequencia_abre_com_capa_e_fecha_ensinando_o_caminho(self):
         combo = conteudo.combo_de_stories_do_dia()
 
         self.assertEqual(
             [s["formato"] for s in combo],
-            ["numero_com_produto", "conta", "passos"],
+            ["capa", "numero_com_produto", "conta", "numero_com_produto", "passos"],
         )
 
-    def test_produto_capado_nao_vira_o_maior_cashback_do_combo(self):
-        # combo_de_stories_do_dia() tem sua própria query, separada de
-        # maior_cashback_de_hoje() (ver ConteudoDoCatalogoTests) - mesmo bug, mesma
-        # correção precisa valer aqui também (caso real: bicicleta de R$700+ virando
-        # "o maior cashback de hoje" com 1,4% em vez do fone bluetooth, 8,4%).
+    def test_produto_com_maior_percentual_pode_ser_diferente_do_de_maior_valor(self):
+        # Bicicleta cara com % bem menor que o fone (2% x 8,4%), mas em R$ vale mais
+        # (R$14 x R$7,55) - os dois stories de número têm que escolher produtos
+        # diferentes nesse caso, cada um pela sua própria métrica.
         Oferta.objects.create(
             item_id=2, nome="Bicicleta MTB Aro 29", nome_curto="bicicleta",
             preco_min=Decimal("700.00"), preco_max=Decimal("700.00"),
-            percentual_comissao=Decimal("0.4200"), categoria_id=1,
+            percentual_comissao=Decimal("0.1000"), categoria_id=1,
         )
 
         combo = conteudo.combo_de_stories_do_dia()
 
-        self.assertEqual(combo[0]["numero"], "8,4%")
-        self.assertEqual(combo[0]["legenda_produto"], "fone bluetooth")
+        story_percentual, story_reais = combo[1], combo[3]
+        self.assertEqual(story_percentual["numero"], "8,4%")
+        self.assertEqual(story_percentual["legenda_produto"], "fone bluetooth")
+        self.assertEqual(story_reais["legenda_produto"], "bicicleta")
 
-    def test_so_o_primeiro_story_leva_foto(self):
-        # A foto abre e dá cara ao número; repetida nos três, a sequência vira catálogo.
+    def test_capa_conta_e_passos_nao_levam_foto(self):
+        # As fotos abrem cada bloco de número (% e R$); os outros três stories não
+        # levam, pra não repetir imagem e virar catálogo.
         combo = conteudo.combo_de_stories_do_dia()
 
-        self.assertEqual(combo[0]["imagem_url"], self.oferta.imagem_url)
-        self.assertNotIn("imagem_url", combo[1])
+        self.assertNotIn("imagem_url", combo[0])
+        self.assertEqual(combo[1]["imagem_url"], self.oferta.imagem_url)
         self.assertNotIn("imagem_url", combo[2])
+        self.assertEqual(combo[3]["imagem_url"], self.oferta.imagem_url)
+        self.assertNotIn("imagem_url", combo[4])
 
     def test_nome_do_produto_aparece_so_como_legenda_da_foto(self):
         """O nome vem do Gemini e às vezes é longo. Repetido no texto de apoio e no
-        título da conta, ocupava o espaço três vezes sem acrescentar nada - a foto já
-        diz do que se trata."""
+        título da conta, ocupava o espaço sem acrescentar nada - a foto já diz do que
+        se trata."""
         combo = conteudo.combo_de_stories_do_dia()
         nome = self.oferta.nome_curto
 
-        self.assertEqual(combo[0]["legenda_produto"], nome)
-        self.assertNotIn(nome, combo[0]["apoio"])
-        self.assertNotIn(nome, combo[1]["titulo"])
+        self.assertEqual(combo[1]["legenda_produto"], nome)
+        self.assertNotIn(nome, combo[1]["apoio"])
+        self.assertNotIn(nome, combo[2]["titulo"])
+        self.assertNotIn(nome, combo[3]["apoio"])
 
     def test_sem_catalogo_nao_monta_combo(self):
         Oferta.objects.all().delete()
@@ -142,18 +147,23 @@ class ComboDeStoriesTests(TestCase):
         self.assertTrue(passo_a_passo["link_bio"])
         self.assertNotIn("bio", passo_a_passo["rodape"].lower())
 
-    def test_passo_a_passo_usa_o_rotulo_real_da_vitrine(self):
-        """Trava o acoplamento com ofertas/views.py: o story ensina a ordenar por um
-        rótulo específico, e se alguém renomear a ordenação lá, o passo a passo passa a
-        mandar a pessoa procurar uma opção que não existe mais."""
+    def test_passo_a_passo_usa_os_rotulos_reais_da_vitrine(self):
+        """Trava o acoplamento com ofertas/views.py: o story ensina a ordenar por
+        rótulos específicos, e se alguém renomear alguma ordenação lá, o passo a passo
+        passa a mandar a pessoa procurar uma opção que não existe mais."""
         from ofertas.views import ORDENACOES_ROTULOS
 
         self.assertEqual(
             conteudo.ORDENACAO_MAIOR_CASHBACK,
             ORDENACOES_ROTULOS["maior_cashback"],
         )
+        self.assertEqual(
+            conteudo.ORDENACAO_MAIOR_CASHBACK_REAIS,
+            ORDENACOES_ROTULOS["maior_cashback_reais"],
+        )
         passos = conteudo.como_achar_na_vitrine()["passos"]
         self.assertTrue(any(conteudo.ORDENACAO_MAIOR_CASHBACK in p for p in passos))
+        self.assertTrue(any(conteudo.ORDENACAO_MAIOR_CASHBACK_REAIS in p for p in passos))
 
 
 class AlinhamentoDosPassosTests(TestCase):
@@ -257,10 +267,10 @@ class PublicacaoDoComboTests(TestCase):
                     conteudo.tipo_de_conteudo_do_dia(data),
                 )
 
-    def test_publica_os_tres_stories(self):
+    def test_publica_os_cinco_stories(self):
         registros = services.publicar_combo_de_stories(timezone.localdate(), self.request)
 
-        self.assertEqual(len(registros), 3)
+        self.assertEqual(len(registros), 5)
         for registro in registros:
             self.assertEqual(registro.tipo, RegistroPublicacao.TIPO_STORY)
             self.assertEqual(registro.conteudo_tipo, RegistroPublicacao.CONTEUDO_COMBO_DIARIO)
@@ -270,13 +280,13 @@ class PublicacaoDoComboTests(TestCase):
 
         self.assertEqual(services.publicar_combo_de_stories(timezone.localdate(), self.request), [])
 
-    def test_executor_diario_reporta_os_tres(self):
+    def test_executor_diario_reporta_os_cinco(self):
         """O executor esperava um registro por despachante; com o combo ele precisa
-        reportar os três, senão o retorno da tarefa esconde o que foi publicado."""
+        reportar os cinco, senão o retorno da tarefa esconde o que foi publicado."""
         resultados = services.executar_publicacoes_do_dia(self.request)
 
         do_combo = [r for r in resultados if r["conteudo_tipo"] == RegistroPublicacao.CONTEUDO_COMBO_DIARIO]
-        self.assertEqual(len(do_combo), 3)
+        self.assertEqual(len(do_combo), 5)
 
     def test_nao_republica_o_combo_no_mesmo_dia(self):
         services.executar_publicacoes_do_dia(self.request)

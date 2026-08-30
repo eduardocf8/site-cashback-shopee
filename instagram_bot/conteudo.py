@@ -313,77 +313,97 @@ def a_conta_de_uma_oferta() -> "dict | None":
     }
 
 
-# Rótulo exato da ordenação na vitrine (ver ofertas/views.py, ORDENACOES_ROTULOS) - se
-# mudar lá, o passo a passo do story passa a ensinar um caminho que não existe mais.
+# Rótulos exatos das duas ordenações na vitrine (ver ofertas/views.py,
+# ORDENACOES_ROTULOS) - se mudar lá, o passo a passo do story passa a ensinar um
+# caminho que não existe mais.
 ORDENACAO_MAIOR_CASHBACK = "Maior cashback (%)"
+ORDENACAO_MAIOR_CASHBACK_REAIS = "Maior cashback (R$)"
 
 
 def como_achar_na_vitrine() -> dict:
-    """O último story do combo: como chegar no produto que acabou de ser mostrado.
+    """O último story do combo: como chegar nos dois produtos que acabaram de ser
+    mostrados (o de maior % e o de maior R$).
 
     A API de stories do Instagram não aceita sticker de link, então o bot publica a
     imagem mas não consegue deixar nada clicável. Sem esse passo a passo, a pessoa vê um
     produto devolvendo 8% e não tem como chegar nele - os stories anteriores viram beco
-    sem saída. Ensinar a ordenação também vale por si: quem aprende a ordenar por maior
-    cashback volta sozinho depois."""
+    sem saída. Ensinar as duas ordenações também vale por si: quem aprende a ordenar
+    por maior cashback volta sozinho depois."""
     return {
-        "titulo": "Como achar esse produto",
+        "titulo": "Como achar esses produtos",
         "passos": [
             "Abra cash-b.com",
             "Toque em Ofertas",
-            f'Ordene por "{ORDENACAO_MAIOR_CASHBACK}"',
+            f'Ordene por "{ORDENACAO_MAIOR_CASHBACK}" ou "{ORDENACAO_MAIOR_CASHBACK_REAIS}"',
         ],
         # O "link na bio" sai daqui e vira elemento próprio no template (link_bio=True):
         # dentro da frase ele lê como parte da explicação, não como a ação a tomar.
-        "rodape": "Ele vai estar no topo da lista.",
+        "rodape": "Eles vão estar no topo da lista.",
         "link_bio": True,
     }
 
 
 def combo_de_stories_do_dia() -> "list[dict] | None":
-    """A sequência do dia: abre com a foto e o número, mostra a conta, e fecha ensinando
-    onde achar. Devolve None quando não há catálogo - ver o comentário no topo da seção.
+    """A sequência do dia: capa, produto com maior % de cashback + a conta dele em R$
+    (o % sozinho não mostra o valor), produto com maior cashback em R$ (esse já mostra
+    o R$ de cara, não precisa de conta), e por fim como achar os dois na vitrine.
+    Devolve None quando não há catálogo - ver o comentário no topo da seção.
 
-    Só o primeiro story leva foto do produto: ela serve pra abrir e dar cara ao número.
-    Repetida nos três, a sequência fica monótona e parece catálogo.
-
-    A escolha é por percentual_cashback (não valor_cashback_estimado) - o primeiro
-    story chama a oferta de "o maior cashback de hoje" e mostra o %, então escolher por
-    R$ e rotular como "%" descasa os dois (um produto caro pode ter o maior valor em R$
-    e ainda assim um % baixo)."""
+    % e R$ são escolhidos separadamente, de propósito - podem ser produtos diferentes:
+    um caro com % baixo pode valer mais em R$ que um barato com % alto (por isso a
+    vitrine também tem as duas ordenações, ver ofertas/views.py)."""
     from ofertas.models import Oferta
 
-    oferta = max(
+    oferta_percentual = max(
         Oferta.objects.exclude(preco_min=0)[:400],
         key=lambda o: o.percentual_cashback,
         default=None,
     )
-    if oferta is None:
+    if oferta_percentual is None:
         return None
 
-    nome = (oferta.nome_curto or oferta.nome).strip().rstrip(".")
-    volta = oferta.valor_cashback_estimado
-    # O nome do produto entra uma vez só, como legenda da foto: repetido no texto de
-    # apoio e no título da conta, ocupava o espaço três vezes sem acrescentar nada - a
+    oferta_reais = max(
+        Oferta.objects.exclude(preco_min=0)[:400],
+        key=lambda o: o.valor_cashback_estimado,
+        default=None,
+    )
+
+    nome_percentual = (oferta_percentual.nome_curto or oferta_percentual.nome).strip().rstrip(".")
+    nome_reais = (oferta_reais.nome_curto or oferta_reais.nome).strip().rstrip(".")
+    volta_percentual = oferta_percentual.valor_cashback_estimado
+    # O nome de cada produto entra uma vez só, como legenda da foto dele: repetido no
+    # texto de apoio ou no título da conta, ocupava o espaço sem acrescentar nada - a
     # foto já diz do que se trata, e o nome vindo do Gemini às vezes é longo.
     return [
         {
+            "formato": "capa",
+            "titulo": "Os maiores cashbacks de hoje",
+        },
+        {
             "formato": "numero_com_produto",
-            "numero": _formatar_percentual(oferta.percentual_cashback),
-            "rotulo": "o maior cashback de hoje",
+            "numero": _formatar_percentual(oferta_percentual.percentual_cashback),
+            "rotulo": "o maior % de cashback hoje",
             "apoio": "É quanto volta para você aproveitando essa oferta.",
-            "legenda_produto": nome,
-            "imagem_url": oferta.imagem_url,
+            "legenda_produto": nome_percentual,
+            "imagem_url": oferta_percentual.imagem_url,
         },
         {
             "formato": "conta",
             "titulo": "A conta do produto",
             "linhas": [
-                ("Preço na Shopee", _formatar_reais(oferta.preco_min)),
-                ("Volta pra você", _formatar_reais(volta)),
+                ("Preço na Shopee", _formatar_reais(oferta_percentual.preco_min)),
+                ("Volta pra você", _formatar_reais(volta_percentual)),
             ],
-            "destaque": ("Saiu por", _formatar_reais(oferta.preco_min - volta)),
+            "destaque": ("Saiu por", _formatar_reais(oferta_percentual.preco_min - volta_percentual)),
             "rodape": "Mesmo preço, mesma loja. A diferença é o que volta depois.",
+        },
+        {
+            "formato": "numero_com_produto",
+            "numero": _formatar_reais(oferta_reais.valor_cashback_estimado),
+            "rotulo": "o maior valor em R$ hoje",
+            "apoio": "É o que cai no seu saldo comprando essa oferta.",
+            "legenda_produto": nome_reais,
+            "imagem_url": oferta_reais.imagem_url,
         },
         {"formato": "passos", **como_achar_na_vitrine()},
     ]

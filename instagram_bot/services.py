@@ -370,10 +370,10 @@ def publicar_post_ofertas_semana(data, request) -> RegistroPublicacao | None:
 
 
 def publicar_combo_de_stories(data, request) -> list[RegistroPublicacao]:
-    """Publica a sequência do dia: abre com a foto e o número da melhor oferta, mostra a
-    conta e fecha ensinando como achar o produto na vitrine.
+    """Publica a sequência do dia: capa, a melhor oferta em % (com a conta em R$ dela),
+    a melhor oferta em R$, e por fim como achar as duas na vitrine.
 
-    É o único despachante que devolve mais de um registro - os três stories são um
+    É o único despachante que devolve mais de um registro - os cinco stories são um
     conteúdo só, e é por isso que _ja_processado_hoje continua bloqueando o dia inteiro
     com um único conteudo_tipo: ou o combo sai completo, ou não sai.
 
@@ -384,6 +384,10 @@ def publicar_combo_de_stories(data, request) -> list[RegistroPublicacao]:
         return []
 
     construtores = {
+        "capa": lambda s: gerar_imagem_texto_simples(
+            s["titulo"], bg=CORES["brand"], cor_texto=CORES["paper"], cor_acento=CORES["highlight"],
+            tamanho=(1080, 1920),
+        ),
         "numero_com_produto": lambda s: gerar_imagem_numero_com_produto(
             s["numero"], s["rotulo"], s["apoio"], s["imagem_url"],
             legenda_produto=s["legenda_produto"],

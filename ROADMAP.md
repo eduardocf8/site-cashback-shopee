@@ -849,6 +849,43 @@ duas ordenações dando ordens opostas com os mesmos dois produtos de teste.
 
 ---
 
+## Fase 33 — Combo diário do Instagram vira 5 stories (% e R$ separados) ✅
+
+Depois da Fase 32 (duas ordenações na vitrine), o combo diário de stories
+ainda só falava do maior cashback em %. Usuário pediu uma sequência de 5
+stories: capa → produto de maior % (com um segundo story mostrando a conta
+em R$, já que % sozinho não deixa claro o retorno) → produto de maior R$
+(esse já mostra o valor direto, sem precisar de conta) → passo a passo de
+como achar esses produtos, agora citando as duas ordenações que existem.
+
+- [x] **`combo_de_stories_do_dia()`** (`instagram_bot/conteudo.py`)
+      reestruturada de 3 pra 5 stories: capa (frase de efeito) →
+      número+produto do maior % → conta detalhada desse mesmo produto →
+      número+produto do maior R$ → passo a passo. Os dois produtos podem
+      ser diferentes (um preço baixo com % alto, outro caro com % baixo
+      mas R$ maior) - a consulta já buscava os dois separadamente, só a
+      montagem do combo não aproveitava isso ainda.
+- [x] **`ORDENACAO_MAIOR_CASHBACK_REAIS`** nova constante, ao lado da
+      `ORDENACAO_MAIOR_CASHBACK` já existente - `como_achar_na_vitrine()`
+      passou a citar as duas ordenações no passo a passo ("Ordene por
+      'Maior cashback (%)' ou 'Maior cashback (R$)'"), continuando
+      acoplada de propósito ao rótulo real do dropdown de `ofertas/views.py`
+      (mesmo teste de acoplamento da Fase 32 pegou uma divergência
+      esquecida durante essa implementação).
+- [x] **Story de capa novo** — usa `gerar_imagem_texto_simples()` (já
+      existia, reaproveitado sem mudança de assinatura) com um título tipo
+      "Os maiores cashbacks de hoje 💸", nas cores da marca.
+      (`instagram_bot/services.py::publicar_combo_de_stories`)
+- [x] Testes de `instagram_bot/tests.py` reescritos pra validar a
+      sequência de 5 stories, incluindo um cenário novo em que o produto
+      de maior % e o de maior R$ são produtos diferentes de propósito.
+
+Suite completa (213 testes) verde; conferidas visualmente as 5 imagens
+geradas (PIL, mesmas funções de `templates_imagem.py` usadas em produção)
+com dados de exemplo onde os dois produtos escolhidos divergem.
+
+---
+
 Pra continuar esse roadmap numa conversa nova, basta apontar esse arquivo
 (`ROADMAP.md`) e o `BRAND.md` — juntos eles dão o contexto de identidade
 visual e do que falta implementar, sem precisar reconstruir o histórico da
