@@ -100,10 +100,7 @@ def buscar_ofertas_produtos(pagina: int, limite: int = 50) -> dict:
     instável e por produto - mas confirmamos comparando com o painel oficial de
     afiliados da Shopee que ele já entra de fato no itemTotalCommission pago em vendas
     diretas reais (ver pedidos/services.py), então escondê-lo aqui só faria o site
-    prometer menos do que o usuário realmente recebe. O que protege contra prometer
-    "cashback infinito" num produto de comissão de campanha muito alta é o teto por
-    produto (CASHBACK_MAXIMO_POR_PRODUTO, aplicado em ofertas/models.py e
-    pedidos/services.py), não mais a exclusão desse campo.
+    prometer menos do que o usuário realmente recebe.
     """
     query = (
         "query{"

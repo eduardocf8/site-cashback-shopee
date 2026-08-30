@@ -142,14 +142,6 @@ CASHBACK_MAXIMO_ANUNCIADO = round(
     SHOPEE_CASHBACK_PERCENTUAL / 100 * SHOPEE_COMISSAO_VENDA_DIRETA * CASHBACK_MULTIPLICADOR_CAMPANHA, 2
 )
 
-# Teto de cashback em R$ por produto (não por pedido - um pedido com vários produtos
-# pode ter o teto aplicado várias vezes, um por item). Existe porque agora contamos a
-# comissão extra de campanha do vendedor no cálculo (ver SHOPEE_COMISSAO_VENDA_DIRETA
-# acima e links/shopee_client.py) - sem um teto, um produto com comissão de campanha
-# muito alta pagaria um cashback desproporcional ao preço. Usado em pedidos/services.py
-# (valor pago de verdade) e ofertas/models.py (estimativa mostrada no site).
-CASHBACK_MAXIMO_POR_PRODUTO = float(os.environ.get("CASHBACK_MAXIMO_POR_PRODUTO", "10"))
-
 # Multiplicador do programa "indique e ganhe": aplicado só ao pedido que dispara o
 # bônus (1ª compra validada do indicado, e a compra seguinte de quem indicou) - não é
 # um valor fixo em R$, dobra o cashback daquele pedido específico. Ver

@@ -378,7 +378,7 @@
                 <h1>Compre na Shopee.<br>Receba parte do dinheiro <span class="mark">de volta.</span></h1>
                 <p class="subtitulo">
                     Faça suas compras e receba até {{ cashback_percentual_maximo|floatformat:"-1" }}% de
-                    cashback (limitado a R$ {{ cashback_maximo_por_produto|floatformat:0 }} por produto).
+                    cashback, sem limite por produto.
                     Após atingir o saldo de R$ {{ saque_valor_minimo|floatformat:2 }}, saque via Pix.
                 </p>
                 <div class="conversor-hero" id="converter-link">
@@ -388,8 +388,8 @@
                         {{ form.url_produto }}
                         {% if form.url_produto.errors %}<div class="erros">{{ form.url_produto.errors|striptags }}</div>{% endif %}
                         <p class="estimativa-cashback" id="estimativa-cashback">
-                            💰 Essa compra pode gerar até {{ cashback_percentual_maximo|floatformat:"-1" }}% de cashback
-                            (limitado a R$ {{ cashback_maximo_por_produto|floatformat:0 }} por produto).
+                            💰 Essa compra pode gerar até {{ cashback_percentual_maximo|floatformat:"-1" }}% de cashback,
+                            sem limite por produto.
                         </p>
                         <button type="submit">Gerar link com cashback</button>
                     </form>
@@ -461,7 +461,6 @@
                         {% if oferta_destaque.percentual_cashback %}
                             <span class="destaque-cashback">
                                 + R$ {{ oferta_destaque.valor_cashback_estimado|floatformat:2 }} de volta ({{ oferta_destaque.percentual_cashback }}% cashback)
-                                {% if oferta_destaque.cashback_no_limite %}<span class="cashback-limite" title="Cashback limitado a R$ {{ cashback_maximo_por_produto|floatformat:0 }} por produto">(máximo por produto)</span>{% endif %}
                             </span>
                         {% endif %}
                     </div>

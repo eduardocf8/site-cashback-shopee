@@ -8,12 +8,14 @@ from django.urls import reverse
 class _CashbackEstimadoMixin:
     """Fórmulas de cashback estimado compartilhadas entre Oferta (sincronizada com a
     Shopee) e OfertaManual (cadastrada à mão no admin) - mesma matemática usada de
-    verdade em pedidos/services.py (comissão x repasse do site, com teto por produto).
-    Cada subclasse só precisa expor `percentual_comissao` e `preco_base_cashback`."""
+    verdade em pedidos/services.py: cashback é sempre uma fração fixa
+    (SHOPEE_CASHBACK_PERCENTUAL) da comissão recebida, sem teto em R$ - não tem como
+    pagar mais cashback do que a comissão que entra. Cada subclasse só precisa expor
+    `percentual_comissao` e `preco_base_cashback`."""
 
     @property
     def _percentual_cashback_bruto(self) -> Decimal:
-        """% de cashback sobre o preço, sem aplicar o teto por produto."""
+        """% de cashback sobre o preço."""
         repasse = (
             Decimal(str(settings.SHOPEE_CASHBACK_PERCENTUAL))
             / Decimal("100")
@@ -22,36 +24,19 @@ class _CashbackEstimadoMixin:
         return self.percentual_comissao * Decimal("100") * repasse
 
     @property
-    def _limite_por_produto(self) -> Decimal:
-        """Teto por produto vigente, já com o multiplicador de campanha - numa campanha
-        de cashback em dobro o teto dobra junto. Usa o multiplicador atual (e não um
-        congelado) porque aqui é estimativa de uma compra que ainda vai acontecer."""
-        return Decimal(str(settings.CASHBACK_MAXIMO_POR_PRODUTO)) * Decimal(
-            str(settings.CASHBACK_MULTIPLICADOR_CAMPANHA)
-        )
-
-    @property
     def valor_cashback_estimado(self) -> Decimal:
-        """Estimativa em R$ do cashback, já limitada ao teto por produto - mesmo teto
-        aplicado de verdade em pedidos/services.py, pra nunca mostrar um valor diferente
-        do que é pago."""
+        """Estimativa em R$ do cashback - mesma fórmula usada de verdade em
+        pedidos/services.py, pra nunca mostrar um valor diferente do que é pago."""
         valor_bruto = self.preco_base_cashback * self._percentual_cashback_bruto / Decimal("100")
-        return min(valor_bruto, self._limite_por_produto).quantize(Decimal("0.01"))
+        return valor_bruto.quantize(Decimal("0.01"))
 
     @property
     def percentual_cashback(self) -> Decimal:
-        """% de cashback exibida - já reduzida quando valor_cashback_estimado bate no
-        teto por produto, pra badge (%) e valor (R$) sempre baterem um com o outro."""
+        """% de cashback exibida, derivada do valor em R$ (já arredondado) - pra badge
+        (%) e valor (R$) sempre baterem um com o outro."""
         if not self.preco_base_cashback:
             return self._percentual_cashback_bruto.quantize(Decimal("0.1"))
         return (self.valor_cashback_estimado / self.preco_base_cashback * Decimal("100")).quantize(Decimal("0.1"))
-
-    @property
-    def cashback_no_limite(self) -> bool:
-        """True quando o teto por produto reduziu o cashback abaixo do que a comissão
-        real permitiria - usado pra mostrar um aviso de transparência no site."""
-        valor_bruto = self.preco_base_cashback * self._percentual_cashback_bruto / Decimal("100")
-        return valor_bruto > self._limite_por_produto
 
 
 class Oferta(_CashbackEstimadoMixin, models.Model):
@@ -97,10 +82,8 @@ class Oferta(_CashbackEstimadoMixin, models.Model):
 
 
 class CashbackMaximoCache(models.Model):
-    """Maior % de cashback real entre as ofertas sincronizadas na última execução,
-    ignorando ofertas onde o teto por produto reduziu o valor (ver
-    ofertas/services.py::_atualizar_cashback_maximo) - senão um produto caro e capado
-    poderia "roubar" o topo com um valor artificialmente baixo. Calculado uma vez por
+    """Maior % de cashback real entre as ofertas sincronizadas na última execução (ver
+    ofertas/services.py::_atualizar_cashback_maximo). Calculado uma vez por
     sincronização, não a cada visita à home. Singleton - só existe uma linha (pk=1),
     sobrescrita a cada sincronização."""
 

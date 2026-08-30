@@ -251,18 +251,9 @@ def obter_cashback_maximo_anunciado() -> Decimal:
 def _atualizar_cashback_maximo(ofertas) -> None:
     """Recalcula o maior % de cashback anunciado na home a partir das ofertas
     recém-sincronizadas. Chamado uma vez por sincronização, não por request - ver
-    CashbackMaximoCache.
-
-    Só considera ofertas onde o teto por produto NÃO reduziu o valor (cashback_no_limite
-    é False) - senão um produto caro e capado (ex: R$10 de teto sobre um item de R$1000
-    vira 1%) poderia acabar "roubando" o topo com um valor bem menor do que o real
-    máximo sem teto. Isso não muda o cashback pago de verdade - continua limitado a
-    CASHBACK_MAXIMO_POR_PRODUTO igual sempre; esses produtos continuam aparecendo
-    normalmente no catálogo, com o valor real e a nota "(máximo por produto)"."""
+    CashbackMaximoCache."""
     percentuais = [
-        oferta.percentual_cashback
-        for oferta in ofertas
-        if oferta.preco_min and oferta.percentual_comissao and not oferta.cashback_no_limite
+        oferta.percentual_cashback for oferta in ofertas if oferta.preco_min and oferta.percentual_comissao
     ]
     if not percentuais:
         return

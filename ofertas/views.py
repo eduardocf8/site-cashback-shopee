@@ -1,5 +1,4 @@
 import requests
-from django.conf import settings
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
 from django.core.paginator import Paginator
@@ -44,16 +43,7 @@ def lista(request):
     if busca:
         ofertas = ofertas.filter(nome__icontains=busca)
 
-    if ordenacao == "maior_cashback":
-        # percentual_comissao (campo bruto, usado nos outros orderings) não segue a
-        # mesma ordem de percentual_cashback (o % exibido de verdade, já com o teto por
-        # produto aplicado) - um produto caro com comissão bruta alta pode ficar com um %
-        # exibido baixo depois do teto, mas continuaria ordenado como se fosse alto. Por
-        # isso esse ordering em especial é feito em Python, pelo valor que a pessoa
-        # realmente vê, não pela coluna do banco.
-        ofertas = sorted(ofertas, key=lambda oferta: oferta.percentual_cashback, reverse=True)
-    else:
-        ofertas = ofertas.order_by(ORDENACOES[ordenacao])
+    ofertas = ofertas.order_by(ORDENACOES[ordenacao])
 
     pagina_ofertas = Paginator(ofertas, ITENS_POR_PAGINA).get_page(request.GET.get("pagina"))
     categorias = sorted(carregar_categorias_nivel1().items(), key=lambda item: item[1])
@@ -65,7 +55,6 @@ def lista(request):
         "busca": busca,
         "ordenacao_selecionada": ordenacao,
         "ordenacoes": ORDENACOES_ROTULOS.items(),
-        "cashback_maximo_por_produto": settings.CASHBACK_MAXIMO_POR_PRODUTO,
     }
     if request.user.is_authenticated:
         contexto.update(calcular_resumo_saldo_nav(request.user))

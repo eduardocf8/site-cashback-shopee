@@ -250,17 +250,11 @@ def _formatar_percentual(valor) -> str:
 
 def maior_cashback_de_hoje() -> "dict | None":
     """A oferta que mais devolve agora, em %. É o número que melhor segura o dedo de
-    quem está passando o story - e é dado nosso, que nenhum concorrente tem.
-
-    Ignora ofertas onde o teto por produto reduziu o valor (cashback_no_limite) - senão
-    um produto caro e capado (ex: R$10 de teto sobre um item de R$700 vira ~1,4%) rouba
-    o topo com um % artificialmente baixo, mesmo sem ser o melhor negócio de verdade.
-    Mesmo filtro que o site já usa pro "até X%" da home - ver
-    ofertas/services.py::_atualizar_cashback_maximo."""
+    quem está passando o story - e é dado nosso, que nenhum concorrente tem."""
     from ofertas.models import Oferta
 
     oferta = max(
-        (o for o in Oferta.objects.exclude(preco_min=0)[:400] if not o.cashback_no_limite),
+        Oferta.objects.exclude(preco_min=0)[:400],
         key=lambda o: o.percentual_cashback,
         default=None,
     )
@@ -356,14 +350,11 @@ def combo_de_stories_do_dia() -> "list[dict] | None":
     A escolha é por percentual_cashback (não valor_cashback_estimado) - o primeiro
     story chama a oferta de "o maior cashback de hoje" e mostra o %, então escolher por
     R$ e rotular como "%" descasa os dois (um produto caro pode ter o maior valor em R$
-    e ainda assim um % baixo). Ignora ofertas onde o teto por produto já reduziu o
-    valor (cashback_no_limite) pelo mesmo motivo de maior_cashback_de_hoje() - senão um
-    produto caro e capado (ex: R$10 de teto sobre R$700 vira ~1,4%) rouba o topo com um
-    % artificialmente baixo."""
+    e ainda assim um % baixo)."""
     from ofertas.models import Oferta
 
     oferta = max(
-        (o for o in Oferta.objects.exclude(preco_min=0)[:400] if not o.cashback_no_limite),
+        Oferta.objects.exclude(preco_min=0)[:400],
         key=lambda o: o.percentual_cashback,
         default=None,
     )

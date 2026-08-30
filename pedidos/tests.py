@@ -123,8 +123,6 @@ class SincronizarTests(TestCase):
 
     @patch("pedidos.services.buscar_conversoes")
     def test_cria_pedido_pendente_e_calcula_cashback_com_100_por_cento(self, mock_buscar):
-        # Comissão abaixo do teto por produto (R$10, ver TetoCashbackPorProdutoTests
-        # abaixo) - esse teste é sobre o repasse de 100%, não sobre o teto.
         mock_buscar.return_value = self._pagina(
             [
                 {
@@ -340,7 +338,7 @@ class SincronizarTests(TestCase):
         self.assertLess(len(contexto), 20)
 
 
-@override_settings(SHOPEE_CASHBACK_PERCENTUAL=20, CASHBACK_MAXIMO_POR_PRODUTO=10)
+@override_settings(SHOPEE_CASHBACK_PERCENTUAL=20)
 class MultiplicadorCampanhaTests(TestCase):
     """O multiplicador de campanha fica congelado no pedido quando ele é registrado.
 
@@ -422,35 +420,6 @@ class MultiplicadorCampanhaTests(TestCase):
         self.assertEqual(pedido.valor_cashback, Decimal("4.00"))
         self.assertEqual(pedido.multiplicador_campanha, Decimal("1"))
 
-    @override_settings(CASHBACK_MULTIPLICADOR_CAMPANHA=2)
-    @patch("pedidos.services.buscar_conversoes")
-    def test_teto_por_produto_dobra_junto_com_a_campanha(self, mock_buscar):
-        # Comissão de R$100: 20% = R$20, que passaria do teto normal de R$10. Numa
-        # campanha de cashback em dobro o teto vira R$20, senão o item de comissão alta
-        # ficaria capado no mesmo valor de sempre e não veria a campanha.
-        mock_buscar.return_value = {
-            "nodes": [
-                {
-                    "conversionId": "999",
-                    "purchaseTime": 1700000000,
-                    "utmContent": f"{self.click.sub_id_usuario()},{self.click.sub_id_click()}",
-                    "orders": [
-                        {
-                            "orderId": "ORD-TETO-CAMP",
-                            "orderStatus": "PENDING",
-                            "items": [{"completeTime": None, "itemTotalCommission": "100.00"}],
-                        }
-                    ],
-                }
-            ],
-            "pageInfo": {"hasNextPage": False, "scrollId": ""},
-        }
-
-        sincronizar(1690000000, 1700000000)
-
-        pedido = Pedido.objects.get(order_id="ORD-TETO-CAMP")
-        self.assertEqual(pedido.valor_cashback, Decimal("20.00"))
-
     @patch("pedidos.services.buscar_conversoes")
     def test_pedido_registrado_fora_da_campanha_guarda_multiplicador_1(self, mock_buscar):
         mock_buscar.return_value = self._pagina("ORD-CAMP-4")
@@ -460,90 +429,6 @@ class MultiplicadorCampanhaTests(TestCase):
         pedido = Pedido.objects.get(order_id="ORD-CAMP-4")
         self.assertEqual(pedido.valor_cashback, Decimal("4.00"))
         self.assertEqual(pedido.multiplicador_campanha, Decimal("1"))
-
-
-@override_settings(CASHBACK_MAXIMO_POR_PRODUTO=10)
-class TetoCashbackPorProdutoTests(TestCase):
-    def setUp(self):
-        self.usuario = get_user_model().objects.create_user(
-            username="compradora", password="senha123", cpf="39053344705"
-        )
-        self.click = Click.objects.create(
-            usuario=self.usuario, tipo=Click.TIPO_HOME,
-            url_original="https://shopee.com.br/", link_gerado="https://shope.ee/abc",
-        )
-
-    def _pagina(self, orders):
-        return {
-            "nodes": [
-                {
-                    "conversionId": "999",
-                    "purchaseTime": 1700000000,
-                    "utmContent": f"{self.click.sub_id_usuario()},{self.click.sub_id_click()}",
-                    "orders": orders,
-                }
-            ],
-            "pageInfo": {"hasNextPage": False, "scrollId": ""},
-        }
-
-    @patch("pedidos.services.buscar_conversoes")
-    def test_item_unico_acima_do_teto_e_limitado(self, mock_buscar):
-        mock_buscar.return_value = self._pagina(
-            [{"orderId": "ORD-TETO-1", "orderStatus": "PENDING", "items": [{"completeTime": None, "itemTotalCommission": "15.00"}]}]
-        )
-
-        sincronizar(1690000000, 1700000000)
-
-        pedido = Pedido.objects.get(order_id="ORD-TETO-1")
-        self.assertEqual(pedido.valor_comissao, Decimal("15.00"))  # comissão real, sem teto
-        self.assertEqual(pedido.valor_cashback, Decimal("10.00"))  # cashback pago, com teto
-
-    @patch("pedidos.services.buscar_conversoes")
-    def test_teto_e_por_item_nao_por_pedido(self, mock_buscar):
-        # Pedido com 2 produtos: um acima do teto (limitado a R$10) e outro abaixo
-        # (paga cheio) - o teto tem que ser aplicado item a item, não na soma do pedido.
-        mock_buscar.return_value = self._pagina(
-            [
-                {
-                    "orderId": "ORD-TETO-2",
-                    "orderStatus": "PENDING",
-                    "items": [
-                        {"completeTime": None, "itemTotalCommission": "15.00"},
-                        {"completeTime": None, "itemTotalCommission": "3.00"},
-                    ],
-                }
-            ]
-        )
-
-        sincronizar(1690000000, 1700000000)
-
-        pedido = Pedido.objects.get(order_id="ORD-TETO-2")
-        self.assertEqual(pedido.valor_comissao, Decimal("18.00"))  # 15 + 3, sem teto
-        self.assertEqual(pedido.valor_cashback, Decimal("13.00"))  # min(15,10) + 3
-
-    @patch("pedidos.services.buscar_conversoes")
-    def test_item_abaixo_do_teto_nao_e_afetado(self, mock_buscar):
-        mock_buscar.return_value = self._pagina(
-            [{"orderId": "ORD-TETO-3", "orderStatus": "PENDING", "items": [{"completeTime": None, "itemTotalCommission": "4.00"}]}]
-        )
-
-        sincronizar(1690000000, 1700000000)
-
-        pedido = Pedido.objects.get(order_id="ORD-TETO-3")
-        self.assertEqual(pedido.valor_cashback, Decimal("4.00"))
-
-    @override_settings(SHOPEE_CASHBACK_PERCENTUAL=50)
-    @patch("pedidos.services.buscar_conversoes")
-    def test_teto_considera_o_percentual_de_repasse(self, mock_buscar):
-        # R$30 de comissão x 50% de repasse = R$15 de cashback, ainda acima do teto de R$10.
-        mock_buscar.return_value = self._pagina(
-            [{"orderId": "ORD-TETO-4", "orderStatus": "PENDING", "items": [{"completeTime": None, "itemTotalCommission": "30.00"}]}]
-        )
-
-        sincronizar(1690000000, 1700000000)
-
-        pedido = Pedido.objects.get(order_id="ORD-TETO-4")
-        self.assertEqual(pedido.valor_cashback, Decimal("10.00"))
 
 
 class SincronizarBonusIndicacaoTests(TestCase):
@@ -581,8 +466,8 @@ class SincronizarBonusIndicacaoTests(TestCase):
     @override_settings(CASHBACK_MULTIPLICADOR_CAMPANHA=2)
     @patch("pedidos.services.buscar_conversoes")
     def test_pedido_em_campanha_nao_consome_o_bonus_de_indicacao(self, mock_buscar):
-        # O pedido leva só o extra da campanha (5.00 x 2 = 10.00, abaixo do teto
-        # dobrado de R$20), e a indicação continua pendente esperando a campanha acabar.
+        # O pedido leva só o extra da campanha (5.00 x 2 = 10.00), e a indicação
+        # continua pendente esperando a campanha acabar.
         mock_buscar.return_value = self._pagina([self._no(self.click_indicado, "ORD-IND-CAMP", "5.00")])
 
         sincronizar(1690000000, 1700000000)
@@ -737,33 +622,6 @@ class SincronizarBonusIndicacaoTests(TestCase):
         indicacao2.refresh_from_db()
         self.assertEqual(self.indicacao.pedido_bonus_indicador.order_id, "ORD-REF-2")
         self.assertEqual(indicacao2.pedido_bonus_indicador.order_id, "ORD-REF-1")
-
-    @patch("pedidos.services.buscar_conversoes")
-    def test_bonus_em_pedido_com_varios_itens_e_limitado_a_20(self, mock_buscar):
-        # Pedido com 2 itens, cada um já no teto de R$10 (R$20 no total antes do dobro).
-        # O dobro de indicação não pode multiplicar esse total pra R$40 - o teto do
-        # pedido bonificado precisa acompanhar o teto por produto x o multiplicador.
-        node = {
-            "conversionId": "ORD-IND-MULTI",
-            "purchaseTime": 1700000000,
-            "utmContent": f"{self.click_indicado.sub_id_usuario()},{self.click_indicado.sub_id_click()}",
-            "orders": [
-                {
-                    "orderId": "ORD-IND-MULTI",
-                    "orderStatus": "COMPLETED",
-                    "items": [
-                        {"completeTime": 1700000500, "itemTotalCommission": "15.00"},
-                        {"completeTime": 1700000500, "itemTotalCommission": "15.00"},
-                    ],
-                }
-            ],
-        }
-        mock_buscar.return_value = self._pagina([node])
-
-        sincronizar(1690000000, 1700000000)
-
-        pedido = Pedido.objects.get(order_id="ORD-IND-MULTI")
-        self.assertEqual(pedido.valor_cashback, Decimal("20.00"))
 
     @patch("pedidos.services.buscar_conversoes")
     def test_usuario_sem_indicacao_nao_e_afetado(self, mock_buscar):

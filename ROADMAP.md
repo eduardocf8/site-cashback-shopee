@@ -775,6 +775,53 @@ da home com o produto manual).
 
 ---
 
+## Fase 31 — Remover o teto de cashback por produto ✅
+
+Usuário levantou que o teto de R$10/produto (Fase 16) desincentivava compras
+caras: com um concorrente (Méliuz) repassando um % fixo sem teto, produto caro
+comprado por lá rendia mais. Analisado com dado real da conta de afiliado
+(comando avulso, não versionado, rodado direto no Shell do Render) antes de
+decidir: no período analisado, tirar o teto custaria pouco (~R$750 a mais em
+90 dias) porque o volume de produtos caros é baixo - e nunca dá prejuízo,
+porque o cashback já é sempre uma fração fixa (`SHOPEE_CASHBACK_PERCENTUAL`,
+hoje 20%) da comissão recebida, nunca mais do que ela. Virou diferencial de
+marketing: sem teto por produto, ninguém mais oferece isso.
+
+- [x] **`CASHBACK_MAXIMO_POR_PRODUTO` removida** de `settings.py` e
+      `.env.example` - não é mais lida em lugar nenhum do código.
+- [x] **`pedidos/services.py`** — `_montar_defaults()` não limita mais
+      `cashback` a um teto por item; `_limite_cashback_indicacao()` (o teto
+      dobrado do bônus de indicação) foi removida inteira, já que sem teto
+      normal não tem mais teto pra dobrar.
+- [x] **`ofertas/models.py`** — `_CashbackEstimadoMixin` perdeu
+      `_limite_por_produto` e `cashback_no_limite`; `valor_cashback_estimado`
+      não usa mais `min()`. `_atualizar_cashback_maximo` (o "até X%" da home)
+      não precisa mais excluir ofertas capadas, porque não existe mais oferta
+      artificialmente reduzida por teto.
+- [x] **`ofertas/views.py`** — a ordenação "maior cashback" da vitrine
+      (`/ofertas/`) voltou a ser um `.order_by()` direto no banco (era feita
+      em Python só por causa da divergência entre comissão bruta e % exibido
+      que o teto causava - sem teto, as duas ordens são sempre iguais).
+- [x] **Textos do site** (`home.html`, `regras_cashback.html`) — removidas
+      as menções a "limitado a R$X por produto"; a seção de regras agora
+      afirma "sem limite de cashback por produto" como algo positivo, não
+      uma limitação a explicar.
+- [x] **`instagram_bot/conteudo.py`** — `maior_cashback_de_hoje()` e
+      `combo_de_stories_do_dia()` não precisam mais evitar ofertas capadas
+      (o cenário "produto caro capado rouba o topo com % artificialmente
+      baixo" não existe mais).
+- [x] Removidos os testes que validavam especificamente o comportamento do
+      teto (inclusive um comando de diagnóstico avulso, criado só pra essa
+      análise e removido depois de decidido - não fazia sentido versionar
+      algo que lê uma configuração que não existe mais).
+
+Fase 16 (que introduziu o teto) foi deixada como está no histórico deste
+arquivo - documenta uma decisão real da época, não precisa ser reescrita.
+
+Suite completa (212 testes) verde.
+
+---
+
 Pra continuar esse roadmap numa conversa nova, basta apontar esse arquivo
 (`ROADMAP.md`) e o `BRAND.md` — juntos eles dão o contexto de identidade
 visual e do que falta implementar, sem precisar reconstruir o histórico da

@@ -12,7 +12,6 @@ from .models import RegistroPublicacao
 
 @override_settings(
     SHOPEE_CASHBACK_PERCENTUAL=20,
-    CASHBACK_MAXIMO_POR_PRODUTO=10,
     CASHBACK_MULTIPLICADOR_CAMPANHA=1,
 )
 class ConteudoDoCatalogoTests(TestCase):
@@ -58,24 +57,6 @@ class ConteudoDoCatalogoTests(TestCase):
         self.assertEqual(resultado["numero"], "8,4%")
         self.assertIn("fone bluetooth", resultado["apoio"])
 
-    def test_produto_capado_nao_vira_maior_cashback_do_dia(self):
-        # Só existe essa oferta, e ela bate no teto (R$10 sobre R$700 vira ~1,4%) - o
-        # "recorde" de hoje não pode ser um % artificialmente baixo por causa do teto,
-        # melhor não publicar nada do que publicar um número que engana (caso real:
-        # bicicleta de R$700+ virando "o maior cashback de hoje" com 1,4%).
-        self._criar_oferta(1, "700.00", "0.4200", "bicicleta")
-
-        self.assertIsNone(conteudo.maior_cashback_de_hoje())
-
-    def test_produto_capado_nao_rouba_o_topo_de_produto_sem_teto(self):
-        self._criar_oferta(1, "700.00", "0.4200", "bicicleta")  # capado: ~1,4%
-        self._criar_oferta(2, "50.00", "0.1000", "capinha")  # sem teto: 10% x 20% = 2%
-
-        resultado = conteudo.maior_cashback_de_hoje()
-
-        self.assertEqual(resultado["numero"], "2,0%")
-        self.assertIn("capinha", resultado["apoio"])
-
     def test_valor_em_reais_bate_com_o_cashback_da_oferta(self):
         oferta = self._criar_oferta(1, "89.90", "0.4200", "fone bluetooth")
 
@@ -91,18 +72,9 @@ class ConteudoDoCatalogoTests(TestCase):
         esperado = oferta.preco_min - oferta.valor_cashback_estimado
         self.assertEqual(conta["destaque"][1], f"R$ {esperado:.2f}".replace(".", ","))
 
-    def test_respeita_o_teto_por_produto(self):
-        # Produto caro com comissão alta: sem o teto daria bem mais que R$ 10.
-        self._criar_oferta(1, "900.00", "0.4200", "notebook")
-
-        resultado = conteudo.maior_valor_de_volta_hoje()
-
-        self.assertEqual(resultado["numero"], "R$ 10,00")
-
 
 @override_settings(
     SHOPEE_CASHBACK_PERCENTUAL=20,
-    CASHBACK_MAXIMO_POR_PRODUTO=10,
     CASHBACK_MULTIPLICADOR_CAMPANHA=1,
 )
 class ComboDeStoriesTests(TestCase):
@@ -251,7 +223,6 @@ class AlinhamentoDosPassosTests(TestCase):
 
 @override_settings(
     SHOPEE_CASHBACK_PERCENTUAL=20,
-    CASHBACK_MAXIMO_POR_PRODUTO=10,
     CASHBACK_MULTIPLICADOR_CAMPANHA=1,
     INSTAGRAM_BOT_ATIVO=False,
 )

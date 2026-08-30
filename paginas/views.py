@@ -26,10 +26,7 @@ def cookies(request):
 
 
 def regras_cashback(request):
-    contexto = {
-        "saque_valor_minimo": settings.SAQUE_VALOR_MINIMO,
-        "cashback_maximo_por_produto": settings.CASHBACK_MAXIMO_POR_PRODUTO,
-    }
+    contexto = {"saque_valor_minimo": settings.SAQUE_VALOR_MINIMO}
     return render(request, "paginas/regras_cashback.html", contexto)
 
 

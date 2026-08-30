@@ -126,7 +126,6 @@ body {
 .oferta-cartao .preco-riscado { font-size: 13px; font-weight: 400; color: var(--muted); text-decoration: line-through; margin-right: 6px; }
 .oferta-cartao .preco-avista { font-size: 12.5px; color: var(--muted); }
 .oferta-cartao .cashback-valor { font-size: 12.5px; font-weight: 700; color: var(--success); }
-.cashback-limite { font-weight: 500; color: var(--muted); cursor: help; }
 .oferta-cartao .botao-cta { text-align: center; margin: 4px 14px 14px; }
 
 /* selo "oferta imperdível" - só nas ofertas cadastradas manualmente no admin (ver

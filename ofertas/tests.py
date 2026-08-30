@@ -53,30 +53,6 @@ class OrdenarPorCashbackTests(TestCase):
         valores = [valor for valor, _rotulo in resposta.context["ordenacoes"]]
         self.assertIn("maior_cashback", valores)
 
-    @override_settings(SHOPEE_CASHBACK_PERCENTUAL=100, CASHBACK_MULTIPLICADOR_CAMPANHA=1, CASHBACK_MAXIMO_POR_PRODUTO=10)
-    def test_ordena_pelo_percentual_exibido_nao_pela_comissao_bruta(self):
-        # Produto caro com comissão bruta alta, mas que o teto por produto reduz na
-        # exibição - não pode ficar ordenado como se ainda tivesse o valor bruto alto.
-        Oferta.objects.create(
-            item_id=10, nome="Caro com comissão alta (capado)", categoria_id=1,
-            product_link="https://shopee.com.br/produto-10-i.10.10",
-            preco_min=Decimal("200.00"), percentual_comissao=Decimal("0.20"),  # bruto 20%, exibido 5% (R$10/200)
-            vendas=1,
-        )
-        Oferta.objects.create(
-            item_id=11, nome="Barato sem teto", categoria_id=1,
-            product_link="https://shopee.com.br/produto-11-i.11.11",
-            preco_min=Decimal("50.00"), percentual_comissao=Decimal("0.10"),  # bruto e exibido 10%, sem teto
-            vendas=1,
-        )
-
-        resposta = self.client.get(reverse("ofertas_lista"), {"ordenar": "maior_cashback"})
-
-        nomes = [oferta.nome for oferta in resposta.context["ofertas"]]
-        indice_barato = nomes.index("Barato sem teto")
-        indice_caro = nomes.index("Caro com comissão alta (capado)")
-        self.assertLess(indice_barato, indice_caro)
-
 
 class MontarOfertaTests(TestCase):
     def test_usa_commissionRate_combinado_com_bonus_de_vendedor(self):
@@ -84,9 +60,7 @@ class MontarOfertaTests(TestCase):
         # comparando com o painel oficial de afiliados da Shopee que o bônus de campanha
         # do vendedor já entra de fato no cashback pago em vendas diretas reais - por
         # isso o site também deve mostrar esse valor combinado, não só a base da Shopee
-        # (ver links/shopee_client.py e pedidos/services.py). O teto por produto
-        # (CASHBACK_MAXIMO_POR_PRODUTO) é o que protege contra exibir um valor
-        # desproporcional, não a exclusão desse campo.
+        # (ver links/shopee_client.py e pedidos/services.py).
         node = {
             "itemId": 26142718061,
             "commissionRate": "0.14",
@@ -99,33 +73,20 @@ class MontarOfertaTests(TestCase):
         self.assertEqual(oferta.percentual_comissao, Decimal("0.14"))
 
 
-@override_settings(SHOPEE_CASHBACK_PERCENTUAL=100, CASHBACK_MULTIPLICADOR_CAMPANHA=1, CASHBACK_MAXIMO_POR_PRODUTO=10)
-class TetoCashbackPorProdutoTests(TestCase):
-    def test_abaixo_do_teto_mostra_valor_cheio(self):
+@override_settings(SHOPEE_CASHBACK_PERCENTUAL=100, CASHBACK_MULTIPLICADOR_CAMPANHA=1)
+class CashbackEstimadoTests(TestCase):
+    def test_calcula_valor_e_percentual_sem_limite(self):
         oferta = Oferta(
-            item_id=1, nome="Produto barato", categoria_id=1,
+            item_id=1, nome="Produto com comissão alta", categoria_id=1,
             product_link="https://shopee.com.br/produto-1-i.1.1",
             preco_min=Decimal("100.00"), preco_max=Decimal("100.00"),
-            percentual_comissao=Decimal("0.05"),  # 5% de R$100 = R$5, abaixo do teto de R$10
+            percentual_comissao=Decimal("0.20"),  # 20% de R$100 = R$20, sem teto nenhum
         )
 
-        self.assertEqual(oferta.valor_cashback_estimado, Decimal("5.00"))
-        self.assertEqual(oferta.percentual_cashback, Decimal("5.0"))
-        self.assertFalse(oferta.cashback_no_limite)
+        self.assertEqual(oferta.valor_cashback_estimado, Decimal("20.00"))
+        self.assertEqual(oferta.percentual_cashback, Decimal("20.0"))
 
-    def test_acima_do_teto_limita_valor_e_reduz_percentual_exibido(self):
-        oferta = Oferta(
-            item_id=2, nome="Produto com comissão alta", categoria_id=1,
-            product_link="https://shopee.com.br/produto-2-i.2.2",
-            preco_min=Decimal("100.00"), preco_max=Decimal("100.00"),
-            percentual_comissao=Decimal("0.20"),  # 20% de R$100 = R$20, acima do teto de R$10
-        )
-
-        self.assertEqual(oferta.valor_cashback_estimado, Decimal("10.00"))
-        self.assertEqual(oferta.percentual_cashback, Decimal("10.0"))
-        self.assertTrue(oferta.cashback_no_limite)
-
-    def test_preco_zero_nao_quebra_e_nao_conta_como_no_limite(self):
+    def test_preco_zero_nao_quebra(self):
         oferta = Oferta(
             item_id=3, nome="Produto sem preço sincronizado", categoria_id=1,
             product_link="https://shopee.com.br/produto-3-i.3.3",
@@ -135,12 +96,10 @@ class TetoCashbackPorProdutoTests(TestCase):
 
         self.assertEqual(oferta.valor_cashback_estimado, Decimal("0.00"))
         self.assertEqual(oferta.percentual_cashback, Decimal("5.0"))
-        self.assertFalse(oferta.cashback_no_limite)
 
 
 @override_settings(
-    SHOPEE_CASHBACK_PERCENTUAL=100, CASHBACK_MULTIPLICADOR_CAMPANHA=1,
-    CASHBACK_MAXIMO_POR_PRODUTO=10, CASHBACK_MAXIMO_ANUNCIADO=2.4,
+    SHOPEE_CASHBACK_PERCENTUAL=100, CASHBACK_MULTIPLICADOR_CAMPANHA=1, CASHBACK_MAXIMO_ANUNCIADO=2.4,
 )
 class CashbackMaximoAnunciadoTests(TestCase):
     def _pagina(self, nodes, has_next_page=False):
@@ -165,25 +124,8 @@ class CashbackMaximoAnunciadoTests(TestCase):
     def test_sincronizacao_calcula_o_maximo_real_do_catalogo(self, mock_buscar):
         mock_buscar.return_value = self._pagina(
             [
-                self._node(1, "0.03", "100.00"),  # 3% de R$100 = R$3, abaixo do teto
-                self._node(2, "0.08", "100.00"),  # 8% de R$100 = R$8, abaixo do teto
-            ]
-        )
-
-        sincronizar_ofertas()
-        maximo = obter_cashback_maximo_anunciado()
-
-        self.assertEqual(maximo, Decimal("8.0"))
-
-    @patch("ofertas.services.buscar_ofertas_produtos")
-    def test_produto_no_limite_nao_rouba_o_topo_com_valor_menor(self, mock_buscar):
-        # Produto caro com comissão bruta alta, capado a R$10, viraria só 2% exibido -
-        # isso não pode virar o "máximo" anunciado, escondendo o produto que realmente
-        # rende mais (8%, sem teto).
-        mock_buscar.return_value = self._pagina(
-            [
-                self._node(1, "0.08", "100.00"),  # 8% de R$100 = R$8, abaixo do teto
-                self._node(2, "0.15", "500.00"),  # 15% de R$500 = R$75, capado a R$10 (= 2%)
+                self._node(1, "0.03", "100.00"),  # 3% de R$100 = R$3
+                self._node(2, "0.08", "100.00"),  # 8% de R$100 = R$8
             ]
         )
 
@@ -276,12 +218,6 @@ class OfertaManualCashbackTests(TestCase):
         oferta = self._oferta_manual()
         self.assertEqual(oferta.valor_cashback_estimado, Decimal("8.00"))
         self.assertEqual(oferta.percentual_cashback, Decimal("10.0"))
-
-    @override_settings(CASHBACK_MAXIMO_POR_PRODUTO=5)
-    def test_respeita_o_teto_por_produto(self):
-        oferta = self._oferta_manual()
-        self.assertEqual(oferta.valor_cashback_estimado, Decimal("5.00"))
-        self.assertTrue(oferta.cashback_no_limite)
 
     def test_aliases_pro_gerador_de_story_do_catalogo(self):
         # nome_curto/preco_min/categoria_id/item_id existem só pra reaproveitar

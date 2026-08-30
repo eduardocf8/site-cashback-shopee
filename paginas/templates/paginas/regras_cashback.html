@@ -15,9 +15,8 @@
             Você compra na Shopee através de um link gerado pela cash-b. Quando a
             Shopee confirma o pedido, ela paga uma comissão de afiliado pra gente —
             e repassamos <strong>parte dessa comissão</strong> de volta pra você,
-            como cashback (respeitando o limite de
-            R$ {{ cashback_maximo_por_produto|floatformat:2 }} por produto explicado
-            mais abaixo).
+            como cashback. Sem limite de valor por produto: quanto maior a comissão
+            recebida, maior o cashback.
         </p>
 
         <h2>Venda direta x venda indireta</h2>
@@ -43,17 +42,14 @@
             converter o link do produto específico.
         </p>
 
-        <h2>Limite de cashback por produto</h2>
+        <h2>Sem limite de cashback por produto</h2>
         <p>
-            Pra cashback ficar sustentável mesmo quando um produto tem uma campanha de
-            comissão extra bem alta, o valor pago por produto é limitado a
-            <strong>R$ {{ cashback_maximo_por_produto|floatformat:2 }}</strong>. Por
-            exemplo: se um produto de R$ 100 tivesse 20% de comissão total (R$ 20 de
-            cashback), o valor pago fica limitado a R$ {{ cashback_maximo_por_produto|floatformat:2 }}.
-            Esse limite é por produto, não por pedido — uma compra com vários produtos
-            diferentes pode ultrapassar esse valor somando o cashback de cada um. Sempre
-            que esse limite se aplica, o percentual e o valor mostrados no site já vêm
-            ajustados, então o que você vê é sempre o que você recebe.
+            Diferente de outros sites de cashback, aqui não existe um teto em R$ por
+            produto. O cashback é sempre uma fração fixa da comissão que a Shopee paga
+            pra gente — então quanto mais caro o produto (e maior a comissão recebida),
+            maior o cashback, sem limite nenhum. Isso vale principalmente pra quem
+            compra itens de valor mais alto: o percentual de cashback continua o mesmo,
+            não despenca conforme o preço sobe.
         </p>
 
         <h2>Por que o percentual anunciado muda de um dia pro outro?</h2>
@@ -67,16 +63,6 @@
             mês. E quanto mais ofertas tiverem campanha de comissão extra ativa (só
             disponível na venda direta), maior tende a ser esse número.
         </p>
-        <p>
-            Um detalhe: produtos onde o limite de
-            R$ {{ cashback_maximo_por_produto|floatformat:2 }} por produto reduziu bastante
-            o percentual (geralmente produtos mais caros) não entram nessa conta — senão
-            um produto caro e capado poderia "roubar" o topo com um número bem menor do
-            que o real máximo sem teto. Isso não muda o cashback pago: esses produtos
-            continuam com o valor real e o aviso de "máximo por produto" ao navegar no
-            catálogo, só não influenciam o "até X%" da home.
-        </p>
-
         <h2>Os quatro status do seu saldo</h2>
         <div class="timeline-status">
             <div class="etapa"><span class="ponto"></span><span class="rotulo">Pendente</span></div>
