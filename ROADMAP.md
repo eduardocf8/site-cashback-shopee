@@ -948,13 +948,39 @@ verdade pra confirmar o que estava acontecendo.
 - [x] **Headers de navegador mais completos** (`_resolver_item_id`,
       `ofertas/services.py`) — além do User-Agent que já existia, passou a mandar
       `Accept`, `Accept-Language`, `Upgrade-Insecure-Requests` e os `Sec-Fetch-*` que um
-      navegador de verdade sempre manda e o requests não. Tentativa barata e sem
-      garantia (decisão do dono do produto, entre isso e um navegador headless bem mais
-      pesado) - se ainda falhar, o log agora também mostra o status HTTP e quantos
-      redirecionamentos foram seguidos, pra confirmar se é bloqueio total (mesmo
-      comportamento de antes) ou algo mais sutil.
+      navegador de verdade sempre manda e o requests não. **Não resolveu** - o dono do
+      produto testou de novo e o log confirmou status 200 com 0 redirecionamentos, o
+      mesmo resultado de antes. Isso descarta bloqueio por header/fingerprint simples:
+      o formato da resposta (200 direto, sem `Location` nenhum) é típico de link
+      dinâmico resolvido via JavaScript no navegador, não redirecionamento HTTP - uma
+      barreira que `requests` não tem como vencer, com header nenhum.
+- [x] **Decisão do dono do produto**: não vale investir num navegador headless
+      (Playwright/Chromium no servidor) só pra esse tipo de link - custo real demais
+      (mais segundos por conversão, mais memória/CPU no plano da Render) pra um caso
+      que não é a maioria dos links colados. Aceitar a limitação e ajustar o texto pra
+      não prometer nada que não foi confirmado (ver Fase 36).
 
 Suite completa (219 testes) verde.
+
+---
+
+## Fase 36 — Não afirmar cashback quando a busca real falha ✅
+
+Consequência direta da decisão da Fase 35: enquanto a busca da comissão real
+(`buscar_oferta_por_link`) falhava por um motivo genérico (nem confirma comissão, nem
+confirma ausência dela - ex: o link dinâmico da Fase 35), a caixa de resultado ainda
+dizia "Cashback ativado! 🎉", com confete - afirmando algo que o site não tinha
+confirmado de verdade.
+
+- [x] **`home.html`** — esse terceiro cenário (nem % real, nem confirmação de "sem
+      comissão") trocou "Cashback ativado! 🎉" + "Agora é só concluir sua compra na
+      Shopee." por "Link gerado!" + "Para conferir o cashback desse produto, acesse
+      sua conta em alguns dias." - tom neutro, sem confete (reservado só pro caso em
+      que o % real foi confirmado de verdade).
+- [x] **`links/tests.py`** — teste do cenário de falha genérica atualizado pra cobrir
+      o novo texto e confirmar ausência de confete.
+
+Suite completa (220 testes) verde.
 
 ---
 

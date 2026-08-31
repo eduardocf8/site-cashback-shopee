@@ -400,7 +400,7 @@
                                     <circle cx="12" cy="12" r="11" fill="var(--success)"/>
                                     <path d="M7 12.5l3 3 7-7" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
                                 </svg>
-                                {% if not sem_comissao_convertida %}
+                                {% if oferta_convertida %}
                                     <span class="confete confete-1"></span>
                                     <span class="confete confete-2"></span>
                                     <span class="confete confete-3"></span>
@@ -409,15 +409,15 @@
                                     <span class="confete confete-6"></span>
                                 {% endif %}
                             </div>
-                            {% if sem_comissao_convertida %}
-                                <p class="resultado-titulo">Link gerado, mas sem cashback dessa vez</p>
-                                <p class="resultado-sub">A Shopee não oferece comissão para esse produto, portanto também não há cashback.</p>
-                            {% elif oferta_convertida %}
+                            {% if oferta_convertida %}
                                 <p class="resultado-titulo resultado-ok">Cashback ativado! 🎉</p>
                                 <p class="resultado-sub">Esse produto rende {{ oferta_convertida.percentual_cashback }}% de cashback (R$ {{ oferta_convertida.valor_cashback_estimado|floatformat:2 }} de volta).</p>
+                            {% elif sem_comissao_convertida %}
+                                <p class="resultado-titulo">Link gerado, mas sem cashback dessa vez</p>
+                                <p class="resultado-sub">A Shopee não oferece comissão para esse produto, portanto também não há cashback.</p>
                             {% else %}
-                                <p class="resultado-titulo resultado-ok">Cashback ativado! 🎉</p>
-                                <p class="resultado-sub">Agora é só concluir sua compra na Shopee.</p>
+                                <p class="resultado-titulo">Link gerado!</p>
+                                <p class="resultado-sub">Para conferir o cashback desse produto, acesse sua conta em alguns dias.</p>
                             {% endif %}
                             <a href="{{ link_convertido }}" target="_blank" rel="noopener noreferrer" class="resultado-url">{{ link_convertido }}</a>
                         {% else %}

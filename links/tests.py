@@ -233,8 +233,11 @@ class HomeConversaoCashbackRealTests(TestCase):
             reverse("home"), {"url_produto": "https://shopee.com.br/produto-exemplo-i.1.999"}
         )
 
-        self.assertContains(resposta, "Cashback ativado! 🎉")
+        self.assertContains(resposta, "Link gerado!")
+        self.assertContains(resposta, "Para conferir o cashback desse produto, acesse sua conta em alguns dias.")
         self.assertContains(resposta, "https://shope.ee/produto123")
+        self.assertNotContains(resposta, "Cashback ativado")
+        self.assertNotContains(resposta, '<span class="confete confete-1">')
 
 
 class HomeCarrosselOfertaManualTests(TestCase):
