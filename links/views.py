@@ -1,3 +1,4 @@
+import logging
 from urllib.parse import urlencode
 
 import requests
@@ -21,6 +22,8 @@ from .forms import LinkProdutoForm
 from .models import Click
 from .services import gerar_click
 from .shopee_client import ShopeeAPIError, ShopeeConfigError, SubIdInvalidoError
+
+logger = logging.getLogger(__name__)
 
 NUMERO_OFERTAS_EM_ALTA = 8
 NUMERO_CATEGORIAS_HOME = 12
@@ -111,7 +114,8 @@ def _buscar_cashback_real(url_produto):
         return buscar_oferta_por_link(url_produto), False
     except SemComissaoError:
         return None, True
-    except (LinkProdutoInvalidoError, ShopeeConfigError, ShopeeAPIError, requests.RequestException):
+    except (LinkProdutoInvalidoError, ShopeeConfigError, ShopeeAPIError, requests.RequestException) as erro:
+        logger.warning("[links] não consegui buscar o cashback real de %s: %s", url_produto, erro)
         return None, False
 
 
