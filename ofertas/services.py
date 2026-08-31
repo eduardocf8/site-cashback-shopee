@@ -122,14 +122,21 @@ def _resolver_url_final_via_navegador(url: str) -> str:
             timeout=25,
         )
         resposta.raise_for_status()
-        dados = resposta.json()
+        dados = resposta.json() or {}
     except requests.RequestException as erro:
         raise LinkProdutoInvalidoError(f"Navegador headless falhou ao resolver {url}: {erro}") from erro
 
-    url_final = (dados or {}).get("url")
+    # A resposta do endpoint /function vem embrulhada no mesmo formato que a função
+    # JS retornou ({"data": {...}, "type": "..."}), não achatada.
+    url_final = dados.get("data", dados).get("url") if isinstance(dados.get("data", dados), dict) else None
     if not url_final:
         raise LinkProdutoInvalidoError(
             f"Navegador headless não retornou uma URL final pra {url} (resposta: {dados!r})."
+        )
+    if "/verify/traffic/" in url_final:
+        raise LinkProdutoInvalidoError(
+            f"A Shopee bloqueou o navegador headless como tráfego suspeito ao resolver {url} "
+            f"(caiu numa página de verificação: {url_final})."
         )
     return url_final
 

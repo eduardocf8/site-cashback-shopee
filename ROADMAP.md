@@ -1027,11 +1027,24 @@ unidades/mês, recorrente, que cobre o volume atual do site sem custo nenhum.
       então a integração real (endpoint/formato exato da API) precisa de teste em
       produção depois que a chave for configurada.
 
-**Ainda por confirmar em produção**: o formato exato da API do Browserless
-(endpoint `/function`, corpo `{code, context}`) foi levantado por pesquisa, não testado
-ao vivo (sem acesso de rede da Shopee/Browserless nesse ambiente de desenvolvimento) -
-pode precisar de um pequeno ajuste depois que a chave de API for configurada e testada
-de verdade.
+**Confirmado em produção, com dois achados:**
+- [x] **Bug de parsing corrigido** - a resposta real do `/function` vem embrulhada no
+      mesmo formato que a função JS retornou (`{"data": {"url": ...}, "type": ...}`),
+      não achatada como eu tinha suposto (`{"url": ...}`) - `_resolver_url_final_via_navegador`
+      ajustada pra ler `dados["data"]["url"]`.
+- [ ] **Achado mais sério, ainda sem solução**: mesmo com um navegador de verdade
+      (que executa JavaScript, diferente do `requests`), a Shopee **bloqueou** o
+      Browserless como tráfego suspeito - a URL final resolvida foi uma página de
+      verificação (`/verify/traffic/error?...&is_logged_in=false`), não o produto.
+      Ou seja, o problema não é só "precisa executar JS", é "precisa parecer um
+      navegador humano de verdade" pra passar pela proteção anti-bot da Shopee nesse
+      tipo de link de rastreamento - algo que um Browserless sem configuração extra de
+      camuflagem (stealth) não necessariamente resolve. Agora pelo menos gera um erro
+      específico ("bloqueou o navegador headless") em vez de confundir com "não achei
+      o padrão" - próximo passo é confirmar se isso acontece sempre ou só às vezes,
+      antes de decidir se vale investir em alguma camada extra de camuflagem (ou
+      aceitar que esse tipo de link tem um teto de resolução que não dá pra contornar
+      de forma confiável).
 
 Suite completa (228 testes) verde.
 

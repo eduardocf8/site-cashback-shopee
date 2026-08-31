@@ -259,7 +259,12 @@ class ResolverViaNavegadorTests(TestCase):
     def test_usar_navegador_resolve_link_que_a_resolucao_simples_nao_conseguiu(self, mock_get, mock_post):
         mock_get.return_value = self._resposta_get_sem_padrao()
         resposta_post = Mock()
-        resposta_post.json.return_value = {"url": "https://shopee.com.br/product/537151226/22593050282"}
+        # Formato real observado em produção: o /function embrulha a resposta no mesmo
+        # shape que a função JS retornou ({"data": {...}, "type": "..."}), não achatado.
+        resposta_post.json.return_value = {
+            "data": {"url": "https://shopee.com.br/product/537151226/22593050282"},
+            "type": "application/json",
+        }
         mock_post.return_value = resposta_post
 
         item_id = _resolver_item_id("https://s.shopee.com.br/abc123", usar_navegador=True)
@@ -270,6 +275,28 @@ class ResolverViaNavegadorTests(TestCase):
         self.assertEqual(args[0], "https://navegador.exemplo/function")
         self.assertEqual(kwargs["params"], {"token": "chave-teste"})
         self.assertEqual(kwargs["json"]["context"], {"url": "https://s.shopee.com.br/abc123"})
+
+    @override_settings(BROWSERLESS_API_KEY="chave-teste")
+    @patch("ofertas.services.requests.post")
+    @patch("ofertas.services.requests.get")
+    def test_shopee_bloqueando_o_navegador_como_bot_levanta_erro_especifico(self, mock_get, mock_post):
+        """Visto em produção: mesmo com um navegador de verdade, a Shopee pode
+        detectar o Browserless como tráfego suspeito e devolver uma página de
+        verificação (/verify/traffic/error) em vez do produto (ver ROADMAP.md, Fase
+        37) - precisa de uma mensagem clara pra distinguir isso de "não achei o
+        padrão", não um erro genérico."""
+        mock_get.return_value = self._resposta_get_sem_padrao()
+        resposta_post = Mock()
+        resposta_post.json.return_value = {
+            "data": {"url": "https://shopee.com.br/verify/traffic/error?home_url=x&is_logged_in=false"},
+            "type": "application/json",
+        }
+        mock_post.return_value = resposta_post
+
+        with self.assertRaises(LinkProdutoInvalidoError) as excecao:
+            _resolver_item_id("https://s.shopee.com.br/abc123", usar_navegador=True)
+
+        self.assertIn("bloqueou o navegador headless", str(excecao.exception))
 
     @override_settings(BROWSERLESS_API_KEY="")
     @patch("ofertas.services.requests.post")
