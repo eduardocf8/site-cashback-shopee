@@ -96,7 +96,45 @@ class SemComissaoError(LinkProdutoInvalidoError):
 PADRAO_ITEM_ID_NA_URL = re.compile(r"-i\.\d+\.(\d+)|/product/\d+/(\d+)")
 
 
-def _resolver_item_id(url: str) -> int:
+def _resolver_url_final_via_navegador(url: str) -> str:
+    """Último recurso pra resolver um link dinâmico (ver Fase 35 no ROADMAP.md): a
+    Shopee usa redirecionamento via JavaScript pra alguns links curtos, que o requests
+    não consegue seguir (não executa JS) nem com headers de navegador de verdade -
+    confirmado com dado real (status 200, 0 redirecionamentos, mesmo com headers
+    completos). Usa o Browserless.io (navegador headless hospedado, ver
+    settings.BROWSERLESS_API_KEY) pra abrir o link de verdade e ler a URL final."""
+    if not settings.BROWSERLESS_API_KEY:
+        raise LinkProdutoInvalidoError(
+            "BROWSERLESS_API_KEY não configurada - não dá pra resolver esse link via navegador."
+        )
+
+    codigo_js = (
+        "export default async ({ page, context }) => {"
+        "  await page.goto(context.url, { waitUntil: 'networkidle2', timeout: 20000 });"
+        "  return { data: { url: page.url() }, type: 'application/json' };"
+        "};"
+    )
+    try:
+        resposta = requests.post(
+            f"{settings.BROWSERLESS_API_URL}/function",
+            params={"token": settings.BROWSERLESS_API_KEY},
+            json={"code": codigo_js, "context": {"url": url}},
+            timeout=25,
+        )
+        resposta.raise_for_status()
+        dados = resposta.json()
+    except requests.RequestException as erro:
+        raise LinkProdutoInvalidoError(f"Navegador headless falhou ao resolver {url}: {erro}") from erro
+
+    url_final = (dados or {}).get("url")
+    if not url_final:
+        raise LinkProdutoInvalidoError(
+            f"Navegador headless não retornou uma URL final pra {url} (resposta: {dados!r})."
+        )
+    return url_final
+
+
+def _resolver_item_id(url: str, usar_navegador: bool = False) -> int:
     """Extrai o item_id de um link de produto da Shopee. Se for link curto (shp.ee,
     s.shopee.com.br), o padrão -i.<shopId>.<itemId> só aparece depois do
     redirecionamento, então segue ele primeiro - com um User-Agent de navegador de
@@ -105,7 +143,9 @@ def _resolver_item_id(url: str) -> int:
     final ainda não tiver o padrão (ex: caiu numa página intermediária de
     abrir-app/landing em vez do produto direto), procura o mesmo padrão no HTML da
     página - o link real do produto costuma aparecer em algum lugar do conteúdo
-    mesmo quando a URL do navegador não muda."""
+    mesmo quando a URL do navegador não muda. Se usar_navegador=True e mesmo assim não
+    achar nada, tenta ainda o navegador headless (mais lento, só chamado como último
+    recurso - ver _resolver_url_final_via_navegador)."""
     match = PADRAO_ITEM_ID_NA_URL.search(url)
     if match:
         return int(match.group(1) or match.group(2))
@@ -134,28 +174,39 @@ def _resolver_item_id(url: str) -> int:
         raise LinkProdutoInvalidoError(f"Não consegui abrir o link {url}: {erro}") from erro
 
     match = PADRAO_ITEM_ID_NA_URL.search(resposta.url) or PADRAO_ITEM_ID_NA_URL.search(resposta.text)
-    if not match:
-        raise LinkProdutoInvalidoError(
-            f"Não consegui identificar o produto a partir do link {url} "
-            f"(redirecionou pra {resposta.url} [status={resposta.status_code}, "
-            f"{len(resposta.history)} redirecionamento(s) seguido(s)], mas não achei "
-            "nenhum padrão de link de produto da Shopee (-i.<loja>.<item> ou "
-            "/product/<loja>/<item>) nem na URL final nem no conteúdo da página - talvez "
-            "esse link precise ser aberto no navegador/app pra chegar na página do produto)."
-        )
-    return int(match.group(1) or match.group(2))
+    if match:
+        return int(match.group(1) or match.group(2))
+
+    if usar_navegador:
+        url_final = _resolver_url_final_via_navegador(url)
+        match = PADRAO_ITEM_ID_NA_URL.search(url_final)
+        if match:
+            return int(match.group(1) or match.group(2))
+
+    raise LinkProdutoInvalidoError(
+        f"Não consegui identificar o produto a partir do link {url} "
+        f"(redirecionou pra {resposta.url} [status={resposta.status_code}, "
+        f"{len(resposta.history)} redirecionamento(s) seguido(s)], mas não achei "
+        "nenhum padrão de link de produto da Shopee (-i.<loja>.<item> ou "
+        "/product/<loja>/<item>) nem na URL final nem no conteúdo da página - talvez "
+        "esse link precise ser aberto no navegador/app pra chegar na página do produto)."
+    )
 
 
-def buscar_oferta_por_link(url: str) -> Oferta:
+def buscar_oferta_por_link(url: str, usar_navegador: bool = False) -> Oferta:
     """Busca os dados de UM produto específico na Shopee a partir do link (usado pra
     postar uma oferta escolhida na mão, fora do calendário automático - ver
-    instagram_bot/services.py, publicar_story_oferta_especifica). Não salva no banco -
-    é só um Oferta em memória, pros mesmos geradores de imagem que já usam Oferta."""
+    instagram_bot/services.py, publicar_story_oferta_especifica - e pra mostrar o
+    cashback real ao converter um link no site, ver links/views.py). Não salva no
+    banco - é só um Oferta em memória, pros mesmos geradores de imagem que já usam
+    Oferta. usar_navegador=True tenta o Browserless como último recurso quando a
+    resolução simples falha (mais lento, só usado na busca em segundo plano do site -
+    ver ROADMAP.md Fase 37)."""
     # Tira espaço e o embrulho de "<...>" / aspas que aparece quando cola o link de
     # algum app que formata como link (WhatsApp, Markdown) - sem isso, requests.get dá
     # "No connection adapters were found for '<https://...>'" em vez de abrir a URL.
     url = url.strip().strip("<>\"' ")
-    item_id = _resolver_item_id(url)
+    item_id = _resolver_item_id(url, usar_navegador=usar_navegador)
     node = buscar_oferta_por_item_id(item_id)
     if node is None:
         raise SemComissaoError(

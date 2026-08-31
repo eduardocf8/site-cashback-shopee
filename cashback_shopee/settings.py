@@ -156,6 +156,17 @@ GEMINI_API_KEY = os.environ.get("GEMINI_API_KEY", "")
 GEMINI_API_URL = os.environ.get("GEMINI_API_URL", "https://generativelanguage.googleapis.com/v1beta")
 GEMINI_MODEL = os.environ.get("GEMINI_MODEL", "gemini-3.1-flash-lite")
 
+# API do Browserless.io (navegador headless hospedado), usada só como último recurso pra
+# resolver links de produto curtos/dinâmicos da Shopee que dependem de JavaScript pra
+# redirecionar - requests não executa JS, então não enxerga esse tipo de redirecionamento
+# (ver ROADMAP.md, Fase 35/37). Sem BROWSERLESS_API_KEY configurada, esses links
+# específicos continuam sem mostrar o cashback real (cai no texto neutro "Link gerado!"),
+# o resto do site funciona normal - ver ofertas/services.py::_resolver_url_final_via_navegador.
+# BROWSERLESS_API_URL varia por conta (a Browserless às vezes atribui um endpoint regional
+# específico) - confira no painel deles qual usar antes de configurar em produção.
+BROWSERLESS_API_KEY = os.environ.get("BROWSERLESS_API_KEY", "")
+BROWSERLESS_API_URL = os.environ.get("BROWSERLESS_API_URL", "https://production-sfo.browserless.io")
+
 # Credenciais da API da Asaas para pagar os saques via PIX (ficam no arquivo .env, nunca no código)
 ASAAS_API_KEY = os.environ.get("ASAAS_API_KEY", "")
 ASAAS_API_URL = os.environ.get("ASAAS_API_URL", "https://sandbox.asaas.com/api/v3")

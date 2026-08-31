@@ -395,7 +395,7 @@
                     </form>
                     <div class="resultado-link">
                         {% if link_convertido %}
-                            <div class="selo-sucesso">
+                            <div class="selo-sucesso" id="selo-resultado">
                                 <svg viewBox="0 0 24 24" width="28" height="28" fill="none" aria-hidden="true">
                                     <circle cx="12" cy="12" r="11" fill="var(--success)"/>
                                     <path d="M7 12.5l3 3 7-7" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
@@ -409,16 +409,21 @@
                                     <span class="confete confete-6"></span>
                                 {% endif %}
                             </div>
-                            {% if oferta_convertida %}
-                                <p class="resultado-titulo resultado-ok">Cashback ativado! 🎉</p>
-                                <p class="resultado-sub">Esse produto rende {{ oferta_convertida.percentual_cashback }}% de cashback (R$ {{ oferta_convertida.valor_cashback_estimado|floatformat:2 }} de volta).</p>
-                            {% elif sem_comissao_convertida %}
-                                <p class="resultado-titulo">Link gerado, mas sem cashback dessa vez</p>
-                                <p class="resultado-sub">A Shopee não oferece comissão para esse produto, portanto também não há cashback.</p>
-                            {% else %}
-                                <p class="resultado-titulo">Link gerado!</p>
-                                <p class="resultado-sub">Para conferir o cashback desse produto, acesse sua conta em alguns dias.</p>
-                            {% endif %}
+                            <div id="cashback-resultado-texto"{% if click_id_pendente %} data-url-pendente="{% url 'cashback_real_pendente' click_id_pendente %}"{% endif %}>
+                                {% if oferta_convertida %}
+                                    <p class="resultado-titulo resultado-ok" id="cashback-titulo">Cashback ativado! 🎉</p>
+                                    <p class="resultado-sub" id="cashback-sub">Esse produto rende {{ oferta_convertida.percentual_cashback }}% de cashback (R$ {{ oferta_convertida.valor_cashback_estimado|floatformat:2 }} de volta).</p>
+                                {% elif sem_comissao_convertida %}
+                                    <p class="resultado-titulo" id="cashback-titulo">Link gerado, mas sem cashback dessa vez</p>
+                                    <p class="resultado-sub" id="cashback-sub">A Shopee não oferece comissão para esse produto, portanto também não há cashback.</p>
+                                {% elif click_id_pendente %}
+                                    <p class="resultado-titulo" id="cashback-titulo">Buscando o cashback real...</p>
+                                    <p class="resultado-sub" id="cashback-sub">Isso pode levar alguns segundos.</p>
+                                {% else %}
+                                    <p class="resultado-titulo" id="cashback-titulo">Link gerado!</p>
+                                    <p class="resultado-sub" id="cashback-sub">Para conferir o cashback desse produto, acesse sua conta em alguns dias.</p>
+                                {% endif %}
+                            </div>
                             <a href="{{ link_convertido }}" target="_blank" rel="noopener noreferrer" class="resultado-url">{{ link_convertido }}</a>
                         {% else %}
                             <p class="resultado-titulo">O link convertido aparecerá aqui.</p>
@@ -673,6 +678,37 @@
 
             input.addEventListener("input", atualizar);
             atualizar();
+        })();
+
+        (function () {
+            var texto = document.getElementById("cashback-resultado-texto");
+            var url = texto && texto.getAttribute("data-url-pendente");
+            if (!url) return;
+
+            function atualizarResultado(status, dados) {
+                var titulo = document.getElementById("cashback-titulo");
+                var sub = document.getElementById("cashback-sub");
+                if (!titulo || !sub) return;
+
+                if (status === "ok") {
+                    titulo.textContent = "Cashback ativado! 🎉";
+                    titulo.classList.add("resultado-ok");
+                    var percentual = dados.percentual.replace(".", ",");
+                    var valor = dados.valor.replace(".", ",");
+                    sub.textContent = "Esse produto rende " + percentual + "% de cashback (R$ " + valor + " de volta).";
+                } else if (status === "sem_comissao") {
+                    titulo.textContent = "Link gerado, mas sem cashback dessa vez";
+                    sub.textContent = "A Shopee não oferece comissão para esse produto, portanto também não há cashback.";
+                } else {
+                    titulo.textContent = "Link gerado!";
+                    sub.textContent = "Para conferir o cashback desse produto, acesse sua conta em alguns dias.";
+                }
+            }
+
+            fetch(url)
+                .then(function (resposta) { return resposta.json(); })
+                .then(function (dados) { atualizarResultado(dados.status, dados); })
+                .catch(function () { atualizarResultado("falhou"); });
         })();
 
         (function () {

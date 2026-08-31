@@ -984,6 +984,59 @@ Suite completa (220 testes) verde.
 
 ---
 
+## Fase 37 — Navegador headless (Browserless) pra resolver links dinâmicos ✅
+
+Continuação direta da Fase 35/36. Com o comando de diagnóstico rodado em produção,
+descobrimos que **44,1%** de todos os links de produto já convertidos no site são
+curtos (`s.shopee.com.br`/`shp.ee`), e testando de verdade contra a Shopee, **100%**
+deles falharam na resolução simples - um problema bem maior do que o esperado, não um
+caso raro. Pesquisei alternativas antes de decidir: não existe endpoint oficial da
+Shopee pra resolver esse tipo de link (até bibliotecas de terceiros fazem o mesmo
+"seguir redirect HTTP" que a gente já tentava), então só um ambiente que executa
+JavaScript resolve. Comparado o custo de hospedar Chromium no próprio servidor
+(exigiria upar o plano da Render de Starter/$7 pra Standard/$25 só pela RAM) contra um
+serviço externo de navegador headless - Browserless.io tem plano gratuito de 1.000
+unidades/mês, recorrente, que cobre o volume atual do site sem custo nenhum.
+
+- [x] **`BROWSERLESS_API_KEY`/`BROWSERLESS_API_URL`** (settings.py, .env.example) -
+      opcional, como o GEMINI_API_KEY: sem preencher, esses links específicos continuam
+      caindo no texto neutro (Fase 36), o resto do site funciona normal.
+- [x] **`ofertas/services.py::_resolver_url_final_via_navegador()`** - chama a API
+      REST do Browserless (`/function`, rodando um Puppeteer real: `page.goto` +
+      `page.url()`) só como último recurso, depois que a resolução simples
+      (`_resolver_item_id`) já tentou e falhou. `buscar_oferta_por_link()` ganhou um
+      parâmetro `usar_navegador` (padrão `False`) pra não mudar o comportamento de quem
+      já chamava essa função (ex: `postar_oferta_especifica`).
+- [x] **Busca em segundo plano, sem travar a conversão do link** - o navegador headless
+      é mais lento (alguns segundos) e usa uma cota mensal limitada, então só é chamado
+      DEPOIS que a página já carregou, via JS (`fetch`), não durante a resposta da
+      conversão. Fluxo: link aparece na hora (como sempre) → se a resolução rápida não
+      conseguiu confirmar nada, mostra "Buscando o cashback real..." → JS chama
+      `/cashback-real/<click_id>/` (`cashback_real_pendente`, `links/views.py`) → quando
+      responde, atualiza a caixa sozinha (% real, "sem comissão" ou o texto neutro final,
+      se o navegador headless também não conseguir).
+- [x] **`Click.id` (UUID) identifica o pedido pendente** - o endpoint novo filtra por
+      `usuario=request.user`, pra ninguém conseguir consultar o click de outra pessoa
+      (404 se não for dono).
+- [x] Testes cobrindo: `usar_navegador` só chama o Browserless quando pedido
+      explicitamente, erro claro se `BROWSERLESS_API_KEY` não estiver configurada, os
+      3 status do endpoint novo (`ok`/`sem_comissao`/`falhou`) e o controle de posse do
+      click. Verificado também com Playwright que o JS atualiza a caixa corretamente
+      nos 4 cenários (sucesso, sem comissão, falha explícita, erro de rede) - sem poder
+      testar contra o Browserless de verdade nesse ambiente (sem credenciais aqui),
+      então a integração real (endpoint/formato exato da API) precisa de teste em
+      produção depois que a chave for configurada.
+
+**Ainda por confirmar em produção**: o formato exato da API do Browserless
+(endpoint `/function`, corpo `{code, context}`) foi levantado por pesquisa, não testado
+ao vivo (sem acesso de rede da Shopee/Browserless nesse ambiente de desenvolvimento) -
+pode precisar de um pequeno ajuste depois que a chave de API for configurada e testada
+de verdade.
+
+Suite completa (228 testes) verde.
+
+---
+
 Pra continuar esse roadmap numa conversa nova, basta apontar esse arquivo
 (`ROADMAP.md`) e o `BRAND.md` — juntos eles dão o contexto de identidade
 visual e do que falta implementar, sem precisar reconstruir o histórico da

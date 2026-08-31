@@ -1,5 +1,5 @@
 from decimal import Decimal
-from unittest.mock import patch
+from unittest.mock import Mock, patch
 
 from django.contrib.auth import get_user_model
 from django.test import TestCase, override_settings
@@ -243,6 +243,54 @@ class BuscarOfertaPorLinkTests(TestCase):
 
         with self.assertRaises(LinkProdutoInvalidoError):
             buscar_oferta_por_link("https://shopee.com.br/produto-exemplo-i.1.999")
+
+
+class ResolverViaNavegadorTests(TestCase):
+    """Último recurso pra links dinâmicos que dependem de JavaScript pra redirecionar
+    (a resolução simples de _resolver_item_id não enxerga isso - ver ROADMAP.md, Fase
+    35/37) - usa_navegador=True tenta o Browserless.io antes de desistir."""
+
+    def _resposta_get_sem_padrao(self):
+        return Mock(url="https://s.shopee.com.br/abc123", text="", status_code=200, history=[])
+
+    @override_settings(BROWSERLESS_API_KEY="chave-teste", BROWSERLESS_API_URL="https://navegador.exemplo")
+    @patch("ofertas.services.requests.post")
+    @patch("ofertas.services.requests.get")
+    def test_usar_navegador_resolve_link_que_a_resolucao_simples_nao_conseguiu(self, mock_get, mock_post):
+        mock_get.return_value = self._resposta_get_sem_padrao()
+        resposta_post = Mock()
+        resposta_post.json.return_value = {"url": "https://shopee.com.br/product/537151226/22593050282"}
+        mock_post.return_value = resposta_post
+
+        item_id = _resolver_item_id("https://s.shopee.com.br/abc123", usar_navegador=True)
+
+        self.assertEqual(item_id, 22593050282)
+        mock_post.assert_called_once()
+        args, kwargs = mock_post.call_args
+        self.assertEqual(args[0], "https://navegador.exemplo/function")
+        self.assertEqual(kwargs["params"], {"token": "chave-teste"})
+        self.assertEqual(kwargs["json"]["context"], {"url": "https://s.shopee.com.br/abc123"})
+
+    @override_settings(BROWSERLESS_API_KEY="")
+    @patch("ofertas.services.requests.post")
+    @patch("ofertas.services.requests.get")
+    def test_usar_navegador_sem_api_key_configurada_levanta_erro_claro(self, mock_get, mock_post):
+        mock_get.return_value = self._resposta_get_sem_padrao()
+
+        with self.assertRaises(LinkProdutoInvalidoError):
+            _resolver_item_id("https://s.shopee.com.br/abc123", usar_navegador=True)
+
+        mock_post.assert_not_called()
+
+    @patch("ofertas.services.requests.post")
+    @patch("ofertas.services.requests.get")
+    def test_sem_usar_navegador_nunca_chama_o_browserless(self, mock_get, mock_post):
+        mock_get.return_value = self._resposta_get_sem_padrao()
+
+        with self.assertRaises(LinkProdutoInvalidoError):
+            _resolver_item_id("https://s.shopee.com.br/abc123")  # usar_navegador=False (padrão)
+
+        mock_post.assert_not_called()
 
 
 @override_settings(**CREDENCIAIS_TESTE)
