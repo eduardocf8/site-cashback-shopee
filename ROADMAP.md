@@ -886,6 +886,38 @@ com dados de exemplo onde os dois produtos escolhidos divergem.
 
 ---
 
+## Fase 34 — Cashback real ao converter um link no site ✅
+
+Usuário notou: ao converter o link de um produto na home, o site só mostrava o "até
+X%" genérico (maior % do catálogo sincronizado no dia) - mas a Shopee tem muito mais
+produtos do que os que entram nesse catálogo, então esse número não reflete a
+comissão real daquele produto específico.
+
+- [x] **`links/views.py::_buscar_cashback_real()`** — reaproveita
+      `ofertas.services.buscar_oferta_por_link()` (já existia, criada pra postar um
+      story manual de um produto específico) pra consultar a comissão REAL do produto
+      convertido direto na Shopee (`productOfferV2` filtrado por `itemId`), calculando
+      o % e o R$ de cashback de verdade daquele item - não mais um valor genérico do
+      catálogo. O link já foi gerado nesse ponto, então qualquer falha nessa busca
+      extra (rede, produto não resolvido) só significa "sem estimativa exata pra
+      mostrar", nunca desfaz o link.
+- [x] **`ofertas.services.SemComissaoError`** — nova exceção (subclasse de
+      `LinkProdutoInvalidoError`, então quem já tratava esse erro genericamente, como
+      `postar_oferta_especifica`, continua funcionando sem mudança), levantada quando
+      a Shopee não retorna nenhuma oferta pro `item_id` - ou seja, não tem comissão de
+      afiliado ativa nesse produto agora. Antes isso caía no mesmo erro genérico de
+      "link inválido"; separar deixa o site mostrar uma mensagem clara e específica
+      ("A Shopee não oferece comissão de afiliado nesse produto agora, portanto não há
+      cashback pra essa compra") em vez de confundir com link malformado.
+- [x] **`home.html`** — a caixa de resultado da conversão mostra o % e R$ reais
+      quando a busca funciona, a mensagem de "sem comissão" (sem confete, já que não é
+      uma comemoração) quando não há comissão ativa, e só cai pro "Cashback ativado!"
+      genérico como último recurso, se a busca falhar por outro motivo.
+
+Suite completa (219 testes) verde.
+
+---
+
 Pra continuar esse roadmap numa conversa nova, basta apontar esse arquivo
 (`ROADMAP.md`) e o `BRAND.md` — juntos eles dão o contexto de identidade
 visual e do que falta implementar, sem precisar reconstruir o histórico da

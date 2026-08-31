@@ -8,6 +8,9 @@ from django.shortcuts import redirect, render
 from django.urls import reverse
 
 from ofertas.services import (
+    LinkProdutoInvalidoError,
+    SemComissaoError,
+    buscar_oferta_por_link,
     categorias_mais_vendidas,
     obter_cashback_maximo_anunciado,
     selecionar_carrossel_home,
@@ -25,6 +28,8 @@ NUMERO_CATEGORIAS_HOME = 12
 
 def home(request):
     link_convertido = None
+    oferta_convertida = None
+    sem_comissao_convertida = False
 
     if request.method == "POST":
         if not request.user.is_authenticated:
@@ -33,10 +38,11 @@ def home(request):
 
         form = LinkProdutoForm(request.POST)
         if form.is_valid():
-            click = _criar_click_e_avisar(
-                request, Click.TIPO_PRODUTO, form.cleaned_data["url_produto"], mensagem_sucesso=None
-            )
-            link_convertido = click.link_gerado if click else None
+            url_produto = form.cleaned_data["url_produto"]
+            click = _criar_click_e_avisar(request, Click.TIPO_PRODUTO, url_produto, mensagem_sucesso=None)
+            if click:
+                link_convertido = click.link_gerado
+                oferta_convertida, sem_comissao_convertida = _buscar_cashback_real(url_produto)
             form = LinkProdutoForm()
     else:
         inicial = {}
@@ -54,6 +60,8 @@ def home(request):
     contexto = {
         "form": form,
         "link_convertido": link_convertido,
+        "oferta_convertida": oferta_convertida,
+        "sem_comissao_convertida": sem_comissao_convertida,
         "cashback_percentual_maximo": cashback_percentual_maximo,
         "saque_valor_minimo": settings.SAQUE_VALOR_MINIMO,
         "oferta_destaque": oferta_destaque,
@@ -91,6 +99,20 @@ def gerar_link(request):
 
     clicks = request.user.clicks.all()[:20]
     return render(request, "links/gerar_link.html", {"form": form, "clicks": clicks})
+
+
+def _buscar_cashback_real(url_produto):
+    """Busca a % de comissão real do produto convertido, pra mostrar o cashback de
+    verdade em vez do "até X%" genérico do catálogo sincronizado (ver
+    ofertas.services.buscar_oferta_por_link) - o link já foi gerado nesse ponto, então
+    qualquer falha aqui só significa "sem estimativa exata pra mostrar", nunca desfaz o
+    link. Retorna (oferta, sem_comissao)."""
+    try:
+        return buscar_oferta_por_link(url_produto), False
+    except SemComissaoError:
+        return None, True
+    except (LinkProdutoInvalidoError, ShopeeConfigError, ShopeeAPIError, requests.RequestException):
+        return None, False
 
 
 def _criar_click_e_avisar(request, tipo, url_produto, mensagem_sucesso="Link gerado com sucesso!"):

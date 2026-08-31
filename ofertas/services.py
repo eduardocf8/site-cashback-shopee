@@ -78,8 +78,15 @@ def _montar_oferta(node: dict, categorias_nivel1: dict[int, str]) -> Oferta:
 
 
 class LinkProdutoInvalidoError(Exception):
-    """A URL não é reconhecível como link de produto da Shopee, ou a Shopee não
-    retornou nenhuma oferta pra ela (ver buscar_oferta_por_link)."""
+    """A URL não é reconhecível como link de produto da Shopee, ou não deu pra abri-la
+    (ver buscar_oferta_por_link)."""
+
+
+class SemComissaoError(LinkProdutoInvalidoError):
+    """O link é de um produto de verdade da Shopee, mas ela não retornou nenhuma oferta
+    pra esse item_id - ou seja, não tem comissão de afiliado ativa nesse momento, então
+    não há cashback possível pra essa compra. Subclasse de LinkProdutoInvalidoError pra
+    quem já trata esse tipo de erro genericamente continuar funcionando sem mudança."""
 
 
 # Padrão dos links de produto da Shopee: .../produto-exemplo-i.<shopId>.<itemId> -
@@ -135,9 +142,9 @@ def buscar_oferta_por_link(url: str) -> Oferta:
     item_id = _resolver_item_id(url)
     node = buscar_oferta_por_item_id(item_id)
     if node is None:
-        raise LinkProdutoInvalidoError(
-            f"A Shopee não retornou nenhuma oferta pra esse produto (item_id={item_id}) - "
-            "pode não ter comissão de afiliado ativa nesse momento."
+        raise SemComissaoError(
+            f"A Shopee não oferece comissão de afiliado nesse produto agora (item_id={item_id}), "
+            "portanto não há cashback."
         )
     return _montar_oferta(node, carregar_categorias_nivel1())
 

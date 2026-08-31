@@ -10,7 +10,10 @@ from links.models import Click
 
 from .models import Oferta, OfertaDestaqueManual, OfertaManual
 from .services import (
+    LinkProdutoInvalidoError,
+    SemComissaoError,
     _montar_oferta,
+    buscar_oferta_por_link,
     obter_cashback_maximo_anunciado,
     selecionar_carrossel_home,
     sincronizar_ofertas,
@@ -182,6 +185,51 @@ class CashbackMaximoAnunciadoTests(TestCase):
 
         maximo = obter_cashback_maximo_anunciado()
         self.assertEqual(maximo, Decimal("9.0"))
+
+
+class BuscarOfertaPorLinkTests(TestCase):
+    """buscar_oferta_por_link busca a comissão REAL de UM produto específico (usada
+    tanto pra postar um story manual quanto, em links/views.py, pra mostrar o cashback
+    de verdade ao converter um link no site - em vez do "até X%" genérico calculado do
+    catálogo sincronizado)."""
+
+    def _node(self, item_id, commission_rate, price):
+        return {
+            "itemId": item_id,
+            "commissionRate": commission_rate,
+            "productName": f"Produto {item_id}",
+            "priceMin": price,
+            "priceMax": price,
+            "productCatIds": [100],
+        }
+
+    @override_settings(SHOPEE_CASHBACK_PERCENTUAL=100, CASHBACK_MULTIPLICADOR_CAMPANHA=1)
+    @patch("ofertas.services.buscar_oferta_por_item_id")
+    def test_busca_a_comissao_real_do_produto_pelo_item_id_do_link(self, mock_buscar):
+        mock_buscar.return_value = self._node(999, "0.08", "50.00")
+
+        oferta = buscar_oferta_por_link("https://shopee.com.br/produto-exemplo-i.1.999")
+
+        self.assertEqual(oferta.item_id, 999)
+        self.assertEqual(oferta.percentual_cashback, Decimal("8.0"))
+        self.assertEqual(oferta.valor_cashback_estimado, Decimal("4.00"))
+        mock_buscar.assert_called_once_with(999)
+
+    @patch("ofertas.services.buscar_oferta_por_item_id")
+    def test_produto_sem_comissao_ativa_levanta_sem_comissao_error(self, mock_buscar):
+        mock_buscar.return_value = None
+
+        with self.assertRaises(SemComissaoError):
+            buscar_oferta_por_link("https://shopee.com.br/produto-exemplo-i.1.999")
+
+    @patch("ofertas.services.buscar_oferta_por_item_id")
+    def test_sem_comissao_error_continua_sendo_um_link_produto_invalido_error(self, mock_buscar):
+        """Quem já trata LinkProdutoInvalidoError genericamente (ex: o management
+        command postar_oferta_especifica) continua funcionando sem mudança."""
+        mock_buscar.return_value = None
+
+        with self.assertRaises(LinkProdutoInvalidoError):
+            buscar_oferta_por_link("https://shopee.com.br/produto-exemplo-i.1.999")
 
 
 @override_settings(**CREDENCIAIS_TESTE)

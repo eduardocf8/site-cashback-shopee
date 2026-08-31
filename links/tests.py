@@ -7,7 +7,8 @@ from django.contrib.auth import get_user_model
 from django.test import TestCase, override_settings
 from django.urls import reverse
 
-from ofertas.models import CashbackMaximoCache, OfertaDestaqueManual, OfertaManual
+from ofertas.models import CashbackMaximoCache, Oferta, OfertaDestaqueManual, OfertaManual
+from ofertas.services import LinkProdutoInvalidoError, SemComissaoError
 
 from .models import Click
 from .shopee_client import (
@@ -175,6 +176,65 @@ class HomeCashbackMaximoTests(TestCase):
 
         self.assertEqual(resposta.context["cashback_percentual_maximo"], Decimal("10.0"))
         self.assertContains(resposta, "até 10%")
+
+
+@override_settings(SHOPEE_CASHBACK_PERCENTUAL=100, CASHBACK_MULTIPLICADOR_CAMPANHA=1)
+class HomeConversaoCashbackRealTests(TestCase):
+    """Ao converter um link no site, o resultado mostra a comissão REAL daquele
+    produto (ofertas.services.buscar_oferta_por_link), não o "até X%" genérico do
+    catálogo sincronizado - ver links/views.py::_buscar_cashback_real."""
+
+    def setUp(self):
+        self.usuario = get_user_model().objects.create_user(
+            username="compradora", password="senha123", cpf="39053344705"
+        )
+        self.client.force_login(self.usuario)
+
+    @patch("links.views.buscar_oferta_por_link")
+    @patch("links.services.gerar_link_curto")
+    def test_mostra_o_cashback_real_do_produto_convertido(self, mock_gerar_link, mock_buscar_oferta):
+        mock_gerar_link.return_value = "https://shope.ee/produto123"
+        mock_buscar_oferta.return_value = Oferta(
+            item_id=999, nome="Produto real",
+            preco_min=Decimal("50.00"), percentual_comissao=Decimal("0.08"),
+        )
+
+        resposta = self.client.post(
+            reverse("home"), {"url_produto": "https://shopee.com.br/produto-exemplo-i.1.999"}
+        )
+
+        self.assertContains(resposta, "Cashback ativado! 🎉")
+        self.assertContains(resposta, "Esse produto rende 8,0% de cashback (R$ 4,00 de volta).")
+
+    @patch("links.views.buscar_oferta_por_link")
+    @patch("links.services.gerar_link_curto")
+    def test_produto_sem_comissao_ativa_mostra_mensagem_especifica_sem_confete(
+        self, mock_gerar_link, mock_buscar_oferta
+    ):
+        mock_gerar_link.return_value = "https://shope.ee/produto123"
+        mock_buscar_oferta.side_effect = SemComissaoError("sem comissão")
+
+        resposta = self.client.post(
+            reverse("home"), {"url_produto": "https://shopee.com.br/produto-exemplo-i.1.999"}
+        )
+
+        self.assertContains(resposta, "Link gerado, mas sem cashback dessa vez")
+        self.assertContains(resposta, "A Shopee não oferece comissão de afiliado nesse produto agora")
+        self.assertNotContains(resposta, "Cashback ativado")
+        self.assertNotContains(resposta, '<span class="confete confete-1">')
+
+    @patch("links.views.buscar_oferta_por_link")
+    @patch("links.services.gerar_link_curto")
+    def test_falha_ao_buscar_comissao_real_nao_impede_o_link_ja_gerado(self, mock_gerar_link, mock_buscar_oferta):
+        mock_gerar_link.return_value = "https://shope.ee/produto123"
+        mock_buscar_oferta.side_effect = LinkProdutoInvalidoError("não consegui abrir o link")
+
+        resposta = self.client.post(
+            reverse("home"), {"url_produto": "https://shopee.com.br/produto-exemplo-i.1.999"}
+        )
+
+        self.assertContains(resposta, "Cashback ativado! 🎉")
+        self.assertContains(resposta, "https://shope.ee/produto123")
 
 
 class HomeCarrosselOfertaManualTests(TestCase):
