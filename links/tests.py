@@ -219,7 +219,7 @@ class HomeConversaoCashbackRealTests(TestCase):
         )
 
         self.assertContains(resposta, "Link gerado, mas sem cashback dessa vez")
-        self.assertContains(resposta, "A Shopee não oferece comissão de afiliado nesse produto agora")
+        self.assertContains(resposta, "A Shopee não oferece comissão para esse produto, portanto também não há cashback.")
         self.assertNotContains(resposta, "Cashback ativado")
         self.assertNotContains(resposta, '<span class="confete confete-1">')
 

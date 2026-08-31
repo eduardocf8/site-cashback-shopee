@@ -907,8 +907,9 @@ comissão real daquele produto específico.
       a Shopee não retorna nenhuma oferta pro `item_id` - ou seja, não tem comissão de
       afiliado ativa nesse produto agora. Antes isso caía no mesmo erro genérico de
       "link inválido"; separar deixa o site mostrar uma mensagem clara e específica
-      ("A Shopee não oferece comissão de afiliado nesse produto agora, portanto não há
-      cashback pra essa compra") em vez de confundir com link malformado.
+      ("A Shopee não oferece comissão para esse produto, portanto também não há
+      cashback") em vez de confundir com link malformado ou dar a entender que a
+      cash-b está ficando com a comissão sem repassar nada.
 - [x] **`home.html`** — a caixa de resultado da conversão mostra o % e R$ reais
       quando a busca funciona, a mensagem de "sem comissão" (sem confete, já que não é
       uma comemoração) quando não há comissão ativa, e só cai pro "Cashback ativado!"

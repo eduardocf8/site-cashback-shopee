@@ -411,7 +411,7 @@
                             </div>
                             {% if sem_comissao_convertida %}
                                 <p class="resultado-titulo">Link gerado, mas sem cashback dessa vez</p>
-                                <p class="resultado-sub">A Shopee não oferece comissão de afiliado nesse produto agora, portanto não há cashback pra essa compra.</p>
+                                <p class="resultado-sub">A Shopee não oferece comissão para esse produto, portanto também não há cashback.</p>
                             {% elif oferta_convertida %}
                                 <p class="resultado-titulo resultado-ok">Cashback ativado! 🎉</p>
                                 <p class="resultado-sub">Esse produto rende {{ oferta_convertida.percentual_cashback }}% de cashback (R$ {{ oferta_convertida.valor_cashback_estimado|floatformat:2 }} de volta).</p>
