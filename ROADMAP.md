@@ -919,6 +919,40 @@ Suite completa (219 testes) verde.
 
 ---
 
+## Fase 35 — Bug real: link curto caindo sempre no genérico ✅
+
+Testando a Fase 34 em produção, o dono do produto reportou dois links curtos reais
+(`s.shopee.com.br/...`) que sempre caíam no "Cashback ativado!" genérico, nunca no %
+real nem na mensagem de "sem comissão" - sinal de que a busca estava falhando por um
+motivo diferente dos dois já tratados. Com o log adicionado nessa mesma investigação
+(`[links] não consegui buscar o cashback real de ...`), a causa apareceu: a Shopee não
+chegou a redirecionar de verdade pro pedido feito pelo servidor (a "URL final" voltava
+idêntica à original) - preciso do dono do produto abrir o mesmo link num navegador de
+verdade pra confirmar o que estava acontecendo.
+
+- [x] **Causa raiz encontrada**: a Shopee usa dois formatos de link de produto - o
+      antigo `.../produto-exemplo-i.<shopId>.<itemId>` (o único que `_resolver_item_id`
+      reconhecia) e um mais novo `.../product/<shopId>/<itemId>`, visto no navegador
+      resolvendo o link curto reportado. O regex simplesmente não reconhecia esse
+      segundo formato - por isso caía sempre no erro genérico "não consegui
+      identificar o produto", mesmo com o item certo bem ali na URL.
+- [x] **`PADRAO_ITEM_ID_NA_URL`** (`ofertas/services.py`) passou a reconhecer os dois
+      formatos. Resolve de imediato quem cola o link já no formato novo (nem precisa
+      de chamada de rede) e também os redirecionamentos que terminam nesse formato.
+- [x] **Limite conhecido, não resolvido por essa fase**: mesmo com o regex corrigido,
+      não há garantia de que o servidor (sem executar JS, sem sessão/cookies de
+      navegador) sempre vai conseguir seguir o redirecionamento de um link curto até o
+      fim - a Shopee pode estar tratando esse pedido como não-navegador e servindo uma
+      página intermediária sem repetir a URL final em lugar nenhum do conteúdo. Se
+      isso persistir mesmo depois desse fix, a causa é essa e exigiria uma abordagem
+      bem mais pesada (navegador headless rodando no servidor) - decisão que precisa
+      ser pesada com o dono do produto, não vale a pena implementar sem confirmar que
+      o problema persiste.
+
+Suite completa (219 testes) verde.
+
+---
+
 Pra continuar esse roadmap numa conversa nova, basta apontar esse arquivo
 (`ROADMAP.md`) e o `BRAND.md` — juntos eles dão o contexto de identidade
 visual e do que falta implementar, sem precisar reconstruir o histórico da

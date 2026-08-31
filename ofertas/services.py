@@ -89,9 +89,11 @@ class SemComissaoError(LinkProdutoInvalidoError):
     quem já trata esse tipo de erro genericamente continuar funcionando sem mudança."""
 
 
-# Padrão dos links de produto da Shopee: .../produto-exemplo-i.<shopId>.<itemId> -
-# mesmo padrão documentado em links/forms.py (LinkProdutoForm).
-PADRAO_ITEM_ID_NA_URL = re.compile(r"-i\.\d+\.(\d+)")
+# Dois formatos de link de produto observados na Shopee: o mais antigo
+# .../produto-exemplo-i.<shopId>.<itemId> (documentado em links/forms.py,
+# LinkProdutoForm) e .../product/<shopId>/<itemId>, que apareceu resolvendo um link
+# curto de verdade (ver ROADMAP.md, Fase 35).
+PADRAO_ITEM_ID_NA_URL = re.compile(r"-i\.\d+\.(\d+)|/product/\d+/(\d+)")
 
 
 def _resolver_item_id(url: str) -> int:
@@ -106,7 +108,7 @@ def _resolver_item_id(url: str) -> int:
     mesmo quando a URL do navegador não muda."""
     match = PADRAO_ITEM_ID_NA_URL.search(url)
     if match:
-        return int(match.group(1))
+        return int(match.group(1) or match.group(2))
 
     cabecalhos = {
         "User-Agent": (
@@ -123,11 +125,12 @@ def _resolver_item_id(url: str) -> int:
     if not match:
         raise LinkProdutoInvalidoError(
             f"Não consegui identificar o produto a partir do link {url} "
-            f"(redirecionou pra {resposta.url}, mas não achei o padrão -i.<loja>.<item> "
-            "nem na URL final nem no conteúdo da página - talvez esse link precise ser "
-            "aberto no navegador/app pra chegar na página do produto)."
+            f"(redirecionou pra {resposta.url}, mas não achei nenhum padrão de link de "
+            "produto da Shopee (-i.<loja>.<item> ou /product/<loja>/<item>) nem na URL "
+            "final nem no conteúdo da página - talvez esse link precise ser aberto no "
+            "navegador/app pra chegar na página do produto)."
         )
-    return int(match.group(1))
+    return int(match.group(1) or match.group(2))
 
 
 def buscar_oferta_por_link(url: str) -> Oferta:

@@ -13,6 +13,7 @@ from .services import (
     LinkProdutoInvalidoError,
     SemComissaoError,
     _montar_oferta,
+    _resolver_item_id,
     buscar_oferta_por_link,
     obter_cashback_maximo_anunciado,
     selecionar_carrossel_home,
@@ -214,6 +215,18 @@ class BuscarOfertaPorLinkTests(TestCase):
         self.assertEqual(oferta.percentual_cashback, Decimal("8.0"))
         self.assertEqual(oferta.valor_cashback_estimado, Decimal("4.00"))
         mock_buscar.assert_called_once_with(999)
+
+    def test_reconhece_tambem_o_padrao_mais_novo_product_shop_item(self):
+        """Além de .../produto-exemplo-i.<shopId>.<itemId>, a Shopee também usa
+        .../product/<shopId>/<itemId> - visto resolvendo um link curto de verdade que
+        caía no erro genérico antes desse padrão ser reconhecido (ver ROADMAP.md,
+        Fase 35)."""
+        url = (
+            "https://shopee.com.br/product/537151226/22593050282"
+            "?exp_group=rollout&utm_source=an_18398680454"
+        )
+
+        self.assertEqual(_resolver_item_id(url), 22593050282)
 
     @patch("ofertas.services.buscar_oferta_por_item_id")
     def test_produto_sem_comissao_ativa_levanta_sem_comissao_error(self, mock_buscar):
