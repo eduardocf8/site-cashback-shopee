@@ -1063,6 +1063,28 @@ reversão.
 
 ---
 
+## Fase 38 — Explicar a limitação do cashback real nos textos do site ✅
+
+Consequência das Fases 34-37: usuário pediu pra deixar explícito, em todo lugar que
+fala sobre como o site funciona, que a cash-b tenta mostrar o cashback real ao
+converter um link, mas que isso nem sempre é possível por restrição da própria
+Shopee (não é falta de vontade nem falha do site) - e que isso não afeta o cashback
+de verdade, só a confirmação imediata na tela.
+
+- [x] **`home.html`** - nova observação na seção "Como ganhar mais cashback?", logo
+      depois da dica existente sobre não passar por outros links de afiliado.
+- [x] **`regras_cashback.html`** - nova seção "Cashback real ao converter um link",
+      entre "Venda direta x venda indireta" e "Sem limite de cashback por produto".
+- [x] **`faq.html`** - nova pergunta ("Por que às vezes não aparece o % de cashback
+      ao converter um link?"), logo depois da pergunta sobre venda direta/indireta.
+- [x] **`termos.html`** - novo parágrafo na seção "2. Como funciona o cashback",
+      com o mesmo conteúdo em tom mais formal.
+
+Verificado com Playwright (screenshot das 4 páginas, sem erros de console) e suite
+completa (220 testes) verde - conteúdo textual novo, sem mudança de comportamento.
+
+---
+
 Pra continuar esse roadmap numa conversa nova, basta apontar esse arquivo
 (`ROADMAP.md`) e o `BRAND.md` — juntos eles dão o contexto de identidade
 visual e do que falta implementar, sem precisar reconstruir o histórico da
