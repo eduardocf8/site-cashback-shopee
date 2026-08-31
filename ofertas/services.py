@@ -110,11 +110,23 @@ def _resolver_item_id(url: str) -> int:
     if match:
         return int(match.group(1) or match.group(2))
 
+    # Além do User-Agent, alguns headers que um navegador de verdade sempre manda e o
+    # requests não - sem eles, o link curto às vezes nem chega a redirecionar de
+    # verdade (a "URL final" volta idêntica à original, como se a Shopee estivesse
+    # tratando o pedido como não-navegador). Não tem garantia de que isso resolve -
+    # pode ser um bloqueio mais forte (fingerprint de TLS/HTTP, JS obrigatório) que
+    # nenhum header sozinho contorna.
     cabecalhos = {
         "User-Agent": (
             "Mozilla/5.0 (Linux; Android 13; Mobile) AppleWebKit/537.36 "
             "(KHTML, like Gecko) Chrome/124.0 Mobile Safari/537.36"
-        )
+        ),
+        "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,*/*;q=0.8",
+        "Accept-Language": "pt-BR,pt;q=0.9,en-US;q=0.8,en;q=0.7",
+        "Upgrade-Insecure-Requests": "1",
+        "Sec-Fetch-Site": "none",
+        "Sec-Fetch-Mode": "navigate",
+        "Sec-Fetch-Dest": "document",
     }
     try:
         resposta = requests.get(url, allow_redirects=True, timeout=10, headers=cabecalhos)
@@ -125,10 +137,11 @@ def _resolver_item_id(url: str) -> int:
     if not match:
         raise LinkProdutoInvalidoError(
             f"Não consegui identificar o produto a partir do link {url} "
-            f"(redirecionou pra {resposta.url}, mas não achei nenhum padrão de link de "
-            "produto da Shopee (-i.<loja>.<item> ou /product/<loja>/<item>) nem na URL "
-            "final nem no conteúdo da página - talvez esse link precise ser aberto no "
-            "navegador/app pra chegar na página do produto)."
+            f"(redirecionou pra {resposta.url} [status={resposta.status_code}, "
+            f"{len(resposta.history)} redirecionamento(s) seguido(s)], mas não achei "
+            "nenhum padrão de link de produto da Shopee (-i.<loja>.<item> ou "
+            "/product/<loja>/<item>) nem na URL final nem no conteúdo da página - talvez "
+            "esse link precise ser aberto no navegador/app pra chegar na página do produto)."
         )
     return int(match.group(1) or match.group(2))
 

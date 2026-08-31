@@ -939,15 +939,20 @@ verdade pra confirmar o que estava acontecendo.
 - [x] **`PADRAO_ITEM_ID_NA_URL`** (`ofertas/services.py`) passou a reconhecer os dois
       formatos. Resolve de imediato quem cola o link já no formato novo (nem precisa
       de chamada de rede) e também os redirecionamentos que terminam nesse formato.
-- [x] **Limite conhecido, não resolvido por essa fase**: mesmo com o regex corrigido,
-      não há garantia de que o servidor (sem executar JS, sem sessão/cookies de
-      navegador) sempre vai conseguir seguir o redirecionamento de um link curto até o
-      fim - a Shopee pode estar tratando esse pedido como não-navegador e servindo uma
-      página intermediária sem repetir a URL final em lugar nenhum do conteúdo. Se
-      isso persistir mesmo depois desse fix, a causa é essa e exigiria uma abordagem
-      bem mais pesada (navegador headless rodando no servidor) - decisão que precisa
-      ser pesada com o dono do produto, não vale a pena implementar sem confirmar que
-      o problema persiste.
+- [x] **Limite confirmado**: o dono do produto testou de novo o mesmo link curto
+      depois desse fix e bateu exatamente no cenário previsto - "URL final" idêntica à
+      original, ou seja, a Shopee nem chega a redirecionar de verdade pro pedido feito
+      pelo servidor (sem executar JS, sem sessão/cookies de navegador). O regex
+      corrigido continua certo e necessário (resolve quem cola o link já resolvido, ou
+      cujo redirecionamento funciona), só não alcança esse caso específico.
+- [x] **Headers de navegador mais completos** (`_resolver_item_id`,
+      `ofertas/services.py`) — além do User-Agent que já existia, passou a mandar
+      `Accept`, `Accept-Language`, `Upgrade-Insecure-Requests` e os `Sec-Fetch-*` que um
+      navegador de verdade sempre manda e o requests não. Tentativa barata e sem
+      garantia (decisão do dono do produto, entre isso e um navegador headless bem mais
+      pesado) - se ainda falhar, o log agora também mostra o status HTTP e quantos
+      redirecionamentos foram seguidos, pra confirmar se é bloqueio total (mesmo
+      comportamento de antes) ou algo mais sutil.
 
 Suite completa (219 testes) verde.
 
