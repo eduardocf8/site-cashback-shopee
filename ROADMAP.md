@@ -984,7 +984,7 @@ Suite completa (220 testes) verde.
 
 ---
 
-## Fase 37 — Navegador headless (Browserless) pra resolver links dinâmicos ✅
+## Fase 37 — Navegador headless (Browserless) pra resolver links dinâmicos (revertida)
 
 Continuação direta da Fase 35/36. Com o comando de diagnóstico rodado em produção,
 descobrimos que **44,1%** de todos os links de produto já convertidos no site são
@@ -1032,21 +1032,34 @@ unidades/mês, recorrente, que cobre o volume atual do site sem custo nenhum.
       mesmo formato que a função JS retornou (`{"data": {"url": ...}, "type": ...}`),
       não achatada como eu tinha suposto (`{"url": ...}`) - `_resolver_url_final_via_navegador`
       ajustada pra ler `dados["data"]["url"]`.
-- [ ] **Achado mais sério, ainda sem solução**: mesmo com um navegador de verdade
+- [x] **Achado mais sério, motivo da reversão**: mesmo com um navegador de verdade
       (que executa JavaScript, diferente do `requests`), a Shopee **bloqueou** o
       Browserless como tráfego suspeito - a URL final resolvida foi uma página de
       verificação (`/verify/traffic/error?...&is_logged_in=false`), não o produto.
-      Ou seja, o problema não é só "precisa executar JS", é "precisa parecer um
-      navegador humano de verdade" pra passar pela proteção anti-bot da Shopee nesse
-      tipo de link de rastreamento - algo que um Browserless sem configuração extra de
-      camuflagem (stealth) não necessariamente resolve. Agora pelo menos gera um erro
-      específico ("bloqueou o navegador headless") em vez de confundir com "não achei
-      o padrão" - próximo passo é confirmar se isso acontece sempre ou só às vezes,
-      antes de decidir se vale investir em alguma camada extra de camuflagem (ou
-      aceitar que esse tipo de link tem um teto de resolução que não dá pra contornar
-      de forma confiável).
+      Testado uma segunda vez com outro link curto, mesmo resultado - **100% de
+      bloqueio**, não um caso raro. O problema não é só "precisa executar JS", é
+      "precisa parecer um navegador humano de verdade" pra passar pela proteção
+      anti-bot da Shopee nesse tipo de link de rastreamento - e é bem provável que
+      seja um bloqueio por reputação de IP (faixas de datacenter/automação
+      conhecidas), não algo específico do Browserless que outro serviço parecido
+      resolveria. Decisão do dono do produto: não vale investir em camuflagem extra
+      (proxy residencial, stealth mode pago) pra contornar isso - aceitar a
+      limitação e reverter.
+- [x] **Revertida por completo** - removidos `BROWSERLESS_API_KEY`/`BROWSERLESS_API_URL`
+      (settings.py, .env.example), `_resolver_url_final_via_navegador` e o parâmetro
+      `usar_navegador` (`ofertas/services.py`), o endpoint `cashback_real_pendente` e
+      `click_id_pendente` (`links/views.py`, `links/urls.py`), e o JS/HTML
+      correspondente em `home.html`. Voltou a ser exatamente o comportamento da Fase
+      36: resolução rápida e síncrona, sem segunda tentativa - se falhar, mostra o
+      texto neutro na hora, sem a espera "Buscando..." que nunca resolvia de verdade
+      pra esse tipo de link.
 
-Suite completa (228 testes) verde.
+Essa fase fica registrada aqui como decisão real, já revertida - documenta a
+investigação e o motivo de não valer a pena, não precisa ser reescrita se alguém
+tiver a mesma ideia numa conversa futura.
+
+Suite completa de volta a 220 testes verde (mesma contagem da Fase 36) depois da
+reversão.
 
 ---
 

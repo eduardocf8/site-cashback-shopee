@@ -5,8 +5,7 @@ import requests
 from django.conf import settings
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
-from django.http import JsonResponse
-from django.shortcuts import get_object_or_404, redirect, render
+from django.shortcuts import redirect, render
 from django.urls import reverse
 
 from ofertas.services import (
@@ -34,7 +33,6 @@ def home(request):
     link_convertido = None
     oferta_convertida = None
     sem_comissao_convertida = False
-    click_id_pendente = None
 
     if request.method == "POST":
         if not request.user.is_authenticated:
@@ -47,9 +45,7 @@ def home(request):
             click = _criar_click_e_avisar(request, Click.TIPO_PRODUTO, url_produto, mensagem_sucesso=None)
             if click:
                 link_convertido = click.link_gerado
-                oferta_convertida, sem_comissao_convertida, precisa_navegador = _buscar_cashback_real(url_produto)
-                if precisa_navegador:
-                    click_id_pendente = click.id
+                oferta_convertida, sem_comissao_convertida = _buscar_cashback_real(url_produto)
             form = LinkProdutoForm()
     else:
         inicial = {}
@@ -69,7 +65,6 @@ def home(request):
         "link_convertido": link_convertido,
         "oferta_convertida": oferta_convertida,
         "sem_comissao_convertida": sem_comissao_convertida,
-        "click_id_pendente": click_id_pendente,
         "cashback_percentual_maximo": cashback_percentual_maximo,
         "saque_valor_minimo": settings.SAQUE_VALOR_MINIMO,
         "oferta_destaque": oferta_destaque,
@@ -114,41 +109,20 @@ def _buscar_cashback_real(url_produto):
     verdade em vez do "até X%" genérico do catálogo sincronizado (ver
     ofertas.services.buscar_oferta_por_link) - o link já foi gerado nesse ponto, então
     qualquer falha aqui só significa "sem estimativa exata pra mostrar", nunca desfaz o
-    link. Só tenta a resolução rápida (sem navegador headless, ver
-    cashback_real_pendente pra isso) - é chamada síncrona, dentro da resposta da
-    conversão do link, então não pode demorar. Retorna (oferta, sem_comissao,
-    precisa_navegador) - o terceiro valor indica se vale tentar de novo em segundo
-    plano com o navegador headless (ver Fase 37 no ROADMAP.md)."""
+    link. Retorna (oferta, sem_comissao).
+
+    Chegou a existir uma segunda tentativa em segundo plano via navegador headless
+    (Browserless) pros links que essa busca rápida não consegue resolver - removida
+    depois de confirmar em produção que a Shopee bloqueia esse tipo de navegador como
+    tráfego suspeito nesse domínio de rastreamento (100% de bloqueio nos testes reais,
+    não um caso raro) - ver ROADMAP.md, Fase 37."""
     try:
-        return buscar_oferta_por_link(url_produto), False, False
+        return buscar_oferta_por_link(url_produto), False
     except SemComissaoError:
-        return None, True, False
+        return None, True
     except (LinkProdutoInvalidoError, ShopeeConfigError, ShopeeAPIError, requests.RequestException) as erro:
         logger.warning("[links] não consegui buscar o cashback real de %s: %s", url_produto, erro)
-        return None, False, True
-
-
-@login_required
-def cashback_real_pendente(request, click_id):
-    """Endpoint chamado via JS depois que a home já carregou (ver home.html) - só
-    existe pra não travar a conversão do link esperando o navegador headless, que é
-    bem mais lento que a resolução rápida (ver _buscar_cashback_real). Filtra por
-    usuario=request.user pra ninguém conseguir consultar o click de outra pessoa."""
-    click = get_object_or_404(Click, pk=click_id, usuario=request.user)
-    try:
-        oferta = buscar_oferta_por_link(click.url_original, usar_navegador=True)
-        return JsonResponse(
-            {
-                "status": "ok",
-                "percentual": str(oferta.percentual_cashback),
-                "valor": f"{oferta.valor_cashback_estimado:.2f}",
-            }
-        )
-    except SemComissaoError:
-        return JsonResponse({"status": "sem_comissao"})
-    except (LinkProdutoInvalidoError, ShopeeConfigError, ShopeeAPIError, requests.RequestException) as erro:
-        logger.warning("[links] navegador headless também não resolveu %s: %s", click.url_original, erro)
-        return JsonResponse({"status": "falhou"})
+        return None, False
 
 
 def _criar_click_e_avisar(request, tipo, url_produto, mensagem_sucesso="Link gerado com sucesso!"):

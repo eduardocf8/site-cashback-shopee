@@ -220,17 +220,18 @@ class HomeConversaoCashbackRealTests(TestCase):
 
         self.assertContains(resposta, "Link gerado, mas sem cashback dessa vez")
         self.assertContains(resposta, "A Shopee não oferece comissão para esse produto, portanto também não há cashback.")
-        self.assertNotContains(resposta, '<p class="resultado-titulo resultado-ok" id="cashback-titulo">Cashback ativado! 🎉</p>')
+        self.assertNotContains(resposta, "Cashback ativado")
         self.assertNotContains(resposta, '<span class="confete confete-1">')
-        self.assertIsNone(resposta.context["click_id_pendente"])
 
     @patch("links.views.buscar_oferta_por_link")
     @patch("links.services.gerar_link_curto")
-    def test_falha_na_resolucao_rapida_cai_no_estado_pendente_do_navegador(self, mock_gerar_link, mock_buscar_oferta):
-        """Quando a busca síncrona (sem navegador headless) falha genericamente, o link
-        continua funcionando e o site marca o click como pendente pra tentar de novo em
-        segundo plano via cashback_real_pendente (ver ROADMAP.md Fase 37) - em vez de já
-        cravar "sem cashback" ou o texto neutro final."""
+    def test_falha_ao_buscar_comissao_real_nao_impede_o_link_ja_gerado(self, mock_gerar_link, mock_buscar_oferta):
+        """Quando a busca da comissão real falha por um motivo genérico (nem confirma
+        comissão, nem confirma ausência dela), o link continua funcionando e o site
+        mostra um texto neutro, sem afirmar nada que não foi confirmado de verdade -
+        ver ROADMAP.md Fase 36. Chegou a existir uma segunda tentativa via navegador
+        headless (Fase 37), removida depois de confirmar que a Shopee bloqueia esse
+        tipo de navegador nesse cenário."""
         mock_gerar_link.return_value = "https://shope.ee/produto123"
         mock_buscar_oferta.side_effect = LinkProdutoInvalidoError("não consegui abrir o link")
 
@@ -238,76 +239,11 @@ class HomeConversaoCashbackRealTests(TestCase):
             reverse("home"), {"url_produto": "https://shopee.com.br/produto-exemplo-i.1.999"}
         )
 
-        self.assertContains(resposta, "Buscando o cashback real...")
+        self.assertContains(resposta, "Link gerado!")
+        self.assertContains(resposta, "Para conferir o cashback desse produto, acesse sua conta em alguns dias.")
         self.assertContains(resposta, "https://shope.ee/produto123")
-        self.assertIsNotNone(resposta.context["click_id_pendente"])
-        click = Click.objects.get()
-        self.assertEqual(resposta.context["click_id_pendente"], click.id)
-        self.assertContains(resposta, reverse("cashback_real_pendente", args=[click.id]))
+        self.assertNotContains(resposta, "Cashback ativado")
         self.assertNotContains(resposta, '<span class="confete confete-1">')
-        # buscar_oferta_por_link foi chamada sem usar_navegador (busca rápida, síncrona)
-        mock_buscar_oferta.assert_called_once_with("https://shopee.com.br/produto-exemplo-i.1.999")
-
-
-@override_settings(SHOPEE_CASHBACK_PERCENTUAL=100, CASHBACK_MULTIPLICADOR_CAMPANHA=1)
-class CashbackRealPendenteViewTests(TestCase):
-    """O endpoint chamado via JS depois da home carregar, pra tentar o navegador
-    headless sem travar a conversão do link (ver ROADMAP.md Fase 37)."""
-
-    def setUp(self):
-        self.usuario = get_user_model().objects.create_user(
-            username="compradora", password="senha123", cpf="39053344705"
-        )
-        self.client.force_login(self.usuario)
-        self.click = Click.objects.create(
-            usuario=self.usuario, tipo=Click.TIPO_PRODUTO,
-            url_original="https://s.shopee.com.br/abc123", link_gerado="https://shope.ee/produto123",
-        )
-
-    @patch("links.views.buscar_oferta_por_link")
-    def test_resolve_com_navegador_retorna_percentual_e_valor_reais(self, mock_buscar_oferta):
-        mock_buscar_oferta.return_value = Oferta(
-            item_id=999, nome="Produto real",
-            preco_min=Decimal("50.00"), percentual_comissao=Decimal("0.08"),
-        )
-
-        resposta = self.client.get(reverse("cashback_real_pendente", args=[self.click.id]))
-
-        self.assertEqual(resposta.json(), {"status": "ok", "percentual": "8.0", "valor": "4.00"})
-        mock_buscar_oferta.assert_called_once_with(self.click.url_original, usar_navegador=True)
-
-    @patch("links.views.buscar_oferta_por_link")
-    def test_sem_comissao_retorna_status_proprio(self, mock_buscar_oferta):
-        mock_buscar_oferta.side_effect = SemComissaoError("sem comissão")
-
-        resposta = self.client.get(reverse("cashback_real_pendente", args=[self.click.id]))
-
-        self.assertEqual(resposta.json(), {"status": "sem_comissao"})
-
-    @patch("links.views.buscar_oferta_por_link")
-    def test_navegador_headless_tambem_falhando_retorna_status_falhou(self, mock_buscar_oferta):
-        mock_buscar_oferta.side_effect = LinkProdutoInvalidoError("navegador também falhou")
-
-        resposta = self.client.get(reverse("cashback_real_pendente", args=[self.click.id]))
-
-        self.assertEqual(resposta.json(), {"status": "falhou"})
-
-    def test_click_de_outro_usuario_da_404(self):
-        outro_usuario = get_user_model().objects.create_user(
-            username="outra_pessoa", password="senha123", cpf="14783246947"
-        )
-        self.client.force_login(outro_usuario)
-
-        resposta = self.client.get(reverse("cashback_real_pendente", args=[self.click.id]))
-
-        self.assertEqual(resposta.status_code, 404)
-
-    def test_exige_login(self):
-        self.client.logout()
-
-        resposta = self.client.get(reverse("cashback_real_pendente", args=[self.click.id]))
-
-        self.assertEqual(resposta.status_code, 302)
 
 
 class HomeCarrosselOfertaManualTests(TestCase):
