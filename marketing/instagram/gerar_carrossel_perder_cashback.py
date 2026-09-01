@@ -126,4 +126,4 @@ Salve para conferir antes da próxima compra.
 if __name__ == "__main__":
     import sys
 
-    gerar("carrossel-perder-cashback", SLIDES, LEGENDA, exportar="--export" in sys.argv)
+    gerar("carrossel-08-perder-cashback", SLIDES, LEGENDA, exportar="--export" in sys.argv)

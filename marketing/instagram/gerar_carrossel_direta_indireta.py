@@ -98,4 +98,4 @@ Resumindo: se você já sabe o que vai comprar, vale converter o link. Se vai s�
 if __name__ == "__main__":
     import sys
 
-    gerar("carrossel-direta-indireta", SLIDES, LEGENDA, exportar="--export" in sys.argv)
+    gerar("carrossel-07-direta-indireta", SLIDES, LEGENDA, exportar="--export" in sys.argv)
