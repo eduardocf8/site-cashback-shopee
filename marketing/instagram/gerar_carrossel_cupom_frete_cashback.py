@@ -85,7 +85,7 @@ SLIDES = [
     """, False, seta=False),
 ]
 
-LEGENDA = """Muita gente acha que precisa escolher entre cupom, frete grátis e cashback. Não precisa — os três entram na mesma compra. 🛒
+LEGENDA = """Muita gente acha que na Shopee precisa escolher entre cupom, frete grátis e cashback. Não precisa — os três entram na mesma compra. 🛒
 
 Cupom e frete grátis são da Shopee. O cashback é da cash-b. Um não anula o outro.
 
