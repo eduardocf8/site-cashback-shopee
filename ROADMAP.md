@@ -1112,13 +1112,30 @@ só a direta tem acesso a bônus de campanha).
 - [x] Testes cobrindo os dois pisos, comissão real acima do piso (sem efeito),
       interação com o multiplicador de campanha, e ausência de piso sem Click.
 
-**Nota**: essa fase implementa a garantia técnica; os textos do site que já citam
-"1,6%" (marketing do Instagram) ficam mais precisos com essa mudança, mas
-`regras_cashback.html`/FAQ ainda não foram atualizados pra anunciar essa garantia
-como um diferencial explícito - fica pra uma conversa futura, se o dono do produto
-quiser divulgar.
+Suite completa (226 testes) verde. Textos do site atualizados pra anunciar essa
+garantia como diferencial explícito na Fase 40, logo abaixo.
 
-Suite completa (226 testes) verde.
+---
+
+## Fase 40 — Anunciar o cashback mínimo garantido nos textos do site ✅
+
+Complemento direto da Fase 39: usuário pediu pra atualizar todo lugar que fala sobre
+como o site funciona, anunciando a garantia de 1,6% (direta) / 1% (indireta) como um
+diferencial de verdade agora que virou garantia técnica.
+
+- [x] **`paginas/views.py`** - `regras_cashback`, `faq` e `termos_de_uso` passaram a
+      levar `cashback_minimo_direta`/`cashback_minimo_indireta` pro contexto (puxados
+      de `settings.CASHBACK_MINIMO_VENDA_DIRETA`/`_INDIRETA`), e `links/views.py::home`
+      também - os textos renderizam os valores dinamicamente, nunca hardcoded, pra
+      nunca divergir se o valor mudar no `.env`.
+- [x] **`regras_cashback.html`** - nova seção "Cashback mínimo garantido", entre
+      "Venda direta x venda indireta" e "Cashback real ao converter um link".
+- [x] **`faq.html`** - nova pergunta ("Existe um cashback mínimo garantido?").
+- [x] **`termos.html`** - novo parágrafo na seção "2. Como funciona o cashback".
+- [x] **`home.html`** - nova observação na seção "Como ganhar mais cashback?".
+
+Verificado com Playwright (screenshot das 4 páginas, sem erros de console, valores
+"1,6%"/"1%" renderizando certinho) e suite completa (226 testes) verde.
 
 ---
 

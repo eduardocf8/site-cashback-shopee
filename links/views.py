@@ -66,6 +66,8 @@ def home(request):
         "oferta_convertida": oferta_convertida,
         "sem_comissao_convertida": sem_comissao_convertida,
         "cashback_percentual_maximo": cashback_percentual_maximo,
+        "cashback_minimo_direta": settings.CASHBACK_MINIMO_VENDA_DIRETA,
+        "cashback_minimo_indireta": settings.CASHBACK_MINIMO_VENDA_INDIRETA,
         "saque_valor_minimo": settings.SAQUE_VALOR_MINIMO,
         "oferta_destaque": oferta_destaque,
         "ofertas_em_alta": ofertas_em_alta,

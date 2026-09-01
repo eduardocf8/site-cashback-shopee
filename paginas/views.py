@@ -14,7 +14,11 @@ logger = logging.getLogger(__name__)
 
 
 def termos_de_uso(request):
-    return render(request, "paginas/termos.html")
+    contexto = {
+        "cashback_minimo_direta": settings.CASHBACK_MINIMO_VENDA_DIRETA,
+        "cashback_minimo_indireta": settings.CASHBACK_MINIMO_VENDA_INDIRETA,
+    }
+    return render(request, "paginas/termos.html", contexto)
 
 
 def privacidade(request):
@@ -26,12 +30,20 @@ def cookies(request):
 
 
 def regras_cashback(request):
-    contexto = {"saque_valor_minimo": settings.SAQUE_VALOR_MINIMO}
+    contexto = {
+        "saque_valor_minimo": settings.SAQUE_VALOR_MINIMO,
+        "cashback_minimo_direta": settings.CASHBACK_MINIMO_VENDA_DIRETA,
+        "cashback_minimo_indireta": settings.CASHBACK_MINIMO_VENDA_INDIRETA,
+    }
     return render(request, "paginas/regras_cashback.html", contexto)
 
 
 def faq(request):
-    return render(request, "paginas/faq.html")
+    contexto = {
+        "cashback_minimo_direta": settings.CASHBACK_MINIMO_VENDA_DIRETA,
+        "cashback_minimo_indireta": settings.CASHBACK_MINIMO_VENDA_INDIRETA,
+    }
+    return render(request, "paginas/faq.html", contexto)
 
 
 def cashback_vale_a_pena(request):
