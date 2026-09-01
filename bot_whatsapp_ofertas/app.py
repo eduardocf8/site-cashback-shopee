@@ -50,7 +50,7 @@ from bot_runner import BotRunner
 from categorias_shopee import opcoes_categoria
 from database import Database
 from ia_revisor import RevisorIA
-from relatorio_email import montar_corpo_email, enviar_email
+from relatorio_email import MESES_PT, montar_corpo_email, enviar_email
 from settings import (
     APP_DIR,
     CONFIG_BACKUP_DIR,
@@ -3358,14 +3358,23 @@ class MainWindow(QMainWindow):
             agora = datetime.now()
             ontem_inicio = datetime.combine((agora - timedelta(days=1)).date(), datetime.min.time())
             ontem_fim = datetime.combine((agora - timedelta(days=1)).date(), datetime.max.time())
-            mes_inicio = datetime.combine(agora.replace(day=1).date(), datetime.min.time())
+            # O "mês" do relatório é sempre o mês do dia anterior (ontem), não
+            # o mês de hoje: no dia 1 de cada mês, "ontem" ainda é o mês
+            # passado, então o acumulado mensal deve mostrar esse mês inteiro
+            # (já fechado), não o mês novo que praticamente não teve tempo de
+            # gerar dado nenhum ainda. O fim do período também é sempre o fim
+            # de "ontem" (não "agora"), pra não misturar dois meses diferentes
+            # quando o envio acontece logo no início de um mês novo.
+            mes_inicio = datetime.combine(ontem_inicio.date().replace(day=1), datetime.min.time())
+            mes_fim = ontem_fim
 
             conversor = ConversorAfiliados(app_config=self.settings)
             resumo_ontem = conversor.obter_indicadores_por_sub_id(ontem_inicio, ontem_fim)
-            resumo_mes = conversor.obter_indicadores_por_sub_id(mes_inicio, agora)
+            resumo_mes = conversor.obter_indicadores_por_sub_id(mes_inicio, mes_fim)
 
             data_referencia = agora.strftime("%d/%m/%Y %H:%M")
-            corpo_html = montar_corpo_email(resumo_ontem, resumo_mes, data_referencia)
+            titulo_mes = f"{MESES_PT[mes_inicio.month]}/{mes_inicio.year} (até ontem)"
+            corpo_html = montar_corpo_email(resumo_ontem, resumo_mes, data_referencia, titulo_mes)
             assunto = f"Relatório Shopee — {agora.strftime('%d/%m/%Y')}"
 
             enviar_email(self.settings, assunto, corpo_html)

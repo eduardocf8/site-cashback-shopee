@@ -24,6 +24,22 @@ def formatar_moeda(valor):
         return "R$ 0,00"
 
 
+MESES_PT = {
+    1: "Janeiro",
+    2: "Fevereiro",
+    3: "Março",
+    4: "Abril",
+    5: "Maio",
+    6: "Junho",
+    7: "Julho",
+    8: "Agosto",
+    9: "Setembro",
+    10: "Outubro",
+    11: "Novembro",
+    12: "Dezembro",
+}
+
+
 NOMES_STATUS_PEDIDO = {
     "COMPLETED": "Concluído",
     "PENDING": "Pendente",
@@ -96,9 +112,9 @@ def montar_tabela_html(titulo, resumo):
     """
 
 
-def montar_corpo_email(resumo_ontem, resumo_mes, data_referencia):
+def montar_corpo_email(resumo_ontem, resumo_mes, data_referencia, titulo_mes="Mês (até ontem)"):
     tabela_ontem = montar_tabela_html("Ontem", resumo_ontem)
-    tabela_mes = montar_tabela_html("Mês atual (até agora)", resumo_mes)
+    tabela_mes = montar_tabela_html(titulo_mes, resumo_mes)
 
     return f"""
     <div style="font-family:Arial,sans-serif;color:#222;max-width:640px;">
