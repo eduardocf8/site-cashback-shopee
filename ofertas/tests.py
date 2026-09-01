@@ -1,5 +1,5 @@
 from decimal import Decimal
-from unittest.mock import patch
+from unittest.mock import Mock, patch
 
 from django.contrib.auth import get_user_model
 from django.test import TestCase, override_settings
@@ -16,6 +16,7 @@ from .services import (
     _resolver_item_id,
     buscar_oferta_por_link,
     obter_cashback_maximo_anunciado,
+    resolver_item_id_com_rede,
     resolver_item_id_sem_rede,
     selecionar_carrossel_home,
     sincronizar_ofertas,
@@ -264,6 +265,28 @@ class ResolverItemIdSemRedeTests(TestCase):
 
     def test_link_curto_sem_padrao_retorna_none_sem_seguir_redirecionamento(self):
         self.assertIsNone(resolver_item_id_sem_rede("https://s.shopee.com.br/abc123"))
+
+
+class ResolverItemIdComRedeTests(TestCase):
+    """Versão completa (segue redirecionamento, pode levar até 10s) - só deve ser
+    chamada fora do ciclo de requisição de um usuário (ver
+    links/services.py::resolver_item_id_alvo_pendentes, ROADMAP.md Fase 41/42)."""
+
+    @patch("ofertas.services.requests.get")
+    def test_resolve_seguindo_o_redirecionamento(self, mock_get):
+        mock_get.return_value = Mock(
+            url="https://shopee.com.br/produto-i.1.999", text="", status_code=200, history=[1],
+        )
+
+        self.assertEqual(resolver_item_id_com_rede("https://s.shopee.com.br/abc123"), 999)
+
+    @patch("ofertas.services.requests.get")
+    def test_link_nao_identificado_retorna_none_em_vez_de_levantar_erro(self, mock_get):
+        mock_get.return_value = Mock(
+            url="https://s.shopee.com.br/abc123", text="", status_code=200, history=[],
+        )
+
+        self.assertIsNone(resolver_item_id_com_rede("https://s.shopee.com.br/abc123"))
 
 
 @override_settings(**CREDENCIAIS_TESTE)

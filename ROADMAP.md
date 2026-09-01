@@ -1183,11 +1183,62 @@ compra que nem era de venda direta de verdade.
 **Trade-off aceito conscientemente**: como a resolução no clique é só por padrão de
 texto (sem seguir redirecionamento, pra não travar a ação do usuário), links curtos
 convertidos de verdade (~44% dos cliques de produto, ver Fase 35) não conseguem ser
-verificados e caem pro piso de venda indireta, mesmo quando são legitimamente diretos.
-É uma perda aceitável: fechar o furo de segurança vale mais do que garantir o piso
-maior pra esse recorte específico de cliques.
+verificados na hora e caem pro piso de venda indireta até serem resolvidos.
+**Atualização (Fase 42)**: usuário apontou que isso, do jeito que ficou, contradiz a
+própria garantia anunciada na Fase 40 ("venda direta dá no mínimo 1,6%") pra uma fatia
+grande de cliques legítimos - não é mais tratado como perda aceitável, foi resolvido
+com uma tarefa agendada que resolve esses casos em segundo plano (ver Fase 42).
 
 Suite completa (237 testes) verde.
+
+---
+
+## Fase 42 — Dar aos links curtos uma chance real de qualificar pro piso maior ✅
+
+Usuário rejeitou o trade-off aceito no fim da Fase 41: anunciar "venda direta dá no
+mínimo 1,6%" (Fase 40) e, ao mesmo tempo, rebaixar pra sempre pro piso de 1% qualquer
+clique em link curto (~44% dos cliques de produto, ver Fase 35) - já que esses nunca
+chegavam a ser verificados - contradiz a própria garantia anunciada.
+
+- [x] **`ofertas/services.py::resolver_item_id_com_rede(url)`** - como
+      `resolver_item_id_sem_rede`, mas segue redirecionamento de verdade (pode levar
+      até 10s pra link curto) reaproveitando o `_resolver_item_id` já existente.
+      Retorna `None` em vez de levantar erro - "não identificado" é resultado normal
+      aqui. Só deve ser chamada FORA do ciclo de requisição de um usuário.
+- [x] **`links/services.py::resolver_item_id_alvo_pendentes()`** - tarefa que busca os
+      `Click` de produto/vitrine com `item_id_alvo` ainda `None` (ordenados por mais
+      antigo primeiro) e tenta resolver de verdade, em lotes de até
+      `LIMITE_RESOLUCOES_POR_EXECUCAO` (30) por execução - mesmo princípio de
+      `encurtar_nomes_pendentes` (Fase anterior): tarefa própria porque não cabe no
+      orçamento de 120s junto com a sincronização de pedidos/saques, e sem pressa real
+      porque a Shopee só reporta um pedido de verdade alguns dias depois da compra
+      (ver Fase 28) - uma tarefa diária dá conta do volume tranquilamente antes que
+      isso chegue a importar pra algum cálculo de cashback.
+- [x] **`cashback_shopee/views.py::executar_resolucao_item_id_alvo`** +
+      **`urls.py`** (`/tarefas/resolver-item-alvo/`) - endpoint próprio, mesmo padrão
+      de `executar_encurtamento_nomes` (token, erro registrado na resposta sem quebrar
+      o restante).
+- [x] **`.github/workflows/tarefas-diarias.yml`** - novo step (`continue-on-error`)
+      chamando o endpoint acima, só pra disparo manual de emergência.
+- [x] **`marketing/instagram/README.md`** - documentado o 5º Cron Job do Render
+      (`cron-resolver-item-alvo`, 03:20 Brasília) que falta criar manualmente no
+      painel do Render, mesmo processo dos 4 já existentes.
+- [x] Testes cobrindo: `resolver_item_id_com_rede` (link normal, link curto seguindo
+      redirecionamento, link inválido retornando `None`), `resolver_item_id_alvo_pendentes`
+      (resolve o que dá, ignora o resto, respeita o limite por execução, não mexe em
+      cliques de home nem nos que já têm item_id_alvo) e o endpoint agendado (token,
+      sucesso, erro não quebra a resposta).
+
+Com isso, o piso de 1,6%/1% passa a valer de fato pra todo clique de venda direta,
+incluindo link curto - só com um atraso de resolução (no máximo até a próxima
+execução diária) que nunca chega a importar na prática, já que a Shopee reporta o
+pedido real dias depois da compra.
+
+**Ação manual pendente**: falta criar o Cron Job `cron-resolver-item-alvo` no painel
+do Render (ver `marketing/instagram/README.md`), do mesmo jeito que os outros 4 foram
+criados.
+
+Suite completa (247 testes) verde.
 
 ---
 

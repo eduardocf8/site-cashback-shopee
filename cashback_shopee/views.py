@@ -9,6 +9,7 @@ from django.views.decorators.cache import cache_control
 
 from instagram_bot.lembrete_token import verificar_validade_token
 from instagram_bot.services import executar_publicacoes_do_dia, publicar_story_oferta_do_momento
+from links.services import resolver_item_id_alvo_pendentes
 from links.shopee_client import ShopeeAPIError, ShopeeConfigError
 from ofertas.services import encurtar_nomes_pendentes, sincronizar_ofertas
 from pedidos.services import liberar_saldo, sincronizar
@@ -146,6 +147,28 @@ def executar_encurtamento_nomes(request):
         resultado["nomes_encurtados"] = encurtar_nomes_pendentes()
     except Exception as erro:
         resultado["nomes_encurtados_erro"] = str(erro)
+
+    return JsonResponse(resultado)
+
+
+def executar_resolucao_item_id_alvo(request):
+    """Tenta resolver, seguindo redirecionamento de verdade, o item_id_alvo dos
+    cliques que a resolução rápida (na hora do clique) não conseguiu - tipicamente
+    links curtos (ver links/services.py::resolver_item_id_alvo_pendentes e
+    ROADMAP.md, Fase 41/42).
+
+    Tarefa agendada separada de propósito, mesmo motivo de executar_encurtamento_nomes:
+    seguir redirecionamento pode levar até 10s por clique, e isso não cabe no
+    orçamento de 120s junto com a sincronização de pedidos/saques.
+    """
+    if not _token_valido(request):
+        return HttpResponseForbidden("Token inválido ou não configurado.")
+
+    resultado = {}
+    try:
+        resultado["item_id_alvo_resolvido"] = resolver_item_id_alvo_pendentes()
+    except Exception as erro:
+        resultado["item_id_alvo_erro"] = str(erro)
 
     return JsonResponse(resultado)
 

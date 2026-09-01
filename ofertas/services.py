@@ -166,6 +166,20 @@ def _resolver_item_id(url: str) -> int:
     return int(match.group(1) or match.group(2))
 
 
+def resolver_item_id_com_rede(url: str) -> int | None:
+    """Como resolver_item_id_sem_rede, mas segue redirecionamento quando precisa
+    (pode levar até 10s pra link curto) - só chame isso FORA do ciclo de requisição
+    de um usuário. Usado pela tarefa agendada que tenta resolver, aos poucos, o
+    item_id_alvo dos cliques que a resolução rápida não conseguiu (ver
+    links/services.py::resolver_item_id_alvo_pendentes e ROADMAP.md, Fase 41/42).
+    Retorna None em vez de levantar erro - "não identificado" é um resultado normal
+    aqui, não uma falha."""
+    try:
+        return _resolver_item_id(url.strip().strip("<>\"' "))
+    except LinkProdutoInvalidoError:
+        return None
+
+
 def buscar_oferta_por_link(url: str) -> Oferta:
     """Busca os dados de UM produto específico na Shopee a partir do link (usado pra
     postar uma oferta escolhida na mão, fora do calendário automático - ver

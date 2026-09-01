@@ -267,7 +267,7 @@ Django de propósito: um Cron Job só precisa fazer 1 chamada HTTP, não
 vale a pena configurar todas as variáveis de ambiente do app (banco,
 chaves de API) só pra isso.
 
-**Os 4 Cron Jobs** (criados manualmente no dashboard do Render - Blueprint
+**Os Cron Jobs** (criados manualmente no dashboard do Render - Blueprint
 `render.yaml` não foi usado de propósito, pra não arriscar afetar os
 serviços existentes caso eles não tenham sido criados originalmente a
 partir de um blueprint):
@@ -276,8 +276,13 @@ partir de um blueprint):
 |---|---|---|---|---|
 | `cron-tarefas-financeiras` | `0 6 * * *` | 03:00 | `pip install requests` | `python3 scripts/chamar_tarefa_agendada.py /tarefas/executar/` |
 | `cron-encurtar-nomes` | `10 6 * * *` | 03:10 | `pip install requests` | `python3 scripts/chamar_tarefa_agendada.py /tarefas/encurtar-nomes/` |
+| `cron-resolver-item-alvo` | `20 6 * * *` | 03:20 | `pip install requests` | `python3 scripts/chamar_tarefa_agendada.py /tarefas/resolver-item-alvo/` |
 | `cron-instagram-diario` | `0 14 * * *` | 11:00 | `pip install requests` | `python3 scripts/chamar_tarefa_agendada.py /tarefas/publicar-instagram/` |
 | `cron-stories-oferta` | `0 11,13,18,21,23 * * *` | 08h, 10h, 15h, 18h, 20h | `pip install requests` | `python3 scripts/chamar_tarefa_agendada.py /tarefas/postar-story-oferta/` |
+
+**`cron-resolver-item-alvo` ainda precisa ser criado manualmente** (Fase 41/42 do
+ROADMAP.md, adicionada depois dos 4 originais) - segue exatamente a mesma
+"Configuração de cada Cron Job" abaixo, só trocando o Start Command e o horário.
 
 `cron-stories-oferta` simplificou os horários de propósito (antes eram
 09:00/11:30/14:00/16:30/19:00 BRT, com minutos quebrados pra evitar o
@@ -292,7 +297,9 @@ de propósito - mesmo motivo de sempre terem sido chamadas HTTP separadas
 sozinha já usa boa parte do orçamento de 120s antes do timeout do
 gunicorn, então enfileirar o encurtamento via Gemini atrás dela na mesma
 chamada estourava o timeout quase toda vez. 10 minutos é folga de sobra
-pra tarefa financeira terminar antes.
+pra tarefa financeira terminar antes. `cron-resolver-item-alvo` roda mais
+10 minutos depois (03:20) pelo mesmo motivo - seguir redirecionamento de
+link curto também pode levar até 10s por clique.
 
 **Configuração de cada Cron Job** (dashboard do Render → New → Cron Job):
 - Repositório/branch: os mesmos do serviço web.

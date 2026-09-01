@@ -32,3 +32,14 @@ jobs:
         run: |
           encurtar_url=$(echo "${{ secrets.TAREFAS_URL }}" | sed 's#/tarefas/executar/#/tarefas/encurtar-nomes/#')
           curl -f -sS --retry 3 --retry-delay 15 --max-time 300 "$encurtar_url"
+      # Mesmo motivo de separar o encurtamento de nomes acima: resolver o item_id_alvo
+      # de um clique seguindo redirecionamento (link curto) pode levar até 10s, e isso
+      # não cabe no orçamento de 120s junto com a sincronização de pedidos/saques (ver
+      # ROADMAP.md, Fase 41/42). continue-on-error porque isso só afeta o piso de
+      # venda direta de cliques com link curto - não deve marcar a tarefa financeira
+      # inteira como falha.
+      - name: Resolver item_id_alvo pendente dos cliques (Fase 41/42)
+        continue-on-error: true
+        run: |
+          item_alvo_url=$(echo "${{ secrets.TAREFAS_URL }}" | sed 's#/tarefas/executar/#/tarefas/resolver-item-alvo/#')
+          curl -f -sS --retry 3 --retry-delay 15 --max-time 300 "$item_alvo_url"

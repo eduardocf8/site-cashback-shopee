@@ -10,8 +10,9 @@ from django.urls import reverse
 from ofertas.models import CashbackMaximoCache, Oferta, OfertaDestaqueManual, OfertaManual
 from ofertas.services import LinkProdutoInvalidoError, SemComissaoError
 
+from . import services as links_services
 from .models import Click
-from .services import gerar_click
+from .services import gerar_click, resolver_item_id_alvo_pendentes
 from .shopee_client import (
     ShopeeAPIError,
     ShopeeConfigError,
@@ -214,6 +215,73 @@ class GerarClickItemIdAlvoTests(TestCase):
         )
 
         self.assertEqual(click.item_id_alvo, 555)
+
+
+class ResolverItemIdAlvoPendentesTests(TestCase):
+    """Tarefa agendada (executar_resolucao_item_id_alvo) que tenta resolver, seguindo
+    redirecionamento de verdade, o item_id_alvo dos cliques que a resolução rápida na
+    hora do clique não conseguiu - ver ROADMAP.md, Fase 41/42."""
+
+    def setUp(self):
+        self.usuario = get_user_model().objects.create_user(
+            username="compradora", password="senha123", cpf="39053344705"
+        )
+
+    def _click(self, tipo=Click.TIPO_PRODUTO, item_id_alvo=None, url="https://s.shopee.com.br/abc"):
+        return Click.objects.create(
+            usuario=self.usuario, tipo=tipo, url_original=url, item_id_alvo=item_id_alvo,
+            link_gerado="https://shope.ee/abc",
+        )
+
+    @patch("links.services.resolver_item_id_com_rede")
+    def test_resolve_clique_pendente_e_conta_no_resultado(self, mock_resolver):
+        click = self._click()
+        mock_resolver.return_value = 999
+
+        resultado = resolver_item_id_alvo_pendentes()
+
+        click.refresh_from_db()
+        self.assertEqual(click.item_id_alvo, 999)
+        self.assertEqual(resultado, {"tentados": 1, "resolvidos": 1})
+
+    @patch("links.services.resolver_item_id_com_rede")
+    def test_link_ainda_nao_resolvivel_continua_pendente(self, mock_resolver):
+        click = self._click()
+        mock_resolver.return_value = None
+
+        resultado = resolver_item_id_alvo_pendentes()
+
+        click.refresh_from_db()
+        self.assertIsNone(click.item_id_alvo)
+        self.assertEqual(resultado, {"tentados": 1, "resolvidos": 0})
+
+    @patch("links.services.resolver_item_id_com_rede")
+    def test_ignora_clique_que_ja_tem_item_id_alvo(self, mock_resolver):
+        self._click(item_id_alvo=1)
+
+        resultado = resolver_item_id_alvo_pendentes()
+
+        mock_resolver.assert_not_called()
+        self.assertEqual(resultado, {"tentados": 0, "resolvidos": 0})
+
+    @patch("links.services.resolver_item_id_com_rede")
+    def test_ignora_clique_de_venda_indireta(self, mock_resolver):
+        self._click(tipo=Click.TIPO_HOME, url="https://shopee.com.br/")
+
+        resultado = resolver_item_id_alvo_pendentes()
+
+        mock_resolver.assert_not_called()
+        self.assertEqual(resultado, {"tentados": 0, "resolvidos": 0})
+
+    @patch("links.services.resolver_item_id_com_rede")
+    def test_respeita_o_limite_por_execucao(self, mock_resolver):
+        mock_resolver.return_value = 1
+        for _ in range(links_services.LIMITE_RESOLUCOES_POR_EXECUCAO + 5):
+            self._click()
+
+        resultado = resolver_item_id_alvo_pendentes()
+
+        self.assertEqual(resultado["tentados"], links_services.LIMITE_RESOLUCOES_POR_EXECUCAO)
 
 
 class HomeCashbackMaximoTests(TestCase):

@@ -23,6 +23,11 @@ urlpatterns = [
     path("tarefas/executar/", views.executar_tarefas_agendadas, name="executar_tarefas_agendadas"),
     path("tarefas/publicar-instagram/", views.executar_publicacoes_instagram, name="executar_publicacoes_instagram"),
     path("tarefas/encurtar-nomes/", views.executar_encurtamento_nomes, name="executar_encurtamento_nomes"),
+    path(
+        "tarefas/resolver-item-alvo/",
+        views.executar_resolucao_item_id_alvo,
+        name="executar_resolucao_item_id_alvo",
+    ),
     path("tarefas/postar-story-oferta/", views.executar_story_oferta, name="executar_story_oferta"),
     path("robots.txt", views.robots_txt, name="robots_txt"),
     path("sw.js", views.service_worker, name="service_worker"),

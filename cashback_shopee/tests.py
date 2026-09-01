@@ -122,3 +122,33 @@ class ExecutarPublicacoesInstagramTests(TestCase):
         self.assertIn("instagram_erro", dados)
         self.assertEqual(dados["token_instagram"], {"valido": True})
         mock_token.assert_called_once()
+
+
+@override_settings(TAREFAS_TOKEN="segredo-de-teste")
+class ExecutarResolucaoItemIdAlvoTests(TestCase):
+    """Tarefa agendada própria (Fase 41/42) - separada da sincronização de pedidos
+    porque seguir redirecionamento de link curto pode levar até 10s por clique."""
+
+    def test_sem_token_retorna_forbidden(self):
+        resposta = self.client.get(reverse("executar_resolucao_item_id_alvo"))
+        self.assertEqual(resposta.status_code, 403)
+
+    @patch("cashback_shopee.views.resolver_item_id_alvo_pendentes")
+    def test_token_certo_resolve_os_pendentes(self, mock_resolver):
+        mock_resolver.return_value = {"tentados": 5, "resolvidos": 3}
+
+        resposta = self.client.get(reverse("executar_resolucao_item_id_alvo"), {"token": "segredo-de-teste"})
+
+        self.assertEqual(resposta.status_code, 200)
+        dados = resposta.json()
+        self.assertEqual(dados["item_id_alvo_resolvido"], {"tentados": 5, "resolvidos": 3})
+        mock_resolver.assert_called_once()
+
+    @patch("cashback_shopee.views.resolver_item_id_alvo_pendentes")
+    def test_erro_fica_registrado_na_resposta_sem_quebrar(self, mock_resolver):
+        mock_resolver.side_effect = Exception("falha inesperada")
+
+        resposta = self.client.get(reverse("executar_resolucao_item_id_alvo"), {"token": "segredo-de-teste"})
+
+        self.assertEqual(resposta.status_code, 200)
+        self.assertIn("item_id_alvo_erro", resposta.json())
