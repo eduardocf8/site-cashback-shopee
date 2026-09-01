@@ -100,11 +100,16 @@ def _registrar(
     )
 
 
-def _publicar_ou_simular(imagem, legenda, tipo, conteudo_tipo, data, request, story: bool) -> RegistroPublicacao:
+def _publicar_ou_simular(
+    imagem, legenda, tipo, conteudo_tipo, data, request, story: bool, posicao=None
+) -> RegistroPublicacao:
+    """posicao é (qual, total) e só chega até o e-mail de aprovação - ver
+    aprovacao.enviar_email_aprovacao. Nos outros caminhos (simulação, publicação direta)
+    ela é ignorada, porque não existe e-mail para ordenar."""
     if not settings.INSTAGRAM_BOT_ATIVO:
         return _simular(imagem, legenda, tipo, conteudo_tipo, data, request)
     if settings.INSTAGRAM_REQUER_APROVACAO:
-        return _aguardar_aprovacao(imagem, legenda, tipo, conteudo_tipo, data, request)
+        return _aguardar_aprovacao(imagem, legenda, tipo, conteudo_tipo, data, request, posicao)
     return _publicar_direto(imagem, legenda, tipo, conteudo_tipo, data, request, story)
 
 
@@ -140,14 +145,14 @@ def _publicar_direto(imagem, legenda, tipo, conteudo_tipo, data, request, story:
         )
 
 
-def _aguardar_aprovacao(imagem, legenda, tipo, conteudo_tipo, data, request) -> RegistroPublicacao:
+def _aguardar_aprovacao(imagem, legenda, tipo, conteudo_tipo, data, request, posicao=None) -> RegistroPublicacao:
     imagem_url = _salvar_e_montar_url(imagem, request)
     registro = _registrar(
         data, tipo, conteudo_tipo, legenda, imagem_url,
         simulacao=False, sucesso=False, status=RegistroPublicacao.STATUS_PENDENTE_APROVACAO,
     )
     try:
-        aprovacao.enviar_email_aprovacao(registro, [_bytes_jpeg(imagem)], request)
+        aprovacao.enviar_email_aprovacao(registro, [_bytes_jpeg(imagem)], request, posicao=posicao)
     except Exception:
         logger.exception("[instagram_bot] falha ao enviar e-mail de aprovação (registro %s)", registro.pk)
     return registro
@@ -401,12 +406,12 @@ def publicar_combo_de_stories(data, request) -> list[RegistroPublicacao]:
     }
 
     registros = []
-    for story in combo:
+    for indice, story in enumerate(combo, start=1):
         imagem = construtores[story["formato"]](story)
         registros.append(_publicar_ou_simular(
             imagem, story.get("apoio") or story["titulo"],
             RegistroPublicacao.TIPO_STORY, RegistroPublicacao.CONTEUDO_COMBO_DIARIO,
-            data, request, story=True,
+            data, request, story=True, posicao=(indice, len(combo)),
         ))
     return registros
 
