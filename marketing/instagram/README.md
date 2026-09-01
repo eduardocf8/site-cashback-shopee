@@ -499,6 +499,19 @@ um ou dois parágrafos curtos, uma chamada (salvar ou comentar) e 5
 hashtags. Chamada para comentário só onde a pergunta é natural — pedir
 comentário em todo post soa desesperado e o Instagram não recompensa.
 
+Desde que "Shopee" foi barrado no campo Nome do perfil (o Instagram não
+aceita marca de terceiro ali, porque sugere vínculo oficial), a **primeira
+linha da legenda** virou o principal lugar onde a palavra-chave pode ser
+encontrada pela busca — é a única parte que aparece antes do "mais". Todas
+as legendas abrem com "Shopee". Sempre **"na Shopee"** (onde a pessoa
+compra), nunca **"da Shopee"** com a cash-b como sujeito: isso afirmaria o
+vínculo que não existe e contradiz o "afiliado independente" do rodapé.
+
+**Nome da marca em título:** use a constante `MARCA` no lugar de escrever
+"cash-b" direto. O navegador quebra linha depois do hífen, e em título
+grande isso vira "cash-" numa linha e "b" na outra, que lê como erro de
+digitação. `MARCA` é o nome dentro de um `white-space:nowrap`.
+
 ## Decisões de conteúdo (não repetir)
 
 - **Não afirmar valor de saque mínimo inexistente.** O site tem um valor
@@ -516,3 +529,23 @@ comentário em todo post soa desesperado e o Instagram não recompensa.
   quem visita o perfil no meio da semana só vê preço/desconto e pode não
   entender a proposta. Por isso 1 dos 2 posts semanais do feed é sempre
   institucional (quarta-feira).
+- **Nada de "quase ninguém usa", "a maioria não sabe" e afins** sobre o
+  comportamento dos usuários — decisão do dono do produto: não existe
+  histórico que sustente esse tipo de afirmação. Comparar e explicar as
+  opções basta (é o que o `carrossel-direta-indireta` faz).
+- **`carrossel-indique-e-ganhe` precisa dizer que o programa não fica
+  ligado o tempo todo** (`ConfiguracaoIndicacao.esta_ativa()`), e dizer
+  isso num slide próprio, não em nota de rodapé. Post que promete um
+  programa desligado gera decepção e comentário irritado.
+- **`carrossel-datas-duplas` só pode ser postado com a campanha de
+  cashback aumentado de fato ligada** (`CASHBACK_MULTIPLICADOR_CAMPANHA`
+  acima de 1) ou às vésperas dela: o carrossel afirma que a cash-b aumenta
+  o cashback nessas datas. O valor do aumento não aparece na arte de
+  propósito — número fixo vira promessa que amarra a próxima data.
+  - Cuidado operacional: o multiplicador é carimbado no pedido na
+    **primeira sincronização** dele (`pedidos/services.py`), não na hora
+    da compra. A sincronização roda uma vez por dia (03h BRT), então uma
+    compra feita no dia da campanha só é carimbada na madrugada seguinte.
+    Desligar a campanha à meia-noite faria os pedidos do próprio dia
+    entrarem sem o aumento — deixar ligada até depois da sincronização do
+    dia seguinte.
