@@ -81,7 +81,7 @@ SLIDES = [
 
 LEGENDA = """Uma marca de cashback falando para você não comprar por causa do cashback. 💜
 
-Comprar algo de R$ 200 que você não precisava para receber R$ 3 de volta não é ganhar R$ 3. É gastar R$ 197.
+Comprar na Shopee algo de R$ 200 que você não precisava para receber R$ 3 de volta não é ganhar R$ 3. É gastar R$ 197.
 
 Agora, na compra que você já ia fazer de qualquer jeito, aí sim é ganho de verdade — e é essa que vale ativar.
 
