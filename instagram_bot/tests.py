@@ -314,9 +314,10 @@ class PublicacaoDoComboTests(TestCase):
 class EmailDeAprovacaoDoComboTests(TestCase):
     """A numeração no assunto dos e-mails de aprovação do combo.
 
-    Os três stories saem no mesmo minuto e chegam fora de ordem (a entrega não respeita
-    a ordem de envio). Com assunto idêntico, a única forma de saber qual era qual era
-    abrindo os três - por isso a posição vai no assunto, antes do resto.
+    Os cinco stories do combo diário (ver conteudo.combo_de_stories_do_dia) saem no
+    mesmo minuto e chegam fora de ordem (a entrega não respeita a ordem de envio). Com
+    assunto idêntico, a única forma de saber qual era qual era abrindo todos - por isso
+    a posição vai no assunto, antes do resto.
     """
 
     def setUp(self):
@@ -332,19 +333,19 @@ class EmailDeAprovacaoDoComboTests(TestCase):
         services.publicar_combo_de_stories(timezone.localdate(), self.request)
 
         assuntos = [email.subject for email in mail.outbox]
-        self.assertEqual(len(assuntos), 3)
-        for esperado, assunto in zip(["1/3", "2/3", "3/3"], assuntos):
+        self.assertEqual(len(assuntos), 5)
+        for esperado, assunto in zip(["1/5", "2/5", "3/5", "4/5", "5/5"], assuntos):
             with self.subTest(posicao=esperado):
                 self.assertIn(esperado, assunto)
 
     def test_a_posicao_vem_antes_do_assunto_e_nao_depois(self):
         """Se o número ficasse no fim, a lista da caixa de entrada continuaria mostrando
-        três linhas iguais - é a posição na string que resolve o problema, não a
-        presença dela."""
+        linhas iguais - é a posição na string que resolve o problema, não a presença
+        dela."""
         services.publicar_combo_de_stories(timezone.localdate(), self.request)
 
         assunto = mail.outbox[0].subject
-        self.assertLess(assunto.index("1/3"), assunto.index("aprovar"))
+        self.assertLess(assunto.index("1/5"), assunto.index("aprovar"))
 
     def test_conteudo_de_um_email_so_nao_ganha_numeracao(self):
         """Story de oferta sai sozinho: numerar "1/1" só poluiria o assunto."""
@@ -356,4 +357,4 @@ class EmailDeAprovacaoDoComboTests(TestCase):
     def test_corpo_diz_qual_story_da_sequencia_e(self):
         services.publicar_combo_de_stories(timezone.localdate(), self.request)
 
-        self.assertIn("Story 2 de 3", mail.outbox[1].body)
+        self.assertIn("Story 2 de 5", mail.outbox[1].body)

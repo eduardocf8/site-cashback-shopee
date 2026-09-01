@@ -34,11 +34,11 @@ def enviar_email_aprovacao(
     """imagens_bytes tem 1 item pra story/post normal, ou N itens (na ordem dos slides) pra carrossel.
 
     posicao é (qual, total) e só vale pra conteúdo que sai em mais de um e-mail no mesmo
-    dia - hoje, o combo diário de stories. Sem ela, os três e-mails chegavam com assunto
-    idêntico e sem ordem garantida (a entrega não respeita a ordem de envio), e a única
-    forma de saber qual era qual era abrindo os três. O número vem antes do resto do
-    assunto de propósito: assim a ordem aparece na lista da caixa de entrada, sem abrir
-    nada.
+    dia - hoje, o combo diário de stories (5 e-mails). Sem ela, os e-mails chegavam com
+    assunto idêntico e sem ordem garantida (a entrega não respeita a ordem de envio), e
+    a única forma de saber qual era qual era abrindo todos. O número vem antes do resto
+    do assunto de propósito: assim a ordem aparece na lista da caixa de entrada, sem
+    abrir nada.
     """
     destinatario = settings.INSTAGRAM_APROVADOR_EMAIL
     if not destinatario:

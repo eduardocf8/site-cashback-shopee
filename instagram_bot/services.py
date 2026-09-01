@@ -436,7 +436,7 @@ def executar_publicacoes_do_dia(request) -> list[dict]:
         if _ja_processado_hoje(hoje, tipo):
             continue
         despachante = DESPACHANTES[tipo]
-        # o combo diário devolve os 3 stories de uma vez; os outros, um registro só
+        # o combo diário devolve os 5 stories de uma vez; os outros, um registro só
         retorno = despachante(hoje, request)
         registros = retorno if isinstance(retorno, list) else [retorno] if retorno else []
         for registro in registros:
