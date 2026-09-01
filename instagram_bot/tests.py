@@ -1,6 +1,7 @@
 from datetime import timedelta
 from decimal import Decimal
 
+from django.core import mail
 from django.test import RequestFactory, TestCase, override_settings
 from django.utils import timezone
 
@@ -287,3 +288,60 @@ class PublicacaoDoComboTests(TestCase):
             ).count(),
             antes,
         )
+
+
+@override_settings(
+    SHOPEE_CASHBACK_PERCENTUAL=20,
+    CASHBACK_MAXIMO_POR_PRODUTO=10,
+    CASHBACK_MULTIPLICADOR_CAMPANHA=1,
+    INSTAGRAM_BOT_ATIVO=True,
+    INSTAGRAM_REQUER_APROVACAO=True,
+    INSTAGRAM_APROVADOR_EMAIL="dono@exemplo.com",
+    EMAIL_BACKEND="django.core.mail.backends.locmem.EmailBackend",
+)
+class EmailDeAprovacaoDoComboTests(TestCase):
+    """A numeração no assunto dos e-mails de aprovação do combo.
+
+    Os três stories saem no mesmo minuto e chegam fora de ordem (a entrega não respeita
+    a ordem de envio). Com assunto idêntico, a única forma de saber qual era qual era
+    abrindo os três - por isso a posição vai no assunto, antes do resto.
+    """
+
+    def setUp(self):
+        Oferta.objects.create(
+            item_id=1, nome="Fone de Ouvido Bluetooth TWS", nome_curto="fone bluetooth",
+            preco_min=Decimal("89.90"), preco_max=Decimal("89.90"),
+            imagem_url="https://exemplo.com/fone.jpg",
+            percentual_comissao=Decimal("0.4200"), categoria_id=1,
+        )
+        self.request = RequestFactory().get("/")
+
+    def test_cada_story_do_combo_leva_a_propria_posicao_no_assunto(self):
+        services.publicar_combo_de_stories(timezone.localdate(), self.request)
+
+        assuntos = [email.subject for email in mail.outbox]
+        self.assertEqual(len(assuntos), 3)
+        for esperado, assunto in zip(["1/3", "2/3", "3/3"], assuntos):
+            with self.subTest(posicao=esperado):
+                self.assertIn(esperado, assunto)
+
+    def test_a_posicao_vem_antes_do_assunto_e_nao_depois(self):
+        """Se o número ficasse no fim, a lista da caixa de entrada continuaria mostrando
+        três linhas iguais - é a posição na string que resolve o problema, não a
+        presença dela."""
+        services.publicar_combo_de_stories(timezone.localdate(), self.request)
+
+        assunto = mail.outbox[0].subject
+        self.assertLess(assunto.index("1/3"), assunto.index("aprovar"))
+
+    def test_conteudo_de_um_email_so_nao_ganha_numeracao(self):
+        """Story de oferta sai sozinho: numerar "1/1" só poluiria o assunto."""
+        services.publicar_story_oferta_do_momento(timezone.localdate(), self.request)
+
+        self.assertEqual(len(mail.outbox), 1)
+        self.assertNotIn("/", mail.outbox[0].subject.replace("cash-b", ""))
+
+    def test_corpo_diz_qual_story_da_sequencia_e(self):
+        services.publicar_combo_de_stories(timezone.localdate(), self.request)
+
+        self.assertIn("Story 2 de 3", mail.outbox[1].body)

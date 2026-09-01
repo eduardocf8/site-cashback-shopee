@@ -46,7 +46,9 @@ class RegistroPublicacao(models.Model):
         (CONTEUDO_LEMBRETE, "Lembrete de cashback"),
         (CONTEUDO_INSTITUCIONAL, "Institucional"),
         (CONTEUDO_OFERTAS_SEMANA, "Melhores ofertas da semana"),
-        (CONTEUDO_COMBO_DIARIO, "Combo do dia (3 stories)"),
+        # Sem o "(3 stories)" que tinha antes: o assunto do e-mail de aprovação já traz
+        # a posição ("1/3"), e as duas informações juntas ficavam redundantes.
+        (CONTEUDO_COMBO_DIARIO, "Combo do dia"),
     ]
 
     STATUS_SIMULADO = "simulado"
