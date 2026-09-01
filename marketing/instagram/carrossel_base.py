@@ -36,6 +36,11 @@ BRAND_GRADIENT = f"linear-gradient(165deg, {BRAND_DARK} 0%, {BRAND_PRIMARY} 55%,
 LARGURA_SLIDE = 420
 ALTURA_SLIDE = 525
 
+# O nome da marca tem hífen, e o navegador quebra linha depois de hífen - em título
+# grande isso vira "cash-" numa linha e "b" na outra, que lê como erro de digitação.
+# Usar MARCA no lugar de "cash-b" em qualquer texto que possa quebrar.
+MARCA = '<span style="white-space:nowrap;">cash-b</span>'
+
 FONT_FACES = f"""
 @font-face {{
     font-family: "Familjen";
@@ -150,10 +155,20 @@ def caso(situacao, resultado, escuro=False):
     """
 
 
+# Tinta de fundo de cada cor de barra do destaque, em (claro, escuro). Sem isso o fundo
+# era sempre âmbar: um destaque com barra verde saía com fundo laranja, o que lê como
+# erro. Cor fora do mapa cai no âmbar, que era o comportamento antigo.
+_TINTAS_DESTAQUE = {
+    HIGHLIGHT: ("rgba(245,158,11,0.14)", "rgba(245,158,11,0.16)"),
+    SUCCESS: ("rgba(5,150,105,0.10)", "rgba(5,150,105,0.18)"),
+    BRAND_PRIMARY: ("rgba(109,40,217,0.10)", "rgba(109,40,217,0.20)"),
+}
+
+
 def destaque(texto, escuro=False, cor=HIGHLIGHT):
     """Caixa de destaque com barra colorida à esquerda. Para a informação que não pode
     passar batida - nota em cinza pequeno no rodapé do slide quase ninguém lê."""
-    fundo = "rgba(245,158,11,0.16)" if escuro else "rgba(245,158,11,0.14)"
+    fundo = _TINTAS_DESTAQUE.get(cor, _TINTAS_DESTAQUE[HIGHLIGHT])[1 if escuro else 0]
     cor_texto = "#fff" if escuro else DARK_BG
     return f"""
     <div style="margin-top:18px; padding:13px 16px; background:{fundo};
