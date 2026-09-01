@@ -8,34 +8,48 @@ from django.urls import reverse
 class _CashbackEstimadoMixin:
     """Fórmulas de cashback estimado compartilhadas entre Oferta (sincronizada com a
     Shopee) e OfertaManual (cadastrada à mão no admin) - mesma matemática usada de
-    verdade em pedidos/services.py: cashback é sempre uma fração fixa
-    (SHOPEE_CASHBACK_PERCENTUAL) da comissão recebida, sem teto em R$ - não tem como
-    pagar mais cashback do que a comissão que entra. Cada subclasse só precisa expor
-    `percentual_comissao` e `preco_base_cashback`."""
+    verdade em pedidos/services.py: cashback é uma fração fixa (SHOPEE_CASHBACK_PERCENTUAL)
+    da comissão recebida, com o piso mínimo de venda direta (CASHBACK_MINIMO_VENDA_DIRETA)
+    quando isso resultaria em menos - toda oferta aqui vira um clique de link/vitrine
+    específico (ver ofertas/views.py::ir_para_oferta), verificado 1:1 com o item
+    comprado (ver ROADMAP.md, Fase 41), então sempre conta como venda direta. Cada
+    subclasse só precisa expor `percentual_comissao` e `preco_base_cashback`."""
 
     @property
-    def _percentual_cashback_bruto(self) -> Decimal:
-        """% de cashback sobre o preço."""
-        repasse = (
-            Decimal(str(settings.SHOPEE_CASHBACK_PERCENTUAL))
+    def _fracao_cashback_sem_piso(self) -> Decimal:
+        """Fração do preço (0-1) antes de aplicar o piso mínimo, mas já com o
+        multiplicador de campanha - mesma matemática de pedidos/services.py, só sem o
+        max() com o piso ainda."""
+        return (
+            self.percentual_comissao
+            * Decimal(str(settings.SHOPEE_CASHBACK_PERCENTUAL))
             / Decimal("100")
-            * Decimal(str(settings.CASHBACK_MULTIPLICADOR_CAMPANHA))
         )
-        return self.percentual_comissao * Decimal("100") * repasse
+
+    @property
+    def _fracao_cashback(self) -> Decimal:
+        """Fração do preço (0-1) já com o piso mínimo de venda direta aplicado, antes
+        do multiplicador de campanha - equivalente a `cashback_base_item` em
+        pedidos/services.py::_montar_defaults."""
+        piso = Decimal(str(settings.CASHBACK_MINIMO_VENDA_DIRETA)) / Decimal("100")
+        return max(self._fracao_cashback_sem_piso, piso)
 
     @property
     def valor_cashback_estimado(self) -> Decimal:
         """Estimativa em R$ do cashback - mesma fórmula usada de verdade em
-        pedidos/services.py, pra nunca mostrar um valor diferente do que é pago."""
-        valor_bruto = self.preco_base_cashback * self._percentual_cashback_bruto / Decimal("100")
+        pedidos/services.py (piso mínimo incluso), pra nunca mostrar um valor
+        diferente do que é pago."""
+        multiplicador = Decimal(str(settings.CASHBACK_MULTIPLICADOR_CAMPANHA))
+        valor_bruto = self.preco_base_cashback * self._fracao_cashback * multiplicador
         return valor_bruto.quantize(Decimal("0.01"))
 
     @property
     def percentual_cashback(self) -> Decimal:
-        """% de cashback exibida, derivada do valor em R$ (já arredondado) - pra badge
-        (%) e valor (R$) sempre baterem um com o outro."""
+        """% de cashback exibida, derivada do valor em R$ (já arredondado, já com o
+        piso aplicado) - pra badge (%) e valor (R$) sempre baterem um com o outro."""
         if not self.preco_base_cashback:
-            return self._percentual_cashback_bruto.quantize(Decimal("0.1"))
+            multiplicador = Decimal(str(settings.CASHBACK_MULTIPLICADOR_CAMPANHA))
+            return (self._fracao_cashback * Decimal("100") * multiplicador).quantize(Decimal("0.1"))
         return (self.valor_cashback_estimado / self.preco_base_cashback * Decimal("100")).quantize(Decimal("0.1"))
 
 

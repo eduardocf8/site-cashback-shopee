@@ -127,6 +127,22 @@ class CashbackEstimadoTests(TestCase):
         self.assertEqual(oferta.valor_cashback_estimado, Decimal("0.00"))
         self.assertEqual(oferta.percentual_cashback, Decimal("5.0"))
 
+    @override_settings(CASHBACK_MINIMO_VENDA_DIRETA=1.6)
+    def test_comissao_abaixo_do_piso_mostra_o_piso_de_venda_direta(self):
+        """Toda oferta do catálogo vira um clique de link/vitrine específico
+        (ir_para_oferta), verificado 1:1 com o item comprado - então o card nunca deve
+        anunciar menos que o piso de venda direta, mesmo quando a comissão real da
+        Shopee é baixa (ver ROADMAP.md, Fase 39/41)."""
+        oferta = Oferta(
+            item_id=4, nome="Produto com comissão baixa", categoria_id=1,
+            product_link="https://shopee.com.br/produto-4-i.4.4",
+            preco_min=Decimal("100.00"), preco_max=Decimal("100.00"),
+            percentual_comissao=Decimal("0.005"),  # 0,5% de R$100 = R$0,50, abaixo do piso
+        )
+
+        self.assertEqual(oferta.percentual_cashback, Decimal("1.6"))
+        self.assertEqual(oferta.valor_cashback_estimado, Decimal("1.60"))
+
 
 @override_settings(
     SHOPEE_CASHBACK_PERCENTUAL=100, CASHBACK_MULTIPLICADOR_CAMPANHA=1, CASHBACK_MAXIMO_ANUNCIADO=2.4,

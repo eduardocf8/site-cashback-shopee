@@ -1234,11 +1234,32 @@ incluindo link curto - só com um atraso de resolução (no máximo até a próx
 execução diária) que nunca chega a importar na prática, já que a Shopee reporta o
 pedido real dias depois da compra.
 
-**Ação manual pendente**: falta criar o Cron Job `cron-resolver-item-alvo` no painel
-do Render (ver `marketing/instagram/README.md`), do mesmo jeito que os outros 4 foram
-criados.
+Cron Job `cron-resolver-item-alvo` criado e testado em produção (disparo manual via
+dashboard do Render retornou 200, sem quebrar as outras tarefas).
 
 Suite completa (247 testes) verde.
+
+---
+
+## Fase 43 — Aplicar o piso mínimo também no cashback anunciado dos cards ✅
+
+Usuário identificou que os cards de produto na página de Ofertas (e nos outros
+lugares que usam `_CashbackEstimadoMixin`: carrossel da home, cashback real ao
+converter um link) continuavam mostrando o percentual bruto da comissão, sem
+considerar o piso de 1,6%/1% da Fase 39/41 - ou seja, um produto com comissão real de
+0,5% anunciava "0,5%" no card em vez do mínimo garantido de 1,6%.
+
+- [x] **`ofertas/models.py::_CashbackEstimadoMixin`** - `valor_cashback_estimado` e
+      `percentual_cashback` passaram a aplicar `max(fração da comissão, piso mínimo)`
+      antes do multiplicador de campanha, mesma matemática de
+      `pedidos/services.py::_montar_defaults`. Sempre usa o piso de **venda direta**
+      (`CASHBACK_MINIMO_VENDA_DIRETA`): toda oferta do catálogo (`Oferta`,
+      `OfertaManual`, `OfertaDestaqueManual`) vira um clique de link/vitrine
+      específico ao ser convertida (`ir_para_oferta*`), verificado 1:1 com o item
+      comprado - nunca é venda indireta.
+- [x] Teste cobrindo comissão abaixo do piso mostrando o piso (1,6%) no card.
+
+Suite completa (248 testes) verde.
 
 ---
 
