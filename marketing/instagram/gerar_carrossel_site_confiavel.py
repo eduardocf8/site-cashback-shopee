@@ -121,4 +121,4 @@ Salve para usar no próximo que te oferecerem.
 if __name__ == "__main__":
     import sys
 
-    gerar("carrossel-site-confiavel", SLIDES, LEGENDA, exportar="--export" in sys.argv)
+    gerar("carrossel-09-site-confiavel", SLIDES, LEGENDA, exportar="--export" in sys.argv)

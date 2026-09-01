@@ -603,6 +603,14 @@ python3 gerar_carrossel_<tema>.py            # só o preview + legenda
 python3 gerar_carrossel_<tema>.py --export   # também os PNGs 1080x1350
 ```
 
+**A pasta de saída leva o número de ordem de criação**
+(`carrossel-07-direta-indireta`), e o próximo carrossel continua a
+sequência. Sem isso a lista era alfabética e não dava para saber, olhando
+o repositório, quais foram os últimos feitos — que é justamente o que se
+procura quando se volta na pasta depois de um tempo. O número é a ordem em
+que foram criados, **não** a ordem de publicação: carrossel pronto pode
+esperar a data certa (o de datas duplas é o caso).
+
 Cada carrossel gera na própria pasta:
 
 - `preview.html` — o carrossel arrastável, para revisar antes de exportar
@@ -681,12 +689,12 @@ digitação. `MARCA` é o nome dentro de um `white-space:nowrap`.
 - **Nada de "quase ninguém usa", "a maioria não sabe" e afins** sobre o
   comportamento dos usuários — decisão do dono do produto: não existe
   histórico que sustente esse tipo de afirmação. Comparar e explicar as
-  opções basta (é o que o `carrossel-direta-indireta` faz).
-- **`carrossel-indique-e-ganhe` precisa dizer que o programa não fica
+  opções basta (é o que o `carrossel-07-direta-indireta` faz).
+- **`carrossel-10-indique-e-ganhe` precisa dizer que o programa não fica
   ligado o tempo todo** (`ConfiguracaoIndicacao.esta_ativa()`), e dizer
   isso num slide próprio, não em nota de rodapé. Post que promete um
   programa desligado gera decepção e comentário irritado.
-- **`carrossel-datas-duplas` só pode ser postado com a campanha de
+- **`carrossel-11-datas-duplas` só pode ser postado com a campanha de
   cashback aumentado de fato ligada** (`CASHBACK_MULTIPLICADOR_CAMPANHA`
   acima de 1) ou às vésperas dela: o carrossel afirma que a cash-b aumenta
   o cashback nessas datas. O valor do aumento não aparece na arte de

@@ -96,4 +96,4 @@ Salve para lembrar na hora da próxima compra.
 if __name__ == "__main__":
     import sys
 
-    gerar("carrossel-cupom-frete-cashback", SLIDES, LEGENDA, exportar="--export" in sys.argv)
+    gerar("carrossel-03-cupom-frete-cashback", SLIDES, LEGENDA, exportar="--export" in sys.argv)

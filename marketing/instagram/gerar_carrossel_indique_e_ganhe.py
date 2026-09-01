@@ -108,4 +108,4 @@ Não tem limite de quantas pessoas você indica, e o dobro não sai do bolso de 
 if __name__ == "__main__":
     import sys
 
-    gerar("carrossel-indique-e-ganhe", SLIDES, LEGENDA, exportar="--export" in sys.argv)
+    gerar("carrossel-10-indique-e-ganhe", SLIDES, LEGENDA, exportar="--export" in sys.argv)

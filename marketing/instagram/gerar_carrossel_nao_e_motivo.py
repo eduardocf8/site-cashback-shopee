@@ -92,4 +92,4 @@ Concorda ou acha exagero? Conta nos comentários. 👇
 if __name__ == "__main__":
     import sys
 
-    gerar("carrossel-nao-e-motivo", SLIDES, LEGENDA, exportar="--export" in sys.argv)
+    gerar("carrossel-06-nao-e-motivo", SLIDES, LEGENDA, exportar="--export" in sys.argv)

@@ -99,4 +99,4 @@ Dá para mudar isso a partir da próxima compra.
 if __name__ == "__main__":
     import sys
 
-    gerar("carrossel-comissao-invisivel", SLIDES, LEGENDA, exportar="--export" in sys.argv)
+    gerar("carrossel-02-comissao-invisivel", SLIDES, LEGENDA, exportar="--export" in sys.argv)
