@@ -1085,6 +1085,43 @@ completa (220 testes) verde - conteúdo textual novo, sem mudança de comportame
 
 ---
 
+## Fase 39 — Cashback mínimo garantido por venda direta/indireta ✅
+
+Usuário perguntou se existia alguma trava técnica garantindo o "piso" de 1,6% já usado
+no material de marketing (Instagram) - a resposta foi não: esse número vinha de uma
+conta com valores manuais em `settings.py` (`SHOPEE_CASHBACK_PERCENTUAL` x
+`SHOPEE_COMISSAO_VENDA_DIRETA`), sem nenhum código que impedisse um produto real de
+render menos que isso. Por decisão do dono do produto, virou uma garantia de verdade,
+com dois valores - 1,6% pra venda direta, 1% pra indireta (mesmo diferencial de sempre:
+só a direta tem acesso a bônus de campanha).
+
+- [x] **`CASHBACK_MINIMO_VENDA_DIRETA`/`CASHBACK_MINIMO_VENDA_INDIRETA`** (settings.py,
+      .env.example) - percentuais configuráveis, padrão 1,6 e 1.
+- [x] **`pedidos/services.py::_percentual_minimo_garantido(click)`** - decide o piso
+      certo pelo `click.tipo` (`TIPO_PRODUTO`/`TIPO_VITRINE` = direta,
+      `TIPO_HOME` = indireta).
+- [x] **`_montar_defaults()`** - por item, usa `max(comissão_real x percentual_base,
+      preço_item x percentual_mínimo)` como base do cashback, antes de aplicar o
+      multiplicador de campanha (que afeta os dois lados igualmente, preservando o
+      comportamento de campanhas dobrarem tudo). **Essa é a única parte do cálculo em
+      que a cash-b pode pagar mais cashback do que a comissão recebida** - o resto do
+      sistema continua sendo sempre uma fração da comissão real, nunca um prejuízo por
+      construção; o piso é uma exceção deliberada a essa regra.
+- [x] Pedido sem `Click` identificado continua sem cashback nenhum (nem o piso) - não
+      tem usuário pra receber.
+- [x] Testes cobrindo os dois pisos, comissão real acima do piso (sem efeito),
+      interação com o multiplicador de campanha, e ausência de piso sem Click.
+
+**Nota**: essa fase implementa a garantia técnica; os textos do site que já citam
+"1,6%" (marketing do Instagram) ficam mais precisos com essa mudança, mas
+`regras_cashback.html`/FAQ ainda não foram atualizados pra anunciar essa garantia
+como um diferencial explícito - fica pra uma conversa futura, se o dono do produto
+quiser divulgar.
+
+Suite completa (226 testes) verde.
+
+---
+
 Pra continuar esse roadmap numa conversa nova, basta apontar esse arquivo
 (`ROADMAP.md`) e o `BRAND.md` — juntos eles dão o contexto de identidade
 visual e do que falta implementar, sem precisar reconstruir o histórico da

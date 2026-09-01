@@ -142,6 +142,15 @@ CASHBACK_MAXIMO_ANUNCIADO = round(
     SHOPEE_CASHBACK_PERCENTUAL / 100 * SHOPEE_COMISSAO_VENDA_DIRETA * CASHBACK_MULTIPLICADOR_CAMPANHA, 2
 )
 
+# Cashback mínimo garantido por produto, mesmo quando a comissão real da Shopee
+# resultaria em menos - a única parte do cálculo em que a cash-b pode pagar mais do
+# que recebeu de comissão (o resto é sempre uma fração da comissão real, nunca um
+# prejuízo). Venda direta (link específico/vitrine) tem um piso maior que indireta
+# ("Ir pra Shopee"), refletindo o mesmo diferencial de valor de sempre - só a direta
+# tem acesso a bônus de campanha. Ver pedidos/services.py::_percentual_minimo_garantido.
+CASHBACK_MINIMO_VENDA_DIRETA = float(os.environ.get("CASHBACK_MINIMO_VENDA_DIRETA", "1.6"))
+CASHBACK_MINIMO_VENDA_INDIRETA = float(os.environ.get("CASHBACK_MINIMO_VENDA_INDIRETA", "1"))
+
 # Multiplicador do programa "indique e ganhe": aplicado só ao pedido que dispara o
 # bônus (1ª compra validada do indicado, e a compra seguinte de quem indicou) - não é
 # um valor fixo em R$, dobra o cashback daquele pedido específico. Ver

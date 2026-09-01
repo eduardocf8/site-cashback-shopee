@@ -95,15 +95,29 @@ CAMPOS_ATUALIZAVEIS = [
 ]
 
 
+def _percentual_minimo_garantido(click: Click) -> Decimal:
+    """Cashback mínimo garantido por produto, mesmo quando a comissão real da Shopee
+    resultaria em menos - ao contrário do resto do cálculo (sempre uma fração da
+    comissão real recebida, nunca um prejuízo), esse piso pode fazer a cash-b pagar
+    mais do que recebeu de comissão naquele item específico. Venda direta (link
+    específico/vitrine) tem um piso maior que indireta ("Ir pra Shopee"), refletindo
+    o mesmo diferencial de valor de sempre - só a direta tem acesso a bônus de
+    campanha (ver regras_cashback.html)."""
+    if click.tipo == Click.TIPO_HOME:
+        return Decimal(str(settings.CASHBACK_MINIMO_VENDA_INDIRETA)) / Decimal("100")
+    return Decimal(str(settings.CASHBACK_MINIMO_VENDA_DIRETA)) / Decimal("100")
+
+
 def _montar_defaults(conversao, pedido_shopee, click, data_compra, percentual_base, multiplicador):
     status_shopee = mapear_status(pedido_shopee.get("orderStatus"))
     itens = pedido_shopee.get("items", [])
-    percentual = percentual_base * multiplicador
 
     # itemTotalCommission já inclui o bônus de campanha do vendedor quando ativo
-    # (confirmado comparando com o painel oficial de afiliados da Shopee), e o cashback
-    # é sempre uma fração fixa dela (percentual, nunca mais que 100%) - sem teto em R$,
-    # porque não tem como pagar mais cashback do que a comissão que entra.
+    # (confirmado comparando com o painel oficial de afiliados da Shopee). O cashback
+    # normalmente é uma fração fixa dela (percentual_base, nunca mais que 100%) - sem
+    # teto em R$. Quando isso resultaria em menos que o piso mínimo garantido (ver
+    # _percentual_minimo_garantido), vale o piso em vez da fração da comissão - a
+    # única parte do cálculo em que a cash-b pode pagar mais do que recebeu.
     #
     # Sem Click identificado, o pedido não veio daqui (outra campanha, compra pessoal etc.
     # - ver OrigemFilter em pedidos/admin.py) e não tem usuário pra receber o cashback, então
@@ -113,12 +127,15 @@ def _montar_defaults(conversao, pedido_shopee, click, data_compra, percentual_ba
     pedido_valor = Decimal("0")
     comissao = Decimal("0")
     cashback = Decimal("0")
+    percentual_minimo = _percentual_minimo_garantido(click) if click else None
     for item in itens:
-        pedido_valor += Decimal(str(item.get("actualAmount") or "0"))
+        valor_item = Decimal(str(item.get("actualAmount") or "0"))
+        pedido_valor += valor_item
         comissao_item = Decimal(str(item.get("itemTotalCommission") or "0"))
         comissao += comissao_item
         if click:
-            cashback += (comissao_item * percentual).quantize(Decimal("0.01"))
+            cashback_base_item = max(comissao_item * percentual_base, valor_item * percentual_minimo)
+            cashback += (cashback_base_item * multiplicador).quantize(Decimal("0.01"))
 
     tempos_conclusao = [item["completeTime"] for item in itens if item.get("completeTime")]
     data_validacao = _converter_timestamp(max(tempos_conclusao)) if tempos_conclusao else None

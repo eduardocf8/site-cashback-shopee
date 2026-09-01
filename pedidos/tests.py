@@ -338,6 +338,134 @@ class SincronizarTests(TestCase):
         self.assertLess(len(contexto), 20)
 
 
+@override_settings(
+    SHOPEE_AFFILIATE_APP_ID="app123", SHOPEE_AFFILIATE_SECRET="segredo123",
+    SHOPEE_CASHBACK_PERCENTUAL=100, CASHBACK_MULTIPLICADOR_CAMPANHA=1,
+    CASHBACK_MINIMO_VENDA_DIRETA=1.6, CASHBACK_MINIMO_VENDA_INDIRETA=1,
+)
+class CashbackMinimoGarantidoTests(TestCase):
+    """Quando a comissão real da Shopee resultaria em menos que o piso mínimo
+    garantido, vale o piso - a única parte do cálculo em que a cash-b pode pagar mais
+    do que recebeu de comissão (o resto é sempre uma fração da comissão real, nunca um
+    prejuízo). Venda direta (link/vitrine) tem um piso maior que indireta."""
+
+    def setUp(self):
+        self.usuario = get_user_model().objects.create_user(
+            username="compradora", password="senha123", cpf="39053344705"
+        )
+
+    def _pagina(self, click, order_id, comissao, valor_item):
+        return {
+            "nodes": [
+                {
+                    "conversionId": "999",
+                    "purchaseTime": 1700000000,
+                    "utmContent": f"{click.sub_id_usuario()},{click.sub_id_click()}",
+                    "orders": [
+                        {
+                            "orderId": order_id,
+                            "orderStatus": "PENDING",
+                            "items": [
+                                {
+                                    "completeTime": None,
+                                    "itemTotalCommission": comissao,
+                                    "actualAmount": valor_item,
+                                }
+                            ],
+                        }
+                    ],
+                }
+            ],
+            "pageInfo": {"hasNextPage": False, "scrollId": ""},
+        }
+
+    @patch("pedidos.services.buscar_conversoes")
+    def test_venda_direta_com_comissao_baixa_usa_o_piso_de_1_6_por_cento(self, mock_buscar):
+        click = Click.objects.create(
+            usuario=self.usuario, tipo=Click.TIPO_PRODUTO,
+            url_original="https://shopee.com.br/produto-i.1.1", link_gerado="https://shope.ee/abc",
+        )
+        # Comissão real (0,50) seria só 0,5% dos 100 - abaixo do piso de 1,6% (1,60).
+        mock_buscar.return_value = self._pagina(click, "ORD-DIRETA-BAIXA", "0.50", "100.00")
+
+        sincronizar(1690000000, 1700000000)
+
+        pedido = Pedido.objects.get(order_id="ORD-DIRETA-BAIXA")
+        self.assertEqual(pedido.valor_comissao, Decimal("0.50"))
+        self.assertEqual(pedido.valor_cashback, Decimal("1.60"))
+
+    @patch("pedidos.services.buscar_conversoes")
+    def test_vitrine_tambem_conta_como_venda_direta_pro_piso(self, mock_buscar):
+        click = Click.objects.create(
+            usuario=self.usuario, tipo=Click.TIPO_VITRINE,
+            url_original="https://shopee.com.br/produto-i.1.1", link_gerado="https://shope.ee/abc",
+        )
+        mock_buscar.return_value = self._pagina(click, "ORD-VITRINE-BAIXA", "0.50", "100.00")
+
+        sincronizar(1690000000, 1700000000)
+
+        pedido = Pedido.objects.get(order_id="ORD-VITRINE-BAIXA")
+        self.assertEqual(pedido.valor_cashback, Decimal("1.60"))
+
+    @patch("pedidos.services.buscar_conversoes")
+    def test_venda_indireta_com_comissao_baixa_usa_o_piso_de_1_por_cento(self, mock_buscar):
+        click = Click.objects.create(
+            usuario=self.usuario, tipo=Click.TIPO_HOME,
+            url_original="https://shopee.com.br/", link_gerado="https://shope.ee/abc",
+        )
+        mock_buscar.return_value = self._pagina(click, "ORD-INDIRETA-BAIXA", "0.50", "100.00")
+
+        sincronizar(1690000000, 1700000000)
+
+        pedido = Pedido.objects.get(order_id="ORD-INDIRETA-BAIXA")
+        self.assertEqual(pedido.valor_cashback, Decimal("1.00"))
+
+    @patch("pedidos.services.buscar_conversoes")
+    def test_comissao_acima_do_piso_nao_e_afetada(self, mock_buscar):
+        click = Click.objects.create(
+            usuario=self.usuario, tipo=Click.TIPO_PRODUTO,
+            url_original="https://shopee.com.br/produto-i.1.1", link_gerado="https://shope.ee/abc",
+        )
+        # Comissão real de 5,00 (5% dos 100) já é bem maior que o piso de 1,6%.
+        mock_buscar.return_value = self._pagina(click, "ORD-ACIMA-DO-PISO", "5.00", "100.00")
+
+        sincronizar(1690000000, 1700000000)
+
+        pedido = Pedido.objects.get(order_id="ORD-ACIMA-DO-PISO")
+        self.assertEqual(pedido.valor_cashback, Decimal("5.00"))
+
+    @override_settings(CASHBACK_MULTIPLICADOR_CAMPANHA=2)
+    @patch("pedidos.services.buscar_conversoes")
+    def test_multiplicador_de_campanha_tambem_dobra_o_piso(self, mock_buscar):
+        click = Click.objects.create(
+            usuario=self.usuario, tipo=Click.TIPO_PRODUTO,
+            url_original="https://shopee.com.br/produto-i.1.1", link_gerado="https://shope.ee/abc",
+        )
+        mock_buscar.return_value = self._pagina(click, "ORD-PISO-CAMPANHA", "0.50", "100.00")
+
+        sincronizar(1690000000, 1700000000)
+
+        pedido = Pedido.objects.get(order_id="ORD-PISO-CAMPANHA")
+        # Piso (1,60) x multiplicador de campanha (2) = 3,20.
+        self.assertEqual(pedido.valor_cashback, Decimal("3.20"))
+
+    @patch("pedidos.services.buscar_conversoes")
+    def test_pedido_sem_click_nao_aplica_piso_nenhum(self, mock_buscar):
+        click = Click.objects.create(
+            usuario=self.usuario, tipo=Click.TIPO_PRODUTO,
+            url_original="https://shopee.com.br/produto-i.1.1", link_gerado="https://shope.ee/abc",
+        )
+        pagina = self._pagina(click, "ORD-SEM-CLICK", "0.50", "100.00")
+        pagina["nodes"][0]["utmContent"] = "origem-desconhecida"
+        mock_buscar.return_value = pagina
+
+        sincronizar(1690000000, 1700000000)
+
+        pedido = Pedido.objects.get(order_id="ORD-SEM-CLICK")
+        self.assertIsNone(pedido.usuario)
+        self.assertEqual(pedido.valor_cashback, Decimal("0"))
+
+
 @override_settings(SHOPEE_CASHBACK_PERCENTUAL=20)
 class MultiplicadorCampanhaTests(TestCase):
     """O multiplicador de campanha fica congelado no pedido quando ele é registrado.
