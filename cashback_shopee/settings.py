@@ -123,24 +123,22 @@ SHOPEE_CASHBACK_PERCENTUAL = float(os.environ.get("SHOPEE_CASHBACK_PERCENTUAL", 
 # piso do mês pra nunca prometer mais cashback do que a gente de fato vai conseguir pagar.
 SHOPEE_COMISSAO_VENDA_DIRETA = float(os.environ.get("SHOPEE_COMISSAO_VENDA_DIRETA", "8"))
 
-# Multiplicador pra campanhas promocionais próprias da cash-b (não tem nada a ver com
-# bônus de vendedor da Shopee) - ex: 2 = "cashback em dobro" no mês de aniversário do
-# site. Fica em 1 o resto do tempo. Afeta o valor de cashback pago de verdade (não é só
-# um número de propaganda) - usado em pedidos/services.py, ofertas/models.py e no hero.
-#
-# Vale só pros pedidos registrados ENQUANTO a campanha está ligada: cada Pedido guarda
-# o multiplicador que valia quando entrou (campo multiplicador_campanha) e continua com
-# ele pra sempre. Ou seja, desligar a campanha não tira o dobro de quem comprou durante
-# ela, e ligar não dobra retroativamente quem comprou antes.
-CASHBACK_MULTIPLICADOR_CAMPANHA = float(os.environ.get("CASHBACK_MULTIPLICADOR_CAMPANHA", "1"))
+# Campanhas promocionais próprias da cash-b (ex: "cashback em dobro" no mês de
+# aniversário do site) são cadastradas como janelas de data no admin (ver
+# pedidos.models.CampanhaCashback), não mais como um multiplicador fixo aqui - até a
+# Fase 44, CASHBACK_MULTIPLICADOR_CAMPANHA era carimbado no pedido com o valor vigente
+# NA SINCRONIZAÇÃO (uma vez por dia, de madrugada), não na hora da compra, o que
+# exigia manter a campanha ligada até depois da sincronização seguinte "por segurança"
+# pra não prejudicar quem comprou no fim da janela. Agora o multiplicador de cada
+# pedido é escolhido comparando a data_compra real contra a janela da campanha (ver
+# CampanhaCashback.multiplicador_em em pedidos/services.py), então ligar/desligar
+# virou só uma data no admin, sem esse cuidado de horário.
 
 # Fallback do "até X%" anunciado no hero da home, só usado antes da primeira
 # sincronização de ofertas (instalação nova, ainda sem CashbackMaximoCache calculado -
 # ver ofertas/services.py::obter_cashback_maximo_anunciado). Em uso normal, a home
 # mostra o maior % real calculado a partir do catálogo sincronizado, não esse valor fixo.
-CASHBACK_MAXIMO_ANUNCIADO = round(
-    SHOPEE_CASHBACK_PERCENTUAL / 100 * SHOPEE_COMISSAO_VENDA_DIRETA * CASHBACK_MULTIPLICADOR_CAMPANHA, 2
-)
+CASHBACK_MAXIMO_ANUNCIADO = round(SHOPEE_CASHBACK_PERCENTUAL / 100 * SHOPEE_COMISSAO_VENDA_DIRETA, 2)
 
 # Cashback mínimo garantido por produto, mesmo quando a comissão real da Shopee
 # resultaria em menos - a única parte do cálculo em que a cash-b pode pagar mais do

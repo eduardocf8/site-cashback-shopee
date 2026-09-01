@@ -11,7 +11,7 @@ from accounts.models import Indicacao
 from links.models import Click
 from links.shopee_client import buscar_conversoes
 
-from .models import Pedido
+from .models import CampanhaCashback, Pedido
 from .notificacoes import notificar_indicador_bonus_pendente, notificar_pedido_liberado, notificar_pedido_validado
 
 PADRAO_USUARIO = re.compile(r"^user(\d+)$")
@@ -198,29 +198,44 @@ def _montar_defaults(conversao, pedido_shopee, click, data_compra, percentual_ba
 def _montar_linhas(brutos_por_order_id: dict[str, tuple], percentual_base: Decimal) -> dict[str, dict]:
     """Monta os defaults de cada pedido já com o multiplicador de campanha correto.
 
-    Pedido novo usa o multiplicador vigente agora; pedido que já existe reusa o que
-    ficou gravado nele na primeira vez. Isso é o que impede a campanha de vazar pros
-    dois lados - a Shopee reenvia o mesmo pedido em toda sincronização seguinte, e o
-    _montar_defaults recalcula valor_cashback do zero a cada vez, então sem congelar
-    o multiplicador:
+    Pedido novo usa o multiplicador que valia na data_compra real (ver
+    CampanhaCashback.multiplicador_em) - não o multiplicador "de agora"; pedido que já
+    existe reusa o que ficou gravado nele na primeira vez. Isso é o que impede a
+    campanha de vazar pros dois lados - a Shopee reenvia o mesmo pedido em toda
+    sincronização seguinte, e o _montar_defaults recalcula valor_cashback do zero a
+    cada vez, então sem congelar o multiplicador:
 
     - o dobro prometido numa campanha sumiria na primeira sincronização depois dela
       acabar, justamente pra quem comprou por causa da campanha;
     - ligar uma campanha dobraria retroativamente pedidos antigos que ainda estejam
       dentro da janela de sincronização.
 
+    Usar a data_compra (em vez do momento da sincronização, que roda uma vez por dia
+    de madrugada - ver ROADMAP.md, Fase 44) evita um problema à parte: antes, uma
+    compra feita de noite só era sincronizada horas depois, e se a campanha já tivesse
+    sido desligada até lá, esse pedido perdia o dobro injustamente - obrigando a
+    manter a campanha ligada até depois da sincronização seguinte "por segurança".
+    Comparando a data_compra contra a janela da campanha, o resultado é sempre o
+    mesmo não importa quando a sincronização roda.
+
     É o mesmo cuidado que _reaplicar_bonus_ja_concedido tem com o bônus de indicação.
     """
-    multiplicador_atual = Decimal(str(settings.CASHBACK_MULTIPLICADOR_CAMPANHA))
     ja_gravados = dict(
         Pedido.objects.filter(order_id__in=brutos_por_order_id.keys()).values_list(
             "order_id", "multiplicador_campanha"
         )
     )
+    # Carregada uma vez fora do loop - sem isso, cada pedido novo faria sua própria
+    # consulta ao banco (ver CampanhaCashback.multiplicador_em), o que não escala
+    # numa sincronização com muitos pedidos.
+    campanhas = CampanhaCashback.listar()
 
     linhas: dict[str, dict] = {}
     for order_id, (conversao, pedido_shopee, click, data_compra) in brutos_por_order_id.items():
-        multiplicador = ja_gravados.get(order_id, multiplicador_atual)
+        if order_id in ja_gravados:
+            multiplicador = ja_gravados[order_id]
+        else:
+            multiplicador = CampanhaCashback.multiplicador_em(data_compra, campanhas=campanhas)
         defaults = _montar_defaults(
             conversao, pedido_shopee, click, data_compra, percentual_base, multiplicador
         )

@@ -14,7 +14,7 @@ from .analytics import (
     obter_pedidos_filtrados,
     origem_detalhada as origem_detalhada_pedido,
 )
-from .models import Pedido
+from .models import CampanhaCashback, Pedido
 
 
 def _parse_data(valor):
@@ -57,6 +57,17 @@ class OrigemFilter(admin.SimpleListFilter):
                 "query_string": changelist.get_query_string({self.parameter_name: lookup}),
                 "display": title,
             }
+
+
+@admin.register(CampanhaCashback)
+class CampanhaCashbackAdmin(admin.ModelAdmin):
+    """Liga/desliga campanhas de cashback em dobro (ou outro multiplicador) só
+    cadastrando uma janela de datas aqui - sem precisar mexer no .env nem fazer
+    deploy, e sem o risco de horário que existia antes (ver CampanhaCashback e
+    ROADMAP.md, Fase 44)."""
+
+    list_display = ("__str__", "multiplicador", "inicio", "fim")
+    ordering = ("-inicio",)
 
 
 @admin.register(Pedido)

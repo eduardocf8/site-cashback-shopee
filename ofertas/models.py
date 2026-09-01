@@ -4,6 +4,8 @@ from django.conf import settings
 from django.db import models
 from django.urls import reverse
 
+from pedidos.models import CampanhaCashback
+
 
 class _CashbackEstimadoMixin:
     """Fórmulas de cashback estimado compartilhadas entre Oferta (sincronizada com a
@@ -17,9 +19,9 @@ class _CashbackEstimadoMixin:
 
     @property
     def _fracao_cashback_sem_piso(self) -> Decimal:
-        """Fração do preço (0-1) antes de aplicar o piso mínimo, mas já com o
-        multiplicador de campanha - mesma matemática de pedidos/services.py, só sem o
-        max() com o piso ainda."""
+        """Fração do preço (0-1) antes de aplicar o piso mínimo e o multiplicador de
+        campanha - mesma matemática de pedidos/services.py, só sem o max() com o piso
+        ainda."""
         return (
             self.percentual_comissao
             * Decimal(str(settings.SHOPEE_CASHBACK_PERCENTUAL))
@@ -38,8 +40,10 @@ class _CashbackEstimadoMixin:
     def valor_cashback_estimado(self) -> Decimal:
         """Estimativa em R$ do cashback - mesma fórmula usada de verdade em
         pedidos/services.py (piso mínimo incluso), pra nunca mostrar um valor
-        diferente do que é pago."""
-        multiplicador = Decimal(str(settings.CASHBACK_MULTIPLICADOR_CAMPANHA))
+        diferente do que é pago. Usa o multiplicador de campanha vigente AGORA (ver
+        CampanhaCashback.multiplicador_atual) - é uma estimativa de quem comprar
+        agora, não uma promessa carimbada como no pedido de verdade."""
+        multiplicador = CampanhaCashback.multiplicador_atual()
         valor_bruto = self.preco_base_cashback * self._fracao_cashback * multiplicador
         return valor_bruto.quantize(Decimal("0.01"))
 
@@ -48,7 +52,7 @@ class _CashbackEstimadoMixin:
         """% de cashback exibida, derivada do valor em R$ (já arredondado, já com o
         piso aplicado) - pra badge (%) e valor (R$) sempre baterem um com o outro."""
         if not self.preco_base_cashback:
-            multiplicador = Decimal(str(settings.CASHBACK_MULTIPLICADOR_CAMPANHA))
+            multiplicador = CampanhaCashback.multiplicador_atual()
             return (self._fracao_cashback * Decimal("100") * multiplicador).quantize(Decimal("0.1"))
         return (self.valor_cashback_estimado / self.preco_base_cashback * Decimal("100")).quantize(Decimal("0.1"))
 

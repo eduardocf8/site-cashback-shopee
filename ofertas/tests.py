@@ -1,12 +1,15 @@
+from datetime import timedelta
 from decimal import Decimal
 from unittest.mock import Mock, patch
 
 from django.contrib.auth import get_user_model
 from django.test import TestCase, override_settings
 from django.urls import reverse
+from django.utils import timezone
 
 from instagram_bot.models import RegistroPublicacao
 from links.models import Click
+from pedidos.models import CampanhaCashback
 
 from .models import Oferta, OfertaDestaqueManual, OfertaManual
 from .services import (
@@ -103,7 +106,7 @@ class MontarOfertaTests(TestCase):
         self.assertEqual(oferta.percentual_comissao, Decimal("0.14"))
 
 
-@override_settings(SHOPEE_CASHBACK_PERCENTUAL=100, CASHBACK_MULTIPLICADOR_CAMPANHA=1)
+@override_settings(SHOPEE_CASHBACK_PERCENTUAL=100)
 class CashbackEstimadoTests(TestCase):
     def test_calcula_valor_e_percentual_sem_limite(self):
         oferta = Oferta(
@@ -143,9 +146,28 @@ class CashbackEstimadoTests(TestCase):
         self.assertEqual(oferta.percentual_cashback, Decimal("1.6"))
         self.assertEqual(oferta.valor_cashback_estimado, Decimal("1.60"))
 
+    def test_campanha_ativa_agora_dobra_o_card_sem_precisar_de_deploy(self):
+        """Ligar/desligar uma campanha é só criar/apagar uma CampanhaCashback - o card
+        reflete isso na hora, sem depender de sincronização nem de reiniciar o site
+        (ver ROADMAP.md, Fase 44)."""
+        CampanhaCashback.objects.create(
+            multiplicador=Decimal("2"),
+            inicio=timezone.now() - timedelta(days=1),
+            fim=timezone.now() + timedelta(days=1),
+        )
+        oferta = Oferta(
+            item_id=5, nome="Produto em campanha", categoria_id=1,
+            product_link="https://shopee.com.br/produto-5-i.5.5",
+            preco_min=Decimal("100.00"), preco_max=Decimal("100.00"),
+            percentual_comissao=Decimal("0.20"),  # 20% de R$100 = R$20, dobrado = R$40
+        )
+
+        self.assertEqual(oferta.valor_cashback_estimado, Decimal("40.00"))
+        self.assertEqual(oferta.percentual_cashback, Decimal("40.0"))
+
 
 @override_settings(
-    SHOPEE_CASHBACK_PERCENTUAL=100, CASHBACK_MULTIPLICADOR_CAMPANHA=1, CASHBACK_MAXIMO_ANUNCIADO=2.4,
+    SHOPEE_CASHBACK_PERCENTUAL=100, CASHBACK_MAXIMO_ANUNCIADO=2.4,
 )
 class CashbackMaximoAnunciadoTests(TestCase):
     def _pagina(self, nodes, has_next_page=False):
@@ -222,7 +244,7 @@ class BuscarOfertaPorLinkTests(TestCase):
             "productCatIds": [100],
         }
 
-    @override_settings(SHOPEE_CASHBACK_PERCENTUAL=100, CASHBACK_MULTIPLICADOR_CAMPANHA=1)
+    @override_settings(SHOPEE_CASHBACK_PERCENTUAL=100)
     @patch("ofertas.services.buscar_oferta_por_item_id")
     def test_busca_a_comissao_real_do_produto_pelo_item_id_do_link(self, mock_buscar):
         mock_buscar.return_value = self._node(999, "0.08", "50.00")

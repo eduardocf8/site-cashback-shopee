@@ -1263,6 +1263,48 @@ Suite completa (248 testes) verde.
 
 ---
 
+## Fase 44 — Campanha de cashback vira janela de datas, não mais um env var ✅
+
+Uma análise de código apontou uma armadilha real no antigo `CASHBACK_MULTIPLICADOR_CAMPANHA`
+(env var, Fase 13.7b): o multiplicador era carimbado no pedido com o valor vigente **na
+sincronização** (uma vez por dia, de madrugada - ver `pedidos/services.py::_montar_linhas`),
+não com o valor vigente **na hora da compra** (`data_compra`). Uma compra feita à noite só
+seria sincronizada horas depois; se a campanha já tivesse sido desligada (mudar o .env +
+deploy) antes dessa sincronização rodar, esse pedido perdia o dobro injustamente - obrigando
+a manter a campanha ligada "por segurança" até bem depois do fim planejado dela.
+
+- [x] **`pedidos/models.py::CampanhaCashback`** - novo modelo (janela `inicio`/`fim`
+      opcionais + `multiplicador`), editável no admin sem deploy. Várias linhas
+      permitidas (histórico de campanhas). `fim` em branco = sem data de término
+      definida ainda.
+- [x] **`multiplicador_em(momento, campanhas=None)`** - multiplicador vigente num
+      momento específico; 1 se nenhuma campanha cobre. Aceita uma lista de campanhas
+      já carregada pra não fazer 1 consulta ao banco por pedido numa sincronização em
+      lote (achado num teste de regressão de performance -
+      `test_sincroniza_muitos_pedidos_com_poucas_consultas_ao_banco` acusou 310
+      consultas contra o limite de 20 na primeira versão da correção).
+- [x] **`multiplicador_atual()`** - vigente agora, usado pelos cards de oferta
+      (`ofertas/models.py::_CashbackEstimadoMixin`), que não têm uma data_compra real.
+- [x] **`pedidos/services.py::_montar_linhas`** - pedido novo usa
+      `CampanhaCashback.multiplicador_em(data_compra, campanhas=...)` em vez do
+      multiplicador "de agora"; pedido já gravado continua reusando o valor
+      congelado nele (mesma proteção contra vazamento retroativo de sempre).
+- [x] Removido `CASHBACK_MULTIPLICADOR_CAMPANHA` do `settings.py`/`.env.example` -
+      fallback do `CASHBACK_MAXIMO_ANUNCIADO` ajustado pra não depender mais dele.
+- [x] Testes cobrindo o modelo (janela cobrindo/não cobrindo o momento, sem fim
+      definido, sem nenhuma campanha cadastrada), a sincronização (pedido
+      durante/fora da campanha, campanha encerrada não reduz pedido já gravado,
+      campanha nova não dobra retroativamente) e o card de oferta refletindo a
+      campanha ativa na hora, sem depender de sincronização.
+
+Ligar/desligar uma campanha virou só criar/editar uma `CampanhaCashback` no admin -
+sem deploy, sem `.env`, e sem o cuidado de horário de antes (não importa quando a
+sincronização roda, o resultado depende só da data_compra real).
+
+Suite completa (256 testes) verde.
+
+---
+
 Pra continuar esse roadmap numa conversa nova, basta apontar esse arquivo
 (`ROADMAP.md`) e o `BRAND.md` — juntos eles dão o contexto de identidade
 visual e do que falta implementar, sem precisar reconstruir o histórico da

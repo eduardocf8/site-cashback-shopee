@@ -18,7 +18,7 @@ from links.models import Click
 from saques.models import Saque
 
 from .analytics import obter_analytics, origem_detalhada
-from .models import Pedido
+from .models import CampanhaCashback, Pedido
 from .notificacoes import notificar_indicador_bonus_pendente
 from .services import calcular_data_prevista_liberacao, liberar_saldo, mapear_status, resolver_click, sincronizar
 
@@ -338,9 +338,64 @@ class SincronizarTests(TestCase):
         self.assertLess(len(contexto), 20)
 
 
+class CampanhaCashbackModelTests(TestCase):
+    """CampanhaCashback.multiplicador_em substitui o antigo CASHBACK_MULTIPLICADOR_CAMPANHA
+    fixo no .env - o multiplicador de um pedido passa a depender da data_compra real,
+    não do momento em que a sincronização roda (ver ROADMAP.md, Fase 44)."""
+
+    def test_sem_nenhuma_campanha_cadastrada_multiplicador_e_1(self):
+        momento = datetime(2024, 6, 1, tzinfo=dt_timezone.utc)
+        self.assertEqual(CampanhaCashback.multiplicador_em(momento), Decimal("1"))
+
+    def test_momento_none_multiplicador_e_1(self):
+        self.assertEqual(CampanhaCashback.multiplicador_em(None), Decimal("1"))
+
+    def test_momento_dentro_da_janela_usa_o_multiplicador_da_campanha(self):
+        CampanhaCashback.objects.create(
+            multiplicador=Decimal("2"),
+            inicio=datetime(2024, 6, 1, tzinfo=dt_timezone.utc),
+            fim=datetime(2024, 6, 30, tzinfo=dt_timezone.utc),
+        )
+        momento = datetime(2024, 6, 15, tzinfo=dt_timezone.utc)
+        self.assertEqual(CampanhaCashback.multiplicador_em(momento), Decimal("2"))
+
+    def test_momento_antes_do_inicio_nao_conta(self):
+        CampanhaCashback.objects.create(
+            multiplicador=Decimal("2"),
+            inicio=datetime(2024, 6, 1, tzinfo=dt_timezone.utc),
+            fim=datetime(2024, 6, 30, tzinfo=dt_timezone.utc),
+        )
+        momento = datetime(2024, 5, 31, 23, 59, tzinfo=dt_timezone.utc)
+        self.assertEqual(CampanhaCashback.multiplicador_em(momento), Decimal("1"))
+
+    def test_momento_depois_do_fim_nao_conta(self):
+        CampanhaCashback.objects.create(
+            multiplicador=Decimal("2"),
+            inicio=datetime(2024, 6, 1, tzinfo=dt_timezone.utc),
+            fim=datetime(2024, 6, 30, tzinfo=dt_timezone.utc),
+        )
+        momento = datetime(2024, 7, 1, tzinfo=dt_timezone.utc)
+        self.assertEqual(CampanhaCashback.multiplicador_em(momento), Decimal("1"))
+
+    def test_sem_data_de_fim_continua_valendo_indefinidamente(self):
+        CampanhaCashback.objects.create(
+            multiplicador=Decimal("2"), inicio=datetime(2024, 6, 1, tzinfo=dt_timezone.utc), fim=None,
+        )
+        momento = datetime(2030, 1, 1, tzinfo=dt_timezone.utc)
+        self.assertEqual(CampanhaCashback.multiplicador_em(momento), Decimal("2"))
+
+    def test_multiplicador_atual_usa_agora(self):
+        CampanhaCashback.objects.create(
+            multiplicador=Decimal("3"),
+            inicio=timezone.now() - timedelta(days=1),
+            fim=timezone.now() + timedelta(days=1),
+        )
+        self.assertEqual(CampanhaCashback.multiplicador_atual(), Decimal("3"))
+
+
 @override_settings(
     SHOPEE_AFFILIATE_APP_ID="app123", SHOPEE_AFFILIATE_SECRET="segredo123",
-    SHOPEE_CASHBACK_PERCENTUAL=100, CASHBACK_MULTIPLICADOR_CAMPANHA=1,
+    SHOPEE_CASHBACK_PERCENTUAL=100,
     CASHBACK_MINIMO_VENDA_DIRETA=1.6, CASHBACK_MINIMO_VENDA_INDIRETA=1,
 )
 class CashbackMinimoGarantidoTests(TestCase):
@@ -438,9 +493,14 @@ class CashbackMinimoGarantidoTests(TestCase):
         pedido = Pedido.objects.get(order_id="ORD-ACIMA-DO-PISO")
         self.assertEqual(pedido.valor_cashback, Decimal("5.00"))
 
-    @override_settings(CASHBACK_MULTIPLICADOR_CAMPANHA=2)
     @patch("pedidos.services.buscar_conversoes")
     def test_multiplicador_de_campanha_tambem_dobra_o_piso(self, mock_buscar):
+        # purchaseTime da _pagina é sempre 1700000000 - campanha cobrindo esse instante.
+        CampanhaCashback.objects.create(
+            multiplicador=Decimal("2"),
+            inicio=datetime(2023, 1, 1, tzinfo=dt_timezone.utc),
+            fim=datetime(2023, 12, 31, tzinfo=dt_timezone.utc),
+        )
         click = Click.objects.create(
             usuario=self.usuario, tipo=Click.TIPO_PRODUTO, item_id_alvo=1,
             url_original="https://shopee.com.br/produto-i.1.1", link_gerado="https://shope.ee/abc",
@@ -583,9 +643,16 @@ class MultiplicadorCampanhaTests(TestCase):
             "pageInfo": {"hasNextPage": False, "scrollId": ""},
         }
 
-    @override_settings(CASHBACK_MULTIPLICADOR_CAMPANHA=2)
+    def _campanha(self, inicio=None, fim=None, multiplicador="2"):
+        return CampanhaCashback.objects.create(
+            multiplicador=Decimal(multiplicador),
+            inicio=inicio or datetime(2023, 1, 1, tzinfo=dt_timezone.utc),
+            fim=fim,
+        )
+
     @patch("pedidos.services.buscar_conversoes")
     def test_pedido_comprado_durante_a_campanha_recebe_o_dobro(self, mock_buscar):
+        self._campanha()  # cobre o purchaseTime fixo da _pagina (1700000000)
         mock_buscar.return_value = self._pagina("ORD-CAMP-1")
 
         sincronizar(1690000000, 1700000000)
@@ -597,14 +664,16 @@ class MultiplicadorCampanhaTests(TestCase):
 
     @patch("pedidos.services.buscar_conversoes")
     def test_campanha_encerrada_nao_reduz_cashback_de_pedido_ja_registrado(self, mock_buscar):
+        campanha = self._campanha()
         mock_buscar.return_value = self._pagina("ORD-CAMP-2")
-        with override_settings(CASHBACK_MULTIPLICADOR_CAMPANHA=2):
-            sincronizar(1690000000, 1700000000)
+        sincronizar(1690000000, 1700000000)
 
-        # Campanha acabou (voltou pra 1) e a Shopee reenvia o mesmo pedido, agora validado.
+        # Campanha acabou e a Shopee reenvia o mesmo pedido, agora validado - o
+        # multiplicador gravado na primeira vez continua valendo, não importa se a
+        # campanha ainda existe ou não nesse momento.
+        campanha.delete()
         mock_buscar.return_value = self._pagina("ORD-CAMP-2", status="COMPLETED")
-        with override_settings(CASHBACK_MULTIPLICADOR_CAMPANHA=1):
-            sincronizar(1690000000, 1700000000)
+        sincronizar(1690000000, 1700000000)
 
         pedido = Pedido.objects.get(order_id="ORD-CAMP-2")
         self.assertEqual(pedido.status, Pedido.STATUS_VALIDADO)
@@ -614,13 +683,14 @@ class MultiplicadorCampanhaTests(TestCase):
     @patch("pedidos.services.buscar_conversoes")
     def test_campanha_nova_nao_dobra_retroativamente_pedido_antigo(self, mock_buscar):
         mock_buscar.return_value = self._pagina("ORD-CAMP-3")
-        with override_settings(CASHBACK_MULTIPLICADOR_CAMPANHA=1):
-            sincronizar(1690000000, 1700000000)
+        sincronizar(1690000000, 1700000000)
 
-        # Campanha começa depois, e o pedido antigo ainda está na janela de sincronização.
+        # Campanha começa depois, mas cobre a mesma data_compra do pedido antigo (que
+        # ainda está na janela de sincronização) - mesmo assim não dobra
+        # retroativamente, porque o multiplicador já ficou gravado no pedido.
+        self._campanha()
         mock_buscar.return_value = self._pagina("ORD-CAMP-3", status="COMPLETED")
-        with override_settings(CASHBACK_MULTIPLICADOR_CAMPANHA=2):
-            sincronizar(1690000000, 1700000000)
+        sincronizar(1690000000, 1700000000)
 
         pedido = Pedido.objects.get(order_id="ORD-CAMP-3")
         self.assertEqual(pedido.valor_cashback, Decimal("4.00"))
@@ -669,9 +739,11 @@ class SincronizarBonusIndicacaoTests(TestCase):
     def _pagina(self, nodes):
         return {"nodes": nodes, "pageInfo": {"hasNextPage": False, "scrollId": ""}}
 
-    @override_settings(CASHBACK_MULTIPLICADOR_CAMPANHA=2)
     @patch("pedidos.services.buscar_conversoes")
     def test_pedido_em_campanha_nao_consome_o_bonus_de_indicacao(self, mock_buscar):
+        CampanhaCashback.objects.create(
+            multiplicador=Decimal("2"), inicio=datetime(2023, 1, 1, tzinfo=dt_timezone.utc),
+        )
         # O pedido leva só o extra da campanha (5.00 x 2 = 10.00), e a indicação
         # continua pendente esperando a campanha acabar.
         mock_buscar.return_value = self._pagina([self._no(self.click_indicado, "ORD-IND-CAMP", "5.00")])
@@ -686,19 +758,24 @@ class SincronizarBonusIndicacaoTests(TestCase):
 
     @patch("pedidos.services.buscar_conversoes")
     def test_bonus_na_fila_entra_no_proximo_pedido_depois_da_campanha(self, mock_buscar):
+        # Campanha cobre só até o purchaseTime do 1º pedido (1700000000) - o 2º pedido
+        # (purchase_time=1700000600) já compra depois dela ter acabado.
+        CampanhaCashback.objects.create(
+            multiplicador=Decimal("2"),
+            inicio=datetime(2023, 1, 1, tzinfo=dt_timezone.utc),
+            fim=datetime.fromtimestamp(1700000000, tz=dt_timezone.utc),
+        )
         mock_buscar.return_value = self._pagina([self._no(self.click_indicado, "ORD-FILA-1", "5.00")])
-        with override_settings(CASHBACK_MULTIPLICADOR_CAMPANHA=2):
-            sincronizar(1690000000, 1700000000)
+        sincronizar(1690000000, 1700000000)
 
-        # Campanha acabou. O pedido seguinte do indicado pega o bônus que ficou na fila.
+        # O pedido seguinte do indicado, já fora da campanha, pega o bônus que ficou na fila.
         mock_buscar.return_value = self._pagina(
             [
                 self._no(self.click_indicado, "ORD-FILA-1", "5.00"),
                 self._no(self.click_indicado, "ORD-FILA-2", "5.00", purchase_time=1700000600),
             ]
         )
-        with override_settings(CASHBACK_MULTIPLICADOR_CAMPANHA=1):
-            sincronizar(1690000000, 1700000000)
+        sincronizar(1690000000, 1700000000)
 
         # O pedido da campanha continua com o valor da campanha, sem ganhar o bônus depois.
         pedido_campanha = Pedido.objects.get(order_id="ORD-FILA-1")

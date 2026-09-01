@@ -294,7 +294,7 @@ class HomeCashbackMaximoTests(TestCase):
         self.assertContains(resposta, "até 10%")
 
 
-@override_settings(SHOPEE_CASHBACK_PERCENTUAL=100, CASHBACK_MULTIPLICADOR_CAMPANHA=1)
+@override_settings(SHOPEE_CASHBACK_PERCENTUAL=100)
 class HomeConversaoCashbackRealTests(TestCase):
     """Ao converter um link no site, o resultado mostra a comissão REAL daquele
     produto (ofertas.services.buscar_oferta_por_link), não o "até X%" genérico do

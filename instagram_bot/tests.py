@@ -12,7 +12,6 @@ from .models import RegistroPublicacao
 
 @override_settings(
     SHOPEE_CASHBACK_PERCENTUAL=20,
-    CASHBACK_MULTIPLICADOR_CAMPANHA=1,
 )
 class ConteudoDoCatalogoTests(TestCase):
     """Conteúdo montado a partir das ofertas sincronizadas.
@@ -75,7 +74,6 @@ class ConteudoDoCatalogoTests(TestCase):
 
 @override_settings(
     SHOPEE_CASHBACK_PERCENTUAL=20,
-    CASHBACK_MULTIPLICADOR_CAMPANHA=1,
 )
 class ComboDeStoriesTests(TestCase):
     def setUp(self):
@@ -233,7 +231,6 @@ class AlinhamentoDosPassosTests(TestCase):
 
 @override_settings(
     SHOPEE_CASHBACK_PERCENTUAL=20,
-    CASHBACK_MULTIPLICADOR_CAMPANHA=1,
     INSTAGRAM_BOT_ATIVO=False,
 )
 class PublicacaoDoComboTests(TestCase):
