@@ -70,9 +70,9 @@ def lista(request):
     return render(request, "ofertas/lista.html", contexto)
 
 
-def _ir_com_click_ou_erro(request, product_link, nome_da_view_de_erro):
+def _ir_com_click_ou_erro(request, product_link, nome_da_view_de_erro, item_id_conhecido=None):
     try:
-        click = gerar_click(request.user, Click.TIPO_VITRINE, product_link)
+        click = gerar_click(request.user, Click.TIPO_VITRINE, product_link, item_id_alvo=item_id_conhecido)
     except ShopeeConfigError as erro:
         messages.error(request, str(erro))
         return redirect(nome_da_view_de_erro)
@@ -92,7 +92,9 @@ def _ir_com_click_ou_erro(request, product_link, nome_da_view_de_erro):
 @login_required
 def ir_para_oferta(request, oferta_id):
     oferta = get_object_or_404(Oferta, pk=oferta_id)
-    return _ir_com_click_ou_erro(request, oferta.product_link, "ofertas_lista")
+    # Oferta já tem o item_id certo (vem da sincronização) - passa direto, sem
+    # precisar tentar identificar de novo a partir da URL.
+    return _ir_com_click_ou_erro(request, oferta.product_link, "ofertas_lista", item_id_conhecido=oferta.item_id)
 
 
 @login_required

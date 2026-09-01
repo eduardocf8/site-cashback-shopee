@@ -1139,6 +1139,58 @@ Verificado com Playwright (screenshot das 4 páginas, sem erros de console, valo
 
 ---
 
+## Fase 41 — Fechar o furo do piso de venda direta com item errado ✅
+
+Usuário identificou um furo real na Fase 39: o piso de 1,6% valia pra qualquer compra
+feita depois de um clique em link/vitrine específico (`Click.tipo`), sem checar se o
+item comprado era o mesmo do link/card clicado. Bastava converter o link de QUALQUER
+produto e comprar outro completamente diferente pra "destravar" o piso maior numa
+compra que nem era de venda direta de verdade.
+
+- [x] **`Click.item_id_alvo`** (migração `links.0003`) - novo campo, guarda qual
+      produto gerou o clique quando dá pra saber.
+- [x] **`ofertas/services.py::resolver_item_id_sem_rede()`** - versão só com regex
+      (sem seguir redirecionamento) do resolvedor de item_id já existente - segue o
+      mesmo princípio da Fase 35/37: resolver de verdade um link curto pode levar até
+      10s, e isso travaria a conversão do link/o clique na vitrine (ação síncrona do
+      usuário). Fica `None` quando não dá pra saber sem seguir redirecionamento -
+      esses cliques só contam pro piso de venda indireta a partir daqui (mais seguro
+      errar pro lado de baixo do que abrir brecha).
+- [x] **`links/services.py::gerar_click()`** - ganhou um parâmetro `item_id_alvo`
+      opcional; quando não informado (e não é clique na home), tenta resolver da
+      própria URL com a função acima.
+- [x] **`ofertas/views.py::ir_para_oferta`** - passa `oferta.item_id` direto (já
+      confiável, vem da sincronização) em vez de tentar resolver de novo da URL.
+      `ir_para_oferta_manual`/`ir_para_oferta_destaque_manual` continuam resolvendo da
+      URL (`OfertaManual`/`OfertaDestaqueManual` não têm campo item_id próprio).
+- [x] **`links/shopee_client.py::buscar_conversoes()`** - passou a pedir `itemId` de
+      cada item do pedido real (não pedia antes).
+- [x] **`pedidos/services.py::_item_bate_com_o_click()`** - compara o item_id real do
+      pedido com `click.item_id_alvo`; **por item**, não por pedido inteiro (um
+      carrinho com vários produtos pode ter só um deles qualificado pro piso maior).
+      `_percentual_minimo_garantido()` só libera o piso de venda direta quando o item
+      bate - senão cai pro piso de venda indireta, mesmo com `Click.tipo` sendo
+      produto/vitrine.
+- [x] **Migração `links.0004`** (RunPython) - preenche `item_id_alvo` pros cliques que
+      já existiam antes dessa fase, só pelo padrão de texto na URL já salva (sem rede,
+      seguro de rodar numa migração) - evita rebaixar pro piso indireto compras
+      recentes que ainda serão resincronizadas e já eram legitimamente diretas.
+- [x] Testes cobrindo: item comprado bate/não bate com o link, click sem
+      item_id_alvo identificado, pedido com vários itens (só o que bate ganha o piso
+      maior), `Oferta.item_id` repassado direto sem re-resolver, e a resolução rápida
+      (sem rede) em si.
+
+**Trade-off aceito conscientemente**: como a resolução no clique é só por padrão de
+texto (sem seguir redirecionamento, pra não travar a ação do usuário), links curtos
+convertidos de verdade (~44% dos cliques de produto, ver Fase 35) não conseguem ser
+verificados e caem pro piso de venda indireta, mesmo quando são legitimamente diretos.
+É uma perda aceitável: fechar o furo de segurança vale mais do que garantir o piso
+maior pra esse recorte específico de cliques.
+
+Suite completa (237 testes) verde.
+
+---
+
 Pra continuar esse roadmap numa conversa nova, basta apontar esse arquivo
 (`ROADMAP.md`) e o `BRAND.md` — juntos eles dão o contexto de identidade
 visual e do que falta implementar, sem precisar reconstruir o histórico da

@@ -347,14 +347,16 @@ class CashbackMinimoGarantidoTests(TestCase):
     """Quando a comissão real da Shopee resultaria em menos que o piso mínimo
     garantido, vale o piso - a única parte do cálculo em que a cash-b pode pagar mais
     do que recebeu de comissão (o resto é sempre uma fração da comissão real, nunca um
-    prejuízo). Venda direta (link/vitrine) tem um piso maior que indireta."""
+    prejuízo). Venda direta (link/vitrine) só tem o piso maior quando o item comprado
+    é comprovadamente o mesmo do link/card clicado (Click.item_id_alvo) - ver
+    ROADMAP.md, Fase 41."""
 
     def setUp(self):
         self.usuario = get_user_model().objects.create_user(
             username="compradora", password="senha123", cpf="39053344705"
         )
 
-    def _pagina(self, click, order_id, comissao, valor_item):
+    def _pagina(self, click, order_id, comissao, valor_item, item_id=1):
         return {
             "nodes": [
                 {
@@ -367,6 +369,7 @@ class CashbackMinimoGarantidoTests(TestCase):
                             "orderStatus": "PENDING",
                             "items": [
                                 {
+                                    "itemId": item_id,
                                     "completeTime": None,
                                     "itemTotalCommission": comissao,
                                     "actualAmount": valor_item,
@@ -382,11 +385,12 @@ class CashbackMinimoGarantidoTests(TestCase):
     @patch("pedidos.services.buscar_conversoes")
     def test_venda_direta_com_comissao_baixa_usa_o_piso_de_1_6_por_cento(self, mock_buscar):
         click = Click.objects.create(
-            usuario=self.usuario, tipo=Click.TIPO_PRODUTO,
+            usuario=self.usuario, tipo=Click.TIPO_PRODUTO, item_id_alvo=1,
             url_original="https://shopee.com.br/produto-i.1.1", link_gerado="https://shope.ee/abc",
         )
         # Comissão real (0,50) seria só 0,5% dos 100 - abaixo do piso de 1,6% (1,60).
-        mock_buscar.return_value = self._pagina(click, "ORD-DIRETA-BAIXA", "0.50", "100.00")
+        # item_id do pedido (1) bate com o item_id_alvo do click - venda direta de verdade.
+        mock_buscar.return_value = self._pagina(click, "ORD-DIRETA-BAIXA", "0.50", "100.00", item_id=1)
 
         sincronizar(1690000000, 1700000000)
 
@@ -395,12 +399,12 @@ class CashbackMinimoGarantidoTests(TestCase):
         self.assertEqual(pedido.valor_cashback, Decimal("1.60"))
 
     @patch("pedidos.services.buscar_conversoes")
-    def test_vitrine_tambem_conta_como_venda_direta_pro_piso(self, mock_buscar):
+    def test_vitrine_tambem_conta_como_venda_direta_pro_piso_quando_item_bate(self, mock_buscar):
         click = Click.objects.create(
-            usuario=self.usuario, tipo=Click.TIPO_VITRINE,
+            usuario=self.usuario, tipo=Click.TIPO_VITRINE, item_id_alvo=1,
             url_original="https://shopee.com.br/produto-i.1.1", link_gerado="https://shope.ee/abc",
         )
-        mock_buscar.return_value = self._pagina(click, "ORD-VITRINE-BAIXA", "0.50", "100.00")
+        mock_buscar.return_value = self._pagina(click, "ORD-VITRINE-BAIXA", "0.50", "100.00", item_id=1)
 
         sincronizar(1690000000, 1700000000)
 
@@ -413,7 +417,7 @@ class CashbackMinimoGarantidoTests(TestCase):
             usuario=self.usuario, tipo=Click.TIPO_HOME,
             url_original="https://shopee.com.br/", link_gerado="https://shope.ee/abc",
         )
-        mock_buscar.return_value = self._pagina(click, "ORD-INDIRETA-BAIXA", "0.50", "100.00")
+        mock_buscar.return_value = self._pagina(click, "ORD-INDIRETA-BAIXA", "0.50", "100.00", item_id=42)
 
         sincronizar(1690000000, 1700000000)
 
@@ -423,11 +427,11 @@ class CashbackMinimoGarantidoTests(TestCase):
     @patch("pedidos.services.buscar_conversoes")
     def test_comissao_acima_do_piso_nao_e_afetada(self, mock_buscar):
         click = Click.objects.create(
-            usuario=self.usuario, tipo=Click.TIPO_PRODUTO,
+            usuario=self.usuario, tipo=Click.TIPO_PRODUTO, item_id_alvo=1,
             url_original="https://shopee.com.br/produto-i.1.1", link_gerado="https://shope.ee/abc",
         )
         # Comissão real de 5,00 (5% dos 100) já é bem maior que o piso de 1,6%.
-        mock_buscar.return_value = self._pagina(click, "ORD-ACIMA-DO-PISO", "5.00", "100.00")
+        mock_buscar.return_value = self._pagina(click, "ORD-ACIMA-DO-PISO", "5.00", "100.00", item_id=1)
 
         sincronizar(1690000000, 1700000000)
 
@@ -438,10 +442,10 @@ class CashbackMinimoGarantidoTests(TestCase):
     @patch("pedidos.services.buscar_conversoes")
     def test_multiplicador_de_campanha_tambem_dobra_o_piso(self, mock_buscar):
         click = Click.objects.create(
-            usuario=self.usuario, tipo=Click.TIPO_PRODUTO,
+            usuario=self.usuario, tipo=Click.TIPO_PRODUTO, item_id_alvo=1,
             url_original="https://shopee.com.br/produto-i.1.1", link_gerado="https://shope.ee/abc",
         )
-        mock_buscar.return_value = self._pagina(click, "ORD-PISO-CAMPANHA", "0.50", "100.00")
+        mock_buscar.return_value = self._pagina(click, "ORD-PISO-CAMPANHA", "0.50", "100.00", item_id=1)
 
         sincronizar(1690000000, 1700000000)
 
@@ -452,10 +456,10 @@ class CashbackMinimoGarantidoTests(TestCase):
     @patch("pedidos.services.buscar_conversoes")
     def test_pedido_sem_click_nao_aplica_piso_nenhum(self, mock_buscar):
         click = Click.objects.create(
-            usuario=self.usuario, tipo=Click.TIPO_PRODUTO,
+            usuario=self.usuario, tipo=Click.TIPO_PRODUTO, item_id_alvo=1,
             url_original="https://shopee.com.br/produto-i.1.1", link_gerado="https://shope.ee/abc",
         )
-        pagina = self._pagina(click, "ORD-SEM-CLICK", "0.50", "100.00")
+        pagina = self._pagina(click, "ORD-SEM-CLICK", "0.50", "100.00", item_id=1)
         pagina["nodes"][0]["utmContent"] = "origem-desconhecida"
         mock_buscar.return_value = pagina
 
@@ -464,6 +468,80 @@ class CashbackMinimoGarantidoTests(TestCase):
         pedido = Pedido.objects.get(order_id="ORD-SEM-CLICK")
         self.assertIsNone(pedido.usuario)
         self.assertEqual(pedido.valor_cashback, Decimal("0"))
+
+    @patch("pedidos.services.buscar_conversoes")
+    def test_comprar_produto_diferente_do_link_so_ganha_o_piso_indireto(self, mock_buscar):
+        """O golpe que a Fase 41 fecha: converter o link de QUALQUER produto e comprar
+        outro completamente diferente não deveria destravar o piso maior de venda
+        direta."""
+        click = Click.objects.create(
+            usuario=self.usuario, tipo=Click.TIPO_PRODUTO, item_id_alvo=1,
+            url_original="https://shopee.com.br/produto-i.1.1", link_gerado="https://shope.ee/abc",
+        )
+        # Comprou o item 999, não o item 1 que estava no link.
+        mock_buscar.return_value = self._pagina(click, "ORD-ITEM-DIFERENTE", "0.50", "100.00", item_id=999)
+
+        sincronizar(1690000000, 1700000000)
+
+        pedido = Pedido.objects.get(order_id="ORD-ITEM-DIFERENTE")
+        self.assertEqual(pedido.valor_cashback, Decimal("1.00"))
+
+    @patch("pedidos.services.buscar_conversoes")
+    def test_click_sem_item_id_alvo_identificado_so_ganha_o_piso_indireto(self, mock_buscar):
+        """Link curto que não deu pra identificar na hora do clique (ver Fase 35) não
+        consegue provar o vínculo com o item comprado - conta como não bate, por
+        segurança (mais seguro errar pro lado de baixo)."""
+        click = Click.objects.create(
+            usuario=self.usuario, tipo=Click.TIPO_PRODUTO, item_id_alvo=None,
+            url_original="https://s.shopee.com.br/abc123", link_gerado="https://shope.ee/abc",
+        )
+        mock_buscar.return_value = self._pagina(click, "ORD-SEM-ITEM-ALVO", "0.50", "100.00", item_id=1)
+
+        sincronizar(1690000000, 1700000000)
+
+        pedido = Pedido.objects.get(order_id="ORD-SEM-ITEM-ALVO")
+        self.assertEqual(pedido.valor_cashback, Decimal("1.00"))
+
+    @patch("pedidos.services.buscar_conversoes")
+    def test_pedido_com_varios_itens_so_o_que_bate_ganha_o_piso_maior(self, mock_buscar):
+        click = Click.objects.create(
+            usuario=self.usuario, tipo=Click.TIPO_PRODUTO, item_id_alvo=1,
+            url_original="https://shopee.com.br/produto-i.1.1", link_gerado="https://shope.ee/abc",
+        )
+        pagina = {
+            "nodes": [
+                {
+                    "conversionId": "999",
+                    "purchaseTime": 1700000000,
+                    "utmContent": f"{click.sub_id_usuario()},{click.sub_id_click()}",
+                    "orders": [
+                        {
+                            "orderId": "ORD-MULTI-ITEM",
+                            "orderStatus": "PENDING",
+                            "items": [
+                                {
+                                    "itemId": 1, "completeTime": None,
+                                    "itemTotalCommission": "0.50", "actualAmount": "100.00",
+                                },
+                                {
+                                    "itemId": 2, "completeTime": None,
+                                    "itemTotalCommission": "0.30", "actualAmount": "100.00",
+                                },
+                            ],
+                        }
+                    ],
+                }
+            ],
+            "pageInfo": {"hasNextPage": False, "scrollId": ""},
+        }
+        mock_buscar.return_value = pagina
+
+        sincronizar(1690000000, 1700000000)
+
+        pedido = Pedido.objects.get(order_id="ORD-MULTI-ITEM")
+        # Item 1 (bate com o link): piso de 1,6% de 100 = 1,60. Item 2 (não bate):
+        # piso de 1% de 100 = 1,00. Total: 2,60.
+        self.assertEqual(pedido.valor_cashback, Decimal("2.60"))
 
 
 @override_settings(SHOPEE_CASHBACK_PERCENTUAL=20)

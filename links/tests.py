@@ -11,6 +11,7 @@ from ofertas.models import CashbackMaximoCache, Oferta, OfertaDestaqueManual, Of
 from ofertas.services import LinkProdutoInvalidoError, SemComissaoError
 
 from .models import Click
+from .services import gerar_click
 from .shopee_client import (
     ShopeeAPIError,
     ShopeeConfigError,
@@ -166,6 +167,53 @@ class GerarLinkViewTests(TestCase):
         self.client.logout()
         resposta = self.client.get("/links/")
         self.assertRedirects(resposta, "/login/?next=/links/")
+
+
+class GerarClickItemIdAlvoTests(TestCase):
+    """item_id_alvo identifica qual produto gerou o clique - usado depois pra
+    confirmar que a compra real bate com o produto do link/vitrine antes de aplicar
+    o piso de cashback de venda direta (ver pedidos/services.py e ROADMAP.md, Fase
+    41). Só tenta resolver pelo padrão de texto na URL, sem seguir redirecionamento -
+    não pode deixar a conversão do link lenta (ver Fase 35)."""
+
+    def setUp(self):
+        self.usuario = get_user_model().objects.create_user(
+            username="compradora", password="senha123", cpf="39053344705"
+        )
+
+    @patch("links.services.gerar_link_curto")
+    def test_link_de_produto_com_padrao_reconhecido_preenche_item_id_alvo(self, mock_gerar_link):
+        mock_gerar_link.return_value = "https://shope.ee/abc"
+
+        click = gerar_click(self.usuario, Click.TIPO_PRODUTO, "https://shopee.com.br/produto-i.1.999")
+
+        self.assertEqual(click.item_id_alvo, 999)
+
+    @patch("links.services.gerar_link_curto")
+    def test_link_curto_sem_padrao_reconhecido_fica_sem_item_id_alvo(self, mock_gerar_link):
+        mock_gerar_link.return_value = "https://shope.ee/abc"
+
+        click = gerar_click(self.usuario, Click.TIPO_PRODUTO, "https://s.shopee.com.br/abc123")
+
+        self.assertIsNone(click.item_id_alvo)
+
+    @patch("links.services.gerar_link_curto")
+    def test_clique_na_home_nunca_tenta_resolver_item_id_alvo(self, mock_gerar_link):
+        mock_gerar_link.return_value = "https://shope.ee/abc"
+
+        click = gerar_click(self.usuario, Click.TIPO_HOME, None)
+
+        self.assertIsNone(click.item_id_alvo)
+
+    @patch("links.services.gerar_link_curto")
+    def test_item_id_alvo_explicito_tem_prioridade_sobre_resolver_da_url(self, mock_gerar_link):
+        mock_gerar_link.return_value = "https://shope.ee/abc"
+
+        click = gerar_click(
+            self.usuario, Click.TIPO_VITRINE, "https://shopee.com.br/produto-i.1.999", item_id_alvo=555
+        )
+
+        self.assertEqual(click.item_id_alvo, 555)
 
 
 class HomeCashbackMaximoTests(TestCase):

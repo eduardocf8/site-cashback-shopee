@@ -95,17 +95,34 @@ CAMPOS_ATUALIZAVEIS = [
 ]
 
 
-def _percentual_minimo_garantido(click: Click) -> Decimal:
+def _item_bate_com_o_click(click: Click, item_id_bruto) -> bool:
+    """Confirma que o item efetivamente comprado é o mesmo que gerou o clique (link
+    específico ou card da vitrine) - sem isso, dava pra converter QUALQUER link de
+    produto (ou clicar em qualquer card da vitrine) só pra destravar o piso de venda
+    direta numa compra completamente diferente (ver ROADMAP.md, Fase 41). Clique sem
+    item_id_alvo identificado (ex: link curto, resolvido só depois de seguir
+    redirecionamento - ver Fase 35) não consegue provar o vínculo, então conta como
+    não bate por padrão (mais seguro errar pro lado de baixo aqui)."""
+    if click.item_id_alvo is None or not item_id_bruto:
+        return False
+    try:
+        return int(item_id_bruto) == click.item_id_alvo
+    except (TypeError, ValueError):
+        return False
+
+
+def _percentual_minimo_garantido(click: Click, item_bate_com_o_link: bool) -> Decimal:
     """Cashback mínimo garantido por produto, mesmo quando a comissão real da Shopee
     resultaria em menos - ao contrário do resto do cálculo (sempre uma fração da
     comissão real recebida, nunca um prejuízo), esse piso pode fazer a cash-b pagar
     mais do que recebeu de comissão naquele item específico. Venda direta (link
-    específico/vitrine) tem um piso maior que indireta ("Ir pra Shopee"), refletindo
-    o mesmo diferencial de valor de sempre - só a direta tem acesso a bônus de
-    campanha (ver regras_cashback.html)."""
-    if click.tipo == Click.TIPO_HOME:
-        return Decimal(str(settings.CASHBACK_MINIMO_VENDA_INDIRETA)) / Decimal("100")
-    return Decimal(str(settings.CASHBACK_MINIMO_VENDA_DIRETA)) / Decimal("100")
+    específico/vitrine) só tem o piso maior quando o item comprado é comprovadamente
+    o mesmo do link/card clicado (ver _item_bate_com_o_click) - senão vale o piso de
+    venda indireta, mesmo que o Click tenha vindo de um link/vitrine específico."""
+    eh_direta_verificada = click.tipo != Click.TIPO_HOME and item_bate_com_o_link
+    if eh_direta_verificada:
+        return Decimal(str(settings.CASHBACK_MINIMO_VENDA_DIRETA)) / Decimal("100")
+    return Decimal(str(settings.CASHBACK_MINIMO_VENDA_INDIRETA)) / Decimal("100")
 
 
 def _montar_defaults(conversao, pedido_shopee, click, data_compra, percentual_base, multiplicador):
@@ -117,7 +134,10 @@ def _montar_defaults(conversao, pedido_shopee, click, data_compra, percentual_ba
     # normalmente é uma fração fixa dela (percentual_base, nunca mais que 100%) - sem
     # teto em R$. Quando isso resultaria em menos que o piso mínimo garantido (ver
     # _percentual_minimo_garantido), vale o piso em vez da fração da comissão - a
-    # única parte do cálculo em que a cash-b pode pagar mais do que recebeu.
+    # única parte do cálculo em que a cash-b pode pagar mais do que recebeu. O piso
+    # maior de venda direta só vale por item, e só quando esse item específico bate
+    # com o que gerou o clique (ver _item_bate_com_o_click) - um pedido com vários
+    # itens pode ter só um deles qualificado.
     #
     # Sem Click identificado, o pedido não veio daqui (outra campanha, compra pessoal etc.
     # - ver OrigemFilter em pedidos/admin.py) e não tem usuário pra receber o cashback, então
@@ -127,13 +147,14 @@ def _montar_defaults(conversao, pedido_shopee, click, data_compra, percentual_ba
     pedido_valor = Decimal("0")
     comissao = Decimal("0")
     cashback = Decimal("0")
-    percentual_minimo = _percentual_minimo_garantido(click) if click else None
     for item in itens:
         valor_item = Decimal(str(item.get("actualAmount") or "0"))
         pedido_valor += valor_item
         comissao_item = Decimal(str(item.get("itemTotalCommission") or "0"))
         comissao += comissao_item
         if click:
+            item_bate_com_o_link = _item_bate_com_o_click(click, item.get("itemId"))
+            percentual_minimo = _percentual_minimo_garantido(click, item_bate_com_o_link)
             cashback_base_item = max(comissao_item * percentual_base, valor_item * percentual_minimo)
             cashback += (cashback_base_item * multiplicador).quantize(Decimal("0.01"))
 

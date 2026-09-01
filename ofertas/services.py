@@ -96,6 +96,20 @@ class SemComissaoError(LinkProdutoInvalidoError):
 PADRAO_ITEM_ID_NA_URL = re.compile(r"-i\.\d+\.(\d+)|/product/\d+/(\d+)")
 
 
+def resolver_item_id_sem_rede(url: str) -> int | None:
+    """Extrai o item_id de uma URL só pelo padrão de texto, sem seguir nenhum
+    redirecionamento - rápido e sem chamada de rede, mas só funciona pra links que já
+    vêm no formato resolvido (não links curtos). Usado quando resolver de verdade
+    (_resolver_item_id, que pode levar até 10s pra links curtos - ver Fase 35) deixaria
+    uma ação do usuário lenta demais (ver links/services.py::gerar_click e
+    ROADMAP.md, Fase 41). Retorna None em vez de levantar erro - quem chama trata
+    "não identificado" como um estado normal, não uma falha."""
+    match = PADRAO_ITEM_ID_NA_URL.search(url.strip().strip("<>\"' "))
+    if match:
+        return int(match.group(1) or match.group(2))
+    return None
+
+
 def _resolver_item_id(url: str) -> int:
     """Extrai o item_id de um link de produto da Shopee. Se for link curto (shp.ee,
     s.shopee.com.br), o padrão -i.<shopId>.<itemId> só aparece depois do

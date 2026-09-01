@@ -16,6 +16,7 @@ from .services import (
     _resolver_item_id,
     buscar_oferta_por_link,
     obter_cashback_maximo_anunciado,
+    resolver_item_id_sem_rede,
     selecionar_carrossel_home,
     sincronizar_ofertas,
 )
@@ -245,6 +246,26 @@ class BuscarOfertaPorLinkTests(TestCase):
             buscar_oferta_por_link("https://shopee.com.br/produto-exemplo-i.1.999")
 
 
+class ResolverItemIdSemRedeTests(TestCase):
+    """Versão rápida (sem chamada de rede) de identificar o item_id de uma URL - usada
+    em links/services.py::gerar_click pra não deixar a conversão de um link/clique na
+    vitrine lenta (a versão completa, _resolver_item_id, pode levar até 10s seguindo
+    redirecionamento de link curto - ver ROADMAP.md, Fase 35/41)."""
+
+    def test_reconhece_o_padrao_antigo(self):
+        self.assertEqual(
+            resolver_item_id_sem_rede("https://shopee.com.br/produto-exemplo-i.1.999"), 999
+        )
+
+    def test_reconhece_o_padrao_novo(self):
+        self.assertEqual(
+            resolver_item_id_sem_rede("https://shopee.com.br/product/537151226/22593050282?x=1"), 22593050282
+        )
+
+    def test_link_curto_sem_padrao_retorna_none_sem_seguir_redirecionamento(self):
+        self.assertIsNone(resolver_item_id_sem_rede("https://s.shopee.com.br/abc123"))
+
+
 @override_settings(**CREDENCIAIS_TESTE)
 class IrParaOfertaTests(TestCase):
     """Clicar num card da vitrine precisa gerar um Click TIPO_VITRINE - diferente do
@@ -271,7 +292,24 @@ class IrParaOfertaTests(TestCase):
         click = Click.objects.get()
         self.assertEqual(click.tipo, Click.TIPO_VITRINE)
         self.assertEqual(click.url_original, self.oferta.product_link)
+        self.assertEqual(click.item_id_alvo, self.oferta.item_id)
         self.assertRedirects(resposta, "https://shope.ee/vitrine123", fetch_redirect_response=False)
+
+    @patch("links.services.gerar_link_curto")
+    def test_item_id_alvo_vem_do_campo_item_id_da_oferta_nao_da_url(self, mock_gerar_link):
+        """Oferta.item_id é confiável (vem da sincronização) - usado direto, sem
+        precisar resolver de novo a partir da URL (ver ROADMAP.md, Fase 41)."""
+        mock_gerar_link.return_value = "https://shope.ee/vitrine456"
+        oferta_sem_padrao_na_url = Oferta.objects.create(
+            item_id=555, nome="Produto sem padrão no link", categoria_id=1,
+            product_link="https://shopee.com.br/s/abc123",  # não bate com o regex -i.<loja>.<item>
+            percentual_comissao=Decimal("0.05"), vendas=5,
+        )
+
+        self.client.get(reverse("ofertas_ir", args=[oferta_sem_padrao_na_url.id]))
+
+        click = Click.objects.get()
+        self.assertEqual(click.item_id_alvo, 555)
 
 
 class OfertaManualCashbackTests(TestCase):
