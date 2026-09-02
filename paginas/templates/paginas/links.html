@@ -1,0 +1,299 @@
+{% extends "accounts/base.html" %}
+{% load static %}
+
+{% comment %}
+Página de links da bio ("link na bio"). Substitui Beacons/Linktree.
+
+Sobrescreve o bloco layout inteiro em vez de usar o container padrão: aqui não tem
+cabeçalho nem rodapé do site de propósito. Quem chega pela bio veio decidir uma coisa
+só, e cada elemento a mais rouba clique do botão principal.
+
+Hierarquia: um botão roxo (o principal) e três brancos. Um botão principal só é
+principal enquanto for o único - dois roxos viram dois secundários.
+
+Ordem dos secundários: WhatsApp primeiro porque é o único link que dá permissão de
+falar com a pessoa de novo sem depender do alcance do Instagram; "como funciona"
+depois, para quem chegou desconfiado e hoje não tem nada para clicar; e criar conta
+por último, que é o clique de maior compromisso - quem já decidiu acha em qualquer
+posição.
+{% endcomment %}
+
+{% block titulo %}Links{% endblock %}
+
+{% block meta_descricao %}Todos os canais da cash-b num lugar só: ofertas com cashback, canal do WhatsApp e como funciona.{% endblock %}
+
+{% block meta_social %}
+    {% comment %} Sem indexação: é navegação, não conteúdo - ver o docstring da view. {% endcomment %}
+    <meta name="robots" content="noindex, follow">
+    {% include "_meta_social.html" with titulo="cash-b — cashback nas suas compras da Shopee" descricao="Compre na Shopee do jeito que você já compra e receba parte do dinheiro de volta, via PIX." %}
+{% endblock %}
+
+{% block layout %}
+<style>
+    /* O fundo cobre a tela inteira mesmo com pouco conteúdo - página de bio quase
+       sempre abre no celular, e uma faixa de outra cor embaixo entrega improviso. */
+    body { background: var(--paper-2); min-height: 100vh; }
+
+    .bio {
+        max-width: 420px;
+        margin: 0 auto;
+        padding: 48px 20px 40px;
+        display: flex;
+        flex-direction: column;
+        gap: 28px;
+    }
+
+    /* ---------------------------------------------------------- identidade */
+
+    .bio-topo {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 14px;
+        text-align: center;
+    }
+
+    .bio-avatar {
+        width: 96px;
+        height: 96px;
+        border-radius: 50%;
+        display: block;
+    }
+
+    .bio-nome {
+        font-size: 30px;
+        font-weight: 700;
+        letter-spacing: -0.03em;
+        color: var(--brand);
+        line-height: 1;
+    }
+
+    .bio-tagline {
+        margin: 0;
+        font-size: 15px;
+        line-height: 1.45;
+        color: var(--ink-soft);
+        max-width: 30ch;
+    }
+
+    /* Selo com o percentual real do catálogo do dia. É a única coisa nesta página que
+       uma ferramenta de fora não conseguiria mostrar, então ganha destaque próprio. */
+    .bio-selo {
+        display: inline-flex;
+        align-items: baseline;
+        gap: 7px;
+        padding: 7px 14px;
+        border-radius: 999px;
+        background: var(--paper);
+        border: 1px solid var(--line);
+        font-size: 13px;
+        color: var(--ink-soft);
+    }
+
+    .bio-selo strong {
+        font-family: "JB Mono", ui-monospace, monospace;
+        font-size: 15px;
+        font-weight: 700;
+        color: var(--brand);
+        font-variant-numeric: tabular-nums;
+    }
+
+    /* ------------------------------------------------------------- botões */
+
+    .bio-botoes { display: flex; flex-direction: column; gap: 12px; }
+
+    .bio-botao {
+        display: flex;
+        align-items: center;
+        gap: 14px;
+        padding: 16px 18px;
+        border-radius: 12px;
+        text-decoration: none;
+        border: 1px solid var(--line);
+        background: var(--paper);
+        color: var(--ink);
+        transition: transform 0.12s ease, border-color 0.12s ease;
+    }
+
+    .bio-botao:hover { transform: translateY(-1px); border-color: var(--brand); }
+    .bio-botao:active { transform: translateY(0); }
+
+    .bio-botao:focus-visible {
+        outline: 2px solid var(--brand);
+        outline-offset: 2px;
+    }
+
+    .bio-botao-principal {
+        background: var(--brand);
+        border-color: var(--brand);
+        color: var(--paper);
+    }
+
+    .bio-botao-principal:hover {
+        background: var(--brand-strong);
+        border-color: var(--brand-strong);
+    }
+
+    .bio-botao svg { flex-shrink: 0; }
+
+    .bio-botao-texto { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+
+    .bio-botao-titulo { font-size: 15.5px; font-weight: 600; letter-spacing: -0.01em; }
+
+    .bio-botao-apoio { font-size: 12.5px; line-height: 1.35; color: var(--muted); }
+
+    .bio-botao-principal .bio-botao-apoio { color: rgba(255, 255, 255, 0.78); }
+
+    /* Etiqueta âmbar: o único uso do destaque nesta página, no botão que mais
+       interessa depois do principal. Vira ruído se repetir. */
+    .bio-etiqueta {
+        margin-left: auto;
+        flex-shrink: 0;
+        padding: 3px 9px;
+        border-radius: 6px;
+        background: var(--highlight);
+        color: var(--highlight-ink);
+        font-size: 10.5px;
+        font-weight: 700;
+        letter-spacing: 0.06em;
+        text-transform: uppercase;
+    }
+
+    /* ------------------------------------------------------------- rodapé */
+
+    .bio-redes {
+        display: flex;
+        justify-content: center;
+        gap: 10px;
+    }
+
+    .bio-rede {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        width: 42px;
+        height: 42px;
+        border-radius: 50%;
+        border: 1px solid var(--line);
+        background: var(--paper);
+        color: var(--ink-soft);
+        transition: color 0.12s ease, border-color 0.12s ease;
+    }
+
+    .bio-rede:hover { color: var(--brand); border-color: var(--brand); }
+    .bio-rede:focus-visible { outline: 2px solid var(--brand); outline-offset: 2px; }
+
+    .bio-rodape {
+        text-align: center;
+        font-size: 12px;
+        line-height: 1.6;
+        color: var(--muted);
+    }
+
+    .bio-rodape a { color: var(--muted); text-decoration: underline; }
+
+    @media (prefers-reduced-motion: reduce) {
+        .bio-botao { transition: none; }
+        .bio-botao:hover { transform: none; }
+    }
+</style>
+
+<main class="bio">
+    <div class="bio-topo">
+        {% comment %}
+        Mesma arte da foto de perfil do Instagram (artes-marca/01-perfil-cb-roxo-ambar):
+        quem chega pela bio reconhece na hora que está no lugar certo. O anel âmbar cabe
+        inteiro dentro do recorte circular - ele fica bem dentro do círculo inscrito no
+        quadrado da arte.
+        {% endcomment %}
+        <img class="bio-avatar" src="{% static 'images/avatar-cash-b.png' %}" alt="" width="96" height="96">
+        <div class="bio-nome">cash-b</div>
+        <p class="bio-tagline">Compre na Shopee do jeito que você já compra e receba parte do dinheiro de volta.</p>
+        {% if cashback_maximo_anunciado %}
+            <div class="bio-selo">
+                hoje, até <strong>{{ cashback_maximo_anunciado|floatformat:2 }}%</strong> de volta
+            </div>
+        {% endif %}
+    </div>
+
+    <div class="bio-botoes">
+        <a class="bio-botao bio-botao-principal" href="{% url 'ofertas_lista' %}">
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                <path d="M6 7h12l-1 12H7L6 7Z" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/>
+                <path d="M9 9V6a3 3 0 0 1 6 0v3" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/>
+            </svg>
+            <span class="bio-botao-texto">
+                <span class="bio-botao-titulo">Ver as ofertas de hoje</span>
+                <span class="bio-botao-apoio">A vitrine com o cashback de cada produto</span>
+            </span>
+        </a>
+
+        {% if url_whatsapp_canal %}
+            <a class="bio-botao" href="{{ url_whatsapp_canal }}" target="_blank" rel="noopener noreferrer">
+                <svg width="22" height="22" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                    <path d="M12 3a9 9 0 0 0-7.75 13.5L3 21l4.65-1.22A9 9 0 1 0 12 3Z" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/>
+                </svg>
+                <span class="bio-botao-texto">
+                    <span class="bio-botao-titulo">Ofertas no WhatsApp</span>
+                    <span class="bio-botao-apoio">Os maiores cashbacks do dia</span>
+                </span>
+                <span class="bio-etiqueta">grátis</span>
+            </a>
+        {% endif %}
+
+        <a class="bio-botao" href="{% url 'cashback_vale_a_pena' %}">
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                <circle cx="12" cy="12" r="9" stroke="currentColor" stroke-width="1.8"/>
+                <path d="M9.6 9.4a2.4 2.4 0 1 1 3.2 2.3c-.5.2-.8.7-.8 1.2v.4" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/>
+                <circle cx="12" cy="16.6" r="1" fill="currentColor"/>
+            </svg>
+            <span class="bio-botao-texto">
+                <span class="bio-botao-titulo">Como funciona o cashback</span>
+                <span class="bio-botao-apoio">De onde vem o dinheiro e quando ele cai</span>
+            </span>
+        </a>
+
+        <a class="bio-botao" href="{% url 'registrar' %}">
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                <circle cx="12" cy="8.5" r="3.5" stroke="currentColor" stroke-width="1.8"/>
+                <path d="M4.5 20a7.5 7.5 0 0 1 15 0" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/>
+            </svg>
+            <span class="bio-botao-texto">
+                <span class="bio-botao-titulo">Criar conta grátis</span>
+                <span class="bio-botao-apoio">Sem mensalidade e sem taxa de saque</span>
+            </span>
+        </a>
+    </div>
+
+    <div class="bio-redes">
+        {% if url_instagram %}
+            <a class="bio-rede" href="{{ url_instagram }}" target="_blank" rel="noopener noreferrer" aria-label="cash-b no Instagram">
+                <svg width="19" height="19" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                    <rect x="3" y="3" width="18" height="18" rx="5" stroke="currentColor" stroke-width="1.8"/>
+                    <circle cx="12" cy="12" r="4" stroke="currentColor" stroke-width="1.8"/>
+                    <circle cx="17.5" cy="6.5" r="1.2" fill="currentColor"/>
+                </svg>
+            </a>
+        {% endif %}
+        {% if url_youtube %}
+            <a class="bio-rede" href="{{ url_youtube }}" target="_blank" rel="noopener noreferrer" aria-label="cash-b no YouTube">
+                <svg width="19" height="19" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                    <rect x="2.5" y="5.5" width="19" height="13" rx="4" stroke="currentColor" stroke-width="1.8"/>
+                    <path d="M10.5 9.5v5l4.5-2.5-4.5-2.5Z" fill="currentColor"/>
+                </svg>
+            </a>
+        {% endif %}
+        <a class="bio-rede" href="{% url 'contato' %}" aria-label="Fale conosco">
+            <svg width="19" height="19" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                <rect x="3" y="5" width="18" height="14" rx="3" stroke="currentColor" stroke-width="1.8"/>
+                <path d="m4 8 7.4 5a1 1 0 0 0 1.2 0L20 8" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/>
+            </svg>
+        </a>
+    </div>
+
+    <div class="bio-rodape">
+        cash-b — afiliado independente Shopee<br>
+        <a href="{% url 'privacidade' %}">Privacidade</a> · <a href="{% url 'termos_de_uso' %}">Termos</a>
+    </div>
+</main>
+{% endblock %}

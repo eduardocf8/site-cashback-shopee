@@ -61,6 +61,8 @@ def home(request):
         "oferta_destaque": oferta_destaque,
         "ofertas_em_alta": ofertas_em_alta,
         "categorias_home": categorias_home,
+        "url_instagram": settings.URL_INSTAGRAM,
+        "url_whatsapp_canal": settings.URL_WHATSAPP_CANAL,
     }
     if request.user.is_authenticated:
         contexto.update(calcular_resumo_saldo_nav(request.user))

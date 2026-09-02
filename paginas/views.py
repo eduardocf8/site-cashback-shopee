@@ -60,6 +60,26 @@ def checklist_cashback_confiavel(request):
     return render(request, "paginas/checklist_cashback_confiavel.html")
 
 
+def links_bio(request):
+    """Página de links da bio do Instagram (o "link na bio").
+
+    Existe para substituir uma ferramenta de terceiro (Beacons/Linktree): no domínio
+    próprio a página sai com a paleta da marca, sem anúncio de concorrente disputando
+    o clique, e o percentual mostrado é o real do catálogo do dia - a mesma fonte do
+    "até X%" da home, coisa que nenhuma ferramenta de fora consegue fazer.
+
+    Fora do sitemap e com noindex de propósito: é navegação, não conteúdo. Indexada,
+    ela competiria com a home pelas mesmas buscas sem ter nada próprio a dizer.
+    """
+    contexto = {
+        "cashback_maximo_anunciado": obter_cashback_maximo_anunciado(),
+        "url_instagram": settings.URL_INSTAGRAM,
+        "url_whatsapp_canal": settings.URL_WHATSAPP_CANAL,
+        "url_youtube": settings.URL_YOUTUBE,
+    }
+    return render(request, "paginas/links.html", contexto)
+
+
 def contato(request):
     if request.method == "POST":
         form = ContatoForm(request.POST)
