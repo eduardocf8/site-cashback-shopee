@@ -208,13 +208,14 @@ def _automacao_nova_story(request, conta):
         messages.error(request, f"Não deu pra buscar os stories dessa conta: {erro}")
         stories = []
 
-    ids_com_link = set(
+    nomes_por_media_id = dict(
         RegistroPublicacao.objects.filter(instagram_media_id__in=[s["id"] for s in stories])
         .exclude(link_produto_original="")
-        .values_list("instagram_media_id", flat=True)
+        .values_list("instagram_media_id", "oferta_nome")
     )
     for story in stories:
-        story["tem_link_produto"] = story["id"] in ids_com_link
+        story["tem_link_produto"] = story["id"] in nomes_por_media_id
+        story["nome_produto"] = nomes_por_media_id.get(story["id"], "")
 
     if request.method == "POST":
         form = AutomacaoStoryForm(request.POST)
@@ -224,7 +225,7 @@ def _automacao_nova_story(request, conta):
         elif form.is_valid():
             if (
                 form.cleaned_data["modo_resposta"] == AutomacaoStory.MODO_LINK_PRODUTO
-                and story_selecionado not in ids_com_link
+                and story_selecionado not in nomes_por_media_id
             ):
                 form.add_error(
                     None,
