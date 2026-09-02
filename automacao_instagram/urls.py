@@ -15,6 +15,11 @@ urlpatterns = [
     path("automacao/", views.automacao_lista, name="automacao_lista"),
     path("automacao/nova/", views.automacao_nova, name="automacao_nova"),
     path("automacao/<int:pk>/editar/", views.automacao_editar, name="automacao_editar"),
+    path(
+        "automacao/<int:pk>/processar-manual/",
+        views.automacao_processar_manual,
+        name="automacao_processar_manual",
+    ),
     path("automacao/<int:pk>/alternar-ativa/", views.automacao_alternar_ativa, name="automacao_alternar_ativa"),
     path(
         "automacao/story/<int:pk>/editar/", views.automacao_story_editar, name="automacao_story_editar"

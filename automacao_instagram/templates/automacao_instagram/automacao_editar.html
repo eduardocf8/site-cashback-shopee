@@ -18,5 +18,22 @@
     <button type="submit">Salvar</button>
 </form>
 </div>
+
+<div class="cartao" style="margin-top:20px;">
+    <h2 class="titulo-bloco" style="margin-top:0;">Processar comentário manualmente</h2>
+    <p class="legenda">
+        Pra reprocessar um comentário que o worker não pegou sozinho - o ID e o
+        texto precisam ser conferidos na própria página do post (ou na aba de rede
+        do navegador), já que a API não lista comentários de terceiros enquanto a
+        Análise do App não é aprovada.
+    </p>
+    <form method="post" action="{% url 'automacao_processar_manual' automacao.pk %}">
+        {% csrf_token %}
+        {% for field in form_manual %}
+            {% include "automacao_instagram/_campo_formulario.html" with field=field %}
+        {% endfor %}
+        <button type="submit">Processar</button>
+    </form>
+</div>
 </div>
 {% endblock %}

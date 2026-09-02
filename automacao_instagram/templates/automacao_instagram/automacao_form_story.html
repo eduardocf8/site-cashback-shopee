@@ -31,7 +31,7 @@
             <input type="radio" name="story_selecionado" value="{{ story.id }}" required>
             <span>
                 {{ story.timestamp|slice:":16" }}
-                {% if story.tem_link_produto %}<br><strong>✅ link do produto detectado (story de oferta)</strong>
+                {% if story.tem_link_produto %}<br><strong>✅ {{ story.nome_produto }}</strong>
                 {% else %}<br>sem link de produto associado{% endif %}
                 {% if story.permalink %}<br><a href="{{ story.permalink }}" target="_blank" rel="noopener">ver story</a>{% endif %}
             </span>

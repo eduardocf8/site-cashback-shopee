@@ -85,11 +85,19 @@ Django Admin.
 
 O App da Meta usado (o mesmo do `instagram_bot`, caso de uso "Gerenciar
 mensagens e conteúdo no Instagram") usa **Standard Access** (sem revisão
-de app) - isso só funciona enquanto quem usa a API tiver função nesse
-mesmo App. Pra conectar uma conta que não seja a original (`usecashb`):
+de app) - isso é suficiente pra publicar conteúdo (`instagram_bot`), mas
+**não é suficiente pra ler comentários de terceiros** (ver "Análise do
+app" abaixo) mesmo com a conta tendo função de Testador nesse mesmo App -
+achado real, documentado depois de investigar o worker rodando sem erro
+nenhum mas sem nunca achar comentário nenhum (ver histórico de commits/
+conversa que motivou essa seção). Pra conectar uma conta que não seja a
+original (`usecashb`):
 
 1. No painel Meta for Developers do App, ir em **Funções** e adicionar a
-   nova conta do Instagram como pessoa/conta de teste.
+   nova conta do Instagram como pessoa/conta de teste - a pessoa dona da
+   conta precisa **aceitar o convite** dentro do próprio app do Instagram
+   (Configurações > Aplicativos e sites), não basta só adicionar pelo
+   painel da Meta.
 2. Gerar o access token de longa duração pra essa conta (mesmo processo
    do `instagram_bot` - ver `marketing/instagram/README.md`, "Fase 1").
 3. Em `/automacao/contas/`, adicionar a conta com o ID da conta comercial
@@ -97,6 +105,171 @@ mesmo App. Pra conectar uma conta que não seja a original (`usecashb`):
 
 Sem o passo 1, qualquer chamada à API com o token dessa conta nova falha
 com erro de permissão.
+
+## Análise do app (App Review) - necessária pra funcionar de verdade
+
+**Descoberto em 2026-08-06, depois de o worker rodar sem erro nenhum mas
+nunca encontrar os comentários de teste**: a permissão
+`instagram_business_manage_comments` fica com o selo **"Pronto para
+teste"** no painel do App enquanto ele não passa pela Análise do App -
+nesse estado, `GET /{media-id}/comments` sempre retorna `"data": []`,
+mesmo com token válido, escopo concedido, ID do post certo e a conta que
+comentou sendo Testadora confirmada do App. O campo `comments_count` do
+próprio post bate certo (prova que a Meta sabe que o comentário existe);
+só a listagem em si fica vazia - sinal de que é Standard Access mesmo,
+não erro de configuração daqui. Confirmado via Depurador de Token de
+Acesso e testes diretos no Graph API Explorer antes de chegar nessa
+conclusão.
+
+**Alternativa gratuita considerada e descartada**: o recurso nativo do
+Meta Business Suite/Instagram ("Comment to message", em Automations) faz
+a mesma coisa sem precisar de revisão nenhuma, mas só permite automação
+pra **conta inteira**, não pra um post específico - não serve pro caso de
+uso daqui (várias automações em paralelo, uma por post/campanha, ver
+"Contexto de por que foi feito assim" no topo deste arquivo).
+
+**Testado também com autocomentário** (a própria `usecashb` comentando no
+próprio post, não só terceiros) - mesmo resultado, `"data": []`. Ou seja,
+**enquanto a Análise do App não é feita, a listagem de comentários não
+funciona pra ninguém**, nem pro próprio dono da conta - não é uma questão
+de quem comentou, é o recurso inteiro bloqueado nesse estado. Isso também
+significa que não dá pra gravar o vídeo de demonstração mostrando o
+fluxo completo funcionando de ponta a ponta (a etapa de detectar o
+comentário automaticamente não tem como acontecer antes da aprovação) -
+ver "Vídeo de demonstração" e "Texto de explicação" abaixo, ajustados pra
+essa realidade.
+
+**Status (2026-08-07)**: Verificação de Empresa **aprovada** (App
+vinculado ao portfólio empresarial "Decorações Personalizadas" -
+portfólio já existente, reaproveitado, não precisou criar um novo; nome
+da verificação ficou "EDUARDO CARREAO FREIRE", não "cash-b", já que é a
+pessoa física por trás do MEI - tudo bem, não precisa bater com o nome
+fantasia). Aprovada no mesmo dia da submissão.
+
+**Análise do App enviada** no mesmo dia, pras três permissões
+(`instagram_business_basic`, `instagram_business_manage_comments`,
+`instagram_business_manage_messages`) - as outras da lista padrão
+(`instagram_business_content_publish`, `instagram_business_manage_insights`
+e os nomes antigos tipo `instagram_manage_comments`/`instagram_basic`/
+`public_profile`) foram removidas da submissão por não serem usadas de
+verdade por esse app. Vídeo único (conectar conta + criar automação +
+lista/histórico) reaproveitado nas três. Criado um usuário só pro
+revisor da Meta testar (`revisormeta`, `is_staff=True`, senha **não**
+guardada aqui de propósito - nunca commitar credencial, mesmo
+descartável).
+
+**Rejeitada em 2026-08-09** (as três permissões, mesmo motivo): "Screencast
+não alinhado com detalhes do caso de uso" (Política do Desenvolvedor 1.6) -
+o vídeo mostrava só a configuração, não uma ação de envio de verdade
+acontecendo com o resultado aparecendo no Instagram. Nota específica do
+analista em `manage_messages`: precisa mostrar (1) a conta selecionada,
+(2) um envio ao vivo a partir da tela do app, (3) a mensagem entregue no
+cliente nativo do Instagram.
+
+**Investigação de como demonstrar isso** (o worker de verdade não consegue
+detectar comentário nenhum sem a própria permissão que estamos pedindo -
+problema de ovo e galinha):
+
+- `POST /{comment_id}/replies` e `POST /{business_account_id}/messages`
+  **funcionam** mesmo em Standard Access, desde que você já tenha um
+  `comment_id` válido - a restrição é só na *listagem* (`GET .../comments`),
+  não nessas ações de escrita. Confirmado responder um comentário de
+  verdade (apareceu no Instagram).
+- **DM pra si mesmo não entrega** (`usecashb` respondendo um comentário
+  dela própria) - a API aceita a chamada e devolve `message_id`, mas não
+  existe conversa de verdade entre a conta e ela mesma, então não chega
+  nada de verdade. "Sucesso fantasma" - não confiar nesse sinal sozinho,
+  sempre confirmar a entrega de verdade no destino.
+- **Não dá pra criar comentário via API em nome de outra conta** -
+  `POST /{media-id}/comments` só funciona com o token da conta **dona do
+  post** (nesse caso `usecashb`); tentar postar como `vegrassi` num post
+  da `usecashb` retorna erro 100/subcode 33 (mesmo erro genérico da
+  listagem bloqueada). Ou seja, não dá pra fabricar um comentário de
+  terceiro via API pra testar - precisa ser um comentário de verdade,
+  feito pelo app do Instagram mesmo.
+- **Como conseguir o ID de um comentário de terceiro sem a API**: abre o
+  post num navegador desktop, `F12` → aba **Network** → filtra
+  **Fetch/XHR** → recarrega a página com os comentários visíveis →
+  procura (Ctrl+F na aba Network, ou dentro de cada resposta) pelo texto
+  do comentário → o campo **`pk`** no JSON da resposta é o ID de
+  verdade, no mesmo formato que a Graph API usa - funciona direto nas
+  chamadas de resposta/DM.
+- Com um ID de comentário real de terceiro (`vegrassi` comentando de
+  verdade pelo app do Instagram, ID achado pelo Network), tanto a
+  resposta pública quanto a DM **funcionaram e foram entregues de
+  verdade** - confirmado visualmente no Instagram dos dois lados.
+
+**Ferramenta nova**: `services.processar_comentario_manual()` +
+tela em "Editar automação" (`automacao_processar_manual`) - deixa reprocessar
+manualmente um comentário (ID + texto + autor) pelo mesmo caminho de
+código do worker automático. Serve pra dois propósitos: reprocessar um
+comentário que o polling perdeu por algum motivo, e gravar o vídeo da
+Análise do App mostrando um envio de verdade acontecendo pela tela do
+app (em vez de só pelo Graph API Explorer, que não conta como "ação a
+partir da UI do app" pro revisor).
+
+**Sobre o requisito de interface em inglês** (Política do Desenvolvedor,
+ponto 4 do feedback): a própria Meta aceita **narração/legendas em inglês
+explicando os elementos** como alternativa a traduzir o app inteiro -
+decidido não traduzir a interface (é ferramenta interna, só 2 usuários,
+em português) e em vez disso narrar o vídeo em inglês explicando cada
+botão/tela em português conforme aparece.
+
+Próximo passo: gravar o vídeo novo (roteiro atualizado abaixo) e reenviar
+("Solicitar novamente" na tela de Analisar) com os textos de justificativa
+atualizados, mencionando a ferramenta de processamento manual.
+
+Passos pra pedir Acesso Avançado dessa permissão:
+
+1. **Verificação de Empresa** no Meta Business Manager (documentos do
+   CNPJ do cash-b).
+2. Política de Privacidade publicada, cobrindo especificamente o que é
+   coletado/usado nessa automação - já feito, ver
+   `paginas/templates/paginas/privacidade.html`, seção "Automação de
+   comentários e DM no Instagram".
+3. Vídeo de tela (roteiro abaixo) + o texto de explicação (abaixo) colado
+   no campo de contexto de uso da permissão.
+4. Enviar pelo botão "Ir para a análise do app" (aparece ao lado da
+   permissão, em Casos de uso > Permissões).
+
+A mesma limitação provavelmente vale pra `instagram_business_manage_messages`
+(enviar DM) - só foi confirmada a `manage_comments` até agora, mas vale
+testar a DM também antes de assumir que só falta revisar uma permissão.
+
+### Vídeo de demonstração (roteiro v2, pós-rejeição)
+
+Narrado em inglês (ver "Sobre o requisito de interface em inglês" acima) -
+mostra a experiência completa de ponta a ponta, incluindo um envio real:
+
+1. **Conectar a conta**: mostrar o fluxo completo desde gerar o token no
+   painel da Meta (a tela de autorização de verdade) até colar em
+   `/automacao/contas/` e o perfil conectado aparecer na lista.
+2. Login em `/automacao/entrar/` (se não fez ainda no passo 1) e criar/
+   abrir uma automação com palavras-chave e textos de resposta/DM
+   configurados.
+3. Um comentário real, de outra conta (ex: `vegrassi`), comentado pelo
+   app do Instagram numa das palavras-chave.
+4. Usar a tela **"Processar comentário manualmente"** (dentro de "Editar
+   automação") com o ID desse comentário (achado via DevTools do
+   navegador, ver "Investigação" acima) - isso dispara o mesmo código de
+   produção do worker automático.
+5. Mostrar a resposta pública e a DM aparecendo de verdade no Instagram
+   (troca de tela pro Instagram/app pra provar a entrega).
+
+### Texto de explicação (colar no campo de contexto de uso da permissão)
+
+> The automatic comment-detection step currently returns empty results
+> (`GET /{media-id}/comments` returns `"data": []`) for any commenter,
+> including our own connected account, because this permission is still
+> in Standard Access / pending review - `comments_count` on the same
+> media confirms the comment exists, only the listing itself is empty.
+> This is expected, and is exactly why we're requesting Advanced Access.
+> To demonstrate the actual send/reply flow in the meantime, we added a
+> "process comment manually" tool that takes a known comment ID (found
+> via the post itself) and runs it through the exact same production
+> code path used by the automatic worker - shown live in the attached
+> video, with the resulting public reply and private message appearing
+> on Instagram.
 
 ## Rodando o worker no Render (Background Worker)
 
@@ -202,6 +375,10 @@ tráfego real ainda, mesma cautela já registrada aqui pra
 
 ## Limitações conhecidas / não implementado
 
+- **Não funciona com comentários de terceiros até a Análise do App ser
+  aprovada** (ver seção "Análise do app" acima) - hoje só reage a
+  comentários de contas que sejam Testadoras do App e ao mesmo tempo o
+  dono dele, o que na prática não cobre clientes de verdade.
 - Resposta privada (DM) só funciona até 7 dias após o comentário, e uma
   vez só por comentário (regra da própria API, não dá pra contornar).
 - Sem tela de cadastro público pra usuários - só via Django Admin
