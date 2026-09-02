@@ -60,12 +60,14 @@ posição.
         line-height: 1;
     }
 
+    /* Sem limite de largura próprio: o texto cabe numa linha só dentro dos 420px do
+       container, e era o max-width de 30ch (herdado da chamada longa anterior) que
+       forçava a quebra em "na / Shopee". Em tela bem estreita ele quebra sozinho. */
     .bio-tagline {
         margin: 0;
         font-size: 15px;
         line-height: 1.45;
         color: var(--ink-soft);
-        max-width: 30ch;
     }
 
     /* Selo com o percentual real do catálogo do dia. É a única coisa nesta página que
