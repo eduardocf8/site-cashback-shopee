@@ -494,6 +494,28 @@ class ProcessamentoDeRespostaAStoryTests(TestCase):
         self.assertIn(registro_resposta.link_enviado, texto_enviado)
 
     @patch("instagram_bot.instagram_client.enviar_mensagem_direta")
+    def test_mesma_pessoa_respondendo_de_novo_o_mesmo_story_nao_recebe_outra_dm(self, mock_enviar):
+        mock_enviar.return_value = "mid123"
+        self._postar(self._payload_resposta_a_story("17800000000000001", texto="Quero!"))
+
+        resposta = self._postar(self._payload_resposta_a_story("17800000000000001", texto="obrigada!!"))
+
+        self.assertEqual(resposta.status_code, 200)
+        mock_enviar.assert_called_once()  # só a primeira vez
+        self.assertEqual(RespostaStoryEnviada.objects.count(), 1)
+
+    @patch("instagram_bot.instagram_client.enviar_mensagem_direta")
+    def test_pessoas_diferentes_respondendo_o_mesmo_story_recebem_cada_uma_a_sua_dm(self, mock_enviar):
+        mock_enviar.return_value = "mid123"
+        self._postar(self._payload_resposta_a_story("17800000000000001", sender_id="11111"))
+
+        resposta = self._postar(self._payload_resposta_a_story("17800000000000001", sender_id="22222"))
+
+        self.assertEqual(resposta.status_code, 200)
+        self.assertEqual(mock_enviar.call_count, 2)
+        self.assertEqual(RespostaStoryEnviada.objects.count(), 2)
+
+    @patch("instagram_bot.instagram_client.enviar_mensagem_direta")
     def test_resposta_a_story_desconhecido_manda_mensagem_padrao(self, mock_enviar):
         resposta = self._postar(self._payload_resposta_a_story("media-id-que-nao-existe"))
 

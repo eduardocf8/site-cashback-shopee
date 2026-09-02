@@ -50,6 +50,15 @@ def _link_absoluto(registro: RegistroPublicacao, request) -> str:
     return request.build_absolute_uri(reverse("instagram_story_ir", args=[registro.pk]))
 
 
+def _ja_respondido(story_media_id: str, sender_id: str) -> bool:
+    """True se essa pessoa já recebeu uma DM (link ou mensagem padrão) por responder
+    esse mesmo story antes - sem isso, cada resposta nova (uma reação, um "obrigada",
+    responder de novo) mandaria a DM de novo pra mesma pessoa."""
+    return RespostaStoryEnviada.objects.filter(
+        instagram_story_media_id=story_media_id, sender_instagram_id=sender_id, dm_enviada=True,
+    ).exists()
+
+
 def _processar_um_evento(evento: dict, request) -> None:
     mensagem = evento.get("message") or {}
     if mensagem.get("is_echo"):
@@ -63,6 +72,9 @@ def _processar_um_evento(evento: dict, request) -> None:
         return  # não é resposta a story (DM comum, reação a mensagem, etc.) - fora do escopo daqui.
 
     sender_id = (evento.get("sender") or {}).get("id", "")
+    if sender_id and _ja_respondido(story_media_id, sender_id):
+        return  # 1 DM por pessoa por story - já mandamos antes.
+
     resposta = RespostaStoryEnviada(
         instagram_story_media_id=story_media_id,
         sender_instagram_id=sender_id,
@@ -99,8 +111,9 @@ def processar_evento_webhook(payload: dict, request) -> None:
     """Chamado pela view do webhook (ver views.py) a cada entrega da Meta. Por
     evento: se for resposta a um story de oferta nosso, manda por DM o link (com
     cashback rastreado) daquele produto específico - ver
-    instagram_bot/views.py::ir_para_story_de_oferta. Sempre grava um
-    RespostaStoryEnviada quando é resposta a story, ache o registro ou não."""
+    instagram_bot/views.py::ir_para_story_de_oferta. No máximo 1 DM por pessoa por
+    story (ver _ja_respondido). Grava um RespostaStoryEnviada quando é resposta a
+    story e ainda não tinha respondido antes, ache o registro ou não."""
     for evento in _extrair_eventos_de_mensagem(payload):
         try:
             _processar_um_evento(evento, request)
