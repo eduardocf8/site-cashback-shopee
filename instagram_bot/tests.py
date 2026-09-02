@@ -141,6 +141,38 @@ class ComboDeStoriesTests(TestCase):
         Oferta.objects.all().delete()
         self.assertIsNone(conteudo.combo_de_stories_do_dia())
 
+    def test_rotulos_nao_prometem_o_maior_absoluto_do_catalogo(self):
+        """A busca do combo é só entre as ~400 mais vendidas (ver comentário em
+        combo_de_stories_do_dia), não o catálogo inteiro - por isso o rótulo não pode
+        dizer "o maior de hoje" (um produto pouco vendido pode ter % ou R$ maior e não
+        entrar na conta, o que já gerou confusão comparando com a vitrine, que ordena
+        o catálogo inteiro - ver conversa de 2026-09-02)."""
+        combo = conteudo.combo_de_stories_do_dia()
+
+        for indice in (0, 1, 3):
+            texto = combo[indice].get("titulo") or combo[indice]["rotulo"]
+            self.assertIn("mais vendidos", texto)
+            self.assertNotRegex(texto.lower(), r"\bo maior\b.*\bhoje\b")
+
+    def test_rotulos_de_numero_cabem_na_largura_da_imagem(self):
+        """rotulo em gerar_imagem_numero_com_produto é desenhado numa linha só, sem
+        quebra automática (diferente de titulo/apoio) - um texto comprido demais
+        estoura a largura do story e corta na imagem final."""
+        from PIL import Image, ImageDraw
+
+        from .templates_imagem import _fonte
+
+        combo = conteudo.combo_de_stories_do_dia()
+        img = Image.new("RGB", (1080, 1920))
+        draw = ImageDraw.Draw(img)
+        fonte_rotulo = _fonte(int(30 * min(1920 / 1080, 1.4)), mono=True, negrito=True)
+        largura_max = 1080 - 88 * 2
+
+        for indice in (1, 3):
+            rotulo = combo[indice]["rotulo"]
+            largura = draw.textlength(rotulo.upper(), font=fonte_rotulo)
+            self.assertLessEqual(largura, largura_max, f"rótulo estoura a largura: {rotulo!r}")
+
     def test_chamada_para_a_bio_fica_solta_e_nao_dentro_da_frase(self):
         """Dentro do rodapé, "link na bio" lê como parte da explicação; solto e
         centralizado, lê como a ação a tomar - e cai na mesma posição do story de

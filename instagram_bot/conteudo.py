@@ -249,8 +249,9 @@ def _formatar_percentual(valor) -> str:
 
 
 def maior_cashback_de_hoje() -> "dict | None":
-    """A oferta que mais devolve agora, em %. É o número que melhor segura o dedo de
-    quem está passando o story - e é dado nosso, que nenhum concorrente tem."""
+    """A oferta que mais devolve agora, em %, dentre as ~400 mais vendidas (mesmo
+    corte de combo_de_stories_do_dia - ver o comentário lá sobre por que o rótulo não
+    pode prometer "o maior de hoje" sem qualificar)."""
     from ofertas.models import Oferta
 
     oferta = max(
@@ -263,13 +264,14 @@ def maior_cashback_de_hoje() -> "dict | None":
     nome = (oferta.nome_curto or oferta.nome).strip().rstrip(".")
     return {
         "numero": _formatar_percentual(oferta.percentual_cashback),
-        "rotulo": "o maior cashback de hoje",
+        "rotulo": "o maior % entre os mais vendidos",
         "apoio": f"É quanto volta pra você comprando {nome} pela cash-b.",
     }
 
 
 def maior_valor_de_volta_hoje() -> "dict | None":
-    """Mesma ideia, mas em reais. Fala com quem entende melhor "R$ 9" do que "6,5%"."""
+    """Mesma ideia, mas em reais (mesmo corte de 400 mais vendidos - ver
+    maior_cashback_de_hoje). Fala com quem entende melhor "R$ 9" do que "6,5%"."""
     from ofertas.models import Oferta
 
     oferta = max(
@@ -282,7 +284,7 @@ def maior_valor_de_volta_hoje() -> "dict | None":
     nome = (oferta.nome_curto or oferta.nome).strip().rstrip(".")
     return {
         "numero": _formatar_reais(oferta.valor_cashback_estimado),
-        "rotulo": "quanto volta hoje",
+        "rotulo": "quanto volta nos mais vendidos",
         "apoio": f"É o que cai no seu saldo comprando {nome}.",
     }
 
@@ -351,7 +353,15 @@ def combo_de_stories_do_dia() -> "list[dict] | None":
 
     % e R$ são escolhidos separadamente, de propósito - podem ser produtos diferentes:
     um caro com % baixo pode valer mais em R$ que um barato com % alto (por isso a
-    vitrine também tem as duas ordenações, ver ofertas/views.py)."""
+    vitrine também tem as duas ordenações, ver ofertas/views.py).
+
+    Busca só entre as ~400 ofertas mais vendidas (`Oferta.Meta.ordering = ["-vendas"]`),
+    não no catálogo inteiro - de propósito, pra não arriscar destacar um produto pouco
+    testado/pouco vendido só porque ele tem um % ou R$ mais alto. Por causa desse
+    corte, o número aqui pode ser MENOR que o "Maior cashback (%)"/"(R$)" da vitrine
+    (que ordena o catálogo inteiro, sem esse filtro) - por isso o rótulo diz "entre os
+    mais vendidos", nunca "o maior de hoje" (isso já confundiu quem comparou os dois -
+    ver conversa de 2026-09-02)."""
     from ofertas.models import Oferta
 
     oferta_percentual = max(
@@ -377,12 +387,12 @@ def combo_de_stories_do_dia() -> "list[dict] | None":
     return [
         {
             "formato": "capa",
-            "titulo": "Os maiores cashbacks de hoje",
+            "titulo": "Os maiores cashbacks entre os mais vendidos hoje",
         },
         {
             "formato": "numero_com_produto",
             "numero": _formatar_percentual(oferta_percentual.percentual_cashback),
-            "rotulo": "o maior % de cashback hoje",
+            "rotulo": "o maior % entre os mais vendidos",
             "apoio": "É quanto volta para você aproveitando essa oferta.",
             "legenda_produto": nome_percentual,
             "imagem_url": oferta_percentual.imagem_url,
@@ -400,7 +410,7 @@ def combo_de_stories_do_dia() -> "list[dict] | None":
         {
             "formato": "numero_com_produto",
             "numero": _formatar_reais(oferta_reais.valor_cashback_estimado),
-            "rotulo": "o maior valor em R$ hoje",
+            "rotulo": "o maior R$ entre os mais vendidos",
             "apoio": "É o que cai no seu saldo comprando essa oferta.",
             "legenda_produto": nome_reais,
             "imagem_url": oferta_reais.imagem_url,
