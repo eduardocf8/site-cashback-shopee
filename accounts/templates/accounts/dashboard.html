@@ -180,17 +180,17 @@
         .rolar-tabela { overflow-x: auto; }
         .nota-secao { color: var(--muted); font-size: 13px; margin: -8px 0 16px; }
 
-        .filtro-secao { display: flex; align-items: center; flex-wrap: wrap; gap: 8px 12px; margin-bottom: 16px; }
-        .filtro-secao label { flex-shrink: 0; }
+        .filtro-secao { display: flex; align-items: center; flex-wrap: wrap; row-gap: 10px; column-gap: 12px; margin-bottom: 16px; }
+        .filtro-secao label { flex-shrink: 0; min-width: 52px; }
         .filtro-secao select {
             padding: 6px 10px; border: 1px solid var(--line); border-radius: 6px;
             font-family: inherit; font-size: 13px; background: var(--paper); color: var(--ink);
-            width: 180px; max-width: 100%;
+            width: 150px; max-width: 100%;
         }
         .filtro-secao button {
             padding: 6px 14px; border: 1px solid var(--line); border-radius: 6px; background: var(--paper);
             color: var(--ink); font-family: inherit; font-size: 13px; cursor: pointer;
-            margin-left: auto;
+            margin-left: auto; flex-shrink: 0;
         }
         .filtro-secao button:hover { background: var(--paper-2); }
 
