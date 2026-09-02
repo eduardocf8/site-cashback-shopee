@@ -7,14 +7,20 @@ Sobrescreve o bloco layout inteiro em vez de usar o container padrão: aqui não
 cabeçalho nem rodapé do site de propósito. Quem chega pela bio veio decidir uma coisa
 só, e cada elemento a mais rouba clique do botão principal.
 
-Hierarquia: um botão roxo (o principal) e três brancos. Um botão principal só é
+Hierarquia: um botão roxo (o principal) e quatro brancos. Um botão principal só é
 principal enquanto for o único - dois roxos viram dois secundários.
 
-Ordem dos secundários: WhatsApp primeiro porque é o único link que dá permissão de
-falar com a pessoa de novo sem depender do alcance do Instagram; "como funciona"
-depois, para quem chegou desconfiado e hoje não tem nada para clicar; e criar conta
-por último, que é o clique de maior compromisso - quem já decidiu acha em qualquer
-posição.
+O principal é a home, e não a vitrine: a home é a única página com o conversor de
+link, que é o caminho da venda direta (piso de CASHBACK_MINIMO_VENDA_DIRETA contra o
+da indireta) - e ela já mostra a vitrine embaixo do conversor, então cobre os dois
+motivos de alguém chegar aqui. É também o endereço que todo carrossel anuncia no
+cta_pill; apontar o principal para outro lugar contrariaria o próprio conteúdo.
+
+Ordem dos secundários: a vitrine logo abaixo, para quem ainda não tem um produto em
+mente; WhatsApp em seguida, porque é o único link que dá permissão de falar com a
+pessoa de novo sem depender do alcance do Instagram; "como funciona" para quem chegou
+desconfiado; e criar conta por último, que é o clique de maior compromisso - quem já
+decidiu acha em qualquer posição.
 {% endcomment %}
 
 {% block titulo %}Links{% endblock %}
@@ -209,7 +215,18 @@ posição.
     </div>
 
     <div class="bio-botoes">
-        <a class="bio-botao bio-botao-principal" href="{% url 'ofertas_lista' %}">
+        <a class="bio-botao bio-botao-principal" href="{% url 'home' %}">
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                <path d="M10 13.5a3.5 3.5 0 0 0 5 0l3-3a3.5 3.5 0 0 0-5-5l-1 1" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/>
+                <path d="M14 10.5a3.5 3.5 0 0 0-5 0l-3 3a3.5 3.5 0 0 0 5 5l1-1" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/>
+            </svg>
+            <span class="bio-botao-texto">
+                <span class="bio-botao-titulo">Ativar cashback na sua compra</span>
+                <span class="bio-botao-apoio">Cole o link do produto e receba mais de volta</span>
+            </span>
+        </a>
+
+        <a class="bio-botao" href="{% url 'ofertas_lista' %}">
             <svg width="22" height="22" viewBox="0 0 24 24" fill="none" aria-hidden="true">
                 <path d="M6 7h12l-1 12H7L6 7Z" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/>
                 <path d="M9 9V6a3 3 0 0 1 6 0v3" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/>

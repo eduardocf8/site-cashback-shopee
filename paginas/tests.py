@@ -111,11 +111,14 @@ class PaginaDeBioTests(TestCase):
         html = self.client.get(reverse("links_bio")).content.decode()
         self.assertEqual(html.count('class="bio-botao bio-botao-principal"'), 1)
 
-    def test_o_botao_principal_leva_para_a_vitrine(self):
+    def test_o_botao_principal_leva_para_a_home(self):
+        # E não para a vitrine: a home é a única página com o conversor de link, que é
+        # o caminho da venda direta - o que paga mais. Ela já mostra a vitrine embaixo,
+        # então cobre também quem chegou só para olhar.
         html = self.client.get(reverse("links_bio")).content.decode()
         marcador = 'class="bio-botao bio-botao-principal" href="'
         destino = html.split(marcador)[1].split('"')[0]
-        self.assertEqual(destino, reverse("ofertas_lista"))
+        self.assertEqual(destino, reverse("home"))
 
     def test_mostra_o_mesmo_percentual_anunciado_na_home(self):
         # É a única coisa nesta página que uma ferramenta de fora não faria. Se sair de
