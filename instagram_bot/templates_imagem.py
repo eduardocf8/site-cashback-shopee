@@ -351,15 +351,33 @@ def gerar_imagem_oferta_story(oferta, tamanho=(1080, 1920)) -> Image.Image:
 # ---------------------------------------------------------------------------
 
 
-def _cabecalho_rodape(draw, tamanho, margem, cor_texto, cor_acento, rotulo, y_rotulo, centralizado=False):
-    """Rótulo pequeno no topo do bloco + risco e selo da marca no rodapé - a moldura
-    comum dos formatos abaixo. Centralizado quando o conteúdo do bloco também é (caso
-    do layout com foto do produto), pra não ficar um rótulo à esquerda sobre uma
-    composição centralizada."""
+def _cabecalho_rodape(
+    draw, tamanho, margem, cor_texto, cor_acento, rotulo, y_rotulo, centralizado=False, subrotulo=""
+):
+    """Rótulo pequeno no topo do bloco (+ subrótulo opcional, menor e na cor do texto
+    do corpo, logo abaixo - usado quando o rótulo sozinho fica ambíguo sem qualificar,
+    ex: "o maior cashback em %" + "entre os mais vendidos") + risco e selo da marca no
+    rodapé - a moldura comum dos formatos abaixo. Centralizado quando o conteúdo do
+    bloco também é (caso do layout com foto do produto), pra não ficar um rótulo à
+    esquerda sobre uma composição centralizada."""
     escala = tamanho[1] / 1080
     fonte_rotulo = _fonte(int(30 * min(escala, 1.4)), mono=True, negrito=True)
     x, ancora = (tamanho[0] / 2, "mm") if centralizado else (margem, "lm")
-    draw.text((x, y_rotulo), rotulo.upper(), font=fonte_rotulo, fill=cor_acento, anchor=ancora)
+
+    if subrotulo:
+        fonte_subrotulo = _fonte(int(20 * min(escala, 1.4)))
+        altura_rotulo = fonte_rotulo.size * 1.05
+        altura_subrotulo = fonte_subrotulo.size * 1.25
+        espaco = 6 * min(escala, 1.4)
+        y_topo = y_rotulo - (altura_rotulo + espaco + altura_subrotulo) / 2
+        draw.text((x, y_topo + altura_rotulo / 2), rotulo.upper(), font=fonte_rotulo, fill=cor_acento, anchor=ancora)
+        draw.text(
+            (x, y_topo + altura_rotulo + espaco + altura_subrotulo / 2),
+            subrotulo, font=fonte_subrotulo, fill=cor_texto, anchor=ancora,
+        )
+    else:
+        draw.text((x, y_rotulo), rotulo.upper(), font=fonte_rotulo, fill=cor_acento, anchor=ancora)
+
     linha_y = tamanho[1] - int(margem * 1.6)
     draw.line([(margem, linha_y), (tamanho[0] - margem, linha_y)], fill=cor_acento, width=max(2, int(2 * escala)))
     _badge_marca(draw, tamanho, cor_texto, margem)
@@ -514,6 +532,7 @@ def gerar_imagem_numero_com_produto(
     apoio: str,
     imagem_url: str,
     legenda_produto: str = "",
+    subrotulo: str = "",
     bg: str | None = None,
     cor_texto: str | None = None,
     cor_numero: str | None = None,
@@ -525,6 +544,10 @@ def gerar_imagem_numero_com_produto(
     com a foto do seu próprio produto, já que podem ser produtos diferentes. Os outros
     stories do combo (capa, conta, passos) não levam foto, pra não repetir imagem e
     virar catálogo.
+
+    subrotulo (opcional) qualifica o rótulo com uma segunda linha, menor e na cor do
+    texto do corpo (não do acento) - usado pra deixar claro que "o maior cashback" é
+    entre os mais vendidos, não o maior do catálogo inteiro (ver conteudo.py).
 
     Se a foto não baixar, cai no layout sem imagem em vez de falhar."""
     bg = bg or CORES["brand"]
@@ -558,8 +581,9 @@ def gerar_imagem_numero_com_produto(
 
     # Espaço reservado ao rótulo acima da foto. O rótulo fica centralizado nessa faixa,
     # então o valor precisa ser bem maior que a altura dele - senão sobra pouco entre a
-    # base do texto e o topo do cartão, e o rótulo parece colado na imagem.
-    respiro_rotulo = 130
+    # base do texto e o topo do cartão, e o rótulo parece colado na imagem. Com
+    # subrótulo (2 linhas), precisa de mais respiro que com rótulo sozinho (1 linha).
+    respiro_rotulo = 168 if subrotulo else 130
     altura_bloco = respiro_rotulo + lado_foto + altura_legenda + 40 + altura_numero + 28 + altura_apoio
     if linhas_legenda:
         altura_bloco += 20
@@ -567,7 +591,7 @@ def gerar_imagem_numero_com_produto(
 
     _cabecalho_rodape(
         draw, tamanho, margem, cor_texto, cor_numero, rotulo,
-        y + respiro_rotulo / 2, centralizado=True,
+        y + respiro_rotulo / 2, centralizado=True, subrotulo=subrotulo,
     )
     y += respiro_rotulo
 

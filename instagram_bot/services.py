@@ -414,7 +414,7 @@ def publicar_combo_de_stories(data, request) -> list[RegistroPublicacao]:
         ),
         "numero_com_produto": lambda s: gerar_imagem_numero_com_produto(
             s["numero"], s["rotulo"], s["apoio"], s["imagem_url"],
-            legenda_produto=s["legenda_produto"],
+            legenda_produto=s["legenda_produto"], subrotulo=s.get("subrotulo", ""),
         ),
         "conta": lambda s: gerar_imagem_conta(
             s["titulo"], s["linhas"], s["destaque"], s["rodape"], tamanho=(1080, 1920),

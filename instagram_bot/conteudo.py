@@ -264,7 +264,8 @@ def maior_cashback_de_hoje() -> "dict | None":
     nome = (oferta.nome_curto or oferta.nome).strip().rstrip(".")
     return {
         "numero": _formatar_percentual(oferta.percentual_cashback),
-        "rotulo": "o maior % entre os mais vendidos",
+        "rotulo": "o maior cashback em %",
+        "subrotulo": "entre os mais vendidos",
         "apoio": f"É quanto volta pra você comprando {nome} pela cash-b.",
     }
 
@@ -284,7 +285,8 @@ def maior_valor_de_volta_hoje() -> "dict | None":
     nome = (oferta.nome_curto or oferta.nome).strip().rstrip(".")
     return {
         "numero": _formatar_reais(oferta.valor_cashback_estimado),
-        "rotulo": "quanto volta nos mais vendidos",
+        "rotulo": "o maior cashback em R$",
+        "subrotulo": "entre os mais vendidos",
         "apoio": f"É o que cai no seu saldo comprando {nome}.",
     }
 
@@ -392,7 +394,8 @@ def combo_de_stories_do_dia() -> "list[dict] | None":
         {
             "formato": "numero_com_produto",
             "numero": _formatar_percentual(oferta_percentual.percentual_cashback),
-            "rotulo": "o maior % entre os mais vendidos",
+            "rotulo": "o maior cashback em %",
+            "subrotulo": "entre os mais vendidos",
             "apoio": "É quanto volta para você aproveitando essa oferta.",
             "legenda_produto": nome_percentual,
             "imagem_url": oferta_percentual.imagem_url,
@@ -410,7 +413,8 @@ def combo_de_stories_do_dia() -> "list[dict] | None":
         {
             "formato": "numero_com_produto",
             "numero": _formatar_reais(oferta_reais.valor_cashback_estimado),
-            "rotulo": "o maior R$ entre os mais vendidos",
+            "rotulo": "o maior cashback em R$",
+            "subrotulo": "entre os mais vendidos",
             "apoio": "É o que cai no seu saldo comprando essa oferta.",
             "legenda_produto": nome_reais,
             "imagem_url": oferta_reais.imagem_url,
