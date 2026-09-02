@@ -1,5 +1,4 @@
 {% extends "accounts/base.html" %}
-{% load static %}
 
 {% comment %}
 Página de links da bio ("link na bio"). Substitui Beacons/Linktree.
@@ -53,15 +52,8 @@ posição.
         text-align: center;
     }
 
-    .bio-avatar {
-        width: 96px;
-        height: 96px;
-        border-radius: 50%;
-        display: block;
-    }
-
     .bio-nome {
-        font-size: 30px;
+        font-size: 42px;
         font-weight: 700;
         letter-spacing: -0.03em;
         color: var(--brand);
@@ -201,14 +193,12 @@ posição.
 <main class="bio">
     <div class="bio-topo">
         {% comment %}
-        Mesma arte da foto de perfil do Instagram (artes-marca/01-perfil-cb-roxo-ambar):
-        quem chega pela bio reconhece na hora que está no lugar certo. O anel âmbar cabe
-        inteiro dentro do recorte circular - ele fica bem dentro do círculo inscrito no
-        quadrado da arte.
+        Só o wordmark, sem o círculo "cb" que estava aqui antes: os dois juntos eram a
+        mesma marca duas vezes, e o brand.css é explícito - "wordmark sempre em
+        minúsculo, nunca com ícone". O topo do site inteiro segue essa regra.
         {% endcomment %}
-        <img class="bio-avatar" src="{% static 'images/avatar-cash-b.png' %}" alt="" width="96" height="96">
         <div class="bio-nome">cash-b</div>
-        <p class="bio-tagline">Compre na Shopee do jeito que você já compra e receba parte do dinheiro de volta.</p>
+        <p class="bio-tagline">Ganhe cashback em compras na Shopee</p>
         {% if cashback_maximo_anunciado %}
             <div class="bio-selo">
                 hoje, até <strong>{{ cashback_maximo_anunciado|floatformat:2 }}%</strong> de volta
