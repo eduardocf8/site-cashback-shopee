@@ -11,6 +11,19 @@
         </span>
         {{ field }}
     </div>
+{% elif field.field.widget.input_type == "radio" %}
+    <span class="rotulo-com-ajuda">
+        <label>{{ field.label }}</label>
+        {% if field.help_text %}
+        <span class="ajuda-tooltip">
+            <span class="ajuda-icone" tabindex="0" aria-label="Ajuda: {{ field.help_text }}">?</span>
+            <span class="ajuda-balao" role="tooltip">{{ field.help_text }}</span>
+        </span>
+        {% endif %}
+    </span>
+    <div class="campo-radio">
+        {{ field }}
+    </div>
 {% else %}
     <span class="rotulo-com-ajuda">
         <label for="{{ field.id_for_label }}">{{ field.label }}</label>
