@@ -223,6 +223,7 @@ class FluxoDeCriacaoDeAutomacaoDeStoryTests(TestCase):
             sucesso=True,
             instagram_media_id="story-com-link",
             oferta_item_id=555,
+            oferta_nome="Fone bluetooth",
             link_produto_original="https://shopee.com.br/produto-i.1.555",
         )
 
@@ -240,7 +241,8 @@ class FluxoDeCriacaoDeAutomacaoDeStoryTests(TestCase):
 
         resposta = self.client.get(reverse("automacao_nova"), {"tipo": "story", "conta": self.conta.pk})
 
-        self.assertContains(resposta, "link do produto detectado")
+        self.assertContains(resposta, "Fone bluetooth")
+        self.assertContains(resposta, "sem link de produto associado")
         mock_listar.assert_called_once()
 
     @patch("automacao_instagram.instagram_api.listar_stories_recentes")
