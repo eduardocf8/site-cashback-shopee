@@ -28,6 +28,7 @@
 {% endif %}
 
 <div class="cartao">
+<h2 style="margin-top:0;">Comentários em posts</h2>
 {% if automacoes %}
 <div class="tabela-scroll">
 <table>
@@ -59,7 +60,43 @@
 </table>
 </div>
 {% else %}
-<p class="legenda">Nenhuma automação criada ainda.</p>
+<p class="legenda">Nenhuma automação de post criada ainda.</p>
+{% endif %}
+</div>
+
+<div class="cartao" style="margin-top:20px;">
+<h2 style="margin-top:0;">Respostas a stories</h2>
+{% if automacoes_story %}
+<div class="tabela-scroll">
+<table>
+    <tr>
+        <th>Nome</th><th>Conta</th><th>Status</th><th>O que envia</th>
+        <th>Respostas</th><th>DMs enviadas</th>
+        <th></th>
+    </tr>
+    {% for automacao in automacoes_story %}
+    <tr>
+        <td>{{ automacao.nome }}{% if automacao.story_permalink %} <a href="{{ automacao.story_permalink }}" target="_blank" rel="noopener">(ver story)</a>{% endif %}</td>
+        <td>{{ automacao.conta.nome_exibicao }}</td>
+        <td>{% if automacao.ativa %}<span class="pilula pilula-ativa">Ativa</span>{% else %}<span class="pilula pilula-pausada">Pausada</span>{% endif %}</td>
+        <td>{{ automacao.get_modo_resposta_display }}</td>
+        <td>{{ automacao.total_respostas }}</td>
+        <td>{{ automacao.dms_enviadas }}</td>
+        <td>
+            <div class="acoes-linha">
+                <a href="{% url 'automacao_story_editar' automacao.pk %}" class="botao botao-secundario botao-auto">Editar</a>
+                <form method="post" action="{% url 'automacao_story_alternar_ativa' automacao.pk %}">
+                    {% csrf_token %}
+                    <button type="submit" class="botao botao-secundario botao-auto">{% if automacao.ativa %}Pausar{% else %}Ativar{% endif %}</button>
+                </form>
+            </div>
+        </td>
+    </tr>
+    {% endfor %}
+</table>
+</div>
+{% else %}
+<p class="legenda">Nenhuma automação de story criada ainda.</p>
 {% endif %}
 </div>
 {% endblock %}

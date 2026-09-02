@@ -2,7 +2,7 @@ from django.contrib import admin
 from django.utils import timezone
 
 from . import services
-from .models import EstadoTokenInstagram, RegistroPublicacao, RespostaStoryEnviada
+from .models import EstadoTokenInstagram, RegistroPublicacao
 
 
 @admin.register(EstadoTokenInstagram)
@@ -68,14 +68,3 @@ class RegistroPublicacaoAdmin(admin.ModelAdmin):
                 self.message_user(
                     request, f"Registro {registro.pk}: falhou de novo - {erro}", level="error"
                 )
-
-
-@admin.register(RespostaStoryEnviada)
-class RespostaStoryEnviadaAdmin(admin.ModelAdmin):
-    list_display = ("registro_publicacao", "sender_instagram_id", "dm_enviada", "criado_em")
-    list_filter = ("dm_enviada",)
-    search_fields = ("sender_instagram_id", "texto_recebido", "instagram_story_media_id")
-    readonly_fields = [f.name for f in RespostaStoryEnviada._meta.fields]
-
-    def has_add_permission(self, request):
-        return False

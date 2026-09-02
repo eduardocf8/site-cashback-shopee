@@ -39,6 +39,30 @@ def listar_midias_recentes(instagram_business_account_id: str, access_token: str
     return dados.get("data", [])
 
 
+def listar_stories_recentes(instagram_business_account_id: str, access_token: str) -> list[dict]:
+    """Stories ativos agora (a API só lista o que ainda está no ar, até 24h), pra
+    escolher qual vai receber a automação - mesmo papel que listar_midias_recentes
+    tem pra post. Retorna [{id, media_type, media_url, timestamp, permalink}, ...]."""
+    dados = _chamar(
+        "GET", f"{instagram_business_account_id}/stories", access_token,
+        fields="id,media_type,media_url,timestamp,permalink",
+    )
+    return dados.get("data", [])
+
+
+def enviar_mensagem_direta(instagram_business_account_id: str, recipient_id: str, texto: str, access_token: str) -> str:
+    """DM avulsa pro recipient_id (o "sender.id" que chega no webhook de mensagens) -
+    diferente de enviar_resposta_privada (atrelada a um comment_id, só funciona até 7
+    dias/1 vez por comentário). Usada pra responder quem respondeu um story (ver
+    automacao_instagram/webhook.py). Retorna o id da mensagem criada."""
+    dados = _chamar(
+        "POST", f"{instagram_business_account_id}/messages", access_token,
+        recipient=json.dumps({"id": recipient_id}),
+        message=json.dumps({"text": texto}),
+    )
+    return dados.get("message_id", "")
+
+
 def listar_comentarios(media_id: str, access_token: str) -> list[dict]:
     """Comentários de nível 1 (não conta resposta de resposta) do post. Retorna
     [{id, text, username, timestamp, from: {id, username}}, ...]."""

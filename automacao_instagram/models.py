@@ -80,6 +80,64 @@ class AutomacaoComentario(models.Model):
         return None
 
 
+class AutomacaoStory(models.Model):
+    """Uma automação de resposta a story: vinculada a UM story específico (escolhido
+    na hora de criar, igual AutomacaoComentario escolhe um post) - diferente de
+    comentário, story não tem palavra-chave: qualquer resposta (ou reação) a esse
+    story dispara. Ver automacao_instagram/webhook.py."""
+
+    MODO_LINK_PRODUTO = "link_produto"
+    MODO_PERSONALIZADA = "personalizada"
+    MODO_CHOICES = [
+        (MODO_LINK_PRODUTO, "Link do produto do story (detectado automaticamente)"),
+        (MODO_PERSONALIZADA, "Mensagem personalizada"),
+    ]
+
+    conta = models.ForeignKey(ContaInstagramConectada, on_delete=models.CASCADE, related_name="automacoes_story")
+    nome = models.CharField("Nome da automação", max_length=100, help_text="Só pra identificar, ex: Fone bluetooth 02/09")
+    instagram_story_media_id = models.CharField("ID do story no Instagram", max_length=64)
+    story_permalink = models.URLField("Link do story", blank=True)
+    modo_resposta = models.CharField(
+        "O que enviar por DM", max_length=20, choices=MODO_CHOICES, default=MODO_PERSONALIZADA,
+    )
+    texto_personalizado = models.TextField(
+        "Mensagem personalizada", blank=True,
+        help_text="Usado quando o modo é \"Mensagem personalizada\" - ignorado no modo \"Link do produto\".",
+    )
+    ativa = models.BooleanField("Ativa", default=True)
+    criado_em = models.DateTimeField(auto_now_add=True)
+    atualizado_em = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        verbose_name = "Automação de story"
+        verbose_name_plural = "Automações de story"
+        ordering = ["-criado_em"]
+
+    def __str__(self):
+        return f"{self.nome} ({self.conta.nome_exibicao})"
+
+
+class RespostaStoryProcessada(models.Model):
+    """Uma resposta/reação a um story com automação ativa - histórico e base dos
+    indicadores, mesmo papel que ComentarioProcessado tem pra automação de post."""
+
+    automacao = models.ForeignKey(AutomacaoStory, on_delete=models.CASCADE, related_name="respostas")
+    instagram_autor_id = models.CharField(max_length=64, blank=True)
+    autor_username = models.CharField(max_length=150, blank=True)
+    texto_recebido = models.TextField(blank=True)
+    dm_enviada = models.BooleanField(default=False)
+    dm_erro = models.TextField(blank=True)
+    criado_em = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        verbose_name = "Resposta a story processada"
+        verbose_name_plural = "Respostas a stories processadas"
+        ordering = ["-criado_em"]
+
+    def __str__(self):
+        return f"@{self.autor_username or '?'}: {self.texto_recebido[:40]}"
+
+
 class ComentarioProcessado(models.Model):
     """Um comentário que bateu com a palavra-chave de uma automação - registro de
     histórico e base dos indicadores (contagens agregadas por automação)."""

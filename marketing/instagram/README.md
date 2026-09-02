@@ -248,75 +248,28 @@ curada "passar por" `Oferta` (o model do catálogo sincronizado) sem
 duplicar o gerador de imagem nem o fluxo de aprovação. Mesmo
 `CONTEUDO_OFERTA_DIARIA`/limite diário/janela de 7 dias do resto.
 
-### Resposta automática a quem responde um story de oferta (2026-09-02)
+### Link do produto disponível pra automação de resposta a story (2026-09-02)
 
 Não dá pra incluir link clicável num story publicado por API (sem link
 sticker manual) - por isso todo story de oferta manda pro perfil ("link
-na bio"), sem link direto pro produto. Pra resolver isso sem exigir
-configuração manual por story (ex: numa ferramenta tipo ManyChat, onde
-vincular um story específico a uma automação é um passo manual na
-interface deles, feito de novo a cada story - não dava pra automatizar
-de ponta a ponta), foi feito aqui no próprio repositório: quem responde
-(reply, não comentário) um story de oferta recebe de volta, por DM
-automática, o link daquele produto específico, com cashback rastreado
-igual qualquer outro clique do site.
+na bio"), sem link direto pro produto. Pra viabilizar uma automação de
+"quem responde esse story recebe o link do produto" (a automação em si
+mora em `automacao_instagram/` - ver `automacao_instagram/README.md`,
+"Automação de resposta a story"), toda vez que um story de oferta é
+publicado (`_publicar_story_de_oferta`, chamado pela escolha automática,
+pelo comando manual e pelo botão "Criar story"), o `product_link`
+original da Shopee é gravado em `RegistroPublicacao.link_produto_original`.
 
-**Por que webhook em vez de polling** (diferente de
-`automacao_instagram/`, que faz polling): saber *qual* story foi
-respondido depende do campo `reply_to.story.id` que a Meta manda no
-payload do evento de mensagem - não há confirmação de que esse dado
-também venha numa consulta GET posterior em `/conversations` (só a
-entrega em tempo real documenta isso claramente). Como o site já é
-público em HTTPS (Render), registrar um webhook não tem o custo de
-infra que fez `automacao_instagram/` escolher polling.
-
-**Como funciona:**
-
-1. Ao publicar um story de oferta (`_publicar_story_de_oferta`, chamado
-   tanto pela escolha automática quanto pelo comando manual e pelo botão
-   "Criar story"), o `product_link` original da Shopee é gravado em
-   `RegistroPublicacao.link_produto_original` - **não** o link do
-   catálogo sincronizado (`Oferta.url_ir`, baseado no pk), porque
-   `sincronizar_ofertas()` apaga e recria todas as `Oferta` a cada
-   sincronização (pk muda) - um link assim quebraria depois da próxima
-   sincronização, ainda dentro das 24h do story no ar. `RegistroPublicacao`
-   nunca é apagado, então seu pk (e o link derivado dele) é estável.
-2. `instagram_bot/webhook.py` recebe os eventos de mensagem da Meta
-   (`/instagram/webhook/`, ver `views.webhook_instagram`) - GET faz o
-   handshake de verificação (`hub.challenge`), POST processa cada evento,
-   assinado com `X-Hub-Signature-256` (calculado com
-   `INSTAGRAM_APP_SECRET`, conferido em `webhook.verificar_assinatura` -
-   sem isso, qualquer um que descobrisse a URL forjava "resposta a
-   story" e ganhava o link de graça).
-3. Se o evento é uma resposta a story (`message.reply_to.story.id`) e
-   `story.id` bate com o `instagram_media_id` de algum
-   `RegistroPublicacao` de oferta, manda por DM
-   (`instagram_client.enviar_mensagem_direta`) o link
-   `/instagram/story/<id>/ir/` (`views.ir_para_story_de_oferta`) - mesmo
-   fluxo de clique rastreado (`links.services.gerar_click`,
-   `Click.TIPO_STORY_DM`) e mesma exigência de login das outras ofertas
-   (`ir_para_oferta` etc.) pra creditar o cashback à pessoa certa. Sem
-   bater, manda uma mensagem padrão (`webhook.MENSAGEM_LINK_NAO_ENCONTRADO`)
-   em vez de ficar em silêncio.
-4. Cada tentativa (achou o link ou não) fica registrada em
-   `RespostaStoryEnviada` (admin), incluindo o payload bruto do evento -
-   útil pra ajuste fino se o formato do campo `reply_to.story` que
-   chegar de verdade for diferente do documentado (mesma cautela já
-   registrada aqui pra `verificar_dms_respondidas`, em
-   `automacao_instagram/README.md`: **não foi testado contra tráfego
-   real ainda**).
-
-**Configuração manual necessária (não dá pra fazer por aqui):**
-
-- Variável de ambiente nova no Render: `INSTAGRAM_WEBHOOK_VERIFY_TOKEN`
-  (qualquer string secreta seguida, só usada no handshake).
-- No painel do App na Meta for Developers: Products > Webhooks >
-  assinar o objeto do Instagram no campo `messages`, apontando pra
-  `https://cash-b.com/instagram/webhook/` (ou o domínio do Render) com o
-  mesmo verify token da variável acima.
-- Precisa da permissão `instagram_manage_messages` no token (a mesma já
-  usada pra publicar/mandar DM) - deve já estar coberta pelo Standard
-  Access existente, já que `enviar_mensagem_direta` usa a mesma API.
+**Não** é reaproveitado o link do catálogo sincronizado (`Oferta.url_ir`,
+baseado no pk), porque `sincronizar_ofertas()` apaga e recria todas as
+`Oferta` a cada sincronização (pk muda) - um link assim quebraria depois
+da próxima sincronização, ainda dentro das 24h do story no ar.
+`RegistroPublicacao` nunca é apagado, então seu pk (e o link derivado
+dele, `/instagram/story/<id>/ir/` - ver `instagram_bot/views.py`,
+`ir_para_story_de_oferta`) é estável. Esse link segue o mesmo fluxo de
+clique rastreado das outras ofertas (`links.services.gerar_click`,
+`Click.TIPO_STORY_DM`) e a mesma exigência de login, pra creditar o
+cashback à pessoa certa.
 
 ## Cron Jobs do Render (2026-08-28)
 

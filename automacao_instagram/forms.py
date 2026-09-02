@@ -1,6 +1,6 @@
 from django import forms
 
-from .models import AutomacaoComentario, ContaInstagramConectada
+from .models import AutomacaoComentario, AutomacaoStory, ContaInstagramConectada
 
 
 class ContaInstagramForm(forms.ModelForm):
@@ -52,4 +52,31 @@ class AutomacaoComentarioForm(forms.ModelForm):
             self.add_error("texto_resposta", "Preencha o texto da resposta pública.")
         if cleaned.get("enviar_dm") and not cleaned.get("texto_dm"):
             self.add_error("texto_dm", "Preencha o texto da DM.")
+        return cleaned
+
+
+class AutomacaoStoryForm(forms.ModelForm):
+    """A escolha do story (instagram_story_media_id) acontece antes desse form, na
+    etapa de seleção (ver views._automacao_nova_story) - aqui só o resto dos dados da
+    regra. Se o story escolhido não tem link de produto detectado, a view valida (não
+    dá pra saber isso aqui dentro do form)."""
+
+    class Meta:
+        model = AutomacaoStory
+        fields = ("nome", "modo_resposta", "texto_personalizado", "ativa")
+        labels = {
+            "nome": "Nome da automação",
+            "modo_resposta": "O que enviar por DM pra quem responder",
+            "texto_personalizado": "Mensagem personalizada",
+            "ativa": "Automação ativa",
+        }
+        widgets = {
+            "modo_resposta": forms.RadioSelect,
+            "texto_personalizado": forms.Textarea(attrs={"rows": 3}),
+        }
+
+    def clean(self):
+        cleaned = super().clean()
+        if cleaned.get("modo_resposta") == AutomacaoStory.MODO_PERSONALIZADA and not cleaned.get("texto_personalizado"):
+            self.add_error("texto_personalizado", "Preencha o texto da mensagem.")
         return cleaned

@@ -42,21 +42,28 @@ em paralelo (uma por post), e mais de uma conta do Instagram conectada.
 - `models.py` — `ContaInstagramConectada` (conta do Instagram + token,
   vinculada a um usuário), `AutomacaoComentario` (regra: post, palavras-
   chave, checkboxes + textos, ativa/pausada), `ComentarioProcessado`
-  (histórico + base dos indicadores).
+  (histórico + base dos indicadores), `AutomacaoStory`/`RespostaStoryProcessada`
+  (mesmo papel, pra resposta a story - ver "Automação de resposta a
+  story" abaixo).
 - `instagram_api.py` — chamadas à Instagram Graph API parametrizadas por
   conta (token/ID vêm do banco, não de settings globais, diferente do
   `instagram_bot`): listar comentários, responder publicamente, enviar
   resposta privada (DM), listar mídias recentes (pra escolher o post sem
-  digitar ID), listar conversas (pra checar se uma DM foi respondida).
+  digitar ID), listar conversas (pra checar se uma DM foi respondida),
+  listar stories ativos, enviar DM avulsa (`enviar_mensagem_direta`).
 - `services.py` — `processar_ciclo()`: percorre as automações ativas,
   casa palavra-chave, responde/envia DM, registra; e
   `verificar_dms_respondidas()`: confere se alguém respondeu uma DM
   enviada anteriormente.
+- `webhook.py` — recebe os eventos de resposta a story em tempo real
+  (diferente do polling de `services.py` - ver "Automação de resposta a
+  story" abaixo).
 - `management/commands/automacao_instagram_worker.py` — loop infinito
   (`while True: processar_ciclo(); sleep(intervalo)`), é o Start Command
   do Background Worker no Render.
 - `views.py`/`urls.py`/`templates/` — login próprio, telas de contas
-  conectadas, automações (lista + criar/editar/pausar), histórico.
+  conectadas, automações de post e de story (lista + criar/editar/pausar),
+  histórico (de comentários e de stories, em telas separadas).
 
 ## Login e permissões
 
@@ -118,6 +125,80 @@ respondeu (`verificar_dms_respondidas`). Essa parte ainda não foi testada
 contra tráfego real de conversas - o formato exato da resposta da API de
 conversas pode precisar de ajuste fino quando isso acontecer de verdade
 pela primeira vez.
+
+## Automação de resposta a story (2026-09-02)
+
+Igual à automação de comentário (post: escolhe da lista, configura,
+salva), mas pra **resposta/reação a story** - já que story não tem
+comentário público na API (só existe como DM), o mecanismo por baixo é
+diferente (webhook, não polling - ver abaixo), mas o fluxo de tela é o
+mesmo de propósito, pra não exigir aprender uma interface nova.
+
+**Fluxo de criação** (`views.automacao_nova`, mesma URL de sempre): 1ª
+etapa nova, escolher o **tipo** (Comentário em post / Resposta a story) -
+cada um puxa só o que faz sentido pra ele (posts pra um, stories ativos
+agora - até 24h - pro outro, via `instagram_api.listar_stories_recentes`).
+Depois, mesmo padrão de sempre: escolher a conta, escolher o item da
+lista, configurar e salvar (`AutomacaoStory`).
+
+**Diferenças de post pra story:**
+- Sem palavra-chave: story não tem texto de comentário pra casar contra
+  - **qualquer** resposta ou reação a esse story específico dispara.
+- Duas opções do que mandar por DM (`modo_resposta`):
+  - **Link do produto** (`MODO_LINK_PRODUTO`): só aparece disponível pra
+    stories publicados pelo `instagram_bot` como oferta (tem
+    `RegistroPublicacao.link_produto_original` gravado - ver
+    `marketing/instagram/README.md`) - a tela marca "✅ link do produto
+    detectado" nesses, e tanto o form de criar quanto o de editar
+    recusam salvar nesse modo se o story escolhido não tiver o link
+    (`views._automacao_nova_story`/`automacao_story_editar`).
+  - **Mensagem personalizada** (`MODO_PERSONALIZADA`): texto livre,
+    igual ao `texto_dm` da automação de comentário - único jeito
+    disponível pra stories fora do bot de ofertas (dica, lembrete,
+    institucional, ou qualquer story de outra conta conectada, ex: a da
+    esposa).
+- No máximo 1 DM por pessoa por automação (`webhook._ja_respondido`) -
+  sem isso, cada resposta nova ao mesmo story (uma reação, um
+  "obrigada") mandaria a DM de novo.
+
+**Por que webhook em vez de polling** (diferente do resto desse app, que
+faz polling - ver "Contexto" acima): saber *qual* story foi respondido
+depende do campo `reply_to.story.id` que a Meta manda no payload do
+evento de mensagem - não há confirmação de que esse dado também venha
+numa consulta GET posterior em `/conversations` (só a entrega em tempo
+real documenta isso claramente). Como o site já é público em HTTPS
+(Render), registrar um webhook não tem o custo de infra que fez o resto
+desse app escolher polling.
+
+`webhook.py` recebe os eventos (`/instagram/automacao/webhook/`, ver
+`views.webhook_instagram`) - GET faz o handshake de verificação
+(`hub.challenge`), POST processa cada evento, assinado com
+`X-Hub-Signature-256` (calculado com `INSTAGRAM_APP_SECRET`, o mesmo App
+do `instagram_bot` - conferido em `webhook.verificar_assinatura`, sem
+isso qualquer um que descobrisse a URL forjava "resposta a story" e
+ganhava DM de graça). Casa `story.id` com `AutomacaoStory.instagram_story_media_id`
+ativa - sem automação configurada pra aquele story, ignora silenciosamente
+(igual comentário sem palavra-chave). Cada tentativa (achou automação ou
+não) que bateu como resposta a story fica registrada em
+`RespostaStoryProcessada` (histórico na tela + admin) - **atenção**: o
+formato exato do payload (`reply_to.story.id`) não foi testado contra
+tráfego real ainda, mesma cautela já registrada aqui pra
+`verificar_dms_respondidas`.
+
+**Configuração manual necessária (não dá pra fazer por aqui):**
+
+- Variável de ambiente `INSTAGRAM_WEBHOOK_VERIFY_TOKEN` no Render
+  (qualquer string secreta, só usada no handshake de verificação).
+- No painel do App na Meta for Developers: Products > Webhooks > assinar
+  o objeto do Instagram no campo `messages`, apontando pra
+  `https://cash-b.com/instagram/automacao/webhook/` (ou o domínio do
+  Render) com o mesmo verify token da variável acima. Uma assinatura só
+  no App cobre todas as contas conectadas (`ContaInstagramConectada`)
+  que tiverem função nesse App - a Meta identifica a conta de destino
+  pelo `entry[].id` de cada evento.
+- Precisa da permissão `instagram_manage_messages` no token - deve já
+  estar coberta pelo Standard Access existente, já que
+  `enviar_resposta_privada` usa a mesma API.
 
 ## Limitações conhecidas / não implementado
 

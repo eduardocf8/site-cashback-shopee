@@ -107,34 +107,3 @@ class RegistroPublicacao(models.Model):
     def __str__(self):
         simulado = " (simulação)" if self.modo_simulacao else ""
         return f"{self.data} - {self.get_tipo_display()}/{self.get_conteudo_tipo_display()} - {self.get_status_display()}{simulado}"
-
-
-class RespostaStoryEnviada(models.Model):
-    """Toda vez que alguém responde a um story de oferta (ver webhook.py), fica um
-    registro aqui - achando o link (RegistroPublicacao correspondente) ou não. Serve
-    de histórico/depuração: como o formato exato do payload da Meta pra isso não foi
-    testado contra tráfego real ainda (ver marketing/instagram/README.md), payload_bruto
-    guarda o evento inteiro pra ajuste fino se o campo esperado não bater da primeira vez."""
-
-    registro_publicacao = models.ForeignKey(
-        RegistroPublicacao, on_delete=models.SET_NULL, null=True, blank=True, related_name="respostas_story",
-        help_text="Story identificado como o respondido - vazio quando não achou (ex: story de fora do "
-        "calendário de ofertas, ou media_id que não bate com nenhum registro nosso).",
-    )
-    instagram_story_media_id = models.CharField(max_length=64, blank=True)
-    sender_instagram_id = models.CharField("ID (IGSID) de quem respondeu", max_length=64, blank=True)
-    texto_recebido = models.TextField(blank=True)
-    link_enviado = models.URLField(blank=True)
-    dm_enviada = models.BooleanField(default=False)
-    dm_erro = models.TextField(blank=True)
-    payload_bruto = models.TextField(blank=True)
-    criado_em = models.DateTimeField(auto_now_add=True)
-
-    class Meta:
-        verbose_name = "Resposta a story enviada"
-        verbose_name_plural = "Respostas a stories enviadas"
-        ordering = ["-criado_em"]
-
-    def __str__(self):
-        alvo = self.registro_publicacao.oferta_nome if self.registro_publicacao else "(story não identificado)"
-        return f"{alvo} - {'enviado' if self.dm_enviada else 'não enviado'} ({self.criado_em:%d/%m %H:%M})"

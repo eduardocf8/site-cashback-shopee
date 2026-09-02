@@ -16,5 +16,14 @@ urlpatterns = [
     path("automacao/nova/", views.automacao_nova, name="automacao_nova"),
     path("automacao/<int:pk>/editar/", views.automacao_editar, name="automacao_editar"),
     path("automacao/<int:pk>/alternar-ativa/", views.automacao_alternar_ativa, name="automacao_alternar_ativa"),
+    path(
+        "automacao/story/<int:pk>/editar/", views.automacao_story_editar, name="automacao_story_editar"
+    ),
+    path(
+        "automacao/story/<int:pk>/alternar-ativa/",
+        views.automacao_story_alternar_ativa, name="automacao_story_alternar_ativa",
+    ),
     path("automacao/historico/", views.historico, name="automacao_historico"),
+    path("automacao/historico/stories/", views.historico_story, name="automacao_historico_story"),
+    path("instagram/automacao/webhook/", views.webhook_instagram, name="automacao_webhook_instagram"),
 ]

@@ -78,11 +78,11 @@
                 automação·ig
             </a>
             <nav class="sidebar-nav">
-                <a href="{% url 'automacao_lista' %}" class="{% if request.resolver_match.url_name == 'automacao_lista' or request.resolver_match.url_name == 'automacao_nova' or request.resolver_match.url_name == 'automacao_editar' %}ativo{% endif %}">
+                <a href="{% url 'automacao_lista' %}" class="{% if request.resolver_match.url_name == 'automacao_lista' or request.resolver_match.url_name == 'automacao_nova' or request.resolver_match.url_name == 'automacao_editar' or request.resolver_match.url_name == 'automacao_story_editar' %}ativo{% endif %}">
                     <svg class="icone" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M13 2 4 14h6l-1 8 9-12h-6l1-8Z"/></svg>
                     Automações
                 </a>
-                <a href="{% url 'automacao_historico' %}" class="{% if request.resolver_match.url_name == 'automacao_historico' %}ativo{% endif %}">
+                <a href="{% url 'automacao_historico' %}" class="{% if request.resolver_match.url_name == 'automacao_historico' or request.resolver_match.url_name == 'automacao_historico_story' %}ativo{% endif %}">
                     <svg class="icone" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3.5 2"/></svg>
                     Histórico
                 </a>
