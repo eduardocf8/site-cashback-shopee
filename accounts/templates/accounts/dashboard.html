@@ -180,10 +180,11 @@
         .rolar-tabela { overflow-x: auto; }
         .nota-secao { color: var(--muted); font-size: 13px; margin: -8px 0 16px; }
 
-        .filtro-secao { display: flex; align-items: center; gap: 8px; margin-bottom: 16px; }
+        .filtro-secao { display: flex; align-items: center; flex-wrap: wrap; gap: 8px; margin-bottom: 16px; }
         .filtro-secao select {
             padding: 6px 10px; border: 1px solid var(--line); border-radius: 6px;
             font-family: inherit; font-size: 13px; background: var(--paper); color: var(--ink);
+            max-width: 100%;
         }
         .filtro-secao button {
             padding: 6px 14px; border: 1px solid var(--line); border-radius: 6px; background: var(--paper);
