@@ -72,6 +72,16 @@ pasta, pra não ficar vazio quando a automação for ligada de verdade — ver
      `_escolher_oferta_do_momento`). Categoria continua só sem repetir no
      mesmo dia (são poucas categorias - valer pra semana esgotaria as
      candidatas logo no 2º dia).
+     A escolha da categoria e do produto dentro dela é **sorteada** (não
+     sempre o topo do ranking): antes, sempre saía a categoria mais
+     vendida do momento e, dentro dela, sempre o produto #1 em vendas -
+     como esses rankings quase não mudam de um dia pro outro, na prática
+     era sempre o mesmo produto, mesmo com a janela de
+     `DIAS_SEM_REPETIR_OFERTA` acima. Agora a categoria é sorteada entre
+     um pool das `TAMANHO_POOL_CATEGORIAS` (15) mais vendidas (não só as
+     `NUMERO_STORIES_OFERTAS_POR_DIA` usadas no dia) e, dentro dela, o
+     produto é sorteado entre os `TAMANHO_POOL_PRODUTOS_POR_CATEGORIA`
+     (20) mais vendidos (não só o #1) - ver `_escolher_oferta_do_momento`.
      Sábado tem, além das ofertas, 1 dica de economia (rotativo);
      domingo tem, além das ofertas, 1 lembrete de cashback (mensagem de
      marca) - esses dois continuam vindo da tarefa diária única, não do
