@@ -1,5 +1,6 @@
 import io
 import logging
+import random
 import uuid
 from datetime import timedelta
 from pathlib import Path
@@ -38,6 +39,16 @@ NUMERO_STORIES_OFERTAS_POR_DIA = 5
 # sincronizar_ofertas), então sem um intervalo mínimo entre repetições o mesmo produto
 # aparecia quase todo dia. 7 dias = não repete a mesma oferta na mesma semana.
 DIAS_SEM_REPETIR_OFERTA = 7
+
+# Escolher sempre as NUMERO_STORIES_OFERTAS_POR_DIA (5) categorias mais vendidas, e
+# dentro delas sempre a oferta #1 em vendas, dava sempre o mesmo resultado - o ranking
+# de categoria/produto mais vendido quase não muda de um dia pro outro. Pra variar de
+# verdade sem abrir mão de "só produto de peso", sorteia dentro de pools maiores em vez
+# de pegar sempre o topo: TAMANHO_POOL_CATEGORIAS categorias candidatas (não só as 5
+# usadas no dia) e, dentro da escolhida, TAMANHO_POOL_PRODUTOS_POR_CATEGORIA produtos
+# mais vendidos candidatos (não só o #1) - ver _escolher_oferta_do_momento.
+TAMANHO_POOL_CATEGORIAS = 15
+TAMANHO_POOL_PRODUTOS_POR_CATEGORIA = 20
 
 
 def _url_publica_da_midia(nome_arquivo: str, request) -> str:
@@ -216,11 +227,13 @@ def _aguardar_aprovacao_carrossel(imagens, legenda, tipo, conteudo_tipo, data, r
 
 
 def _escolher_oferta_do_momento(data) -> Oferta | None:
-    """1 categoria (nível 1) por story, entre as NUMERO_STORIES_OFERTAS_POR_DIA
-    categorias mais vendidas - nunca repete categoria já usada hoje, nem produto (por
-    nome) já usado nos últimos DIAS_SEM_REPETIR_OFERTA dias. Retorna None quando já
-    bateu o número de stories do dia ou não sobra oferta disponível nas categorias
-    candidatas."""
+    """1 categoria (nível 1) por story, sorteada entre as TAMANHO_POOL_CATEGORIAS
+    categorias mais vendidas (não sempre as mesmas NUMERO_STORIES_OFERTAS_POR_DIA) -
+    nunca repete categoria já usada hoje. Dentro da categoria sorteada, a oferta
+    também é sorteada entre as TAMANHO_POOL_PRODUTOS_POR_CATEGORIA mais vendidas (não
+    sempre a #1), excluindo produto (por nome) já usado nos últimos
+    DIAS_SEM_REPETIR_OFERTA dias. Retorna None quando já bateu o número de stories do
+    dia ou não sobra oferta disponível nas categorias candidatas."""
     ja_hoje = RegistroPublicacao.objects.filter(
         data=data, conteudo_tipo=RegistroPublicacao.CONTEUDO_OFERTA_DIARIA,
     ).exclude(status=RegistroPublicacao.STATUS_ERRO)
@@ -246,12 +259,15 @@ def _escolher_oferta_do_momento(data) -> Oferta | None:
 
     categorias_candidatas = [
         categoria["categoria_id"]
-        for categoria in ofertas_services.categorias_mais_vendidas(NUMERO_STORIES_OFERTAS_POR_DIA)
+        for categoria in ofertas_services.categorias_mais_vendidas(TAMANHO_POOL_CATEGORIAS)
         if categoria["categoria_id"] not in categorias_usadas
     ]
+    random.shuffle(categorias_candidatas)
 
     for categoria_id in categorias_candidatas:
-        for oferta in Oferta.objects.filter(categoria_id=categoria_id):
+        candidatas = list(Oferta.objects.filter(categoria_id=categoria_id)[:TAMANHO_POOL_PRODUTOS_POR_CATEGORIA])
+        random.shuffle(candidatas)
+        for oferta in candidatas:
             if ofertas_services.normalizar_nome_produto(oferta.nome) not in nomes_usados:
                 return oferta
     return None

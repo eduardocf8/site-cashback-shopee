@@ -358,3 +358,29 @@ class EmailDeAprovacaoDoComboTests(TestCase):
         services.publicar_combo_de_stories(timezone.localdate(), self.request)
 
         self.assertIn("Story 2 de 5", mail.outbox[1].body)
+
+
+class DiversidadeDaEscolhaDeOfertaTests(TestCase):
+    """Antes, a escolha sempre pegava a categoria mais vendida e, dentro dela, o
+    produto #1 em vendas - como esses rankings quase não mudam de um dia pro outro, era
+    sempre o mesmo resultado. Agora sorteia dentro de um pool maior (ver
+    TAMANHO_POOL_CATEGORIAS/TAMANHO_POOL_PRODUTOS_POR_CATEGORIA em services.py) - esses
+    testes confirmam que chamadas repetidas não convergem sempre pro mesmo produto."""
+
+    def setUp(self):
+        for categoria_id in range(1, 6):
+            for indice in range(3):
+                Oferta.objects.create(
+                    item_id=categoria_id * 100 + indice,
+                    nome=f"Produto {categoria_id}-{indice}",
+                    categoria_id=categoria_id,
+                    vendas=100 - indice,
+                    percentual_comissao=Decimal("0.05"),
+                )
+
+    def test_chamadas_repetidas_no_mesmo_dia_nao_convergem_pro_mesmo_produto(self):
+        hoje = timezone.localdate()
+
+        escolhidas = {services._escolher_oferta_do_momento(hoje).item_id for _ in range(30)}
+
+        self.assertGreater(len(escolhidas), 1)
