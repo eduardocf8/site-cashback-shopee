@@ -1,14 +1,21 @@
+import hashlib
+import hmac
+import json
 from datetime import timedelta
 from decimal import Decimal
+from unittest.mock import patch
 
+from django.contrib.auth import get_user_model
 from django.core import mail
 from django.test import RequestFactory, TestCase, override_settings
+from django.urls import reverse
 from django.utils import timezone
 
+from links.models import Click
 from ofertas.models import Oferta
 
-from . import conteudo, services, templates_imagem
-from .models import RegistroPublicacao
+from . import conteudo, services, templates_imagem, webhook
+from .models import RegistroPublicacao, RespostaStoryEnviada
 
 
 @override_settings(
@@ -384,3 +391,216 @@ class DiversidadeDaEscolhaDeOfertaTests(TestCase):
         escolhidas = {services._escolher_oferta_do_momento(hoje).item_id for _ in range(30)}
 
         self.assertGreater(len(escolhidas), 1)
+
+
+APP_SECRET_TESTE = "segredo-do-app-de-teste"
+
+
+def _assinar(corpo: bytes) -> str:
+    return "sha256=" + hmac.new(APP_SECRET_TESTE.encode(), corpo, hashlib.sha256).hexdigest()
+
+
+@override_settings(INSTAGRAM_APP_SECRET=APP_SECRET_TESTE)
+class VerificarAssinaturaDoWebhookTests(TestCase):
+    """A assinatura X-Hub-Signature-256 é a única coisa que impede qualquer um de
+    forjar "resposta a story" na URL do webhook e ganhar o link de cashback de graça -
+    ver webhook.verificar_assinatura."""
+
+    def test_assinatura_valida_passa(self):
+        corpo = b'{"entry": []}'
+        self.assertTrue(webhook.verificar_assinatura(corpo, _assinar(corpo)))
+
+    def test_assinatura_de_outro_corpo_nao_passa(self):
+        self.assertFalse(webhook.verificar_assinatura(b'{"entry": []}', _assinar(b'{"outra coisa": 1}')))
+
+    def test_sem_cabecalho_nao_passa(self):
+        self.assertFalse(webhook.verificar_assinatura(b'{"entry": []}', None))
+
+    @override_settings(INSTAGRAM_APP_SECRET="")
+    def test_sem_app_secret_configurado_nao_passa(self):
+        corpo = b'{"entry": []}'
+        self.assertFalse(webhook.verificar_assinatura(corpo, _assinar(corpo)))
+
+
+@override_settings(INSTAGRAM_APP_SECRET=APP_SECRET_TESTE, INSTAGRAM_WEBHOOK_VERIFY_TOKEN="token-de-verificacao")
+class HandshakeDoWebhookTests(TestCase):
+    """GET é o passo único, feito pela Meta ao cadastrar a URL do webhook no painel do
+    App - precisa devolver exatamente o hub.challenge recebido quando o token bate."""
+
+    def test_challenge_correto_devolve_o_challenge(self):
+        resposta = self.client.get(
+            reverse("instagram_webhook"),
+            {"hub.mode": "subscribe", "hub.verify_token": "token-de-verificacao", "hub.challenge": "abc123"},
+        )
+        self.assertEqual(resposta.status_code, 200)
+        self.assertEqual(resposta.content, b"abc123")
+
+    def test_token_errado_e_recusado(self):
+        resposta = self.client.get(
+            reverse("instagram_webhook"),
+            {"hub.mode": "subscribe", "hub.verify_token": "token-errado", "hub.challenge": "abc123"},
+        )
+        self.assertEqual(resposta.status_code, 403)
+
+
+@override_settings(INSTAGRAM_APP_SECRET=APP_SECRET_TESTE, INSTAGRAM_ACCESS_TOKEN="token", INSTAGRAM_BUSINESS_ACCOUNT_ID="1")
+class ProcessamentoDeRespostaAStoryTests(TestCase):
+    """Fim a fim: alguém responde um story de oferta nosso -> o webhook identifica
+    qual story foi (pelo instagram_media_id gravado em RegistroPublicacao na hora de
+    publicar) e manda de volta, por DM, o link daquele produto específico - ver
+    _publicar_story_de_oferta (grava link_produto_original) e webhook.py."""
+
+    def setUp(self):
+        self.registro = RegistroPublicacao.objects.create(
+            data=timezone.localdate(),
+            tipo=RegistroPublicacao.TIPO_STORY,
+            conteudo_tipo=RegistroPublicacao.CONTEUDO_OFERTA_DIARIA,
+            status=RegistroPublicacao.STATUS_PUBLICADO,
+            sucesso=True,
+            instagram_media_id="17800000000000001",
+            oferta_item_id=555,
+            oferta_nome="Fone Bluetooth",
+            link_produto_original="https://shopee.com.br/produto-i.1.555",
+        )
+
+    def _postar(self, payload: dict):
+        corpo = json.dumps(payload).encode()
+        return self.client.post(
+            reverse("instagram_webhook"), data=corpo, content_type="application/json",
+            HTTP_X_HUB_SIGNATURE_256=_assinar(corpo),
+        )
+
+    def _payload_resposta_a_story(self, media_id: str, texto="Quero!", sender_id="99887766", is_echo=False):
+        mensagem = {"text": texto, "reply_to": {"story": {"id": media_id, "url": "https://cdn.exemplo/story.jpg"}}}
+        if is_echo:
+            mensagem["is_echo"] = True
+        return {"entry": [{"id": "1", "messaging": [{"sender": {"id": sender_id}, "message": mensagem}]}]}
+
+    @patch("instagram_bot.instagram_client.enviar_mensagem_direta")
+    def test_resposta_a_story_conhecido_manda_dm_com_o_link_certo(self, mock_enviar):
+        mock_enviar.return_value = "mid123"
+
+        resposta = self._postar(self._payload_resposta_a_story("17800000000000001"))
+
+        self.assertEqual(resposta.status_code, 200)
+        registro_resposta = RespostaStoryEnviada.objects.get()
+        self.assertEqual(registro_resposta.registro_publicacao, self.registro)
+        self.assertTrue(registro_resposta.dm_enviada)
+        self.assertIn(f"/instagram/story/{self.registro.pk}/ir/", registro_resposta.link_enviado)
+
+        mock_enviar.assert_called_once()
+        destinatario, texto_enviado = mock_enviar.call_args[0]
+        self.assertEqual(destinatario, "99887766")
+        self.assertIn(registro_resposta.link_enviado, texto_enviado)
+
+    @patch("instagram_bot.instagram_client.enviar_mensagem_direta")
+    def test_resposta_a_story_desconhecido_manda_mensagem_padrao(self, mock_enviar):
+        resposta = self._postar(self._payload_resposta_a_story("media-id-que-nao-existe"))
+
+        self.assertEqual(resposta.status_code, 200)
+        registro_resposta = RespostaStoryEnviada.objects.get()
+        self.assertIsNone(registro_resposta.registro_publicacao)
+        self.assertTrue(registro_resposta.dm_enviada)
+
+        mock_enviar.assert_called_once()
+        _destinatario, texto_enviado = mock_enviar.call_args[0]
+        self.assertEqual(texto_enviado, webhook.MENSAGEM_LINK_NAO_ENCONTRADO)
+
+    @patch("instagram_bot.instagram_client.enviar_mensagem_direta")
+    def test_eco_da_propria_conta_e_ignorado(self, mock_enviar):
+        resposta = self._postar(self._payload_resposta_a_story("17800000000000001", is_echo=True))
+
+        self.assertEqual(resposta.status_code, 200)
+        mock_enviar.assert_not_called()
+        self.assertEqual(RespostaStoryEnviada.objects.count(), 0)
+
+    @patch("instagram_bot.instagram_client.enviar_mensagem_direta")
+    def test_dm_comum_sem_reply_to_story_e_ignorada(self, mock_enviar):
+        payload = {"entry": [{"id": "1", "messaging": [{"sender": {"id": "1"}, "message": {"text": "oi"}}]}]}
+
+        resposta = self._postar(payload)
+
+        self.assertEqual(resposta.status_code, 200)
+        mock_enviar.assert_not_called()
+        self.assertEqual(RespostaStoryEnviada.objects.count(), 0)
+
+    @patch("instagram_bot.instagram_client.enviar_mensagem_direta")
+    def test_formato_alternativo_entry_changes_tambem_e_aceito(self, mock_enviar):
+        """Formato "changes" (field=messages), alternativa ao "messaging" - ver
+        webhook._extrair_eventos_de_mensagem."""
+        payload = {
+            "entry": [{
+                "id": "1",
+                "changes": [{"field": "messages", "value": self._payload_resposta_a_story(
+                    "17800000000000001"
+                )["entry"][0]["messaging"][0]}],
+            }]
+        }
+
+        resposta = self._postar(payload)
+
+        self.assertEqual(resposta.status_code, 200)
+        mock_enviar.assert_called_once()
+
+    def test_assinatura_invalida_e_recusada_e_nao_processa_nada(self):
+        payload = self._payload_resposta_a_story("17800000000000001")
+        corpo = json.dumps(payload).encode()
+
+        resposta = self.client.post(
+            reverse("instagram_webhook"), data=corpo, content_type="application/json",
+            HTTP_X_HUB_SIGNATURE_256="sha256=assinatura-invalida",
+        )
+
+        self.assertEqual(resposta.status_code, 403)
+        self.assertEqual(RespostaStoryEnviada.objects.count(), 0)
+
+
+class IrParaStoryDeOfertaTests(TestCase):
+    """Link enviado por DM - precisa exigir login (pra creditar o cashback à pessoa
+    certa, igual ofertas/views.py::ir_para_oferta) e gerar um Click TIPO_STORY_DM."""
+
+    def setUp(self):
+        self.usuario = get_user_model().objects.create_user(
+            username="compradora", password="senha123", cpf="39053344705"
+        )
+        self.registro = RegistroPublicacao.objects.create(
+            data=timezone.localdate(),
+            tipo=RegistroPublicacao.TIPO_STORY,
+            conteudo_tipo=RegistroPublicacao.CONTEUDO_OFERTA_DIARIA,
+            status=RegistroPublicacao.STATUS_PUBLICADO,
+            sucesso=True,
+            oferta_item_id=555,
+            link_produto_original="https://shopee.com.br/produto-i.1.555",
+        )
+
+    def test_exige_login(self):
+        resposta = self.client.get(reverse("instagram_story_ir", args=[self.registro.pk]))
+        self.assertEqual(resposta.status_code, 302)
+        self.assertIn(reverse("login"), resposta.url)
+
+    @override_settings(
+        SHOPEE_AFFILIATE_APP_ID="app123",
+        SHOPEE_AFFILIATE_SECRET="segredo123",
+        SHOPEE_AFFILIATE_API_URL="https://open-api.affiliate.shopee.com.br/graphql",
+    )
+    @patch("links.services.gerar_link_curto")
+    def test_logado_gera_click_tipo_story_dm_e_redireciona(self, mock_gerar_link):
+        mock_gerar_link.return_value = "https://shope.ee/storylink123"
+        self.client.force_login(self.usuario)
+
+        resposta = self.client.get(reverse("instagram_story_ir", args=[self.registro.pk]))
+
+        click = Click.objects.get()
+        self.assertEqual(click.tipo, Click.TIPO_STORY_DM)
+        self.assertEqual(click.url_original, self.registro.link_produto_original)
+        self.assertEqual(click.item_id_alvo, self.registro.oferta_item_id)
+        self.assertRedirects(resposta, "https://shope.ee/storylink123", fetch_redirect_response=False)
+
+    def test_sem_link_guardado_volta_pra_home_com_erro(self):
+        self.registro.link_produto_original = ""
+        self.registro.save(update_fields=["link_produto_original"])
+        self.client.force_login(self.usuario)
+
+        resposta = self.client.get(reverse("instagram_story_ir", args=[self.registro.pk]))
+
+        self.assertRedirects(resposta, reverse("home"))

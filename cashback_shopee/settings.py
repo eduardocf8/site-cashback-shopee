@@ -210,6 +210,13 @@ INSTAGRAM_ACCESS_TOKEN = os.environ.get("INSTAGRAM_ACCESS_TOKEN", "")
 INSTAGRAM_BUSINESS_ACCOUNT_ID = os.environ.get("INSTAGRAM_BUSINESS_ACCOUNT_ID", "")
 INSTAGRAM_GRAPH_API_URL = os.environ.get("INSTAGRAM_GRAPH_API_URL", "https://graph.instagram.com")
 
+# Token combinado com a Meta ao cadastrar a URL do webhook de mensagens no painel do
+# App (Products > Webhooks) - confirma que o handshake de verificação (GET com
+# hub.verify_token) veio de lá mesmo. Só isso, não confunde com INSTAGRAM_APP_SECRET
+# (esse assina cada entrega de evento, não o handshake). Ver instagram_bot/views.py,
+# webhook_instagram, e marketing/instagram/README.md.
+INSTAGRAM_WEBHOOK_VERIFY_TOKEN = os.environ.get("INSTAGRAM_WEBHOOK_VERIFY_TOKEN", "")
+
 # Interruptor mestre do bot: enquanto False, o bot gera o conteúdo do dia e
 # registra tudo (RegistroPublicacao) mas NÃO publica de verdade no Instagram
 # (modo "dry-run"). Vira True só quando o perfil já estiver semeado manualmente

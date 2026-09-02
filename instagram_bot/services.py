@@ -288,7 +288,10 @@ def _publicar_story_de_oferta(oferta: Oferta, data, request) -> RegistroPublicac
     registro.oferta_categoria_id = oferta.categoria_id
     registro.oferta_item_id = oferta.item_id
     registro.oferta_nome = oferta.nome
-    registro.save(update_fields=["oferta_categoria_id", "oferta_item_id", "oferta_nome"])
+    registro.link_produto_original = oferta.product_link
+    registro.save(
+        update_fields=["oferta_categoria_id", "oferta_item_id", "oferta_nome", "link_produto_original"]
+    )
     return registro
 
 

@@ -1,3 +1,4 @@
+import json
 import time
 
 import requests
@@ -138,6 +139,23 @@ def publicar_carrossel(image_urls: list[str], legenda: str = "") -> str:
     creation_id = criar_container_carrossel(item_ids, legenda=legenda)
     _aguardar_processamento(creation_id)
     return publicar_container(creation_id)
+
+
+def enviar_mensagem_direta(recipient_id: str, texto: str) -> str:
+    """Manda uma DM pra um usuário (identificado pelo IGSID, o "sender.id" que chega
+    no webhook de mensagens) - usado pra responder quem respondeu um story de oferta
+    com o link do produto (ver webhook.py). Diferente de
+    automacao_instagram/instagram_api.py::enviar_resposta_privada, que manda a
+    "resposta privada" atrelada a um comment_id: aqui é uma DM avulsa, no recipient.id
+    (sem essa restrição de 7 dias/1 vez que a resposta a comentário tem). Retorna o
+    id da mensagem criada."""
+    _exigir_config()
+    dados = _chamar(
+        "POST", f"{settings.INSTAGRAM_BUSINESS_ACCOUNT_ID}/messages",
+        recipient=json.dumps({"id": recipient_id}),
+        message=json.dumps({"text": texto}),
+    )
+    return dados.get("message_id", dados.get("id", ""))
 
 
 def renovar_token_de_longa_duracao(token_atual: str) -> dict:

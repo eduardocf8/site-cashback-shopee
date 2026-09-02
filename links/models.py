@@ -8,10 +8,12 @@ class Click(models.Model):
     TIPO_PRODUTO = "produto"
     TIPO_VITRINE = "vitrine"
     TIPO_HOME = "home"
+    TIPO_STORY_DM = "story_dm"
     TIPO_CHOICES = [
         (TIPO_PRODUTO, "Link de produto convertido"),
         (TIPO_VITRINE, "Vitrine de ofertas"),
         (TIPO_HOME, "Página inicial da Shopee"),
+        (TIPO_STORY_DM, "Link enviado por DM (resposta a story)"),
     ]
 
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
