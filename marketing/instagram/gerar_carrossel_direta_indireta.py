@@ -1,12 +1,17 @@
-"""Carrossel "Dois jeitos de comprar pela cash-b".
+"""Carrossel "Existem 2 formas de comprar pela cash-b".
 
-Explica venda direta x venda indireta (regras em paginas/templates/regras_cashback.html)
-sem tratar uma como certa e a outra como errada: as duas geram cashback, e cada uma serve
-a um momento de compra diferente. O que muda é o acesso ao bônus de comissão extra, que
-só existe na venda direta.
+Explica venda direta x venda indireta (regras em paginas/templates/regras_cashback.html).
+As duas geram cashback, mas não em igual medida: a indireta rende menos - o piso
+garantido é menor (CASHBACK_MINIMO_VENDA_INDIRETA x CASHBACK_MINIMO_VENDA_DIRETA em
+settings.py) e ela não alcança as campanhas de comissão extra da Shopee, que só valem
+quando o item comprado bate com o link convertido.
+
+Por isso o carrossel recomenda a venda direta em vez de tratar as duas como equivalentes:
+dizer que "cada uma serve a um momento" esconderia da pessoa que um dos caminhos paga
+menos - informação que é dela, não nossa.
 
 Nota de voz (VOZ.md): o cashback base é sempre afirmativo ("gera", "volta"), mas o bônus
-de campanha é de fato condicional - por isso "pode render mais" está certo aqui.
+de campanha é de fato condicional - por isso "caso esteja ativa" está certo aqui.
 """
 from carrossel_base import (
     BRAND_GRADIENT,
@@ -29,40 +34,41 @@ from carrossel_base import (
 SLIDES = [
     Slide(LIGHT_BG, f"""
     {tag_label("cash-b explica", BRAND_PRIMARY)}
-    {titulo(f"Tem dois jeitos de comprar pela {MARCA}", 33, DARK_BG)}
-    {subtitulo("Os dois geram cashback. A diferença é outra.", MUTED, 280, 15)}
+    {titulo(f"Existem 2 formas de comprar pela {MARCA}", 33, DARK_BG)}
+    {subtitulo("Todas geram cashback, porém uma delas é menor.", MUTED, 280, 15)}
     """, True, capa=True),
 
     Slide(DARK_BG, f"""
-    {tag_label("jeito 1", "rgba(255,255,255,0.5)")}
+    {tag_label("forma 1", "rgba(255,255,255,0.5)")}
     {titulo("Venda indireta", 32)}
     {subtitulo(
         'Você clica em "Ir pra Shopee" e compra o que quiser. Não precisa escolher o '
         "produto antes — entra na loja e navega normalmente.",
         "rgba(255,255,255,0.7)", 300, 14.5)}
-    {destaque("Toda compra gera cashback do mesmo jeito.", escuro=True, cor=SUCCESS)}
+    {destaque("A venda indireta dá menos cashback que a direta.", escuro=True)}
     """, False),
 
     Slide(LIGHT_BG, f"""
-    {tag_label("jeito 2", BRAND_PRIMARY)}
+    {tag_label("forma 2", BRAND_PRIMARY)}
     {titulo("Venda direta", 32, DARK_BG)}
     {subtitulo(
         "Você converte o link de um produto específico ou abre ele pela vitrine de "
-        "ofertas — e compra aquele produto.",
+        "ofertas do site e faz a compra.",
         MUTED, 300, 14.5)}
-    {destaque("Também gera cashback, e ainda abre uma porta a mais.", cor=SUCCESS)}
+    {destaque("Assim você ganha ainda mais cashback.", cor=SUCCESS)}
     """, True),
 
     Slide(LIGHT_BG, f"""
     {tag_label("a diferença", BRAND_PRIMARY)}
-    {titulo("A porta a mais", 30, DARK_BG)}
+    {titulo("Ganhando mais cashback", 30, DARK_BG)}
     {subtitulo(
-        "A Shopee às vezes roda campanha de comissão extra em produtos específicos. "
-        "Quando isso acontece, o cashback daquele produto sobe.",
-        MUTED, 305, 14.5)}
+        "Alguns produtos têm campanha de comissão extra e somente a venda direta tem "
+        "acesso a essas campanhas. Quando a comissão aumenta, seu cashback também "
+        "aumenta.",
+        MUTED, 305, 14)}
     <div style="margin-top:16px;">
-        {caso("Venda indireta", "Cashback normal, sempre")}
-        {caso("Venda direta", "Cashback normal + o bônus, quando o produto está em campanha")}
+        {caso("Venda indireta", "Cashback normal, porém reduzido")}
+        {caso("Venda direta", "Cashback normal + bônus de campanha (caso esteja ativa)")}
     </div>
     """, True),
 
@@ -73,29 +79,33 @@ SLIDES = [
         {caso("Você já sabe o que vai comprar", "Converta o link do produto ou abra ele pela vitrine", escuro=True)}
         {caso("Você vai olhar, comparar, encher o carrinho", 'Entre por "Ir pra Shopee"', escuro=True)}
     </div>
+    {destaque(
+        "Nesse último caso, você ainda tem a opção de, após escolher os produtos, "
+        "converter os links diretamente no site para ganhar mais cashback.",
+        escuro=True)}
     """, False),
 
     Slide(BRAND_GRADIENT, f"""
     {titulo("Os dois caminhos te dão dinheiro de volta.", 30)}
     {subtitulo(
-        "Um deles pode render mais quando a Shopee está com campanha no produto. "
-        "Saber disso já muda a próxima compra.",
+        "Porém, é possível maximizar seus ganhos escolhendo sempre a venda direta. "
+        "Lembre-se disso na próxima compra.",
         "rgba(255,255,255,0.9)", 300, 14.5)}
     {cta_pill()}
     """, False, seta=False),
 ]
 
-LEGENDA = """Tem dois jeitos de comprar na Shopee pela cash-b — e os dois geram cashback. 🛒
+LEGENDA = """Existem 2 formas de comprar na Shopee pela cash-b — e uma delas rende menos. 🛒
 
-Venda indireta: você clica em "Ir pra Shopee" e compra o que quiser, sem escolher nada antes.
+Venda indireta: você clica em "Ir pra Shopee" e compra o que quiser, sem escolher nada antes. Gera cashback, só que reduzido.
 
-Venda direta: você converte o link do produto ou abre ele pela vitrine de ofertas e compra aquele produto. Aqui entra o bônus das campanhas de comissão extra da Shopee, que só existe nesse caminho.
+Venda direta: você converte o link do produto ou abre ele pela vitrine de ofertas do site e faz a compra. Rende mais, e é a única que alcança as campanhas de comissão extra da Shopee.
 
-Resumindo: se você já sabe o que vai comprar, vale converter o link. Se vai só navegar, entra pelo botão.
+E dá para juntar as duas coisas: mesmo entrando para navegar, depois de escolher os produtos você pode voltar e converter os links no site antes de fechar a compra.
 
 #cashback #shopeebrasil #dinheirodevolta #economizar #comprasonline"""
 
 if __name__ == "__main__":
     import sys
 
-    gerar("carrossel-direta-indireta", SLIDES, LEGENDA, exportar="--export" in sys.argv)
+    gerar("carrossel-07-direta-indireta", SLIDES, LEGENDA, exportar="--export" in sys.argv)

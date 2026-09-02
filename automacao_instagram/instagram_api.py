@@ -16,8 +16,19 @@ def _url(caminho: str) -> str:
 
 def _chamar(metodo: str, caminho: str, access_token: str, **params) -> dict:
     params["access_token"] = access_token
-    resposta = requests.request(metodo, _url(caminho), params=params, timeout=30)
-    dados = resposta.json()
+    try:
+        resposta = requests.request(metodo, _url(caminho), params=params, timeout=30)
+        dados = resposta.json()
+    except requests.exceptions.RequestException as erro:
+        # Falha de rede (timeout, DNS, proxy etc.) - não é erro "de negócio" da API, mas
+        # precisa virar InstagramAPIError mesmo assim, senão escapa dos try/except que só
+        # esperam InstagramAPIError (ex: services._processar_comentario_correspondido) e
+        # pode deixar um comentário sem o registro salvo, reprocessando (e respondendo)
+        # ele de novo no próximo ciclo.
+        raise InstagramAPIError(f"Falha de conexão com a API do Instagram: {erro}") from erro
+    except ValueError as erro:
+        raise InstagramAPIError(f"Resposta inválida da API do Instagram: {erro}") from erro
+
     if "error" in dados:
         erro = dados["error"]
         mensagem = erro.get("message", str(erro))
@@ -37,6 +48,30 @@ def listar_midias_recentes(instagram_business_account_id: str, access_token: str
         fields="id,caption,permalink,timestamp", limit=limite,
     )
     return dados.get("data", [])
+
+
+def listar_stories_recentes(instagram_business_account_id: str, access_token: str) -> list[dict]:
+    """Stories ativos agora (a API só lista o que ainda está no ar, até 24h), pra
+    escolher qual vai receber a automação - mesmo papel que listar_midias_recentes
+    tem pra post. Retorna [{id, media_type, media_url, timestamp, permalink}, ...]."""
+    dados = _chamar(
+        "GET", f"{instagram_business_account_id}/stories", access_token,
+        fields="id,media_type,media_url,timestamp,permalink",
+    )
+    return dados.get("data", [])
+
+
+def enviar_mensagem_direta(instagram_business_account_id: str, recipient_id: str, texto: str, access_token: str) -> str:
+    """DM avulsa pro recipient_id (o "sender.id" que chega no webhook de mensagens) -
+    diferente de enviar_resposta_privada (atrelada a um comment_id, só funciona até 7
+    dias/1 vez por comentário). Usada pra responder quem respondeu um story (ver
+    automacao_instagram/webhook.py). Retorna o id da mensagem criada."""
+    dados = _chamar(
+        "POST", f"{instagram_business_account_id}/messages", access_token,
+        recipient=json.dumps({"id": recipient_id}),
+        message=json.dumps({"text": texto}),
+    )
+    return dados.get("message_id", "")
 
 
 def listar_comentarios(media_id: str, access_token: str) -> list[dict]:

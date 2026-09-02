@@ -42,6 +42,7 @@ class RegistroPublicacaoAdmin(admin.ModelAdmin):
         "oferta_categoria_id",
         "oferta_item_id",
         "oferta_nome",
+        "link_produto_original",
         "modo_simulacao",
         "status",
         "sucesso",

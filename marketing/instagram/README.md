@@ -72,6 +72,16 @@ pasta, pra não ficar vazio quando a automação for ligada de verdade — ver
      `_escolher_oferta_do_momento`). Categoria continua só sem repetir no
      mesmo dia (são poucas categorias - valer pra semana esgotaria as
      candidatas logo no 2º dia).
+     A escolha da categoria e do produto dentro dela é **sorteada** (não
+     sempre o topo do ranking): antes, sempre saía a categoria mais
+     vendida do momento e, dentro dela, sempre o produto #1 em vendas -
+     como esses rankings quase não mudam de um dia pro outro, na prática
+     era sempre o mesmo produto, mesmo com a janela de
+     `DIAS_SEM_REPETIR_OFERTA` acima. Agora a categoria é sorteada entre
+     um pool das `TAMANHO_POOL_CATEGORIAS` (15) mais vendidas (não só as
+     `NUMERO_STORIES_OFERTAS_POR_DIA` usadas no dia) e, dentro dela, o
+     produto é sorteado entre os `TAMANHO_POOL_PRODUTOS_POR_CATEGORIA`
+     (20) mais vendidos (não só o #1) - ver `_escolher_oferta_do_momento`.
      Sábado tem, além das ofertas, 1 dica de economia (rotativo);
      domingo tem, além das ofertas, 1 lembrete de cashback (mensagem de
      marca) - esses dois continuam vindo da tarefa diária única, não do
@@ -237,6 +247,29 @@ comum dos dois models) ganhou 4 properties só pra isso funcionar -
 curada "passar por" `Oferta` (o model do catálogo sincronizado) sem
 duplicar o gerador de imagem nem o fluxo de aprovação. Mesmo
 `CONTEUDO_OFERTA_DIARIA`/limite diário/janela de 7 dias do resto.
+
+### Link do produto disponível pra automação de resposta a story (2026-09-02)
+
+Não dá pra incluir link clicável num story publicado por API (sem link
+sticker manual) - por isso todo story de oferta manda pro perfil ("link
+na bio"), sem link direto pro produto. Pra viabilizar uma automação de
+"quem responde esse story recebe o link do produto" (a automação em si
+mora em `automacao_instagram/` - ver `automacao_instagram/README.md`,
+"Automação de resposta a story"), toda vez que um story de oferta é
+publicado (`_publicar_story_de_oferta`, chamado pela escolha automática,
+pelo comando manual e pelo botão "Criar story"), o `product_link`
+original da Shopee é gravado em `RegistroPublicacao.link_produto_original`.
+
+**Não** é reaproveitado o link do catálogo sincronizado (`Oferta.url_ir`,
+baseado no pk), porque `sincronizar_ofertas()` apaga e recria todas as
+`Oferta` a cada sincronização (pk muda) - um link assim quebraria depois
+da próxima sincronização, ainda dentro das 24h do story no ar.
+`RegistroPublicacao` nunca é apagado, então seu pk (e o link derivado
+dele, `/instagram/story/<id>/ir/` - ver `instagram_bot/views.py`,
+`ir_para_story_de_oferta`) é estável. Esse link segue o mesmo fluxo de
+clique rastreado das outras ofertas (`links.services.gerar_click`,
+`Click.TIPO_STORY_DM`) e a mesma exigência de login, pra creditar o
+cashback à pessoa certa.
 
 ## Cron Jobs do Render (2026-08-28)
 
@@ -603,6 +636,14 @@ python3 gerar_carrossel_<tema>.py            # só o preview + legenda
 python3 gerar_carrossel_<tema>.py --export   # também os PNGs 1080x1350
 ```
 
+**A pasta de saída leva o número de ordem de criação**
+(`carrossel-07-direta-indireta`), e o próximo carrossel continua a
+sequência. Sem isso a lista era alfabética e não dava para saber, olhando
+o repositório, quais foram os últimos feitos — que é justamente o que se
+procura quando se volta na pasta depois de um tempo. O número é a ordem em
+que foram criados, **não** a ordem de publicação: carrossel pronto pode
+esperar a data certa (o de datas duplas é o caso).
+
 Cada carrossel gera na própria pasta:
 
 - `preview.html` — o carrossel arrastável, para revisar antes de exportar
@@ -681,12 +722,12 @@ digitação. `MARCA` é o nome dentro de um `white-space:nowrap`.
 - **Nada de "quase ninguém usa", "a maioria não sabe" e afins** sobre o
   comportamento dos usuários — decisão do dono do produto: não existe
   histórico que sustente esse tipo de afirmação. Comparar e explicar as
-  opções basta (é o que o `carrossel-direta-indireta` faz).
-- **`carrossel-indique-e-ganhe` precisa dizer que o programa não fica
+  opções basta (é o que o `carrossel-07-direta-indireta` faz).
+- **`carrossel-10-indique-e-ganhe` precisa dizer que o programa não fica
   ligado o tempo todo** (`ConfiguracaoIndicacao.esta_ativa()`), e dizer
   isso num slide próprio, não em nota de rodapé. Post que promete um
   programa desligado gera decepção e comentário irritado.
-- **`carrossel-datas-duplas` só pode ser postado com a campanha de
+- **`carrossel-11-datas-duplas` só pode ser postado com a campanha de
   cashback aumentado de fato ligada** (`CASHBACK_MULTIPLICADOR_CAMPANHA`
   acima de 1) ou às vésperas dela: o carrossel afirma que a cash-b aumenta
   o cashback nessas datas. O valor do aumento não aparece na arte de

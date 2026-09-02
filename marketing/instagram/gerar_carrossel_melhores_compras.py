@@ -105,4 +105,4 @@ Salve para consultar antes da próxima compra na Shopee.
 if __name__ == "__main__":
     import sys
 
-    gerar("carrossel-melhores-compras", SLIDES, LEGENDA, exportar="--export" in sys.argv)
+    gerar("carrossel-05-melhores-compras", SLIDES, LEGENDA, exportar="--export" in sys.argv)

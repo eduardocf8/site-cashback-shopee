@@ -124,4 +124,4 @@ Vai comprar algo esse mês? Guarde para a data. Avisamos aqui quando estiver no 
 if __name__ == "__main__":
     import sys
 
-    gerar("carrossel-datas-duplas", SLIDES, LEGENDA, exportar="--export" in sys.argv)
+    gerar("carrossel-11-datas-duplas", SLIDES, LEGENDA, exportar="--export" in sys.argv)

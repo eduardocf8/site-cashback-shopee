@@ -114,4 +114,4 @@ Salve para começar pela próxima compra.
 if __name__ == "__main__":
     import sys
 
-    gerar("carrossel-beneficios", SLIDES, LEGENDA, exportar="--export" in sys.argv)
+    gerar("carrossel-01-beneficios", SLIDES, LEGENDA, exportar="--export" in sys.argv)

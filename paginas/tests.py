@@ -1,5 +1,11 @@
-from django.test import TestCase
+from decimal import Decimal
+
+from django.template.defaultfilters import floatformat
+from django.test import TestCase, override_settings
 from django.urls import reverse
+
+from ofertas.models import Oferta
+from ofertas.services import obter_cashback_maximo_anunciado
 
 
 class MetaSocialTests(TestCase):
@@ -80,3 +86,80 @@ class SitemapTests(TestCase):
         # é texto institucional. Marcar tudo igual desperdiça rastreamento.
         conteudo = self.client.get("/sitemap.xml").content.decode()
         self.assertEqual(conteudo.count("<changefreq>daily</changefreq>"), 2)
+
+
+@override_settings(
+    URL_WHATSAPP_CANAL="https://whatsapp.com/channel/exemplo",
+    URL_INSTAGRAM="https://www.instagram.com/usecashb/",
+    URL_YOUTUBE="https://www.youtube.com/@usecashb",
+)
+class PaginaDeBioTests(TestCase):
+    """A página /bio/, que substitui a ferramenta de link na bio.
+
+    O que importa aqui não é o visual e sim o que o visual depende: um botão principal
+    só (senão não existe principal), o percentual vindo da mesma fonte da home, a página
+    fora da indexação, e endereço de rede vazio sumindo em vez de virar link quebrado.
+    """
+
+    def test_abre(self):
+        self.assertEqual(self.client.get(reverse("links_bio")).status_code, 200)
+
+    def test_tem_um_unico_botao_principal(self):
+        # Dois botões roxos viram dois secundários: a hierarquia da página inteira
+        # depende de existir um só. Conta o atributo do elemento, não a classe solta -
+        # ela também aparece nas regras de CSS da própria página.
+        html = self.client.get(reverse("links_bio")).content.decode()
+        self.assertEqual(html.count('class="bio-botao bio-botao-principal"'), 1)
+
+    def test_o_botao_principal_leva_para_a_home(self):
+        # E não para a vitrine: a home é a única página com o conversor de link, que é
+        # o caminho da venda direta - o que paga mais. Ela já mostra a vitrine embaixo,
+        # então cobre também quem chegou só para olhar.
+        html = self.client.get(reverse("links_bio")).content.decode()
+        marcador = 'class="bio-botao bio-botao-principal" href="'
+        destino = html.split(marcador)[1].split('"')[0]
+        self.assertEqual(destino, reverse("home"))
+
+    def test_mostra_o_mesmo_percentual_anunciado_na_home(self):
+        # É a única coisa nesta página que uma ferramenta de fora não faria. Se sair de
+        # uma fonte diferente da home, o site promete dois números ao mesmo tempo.
+        Oferta.objects.create(
+            item_id=1, nome="Fone", nome_curto="fone",
+            preco_min=Decimal("100"), preco_max=Decimal("100"),
+            percentual_comissao=Decimal("0.4200"), categoria_id=1,
+        )
+        # floatformat e não f-string: o template localiza o número (8,00 e não 8.00),
+        # e comparar com ponto faria o teste falhar mesmo com a página certa.
+        esperado = floatformat(obter_cashback_maximo_anunciado(), 2)
+
+        html = self.client.get(reverse("links_bio")).content.decode()
+
+        self.assertIn(esperado, html)
+
+    def test_fica_fora_da_indexacao_e_do_sitemap(self):
+        # É navegação, não conteúdo: indexada, competiria com a home pelas mesmas
+        # buscas sem ter nada próprio a dizer.
+        html = self.client.get(reverse("links_bio")).content.decode()
+        self.assertIn('name="robots" content="noindex', html)
+
+        sitemap = self.client.get("/sitemap.xml").content.decode()
+        self.assertNotIn(f"<loc>http://testserver{reverse('links_bio')}</loc>", sitemap)
+
+    def test_endereco_de_rede_vazio_nao_vira_link_quebrado(self):
+        with override_settings(URL_WHATSAPP_CANAL="", URL_YOUTUBE=""):
+            html = self.client.get(reverse("links_bio")).content.decode()
+
+        self.assertNotIn("Ofertas no WhatsApp", html)
+        self.assertNotIn("cash-b no YouTube", html)
+        # o principal continua de pé
+        self.assertIn('class="bio-botao bio-botao-principal"', html)
+
+    def test_home_e_bio_usam_o_mesmo_endereco_de_whatsapp(self):
+        # Os dois liam o endereço escrito à mão no template; um deles desatualizado é o
+        # tipo de erro que ninguém percebe.
+        with override_settings(URL_WHATSAPP_CANAL="https://whatsapp.com/channel/novo"):
+            home = self.client.get(reverse("home")).content.decode()
+            links = self.client.get(reverse("links_bio")).content.decode()
+
+        self.assertIn("https://whatsapp.com/channel/novo", home)
+        self.assertIn("https://whatsapp.com/channel/novo", links)

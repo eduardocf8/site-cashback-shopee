@@ -1,10 +1,14 @@
 from datetime import timedelta
 from decimal import Decimal
+from unittest.mock import patch
 
+from django.contrib.auth import get_user_model
 from django.core import mail
 from django.test import RequestFactory, TestCase, override_settings
+from django.urls import reverse
 from django.utils import timezone
 
+from links.models import Click
 from ofertas.models import Oferta
 
 from . import conteudo, services, templates_imagem
@@ -136,6 +140,46 @@ class ComboDeStoriesTests(TestCase):
     def test_sem_catalogo_nao_monta_combo(self):
         Oferta.objects.all().delete()
         self.assertIsNone(conteudo.combo_de_stories_do_dia())
+
+    def test_rotulos_nao_prometem_o_maior_absoluto_do_catalogo(self):
+        """A busca do combo é só entre as ~400 mais vendidas (ver comentário em
+        combo_de_stories_do_dia), não o catálogo inteiro - por isso o rótulo (+
+        subrótulo) não pode dizer "o maior de hoje" sem qualificar (um produto pouco
+        vendido pode ter % ou R$ maior e não entrar na conta, o que já gerou confusão
+        comparando com a vitrine, que ordena o catálogo inteiro - ver conversa de
+        2026-09-02)."""
+        combo = conteudo.combo_de_stories_do_dia()
+
+        for indice in (0, 1, 3):
+            story = combo[indice]
+            texto = story.get("titulo") or f"{story['rotulo']} {story.get('subrotulo', '')}"
+            self.assertIn("mais vendidos", texto)
+            self.assertNotRegex(texto.lower(), r"\bo maior\b.*\bhoje\b")
+
+    def test_rotulo_e_subrotulo_cabem_na_largura_da_imagem(self):
+        """rotulo/subrotulo em gerar_imagem_numero_com_produto são desenhados numa
+        linha cada, sem quebra automática (diferente de titulo/apoio) - um texto
+        comprido demais estoura a largura do story e corta na imagem final."""
+        from PIL import Image, ImageDraw
+
+        from .templates_imagem import _fonte
+
+        combo = conteudo.combo_de_stories_do_dia()
+        img = Image.new("RGB", (1080, 1920))
+        draw = ImageDraw.Draw(img)
+        escala = min(1920 / 1080, 1.4)
+        fonte_rotulo = _fonte(int(30 * escala), mono=True, negrito=True)
+        fonte_subrotulo = _fonte(int(20 * escala))
+        largura_max = 1080 - 88 * 2
+
+        for indice in (1, 3):
+            rotulo = combo[indice]["rotulo"]
+            largura = draw.textlength(rotulo.upper(), font=fonte_rotulo)
+            self.assertLessEqual(largura, largura_max, f"rótulo estoura a largura: {rotulo!r}")
+
+            subrotulo = combo[indice]["subrotulo"]
+            largura_sub = draw.textlength(subrotulo, font=fonte_subrotulo)
+            self.assertLessEqual(largura_sub, largura_max, f"subrótulo estoura a largura: {subrotulo!r}")
 
     def test_chamada_para_a_bio_fica_solta_e_nao_dentro_da_frase(self):
         """Dentro do rodapé, "link na bio" lê como parte da explicação; solto e
@@ -358,3 +402,80 @@ class EmailDeAprovacaoDoComboTests(TestCase):
         services.publicar_combo_de_stories(timezone.localdate(), self.request)
 
         self.assertIn("Story 2 de 5", mail.outbox[1].body)
+
+
+class DiversidadeDaEscolhaDeOfertaTests(TestCase):
+    """Antes, a escolha sempre pegava a categoria mais vendida e, dentro dela, o
+    produto #1 em vendas - como esses rankings quase não mudam de um dia pro outro, era
+    sempre o mesmo resultado. Agora sorteia dentro de um pool maior (ver
+    TAMANHO_POOL_CATEGORIAS/TAMANHO_POOL_PRODUTOS_POR_CATEGORIA em services.py) - esses
+    testes confirmam que chamadas repetidas não convergem sempre pro mesmo produto."""
+
+    def setUp(self):
+        for categoria_id in range(1, 6):
+            for indice in range(3):
+                Oferta.objects.create(
+                    item_id=categoria_id * 100 + indice,
+                    nome=f"Produto {categoria_id}-{indice}",
+                    categoria_id=categoria_id,
+                    vendas=100 - indice,
+                    percentual_comissao=Decimal("0.05"),
+                )
+
+    def test_chamadas_repetidas_no_mesmo_dia_nao_convergem_pro_mesmo_produto(self):
+        hoje = timezone.localdate()
+
+        escolhidas = {services._escolher_oferta_do_momento(hoje).item_id for _ in range(30)}
+
+        self.assertGreater(len(escolhidas), 1)
+
+
+class IrParaStoryDeOfertaTests(TestCase):
+    """Link enviado por DM - precisa exigir login (pra creditar o cashback à pessoa
+    certa, igual ofertas/views.py::ir_para_oferta) e gerar um Click TIPO_STORY_DM."""
+
+    def setUp(self):
+        self.usuario = get_user_model().objects.create_user(
+            username="compradora", password="senha123", cpf="39053344705"
+        )
+        self.registro = RegistroPublicacao.objects.create(
+            data=timezone.localdate(),
+            tipo=RegistroPublicacao.TIPO_STORY,
+            conteudo_tipo=RegistroPublicacao.CONTEUDO_OFERTA_DIARIA,
+            status=RegistroPublicacao.STATUS_PUBLICADO,
+            sucesso=True,
+            oferta_item_id=555,
+            link_produto_original="https://shopee.com.br/produto-i.1.555",
+        )
+
+    def test_exige_login(self):
+        resposta = self.client.get(reverse("instagram_story_ir", args=[self.registro.pk]))
+        self.assertEqual(resposta.status_code, 302)
+        self.assertIn(reverse("login"), resposta.url)
+
+    @override_settings(
+        SHOPEE_AFFILIATE_APP_ID="app123",
+        SHOPEE_AFFILIATE_SECRET="segredo123",
+        SHOPEE_AFFILIATE_API_URL="https://open-api.affiliate.shopee.com.br/graphql",
+    )
+    @patch("links.services.gerar_link_curto")
+    def test_logado_gera_click_tipo_story_dm_e_redireciona(self, mock_gerar_link):
+        mock_gerar_link.return_value = "https://shope.ee/storylink123"
+        self.client.force_login(self.usuario)
+
+        resposta = self.client.get(reverse("instagram_story_ir", args=[self.registro.pk]))
+
+        click = Click.objects.get()
+        self.assertEqual(click.tipo, Click.TIPO_STORY_DM)
+        self.assertEqual(click.url_original, self.registro.link_produto_original)
+        self.assertEqual(click.item_id_alvo, self.registro.oferta_item_id)
+        self.assertRedirects(resposta, "https://shope.ee/storylink123", fetch_redirect_response=False)
+
+    def test_sem_link_guardado_volta_pra_home_com_erro(self):
+        self.registro.link_produto_original = ""
+        self.registro.save(update_fields=["link_produto_original"])
+        self.client.force_login(self.usuario)
+
+        resposta = self.client.get(reverse("instagram_story_ir", args=[self.registro.pk]))
+
+        self.assertRedirects(resposta, reverse("home"))

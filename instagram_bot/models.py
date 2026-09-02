@@ -85,6 +85,14 @@ class RegistroPublicacao(models.Model):
         help_text="Nome do produto no momento da publicação - usado pra não repetir o mesmo produto "
         "(vindo de lojas diferentes) no mesmo dia.",
     )
+    link_produto_original = models.URLField(
+        blank=True,
+        help_text="Link do produto na Shopee (product_link) no momento da publicação - só preenchido em "
+        "stories de oferta. Guardado aqui (e não só na Oferta) porque o catálogo sincronizado é "
+        "apagado/recriado todo dia (pk muda) e uma OfertaManual/OfertaDestaqueManual pode ser "
+        "editada ou removida depois - sem isso, o link enviado por DM quando alguém responde ao "
+        "story (ver webhook.py) quebraria fora da hora. Ver instagram_bot/views.py, ir_para_story_de_oferta.",
+    )
     modo_simulacao = models.BooleanField(
         default=True, help_text="True quando o bot ainda estava desligado (INSTAGRAM_BOT_ATIVO=False)."
     )

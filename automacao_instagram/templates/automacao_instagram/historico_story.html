@@ -1,0 +1,71 @@
+{% extends "automacao_instagram/base.html" %}
+{% block titulo %}Histórico de stories{% endblock %}
+{% block estilo_extra %}
+<style>
+    .filtro-secao { margin-bottom: 16px; display: flex; align-items: center; gap: 10px; }
+    .filtro-secao label { margin: 0; }
+    .filtro-secao select { width: auto; margin: 0; }
+    .paginacao { display: flex; align-items: center; justify-content: center; gap: 16px; margin-top: 16px; font-size: 13px; }
+    .paginacao span.desabilitado { color: var(--muted); }
+</style>
+{% endblock %}
+{% block conteudo %}
+<div class="cabecalho-pagina">
+    <h1>Histórico de respostas a stories</h1>
+</div>
+<p class="legenda" style="margin-top:-10px;"><a href="{% url 'automacao_historico' %}">Ver histórico de comentários &rarr;</a></p>
+
+<form method="get" class="filtro-secao">
+    <label for="filtro-automacao">Automação:</label>
+    <select id="filtro-automacao" name="automacao" onchange="this.form.submit()">
+        <option value="">Todas</option>
+        {% for automacao in automacoes %}
+        <option value="{{ automacao.pk }}" {% if filtro_automacao == automacao.pk|stringformat:"s" %}selected{% endif %}>{{ automacao.nome }}</option>
+        {% endfor %}
+    </select>
+</form>
+
+<div class="cartao">
+{% if respostas %}
+<div class="tabela-scroll">
+<table>
+    <tr>
+        <th>Data</th><th>Automação</th><th>Autor</th><th>Mensagem</th><th>DM</th>
+    </tr>
+    {% for r in respostas %}
+    <tr>
+        <td>{{ r.criado_em|date:"d/m/Y H:i" }}</td>
+        <td>{{ r.automacao.nome }}</td>
+        <td>@{{ r.autor_username|default:"?" }}</td>
+        <td>{{ r.texto_recebido|truncatechars:60 }}</td>
+        <td>
+            {% if r.dm_enviada %}<span class="badge-ok">enviada</span>
+            {% elif r.dm_erro %}<span class="badge-erro" title="{{ r.dm_erro }}">erro</span>
+            {% else %}—{% endif %}
+        </td>
+    </tr>
+    {% endfor %}
+</table>
+</div>
+
+{% if respostas.has_other_pages %}
+<div class="paginacao">
+    {% if respostas.has_previous %}
+        <a href="{% querystring pagina=respostas.previous_page_number %}">&larr; Anterior</a>
+    {% else %}
+        <span class="desabilitado">&larr; Anterior</span>
+    {% endif %}
+    <span>Página {{ respostas.number }} de {{ respostas.paginator.num_pages }}</span>
+    {% if respostas.has_next %}
+        <a href="{% querystring pagina=respostas.next_page_number %}">Próxima &rarr;</a>
+    {% else %}
+        <span class="desabilitado">Próxima &rarr;</span>
+    {% endif %}
+</div>
+{% endif %}
+
+{% else %}
+<p class="legenda">Nenhuma resposta a story processada ainda.</p>
+{% endif %}
+</div>
+{% endblock %}

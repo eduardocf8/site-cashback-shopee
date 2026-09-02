@@ -196,6 +196,16 @@ INTER_API_URL = os.environ.get("INTER_API_URL", "https://cdpj-sandbox.partners.u
 # Valor mínimo (em reais) que o usuário precisa ter de saldo liberado para poder solicitar saque.
 SAQUE_VALOR_MINIMO = Decimal(os.environ.get("SAQUE_VALOR_MINIMO", "20.00"))
 
+# Perfis da marca fora do site. Ficam aqui (e não escritos direto no template) porque
+# aparecem em mais de um lugar - rodapé da home e página /links/ - e um endereço
+# desatualizado num dos dois é o tipo de erro que ninguém percebe. Endereço vazio some
+# da interface em vez de virar link quebrado.
+URL_INSTAGRAM = os.environ.get("URL_INSTAGRAM", "https://www.instagram.com/usecashb/")
+URL_WHATSAPP_CANAL = os.environ.get(
+    "URL_WHATSAPP_CANAL", "https://whatsapp.com/channel/0029VbDWeuU29754O2At6g1m"
+)
+URL_YOUTUBE = os.environ.get("URL_YOUTUBE", "https://www.youtube.com/@usecashb")
+
 # Senha (token) que protege o endereço /tarefas/executar/, usado pelo agendamento
 # automático (GitHub Actions) para rodar as tarefas diárias em produção. Sem essa
 # variável configurada, o endereço fica sempre bloqueado.
@@ -209,6 +219,13 @@ INSTAGRAM_APP_SECRET = os.environ.get("INSTAGRAM_APP_SECRET", "")
 INSTAGRAM_ACCESS_TOKEN = os.environ.get("INSTAGRAM_ACCESS_TOKEN", "")
 INSTAGRAM_BUSINESS_ACCOUNT_ID = os.environ.get("INSTAGRAM_BUSINESS_ACCOUNT_ID", "")
 INSTAGRAM_GRAPH_API_URL = os.environ.get("INSTAGRAM_GRAPH_API_URL", "https://graph.instagram.com")
+
+# Token combinado com a Meta ao cadastrar a URL do webhook de mensagens no painel do
+# App (Products > Webhooks) - confirma que o handshake de verificação (GET com
+# hub.verify_token) veio de lá mesmo. Só isso, não confunde com INSTAGRAM_APP_SECRET
+# (esse assina cada entrega de evento, não o handshake). Ver instagram_bot/views.py,
+# webhook_instagram, e marketing/instagram/README.md.
+INSTAGRAM_WEBHOOK_VERIFY_TOKEN = os.environ.get("INSTAGRAM_WEBHOOK_VERIFY_TOKEN", "")
 
 # Interruptor mestre do bot: enquanto False, o bot gera o conteúdo do dia e
 # registra tudo (RegistroPublicacao) mas NÃO publica de verdade no Instagram

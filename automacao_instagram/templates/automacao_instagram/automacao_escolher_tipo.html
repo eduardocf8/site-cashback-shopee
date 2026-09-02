@@ -16,10 +16,9 @@
 </div>
 <div class="caixa-central caixa-central--desloc-pequeno" style="max-width:560px;">
 <div class="cartao">
-    <p class="legenda" style="margin-top:0;">Agora, escolha em qual conta fica {% if tipo == "story" %}o story{% else %}o post{% endif %}:</p>
-    {% for conta in contas %}
-    <a class="opcao-conta" href="{% url 'automacao_nova' %}?tipo={{ tipo }}&conta={{ conta.pk }}">{{ conta.nome_exibicao }}</a>
-    {% endfor %}
+    <p class="legenda" style="margin-top:0;">O que essa automação vai responder?</p>
+    <a class="opcao-conta" href="{% url 'automacao_nova' %}?tipo=post">Comentário em post</a>
+    <a class="opcao-conta" href="{% url 'automacao_nova' %}?tipo=story">Resposta a story</a>
 </div>
 </div>
 {% endblock %}

@@ -1,0 +1,53 @@
+{% extends "automacao_instagram/base.html" %}
+{% block titulo %}Nova automação de story{% endblock %}
+{% block estilo_extra %}
+<style>
+    .opcao-post {
+        display: flex; gap: 10px; align-items: flex-start; margin-top: 8px; padding: 12px;
+        border: 1px solid var(--line); border-radius: 8px; cursor: pointer; font-weight: normal;
+    }
+    .opcao-post:hover { background: var(--paper-2); }
+    .opcao-post:has(input:checked) { border-color: var(--brand); background: var(--brand-soft); }
+    .opcao-post input { width: auto; margin: 3px 0 0; }
+</style>
+{% endblock %}
+{% block conteudo %}
+<p class="legenda"><a href="{% url 'automacao_lista' %}">&larr; Automações</a></p>
+<div class="cabecalho-pagina">
+    <h1>Nova automação de story — {{ conta.nome_exibicao }}</h1>
+</div>
+
+<div class="caixa-central caixa-central--desloc-pequeno" style="max-width:720px;">
+<div class="cartao">
+<form method="post">
+    {% csrf_token %}
+    <input type="hidden" name="conta" value="{{ conta.pk }}">
+    <input type="hidden" name="tipo" value="story">
+
+    <label>Story</label>
+    {% if stories %}
+        {% for story in stories %}
+        <label class="opcao-post">
+            <input type="radio" name="story_selecionado" value="{{ story.id }}" required>
+            <span>
+                {{ story.timestamp|slice:":16" }}
+                {% if story.tem_link_produto %}<br><strong>✅ {{ story.nome_produto }}</strong>
+                {% else %}<br>sem link de produto associado{% endif %}
+                {% if story.permalink %}<br><a href="{{ story.permalink }}" target="_blank" rel="noopener">ver story</a>{% endif %}
+            </span>
+        </label>
+        {% endfor %}
+    {% else %}
+        <p class="legenda">Nenhum story ativo agora nessa conta (stories somem 24h depois de publicados).</p>
+    {% endif %}
+
+    {% for field in form %}
+        {% include "automacao_instagram/_campo_formulario.html" with field=field %}
+    {% endfor %}
+    {% if form.non_field_errors %}<div class="erros">{{ form.non_field_errors|striptags }}</div>{% endif %}
+
+    <button type="submit">Criar automação</button>
+</form>
+</div>
+</div>
+{% endblock %}

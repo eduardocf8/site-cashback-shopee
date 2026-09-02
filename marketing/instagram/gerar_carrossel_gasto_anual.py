@@ -111,4 +111,4 @@ Chuta aí nos comentários: quanto VOCÊ acha que gastou na Shopee esse ano? �
 if __name__ == "__main__":
     import sys
 
-    gerar("carrossel-gasto-anual", SLIDES, LEGENDA, exportar="--export" in sys.argv)
+    gerar("carrossel-04-gasto-anual", SLIDES, LEGENDA, exportar="--export" in sys.argv)

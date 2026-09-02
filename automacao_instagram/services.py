@@ -36,6 +36,27 @@ def _processar_automacao(automacao: AutomacaoComentario) -> None:
         _processar_comentario_correspondido(automacao, comentario, palavra)
 
 
+def processar_comentario_manual(
+    automacao: AutomacaoComentario, instagram_comment_id: str, texto_comentario: str, autor_username: str = "",
+) -> ComentarioProcessado:
+    """Reprocessa um comentário informado manualmente (ID + texto), reaproveitando
+    o mesmo fluxo de resposta/DM do worker automático - útil pra reprocessar um
+    comentário que o polling perdeu, ou pra testar a automação com um comentário
+    específico (o ID não vem de graça: a listagem via API não devolve comentários de
+    terceiros - ver README, seção "Análise do app" - então precisa ser conferido na
+    própria página do post ou na aba de rede do navegador)."""
+    if automacao.comentarios.filter(instagram_comment_id=instagram_comment_id).exists():
+        raise ValueError("Esse comentário já foi processado antes.")
+
+    palavra = automacao.encontra_palavra_chave(texto_comentario)
+    if not palavra:
+        raise ValueError("Nenhuma das palavras-chave da automação aparece nesse texto.")
+
+    comentario = {"id": instagram_comment_id, "text": texto_comentario, "from": {"username": autor_username}}
+    _processar_comentario_correspondido(automacao, comentario, palavra)
+    return automacao.comentarios.get(instagram_comment_id=instagram_comment_id)
+
+
 def _processar_comentario_correspondido(automacao: AutomacaoComentario, comentario: dict, palavra: str) -> None:
     conta = automacao.conta
     autor = comentario.get("from") or {}
