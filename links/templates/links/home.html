@@ -464,10 +464,8 @@
                     <div class="destaque-preco-linha">
                         {% if oferta_destaque.preco_antigo %}
                             <span class="destaque-preco-riscado">R$ {{ oferta_destaque.preco_antigo|floatformat:2 }}</span>
-                            <span class="destaque-preco">R$ {{ oferta_destaque.preco_novo|floatformat:2 }}</span>
-                        {% else %}
-                            <span class="destaque-preco">R$ {{ oferta_destaque.preco_min|floatformat:2 }}</span>
                         {% endif %}
+                        <span class="destaque-preco">R$ {{ oferta_destaque.preco_min|floatformat:2 }}</span>
                         {% if oferta_destaque.percentual_cashback %}
                             <span class="destaque-cashback">
                                 + R$ {{ oferta_destaque.valor_cashback_estimado|floatformat:2 }} de volta ({{ oferta_destaque.percentual_cashback }}% cashback)
@@ -475,7 +473,7 @@
                         {% endif %}
                     </div>
                     {% if oferta_destaque.preco_avista %}
-                        <div class="destaque-preco-avista">ou R$ {{ oferta_destaque.preco_avista|floatformat:2 }} à vista</div>
+                        <div class="destaque-preco-avista">ou R$ {{ oferta_destaque.preco_novo|floatformat:2 }} parcelado</div>
                     {% endif %}
                     <a class="botao-cta" href="{{ oferta_destaque.url_ir }}">Comprar com cashback &rarr;</a>
                 </div>

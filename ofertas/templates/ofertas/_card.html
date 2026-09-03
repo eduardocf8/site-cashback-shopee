@@ -17,15 +17,15 @@
         <div class="preco">
             {% if oferta.preco_antigo %}
                 <span class="preco-riscado">R$ {{ oferta.preco_antigo|floatformat:2 }}</span>
-                R$ {{ oferta.preco_novo|floatformat:2 }}
-            {% elif oferta.preco_min != oferta.preco_max %}
+            {% endif %}
+            {% if oferta.preco_min != oferta.preco_max %}
                 R$ {{ oferta.preco_min|floatformat:2 }} – R$ {{ oferta.preco_max|floatformat:2 }}
             {% else %}
                 R$ {{ oferta.preco_min|floatformat:2 }}
             {% endif %}
         </div>
         {% if oferta.preco_avista %}
-            <div class="preco-avista">ou R$ {{ oferta.preco_avista|floatformat:2 }} à vista</div>
+            <div class="preco-avista">ou R$ {{ oferta.preco_novo|floatformat:2 }} parcelado</div>
         {% endif %}
         {% if oferta.percentual_cashback %}
             <div class="cashback-valor">Receba R$ {{ oferta.valor_cashback_estimado|floatformat:2 }} de cashback</div>

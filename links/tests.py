@@ -380,6 +380,21 @@ class HomeCarrosselOfertaManualTests(TestCase):
         self.assertContains(resposta, "R$ 100,00")  # preço antigo riscado
         self.assertContains(resposta, reverse("ofertas_manual_ir", args=[OfertaManual.objects.get().id]))
 
+    def test_preco_avista_aparece_destacado_e_parcelado_embaixo(self):
+        """O preço à vista (com desconto) é o destacado no cartão; o parcelado (preco_novo)
+        vira uma linha menor abaixo dele - não o contrário."""
+        OfertaManual.objects.create(
+            product_link="https://shopee.com.br/produto-manual-i.2.2",
+            nome="Produto com preço à vista", imagem_url="https://exemplo.com/img.jpg",
+            preco_novo=Decimal("99.90"), preco_avista=Decimal("89.90"),
+            percentual_comissao=Decimal("0.10"),
+        )
+
+        resposta = self.client.get(reverse("home"))
+
+        self.assertContains(resposta, "R$ 89,90")
+        self.assertContains(resposta, "R$ 99,90 parcelado")
+
 
 class HomeDestaqueManualTests(TestCase):
     def test_destaque_manual_substitui_a_oferta_do_dia(self):
@@ -395,5 +410,21 @@ class HomeDestaqueManualTests(TestCase):
         self.assertEqual(resposta.context["oferta_destaque"], destaque)
         self.assertContains(resposta, "Produto do dia manual")
         self.assertContains(resposta, "R$ 150,00")  # preço antigo riscado
-        self.assertContains(resposta, "R$ 89,90 à vista")
+        self.assertContains(resposta, "R$ 89,90")  # preço à vista, destacado como preço principal
+        self.assertContains(resposta, "R$ 99,90 parcelado")
         self.assertContains(resposta, reverse("ofertas_destaque_manual_ir", args=[destaque.id]))
+
+    def test_destaque_manual_sem_preco_antigo_nao_mostra_riscado(self):
+        """preco_antigo é opcional - nem toda loja mostra um preço "de" pra comparar
+        (ver ROADMAP.md)."""
+        destaque = OfertaDestaqueManual.objects.create(
+            product_link="https://shopee.com.br/produto-destaque-i.2.2",
+            nome="Produto sem preço antigo", imagem_url="https://exemplo.com/img.jpg",
+            preco_novo=Decimal("99.90"), percentual_comissao=Decimal("0.10"),
+        )
+
+        resposta = self.client.get(reverse("home"))
+
+        self.assertEqual(resposta.context["oferta_destaque"], destaque)
+        self.assertContains(resposta, "R$ 99,90")
+        self.assertNotContains(resposta, '<span class="destaque-preco-riscado">')

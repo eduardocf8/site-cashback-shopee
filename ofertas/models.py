@@ -145,7 +145,9 @@ class _OfertaCuradaBase(_CashbackEstimadoMixin, models.Model):
     nome = models.CharField(max_length=255)
     imagem_url = models.URLField("URL da imagem do produto")
     preco_antigo = models.DecimalField(
-        "Preço antigo", max_digits=10, decimal_places=2, help_text="Preço original, exibido riscado."
+        "Preço antigo", max_digits=10, decimal_places=2, null=True, blank=True,
+        help_text="Preço original, exibido riscado. Opcional - deixe em branco quando a loja não mostrar "
+        "um preço \"de\" pra esse produto.",
     )
     preco_novo = models.DecimalField("Preço novo", max_digits=10, decimal_places=2)
     preco_avista = models.DecimalField(
