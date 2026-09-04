@@ -249,6 +249,23 @@ original da Shopee) - é só 1 produto, então não valia a complexidade
 extra pra um encurtamento que o layout já trunca em 2 linhas de
 qualquer forma.
 
+## Postar o carrossel semanal fora da hora (2026-09-04)
+
+O post "melhores ofertas da semana" (carrossel, ver
+`publicar_post_ofertas_semana`) só entra no calendário automático toda
+sexta - pra testar sem esperar até lá (ex: depois de mexer no gerador de
+imagem), roda pelo **Shell do Render**:
+
+```bash
+python manage.py postar_ofertas_semana
+```
+
+Chama `publicar_post_ofertas_semana` direto, sem o filtro de dia da
+semana nem a checagem de "já processado hoje" - sempre gera um carrossel
+novo na hora. Segue o fluxo normal de aprovação por e-mail
+(`INSTAGRAM_REQUER_APROVACAO`) - não publica direto, mesmo rodando fora
+do dia certo.
+
 ### Botão "Criar story" nas ofertas curadas à mão (2026-08-29)
 
 Pras ofertas já cadastradas no admin como "Oferta manual" (carrossel
