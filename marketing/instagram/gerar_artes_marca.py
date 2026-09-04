@@ -67,23 +67,42 @@ ILUSTRACAO_MOEDA = f"""
 """
 
 
-def render(body_html, filename, width=1080, height=1080, destino=None, escala=2):
+def render(body_html, filename, width=1080, height=1080, destino=None, escala=2,
+           transparente=False):
+    """transparente=True tira o fundo branco padrão do navegador (omit_background) e
+    depois recorta o PNG justo na tinta. As duas coisas juntas: sem o omit_background o
+    arquivo sai com fundo branco chapado, e sem o recorte ele sai com uma moldura enorme
+    de pixels vazios, que atrapalha na hora de posicionar o logo em cima de outra coisa."""
     html = f"""<html><head><style>
         {FONT_FACES}
         * {{ box-sizing: border-box; margin: 0; padding: 0; }}
-        html, body {{ width: {width}px; height: {height}px; font-family: "Familjen", Arial, sans-serif; }}
+        html, body {{ width: {width}px; height: {height}px; font-family: "Familjen", Arial, sans-serif;
+                      {"background: transparent;" if transparente else ""} }}
         .canvas {{ width: {width}px; height: {height}px; position: relative; overflow: hidden; display: flex; }}
     </style></head><body>{body_html}</body></html>"""
     destino = destino or OUT_DIR
     destino.mkdir(parents=True, exist_ok=True)
+    caminho = destino / filename
     with sync_playwright() as p:
         browser = p.chromium.launch(executable_path="/opt/pw-browsers/chromium")
         page = browser.new_page(viewport={"width": width, "height": height}, device_scale_factor=escala)
         page.set_content(html)
         page.wait_for_timeout(150)
-        page.screenshot(path=str(destino / filename))
+        page.screenshot(path=str(caminho), omit_background=transparente)
         browser.close()
-    print("gerado:", (destino / filename).relative_to(REPO_ROOT))
+    if transparente:
+        _recortar_na_tinta(caminho)
+    print("gerado:", caminho.relative_to(REPO_ROOT))
+
+
+def _recortar_na_tinta(caminho):
+    """Corta a moldura transparente em volta do desenho, usando o canal alfa."""
+    from PIL import Image
+
+    img = Image.open(caminho).convert("RGBA")
+    caixa = img.getchannel("A").getbbox()
+    if caixa:
+        img.crop(caixa).save(caminho)
 
 
 # ---------- Artes quadradas (perfil / marca) ----------
@@ -259,5 +278,49 @@ render(f"""
     </div>
 </div>
 """, "09-capa-youtube.png", width=2560, height=1440, escala=1)
+
+# ---------- 10. Kit sem fundo (PNG transparente) ----------
+# Para usar o logo em cima de foto, vídeo, papel timbrado ou material de terceiro, onde
+# um retângulo de fundo denunciaria a colagem. Cada peça sai em duas cores: a de marca
+# (para fundo claro) e a clara (para fundo escuro) - com fundo transparente não dá para
+# ter uma versão só, porque a tinta precisa contrastar com o que estiver atrás.
+#
+# Renderiza numa tela folgada e deixa o recorte automático achar os limites: acertar a
+# moldura na mão mudaria a cada ajuste de corpo de fonte.
+SEM_FUNDO_DIR = OUT_DIR / "sem-fundo"
+
+
+def _wordmark_livre(cor):
+    return f"""
+    <div class="canvas" style="align-items:center; justify-content:center;">
+        <div style="font-size:400px; line-height:1; font-weight:700; letter-spacing:-0.02em; color:{cor};">cash-b</div>
+    </div>
+    """
+
+
+def _glifo_livre(cor, com_anel=False):
+    anel = (
+        f'<div style="position:absolute; width:760px; height:760px; border-radius:50%; '
+        f'border:26px solid {COLORS["highlight"]};"></div>'
+        if com_anel else ""
+    )
+    return f"""
+    <div class="canvas" style="align-items:center; justify-content:center;">
+        {anel}
+        {_glifo_cb(1, cor)}
+    </div>
+    """
+
+
+for cor, sufixo in [(COLORS["brand"], "roxo"), (COLORS["paper"], "claro"), (COLORS["ink"], "preto")]:
+    render(_wordmark_livre(cor), f"wordmark-{sufixo}.png",
+           width=2200, height=700, destino=SEM_FUNDO_DIR, transparente=True)
+
+for cor, sufixo in [(COLORS["brand"], "roxo"), (COLORS["paper"], "claro")]:
+    render(_glifo_livre(cor), f"cb-{sufixo}.png",
+           width=1080, height=1080, destino=SEM_FUNDO_DIR, transparente=True)
+    render(_glifo_livre(cor, com_anel=True), f"cb-{sufixo}-anel.png",
+           width=1080, height=1080, destino=SEM_FUNDO_DIR, transparente=True)
+
 
 print("todas as artes geradas")
