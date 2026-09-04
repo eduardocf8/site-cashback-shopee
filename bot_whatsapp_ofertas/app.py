@@ -1330,7 +1330,7 @@ class MainWindow(QMainWindow):
         conversoes_cards.addWidget(self.metric_card("Comissão", self.conversoes_comissao_label))
         conversoes_cards.addStretch(1)
 
-        self.conversoes_table = QTableWidget(0, 6)
+        self.conversoes_table = QTableWidget(0, 7)
         self.conversoes_table.setObjectName("historyTable")
         self.conversoes_table.setHorizontalHeaderLabels([
             "Produto",
@@ -1339,6 +1339,7 @@ class MainWindow(QMainWindow):
             "Preço",
             "Comissão",
             "Última compra",
+            "Categoria",
         ])
         self.conversoes_table.setEditTriggers(QAbstractItemView.EditTrigger.NoEditTriggers)
         self.conversoes_table.setSelectionBehavior(QAbstractItemView.SelectionBehavior.SelectRows)
@@ -1353,6 +1354,7 @@ class MainWindow(QMainWindow):
         conversoes_header.resizeSection(2, 60)
         conversoes_header.resizeSection(3, 90)
         conversoes_header.resizeSection(4, 100)
+        conversoes_header.resizeSection(5, 110)
 
         conversoes_layout.addLayout(conversoes_filters)
         conversoes_layout.addLayout(conversoes_cards)
@@ -3152,9 +3154,10 @@ class MainWindow(QMainWindow):
             preco_item = NumericTableItem(p.get("preco") or 0, self.format_money(p.get("preco") or 0))
             comissao_item = NumericTableItem(p.get("comissao") or 0, self.format_money(p.get("comissao") or 0))
             data_item = NumericTableItem(ultima_ord, ultima_txt)
+            categoria_item = QTableWidgetItem(p.get("categoria") or "sem_subid")
 
             for col, cell in enumerate(
-                [nome_item, loja_item, qtd_item, preco_item, comissao_item, data_item]
+                [nome_item, loja_item, qtd_item, preco_item, comissao_item, data_item, categoria_item]
             ):
                 self.conversoes_table.setItem(row_index, col, cell)
 
@@ -3209,7 +3212,7 @@ class MainWindow(QMainWindow):
         if not file_path:
             return
 
-        cabecalhos = ["Produto", "Loja", "Quantidade", "Preço", "Comissão", "Última compra"]
+        cabecalhos = ["Produto", "Loja", "Quantidade", "Preço", "Comissão", "Última compra", "Categoria"]
         linhas = []
         for p in produtos:
             ultima = p.get("ultima_compra")
@@ -3220,6 +3223,7 @@ class MainWindow(QMainWindow):
                 round(float(p.get("preco") or 0), 2),
                 round(float(p.get("comissao") or 0), 2),
                 ultima.strftime("%d/%m/%Y") if ultima else "",
+                p.get("categoria") or "sem_subid",
             ])
 
         totais = report.get("totais") or {}
@@ -3294,14 +3298,14 @@ class MainWindow(QMainWindow):
         # Linha de totais.
         ws.append([])
         total_row = ws.max_row + 1
-        ws.append(["TOTAL", "", total_qtd, "", total_comissao, ""])
+        ws.append(["TOTAL", "", total_qtd, "", total_comissao, "", ""])
         ws.cell(row=total_row, column=1).font = Font(bold=True)
         ws.cell(row=total_row, column=3).font = Font(bold=True)
         ws.cell(row=total_row, column=5).font = Font(bold=True)
         ws.cell(row=total_row, column=5).number_format = 'R$ #,##0.00'
 
         # Largura das colunas.
-        larguras = [48, 22, 12, 14, 14, 16]
+        larguras = [48, 22, 12, 14, 14, 16, 18]
         for i, largura in enumerate(larguras, start=1):
             ws.column_dimensions[get_column_letter(i)].width = largura
 
@@ -3321,7 +3325,7 @@ class MainWindow(QMainWindow):
                 linha_csv[4] = f"{linha[4]:.2f}".replace(".", ",")
                 writer.writerow(linha_csv)
             writer.writerow([])
-            writer.writerow(["TOTAL", "", total_qtd, "", f"{total_comissao:.2f}".replace(".", ","), ""])
+            writer.writerow(["TOTAL", "", total_qtd, "", f"{total_comissao:.2f}".replace(".", ","), "", ""])
 
     def verificar_envio_relatorio_agendado(self):
         if not self.settings.relatorio_email_ativo:

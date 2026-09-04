@@ -196,15 +196,20 @@ class ConversorAfiliados:
 
     def obter_conversoes_por_produto(self, inicio, fim):
         """
-        Retorna os produtos convertidos no periodo, agregados por produto,
-        com quantidade vendida, preco unitario (ultimo visto), comissao total
+        Retorna os produtos convertidos no periodo, agregados por produto E
+        por categoria de origem (Sub ID classificado - mesma classificacao
+        usada na aba Indicadores, via classificar_sub_id_relatorio), com
+        quantidade vendida, preco unitario (ultimo visto), comissao total
         e data da ultima compra. Usa o conversionReport (orders > items).
+
+        Um mesmo produto pode aparecer em mais de uma linha se foi vendido
+        atraves de mais de uma categoria de origem no periodo.
 
         Estrutura de retorno:
             {
               "produtos": [
-                 {"item_id", "nome", "loja", "quantidade", "preco",
-                  "comissao", "ultima_compra" (datetime|None)},
+                 {"item_id", "nome", "loja", "categoria", "quantidade",
+                  "preco", "comissao", "ultima_compra" (datetime|None)},
                  ...
               ],
               "totais": {"produtos", "quantidade", "comissao"},
@@ -235,6 +240,15 @@ class ConversorAfiliados:
             except (ValueError, OSError, OverflowError):
                 data_compra = None
 
+            # Mesma extracao/classificacao usada em agrupar_indicadores: se a
+            # conversao tiver mais de um Sub ID (raro), o item conta uma vez
+            # em cada categoria correspondente - igual ja acontece hoje na
+            # aba Indicadores, para manter os dois relatorios consistentes.
+            sub_ids = self.extrair_sub_ids_relatorio(conversao)
+            if not sub_ids:
+                sub_ids = ["sem_subid"]
+            categorias = [self.classificar_sub_id_relatorio(sub_id) for sub_id in sub_ids]
+
             for pedido in pedidos:
                 if not isinstance(pedido, dict):
                     continue
@@ -257,35 +271,38 @@ class ConversorAfiliados:
                     item_id = str(item.get("itemId") or "").strip()
                     nome = str(item.get("itemName") or "").strip() or "(sem nome)"
                     loja = str(item.get("shopName") or "").strip()
-                    # Chave de agregacao: itemId quando existe, senao o nome.
-                    chave = item_id or nome
+                    # Chave de agregacao: itemId (ou nome) + categoria.
+                    chave_produto = item_id or nome
 
                     qtd = self._para_numero(item.get("qty")) or 1
                     preco = self._para_numero(item.get("itemPrice"))
                     comissao = self._para_numero(item.get("itemTotalCommission"))
 
-                    registro = agregados.get(chave)
-                    if registro is None:
-                        registro = {
-                            "item_id": item_id,
-                            "nome": nome,
-                            "loja": loja,
-                            "quantidade": 0.0,
-                            "preco": preco,
-                            "comissao": 0.0,
-                            "ultima_compra": data_compra,
-                        }
-                        agregados[chave] = registro
+                    for categoria in categorias:
+                        chave = (chave_produto, categoria)
+                        registro = agregados.get(chave)
+                        if registro is None:
+                            registro = {
+                                "item_id": item_id,
+                                "nome": nome,
+                                "loja": loja,
+                                "categoria": categoria,
+                                "quantidade": 0.0,
+                                "preco": preco,
+                                "comissao": 0.0,
+                                "ultima_compra": data_compra,
+                            }
+                            agregados[chave] = registro
 
-                    registro["quantidade"] += qtd
-                    registro["comissao"] += comissao
-                    if preco:
-                        registro["preco"] = preco
-                    if data_compra and (
-                        registro["ultima_compra"] is None
-                        or data_compra > registro["ultima_compra"]
-                    ):
-                        registro["ultima_compra"] = data_compra
+                        registro["quantidade"] += qtd
+                        registro["comissao"] += comissao
+                        if preco:
+                            registro["preco"] = preco
+                        if data_compra and (
+                            registro["ultima_compra"] is None
+                            or data_compra > registro["ultima_compra"]
+                        ):
+                            registro["ultima_compra"] = data_compra
 
         produtos = list(agregados.values())
         total_qtd = sum(p["quantidade"] for p in produtos)
