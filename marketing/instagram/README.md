@@ -520,6 +520,36 @@ vínculo que não existe e contradiz o "afiliado independente" do rodapé.
 grande isso vira "cash-" numa linha e "b" na outra, que lê como erro de
 digitação. `MARCA` é o nome dentro de um `white-space:nowrap`.
 
+## Artes de marca (`gerar_artes_marca.py` → `artes-marca/`)
+
+Logotipo, monograma, lockups, capa do YouTube e imagem de compartilhamento.
+Cada arte quadrada sai em duas versões: a normal e uma `-zoom`, com o desenho
+maior, para foto de perfil (que o Instagram recorta em círculo).
+
+### Kit sem fundo (`artes-marca/sem-fundo/`)
+
+PNG com fundo transparente, recortado justo na tinta — para usar o logo em
+cima de foto, vídeo, papel timbrado ou material de terceiro, onde um retângulo
+de fundo denunciaria a colagem.
+
+| Arquivo | Quando usar |
+| --- | --- |
+| `wordmark-roxo.png` | Fundo claro. É a versão padrão |
+| `wordmark-claro.png` | Fundo escuro, foto ou o roxo da marca |
+| `wordmark-preto.png` | Impressão, documento, material de parceiro sem cor |
+| `cb-roxo.png` / `cb-claro.png` | Espaço pequeno ou quadrado, onde "cash-b" não cabe |
+| `cb-roxo-anel.png` / `cb-claro-anel.png` | Mesma coisa, com o anel âmbar da foto de perfil |
+
+Com fundo transparente não existe versão única: a tinta precisa contrastar com
+o que estiver atrás, então cada peça tem a cor de marca (fundo claro) e a clara
+(fundo escuro).
+
+Dois detalhes de como são gerados, em `render(..., transparente=True)`:
+`omit_background` no Playwright (sem ele o PNG sai com fundo branco chapado) e
+recorte automático pelo canal alfa (sem ele sobra uma moldura enorme de pixels
+vazios, que atrapalha na hora de posicionar). O recorte é automático de
+propósito: acertar a moldura na mão mudaria a cada ajuste de corpo de fonte.
+
 ## Decisões de conteúdo (não repetir)
 
 - **Não afirmar valor de saque mínimo inexistente.** O site tem um valor
