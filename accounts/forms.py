@@ -66,13 +66,13 @@ class ChavePixForm(forms.ModelForm):
     class Meta:
         model = User
         fields = ("tipo_chave_pix", "chave_pix")
-        labels = {"tipo_chave_pix": "Tipo da chave PIX", "chave_pix": "Chave PIX"}
+        labels = {"tipo_chave_pix": "Tipo da chave Pix", "chave_pix": "Chave Pix"}
         widgets = {
-            "chave_pix": forms.TextInput(attrs={"placeholder": "Cole aqui sua chave PIX"}),
+            "chave_pix": forms.TextInput(attrs={"placeholder": "Cole aqui sua chave Pix"}),
         }
 
     def clean(self):
         cleaned = super().clean()
         if cleaned.get("chave_pix") and not cleaned.get("tipo_chave_pix"):
-            raise forms.ValidationError("Selecione o tipo da chave PIX.")
+            raise forms.ValidationError("Selecione o tipo da chave Pix.")
         return cleaned

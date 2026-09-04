@@ -336,7 +336,7 @@ class PedirSaqueViewTests(TestCase):
 
         self.assertEqual(Saque.objects.count(), 0)
         mensagens = [str(m) for m in resposta.context["messages"]]
-        self.assertTrue(any("chave PIX" in m for m in mensagens))
+        self.assertTrue(any("chave Pix" in m for m in mensagens))
 
     def test_com_saldo_e_chave_cria_saque(self):
         self.usuario.chave_pix = "fulano@example.com"

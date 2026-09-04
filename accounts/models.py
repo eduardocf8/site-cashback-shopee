@@ -31,9 +31,9 @@ class User(AbstractUser):
         unique=True,
         help_text="Apenas números, sem pontos ou traço.",
     )
-    chave_pix = models.CharField("Chave PIX", max_length=140, blank=True)
+    chave_pix = models.CharField("Chave Pix", max_length=140, blank=True)
     tipo_chave_pix = models.CharField(
-        "Tipo da chave PIX", max_length=10, choices=TIPO_CHAVE_CHOICES, blank=True
+        "Tipo da chave Pix", max_length=10, choices=TIPO_CHAVE_CHOICES, blank=True
     )
     email_verificado = models.BooleanField("E-mail verificado", default=False)
     codigo_indicacao = models.CharField(

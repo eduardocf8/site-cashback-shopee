@@ -14,7 +14,7 @@ def notificar_saque_pago(saque):
     if saque.usuario and saque.usuario.email:
         corpo = (
             f"Olá, {saque.usuario.username}!\n\n"
-            f"Seu saque de R$ {valor_formatado} foi pago via PIX na chave cadastrada.\n\n"
+            f"Seu saque de R$ {valor_formatado} foi pago via Pix na chave cadastrada.\n\n"
             "Equipe cash-b"
         )
         try:
@@ -25,6 +25,6 @@ def notificar_saque_pago(saque):
     enviar_push(
         saque.usuario,
         "Saque pago!",
-        f"Seu saque de R$ {valor_formatado} caiu via PIX na chave cadastrada.",
+        f"Seu saque de R$ {valor_formatado} caiu via Pix na chave cadastrada.",
         url="/dashboard/#saques",
     )

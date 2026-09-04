@@ -47,14 +47,14 @@ def notificar_pedido_liberado(pedido):
     corpo = (
         f"Olá, {pedido.usuario.username}!\n\n"
         f'O cashback de "{produto}" (R$ {valor}) já está liberado e pode ser '
-        "sacado via PIX no seu painel.\n\n"
+        "sacado via Pix no seu painel.\n\n"
         "Equipe cash-b"
     )
     _enviar(pedido.usuario, "cash-b — cashback liberado pra saque", corpo)
     enviar_push(
         pedido.usuario,
         "Cashback liberado!",
-        f'R$ {valor} de "{produto}" já pode ser sacado via PIX.',
+        f'R$ {valor} de "{produto}" já pode ser sacado via Pix.',
         url="/dashboard/#saques",
     )
 

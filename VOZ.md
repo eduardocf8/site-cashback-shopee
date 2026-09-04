@@ -47,8 +47,13 @@ o dono da marca aponta o que soa diferente do jeito dele de falar.
   conteúdo do Instagram e documentação interna (2026-08-14).
 - `marketing/instagram/gerar_carrossel_beneficios.py` — regra do "pra"
   (2026-08-16).
-- Carrosséis 01, 08 e 09 — "Pix" no lugar de "PIX" (2026-09-04). O
-  restante do site ainda usa "PIX" (~86 ocorrências), pendente.
+- Carrosséis 01, 08 e 09 — "Pix" no lugar de "PIX" (2026-09-04).
+- Restante do site — "Pix" no lugar de "PIX" (2026-09-04): templates
+  (`paginas/`, `accounts/`, `links/`), e-mails transacionais
+  (`pedidos/notificacoes.py`, `saques/`) e conteúdo do bot
+  (`instagram_bot/conteudo.py`). Ficaram de fora de propósito as
+  mensagens de erro simuladas da Asaas/Inter em `saques/tests.py`
+  (texto de terceiro, fora do controle de voz da cash-b).
 
 ## Para pedir ajustes de voz numa conversa nova
 

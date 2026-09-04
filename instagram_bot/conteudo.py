@@ -28,7 +28,7 @@ DICAS = [
     "O cashback só é confirmado depois que a Shopee valida o pedido, então evite cancelar ou trocar a compra.",
     "Compras maiores geram cashback maior. Vale juntar os itens do carrinho numa compra só.",
     "Assim que o saldo aparece como \"Liberado\", já dá pra sacar — não precisa esperar mais nada.",
-    "Cadastre sua chave PIX com antecedência: assim que o saldo é liberado, o saque já sai na hora.",
+    "Cadastre sua chave Pix com antecedência: assim que o saldo é liberado, o saque já sai na hora.",
 ]
 
 LEMBRETES = [
@@ -105,7 +105,7 @@ POSTS_INSTITUCIONAIS = [
         ),
     },
     {
-        "texto": "Do clique ao PIX: total transparência em cada fase.",
+        "texto": "Do clique ao Pix: total transparência em cada fase.",
         "legenda": (
             "Você sabe exatamente em que fase seu cashback está, o tempo todo: pendente, validado ou "
             "liberado. 📊 Nada de saldo que aparece do nada ou some sem explicação — tudo visível no "
@@ -113,16 +113,16 @@ POSTS_INSTITUCIONAIS = [
         ),
     },
     {
-        "texto": "Saldo liberado é seu. Peça o saque via PIX quando quiser.",
+        "texto": "Saldo liberado é seu. Peça o saque via Pix quando quiser.",
         "legenda": (
-            "Saldo liberado é saldo seu. 💸 Cadastre sua chave PIX e peça o saque — sem burocracia, "
+            "Saldo liberado é saldo seu. 💸 Cadastre sua chave Pix e peça o saque — sem burocracia, "
             "direto na sua conta. 🏦\n#cashback #pix #shopee #dinheirodevolta"
         ),
     },
     {
-        "texto": "Chave PIX cadastrada, saque liberado na hora que você pedir.",
+        "texto": "Chave Pix cadastrada, saque liberado na hora que você pedir.",
         "legenda": (
-            "Assim que o saldo é liberado, o saque é rapidinho: com a chave PIX já cadastrada, "
+            "Assim que o saldo é liberado, o saque é rapidinho: com a chave Pix já cadastrada, "
             "cai direto na sua conta. 🏦💸 Sem enrolação nenhuma.\n#cashback #pix #shopee"
         ),
     },

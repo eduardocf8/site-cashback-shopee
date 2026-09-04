@@ -37,7 +37,7 @@ def _tratar_resposta(resposta: requests.Response) -> dict:
 
 
 def criar_transferencia_pix(valor: Decimal, chave_pix: str, tipo_chave_pix: str, descricao: str) -> dict:
-    """Cria uma transferência PIX na Asaas (POST /transfers) e retorna a resposta bruta."""
+    """Cria uma transferência Pix na Asaas (POST /transfers) e retorna a resposta bruta."""
     payload = {
         "value": float(valor),
         "pixAddressKey": chave_pix,

@@ -26,7 +26,7 @@ class Saque(models.Model):
     usuario = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name="saques")
     valor = models.DecimalField(max_digits=10, decimal_places=2)
     chave_pix = models.CharField(
-        max_length=140, help_text="Cópia da chave PIX do usuário no momento da solicitação."
+        max_length=140, help_text="Cópia da chave Pix do usuário no momento da solicitação."
     )
     tipo_chave_pix = models.CharField(max_length=10)
     status = models.CharField(max_length=12, choices=STATUS_CHOICES, default=STATUS_SOLICITADO)

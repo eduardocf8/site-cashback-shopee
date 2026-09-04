@@ -1,11 +1,11 @@
 {% extends "accounts/base.html" %}
-{% block titulo %}Chave PIX{% endblock %}
+{% block titulo %}Chave Pix{% endblock %}
 {% block conteudo %}
     <div class="nav-topo">
         <a href="{% url 'dashboard' %}">&larr; Voltar pra minha conta</a>
     </div>
 
-    <h1>Sua chave PIX</h1>
+    <h1>Sua chave Pix</h1>
     <p class="legenda">É pra essa chave que a gente envia seus saques de cashback.</p>
     <form method="post">
         {% csrf_token %}
@@ -15,6 +15,6 @@
             {% if field.errors %}<div class="erros">{{ field.errors|striptags }}</div>{% endif %}
         {% endfor %}
         {% if form.non_field_errors %}<div class="erros">{{ form.non_field_errors|striptags }}</div>{% endif %}
-        <button type="submit">Salvar chave PIX</button>
+        <button type="submit">Salvar chave Pix</button>
     </form>
 {% endblock %}

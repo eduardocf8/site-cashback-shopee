@@ -263,7 +263,7 @@
                     <span class="balao-ajuda" id="ajuda-saldo-texto" role="tooltip">
                         <p><strong>Pendente</strong>: aguardando confirmação da Shopee.</p>
                         <p><strong>Validado</strong>: confirmado, aguardando o prazo de liberação.</p>
-                        <p><strong>Liberado</strong>: confirmado e ainda disponível pra saque via PIX.</p>
+                        <p><strong>Liberado</strong>: confirmado e ainda disponível pra saque via Pix.</p>
                         <p><strong>Já sacado</strong>: já solicitado ou pago em algum saque anterior.</p>
                         <p><strong>Cancelado</strong>: pedidos cancelados ou não pagos não geram cashback.</p>
                     </span>
@@ -297,14 +297,14 @@
         </section>
 
         <section>
-            <h2 class="titulo-secao">Saque via PIX</h2>
+            <h2 class="titulo-secao">Saque via Pix</h2>
             <div class="caixa-saque">
                 {% if not user.chave_pix %}
-                    <p>Você ainda não cadastrou uma chave PIX.</p>
-                    <a class="botao-cta" href="{% url 'editar_chave_pix' %}">Cadastrar chave PIX</a>
+                    <p>Você ainda não cadastrou uma chave Pix.</p>
+                    <a class="botao-cta" href="{% url 'editar_chave_pix' %}">Cadastrar chave Pix</a>
                 {% else %}
                     <div class="chave-pix-linha">
-                        <span class="chave-pix-label">Chave PIX:</span>
+                        <span class="chave-pix-label">Chave Pix:</span>
                         <span class="chave-pix-tipo">{{ user.get_tipo_chave_pix_display }}</span>
                         <span class="chave-pix-valor">{{ user.chave_pix }}</span>
                         <button type="button" class="botao-editar-chave" onclick="modalChavePix.showModal()">Editar</button>
@@ -313,7 +313,7 @@
                     <dialog id="modalChavePix" class="modal-chave-pix">
                         <form method="post" action="{% url 'editar_chave_pix' %}">
                             {% csrf_token %}
-                            <h3>Editar chave PIX</h3>
+                            <h3>Editar chave Pix</h3>
                             <label for="{{ chave_pix_form.tipo_chave_pix.id_for_label }}">{{ chave_pix_form.tipo_chave_pix.label }}</label>
                             {{ chave_pix_form.tipo_chave_pix }}
                             <label for="{{ chave_pix_form.chave_pix.id_for_label }}">{{ chave_pix_form.chave_pix.label }}</label>
@@ -505,7 +505,7 @@
                 <table>
                     <tr>
                         <th>Valor</th>
-                        <th>Chave PIX</th>
+                        <th>Chave Pix</th>
                         <th>Status</th>
                         <th>Solicitado em</th>
                         <th>Pago em</th>

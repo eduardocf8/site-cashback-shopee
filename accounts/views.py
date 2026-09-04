@@ -165,7 +165,7 @@ def editar_chave_pix(request):
         form = ChavePixForm(request.POST, instance=request.user)
         if form.is_valid():
             form.save()
-            messages.success(request, "Chave PIX atualizada com sucesso!")
+            messages.success(request, "Chave Pix atualizada com sucesso!")
             return redirect("dashboard")
     else:
         form = ChavePixForm(instance=request.user)
@@ -179,7 +179,7 @@ def excluir_chave_pix(request):
         request.user.chave_pix = ""
         request.user.tipo_chave_pix = ""
         request.user.save(update_fields=["chave_pix", "tipo_chave_pix"])
-        messages.success(request, "Chave PIX removida.")
+        messages.success(request, "Chave Pix removida.")
 
     return redirect("dashboard")
 

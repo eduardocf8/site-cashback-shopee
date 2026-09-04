@@ -26,7 +26,7 @@ TERMOS_FALHOU_INTER = ("FALHA", "REJEITADO", "CANCELADO", "ERRO")
 
 
 class ChavePixNaoConfiguradaError(Exception):
-    """O usuário ainda não cadastrou uma chave PIX."""
+    """O usuário ainda não cadastrou uma chave Pix."""
 
 
 class ValorAbaixoDoMinimoError(Exception):
@@ -64,7 +64,7 @@ def calcular_resumo_saldo_nav(usuario) -> dict:
 def solicitar_saque(usuario) -> Saque:
     """Cria uma solicitação de saque do saldo disponível total do usuário."""
     if not usuario.chave_pix or not usuario.tipo_chave_pix:
-        raise ChavePixNaoConfiguradaError("Cadastre sua chave PIX antes de solicitar um saque.")
+        raise ChavePixNaoConfiguradaError("Cadastre sua chave Pix antes de solicitar um saque.")
 
     saldo_disponivel = calcular_saldo_disponivel(usuario)
     if saldo_disponivel < settings.SAQUE_VALOR_MINIMO:
@@ -99,7 +99,7 @@ def _mapear_status_inter(status_bruto: str) -> str:
 
 
 def processar_saque_asaas(saque: Saque) -> Saque:
-    """Chama a Asaas para efetivar o pagamento PIX do saque e atualiza o status conforme o resultado."""
+    """Chama a Asaas para efetivar o pagamento Pix do saque e atualiza o status conforme o resultado."""
     descricao = f"Cashback Shopee - saque #{saque.pk}"
     saque.provedor = Saque.PROVEDOR_ASAAS
     try:
@@ -130,7 +130,7 @@ def processar_saque_asaas(saque: Saque) -> Saque:
 
 
 def processar_saque_inter(saque: Saque) -> Saque:
-    """Chama o Inter (API Banking) pra efetivar o pagamento PIX do saque e atualiza o status.
+    """Chama o Inter (API Banking) pra efetivar o pagamento Pix do saque e atualiza o status.
 
     Dependendo da configuração de aprovações da conta Inter, o pagamento pode cair como
     "aguardando aprovação" (tipoRetorno=APROVACAO) dentro do próprio Internet Banking - nesse
