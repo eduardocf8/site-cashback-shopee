@@ -2,7 +2,7 @@ import io
 import logging
 import random
 import uuid
-from datetime import timedelta
+from datetime import time, timedelta
 from pathlib import Path
 
 from django.conf import settings
@@ -32,7 +32,17 @@ PASTA_MEDIA_BOT = Path(settings.MEDIA_ROOT) / "instagram"
 # dia (ver /tarefas/postar-story-oferta/ e o cron dedicado) 1 story com 1 oferta só,
 # até completar esse número - assim o perfil não fica "bombardeado" de oferta de uma
 # vez, mas também não some do ar o resto do dia (a conta não é só sobre ofertas).
-NUMERO_STORIES_OFERTAS_POR_DIA = 5
+NUMERO_STORIES_OFERTAS_POR_DIA = 8
+
+# Espalha os NUMERO_STORIES_OFERTAS_POR_DIA posts igualmente entre esses dois
+# horários (ex: 8 stories em 12h = 1 a cada 1h30 - ver _horario_do_proximo_story). O
+# cron do Render (/tarefas/postar-story-oferta/) pode chamar com qualquer frequência
+# (não precisa bater exatamente com esses horários) - quem decide se É a hora de
+# postar é o código aqui, checando o horário-alvo do próximo story ainda não
+# publicado; se o cron chamar de novo antes da hora, só devolve None e tenta na
+# próxima chamada.
+HORA_INICIO_STORIES_OFERTA = 8
+HORA_FIM_STORIES_OFERTA = 20
 
 # A Shopee tende a devolver sempre os mesmos best-sellers de um dia pro outro (a
 # sincronização é um "retrato" diário, sem histórico - ver ofertas/services.py,
@@ -40,11 +50,11 @@ NUMERO_STORIES_OFERTAS_POR_DIA = 5
 # aparecia quase todo dia. 7 dias = não repete a mesma oferta na mesma semana.
 DIAS_SEM_REPETIR_OFERTA = 7
 
-# Escolher sempre as NUMERO_STORIES_OFERTAS_POR_DIA (5) categorias mais vendidas, e
+# Escolher sempre as NUMERO_STORIES_OFERTAS_POR_DIA categorias mais vendidas, e
 # dentro delas sempre a oferta #1 em vendas, dava sempre o mesmo resultado - o ranking
 # de categoria/produto mais vendido quase não muda de um dia pro outro. Pra variar de
 # verdade sem abrir mão de "só produto de peso", sorteia dentro de pools maiores em vez
-# de pegar sempre o topo: TAMANHO_POOL_CATEGORIAS categorias candidatas (não só as 5
+# de pegar sempre o topo: TAMANHO_POOL_CATEGORIAS categorias candidatas (não só as
 # usadas no dia) e, dentro da escolhida, TAMANHO_POOL_PRODUTOS_POR_CATEGORIA produtos
 # mais vendidos candidatos (não só o #1) - ver _escolher_oferta_do_momento.
 TAMANHO_POOL_CATEGORIAS = 15
@@ -111,16 +121,25 @@ def _registrar(
     )
 
 
+# Story de oferta e combo diário postam sozinhos, sem aprovação por e-mail, mesmo com
+# INSTAGRAM_REQUER_APROVACAO=True - decisão de 2026-09-02: são muitos stories por dia
+# (NUMERO_STORIES_OFERTAS_POR_DIA) pra aprovar um por um, e o conteúdo é gerado
+# (produto + preço + cashback já sincronizados), sem risco de erro de digitação como
+# um texto escrito à mão. O resto (dica, lembrete, institucional, ofertas da semana)
+# continua exigindo aprovação normalmente.
+CONTEUDO_TIPOS_SEM_APROVACAO = {
+    RegistroPublicacao.CONTEUDO_OFERTA_DIARIA,
+    RegistroPublicacao.CONTEUDO_COMBO_DIARIO,
+}
+
+
 def _publicar_ou_simular(
-    imagem, legenda, tipo, conteudo_tipo, data, request, story: bool, posicao=None
+    imagem, legenda, tipo, conteudo_tipo, data, request, story: bool
 ) -> RegistroPublicacao:
-    """posicao é (qual, total) e só chega até o e-mail de aprovação - ver
-    aprovacao.enviar_email_aprovacao. Nos outros caminhos (simulação, publicação direta)
-    ela é ignorada, porque não existe e-mail para ordenar."""
     if not settings.INSTAGRAM_BOT_ATIVO:
         return _simular(imagem, legenda, tipo, conteudo_tipo, data, request)
-    if settings.INSTAGRAM_REQUER_APROVACAO:
-        return _aguardar_aprovacao(imagem, legenda, tipo, conteudo_tipo, data, request, posicao)
+    if settings.INSTAGRAM_REQUER_APROVACAO and conteudo_tipo not in CONTEUDO_TIPOS_SEM_APROVACAO:
+        return _aguardar_aprovacao(imagem, legenda, tipo, conteudo_tipo, data, request)
     return _publicar_direto(imagem, legenda, tipo, conteudo_tipo, data, request, story)
 
 
@@ -156,14 +175,14 @@ def _publicar_direto(imagem, legenda, tipo, conteudo_tipo, data, request, story:
         )
 
 
-def _aguardar_aprovacao(imagem, legenda, tipo, conteudo_tipo, data, request, posicao=None) -> RegistroPublicacao:
+def _aguardar_aprovacao(imagem, legenda, tipo, conteudo_tipo, data, request) -> RegistroPublicacao:
     imagem_url = _salvar_e_montar_url(imagem, request)
     registro = _registrar(
         data, tipo, conteudo_tipo, legenda, imagem_url,
         simulacao=False, sucesso=False, status=RegistroPublicacao.STATUS_PENDENTE_APROVACAO,
     )
     try:
-        aprovacao.enviar_email_aprovacao(registro, [_bytes_jpeg(imagem)], request, posicao=posicao)
+        aprovacao.enviar_email_aprovacao(registro, [_bytes_jpeg(imagem)], request)
     except Exception:
         logger.exception("[instagram_bot] falha ao enviar e-mail de aprovação (registro %s)", registro.pk)
     return registro
@@ -295,10 +314,32 @@ def _publicar_story_de_oferta(oferta: Oferta, data, request) -> RegistroPublicac
     return registro
 
 
+def _horario_do_proximo_story(indice: int) -> time:
+    """Horário-alvo (hora local) do story de índice `indice` (0 = primeiro do dia),
+    espalhando NUMERO_STORIES_OFERTAS_POR_DIA posts igualmente entre
+    HORA_INICIO_STORIES_OFERTA e HORA_FIM_STORIES_OFERTA - ver o comentário ao lado
+    dessas constantes."""
+    minutos_totais = (HORA_FIM_STORIES_OFERTA - HORA_INICIO_STORIES_OFERTA) * 60
+    minutos_desde_inicio = int(indice * minutos_totais / NUMERO_STORIES_OFERTAS_POR_DIA)
+    hora, minuto = divmod(minutos_desde_inicio, 60)
+    return time(HORA_INICIO_STORIES_OFERTA + hora, minuto)
+
+
 def publicar_story_oferta_do_momento(data, request) -> RegistroPublicacao | None:
     """Chamado várias vezes ao dia (não é a tarefa diária única) - posta no máximo 1
-    story de oferta por chamada. Ver NUMERO_STORIES_OFERTAS_POR_DIA."""
+    story de oferta por chamada, respeitando o limite diário
+    (NUMERO_STORIES_OFERTAS_POR_DIA) e o espaçamento entre eles
+    (_horario_do_proximo_story) - se o cron chamar antes da hora do próximo story
+    ainda não publicado, devolve None sem postar (tenta de novo na próxima chamada)."""
     if data.weekday() not in conteudo.DIAS_COM_STORIES_DE_OFERTA:
+        return None
+
+    ja_publicados_hoje = RegistroPublicacao.objects.filter(
+        data=data, conteudo_tipo=RegistroPublicacao.CONTEUDO_OFERTA_DIARIA,
+    ).exclude(status=RegistroPublicacao.STATUS_ERRO).count()
+    if ja_publicados_hoje >= NUMERO_STORIES_OFERTAS_POR_DIA:
+        return None
+    if timezone.localtime().time() < _horario_do_proximo_story(ja_publicados_hoje):
         return None
 
     oferta = _escolher_oferta_do_momento(data)
@@ -425,12 +466,12 @@ def publicar_combo_de_stories(data, request) -> list[RegistroPublicacao]:
     }
 
     registros = []
-    for indice, story in enumerate(combo, start=1):
+    for story in combo:
         imagem = construtores[story["formato"]](story)
         registros.append(_publicar_ou_simular(
             imagem, story.get("apoio") or story["titulo"],
             RegistroPublicacao.TIPO_STORY, RegistroPublicacao.CONTEUDO_COMBO_DIARIO,
-            data, request, story=True, posicao=(indice, len(combo)),
+            data, request, story=True,
         ))
     return registros
 

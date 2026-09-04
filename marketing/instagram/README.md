@@ -53,17 +53,34 @@ pasta, pra não ficar vazio quando a automação for ligada de verdade — ver
      (tratar isso na Fase 4).
 2. **Definir conteúdo e frequência** — ✅ concluído. Calendário definido:
    - **Stories**: todo dia (`DIAS_COM_STORIES_DE_OFERTA`, inclui fim de
-     semana desde 2026-08-14), `NUMERO_STORIES_OFERTAS_POR_DIA` (5) stories
-     de oferta espalhados ao longo do dia (cron dedicado,
-     `.github/workflows/stories-oferta.yml`, chama
-     `/tarefas/postar-story-oferta/` várias vezes ao dia) - 1 oferta por
-     story, 1 categoria (nível 1) diferente por vez, entre as categorias
-     mais vendidas, sem repetir produto (mesmo nome vindo de lojas
-     diferentes conta como repetido - ver `ofertas/services.py`,
-     `selecionar_top_ofertas_sem_duplicar`/`categorias_mais_vendidas`, e
-     `instagram_bot/services.py`, `publicar_story_oferta_do_momento`). De
-     propósito **não** é 1 story só com várias ofertas juntas: o perfil
-     não é só sobre ofertas, então evita "bombardear" o feed de stories.
+     semana desde 2026-08-14), `NUMERO_STORIES_OFERTAS_POR_DIA` (8, desde
+     2026-09-02 - antes eram 5) stories de oferta espalhados ao longo do
+     dia (Cron Job dedicado no Render, `cron-stories-oferta`, chama
+     `/tarefas/postar-story-oferta/` várias vezes ao dia - ver "Cron Jobs
+     do Render" abaixo) - 1 oferta por story, 1 categoria (nível 1)
+     diferente por vez, entre as categorias mais vendidas, sem repetir
+     produto (mesmo nome vindo de lojas diferentes conta como repetido -
+     ver `ofertas/services.py`, `selecionar_top_ofertas_sem_duplicar`/
+     `categorias_mais_vendidas`, e `instagram_bot/services.py`,
+     `publicar_story_oferta_do_momento`). De propósito **não** é 1 story
+     só com várias ofertas juntas: o perfil não é só sobre ofertas, então
+     evita "bombardear" o feed de stories.
+     **Espaçados igualmente entre `HORA_INICIO_STORIES_OFERTA` (8h) e
+     `HORA_FIM_STORIES_OFERTA` (20h)** (2026-09-02) - com 8 stories isso dá
+     1 a cada 1h30 (`_horario_do_proximo_story`). O Cron Job não precisa
+     bater exatamente com esses horários: pode chamar com qualquer
+     frequência (inclusive a de antes) que quem decide se já é a hora do
+     próximo story é o código - se chamar cedo demais, só devolve `None`
+     sem postar, e tenta de novo na próxima chamada.
+     **Postam direto, sem pedir aprovação por e-mail** (2026-09-02, ver
+     `services.CONTEUDO_TIPOS_SEM_APROVACAO`), mesmo com
+     `INSTAGRAM_REQUER_APROVACAO=True` - só stories de oferta e o combo
+     diário; o resto (dica, lembrete, institucional, melhores da semana)
+     continua exigindo aprovação normalmente. Decisão consciente: são
+     muitos stories por dia pra aprovar um por um, e o conteúdo já sai
+     todo gerado a partir do catálogo sincronizado (produto, preço,
+     cashback), sem risco de erro de digitação como um texto escrito à
+     mão.
      **Não repete produto em `DIAS_SEM_REPETIR_OFERTA` (7) dias** (só
      dentro do mesmo dia não é suficiente - a sincronização diária com a
      Shopee é um "retrato" sem histórico, ver `sincronizar_ofertas`, e
