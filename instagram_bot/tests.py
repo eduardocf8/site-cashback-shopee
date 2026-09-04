@@ -1,4 +1,4 @@
-from datetime import timedelta
+from datetime import datetime, time, timedelta
 from decimal import Decimal
 from unittest.mock import patch
 
@@ -355,14 +355,11 @@ class PublicacaoDoComboTests(TestCase):
     INSTAGRAM_APROVADOR_EMAIL="dono@exemplo.com",
     EMAIL_BACKEND="django.core.mail.backends.locmem.EmailBackend",
 )
-class EmailDeAprovacaoDoComboTests(TestCase):
-    """A numeração no assunto dos e-mails de aprovação do combo.
-
-    Os cinco stories do combo diário (ver conteudo.combo_de_stories_do_dia) saem no
-    mesmo minuto e chegam fora de ordem (a entrega não respeita a ordem de envio). Com
-    assunto idêntico, a única forma de saber qual era qual era abrindo todos - por isso
-    a posição vai no assunto, antes do resto.
-    """
+class PublicacaoDiretaSemAprovacaoTests(TestCase):
+    """Story de oferta e combo diário postam direto, sem passar pelo e-mail de
+    aprovação - mesmo com INSTAGRAM_REQUER_APROVACAO=True (decisão de 2026-09-02, ver
+    services.CONTEUDO_TIPOS_SEM_APROVACAO). O resto do conteúdo (dica de economia,
+    lembrete, institucional) continua exigindo aprovação normalmente."""
 
     def setUp(self):
         Oferta.objects.create(
@@ -373,35 +370,105 @@ class EmailDeAprovacaoDoComboTests(TestCase):
         )
         self.request = RequestFactory().get("/")
 
-    def test_cada_story_do_combo_leva_a_propria_posicao_no_assunto(self):
-        services.publicar_combo_de_stories(timezone.localdate(), self.request)
+    @patch("instagram_bot.services.timezone")
+    @patch("instagram_bot.instagram_client.publicar_imagem")
+    def test_story_de_oferta_publica_direto_sem_email(self, mock_publicar, mock_timezone):
+        mock_publicar.return_value = "media123"
+        mock_timezone.localdate.return_value = timezone.localdate()
+        mock_timezone.localtime.return_value = datetime(2026, 9, 2, 12, 0)
 
-        assuntos = [email.subject for email in mail.outbox]
-        self.assertEqual(len(assuntos), 5)
-        for esperado, assunto in zip(["1/5", "2/5", "3/5", "4/5", "5/5"], assuntos):
-            with self.subTest(posicao=esperado):
-                self.assertIn(esperado, assunto)
+        registro = services.publicar_story_oferta_do_momento(timezone.localdate(), self.request)
 
-    def test_a_posicao_vem_antes_do_assunto_e_nao_depois(self):
-        """Se o número ficasse no fim, a lista da caixa de entrada continuaria mostrando
-        linhas iguais - é a posição na string que resolve o problema, não a presença
-        dela."""
-        services.publicar_combo_de_stories(timezone.localdate(), self.request)
+        self.assertEqual(registro.status, RegistroPublicacao.STATUS_PUBLICADO)
+        self.assertEqual(len(mail.outbox), 0)
 
-        assunto = mail.outbox[0].subject
-        self.assertLess(assunto.index("1/5"), assunto.index("aprovar"))
+    @patch("instagram_bot.instagram_client.publicar_imagem")
+    def test_combo_publica_direto_sem_email(self, mock_publicar):
+        mock_publicar.return_value = "media123"
 
-    def test_conteudo_de_um_email_so_nao_ganha_numeracao(self):
-        """Story de oferta sai sozinho: numerar "1/1" só poluiria o assunto."""
-        services.publicar_story_oferta_do_momento(timezone.localdate(), self.request)
+        registros = services.publicar_combo_de_stories(timezone.localdate(), self.request)
 
+        self.assertTrue(registros)
+        self.assertTrue(all(r.status == RegistroPublicacao.STATUS_PUBLICADO for r in registros))
+        self.assertEqual(len(mail.outbox), 0)
+
+    def test_dica_de_economia_continua_exigindo_aprovacao(self):
+        """Confirma que a mudança é específica pra oferta/combo, não desliga a
+        aprovação pra tudo por engano."""
+        registro = services.publicar_story_dica(timezone.localdate(), self.request)
+
+        self.assertEqual(registro.status, RegistroPublicacao.STATUS_PENDENTE_APROVACAO)
         self.assertEqual(len(mail.outbox), 1)
-        self.assertNotIn("/", mail.outbox[0].subject.replace("cash-b", ""))
 
-    def test_corpo_diz_qual_story_da_sequencia_e(self):
-        services.publicar_combo_de_stories(timezone.localdate(), self.request)
 
-        self.assertIn("Story 2 de 5", mail.outbox[1].body)
+class EspacamentoDosStoriesDeOfertaTests(TestCase):
+    """8 stories de oferta por dia (NUMERO_STORIES_OFERTAS_POR_DIA), espalhados
+    igualmente entre HORA_INICIO_STORIES_OFERTA (8h) e HORA_FIM_STORIES_OFERTA (20h) -
+    decisão de 2026-09-02 (antes eram 5, sem horário-alvo nenhum: o cron postava assim
+    que chamava, então dependia só da frequência dele pra não ficar tudo bem cedo)."""
+
+    def setUp(self):
+        Oferta.objects.create(
+            item_id=1, nome="Fone de Ouvido Bluetooth TWS", nome_curto="fone bluetooth",
+            preco_min=Decimal("89.90"), preco_max=Decimal("89.90"),
+            imagem_url="https://exemplo.com/fone.jpg",
+            percentual_comissao=Decimal("0.4200"), categoria_id=1,
+        )
+        self.request = RequestFactory().get("/")
+        patcher = patch("instagram_bot.services.timezone")
+        self.mock_timezone = patcher.start()
+        self.addCleanup(patcher.stop)
+        self.mock_timezone.localdate.return_value = timezone.localdate()
+
+    def _definir_hora_atual(self, hora, minuto):
+        self.mock_timezone.localtime.return_value = datetime(2026, 9, 2, hora, minuto)
+
+    def test_horarios_alvo_ficam_igualmente_espacados_entre_8h_e_20h(self):
+        horarios = [
+            services._horario_do_proximo_story(indice)
+            for indice in range(services.NUMERO_STORIES_OFERTAS_POR_DIA)
+        ]
+
+        self.assertEqual(
+            horarios,
+            [time(8, 0), time(9, 30), time(11, 0), time(12, 30), time(14, 0), time(15, 30), time(17, 0), time(18, 30)],
+        )
+
+    def test_nao_posta_antes_do_horario_do_primeiro_story(self):
+        self._definir_hora_atual(7, 59)
+
+        self.assertIsNone(services.publicar_story_oferta_do_momento(timezone.localdate(), self.request))
+
+    def test_posta_a_partir_do_horario_do_primeiro_story(self):
+        self._definir_hora_atual(8, 0)
+
+        registro = services.publicar_story_oferta_do_momento(timezone.localdate(), self.request)
+
+        self.assertIsNotNone(registro)
+
+    def test_segundo_story_so_libera_no_horario_alvo_dele_nao_antes(self):
+        RegistroPublicacao.objects.create(
+            data=timezone.localdate(), tipo=RegistroPublicacao.TIPO_STORY,
+            conteudo_tipo=RegistroPublicacao.CONTEUDO_OFERTA_DIARIA,
+            status=RegistroPublicacao.STATUS_SIMULADO, sucesso=True,
+        )
+
+        self._definir_hora_atual(9, 0)
+        self.assertIsNone(services.publicar_story_oferta_do_momento(timezone.localdate(), self.request))
+
+        self._definir_hora_atual(9, 30)
+        self.assertIsNotNone(services.publicar_story_oferta_do_momento(timezone.localdate(), self.request))
+
+    def test_para_de_postar_depois_dos_oito(self):
+        for _ in range(services.NUMERO_STORIES_OFERTAS_POR_DIA):
+            RegistroPublicacao.objects.create(
+                data=timezone.localdate(), tipo=RegistroPublicacao.TIPO_STORY,
+                conteudo_tipo=RegistroPublicacao.CONTEUDO_OFERTA_DIARIA,
+                status=RegistroPublicacao.STATUS_SIMULADO, sucesso=True,
+            )
+        self._definir_hora_atual(19, 0)
+
+        self.assertIsNone(services.publicar_story_oferta_do_momento(timezone.localdate(), self.request))
 
 
 class DiversidadeDaEscolhaDeOfertaTests(TestCase):

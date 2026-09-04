@@ -29,16 +29,13 @@ def enviar_email_aprovacao(
     registro: RegistroPublicacao,
     imagens_bytes: list[bytes],
     request,
-    posicao: tuple[int, int] | None = None,
 ) -> None:
     """imagens_bytes tem 1 item pra story/post normal, ou N itens (na ordem dos slides) pra carrossel.
 
-    posicao é (qual, total) e só vale pra conteúdo que sai em mais de um e-mail no mesmo
-    dia - hoje, o combo diário de stories (5 e-mails). Sem ela, os e-mails chegavam com
-    assunto idêntico e sem ordem garantida (a entrega não respeita a ordem de envio), e
-    a única forma de saber qual era qual era abrindo todos. O número vem antes do resto
-    do assunto de propósito: assim a ordem aparece na lista da caixa de entrada, sem
-    abrir nada.
+    Story de oferta e combo diário não passam mais por aqui (postam direto, sem
+    aprovação - ver services.CONTEUDO_TIPOS_SEM_APROVACAO), então não existe mais o
+    caso de vários e-mails desse tipo chegarem juntos no mesmo dia precisando de
+    numeração pra distinguir qual é qual.
     """
     destinatario = settings.INSTAGRAM_APROVADOR_EMAIL
     if not destinatario:
@@ -52,18 +49,16 @@ def enviar_email_aprovacao(
         if len(imagens_bytes) > 1
         else f"Ver imagem: {registro.imagem_url}"
     )
-    ordem = f"{posicao[0]}/{posicao[1]} " if posicao else ""
     corpo = (
         f"{registro.get_tipo_display()} - {registro.get_conteudo_tipo_display()} ({registro.data})\n\n"
-        + (f"Story {posicao[0]} de {posicao[1]} da sequência do dia.\n\n" if posicao else "")
-        + f"Legenda:\n{registro.legenda}\n\n"
+        f"Legenda:\n{registro.legenda}\n\n"
         f"{linha_imagens}\n\n"
         f"Aprovar e publicar: {link_aprovar}\n\n"
         f"Rejeitar (não publicar): {link_rejeitar}\n\n"
         "Esse link vale por 36h."
     )
     email = EmailMessage(
-        subject=f"cash-b — {ordem}aprovar {registro.get_conteudo_tipo_display().lower()}?",
+        subject=f"cash-b — aprovar {registro.get_conteudo_tipo_display().lower()}?",
         body=corpo,
         to=[destinatario],
     )
