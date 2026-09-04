@@ -44,7 +44,7 @@ SLIDES = [
     """, True, capa=True),
 
     Slide(DARK_BG, f"""
-    {titulo("Cadastrar CPF e chave PIX num site novo pede desconfiança.", 28)}
+    {titulo("Cadastrar CPF e chave Pix num site novo pede desconfiança.", 28)}
     {subtitulo(
         "Cinco pontos para checar antes. Servem para qualquer site de cashback — "
         "inclusive para conferir a cash-b.",
@@ -104,7 +104,7 @@ SLIDES = [
     """, False, seta=False),
 ]
 
-LEGENDA = """Antes de cadastrar CPF e chave PIX em qualquer site de cashback, cheque estes cinco pontos. 🔍
+LEGENDA = """Antes de cadastrar CPF e chave Pix em qualquer site de cashback, cheque estes cinco pontos. 🔍
 
 1. O cashback vem de uma comissão real que a loja paga
 2. As regras de prazo e status estão escritas

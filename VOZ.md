@@ -24,6 +24,11 @@ o dono da marca aponta o que soa diferente do jeito dele de falar.
   ("bem-vindo à cash-b"); quando ela aparece como modificador de outro
   substantivo, o gênero desse outro substantivo é quem manda ("o site
   cash-b", "o link da cash-b" — aqui "link" já é masculino, então "do").
+- **"Pix", não "PIX".** O nome é definido pelo Banco Central como nome
+  próprio, não como sigla - só a primeira letra é maiúscula. Vale em
+  qualquer lugar onde a palavra aparece como texto para o usuário ("saque
+  via Pix", "chave Pix"). Nomes de constante e de campo no código
+  (`chave_pix`, `TIPO_PIX`) não mudam - a regra é de escrita, não de código.
 - **"Pra" só quando for contração de "para" + "a" (artigo feminino).**
   Ex: "pra revisão" está errado porque não existe "para a revisão" por trás
   — o certo é "para revisão". Já "pra próxima sincronização" está certo,
@@ -42,6 +47,8 @@ o dono da marca aponta o que soa diferente do jeito dele de falar.
   conteúdo do Instagram e documentação interna (2026-08-14).
 - `marketing/instagram/gerar_carrossel_beneficios.py` — regra do "pra"
   (2026-08-16).
+- Carrosséis 01, 08 e 09 — "Pix" no lugar de "PIX" (2026-09-04). O
+  restante do site ainda usa "PIX" (~86 ocorrências), pendente.
 
 ## Para pedir ajustes de voz numa conversa nova
 
