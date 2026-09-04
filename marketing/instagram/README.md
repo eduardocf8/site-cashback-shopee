@@ -567,6 +567,9 @@ propósito: acertar a moldura na mão mudaria a cada ajuste de corpo de fonte.
   quem visita o perfil no meio da semana só vê preço/desconto e pode não
   entender a proposta. Por isso 1 dos 2 posts semanais do feed é sempre
   institucional (quarta-feira).
+- **"Pix", nunca "PIX"** (regra em `VOZ.md`): o Banco Central define o nome
+  como nome próprio, não como sigla. Vale em slide, legenda e qualquer
+  texto que a pessoa lê.
 - **Nada de "quase ninguém usa", "a maioria não sabe" e afins** sobre o
   comportamento dos usuários — decisão do dono do produto: não existe
   histórico que sustente esse tipo de afirmação. Comparar e explicar as

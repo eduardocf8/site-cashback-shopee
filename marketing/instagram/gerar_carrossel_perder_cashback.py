@@ -91,7 +91,7 @@ SLIDES = [
 
     Slide(LIGHT_BG, item(
         "5", "O pagamento não ser confirmado",
-        "Boleto que vence, PIX que não é pago, cartão recusado. Para a Shopee, esse "
+        "Boleto que vence, Pix que não é pago, cartão recusado. Para a Shopee, esse "
         "pedido nunca virou venda.",
         "Confira se o pagamento passou antes de contar com o cashback.",
     ), True),

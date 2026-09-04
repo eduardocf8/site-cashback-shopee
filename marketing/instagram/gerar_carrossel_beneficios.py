@@ -57,7 +57,7 @@ SLIDES = [
     {titulo("A cash-b devolve essa comissão para você.", 30)}
     {subtitulo(
         "Você compra do jeito que já compra na Shopee. A diferença é que parte do "
-        "dinheiro cai de volta na sua conta, via PIX.",
+        "dinheiro cai de volta na sua conta, via Pix.",
         "rgba(255,255,255,0.88)", 300, 14.5)}
     """, False),
 
@@ -67,7 +67,7 @@ SLIDES = [
     <div style="margin-top:12px;">
         {check_item("Cashback real", "Toda compra participante gera dinheiro de volta.", SUCCESS)}
         {check_item("Cadastro grátis", "Sem mensalidade, sem taxa escondida.", BRAND_PRIMARY)}
-        {check_item("Saque via PIX", "Direto na sua conta, sem burocracia.", SUCCESS)}
+        {check_item("Saque via Pix", "Direto na sua conta, sem burocracia.", SUCCESS)}
         {check_item("Do seu jeito", "Você compra como sempre comprou na Shopee.", BRAND_PRIMARY)}
     </div>
     """, True),
@@ -105,7 +105,7 @@ LEGENDA = """Toda compra na Shopee gera cashback para você — e a maioria das 
 
 Quando a compra passa por um link de afiliado, a Shopee paga uma comissão. Ela nunca volta para quem comprou. A cash-b devolve uma parte dela para você.
 
-Cadastro grátis, sem mensalidade, saque via PIX. Você compra do jeito que já compra.
+Cadastro grátis, sem mensalidade, saque via Pix. Você compra do jeito que já compra.
 
 Salve para começar pela próxima compra.
 
