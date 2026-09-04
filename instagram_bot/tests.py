@@ -566,3 +566,32 @@ class IrParaStoryDeOfertaTests(TestCase):
         resposta = self.client.get(reverse("instagram_story_ir", args=[self.registro.pk]))
 
         self.assertRedirects(resposta, reverse("home"))
+
+
+class DownloadDeImagemDoProdutoTests(TestCase):
+    """Sem headers, a CDN de imagem da Shopee pode recusar o pedido por parecer
+    tráfego não-navegador (mesmo problema já visto em ofertas/services.py,
+    _resolver_item_id, pra seguir link curto) - foi a causa real do carrossel semanal
+    saindo sem nenhuma foto de produto, sem nenhum log avisando (2026-09-03)."""
+
+    @patch("instagram_bot.templates_imagem.requests.get")
+    def test_manda_user_agent_de_navegador(self, mock_get):
+        import io
+
+        from PIL import Image as PILImage
+
+        buffer = io.BytesIO()
+        PILImage.new("RGB", (1, 1)).save(buffer, "JPEG")
+        mock_get.return_value.content = buffer.getvalue()
+        mock_get.return_value.raise_for_status = lambda: None
+
+        templates_imagem._baixar_imagem("https://cf.shopee.com.br/produto.jpg")
+
+        _url, kwargs = mock_get.call_args
+        self.assertIn("Mozilla", kwargs["headers"]["User-Agent"])
+
+    @patch("instagram_bot.templates_imagem.requests.get")
+    def test_falha_no_download_devolve_none_sem_estourar(self, mock_get):
+        mock_get.side_effect = Exception("boom")
+
+        self.assertIsNone(templates_imagem._baixar_imagem("https://cf.shopee.com.br/produto.jpg"))

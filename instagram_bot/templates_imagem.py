@@ -5,10 +5,13 @@ adequado pra rodar dentro do processo web no plano gratuito da Render).
 Reaproveita as mesmas cores/fontes de static/css/brand.css e static/fonts/.
 """
 import io
+import logging
 from pathlib import Path
 
 import requests
 from PIL import Image, ImageColor, ImageDraw, ImageFont
+
+logger = logging.getLogger(__name__)
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
 FONT_DIR = REPO_ROOT / "static" / "fonts"
@@ -78,12 +81,32 @@ def _rounded_mask(size, raio):
     return mask
 
 
+# Sem headers, a CDN de imagem da Shopee pode recusar o pedido por parecer tráfego
+# não-navegador (padrão do requests, "python-requests/x.x") - mesmo problema já visto
+# e corrigido em ofertas/services.py, _resolver_item_id, pra seguir link curto.
+_CABECALHOS_IMAGEM = {
+    "User-Agent": (
+        "Mozilla/5.0 (Linux; Android 13; Mobile) AppleWebKit/537.36 "
+        "(KHTML, like Gecko) Chrome/124.0 Mobile Safari/537.36"
+    ),
+    "Accept": "image/avif,image/webp,image/apng,image/*,*/*;q=0.8",
+}
+
+
 def _baixar_imagem(url: str, timeout: int = 8):
+    """Devolve None em qualquer falha (rede, CDN recusando, imagem corrompida) - quem
+    chama sempre tem um layout de fallback sem foto (ver _cartao_produto), então uma
+    falha aqui nunca derruba a geração da arte inteira."""
     try:
-        resposta = requests.get(url, timeout=timeout)
+        resposta = requests.get(url, timeout=timeout, headers=_CABECALHOS_IMAGEM)
         resposta.raise_for_status()
         return Image.open(io.BytesIO(resposta.content)).convert("RGB")
-    except Exception:
+    except Exception as erro:
+        # Aviso, não erro: cair sem foto é um fallback válido (ver quem chama), mas
+        # sem log nenhum aqui a falha fica invisível - foi assim que o carrossel
+        # semanal saiu sem nenhuma foto de produto por um tempo sem ninguém perceber
+        # (2026-09-03).
+        logger.warning("[instagram_bot] falha ao baixar imagem %s: %s", url, erro)
         return None
 
 

@@ -380,6 +380,37 @@ Histórico de problemas reais encontrados ao ligar o bot de publicação de
 verdade pela primeira vez (2026-08-05) - registrado aqui pra não perder
 tempo reinvestigando algo parecido no futuro.
 
+### Carrossel semanal (e possivelmente stories) saindo sem foto de produto (2026-09-03)
+
+Reportado pelo dono: o e-mail de aprovação do carrossel "melhores
+ofertas da semana" chegava certinho (legenda, botões de aprovar/rejeitar),
+mas as imagens anexadas não tinham a foto do produto - só nome/preço/selo
+sobre fundo liso.
+
+**Causa raiz**: `templates_imagem._baixar_imagem` (usada por toda geração
+de imagem que leva foto de produto - story de oferta, "número com
+produto" do combo, e os slides do carrossel semanal) fazia
+`requests.get(url)` **sem nenhum header** - mesmo problema já visto e
+corrigido em `ofertas/services.py::_resolver_item_id` pra seguir link
+curto: a CDN de imagem da Shopee pode recusar um pedido que pareça
+tráfego não-navegador (`User-Agent` padrão do `requests`,
+`python-requests/x.x`). Qualquer falha ali cai num `except Exception:
+return None` **silencioso** - sem log nenhum - e quem chama tem um
+layout de fallback sem foto (pra nunca derrubar a arte inteira por causa
+de 1 imagem). Corrigido: `_baixar_imagem` agora manda um `User-Agent` de
+navegador de verdade, e loga um aviso (`logger.warning`) toda vez que uma
+imagem falha ao baixar, em vez de falhar em silêncio.
+
+**Por que só apareceu agora**: o carrossel semanal é, desde 2026-09-02
+(ver "Postam direto, sem pedir aprovação por e-mail" acima), o **único**
+conteúdo de oferta que ainda passa por revisão visual antes de publicar -
+os stories de oferta escolhidos pelo bot passaram a publicar direto, sem
+ninguém olhar a arte antes. Ou seja: é bem possível que esse mesmo
+problema já estivesse afetando os stories automáticos também, só que
+sem o e-mail de aprovação como "alarme", ninguém teria como perceber -
+vale conferir o perfil do Instagram depois desse fix pra confirmar se as
+fotos voltaram a aparecer nos stories também.
+
 ### "Only photo or video can be accepted as media type" ao aprovar/publicar
 
 Apareceu na primeira publicação real (story e post no feed, os dois com o
