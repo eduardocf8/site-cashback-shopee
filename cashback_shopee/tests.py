@@ -1,7 +1,11 @@
+import base64
 from unittest.mock import patch
 
+from django.core.mail import EmailMessage
 from django.test import TestCase, override_settings
 from django.urls import reverse
+
+from .brevo_email_backend import BrevoAPIEmailBackend
 
 
 class HealthcheckTests(TestCase):
@@ -152,3 +156,56 @@ class ExecutarResolucaoItemIdAlvoTests(TestCase):
 
         self.assertEqual(resposta.status_code, 200)
         self.assertIn("item_id_alvo_erro", resposta.json())
+
+
+@override_settings(BREVO_API_KEY="chave-de-teste")
+class BrevoAPIEmailBackendTests(TestCase):
+    """O Render bloqueia SMTP de saída, então o envio de e-mail usa a API HTTP do
+    Brevo (ver brevo_email_backend.py) - EmailMessage.attach(...) guarda o anexo em
+    message.attachments, mas o backend não lia esse atributo pra montar o payload:
+    todo e-mail com imagem anexada (aprovação de story/carrossel, entre outros)
+    chegava sem nenhuma imagem, mesmo o corpo do e-mail dizendo "N imagens anexadas"
+    (bug real encontrado em 2026-09-04, via e-mail de aprovação do carrossel semanal)."""
+
+    @patch("cashback_shopee.brevo_email_backend.requests.post")
+    def test_sem_anexo_nao_manda_o_campo_attachment(self, mock_post):
+        mock_post.return_value.raise_for_status = lambda: None
+        email = EmailMessage(subject="Assunto", body="Corpo", to=["dono@exemplo.com"])
+
+        BrevoAPIEmailBackend().send_messages([email])
+
+        payload = mock_post.call_args.kwargs["json"]
+        self.assertNotIn("attachment", payload)
+
+    @patch("cashback_shopee.brevo_email_backend.requests.post")
+    def test_anexo_vai_em_base64_no_payload(self, mock_post):
+        mock_post.return_value.raise_for_status = lambda: None
+        email = EmailMessage(subject="Assunto", body="Corpo", to=["dono@exemplo.com"])
+        email.attach("cash-b-1.jpg", b"bytes-de-uma-jpeg-qualquer", "image/jpeg")
+        email.attach("cash-b-2.jpg", b"bytes-de-outra-jpeg", "image/jpeg")
+
+        BrevoAPIEmailBackend().send_messages([email])
+
+        payload = mock_post.call_args.kwargs["json"]
+        self.assertEqual(len(payload["attachment"]), 2)
+        self.assertEqual(payload["attachment"][0]["name"], "cash-b-1.jpg")
+        self.assertEqual(
+            base64.b64decode(payload["attachment"][0]["content"]), b"bytes-de-uma-jpeg-qualquer"
+        )
+        self.assertEqual(payload["attachment"][1]["name"], "cash-b-2.jpg")
+
+    @patch("cashback_shopee.brevo_email_backend.requests.post")
+    def test_anexo_de_texto_tambem_funciona(self, mock_post):
+        """message.attachments aceita conteúdo str (não só bytes) - EmailMessage.attach
+        permite anexar texto puro. A API do Brevo só aceita base64, então precisa
+        codificar pra bytes primeiro."""
+        mock_post.return_value.raise_for_status = lambda: None
+        email = EmailMessage(subject="Assunto", body="Corpo", to=["dono@exemplo.com"])
+        email.attach("notas.txt", "conteúdo em texto", "text/plain")
+
+        BrevoAPIEmailBackend().send_messages([email])
+
+        payload = mock_post.call_args.kwargs["json"]
+        self.assertEqual(
+            base64.b64decode(payload["attachment"][0]["content"]).decode("utf-8"), "conteúdo em texto"
+        )

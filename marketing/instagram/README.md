@@ -397,36 +397,47 @@ Histórico de problemas reais encontrados ao ligar o bot de publicação de
 verdade pela primeira vez (2026-08-05) - registrado aqui pra não perder
 tempo reinvestigando algo parecido no futuro.
 
-### Carrossel semanal (e possivelmente stories) saindo sem foto de produto (2026-09-03)
+### Carrossel semanal chegando pra aprovação sem NENHUM anexo (2026-09-03/04)
 
 Reportado pelo dono: o e-mail de aprovação do carrossel "melhores
-ofertas da semana" chegava certinho (legenda, botões de aprovar/rejeitar),
-mas as imagens anexadas não tinham a foto do produto - só nome/preço/selo
-sobre fundo liso.
+ofertas da semana" chegava certinho (legenda, corpo dizendo "Carrossel
+com 9 imagens (anexadas, na ordem dos slides)", botões de
+aprovar/rejeitar), mas **sem nenhum anexo de verdade** - não é que a
+foto do produto estivesse faltando dentro da imagem, o e-mail não tinha
+imagem nenhuma anexada.
 
-**Causa raiz**: `templates_imagem._baixar_imagem` (usada por toda geração
-de imagem que leva foto de produto - story de oferta, "número com
-produto" do combo, e os slides do carrossel semanal) fazia
-`requests.get(url)` **sem nenhum header** - mesmo problema já visto e
-corrigido em `ofertas/services.py::_resolver_item_id` pra seguir link
-curto: a CDN de imagem da Shopee pode recusar um pedido que pareça
-tráfego não-navegador (`User-Agent` padrão do `requests`,
-`python-requests/x.x`). Qualquer falha ali cai num `except Exception:
-return None` **silencioso** - sem log nenhum - e quem chama tem um
-layout de fallback sem foto (pra nunca derrubar a arte inteira por causa
-de 1 imagem). Corrigido: `_baixar_imagem` agora manda um `User-Agent` de
-navegador de verdade, e loga um aviso (`logger.warning`) toda vez que uma
-imagem falha ao baixar, em vez de falhar em silêncio.
+**Primeira tentativa (não era a causa raiz)**: suspeitei que fosse
+`templates_imagem._baixar_imagem` (usada por toda geração de imagem com
+foto de produto) falhando ao baixar a foto por falta de `User-Agent` -
+mesmo problema já visto em `ofertas/services.py::_resolver_item_id`.
+Corrigi mandando um `User-Agent` de navegador e adicionando
+`logger.warning` em caso de falha (fix válido, mantido), mas o e-mail
+seguinte continuou sem nenhum anexo, e **sem nenhum log de falha** -
+sinal de que as imagens estavam sendo geradas certinho (com foto e
+tudo), só não chegavam anexadas no e-mail.
+
+**Causa raiz de verdade**: `cashback_shopee/brevo_email_backend.py` - o
+Render bloqueia SMTP de saída, então o envio de e-mail usa a API HTTP do
+Brevo em vez de `django.core.mail.backends.smtp`. Esse backend
+customizado montava o payload da API (assunto, corpo, destinatário...)
+mas **nunca lia `message.attachments`** - `EmailMessage.attach(...)`
+guardava o anexo no objeto normalmente, só que o backend simplesmente
+não repassava isso pra API do Brevo. Resultado: **todo** e-mail com
+imagem anexada por esse backend saía sem nenhuma imagem, não só o
+carrossel - inclusive as aprovações de story avulso (1 imagem cada),
+que ninguém tinha reparado porque conferir 1 imagem que "deveria estar
+lá" é bem mais fácil de passar despercebido que um carrossel de 9.
+Corrigido: o backend agora lê `message.attachments`, codifica cada
+anexo em base64 e manda no campo `attachment` que a API do Brevo espera.
 
 **Por que só apareceu agora**: o carrossel semanal é, desde 2026-09-02
 (ver "Postam direto, sem pedir aprovação por e-mail" acima), o **único**
-conteúdo de oferta que ainda passa por revisão visual antes de publicar -
-os stories de oferta escolhidos pelo bot passaram a publicar direto, sem
-ninguém olhar a arte antes. Ou seja: é bem possível que esse mesmo
-problema já estivesse afetando os stories automáticos também, só que
-sem o e-mail de aprovação como "alarme", ninguém teria como perceber -
-vale conferir o perfil do Instagram depois desse fix pra confirmar se as
-fotos voltaram a aparecer nos stories também.
+conteúdo de oferta que ainda passa por revisão visual antes de
+publicar - os stories de oferta escolhidos pelo bot passaram a publicar
+direto, sem ninguém olhar a arte antes. Esse bug (anexo nunca chegando)
+provavelmente já existia desde que o backend do Brevo foi criado - só
+não tinha como perceber sem abrir um e-mail de aprovação com imagem e
+notar a falta dela.
 
 ### "Only photo or video can be accepted as media type" ao aprovar/publicar
 

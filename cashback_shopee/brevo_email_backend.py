@@ -6,6 +6,7 @@ HTTP do Brevo (https://api.brevo.com) roda sobre HTTPS normal, que funciona
 sem problema.
 """
 
+import base64
 from email.utils import parseaddr
 
 import requests
@@ -13,6 +14,15 @@ from django.conf import settings
 from django.core.mail.backends.base import BaseEmailBackend
 
 API_URL = "https://api.brevo.com/v3/smtp/email"
+
+
+def _anexo_para_payload(anexo: tuple) -> dict:
+    """anexo é (nome, conteudo, mimetype) - o formato que EmailMessage.attach()
+    guarda em message.attachments. conteudo pode ser bytes (caso comum - imagem, PDF)
+    ou str (texto puro); a API do Brevo espera o conteúdo em base64 de qualquer jeito."""
+    nome, conteudo, _mimetype = anexo
+    dados = conteudo.encode("utf-8") if isinstance(conteudo, str) else conteudo
+    return {"name": nome, "content": base64.b64encode(dados).decode("ascii")}
 
 
 class BrevoAPIEmailBackend(BaseEmailBackend):
@@ -40,6 +50,12 @@ class BrevoAPIEmailBackend(BaseEmailBackend):
             payload["bcc"] = [{"email": destinatario} for destinatario in message.bcc]
         if getattr(message, "reply_to", None):
             payload["replyTo"] = {"email": message.reply_to[0]}
+        # Sem isso, EmailMessage.attach(...) era silenciosamente ignorado - a API do
+        # Brevo nunca via os anexos, então nenhum e-mail com foto (aprovação de
+        # story/carrossel, entre outros) chegava com imagem nenhuma, mesmo o corpo do
+        # e-mail dizendo "N imagens anexadas" (bug encontrado em 2026-09-04).
+        if message.attachments:
+            payload["attachment"] = [_anexo_para_payload(anexo) for anexo in message.attachments]
 
         try:
             resposta = requests.post(
