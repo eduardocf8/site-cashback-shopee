@@ -121,24 +121,25 @@ def _registrar(
     )
 
 
-# Story de oferta e combo diário postam sozinhos, sem aprovação por e-mail, mesmo com
+# Story de oferta ESCOLHIDA PELO BOT (publicar_story_oferta_do_momento) e o combo
+# diário postam sozinhos, sem aprovação por e-mail, mesmo com
 # INSTAGRAM_REQUER_APROVACAO=True - decisão de 2026-09-02: são muitos stories por dia
 # (NUMERO_STORIES_OFERTAS_POR_DIA) pra aprovar um por um, e o conteúdo é gerado
 # (produto + preço + cashback já sincronizados), sem risco de erro de digitação como
-# um texto escrito à mão. O resto (dica, lembrete, institucional, ofertas da semana)
-# continua exigindo aprovação normalmente.
-CONTEUDO_TIPOS_SEM_APROVACAO = {
-    RegistroPublicacao.CONTEUDO_OFERTA_DIARIA,
-    RegistroPublicacao.CONTEUDO_COMBO_DIARIO,
-}
-
-
+# um texto escrito à mão. Story de oferta escolhida À MÃO (botão "Criar story" no
+# admin, ou comando por link) continua pedindo aprovação, mesmo sendo o mesmo
+# conteudo_tipo (CONTEUDO_OFERTA_DIARIA) - foi você quem digitou preço/desconto/comissão
+# ali, então vale conferir antes de publicar (decisão de 2026-09-03, revertendo o que
+# esse tipo de story tinha herdado por engano no dia anterior - ver
+# _publicar_story_de_oferta/pular_aprovacao). Por isso a decisão de pular aprovação não
+# dá mais só pelo conteudo_tipo: quem chama _publicar_ou_simular precisa dizer
+# explicitamente (pular_aprovacao=True).
 def _publicar_ou_simular(
-    imagem, legenda, tipo, conteudo_tipo, data, request, story: bool
+    imagem, legenda, tipo, conteudo_tipo, data, request, story: bool, pular_aprovacao: bool = False
 ) -> RegistroPublicacao:
     if not settings.INSTAGRAM_BOT_ATIVO:
         return _simular(imagem, legenda, tipo, conteudo_tipo, data, request)
-    if settings.INSTAGRAM_REQUER_APROVACAO and conteudo_tipo not in CONTEUDO_TIPOS_SEM_APROVACAO:
+    if settings.INSTAGRAM_REQUER_APROVACAO and not pular_aprovacao:
         return _aguardar_aprovacao(imagem, legenda, tipo, conteudo_tipo, data, request)
     return _publicar_direto(imagem, legenda, tipo, conteudo_tipo, data, request, story)
 
@@ -292,17 +293,23 @@ def _escolher_oferta_do_momento(data) -> Oferta | None:
     return None
 
 
-def _publicar_story_de_oferta(oferta: Oferta, data, request) -> RegistroPublicacao:
+def _publicar_story_de_oferta(oferta: Oferta, data, request, automatico: bool = False) -> RegistroPublicacao:
     """Gera a arte e publica (ou simula/aguarda aprovação) o story de UMA oferta já
     escolhida - reaproveitado tanto pela escolha automática quanto pela manual
-    (publicar_story_oferta_especifica)."""
+    (publicar_story_oferta_especifica/publicar_story_oferta_curada).
+
+    automatico=True só quando veio de publicar_story_oferta_do_momento (o bot escolheu
+    sozinho, sem digitação humana nenhuma) - é o que pula a aprovação por e-mail
+    (ver _publicar_ou_simular). Nas formas manuais (link ou botão "Criar story" do
+    admin), automatico fica False de propósito: tem dado digitado à mão (preço,
+    desconto, comissão) que vale a pena conferir antes de publicar."""
     imagem = gerar_imagem_oferta_story(oferta)
     nome_exibido = oferta.nome_curto or oferta.nome
     legenda = f"{nome_exibido} — cashback garantido na cash-b. Link na bio pra ver essa e outras ofertas. 🛍️💸"
 
     registro = _publicar_ou_simular(
         imagem, legenda, RegistroPublicacao.TIPO_STORY, RegistroPublicacao.CONTEUDO_OFERTA_DIARIA,
-        data, request, story=True,
+        data, request, story=True, pular_aprovacao=automatico,
     )
     registro.oferta_categoria_id = oferta.categoria_id
     registro.oferta_item_id = oferta.item_id
@@ -346,7 +353,7 @@ def publicar_story_oferta_do_momento(data, request) -> RegistroPublicacao | None
     if not oferta:
         return None
 
-    return _publicar_story_de_oferta(oferta, data, request)
+    return _publicar_story_de_oferta(oferta, data, request, automatico=True)
 
 
 def publicar_story_oferta_especifica(url_produto: str, request) -> RegistroPublicacao:
@@ -355,7 +362,10 @@ def publicar_story_oferta_especifica(url_produto: str, request) -> RegistroPubli
     postar_oferta_especifica (rodado pelo Shell do Render). De propósito usa o mesmo
     CONTEUDO_OFERTA_DIARIA dos stories automáticos: conta pro limite diário
     (NUMERO_STORIES_OFERTAS_POR_DIA) e entra na janela de DIAS_SEM_REPETIR_OFERTA dias -
-    mantém o cuidado de não "bombardear" o perfil de oferta, mesmo pra posts manuais."""
+    mantém o cuidado de não "bombardear" o perfil de oferta, mesmo pra posts manuais.
+    automatico fica False (padrão) - diferente do story escolhido pelo bot sozinho,
+    esse continua pedindo aprovação por e-mail antes de publicar (ver
+    _publicar_story_de_oferta)."""
     oferta = ofertas_services.buscar_oferta_por_link(url_produto)
     return _publicar_story_de_oferta(oferta, timezone.localdate(), request)
 
@@ -367,7 +377,9 @@ def publicar_story_oferta_curada(oferta_curada, request) -> RegistroPublicacao:
     busca dado nenhum na Shopee: usa exatamente o que foi digitado no admin (preço,
     desconto, comissão), pra bater com o que já está publicado no site pra essa mesma
     oferta. Mesmo CONTEUDO_OFERTA_DIARIA das outras formas de publicar story de oferta -
-    mesmo motivo (ver publicar_story_oferta_especifica)."""
+    mesmo motivo (ver publicar_story_oferta_especifica). Também continua pedindo
+    aprovação (automatico=False, o padrão) - tem dado digitado à mão aqui, vale a pena
+    conferir antes de publicar."""
     return _publicar_story_de_oferta(oferta_curada, timezone.localdate(), request)
 
 
@@ -471,7 +483,7 @@ def publicar_combo_de_stories(data, request) -> list[RegistroPublicacao]:
         registros.append(_publicar_ou_simular(
             imagem, story.get("apoio") or story["titulo"],
             RegistroPublicacao.TIPO_STORY, RegistroPublicacao.CONTEUDO_COMBO_DIARIO,
-            data, request, story=True,
+            data, request, story=True, pular_aprovacao=True,
         ))
     return registros
 

@@ -72,15 +72,24 @@ pasta, pra não ficar vazio quando a automação for ligada de verdade — ver
      frequência (inclusive a de antes) que quem decide se já é a hora do
      próximo story é o código - se chamar cedo demais, só devolve `None`
      sem postar, e tenta de novo na próxima chamada.
-     **Postam direto, sem pedir aprovação por e-mail** (2026-09-02, ver
-     `services.CONTEUDO_TIPOS_SEM_APROVACAO`), mesmo com
-     `INSTAGRAM_REQUER_APROVACAO=True` - só stories de oferta e o combo
-     diário; o resto (dica, lembrete, institucional, melhores da semana)
-     continua exigindo aprovação normalmente. Decisão consciente: são
-     muitos stories por dia pra aprovar um por um, e o conteúdo já sai
-     todo gerado a partir do catálogo sincronizado (produto, preço,
-     cashback), sem risco de erro de digitação como um texto escrito à
-     mão.
+     **Postam direto, sem pedir aprovação por e-mail** (2026-09-02) -
+     mesmo com `INSTAGRAM_REQUER_APROVACAO=True` - só o story de oferta
+     **escolhido pelo próprio bot** (`publicar_story_oferta_do_momento`,
+     `automatico=True`) e o combo diário; o resto (dica, lembrete,
+     institucional, melhores da semana) continua exigindo aprovação
+     normalmente. Decisão consciente: são muitos stories por dia pra
+     aprovar um por um, e o conteúdo já sai todo gerado a partir do
+     catálogo sincronizado (produto, preço, cashback), sem risco de erro
+     de digitação como um texto escrito à mão.
+     **Story de oferta escolhido à mão continua pedindo aprovação**
+     (2026-09-03) - mesmo sendo o mesmo `CONTEUDO_OFERTA_DIARIA`, o botão
+     "Criar story" do admin (`publicar_story_oferta_curada`) e o comando
+     por link (`publicar_story_oferta_especifica`) chamam
+     `_publicar_story_de_oferta` com `automatico=False` (o padrão) - tem
+     dado digitado à mão (preço/desconto/comissão) que vale a pena
+     conferir antes de publicar. A decisão de pular aprovação não é mais
+     só pelo `conteudo_tipo`: quem chama `_publicar_ou_simular` precisa
+     dizer explicitamente (`pular_aprovacao=True`) - ver services.py.
      **Não repete produto em `DIAS_SEM_REPETIR_OFERTA` (7) dias** (só
      dentro do mesmo dia não é suficiente - a sincronização diária com a
      Shopee é um "retrato" sem histórico, ver `sincronizar_ofertas`, e

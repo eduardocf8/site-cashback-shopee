@@ -9,7 +9,7 @@ from django.urls import reverse
 from django.utils import timezone
 
 from links.models import Click
-from ofertas.models import Oferta
+from ofertas.models import Oferta, OfertaManual
 
 from . import conteudo, services, templates_imagem
 from .models import RegistroPublicacao
@@ -396,6 +396,26 @@ class PublicacaoDiretaSemAprovacaoTests(TestCase):
         """Confirma que a mudança é específica pra oferta/combo, não desliga a
         aprovação pra tudo por engano."""
         registro = services.publicar_story_dica(timezone.localdate(), self.request)
+
+        self.assertEqual(registro.status, RegistroPublicacao.STATUS_PENDENTE_APROVACAO)
+        self.assertEqual(len(mail.outbox), 1)
+
+    def test_story_de_oferta_curado_a_mao_continua_exigindo_aprovacao(self):
+        """Só o story ESCOLHIDO PELO BOT (publicar_story_oferta_do_momento) pula
+        aprovação - o mesmo CONTEUDO_OFERTA_DIARIA escolhido à mão (botão "Criar
+        story" no admin, ou por link) continua pedindo aprovação: tem dado digitado à
+        mão (preço/desconto/comissão) que vale a pena conferir antes de publicar
+        (decisão de 2026-09-03, revertendo o que esse caminho tinha herdado sem
+        querer no dia anterior)."""
+        oferta_manual = OfertaManual.objects.create(
+            product_link="https://shopee.com.br/produto-curado",
+            nome="Produto curado à mão",
+            imagem_url="https://exemplo.com/produto.jpg",
+            preco_antigo=Decimal("100.00"), preco_novo=Decimal("80.00"),
+            percentual_comissao=Decimal("0.1000"),
+        )
+
+        registro = services.publicar_story_oferta_curada(oferta_manual, self.request)
 
         self.assertEqual(registro.status, RegistroPublicacao.STATUS_PENDENTE_APROVACAO)
         self.assertEqual(len(mail.outbox), 1)
