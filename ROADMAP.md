@@ -1305,6 +1305,37 @@ Suite completa (256 testes) verde.
 
 ---
 
+## Fase 45 — Sincronizar o catálogo de ofertas até o teto real da Shopee ✅
+
+Usuário perguntou se dava pra aumentar muito o número de produtos importados. A
+sincronização (`sincronizar_ofertas`) só ia até `max_paginas=40` (x 50 = até 2.000
+produtos) - um número escolhido sem medir contra o que a Shopee realmente oferece.
+
+- [x] **`ofertas/management/commands/explorar_limite_catalogo.py`** - comando de
+      diagnóstico, sem salvar nada no banco: pagina `productOfferV2` até achar
+      `hasNextPage: False` (ou um teto de segurança), pra medir o tamanho real do
+      feed de ofertas de afiliado ativas - que **não é** o catálogo/busca geral da
+      Shopee, é um feed próprio com teto dele mesmo.
+- [x] **Medido em produção (2026-09-04)**: 2.800 produtos em 56 páginas - ou seja,
+      `max_paginas=40` já deixava 800 produtos de fora que a Shopee estava disposta a
+      entregar.
+- [x] **`sincronizar_ofertas`**: `max_paginas` 40 → 70 (até 3.500 produtos) - folga
+      sobre o teto medido, já que ele pode crescer com o tempo; o loop já para
+      sozinho em `hasNextPage: False` bem antes disso, então não custa nada deixar
+      margem.
+
+Efeito colateral conhecido e aceitável: o encurtamento de nome via Gemini
+(`encurtar_nomes_pendentes`, limitado a ~500 produtos/dia pelo orçamento de 120s por
+execução, não por cota do Gemini em si - o plano gratuito libera 15 req/min, bem mais
+que isso) leva ~2 dias a mais pra alcançar os produtos novos liberados de uma vez.
+Processados em ordem de mais vendido primeiro (`Oferta.Meta.ordering = -vendas`), então
+quem mais aparece em destaque ganha nome curto primeiro; a cauda longa espera mais,
+mostrando o nome cru da Shopee nesse meio tempo (sem quebrar nada).
+
+Suite completa (256 testes) verde.
+
+---
+
 Pra continuar esse roadmap numa conversa nova, basta apontar esse arquivo
 (`ROADMAP.md`) e o `BRAND.md` — juntos eles dão o contexto de identidade
 visual e do que falta implementar, sem precisar reconstruir o histórico da

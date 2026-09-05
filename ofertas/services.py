@@ -265,11 +265,16 @@ def encurtar_nomes_pendentes() -> dict:
     return {"total_ofertas": len(ofertas)}
 
 
-def sincronizar_ofertas(limite_por_pagina: int = 50, max_paginas: int = 40) -> dict:
+def sincronizar_ofertas(limite_por_pagina: int = 50, max_paginas: int = 70) -> dict:
     """Busca as ofertas de produtos (productOfferV2, listType ALL) e substitui a lista atual.
 
     Full-replace (não incremental): uma "oferta" é só uma foto do que a Shopee está
     oferecendo hoje, sem status a preservar entre sincronizações (diferente de Pedido/Saque).
+
+    max_paginas=70 (x50 = até 3.500 produtos) dá margem sobre o teto real observado pra essa
+    conta (2.800 produtos em 56 páginas, medido com explorar_limite_catalogo em 2026-09-04) -
+    a Shopee pode liberar mais ofertas com o tempo, e o loop já para sozinho em hasNextPage=False
+    bem antes de chegar nesse teto, então não custa nada deixar folga.
     """
     categorias_nivel1 = carregar_categorias_nivel1()
 
