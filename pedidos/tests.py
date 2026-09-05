@@ -17,7 +17,7 @@ from accounts.models import Indicacao
 from links.models import Click
 from saques.models import Saque
 
-from .analytics import obter_analytics, origem_detalhada
+from .analytics import obter_analytics, obter_serie_diaria, origem_detalhada
 from .models import CampanhaCashback, Pedido
 from .notificacoes import notificar_indicador_bonus_pendente
 from .services import calcular_data_prevista_liberacao, liberar_saldo, mapear_status, resolver_click, sincronizar
@@ -1142,6 +1142,86 @@ class ObterAnalyticsTests(TestCase):
         por_status = {linha["status"]: linha for linha in dados["saques_por_status"]}
         self.assertEqual(por_status[Saque.STATUS_PAGO]["valor"], Decimal("50.00"))
         self.assertEqual(por_status[Saque.STATUS_SOLICITADO]["valor"], Decimal("30.00"))
+
+
+class ObterSerieDiariaTests(TestCase):
+    """Série dia a dia usada no gráfico de linha da tela de analytics."""
+
+    def setUp(self):
+        self.usuario = get_user_model().objects.create_user(
+            username="compradora", password="senha123", cpf="39053344705"
+        )
+
+    def _criar_pedido(self, order_id, comissao, cashback, data_compra):
+        return Pedido.objects.create(
+            order_id=order_id, conversion_id="1", usuario=self.usuario,
+            status=Pedido.STATUS_VALIDADO, status_shopee_bruto="COMPLETED",
+            valor_comissao=Decimal(comissao), valor_cashback=Decimal(cashback), data_compra=data_compra,
+        )
+
+    def test_um_ponto_por_dia_no_periodo_mesmo_sem_pedido(self):
+        serie = obter_serie_diaria(data_inicio=date(2026, 3, 1), data_fim=date(2026, 3, 3))
+
+        self.assertEqual(serie["rotulos"], ["01/03", "02/03", "03/03"])
+        self.assertEqual(serie["series"]["pedidos"], [0, 0, 0])
+
+    def test_agrupa_pedidos_por_dia_da_compra(self):
+        self._criar_pedido("A1", "10.00", "5.00", timezone.make_aware(datetime(2026, 3, 1, 8)))
+        self._criar_pedido("A2", "20.00", "8.00", timezone.make_aware(datetime(2026, 3, 1, 20)))
+        self._criar_pedido("B1", "6.00", "3.00", timezone.make_aware(datetime(2026, 3, 2, 12)))
+
+        serie = obter_serie_diaria(data_inicio=date(2026, 3, 1), data_fim=date(2026, 3, 3))
+
+        self.assertEqual(serie["series"]["pedidos"], [2, 1, 0])
+        self.assertEqual(serie["series"]["comissao"], [30.0, 6.0, 0])
+        self.assertEqual(serie["series"]["cashback"], [13.0, 3.0, 0])
+
+    def test_agrupa_saques_indicacoes_e_novos_usuarios_por_dia(self):
+        # criado_em é auto_now_add em Saque/Indicacao - passar no create() é ignorado,
+        # então cria e ajusta a data depois com update() (que não passa pelo auto_now_add).
+        saque = Saque.objects.create(
+            usuario=self.usuario, valor=Decimal("50.00"), chave_pix="a@a.com", tipo_chave_pix="EMAIL",
+            status=Saque.STATUS_PAGO,
+        )
+        Saque.objects.filter(pk=saque.pk).update(criado_em=timezone.make_aware(datetime(2026, 3, 1, 10)))
+        indicado = get_user_model().objects.create_user(username="indicado", password="s", cpf="14783246947")
+        indicacao = Indicacao.objects.create(indicador=self.usuario, indicado=indicado)
+        Indicacao.objects.filter(pk=indicacao.pk).update(criado_em=timezone.make_aware(datetime(2026, 3, 2, 9)))
+
+        serie = obter_serie_diaria(data_inicio=date(2026, 3, 1), data_fim=date(2026, 3, 2))
+
+        self.assertEqual(serie["series"]["saques_quantidade"], [1, 0])
+        self.assertEqual(serie["series"]["saques_valor"], [50.0, 0])
+        self.assertEqual(serie["series"]["indicacoes"], [0, 1])
+        # self.usuario (setUp) e indicado foram criados "agora", fora do período de março -
+        # não devem contar em nenhum dos dois dias filtrados.
+        self.assertEqual(serie["series"]["novos_usuarios"], [0, 0])
+
+    def test_sem_periodo_usa_os_ultimos_30_dias_terminando_hoje(self):
+        serie = obter_serie_diaria()
+
+        hoje = timezone.localdate()
+        self.assertEqual(len(serie["rotulos"]), 30)
+        self.assertEqual(serie["rotulos"][-1], hoje.strftime("%d/%m"))
+
+    def test_periodo_maior_que_180_dias_e_recortado_pro_final_dele(self):
+        serie = obter_serie_diaria(data_inicio=date(2026, 1, 1), data_fim=date(2026, 12, 31))
+
+        self.assertEqual(len(serie["rotulos"]), 180)
+        self.assertEqual(serie["rotulos"][-1], "31/12")
+
+    def test_respeita_filtro_de_status_igual_ao_resto_da_tela(self):
+        self._criar_pedido("VALID", "10.00", "5.00", timezone.make_aware(datetime(2026, 3, 1, 8)))
+        Pedido.objects.create(
+            order_id="CANC", conversion_id="2", usuario=self.usuario,
+            status=Pedido.STATUS_CANCELADO, status_shopee_bruto="CANCELLED",
+            valor_comissao=Decimal("10.00"), valor_cashback=Decimal("0"),
+            data_compra=timezone.make_aware(datetime(2026, 3, 1, 9)),
+        )
+
+        serie = obter_serie_diaria(data_inicio=date(2026, 3, 1), data_fim=date(2026, 3, 1), status=Pedido.STATUS_VALIDADO)
+
+        self.assertEqual(serie["series"]["pedidos"], [1])
 
 
 class OrigemDetalhadaTests(TestCase):

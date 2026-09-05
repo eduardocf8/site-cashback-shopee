@@ -7,11 +7,13 @@ from django.template.response import TemplateResponse
 from django.urls import path
 
 from .analytics import (
+    INDICADORES_SERIE_DIARIA,
     ORIGEM_FORA,
     ORIGEM_SITE,
     gerar_planilha_analytics,
     obter_analytics,
     obter_pedidos_filtrados,
+    obter_serie_diaria,
     origem_detalhada as origem_detalhada_pedido,
 )
 from .models import CampanhaCashback, Pedido
@@ -132,6 +134,8 @@ class PedidoAdmin(admin.ModelAdmin):
             **self.admin_site.each_context(request),
             "title": "Analytics",
             "dados": obter_analytics(data_inicio, data_fim, status, origem),
+            "serie_diaria": obter_serie_diaria(data_inicio, data_fim, status, origem),
+            "indicadores_serie_diaria": INDICADORES_SERIE_DIARIA,
             "status_choices": Pedido.STATUS_CHOICES,
             "filtro_data_inicio": request.GET.get("data_inicio", ""),
             "filtro_data_fim": request.GET.get("data_fim", ""),

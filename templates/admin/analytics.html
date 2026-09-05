@@ -84,6 +84,38 @@
         font-size: 12px;
         text-transform: uppercase;
     }
+    .analytics-grafico-cabecalho {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 12px;
+        margin-bottom: 10px;
+        flex-wrap: wrap;
+    }
+    .analytics-grafico-cabecalho select {
+        padding: 6px;
+    }
+    #grafico-analytics {
+        width: 100%;
+        height: auto;
+        overflow: visible;
+    }
+    #grafico-analytics .grafico-linha {
+        fill: none;
+        stroke: var(--primary);
+        stroke-width: 2;
+    }
+    #grafico-analytics .grafico-ponto {
+        fill: var(--primary);
+    }
+    #grafico-analytics .grafico-grade {
+        stroke: var(--hairline-color);
+        stroke-width: 1;
+    }
+    #grafico-analytics .grafico-eixo {
+        font-size: 10px;
+        fill: var(--body-quiet-color);
+    }
 </style>
 {% endblock %}
 
@@ -183,6 +215,104 @@
         <div class="legenda">{{ dados.indicacoes_concluidas }} concluída{{ dados.indicacoes_concluidas|pluralize }} (dobro pago)</div>
     </div>
 </div>
+
+<div class="analytics-secao">
+    <div class="analytics-grafico-cabecalho">
+        <h2 style="margin: 0;">Evolução diária</h2>
+        <select id="indicador-grafico">
+            {% for chave, rotulo in indicadores_serie_diaria.items %}
+                <option value="{{ chave }}" {% if chave == "cashback" %}selected{% endif %}>{{ rotulo }}</option>
+            {% endfor %}
+        </select>
+    </div>
+    <svg id="grafico-analytics" viewBox="0 0 900 260" preserveAspectRatio="xMidYMid meet"></svg>
+    <p class="help" style="margin: 6px 0 0;">
+        Um ponto por dia, dentro do período filtrado acima (sem período escolhido, mostra
+        os últimos 30 dias; períodos maiores que 180 dias são recortados pro final dele,
+        pra manter o gráfico legível).
+    </p>
+</div>
+
+{{ serie_diaria|json_script:"dados-serie-diaria" }}
+<script>
+(function () {
+    var dados = JSON.parse(document.getElementById("dados-serie-diaria").textContent);
+    var select = document.getElementById("indicador-grafico");
+    var svg = document.getElementById("grafico-analytics");
+    var ns = "http://www.w3.org/2000/svg";
+    var LARGURA = 900, ALTURA = 260;
+    var MARGEM = {top: 16, right: 16, bottom: 28, left: 64};
+
+    function formatarValor(valor, chave) {
+        var ehMoeda = chave === "comissao" || chave === "cashback" || chave === "saques_valor";
+        if (ehMoeda) return "R$ " + valor.toFixed(2).replace(".", ",");
+        return String(Math.round(valor));
+    }
+
+    function criar(tag, atributos) {
+        var elemento = document.createElementNS(ns, tag);
+        for (var nome in atributos) {
+            elemento.setAttribute(nome, atributos[nome]);
+        }
+        return elemento;
+    }
+
+    function desenhar(chave) {
+        var valores = dados.series[chave] || [];
+        var rotulos = dados.rotulos || [];
+        svg.innerHTML = "";
+        if (!valores.length) return;
+
+        var maximo = Math.max.apply(null, valores.concat([0]));
+        var alcance = maximo || 1;
+        var larguraUtil = LARGURA - MARGEM.left - MARGEM.right;
+        var alturaUtil = ALTURA - MARGEM.top - MARGEM.bottom;
+
+        function posX(indice) {
+            return MARGEM.left + (valores.length === 1 ? larguraUtil / 2 : (indice / (valores.length - 1)) * larguraUtil);
+        }
+        function posY(valor) {
+            return MARGEM.top + alturaUtil - (valor / alcance) * alturaUtil;
+        }
+
+        for (var linhaGrade = 0; linhaGrade <= 4; linhaGrade++) {
+            var valorGrade = (alcance * linhaGrade) / 4;
+            svg.appendChild(criar("line", {
+                x1: MARGEM.left, x2: LARGURA - MARGEM.right,
+                y1: posY(valorGrade), y2: posY(valorGrade), class: "grafico-grade",
+            }));
+            var rotuloEixoY = criar("text", {
+                x: MARGEM.left - 8, y: posY(valorGrade) + 4, "text-anchor": "end", class: "grafico-eixo",
+            });
+            rotuloEixoY.textContent = formatarValor(valorGrade, chave);
+            svg.appendChild(rotuloEixoY);
+        }
+
+        var pontos = valores.map(function (valor, indice) { return posX(indice) + "," + posY(valor); }).join(" ");
+        svg.appendChild(criar("polyline", {points: pontos, class: "grafico-linha"}));
+
+        var passoRotuloX = Math.max(1, Math.ceil(valores.length / 10));
+        valores.forEach(function (valor, indice) {
+            var circulo = criar("circle", {cx: posX(indice), cy: posY(valor), r: 3, class: "grafico-ponto"});
+            var titulo = document.createElementNS(ns, "title");
+            titulo.textContent = rotulos[indice] + ": " + formatarValor(valor, chave);
+            circulo.appendChild(titulo);
+            svg.appendChild(circulo);
+
+            if (indice % passoRotuloX === 0 || indice === valores.length - 1) {
+                var rotuloEixoX = criar("text", {
+                    x: posX(indice), y: ALTURA - 8, "text-anchor": "middle", class: "grafico-eixo",
+                });
+                rotuloEixoX.textContent = rotulos[indice];
+                svg.appendChild(rotuloEixoX);
+            }
+        });
+    }
+
+    select.addEventListener("change", function () { desenhar(select.value); });
+    desenhar(select.value);
+})();
+</script>
 
 <div class="analytics-secao">
     <h2>Pedidos por status</h2>

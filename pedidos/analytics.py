@@ -1,7 +1,9 @@
+from datetime import timedelta
 from decimal import Decimal
 
 from django.contrib.auth import get_user_model
 from django.db.models import Count, Q, QuerySet, Sum
+from django.db.models.functions import TruncDate
 from django.utils import timezone
 
 from accounts.models import Indicacao
@@ -147,6 +149,84 @@ def obter_analytics(data_inicio=None, data_fim=None, status=None, origem=None) -
         "indicacoes_concluidas": indicacoes_concluidas,
         "ranking_indicadores": ranking_indicadores,
         "novos_usuarios": novos_usuarios,
+    }
+
+
+DIAS_PADRAO_SERIE_DIARIA = 30
+DIAS_MAXIMO_SERIE_DIARIA = 180  # evita um gráfico com centenas/milhares de pontos se alguém filtrar anos
+
+INDICADORES_SERIE_DIARIA = {
+    "pedidos": "Pedidos (quantidade)",
+    "comissao": "Comissão total (R$)",
+    "cashback": "Cashback repassado (R$)",
+    "novos_usuarios": "Novos usuários",
+    "saques_quantidade": "Saques (quantidade)",
+    "saques_valor": "Valor sacado (R$)",
+    "indicacoes": "Indicações",
+}
+
+
+def obter_serie_diaria(data_inicio=None, data_fim=None, status=None, origem=None) -> dict:
+    """Série dia a dia de cada indicador em INDICADORES_SERIE_DIARIA, pro gráfico de
+    linha da tela de analytics - o usuário escolhe qual indicador ver, e o próprio
+    JavaScript troca a linha exibida sem precisar recarregar a página (todas as séries
+    já vêm calculadas de uma vez).
+
+    Sempre limitado a um período (por padrão, os últimos DIAS_PADRAO_SERIE_DIARIA dias
+    até hoje, se nenhuma data foi escolhida no filtro principal da tela) - sem isso o
+    gráfico teria um ponto por dia desde o primeiro pedido, o que não cabe legível numa
+    tela. Um período escolhido maior que DIAS_MAXIMO_SERIE_DIARIA é recortado pro fim
+    dele, pelo mesmo motivo (os cards/tabelas continuam mostrando o total do período
+    inteiro normalmente - só o gráfico é limitado).
+    """
+    fim = data_fim or timezone.localdate()
+    inicio = data_inicio or (fim - timedelta(days=DIAS_PADRAO_SERIE_DIARIA - 1))
+    if (fim - inicio).days >= DIAS_MAXIMO_SERIE_DIARIA:
+        inicio = fim - timedelta(days=DIAS_MAXIMO_SERIE_DIARIA - 1)
+
+    dias = [inicio + timedelta(days=deslocamento) for deslocamento in range((fim - inicio).days + 1)]
+
+    pedidos = obter_pedidos_filtrados(inicio, fim, status, origem)
+    pedidos_por_dia = {
+        linha["dia"]: linha
+        for linha in pedidos.annotate(dia=TruncDate("data_compra"))
+        .values("dia")
+        .annotate(total=Count("id"), comissao=Sum("valor_comissao"), cashback=Sum("valor_cashback"))
+    }
+
+    saques = _no_periodo(Saque.objects.all(), "criado_em", inicio, fim)
+    saques_por_dia = {
+        linha["dia"]: linha
+        for linha in saques.annotate(dia=TruncDate("criado_em")).values("dia").annotate(total=Count("id"), valor=Sum("valor"))
+    }
+
+    indicacoes = _no_periodo(Indicacao.objects.all(), "criado_em", inicio, fim)
+    indicacoes_por_dia = {
+        linha["dia"]: linha["total"]
+        for linha in indicacoes.annotate(dia=TruncDate("criado_em")).values("dia").annotate(total=Count("id"))
+    }
+
+    usuarios = _no_periodo(get_user_model().objects.all(), "date_joined", inicio, fim)
+    usuarios_por_dia = {
+        linha["dia"]: linha["total"]
+        for linha in usuarios.annotate(dia=TruncDate("date_joined")).values("dia").annotate(total=Count("id"))
+    }
+
+    series = {chave: [] for chave in INDICADORES_SERIE_DIARIA}
+    for dia in dias:
+        pedido_do_dia = pedidos_por_dia.get(dia)
+        saque_do_dia = saques_por_dia.get(dia)
+        series["pedidos"].append(pedido_do_dia["total"] if pedido_do_dia else 0)
+        series["comissao"].append(float(pedido_do_dia["comissao"] or 0) if pedido_do_dia else 0)
+        series["cashback"].append(float(pedido_do_dia["cashback"] or 0) if pedido_do_dia else 0)
+        series["novos_usuarios"].append(usuarios_por_dia.get(dia, 0))
+        series["saques_quantidade"].append(saque_do_dia["total"] if saque_do_dia else 0)
+        series["saques_valor"].append(float(saque_do_dia["valor"] or 0) if saque_do_dia else 0)
+        series["indicacoes"].append(indicacoes_por_dia.get(dia, 0))
+
+    return {
+        "rotulos": [dia.strftime("%d/%m") for dia in dias],
+        "series": series,
     }
 
 
