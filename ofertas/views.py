@@ -44,7 +44,13 @@ def lista(request):
     if categoria_id.isdigit():
         ofertas = ofertas.filter(categoria_id=int(categoria_id))
     if busca:
-        ofertas = ofertas.filter(nome__icontains=busca)
+        # Uma palavra por filtro (em vez de nome__icontains=busca inteiro) - senão
+        # "creatina soldiers" não achava "Creatina ... Soldiers Nutrition" só porque
+        # as palavras não aparecem coladas nessa ordem exata no nome. Cada .filter()
+        # aqui reduz o queryset (AND), então todas as palavras precisam aparecer em
+        # algum lugar do nome, em qualquer ordem.
+        for palavra in busca.split():
+            ofertas = ofertas.filter(nome__icontains=palavra)
 
     if ordenacao == "maior_cashback_reais":
         # valor_cashback_estimado (property em Python) = preco_min x percentual_comissao

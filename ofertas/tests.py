@@ -87,6 +87,44 @@ class OrdenarPorCashbackTests(TestCase):
         self.assertIn("maior_cashback_reais", valores)
 
 
+class BuscaPorPalavraChaveTests(TestCase):
+    def setUp(self):
+        Oferta.objects.create(
+            item_id=1, nome="Creatina Monohidratada Pura Soldiers Nutrition", categoria_id=1,
+            product_link="https://shopee.com.br/produto-1-i.1.1",
+        )
+        Oferta.objects.create(
+            item_id=2, nome="Whey Protein Concentrado Growth", categoria_id=1,
+            product_link="https://shopee.com.br/produto-2-i.2.2",
+        )
+
+    def test_uma_palavra_encontra_pelo_nome(self):
+        resposta = self.client.get(reverse("ofertas_lista"), {"q": "creatina"})
+
+        nomes = [oferta.nome for oferta in resposta.context["ofertas"]]
+        self.assertEqual(nomes, ["Creatina Monohidratada Pura Soldiers Nutrition"])
+
+    def test_varias_palavras_fora_de_ordem_tambem_encontra(self):
+        """Bug real: "creatina soldiers" não achava "Creatina Monohidratada Pura
+        Soldiers Nutrition" porque as palavras não aparecem coladas nessa ordem no
+        nome - buscar cada palavra separada (AND) resolve isso."""
+        resposta = self.client.get(reverse("ofertas_lista"), {"q": "creatina soldiers"})
+
+        nomes = [oferta.nome for oferta in resposta.context["ofertas"]]
+        self.assertEqual(nomes, ["Creatina Monohidratada Pura Soldiers Nutrition"])
+
+    def test_palavra_que_nao_aparece_no_nome_nao_encontra_nada(self):
+        resposta = self.client.get(reverse("ofertas_lista"), {"q": "creatina growth"})
+
+        self.assertEqual(list(resposta.context["ofertas"]), [])
+
+    def test_busca_e_case_insensitive(self):
+        resposta = self.client.get(reverse("ofertas_lista"), {"q": "CREATINA SOLDIERS"})
+
+        nomes = [oferta.nome for oferta in resposta.context["ofertas"]]
+        self.assertEqual(nomes, ["Creatina Monohidratada Pura Soldiers Nutrition"])
+
+
 class MontarOfertaTests(TestCase):
     def test_usa_commissionRate_combinado_com_bonus_de_vendedor(self):
         # commissionRate = shopeeCommissionRate + sellerCommissionRate. Confirmado
