@@ -458,6 +458,12 @@ class MainWindow(QMainWindow):
         self.sub_ids_input = QLineEdit()
         self.sub_ids_input.setMinimumHeight(44)
         self.sub_ids_input.setPlaceholderText("Opcional: whatsapp, olapromos, bot01")
+        self.sub_id_grupo_input = QLineEdit()
+        self.sub_id_grupo_input.setMinimumHeight(44)
+        self.sub_id_grupo_input.setPlaceholderText("Opcional: deixe vazio para usar os Sub IDs acima")
+        self.sub_id_canal_input = QLineEdit()
+        self.sub_id_canal_input.setMinimumHeight(44)
+        self.sub_id_canal_input.setPlaceholderText("Opcional: deixe vazio para usar os Sub IDs acima")
         self.intervalo_input = SecondsInput(1, 60, 1)
         self.timeout_previa_input = SecondsInput(1, 120, 30)
         self.espera_minima_input = SecondsInput(0, 60, 6)
@@ -853,7 +859,20 @@ class MainWindow(QMainWindow):
             "Marcadores opcionais para identificar origem/campanha nos relatórios da Shopee. Use apenas letras e números.",
         ), 2, 0)
         api_fields_layout.addWidget(self.sub_ids_input, 2, 1)
-        for row in range(3):
+        api_fields_layout.addWidget(self.label_with_help(
+            "Sub ID p/ grupos",
+            "Opcional. Se preenchido, esse Sub ID é usado só nos links enviados a Grupos de "
+            "destino, no lugar dos Sub IDs acima - útil para separar nos relatórios as vendas "
+            "vindas de grupo das vindas de canal.",
+        ), 3, 0)
+        api_fields_layout.addWidget(self.sub_id_grupo_input, 3, 1)
+        api_fields_layout.addWidget(self.label_with_help(
+            "Sub ID p/ canais",
+            "Opcional. Se preenchido, esse Sub ID é usado só nos links enviados a Canais de "
+            "destino, no lugar dos Sub IDs acima.",
+        ), 4, 0)
+        api_fields_layout.addWidget(self.sub_id_canal_input, 4, 1)
+        for row in range(5):
             api_fields_layout.setRowMinimumHeight(row, 50)
         api_fields_layout.setColumnMinimumWidth(0, 210)
         api_fields_layout.setColumnStretch(1, 1)
@@ -1527,6 +1546,8 @@ class MainWindow(QMainWindow):
         self.app_id_input.setText(s.shopee_api_app_id)
         self.secret_input.setText(s.shopee_api_secret)
         self.sub_ids_input.setText(", ".join(s.shopee_api_sub_ids))
+        self.sub_id_grupo_input.setText(s.shopee_api_sub_id_grupo)
+        self.sub_id_canal_input.setText(s.shopee_api_sub_id_canal)
         self.intervalo_input.setValue(5)
         self.timeout_previa_input.setValue(15)
         self.espera_minima_input.setValue(5)
@@ -1613,6 +1634,8 @@ class MainWindow(QMainWindow):
         self.settings.shopee_api_app_id = self.app_id_input.text().strip()
         self.settings.shopee_api_secret = self.secret_input.text().strip()
         self.settings.shopee_api_sub_ids = sub_ids
+        self.settings.shopee_api_sub_id_grupo = self.sub_id_grupo_input.text().strip()
+        self.settings.shopee_api_sub_id_canal = self.sub_id_canal_input.text().strip()
         self.settings.intervalo_ms = 5000
         self.settings.timeout_previa_link_ms = 15000
         self.settings.timeout_imagem_previa_link_ms = 15000
@@ -1719,6 +1742,16 @@ class MainWindow(QMainWindow):
             errors.extend(sub_id_errors)
             invalid_widgets.append(self.sub_ids_input)
 
+        sub_id_grupo_errors = self.validate_sub_ids([s.shopee_api_sub_id_grupo] if s.shopee_api_sub_id_grupo else [])
+        if sub_id_grupo_errors:
+            errors.extend(sub_id_grupo_errors)
+            invalid_widgets.append(self.sub_id_grupo_input)
+
+        sub_id_canal_errors = self.validate_sub_ids([s.shopee_api_sub_id_canal] if s.shopee_api_sub_id_canal else [])
+        if sub_id_canal_errors:
+            errors.extend(sub_id_canal_errors)
+            invalid_widgets.append(self.sub_id_canal_input)
+
         if s.aguardar_previa_link and s.espera_minima_previa_link_ms > s.timeout_previa_link_ms:
             errors.append("A espera mínima da prévia não pode ser maior que o tempo máximo da prévia.")
             invalid_widgets.extend([self.espera_minima_input, self.timeout_previa_input])
@@ -1770,6 +1803,16 @@ class MainWindow(QMainWindow):
         if sub_id_errors:
             errors.extend(sub_id_errors)
             invalid_widgets.append(self.sub_ids_input)
+
+        sub_id_grupo_errors = self.validate_sub_ids([s.shopee_api_sub_id_grupo] if s.shopee_api_sub_id_grupo else [])
+        if sub_id_grupo_errors:
+            errors.extend(sub_id_grupo_errors)
+            invalid_widgets.append(self.sub_id_grupo_input)
+
+        sub_id_canal_errors = self.validate_sub_ids([s.shopee_api_sub_id_canal] if s.shopee_api_sub_id_canal else [])
+        if sub_id_canal_errors:
+            errors.extend(sub_id_canal_errors)
+            invalid_widgets.append(self.sub_id_canal_input)
 
         self.mark_field_errors(invalid_widgets)
         return errors
@@ -1968,6 +2011,8 @@ class MainWindow(QMainWindow):
                 self.app_id_input,
                 self.secret_input,
                 self.sub_ids_input,
+                self.sub_id_grupo_input,
+                self.sub_id_canal_input,
                 self.intervalo_input,
                 self.timeout_previa_input,
                 self.espera_minima_input,
@@ -2448,6 +2493,8 @@ class MainWindow(QMainWindow):
             self.app_id_input,
             self.secret_input,
             self.sub_ids_input,
+            self.sub_id_grupo_input,
+            self.sub_id_canal_input,
             self.intervalo_input,
             self.timeout_previa_input,
             self.espera_minima_input,

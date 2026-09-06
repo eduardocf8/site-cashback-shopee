@@ -8,7 +8,7 @@ except Exception:
     PROCESSAR_APENAS_SHOPEE = True
 
 
-def processar_mensagem(msg, conversor):
+def processar_mensagem(msg, conversor, sub_ids=None):
     texto_original = msg.get("texto") or ""
 
     if PROCESSAR_APENAS_SHOPEE:
@@ -23,7 +23,7 @@ def processar_mensagem(msg, conversor):
     links_convertidos = {}
 
     for link in links:
-        novo_link = conversor.converter_link(link)
+        novo_link = conversor.converter_link(link, sub_ids=sub_ids)
         links_convertidos[link] = novo_link
         texto_processado = texto_processado.replace(link, novo_link)
 

@@ -87,6 +87,12 @@ class AppSettings:
     shopee_api_app_id: str = ""
     shopee_api_secret: str = ""
     shopee_api_sub_ids: list[str] = field(default_factory=list)
+    # SubID especifico para links enviados a cada tipo de destino (opcional).
+    # Quando preenchido, sobrepoe shopee_api_sub_ids apenas para aquele tipo -
+    # permite, por exemplo, rastrear separadamente vendas vindas de grupos e
+    # vendas vindas de canais. Vazio = usa shopee_api_sub_ids normalmente.
+    shopee_api_sub_id_grupo: str = ""
+    shopee_api_sub_id_canal: str = ""
     intervalo_ms: int = 5000
     processar_historico_ao_iniciar: bool = True
     ignorar_links_ja_enviados: bool = True
@@ -194,6 +200,19 @@ class AppSettings:
 
     def normalized_sub_ids(self):
         return [s.strip() for s in self.shopee_api_sub_ids if str(s).strip()]
+
+    def sub_ids_para_tipo(self, tipo):
+        """Sub IDs a usar ao gerar o link de afiliado para um destino do
+        tipo informado ("grupo" ou "canal"). Se houver um SubID especifico
+        configurado para esse tipo, usa só ele; senão cai para a lista
+        geral de shopee_api_sub_ids."""
+        tipo = "canal" if str(tipo or "grupo").strip().lower() == "canal" else "grupo"
+        especifico = str(
+            self.shopee_api_sub_id_canal if tipo == "canal" else self.shopee_api_sub_id_grupo
+        ).strip()
+        if especifico:
+            return [especifico]
+        return self.normalized_sub_ids()
 
     def normalized_destinatarios_relatorio(self):
         bruto = str(self.relatorio_email_destinatarios or "")

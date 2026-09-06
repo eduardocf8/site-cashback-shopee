@@ -1,3 +1,4 @@
+import copy
 import queue
 import threading
 import random
@@ -368,6 +369,50 @@ class BotRunner:
             fila_mensagens.put(msg)
             self._log("Mensagem nova com link Shopee adicionada a fila.")
 
+    def _oferta_para_destino(self, cache, tipo_destino, sub_ids_base, oferta_base, conversor):
+        """Retorna a oferta com o link/texto certos para o tipo de destino
+        informado. Se o SubID configurado para esse tipo (settings.
+        sub_ids_para_tipo) for igual ao usado na oferta base, reaproveita
+        ela direto (sem chamada extra a API). Caso contrario, gera um novo
+        link de afiliado so com o SubID certo e troca apenas essa parte no
+        texto ja pronto da oferta base - sem repetir formatacao nem revisao
+        por IA, e so uma vez por conjunto de sub_ids (mesmo com varios
+        destinos do mesmo tipo).
+        """
+        sub_ids_tipo = self.settings.sub_ids_para_tipo(tipo_destino)
+        if sub_ids_tipo == sub_ids_base:
+            return oferta_base
+
+        chave = tuple(sub_ids_tipo)
+        if chave in cache:
+            return cache[chave]
+
+        try:
+            novo_link_afiliado = conversor.converter_link(oferta_base.link_original, sub_ids=sub_ids_tipo)
+        except Exception as erro:
+            self._log(
+                f"Nao consegui gerar link com SubID especifico para {tipo_destino}; "
+                f"usando o link padrao. Detalhe: {erro}"
+            )
+            cache[chave] = oferta_base
+            return oferta_base
+
+        if not novo_link_afiliado or novo_link_afiliado == oferta_base.link_afiliado:
+            cache[chave] = oferta_base
+            return oferta_base
+
+        variacao = copy.copy(oferta_base)
+        variacao.link_afiliado = novo_link_afiliado
+        if oferta_base.link_afiliado and oferta_base.link_afiliado in oferta_base.texto_final:
+            variacao.texto_final = oferta_base.texto_final.replace(
+                oferta_base.link_afiliado, novo_link_afiliado
+            )
+        else:
+            variacao.texto_final = oferta_base.texto_final
+
+        cache[chave] = variacao
+        return variacao
+
     def _processar_fila(self, db, zap, conversor, fila_mensagens):
         revisor_ia = RevisorIA(self.settings, self._log)
         while not fila_mensagens.empty() and not self.stop_event.is_set():
@@ -376,7 +421,8 @@ class BotRunner:
 
             try:
                 self._status("Convertendo link e formatando oferta...")
-                oferta = processar_mensagem(msg, conversor)
+                sub_ids_base = self.settings.normalized_sub_ids()
+                oferta = processar_mensagem(msg, conversor, sub_ids=sub_ids_base)
 
                 if oferta is None:
                     self._log("Mensagem ignorada: sem oferta valida.")
@@ -435,6 +481,7 @@ class BotRunner:
                     self._log("MODO SIMULACAO: envio no WhatsApp ignorado.")
                     self._log("MODO SIMULACAO: link nao gravado no historico de enviados.")
                 else:
+                    cache_ofertas_por_tipo = {}
                     for grupo, tipo_destino in self.settings.normalized_destinos_com_tipo():
                         if self.stop_event.is_set():
                             break
@@ -446,12 +493,16 @@ class BotRunner:
                             self._log(f"Oferta ja enviada anteriormente para {grupo}; pulando esse destino.")
                             continue
 
+                        oferta_envio = self._oferta_para_destino(
+                            cache_ofertas_por_tipo, tipo_destino, sub_ids_base, oferta, conversor
+                        )
+
                         self._status(f"Enviando oferta para {grupo}...")
                         # 3) Tenta carregar a previa da imagem pelo link; se
                         # nao conseguir, envia a imagem baixada da API.
                         tipo_envio = zap.enviar_texto_com_fallback_imagem(
                             grupo,
-                            oferta.texto_final,
+                            oferta_envio.texto_final,
                             caminho_imagem=imagem_fallback,
                             aguardar_previa=self.settings.aguardar_previa_link,
                             timeout_previa_ms=self.settings.timeout_previa_link_ms,
@@ -479,9 +530,9 @@ class BotRunner:
 
                         if not self.stop_event.is_set() and not self.settings.modo_simulacao:
                             db.salvar_link_enviado(
-                                oferta.link_original,
-                                oferta.link_afiliado,
-                                oferta.texto_final,
+                                oferta_envio.link_original,
+                                oferta_envio.link_afiliado,
+                                oferta_envio.texto_final,
                                 grupo,
                             )
 
@@ -583,7 +634,8 @@ class BotRunner:
                     self._log(link_original)
                     continue
 
-                oferta = self._criar_oferta_shopee(oferta_shopee, conversor, link_original)
+                sub_ids_base = self.settings.normalized_sub_ids()
+                oferta = self._criar_oferta_shopee(oferta_shopee, conversor, link_original, sub_ids=sub_ids_base)
                 if oferta is None:
                     ignoradas_sem_link += 1
                     continue
@@ -613,6 +665,7 @@ class BotRunner:
 
                 imagem_fallback = self._baixar_imagem_produto_via_api(oferta_shopee)
                 oferta_enviada_whatsapp = False
+                cache_ofertas_por_tipo = {}
                 try:
                     for grupo, tipo_destino in self.settings.normalized_destinos_com_tipo():
                         if self.stop_event.is_set():
@@ -625,10 +678,14 @@ class BotRunner:
                             self._log(f"Oferta ja enviada anteriormente para {grupo}; pulando esse destino.")
                             continue
 
+                        oferta_envio = self._oferta_para_destino(
+                            cache_ofertas_por_tipo, tipo_destino, sub_ids_base, oferta, conversor
+                        )
+
                         self._status(f"Enviando oferta Shopee para {grupo}...")
                         tipo_envio = zap.enviar_texto_com_fallback_imagem(
                             grupo,
-                            oferta.texto_final,
+                            oferta_envio.texto_final,
                             caminho_imagem=imagem_fallback,
                             aguardar_previa=self.settings.aguardar_previa_link,
                             timeout_previa_ms=self.settings.timeout_previa_link_ms,
@@ -658,9 +715,9 @@ class BotRunner:
 
                         if not self.stop_event.is_set():
                             db.salvar_link_enviado(
-                                oferta.link_original,
-                                oferta.link_afiliado,
-                                oferta.texto_final,
+                                oferta_envio.link_original,
+                                oferta_envio.link_afiliado,
+                                oferta_envio.texto_final,
                                 grupo,
                             )
                 finally:
@@ -967,13 +1024,13 @@ class BotRunner:
                 arquivo.unlink()
         except Exception:
             pass
-    def _criar_oferta_shopee(self, dados, conversor, link_original=None):
+    def _criar_oferta_shopee(self, dados, conversor, link_original=None, sub_ids=None):
         link_original = (link_original or self._link_oferta_shopee(dados)).strip()
         if not link_original:
             self._log("Oferta Shopee ignorada: API nao retornou link do produto.")
             return None
 
-        link_afiliado = conversor.converter_link(link_original)
+        link_afiliado = conversor.converter_link(link_original, sub_ids=sub_ids)
         texto_base = self._montar_texto_base_shopee(dados, link_original)
         texto_final = formatar_texto_oferta(texto_base, link_afiliado)
 

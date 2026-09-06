@@ -67,13 +67,13 @@ class ConversorAfiliados:
         except Exception:
             print(mensagem)
 
-    def converter_link(self, link):
+    def converter_link(self, link, sub_ids=None):
         if "shopee" in (link or "") or "shoope.top" in (link or ""):
-            return self.converter_shopee(link)
+            return self.converter_shopee(link, sub_ids=sub_ids)
 
         return link
 
-    def converter_shopee(self, link_original):
+    def converter_shopee(self, link_original, sub_ids=None):
         print("Convertendo link Shopee pela API...")
 
         if not self.app_id or not self.secret:
@@ -86,7 +86,7 @@ class ConversorAfiliados:
         print("URL enviada para API Shopee:")
         print(link_produto)
 
-        payload = self.montar_payload_generate_short_link(link_produto)
+        payload = self.montar_payload_generate_short_link(link_produto, sub_ids=sub_ids)
         resposta = self.executar_payload_graphql(payload)
 
         link_afiliado = self.extrair_short_link(resposta)
@@ -1771,10 +1771,10 @@ class ConversorAfiliados:
             "",
         ))
 
-    def montar_payload_generate_short_link(self, link_original):
+    def montar_payload_generate_short_link(self, link_original, sub_ids=None):
         url = json.dumps(link_original, ensure_ascii=False)
 
-        sub_ids = self.validar_sub_ids()
+        sub_ids = self.validar_sub_ids(sub_ids)
 
         sub_ids_graphql = ""
         if sub_ids:
@@ -1797,10 +1797,11 @@ class ConversorAfiliados:
             separators=(",", ":"),
         )
 
-    def validar_sub_ids(self):
+    def validar_sub_ids(self, sub_ids=None):
+        origem = self.sub_ids if sub_ids is None else sub_ids
         sub_ids = [
             str(sub_id).strip()
-            for sub_id in self.sub_ids
+            for sub_id in origem
             if str(sub_id).strip()
         ]
 
