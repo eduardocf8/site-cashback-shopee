@@ -1336,6 +1336,44 @@ Suite completa (256 testes) verde.
 
 ---
 
+## Fase 46 — Revisão de segurança: 4 ajustes reais encontrados ✅
+
+Usuário pediu uma revisão de segurança do site. Achados reais (não genéricos),
+verificados no próprio código antes de qualquer mudança:
+
+- [x] **`DEBUG` vinha `True` por padrão** se `DJANGO_DEBUG` faltasse no ambiente -
+      "fail-open": um serviço novo no Render sem essa variável subiria em modo debug,
+      vazando stack trace e trecho de código-fonte em qualquer erro 500. Padrão
+      trocado pra `"False"` (fail-safe) - `.env.example` já documentava
+      `DJANGO_DEBUG=True` pro dev local, então não muda nada pra quem já segue o
+      README.
+- [x] **`SECRET_KEY` tinha um fallback hardcoded e público no repositório**. Agora só
+      usa esse fallback quando `DEBUG=True` (conveniência de dev local); com
+      `DEBUG=False` e `DJANGO_SECRET_KEY` não configurada, o site **recusa subir**
+      (`ImproperlyConfigured`) em vez de rodar em produção com uma chave que qualquer
+      um pode ver no GitHub.
+- [x] **`accounts/ratelimit.py`** (novo) - `limitar_por_ip(nome, limite,
+      janela_segundos)`, um rate limit simples por IP usando o cache padrão do Django
+      (memória local - funciona porque o site roda com 1 worker gunicorn só, ver
+      README.md), sem trazer `django-ratelimit` só pra isso. Aplicado em três telas
+      sem login que disparam e-mail ou criam conta - `django-axes` só protege o login:
+      - `registrar` (cadastro): 10/hora por IP.
+      - `reenviar_verificacao`: 3/10min por IP.
+      - `password_reset` (esqueci a senha, do próprio Django): 5/10min por IP - sem
+        isso, dava pra usar esse formulário pra bombardear a caixa de entrada de
+        qualquer e-mail de terceiro, nem precisava existir na base.
+- [x] **Webhook da Asaas comparava o token com `!=`** em vez de
+      `hmac.compare_digest` (`saques/views.py`) - inconsistente com o resto do código,
+      que já usa comparação de tempo constante nesse mesmo padrão (`TAREFAS_TOKEN`,
+      assinatura do webhook do Instagram). Corrigido pra igualar.
+- [x] Testes cobrindo o rate limit (bloqueia depois do limite nas três telas, IPs
+      diferentes têm contadores independentes) e confirmando que o webhook da Asaas
+      continua funcionando igual com a nova comparação.
+
+Suite completa (319 testes) verde.
+
+---
+
 Pra continuar esse roadmap numa conversa nova, basta apontar esse arquivo
 (`ROADMAP.md`) e o `BRAND.md` — juntos eles dão o contexto de identidade
 visual e do que falta implementar, sem precisar reconstruir o histórico da

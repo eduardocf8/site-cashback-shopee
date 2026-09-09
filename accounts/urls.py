@@ -2,6 +2,7 @@ from django.contrib.auth import views as auth_views
 from django.urls import path, reverse_lazy
 
 from . import views
+from .ratelimit import limitar_por_ip
 
 urlpatterns = [
     path("registrar/", views.registrar, name="registrar"),
@@ -30,10 +31,15 @@ urlpatterns = [
     ),
     path(
         "esqueci-senha/",
-        auth_views.PasswordResetView.as_view(
-            template_name="accounts/senha_resetar.html",
-            email_template_name="accounts/email_senha_resetar.txt",
-            subject_template_name="accounts/email_senha_resetar_assunto.txt",
+        # Sem login nem django-axes aqui (é a tela de "esqueci a senha") - sem um limite
+        # próprio, dava pra usar esse formulário pra bombardear a caixa de entrada de
+        # qualquer e-mail de terceiro (o e-mail digitado nem precisa existir na base).
+        limitar_por_ip("password_reset", limite=5, janela_segundos=600)(
+            auth_views.PasswordResetView.as_view(
+                template_name="accounts/senha_resetar.html",
+                email_template_name="accounts/email_senha_resetar.txt",
+                subject_template_name="accounts/email_senha_resetar_assunto.txt",
+            )
         ),
         name="password_reset",
     ),

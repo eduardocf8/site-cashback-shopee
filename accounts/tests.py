@@ -2,6 +2,7 @@ import json
 from decimal import Decimal
 from unittest.mock import Mock, patch
 
+from django.core.cache import cache
 from django.test import TestCase, override_settings
 from django.urls import reverse
 
@@ -33,6 +34,7 @@ class CodigoIndicacaoTests(TestCase):
 
 class RegistrarComIndicacaoTests(TestCase):
     def setUp(self):
+        cache.clear()  # evita herdar contador de rate limit de outro teste (ver RateLimitTests)
         self.indicador = User.objects.create_user(username="indicador", password="senha123", cpf="39053344705")
 
     def _dados_cadastro(self, **extra):
@@ -77,6 +79,53 @@ class RegistrarComIndicacaoTests(TestCase):
 
         novo_usuario = User.objects.get(username="novaconta")
         self.assertFalse(Indicacao.objects.filter(indicado=novo_usuario).exists())
+
+
+class RateLimitTests(TestCase):
+    """django-axes só protege o login - registrar/reenviar_verificacao/password_reset
+    não exigem login (ou não passam pelo axes) e disparam e-mail/criam conta, então
+    ganharam seu próprio limite por IP (ver accounts/ratelimit.py)."""
+
+    def setUp(self):
+        cache.clear()  # cada teste começa com o contador zerado (cache é global ao processo)
+
+    def test_registrar_bloqueia_depois_do_limite(self):
+        for _ in range(10):
+            resposta = self.client.get(reverse("registrar"))
+            self.assertEqual(resposta.status_code, 200)
+
+        resposta = self.client.get(reverse("registrar"))
+
+        self.assertEqual(resposta.status_code, 429)
+
+    def test_reenviar_verificacao_bloqueia_depois_do_limite(self):
+        usuario = User.objects.create_user(username="ana", password="senha123", cpf="39053344705")
+        self.client.force_login(usuario)
+        for _ in range(3):
+            resposta = self.client.get(reverse("reenviar_verificacao"))
+            self.assertEqual(resposta.status_code, 302)
+
+        resposta = self.client.get(reverse("reenviar_verificacao"))
+
+        self.assertEqual(resposta.status_code, 429)
+
+    def test_password_reset_bloqueia_depois_do_limite(self):
+        for _ in range(5):
+            resposta = self.client.get(reverse("password_reset"))
+            self.assertEqual(resposta.status_code, 200)
+
+        resposta = self.client.get(reverse("password_reset"))
+
+        self.assertEqual(resposta.status_code, 429)
+
+    def test_ips_diferentes_tem_contadores_independentes(self):
+        for _ in range(10):
+            self.client.get(reverse("registrar"), REMOTE_ADDR="1.1.1.1")
+        bloqueado = self.client.get(reverse("registrar"), REMOTE_ADDR="1.1.1.1")
+        livre = self.client.get(reverse("registrar"), REMOTE_ADDR="2.2.2.2")
+
+        self.assertEqual(bloqueado.status_code, 429)
+        self.assertEqual(livre.status_code, 200)
 
 
 class DashboardIndicacaoTests(TestCase):

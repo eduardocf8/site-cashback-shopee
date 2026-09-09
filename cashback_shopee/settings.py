@@ -15,6 +15,7 @@ from decimal import Decimal
 from pathlib import Path
 
 import dj_database_url
+from django.core.exceptions import ImproperlyConfigured
 from dotenv import load_dotenv
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
@@ -26,14 +27,29 @@ load_dotenv(BASE_DIR / ".env")
 # Quick-start development settings - unsuitable for production
 # See https://docs.djangoproject.com/en/5.2/howto/deployment/checklist/
 
-# SECURITY WARNING: keep the secret key used in production secret!
-SECRET_KEY = os.environ.get(
-    "DJANGO_SECRET_KEY",
-    "django-insecure-!txnn&9z%j3hvt)hv(o4@_%@8&_1pq2zzpl+#9b4352e66koh3",
-)
-
 # SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = os.environ.get("DJANGO_DEBUG", "True") == "True"
+# Padrão "False" de propósito (fail-safe): se essa variável faltar em algum ambiente
+# por engano (um serviço novo no Render sem copiar as env vars, por exemplo), o site
+# sobe em modo produção normal em vez de vazar stack trace/código-fonte pra qualquer
+# visitante que provocar um erro 500.
+DEBUG = os.environ.get("DJANGO_DEBUG", "False") == "True"
+
+# SECURITY WARNING: keep the secret key used in production secret!
+SECRET_KEY = os.environ.get("DJANGO_SECRET_KEY", "")
+if not SECRET_KEY:
+    if DEBUG:
+        # Só em desenvolvimento local, pra não obrigar todo mundo a gerar uma chave só
+        # pra rodar o site na própria máquina - fixa e conhecida de propósito, nunca
+        # usada com DEBUG=False (ver abaixo).
+        SECRET_KEY = "django-insecure-!txnn&9z%j3hvt)hv(o4@_%@8&_1pq2zzpl+#9b4352e66koh3"
+    else:
+        # Em produção (DEBUG=False) o site não sobe sem essa variável - evita rodar
+        # acidentalmente com a chave de desenvolvimento acima, que é pública (está no
+        # código-fonte do repositório).
+        raise ImproperlyConfigured(
+            "DJANGO_SECRET_KEY não configurada. Defina essa variável de ambiente antes "
+            "de subir o site com DEBUG=False (ver README.md, seção de deploy no Render)."
+        )
 
 ALLOWED_HOSTS = [h for h in os.environ.get("DJANGO_ALLOWED_HOSTS", "").split(",") if h]
 

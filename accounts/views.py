@@ -19,6 +19,7 @@ from saques.services import calcular_saldo_disponivel
 
 from .forms import ChavePixForm, EditarPerfilForm, RegistroForm
 from .models import ConfiguracaoIndicacao, Indicacao, PushSubscription
+from .ratelimit import limitar_por_ip
 from .tokens import enviar_email_verificacao, validar_token_verificacao
 
 User = get_user_model()
@@ -26,6 +27,7 @@ User = get_user_model()
 ITENS_POR_PAGINA = 10
 
 
+@limitar_por_ip("registrar", limite=10, janela_segundos=3600)
 def registrar(request):
     if request.user.is_authenticated:
         return redirect("dashboard")
@@ -82,6 +84,7 @@ def verificar_email(request, token):
 
 
 @login_required
+@limitar_por_ip("reenviar_verificacao", limite=3, janela_segundos=600)
 def reenviar_verificacao(request):
     if request.user.email_verificado:
         messages.info(request, "Seu e-mail já está verificado.")

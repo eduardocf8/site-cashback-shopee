@@ -1,3 +1,4 @@
+import hmac
 import json
 import logging
 
@@ -47,7 +48,11 @@ def webhook_validacao_asaas(request):
     num Saque (ou seja, que a gente mesmo criou via processar_saque_asaas, depois de uma
     aprovação manual no admin) - qualquer id desconhecido é recusado."""
     token_esperado = settings.ASAAS_WEBHOOK_TOKEN
-    if not token_esperado or request.headers.get("asaas-access-token") != token_esperado:
+    token_recebido = request.headers.get("asaas-access-token", "")
+    # hmac.compare_digest (tempo constante) em vez de != - mesmo padrão já usado em
+    # TAREFAS_TOKEN (cashback_shopee/views.py) e na assinatura do webhook do Instagram
+    # (automacao_instagram/webhook.py), pra não comparar segredo com "!=" em lugar nenhum.
+    if not token_esperado or not hmac.compare_digest(token_esperado, token_recebido):
         return HttpResponseForbidden("Token inválido.")
 
     try:
