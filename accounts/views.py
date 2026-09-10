@@ -17,6 +17,8 @@ from pedidos.models import Pedido
 from saques.models import Saque
 from saques.services import calcular_saldo_disponivel
 
+from cashback_shopee.meta_capi import enviar_evento, gerar_event_id
+
 from .forms import ChavePixForm, EditarPerfilForm, RegistroForm
 from .models import ConfiguracaoIndicacao, Indicacao, PushSubscription
 from .ratelimit import limitar_por_ip
@@ -25,6 +27,12 @@ from .tokens import enviar_email_verificacao, validar_token_verificacao
 User = get_user_model()
 
 ITENS_POR_PAGINA = 10
+
+# Guarda o event_id entre o redirect de registrar() e a primeira renderização do
+# dashboard - é lá que o Pixel (navegador) dispara CompleteRegistration com o MESMO
+# event_id que a Conversions API já mandou em registrar() (ver
+# cashback_shopee/meta_capi.py), pra Meta deduplicar os dois lados desse evento.
+SESSION_KEY_EVENTO_CADASTRO_PIXEL = "meta_pixel_evento_cadastro"
 
 
 @limitar_por_ip("registrar", limite=10, janela_segundos=3600)
@@ -44,6 +52,9 @@ def registrar(request):
             # e com o AxesBackend adicionado (proteção de força bruta no login) o Django
             # não consegue mais inferir sozinho qual backend usar com 2 configurados.
             login(request, usuario, backend="django.contrib.auth.backends.ModelBackend")
+            event_id = gerar_event_id()
+            enviar_evento("CompleteRegistration", request, event_id)
+            request.session[SESSION_KEY_EVENTO_CADASTRO_PIXEL] = event_id
             return redirect("dashboard")
     else:
         form = RegistroForm()
@@ -158,6 +169,9 @@ def dashboard(request):
         "indicacoes": indicacoes,
         "indicacoes_concluidas": indicacoes_concluidas,
         "vapid_public_key": settings.VAPID_PUBLIC_KEY,
+        # .pop() de propósito: só dispara o CompleteRegistration do Pixel na PRIMEIRA
+        # renderização do dashboard depois do cadastro, não em toda visita seguinte.
+        "evento_cadastro_pixel": request.session.pop(SESSION_KEY_EVENTO_CADASTRO_PIXEL, None),
     }
     return render(request, "accounts/dashboard.html", contexto)
 

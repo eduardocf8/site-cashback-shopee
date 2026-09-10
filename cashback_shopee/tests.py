@@ -1,11 +1,15 @@
 import base64
-from unittest.mock import patch
+from unittest.mock import Mock, patch
 
+import requests
+from django.contrib.auth import get_user_model
+from django.contrib.auth.models import AnonymousUser
 from django.core.mail import EmailMessage
-from django.test import TestCase, override_settings
+from django.test import RequestFactory, TestCase, override_settings
 from django.urls import reverse
 
 from .brevo_email_backend import BrevoAPIEmailBackend
+from .meta_capi import _hash, enviar_evento, gerar_event_id
 
 
 class HealthcheckTests(TestCase):
@@ -209,3 +213,112 @@ class BrevoAPIEmailBackendTests(TestCase):
         self.assertEqual(
             base64.b64decode(payload["attachment"][0]["content"]).decode("utf-8"), "conteúdo em texto"
         )
+
+
+class MetaCapiTests(TestCase):
+    def setUp(self):
+        self.factory = RequestFactory()
+
+    def _request(self, usuario=None, **cookies):
+        request = self.factory.get("/qualquer-pagina/")
+        request.COOKIES = cookies
+        request.user = usuario or AnonymousUser()
+        return request
+
+    def test_gerar_event_id_produz_valores_diferentes_a_cada_chamada(self):
+        self.assertNotEqual(gerar_event_id(), gerar_event_id())
+
+    def test_hash_e_sha256_minusculo_sem_espaco_nas_pontas(self):
+        self.assertEqual(_hash("  ANA@Example.com  "), _hash("ana@example.com"))
+        self.assertEqual(len(_hash("ana@example.com")), 64)  # tamanho de um sha256 em hexadecimal
+
+    @override_settings(META_PIXEL_ID="", META_CAPI_ACCESS_TOKEN="")
+    @patch("cashback_shopee.meta_capi.requests.post")
+    def test_sem_credenciais_configuradas_nao_manda_nada(self, mock_post):
+        enviar_evento("TesteEvento", self._request(), gerar_event_id())
+
+        mock_post.assert_not_called()
+
+    @override_settings(META_PIXEL_ID="123456", META_CAPI_ACCESS_TOKEN="token-teste")
+    @patch("cashback_shopee.meta_capi.requests.post")
+    def test_manda_o_evento_com_credenciais_configuradas(self, mock_post):
+        mock_post.return_value = Mock(json=lambda: {"events_received": 1})
+
+        enviar_evento("TesteEvento", self._request(), "event-abc123", {"foo": "bar"})
+
+        mock_post.assert_called_once()
+        url_chamada = mock_post.call_args[0][0]
+        payload = mock_post.call_args.kwargs["json"]
+        evento = payload["data"][0]
+        self.assertIn("123456/events", url_chamada)
+        self.assertEqual(evento["event_name"], "TesteEvento")
+        self.assertEqual(evento["event_id"], "event-abc123")
+        self.assertEqual(evento["action_source"], "website")
+        self.assertEqual(evento["custom_data"], {"foo": "bar"})
+
+    @override_settings(META_PIXEL_ID="123456", META_CAPI_ACCESS_TOKEN="token-teste")
+    @patch("cashback_shopee.meta_capi.requests.post")
+    def test_inclui_fbp_e_fbc_quando_presentes_nos_cookies(self, mock_post):
+        mock_post.return_value = Mock(json=lambda: {})
+
+        enviar_evento("TesteEvento", self._request(_fbp="fb.1.111.222", _fbc="fb.1.111.333"), gerar_event_id())
+
+        user_data = mock_post.call_args.kwargs["json"]["data"][0]["user_data"]
+        self.assertEqual(user_data["fbp"], "fb.1.111.222")
+        self.assertEqual(user_data["fbc"], "fb.1.111.333")
+
+    @override_settings(META_PIXEL_ID="123456", META_CAPI_ACCESS_TOKEN="token-teste")
+    @patch("cashback_shopee.meta_capi.requests.post")
+    def test_sem_fbp_fbc_nos_cookies_nao_inclui_esses_campos(self, mock_post):
+        mock_post.return_value = Mock(json=lambda: {})
+
+        enviar_evento("TesteEvento", self._request(), gerar_event_id())
+
+        user_data = mock_post.call_args.kwargs["json"]["data"][0]["user_data"]
+        self.assertNotIn("fbp", user_data)
+        self.assertNotIn("fbc", user_data)
+
+    @override_settings(META_PIXEL_ID="123456", META_CAPI_ACCESS_TOKEN="token-teste")
+    @patch("cashback_shopee.meta_capi.requests.post")
+    def test_email_do_usuario_autenticado_vai_hasheado_nunca_em_texto_puro(self, mock_post):
+        mock_post.return_value = Mock(json=lambda: {})
+        usuario = get_user_model().objects.create_user(
+            username="ana", password="senha123", cpf="39053344705", email="ANA@Example.com",
+        )
+
+        enviar_evento("TesteEvento", self._request(usuario=usuario), gerar_event_id())
+
+        user_data = mock_post.call_args.kwargs["json"]["data"][0]["user_data"]
+        self.assertEqual(user_data["em"], [_hash("ana@example.com")])
+        self.assertNotIn("ANA@Example.com", str(user_data))
+
+    @override_settings(META_PIXEL_ID="123456", META_CAPI_ACCESS_TOKEN="token-teste")
+    @patch("cashback_shopee.meta_capi.requests.post")
+    def test_usuario_anonimo_nao_manda_campo_de_email(self, mock_post):
+        mock_post.return_value = Mock(json=lambda: {})
+
+        enviar_evento("TesteEvento", self._request(), gerar_event_id())
+
+        user_data = mock_post.call_args.kwargs["json"]["data"][0]["user_data"]
+        self.assertNotIn("em", user_data)
+
+    @override_settings(META_PIXEL_ID="123456", META_CAPI_ACCESS_TOKEN="token-teste")
+    @patch("cashback_shopee.meta_capi.requests.post")
+    def test_falha_de_rede_nao_propaga_erro(self, mock_post):
+        """Rastreamento de anúncio não pode derrubar uma ação real do usuário
+        (cadastro, gerar link) só porque a Meta está fora do ar ou lenta."""
+        mock_post.side_effect = requests.RequestException("timeout")
+
+        enviar_evento("TesteEvento", self._request(), gerar_event_id())  # não deve levantar
+
+    @override_settings(
+        META_PIXEL_ID="123456", META_CAPI_ACCESS_TOKEN="token-teste", META_CAPI_TEST_EVENT_CODE="TEST12345",
+    )
+    @patch("cashback_shopee.meta_capi.requests.post")
+    def test_inclui_test_event_code_quando_configurado(self, mock_post):
+        mock_post.return_value = Mock(json=lambda: {})
+
+        enviar_evento("TesteEvento", self._request(), gerar_event_id())
+
+        payload = mock_post.call_args.kwargs["json"]
+        self.assertEqual(payload["test_event_code"], "TEST12345")

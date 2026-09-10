@@ -410,6 +410,22 @@ class IrParaOfertaTests(TestCase):
         click = Click.objects.get()
         self.assertEqual(click.item_id_alvo, 555)
 
+    @patch("ofertas.views.enviar_evento")
+    @patch("links.services.gerar_link_curto")
+    def test_clique_manda_evento_geroulinkcashback_pra_conversions_api(self, mock_gerar_link, mock_enviar_evento):
+        """Só via Conversions API (servidor) - o redirect vai direto pro link da
+        Shopee, sem página nossa renderizando de novo pra disparar o Pixel do
+        navegador (ver ROADMAP.md)."""
+        mock_gerar_link.return_value = "https://shope.ee/vitrine789"
+
+        self.client.get(reverse("ofertas_ir", args=[self.oferta.id]))
+
+        mock_enviar_evento.assert_called_once()
+        nome_evento, request_recebida, event_id, dados_customizados = mock_enviar_evento.call_args[0]
+        self.assertEqual(nome_evento, "GerouLinkCashback")
+        self.assertTrue(event_id)
+        self.assertEqual(dados_customizados, {"tipo_click": Click.TIPO_VITRINE})
+
 
 class OfertaManualCashbackTests(TestCase):
     """A matemática do cashback é a mesma da Oferta sincronizada (_CashbackEstimadoMixin)

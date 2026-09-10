@@ -1372,6 +1372,53 @@ verificados no próprio código antes de qualquer mudança:
 
 Suite completa (319 testes) verde.
 
+## Fase 47 — Meta Pixel + Conversions API (CAPI) ✅
+
+Usuário quer rodar campanha de anúncio no Meta (Facebook/Instagram) e precisa
+rastrear conversões. Foi direto pra Pixel + CAPI (não só Pixel): com iOS 14.5+
+e bloqueadores de rastreamento, o Pixel sozinho perde uma fatia dos eventos no
+navegador — a CAPI manda o mesmo evento direto do servidor, então cobre o que
+o Pixel perde. Prioridade combinada: implementar primeiro **Cadastro** e
+**Gerou link**, o suficiente pra já rodar campanha com objetivo de Conversões.
+Pedido confirmado (Purchase) e ViewContent/Lead ficaram de fora por ora.
+
+- [x] **`cashback_shopee/meta_capi.py`** (novo) - cliente da Conversions API:
+      `enviar_evento(nome_evento, request, event_id, dados_customizados=None)`
+      manda um POST pro Graph API (`/v21.0/{pixel_id}/events`) com
+      `user_data` (IP, user-agent, cookies `_fbp`/`_fbc` quando existem, e-mail
+      do usuário logado sempre com hash SHA-256 - nunca em texto puro).
+      Nunca derruba o fluxo principal: sem `META_PIXEL_ID`/
+      `META_CAPI_ACCESS_TOKEN` configurados vira no-op silencioso (mesmo padrão
+      já usado pra `GEMINI_API_KEY` e credenciais da Shopee), e qualquer erro de
+      rede ou da API só loga warning.
+- [x] **`templates/_meta_pixel.html`** (novo) - snippet padrão do Pixel
+      (`fbq('init', ...)` + `PageView`), incluído via context processor
+      (`meta_pixel_id` disponível em qualquer template) nas páginas de maior
+      tráfego: home, `/ofertas/`, base de contas (login/cadastro) e dashboard.
+- [x] **Cadastro completo (`CompleteRegistration`)** - dispara nos dois canais,
+      com o mesmo `event_id` compartilhado pra Meta deduplicar:
+      - CAPI, síncrono, dentro da view `registrar` no momento do cadastro;
+      - Pixel, no navegador, só na 1ª visita ao `/dashboard/` logo após o
+        cadastro (flag guardada na sessão e removida assim que lida - não
+        dispara de novo em visitas seguintes).
+- [x] **Gerou link de afiliado (`GerouLinkCashback`)** - só via CAPI (evento
+      customizado). Os três pontos onde o site gera um link de cashback
+      (`ofertas/views.py`, `links/views.py`, `instagram_bot/views.py`) quase
+      sempre redirecionam direto pra Shopee, sem renderizar outra página nossa
+      pra disparar o Pixel do navegador depois - por isso CAPI é o único canal
+      confiável aqui.
+- [x] `paginas/templates/paginas/cookies.html` atualizada pra declarar o uso
+      do Meta Pixel/CAPI (antes dizia explicitamente que não havia pixel).
+- [x] Testes cobrindo o cliente CAPI isolado (hash de e-mail, no-op sem
+      credenciais, inclusão condicional de `fbp`/`fbc`, falha de rede não
+      propaga) e os três pontos de disparo (cadastro nos dois canais com
+      `event_id` batendo, e geração de link nas três origens).
+
+Falta configurar `META_PIXEL_ID` e `META_CAPI_ACCESS_TOKEN` (e, opcionalmente,
+`META_CAPI_TEST_EVENT_CODE` pra validar no Gerenciador de Eventos da Meta
+antes de ativar campanha) nas variáveis de ambiente do Render - isso não dá
+pra fazer por aqui, precisa ser configurado direto no painel.
+
 ---
 
 Pra continuar esse roadmap numa conversa nova, basta apontar esse arquivo

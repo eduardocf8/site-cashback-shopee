@@ -1,0 +1,29 @@
+{% comment %}
+Meta Pixel (rastreamento de conversão pra campanha de anúncio no Instagram/Facebook).
+Incluir dentro do <head>, o mais no topo possível (fbq precisa existir antes de
+qualquer outro script tentar chamar fbq('track', ...) - ver dashboard.html).
+
+Sem META_PIXEL_ID configurado (settings.py), meta_pixel_id vem vazio e nada é
+renderizado - recurso desligado até alguém configurar.
+
+O mesmo evento de conversão também é mandado pelo servidor via Conversions API (ver
+cashback_shopee/meta_capi.py) com o event_id compartilhado - a CAPI existe porque o
+Pixel sozinho perde boa parte dos eventos hoje (iOS 14.5+, Safari ITP, ad blocker).
+{% endcomment %}
+{% if meta_pixel_id %}
+<script>
+!function(f,b,e,v,n,t,s)
+{if(f.fbq)return;n=f.fbq=function(){n.callMethod?
+n.callMethod.apply(n,arguments):n.queue.push(arguments)};
+if(!f._fbq)f._fbq=n;n.push=n;n.loaded=!0;n.version='2.0';
+n.queue=[];t=b.createElement(e);t.async=!0;
+t.src=v;s=b.getElementsByTagName(e)[0];
+s.parentNode.insertBefore(t,s)}(window, document,'script',
+'https://connect.facebook.net/en_US/fbevents.js');
+fbq('init', '{{ meta_pixel_id }}');
+fbq('track', 'PageView');
+</script>
+<noscript><img height="1" width="1" style="display:none"
+src="https://www.facebook.com/tr?id={{ meta_pixel_id }}&ev=PageView&noscript=1"
+/></noscript>
+{% endif %}

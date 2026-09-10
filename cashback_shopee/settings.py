@@ -286,6 +286,7 @@ TEMPLATES = [
                 "django.template.context_processors.request",
                 "django.contrib.auth.context_processors.auth",
                 "django.contrib.messages.context_processors.messages",
+                "cashback_shopee.context_processors.meta_pixel",
             ],
         },
     },
@@ -391,6 +392,21 @@ DEFAULT_FROM_EMAIL = os.environ.get("DEFAULT_FROM_EMAIL", "cash-b <contato@cash-
 VAPID_PUBLIC_KEY = os.environ.get("VAPID_PUBLIC_KEY", "")
 VAPID_PRIVATE_KEY = os.environ.get("VAPID_PRIVATE_KEY", "")
 VAPID_CLAIMS_EMAIL = os.environ.get("VAPID_CLAIMS_EMAIL", "contato@cash-b.com")
+
+# Meta Pixel (navegador) + Conversions API (servidor) - rastreamento de conversão pra
+# campanha de anúncio no Instagram/Facebook. Os dois mandam o MESMO evento (com o
+# mesmo event_id, pra Meta deduplicar) - a CAPI existe porque o Pixel sozinho perde
+# uma fatia grande dos eventos hoje (iOS 14.5+, Safari ITP, ad blocker), então serve
+# de rede de segurança rodando do lado do servidor. Sem META_PIXEL_ID configurado, o
+# script do Pixel nem renderiza (ver templates/_meta_pixel.html); sem
+# META_CAPI_ACCESS_TOKEN, cashback_shopee/meta_capi.py::enviar_evento não manda nada -
+# mesmo padrão de GEMINI_API_KEY e das credenciais Shopee: recurso desligado até
+# alguém configurar.
+META_PIXEL_ID = os.environ.get("META_PIXEL_ID", "")
+META_CAPI_ACCESS_TOKEN = os.environ.get("META_CAPI_ACCESS_TOKEN", "")
+# Só preenche durante o teste no Gerenciador de Eventos da Meta ("Testar eventos") -
+# tira essa variável depois de confirmar que os eventos estão chegando certos.
+META_CAPI_TEST_EVENT_CODE = os.environ.get("META_CAPI_TEST_EVENT_CODE", "")
 
 # Por padrão, o Django só manda os próprios logs de erro (ex: falha ao enviar
 # e-mail de redefinição de senha) pro console quando DEBUG=True - em produção

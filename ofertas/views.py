@@ -10,6 +10,8 @@ from links.services import gerar_click
 from links.shopee_client import ShopeeAPIError, ShopeeConfigError, SubIdInvalidoError
 from saques.services import calcular_resumo_saldo_nav
 
+from cashback_shopee.meta_capi import enviar_evento, gerar_event_id
+
 from .models import Oferta, OfertaDestaqueManual, OfertaManual
 from .services import carregar_categorias_nivel1
 
@@ -92,6 +94,10 @@ def _ir_com_click_ou_erro(request, product_link, nome_da_view_de_erro, item_id_c
         messages.error(request, "Não foi possível abrir essa oferta agora. Tenta de novo em instantes.")
         return redirect(nome_da_view_de_erro)
 
+    # Só via Conversions API (servidor) - a maioria desses cliques redireciona direto
+    # pro link da Shopee (externo), então não sobra nenhuma página nossa renderizando
+    # de novo pra disparar o Pixel do navegador (ver ROADMAP.md).
+    enviar_evento("GerouLinkCashback", request, gerar_event_id(), {"tipo_click": click.tipo})
     return redirect(click.link_gerado)
 
 

@@ -567,6 +567,25 @@ class IrParaStoryDeOfertaTests(TestCase):
 
         self.assertRedirects(resposta, reverse("home"))
 
+    @override_settings(
+        SHOPEE_AFFILIATE_APP_ID="app123",
+        SHOPEE_AFFILIATE_SECRET="segredo123",
+        SHOPEE_AFFILIATE_API_URL="https://open-api.affiliate.shopee.com.br/graphql",
+    )
+    @patch("instagram_bot.views.enviar_evento")
+    @patch("links.services.gerar_link_curto")
+    def test_clique_manda_evento_geroulinkcashback_pra_conversions_api(self, mock_gerar_link, mock_enviar_evento):
+        mock_gerar_link.return_value = "https://shope.ee/storylink456"
+        self.client.force_login(self.usuario)
+
+        self.client.get(reverse("instagram_story_ir", args=[self.registro.pk]))
+
+        mock_enviar_evento.assert_called_once()
+        nome_evento, _request, event_id, dados_customizados = mock_enviar_evento.call_args[0]
+        self.assertEqual(nome_evento, "GerouLinkCashback")
+        self.assertTrue(event_id)
+        self.assertEqual(dados_customizados, {"tipo_click": Click.TIPO_STORY_DM})
+
 
 class DownloadDeImagemDoProdutoTests(TestCase):
     """Sem headers, a CDN de imagem da Shopee pode recusar o pedido por parecer

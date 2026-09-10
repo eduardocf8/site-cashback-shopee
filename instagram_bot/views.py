@@ -8,6 +8,8 @@ from links.models import Click
 from links.services import gerar_click
 from links.shopee_client import ShopeeAPIError, ShopeeConfigError, SubIdInvalidoError
 
+from cashback_shopee.meta_capi import enviar_evento, gerar_event_id
+
 from . import aprovacao
 from .models import RegistroPublicacao
 
@@ -50,4 +52,8 @@ def ir_para_story_de_oferta(request, registro_id):
         messages.error(request, "Não foi possível abrir essa oferta agora. Tenta de novo em instantes.")
         return redirect("home")
 
+    # Só via Conversions API - ver o mesmo comentário em
+    # ofertas/views.py::_ir_com_click_ou_erro (redireciona direto pro link da Shopee,
+    # sem página nossa pra disparar o Pixel do navegador).
+    enviar_evento("GerouLinkCashback", request, gerar_event_id(), {"tipo_click": click.tipo})
     return redirect(click.link_gerado)

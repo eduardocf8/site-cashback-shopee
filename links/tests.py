@@ -169,6 +169,21 @@ class GerarLinkViewTests(TestCase):
         resposta = self.client.get("/links/")
         self.assertRedirects(resposta, "/login/?next=/links/")
 
+    @patch("links.views.enviar_evento")
+    @patch("links.services.gerar_link_curto")
+    def test_gerar_link_manda_evento_geroulinkcashback_pra_conversions_api(
+        self, mock_gerar_link, mock_enviar_evento
+    ):
+        mock_gerar_link.return_value = "https://shope.ee/home123"
+
+        self.client.post("/links/", {"acao": "home"}, follow=True)
+
+        mock_enviar_evento.assert_called_once()
+        nome_evento, _request, event_id, dados_customizados = mock_enviar_evento.call_args[0]
+        self.assertEqual(nome_evento, "GerouLinkCashback")
+        self.assertTrue(event_id)
+        self.assertEqual(dados_customizados, {"tipo_click": Click.TIPO_HOME})
+
 
 class GerarClickItemIdAlvoTests(TestCase):
     """item_id_alvo identifica qual produto gerou o clique - usado depois pra

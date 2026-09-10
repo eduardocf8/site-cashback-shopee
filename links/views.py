@@ -18,6 +18,8 @@ from ofertas.services import (
 )
 from saques.services import calcular_resumo_saldo_nav
 
+from cashback_shopee.meta_capi import enviar_evento, gerar_event_id
+
 from .forms import LinkProdutoForm
 from .models import Click
 from .services import gerar_click
@@ -132,6 +134,10 @@ def _buscar_cashback_real(url_produto):
 def _criar_click_e_avisar(request, tipo, url_produto, mensagem_sucesso="Link gerado com sucesso!"):
     try:
         click = gerar_click(request.user, tipo, url_produto)
+        # Só via Conversions API (servidor) - ver o mesmo comentário em
+        # ofertas/views.py::_ir_com_click_ou_erro (nem todo caminho até aqui
+        # renderiza uma página nossa depois, pra disparar o Pixel do navegador).
+        enviar_evento("GerouLinkCashback", request, gerar_event_id(), {"tipo_click": tipo})
         if mensagem_sucesso:
             messages.success(request, mensagem_sucesso)
         return click

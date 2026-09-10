@@ -81,6 +81,44 @@ class RegistrarComIndicacaoTests(TestCase):
         self.assertFalse(Indicacao.objects.filter(indicado=novo_usuario).exists())
 
 
+class MetaPixelCadastroTests(TestCase):
+    """CompleteRegistration sai pelos dois canais: Conversions API (servidor, disparada
+    na hora do cadastro) e Pixel (navegador, disparado na 1ª renderização do dashboard
+    depois do redirect) - com o MESMO event_id, pra Meta deduplicar (ver
+    cashback_shopee/meta_capi.py)."""
+
+    def _dados_cadastro(self, **extra):
+        dados = {
+            "username": "novaconta", "email": "nova@example.com", "cpf": "14783246947",
+            "password1": "senha-forte-123", "password2": "senha-forte-123",
+        }
+        dados.update(extra)
+        return dados
+
+    @patch("accounts.views.enviar_evento")
+    def test_cadastro_completo_manda_evento_pra_conversions_api(self, mock_enviar_evento):
+        self.client.post(reverse("registrar"), self._dados_cadastro())
+
+        mock_enviar_evento.assert_called_once()
+        nome_evento, _request, event_id = mock_enviar_evento.call_args[0]
+        self.assertEqual(nome_evento, "CompleteRegistration")
+        self.assertTrue(event_id)
+
+    def test_dashboard_dispara_o_pixel_do_navegador_so_na_primeira_visita(self):
+        resposta = self.client.post(reverse("registrar"), self._dados_cadastro(), follow=True)
+        self.assertContains(resposta, 'fbq("track", "CompleteRegistration"')
+
+        resposta_seguinte = self.client.get(reverse("dashboard"))
+        self.assertNotContains(resposta_seguinte, 'fbq("track", "CompleteRegistration"')
+
+    @patch("accounts.views.enviar_evento")
+    def test_event_id_do_navegador_bate_com_o_da_conversions_api(self, mock_enviar_evento):
+        resposta = self.client.post(reverse("registrar"), self._dados_cadastro(), follow=True)
+
+        event_id_capi = mock_enviar_evento.call_args[0][2]
+        self.assertContains(resposta, f'eventID: "{event_id_capi}"')
+
+
 class RateLimitTests(TestCase):
     """django-axes só protege o login - registrar/reenviar_verificacao/password_reset
     não exigem login (ou não passam pelo axes) e disparam e-mail/criam conta, então
