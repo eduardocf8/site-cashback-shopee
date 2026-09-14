@@ -212,6 +212,13 @@ def _pagina(corpo: str, largura: int, altura: int) -> str:
         background:linear-gradient(165deg, {CORES['brand-strong']} 0%, {CORES['brand']} 100%);
     }}
     .cartao-marca span {{ font-size:110px; font-weight:700; letter-spacing:-0.03em; color:{CORES['paper']}; }}
+    /* Mesma largura e altura de um card, mas sem caixa: mantém o compasso da fila
+       durante a rolagem e ainda assim lê como assinatura, não como mais um produto. */
+    .marca-solta {{
+        width:{LARGURA_CARTAO}px; flex-shrink:0;
+        display:flex; align-items:center; justify-content:center;
+    }}
+    .marca-solta span {{ font-size:170px; font-weight:700; letter-spacing:-0.03em; color:{CORES['brand']}; }}
     </style></head><body>{corpo}</body></html>"""
 
 
@@ -240,12 +247,29 @@ def _centralizado(cartao: str) -> str:
     return f'<div style="padding-left:{MARGEM_LATERAL}px;">{cartao}</div>'
 
 
-def _cartao_marca(altura_cartao: int) -> str:
-    """Último elemento do carrossel. Altura vem medida dos cards de produto, para a fila
-    terminar reta em vez de ter um degrau no fim."""
+def _cartao_marca(altura_cartao: int, com_fundo: bool = False, clara: bool = False) -> str:
+    """Último elemento do carrossel.
+
+    Por padrão a marca vai solta, sem cartão atrás: dentro de um cartão ela vira só mais
+    um item da lista, e o que se quer no fim do reel é uma assinatura - o momento em que
+    a fila acaba e sobra quem fez. Ela ocupa a mesma largura e altura de um card, então a
+    fila continua no mesmo compasso durante a rolagem.
+
+    clara=True troca o roxo pelo claro da marca: sobre fundo escuro o roxo some, e foi
+    o que apareceu ao testar as duas versões sobre um fundo simulado.
+
+    com_fundo=True devolve a versão em cartão roxo, que resolve o contraste de um jeito
+    diferente - com caixa, à custa de parecer mais um item da lista.
+    """
+    if com_fundo:
+        return (
+            f'<div class="cartao cartao-marca" style="height:{altura_cartao}px; padding:0;">'
+            f"<span>cash-b</span></div>"
+        )
+    cor = CORES["paper"] if clara else CORES["brand"]
     return (
-        f'<div class="cartao cartao-marca" style="height:{altura_cartao}px; padding:0;">'
-        f"<span>cash-b</span></div>"
+        f'<div class="marca-solta" style="height:{altura_cartao}px;">'
+        f'<span style="color:{cor};">cash-b</span></div>'
     )
 
 
@@ -262,7 +286,8 @@ def _altura_do_cartao(produto) -> int:
     return int(altura)
 
 
-def gerar_tira(produtos, escala: int = 2):
+def gerar_tira(produtos, escala: int = 2, marca_com_fundo: bool = False,
+               marca_clara: bool = False, nome_arquivo: str = "carrossel-tira.png"):
     """A fila inteira num PNG só: cards de produto com cashback + o card da marca no fim.
 
     Devolve a lista de deslocamentos em X (já na escala do arquivo) em que cada card
@@ -277,13 +302,13 @@ def gerar_tira(produtos, escala: int = 2):
     corpo = (
         f'<div style="padding-left:{MARGEM_LATERAL}px;"></div>'
         + "".join(_cartao(p, com_cashback=True) for p in produtos)
-        + _cartao_marca(altura_cartao)
+        + _cartao_marca(altura_cartao, marca_com_fundo, marca_clara)
     )
     # O primeiro padding-left entra como item flex, então some com o gap extra dele
     corpo = corpo.replace(f'<div style="padding-left:{MARGEM_LATERAL}px;"></div>', "")
     corpo = f'<div style="width:{MARGEM_LATERAL - VAO}px; flex-shrink:0;"></div>' + corpo
 
-    _render(corpo, OUT_DIR / "carrossel-tira.png", largura_tira, altura_tira, escala)
+    _render(corpo, OUT_DIR / nome_arquivo, largura_tira, altura_tira, escala)
 
     return [(-i * passo * escala) for i in range(itens)]
 
@@ -307,7 +332,11 @@ def gerar(produtos=None):
             )
 
 
+    # As três terminações saem juntas: qual funciona depende do fundo que a câmera
+    # captou, e isso só dá para julgar na linha do tempo. A rolagem é a mesma nas três.
     quadros = gerar_tira(produtos)
+    gerar_tira(produtos, marca_clara=True, nome_arquivo="carrossel-tira-marca-clara.png")
+    gerar_tira(produtos, marca_com_fundo=True, nome_arquivo="carrossel-tira-marca-em-card.png")
     print("\nQuadros-chave da rolagem (deslocamento em X da camada da tira):")
     nomes = [p["nome"] for p in produtos] + ["cash-b (fim)"]
     for x, nome in zip(quadros, nomes):
