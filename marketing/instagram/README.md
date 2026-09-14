@@ -817,6 +817,29 @@ recorte automático pelo canal alfa (sem ele sobra uma moldura enorme de pixels
 vazios, que atrapalha na hora de posicionar). O recorte é automático de
 propósito: acertar a moldura na mão mudaria a cada ajuste de corpo de fonte.
 
+## Arte para reel (`cards-produto/` e `botoes-reel/`)
+
+Peças com fundo transparente para entrar como camada por cima da filmagem.
+
+`gerar_cards_produto.py` faz os cards de produto em dois estados (só o preço e
+com o cashback) e a **tira** do carrossel — todos os cards lado a lado num PNG
+só, terminando na marca. Rolar o carrossel no editor vira deslocar uma camada
+no eixo X; o script imprime os deslocamentos de cada quadro-chave.
+
+`gerar_botoes_reel.py` faz o botão que a mão aperta na cena, ligado e
+desligado, em duas famílias (interruptor e botão redondo de apertar) e com a
+opção de vir com a palavra "cashback" ao lado, em texto escuro ou claro.
+
+**A regra que vale para os dois:** os dois estados da mesma peça saem com as
+mesmas dimensões e na mesma posição dentro do arquivo, e nada é recortado na
+tinta. Trocar um pelo outro na mesma camada não move nem redimensiona nada —
+só muda o estado. Foi conferido comparando a região opaca dos arquivos: idêntica
+nos dois estados de cada par. Recortar justo na tinta (como faz o kit de logos)
+quebraria isso, porque o desligado e o ligado ocupam áreas diferentes.
+
+Os PNGs saem em escala 2: no reel a peça aparece grande, e ampliar um arquivo
+de 1x na edição deixa borda e texto moles.
+
 ## Decisões de conteúdo (não repetir)
 
 - **Não afirmar valor de saque mínimo inexistente.** O site tem um valor
