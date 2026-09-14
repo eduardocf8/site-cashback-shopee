@@ -1,11 +1,17 @@
 """Cards de produto para vídeo — dois por produto: só o preço, e com o cashback.
 
-Feito para gravação: os dois cards de um mesmo produto saem na MESMA tela de
-1080x1200, com o cartão preso no TOPO - não centralizado. Centralizado, o cartão com
-cashback (mais alto) empurrava foto e preço para cima, e na troca durante o vídeo tudo
-saltava de lugar. Preso no topo, foto, nome e preço ficam no mesmo pixel nos dois
-arquivos e só o bloco de cashback aparece. Fundo transparente, para o cartão poder ser
-posto sobre qualquer imagem do vídeo.
+Feito para gravação: os dois cards de um mesmo produto são IDÊNTICOS em dimensão e
+posição - ao "apertar o botão" na cena, nada muda de tamanho nem se desloca, só surgem
+as informações de cashback. Conseguido com duas escolhas: o selo da % é absoluto sobre
+a foto (não ocupa espaço) e o valor em R$ entra numa linha de altura travada, ao lado
+do preço. Conferido comparando os dois arquivos: mesma caixa e diferença só nas duas
+regiões novas.
+
+O tratamento da % e do preço segue o card de oferta dos stories
+(instagram_bot/templates_imagem.py, gerar_imagem_oferta_story): selo âmbar no canto da
+foto e preço em roxo, na mono.
+
+Fundo transparente, para o cartão poder ser posto sobre qualquer imagem do vídeo.
 
 Os requisitos de escolha do produto (definidos pelo dono da marca) viram validação aqui
 em cima em vez de ficarem num comentário: preço único (sem variação), cashback de 4%
@@ -50,6 +56,7 @@ CORES = {
     "muted": "#6b7280",
     "brand": "#6d28d9",
     "success": "#059669",
+    "highlight": "#f59e0b",
     "paper": "#f8fafc",
     "line": "#e0dcef",
 }
@@ -156,32 +163,36 @@ def _foto_embutida(caminho: Path) -> str:
 
 
 def _cartao(produto, com_cashback: bool) -> str:
+    """As duas versões têm exatamente as mesmas dimensões.
+
+    É o que o roteiro do reel exige: ao "apertar o botão", o card não pode mudar de
+    tamanho nem mexer em nada que já estava na tela - só ganhar as informações de
+    cashback. Por isso o selo da % é absoluto (flutua sobre a foto, não empurra nada) e
+    o valor em R$ entra numa linha de altura fixa, ao lado do preço.
+    """
     preco = Decimal(str(produto["preco"]))
     percentual = Decimal(str(produto["percentual"]))
     valor, _ = _valor_cashback(preco, percentual)
 
-    bloco_cashback = f"""
-    <div style="margin-top:26px; padding-top:24px; border-top:2px dashed {CORES['line']};
-                display:flex; align-items:center; justify-content:space-between;">
-        <div>
-            <div style="font-size:20px; font-weight:600; letter-spacing:0.08em;
-                        text-transform:uppercase; color:{CORES['muted']};">cashback</div>
-            <div style="font-family:'JB Mono'; font-size:44px; font-weight:700;
-                        color:{CORES['success']}; margin-top:6px;">{_reais(valor)}</div>
-        </div>
-        <div style="padding:12px 22px; border-radius:999px; background:{CORES['brand']};
-                    font-family:'JB Mono'; font-size:34px; font-weight:700; color:#fff;">
-            {_percentual(percentual)}
-        </div>
-    </div>
-    """ if com_cashback else ""
+    selo = (
+        f'<div class="selo-cashback">{_percentual(percentual)} cashback</div>'
+        if com_cashback else ""
+    )
+    valor_cashback = (
+        f'<span class="valor-cashback">+ {_reais(valor)}</span>' if com_cashback else ""
+    )
 
     return f"""
     <div class="cartao">
-        <img class="foto" src="{_foto_embutida(FOTOS_DIR / produto['foto'])}" alt="">
+        <div class="foto-area">
+            <img class="foto" src="{_foto_embutida(FOTOS_DIR / produto['foto'])}" alt="">
+            {selo}
+        </div>
         <div class="nome">{produto['nome']}</div>
-        <div class="preco">{_reais(preco)}</div>
-        {bloco_cashback}
+        <div class="linha-preco">
+            <span class="preco">{_reais(preco)}</span>
+            {valor_cashback}
+        </div>
     </div>
     """
 
@@ -197,7 +208,17 @@ def _pagina(corpo: str, largura: int, altura: int) -> str:
         width:{LARGURA_CARTAO}px; padding:36px; border-radius:40px; background:#fff;
         flex-shrink:0; box-shadow:0 30px 60px rgba(17,24,39,0.18);
     }}
+    .foto-area {{ position:relative; line-height:0; }}
     .foto {{ width:648px; height:648px; object-fit:cover; border-radius:28px; display:block; }}
+    /* Absoluto de propósito: flutua sobre a foto sem ocupar espaço, então ligar o
+       cashback não empurra nada para baixo nem muda a altura do cartão. Mesmas cores e
+       cantos do selo do story de oferta (instagram_bot/templates_imagem.py). */
+    .selo-cashback {{
+        position:absolute; top:20px; right:20px;
+        padding:10px 18px; border-radius:14px;
+        background:{CORES['highlight']}; color:{CORES['ink']};
+        font-size:24px; font-weight:700; line-height:1.15;
+    }}
     /* Duas linhas sempre, mesmo com nome curto: é o que garante que todos os cards
        tenham a MESMA altura. Sem isso, um produto de nome curto sairia mais baixo e a
        tira ficaria com os cards desalinhados entre si. */
@@ -206,7 +227,12 @@ def _pagina(corpo: str, largura: int, altura: int) -> str:
         margin-top:26px; letter-spacing:-0.01em; min-height:{ALTURA_NOME}px;
         display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical; overflow:hidden;
     }}
-    .preco {{ font-family:"JB Mono"; font-size:58px; font-weight:700; color:{CORES['ink']}; margin-top:14px; }}
+    /* Altura travada: o valor em R$ entra ao lado do preço, e sem altura fixa uma
+       diferença de métrica entre as duas fontes mudaria a altura do cartão - que é
+       justamente o que não pode acontecer na troca durante a cena. */
+    .linha-preco {{ display:flex; align-items:baseline; gap:18px; height:76px; margin-top:14px; }}
+    .preco {{ font-family:"JB Mono"; font-size:58px; font-weight:700; color:{CORES['brand']}; }}
+    .valor-cashback {{ font-family:"JB Mono"; font-size:36px; font-weight:700; color:{CORES['success']}; }}
     .cartao-marca {{
         display:flex; align-items:center; justify-content:center;
         background:linear-gradient(165deg, {CORES['brand-strong']} 0%, {CORES['brand']} 100%);
