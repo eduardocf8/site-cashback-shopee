@@ -1,0 +1,4 @@
+# Os PNGs gerados (cards e tiras) somam dezenas de MB e saem inteiros do script mais as
+# fotos em fotos/ - versionar o resultado só engordaria o repositório. As fotos ficam,
+# porque sem elas não dá para regerar.
+*.png

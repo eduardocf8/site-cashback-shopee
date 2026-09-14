@@ -13,10 +13,11 @@ foto e preço em roxo, na mono.
 
 Fundo transparente, para o cartão poder ser posto sobre qualquer imagem do vídeo.
 
-Os requisitos de escolha do produto (definidos pelo dono da marca) viram validação aqui
-em cima em vez de ficarem num comentário: preço único (sem variação), cashback de 4%
-para cima e três categorias diferentes. Dado que não cumpre isso derruba a geração, em
-vez de virar um card publicado com produto errado.
+Validação em duas camadas: foto ausente ou preço zerado derrubam a geração (não tem
+card para gerar), enquanto o piso de cashback e a repetição de categoria só avisam.
+Esses dois eram critério para ESCOLHER o produto - depois que a escolha é feita à mão,
+bloquear só impede de gerar o que foi pedido. "preco" continua sendo um campo único, o
+que já impede produto com faixa de preço virar card.
 
 A porcentagem de desconto não entra de propósito: o vídeo é sobre cashback, e desconto
 na mesma arte divide a atenção entre dois números que não se somam.
@@ -84,13 +85,25 @@ MARGEM_TOPO = 40
 # faixa de preço (R$ 39 - R$ 88) não entra, porque o card mostraria um número que não é
 # o que a pessoa vai pagar.
 PRODUTOS = [
-    # {
-    #     "nome": "Nome curto do produto",
-    #     "categoria": "Eletrônicos",
-    #     "preco": "129.90",
-    #     "percentual": "5.2",
-    #     "foto": "fone.jpg",   # arquivo dentro de cards-produto/fotos/
-    # },
+    # Separados à mão na vitrine (cash-b.com/ofertas) em 14/09/2026. Onde a vitrine
+    # mostrava faixa de preço, entrou o PRIMEIRO valor - é o que as informações de
+    # cashback da vitrine já consideram.
+    {"nome": "Percarbonato de Sódio 100% Puro Tira Manchas", "categoria": "Casa e Decoração",
+     "preco": "16.50", "percentual": "3.0", "foto": "01-percarbonato.jpg"},
+    {"nome": "Cinta Modeladora Feminina", "categoria": "Roupas Femininas",
+     "preco": "27.99", "percentual": "6.2", "foto": "02-cinta.jpg"},
+    {"nome": "Creatina Monohidratada Pura Dark Lab", "categoria": "Saúde",
+     "preco": "32.90", "percentual": "5.6", "foto": "03-creatina.jpg"},
+    {"nome": "Ração Úmida Friskies para Gatos 15x85g", "categoria": "Animais Domésticos",
+     "preco": "39.90", "percentual": "4.6", "foto": "04-friskies.jpg"},
+    {"nome": "Torneira de Cozinha Gourmet 360°", "categoria": "Casa e Decoração",
+     "preco": "25.88", "percentual": "5.6", "foto": "05-torneira.jpg"},
+    {"nome": "Chaleira Elétrica Inox 110v", "categoria": "Eletrodomésticos",
+     "preco": "44.90", "percentual": "3.0", "foto": "06-chaleira.jpg"},
+    {"nome": "Gel de Limpeza Suave Principia GL-02 200g", "categoria": "Beleza",
+     "preco": "39.00", "percentual": "3.6", "foto": "07-principia.jpg"},
+    {"nome": "Kit Renovadores Faciais Kokeshi", "categoria": "Beleza",
+     "preco": "39.90", "percentual": "6.2", "foto": "08-kokeshi.jpg"},
 ]
 
 
@@ -98,22 +111,26 @@ PRODUTOS = [
 
 
 def _validar(produtos):
+    """Erro derruba a geração; aviso só alerta.
+
+    A divisão é entre o que quebra a peça e o que é preferência editorial. Foto ausente
+    ou preço zerado produzem um card errado - não tem card para gerar, então é erro. Já
+    o piso de cashback e a variedade de categorias eram critério para ESCOLHER produto;
+    depois que a escolha foi feita à mão, virar bloqueio só impede de gerar o que foi
+    pedido. Viram aviso, e quem decide é quem escolheu.
+    """
     if not produtos:
         raise SystemExit(
-            "PRODUTOS está vazio. Preencha os três produtos e salve as fotos em "
+            "PRODUTOS está vazio. Preencha os produtos e salve as fotos em "
             f"{FOTOS_DIR.relative_to(REPO_ROOT)}/ - ver o comentário no topo do arquivo."
         )
 
+    avisos = []
     categorias = []
     for p in produtos:
         preco = Decimal(str(p["preco"]))
         percentual = Decimal(str(p["percentual"]))
 
-        if percentual < CASHBACK_MINIMO:
-            raise SystemExit(
-                f'"{p["nome"]}" tem {percentual}% de cashback, abaixo do mínimo de '
-                f"{CASHBACK_MINIMO}% combinado para estes cards."
-            )
         if preco <= 0:
             raise SystemExit(f'"{p["nome"]}" está sem preço.')
 
@@ -121,14 +138,17 @@ def _validar(produtos):
         if not caminho.exists():
             raise SystemExit(f"Foto não encontrada: {caminho.relative_to(REPO_ROOT)}")
 
+        if percentual < CASHBACK_MINIMO:
+            avisos.append(f'{p["nome"]} tem {_percentual(percentual)}, abaixo de {CASHBACK_MINIMO}%')
+
         categorias.append(p["categoria"])
 
-    repetidas = {c for c in categorias if categorias.count(c) > 1}
+    repetidas = sorted({c for c in categorias if categorias.count(c) > 1})
     if repetidas:
-        raise SystemExit(
-            "Categorias repetidas: " + ", ".join(sorted(repetidas)) +
-            ". A ideia é mostrar que o cashback vale em setores diferentes da loja."
-        )
+        avisos.append("categorias repetidas: " + ", ".join(repetidas))
+
+    for aviso in avisos:
+        print(f"  AVISO: {aviso}")
 
 
 def _valor_cashback(preco: Decimal, percentual: Decimal) -> tuple[Decimal, bool]:
