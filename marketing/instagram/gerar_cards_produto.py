@@ -15,6 +15,14 @@ vez de virar um card publicado com produto errado.
 A porcentagem de desconto não entra de propósito: o vídeo é sobre cashback, e desconto
 na mesma arte divide a atenção entre dois números que não se somam.
 
+Além dos cards soltos, gera a TIRA do carrossel: todos os cards lado a lado num PNG
+só, terminando no card da marca. No editor, rolar o carrossel vira deslocar uma camada
+no eixo X com curva de desaceleração - bem mais simples (e mais fiel ao movimento real
+de um carrossel) do que animar oito camadas separadas.
+
+O primeiro card da tira ocupa exatamente a mesma posição do card solto, então trocar um
+pelo outro no momento da rolagem não move nada na tela.
+
 Como usar:
     1. Preencha PRODUTOS abaixo com os dados que a vitrine mostra.
     2. Salve a foto de cada produto em cards-produto/fotos/.
@@ -38,6 +46,7 @@ FOTOS_DIR = OUT_DIR / "fotos"
 
 CORES = {
     "ink": "#111827",
+    "brand-strong": "#4c1d95",
     "muted": "#6b7280",
     "brand": "#6d28d9",
     "success": "#059669",
@@ -50,6 +59,14 @@ CASHBACK_MINIMO = Decimal("4")
 TETO_POR_PRODUTO = Decimal("10")
 
 LARGURA, ALTURA = 1080, 1200
+LARGURA_CARTAO = 720
+# Duas linhas de nome (34px x 1.25), reservadas mesmo quando o nome ocupa uma só.
+ALTURA_NOME = 85
+# Respiro entre um card e outro na tira do carrossel.
+VAO = 60
+# Margem nas pontas da tira - igual à sobra do card centralizado na tela de 1080,
+# para o primeiro card da tira cair no mesmo pixel do card solto.
+MARGEM_LATERAL = (LARGURA - LARGURA_CARTAO) // 2
 # Folga embaixo para a sombra do cartão não ser cortada no arquivo mais alto.
 MARGEM_TOPO = 40
 
@@ -169,37 +186,106 @@ def _cartao(produto, com_cashback: bool) -> str:
     """
 
 
-def _render(html_cartao, destino: Path):
-    html = f"""<html><head><style>
+def _pagina(corpo: str, largura: int, altura: int) -> str:
+    return f"""<html><head><style>
     @font-face {{ font-family:"Familjen"; src:url(data:font/woff2;base64,{FAMILJEN_B64}) format("woff2"); font-weight:400 700; }}
     @font-face {{ font-family:"JB Mono"; src:url(data:font/woff2;base64,{JBMONO_B64}) format("woff2"); font-weight:400 700; }}
     * {{ box-sizing:border-box; margin:0; padding:0; }}
-    html, body {{ width:{LARGURA}px; height:{ALTURA}px; background:transparent; font-family:"Familjen", Arial, sans-serif; }}
-    body {{ display:flex; align-items:flex-start; justify-content:center; padding-top:{MARGEM_TOPO}px; }}
+    html, body {{ width:{largura}px; height:{altura}px; background:transparent; font-family:"Familjen", Arial, sans-serif; }}
+    body {{ display:flex; align-items:flex-start; padding-top:{MARGEM_TOPO}px; gap:{VAO}px; }}
     .cartao {{
-        width:720px; padding:36px; border-radius:40px; background:#fff;
-        box-shadow:0 30px 60px rgba(17,24,39,0.18);
+        width:{LARGURA_CARTAO}px; padding:36px; border-radius:40px; background:#fff;
+        flex-shrink:0; box-shadow:0 30px 60px rgba(17,24,39,0.18);
     }}
     .foto {{ width:648px; height:648px; object-fit:cover; border-radius:28px; display:block; }}
+    /* Duas linhas sempre, mesmo com nome curto: é o que garante que todos os cards
+       tenham a MESMA altura. Sem isso, um produto de nome curto sairia mais baixo e a
+       tira ficaria com os cards desalinhados entre si. */
     .nome {{
         font-size:34px; font-weight:600; line-height:1.25; color:{CORES['ink']};
-        margin-top:26px; letter-spacing:-0.01em;
+        margin-top:26px; letter-spacing:-0.01em; min-height:{ALTURA_NOME}px;
         display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical; overflow:hidden;
     }}
     .preco {{ font-family:"JB Mono"; font-size:58px; font-weight:700; color:{CORES['ink']}; margin-top:14px; }}
-    </style></head><body>{html_cartao}</body></html>"""
+    .cartao-marca {{
+        display:flex; align-items:center; justify-content:center;
+        background:linear-gradient(165deg, {CORES['brand-strong']} 0%, {CORES['brand']} 100%);
+    }}
+    .cartao-marca span {{ font-size:110px; font-weight:700; letter-spacing:-0.03em; color:{CORES['paper']}; }}
+    </style></head><body>{corpo}</body></html>"""
 
+
+def _render(corpo: str, destino: Path, largura: int = LARGURA, altura: int = ALTURA, escala: int = 2):
+    """escala=2 de propósito: no reel o card aparece grande na tela, e subir um PNG de
+    1x na edição deixa texto e foto moles."""
     destino.parent.mkdir(parents=True, exist_ok=True)
     with sync_playwright() as p:
         navegador = p.chromium.launch(executable_path="/opt/pw-browsers/chromium")
-        pagina = navegador.new_page(viewport={"width": LARGURA, "height": ALTURA}, device_scale_factor=1)
-        pagina.set_content(html)
-        pagina.wait_for_timeout(200)
-        # Sem recorte na tinta, ao contrário do kit de logos: os dois cards do mesmo
+        pagina = navegador.new_page(
+            viewport={"width": largura, "height": altura}, device_scale_factor=escala
+        )
+        pagina.set_content(_pagina(corpo, largura, altura))
+        pagina.wait_for_timeout(250)
+        # Sem recorte na tinta, ao contrário do kit de logos: os arquivos do mesmo
         # produto precisam sair do mesmo tamanho para não pular na troca durante o vídeo.
         pagina.screenshot(path=str(destino), omit_background=True)
         navegador.close()
-    print("gerado:", destino.relative_to(REPO_ROOT))
+    print("gerado:", destino.relative_to(REPO_ROOT), f"({largura*escala}x{altura*escala})")
+
+
+def _centralizado(cartao: str) -> str:
+    """O card solto vive numa tela de 1080 e fica centralizado nela; na tira ele é só
+    mais um item da fila. A margem lateral aqui é a mesma que a tira usa nas pontas,
+    para o primeiro card cair no mesmo pixel nos dois arquivos."""
+    return f'<div style="padding-left:{MARGEM_LATERAL}px;">{cartao}</div>'
+
+
+def _cartao_marca(altura_cartao: int) -> str:
+    """Último elemento do carrossel. Altura vem medida dos cards de produto, para a fila
+    terminar reta em vez de ter um degrau no fim."""
+    return (
+        f'<div class="cartao cartao-marca" style="height:{altura_cartao}px; padding:0;">'
+        f"<span>cash-b</span></div>"
+    )
+
+
+def _altura_do_cartao(produto) -> int:
+    """Mede o card renderizado em vez de somar as alturas na mão - qualquer ajuste de
+    corpo de fonte mudaria a conta e o card da marca ficaria fora de esquadro."""
+    with sync_playwright() as p:
+        navegador = p.chromium.launch(executable_path="/opt/pw-browsers/chromium")
+        pagina = navegador.new_page(viewport={"width": LARGURA, "height": ALTURA})
+        pagina.set_content(_pagina(_cartao(produto, com_cashback=True), LARGURA, ALTURA))
+        pagina.wait_for_timeout(250)
+        altura = pagina.evaluate("Math.round(document.querySelector('.cartao').getBoundingClientRect().height)")
+        navegador.close()
+    return int(altura)
+
+
+def gerar_tira(produtos, escala: int = 2):
+    """A fila inteira num PNG só: cards de produto com cashback + o card da marca no fim.
+
+    Devolve a lista de deslocamentos em X (já na escala do arquivo) em que cada card
+    fica centralizado na tela - são os valores dos quadros-chave da rolagem no editor.
+    """
+    altura_cartao = _altura_do_cartao(produtos[0])
+    passo = LARGURA_CARTAO + VAO
+    itens = len(produtos) + 1  # +1 do card da marca
+    largura_tira = MARGEM_LATERAL * 2 + itens * LARGURA_CARTAO + (itens - 1) * VAO
+    altura_tira = MARGEM_TOPO + altura_cartao + 120  # folga para a sombra
+
+    corpo = (
+        f'<div style="padding-left:{MARGEM_LATERAL}px;"></div>'
+        + "".join(_cartao(p, com_cashback=True) for p in produtos)
+        + _cartao_marca(altura_cartao)
+    )
+    # O primeiro padding-left entra como item flex, então some com o gap extra dele
+    corpo = corpo.replace(f'<div style="padding-left:{MARGEM_LATERAL}px;"></div>', "")
+    corpo = f'<div style="width:{MARGEM_LATERAL - VAO}px; flex-shrink:0;"></div>' + corpo
+
+    _render(corpo, OUT_DIR / "carrossel-tira.png", largura_tira, altura_tira, escala)
+
+    return [(-i * passo * escala) for i in range(itens)]
 
 
 def gerar(produtos=None):
@@ -208,8 +294,8 @@ def gerar(produtos=None):
 
     for i, produto in enumerate(produtos, start=1):
         base = f"{i:02d}-{_slug(produto['nome'])}"
-        _render(_cartao(produto, com_cashback=False), OUT_DIR / f"{base}-so-preco.png")
-        _render(_cartao(produto, com_cashback=True), OUT_DIR / f"{base}-com-cashback.png")
+        _render(_centralizado(_cartao(produto, com_cashback=False)), OUT_DIR / f"{base}-so-preco.png")
+        _render(_centralizado(_cartao(produto, com_cashback=True)), OUT_DIR / f"{base}-com-cashback.png")
 
         preco = Decimal(str(produto["preco"]))
         _, no_teto = _valor_cashback(preco, Decimal(str(produto["percentual"])))
@@ -219,6 +305,14 @@ def gerar(produtos=None):
                 "produto. Confira o valor que a vitrine mostra - o percentual dela já "
                 "vem ajustado pelo teto."
             )
+
+
+    quadros = gerar_tira(produtos)
+    print("\nQuadros-chave da rolagem (deslocamento em X da camada da tira):")
+    nomes = [p["nome"] for p in produtos] + ["cash-b (fim)"]
+    for x, nome in zip(quadros, nomes):
+        print(f"  {x:>7} px  ->  {nome}")
+    print("Comece rápido e desacelere até o último valor (ease-out).")
 
 
 if __name__ == "__main__":
