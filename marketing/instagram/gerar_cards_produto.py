@@ -88,22 +88,27 @@ PRODUTOS = [
     # Separados à mão na vitrine (cash-b.com/ofertas) em 14/09/2026. Onde a vitrine
     # mostrava faixa de preço, entrou o PRIMEIRO valor - é o que as informações de
     # cashback da vitrine já consideram.
+    #
+    # A ordem importa: o primeiro é o card que fica na tela durante toda a cena do
+    # botão, antes da rolagem começar. É o produto que o espectador olha por mais tempo.
+    {"nome": "Espelho Oval 80x50cm com Borda Lapidada e LED", "categoria": "Casa e Decoração",
+     "preco": "53.89", "percentual": "5.6", "foto": "01-espelho.jpg"},
     {"nome": "Percarbonato de Sódio 100% Puro Tira Manchas", "categoria": "Casa e Decoração",
-     "preco": "16.50", "percentual": "3.0", "foto": "01-percarbonato.jpg"},
+     "preco": "16.50", "percentual": "3.0", "foto": "02-percarbonato.jpg"},
     {"nome": "Cinta Modeladora Feminina", "categoria": "Roupas Femininas",
-     "preco": "27.99", "percentual": "6.2", "foto": "02-cinta.jpg"},
+     "preco": "27.99", "percentual": "6.2", "foto": "03-cinta.jpg"},
     {"nome": "Creatina Monohidratada Pura Dark Lab", "categoria": "Saúde",
-     "preco": "32.90", "percentual": "5.6", "foto": "03-creatina.jpg"},
+     "preco": "32.90", "percentual": "5.6", "foto": "04-creatina.jpg"},
     {"nome": "Ração Úmida Friskies para Gatos 15x85g", "categoria": "Animais Domésticos",
-     "preco": "39.90", "percentual": "4.6", "foto": "04-friskies.jpg"},
+     "preco": "39.90", "percentual": "4.6", "foto": "05-friskies.jpg"},
     {"nome": "Torneira de Cozinha Gourmet 360°", "categoria": "Casa e Decoração",
-     "preco": "25.88", "percentual": "5.6", "foto": "05-torneira.jpg"},
+     "preco": "25.88", "percentual": "5.6", "foto": "06-torneira.jpg"},
     {"nome": "Chaleira Elétrica Inox 110v", "categoria": "Eletrodomésticos",
-     "preco": "44.90", "percentual": "3.0", "foto": "06-chaleira.jpg"},
+     "preco": "44.90", "percentual": "3.0", "foto": "07-chaleira.jpg"},
     {"nome": "Gel de Limpeza Suave Principia GL-02 200g", "categoria": "Beleza",
-     "preco": "39.00", "percentual": "3.6", "foto": "07-principia.jpg"},
+     "preco": "39.00", "percentual": "3.6", "foto": "08-principia.jpg"},
     {"nome": "Kit Renovadores Faciais Kokeshi", "categoria": "Beleza",
-     "preco": "39.90", "percentual": "6.2", "foto": "08-kokeshi.jpg"},
+     "preco": "39.90", "percentual": "6.2", "foto": "09-kokeshi.jpg"},
 ]
 
 
