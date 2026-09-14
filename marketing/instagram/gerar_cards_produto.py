@@ -212,6 +212,14 @@ def _pagina(corpo: str, largura: int, altura: int) -> str:
         background:linear-gradient(165deg, {CORES['brand-strong']} 0%, {CORES['brand']} 100%);
     }}
     .cartao-marca span {{ font-size:110px; font-weight:700; letter-spacing:-0.03em; color:{CORES['paper']}; }}
+    /* Centro óptico do wordmark. O flex centraliza a CAIXA da linha de texto, não a
+       TINTA: a caixa reserva espaço de descendente embaixo (que "cash-b" não usa) e o
+       letter-spacing negativo a encolhe depois do último "b". Medido nos arquivos
+       gerados, a tinta saía baixa e à direita - proporcional ao corpo da fonte (17px e
+       3px a 110px; 26px e 5px a 170px), por isso a correção vai em em e não em px: vale
+       para os dois tamanhos e continua valendo se o corpo mudar. Mesma correção que
+       gerar_artes_marca.py faz no glifo "cb", pelo mesmo motivo. */
+    .cartao-marca span, .marca-solta span {{ transform:translate(-0.0147em, -0.0765em); }}
     /* Mesma largura e altura de um card, mas sem caixa: mantém o compasso da fila
        durante a rolagem e ainda assim lê como assinatura, não como mais um produto. */
     .marca-solta {{
