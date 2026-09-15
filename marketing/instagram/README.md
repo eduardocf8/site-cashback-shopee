@@ -838,7 +838,24 @@ nos dois estados de cada par. Recortar justo na tinta (como faz o kit de logos)
 quebraria isso, porque o desligado e o ligado ocupam áreas diferentes.
 
 Os PNGs saem em escala 2: no reel a peça aparece grande, e ampliar um arquivo
-de 1x na edição deixa borda e texto moles.
+de 1x na edição deixa borda e texto moles. A tira é a exceção — sai nas duas
+escalas, porque em 2x ela passa de 16 mil pixels de largura e muito aparelho
+não carrega uma textura desse tamanho (a camada some). O `-1x` cabe, e para um
+reel de 1080 de largura já é pixel a pixel.
+
+### Como a rolagem é montada no editor
+
+A tira entra como camada única e o movimento é só a **Posição X** dela, em
+quadros-chave. Os valores saem impressos ao rodar o script, em pixels do quadro
+(projeto de 1080 de largura) — do primeiro card ao último eles vão de `+3510` a
+`-3510`, e **o passo de um card para o outro é sempre 780** (720 do card + 60 de
+vão). Começar rápido e terminar devagar é o que dá a desaceleração de carrossel
+de verdade.
+
+A escala da tira é acertada uma vez: o card precisa ocupar dois terços da
+largura do quadro, igual ao card solto. Com isso, e com as duas peças apenas
+centralizadas, trocar o card solto pela tira no momento da rolagem não move nada
+— é para isso que os dois arquivos têm a mesma altura e a mesma caixa no card 1.
 
 ## Decisões de conteúdo (não repetir)
 

@@ -349,14 +349,21 @@ def gerar_tira(produtos, escala: int = 2, marca_com_fundo: bool = False,
                marca_clara: bool = False, nome_arquivo: str = "carrossel-tira.png"):
     """A fila inteira num PNG só: cards de produto com cashback + o card da marca no fim.
 
-    Devolve a lista de deslocamentos em X (já na escala do arquivo) em que cada card
-    fica centralizado na tela - são os valores dos quadros-chave da rolagem no editor.
+    Devolve a lista de posições em X (na escala do arquivo) em que cada card fica
+    centralizado na tela - são os valores dos quadros-chave da rolagem no editor. O
+    primeiro é positivo porque a tira começa deslocada para a direita: centralizá-la
+    pelo meio mostraria o meio da fila, e a cena começa no primeiro card.
     """
     altura_cartao = _altura_do_cartao(produtos[0])
     passo = LARGURA_CARTAO + VAO
     itens = len(produtos) + 1  # +1 do card da marca
     largura_tira = MARGEM_LATERAL * 2 + itens * LARGURA_CARTAO + (itens - 1) * VAO
-    altura_tira = MARGEM_TOPO + altura_cartao + 120  # folga para a sombra
+    # Mesma altura do arquivo do card solto, de propósito: no editor as duas peças são
+    # só centralizadas no quadro, e com alturas diferentes o card da tira cairia alguns
+    # pixels abaixo do card solto - a troca no momento da rolagem daria um pulinho
+    # vertical. Igualando a altura, a garantia de "não move nada" vale nos dois eixos.
+    # O max() é rede: se o card crescer a ponto de não caber, a tira cresce junto.
+    altura_tira = max(ALTURA, MARGEM_TOPO + altura_cartao + 120)
 
     corpo = (
         f'<div style="padding-left:{MARGEM_LATERAL}px;"></div>'
@@ -369,7 +376,11 @@ def gerar_tira(produtos, escala: int = 2, marca_com_fundo: bool = False,
 
     _render(corpo, OUT_DIR / nome_arquivo, largura_tira, altura_tira, escala)
 
-    return [(-i * passo * escala) for i in range(itens)]
+    # Em pixels do QUADRO (projeto de 1080 de largura), não do arquivo: é o que o editor
+    # pede, e o número não muda se a tira for exportada em 1x ou 2x. O primeiro valor é
+    # o deslocamento que põe o card 1 no centro, partindo da tira centralizada.
+    inicial = largura_tira // 2 - (MARGEM_LATERAL + LARGURA_CARTAO // 2)
+    return [inicial - i * passo for i in range(itens)]
 
 
 def gerar(produtos=None):
@@ -393,10 +404,22 @@ def gerar(produtos=None):
 
     # As três terminações saem juntas: qual funciona depende do fundo que a câmera
     # captou, e isso só dá para julgar na linha do tempo. A rolagem é a mesma nas três.
+    #
+    # Cada uma sai em 2x e em 1x. O 1x existe por causa do editor: a tira tem dez cards
+    # de largura, e em 2x passa de 16 mil pixels - acima do que muito aparelho consegue
+    # carregar como textura, então a camada simplesmente não aparece. Em 1x ela cabe, e
+    # para um reel de 1080 de largura o 1x já é pixel a pixel. O 2x fica para quando a
+    # edição precisar aproximar.
     quadros = gerar_tira(produtos)
-    gerar_tira(produtos, marca_clara=True, nome_arquivo="carrossel-tira-marca-clara.png")
-    gerar_tira(produtos, marca_com_fundo=True, nome_arquivo="carrossel-tira-marca-em-card.png")
-    print("\nQuadros-chave da rolagem (deslocamento em X da camada da tira):")
+    gerar_tira(produtos, nome_arquivo="carrossel-tira-1x.png", escala=1)
+    for clara, fundo, nome in [(True, False, "marca-clara"), (False, True, "marca-em-card")]:
+        gerar_tira(produtos, marca_clara=clara, marca_com_fundo=fundo,
+                   nome_arquivo=f"carrossel-tira-{nome}.png")
+        gerar_tira(produtos, marca_clara=clara, marca_com_fundo=fundo,
+                   nome_arquivo=f"carrossel-tira-{nome}-1x.png", escala=1)
+
+    print("\nQuadros-chave da rolagem — Posição X da camada da tira, em pixels do quadro")
+    print("(projeto de 1080 de largura; o passo de um card para o outro é sempre 780):")
     nomes = [p["nome"] for p in produtos] + ["cash-b (fim)"]
     for x, nome in zip(quadros, nomes):
         print(f"  {x:>7} px  ->  {nome}")
