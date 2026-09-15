@@ -2,3 +2,8 @@
 # fotos em fotos/ - versionar o resultado só engordaria o repositório. As fotos ficam,
 # porque sem elas não dá para regerar.
 *.png
+
+# Mesma coisa para os vídeos da rolagem (gerar_rolagem_video.py). O MOV sozinho passa
+# de 25 MB, e ele sai inteiro da tira, que sai inteira do script.
+*.webm
+*.mov

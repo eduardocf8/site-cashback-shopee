@@ -857,6 +857,21 @@ largura do quadro, igual ao card solto. Com isso, e com as duas peças apenas
 centralizadas, trocar o card solto pela tira no momento da rolagem não move nada
 — é para isso que os dois arquivos têm a mesma altura e a mesma caixa no card 1.
 
+### A rolagem pronta (`gerar_rolagem_video.py`)
+
+Alternativa aos quadros-chave: o movimento já renderizado como vídeo de fundo
+transparente (WebM com alfa, e um MOV para editor que recuse WebM). Arrasta para
+a linha do tempo e acabou — sem escala, posição nem quadro-chave para acertar.
+Custa o controle do tempo, que passa a ser decidido nas constantes do script.
+
+Existe porque quadro-chave em editor de celular/desktop é onde a montagem
+emperra na prática: a posição gravada é sempre a do instante onde a agulha está,
+e mexer na camada com a agulha no lugar errado reescreve o ponto que já existia
+em vez de criar um novo. O vídeo pronto tira esse passo do caminho.
+
+Não é fundo verde de propósito: o alfa preserva a sombra do cartão, que um
+recorte por croma comeria junto com o fundo.
+
 ## Decisões de conteúdo (não repetir)
 
 - **Não afirmar valor de saque mínimo inexistente.** O site tem um valor
