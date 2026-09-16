@@ -62,8 +62,10 @@ Quando tiver acesso a um Mac:
 
 1. Instalar o [Xcode](https://apps.apple.com/app/xcode/id497799835) (grátis,
    pela App Store do Mac).
-2. Abrir `mobile-app/ios/App/App.xcworkspace` (é o `.xcworkspace`, não o
-   `.xcodeproj`, direto).
+2. Abrir `mobile-app/ios/App/App.xcodeproj` (esse projeto usa Swift Package
+   Manager em vez de CocoaPods, então não tem `.xcworkspace` separado - é
+   só abrir o `.xcodeproj` mesmo, e o Xcode resolve as dependências
+   automaticamente na primeira vez).
 3. Em "Signing & Capabilities", selecionar seu **Apple Developer Team** (só
    aparece depois de pagar a assinatura de US$99/ano e fazer login com o
    Apple ID no Xcode).
