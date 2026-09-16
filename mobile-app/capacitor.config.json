@@ -1,0 +1,13 @@
+{
+  "appId": "com.cashb.app",
+  "appName": "cash-b",
+  "webDir": "www",
+  "server": {
+    "url": "https://cash-b.com",
+    "androidScheme": "https",
+    "allowNavigation": ["cash-b.com", "*.cash-b.com"]
+  },
+  "android": {
+    "allowMixedContent": false
+  }
+}

@@ -1419,6 +1419,38 @@ Falta configurar `META_PIXEL_ID` e `META_CAPI_ACCESS_TOKEN` (e, opcionalmente,
 antes de ativar campanha) nas variáveis de ambiente do Render - isso não dá
 pra fazer por aqui, precisa ser configurado direto no painel.
 
+## Fase 48 — App Android (wrapper do site) ✅
+
+Usuário perguntou o custo de ter app no Android/iOS e decidiu seguir só com
+Android por agora (taxa anual da Apple não compensa ainda com o público
+atual). Caminho escolhido: wrapper via WebView em vez de reescrever o site
+como app nativo - muito mais barato (só as taxas da própria loja) e qualquer
+atualização do site já aparece no app sem precisar gerar nova versão.
+
+- [x] **`mobile-app/`** (novo, projeto separado) - projeto
+      [Capacitor](https://capacitorjs.com/) com a plataforma Android
+      adicionada (`mobile-app/android/`, um projeto Gradle completo).
+      `capacitor.config.json` aponta `server.url` pra `https://cash-b.com` -
+      o app carrega o site de verdade dentro de uma WebView nativa; links
+      pra fora do domínio (ex: indo pra Shopee ao gerar cashback) abrem
+      sozinhos no navegador/app padrão do celular, sem configuração extra.
+- [x] Ícone do app gerado em todas as densidades do Android
+      (`mipmap-mdpi` até `xxxhdpi`, legado + adaptativo) a partir do
+      `static/icons/icon-512.png` que o site já usa como PWA -
+      `mobile-app/gen_icons.py` deixa isso repetível se o ícone mudar no
+      futuro. Cor de fundo do ícone adaptativo trocada pro roxo da marca
+      (`#6d28d9`, ver `BRAND.md`). Também gerado `play_store_icon_512.png`,
+      já no tamanho exigido pelo formulário da Play Store.
+- [x] `mobile-app/README.md` documentando como compilar (precisa do Android
+      Studio, que não dá pra instalar neste ambiente - build real e
+      assinatura ficam por conta de quem for publicar) e as limitações reais
+      desse tipo de app (notificação push via navegador não funciona igual
+      dentro da WebView; precisa de internet, sem modo offline).
+
+Não configurado pra iOS por decisão do usuário (taxa da Apple Developer,
+US$99/ano, não compensa ainda) - nada na estrutura impede adicionar depois
+(`npx cap add ios`), só precisa de Mac com Xcode pra compilar.
+
 ---
 
 Pra continuar esse roadmap numa conversa nova, basta apontar esse arquivo
