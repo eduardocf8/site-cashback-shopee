@@ -1419,7 +1419,7 @@ Falta configurar `META_PIXEL_ID` e `META_CAPI_ACCESS_TOKEN` (e, opcionalmente,
 antes de ativar campanha) nas variáveis de ambiente do Render - isso não dá
 pra fazer por aqui, precisa ser configurado direto no painel.
 
-## Fase 48 — App Android (wrapper do site) ✅
+## Fase 48 — App Android e iOS (wrapper do site) ✅
 
 Usuário perguntou o custo de ter app no Android/iOS e decidiu seguir só com
 Android por agora (taxa anual da Apple não compensa ainda com o público
@@ -1446,10 +1446,17 @@ atualização do site já aparece no app sem precisar gerar nova versão.
       assinatura ficam por conta de quem for publicar) e as limitações reais
       desse tipo de app (notificação push via navegador não funciona igual
       dentro da WebView; precisa de internet, sem modo offline).
-
-Não configurado pra iOS por decisão do usuário (taxa da Apple Developer,
-US$99/ano, não compensa ainda) - nada na estrutura impede adicionar depois
-(`npx cap add ios`), só precisa de Mac com Xcode pra compilar.
+- [x] **Plataforma iOS também adicionada** (`mobile-app/ios/`) - usuário
+      decidiu se preparar pra Apple Store também enquanto aguarda o número
+      D-U-N-S (pedido pra conta de desenvolvedor do Google, que serve pra
+      Apple também - é um identificador de empresa, não específico de
+      plataforma). Mesmo `appId` (`com.cashb.app`) e mesmo nome do Android.
+      Ícone (1024x1024, sem canal alpha - a Apple rejeita ícone com
+      transparência) e splash gerados pelo mesmo `gen_icons.py`, fundo roxo
+      da marca. **Não dá pra compilar isso aqui** - só existe toolchain
+      (Xcode) pra iOS em macOS, é uma restrição da própria Apple, sem
+      alternativa em Linux/Windows. Projeto Xcode fica pronto esperando
+      alguém abrir num Mac.
 
 ---
 

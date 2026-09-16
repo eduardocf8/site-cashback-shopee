@@ -10,3 +10,12 @@ android/app/debug/
 *.aab
 *.jks
 *.keystore
+
+ios/App/Pods/
+ios/App/build/
+ios/App/DerivedData/
+ios/App/*.xcuserstate
+ios/App/**/xcuserdata/
+*.ipa
+*.mobileprovision
+*.p12
