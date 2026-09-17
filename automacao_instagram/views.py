@@ -56,7 +56,12 @@ class AutomacaoLoginView(auth_views.LoginView):
 
 @staff_required
 def contas_lista(request):
-    contas = ContaInstagramConectada.objects.filter(usuario=request.user)
+    contas = list(ContaInstagramConectada.objects.filter(usuario=request.user))
+    for conta in contas:
+        try:
+            conta.perfil = instagram_api.obter_perfil_conta(conta.instagram_business_account_id, conta.access_token)
+        except instagram_api.InstagramAPIError:
+            conta.perfil = None
 
     if request.method == "POST":
         form = ContaInstagramForm(request.POST)

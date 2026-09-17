@@ -40,6 +40,17 @@ def _chamar(metodo: str, caminho: str, access_token: str, **params) -> dict:
     return dados
 
 
+def obter_perfil_conta(instagram_business_account_id: str, access_token: str) -> dict:
+    """Nome de usuário, nome e foto de perfil da conta profissional conectada -
+    exigido pela Análise do App do instagram_business_basic (a Meta pede pra
+    mostrar informação de perfil de verdade na tela, não só o ID digitado a mão).
+    Retorna {username, name, profile_picture_url}."""
+    return _chamar(
+        "GET", instagram_business_account_id, access_token,
+        fields="username,name,profile_picture_url",
+    )
+
+
 def listar_midias_recentes(instagram_business_account_id: str, access_token: str, limite: int = 25) -> list[dict]:
     """Últimos posts da conta, pra escolher qual receberá a automação (sem precisar
     digitar o ID do post na mão). Retorna [{id, caption, permalink, timestamp}, ...]."""
