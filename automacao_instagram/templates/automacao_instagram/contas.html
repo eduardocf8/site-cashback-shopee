@@ -10,10 +10,25 @@
 {% if contas %}
 <div class="tabela-scroll">
 <table>
-    <tr><th>Conta</th><th>ID da conta comercial</th><th></th></tr>
+    <tr><th>Conta</th><th>Perfil no Instagram</th><th>ID da conta comercial</th><th></th></tr>
     {% for conta in contas %}
     <tr>
         <td>{{ conta.nome_exibicao }}</td>
+        <td>
+            {% if conta.perfil %}
+                <div style="display:flex; align-items:center; gap:8px;">
+                    {% if conta.perfil.profile_picture_url %}
+                        <img src="{{ conta.perfil.profile_picture_url }}" alt="" width="32" height="32" style="border-radius:50%; object-fit:cover;">
+                    {% endif %}
+                    <div>
+                        {% if conta.perfil.username %}<div>@{{ conta.perfil.username }}</div>{% endif %}
+                        {% if conta.perfil.name %}<div class="legenda">{{ conta.perfil.name }}</div>{% endif %}
+                    </div>
+                </div>
+            {% else %}
+                <span class="legenda">Não foi possível carregar o perfil.</span>
+            {% endif %}
+        </td>
         <td>{{ conta.instagram_business_account_id }}</td>
         <td>
             <form method="post" action="{% url 'automacao_conta_remover' conta.pk %}" onsubmit="return confirm('Remover essa conta? As automações vinculadas a ela também serão removidas.');">
