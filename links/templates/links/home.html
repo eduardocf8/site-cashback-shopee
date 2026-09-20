@@ -109,11 +109,6 @@
         .hero-text h1 { font-size: 42px; line-height: 1.18; letter-spacing: -0.015em; margin: 0 0 18px; }
         .hero-text p.subtitulo { font-size: 18px; color: var(--muted); max-width: 480px; margin: 0 0 32px; }
         .hero .botao-cta { font-size: 16px; padding: 14px 32px; }
-        .hero .selo {
-            display: block; margin-top: 14px; font-size: 13px; color: var(--muted); text-align: center;
-        }
-        .link-secundario { display: inline-block; margin-top: 14px; font-size: 14px; text-align: center; width: 100%; color: var(--muted); }
-        .link-secundario:hover { color: var(--ink); }
         .hero-graphic { flex: 1 1 340px; display: flex; justify-content: center; }
         .hero-graphic-panel {
             width: 100%; max-width: 420px; aspect-ratio: 4 / 5; border-radius: 28px;
@@ -138,11 +133,11 @@
         .conversor-hero button:hover { background: var(--brand-strong); }
         .conversor-hero .erros { color: var(--danger); font-size: 13px; margin-top: 6px; }
         .conversor-hero .estimativa-cashback {
-            margin-top: 8px; padding: 8px 12px; border-radius: 8px; background: var(--success-bg);
+            margin: 0; border-radius: 8px; background: var(--success-bg);
             color: var(--success); font-size: 13px; font-weight: 600;
             opacity: 0; max-height: 0; overflow: hidden; transition: opacity 0.25s ease, max-height 0.25s ease;
         }
-        .conversor-hero .estimativa-cashback.visivel { opacity: 1; max-height: 60px; margin-top: 8px; }
+        .conversor-hero .estimativa-cashback.visivel { opacity: 1; max-height: 60px; margin-top: 8px; padding: 8px 12px; }
         .conversor-hero .resultado-link {
             margin-top: 14px; padding: 8px; border-radius: 8px; background: var(--paper-2);
             border: 1px dashed var(--line); text-align: center;
@@ -394,8 +389,8 @@
                         </p>
                         <button type="submit">Gerar link com cashback</button>
                     </form>
-                    <div class="resultado-link">
-                        {% if link_convertido %}
+                    {% if link_convertido %}
+                        <div class="resultado-link">
                             <div class="selo-sucesso">
                                 <svg viewBox="0 0 24 24" width="28" height="28" fill="none" aria-hidden="true">
                                     <circle cx="12" cy="12" r="11" fill="var(--success)"/>
@@ -421,17 +416,9 @@
                                 <p class="resultado-sub">Para conferir o cashback desse produto, acesse sua conta em alguns dias.</p>
                             {% endif %}
                             <a href="{{ link_convertido }}" target="_blank" rel="noopener noreferrer" class="resultado-url">{{ link_convertido }}</a>
-                        {% else %}
-                            <p class="resultado-titulo">O link convertido aparecerá aqui.</p>
-                        {% endif %}
-                    </div>
+                        </div>
+                    {% endif %}
                 </div>
-                <div class="selo">Sem custo. Sem mensalidade.</div>
-                {% if user.is_authenticated %}
-                    <a class="link-secundario" href="{% url 'ir_para_shopee' %}">ou só quero navegar, sem link específico &rarr;</a>
-                {% else %}
-                    <a class="link-secundario" href="{% url 'login' %}?next={% url 'ir_para_shopee' %}">ou só quero navegar, sem link específico &rarr;</a>
-                {% endif %}
             </div>
             <div class="hero-graphic">
                 <div class="hero-graphic-panel">
