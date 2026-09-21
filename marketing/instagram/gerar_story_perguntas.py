@@ -17,7 +17,13 @@ Sem promessa de anonimato na arte: quem manda a pergunta fica visível para o do
 conta, e só é anônimo para quem vê a resposta publicada. Escrever "pergunta anônima"
 seria informação errada.
 
-Duas versões, porque o fundo do story depende do que mais vai ao ar no dia: a roxa é a
+Sai em duas peças. A de PERGUNTAS traz os exemplos embaixo e é a que abre a caixa. A de
+RESPOSTAS é a mesma arte sem eles, para usar de fundo em cada resposta: ali o cartão da
+pergunta e o texto da resposta é que ocupam o quadro, e a lista de exemplos só brigaria
+por espaço com eles. Usar o mesmo fundo nas duas faz a sequência inteira ler como uma
+coisa só, em vez de stories soltos.
+
+Cada peça em duas cores, porque o fundo depende do que mais vai ao ar no dia: a roxa é a
 padrão, a clara serve quando a sequência de stories já está escura.
 
 Como usar:
@@ -57,14 +63,21 @@ EXEMPLOS = [
 ]
 
 
-def _pagina(claro: bool) -> str:
+def _pagina(claro: bool, com_exemplos: bool = True) -> str:
     fundo = LIGHT_BG if claro else BRAND_GRADIENT
     tinta = DARK_BG if claro else "#fff"
     tinta_tag = BRAND_PRIMARY if claro else "rgba(255,255,255,0.65)"
     chip_fundo = "rgba(109,40,217,0.08)" if claro else "rgba(255,255,255,0.14)"
     chip_borda = "rgba(109,40,217,0.18)" if claro else "rgba(255,255,255,0.22)"
 
-    chips = "".join(f'<span class="chip">{texto}</span>' for texto in EXEMPLOS)
+    if com_exemplos:
+        chips = "".join(f'<span class="chip">{texto}</span>' for texto in EXEMPLOS)
+        rodape = (
+            '<div class="rodape-titulo">não sabe o que perguntar?</div>'
+            f'<div class="chips">{chips}</div>'
+        )
+    else:
+        rodape = ""
 
     return f"""<html><head><style>
     @font-face {{ font-family:"Familjen"; src:url(data:font/woff2;base64,{FAMILJEN_B64}) format("woff2"); font-weight:400 700; }}
@@ -101,19 +114,18 @@ def _pagina(claro: bool) -> str:
         <div class="marca">cash-b</div>
         <div class="tag">caixa de perguntas</div>
         <div class="vao"></div>
-        <div class="rodape-titulo">não sabe o que perguntar?</div>
-        <div class="chips">{chips}</div>
+        {rodape}
     </body></html>"""
 
 
-def _render(claro: bool, destino: Path):
+def _render(claro: bool, com_exemplos: bool, destino: Path):
     destino.parent.mkdir(parents=True, exist_ok=True)
     with sync_playwright() as p:
         navegador = p.chromium.launch(executable_path="/opt/pw-browsers/chromium")
         pagina = navegador.new_page(
             viewport={"width": LARGURA, "height": ALTURA}, device_scale_factor=ESCALA
         )
-        pagina.set_content(_pagina(claro))
+        pagina.set_content(_pagina(claro, com_exemplos))
         pagina.wait_for_timeout(250)
         pagina.screenshot(path=str(destino))
         navegador.close()
@@ -121,8 +133,9 @@ def _render(claro: bool, destino: Path):
 
 
 def gerar():
-    _render(False, OUT_DIR / "story-perguntas-roxo.png")
-    _render(True, OUT_DIR / "story-perguntas-claro.png")
+    for claro, cor in [(False, "roxo"), (True, "claro")]:
+        _render(claro, True, OUT_DIR / f"story-perguntas-{cor}.png")
+        _render(claro, False, OUT_DIR / f"story-respostas-{cor}.png")
 
 
 if __name__ == "__main__":
