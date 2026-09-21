@@ -1451,6 +1451,34 @@ class WhatsApp:
             self.page.wait_for_timeout(1200)
             return "preview"
 
+        # A previa costuma falhar rapido e de forma definitiva - e a
+        # propria UI do WhatsApp que desiste de tentar renderiza-la em
+        # poucos segundos, entao esperar mais tempo aqui nao ajuda (o
+        # elemento realmente nunca aparece nessa tentativa). Mas
+        # observamos que o MESMO link, digitado de novo um pouco depois
+        # (como acontece naturalmente ao enviar em seguida pro outro tipo
+        # de destino, com o mesmo texto), frequentemente carrega a previa
+        # normalmente - sugerindo que a busca dos metadados do link
+        # continua em segundo plano do lado do WhatsApp mesmo depois da UI
+        # desistir, e fica pronta pouco depois. Por isso, antes de cair
+        # pro anexo manual de imagem (rota que pode esbarrar num dialogo
+        # nativo de arquivo do Windows), tenta mais uma vez: limpa o
+        # texto, espera um pouco mais, e digita tudo de novo.
+        print("Previa nao carregou na primeira tentativa; aguardando um pouco e tentando digitar de novo antes do fallback de imagem.")
+        self._limpar_texto_digitado(caixa, exigir_vazio=False)
+        self.page.wait_for_timeout(6000)
+        caixa = self.encontrar_caixa_texto_normal()
+        caixa.click(force=True)
+        try:
+            caixa.fill(texto)
+        except Exception:
+            self.page.keyboard.insert_text(texto)
+
+        if self.aguardar_previa_link(min(timeout_previa_ms, 15000)):
+            caixa.press("Enter")
+            self.page.wait_for_timeout(1200)
+            return "preview"
+
         if not caminho_imagem or not os.path.exists(caminho_imagem):
             self._limpar_texto_digitado(caixa, exigir_vazio=False)
             return "nao_enviado_sem_imagem"

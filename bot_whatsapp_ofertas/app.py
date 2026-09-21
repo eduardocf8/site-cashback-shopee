@@ -1637,18 +1637,15 @@ class MainWindow(QMainWindow):
         self.settings.shopee_api_sub_id_grupo = self.sub_id_grupo_input.text().strip()
         self.settings.shopee_api_sub_id_canal = self.sub_id_canal_input.text().strip()
         self.settings.intervalo_ms = 5000
-        # 25s (era 15s): a prévia do link costuma demorar mais na PRIMEIRA
-        # vez que aquele link e "visto" no ciclo (normalmente o envio pro
-        # grupo, que acontece antes do canal) - o WhatsApp ainda esta
-        # buscando os metadados da pagina pela primeira vez. Envios
-        # seguintes do MESMO link (ex: pro canal, logo em seguida) tendem a
-        # carregar a previa quase instantaneo, ja com os metadados em
-        # cache. 15s era curto demais pra essa primeira busca "fria" e
-        # derrubava o envio pro fallback de imagem manual com frequencia
-        # maior que o necessario - caminho mais propenso a esbarrar num
-        # dialogo nativo de arquivo do Windows travado.
-        self.settings.timeout_previa_link_ms = 25000
-        self.settings.timeout_imagem_previa_link_ms = 25000
+        # A previa falha rapido e de forma definitiva quando falha (a UI do
+        # WhatsApp desiste de tentar renderiza-la em poucos segundos) -
+        # esperar mais tempo aqui nao ajuda, o elemento realmente nunca
+        # aparece nessa tentativa. O que ajuda de verdade e a nova
+        # tentativa em enviar_texto_com_fallback_imagem, que limpa e digita
+        # o link de novo apos uma pausa antes de cair no fallback de
+        # imagem. Mantido em 15s (nao vale a pena esticar mais isso).
+        self.settings.timeout_previa_link_ms = 15000
+        self.settings.timeout_imagem_previa_link_ms = 15000
         self.settings.espera_minima_previa_link_ms = 5000
         self.settings.processar_historico_ao_iniciar = self.processar_historico_input.isChecked()
         self.settings.ignorar_links_ja_enviados = self.ignorar_links_enviados_input.isChecked()
