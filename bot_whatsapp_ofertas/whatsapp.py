@@ -1676,7 +1676,73 @@ class WhatsApp:
         self.anexar_foto(caminho_imagem)
         self.aguardar_preview_midia()
         self.escrever_legenda_midia(legenda)
+
+        # Confirmacao final ANTES de clicar em enviar: escrever_legenda_midia
+        # localiza a caixa de legenda por heuristica (varios seletores/
+        # fallbacks) e pode, num caso raro, escrever num elemento que existe
+        # de verdade mas nao e a legenda real do preview (ex: algum outro
+        # campo editavel que passou pelos filtros de posicao/tamanho por
+        # coincidencia). Nesse caso o clique em enviar sairia so com a
+        # imagem, sem o texto da oferta - o que aparece pro usuario como
+        # "o bot mandou uma figurinha em vez da oferta". Aqui conferimos que
+        # um trecho reconhecivel do texto esperado esta mesmo visivel na
+        # tela antes de prosseguir; se nao estiver, aborta em vez de
+        # arriscar um envio sem texto.
+        if not self.legenda_midia_confirmada(legenda):
+            diagnostico = self.salvar_diagnostico_anexo("legenda_nao_confirmada_antes_do_envio")
+            raise RuntimeError(
+                "A legenda da oferta nao apareceu confirmada no preview da imagem antes do "
+                f"envio (envio abortado para evitar mandar so a imagem). Diagnostico: {diagnostico}"
+            )
+
         self.clicar_enviar_preview_midia()
+
+    def legenda_midia_confirmada(self, legenda_esperada, minimo_chars=10, maximo_chars=40):
+        """Confirma que um trecho reconhecivel do texto esperado esta
+        realmente visivel na area de legenda do preview de midia.
+
+        Usado como ultima checagem antes de clicar em enviar, para pegar o
+        caso em que escrever_legenda_midia escreveu num elemento que nao
+        e a legenda de verdade (ver comentario em enviar_imagem_com_legenda).
+        """
+        bruto = re.sub(r"\s+", " ", str(legenda_esperada or "")).strip()
+        # Pula emojis/simbolos no comeco (alguns cabecalhos variam com
+        # emoji), ficando so com um trecho de texto "normal" pra comparar -
+        # emojis renderizados como <img data-plain-text="..."> no WhatsApp
+        # podem nao aparecer literalmente no innerText do elemento.
+        bruto = re.sub(r"^[^\w]+", "", bruto)
+        trecho = bruto[:maximo_chars].strip()
+        if len(trecho) < minimo_chars:
+            # Texto curto demais pra conferir com seguranca; nao bloqueia
+            # o envio so por causa da checagem.
+            return True
+
+        trecho_norm = self._normalizar_texto_dom(trecho)
+
+        try:
+            return bool(self.page.evaluate("""
+            (trecho) => {
+                const norm = (s) => String(s || '')
+                    .toLowerCase()
+                    .replace(/[\\u202a\\u202c\\u200e\\u200f\\ufe0f]/g, '')
+                    .replace(/\\s+/g, ' ')
+                    .trim();
+
+                const candidatos = [...document.querySelectorAll(
+                    'div[contenteditable="true"], [role="textbox"], p.selectable-text.copyable-text, [data-testid*="caption"]'
+                )];
+
+                return candidatos.some(el => {
+                    const r = el.getBoundingClientRect();
+                    if (r.width < 100 || r.height < 8) return false;
+                    if (r.left < window.innerWidth * 0.25) return false;
+                    const texto = norm(el.innerText || el.textContent || '');
+                    return texto.includes(trecho);
+                });
+            }
+            """, trecho_norm))
+        except Exception:
+            return False
 
     def fechar_modal_encaminhar_se_aberto(self):
         try:
