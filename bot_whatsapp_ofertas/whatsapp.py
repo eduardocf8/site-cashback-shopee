@@ -1699,11 +1699,17 @@ class WhatsApp:
 
     def legenda_midia_confirmada(self, legenda_esperada, minimo_chars=10, maximo_chars=40):
         """Confirma que um trecho reconhecivel do texto esperado esta
-        realmente visivel na area de legenda do preview de midia.
+        realmente visivel DENTRO do mesmo container da midia que sera
+        enviada (o dialogo/preview que tambem contem a imagem/video/canvas)
+        - nao apenas em algum lugar qualquer da tela.
 
         Usado como ultima checagem antes de clicar em enviar, para pegar o
-        caso em que escrever_legenda_midia escreveu num elemento que nao
-        e a legenda de verdade (ver comentario em enviar_imagem_com_legenda).
+        caso em que escrever_legenda_midia escreveu num elemento que nao e
+        a legenda de verdade (ver comentario em enviar_imagem_com_legenda).
+        Exigir que o texto esteja no MESMO container da midia (em vez de so
+        "em algum lugar visivel da tela") evita confirmar por engano um
+        texto que foi parar num elemento qualquer sem relacao nenhuma com o
+        que sera realmente enviado.
         """
         bruto = re.sub(r"\s+", " ", str(legenda_esperada or "")).strip()
         # Pula emojis/simbolos no comeco (alguns cabecalhos variam com
@@ -1728,17 +1734,32 @@ class WhatsApp:
                     .replace(/\\s+/g, ' ')
                     .trim();
 
-                const candidatos = [...document.querySelectorAll(
-                    'div[contenteditable="true"], [role="textbox"], p.selectable-text.copyable-text, [data-testid*="caption"]'
-                )];
-
-                return candidatos.some(el => {
+                // Mesmos seletores de container usados em aguardar_preview_midia
+                // para identificar "o editor/preview de midia".
+                const containers = [...document.querySelectorAll(
+                    '[data-testid="media-editor-canvas"], div[role="tab"][aria-label*="Abrir foto"], div[aria-label*="Abrir foto"], [role="dialog"], [data-testid*="media"]'
+                )].filter(el => {
                     const r = el.getBoundingClientRect();
-                    if (r.width < 100 || r.height < 8) return false;
-                    if (r.left < window.innerWidth * 0.25) return false;
-                    const texto = norm(el.innerText || el.textContent || '');
-                    return texto.includes(trecho);
+                    return r.width > 150 && r.height > 150 && r.left > window.innerWidth * 0.25;
                 });
+
+                for (const container of containers) {
+                    const temMidia = !!container.querySelector(
+                        'img, video, canvas, [data-testid="media-editor-canvas"], [data-testid="media-url-provider"], [data-testid="image-thumb"]'
+                    );
+                    if (!temMidia) continue;
+
+                    const achou = [...container.querySelectorAll(
+                        'div[contenteditable="true"], [role="textbox"], p.selectable-text.copyable-text, [data-testid*="caption"]'
+                    )].some(el => {
+                        const r = el.getBoundingClientRect();
+                        if (r.width < 100 || r.height < 8) return false;
+                        const texto = norm(el.innerText || el.textContent || '');
+                        return texto.includes(trecho);
+                    });
+                    if (achou) return true;
+                }
+                return false;
             }
             """, trecho_norm))
         except Exception:
