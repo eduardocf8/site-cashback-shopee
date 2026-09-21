@@ -125,9 +125,9 @@ class AppSettings:
     shopee_ofertas_intervalo_envio_segundos: int = 300
     shopee_ofertas_nao_repetir: bool = True
     aguardar_previa_link: bool = True
-    timeout_previa_link_ms: int = 15000
+    timeout_previa_link_ms: int = 25000
     espera_minima_previa_link_ms: int = 5000
-    timeout_imagem_previa_link_ms: int = 15000
+    timeout_imagem_previa_link_ms: int = 25000
     shopee_api_timeout_segundos: int = 30
     tema_visual: str = "padrao"
     ia_revisao_ativa: bool = False
