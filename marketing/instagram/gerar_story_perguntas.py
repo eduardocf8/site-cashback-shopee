@@ -7,9 +7,11 @@ tipo de arte.
 
 Os exemplos embaixo não são enfeite. Caixa de pergunta sem sugestão recebe pouca
 resposta: quem está passando o dedo não para para inventar uma dúvida, mas reconhece a
-própria dúvida numa lista. Os quatro são os assuntos que o site mais explica
-(regras_cashback.html, e_confiavel.html, faq.html) - ou seja, o que já se sabe que as
-pessoas perguntam.
+própria dúvida numa lista.
+
+A arte não traz convite escrito ("pergunte o que quiser" e afins): a própria figurinha
+do Instagram já tem um campo de texto onde o convite é escrito na hora de postar, e
+repetir a mesma frase acima dela seria dizer duas vezes a mesma coisa.
 
 Sem promessa de anonimato na arte: quem manda a pergunta fica visível para o dono da
 conta, e só é anônimo para quem vê a resposta publicada. Escrever "pergunta anônima"
@@ -30,10 +32,8 @@ from carrossel_base import (
     BRAND_PRIMARY,
     DARK_BG,
     FAMILJEN_B64,
-    JBMONO_B64,
     LIGHT_BG,
     MARCA,
-    MUTED,
 )
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
@@ -47,20 +47,19 @@ ESCALA = 2
 # não encostar nela mesmo se você arrastar a figurinha um pouco para cima ou para baixo.
 ALTURA_VAO = 520
 
-TITULO = f"Pergunte o que quiser sobre a {MARCA}"
-CHAMADA = "Respondo tudo aqui nos stories."
 EXEMPLOS = [
     "como o cashback funciona",
     "quando o dinheiro cai",
     "saque via Pix",
     "o site é confiável?",
+    "quanto cashback posso ganhar?",
+    f"a {MARCA} tem aplicativo?",
 ]
 
 
 def _pagina(claro: bool) -> str:
     fundo = LIGHT_BG if claro else BRAND_GRADIENT
     tinta = DARK_BG if claro else "#fff"
-    tinta_suave = MUTED if claro else "rgba(255,255,255,0.78)"
     tinta_tag = BRAND_PRIMARY if claro else "rgba(255,255,255,0.65)"
     chip_fundo = "rgba(109,40,217,0.08)" if claro else "rgba(255,255,255,0.14)"
     chip_borda = "rgba(109,40,217,0.18)" if claro else "rgba(255,255,255,0.22)"
@@ -69,7 +68,6 @@ def _pagina(claro: bool) -> str:
 
     return f"""<html><head><style>
     @font-face {{ font-family:"Familjen"; src:url(data:font/woff2;base64,{FAMILJEN_B64}) format("woff2"); font-weight:400 700; }}
-    @font-face {{ font-family:"JB Mono"; src:url(data:font/woff2;base64,{JBMONO_B64}) format("woff2"); font-weight:400 700; }}
     * {{ box-sizing:border-box; margin:0; padding:0; }}
     html, body {{
         width:{LARGURA}px; height:{ALTURA}px; background:{fundo};
@@ -84,25 +82,24 @@ def _pagina(claro: bool) -> str:
         font-size:24px; font-weight:700; letter-spacing:4px; text-transform:uppercase;
         color:{tinta_tag}; margin-top:56px;
     }}
-    .titulo {{ font-size:82px; font-weight:700; letter-spacing:-0.035em; line-height:1.08; margin-top:22px; }}
-    .chamada {{ font-size:34px; color:{tinta_suave}; margin-top:24px; line-height:1.35; }}
     /* O vão. É o motivo de a arte existir: a figurinha de perguntas entra aqui.
        flex:1 em vez de altura fixa para ele comer toda a sobra - assim o texto de cima
        encosta no topo da área segura e os exemplos encostam na base dela, sem espaço
        morto numa das pontas. O min-height é o piso: o vão nunca fica menor que a
-       figurinha, mesmo que o título cresça. */
+       figurinha, mesmo que a lista de exemplos cresça. */
     .vao {{ flex:1; min-height:{ALTURA_VAO}px; }}
     .rodape-titulo {{ font-size:28px; font-weight:700; letter-spacing:2px; text-transform:uppercase; color:{tinta_tag}; }}
     .chips {{ display:flex; flex-wrap:wrap; gap:16px; margin-top:26px; }}
+    /* nowrap: rótulo de uma linha só. Além de ser o que uma pastilha deve ser, protege
+       o nome da marca - o navegador quebra linha depois de hífen, e "cash-b" partido
+       vira "cash-" numa linha e "b" na outra, que lê como erro de digitação. */
     .chip {{
-        font-size:32px; padding:18px 28px; border-radius:999px;
+        font-size:32px; padding:18px 28px; border-radius:999px; white-space:nowrap;
         background:{chip_fundo}; border:2px solid {chip_borda}; color:{tinta};
     }}
     </style></head><body>
         <div class="marca">cash-b</div>
         <div class="tag">caixa de perguntas</div>
-        <div class="titulo">{TITULO}</div>
-        <div class="chamada">{CHAMADA}</div>
         <div class="vao"></div>
         <div class="rodape-titulo">não sabe o que perguntar?</div>
         <div class="chips">{chips}</div>
