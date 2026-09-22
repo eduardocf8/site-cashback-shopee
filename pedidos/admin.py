@@ -74,6 +74,13 @@ class CampanhaCashbackAdmin(admin.ModelAdmin):
 
 @admin.register(Pedido)
 class PedidoAdmin(admin.ModelAdmin):
+    class Media:
+        # Barra de rolagem própria da tabela + botão de expandir - ver os
+        # arquivos pra entender por quê (tabela larga demais pra tela,
+        # muitas colunas em list_display).
+        css = {"all": ("css/admin_pedidos.css",)}
+        js = ("js/admin_pedidos.js",)
+
     list_display = (
         "order_id",
         "produto_nome",

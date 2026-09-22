@@ -1458,6 +1458,28 @@ atualização do site já aparece no app sem precisar gerar nova versão.
       alternativa em Linux/Windows. Projeto Xcode fica pronto esperando
       alguém abrir num Mac.
 
+## Fase 49 — Tabela de pedidos do admin mais fácil de navegar ✅
+
+Usuário reclamou que a tabela de pedidos (muitas colunas em `list_display`)
+ficava mais larga que a tela, e a barra de rolagem horizontal só aparecia no
+rodapé da página inteira - com a base cheia (100 pedidos por página, sem como
+mudar isso), precisava rolar bastante só pra alcançar essa barra.
+
+- [x] **`static/css/admin_pedidos.css`** (novo) - `#changelist .results` ganha
+      `overflow-x: auto` próprio, então a barra de rolagem horizontal da
+      tabela fica anexada nela mesma (logo abaixo do cabeçalho), não mais no
+      rodapé da página. A página em si para de ter overflow horizontal.
+- [x] **Botão "Expandir tabela"** (`static/js/admin_pedidos.js` +
+      mesmo CSS) - esconde cabeçalho, barra lateral de apps, breadcrumbs e o
+      painel de filtros, deixando a tabela usar a largura inteira da tela.
+      Estado persistido em `localStorage`, sobrevive a paginação/busca/filtro.
+      Achado no caminho: o próprio `nav_sidebar.css` do Django reserva 299px
+      pro conteúdo via um seletor de irmão adjacente (`#nav-sidebar + .content`)
+      que não liga pra `display:none` - precisou de uma regra extra com
+      `max-width: 100% !important` pra reaproveitar esse espaço de verdade.
+- [x] `pedidos/admin.py::PedidoAdmin.Media` carrega os dois arquivos - fica
+      restrito a essa página (não mexe em outras telas do admin).
+
 ---
 
 Pra continuar esse roadmap numa conversa nova, basta apontar esse arquivo

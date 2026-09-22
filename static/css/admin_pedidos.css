@@ -1,0 +1,54 @@
+/* Barra de rolagem horizontal própria da tabela de pedidos, sempre visível
+   logo abaixo do cabeçalho - sem isso, quando a tabela é mais larga que a
+   tela, quem rola pra baixo (a página inteira, não só a tabela) só encontra
+   a barra de rolagem horizontal no rodapé, depois de todos os pedidos. */
+#changelist .results {
+    overflow-x: auto;
+}
+
+/* Botão fixo que alterna o modo "tabela expandida" (ver admin_pedidos.js) */
+#toggle-tabela-expandida {
+    position: fixed;
+    top: 12px;
+    right: 12px;
+    z-index: 1000;
+    padding: 8px 14px;
+    border: none;
+    border-radius: 6px;
+    background: var(--primary, #79aec8);
+    color: var(--header-color, #fff);
+    font-size: 13px;
+    font-weight: 600;
+    cursor: pointer;
+    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.25);
+}
+
+#toggle-tabela-expandida:hover,
+#toggle-tabela-expandida:focus {
+    filter: brightness(1.08);
+}
+
+/* Modo expandido: esconde tudo que não é a tabela de pedidos, pra ela usar
+   a largura inteira da tela sem precisar de rolagem horizontal. */
+body.pedidos-tabela-expandida #header,
+body.pedidos-tabela-expandida .breadcrumbs,
+body.pedidos-tabela-expandida #nav-sidebar,
+body.pedidos-tabela-expandida .toggle-nav-sidebar,
+body.pedidos-tabela-expandida #footer,
+body.pedidos-tabela-expandida #content > h1,
+body.pedidos-tabela-expandida .object-tools,
+body.pedidos-tabela-expandida #changelist-filter {
+    display: none !important;
+}
+
+body.pedidos-tabela-expandida #content {
+    padding: 56px 16px 16px;
+}
+
+/* O nav_sidebar.css do próprio Django reserva 299px pro conteúdo mesmo com o
+   #nav-sidebar escondido (o seletor dele usa "irmão adjacente", que não liga
+   pra display:none) - sobrescreve aqui pra usar a largura inteira de verdade. */
+body.pedidos-tabela-expandida .main > #nav-sidebar + .content,
+body.pedidos-tabela-expandida .main.shifted > #nav-sidebar + .content {
+    max-width: 100% !important;
+}
