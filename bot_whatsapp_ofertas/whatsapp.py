@@ -1727,17 +1727,25 @@ class WhatsApp:
 
     def legenda_midia_confirmada(self, legenda_esperada, minimo_chars=10, maximo_chars=40):
         """Confirma que um trecho reconhecivel do texto esperado esta
-        realmente visivel DENTRO do mesmo container da midia que sera
-        enviada (o dialogo/preview que tambem contem a imagem/video/canvas)
-        - nao apenas em algum lugar qualquer da tela.
+        realmente visivel numa caixa de texto EDITAVEL na tela (a legenda
+        de verdade do preview de midia) - nao apenas em algum elemento
+        parecido, como o texto estatico de uma mensagem ja enviada antes
+        no mesmo grupo/canal (que tambem tem testid contendo "caption",
+        so que sem ser editavel).
 
         Usado como ultima checagem antes de clicar em enviar, para pegar o
         caso em que escrever_legenda_midia escreveu num elemento que nao e
         a legenda de verdade (ver comentario em enviar_imagem_com_legenda).
-        Exigir que o texto esteja no MESMO container da midia (em vez de so
-        "em algum lugar visivel da tela") evita confirmar por engano um
-        texto que foi parar num elemento qualquer sem relacao nenhuma com o
-        que sera realmente enviado.
+
+        Historico: uma primeira versao exigia que o texto estivesse dentro
+        do mesmo "container" da midia (mesmo dialogo/canvas), mas isso
+        rejeitou por engano um envio correto - a mensagem anterior do
+        grupo (com sua propria imagem+legenda ja enviada) fica visualmente
+        proxima do editor novo e "contava" como um container valido. Exigir
+        que o elemento seja realmente editavel (contenteditable/role=
+        textbox) ou tenha "-input" no testid resolve isso sem precisar
+        adivinhar a estrutura exata de containers do WhatsApp: uma legenda
+        ja enviada nunca e editavel, so a legenda ativa do preview e.
         """
         bruto = re.sub(r"\s+", " ", str(legenda_esperada or "")).strip()
         # Pula emojis/simbolos no comeco (alguns cabecalhos variam com
@@ -1762,32 +1770,22 @@ class WhatsApp:
                     .replace(/\\s+/g, ' ')
                     .trim();
 
-                // Mesmos seletores de container usados em aguardar_preview_midia
-                // para identificar "o editor/preview de midia".
-                const containers = [...document.querySelectorAll(
-                    '[data-testid="media-editor-canvas"], div[role="tab"][aria-label*="Abrir foto"], div[aria-label*="Abrir foto"], [role="dialog"], [data-testid*="media"]'
-                )].filter(el => {
+                // So elementos genuinamente editaveis (a legenda ATIVA do
+                // preview) ou com "-input" no testid (ex: o container real
+                // "media-caption-input-container"). Uma legenda de
+                // mensagem ja enviada (testid so "image-caption", sem
+                // "-input", e nunca contenteditable) fica de fora.
+                const candidatos = [...document.querySelectorAll(
+                    'div[contenteditable="true"], [role="textbox"], [data-testid*="caption-input"], [data-testid*="input-container"]'
+                )];
+
+                return candidatos.some(el => {
                     const r = el.getBoundingClientRect();
-                    return r.width > 150 && r.height > 150 && r.left > window.innerWidth * 0.25;
+                    if (r.width < 100 || r.height < 8) return false;
+                    if (r.left < window.innerWidth * 0.25) return false;
+                    const texto = norm(el.innerText || el.textContent || '');
+                    return texto.includes(trecho);
                 });
-
-                for (const container of containers) {
-                    const temMidia = !!container.querySelector(
-                        'img, video, canvas, [data-testid="media-editor-canvas"], [data-testid="media-url-provider"], [data-testid="image-thumb"]'
-                    );
-                    if (!temMidia) continue;
-
-                    const achou = [...container.querySelectorAll(
-                        'div[contenteditable="true"], [role="textbox"], p.selectable-text.copyable-text, [data-testid*="caption"]'
-                    )].some(el => {
-                        const r = el.getBoundingClientRect();
-                        if (r.width < 100 || r.height < 8) return false;
-                        const texto = norm(el.innerText || el.textContent || '');
-                        return texto.includes(trecho);
-                    });
-                    if (achou) return true;
-                }
-                return false;
             }
             """, trecho_norm))
         except Exception:
