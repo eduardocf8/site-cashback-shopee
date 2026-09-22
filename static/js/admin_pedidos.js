@@ -8,7 +8,10 @@ document.addEventListener("DOMContentLoaded", function () {
     var botao = document.createElement("button");
     botao.type = "button";
     botao.id = "toggle-tabela-expandida";
-    document.body.appendChild(botao);
+    // Encaixado na mesma barra da busca (não fixo na tela) - assim rola junto
+    // com a página normalmente, sem sobrepor "Encerrar sessão" no topo.
+    var toolbar = document.getElementById("toolbar");
+    (toolbar || document.body).appendChild(botao);
 
     function aplicarEstado(expandida) {
         document.body.classList.toggle("pedidos-tabela-expandida", expandida);

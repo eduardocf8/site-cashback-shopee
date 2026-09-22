@@ -1,17 +1,42 @@
-/* Barra de rolagem horizontal própria da tabela de pedidos, sempre visível
-   logo abaixo do cabeçalho - sem isso, quando a tabela é mais larga que a
-   tela, quem rola pra baixo (a página inteira, não só a tabela) só encontra
-   a barra de rolagem horizontal no rodapé, depois de todos os pedidos. */
+/* Painel com altura limitada e rolagem própria (vertical + horizontal) pra
+   tabela de pedidos. Só "overflow-x: auto" não bastava: sem limitar a altura,
+   a barra de rolagem horizontal continuava aparecendo só depois da última
+   linha visível - ou seja, depois dos 100 pedidos da página, exatamente onde
+   já estava antes. Limitando a altura, a barra sempre fica alcançável sem
+   descer a página inteira. */
 #changelist .results {
-    overflow-x: auto;
+    max-height: 65vh;
+    overflow: auto;
+    border: 1px solid var(--hairline-color, #ccc);
+    border-radius: 4px;
 }
 
-/* Botão fixo que alterna o modo "tabela expandida" (ver admin_pedidos.js) */
+/* Cabeçalho da tabela fixo no topo do painel enquanto rola verticalmente. */
+#changelist .results table thead th {
+    position: sticky;
+    top: 0;
+    z-index: 2;
+    background: var(--body-bg);
+}
+
+/* No modo expandido sobra mais altura de tela (cabeçalho/sidebar escondidos). */
+body.pedidos-tabela-expandida #changelist .results {
+    max-height: calc(100vh - 170px);
+}
+
+/* Toolbar (busca) vira flex container pra encaixar o botão de expandir
+   alinhado à direita, na mesma linha da busca - em vez de flutuar fixo na
+   tela (isso sobrepunha "Encerrar sessão" quando a página estava no topo). */
+#toolbar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: 10px;
+}
+
 #toggle-tabela-expandida {
-    position: fixed;
-    top: 12px;
-    right: 12px;
-    z-index: 1000;
+    flex: 0 0 auto;
     padding: 8px 14px;
     border: none;
     border-radius: 6px;
@@ -20,7 +45,6 @@
     font-size: 13px;
     font-weight: 600;
     cursor: pointer;
-    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.25);
 }
 
 #toggle-tabela-expandida:hover,
@@ -42,7 +66,7 @@ body.pedidos-tabela-expandida #changelist-filter {
 }
 
 body.pedidos-tabela-expandida #content {
-    padding: 56px 16px 16px;
+    padding: 16px 16px 16px;
 }
 
 /* O nav_sidebar.css do próprio Django reserva 299px pro conteúdo mesmo com o
