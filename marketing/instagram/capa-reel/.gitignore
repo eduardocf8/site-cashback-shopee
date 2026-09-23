@@ -1,0 +1,4 @@
+# A capa montada sai de uma foto que não mora no repositório (o quadro do reel), então
+# o resultado não é reproduzível a partir daqui - e é foto de pessoa, que não precisa
+# estar versionada. A camada da marca fica, porque essa sim sai inteira do script.
+capa-reel.png
