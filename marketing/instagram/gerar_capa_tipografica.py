@@ -41,6 +41,7 @@ from playwright.sync_api import sync_playwright
 
 from carrossel_base import (
     BRAND_DARK,
+    HIGHLIGHT,
     BRAND_PRIMARY,
     DARK_BG,
     FAMILJEN_B64,
@@ -81,6 +82,22 @@ VARIANTES = {
     "f-tudo-centro": {"marca": "texto",      "titulo": 820, "centro": "tudo"},
     "g-faixa-centro":{"marca": "faixa",      "titulo": 700, "centro": "marca"},
     "h-faixa-tudo":  {"marca": "faixa",      "titulo": 700, "centro": "tudo"},
+    # Formatos com tratamento de arte. Todos partem do mesmo miolo (marca centralizada
+    # no topo, título à esquerda) para a comparação isolar o que a arte muda.
+    #
+    # O fio sob a marca não é enfeite: é ele que transforma o logo centralizado em
+    # cabeçalho. Sozinho no alto de um fundo aberto, o logo centralizado com o título à
+    # esquerda cria dois eixos sem nada que explique a troca, e lê como desalinhamento.
+    # Com o fio, a faixa superior vira uma caixa, e centralizar dentro de caixa é
+    # convenção - a mesma razão pela qual funciona dentro da faixa roxa.
+    "i-grifo":    {"marca": "texto", "titulo": 780, "centro": "marca", "arte": "grifo"},
+    # A caixa de fundo de um trecho inline acompanha o corpo da fonte, não a entrelinha:
+    # com 0.94 ela invadia a linha de cima e cobria metade de "ganhar". Este formato
+    # afrouxa a entrelinha o suficiente para as caixas não se tocarem.
+    "j-tarja":    {"marca": "texto", "titulo": 860, "centro": "marca", "arte": "tarja",
+                   "entrelinha": 1.16},
+    "k-moldura":  {"marca": "texto", "titulo": 780, "centro": "marca", "arte": "moldura"},
+    "l-textura":  {"marca": "texto", "titulo": 780, "centro": "marca", "arte": "textura"},
 }
 
 # A faixa é posicionada por fora do fluxo, então não empurra nada: o título subiria por
@@ -88,6 +105,21 @@ VARIANTES = {
 TOPO_POR_VARIANTE = {
     nome: ALTURA_FAIXA + 60 for nome, cfg in VARIANTES.items() if cfg["marca"] == "faixa"
 }
+
+
+def _titulo(cfg: dict) -> str:
+    """O título, com a palavra-chave tratada conforme o formato.
+
+    No grifo a palavra vira tinta escura, não roxa: o marca-texto âmbar atrás de letra
+    roxa deixa os dois no mesmo tom de escuridão e a palavra some. É como o `.mark` do
+    site funciona - fundo âmbar, texto em ink.
+    """
+    arte = cfg.get("arte", "")
+    if arte == "grifo":
+        return TITULO.replace('class="grifo"', 'class="grifo-mark"')
+    if arte == "tarja":
+        return TITULO.replace('class="grifo"', 'class="grifo-tarja"')
+    return TITULO
 
 
 def _marca(cfg: dict) -> str:
@@ -104,6 +136,18 @@ def _rodape(cfg: dict) -> str:
         # Aqui a marca fecha a composição: é ela a assinatura, no lugar de só uma régua.
         return f'<div class="rodape">{apoio}<div class="assinatura">{MARCA}</div></div>'
     return f'<div class="rodape">{apoio}</div>'
+
+
+def _arte(cfg: dict) -> str:
+    """Camadas de fundo do tratamento escolhido. Vêm antes de tudo no DOM."""
+    arte = cfg.get("arte", "")
+    if arte == "moldura":
+        return '<div class="moldura"></div>'
+    if arte == "textura":
+        # Um caractere da própria fonte, não um ícone: o "%" em corpo enorme, bem claro,
+        # sangrando pela direita. Serve de textura e ainda diz do que a peça trata.
+        return '<div class="textura">%</div>'
+    return ""
 
 
 def _pagina(variante: str, corpo_titulo: int) -> str:
@@ -163,9 +207,37 @@ def _pagina(variante: str, corpo_titulo: int) -> str:
        a altura das letras. */
     #titulo {{
         position:relative; font-size:{corpo_titulo}px; font-weight:700;
-        line-height:0.94; letter-spacing:-0.045em; color:{DARK_BG};
+        line-height:{cfg.get("entrelinha", 0.94)}; letter-spacing:-0.045em; color:{DARK_BG};
     }}
     .grifo {{ color:{BRAND_PRIMARY}; white-space:nowrap; }}
+    /* Marca-texto âmbar: o único elemento gráfico do sistema fora a tipografia
+       (BRAND.md). Feito como fundo da própria palavra - pseudo-elemento com z-index
+       negativo cai atrás do fundo da página e some. Uma vez por peça, nunca mais. */
+    .grifo-mark {{
+        white-space:nowrap; color:{DARK_BG}; padding:0 12px;
+        background:linear-gradient(to top, {HIGHLIGHT} 0 78px, transparent 78px);
+    }}
+    /* Tarja: a palavra vira bloco de cor. Resolve o mesmo problema do grifo por peso
+       em vez de por realce, e dá à peça uma âncora gráfica sem entrar ícone nenhum. */
+    .grifo-tarja {{
+        white-space:nowrap; color:{LIGHT_BG}; background:{BRAND_PRIMARY};
+        padding:0 20px; border-radius:14px; box-decoration-break:clone;
+    }}
+    /* Fio de moldura por dentro da área segura, não na borda do arquivo: na borda ele
+       seria a primeira coisa cortada pelo recorte 4:5 do feed. */
+    .moldura {{
+        position:absolute; left:40px; right:40px; top:{CORTE_FEED + 20}px;
+        bottom:{CORTE_FEED + 20}px; border:3px solid rgba(109,40,217,0.22); border-radius:40px;
+    }}
+    .textura {{
+        position:absolute; right:-140px; top:520px; font-size:980px; font-weight:700;
+        line-height:0.8; color:{BRAND_PRIMARY}; opacity:0.07; letter-spacing:-0.06em;
+    }}
+    /* O fio que vira o logo em cabeçalho. */
+    .fio-topo {{
+        position:absolute; left:{MARGEM}px; right:{MARGEM}px; top:{TOPO + 170}px;
+        height:3px; background:rgba(109,40,217,0.28);
+    }}
     .junto {{ white-space:nowrap; }}
     .rodape {{ position:relative; }}
     .chamada {{
@@ -179,8 +251,10 @@ def _pagina(variante: str, corpo_titulo: int) -> str:
     }}
     </style></head><body class="{classe_corpo}">
         <div class="mancha"></div>
+        {_arte(cfg)}
         {topo}
-        <div id="titulo">{TITULO}</div>
+        {'<div class="fio-topo"></div>' if cfg.get("arte") else ""}
+        <div id="titulo">{_titulo(cfg)}</div>
         {_rodape(cfg)}
     </body></html>"""
 
