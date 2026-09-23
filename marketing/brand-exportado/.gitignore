@@ -1,0 +1,6 @@
+# Saída do exportar_brand.py. Não é versionada de propósito: um PDF commitado
+# envelhece em silêncio enquanto o BRAND.md continua mudando, e aí passam a existir
+# duas versões do manual com a mais bonita sendo a errada. Rode o script quando
+# precisar do arquivo.
+*.pdf
+*.txt
