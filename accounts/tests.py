@@ -3,13 +3,14 @@ from decimal import Decimal
 from unittest.mock import Mock, patch
 
 from django.core.cache import cache
-from django.test import TestCase, override_settings
+from django.test import RequestFactory, TestCase, override_settings
 from django.urls import reverse
 
+from ofertas.models import Oferta
 from pedidos.models import Pedido
 from saques.models import Saque
 
-from .comunicacoes import enviar_comunicacao, obter_destinatarios
+from .comunicacoes import enviar_comunicacao, obter_destinatarios, renderizar_corpo_html
 from .models import ComunicacaoEmail, ConfiguracaoIndicacao, Indicacao, PushSubscription, User
 from .push import enviar_push
 
@@ -504,8 +505,18 @@ class EnviarComunicacaoTests(TestCase):
             User.objects.create_user(
                 username=f"usuario{i}", password="senha123", cpf=f"1111111111{i}"[:11], email=f"u{i}@example.com"
             )
+        self.oferta = Oferta.objects.create(
+            item_id=1,
+            nome="Produto Teste",
+            nome_curto="Produto Teste Curto",
+            categoria_id=1,
+            product_link="https://shopee.com.br/produto-1-i.1.1",
+            imagem_url="https://exemplo.com/produto.jpg",
+            preco_min=Decimal("100"),
+            percentual_comissao=Decimal("0.1000"),
+        )
 
-    @patch("accounts.comunicacoes.EmailMessage")
+    @patch("accounts.comunicacoes.EmailMultiAlternatives")
     def test_manda_em_lotes_via_bcc_e_nao_estoura_o_lote_maximo(self, MockEmailMessage):
         mock_instancia = Mock()
         MockEmailMessage.return_value = mock_instancia
@@ -528,7 +539,7 @@ class EnviarComunicacaoTests(TestCase):
         self.assertEqual(comunicacao.total_enviados, 3)
         self.assertEqual(comunicacao.enviado_por, self.staff)
 
-    @patch("accounts.comunicacoes.EmailMessage")
+    @patch("accounts.comunicacoes.EmailMultiAlternatives")
     def test_falha_num_lote_nao_impede_os_outros_e_conta_certo(self, MockEmailMessage):
         primeiro_lote = Mock()
         primeiro_lote.send.side_effect = Exception("Brevo fora do ar")
@@ -611,3 +622,140 @@ class ComunicacaoViewNoAdminTests(TestCase):
         resposta = self.client.get(reverse("admin:accounts_comunicacao"))
 
         self.assertNotEqual(resposta.status_code, 200)
+
+
+class RenderizarCorpoHtmlTests(TestCase):
+    def setUp(self):
+        self.oferta = Oferta.objects.create(
+            item_id=1,
+            nome="Produto Teste",
+            nome_curto="Produto Teste Curto",
+            categoria_id=1,
+            product_link="https://shopee.com.br/produto-1-i.1.1",
+            imagem_url="https://exemplo.com/produto.jpg",
+            preco_min=Decimal("100"),
+            percentual_comissao=Decimal("0.1000"),
+        )
+        self.request = RequestFactory().get("/admin/accounts/user/comunicacoes/")
+
+    def test_inclui_nome_imagem_e_link_da_oferta(self):
+        html = renderizar_corpo_html("Confira essa oferta!", [self.oferta], self.request)
+
+        self.assertIn("Produto Teste Curto", html)
+        self.assertIn("https://exemplo.com/produto.jpg", html)
+        self.assertIn(reverse("ofertas_ir", args=[self.oferta.id]), html)
+        self.assertIn("Confira essa oferta!", html)
+
+    def test_texto_do_corpo_e_escapado_nunca_vira_html_de_verdade(self):
+        # corpo vem de um <textarea> digitado por quem está logado no admin - não é
+        # HTML confiável, tem que escapar antes de jogar no template.
+        html = renderizar_corpo_html("<script>alert(1)</script>", [], self.request)
+
+        self.assertNotIn("<script>alert(1)</script>", html)
+        self.assertIn("&lt;script&gt;", html)
+
+    def test_sem_ofertas_nao_quebra(self):
+        html = renderizar_corpo_html("Só um aviso, sem produtos.", [], self.request)
+        self.assertIn("Só um aviso, sem produtos.", html)
+
+
+class EnviarComunicacaoComOfertasTests(TestCase):
+    def setUp(self):
+        self.staff = User.objects.create_user(
+            username="staff", password="senha123", cpf="39053344705", is_staff=True, is_superuser=True
+        )
+        User.objects.create_user(username="ana", password="senha123", cpf="14783246947", email="ana@example.com")
+        self.oferta = Oferta.objects.create(
+            item_id=1,
+            nome="Produto Teste",
+            nome_curto="Produto Teste Curto",
+            categoria_id=1,
+            product_link="https://shopee.com.br/produto-1-i.1.1",
+            imagem_url="https://exemplo.com/produto.jpg",
+            preco_min=Decimal("100"),
+            percentual_comissao=Decimal("0.1000"),
+        )
+
+    @patch("accounts.comunicacoes.EmailMultiAlternatives")
+    def test_com_ofertas_anexa_html_e_guarda_no_historico(self, MockEmail):
+        mock_instancia = Mock()
+        MockEmail.return_value = mock_instancia
+        request = RequestFactory().get("/admin/accounts/user/comunicacoes/")
+
+        comunicacao = enviar_comunicacao(
+            assunto="Oferta imperdível",
+            corpo="Confira!",
+            filtro="todos",
+            ofertas=[self.oferta],
+            enviado_por=self.staff,
+            request=request,
+        )
+
+        mock_instancia.attach_alternative.assert_called_once()
+        html_enviado = mock_instancia.attach_alternative.call_args.args[0]
+        self.assertIn("Produto Teste Curto", html_enviado)
+        self.assertIn("Produto Teste Curto", comunicacao.corpo_html)
+        self.assertEqual(list(comunicacao.ofertas.all()), [self.oferta])
+
+    @patch("accounts.comunicacoes.EmailMultiAlternatives")
+    def test_sem_ofertas_nao_anexa_html(self, MockEmail):
+        mock_instancia = Mock()
+        MockEmail.return_value = mock_instancia
+
+        comunicacao = enviar_comunicacao(
+            assunto="Assunto", corpo="Corpo", filtro="todos", enviado_por=self.staff
+        )
+
+        mock_instancia.attach_alternative.assert_not_called()
+        self.assertEqual(comunicacao.corpo_html, "")
+        self.assertEqual(comunicacao.ofertas.count(), 0)
+
+    @patch("accounts.comunicacoes.EmailMultiAlternatives")
+    def test_ofertas_sem_request_tambem_nao_anexa_html(self, MockEmail):
+        # renderizar_corpo_html precisa de request pra montar o link absoluto - sem
+        # ele, melhor cair pro texto simples do que quebrar o envio inteiro.
+        mock_instancia = Mock()
+        MockEmail.return_value = mock_instancia
+
+        comunicacao = enviar_comunicacao(
+            assunto="Assunto", corpo="Corpo", filtro="todos", ofertas=[self.oferta], enviado_por=self.staff
+        )
+
+        mock_instancia.attach_alternative.assert_not_called()
+        self.assertEqual(comunicacao.corpo_html, "")
+
+
+class ComunicacaoBuscarOfertasViewTests(TestCase):
+    def setUp(self):
+        self.staff = User.objects.create_user(
+            username="staff", password="senha123", cpf="39053344705", is_staff=True, is_superuser=True
+        )
+        self.client.force_login(self.staff)
+        Oferta.objects.create(
+            item_id=1, nome="Creatina Monohidratada", nome_curto="Creatina", categoria_id=1,
+            product_link="https://shopee.com.br/produto-1-i.1.1", imagem_url="https://exemplo.com/creatina.jpg",
+        )
+        Oferta.objects.create(
+            item_id=2, nome="Fone de ouvido bluetooth", nome_curto="Fone bluetooth", categoria_id=1,
+            product_link="https://shopee.com.br/produto-2-i.2.2", imagem_url="https://exemplo.com/fone.jpg",
+        )
+
+    def test_busca_por_nome_curto(self):
+        resposta = self.client.get(
+            reverse("admin:accounts_comunicacao_buscar_ofertas"), {"q": "creatina"}
+        )
+        dados = json.loads(resposta.content)
+        self.assertEqual(len(dados["resultados"]), 1)
+        self.assertEqual(dados["resultados"][0]["nome"], "Creatina")
+
+    def test_sem_termo_lista_ofertas_recentes(self):
+        resposta = self.client.get(reverse("admin:accounts_comunicacao_buscar_ofertas"))
+        dados = json.loads(resposta.content)
+        self.assertEqual(len(dados["resultados"]), 2)
+
+    def test_termo_sem_correspondencia_retorna_vazio(self):
+        resposta = self.client.get(
+            reverse("admin:accounts_comunicacao_buscar_ofertas"), {"q": "isso-nao-existe"}
+        )
+        dados = json.loads(resposta.content)
+        self.assertEqual(dados["resultados"], [])

@@ -30,7 +30,7 @@
         font-size: 13px;
     }
     .comunicacao-form textarea {
-        min-height: 220px;
+        min-height: 180px;
         resize: vertical;
     }
     .comunicacao-form .ajuda {
@@ -44,6 +44,92 @@
     }
     .comunicacao-historico table {
         width: 100%;
+    }
+
+    .ofertas-busca {
+        position: relative;
+    }
+    .ofertas-resultados {
+        position: absolute;
+        z-index: 5;
+        left: 0;
+        right: 0;
+        margin-top: 2px;
+        background: var(--body-bg);
+        border: 1px solid var(--border-color);
+        border-radius: 4px;
+        max-height: 260px;
+        overflow-y: auto;
+        box-shadow: 0 4px 10px rgba(0, 0, 0, 0.15);
+    }
+    .ofertas-resultados button {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        width: 100%;
+        padding: 6px 10px;
+        border: none;
+        background: none;
+        text-align: left;
+        cursor: pointer;
+        font-size: 12px;
+        color: inherit;
+    }
+    .ofertas-resultados button:hover {
+        background: var(--darkened-bg);
+    }
+    .ofertas-resultados img {
+        width: 32px;
+        height: 32px;
+        object-fit: cover;
+        border-radius: 4px;
+        flex: 0 0 auto;
+    }
+    .ofertas-selecionadas {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 8px;
+        margin-top: 10px;
+    }
+    .oferta-card {
+        width: 110px;
+        border: 1px solid var(--border-color);
+        border-radius: 6px;
+        overflow: hidden;
+        background: var(--body-bg);
+        position: relative;
+    }
+    .oferta-card img {
+        width: 100%;
+        height: 80px;
+        object-fit: cover;
+        display: block;
+    }
+    .oferta-card .nome {
+        font-size: 11px;
+        padding: 4px 6px 2px;
+        line-height: 1.25;
+        min-height: 28px;
+    }
+    .oferta-card .cashback {
+        font-size: 10px;
+        margin: 0 6px 6px;
+        color: var(--success, #059669);
+        font-weight: 600;
+    }
+    .oferta-card .remover {
+        position: absolute;
+        top: 2px;
+        right: 2px;
+        width: 18px;
+        height: 18px;
+        line-height: 18px;
+        text-align: center;
+        border-radius: 50%;
+        background: rgba(0, 0, 0, 0.65);
+        color: #fff;
+        cursor: pointer;
+        font-size: 12px;
     }
 </style>
 {% endblock %}
@@ -67,7 +153,17 @@
     <div class="form-row">
         <label for="id_corpo">Corpo do e-mail</label>
         <textarea name="corpo" id="id_corpo" required></textarea>
-        <p class="ajuda">Texto simples, sem formatação/HTML - mesmo formato dos outros e-mails do site.</p>
+        <p class="ajuda">Texto simples, sem formatação/HTML - mesmo formato dos outros e-mails do site. Deixe uma linha em branco entre parágrafos.</p>
+    </div>
+    <div class="form-row">
+        <label for="ofertas-busca-input">Ofertas em destaque (opcional)</label>
+        <div class="ofertas-busca">
+            <input type="text" id="ofertas-busca-input" placeholder="Buscar produto pelo nome…" autocomplete="off">
+            <div class="ofertas-resultados" id="ofertas-resultados" hidden></div>
+        </div>
+        <p class="ajuda">Escolha ofertas do site pra incluir como vitrine de produtos no e-mail (imagem + link de cashback de cada uma). Deixe em branco pra mandar só texto.</p>
+        <div class="ofertas-selecionadas" id="ofertas-selecionadas"></div>
+        <div id="ofertas-hidden-inputs"></div>
     </div>
     <input type="submit" class="button default" value="Enviar">
 </form>
@@ -80,6 +176,7 @@
                 <tr>
                     <th>Assunto</th>
                     <th>Filtro</th>
+                    <th>Ofertas</th>
                     <th>Destinatários</th>
                     <th>Enviados</th>
                     <th>Por</th>
@@ -91,6 +188,7 @@
                     <tr>
                         <td>{{ comunicacao.assunto }}</td>
                         <td>{{ comunicacao.get_filtro_display }}</td>
+                        <td>{{ comunicacao.ofertas.count }}</td>
                         <td>{{ comunicacao.total_destinatarios }}</td>
                         <td>{{ comunicacao.total_enviados }}</td>
                         <td>{{ comunicacao.enviado_por|default:"-" }}</td>
@@ -126,13 +224,97 @@
     select.addEventListener("change", atualizarContagem);
     atualizarContagem();
 
+    // --- Busca e seleção de ofertas ---
+    var buscarUrl = "{% url 'admin:accounts_comunicacao_buscar_ofertas' %}";
+    var buscaInput = document.getElementById("ofertas-busca-input");
+    var resultadosBox = document.getElementById("ofertas-resultados");
+    var selecionadasBox = document.getElementById("ofertas-selecionadas");
+    var hiddenInputsBox = document.getElementById("ofertas-hidden-inputs");
+    var selecionadas = {};
+    var temporizador = null;
+
+    function renderizarSelecionadas() {
+        selecionadasBox.innerHTML = "";
+        hiddenInputsBox.innerHTML = "";
+        Object.keys(selecionadas).forEach(function (id) {
+            var oferta = selecionadas[id];
+
+            var card = document.createElement("div");
+            card.className = "oferta-card";
+            card.innerHTML =
+                '<span class="remover" data-id="' + id + '">✕</span>' +
+                '<img src="' + oferta.imagem_url + '" alt="">' +
+                '<div class="nome">' + oferta.nome + '</div>' +
+                '<div class="cashback">' + oferta.percentual_cashback + '% de volta</div>';
+            selecionadasBox.appendChild(card);
+
+            var hidden = document.createElement("input");
+            hidden.type = "hidden";
+            hidden.name = "ofertas";
+            hidden.value = id;
+            hiddenInputsBox.appendChild(hidden);
+        });
+    }
+
+    selecionadasBox.addEventListener("click", function (evento) {
+        var alvo = evento.target.closest(".remover");
+        if (!alvo) return;
+        delete selecionadas[alvo.getAttribute("data-id")];
+        renderizarSelecionadas();
+    });
+
+    function buscar(termo) {
+        fetch(buscarUrl + "?q=" + encodeURIComponent(termo))
+            .then(function (resposta) { return resposta.json(); })
+            .then(function (dados) {
+                resultadosBox.innerHTML = "";
+                if (!dados.resultados.length) {
+                    resultadosBox.hidden = true;
+                    return;
+                }
+                dados.resultados.forEach(function (oferta) {
+                    var item = document.createElement("button");
+                    item.type = "button";
+                    item.innerHTML =
+                        '<img src="' + oferta.imagem_url + '" alt=""> ' +
+                        '<span>' + oferta.nome + ' — ' + oferta.percentual_cashback + '% de volta</span>';
+                    item.addEventListener("click", function () {
+                        selecionadas[oferta.id] = oferta;
+                        renderizarSelecionadas();
+                        resultadosBox.hidden = true;
+                        buscaInput.value = "";
+                    });
+                    resultadosBox.appendChild(item);
+                });
+                resultadosBox.hidden = false;
+            });
+    }
+
+    buscaInput.addEventListener("input", function () {
+        var termo = buscaInput.value.trim();
+        clearTimeout(temporizador);
+        if (termo.length < 2) {
+            resultadosBox.hidden = true;
+            return;
+        }
+        temporizador = setTimeout(function () { buscar(termo); }, 250);
+    });
+
+    document.addEventListener("click", function (evento) {
+        if (!resultadosBox.contains(evento.target) && evento.target !== buscaInput) {
+            resultadosBox.hidden = true;
+        }
+    });
+
     form.addEventListener("submit", function (evento) {
         var numero = parseInt(contagem.textContent, 10);
-        var confirmado = confirm(
-            "Confirma o envio desse e-mail para " + (isNaN(numero) ? "os" : numero) +
-            " destinatário(s)? Essa ação não pode ser desfeita."
-        );
-        if (!confirmado) {
+        var qtdOfertas = Object.keys(selecionadas).length;
+        var mensagem = "Confirma o envio desse e-mail para " + (isNaN(numero) ? "os" : numero) + " destinatário(s)";
+        if (qtdOfertas > 0) {
+            mensagem += " com " + qtdOfertas + " oferta(s) em destaque";
+        }
+        mensagem += "? Essa ação não pode ser desfeita.";
+        if (!confirm(mensagem)) {
             evento.preventDefault();
         }
     });

@@ -1512,6 +1512,42 @@ com filtros (quem já fez pedido, quem ainda não fez, etc).
       falha não travar os outros nem contar errado) e a view (staff só,
       contagem, envio, validação de campos vazios).
 
+**Depois, mesma fase:** usuário viu um e-mail de exemplo da própria Shopee
+(cada produto com imagem + link de afiliado embutido) e perguntou se dava pra
+fazer parecido. Não é imagem única com zona clicável (image map, suporte
+ruim em cliente de e-mail hoje) - é uma grade de imagens, cada uma dentro do
+próprio link. Perguntei se preferia isso ou HTML livre com banner; usuário
+escolheu a vitrine de ofertas do site (reaproveita imagem e link de cashback
+que a oferta já tem, sem precisar hospedar imagem nem montar link na mão).
+
+- [x] **`brevo_email_backend.py`** estendido pra ler `message.alternatives`
+      (o jeito padrão do Django de anexar uma versão HTML a um e-mail, via
+      `EmailMultiAlternatives.attach_alternative(html, "text/html")`) e
+      mandar como `htmlContent` pra API do Brevo, além do `textContent` de
+      sempre. Antes só mandava texto puro.
+- [x] **`ComunicacaoEmail.ofertas`** (M2M pra `ofertas.Oferta`) e
+      **`corpo_html`** (novos campos) - guarda quais ofertas entraram em cada
+      envio e uma cópia do HTML realmente mandado (não recalcula na hora de
+      olhar o histórico, então preço/imagem mudando depois na Oferta não
+      reescreve o que já foi pra caixa de entrada de ninguém).
+- [x] **`renderizar_corpo_html`** (`accounts/comunicacoes.py`) monta a grade
+      de produtos (2 por linha, `<table>` em vez de flex/grid - cliente de
+      e-mail tipo Outlook renderiza com o motor do Word, CSS moderno não
+      funciona) via `templates/emails/comunicacao_vitrine.html`. Cada card:
+      imagem da oferta, nome curto, badge de % de cashback, tudo dentro de
+      um `<a>` apontando pro mesmo link de clique rastreado que a vitrine do
+      site usa (`ofertas_ir`) - o texto do corpo (`<textarea>`) é sempre
+      escapado antes de virar HTML, nunca confiado como marcação de verdade.
+- [x] **Buscador de ofertas** na tela de composição - campo de busca (debounce
+      250ms) que já mostra prévia (miniatura, nome, % de cashback) direto no
+      formulário, sem precisar decorar ID de oferta. Endpoint JSON próprio
+      (`comunicacao_buscar_ofertas_view`), vanilla JS, mesmo padrão do resto
+      do admin.
+- [x] Testes cobrindo a renderização do HTML (link/imagem/nome corretos,
+      texto do corpo sempre escapado), o backend do Brevo com e sem versão
+      HTML, o envio com/sem ofertas (guarda no histórico certo, não quebra
+      sem `request`) e o endpoint de busca.
+
 ---
 
 Pra continuar esse roadmap numa conversa nova, basta apontar esse arquivo

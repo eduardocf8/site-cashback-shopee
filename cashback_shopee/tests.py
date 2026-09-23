@@ -4,7 +4,7 @@ from unittest.mock import Mock, patch
 import requests
 from django.contrib.auth import get_user_model
 from django.contrib.auth.models import AnonymousUser
-from django.core.mail import EmailMessage
+from django.core.mail import EmailMessage, EmailMultiAlternatives
 from django.test import RequestFactory, TestCase, override_settings
 from django.urls import reverse
 
@@ -213,6 +213,31 @@ class BrevoAPIEmailBackendTests(TestCase):
         self.assertEqual(
             base64.b64decode(payload["attachment"][0]["content"]).decode("utf-8"), "conteúdo em texto"
         )
+
+    @patch("cashback_shopee.brevo_email_backend.requests.post")
+    def test_sem_versao_html_nao_manda_htmlcontent(self, mock_post):
+        mock_post.return_value.raise_for_status = lambda: None
+        email = EmailMessage(subject="Assunto", body="Corpo", to=["dono@exemplo.com"])
+
+        BrevoAPIEmailBackend().send_messages([email])
+
+        payload = mock_post.call_args.kwargs["json"]
+        self.assertNotIn("htmlContent", payload)
+
+    @patch("cashback_shopee.brevo_email_backend.requests.post")
+    def test_alternativa_html_vira_htmlcontent(self, mock_post):
+        # accounts/comunicacoes.py manda a vitrine de ofertas como alternativa HTML
+        # via EmailMultiAlternatives - o backend precisa achar essa alternativa e
+        # mandar pro campo certo da API do Brevo.
+        mock_post.return_value.raise_for_status = lambda: None
+        email = EmailMultiAlternatives(subject="Assunto", body="Corpo em texto", to=["dono@exemplo.com"])
+        email.attach_alternative("<p>Corpo em <strong>HTML</strong></p>", "text/html")
+
+        BrevoAPIEmailBackend().send_messages([email])
+
+        payload = mock_post.call_args.kwargs["json"]
+        self.assertEqual(payload["htmlContent"], "<p>Corpo em <strong>HTML</strong></p>")
+        self.assertEqual(payload["textContent"], "Corpo em texto")
 
 
 class MetaCapiTests(TestCase):

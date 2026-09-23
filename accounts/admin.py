@@ -5,6 +5,8 @@ from django.shortcuts import redirect
 from django.template.response import TemplateResponse
 from django.urls import path
 
+from ofertas.models import Oferta
+
 from .comunicacoes import FILTROS, enviar_comunicacao, obter_destinatarios
 from .models import ComunicacaoEmail, ConfiguracaoIndicacao, Indicacao, PushSubscription, User
 from .push import enviar_push
@@ -31,6 +33,11 @@ class UserAdmin(BaseUserAdmin):
                 self.admin_site.admin_view(self.comunicacao_contar_view),
                 name="accounts_comunicacao_contar",
             ),
+            path(
+                "comunicacoes/buscar-ofertas/",
+                self.admin_site.admin_view(self.comunicacao_buscar_ofertas_view),
+                name="accounts_comunicacao_buscar_ofertas",
+            ),
         ]
         return urls + super().get_urls()
 
@@ -39,17 +46,43 @@ class UserAdmin(BaseUserAdmin):
         total = obter_destinatarios(filtro).count()
         return JsonResponse({"total": total})
 
+    def comunicacao_buscar_ofertas_view(self, request):
+        termo = request.GET.get("q", "").strip()
+        ofertas = Oferta.objects.all()
+        if termo:
+            ofertas = ofertas.filter(nome_curto__icontains=termo) | ofertas.filter(nome__icontains=termo)
+        ofertas = ofertas.order_by("-vendas")[:15]
+        return JsonResponse(
+            {
+                "resultados": [
+                    {
+                        "id": oferta.id,
+                        "nome": oferta.nome_curto or oferta.nome,
+                        "imagem_url": oferta.imagem_url,
+                        "percentual_cashback": str(oferta.percentual_cashback),
+                    }
+                    for oferta in ofertas
+                ]
+            }
+        )
+
     def comunicacao_view(self, request):
         if request.method == "POST":
             assunto = request.POST.get("assunto", "").strip()
             corpo = request.POST.get("corpo", "").strip()
             filtro = request.POST.get("filtro", "todos")
+            ofertas = Oferta.objects.filter(id__in=request.POST.getlist("ofertas"))
 
             if not assunto or not corpo:
                 messages.error(request, "Preencha o assunto e o corpo do e-mail.")
             else:
                 comunicacao = enviar_comunicacao(
-                    assunto=assunto, corpo=corpo, filtro=filtro, enviado_por=request.user
+                    assunto=assunto,
+                    corpo=corpo,
+                    filtro=filtro,
+                    ofertas=ofertas,
+                    enviado_por=request.user,
+                    request=request,
                 )
                 if comunicacao.total_destinatarios == 0:
                     messages.warning(request, "Nenhum destinatário encontrado pra esse filtro - nada foi enviado.")
@@ -81,7 +114,8 @@ class ComunicacaoEmailAdmin(admin.ModelAdmin):
     list_display = ("assunto", "filtro", "total_destinatarios", "total_enviados", "enviado_por", "enviado_em")
     list_filter = ("filtro",)
     search_fields = ("assunto", "corpo")
-    readonly_fields = [f.name for f in ComunicacaoEmail._meta.fields]
+    filter_horizontal = ("ofertas",)
+    readonly_fields = [f.name for f in ComunicacaoEmail._meta.fields] + ["ofertas"]
 
     def has_add_permission(self, request):
         return False

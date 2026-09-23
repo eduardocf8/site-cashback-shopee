@@ -158,6 +158,19 @@ class ComunicacaoEmail(models.Model):
     assunto = models.CharField("Assunto", max_length=200)
     corpo = models.TextField("Corpo do e-mail", help_text="Texto simples, sem HTML.")
     filtro = models.CharField("Filtro de destinatários", max_length=30, choices=FILTRO_CHOICES)
+    ofertas = models.ManyToManyField(
+        "ofertas.Oferta",
+        blank=True,
+        related_name="+",
+        verbose_name="Ofertas em destaque",
+        help_text="Vitrine de produtos incluída no e-mail (imagem + link de cashback de cada uma).",
+    )
+    corpo_html = models.TextField(
+        "Corpo em HTML (com a vitrine)",
+        blank=True,
+        help_text="Gerado automaticamente a partir do corpo em texto + ofertas escolhidas - guardado aqui pra "
+        "manter fiel o que foi realmente mandado, mesmo que preço/imagem da oferta mude depois.",
+    )
     total_destinatarios = models.PositiveIntegerField("Total de destinatários", default=0)
     total_enviados = models.PositiveIntegerField("Total enviados com sucesso", default=0)
     enviado_por = models.ForeignKey(

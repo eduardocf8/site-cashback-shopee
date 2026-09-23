@@ -1,0 +1,49 @@
+<!doctype html>
+<html>
+<body style="margin:0; padding:0; background:#f1eefb; font-family:Arial, Helvetica, sans-serif;">
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:#f1eefb; padding:24px 0;">
+<tr><td align="center">
+<table role="presentation" width="100%" style="max-width:560px;" cellpadding="0" cellspacing="0">
+
+<tr><td style="padding:0 16px 20px; text-align:center;">
+    <span style="font-family:Arial, Helvetica, sans-serif; font-weight:bold; font-size:22px; color:#6d28d9;">cash-b</span>
+</td></tr>
+
+<tr><td style="background:#ffffff; border-radius:12px; padding:24px 20px; color:#111827; font-size:15px; line-height:1.5;">
+    {{ corpo_html_intro|safe }}
+</td></tr>
+
+{% if ofertas %}
+<tr><td style="padding:20px 4px 0;">
+    <table role="presentation" width="100%" cellpadding="0" cellspacing="0">
+        {% for linha in ofertas_em_linhas %}
+        <tr>
+            {% for item in linha %}
+            <td width="50%" style="padding:6px; vertical-align:top;">
+                <a href="{{ item.link }}" style="text-decoration:none; color:inherit; display:block; background:#ffffff; border:1px solid #e0dcef; border-radius:10px; overflow:hidden;">
+                    <img src="{{ item.oferta.imagem_url }}" alt="{{ item.oferta.nome_curto }}" width="100%" style="display:block; width:100%; max-width:100%; height:auto; aspect-ratio:1/1; object-fit:cover;">
+                    <table role="presentation" width="100%" cellpadding="0" cellspacing="0"><tr><td style="padding:10px 12px 12px;">
+                        <div style="font-size:13px; color:#111827; line-height:1.3; min-height:34px;">{{ item.oferta.nome_curto }}</div>
+                        <div style="margin-top:6px; display:inline-block; background:#ecfdf5; color:#059669; font-weight:bold; font-size:12px; padding:3px 8px; border-radius:5px;">
+                            {{ item.oferta.percentual_cashback }}% de volta
+                        </div>
+                    </td></tr></table>
+                </a>
+            </td>
+            {% endfor %}
+            {% if linha|length == 1 %}<td width="50%"></td>{% endif %}
+        </tr>
+        {% endfor %}
+    </table>
+</td></tr>
+{% endif %}
+
+<tr><td style="padding:24px 16px 0; text-align:center; font-size:12px; color:#6b7280;">
+    Você recebeu esse e-mail porque tem uma conta na cash-b.
+</td></tr>
+
+</table>
+</td></tr>
+</table>
+</body>
+</html>

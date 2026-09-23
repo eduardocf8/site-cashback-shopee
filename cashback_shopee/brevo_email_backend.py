@@ -44,6 +44,15 @@ class BrevoAPIEmailBackend(BaseEmailBackend):
             "subject": message.subject,
             "textContent": message.body,
         }
+        # EmailMultiAlternatives guarda a versão HTML em message.alternatives, uma
+        # lista de (conteudo, mimetype) - pega a primeira alternativa text/html, se
+        # tiver (ver accounts/comunicacoes.py, único lugar que manda HTML hoje).
+        html = next(
+            (conteudo for conteudo, mimetype in getattr(message, "alternatives", []) if mimetype == "text/html"),
+            None,
+        )
+        if html:
+            payload["htmlContent"] = html
         if message.cc:
             payload["cc"] = [{"email": destinatario} for destinatario in message.cc]
         if message.bcc:
