@@ -68,38 +68,49 @@ TITULO = (
 CHAMADA = "é mais fácil do que você imagina"
 
 ALTURA_FAIXA = 500
-# A faixa é posicionada por fora do fluxo, então não empurra nada: o título subiria por
-# baixo dela e colidiria com o wordmark. Este formato começa o conteúdo abaixo da faixa.
-TOPO_POR_VARIANTE = {"d-faixa": ALTURA_FAIXA + 60}
 
-# Altura reservada ao título em cada formato - o que sobra depois do espaço da marca.
+# Cada formato: como a marca entra, quanto de altura sobra para o título e o que fica
+# centralizado. "marca" centraliza só o logo e mantém o título à esquerda; "tudo"
+# centraliza a peça inteira.
 VARIANTES = {
-    "a-topo": 820,
-    "b-pastilha": 820,
-    "c-assinatura": 760,
-    "d-faixa": 700,
+    "a-topo":        {"marca": "texto",      "titulo": 820, "centro": ""},
+    "b-pastilha":    {"marca": "pastilha",   "titulo": 820, "centro": ""},
+    "c-assinatura":  {"marca": "assinatura", "titulo": 760, "centro": ""},
+    "d-faixa":       {"marca": "faixa",      "titulo": 700, "centro": ""},
+    "e-topo-centro": {"marca": "texto",      "titulo": 820, "centro": "marca"},
+    "f-tudo-centro": {"marca": "texto",      "titulo": 820, "centro": "tudo"},
+    "g-faixa-centro":{"marca": "faixa",      "titulo": 700, "centro": "marca"},
+    "h-faixa-tudo":  {"marca": "faixa",      "titulo": 700, "centro": "tudo"},
+}
+
+# A faixa é posicionada por fora do fluxo, então não empurra nada: o título subiria por
+# baixo dela e colidiria com o wordmark. Todo formato com faixa começa abaixo dela.
+TOPO_POR_VARIANTE = {
+    nome: ALTURA_FAIXA + 60 for nome, cfg in VARIANTES.items() if cfg["marca"] == "faixa"
 }
 
 
-def _marca(variante: str) -> str:
-    if variante == "b-pastilha":
+def _marca(cfg: dict) -> str:
+    if cfg["marca"] == "pastilha":
         return f'<div class="pastilha">{MARCA}</div>'
-    if variante == "d-faixa":
+    if cfg["marca"] == "faixa":
         return f'<div class="faixa"><span>{MARCA}</span></div>'
     return f'<div class="marca">{MARCA}</div>'
 
 
-def _rodape(variante: str) -> str:
+def _rodape(cfg: dict) -> str:
     apoio = f'<div class="chamada">{CHAMADA}</div><div class="regua"></div>'
-    if variante == "c-assinatura":
+    if cfg["marca"] == "assinatura":
         # Aqui a marca fecha a composição: é ela a assinatura, no lugar de só uma régua.
         return f'<div class="rodape">{apoio}<div class="assinatura">{MARCA}</div></div>'
     return f'<div class="rodape">{apoio}</div>'
 
 
 def _pagina(variante: str, corpo_titulo: int) -> str:
+    cfg = VARIANTES[variante]
     # No formato de assinatura a marca sai do topo e vai para o pé.
-    topo = "" if variante == "c-assinatura" else _marca(variante)
+    topo = "" if cfg["marca"] == "assinatura" else _marca(cfg)
+    classe_corpo = f'centro-{cfg["centro"]}' if cfg["centro"] else ""
     return f"""<html><head><style>
     @font-face {{ font-family:"Familjen"; src:url(data:font/woff2;base64,{FAMILJEN_B64}) format("woff2"); font-weight:400 700; }}
     * {{ box-sizing:border-box; margin:0; padding:0; }}
@@ -112,6 +123,13 @@ def _pagina(variante: str, corpo_titulo: int) -> str:
         justify-content:space-between;
         padding:{TOPO_POR_VARIANTE.get(variante, TOPO)}px {MARGEM}px {BASE}px;
     }}
+    /* Centralizar só a marca: ela vira cabeçalho da peça, e o título segue alinhado à
+       esquerda como bloco de leitura. Centralizar tudo: a peça vira cartaz simétrico -
+       aí a régua também precisa de margem automática, senão fica presa à esquerda. */
+    .centro-marca > .marca, .centro-marca > .pastilha {{ align-self:center; }}
+    .centro-marca .faixa, .centro-tudo .faixa {{ justify-content:center; padding-left:0; padding-right:0; }}
+    .centro-tudo {{ text-align:center; align-items:center; }}
+    .centro-tudo .regua {{ margin-left:auto; margin-right:auto; }}
     /* Degradê radial, não um círculo: forma de borda definida lia como elemento gráfico
        cortado ao meio, e o pedido foi tirar os elementos gráficos. Sem borda, vira
        temperatura de fundo - segura a metade de baixo sem colocar nada ali. */
@@ -159,11 +177,11 @@ def _pagina(variante: str, corpo_titulo: int) -> str:
         margin-top:56px; font-size:132px; font-weight:700;
         letter-spacing:-0.045em; color:{BRAND_PRIMARY}; line-height:1;
     }}
-    </style></head><body>
+    </style></head><body class="{classe_corpo}">
         <div class="mancha"></div>
         {topo}
         <div id="titulo">{TITULO}</div>
-        {_rodape(variante)}
+        {_rodape(cfg)}
     </body></html>"""
 
 
@@ -179,7 +197,7 @@ def _maior_corpo_que_cabe(pagina, variante: str, minimo=80, maximo=300) -> int:
     "cashback" têm o mesmo número de letras e larguras bem diferentes.
     """
     largura_coluna = LARGURA - MARGEM * 2
-    altura_alvo = VARIANTES[variante]
+    altura_alvo = VARIANTES[variante]["titulo"]
 
     def cabe(corpo: int) -> bool:
         pagina.set_content(_pagina(variante, corpo))
