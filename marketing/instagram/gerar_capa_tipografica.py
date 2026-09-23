@@ -59,14 +59,40 @@ MARGEM = 72
 CORTE_FEED = 285          # o que o recorte 4:5 do feed tira de cada ponta
 TOPO, BASE = 320, 320     # margens com folga sobre esse corte
 
-# "na Shopee?" vai travado: solto, o ajuste automático cresce até a preposição cair
-# sozinha numa linha, e "na" órfão no meio de um cartaz lê como erro de diagramação.
-# Travado, ele vira a unidade mais larga do título e passa a governar o corpo escolhido.
-TITULO = (
-    'Como ganhar <span class="grifo">cashback</span> '
-    '<span class="junto">na Shopee?</span>'
-)
-CHAMADA = "é mais fácil do que você imagina"
+# Os trechos entre <span class="junto"> vão travados contra quebra de linha. Solto, o
+# ajuste automático de corpo cresce até uma preposição cair sozinha numa linha, e "na"
+# órfão no meio de um cartaz lê como erro de diagramação. Travado, o trecho vira a
+# unidade mais larga do título e passa a governar o corpo escolhido.
+#
+# A palavra em <span class="grifo"> é a que recebe o tratamento do formato (roxo, grifo
+# âmbar ou tarja). É sempre uma só - realce repetido deixa de ser realce.
+#
+# Regras de voz (VOZ.md) aplicadas a todos: cashback afirmativo ("volta", "rende",
+# nunca "pode voltar"), "você" e não "tu", e a cash-b como substantivo feminino.
+TEXTOS = {
+    "como": (
+        'Como ganhar <span class="grifo">cashback</span> '
+        '<span class="junto">na Shopee?</span>',
+        "é mais fácil do que você imagina",
+    ),
+    "tres": (
+        '<span class="grifo">3 formas</span> de ganhar cashback '
+        '<span class="junto">na Shopee</span>',
+        "e uma delas rende mais que as outras",
+    ),
+    # "parte do seu dinheiro" e não "seu dinheiro": o cashback é uma fração da comissão,
+    # e prometer o dinheiro inteiro de volta seria afirmação falsa.
+    "volta": (
+        'Receba parte do seu dinheiro '
+        '<span class="grifo"><span class="junto">de volta</span></span>',
+        'em toda compra que você faz pela <span class="marca-inline">cash-b</span>',
+    ),
+    "quanto": (
+        'Quanto do seu dinheiro '
+        '<span class="grifo"><span class="junto">volta</span></span> na Shopee?',
+        "o cálculo é mais simples do que parece",
+    ),
+}
 
 ALTURA_FAIXA = 500
 
@@ -98,6 +124,19 @@ VARIANTES = {
                    "entrelinha": 1.16},
     "k-moldura":  {"marca": "texto", "titulo": 780, "centro": "marca", "arte": "moldura"},
     "l-textura":  {"marca": "texto", "titulo": 780, "centro": "marca", "arte": "textura"},
+
+    # Outros três tratamentos de arte, no mesmo texto, para comparar só a arte.
+    "m-fundo-roxo": {"marca": "texto", "titulo": 780, "centro": "marca", "arte": "fundo-roxo"},
+    "n-linhas":     {"marca": "texto", "titulo": 740, "centro": "marca", "arte": "linhas"},
+    "o-canto":      {"marca": "texto", "titulo": 780, "centro": "marca", "arte": "canto"},
+
+    # Os outros textos, cada um na arte que melhor cai nele.
+    "p-tres-grifo":    {"marca": "texto", "titulo": 780, "centro": "marca",
+                        "arte": "grifo", "texto": "tres"},
+    "q-volta-tarja":   {"marca": "texto", "titulo": 860, "centro": "marca",
+                        "arte": "tarja", "texto": "volta", "entrelinha": 1.16},
+    "r-quanto-linhas": {"marca": "texto", "titulo": 740, "centro": "marca",
+                        "arte": "linhas", "texto": "quanto"},
 }
 
 # A faixa é posicionada por fora do fluxo, então não empurra nada: o título subiria por
@@ -114,12 +153,13 @@ def _titulo(cfg: dict) -> str:
     roxa deixa os dois no mesmo tom de escuridão e a palavra some. É como o `.mark` do
     site funciona - fundo âmbar, texto em ink.
     """
+    texto, _ = TEXTOS[cfg.get("texto", "como")]
     arte = cfg.get("arte", "")
     if arte == "grifo":
-        return TITULO.replace('class="grifo"', 'class="grifo-mark"')
+        return texto.replace('class="grifo"', 'class="grifo-mark"')
     if arte == "tarja":
-        return TITULO.replace('class="grifo"', 'class="grifo-tarja"')
-    return TITULO
+        return texto.replace('class="grifo"', 'class="grifo-tarja"')
+    return texto
 
 
 def _marca(cfg: dict) -> str:
@@ -131,7 +171,8 @@ def _marca(cfg: dict) -> str:
 
 
 def _rodape(cfg: dict) -> str:
-    apoio = f'<div class="chamada">{CHAMADA}</div><div class="regua"></div>'
+    _, chamada = TEXTOS[cfg.get("texto", "como")]
+    apoio = f'<div class="chamada">{chamada}</div><div class="regua"></div>'
     if cfg["marca"] == "assinatura":
         # Aqui a marca fecha a composição: é ela a assinatura, no lugar de só uma régua.
         return f'<div class="rodape">{apoio}<div class="assinatura">{MARCA}</div></div>'
@@ -147,6 +188,8 @@ def _arte(cfg: dict) -> str:
         # Um caractere da própria fonte, não um ícone: o "%" em corpo enorme, bem claro,
         # sangrando pela direita. Serve de textura e ainda diz do que a peça trata.
         return '<div class="textura">%</div>'
+    if arte == "canto":
+        return '<div class="canto"></div>'
     return ""
 
 
@@ -154,7 +197,9 @@ def _pagina(variante: str, corpo_titulo: int) -> str:
     cfg = VARIANTES[variante]
     # No formato de assinatura a marca sai do topo e vai para o pé.
     topo = "" if cfg["marca"] == "assinatura" else _marca(cfg)
-    classe_corpo = f'centro-{cfg["centro"]}' if cfg["centro"] else ""
+    classes = [f'centro-{cfg["centro"]}' if cfg["centro"] else "",
+               f'arte-{cfg["arte"]}' if cfg.get("arte") else ""]
+    classe_corpo = " ".join(c for c in classes if c)
     return f"""<html><head><style>
     @font-face {{ font-family:"Familjen"; src:url(data:font/woff2;base64,{FAMILJEN_B64}) format("woff2"); font-weight:400 700; }}
     * {{ box-sizing:border-box; margin:0; padding:0; }}
@@ -229,6 +274,32 @@ def _pagina(variante: str, corpo_titulo: int) -> str:
         position:absolute; left:40px; right:40px; top:{CORTE_FEED + 20}px;
         bottom:{CORTE_FEED + 20}px; border:3px solid rgba(109,40,217,0.22); border-radius:40px;
     }}
+    /* Fundo roxo cheio. Inverte a peça: no feed, entre capas claras, um bloco de cor
+       sólido é o que mais se destaca - e o roxo é a cor da marca, então destacar aqui é
+       assinar. A mancha lilás sai, porque sobre roxo ela vira sujeira. */
+    .arte-fundo-roxo {{
+        background:linear-gradient(165deg, {BRAND_DARK} 0%, {BRAND_PRIMARY} 62%, #5b21b6 100%);
+    }}
+    .arte-fundo-roxo .mancha {{ display:none; }}
+    .arte-fundo-roxo .marca, .arte-fundo-roxo #titulo {{ color:{LIGHT_BG}; }}
+    /* Âmbar e não lilás claro: sobre o roxo, um roxo mais claro fica no mesmo tom e a
+       palavra-chave some justamente onde ela precisa saltar. */
+    .arte-fundo-roxo .grifo {{ color:{HIGHLIGHT}; }}
+    .arte-fundo-roxo .chamada {{ color:rgba(255,255,255,0.72); }}
+    .arte-fundo-roxo .regua {{ background:{HIGHLIGHT}; }}
+    .arte-fundo-roxo .fio-topo {{ background:rgba(255,255,255,0.28); }}
+    /* Fios cercando o título: o bloco de texto vira um campo delimitado, como matéria
+       de revista. Estrutura sem desenhar nada. */
+    .arte-linhas #titulo {{
+        padding:56px 0; border-top:3px solid rgba(109,40,217,0.28);
+        border-bottom:3px solid rgba(109,40,217,0.28);
+    }}
+    /* Quarto de círculo sangrando pelo canto: a linguagem de mancha orgânica da marca,
+       em forma geométrica fechada. Fica atrás do texto e nunca encosta nele. */
+    .canto {{
+        position:absolute; top:-260px; right:-260px; width:760px; height:760px;
+        border-radius:50%; background:{BRAND_PRIMARY}; opacity:0.13;
+    }}
     .textura {{
         position:absolute; right:-140px; top:520px; font-size:980px; font-weight:700;
         line-height:0.8; color:{BRAND_PRIMARY}; opacity:0.07; letter-spacing:-0.06em;
@@ -244,6 +315,10 @@ def _pagina(variante: str, corpo_titulo: int) -> str:
         font-size:34px; font-weight:600; letter-spacing:0.18em;
         text-transform:uppercase; color:{MUTED}; line-height:1.5;
     }}
+    /* A linha de apoio é caixa alta, mas o nome da marca não acompanha: o wordmark é
+       sempre minúsculo (BRAND.md), e "CASH-B" é o mesmo erro que escrever "Cash-B".
+       O nowrap junto impede a quebra no hífen, que partiria o nome em duas linhas. */
+    .marca-inline {{ text-transform:none; white-space:nowrap; letter-spacing:-0.02em; }}
     .regua {{ margin-top:34px; width:150px; height:10px; border-radius:99px; background:{BRAND_PRIMARY}; }}
     .assinatura {{
         margin-top:56px; font-size:132px; font-weight:700;
