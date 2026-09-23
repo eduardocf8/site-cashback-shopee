@@ -45,11 +45,19 @@ LARGURA, ALTURA = 1080, 1920
 ESCALA = 2
 
 MARGEM = 72
-# Faixas da interface do Instagram: perfil em cima, nome e legenda sobre o vídeo embaixo.
-TOPO, BASE = 150, 300
-# Altura reservada ao título. O resto da área segura fica com o wordmark, a linha de
-# apoio e a régua.
-ALTURA_TITULO = 980
+
+# A capa aparece em três recortes diferentes, e o mais apertado que NÃO dá para escolher
+# é o do feed, em 4:5 - o Instagram tira 285px de cima e 285 de baixo do quadro 9:16.
+# (O da grade do perfil tem aba própria no editor, então esse é escolhido na mão.)
+# Nada que precise ser lido pode ficar fora da faixa que sobra: y 285 a 1635.
+#
+# As margens abaixo são maiores que essa faixa de propósito, com folga: 320 em cima
+# mantém o wordmark dentro do recorte do feed, e 320 embaixo deixa o rodapé acima tanto
+# do corte do feed quanto da barra de nome e legenda que o player escreve sobre o vídeo.
+CORTE_FEED = 285
+TOPO, BASE = 320, 320
+# Altura reservada ao título, dentro do que sobra entre as duas margens.
+ALTURA_TITULO = 900
 
 # "na Shopee?" vai travado: solto, o ajuste automático cresce até a preposição cair
 # sozinha numa linha, e "na" órfão no meio de um cartaz lê como erro de diagramação.
