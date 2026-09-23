@@ -1,22 +1,32 @@
-"""Capa de reel tipográfica: só texto, ocupando o quadro.
+"""Capa de reel tipográfica: só texto, ocupando o quadro. Quatro formatos.
 
 Alternativa à capa com foto (`gerar_capa_reel.py`), para reel em que ninguém aparece ou
 cujo quadro não rende uma boa capa.
 
 A peça é o título. Nasceu com um painel roxo e a moeda da marca no pé, e o dono do
 produto pediu para tirar os dois - sem eles, texto em corpo médio boiava num quadro
-vazio. Agora o título é dimensionado para preencher: wordmark no topo, título grande
-ocupando o miolo, linha de apoio e régua fechando embaixo.
+vazio, então o título passou a ser dimensionado para preencher.
+
+Os quatro formatos mudam só como a marca entra, que foi o ponto seguinte levantado: ela
+estava discreta demais. São alternativas para escolher, não evolução uma da outra.
+
+| Formato | A marca |
+|---|---|
+| `a-topo` | Wordmark grande no alto, à esquerda |
+| `b-pastilha` | Wordmark claro dentro de uma pastilha roxa |
+| `c-assinatura` | Título no alto e wordmark grande fechando o pé |
+| `d-faixa` | Faixa roxa sangrando no topo, wordmark claro dentro |
 
 **O corpo do título não é escrito na mão.** `_maior_corpo_que_cabe()` procura, por busca
 binária no navegador, o maior tamanho em que o texto ainda cabe na largura sem estourar
-e não passa da altura reservada. Número fixo obrigaria a reajustar à mão a cada troca de
-texto - e "Como ganhar cashback na Shopee?" e "3 formas de ganhar cashback" não cabem no
-mesmo corpo. Trocar TITULO e rodar de novo basta.
+e não passa da altura reservada - que muda de um formato para o outro, conforme o espaço
+que a marca ocupa. Trocar TITULO e rodar de novo basta.
 
-A mancha lilás do pé é degradê radial, sem borda definida: um círculo, por mais claro
-que fosse, lia como elemento gráfico cortado ao meio - e o pedido foi tirar os elementos
-gráficos, não trocá-los de lugar. Sem borda, vira temperatura de fundo.
+**Área segura.** A capa aparece em três recortes, e o mais apertado que NÃO dá para
+escolher é o do feed, em 4:5: o Instagram tira 285px de cima e 285 de baixo do quadro
+9:16. (O da grade do perfil tem aba própria no editor.) Nada que precise ser lido pode
+sair da faixa y 285-1635 - as margens de 320 dão folga sobre ela. A faixa roxa do
+formato `d` sangra de propósito: o que precisa estar dentro é o wordmark, não a caixa.
 
 O nome "Shopee" aparece como texto, e o logotipo dela não aparece: a cash-b é afiliada
 independente (é o que o rodapé do site declara), e arte carregando a marca da Shopee
@@ -30,6 +40,7 @@ from pathlib import Path
 from playwright.sync_api import sync_playwright
 
 from carrossel_base import (
+    BRAND_DARK,
     BRAND_PRIMARY,
     DARK_BG,
     FAMILJEN_B64,
@@ -43,21 +54,9 @@ OUT_DIR = Path(__file__).resolve().parent / "capa-reel"
 
 LARGURA, ALTURA = 1080, 1920
 ESCALA = 2
-
 MARGEM = 72
-
-# A capa aparece em três recortes diferentes, e o mais apertado que NÃO dá para escolher
-# é o do feed, em 4:5 - o Instagram tira 285px de cima e 285 de baixo do quadro 9:16.
-# (O da grade do perfil tem aba própria no editor, então esse é escolhido na mão.)
-# Nada que precise ser lido pode ficar fora da faixa que sobra: y 285 a 1635.
-#
-# As margens abaixo são maiores que essa faixa de propósito, com folga: 320 em cima
-# mantém o wordmark dentro do recorte do feed, e 320 embaixo deixa o rodapé acima tanto
-# do corte do feed quanto da barra de nome e legenda que o player escreve sobre o vídeo.
-CORTE_FEED = 285
-TOPO, BASE = 320, 320
-# Altura reservada ao título, dentro do que sobra entre as duas margens.
-ALTURA_TITULO = 900
+CORTE_FEED = 285          # o que o recorte 4:5 do feed tira de cada ponta
+TOPO, BASE = 320, 320     # margens com folga sobre esse corte
 
 # "na Shopee?" vai travado: solto, o ajuste automático cresce até a preposição cair
 # sozinha numa linha, e "na" órfão no meio de um cartaz lê como erro de diagramação.
@@ -68,8 +67,39 @@ TITULO = (
 )
 CHAMADA = "é mais fácil do que você imagina"
 
+ALTURA_FAIXA = 500
+# A faixa é posicionada por fora do fluxo, então não empurra nada: o título subiria por
+# baixo dela e colidiria com o wordmark. Este formato começa o conteúdo abaixo da faixa.
+TOPO_POR_VARIANTE = {"d-faixa": ALTURA_FAIXA + 60}
 
-def _pagina(corpo_titulo: int) -> str:
+# Altura reservada ao título em cada formato - o que sobra depois do espaço da marca.
+VARIANTES = {
+    "a-topo": 820,
+    "b-pastilha": 820,
+    "c-assinatura": 760,
+    "d-faixa": 700,
+}
+
+
+def _marca(variante: str) -> str:
+    if variante == "b-pastilha":
+        return f'<div class="pastilha">{MARCA}</div>'
+    if variante == "d-faixa":
+        return f'<div class="faixa"><span>{MARCA}</span></div>'
+    return f'<div class="marca">{MARCA}</div>'
+
+
+def _rodape(variante: str) -> str:
+    apoio = f'<div class="chamada">{CHAMADA}</div><div class="regua"></div>'
+    if variante == "c-assinatura":
+        # Aqui a marca fecha a composição: é ela a assinatura, no lugar de só uma régua.
+        return f'<div class="rodape">{apoio}<div class="assinatura">{MARCA}</div></div>'
+    return f'<div class="rodape">{apoio}</div>'
+
+
+def _pagina(variante: str, corpo_titulo: int) -> str:
+    # No formato de assinatura a marca sai do topo e vai para o pé.
+    topo = "" if variante == "c-assinatura" else _marca(variante)
     return f"""<html><head><style>
     @font-face {{ font-family:"Familjen"; src:url(data:font/woff2;base64,{FAMILJEN_B64}) format("woff2"); font-weight:400 700; }}
     * {{ box-sizing:border-box; margin:0; padding:0; }}
@@ -79,21 +109,40 @@ def _pagina(corpo_titulo: int) -> str:
     }}
     body {{
         position:relative; display:flex; flex-direction:column;
-        justify-content:space-between; padding:{TOPO}px {MARGEM}px {BASE}px;
+        justify-content:space-between;
+        padding:{TOPO_POR_VARIANTE.get(variante, TOPO)}px {MARGEM}px {BASE}px;
     }}
+    /* Degradê radial, não um círculo: forma de borda definida lia como elemento gráfico
+       cortado ao meio, e o pedido foi tirar os elementos gráficos. Sem borda, vira
+       temperatura de fundo - segura a metade de baixo sem colocar nada ali. */
     .mancha {{
         position:absolute; inset:0;
         background:radial-gradient(900px 760px at 12% 104%,
             rgba(167,139,250,0.40) 0%, rgba(167,139,250,0.14) 45%, rgba(167,139,250,0) 72%);
     }}
     .marca {{
-        position:relative; font-size:78px; font-weight:700;
-        letter-spacing:-0.04em; color:{BRAND_PRIMARY};
+        position:relative; font-size:124px; font-weight:700;
+        letter-spacing:-0.045em; color:{BRAND_PRIMARY}; line-height:1;
     }}
-    /* Entrelinha abaixo de 1: a caixa de linha da Familjen reserva bastante espaço
-       acima e abaixo da tinta, e em corpo de cartaz isso abre um vão entre as linhas
-       maior que a altura das letras. Apertar para 0.94 junta o bloco sem encostar
-       ascendente em descendente. */
+    .pastilha {{
+        position:relative; align-self:flex-start;
+        padding:26px 52px; border-radius:999px; background:{BRAND_PRIMARY};
+        font-size:82px; font-weight:700; letter-spacing:-0.04em; color:{LIGHT_BG}; line-height:1.1;
+    }}
+    /* Sangra nas três bordas de propósito: faixa com margem lateral vira um retângulo
+       pousado na página, e o que se quer é que ela seja o topo da página. O corte de
+       285px do feed come parte dela sem prejuízo - o wordmark está bem abaixo disso. */
+    .faixa {{
+        position:absolute; top:0; left:0; right:0; height:{ALTURA_FAIXA}px;
+        background:linear-gradient(160deg, {BRAND_DARK} 0%, {BRAND_PRIMARY} 100%);
+        display:flex; align-items:flex-end; padding:0 {MARGEM}px 54px;
+    }}
+    .faixa span {{
+        font-size:104px; font-weight:700; letter-spacing:-0.045em; color:{LIGHT_BG}; line-height:1;
+    }}
+    /* Entrelinha abaixo de 1: a caixa de linha da Familjen reserva bastante espaço acima
+       e abaixo da tinta, e em corpo de cartaz isso abre um vão entre as linhas maior que
+       a altura das letras. */
     #titulo {{
         position:relative; font-size:{corpo_titulo}px; font-weight:700;
         line-height:0.94; letter-spacing:-0.045em; color:{DARK_BG};
@@ -106,32 +155,34 @@ def _pagina(corpo_titulo: int) -> str:
         text-transform:uppercase; color:{MUTED}; line-height:1.5;
     }}
     .regua {{ margin-top:34px; width:150px; height:10px; border-radius:99px; background:{BRAND_PRIMARY}; }}
+    .assinatura {{
+        margin-top:56px; font-size:132px; font-weight:700;
+        letter-spacing:-0.045em; color:{BRAND_PRIMARY}; line-height:1;
+    }}
     </style></head><body>
         <div class="mancha"></div>
-        <div class="marca">{MARCA}</div>
+        {topo}
         <div id="titulo">{TITULO}</div>
-        <div class="rodape">
-            <div class="chamada">{CHAMADA}</div>
-            <div class="regua"></div>
-        </div>
+        {_rodape(variante)}
     </body></html>"""
 
 
-def _maior_corpo_que_cabe(pagina, minimo=80, maximo=300) -> int:
+def _maior_corpo_que_cabe(pagina, variante: str, minimo=80, maximo=300) -> int:
     """Busca binária pelo maior corpo de fonte que ainda cabe.
 
-    Duas restrições. A largura é a que quebra a peça: uma palavra mais larga que a
-    coluna vaza para fora do quadro e sai cortada no arquivo. A altura é o limite do
-    espaço reservado ao título, para não invadir o rodapé.
+    Duas restrições. A largura é a que quebra a peça: uma palavra mais larga que a coluna
+    vaza para fora do quadro e sai cortada no arquivo. A altura é o limite do espaço
+    reservado ao título no formato, para não invadir a marca nem o rodapé.
 
-    Medir no navegador em vez de estimar por contagem de caracteres: a largura real
-    depende do desenho de cada letra e do letter-spacing negativo, e "Shopee?" e
-    "cashback" têm o mesmo número de letras com larguras bem diferentes.
+    Medido no navegador em vez de estimado por contagem de caracteres: a largura real
+    depende do desenho de cada letra e do letter-spacing negativo - "Shopee?" e
+    "cashback" têm o mesmo número de letras e larguras bem diferentes.
     """
     largura_coluna = LARGURA - MARGEM * 2
+    altura_alvo = VARIANTES[variante]
 
     def cabe(corpo: int) -> bool:
-        pagina.set_content(_pagina(corpo))
+        pagina.set_content(_pagina(variante, corpo))
         return pagina.evaluate(
             """([largura, altura]) => {
                 const el = document.getElementById("titulo");
@@ -143,7 +194,7 @@ def _maior_corpo_que_cabe(pagina, minimo=80, maximo=300) -> int:
                 }
                 return maior <= largura && el.offsetHeight <= altura;
             }""",
-            [largura_coluna, ALTURA_TITULO],
+            [largura_coluna, altura_alvo],
         )
 
     while minimo < maximo:
@@ -157,19 +208,19 @@ def _maior_corpo_que_cabe(pagina, minimo=80, maximo=300) -> int:
 
 def gerar():
     OUT_DIR.mkdir(parents=True, exist_ok=True)
-    destino = OUT_DIR / "capa-tipografica.png"
     with sync_playwright() as p:
         navegador = p.chromium.launch(executable_path="/opt/pw-browsers/chromium")
         pagina = navegador.new_page(
             viewport={"width": LARGURA, "height": ALTURA}, device_scale_factor=ESCALA
         )
-        corpo = _maior_corpo_que_cabe(pagina)
-        pagina.set_content(_pagina(corpo))
-        pagina.wait_for_timeout(300)
-        pagina.screenshot(path=str(destino))
+        for variante in VARIANTES:
+            corpo = _maior_corpo_que_cabe(pagina, variante)
+            pagina.set_content(_pagina(variante, corpo))
+            pagina.wait_for_timeout(300)
+            destino = OUT_DIR / f"capa-{variante}.png"
+            pagina.screenshot(path=str(destino))
+            print(f"gerado: {destino.relative_to(REPO_ROOT)} (título a {corpo}px)")
         navegador.close()
-    print("gerado:", destino.relative_to(REPO_ROOT), f"({LARGURA*ESCALA}x{ALTURA*ESCALA})")
-    print(f"corpo do título escolhido: {corpo}px")
 
 
 if __name__ == "__main__":
