@@ -1480,6 +1480,38 @@ mudar isso), precisava rolar bastante só pra alcançar essa barra.
 - [x] `pedidos/admin.py::PedidoAdmin.Media` carrega os dois arquivos - fica
       restrito a essa página (não mexe em outras telas do admin).
 
+## Fase 50 — Envio de comunicação por e-mail no admin ✅
+
+Usuário pediu uma página no admin pra mandar e-mail pra usuários cadastrados,
+com filtros (quem já fez pedido, quem ainda não fez, etc).
+
+- [x] **`accounts/comunicacoes.py`** (novo) - `obter_destinatarios(filtro)`
+      com 7 filtros (todos, com/sem pedidos, e-mail verificado/não
+      verificado, já sacou/nunca sacou) e `enviar_comunicacao(...)`, que manda
+      tudo via **BCC em lotes de 50** (bem abaixo do limite de 99
+      destinatários por chamada da API do Brevo) numa única requisição
+      síncrona. Decisão importante: **não** manda 1 e-mail por destinatário
+      em série - o site roda com 1 worker gunicorn só (ver README.md), então
+      um loop de dezenas/centenas de chamadas HTTP travaria o site inteiro
+      pros outros visitantes até terminar. BCC deixa a API mandar vários
+      destinatários numa única chamada, então fica rápido mesmo com a base
+      cheia de usuários.
+- [x] **`ComunicacaoEmail`** (novo model em `accounts/models.py`) - histórico
+      só (assunto, corpo, filtro, total de destinatários/enviados, quem
+      mandou, quando) - criado pelo próprio envio, sem tela de
+      adicionar/editar direto no admin.
+- [x] **Tela de composição** (`UserAdmin.comunicacao_view`,
+      `templates/admin/comunicacao_email.html`) - assunto, corpo (texto
+      simples, mesmo formato dos outros e-mails do site) e select de filtro
+      com contagem de destinatários ao vivo (endpoint JSON separado,
+      `comunicacao_contar_view`) antes de confirmar o envio. Confirmação via
+      `confirm()` no JS mostrando quantas pessoas vão receber. Link
+      "✉️ Enviar comunicação por e-mail" adicionado na home do admin (mesmo
+      padrão do link de analytics).
+- [x] Testes cobrindo os 7 filtros, o envio em lotes (incluindo lote que
+      falha não travar os outros nem contar errado) e a view (staff só,
+      contagem, envio, validação de campos vazios).
+
 ---
 
 Pra continuar esse roadmap numa conversa nova, basta apontar esse arquivo

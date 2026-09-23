@@ -131,3 +131,44 @@ class ConfiguracaoIndicacao(models.Model):
     def esta_ativa(cls) -> bool:
         config = cls.objects.filter(pk=1).first()
         return config.ativa if config else True
+
+
+class ComunicacaoEmail(models.Model):
+    """Registro de uma comunicação em massa mandada pelo admin (ver
+    accounts/comunicacoes.py) - histórico só, criado pelo envio em si, nunca
+    editado depois."""
+
+    FILTRO_TODOS = "todos"
+    FILTRO_COM_PEDIDOS = "com_pedidos"
+    FILTRO_SEM_PEDIDOS = "sem_pedidos"
+    FILTRO_EMAIL_VERIFICADO = "email_verificado"
+    FILTRO_EMAIL_NAO_VERIFICADO = "email_nao_verificado"
+    FILTRO_JA_SACOU = "ja_sacou"
+    FILTRO_NUNCA_SACOU = "nunca_sacou"
+    FILTRO_CHOICES = [
+        (FILTRO_TODOS, "Todos os usuários cadastrados"),
+        (FILTRO_COM_PEDIDOS, "Já fizeram pelo menos 1 pedido"),
+        (FILTRO_SEM_PEDIDOS, "Ainda não fizeram nenhum pedido"),
+        (FILTRO_EMAIL_VERIFICADO, "E-mail verificado"),
+        (FILTRO_EMAIL_NAO_VERIFICADO, "E-mail ainda não verificado"),
+        (FILTRO_JA_SACOU, "Já sacaram pelo menos uma vez"),
+        (FILTRO_NUNCA_SACOU, "Nunca sacaram"),
+    ]
+
+    assunto = models.CharField("Assunto", max_length=200)
+    corpo = models.TextField("Corpo do e-mail", help_text="Texto simples, sem HTML.")
+    filtro = models.CharField("Filtro de destinatários", max_length=30, choices=FILTRO_CHOICES)
+    total_destinatarios = models.PositiveIntegerField("Total de destinatários", default=0)
+    total_enviados = models.PositiveIntegerField("Total enviados com sucesso", default=0)
+    enviado_por = models.ForeignKey(
+        settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, blank=True, related_name="+"
+    )
+    enviado_em = models.DateTimeField("Enviado em", auto_now_add=True)
+
+    class Meta:
+        verbose_name = "Comunicação por e-mail"
+        verbose_name_plural = "Comunicações por e-mail"
+        ordering = ["-enviado_em"]
+
+    def __str__(self):
+        return f"{self.assunto} ({self.enviado_em:%d/%m/%Y %H:%M})"

@@ -1,0 +1,141 @@
+{% extends "admin/base_site.html" %}
+
+{% block extrastyle %}
+{{ block.super }}
+<style>
+    .comunicacao-form {
+        max-width: 640px;
+        margin: 0 0 32px;
+        padding: 16px;
+        border: 1px solid var(--border-color);
+        border-radius: 4px;
+        background: var(--darkened-bg);
+    }
+    .comunicacao-form .form-row {
+        margin-bottom: 16px;
+    }
+    .comunicacao-form label {
+        display: block;
+        font-size: 12px;
+        font-weight: 600;
+        margin-bottom: 4px;
+    }
+    .comunicacao-form input[type="text"],
+    .comunicacao-form select,
+    .comunicacao-form textarea {
+        width: 100%;
+        padding: 8px;
+        box-sizing: border-box;
+        font-family: inherit;
+        font-size: 13px;
+    }
+    .comunicacao-form textarea {
+        min-height: 220px;
+        resize: vertical;
+    }
+    .comunicacao-form .ajuda {
+        color: var(--body-quiet-color);
+        font-size: 11px;
+        margin-top: 4px;
+    }
+    .comunicacao-contagem {
+        font-weight: 600;
+        margin: 4px 0 16px;
+    }
+    .comunicacao-historico table {
+        width: 100%;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<form class="comunicacao-form" method="post" id="form-comunicacao">
+    {% csrf_token %}
+    <div class="form-row">
+        <label for="id_assunto">Assunto</label>
+        <input type="text" name="assunto" id="id_assunto" maxlength="200" required>
+    </div>
+    <div class="form-row">
+        <label for="id_filtro">Destinatários</label>
+        <select name="filtro" id="id_filtro">
+            {% for chave, rotulo in filtros.items %}
+                <option value="{{ chave }}">{{ rotulo }}</option>
+            {% endfor %}
+        </select>
+        <p class="comunicacao-contagem" id="comunicacao-contagem">Contando...</p>
+    </div>
+    <div class="form-row">
+        <label for="id_corpo">Corpo do e-mail</label>
+        <textarea name="corpo" id="id_corpo" required></textarea>
+        <p class="ajuda">Texto simples, sem formatação/HTML - mesmo formato dos outros e-mails do site.</p>
+    </div>
+    <input type="submit" class="button default" value="Enviar">
+</form>
+
+<div class="comunicacao-historico">
+    <h2>Últimas comunicações enviadas</h2>
+    {% if historico %}
+        <table>
+            <thead>
+                <tr>
+                    <th>Assunto</th>
+                    <th>Filtro</th>
+                    <th>Destinatários</th>
+                    <th>Enviados</th>
+                    <th>Por</th>
+                    <th>Quando</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for comunicacao in historico %}
+                    <tr>
+                        <td>{{ comunicacao.assunto }}</td>
+                        <td>{{ comunicacao.get_filtro_display }}</td>
+                        <td>{{ comunicacao.total_destinatarios }}</td>
+                        <td>{{ comunicacao.total_enviados }}</td>
+                        <td>{{ comunicacao.enviado_por|default:"-" }}</td>
+                        <td>{{ comunicacao.enviado_em|date:"d/m/Y H:i" }}</td>
+                    </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    {% else %}
+        <p class="help">Nenhuma comunicação enviada ainda.</p>
+    {% endif %}
+</div>
+
+<script>
+(function () {
+    var select = document.getElementById("id_filtro");
+    var contagem = document.getElementById("comunicacao-contagem");
+    var form = document.getElementById("form-comunicacao");
+    var contarUrl = "{% url 'admin:accounts_comunicacao_contar' %}";
+
+    function atualizarContagem() {
+        contagem.textContent = "Contando...";
+        fetch(contarUrl + "?filtro=" + encodeURIComponent(select.value))
+            .then(function (resposta) { return resposta.json(); })
+            .then(function (dados) {
+                contagem.textContent = dados.total + " destinatário(s)";
+            })
+            .catch(function () {
+                contagem.textContent = "Não consegui contar agora.";
+            });
+    }
+
+    select.addEventListener("change", atualizarContagem);
+    atualizarContagem();
+
+    form.addEventListener("submit", function (evento) {
+        var numero = parseInt(contagem.textContent, 10);
+        var confirmado = confirm(
+            "Confirma o envio desse e-mail para " + (isNaN(numero) ? "os" : numero) +
+            " destinatário(s)? Essa ação não pode ser desfeita."
+        );
+        if (!confirmado) {
+            evento.preventDefault();
+        }
+    });
+})();
+</script>
+{% endblock %}

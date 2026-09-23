@@ -9,7 +9,8 @@ from django.urls import reverse
 from pedidos.models import Pedido
 from saques.models import Saque
 
-from .models import ConfiguracaoIndicacao, Indicacao, PushSubscription, User
+from .comunicacoes import enviar_comunicacao, obter_destinatarios
+from .models import ComunicacaoEmail, ConfiguracaoIndicacao, Indicacao, PushSubscription, User
 from .push import enviar_push
 
 
@@ -432,3 +433,181 @@ class AcaoDeTesteDoPushNoAdminTests(TestCase):
         )
 
         self.assertContains(resposta, "Não saiu nenhuma notificação")
+
+
+class ObterDestinatariosTests(TestCase):
+    def setUp(self):
+        self.sem_pedido = User.objects.create_user(
+            username="sem_pedido", password="senha123", cpf="14783246947", email="sem_pedido@example.com"
+        )
+        self.com_pedido = User.objects.create_user(
+            username="com_pedido", password="senha123", cpf="39053344705", email="com_pedido@example.com"
+        )
+        Pedido.objects.create(
+            order_id="PED001", conversion_id="conv1", status_shopee_bruto="UNPAID", usuario=self.com_pedido
+        )
+        self.sacou = User.objects.create_user(
+            username="sacou", password="senha123", cpf="11144477735", email="sacou@example.com"
+        )
+        Saque.objects.create(usuario=self.sacou, valor=Decimal("20"), chave_pix="x", tipo_chave_pix="EMAIL")
+        self.verificado = User.objects.create_user(
+            username="verificado",
+            password="senha123",
+            cpf="52998224725",
+            email="verificado@example.com",
+            email_verificado=True,
+        )
+        self.sem_email = User.objects.create_user(username="sem_email", password="senha123", cpf="93541134780")
+
+    def test_todos_exclui_quem_nao_tem_email(self):
+        usuarios = obter_destinatarios("todos")
+        self.assertNotIn(self.sem_email, usuarios)
+        self.assertIn(self.com_pedido, usuarios)
+
+    def test_com_pedidos_so_traz_quem_tem_pelo_menos_um(self):
+        usuarios = obter_destinatarios(ComunicacaoEmail.FILTRO_COM_PEDIDOS)
+        self.assertIn(self.com_pedido, usuarios)
+        self.assertNotIn(self.sem_pedido, usuarios)
+
+    def test_sem_pedidos_e_o_complemento(self):
+        usuarios = obter_destinatarios(ComunicacaoEmail.FILTRO_SEM_PEDIDOS)
+        self.assertIn(self.sem_pedido, usuarios)
+        self.assertNotIn(self.com_pedido, usuarios)
+
+    def test_ja_sacou_e_nunca_sacou(self):
+        ja_sacou = obter_destinatarios(ComunicacaoEmail.FILTRO_JA_SACOU)
+        nunca_sacou = obter_destinatarios(ComunicacaoEmail.FILTRO_NUNCA_SACOU)
+        self.assertIn(self.sacou, ja_sacou)
+        self.assertNotIn(self.sacou, nunca_sacou)
+        self.assertIn(self.sem_pedido, nunca_sacou)
+
+    def test_email_verificado_e_nao_verificado(self):
+        verificados = obter_destinatarios(ComunicacaoEmail.FILTRO_EMAIL_VERIFICADO)
+        nao_verificados = obter_destinatarios(ComunicacaoEmail.FILTRO_EMAIL_NAO_VERIFICADO)
+        self.assertIn(self.verificado, verificados)
+        self.assertNotIn(self.verificado, nao_verificados)
+        self.assertIn(self.sem_pedido, nao_verificados)
+
+    def test_filtro_invalido_nao_quebra_view_de_contagem(self):
+        # a view de contagem passa direto o que vier no GET - um filtro desconhecido
+        # deveria cair no "todos" em vez de derrubar a página com erro.
+        usuarios = obter_destinatarios("isso-nao-existe")
+        self.assertIn(self.com_pedido, usuarios)
+
+
+class EnviarComunicacaoTests(TestCase):
+    def setUp(self):
+        self.staff = User.objects.create_user(
+            username="staff", password="senha123", cpf="39053344705", is_staff=True, is_superuser=True
+        )
+        for i in range(3):
+            User.objects.create_user(
+                username=f"usuario{i}", password="senha123", cpf=f"1111111111{i}"[:11], email=f"u{i}@example.com"
+            )
+
+    @patch("accounts.comunicacoes.EmailMessage")
+    def test_manda_em_lotes_via_bcc_e_nao_estoura_o_lote_maximo(self, MockEmailMessage):
+        mock_instancia = Mock()
+        MockEmailMessage.return_value = mock_instancia
+
+        import accounts.comunicacoes as comunicacoes_module
+
+        tamanho_original = comunicacoes_module.TAMANHO_LOTE
+        comunicacoes_module.TAMANHO_LOTE = 2
+        try:
+            comunicacao = enviar_comunicacao(
+                assunto="Assunto de teste", corpo="Corpo de teste", filtro="todos", enviado_por=self.staff
+            )
+        finally:
+            comunicacoes_module.TAMANHO_LOTE = tamanho_original
+
+        # 3 destinatários, lote de 2 -> 2 chamadas (uma com 2, outra com 1)
+        self.assertEqual(MockEmailMessage.call_count, 2)
+        self.assertEqual(mock_instancia.send.call_count, 2)
+        self.assertEqual(comunicacao.total_destinatarios, 3)
+        self.assertEqual(comunicacao.total_enviados, 3)
+        self.assertEqual(comunicacao.enviado_por, self.staff)
+
+    @patch("accounts.comunicacoes.EmailMessage")
+    def test_falha_num_lote_nao_impede_os_outros_e_conta_certo(self, MockEmailMessage):
+        primeiro_lote = Mock()
+        primeiro_lote.send.side_effect = Exception("Brevo fora do ar")
+        segundo_lote = Mock()
+        MockEmailMessage.side_effect = [primeiro_lote, segundo_lote]
+
+        import accounts.comunicacoes as comunicacoes_module
+
+        tamanho_original = comunicacoes_module.TAMANHO_LOTE
+        comunicacoes_module.TAMANHO_LOTE = 2
+        try:
+            comunicacao = enviar_comunicacao(
+                assunto="Assunto", corpo="Corpo", filtro="todos", enviado_por=self.staff
+            )
+        finally:
+            comunicacoes_module.TAMANHO_LOTE = tamanho_original
+
+        self.assertEqual(comunicacao.total_destinatarios, 3)
+        self.assertEqual(comunicacao.total_enviados, 1)  # só o segundo lote (1 destinatário) foi contado
+
+    def test_filtro_sem_ninguem_nao_manda_nada(self):
+        comunicacao = enviar_comunicacao(
+            assunto="Assunto",
+            corpo="Corpo",
+            filtro=ComunicacaoEmail.FILTRO_JA_SACOU,
+            enviado_por=self.staff,
+        )
+        self.assertEqual(comunicacao.total_destinatarios, 0)
+        self.assertEqual(comunicacao.total_enviados, 0)
+
+
+class ComunicacaoViewNoAdminTests(TestCase):
+    def setUp(self):
+        self.staff = User.objects.create_user(
+            username="staff", password="senha123", cpf="39053344705", is_staff=True, is_superuser=True
+        )
+        User.objects.create_user(username="ana", password="senha123", cpf="14783246947", email="ana@example.com")
+        self.client.force_login(self.staff)
+
+    def test_pagina_carrega_com_o_formulario(self):
+        resposta = self.client.get(reverse("admin:accounts_comunicacao"))
+        self.assertEqual(resposta.status_code, 200)
+        self.assertContains(resposta, "Enviar comunicação por e-mail")
+
+    def test_endpoint_de_contagem_responde_json(self):
+        resposta = self.client.get(reverse("admin:accounts_comunicacao_contar"), {"filtro": "todos"})
+        self.assertEqual(resposta.status_code, 200)
+        self.assertEqual(json.loads(resposta.content)["total"], 1)
+
+    @patch("accounts.admin.enviar_comunicacao")
+    def test_post_valido_chama_envio_e_redireciona(self, mock_enviar):
+        mock_enviar.return_value = ComunicacaoEmail(
+            assunto="Oi", corpo="Corpo", filtro="todos", total_destinatarios=1, total_enviados=1
+        )
+
+        resposta = self.client.post(
+            reverse("admin:accounts_comunicacao"),
+            {"assunto": "Oi", "corpo": "Corpo do e-mail", "filtro": "todos"},
+            follow=True,
+        )
+
+        mock_enviar.assert_called_once()
+        self.assertContains(resposta, "enviado com sucesso")
+
+    def test_post_sem_assunto_nao_manda_nada(self):
+        with patch("accounts.admin.enviar_comunicacao") as mock_enviar:
+            resposta = self.client.post(
+                reverse("admin:accounts_comunicacao"),
+                {"assunto": "", "corpo": "Corpo", "filtro": "todos"},
+                follow=True,
+            )
+        mock_enviar.assert_not_called()
+        self.assertContains(resposta, "Preencha o assunto")
+
+    def test_usuario_nao_staff_nao_acessa(self):
+        comum = User.objects.create_user(username="comum", password="senha123", cpf="93541134780")
+        self.client.logout()
+        self.client.force_login(comum)
+
+        resposta = self.client.get(reverse("admin:accounts_comunicacao"))
+
+        self.assertNotEqual(resposta.status_code, 200)
