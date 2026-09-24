@@ -11,6 +11,7 @@ from pedidos.models import Pedido
 from saques.models import Saque
 
 from .comunicacoes import enviar_comunicacao, obter_destinatarios, renderizar_corpo_html
+from .forms import EditarPerfilForm
 from .models import ComunicacaoEmail, ConfiguracaoIndicacao, Indicacao, PushSubscription, User
 from .push import enviar_push
 
@@ -495,6 +496,26 @@ class ObterDestinatariosTests(TestCase):
         usuarios = obter_destinatarios("isso-nao-existe")
         self.assertIn(self.com_pedido, usuarios)
 
+    def test_anuncio_nao_manda_pra_quem_desligou_marketing(self):
+        self.com_pedido.aceita_email_marketing = False
+        self.com_pedido.save(update_fields=["aceita_email_marketing"])
+
+        anuncio = obter_destinatarios("todos", tipo=ComunicacaoEmail.TIPO_ANUNCIO)
+        geral = obter_destinatarios("todos", tipo=ComunicacaoEmail.TIPO_GERAL)
+
+        self.assertNotIn(self.com_pedido, anuncio)
+        self.assertIn(self.com_pedido, geral)
+
+    def test_tipo_padrao_e_anuncio(self):
+        # chamar sem passar tipo (comportamento antigo, antes desse campo existir)
+        # deveria continuar respeitando o opt-out, não mandar pra todo mundo sem filtro.
+        self.com_pedido.aceita_email_marketing = False
+        self.com_pedido.save(update_fields=["aceita_email_marketing"])
+
+        usuarios = obter_destinatarios("todos")
+
+        self.assertNotIn(self.com_pedido, usuarios)
+
 
 class EnviarComunicacaoTests(TestCase):
     def setUp(self):
@@ -759,3 +780,152 @@ class ComunicacaoBuscarOfertasViewTests(TestCase):
         )
         dados = json.loads(resposta.content)
         self.assertEqual(dados["resultados"], [])
+
+
+class RodapeDescadastroTests(TestCase):
+    def setUp(self):
+        self.staff = User.objects.create_user(
+            username="staff", password="senha123", cpf="39053344705", is_staff=True, is_superuser=True
+        )
+        User.objects.create_user(username="ana", password="senha123", cpf="14783246947", email="ana@example.com")
+
+    @patch("accounts.comunicacoes.EmailMultiAlternatives")
+    def test_anuncio_inclui_link_de_descadastro_no_texto(self, MockEmail):
+        mock_instancia = Mock()
+        MockEmail.return_value = mock_instancia
+        request = RequestFactory().get("/admin/accounts/user/comunicacoes/")
+
+        enviar_comunicacao(
+            assunto="Oferta",
+            corpo="Corpo do anúncio",
+            filtro="todos",
+            tipo=ComunicacaoEmail.TIPO_ANUNCIO,
+            enviado_por=self.staff,
+            request=request,
+        )
+
+        corpo_enviado = MockEmail.call_args.kwargs["body"]
+        self.assertIn("Corpo do anúncio", corpo_enviado)
+        self.assertIn(reverse("preferencias_email"), corpo_enviado)
+        self.assertIn("Não quer mais receber", corpo_enviado)
+
+    @patch("accounts.comunicacoes.EmailMultiAlternatives")
+    def test_comunicacao_geral_nao_inclui_link_de_descadastro(self, MockEmail):
+        mock_instancia = Mock()
+        MockEmail.return_value = mock_instancia
+        request = RequestFactory().get("/admin/accounts/user/comunicacoes/")
+
+        enviar_comunicacao(
+            assunto="Aviso",
+            corpo="Corpo do aviso geral",
+            filtro="todos",
+            tipo=ComunicacaoEmail.TIPO_GERAL,
+            enviado_por=self.staff,
+            request=request,
+        )
+
+        corpo_enviado = MockEmail.call_args.kwargs["body"]
+        self.assertEqual(corpo_enviado, "Corpo do aviso geral")
+        self.assertNotIn(reverse("preferencias_email"), corpo_enviado)
+
+    @patch("accounts.comunicacoes.EmailMultiAlternatives")
+    def test_anuncio_com_ofertas_inclui_link_no_html_tambem(self, MockEmail):
+        mock_instancia = Mock()
+        MockEmail.return_value = mock_instancia
+        oferta = Oferta.objects.create(
+            item_id=1, nome="Produto", nome_curto="Produto Curto", categoria_id=1,
+            product_link="https://shopee.com.br/produto-1-i.1.1", imagem_url="https://exemplo.com/p.jpg",
+            preco_min=Decimal("50"), percentual_comissao=Decimal("0.05"),
+        )
+        request = RequestFactory().get("/admin/accounts/user/comunicacoes/")
+
+        enviar_comunicacao(
+            assunto="Oferta",
+            corpo="Confira",
+            filtro="todos",
+            tipo=ComunicacaoEmail.TIPO_ANUNCIO,
+            ofertas=[oferta],
+            enviado_por=self.staff,
+            request=request,
+        )
+
+        html_enviado = mock_instancia.attach_alternative.call_args.args[0]
+        self.assertIn(reverse("preferencias_email"), html_enviado)
+
+
+class PreferenciasEmailViewTests(TestCase):
+    def setUp(self):
+        self.usuario = User.objects.create_user(
+            username="ana", password="senha123", cpf="14783246947", email="ana@example.com"
+        )
+
+    def test_exige_login(self):
+        resposta = self.client.get(reverse("preferencias_email"))
+        self.assertNotEqual(resposta.status_code, 200)
+
+    def test_desligar_marketing(self):
+        self.client.force_login(self.usuario)
+        resposta = self.client.post(reverse("preferencias_email"), {"aceita": "nao"}, follow=True)
+
+        self.usuario.refresh_from_db()
+        self.assertFalse(self.usuario.aceita_email_marketing)
+        self.assertContains(resposta, "não vai mais receber")
+
+    def test_religar_marketing(self):
+        self.usuario.aceita_email_marketing = False
+        self.usuario.save(update_fields=["aceita_email_marketing"])
+        self.client.force_login(self.usuario)
+
+        resposta = self.client.post(reverse("preferencias_email"), {"aceita": "sim"}, follow=True)
+
+        self.usuario.refresh_from_db()
+        self.assertTrue(self.usuario.aceita_email_marketing)
+        self.assertContains(resposta, "volta a receber")
+
+    def test_get_mostra_o_estado_atual(self):
+        self.client.force_login(self.usuario)
+        resposta = self.client.get(reverse("preferencias_email"))
+        self.assertContains(resposta, "Você está recebendo")
+
+
+class ComunicacaoViewPassaTipoTests(TestCase):
+    def setUp(self):
+        self.staff = User.objects.create_user(
+            username="staff", password="senha123", cpf="39053344705", is_staff=True, is_superuser=True
+        )
+        self.client.force_login(self.staff)
+
+    @patch("accounts.admin.enviar_comunicacao")
+    def test_tipo_geral_e_repassado_pro_envio(self, mock_enviar):
+        mock_enviar.return_value = ComunicacaoEmail(
+            assunto="Oi", corpo="Corpo", filtro="todos", tipo="geral", total_destinatarios=1, total_enviados=1
+        )
+
+        self.client.post(
+            reverse("admin:accounts_comunicacao"),
+            {"assunto": "Oi", "corpo": "Corpo", "filtro": "todos", "tipo": "geral"},
+            follow=True,
+        )
+
+        self.assertEqual(mock_enviar.call_args.kwargs["tipo"], "geral")
+
+    def test_contagem_respeita_o_tipo(self):
+        User.objects.create_user(
+            username="optou_fora", password="senha123", cpf="14783246947", email="fora@example.com",
+            aceita_email_marketing=False,
+        )
+
+        resposta_anuncio = self.client.get(
+            reverse("admin:accounts_comunicacao_contar"), {"filtro": "todos", "tipo": "anuncio"}
+        )
+        resposta_geral = self.client.get(
+            reverse("admin:accounts_comunicacao_contar"), {"filtro": "todos", "tipo": "geral"}
+        )
+
+        self.assertEqual(json.loads(resposta_anuncio.content)["total"], 0)
+        self.assertEqual(json.loads(resposta_geral.content)["total"], 1)
+
+
+class EditarPerfilFormTests(TestCase):
+    def test_form_inclui_campo_de_marketing(self):
+        self.assertIn("aceita_email_marketing", EditarPerfilForm.Meta.fields)

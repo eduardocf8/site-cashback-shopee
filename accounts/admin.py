@@ -43,7 +43,8 @@ class UserAdmin(BaseUserAdmin):
 
     def comunicacao_contar_view(self, request):
         filtro = request.GET.get("filtro", "todos")
-        total = obter_destinatarios(filtro).count()
+        tipo = request.GET.get("tipo", ComunicacaoEmail.TIPO_ANUNCIO)
+        total = obter_destinatarios(filtro, tipo).count()
         return JsonResponse({"total": total})
 
     def comunicacao_buscar_ofertas_view(self, request):
@@ -71,6 +72,7 @@ class UserAdmin(BaseUserAdmin):
             assunto = request.POST.get("assunto", "").strip()
             corpo = request.POST.get("corpo", "").strip()
             filtro = request.POST.get("filtro", "todos")
+            tipo = request.POST.get("tipo", ComunicacaoEmail.TIPO_ANUNCIO)
             ofertas = Oferta.objects.filter(id__in=request.POST.getlist("ofertas"))
 
             if not assunto or not corpo:
@@ -80,6 +82,7 @@ class UserAdmin(BaseUserAdmin):
                     assunto=assunto,
                     corpo=corpo,
                     filtro=filtro,
+                    tipo=tipo,
                     ofertas=ofertas,
                     enviado_por=request.user,
                     request=request,
@@ -102,6 +105,7 @@ class UserAdmin(BaseUserAdmin):
             **self.admin_site.each_context(request),
             "title": "Enviar comunicação por e-mail",
             "filtros": FILTROS,
+            "tipos": dict(ComunicacaoEmail.TIPO_CHOICES),
             "historico": ComunicacaoEmail.objects.select_related("enviado_por")[:20],
         }
         return TemplateResponse(request, "admin/comunicacao_email.html", contexto)
@@ -111,8 +115,10 @@ class UserAdmin(BaseUserAdmin):
 class ComunicacaoEmailAdmin(admin.ModelAdmin):
     # Histórico só - a criação acontece pela tela de envio (UserAdmin.comunicacao_view),
     # nunca por aqui, então não faz sentido permitir adicionar/editar direto no admin.
-    list_display = ("assunto", "filtro", "total_destinatarios", "total_enviados", "enviado_por", "enviado_em")
-    list_filter = ("filtro",)
+    list_display = (
+        "assunto", "tipo", "filtro", "total_destinatarios", "total_enviados", "enviado_por", "enviado_em"
+    )
+    list_filter = ("tipo", "filtro")
     search_fields = ("assunto", "corpo")
     filter_horizontal = ("ofertas",)
     readonly_fields = [f.name for f in ComunicacaoEmail._meta.fields] + ["ofertas"]

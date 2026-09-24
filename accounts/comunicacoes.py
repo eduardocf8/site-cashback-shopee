@@ -32,10 +32,14 @@ OFERTAS_POR_LINHA = 2
 logger = logging.getLogger(__name__)
 
 
-def obter_destinatarios(filtro: str) -> QuerySet:
+def obter_destinatarios(filtro: str, tipo: str = ComunicacaoEmail.TIPO_ANUNCIO) -> QuerySet:
     """Usuários com e-mail preenchido que batem no filtro escolhido. Sempre parte
-    de quem tem e-mail (senão a API do Brevo recusa o endereço vazio)."""
+    de quem tem e-mail (senão a API do Brevo recusa o endereço vazio). Anúncio/promoção
+    (tipo padrão) também respeita quem desligou e-mail de marketing - comunicação geral
+    não, vai pra todo mundo do filtro escolhido mesmo assim."""
     base = User.objects.exclude(email="")
+    if tipo == ComunicacaoEmail.TIPO_ANUNCIO:
+        base = base.filter(aceita_email_marketing=True)
 
     if filtro == ComunicacaoEmail.FILTRO_COM_PEDIDOS:
         return base.filter(pedidos__isnull=False).distinct()
@@ -66,7 +70,14 @@ def _texto_para_html(corpo: str) -> str:
     )
 
 
-def renderizar_corpo_html(corpo: str, ofertas, request) -> str:
+def _rodape_descadastro_texto(link: str) -> str:
+    return (
+        "\n\n---\nVocê recebeu este e-mail porque tem uma conta na cash-b.\n"
+        f"Não quer mais receber e-mails de promoções? Clique aqui: {link}"
+    )
+
+
+def renderizar_corpo_html(corpo: str, ofertas, request, link_descadastro: str | None = None) -> str:
     """request é necessário pra montar o link absoluto (https://cash-b.com/...) de
     cada oferta - fora de uma view não tem como saber o domínio."""
     itens = [
@@ -76,24 +87,53 @@ def renderizar_corpo_html(corpo: str, ofertas, request) -> str:
     linhas = [itens[i : i + OFERTAS_POR_LINHA] for i in range(0, len(itens), OFERTAS_POR_LINHA)]
     return render_to_string(
         "emails/comunicacao_vitrine.html",
-        {"corpo_html_intro": _texto_para_html(corpo), "ofertas": itens, "ofertas_em_linhas": linhas},
+        {
+            "corpo_html_intro": _texto_para_html(corpo),
+            "ofertas": itens,
+            "ofertas_em_linhas": linhas,
+            "link_descadastro": link_descadastro,
+        },
     )
 
 
-def enviar_comunicacao(*, assunto: str, corpo: str, filtro: str, ofertas=None, enviado_por, request=None) -> ComunicacaoEmail:
+def enviar_comunicacao(
+    *,
+    assunto: str,
+    corpo: str,
+    filtro: str,
+    tipo: str = ComunicacaoEmail.TIPO_ANUNCIO,
+    ofertas=None,
+    enviado_por,
+    request=None,
+) -> ComunicacaoEmail:
     if filtro not in FILTROS:
         filtro = ComunicacaoEmail.FILTRO_TODOS
+    if tipo not in dict(ComunicacaoEmail.TIPO_CHOICES):
+        tipo = ComunicacaoEmail.TIPO_ANUNCIO
+
+    eh_anuncio = tipo == ComunicacaoEmail.TIPO_ANUNCIO
+    # Sem request não dá pra montar um link absoluto (precisa saber o domínio) - nesse
+    # caso raro (só acontece se alguém chamar essa função fora da view do admin) o
+    # anúncio sai sem o rodapé de descadastro em vez de quebrar o envio inteiro.
+    link_descadastro = request.build_absolute_uri(reverse("preferencias_email")) if eh_anuncio and request else None
 
     ofertas = list(ofertas or [])
-    corpo_html = renderizar_corpo_html(corpo, ofertas, request) if ofertas and request else ""
+    corpo_enviado = corpo + (_rodape_descadastro_texto(link_descadastro) if link_descadastro else "")
+    corpo_html = (
+        renderizar_corpo_html(corpo, ofertas, request, link_descadastro=link_descadastro)
+        if ofertas and request
+        else ""
+    )
 
-    emails = list(obter_destinatarios(filtro).values_list("email", flat=True))
+    emails = list(obter_destinatarios(filtro, tipo).values_list("email", flat=True))
     _, endereco_remetente = parseaddr(settings.DEFAULT_FROM_EMAIL)
 
     total_enviados = 0
     for lote in _lotes(emails, TAMANHO_LOTE):
         try:
-            mensagem = EmailMultiAlternatives(subject=assunto, body=corpo, to=[endereco_remetente], bcc=lote)
+            mensagem = EmailMultiAlternatives(
+                subject=assunto, body=corpo_enviado, to=[endereco_remetente], bcc=lote
+            )
             if corpo_html:
                 mensagem.attach_alternative(corpo_html, "text/html")
             mensagem.send()
@@ -106,6 +146,7 @@ def enviar_comunicacao(*, assunto: str, corpo: str, filtro: str, ofertas=None, e
         corpo=corpo,
         corpo_html=corpo_html,
         filtro=filtro,
+        tipo=tipo,
         total_destinatarios=len(emails),
         total_enviados=total_enviados,
         enviado_por=enviado_por,

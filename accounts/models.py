@@ -36,6 +36,12 @@ class User(AbstractUser):
         "Tipo da chave Pix", max_length=10, choices=TIPO_CHAVE_CHOICES, blank=True
     )
     email_verificado = models.BooleanField("E-mail verificado", default=False)
+    aceita_email_marketing = models.BooleanField(
+        "Aceita e-mails de promoções/anúncios",
+        default=True,
+        help_text="Desligado quando a pessoa clica em \"não quero mais receber\" num anúncio. Não afeta "
+        "e-mails transacionais (verificação, senha, avisos de saque) nem comunicações gerais.",
+    )
     codigo_indicacao = models.CharField(
         "Código de indicação", max_length=TAMANHO_CODIGO_INDICACAO, unique=True, blank=True
     )
@@ -155,8 +161,23 @@ class ComunicacaoEmail(models.Model):
         (FILTRO_NUNCA_SACOU, "Nunca sacaram"),
     ]
 
+    TIPO_GERAL = "geral"
+    TIPO_ANUNCIO = "anuncio"
+    TIPO_CHOICES = [
+        (TIPO_ANUNCIO, "Anúncio/promoção"),
+        (TIPO_GERAL, "Comunicação geral"),
+    ]
+
     assunto = models.CharField("Assunto", max_length=200)
     corpo = models.TextField("Corpo do e-mail", help_text="Texto simples, sem HTML.")
+    tipo = models.CharField(
+        "Tipo",
+        max_length=10,
+        choices=TIPO_CHOICES,
+        default=TIPO_ANUNCIO,
+        help_text="Anúncio/promoção respeita quem desligou e-mail de marketing e inclui o link de "
+        "descadastro. Comunicação geral vai pra todo mundo do filtro, sem esse link.",
+    )
     filtro = models.CharField("Filtro de destinatários", max_length=30, choices=FILTRO_CHOICES)
     ofertas = models.ManyToManyField(
         "ofertas.Oferta",

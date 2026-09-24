@@ -41,7 +41,7 @@ class EditarPerfilForm(forms.ModelForm):
 
     class Meta:
         model = User
-        fields = ("username", "email", "cpf")
+        fields = ("username", "email", "cpf", "aceita_email_marketing")
 
     def clean_cpf(self):
         cpf = validar_cpf(self.cleaned_data["cpf"])

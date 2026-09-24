@@ -1548,6 +1548,37 @@ que a oferta já tem, sem precisar hospedar imagem nem montar link na mão).
       HTML, o envio com/sem ofertas (guarda no histórico certo, não quebra
       sem `request`) e o endpoint de busca.
 
+**Depois, mesma fase:** perguntei ao usuário qual modelo de consentimento
+fazia mais sentido pra e-mail de marketing - opt-out (todo mundo já começa
+recebendo, com link de descadastro) ou opt-in (checkbox no cadastro).
+Recomendei opt-out pra usuário já cadastrado (é o padrão do mercado e o que a
+LGPD permite via legítimo interesse, desde que o descadastro seja fácil),
+com e-mail transacional/comunicação geral sempre fora do escopo do
+descadastro. Usuário concordou.
+
+- [x] **`User.aceita_email_marketing`** (novo campo, default `True` - todo
+      mundo já começa "cadastrado", como decidido).
+- [x] **`ComunicacaoEmail.tipo`** (`anuncio`/`geral`, default `anuncio`) -
+      só "Anúncio/promoção" respeita `aceita_email_marketing` e ganha o
+      rodapé de descadastro; "Comunicação geral" vai pra todo mundo do
+      filtro escolhido, sem esse link (pensado pra avisos que não são
+      propaganda, tipo mudança nos termos de uso).
+- [x] **`/preferencias-de-email/`** (novo, `accounts/views.py`) - é pra onde
+      o link do rodapé aponta. **Decisão técnica importante, avisada ao
+      usuário:** não é um link único por pessoa sem precisar logar (o
+      "1 clique" ideal) - o envio manda em lotes via BCC (Fase 50, parte 1),
+      então todo mundo do mesmo lote recebe o e-mail com o *mesmo* conteúdo;
+      não dá pra embutir um token individual sem reescrever o envio pra usar
+      "message versions" da API do Brevo. Ficou um link fixo que pede login
+      (a pessoa já tem conta, então não é grande barreira) - continua
+      resolvendo o pedido real (parar de receber) sem esse trabalho extra.
+      Campo também disponível em "Editar dados cadastrais" (`EditarPerfilForm`).
+- [x] Testes cobrindo: opt-out só filtra pra tipo anúncio (comunicação geral
+      ignora), rodapé de descadastro só aparece pra anúncio (texto e HTML),
+      view de preferências (login obrigatório, liga/desliga nos dois
+      sentidos), tipo repassado corretamente da tela pro envio e pra
+      contagem ao vivo.
+
 ---
 
 Pra continuar esse roadmap numa conversa nova, basta apontar esse arquivo

@@ -1,0 +1,30 @@
+{% extends "accounts/base.html" %}
+{% block titulo %}Preferências de e-mail{% endblock %}
+{% block conteudo %}
+    <div class="nav-topo">
+        <a href="{% url 'dashboard' %}">&larr; Voltar pra minha conta</a>
+    </div>
+
+    <h1>Preferências de e-mail</h1>
+    <p class="legenda">
+        Isso controla só os e-mails de <strong>promoções e ofertas</strong>. Você continua
+        recebendo normalmente e-mails importantes da sua conta (verificação, troca de
+        senha, avisos de saque).
+    </p>
+
+    {% if user.aceita_email_marketing %}
+        <p>Você está recebendo e-mails de promoções e ofertas da cash-b.</p>
+        <form method="post">
+            {% csrf_token %}
+            <input type="hidden" name="aceita" value="nao">
+            <button type="submit">Não quero mais receber esses e-mails</button>
+        </form>
+    {% else %}
+        <p>Você não está recebendo e-mails de promoções e ofertas da cash-b.</p>
+        <form method="post">
+            {% csrf_token %}
+            <input type="hidden" name="aceita" value="sim">
+            <button type="submit">Quero voltar a receber</button>
+        </form>
+    {% endif %}
+{% endblock %}

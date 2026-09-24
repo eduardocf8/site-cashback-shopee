@@ -233,6 +233,27 @@ def editar_perfil(request):
 
 
 @login_required
+def preferencias_email(request):
+    # É pra onde o link "não quero mais receber" nos e-mails de anúncio/promoção
+    # aponta. Exige login de propósito: como o envio em massa manda em lotes via BCC
+    # (ver accounts/comunicacoes.py - um e-mail só, mesmo conteúdo pra até 50
+    # pessoas), não dá pra colocar um link individual e único por pessoa sem
+    # reescrever o envio pra usar "message versions" da API do Brevo. Um link fixo
+    # que pede login é bem mais simples e continua resolvendo o pedido de verdade
+    # (parar de receber), só troca "1 clique sem logar" por "1 clique + login".
+    if request.method == "POST":
+        request.user.aceita_email_marketing = request.POST.get("aceita") == "sim"
+        request.user.save(update_fields=["aceita_email_marketing"])
+        if request.user.aceita_email_marketing:
+            messages.success(request, "Prontinho, você volta a receber e-mails de promoções e ofertas.")
+        else:
+            messages.success(request, "Prontinho, você não vai mais receber e-mails de promoções e ofertas.")
+        return redirect("preferencias_email")
+
+    return render(request, "accounts/preferencias_email.html")
+
+
+@login_required
 @require_POST
 def inscrever_push(request):
     try:

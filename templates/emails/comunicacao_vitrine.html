@@ -40,6 +40,10 @@
 
 <tr><td style="padding:24px 16px 0; text-align:center; font-size:12px; color:#6b7280;">
     Você recebeu esse e-mail porque tem uma conta na cash-b.
+    {% if link_descadastro %}
+        <br>
+        <a href="{{ link_descadastro }}" style="color:#6b7280;">Não quer mais receber e-mails de promoções?</a>
+    {% endif %}
 </td></tr>
 
 </table>
