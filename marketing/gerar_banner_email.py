@@ -73,7 +73,7 @@ ESCALA = 2
 # (marketing/gerar_fundos_marca.py); trocar o nome aqui troca a cara do banner sem
 # mexer em mais nada. A arte gerada por IA continua em banner-email/arte/, se um dia
 # a campanha pedir algo mais ilustrado.
-ARTE = Path(__file__).resolve().parent / "fundos-marca" / "fundo-01-manchas-roxo-16x9.png"
+ARTE = Path(__file__).resolve().parent / "fundos-marca" / "fundo-03-canto-roxo-16x9.png"
 
 DATA = "11.11"
 # O que a campanha paga. Sai da linha cadastrada em pedidos.CampanhaCashback - o padrão
