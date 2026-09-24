@@ -9,8 +9,19 @@ Nada da Shopee entra na arte além do nome dela escrito: a cash-b é afiliada
 independente (é o que o rodapé do site declara), e banner com a marca da Shopee sugere
 um vínculo que não existe - ainda mais num e-mail que sai em nome da cash-b.
 
-Ilustração em forma geométrica plana (BRAND.md): moedas e manchas desenhadas em SVG,
-nas cores da marca. Sem fotografia e sem render 3D.
+Dois fundos possíveis, escolhidos por `FUNDO_ILUSTRADO`:
+
+- Ilustração em `arte/fundo-campanha.webp`, se o arquivo existir. É arte plana em
+  vetor, nas cores da marca, com o centro vazio - gerada por modelo de imagem e
+  aprovada pelo dono do produto. Casa com a regra do BRAND.md (forma chapada, sem
+  fotografia e sem render 3D) apesar da origem.
+- Senão, moedas e manchas desenhadas aqui mesmo em SVG. É o retrato de reserva: sai
+  sempre, não depende de arquivo externo e é o que a marca já usa nos painéis de login.
+
+O banner tem a mesma proporção 16:9 da arte, de propósito. Num quadro mais quadrado o
+"cover" ampliava a ilustração para preencher a altura, e aí as caixas de presente dos
+cantos inferiores cresciam para cima do texto. Na proporção nativa ela entra inteira, e
+cada elemento fica no canto onde foi desenhado.
 
 **O número do multiplicador é parâmetro.** Quem decide é a campanha cadastrada no admin
 (pedidos.CampanhaCashback), não a arte - por isso MULTIPLICADOR aqui, e por isso sai
@@ -55,8 +66,10 @@ CORES = {
     "line": "#e0dcef",
 }
 
-LARGURA, ALTURA = 560, 360
+LARGURA, ALTURA = 560, 315
 ESCALA = 2
+
+ARTE = Path(__file__).resolve().parent / "banner-email" / "arte" / "fundo-campanha.webp"
 
 DATA = "11.11"
 # O que a campanha paga. Sai da linha cadastrada em pedidos.CampanhaCashback - o padrão
@@ -102,8 +115,24 @@ def _decoracao() -> str:
     """
 
 
-def _pagina(com_numero: bool) -> str:
+def _pagina(com_numero: bool, ilustrado: bool) -> str:
     manchete = f"Cashback {MULTIPLICADOR}" if com_numero else "Cashback aumentado"
+    classe_topo = "ilustrado" if ilustrado else ""
+    if ilustrado:
+        arte64 = base64.b64encode(ARTE.read_bytes()).decode()
+        fundo_css = (f"background-image:url(data:image/webp;base64,{arte64});"
+                     "background-size:cover; background-position:center;")
+        decoracao = '<div class="veu"></div>'
+        # Sem pastilhas na versão ilustrada: as caixas de presente da arte ocupam
+        # justamente a faixa de baixo, e as duas coisas brigam pelo mesmo espaço. Os
+        # três pontos cabem no corpo do e-mail, que o admin escreve de qualquer forma.
+        pastilhas = ""
+    else:
+        fundo_css = ""
+        decoracao = _decoracao()
+        pastilhas = ('<div class="beneficios">'
+                     + "".join(f'<div class="beneficio">{b}</div>' for b in BENEFICIOS)
+                     + "</div>")
     return f"""<html><head><style>
     @font-face {{ font-family:"Familjen"; src:url(data:font/woff2;base64,{FAMILJEN_B64}) format("woff2"); font-weight:400 700; }}
     * {{ box-sizing:border-box; margin:0; padding:0; }}
@@ -114,57 +143,66 @@ def _pagina(com_numero: bool) -> str:
     .topo {{
         position:relative; height:{ALTURA}px; overflow:hidden;
         background:linear-gradient(160deg, {CORES['brand-dark']} 0%, {CORES['brand']} 62%, #5b21b6 100%);
+        {fundo_css}
     }}
+    /* Véu escuro sobre a ilustração. Sem ele o texto branco disputa com as moedas
+       âmbar nas bordas; com ele o miolo escurece de leve e o texto ganha a frente,
+       sem apagar a arte. */
+    .veu {{ position:absolute; inset:0; background:rgba(46,16,101,0.22); }}
     .decoracao {{ position:absolute; inset:0; width:100%; height:100%; }}
-    .conteudo {{ position:relative; padding:34px 44px 0; text-align:center; }}
+    .conteudo {{ position:relative; padding:24px 44px 0; text-align:center; }}
+    /* Na versão ilustrada o texto fica ancorado no alto, e não centralizado: as caixas
+       de presente da arte sobem até cerca de 60% da altura, então o miolo livre é só a
+       metade de cima. Centralizado, a manchete caía em cima delas. */
+    .topo.ilustrado .conteudo {{ padding-top:18px; }}
+    .topo.ilustrado .data {{ margin-top:8px; font-size:92px; }}
+    .topo.ilustrado .manchete {{ font-size:23px; }}
     .selo {{
         display:inline-block; padding:7px 18px; border-radius:999px;
         background:{CORES['highlight']}; color:{CORES['ink']};
         font-size:13px; font-weight:700; letter-spacing:2px; text-transform:uppercase;
     }}
     .data {{
-        margin-top:16px; font-size:116px; font-weight:700; line-height:0.94;
+        margin-top:10px; font-size:100px; font-weight:700; line-height:0.94;
         letter-spacing:-0.05em; color:#fff;
     }}
     .manchete {{
-        margin-top:2px; font-size:29px; font-weight:700; letter-spacing:0.02em;
+        margin-top:0; font-size:26px; font-weight:700; letter-spacing:0.02em;
         text-transform:uppercase; color:{CORES['highlight']};
     }}
     /* Pastilhas claras sobre o roxo, dentro do próprio bloco: a faixa branca da
        referência não cabe aqui, porque o template arredonda a imagem inteira e uma
        faixa branca no pé apareceria com o canto cortado. */
     .beneficios {{
-        position:relative; margin-top:22px; display:flex; gap:8px;
+        position:relative; margin-top:16px; display:flex; gap:8px;
         padding:0 30px; justify-content:center;
     }}
     .beneficio {{
-        padding:8px 14px; border-radius:999px;
+        padding:7px 13px; border-radius:999px;
         background:rgba(255,255,255,0.14); border:1px solid rgba(255,255,255,0.28);
-        font-size:13px; font-weight:700; color:#fff; white-space:nowrap;
+        font-size:12px; font-weight:700; color:#fff; white-space:nowrap;
     }}
     </style></head><body>
-        <div class="topo">
-            {_decoracao()}
+        <div class="topo {classe_topo}">
+            {decoracao}
             <div class="conteudo">
                 <span class="selo">campanha</span>
                 <div class="data">{DATA}</div>
                 <div class="manchete">{manchete}</div>
-                <div class="beneficios">
-                    {"".join(f'<div class="beneficio">{b}</div>' for b in BENEFICIOS)}
-                </div>
+                {pastilhas}
             </div>
         </div>
     </body></html>"""
 
 
-def _render(com_numero: bool, destino: Path):
+def _render(com_numero: bool, ilustrado: bool, destino: Path):
     destino.parent.mkdir(parents=True, exist_ok=True)
     with sync_playwright() as p:
         navegador = p.chromium.launch(executable_path="/opt/pw-browsers/chromium")
         pagina = navegador.new_page(
             viewport={"width": LARGURA, "height": ALTURA}, device_scale_factor=ESCALA
         )
-        pagina.set_content(_pagina(com_numero))
+        pagina.set_content(_pagina(com_numero, ilustrado))
         pagina.wait_for_timeout(300)
         pagina.screenshot(path=str(destino))
         navegador.close()
@@ -172,8 +210,10 @@ def _render(com_numero: bool, destino: Path):
 
 
 def gerar():
-    _render(True, OUT_DIR / "banner-11-11-em-dobro.png")
-    _render(False, OUT_DIR / "banner-11-11-sem-numero.png")
+    for ilustrado in ([True, False] if ARTE.exists() else [False]):
+        sufixo = "" if ilustrado else "-vetor"
+        _render(True, ilustrado, OUT_DIR / f"banner-11-11-em-dobro{sufixo}.png")
+        _render(False, ilustrado, OUT_DIR / f"banner-11-11-sem-numero{sufixo}.png")
     print("\nSubir no campo de banner da comunicação em massa do admin.")
 
 
