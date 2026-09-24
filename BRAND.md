@@ -25,12 +25,13 @@ inclusive as regras que afetam arte, como "a cash-b" (feminino) e "Pix"
 3. [Paleta](#paleta)
 4. [Tipografia](#tipografia)
 5. [Elementos gráficos](#elementos-gráficos)
-6. [Formatos e áreas seguras](#formatos-e-áreas-seguras)
-7. [O sistema de artes](#o-sistema-de-artes)
-8. [Regras que valem em qualquer peça](#regras-que-valem-em-qualquer-peça)
-9. [Onde cada coisa mora](#onde-cada-coisa-mora)
-10. [Histórico do redesign](#histórico-do-redesign-2026-08)
-11. [Infraestrutura ligada à marca](#infraestrutura-ligada-à-marca)
+6. [Fundos da marca](#fundos-da-marca)
+7. [Formatos e áreas seguras](#formatos-e-áreas-seguras)
+8. [O sistema de artes](#o-sistema-de-artes)
+9. [Regras que valem em qualquer peça](#regras-que-valem-em-qualquer-peça)
+10. [Onde cada coisa mora](#onde-cada-coisa-mora)
+11. [Histórico do redesign](#histórico-do-redesign-2026-08)
+12. [Infraestrutura ligada à marca](#infraestrutura-ligada-à-marca)
 
 ---
 
@@ -55,6 +56,13 @@ comissão que a Shopee paga.
   erro de digitação. Em HTML, usar a constante `MARCA` de `carrossel_base.py`
   (o nome dentro de um `white-space:nowrap`) em qualquer texto que possa
   quebrar — título, pastilha, legenda larga.
+- **O nome nunca acompanha `text-transform: uppercase`.** Etiqueta em caixa
+  alta é comum no sistema (tag de carrossel, linha de apoio de capa, selo de
+  campanha), e basta o nome cair dentro de uma delas para virar "CASH-B" —
+  o mesmo erro que escrever "Cash-B", só que sem ninguém digitar. Ou o nome
+  escapa da caixa alta com um `text-transform: none` próprio, ou a etiqueta
+  não leva o nome. Esse escorregão apareceu três vezes em peças diferentes
+  antes de virar regra.
 
 ---
 
@@ -273,6 +281,64 @@ alguém precisa fornecer o arquivo.
 
 ---
 
+## Fundos da marca
+
+Plano de fundo abstrato para qualquer peça que precise de uma base com cara de
+cash-b e o miolo livre para texto: banner de e-mail, capa, story, carrossel.
+
+Gerados por `marketing/gerar_fundos_marca.py`, em
+`marketing/fundos-marca/`. São desenhados em SVG, e não gerados por modelo de
+imagem: a cor sai no hex exato da paleta, a composição é ajustável, sai em
+qualquer tamanho e não depende de serviço externo.
+
+### A regra da família
+
+Vale para qualquer variação futura — é o que mantém as peças parecendo a mesma
+marca:
+
+- **Só dois elementos:** mancha arredondada e arco fino. Nada mais.
+- **Tudo sangra pela borda.** Forma inteira e centralizada lê como adesivo;
+  forma cortada pela borda lê como recorte de um sistema maior.
+- **O miolo fica vazio.** É onde o texto cai, e é o que diferencia fundo de
+  ilustração. A única exceção é o `06-halo`, que existe para emoldurar.
+- **Monocromático, só roxo.** Sem âmbar: num fundo ele competiria com o
+  destaque do próprio texto que vai por cima, e é o texto que precisa da cor de
+  atenção.
+
+### Qual usar
+
+Cada composição tem um papel. Sem isso o conjunto vira menu, e escolher no chute
+a cada peça é o que faz uma marca parecer seis marcas.
+
+| Composição | Quando usar |
+|---|---|
+| `01-manchas` | Peça curta e solta: um aviso, um story de recado |
+| `02-ondas` | Peça com muito texto — é o mais silencioso, só linha |
+| `03-canto` | **Padrão.** Use este quando não houver motivo para outro |
+| `04-moldura` | Texto centralizado, que pede simetria |
+| `05-diagonal` | Campanha e data dupla: o de mais energia |
+| `06-halo` | Fechamento e assinatura — o centro leva a marca, não um bloco de texto |
+
+### Cores e formatos
+
+Cada composição sai em **roxo** (gradiente `--brand-strong` → `--brand`) e
+**claro** (`--paper`), nos quatro formatos que as peças usam:
+
+| Formato | Tamanho | Onde |
+|---|---|---|
+| 16:9 | 1536×864 | Banner de e-mail |
+| 4:5 | 1080×1350 | Post e carrossel de feed |
+| 9:16 | 1080×1920 | Story e capa de reel |
+| 1:1 | 1080×1080 | Avatar, miniatura, capa de destaque |
+
+São 48 arquivos. **Cada formato é redesenhado, não recortado:** as posições são
+calculadas em porcentagem do quadro, então a mancha cai no mesmo canto seja qual
+for a proporção. Recortar um 16:9 para virar story faria a mancha ou os arcos
+saírem fora, dependendo de onde o corte caísse. Formato novo é uma linha no
+script.
+
+---
+
 ## Formatos e áreas seguras
 
 | Peça | Quadro | Observação |
@@ -323,6 +389,15 @@ Instagram (roadmap do bot, incidentes resolvidos, decisões de conteúdo) está 
 | `gerar_tela_comparativa.py` | Tela e caixas soltas de venda direta × indireta |
 | `gerar_moldura_celular.py` | Moldura de celular com a tela vazada, e fundo roxo chapado |
 | `gerar_capa_reel.py` | Capa de reel: foto do vídeo achatada com a camada da marca |
+| `gerar_capa_tipografica.py` | Capa de reel só de texto, em doze formatos de marca e arte |
+
+Fora de `instagram/`, direto em `marketing/`:
+
+| Script | Produz |
+|---|---|
+| `gerar_fundos_marca.py` | Os 48 fundos da marca — ver [Fundos da marca](#fundos-da-marca) |
+| `gerar_banner_email.py` | Banner da comunicação em massa (`ComunicacaoEmail.banner`) |
+| `exportar_brand.py` | Este manual em PDF e TXT, para anexar onde Markdown não entra |
 
 ### Medidas fixas que outras peças dependem
 

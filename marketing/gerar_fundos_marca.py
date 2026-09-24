@@ -46,9 +46,17 @@ BRAND_DARK = "#4c1d95"
 BRAND_LIGHT = "#a78bfa"
 PAPER = "#f8fafc"
 
-# Formatos em que cada fundo é gerado. O 16:9 é o do banner de e-mail; o 9:16 serve
-# para story e capa de reel; o 4:5 é o carrossel de feed.
-FORMATOS = {"16x9": (1536, 864), "9x16": (1080, 1920), "4x5": (1080, 1350)}
+# Formatos em que cada fundo é gerado - as proporções que as peças realmente usam.
+# Cada um é REDESENHADO, não recortado: as posições são calculadas em porcentagem do
+# quadro, então a mancha cai no mesmo canto seja qual for a proporção. Recortar um
+# 16:9 para virar story faria a mancha ou os arcos saírem fora, dependendo de onde o
+# corte caísse. Formato novo é uma linha aqui.
+FORMATOS = {
+    "16x9": (1536, 864),    # banner de e-mail
+    "4x5": (1080, 1350),    # post e carrossel de feed
+    "9x16": (1080, 1920),   # story e capa de reel
+    "1x1": (1080, 1080),    # avatar, miniatura, capa de destaque
+}
 ESCALA = 1
 
 
