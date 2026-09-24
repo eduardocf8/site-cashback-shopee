@@ -3,6 +3,7 @@ from decimal import Decimal
 from unittest.mock import Mock, patch
 
 from django.core.cache import cache
+from django.core.files.uploadedfile import SimpleUploadedFile
 from django.test import RequestFactory, TestCase, override_settings
 from django.urls import reverse
 
@@ -644,6 +645,33 @@ class ComunicacaoViewNoAdminTests(TestCase):
 
         self.assertNotEqual(resposta.status_code, 200)
 
+    @patch("accounts.admin.enviar_comunicacao")
+    def test_post_com_banner_repassa_o_arquivo_pro_envio(self, mock_enviar):
+        mock_enviar.return_value = ComunicacaoEmail(
+            assunto="Oi", corpo="Corpo", filtro="todos", total_destinatarios=1, total_enviados=1
+        )
+        banner = SimpleUploadedFile("banner.gif", _IMAGEM_1X1, content_type="image/gif")
+
+        self.client.post(
+            reverse("admin:accounts_comunicacao"),
+            {"assunto": "Oi", "corpo": "Corpo do e-mail", "filtro": "todos", "banner": banner},
+            follow=True,
+        )
+
+        banner_enviado = mock_enviar.call_args.kwargs["banner"]
+        self.assertIsNotNone(banner_enviado)
+        self.assertEqual(banner_enviado.name, "banner.gif")
+
+    def test_historico_mostra_link_do_banner_quando_tem(self):
+        comunicacao = ComunicacaoEmail(assunto="Campanha", corpo="Corpo", filtro="todos", enviado_por=self.staff)
+        comunicacao.banner = SimpleUploadedFile("banner.gif", _IMAGEM_1X1, content_type="image/gif")
+        comunicacao.save()
+        self.addCleanup(comunicacao.banner.delete, save=False)
+
+        resposta = self.client.get(reverse("admin:accounts_comunicacao"))
+
+        self.assertContains(resposta, comunicacao.banner.url)
+
 
 class RenderizarCorpoHtmlTests(TestCase):
     def setUp(self):
@@ -678,6 +706,16 @@ class RenderizarCorpoHtmlTests(TestCase):
     def test_sem_ofertas_nao_quebra(self):
         html = renderizar_corpo_html("Só um aviso, sem produtos.", [], self.request)
         self.assertIn("Só um aviso, sem produtos.", html)
+
+    def test_inclui_banner_quando_passado(self):
+        html = renderizar_corpo_html(
+            "Confira a campanha!", [], self.request, banner_url="https://cash-b.com/media/comunicacoes/banners/x.gif"
+        )
+        self.assertIn("https://cash-b.com/media/comunicacoes/banners/x.gif", html)
+
+    def test_sem_banner_nao_inclui_a_tag_de_imagem_do_banner(self):
+        html = renderizar_corpo_html("Só texto.", [], self.request)
+        self.assertNotIn('<img src="" alt=""', html)
 
 
 class EnviarComunicacaoComOfertasTests(TestCase):
@@ -744,6 +782,75 @@ class EnviarComunicacaoComOfertasTests(TestCase):
 
         mock_instancia.attach_alternative.assert_not_called()
         self.assertEqual(comunicacao.corpo_html, "")
+
+
+# GIF 1x1 válido de verdade (não só uns bytes aleatórios) - ImageField valida o
+# conteúdo via Pillow, não só a extensão do arquivo.
+_IMAGEM_1X1 = (
+    b"GIF87a\x01\x00\x01\x00\x80\x00\x00\x00\x00\x00\x00\x00\x00\x00,"
+    b"\x00\x00\x00\x00\x01\x00\x01\x00\x00\x02\x02D\x01\x00;"
+)
+
+
+class EnviarComunicacaoComBannerTests(TestCase):
+    def setUp(self):
+        self.staff = User.objects.create_user(
+            username="staff", password="senha123", cpf="39053344705", is_staff=True, is_superuser=True
+        )
+        User.objects.create_user(username="ana", password="senha123", cpf="14783246947", email="ana@example.com")
+
+    def tearDown(self):
+        for comunicacao in ComunicacaoEmail.objects.exclude(banner=""):
+            comunicacao.banner.delete(save=False)
+
+    def _banner(self):
+        return SimpleUploadedFile("banner.gif", _IMAGEM_1X1, content_type="image/gif")
+
+    @patch("accounts.comunicacoes.EmailMultiAlternatives")
+    def test_banner_sozinho_ja_ativa_html_mesmo_sem_ofertas(self, MockEmail):
+        mock_instancia = Mock()
+        MockEmail.return_value = mock_instancia
+        request = RequestFactory().get("/admin/accounts/user/comunicacoes/")
+
+        comunicacao = enviar_comunicacao(
+            assunto="Campanha",
+            corpo="Confira!",
+            filtro="todos",
+            banner=self._banner(),
+            enviado_por=self.staff,
+            request=request,
+        )
+
+        mock_instancia.attach_alternative.assert_called_once()
+        html_enviado = mock_instancia.attach_alternative.call_args.args[0]
+        self.assertTrue(comunicacao.banner)
+        self.assertIn(comunicacao.banner.url, html_enviado)
+        self.assertIn(comunicacao.banner.url, comunicacao.corpo_html)
+
+    @patch("accounts.comunicacoes.EmailMultiAlternatives")
+    def test_sem_banner_nao_grava_arquivo_nem_anexa_html(self, MockEmail):
+        mock_instancia = Mock()
+        MockEmail.return_value = mock_instancia
+
+        comunicacao = enviar_comunicacao(assunto="Assunto", corpo="Corpo", filtro="todos", enviado_por=self.staff)
+
+        self.assertFalse(comunicacao.banner)
+        mock_instancia.attach_alternative.assert_not_called()
+
+    @patch("accounts.comunicacoes.EmailMultiAlternatives")
+    def test_banner_sem_request_nao_anexa_html_mas_ainda_salva_o_arquivo(self, MockEmail):
+        # Sem request não dá pra montar a URL absoluta do banner - melhor mandar
+        # texto simples do que quebrar o envio inteiro.
+        mock_instancia = Mock()
+        MockEmail.return_value = mock_instancia
+
+        comunicacao = enviar_comunicacao(
+            assunto="Assunto", corpo="Corpo", filtro="todos", banner=self._banner(), enviado_por=self.staff
+        )
+
+        mock_instancia.attach_alternative.assert_not_called()
+        self.assertEqual(comunicacao.corpo_html, "")
+        self.assertTrue(comunicacao.banner)
 
 
 class ComunicacaoBuscarOfertasViewTests(TestCase):

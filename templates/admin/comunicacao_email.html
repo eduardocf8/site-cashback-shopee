@@ -135,11 +135,17 @@
 {% endblock %}
 
 {% block content %}
-<form class="comunicacao-form" method="post" id="form-comunicacao">
+<form class="comunicacao-form" method="post" enctype="multipart/form-data" id="form-comunicacao">
     {% csrf_token %}
     <div class="form-row">
         <label for="id_assunto">Assunto</label>
         <input type="text" name="assunto" id="id_assunto" maxlength="200" required>
+    </div>
+    <div class="form-row">
+        <label for="id_banner">Imagem de banner (opcional)</label>
+        <input type="file" name="banner" id="id_banner" accept="image/*">
+        <p class="ajuda">Aparece no topo do e-mail, antes do texto - tipo o banner de campanha que a Shopee usa nos e-mails deles. Precisa de HTML pra aparecer (já ativa automaticamente quando você sobe uma imagem aqui, mesmo sem escolher nenhuma oferta).</p>
+        <img id="banner-preview" style="display:none; max-width:100%; margin-top:8px; border-radius:8px;">
     </div>
     <div class="form-row">
         <label for="id_tipo">Tipo</label>
@@ -187,6 +193,7 @@
                     <th>Tipo</th>
                     <th>Filtro</th>
                     <th>Ofertas</th>
+                    <th>Banner</th>
                     <th>Destinatários</th>
                     <th>Enviados</th>
                     <th>Por</th>
@@ -200,6 +207,7 @@
                         <td>{{ comunicacao.get_tipo_display }}</td>
                         <td>{{ comunicacao.get_filtro_display }}</td>
                         <td>{{ comunicacao.ofertas.count }}</td>
+                        <td>{% if comunicacao.banner %}<a href="{{ comunicacao.banner.url }}" target="_blank">ver</a>{% else %}-{% endif %}</td>
                         <td>{{ comunicacao.total_destinatarios }}</td>
                         <td>{{ comunicacao.total_enviados }}</td>
                         <td>{{ comunicacao.enviado_por|default:"-" }}</td>
@@ -237,6 +245,23 @@
     select.addEventListener("change", atualizarContagem);
     selectTipo.addEventListener("change", atualizarContagem);
     atualizarContagem();
+
+    // --- Prévia do banner ---
+    var bannerInput = document.getElementById("id_banner");
+    var bannerPreview = document.getElementById("banner-preview");
+    bannerInput.addEventListener("change", function () {
+        var arquivo = bannerInput.files[0];
+        if (!arquivo) {
+            bannerPreview.style.display = "none";
+            return;
+        }
+        var leitor = new FileReader();
+        leitor.onload = function (evento) {
+            bannerPreview.src = evento.target.result;
+            bannerPreview.style.display = "block";
+        };
+        leitor.readAsDataURL(arquivo);
+    });
 
     // --- Busca e seleção de ofertas ---
     var buscarUrl = "{% url 'admin:accounts_comunicacao_buscar_ofertas' %}";

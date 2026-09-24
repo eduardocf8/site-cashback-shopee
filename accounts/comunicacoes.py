@@ -7,9 +7,9 @@ travaria o site inteiro por bom tempo. BCC deixa a API do Brevo mandar vários
 destinatários numa chamada só; o tamanho do lote fica bem abaixo do limite
 documentado da API (99 destinatários por chamada) por margem de segurança.
 
-Quando tem ofertas escolhidas, o e-mail também sai em HTML com uma vitrine de
-produtos (imagem + link de cashback de cada uma) - ver
-templates/emails/comunicacao_vitrine.html.
+Quando tem ofertas escolhidas e/ou uma imagem de banner, o e-mail também sai
+em HTML - banner no topo, texto, depois a vitrine de produtos (imagem + link
+de cashback de cada uma) - ver templates/emails/comunicacao_vitrine.html.
 """
 
 import logging
@@ -77,7 +77,9 @@ def _rodape_descadastro_texto(link: str) -> str:
     )
 
 
-def renderizar_corpo_html(corpo: str, ofertas, request, link_descadastro: str | None = None) -> str:
+def renderizar_corpo_html(
+    corpo: str, ofertas, request, link_descadastro: str | None = None, banner_url: str | None = None
+) -> str:
     """request é necessário pra montar o link absoluto (https://cash-b.com/...) de
     cada oferta - fora de uma view não tem como saber o domínio."""
     itens = [
@@ -92,6 +94,7 @@ def renderizar_corpo_html(corpo: str, ofertas, request, link_descadastro: str | 
             "ofertas": itens,
             "ofertas_em_linhas": linhas,
             "link_descadastro": link_descadastro,
+            "banner_url": banner_url,
         },
     )
 
@@ -103,6 +106,7 @@ def enviar_comunicacao(
     filtro: str,
     tipo: str = ComunicacaoEmail.TIPO_ANUNCIO,
     ofertas=None,
+    banner=None,
     enviado_por,
     request=None,
 ) -> ComunicacaoEmail:
@@ -118,10 +122,21 @@ def enviar_comunicacao(
     link_descadastro = request.build_absolute_uri(reverse("preferencias_email")) if eh_anuncio and request else None
 
     ofertas = list(ofertas or [])
+
+    # Cria e salva primeiro (isso já grava o arquivo do banner no storage e gera a URL
+    # dele) - só depois dá pra montar o HTML que referencia essa URL. total_destinatarios
+    # e total_enviados ficam provisórios aqui, atualizados no final depois do envio de
+    # verdade.
+    comunicacao = ComunicacaoEmail(assunto=assunto, corpo=corpo, filtro=filtro, tipo=tipo, enviado_por=enviado_por)
+    if banner:
+        comunicacao.banner = banner
+    comunicacao.save()
+
+    banner_url = request.build_absolute_uri(comunicacao.banner.url) if comunicacao.banner and request else None
     corpo_enviado = corpo + (_rodape_descadastro_texto(link_descadastro) if link_descadastro else "")
     corpo_html = (
-        renderizar_corpo_html(corpo, ofertas, request, link_descadastro=link_descadastro)
-        if ofertas and request
+        renderizar_corpo_html(corpo, ofertas, request, link_descadastro=link_descadastro, banner_url=banner_url)
+        if (ofertas or banner_url) and request
         else ""
     )
 
@@ -141,16 +156,10 @@ def enviar_comunicacao(
         except Exception:
             logger.warning("[comunicacoes] falha ao mandar lote de %d e-mail(s)", len(lote), exc_info=True)
 
-    comunicacao = ComunicacaoEmail.objects.create(
-        assunto=assunto,
-        corpo=corpo,
-        corpo_html=corpo_html,
-        filtro=filtro,
-        tipo=tipo,
-        total_destinatarios=len(emails),
-        total_enviados=total_enviados,
-        enviado_por=enviado_por,
-    )
+    comunicacao.corpo_html = corpo_html
+    comunicacao.total_destinatarios = len(emails)
+    comunicacao.total_enviados = total_enviados
+    comunicacao.save(update_fields=["corpo_html", "total_destinatarios", "total_enviados"])
     if ofertas:
         comunicacao.ofertas.set(ofertas)
     return comunicacao

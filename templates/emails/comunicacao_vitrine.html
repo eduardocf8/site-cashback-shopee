@@ -9,6 +9,12 @@
     <span style="font-family:Arial, Helvetica, sans-serif; font-weight:bold; font-size:22px; color:#6d28d9;">cash-b</span>
 </td></tr>
 
+{% if banner_url %}
+<tr><td style="padding:0 16px 16px;">
+    <img src="{{ banner_url }}" alt="" width="100%" style="display:block; width:100%; max-width:100%; height:auto; border-radius:12px;">
+</td></tr>
+{% endif %}
+
 <tr><td style="background:#ffffff; border-radius:12px; padding:24px 20px; color:#111827; font-size:15px; line-height:1.5;">
     {{ corpo_html_intro|safe }}
 </td></tr>

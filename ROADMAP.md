@@ -1579,6 +1579,40 @@ descadastro. Usuário concordou.
       sentidos), tipo repassado corretamente da tela pro envio e pra
       contagem ao vivo.
 
+**Depois, mesma fase:** usuário viu um e-mail de campanha da Shopee com um
+banner grande no topo (imagem de campanha cheia, tipo "10.10 FESTIVAL LOJAS
+OFICIAIS") e perguntou se dava pra ter algo assim, em vez de só texto -
+achava que atrairia mais interação. Diferente da vitrine de ofertas (parte
+2), esse banner é uma imagem livre, sem vínculo com nenhuma oferta.
+
+- [x] **`ComunicacaoEmail.banner`** (novo `ImageField`, opcional,
+      `upload_to="comunicacoes/banners/"`) - reaproveita a mesma
+      infraestrutura de storage (`MEDIA_ROOT`/`MEDIA_URL`) já usada pelas
+      imagens geradas pelo bot do Instagram.
+- [x] **`enviar_comunicacao`** reestruturado: agora salva o `ComunicacaoEmail`
+      **antes** de montar o HTML (precisa gravar o arquivo do banner no
+      storage primeiro pra ter a URL dele), e só depois atualiza
+      `corpo_html`/`total_destinatarios`/`total_enviados` num segundo save.
+      Banner sozinho (sem nenhuma oferta escolhida) já é suficiente pra
+      ativar a versão HTML do e-mail - a condição virou
+      `if (ofertas or banner_url) and request`.
+- [x] **`comunicacao_vitrine.html`** ganhou uma linha condicional
+      `{% if banner_url %}` logo abaixo do wordmark "cash-b" e antes do
+      texto, com a imagem ocupando a largura toda do e-mail.
+- [x] **Tela de composição**: campo de upload de imagem (`enctype=
+      "multipart/form-data"` adicionado ao form, sem isso `request.FILES`
+      vem sempre vazio) com prévia ao vivo via `FileReader.readAsDataURL`
+      antes de enviar, e nova coluna "Banner" no histórico com link "ver"
+      pra imagem de cada envio.
+- [x] Testes cobrindo: banner sozinho ativa o HTML mesmo sem ofertas, sem
+      banner não grava arquivo nem anexa HTML, banner sem `request` ainda
+      salva o arquivo mas não quebra o envio (cai pro texto simples), a view
+      repassa o arquivo de upload certo pro `enviar_comunicacao`, e o
+      histórico mostra o link do banner quando tem. Verificado também via
+      Playwright contra o `runserver` local: upload → prévia aparece →
+      envio → `<img src="http://.../media/comunicacoes/banners/...">` sai
+      certinho no e-mail (backend de console).
+
 ---
 
 Pra continuar esse roadmap numa conversa nova, basta apontar esse arquivo

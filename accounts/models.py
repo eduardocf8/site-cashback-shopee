@@ -186,6 +186,13 @@ class ComunicacaoEmail(models.Model):
         verbose_name="Ofertas em destaque",
         help_text="Vitrine de produtos incluída no e-mail (imagem + link de cashback de cada uma).",
     )
+    banner = models.ImageField(
+        "Imagem de banner (opcional)",
+        upload_to="comunicacoes/banners/",
+        blank=True,
+        null=True,
+        help_text="Aparece no topo do e-mail, antes do texto - ex: banner de campanha/promoção.",
+    )
     corpo_html = models.TextField(
         "Corpo em HTML (com a vitrine)",
         blank=True,

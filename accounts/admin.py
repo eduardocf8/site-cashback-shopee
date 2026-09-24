@@ -74,6 +74,7 @@ class UserAdmin(BaseUserAdmin):
             filtro = request.POST.get("filtro", "todos")
             tipo = request.POST.get("tipo", ComunicacaoEmail.TIPO_ANUNCIO)
             ofertas = Oferta.objects.filter(id__in=request.POST.getlist("ofertas"))
+            banner = request.FILES.get("banner")
 
             if not assunto or not corpo:
                 messages.error(request, "Preencha o assunto e o corpo do e-mail.")
@@ -84,6 +85,7 @@ class UserAdmin(BaseUserAdmin):
                     filtro=filtro,
                     tipo=tipo,
                     ofertas=ofertas,
+                    banner=banner,
                     enviado_por=request.user,
                     request=request,
                 )
