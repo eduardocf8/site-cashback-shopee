@@ -901,14 +901,18 @@ recorte por croma comeria junto com o fundo.
   isso num slide próprio, não em nota de rodapé. Post que promete um
   programa desligado gera decepção e comentário irritado.
 - **`carrossel-11-datas-duplas` só pode ser postado com a campanha de
-  cashback aumentado de fato ligada** (`CASHBACK_MULTIPLICADOR_CAMPANHA`
-  acima de 1) ou às vésperas dela: o carrossel afirma que a cash-b aumenta
-  o cashback nessas datas. O valor do aumento não aparece na arte de
-  propósito — número fixo vira promessa que amarra a próxima data.
-  - Cuidado operacional: o multiplicador é carimbado no pedido na
-    **primeira sincronização** dele (`pedidos/services.py`), não na hora
-    da compra. A sincronização roda uma vez por dia (03h BRT), então uma
-    compra feita no dia da campanha só é carimbada na madrugada seguinte.
-    Desligar a campanha à meia-noite faria os pedidos do próprio dia
-    entrarem sem o aumento — deixar ligada até depois da sincronização do
-    dia seguinte.
+  cashback aumentado de fato ligada** — hoje uma linha em
+  `pedidos.CampanhaCashback`, cadastrada no admin — ou às vésperas dela: o
+  carrossel afirma que a cash-b aumenta o cashback nessas datas. O valor do
+  aumento não aparece na arte de propósito — número fixo vira promessa que
+  amarra a próxima data.
+  - **O cuidado operacional que existia aqui não vale mais** (Fase 44).
+    Antes, o multiplicador era carimbado no pedido na primeira
+    sincronização dele, e não na hora da compra: como a sincronização roda
+    de madrugada, desligar a campanha à meia-noite fazia os pedidos do
+    próprio dia entrarem sem o aumento. Agora o multiplicador é escolhido
+    comparando a `data_compra` real contra a janela da campanha
+    (`CampanhaCashback.multiplicador_em`), então não importa quando a
+    sincronização roda — uma compra às 23h59 do dia da campanha recebe o
+    aumento mesmo que só seja sincronizada horas depois. Ligar e desligar
+    virou editar datas no admin, sem deploy.
