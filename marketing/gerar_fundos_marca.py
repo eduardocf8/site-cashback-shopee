@@ -1,4 +1,4 @@
-"""Fundos abstratos da marca: manchas, arcos e pontos âmbar.
+"""Fundos abstratos da marca: manchas e arcos.
 
 Família de fundos para banner de e-mail, capa, story e qualquer peça que precise de um
 plano de fundo com cara de cash-b e o miolo livre para texto.
@@ -18,6 +18,18 @@ A regra da família, para variações futuras manterem a mesma cara:
 - Monocromático, só roxo. Os pontos âmbar que existiam aqui saíram por decisão do dono
   do produto: num fundo, o âmbar compete com o destaque do próprio texto que vai por
   cima - e é o texto que precisa da cor de atenção, não o plano de fundo.
+
+Cada composição tem um papel. Sem isso o conjunto vira menu, e escolher no chute a cada
+peça é o que faz uma marca parecer seis marcas:
+
+| Composição | Quando usar |
+|---|---|
+| `01-manchas` | Peça curta e solta: um aviso, um story de recado |
+| `02-ondas` | Peça com muito texto - é o mais silencioso, só linha |
+| `03-canto` | **Padrão.** Usa este quando não houver motivo para outro |
+| `04-moldura` | Texto centralizado, que pede simetria |
+| `05-diagonal` | Campanha e data dupla: o de mais energia |
+| `06-halo` | Fechamento e assinatura: os arcos emolduram a marca no centro |
 
 Como usar:
     python3 marketing/gerar_fundos_marca.py
@@ -94,11 +106,40 @@ def _moldura(l, a):
     )
 
 
+def _diagonal(l, a):
+    """Uma elipse larga atravessando o quadro na diagonal. É a de mais energia da
+    família - a inclinação dá movimento que mancha redonda não dá -, e por isso a
+    indicada para campanha. Continua sendo mancha: só esticada e girada."""
+    d = max(l, a)
+    return (
+        f'<ellipse cx="{l * 0.5}" cy="{a * 0.5}" rx="{d * 0.85}" ry="{d * 0.16}" '
+        f'fill="{BRAND_LIGHT}" opacity="0.16" '
+        f'transform="rotate(-24 {l * 0.5} {a * 0.5})"/>'
+        + f'<ellipse cx="{l * 0.62}" cy="{a * 0.66}" rx="{d * 0.70}" ry="{d * 0.10}" '
+        f'fill="{BRAND_LIGHT}" opacity="0.12" '
+        f'transform="rotate(-24 {l * 0.62} {a * 0.66})"/>'
+        + _arcos(l * 0.02, a * 0.04, min(l, a) * 0.14, 4)
+    )
+
+
+def _halo(l, a):
+    """Arcos concêntricos centrados no meio, formando um halo. Ao contrário do resto da
+    família, aqui o centro NÃO fica vazio - é o único caso em que o fundo emoldura em
+    vez de se afastar. Serve para peça de fechamento, onde o que fica no meio é a marca
+    ou uma frase curta, não um bloco de texto."""
+    return (
+        _arcos(l * 0.5, a * 0.5, min(l, a) * 0.30, 6, min(l, a) * 0.055, opacidade=0.22)
+        + _mancha(l * 0.5, a * 0.5, min(l, a) * 0.26, BRAND_LIGHT, 0.10)
+    )
+
+
 COMPOSICOES = {
     "01-manchas": _manchas,
     "02-ondas": _ondas,
     "03-canto": _canto,
     "04-moldura": _moldura,
+    "05-diagonal": _diagonal,
+    "06-halo": _halo,
 }
 
 
