@@ -71,11 +71,16 @@ def _ondas(l, a):
 
 
 def _canto(l, a):
-    """Uma mancha só, grande, num canto. O mais silencioso da família - para peça com
-    muito texto, onde o fundo precisa sumir."""
+    """Mancha grande num canto, com os arcos da composição 01 no canto oposto.
+
+    Era a mais silenciosa da família, com peso só embaixo à esquerda - o que deixava a
+    diagonal oposta completamente morta. Os arcos no alto à direita fecham a diagonal
+    sem encher o quadro: são linha, não massa, então equilibram a composição e o miolo
+    continua livre para o texto."""
     return (
         _mancha(l * 0.02, a * 1.02, min(l, a) * 0.52, BRAND_LIGHT, 0.20)
         + _mancha(l * 0.16, a * 0.92, min(l, a) * 0.26, BRAND_LIGHT, 0.16)
+        + _arcos(l * 0.97, a * 0.10, min(l, a) * 0.17, 4)
     )
 
 
