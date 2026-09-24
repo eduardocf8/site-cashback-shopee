@@ -11,12 +11,13 @@ depende de cota de serviço externo nem de download.
 
 A regra da família, para variações futuras manterem a mesma cara:
 
-- Só três elementos: mancha arredondada, arco fino e ponto âmbar cheio.
+- Só dois elementos: mancha arredondada e arco fino.
 - Tudo encostado nas bordas, sangrando para fora. Forma inteira e centralizada lê como
   adesivo; forma cortada pela borda lê como recorte de um sistema maior.
 - O miolo fica vazio. É onde o texto cai, e é o que diferencia fundo de ilustração.
-- O âmbar entra em conta-gotas: dois ou três pontos pequenos. Ele é a cor de atenção da
-  marca (BRAND.md) - espalhado, deixa de chamar atenção para nada.
+- Monocromático, só roxo. Os pontos âmbar que existiam aqui saíram por decisão do dono
+  do produto: num fundo, o âmbar compete com o destaque do próprio texto que vai por
+  cima - e é o texto que precisa da cor de atenção, não o plano de fundo.
 
 Como usar:
     python3 marketing/gerar_fundos_marca.py
@@ -31,7 +32,6 @@ OUT_DIR = Path(__file__).resolve().parent / "fundos-marca"
 BRAND = "#6d28d9"
 BRAND_DARK = "#4c1d95"
 BRAND_LIGHT = "#a78bfa"
-HIGHLIGHT = "#f59e0b"
 PAPER = "#f8fafc"
 
 # Formatos em que cada fundo é gerado. O 16:9 é o do banner de e-mail; o 9:16 serve
@@ -54,17 +54,12 @@ def _arcos(cx, cy, raio_inicial, quantidade=5, passo=26, cor=BRAND_LIGHT, opacid
     )
 
 
-def _ponto(cx, cy, r=13):
-    return f'<circle cx="{cx}" cy="{cy}" r="{r}" fill="{HIGHLIGHT}"/>'
-
 
 def _manchas(l, a):
     return (
         _mancha(l * 0.04, a * 0.06, min(l, a) * 0.30)
         + _mancha(l * 0.98, a * 0.92, min(l, a) * 0.34)
         + _arcos(l * 0.97, a * 0.10, min(l, a) * 0.17, 4)
-        + _ponto(l * 0.84, a * 0.26)
-        + _ponto(l * 0.17, a * 0.77, 9)
     )
 
 
@@ -72,8 +67,6 @@ def _ondas(l, a):
     return (
         _arcos(-l * 0.10, a * 1.05, min(l, a) * 0.28, 7, min(l, a) * 0.045)
         + _arcos(l * 1.10, -a * 0.05, min(l, a) * 0.28, 7, min(l, a) * 0.045)
-        + _ponto(l * 0.12, a * 0.83)
-        + _ponto(l * 0.89, a * 0.14)
     )
 
 
@@ -83,7 +76,6 @@ def _canto(l, a):
     return (
         _mancha(l * 0.02, a * 1.02, min(l, a) * 0.52, BRAND_LIGHT, 0.20)
         + _mancha(l * 0.16, a * 0.92, min(l, a) * 0.26, BRAND_LIGHT, 0.16)
-        + _ponto(l * 0.90, a * 0.18, 11)
     )
 
 
@@ -94,7 +86,6 @@ def _moldura(l, a):
     return (
         _mancha(0, 0, r) + _mancha(l, 0, r * 0.8)
         + _mancha(0, a, r * 0.85) + _mancha(l, a, r)
-        + _ponto(l * 0.08, a * 0.42, 10) + _ponto(l * 0.93, a * 0.62, 12)
     )
 
 
