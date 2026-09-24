@@ -69,7 +69,11 @@ CORES = {
 LARGURA, ALTURA = 560, 315
 ESCALA = 2
 
-ARTE = Path(__file__).resolve().parent / "banner-email" / "arte" / "fundo-campanha.webp"
+# Fundo da peça. Aponta para um dos fundos da família da marca
+# (marketing/gerar_fundos_marca.py); trocar o nome aqui troca a cara do banner sem
+# mexer em mais nada. A arte gerada por IA continua em banner-email/arte/, se um dia
+# a campanha pedir algo mais ilustrado.
+ARTE = Path(__file__).resolve().parent / "fundos-marca" / "fundo-01-manchas-roxo-16x9.png"
 
 DATA = "11.11"
 # O que a campanha paga. Sai da linha cadastrada em pedidos.CampanhaCashback - o padrão
@@ -120,13 +124,14 @@ def _pagina(com_numero: bool, ilustrado: bool) -> str:
     classe_topo = "ilustrado" if ilustrado else ""
     if ilustrado:
         arte64 = base64.b64encode(ARTE.read_bytes()).decode()
-        fundo_css = (f"background-image:url(data:image/webp;base64,{arte64});"
+        fundo_css = (f"background-image:url(data:image/png;base64,{arte64});"
                      "background-size:cover; background-position:center;")
-        decoracao = '<div class="veu"></div>'
-        # Sem pastilhas na versão ilustrada: as caixas de presente da arte ocupam
-        # justamente a faixa de baixo, e as duas coisas brigam pelo mesmo espaço. Os
-        # três pontos cabem no corpo do e-mail, que o admin escreve de qualquer forma.
-        pastilhas = ""
+        decoracao = ""
+        # O fundo abstrato deixa o miolo livre, então as pastilhas voltam: era a
+        # ilustração cheia (caixas de presente no pé) que disputava esse espaço.
+        pastilhas = ('<div class="beneficios">'
+                     + "".join(f'<div class="beneficio">{b}</div>' for b in BENEFICIOS)
+                     + "</div>")
     else:
         fundo_css = ""
         decoracao = _decoracao()
