@@ -160,6 +160,14 @@ class AppSettings:
     relatorio_email_porta_smtp: int = 587
     relatorio_email_ultimo_envio: str = ""
 
+    # Licenca (assinatura). O bot so roda com uma chave valida, checada
+    # contra o servidor abaixo - ver licenca.py e o gate em app.py/main().
+    # licenca_servidor_url deve apontar para o endpoint que recebe
+    # {"chave": "..."} e responde {"valido": bool, "motivo": str,
+    # "plano": str, "expira_em": str}.
+    licenca_chave: str = ""
+    licenca_servidor_url: str = ""
+
     @classmethod
     def load(cls, path=USER_CONFIG_PATH):
         path = Path(path)

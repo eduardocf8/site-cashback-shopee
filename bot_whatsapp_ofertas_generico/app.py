@@ -16,6 +16,7 @@ from PySide6.QtWidgets import (
     QCheckBox,
     QComboBox,
     QDateEdit,
+    QDialog,
     QFrame,
     QFileDialog,
     QFormLayout,
@@ -50,6 +51,7 @@ from bot_runner import BotRunner
 from categorias_shopee import opcoes_categoria
 from database import Database
 from ia_revisor import RevisorIA
+import licenca
 from relatorio_email import MESES_PT, montar_corpo_email, enviar_email
 from settings import (
     APP_DIR,
@@ -59,6 +61,9 @@ from settings import (
     backup_user_config,
 )
 from whatsapp import WhatsApp
+
+
+CAMINHO_ESTADO_LICENCA = APP_DIR / "licenca_estado.json"
 
 
 TESTE_API_SHOPEE_URL = (
@@ -87,6 +92,100 @@ class BotSignals(QObject):
     relatorio_email_status = Signal(str)
     relatorio_email_button_enable = Signal()
     shopee_login_button_enable = Signal()
+    licenca_invalida = Signal(str)
+
+
+class LicencaVerificacaoSignals(QObject):
+    resultado = Signal(bool, str, dict)
+
+
+class LicencaDialog(QDialog):
+    """Dialogo de ativacao/gerenciamento da licenca (assinatura) do bot.
+
+    Mostrado antes da janela principal abrir (bloqueia o uso sem uma
+    licenca ativa) e tambem acessivel depois pelo botao "Licença", pra
+    trocar de chave ou conferir o status. Ver licenca.py para o contrato
+    esperado do servidor de validacao.
+    """
+
+    def __init__(self, settings, parent=None, obrigatorio=True):
+        super().__init__(parent)
+        self.settings = settings
+        self.obrigatorio = obrigatorio
+        self.licenca_liberada = False
+        self.setWindowTitle("Licença do Bot.ee")
+        self.setMinimumWidth(440)
+        self.setModal(True)
+
+        layout = QVBoxLayout(self)
+
+        info = QLabel(
+            "Este bot exige uma licença ativa. Cole abaixo a chave que você "
+            "recebeu por email após a assinatura ser aprovada."
+        )
+        info.setWordWrap(True)
+        layout.addWidget(info)
+
+        self.chave_input = QLineEdit()
+        self.chave_input.setMinimumHeight(40)
+        self.chave_input.setPlaceholderText("Cole aqui sua chave de licença")
+        self.chave_input.setText(str(self.settings.licenca_chave or ""))
+        layout.addWidget(self.chave_input)
+
+        self.status_label = QLabel("")
+        self.status_label.setWordWrap(True)
+        layout.addWidget(self.status_label)
+
+        botoes = QHBoxLayout()
+        self.ativar_button = QPushButton("Ativar")
+        self.ativar_button.clicked.connect(self.ativar)
+        botoes.addWidget(self.ativar_button)
+
+        self.sair_button = QPushButton("Sair" if obrigatorio else "Fechar")
+        self.sair_button.clicked.connect(self.reject)
+        botoes.addWidget(self.sair_button)
+        layout.addLayout(botoes)
+
+        self._signals = LicencaVerificacaoSignals()
+        self._signals.resultado.connect(self._ao_receber_resultado)
+
+        # Se ja existe uma chave salva, tenta validar automaticamente ao
+        # abrir - evita obrigar quem ja assina a clicar em "Ativar" toda
+        # vez que o app abre.
+        if self.chave_input.text().strip():
+            self.ativar()
+
+    def ativar(self):
+        chave = self.chave_input.text().strip()
+        if not chave:
+            self.status_label.setText("Informe a chave de licença.")
+            return
+
+        self.ativar_button.setEnabled(False)
+        self.chave_input.setEnabled(False)
+        self.status_label.setText("Verificando licença...")
+        threading.Thread(
+            target=self._verificar_em_thread,
+            args=(chave, str(self.settings.licenca_servidor_url or "")),
+            daemon=True,
+        ).start()
+
+    def _verificar_em_thread(self, chave, servidor_url):
+        liberado, motivo, _ = licenca.verificar_licenca(
+            chave, servidor_url, CAMINHO_ESTADO_LICENCA
+        )
+        self._signals.resultado.emit(liberado, motivo, {"chave": chave})
+
+    def _ao_receber_resultado(self, liberado, motivo, extra):
+        self.ativar_button.setEnabled(True)
+        self.chave_input.setEnabled(True)
+        self.status_label.setText(motivo)
+
+        if liberado:
+            self.settings.licenca_chave = extra.get("chave", self.chave_input.text().strip())
+            self.settings.save()
+            self.licenca_liberada = True
+            self.accept()
 
 
 class ThemeSelector(QPushButton):
@@ -329,6 +428,12 @@ class MainWindow(QMainWindow):
         self.relatorio_email_timer = QTimer(self)
         self.relatorio_email_timer.setInterval(60000)
         self.relatorio_email_timer.timeout.connect(self.verificar_envio_relatorio_agendado)
+        # Reconfirma a licenca periodicamente enquanto o app fica aberto -
+        # pega o caso de a assinatura ser cancelada/atrasar o pagamento
+        # com o bot ja rodando, sem esperar o app ser reaberto.
+        self.licenca_timer = QTimer(self)
+        self.licenca_timer.setInterval(6 * 60 * 60 * 1000)
+        self.licenca_timer.timeout.connect(self.verificar_licenca_em_segundo_plano)
 
         self.build_ui()
         self.signals.relatorio_email_status.connect(self.relatorio_email_status_label.setText)
@@ -338,10 +443,12 @@ class MainWindow(QMainWindow):
         self.signals.shopee_login_button_enable.connect(
             lambda: self.shopee_login_button.setEnabled(True)
         )
+        self.signals.licenca_invalida.connect(self._ao_licenca_ficar_invalida)
         self.load_fields()
         self.apply_styles()
         self.refresh_history()
         self.relatorio_email_timer.start()
+        self.licenca_timer.start()
 
     def build_ui(self):
         root = QWidget()
@@ -390,6 +497,9 @@ class MainWindow(QMainWindow):
         self.save_button = QPushButton("Salvar configurações")
         self.save_button.setObjectName("ghostButton")
         self.save_button.clicked.connect(lambda: self.save_fields())
+        self.licenca_button = QPushButton("Licença")
+        self.licenca_button.setObjectName("ghostButton")
+        self.licenca_button.clicked.connect(self.gerenciar_licenca)
         self.about_button = QPushButton("Sobre")
         self.about_button.setObjectName("ghostButton")
         self.about_button.clicked.connect(self.show_about)
@@ -428,6 +538,7 @@ class MainWindow(QMainWindow):
         left_layout.addWidget(self.start_button)
         left_layout.addWidget(self.stop_button)
         left_layout.addWidget(self.save_button)
+        left_layout.addWidget(self.licenca_button)
         left_layout.addWidget(self.about_button)
 
         right = QFrame()
@@ -2904,6 +3015,40 @@ class MainWindow(QMainWindow):
         )
         QMessageBox.information(self, "Sobre o Bot.ee", message)
 
+    def gerenciar_licenca(self):
+        """Abre o dialogo de licenca pra conferir status ou trocar de
+        chave (ex: depois de assinar de novo com outro email)."""
+        dialogo = LicencaDialog(self.settings, self, obrigatorio=False)
+        dialogo.exec()
+
+    def verificar_licenca_em_segundo_plano(self):
+        threading.Thread(target=self._checar_licenca_thread, daemon=True).start()
+
+    def _checar_licenca_thread(self):
+        liberado, motivo, _ = licenca.verificar_licenca(
+            self.settings.licenca_chave,
+            self.settings.licenca_servidor_url,
+            CAMINHO_ESTADO_LICENCA,
+        )
+        if not liberado:
+            self.signals.licenca_invalida.emit(motivo)
+
+    def _ao_licenca_ficar_invalida(self, motivo):
+        # Para o bot se estiver rodando - nao faz sentido continuar
+        # enviando ofertas com a assinatura vencida/cancelada.
+        if self.runner and self.runner.is_running():
+            self.runner.stop()
+            self.set_status("Bot parado: licença inválida.")
+            self.add_log(f"Bot parado automaticamente: {motivo}")
+
+        QMessageBox.warning(
+            self,
+            "Licença inválida",
+            f"Sua licença não pôde ser confirmada: {motivo}\n\n"
+            "Renove sua assinatura ou informe uma chave válida para continuar usando o bot.",
+        )
+        self.gerenciar_licenca()
+
     def refresh_history(self):
         db = None
         try:
@@ -4296,6 +4441,14 @@ def main():
     qInstallMessageHandler(_filtrar_avisos_qt_benignos)
     app = QApplication(sys.argv)
     app.setFont(QFont("Segoe UI", 10))
+
+    # Trava de licenca: o app so segue pra janela principal com uma
+    # assinatura ativa confirmada. Ver licenca.py e LicencaDialog.
+    settings_iniciais = AppSettings.load()
+    dialogo_licenca = LicencaDialog(settings_iniciais, obrigatorio=True)
+    if dialogo_licenca.exec() != QDialog.Accepted or not dialogo_licenca.licenca_liberada:
+        sys.exit(0)
+
     window = MainWindow()
     window.show()
     sys.exit(app.exec())

@@ -1,5 +1,6 @@
 config_usuario.json
 mensagens_app.db
+licenca_estado.json
 backups/
 logs/
 diagnosticos_whatsapp/

@@ -4,6 +4,10 @@ Versao atual: 1.0.0
 
 Esta pasta contem o bot transformado em aplicativo com interface.
 
+O app exige uma licença ativa (assinatura) para abrir - ver `LICENCA.md`
+para o contrato do servidor de validação e o que ainda falta implementar
+do lado do backend antes de distribuir o bot pra clientes.
+
 ## Rodar em desenvolvimento
 
 1. Instale as dependencias:
