@@ -9,8 +9,8 @@ from datetime import datetime, timedelta
 from html import escape
 from pathlib import Path
 
-from PySide6.QtCore import QDate, QEvent, QObject, Qt, QTimer, Signal, QtMsgType, qInstallMessageHandler
-from PySide6.QtGui import QFont, QIcon, QStandardItem, QStandardItemModel, QTextCursor
+from PySide6.QtCore import QDate, QEvent, QObject, Qt, QTimer, QUrl, Signal, QtMsgType, qInstallMessageHandler
+from PySide6.QtGui import QDesktopServices, QFont, QIcon, QStandardItem, QStandardItemModel, QTextCursor
 from PySide6.QtWidgets import (
     QApplication,
     QAbstractItemView,
@@ -42,6 +42,7 @@ from PySide6.QtWidgets import (
 )
 from playwright.sync_api import sync_playwright
 
+import atualizacao
 from afiliados import ConversorAfiliados
 from browser_launch import (
     montar_kwargs_launch,
@@ -88,10 +89,15 @@ class BotSignals(QObject):
     relatorio_email_button_enable = Signal()
     shopee_login_button_enable = Signal()
     licenca_invalida = Signal(str)
+    atualizacao_disponivel = Signal(dict)
 
 
 class LicencaVerificacaoSignals(QObject):
     resultado = Signal(bool, str, dict)
+
+
+class AtualizacaoVerificacaoSignals(QObject):
+    resultado = Signal(dict)
 
 
 class LicencaDialog(QDialog):
@@ -186,6 +192,97 @@ class LicencaDialog(QDialog):
             # conferir o status, entao fica aberta ate o usuario clicar em Fechar.
             if self.obrigatorio:
                 self.accept()
+
+
+class SobreDialog(QDialog):
+    """Tela "Sobre", com a versão instalada e um botão pra checar se há
+    uma versão mais nova (ver atualizacao.py). A checagem é manual aqui -
+    o app também faz uma checagem silenciosa sozinho ao abrir, mas esta
+    tela sempre mostra o resultado, mesmo se não houver nada novo ou se a
+    verificação falhar (ex.: sem internet)."""
+
+    def __init__(self, settings, parent=None):
+        super().__init__(parent)
+        self.settings = settings
+        self._url_download_atual = ""
+        self.setWindowTitle("Sobre o Appfiliado")
+        self.setMinimumWidth(420)
+        self.setModal(True)
+
+        layout = QVBoxLayout(self)
+
+        titulo = QLabel(f"Appfiliado v{APP_VERSION}")
+        titulo.setObjectName("appTitle")
+        descricao = QLabel("Automatiza ofertas do WhatsApp com links afiliados da Shopee.")
+        descricao.setWordWrap(True)
+        layout.addWidget(titulo)
+        layout.addWidget(descricao)
+
+        self.status_label = QLabel("")
+        self.status_label.setWordWrap(True)
+        layout.addWidget(self.status_label)
+
+        botoes = QHBoxLayout()
+        self.verificar_button = QPushButton("Verificar atualizações")
+        self.verificar_button.clicked.connect(self.verificar)
+        botoes.addWidget(self.verificar_button)
+
+        self.baixar_button = QPushButton("Baixar agora")
+        self.baixar_button.setObjectName("primaryButton")
+        self.baixar_button.setVisible(False)
+        self.baixar_button.clicked.connect(self.baixar)
+        botoes.addWidget(self.baixar_button)
+
+        botoes.addStretch(1)
+
+        fechar_button = QPushButton("Fechar")
+        fechar_button.clicked.connect(self.reject)
+        botoes.addWidget(fechar_button)
+        layout.addLayout(botoes)
+
+        self._signals = AtualizacaoVerificacaoSignals()
+        self._signals.resultado.connect(self._ao_receber_resultado)
+
+    def verificar(self):
+        self.verificar_button.setEnabled(False)
+        self.baixar_button.setVisible(False)
+        self.status_label.setText("Verificando atualizações...")
+        threading.Thread(target=self._verificar_em_thread, daemon=True).start()
+
+    def _verificar_em_thread(self):
+        resultado = atualizacao.verificar_atualizacao(
+            self.settings.atualizacao_servidor_url, APP_VERSION
+        )
+        self._signals.resultado.emit(resultado)
+
+    def _ao_receber_resultado(self, resultado):
+        self.verificar_button.setEnabled(True)
+
+        if not resultado.get("ok"):
+            self.status_label.setText(
+                resultado.get("motivo") or "Não foi possível verificar atualizações."
+            )
+            return
+
+        if not resultado.get("atualizacao_disponivel"):
+            self.status_label.setText("Você já está usando a versão mais recente.")
+            return
+
+        versao = resultado.get("versao_disponivel", "")
+        notas = resultado.get("notas") or ""
+        texto = f"Nova versão disponível: v{versao}"
+        if notas:
+            texto += f"\n{notas}"
+        self.status_label.setText(texto)
+
+        url = resultado.get("url_download") or ""
+        if atualizacao.url_de_download_e_segura(url):
+            self._url_download_atual = url
+            self.baixar_button.setVisible(True)
+
+    def baixar(self):
+        if self._url_download_atual:
+            QDesktopServices.openUrl(QUrl(self._url_download_atual))
 
 
 class SecondsInput(QWidget):
@@ -402,11 +499,16 @@ class MainWindow(QMainWindow):
             lambda: self.shopee_login_button.setEnabled(True)
         )
         self.signals.licenca_invalida.connect(self._ao_licenca_ficar_invalida)
+        self.signals.atualizacao_disponivel.connect(self._ao_checar_atualizacao_silenciosa)
         self.load_fields()
         self.apply_styles()
         self.refresh_history()
         self.relatorio_email_timer.start()
         self.licenca_timer.start()
+        # Espera a janela terminar de abrir antes de checar por conta
+        # propria - nao deve competir com o carregamento inicial nem com
+        # o gate de licenca.
+        QTimer.singleShot(3000, self.verificar_atualizacao_em_segundo_plano)
 
     def build_ui(self):
         root = QWidget()
@@ -2896,11 +2998,69 @@ class MainWindow(QMainWindow):
             QMessageBox.warning(self, "Falha ao restaurar", f"Não consegui restaurar o backup:\n\n{e}")
 
     def show_about(self):
-        message = (
-            f"Appfiliado v{APP_VERSION}\n\n"
-            "Automatiza ofertas do WhatsApp com links afiliados da Shopee."
+        dialogo = SobreDialog(self.settings, self)
+        dialogo.exec()
+
+    def verificar_atualizacao_em_segundo_plano(self):
+        """Checagem silenciosa feita sozinha alguns segundos depois do
+        app abrir. Só avisa o usuário se houver mesmo uma versão nova E
+        ele não tiver escolhido "Ignorar esta versão" antes - checagem
+        manual (tela Sobre) sempre mostra o resultado, essa aqui não."""
+        if not str(self.settings.atualizacao_servidor_url or "").strip():
+            return
+        threading.Thread(target=self._checar_atualizacao_silenciosa_thread, daemon=True).start()
+
+    def _checar_atualizacao_silenciosa_thread(self):
+        resultado = atualizacao.verificar_atualizacao(
+            self.settings.atualizacao_servidor_url, APP_VERSION
         )
-        QMessageBox.information(self, "Sobre o Appfiliado", message)
+        self.signals.atualizacao_disponivel.emit(resultado)
+
+    def _ao_checar_atualizacao_silenciosa(self, resultado):
+        if not self.isVisible():
+            return
+        if not resultado.get("ok") or not resultado.get("atualizacao_disponivel"):
+            return
+
+        versao = str(resultado.get("versao_disponivel") or "")
+        if not versao or versao == str(self.settings.atualizacao_versao_ignorada or ""):
+            return
+
+        self._mostrar_aviso_atualizacao(resultado)
+
+    def _mostrar_aviso_atualizacao(self, resultado):
+        versao = resultado.get("versao_disponivel", "")
+        notas = resultado.get("notas") or ""
+        url_download = resultado.get("url_download") or ""
+        obrigatoria = bool(resultado.get("obrigatoria"))
+
+        texto = f"Uma nova versão do Appfiliado está disponível: v{versao} (você está na v{APP_VERSION})."
+        if notas:
+            texto += f"\n\n{notas}"
+
+        caixa = QMessageBox(self)
+        caixa.setWindowTitle("Atualização disponível")
+        caixa.setIcon(QMessageBox.Information)
+        caixa.setText(texto)
+
+        baixar_button = None
+        if atualizacao.url_de_download_e_segura(url_download):
+            baixar_button = caixa.addButton("Baixar agora", QMessageBox.AcceptRole)
+
+        ignorar_button = None
+        if not obrigatoria:
+            ignorar_button = caixa.addButton("Ignorar esta versão", QMessageBox.DestructiveRole)
+
+        caixa.addButton("Lembrar depois", QMessageBox.RejectRole)
+
+        caixa.exec()
+        clicado = caixa.clickedButton()
+
+        if baixar_button is not None and clicado is baixar_button:
+            QDesktopServices.openUrl(QUrl(url_download))
+        elif ignorar_button is not None and clicado is ignorar_button:
+            self.settings.atualizacao_versao_ignorada = versao
+            self.settings.save()
 
     def gerenciar_licenca(self):
         """Abre o dialogo de licenca pra conferir status ou trocar de

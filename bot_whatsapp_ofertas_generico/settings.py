@@ -158,6 +158,13 @@ class AppSettings:
     licenca_chave: str = ""
     licenca_servidor_url: str = ""
 
+    # Verificacao de nova versao disponivel (ver atualizacao.py). Vazio =
+    # recurso desligado, nenhuma checagem de rede e feita.
+    atualizacao_servidor_url: str = ""
+    # Versao que o usuario escolheu ignorar no aviso automatico (o botao
+    # "Verificar atualizações" continua avisando normalmente mesmo assim).
+    atualizacao_versao_ignorada: str = ""
+
     @classmethod
     def load(cls, path=USER_CONFIG_PATH):
         path = Path(path)
