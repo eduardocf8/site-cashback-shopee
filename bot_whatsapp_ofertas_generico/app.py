@@ -1249,11 +1249,10 @@ class MainWindow(QMainWindow):
         indicators_filters_row1.addWidget(QLabel("até"))
         indicators_filters_row1.addWidget(self.indicators_end_date)
         indicators_filters_row1.addStretch(1)
+        indicators_filters_row1.addWidget(self.refresh_indicators_button)
 
         self.indicators_sales_label = QLabel("0")
         self.indicators_commission_label = QLabel("R$ 0,00")
-        indicators_filters_row2.addWidget(self.refresh_indicators_button)
-        indicators_filters_row2.addSpacing(4)
         indicators_filters_row2.addWidget(self.metric_card("Vendas", self.indicators_sales_label))
         indicators_filters_row2.addWidget(self.metric_card("Comissão", self.indicators_commission_label))
         indicators_filters_row2.addWidget(self.indicators_summary_label, 1)
