@@ -1250,20 +1250,16 @@ class MainWindow(QMainWindow):
         indicators_filters_row1.addWidget(self.indicators_end_date)
         indicators_filters_row1.addStretch(1)
 
+        self.indicators_sales_label = QLabel("0")
+        self.indicators_commission_label = QLabel("R$ 0,00")
         indicators_filters_row2.addWidget(self.refresh_indicators_button)
+        indicators_filters_row2.addSpacing(4)
+        indicators_filters_row2.addWidget(self.metric_card("Vendas", self.indicators_sales_label))
+        indicators_filters_row2.addWidget(self.metric_card("Comissão", self.indicators_commission_label))
         indicators_filters_row2.addWidget(self.indicators_summary_label, 1)
 
         indicators_filters.addLayout(indicators_filters_row1)
         indicators_filters.addLayout(indicators_filters_row2)
-
-        indicators_cards = QHBoxLayout()
-        indicators_cards.setContentsMargins(0, 0, 0, 0)
-        indicators_cards.setSpacing(10)
-        self.indicators_sales_label = QLabel("0")
-        self.indicators_commission_label = QLabel("R$ 0,00")
-        indicators_cards.addWidget(self.metric_card("Vendas", self.indicators_sales_label, min_width=100))
-        indicators_cards.addWidget(self.metric_card("Comissão", self.indicators_commission_label, min_width=150))
-        indicators_cards.addStretch(1)
 
         indicators_content = QHBoxLayout()
         indicators_content.setContentsMargins(0, 0, 0, 0)
@@ -1292,7 +1288,6 @@ class MainWindow(QMainWindow):
         indicators_content.addWidget(self.indicators_chart, 1)
 
         indicators_layout.addLayout(indicators_filters)
-        indicators_layout.addLayout(indicators_cards)
         indicators_layout.addLayout(indicators_content, 1)
 
         # ===================== Relatório de conversões =====================
@@ -1379,9 +1374,9 @@ class MainWindow(QMainWindow):
         conversoes_filters_row2.addWidget(self.refresh_conversoes_button)
         conversoes_filters_row2.addWidget(self.exportar_conversoes_button)
         conversoes_filters_row2.addSpacing(4)
-        conversoes_filters_row2.addWidget(self.metric_card("Produtos", self.conversoes_produtos_label, min_width=100))
-        conversoes_filters_row2.addWidget(self.metric_card("Vendas", self.conversoes_qtd_label, min_width=100))
-        conversoes_filters_row2.addWidget(self.metric_card("Comissão", self.conversoes_comissao_label, min_width=150))
+        conversoes_filters_row2.addWidget(self.metric_card("Produtos", self.conversoes_produtos_label))
+        conversoes_filters_row2.addWidget(self.metric_card("Vendas", self.conversoes_qtd_label))
+        conversoes_filters_row2.addWidget(self.metric_card("Comissão", self.conversoes_comissao_label))
         conversoes_filters_row2.addWidget(self.conversoes_summary_label, 1)
 
         conversoes_filters.addLayout(conversoes_filters_row1)
@@ -1554,11 +1549,9 @@ class MainWindow(QMainWindow):
         card.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Preferred)
         return card
 
-    def metric_card(self, label, value_label, min_width=None):
+    def metric_card(self, label, value_label):
         card = QFrame()
         card.setObjectName("metricCard")
-        if min_width:
-            card.setMinimumWidth(min_width)
         layout = QVBoxLayout(card)
         layout.setContentsMargins(14, 12, 14, 12)
         value_label.setObjectName("metricValue")
