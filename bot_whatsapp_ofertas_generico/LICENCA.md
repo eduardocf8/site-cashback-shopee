@@ -51,27 +51,61 @@ offline. Só é tratado como falha de conexão (e cai na tolerância offline)
 quando o bot realmente não conseguir nem chegar ao servidor (sem internet,
 timeout, DNS, etc.).
 
-## Peça que falta construir: o backend
+## Backend: já implementado (app `licencas`, projeto Django da cash-b)
 
-1. **Um modelo de licença** guardando, por chave (ou por email do
-   comprador): status (ativa/cancelada/atrasada), plano, data de
-   expiração/próxima cobrança.
-2. **Um endpoint de webhook**, configurado na plataforma de pagamento
-   (Kiwify/Hotmart/Pepper/etc.), que recebe os eventos de compra aprovada,
-   assinatura cancelada, pagamento atrasado, reembolso etc., e atualiza o
-   modelo de licença de acordo. Cada plataforma tem seu próprio formato de
-   payload e nomes de evento - isso precisa ser mapeado por plataforma.
-3. **Geração e entrega da chave**: ao receber o evento de "compra
-   aprovada", gerar uma chave única e enviá-la para o comprador (por
-   email, ou usando a própria função de "conteúdo entregue
-   automaticamente" da plataforma).
-4. **O endpoint de validação** descrito acima, que só lê o status já
-   salvo no banco (não precisa consultar a plataforma de pagamento em
-   tempo real a cada checagem do bot).
+O backend mora no mesmo projeto Django do site principal (`site-cashback-shopee`),
+num app separado chamado `licencas` - só reaproveita a infraestrutura já paga
+(hospedagem, banco, envio de email), o Appfiliado continua sem nenhuma marca ou
+menção à cash-b visível pro cliente final.
 
-Como o projeto já tem um site em Django, o caminho mais direto é um novo
-app (`licencas`, por exemplo) com esse modelo + as views de webhook e de
-validação.
+Arquivos: `licencas/models.py` (`Licenca`, `EventoWebhookKiwify`),
+`licencas/services.py` (interpreta o evento e decide o status),
+`licencas/views.py` (webhook + endpoint de validação), `licencas/admin.py`
+(pra ver licenças e webhooks recebidos direto no admin do Django).
+
+### Webhook da Kiwify (confirmado com payload real de teste)
+
+- URL: `/licencas/webhook/kiwify/`
+- A Kiwify manda `POST` com o corpo em JSON e a assinatura na própria URL:
+  `?signature=<hex>`, onde `<hex>` é `HMAC-SHA1(chave=Token do webhook,
+  mensagem=corpo bruto da requisição)`. Confirmado testando contra um
+  payload real (bate 100%) - não está documentado publicamente pela
+  Kiwify, então não mude sem testar de novo.
+- O Token vem do painel da Kiwify: **Webhooks > (o webhook do Appfiliado) >
+  Token** - configura em `KIWIFY_WEBHOOK_TOKEN` no `.env`.
+- Campo que identifica o tipo de evento: `webhook_event_type` (ex:
+  `"order_approved"` confirmado; outros valores ainda não vistos em
+  produção). Por isso `services.interpretar_evento` prioriza os campos
+  `order_status` e `Subscription.status`, que são mais estáveis, e só usa
+  `webhook_event_type` como reforço (contém "refund", "chargeback" etc.).
+- Qualquer status de assinatura que a Kiwify mande e a gente ainda não
+  tenha mapeado **bloqueia por padrão** (não libera "por garantia") - fica
+  registrado com `motivo` pedindo conferência manual, visível no admin.
+- Toda requisição recebida é salva crua em `EventoWebhookKiwify` (mesmo as
+  com assinatura inválida), pra dar pra depurar formatos novos sem precisar
+  reproduzir o evento de novo.
+
+### Endpoint de validação (o que o bot chama)
+
+- URL: `/licencas/validar/` - mesmo contrato descrito abaixo, sem mudança.
+
+### Email da chave
+
+- Enviado só na primeira vez que uma assinatura (`Subscription.id`) é
+  vista (evento `order_approved`) - renovações não reenviam a chave.
+- Remetente configurado em `APPFILIADO_EMAIL_REMETENTE` (`.env`) - por
+  enquanto usa o domínio verificado da cash-b só como transporte técnico
+  (`Appfiliado <contato@cash-b.com>`), sem nenhuma menção a cash-b no
+  corpo do email. Trocar assim que o Appfiliado tiver domínio próprio.
+
+### O que falta
+
+- Depois do deploy, configurar `licenca_servidor_url` no bot pra apontar
+  pra `https://<domínio do site>/licencas/validar/`.
+- Ver no admin (`/admin/licencas/`) os primeiros eventos reais chegando e
+  conferir se `webhook_event_type` de reembolso/chargeback/atraso batem
+  com o que `services.interpretar_evento` já espera - ainda só foi
+  confirmado o evento de compra aprovada.
 
 ## Comportamento do lado do bot (já implementado)
 

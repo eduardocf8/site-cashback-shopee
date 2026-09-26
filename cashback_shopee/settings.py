@@ -76,6 +76,7 @@ INSTALLED_APPS = [
     "ofertas",
     "instagram_bot",
     "automacao_instagram",
+    "licencas",
 ]
 
 AUTH_USER_MODEL = "accounts.User"
@@ -203,6 +204,22 @@ INSTAGRAM_APROVADOR_EMAIL = os.environ.get("INSTAGRAM_APROVADOR_EMAIL", "contato
 # (rodado à parte, como Background Worker no Render - ver
 # automacao_instagram/management/commands/automacao_instagram_worker.py).
 AUTOMACAO_INSTAGRAM_INTERVALO_SEGUNDOS = int(os.environ.get("AUTOMACAO_INSTAGRAM_INTERVALO_SEGUNDOS", "30"))
+
+# App licencas: backend de validação de assinatura do Appfiliado (bot separado, ver
+# bot_whatsapp_ofertas_generico/LICENCA.md). O Appfiliado não tem relação de marca com a
+# cash-b - reaproveitamos só a infraestrutura Django já existente.
+#
+# Token configurado no painel da Kiwify em Webhooks > (o webhook do Appfiliado) > Token.
+# Usado pra conferir a assinatura HMAC-SHA1 que a Kiwify manda em ?signature= na própria
+# URL do webhook (ver licencas/views.py::_assinatura_valida - formato confirmado contra
+# um payload de teste real, não está documentado publicamente).
+KIWIFY_WEBHOOK_TOKEN = os.environ.get("KIWIFY_WEBHOOK_TOKEN", "")
+
+# Remetente do e-mail com a chave de licença. Como o Appfiliado ainda não tem domínio
+# próprio, isso usa o mesmo endereço verificado da cash-b no Brevo (contato@cash-b.com)
+# só como transporte técnico - o nome de exibição já é "Appfiliado", sem menção a cash-b
+# no corpo do e-mail. Troque pra um domínio próprio do Appfiliado assim que existir um.
+APPFILIADO_EMAIL_REMETENTE = os.environ.get("APPFILIADO_EMAIL_REMETENTE", "Appfiliado <contato@cash-b.com>")
 
 MIDDLEWARE = [
     "django.middleware.security.SecurityMiddleware",
