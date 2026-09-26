@@ -123,7 +123,6 @@ class AppSettings:
     shopee_ofertas_avaliacao_minima: str = ""
     shopee_ofertas_quantidade_por_ciclo: int = 10
     shopee_ofertas_intervalo_envio_segundos: int = 300
-    shopee_ofertas_nao_repetir: bool = True
     aguardar_previa_link: bool = True
     timeout_previa_link_ms: int = 15000
     espera_minima_previa_link_ms: int = 5000
@@ -134,14 +133,7 @@ class AppSettings:
     ia_gemini_api_key: str = ""
     ia_modelo: str = "gemini-3.1-flash-lite"
     ia_tipo_revisao: str = "contextual"
-    ia_limite_diario_revisoes: int = 180
-    ia_timeout_segundos: int = 10
-    ia_pausar_ao_limite: bool = True
-    ia_retomar_no_dia_seguinte: bool = True
     ia_status_mensagem: str = "Revisão por IA desativada."
-    ia_revisoes_hoje: int = 0
-    ia_data_revisoes: str = ""
-    ia_pausada_ate: str = ""
     api_validada_em: str = ""
     grupos_validados_em: str = ""
     profile_dir: str = "perfil_whatsapp_app"

@@ -2,7 +2,6 @@ import json
 import re
 import urllib.error
 import urllib.request
-from datetime import date, timedelta
 
 
 class RevisorIA:
@@ -19,18 +18,6 @@ class RevisorIA:
             self._atualizar_status("Revisão por IA ignorada: chave Gemini não informada.")
             return texto
 
-        self._resetar_contador_se_preciso()
-
-        if self._ia_pausada():
-            return texto
-
-        if self.settings.ia_revisoes_hoje >= self.settings.ia_limite_diario_revisoes:
-            self._pausar_ate_amanha(
-                "Limite diário de revisões por IA atingido. "
-                "A IA foi pausada e o bot continuará enviando as ofertas normalmente."
-            )
-            return texto
-
         try:
             texto_revisado = self._chamar_gemini(texto)
             if not texto_revisado:
@@ -38,7 +25,7 @@ class RevisorIA:
                 return texto
 
             if link_afiliado and link_afiliado not in texto_revisado:
-                self._atualizar_status("A IA alterou/removou o link. Texto original mantido por segurança.")
+                self._atualizar_status("A IA alterou/removeu o link. Texto original mantido por segurança.")
                 return texto
 
             validacao = self._validar_resposta(texto, texto_revisado)
@@ -46,23 +33,12 @@ class RevisorIA:
                 self._atualizar_status(f"{validacao} Texto original mantido por segurança.")
                 return texto
 
-            self.settings.ia_revisoes_hoje += 1
-            self._atualizar_status(
-                f"Oferta revisada por IA ({self._nome_tipo_revisao()}). Uso hoje: "
-                f"{self.settings.ia_revisoes_hoje}/{self.settings.ia_limite_diario_revisoes}."
-            )
+            self._atualizar_status(f"Oferta revisada por IA ({self._nome_tipo_revisao()}).")
             return texto_revisado.strip()
 
         except urllib.error.HTTPError as error:
             status_code = getattr(error, "code", 0)
-            body = self._ler_erro_http(error)
-            if status_code in (403, 429) or "quota" in body.lower() or "limit" in body.lower():
-                self._pausar_ate_amanha(
-                    "Limite/cota da IA atingido. Revisão automática pausada até amanhã. "
-                    "As ofertas continuarão sendo enviadas normalmente."
-                )
-            else:
-                self._atualizar_status(f"Falha na IA ({status_code}). Texto original mantido.")
+            self._atualizar_status(f"Falha na IA ({status_code}). Texto original mantido.")
             return texto
 
         except Exception as error:
@@ -94,8 +70,9 @@ class RevisorIA:
             headers={"Content-Type": "application/json"},
             method="POST",
         )
-        timeout = max(3, int(self.settings.ia_timeout_segundos or 10))
-        with urllib.request.urlopen(request, timeout=timeout) as response:
+        # Fixo em 10s - nao vale a pena expor isso na tela, e um detalhe
+        # tecnico demais pra quem usa o app.
+        with urllib.request.urlopen(request, timeout=10) as response:
             result = json.loads(response.read().decode("utf-8"))
 
         candidates = result.get("candidates") or []
@@ -179,37 +156,6 @@ class RevisorIA:
         }
         return nomes.get(self.settings.ia_tipo_revisao or "contextual", "contextual")
 
-    def _resetar_contador_se_preciso(self):
-        hoje = date.today().isoformat()
-        if self.settings.ia_data_revisoes != hoje:
-            self.settings.ia_data_revisoes = hoje
-            self.settings.ia_revisoes_hoje = 0
-            if self.settings.ia_retomar_no_dia_seguinte:
-                self.settings.ia_pausada_ate = ""
-            self.settings.save()
-
-    def _ia_pausada(self):
-        pausada_ate = self.settings.ia_pausada_ate
-        if not pausada_ate:
-            return False
-
-        hoje = date.today().isoformat()
-        if self.settings.ia_retomar_no_dia_seguinte and hoje >= pausada_ate:
-            self.settings.ia_pausada_ate = ""
-            self._atualizar_status("Revisão por IA retomada automaticamente.")
-            return False
-
-        self._atualizar_status(
-            "Revisão por IA pausada por limite/cota. "
-            "O bot continuará enviando ofertas com o texto original."
-        )
-        return True
-
-    def _pausar_ate_amanha(self, mensagem):
-        if self.settings.ia_pausar_ao_limite:
-            self.settings.ia_pausada_ate = (date.today() + timedelta(days=1)).isoformat()
-        self._atualizar_status(mensagem)
-
     def _atualizar_status(self, mensagem):
         self.settings.ia_status_mensagem = mensagem
         try:
@@ -217,9 +163,3 @@ class RevisorIA:
         except Exception:
             pass
         self.logger(mensagem)
-
-    def _ler_erro_http(self, error):
-        try:
-            return error.read().decode("utf-8", errors="ignore")
-        except Exception:
-            return str(error)

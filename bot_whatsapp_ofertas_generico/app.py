@@ -181,7 +181,11 @@ class LicencaDialog(QDialog):
             self.settings.licenca_chave = extra.get("chave", self.chave_input.text().strip())
             self.settings.save()
             self.licenca_liberada = True
-            self.accept()
+            # So fecha sozinho na tela obrigatoria de entrada (obrigatorio=True) -
+            # aberta pelo botao "Licenca" (obrigatorio=False), o objetivo e so
+            # conferir o status, entao fica aberta ate o usuario clicar em Fechar.
+            if self.obrigatorio:
+                self.accept()
 
 
 class SecondsInput(QWidget):
@@ -438,11 +442,11 @@ class MainWindow(QMainWindow):
         stats_grid.addWidget(self.metric_card("Enviadas", self.enviadas_label))
         stats_grid.addWidget(self.metric_card("Erros", self.erros_label))
 
-        self.start_button = QPushButton("Iniciar bot")
+        self.start_button = QPushButton("Iniciar automação")
         self.start_button.setObjectName("primaryButton")
         self.start_button.clicked.connect(self.start_bot)
 
-        self.stop_button = QPushButton("Parar bot")
+        self.stop_button = QPushButton("Parar automação")
         self.stop_button.setObjectName("secondaryButton")
         self.stop_button.setEnabled(False)
         self.stop_button.clicked.connect(self.stop_bot)
@@ -509,7 +513,7 @@ class MainWindow(QMainWindow):
         self.timeout_previa_input = SecondsInput(1, 120, 30)
         self.espera_minima_input = SecondsInput(0, 60, 6)
         self.processar_historico_input = QCheckBox("Processar histórico visível ao iniciar")
-        self.ignorar_links_enviados_input = QCheckBox("Ignorar links já enviados anteriormente")
+        self.ignorar_links_enviados_input = QCheckBox("Não repetir ofertas já enviadas")
         self.aguardar_previa_input = QCheckBox("Aguardar imagem da prévia antes de enviar")
         self.headless_input = QCheckBox("Rodar navegador minimizado")
         self.agendamento_ativo_input = QCheckBox("Usar agendamento de funcionamento")
@@ -531,8 +535,6 @@ class MainWindow(QMainWindow):
         self.recuperacao_max_tentativas_input.setPlaceholderText("5")
         self.recuperacao_intervalo_input = SecondsInput(5, 300, 30)
         self.ia_revisao_input = QCheckBox("Usar revisão por IA nas ofertas")
-        self.ia_pausar_limite_input = QCheckBox("Pausar IA automaticamente ao atingir limite")
-        self.ia_retomar_dia_input = QCheckBox("Retomar IA no dia seguinte")
         self.ia_api_key_input = QLineEdit()
         self.ia_api_key_input.setMinimumHeight(44)
         self.ia_api_key_input.setEchoMode(QLineEdit.Password)
@@ -546,11 +548,6 @@ class MainWindow(QMainWindow):
         self.ia_tipo_revisao_input.addItem("Revisão leve", "leve")
         self.ia_tipo_revisao_input.addItem("Revisão contextual", "contextual")
         self.ia_tipo_revisao_input.addItem("Revisão criativa", "criativa")
-        self.ia_limite_diario_input = QLineEdit()
-        self.ia_limite_diario_input.setMinimumHeight(44)
-        self.ia_limite_diario_input.setAlignment(Qt.AlignCenter)
-        self.ia_limite_diario_input.setPlaceholderText("180")
-        self.ia_timeout_input = SecondsInput(3, 60, 10)
         self.ia_status_box = QTextEdit()
         self.ia_status_box.setObjectName("aiStatusBox")
         self.ia_status_box.setReadOnly(True)
@@ -567,9 +564,6 @@ class MainWindow(QMainWindow):
         self.shopee_ofertas_tipo_input.addItem("Por loja ou marca", "loja")
         self.shopee_ofertas_tipo_input.addItem("Por categoria", "categoria")
         self.shopee_ofertas_tipo_input.currentIndexChanged.connect(self.atualizar_campos_tipo_busca_shopee)
-        self.shopee_ofertas_colecao_input = QLineEdit()
-        self.shopee_ofertas_colecao_input.setMinimumHeight(44)
-        self.shopee_ofertas_colecao_input.setPlaceholderText("Opcional: link da coleção Shopee")
         self.shopee_ofertas_cupom_input = QLineEdit()
         self.shopee_ofertas_cupom_input.setMinimumHeight(44)
         self.shopee_ofertas_cupom_input.setPlaceholderText("Opcional: cupom de desconto")
@@ -616,7 +610,6 @@ class MainWindow(QMainWindow):
         self.shopee_ofertas_avaliacao_input.setAlignment(Qt.AlignCenter)
         self.shopee_ofertas_avaliacao_input.setPlaceholderText("Exemplo: 4.5")
         self.shopee_ofertas_intervalo_input = SecondsInput(60, 3600, 300)
-        self.shopee_ofertas_nao_repetir_input = QCheckBox("Não repetir produtos já enviados")
         self.shopee_ofertas_status_box = QTextEdit()
         self.shopee_ofertas_status_box.setObjectName("aiStatusBox")
         self.shopee_ofertas_status_box.setReadOnly(True)
@@ -740,8 +733,13 @@ class MainWindow(QMainWindow):
         options_layout.setSpacing(7)
         self.aguardar_previa_input.setToolTip("Espera a prévia do link aparecer no WhatsApp antes de enviar a mensagem.")
         self.headless_input.setToolTip("Abre o navegador minimizado. O WhatsApp Web continua visível se você restaurar a janela.")
+        self.ignorar_links_enviados_input.setToolTip(
+            "Evita enviar de novo uma oferta cujo link/produto já foi enviado antes - vale tanto "
+            "pro Modo Grupo quanto pro Modo Shopee, de acordo com o modo escolhido acima."
+        )
         options_layout.addWidget(self.aguardar_previa_input)
         options_layout.addWidget(self.headless_input)
+        options_layout.addWidget(self.ignorar_links_enviados_input)
         options_layout.addSpacing(2)
         schedule_row = QHBoxLayout()
         schedule_row.setContentsMargins(0, 0, 0, 0)
@@ -796,6 +794,7 @@ class MainWindow(QMainWindow):
         ), 0, 0)
         group_fields_layout.addWidget(self.grupo_origem_input, 0, 1)
         group_fields_layout.setRowMinimumHeight(0, 50)
+        group_fields_layout.setRowStretch(1, 1)
         group_fields_layout.setColumnMinimumWidth(0, 210)
         group_fields_layout.setColumnStretch(1, 1)
 
@@ -806,9 +805,7 @@ class MainWindow(QMainWindow):
         group_actions_layout.setContentsMargins(0, 0, 0, 0)
         group_actions_layout.setSpacing(10)
         self.processar_historico_input.setToolTip("Ao iniciar, o bot também analisa mensagens já visíveis na tela do grupo.")
-        self.ignorar_links_enviados_input.setToolTip("Evita reenviar ofertas cujo link original já aparece no histórico.")
         group_actions_layout.addWidget(self.processar_historico_input)
-        group_actions_layout.addWidget(self.ignorar_links_enviados_input)
         group_actions_layout.addSpacing(12)
         group_actions_layout.addWidget(self.test_groups_button)
         group_actions_layout.addWidget(self.groups_status_label)
@@ -845,18 +842,9 @@ class MainWindow(QMainWindow):
             "Leve corrige português. Contextual corrige frases estranhas ao produto. Criativa melhora a chamada com mais liberdade.",
         ), 2, 0)
         ai_fields_layout.addWidget(self.ia_tipo_revisao_input, 2, 1)
-        ai_fields_layout.addWidget(self.label_with_help(
-            "Limite diário",
-            "Quantidade máxima de ofertas que o bot tentará revisar com IA por dia.",
-        ), 3, 0)
-        ai_fields_layout.addWidget(self.ia_limite_diario_input, 3, 1)
-        ai_fields_layout.addWidget(self.label_with_help(
-            "Tempo máximo",
-            "Tempo máximo que o bot espera a resposta da IA antes de seguir sem revisão.",
-        ), 4, 0)
-        ai_fields_layout.addWidget(self.ia_timeout_input, 4, 1)
-        for row in range(5):
+        for row in range(3):
             ai_fields_layout.setRowMinimumHeight(row, 46)
+        ai_fields_layout.setRowStretch(3, 1)
         ai_fields_layout.setColumnMinimumWidth(0, 190)
         ai_fields_layout.setColumnStretch(1, 1)
 
@@ -866,11 +854,7 @@ class MainWindow(QMainWindow):
         ai_status_layout.setContentsMargins(0, 0, 0, 0)
         ai_status_layout.setSpacing(10)
         self.ia_revisao_input.setToolTip("Quando ativo, o bot tentará revisar o texto final antes de enviar.")
-        self.ia_pausar_limite_input.setToolTip("Se a API retornar limite/cota, a IA será pausada sem parar o bot.")
-        self.ia_retomar_dia_input.setToolTip("Permite voltar a tentar usar IA automaticamente no próximo dia.")
         ai_status_layout.addWidget(self.ia_revisao_input)
-        ai_status_layout.addWidget(self.ia_pausar_limite_input)
-        ai_status_layout.addWidget(self.ia_retomar_dia_input)
         ai_status_layout.addWidget(self.test_ai_button)
         ai_status_layout.addWidget(self.ia_status_box, 1)
 
@@ -950,44 +934,36 @@ class MainWindow(QMainWindow):
         offers_search_layout.setHorizontalSpacing(14)
         offers_search_layout.setVerticalSpacing(6)
         offers_search_layout.addWidget(self.label_with_help(
-            "Link de coleção",
-            "Opcional. Link de uma coleção/campanha da Shopee. Os produtos são capturados "
-            "direto da página da coleção (a API da Shopee não filtra mais por coleção). "
-            "Se a coleção pedir login, use a aba \"Navegador\" para logar antes de iniciar o bot.",
-        ), 0, 0)
-        offers_search_layout.addWidget(self.shopee_ofertas_colecao_input, 0, 1)
-        offers_search_layout.addWidget(self.label_with_help(
             "Tipo de busca",
             "Escolha qual filtro abaixo vai valer: só o campo correspondente ao tipo "
             "escolhido fica habilitado e é realmente usado na busca.",
-        ), 1, 0)
-        offers_search_layout.addWidget(self.shopee_ofertas_tipo_input, 1, 1)
+        ), 0, 0)
+        offers_search_layout.addWidget(self.shopee_ofertas_tipo_input, 0, 1)
         offers_search_layout.addWidget(self.label_with_help(
             "Palavra-chave/nicho",
             "Opcional. Termo usado para buscas por nicho, como casa, beleza, moda ou eletrônicos.",
-        ), 2, 0)
-        offers_search_layout.addWidget(self.shopee_ofertas_palavra_input, 2, 1)
+        ), 1, 0)
+        offers_search_layout.addWidget(self.shopee_ofertas_palavra_input, 1, 1)
         offers_search_layout.addWidget(self.label_with_help(
             "Loja/marca",
             "Opcional. ID para buscar ofertas de uma loja ou marca específica, quando a API permitir.",
-        ), 3, 0)
-        offers_search_layout.addWidget(self.shopee_ofertas_shop_id_input, 3, 1)
+        ), 2, 0)
+        offers_search_layout.addWidget(self.shopee_ofertas_shop_id_input, 2, 1)
         offers_search_layout.addWidget(self.label_with_help(
             "Categoria/nicho",
             "Opcional. Escolha uma ou mais categorias (clique para marcar/desmarcar). "
             "O bot só deixa passar ofertas cujo nome do produto realmente combine com "
             "a(s) categoria(s) escolhida(s).",
-        ), 4, 0)
-        offers_search_layout.addWidget(self.shopee_ofertas_categoria_input, 4, 1)
+        ), 3, 0)
+        offers_search_layout.addWidget(self.shopee_ofertas_categoria_input, 3, 1)
         offers_search_layout.addWidget(self.label_with_help(
             "Ordenação",
             "Opcional. Prioridade usada para escolher quais ofertas aparecem primeiro.",
-        ), 5, 0)
-        offers_search_layout.addWidget(self.shopee_ofertas_ordenacao_input, 5, 1)
-        offers_search_layout.addWidget(self.test_shopee_offers_button, 6, 0, 1, 2)
+        ), 4, 0)
+        offers_search_layout.addWidget(self.shopee_ofertas_ordenacao_input, 4, 1)
+        offers_search_layout.addWidget(self.test_shopee_offers_button, 5, 0, 1, 2)
         for row in range(6):
             offers_search_layout.setRowMinimumHeight(row, 40)
-        offers_search_layout.setRowMinimumHeight(6, 40)
         offers_search_layout.setColumnMinimumWidth(0, 190)
         offers_search_layout.setColumnStretch(1, 1)
 
@@ -999,10 +975,9 @@ class MainWindow(QMainWindow):
 
         browser_intro = QLabel(
             "O bot usa o Google Chrome instalado no PC para tarefas auxiliares da Shopee "
-            "(como resolver links curtos e baixar a imagem do produto no Modo Grupo). A "
-            "captura de produtos de uma coleção agora é feita pela API oficial da Shopee, "
-            "por aproximação, sem depender do navegador. É separado do navegador do "
-            "WhatsApp Web, que usa seu próprio perfil dedicado."
+            "(como resolver links curtos e baixar a imagem do produto no Modo Grupo). Fazer "
+            "login aqui uma vez reduz a chance de captcha nessas tarefas. É um navegador "
+            "separado do WhatsApp Web, que usa seu próprio perfil dedicado."
         )
         browser_intro.setWordWrap(True)
         browser_intro.setObjectName("historySummary")
@@ -1067,9 +1042,8 @@ class MainWindow(QMainWindow):
             "Opcional. Tempo mínimo entre uma oferta automática e outra.",
         ), 4, 0)
         offers_filters_layout.addWidget(self.shopee_ofertas_intervalo_input, 4, 1)
-        offers_filters_layout.addWidget(self.shopee_ofertas_nao_repetir_input, 5, 0, 1, 4)
-        offers_filters_layout.addWidget(self.shopee_ofertas_status_box, 6, 0, 1, 4)
-        for row in range(6):
+        offers_filters_layout.addWidget(self.shopee_ofertas_status_box, 5, 0, 1, 4)
+        for row in range(5):
             offers_filters_layout.setRowMinimumHeight(row, 42)
         offers_filters_layout.setColumnMinimumWidth(0, 210)
         offers_filters_layout.setColumnMinimumWidth(1, 125)
@@ -1419,7 +1393,7 @@ class MainWindow(QMainWindow):
         conversoes_header.resizeSection(2, 60)
         conversoes_header.resizeSection(3, 90)
         conversoes_header.resizeSection(4, 100)
-        conversoes_header.resizeSection(5, 110)
+        conversoes_header.resizeSection(5, 140)
 
         conversoes_layout.addLayout(conversoes_filters)
         conversoes_layout.addLayout(conversoes_cards)
@@ -1454,7 +1428,7 @@ class MainWindow(QMainWindow):
         self.relatorio_email_hora_input = QLineEdit()
         self.relatorio_email_hora_input.setPlaceholderText("HH:MM (ex: 11:00)")
         self.relatorio_email_hora_input.setMinimumHeight(36)
-        email_report_form.addRow(self.label_with_help(
+        email_report_form.addRow(self._form_label(
             "Horário de envio",
             "Formato 24h HH:MM. O relatório é conferido a cada minuto enquanto o app estiver aberto.",
         ), self.relatorio_email_hora_input)
@@ -1462,7 +1436,7 @@ class MainWindow(QMainWindow):
         self.relatorio_email_destinatarios_input = QLineEdit()
         self.relatorio_email_destinatarios_input.setPlaceholderText("Destinatários, separados por vírgula")
         self.relatorio_email_destinatarios_input.setMinimumHeight(36)
-        email_report_form.addRow(self.label_with_help(
+        email_report_form.addRow(self._form_label(
             "Destinatários",
             "Um ou mais emails, separados por vírgula.",
         ), self.relatorio_email_destinatarios_input)
@@ -1470,7 +1444,7 @@ class MainWindow(QMainWindow):
         self.relatorio_email_remetente_input = QLineEdit()
         self.relatorio_email_remetente_input.setPlaceholderText("seuemail@gmail.com")
         self.relatorio_email_remetente_input.setMinimumHeight(36)
-        email_report_form.addRow(self.label_with_help(
+        email_report_form.addRow(self._form_label(
             "Remetente (Gmail)",
             "O email do Gmail que vai enviar o relatório.",
         ), self.relatorio_email_remetente_input)
@@ -1479,7 +1453,7 @@ class MainWindow(QMainWindow):
         self.relatorio_email_senha_input.setPlaceholderText("Senha de app do Gmail (16 caracteres)")
         self.relatorio_email_senha_input.setEchoMode(QLineEdit.Password)
         self.relatorio_email_senha_input.setMinimumHeight(36)
-        email_report_form.addRow(self.label_with_help(
+        email_report_form.addRow(self._form_label(
             "Senha de app",
             "No Gmail: Conta Google > Segurança > Verificação em duas etapas > Senhas de app. "
             "Não é a senha normal da conta.",
@@ -1488,7 +1462,7 @@ class MainWindow(QMainWindow):
         self.relatorio_email_servidor_input = QLineEdit()
         self.relatorio_email_servidor_input.setPlaceholderText("smtp.gmail.com")
         self.relatorio_email_servidor_input.setMinimumHeight(36)
-        email_report_form.addRow(self.label_with_help(
+        email_report_form.addRow(self._form_label(
             "Servidor SMTP",
             "Opcional. Padrão smtp.gmail.com para contas Gmail.",
         ), self.relatorio_email_servidor_input)
@@ -1496,7 +1470,7 @@ class MainWindow(QMainWindow):
         self.relatorio_email_porta_input = QLineEdit()
         self.relatorio_email_porta_input.setPlaceholderText("587")
         self.relatorio_email_porta_input.setMinimumHeight(36)
-        email_report_form.addRow(self.label_with_help(
+        email_report_form.addRow(self._form_label(
             "Porta SMTP",
             "Opcional. Padrão 587.",
         ), self.relatorio_email_porta_input)
@@ -1559,6 +1533,14 @@ class MainWindow(QMainWindow):
         layout.addWidget(label, 1)
         return container
 
+    def _form_label(self, text, help_text):
+        """Como label_with_help, mas com largura mínima fixa - usado em
+        QFormLayout, onde sem isso o rótulo pode ficar estreito demais e
+        quebrar linha (cortando o texto por cima/baixo)."""
+        container = self.label_with_help(text, help_text)
+        container.setMinimumWidth(190)
+        return container
+
     def card_title(self, text):
         item = QLabel(text)
         item.setObjectName("cardTitle")
@@ -1607,15 +1589,11 @@ class MainWindow(QMainWindow):
         self.recuperacao_max_tentativas_input.setText(str(s.recuperacao_max_tentativas))
         self.recuperacao_intervalo_input.setValue(max(5, round(s.recuperacao_intervalo_segundos)))
         self.ia_revisao_input.setChecked(s.ia_revisao_ativa)
-        self.ia_pausar_limite_input.setChecked(s.ia_pausar_ao_limite)
-        self.ia_retomar_dia_input.setChecked(s.ia_retomar_no_dia_seguinte)
         self.ia_api_key_input.setText(s.ia_gemini_api_key)
         modelo_index = self.ia_modelo_input.findData(s.ia_modelo)
         self.ia_modelo_input.setCurrentIndex(modelo_index if modelo_index >= 0 else 0)
         tipo_revisao_index = self.ia_tipo_revisao_input.findData(s.ia_tipo_revisao)
         self.ia_tipo_revisao_input.setCurrentIndex(tipo_revisao_index if tipo_revisao_index >= 0 else 1)
-        self.ia_limite_diario_input.setText(str(s.ia_limite_diario_revisoes))
-        self.ia_timeout_input.setValue(max(3, round(s.ia_timeout_segundos)))
         self.ia_status_box.setPlainText(s.ia_status_mensagem or "Revisão por IA desativada.")
         origem_index = self.modo_origem_ofertas_input.findData(s.modo_origem_ofertas)
         self.modo_origem_ofertas_input.setCurrentIndex(origem_index if origem_index >= 0 else 0)
@@ -1624,7 +1602,6 @@ class MainWindow(QMainWindow):
         self.atualizar_campos_tipo_busca_shopee()
         ordenacao_index = self.shopee_ofertas_ordenacao_input.findData(s.shopee_ofertas_ordenacao)
         self.shopee_ofertas_ordenacao_input.setCurrentIndex(ordenacao_index if ordenacao_index >= 0 else 0)
-        self.shopee_ofertas_colecao_input.setText(s.shopee_ofertas_link_colecao)
         self.shopee_ofertas_cupom_input.setText(s.shopee_ofertas_cupom)
         self.shopee_ofertas_palavra_input.setText(s.shopee_ofertas_palavra_chave)
         self.shopee_ofertas_shop_id_input.setText(s.shopee_ofertas_shop_id)
@@ -1636,7 +1613,6 @@ class MainWindow(QMainWindow):
         self.shopee_ofertas_vendas_input.setText(str(s.shopee_ofertas_vendas_minimas))
         self.shopee_ofertas_avaliacao_input.setText(s.shopee_ofertas_avaliacao_minima)
         self.shopee_ofertas_intervalo_input.setValue(max(60, round(s.shopee_ofertas_intervalo_envio_segundos)))
-        self.shopee_ofertas_nao_repetir_input.setChecked(s.shopee_ofertas_nao_repetir)
         self.relatorio_email_ativo_input.setChecked(s.relatorio_email_ativo)
         self.relatorio_email_hora_input.setText(s.relatorio_email_hora or "11:00")
         self.relatorio_email_destinatarios_input.setText(s.relatorio_email_destinatarios)
@@ -1700,21 +1676,12 @@ class MainWindow(QMainWindow):
         self.settings.recuperacao_max_tentativas = 5
         self.settings.recuperacao_intervalo_segundos = 30
         self.settings.ia_revisao_ativa = self.ia_revisao_input.isChecked()
-        self.settings.ia_pausar_ao_limite = self.ia_pausar_limite_input.isChecked()
-        self.settings.ia_retomar_no_dia_seguinte = self.ia_retomar_dia_input.isChecked()
         self.settings.ia_gemini_api_key = self.ia_api_key_input.text().strip()
         self.settings.ia_modelo = self.ia_modelo_input.currentData() or "gemini-3.1-flash-lite"
         self.settings.ia_tipo_revisao = self.ia_tipo_revisao_input.currentData() or "contextual"
-        try:
-            limite_diario = int(self.ia_limite_diario_input.text().strip())
-        except ValueError:
-            limite_diario = 0
-        self.settings.ia_limite_diario_revisoes = max(0, limite_diario)
-        self.settings.ia_timeout_segundos = self.ia_timeout_input.value()
         self.settings.ia_status_mensagem = self.ia_status_box.toPlainText().strip()
         self.settings.modo_origem_ofertas = self.modo_origem_ofertas_input.currentData() or "whatsapp"
         self.settings.shopee_ofertas_tipo_busca = self.shopee_ofertas_tipo_input.currentData() or "geral"
-        self.settings.shopee_ofertas_link_colecao = self.shopee_ofertas_colecao_input.text().strip()
         self.settings.shopee_ofertas_cupom = self.shopee_ofertas_cupom_input.text().strip()
         self.settings.shopee_ofertas_palavra_chave = self.shopee_ofertas_palavra_input.text().strip()
         self.settings.shopee_ofertas_shop_id = self.shopee_ofertas_shop_id_input.text().strip()
@@ -1732,7 +1699,6 @@ class MainWindow(QMainWindow):
         self.settings.shopee_ofertas_avaliacao_minima = self.shopee_ofertas_avaliacao_input.text().strip()
         self.settings.shopee_ofertas_quantidade_por_ciclo = 10
         self.settings.shopee_ofertas_intervalo_envio_segundos = self.shopee_ofertas_intervalo_input.value()
-        self.settings.shopee_ofertas_nao_repetir = self.shopee_ofertas_nao_repetir_input.isChecked()
         self.settings.relatorio_email_ativo = self.relatorio_email_ativo_input.isChecked()
         self.settings.relatorio_email_hora = self.relatorio_email_hora_input.text().strip() or "11:00"
         self.settings.relatorio_email_destinatarios = self.relatorio_email_destinatarios_input.text().strip()
@@ -1814,10 +1780,6 @@ class MainWindow(QMainWindow):
         if s.ia_revisao_ativa and not s.ia_gemini_api_key:
             errors.append("Informe a chave Gemini ou desative a revisão por IA.")
             invalid_widgets.append(self.ia_api_key_input)
-
-        if s.ia_revisao_ativa and s.ia_limite_diario_revisoes <= 0:
-            errors.append("Informe um limite diário de revisões por IA maior que zero.")
-            invalid_widgets.append(self.ia_limite_diario_input)
 
         integer_fields = [
             (self.shopee_ofertas_comissao_input, "Comissão mínima"),
@@ -2068,10 +2030,7 @@ class MainWindow(QMainWindow):
                 self.recuperacao_max_tentativas_input,
                 self.recuperacao_intervalo_input,
                 self.ia_api_key_input,
-                self.ia_limite_diario_input,
-                self.ia_timeout_input,
                 self.modo_origem_ofertas_input,
-                self.shopee_ofertas_colecao_input,
                 self.shopee_ofertas_cupom_input,
                 self.shopee_ofertas_tipo_input,
                 self.shopee_ofertas_palavra_input,
@@ -2413,10 +2372,6 @@ class MainWindow(QMainWindow):
             errors.append("Informe a chave Gemini antes de testar a IA.")
             invalid_widgets.append(self.ia_api_key_input)
 
-        if self.settings.ia_limite_diario_revisoes <= 0:
-            errors.append("Informe um limite diário de revisões maior que zero.")
-            invalid_widgets.append(self.ia_limite_diario_input)
-
         if errors:
             self.mark_field_errors(invalid_widgets)
             message = "Corrija os campos abaixo antes de testar a IA:\n\n"
@@ -2439,7 +2394,6 @@ class MainWindow(QMainWindow):
             "https://s.shopee.com.br/teste"
         )
         ia_ativa_original = self.settings.ia_revisao_ativa
-        revisoes_hoje_original = self.settings.ia_revisoes_hoje
         status_original = self.settings.ia_status_mensagem
 
         try:
@@ -2468,7 +2422,6 @@ class MainWindow(QMainWindow):
             self.signals.status.emit("Teste da IA Gemini falhou.")
         finally:
             self.settings.ia_revisao_ativa = ia_ativa_original
-            self.settings.ia_revisoes_hoje = revisoes_hoje_original
             if not self.settings.ia_status_mensagem:
                 self.settings.ia_status_mensagem = status_original
             self.settings.save()
@@ -2589,17 +2542,12 @@ class MainWindow(QMainWindow):
             self.recuperacao_max_tentativas_input,
             self.recuperacao_intervalo_input,
             self.ia_revisao_input,
-            self.ia_pausar_limite_input,
-            self.ia_retomar_dia_input,
             self.ia_api_key_input,
             self.ia_modelo_input,
             self.ia_tipo_revisao_input,
-            self.ia_limite_diario_input,
-            self.ia_timeout_input,
             self.ia_status_box,
             self.test_ai_button,
             self.modo_origem_ofertas_input,
-            self.shopee_ofertas_colecao_input,
             self.shopee_ofertas_cupom_input,
             self.shopee_ofertas_tipo_input,
             self.shopee_ofertas_palavra_input,
@@ -2613,7 +2561,6 @@ class MainWindow(QMainWindow):
             self.shopee_ofertas_vendas_input,
             self.shopee_ofertas_avaliacao_input,
             self.shopee_ofertas_intervalo_input,
-            self.shopee_ofertas_nao_repetir_input,
             self.shopee_ofertas_status_box,
             self.test_shopee_offers_button,
             self.test_api_button,

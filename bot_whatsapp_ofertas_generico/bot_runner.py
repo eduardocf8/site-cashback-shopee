@@ -635,7 +635,7 @@ class BotRunner:
                     continue
 
                 if (
-                    self.settings.shopee_ofertas_nao_repetir
+                    self.settings.ignorar_links_ja_enviados
                     and db.link_ja_enviado_para_todos(
                         link_original,
                         [nome for nome, _ in self.settings.normalized_destinos_com_tipo()],
@@ -684,7 +684,7 @@ class BotRunner:
                             break
 
                         if (
-                            self.settings.shopee_ofertas_nao_repetir
+                            self.settings.ignorar_links_ja_enviados
                             and db.link_ja_enviado(link_original, grupo)
                         ):
                             self._log(f"Oferta ja enviada anteriormente para {grupo}; pulando esse destino.")
@@ -893,7 +893,7 @@ class BotRunner:
                     ignoradas_repetidas += 1
                     continue
                 elif (
-                    self.settings.shopee_ofertas_nao_repetir
+                    self.settings.ignorar_links_ja_enviados
                     and db.link_ja_enviado_para_todos(
                         link_original,
                         [nome for nome, _ in self.settings.normalized_destinos_com_tipo()],
