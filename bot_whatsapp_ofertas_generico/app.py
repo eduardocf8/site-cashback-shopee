@@ -127,12 +127,6 @@ class LicencaDialog(QDialog):
         self.chave_input.setText(str(self.settings.licenca_chave or ""))
         layout.addWidget(self.chave_input)
 
-        layout.addWidget(QLabel("Servidor de validação (avançado - só mude se souber o que está fazendo):"))
-        self.servidor_input = QLineEdit()
-        self.servidor_input.setPlaceholderText("https://.../licencas/validar/")
-        self.servidor_input.setText(str(self.settings.licenca_servidor_url or ""))
-        layout.addWidget(self.servidor_input)
-
         self.status_label = QLabel("")
         self.status_label.setWordWrap(True)
         layout.addWidget(self.status_label)
@@ -162,10 +156,9 @@ class LicencaDialog(QDialog):
             self.status_label.setText("Informe a chave de licença.")
             return
 
-        servidor_url = self.servidor_input.text().strip()
+        servidor_url = str(self.settings.licenca_servidor_url or "")
         self.ativar_button.setEnabled(False)
         self.chave_input.setEnabled(False)
-        self.servidor_input.setEnabled(False)
         self.status_label.setText("Verificando licença...")
         threading.Thread(
             target=self._verificar_em_thread,
@@ -182,12 +175,10 @@ class LicencaDialog(QDialog):
     def _ao_receber_resultado(self, liberado, motivo, extra):
         self.ativar_button.setEnabled(True)
         self.chave_input.setEnabled(True)
-        self.servidor_input.setEnabled(True)
         self.status_label.setText(motivo)
 
         if liberado:
             self.settings.licenca_chave = extra.get("chave", self.chave_input.text().strip())
-            self.settings.licenca_servidor_url = self.servidor_input.text().strip()
             self.settings.save()
             self.licenca_liberada = True
             self.accept()
