@@ -1069,7 +1069,7 @@ class MainWindow(QMainWindow):
 
         logs_tab = QWidget()
         logs_layout = QVBoxLayout(logs_tab)
-        logs_layout.setContentsMargins(0, 8, 0, 0)
+        logs_layout.setContentsMargins(0, 8, 6, 0)
         logs_layout.setSpacing(10)
         logs_filters = QHBoxLayout()
         logs_filters.setContentsMargins(0, 0, 0, 0)
@@ -1126,7 +1126,7 @@ class MainWindow(QMainWindow):
 
         history_tab = QWidget()
         history_layout = QVBoxLayout(history_tab)
-        history_layout.setContentsMargins(0, 8, 0, 0)
+        history_layout.setContentsMargins(0, 8, 6, 0)
         history_layout.setSpacing(10)
 
         history_filters = QHBoxLayout()
@@ -1203,7 +1203,7 @@ class MainWindow(QMainWindow):
 
         indicators_tab = QWidget()
         indicators_layout = QVBoxLayout(indicators_tab)
-        indicators_layout.setContentsMargins(0, 8, 0, 0)
+        indicators_layout.setContentsMargins(0, 8, 6, 0)
         indicators_layout.setSpacing(10)
 
         indicators_filters = QVBoxLayout()
@@ -1298,7 +1298,7 @@ class MainWindow(QMainWindow):
         # ===================== Relatório de conversões =====================
         conversoes_tab = QWidget()
         conversoes_layout = QVBoxLayout(conversoes_tab)
-        conversoes_layout.setContentsMargins(0, 8, 0, 0)
+        conversoes_layout.setContentsMargins(0, 8, 6, 0)
         conversoes_layout.setSpacing(10)
 
         conversoes_intro = QLabel(
@@ -1373,23 +1373,19 @@ class MainWindow(QMainWindow):
         conversoes_filters_row1.addWidget(self.conversoes_sort_input)
         conversoes_filters_row1.addStretch(1)
 
+        self.conversoes_produtos_label = QLabel("0")
+        self.conversoes_qtd_label = QLabel("0")
+        self.conversoes_comissao_label = QLabel("R$ 0,00")
         conversoes_filters_row2.addWidget(self.refresh_conversoes_button)
         conversoes_filters_row2.addWidget(self.exportar_conversoes_button)
+        conversoes_filters_row2.addSpacing(4)
+        conversoes_filters_row2.addWidget(self.metric_card("Produtos", self.conversoes_produtos_label))
+        conversoes_filters_row2.addWidget(self.metric_card("Vendas", self.conversoes_qtd_label))
+        conversoes_filters_row2.addWidget(self.metric_card("Comissão", self.conversoes_comissao_label))
         conversoes_filters_row2.addWidget(self.conversoes_summary_label, 1)
 
         conversoes_filters.addLayout(conversoes_filters_row1)
         conversoes_filters.addLayout(conversoes_filters_row2)
-
-        conversoes_cards = QHBoxLayout()
-        conversoes_cards.setContentsMargins(0, 0, 0, 0)
-        conversoes_cards.setSpacing(10)
-        self.conversoes_produtos_label = QLabel("0")
-        self.conversoes_qtd_label = QLabel("0")
-        self.conversoes_comissao_label = QLabel("R$ 0,00")
-        conversoes_cards.addWidget(self.metric_card("Produtos", self.conversoes_produtos_label))
-        conversoes_cards.addWidget(self.metric_card("Vendas", self.conversoes_qtd_label))
-        conversoes_cards.addWidget(self.metric_card("Comissão", self.conversoes_comissao_label))
-        conversoes_cards.addStretch(1)
 
         self.conversoes_table = QTableWidget(0, 7)
         self.conversoes_table.setObjectName("historyTable")
@@ -1418,7 +1414,6 @@ class MainWindow(QMainWindow):
         conversoes_header.resizeSection(5, 140)
 
         conversoes_layout.addLayout(conversoes_filters)
-        conversoes_layout.addLayout(conversoes_cards)
         conversoes_layout.addWidget(self.conversoes_table, 1)
 
         self._conversoes_report_atual = None
@@ -1427,7 +1422,7 @@ class MainWindow(QMainWindow):
 
         email_report_tab = QWidget()
         email_report_layout = QVBoxLayout(email_report_tab)
-        email_report_layout.setContentsMargins(0, 8, 0, 0)
+        email_report_layout.setContentsMargins(0, 8, 6, 0)
         email_report_layout.setSpacing(12)
 
         email_report_intro = QLabel(
