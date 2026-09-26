@@ -1,6 +1,6 @@
 from datetime import datetime, time, timedelta
 from decimal import Decimal
-from unittest.mock import patch
+from unittest.mock import MagicMock, patch
 
 from django.contrib.auth import get_user_model
 from django.core import mail
@@ -11,7 +11,7 @@ from django.utils import timezone
 from links.models import Click
 from ofertas.models import Oferta, OfertaManual
 
-from . import conteudo, services, templates_imagem
+from . import conteudo, instagram_client, services, templates_imagem
 from .models import RegistroPublicacao
 
 
@@ -595,3 +595,68 @@ class DownloadDeImagemDoProdutoTests(TestCase):
         mock_get.side_effect = Exception("boom")
 
         self.assertIsNone(templates_imagem._baixar_imagem("https://cf.shopee.com.br/produto.jpg"))
+
+
+def _resposta(dados: dict):
+    """Fabrica uma resposta falsa de requests.request - só o que _chamar usa (.json()
+    e .raise_for_status())."""
+    resposta = MagicMock()
+    resposta.json.return_value = dados
+    resposta.raise_for_status = lambda: None
+    return resposta
+
+
+@override_settings(
+    INSTAGRAM_ACCESS_TOKEN="token-de-teste",
+    INSTAGRAM_BUSINESS_ACCOUNT_ID="conta123",
+)
+class RetryDeContainerInvalidoTests(TestCase):
+    """Um story do combo diário sumiu da sequência em 2026-09-26 porque a Meta
+    invalidou o container entre a criação e a publicação ("Media not found",
+    code=24, error_subcode=2207006) - erro documentado pela própria Meta como
+    transitório, cujo remédio é recriar o container do zero. publicar_imagem agora
+    tenta 1 vez extra nesse caso específico, em vez de desistir na primeira falha."""
+
+    def _resposta_erro(self, error_subcode, code=24):
+        return _resposta({
+            "error": {
+                "message": "The requested resource does not exist",
+                "code": code, "error_subcode": error_subcode,
+                "type": "OAuthException", "fbtrace_id": "A-teste",
+            }
+        })
+
+    @patch("instagram_bot.instagram_client.requests.request")
+    def test_container_invalidado_tenta_de_novo_e_publica(self, mock_request):
+        mock_request.side_effect = [
+            _resposta({"id": "conta123"}),  # verificar_configuracao
+            _resposta({"id": "container1"}),  # criar_container_midia (1ª tentativa)
+            _resposta({"status_code": "FINISHED"}),  # _aguardar_processamento
+            self._resposta_erro(2207006),  # publicar_container falha (container invalidado)
+            _resposta({"id": "container2"}),  # criar_container_midia (2ª tentativa, container novo)
+            _resposta({"status_code": "FINISHED"}),  # _aguardar_processamento
+            _resposta({"id": "media123"}),  # publicar_container dessa vez funciona
+        ]
+
+        media_id = instagram_client.publicar_imagem("https://exemplo.com/story.jpg", story=True)
+
+        self.assertEqual(media_id, "media123")
+        self.assertEqual(mock_request.call_count, 7)
+
+    @patch("instagram_bot.instagram_client.requests.request")
+    def test_outro_erro_nao_tenta_de_novo(self, mock_request):
+        """Só o subcode específico (container invalidado) dá retry - qualquer outro
+        erro (ex: token expirado) precisa continuar falhando na hora, visível no
+        Admin, em vez de escondido atrás de uma segunda tentativa que não vai
+        resolver nada."""
+        mock_request.side_effect = [
+            _resposta({"id": "conta123"}),  # verificar_configuracao
+            _resposta({"id": "container1"}),  # criar_container_midia
+            _resposta({"status_code": "FINISHED"}),  # _aguardar_processamento
+            self._resposta_erro(190, code=190),  # token expirado - não é o subcode de retry
+        ]
+
+        with self.assertRaises(instagram_client.InstagramAPIError):
+            instagram_client.publicar_imagem("https://exemplo.com/story.jpg", story=True)
+
+        self.assertEqual(mock_request.call_count, 4)
