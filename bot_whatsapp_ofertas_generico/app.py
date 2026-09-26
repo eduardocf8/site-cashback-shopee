@@ -26,7 +26,6 @@ from PySide6.QtWidgets import (
     QLabel,
     QLineEdit,
     QMainWindow,
-    QMenu,
     QMessageBox,
     QPushButton,
     QSizePolicy,
@@ -72,11 +71,6 @@ TESTE_API_SHOPEE_URL = (
 APP_VERSION = "1.0.0"
 APP_ICON_PATH = RESOURCE_DIR / "assets" / "app_icon.ico"
 LOG_RETENTION_DAYS = 30
-THEME_OPTIONS = {
-    "padrao": "Padrão",
-    "claro": "Claro",
-    "noturno": "Escuro",
-}
 
 
 class BotSignals(QObject):
@@ -113,7 +107,7 @@ class LicencaDialog(QDialog):
         self.settings = settings
         self.obrigatorio = obrigatorio
         self.licenca_liberada = False
-        self.setWindowTitle("Licença do Bot.ee")
+        self.setWindowTitle("Licença do Appfiliado")
         self.setMinimumWidth(440)
         self.setModal(True)
 
@@ -131,6 +125,12 @@ class LicencaDialog(QDialog):
         self.chave_input.setPlaceholderText("Cole aqui sua chave de licença")
         self.chave_input.setText(str(self.settings.licenca_chave or ""))
         layout.addWidget(self.chave_input)
+
+        layout.addWidget(QLabel("Servidor de validação (avançado - só mude se souber o que está fazendo):"))
+        self.servidor_input = QLineEdit()
+        self.servidor_input.setPlaceholderText("https://.../licencas/validar/")
+        self.servidor_input.setText(str(self.settings.licenca_servidor_url or ""))
+        layout.addWidget(self.servidor_input)
 
         self.status_label = QLabel("")
         self.status_label.setWordWrap(True)
@@ -161,12 +161,14 @@ class LicencaDialog(QDialog):
             self.status_label.setText("Informe a chave de licença.")
             return
 
+        servidor_url = self.servidor_input.text().strip()
         self.ativar_button.setEnabled(False)
         self.chave_input.setEnabled(False)
+        self.servidor_input.setEnabled(False)
         self.status_label.setText("Verificando licença...")
         threading.Thread(
             target=self._verificar_em_thread,
-            args=(chave, str(self.settings.licenca_servidor_url or "")),
+            args=(chave, servidor_url),
             daemon=True,
         ).start()
 
@@ -179,55 +181,15 @@ class LicencaDialog(QDialog):
     def _ao_receber_resultado(self, liberado, motivo, extra):
         self.ativar_button.setEnabled(True)
         self.chave_input.setEnabled(True)
+        self.servidor_input.setEnabled(True)
         self.status_label.setText(motivo)
 
         if liberado:
             self.settings.licenca_chave = extra.get("chave", self.chave_input.text().strip())
+            self.settings.licenca_servidor_url = self.servidor_input.text().strip()
             self.settings.save()
             self.licenca_liberada = True
             self.accept()
-
-
-class ThemeSelector(QPushButton):
-    currentIndexChanged = Signal(int)
-
-    def __init__(self, parent=None):
-        super().__init__(parent)
-        self._items = []
-        self._current_index = -1
-        self._menu = QMenu(self)
-        self.setCursor(Qt.PointingHandCursor)
-        self.clicked.connect(self.open_menu)
-
-    def addItem(self, label, data):
-        index = len(self._items)
-        self._items.append((label, data))
-        action = self._menu.addAction(label)
-        action.triggered.connect(lambda checked=False, i=index: self.setCurrentIndex(i))
-        if self._current_index == -1:
-            self.setCurrentIndex(0, emit=False)
-
-    def findData(self, data):
-        for index, (_, item_data) in enumerate(self._items):
-            if item_data == data:
-                return index
-        return -1
-
-    def currentData(self):
-        if 0 <= self._current_index < len(self._items):
-            return self._items[self._current_index][1]
-        return None
-
-    def setCurrentIndex(self, index, emit=True):
-        if not 0 <= index < len(self._items):
-            return
-        self._current_index = index
-        self.setText(self._items[index][0])
-        if emit:
-            self.currentIndexChanged.emit(index)
-
-    def open_menu(self):
-        self._menu.exec(self.mapToGlobal(self.rect().bottomLeft()))
 
 
 class SecondsInput(QWidget):
@@ -396,7 +358,7 @@ class ComboBoxMultiplaSelecao(QComboBox):
 class MainWindow(QMainWindow):
     def __init__(self):
         super().__init__()
-        self.setWindowTitle(f"Bot.ee v{APP_VERSION}")
+        self.setWindowTitle(f"Appfiliado v{APP_VERSION}")
         if APP_ICON_PATH.exists():
             self.setWindowIcon(QIcon(str(APP_ICON_PATH)))
         self.resize(1180, 760)
@@ -462,7 +424,7 @@ class MainWindow(QMainWindow):
         left_layout.setContentsMargins(22, 22, 22, 22)
         left_layout.setSpacing(14)
 
-        title = QLabel("Bot.ee")
+        title = QLabel("Appfiliado")
         title.setObjectName("appTitle")
         subtitle = QLabel("Ofertas com link afiliado via API")
         subtitle.setObjectName("appSubtitle")
@@ -504,27 +466,6 @@ class MainWindow(QMainWindow):
         self.about_button.setObjectName("ghostButton")
         self.about_button.clicked.connect(self.show_about)
 
-        self.tema_visual_label = QLabel("Layout")
-        self.tema_visual_label.setObjectName("sidebarFieldLabel")
-        self.tema_visual_label.setAlignment(Qt.AlignCenter)
-        self.tema_visual_input = ThemeSelector()
-        self.tema_visual_input.setObjectName("themeSelect")
-        for theme_key, theme_label in THEME_OPTIONS.items():
-            self.tema_visual_input.addItem(theme_label, theme_key)
-        self.tema_visual_input.currentIndexChanged.connect(self.change_visual_theme)
-
-        self.theme_row = QFrame()
-        self.theme_row.setObjectName("themeRow")
-        theme_row_layout = QHBoxLayout(self.theme_row)
-        theme_row_layout.setContentsMargins(0, 0, 0, 0)
-        theme_row_layout.setSpacing(10)
-        theme_row_layout.setAlignment(Qt.AlignVCenter)
-        self.tema_visual_label.setFixedWidth(54)
-        self.tema_visual_label.setMinimumHeight(44)
-        self.tema_visual_input.setMinimumHeight(44)
-        theme_row_layout.addWidget(self.tema_visual_label)
-        theme_row_layout.addWidget(self.tema_visual_input, 1)
-
         left_layout.addWidget(title)
         left_layout.addWidget(subtitle)
         left_layout.addWidget(version_label)
@@ -532,8 +473,6 @@ class MainWindow(QMainWindow):
         left_layout.addWidget(self.status_label)
         left_layout.addSpacing(12)
         left_layout.addLayout(stats_grid)
-        left_layout.addStretch(1)
-        left_layout.addWidget(self.theme_row)
         left_layout.addStretch(1)
         left_layout.addWidget(self.start_button)
         left_layout.addWidget(self.stop_button)
@@ -1703,8 +1642,6 @@ class MainWindow(QMainWindow):
         self.shopee_ofertas_avaliacao_input.setText(s.shopee_ofertas_avaliacao_minima)
         self.shopee_ofertas_intervalo_input.setValue(max(60, round(s.shopee_ofertas_intervalo_envio_segundos)))
         self.shopee_ofertas_nao_repetir_input.setChecked(s.shopee_ofertas_nao_repetir)
-        theme_index = self.tema_visual_input.findData(s.tema_visual)
-        self.tema_visual_input.setCurrentIndex(theme_index if theme_index >= 0 else 0)
         self.relatorio_email_ativo_input.setChecked(s.relatorio_email_ativo)
         self.relatorio_email_hora_input.setText(s.relatorio_email_hora or "11:00")
         self.relatorio_email_destinatarios_input.setText(s.relatorio_email_destinatarios)
@@ -1802,7 +1739,6 @@ class MainWindow(QMainWindow):
         self.settings.shopee_ofertas_quantidade_por_ciclo = 10
         self.settings.shopee_ofertas_intervalo_envio_segundos = self.shopee_ofertas_intervalo_input.value()
         self.settings.shopee_ofertas_nao_repetir = self.shopee_ofertas_nao_repetir_input.isChecked()
-        self.settings.tema_visual = self.tema_visual_input.currentData() or "padrao"
         self.settings.relatorio_email_ativo = self.relatorio_email_ativo_input.isChecked()
         self.settings.relatorio_email_hora = self.relatorio_email_hora_input.text().strip() or "11:00"
         self.settings.relatorio_email_destinatarios = self.relatorio_email_destinatarios_input.text().strip()
@@ -2106,7 +2042,7 @@ class MainWindow(QMainWindow):
         QMessageBox.information(
             self,
             "Primeira configuração",
-            "Para configurar o Bot.ee pela primeira vez:\n\n"
+            "Para configurar o Appfiliado pela primeira vez:\n\n"
             "1. Na aba Execução, escolha o modo de operação:\n"
             "   - Grupo do WhatsApp: o bot lê ofertas de um grupo origem.\n"
             "   - Buscar ofertas na Shopee: o bot busca ofertas direto pela API.\n"
@@ -2530,12 +2466,6 @@ class MainWindow(QMainWindow):
         if hasattr(self, "shopee_ofertas_status_box"):
             self.shopee_ofertas_status_box.setPlainText(message)
 
-    def change_visual_theme(self, *_):
-        if hasattr(self, "tema_visual_input"):
-            self.settings.tema_visual = self.tema_visual_input.currentData() or "padrao"
-        self.apply_styles()
-        self.apply_log_filters()
-
     def update_validation_badges(self):
         self.api_status_label.setText(self.validation_badge_text("API", self.settings.api_validada_em))
         self.api_status_label.setProperty("valid", bool(self.settings.api_validada_em))
@@ -2654,7 +2584,6 @@ class MainWindow(QMainWindow):
             self.shopee_ofertas_nao_repetir_input,
             self.shopee_ofertas_status_box,
             self.test_shopee_offers_button,
-            self.tema_visual_input,
             self.test_api_button,
             self.test_groups_button,
             self.first_setup_button,
@@ -2711,21 +2640,12 @@ class MainWindow(QMainWindow):
         self.render_logs(filtered)
 
     def render_logs(self, lines):
-        theme = getattr(self.settings, "tema_visual", "padrao")
-        if theme == "noturno":
-            colors = {
-                "info": ("transparent", "#ccfbf1"),
-                "success": ("#052e2b", "#99f6e4"),
-                "warning": ("#422006", "#fde68a"),
-                "error": ("#3f1212", "#fecaca"),
-            }
-        else:
-            colors = {
-                "info": ("transparent", "#1e293b"),
-                "success": ("#ecfdf5", "#065f46"),
-                "warning": ("#fffbeb", "#92400e"),
-                "error": ("#fff1f2", "#991b1b"),
-            }
+        colors = {
+            "info": ("transparent", "#dce8e0"),
+            "success": ("#173a2c", "#8fe3b0"),
+            "warning": ("#3a2f12", "#f5d37a"),
+            "error": ("#3f1212", "#fecaca"),
+        }
 
         parts = []
         for line in lines:
@@ -2917,12 +2837,12 @@ class MainWindow(QMainWindow):
 
     def export_settings(self):
         self.collect_settings()
-        default_name = f"bot-ee-config-{datetime.now().strftime('%Y-%m-%d')}.json"
+        default_name = f"appfiliado-config-{datetime.now().strftime('%Y-%m-%d')}.json"
         file_path, _ = QFileDialog.getSaveFileName(
             self,
             "Exportar configurações",
             str(APP_DIR / default_name),
-            "Configurações Bot.ee (*.json)",
+            "Configurações Appfiliado (*.json)",
         )
         if not file_path:
             return
@@ -2939,7 +2859,7 @@ class MainWindow(QMainWindow):
             self,
             "Importar configurações",
             str(APP_DIR),
-            "Configurações Bot.ee (*.json)",
+            "Configurações Appfiliado (*.json)",
         )
         if not file_path:
             return
@@ -2977,7 +2897,7 @@ class MainWindow(QMainWindow):
             self,
             "Restaurar backup de configurações",
             str(backups[0]),
-            "Backups Bot.ee (*.json)",
+            "Backups Appfiliado (*.json)",
         )
         if not file_path:
             return
@@ -3010,10 +2930,10 @@ class MainWindow(QMainWindow):
 
     def show_about(self):
         message = (
-            f"Bot.ee v{APP_VERSION}\n\n"
+            f"Appfiliado v{APP_VERSION}\n\n"
             "Automatiza ofertas do WhatsApp com links afiliados da Shopee."
         )
-        QMessageBox.information(self, "Sobre o Bot.ee", message)
+        QMessageBox.information(self, "Sobre o Appfiliado", message)
 
     def gerenciar_licenca(self):
         """Abre o dialogo de licenca pra conferir status ou trocar de
@@ -3770,309 +3690,17 @@ class MainWindow(QMainWindow):
         self.enviadas_label.setText(str(stats.get("enviadas", 0)))
         self.erros_label.setText(str(stats.get("erros", 0)))
 
-    def theme_overrides(self):
-        theme = getattr(self.settings, "tema_visual", "padrao")
-        check_icon_path = (RESOURCE_DIR / "assets" / "check_white.svg").as_posix()
-
-        common = """
-            QComboBox {
-                background: #f8fafc;
-                border: 1px solid #cbd5e1;
-                border-radius: 10px;
-                padding: 9px;
-                selection-background-color: #ef4444;
-            }
-            QComboBox:focus {
-                border: 1px solid #ef4444;
-                background: #ffffff;
-            }
-            QComboBox::drop-down {
-                border: none;
-                width: 28px;
-            }
-            QComboBox QLineEdit {
-                background: transparent;
-                border: none;
-                padding: 0px;
-            }
-        """
-
-        if theme == "claro":
-            return common + """
-                QWidget {
-                    color: #172033;
-                    background: #f7f9fc;
-                }
-                #sidebar {
-                    background: #ffffff;
-                    border: 1px solid #dbe3ee;
-                }
-                #appTitle {
-                    color: #0f172a;
-                }
-                #appSubtitle {
-                    color: #3b5f8f;
-                }
-                #appVersion {
-                    color: #64748b;
-                }
-                #sidebarFieldLabel {
-                    color: #64748b;
-                }
-                #themeSelect {
-                    color: #172033;
-                    background: #f8fafc;
-                    border-color: #cbd5e1;
-                }
-                #themeSelect:focus {
-                    background: #ffffff;
-                    border-color: #2563eb;
-                }
-                #themeSelect QLineEdit {
-                    color: #172033;
-                    background: transparent;
-                    border: none;
-                }
-                #statusPill {
-                    color: #1d4ed8;
-                    background: #eff6ff;
-                    border-color: #bfdbfe;
-                }
-                #metricCard {
-                    background: #f8fafc;
-                    border-color: #cbd5e1;
-                }
-                #metricValue {
-                    color: #1d4ed8;
-                }
-                #metricLabel {
-                    color: #475569;
-                }
-                #primaryButton {
-                    background: #2563eb;
-                }
-                #primaryButton:hover {
-                    background: #1d4ed8;
-                }
-                #secondaryButton {
-                    background: #475569;
-                }
-                #secondaryButton:hover {
-                    background: #334155;
-                }
-                #ghostButton {
-                    color: #1e293b;
-                    background: #ffffff;
-                    border-color: #cbd5e1;
-                }
-                #ghostButton:hover {
-                    color: #0f172a;
-                    background: #eff6ff;
-                    border-color: #2563eb;
-                }
-                #logs {
-                    background: #ffffff;
-                    color: #1e293b;
-                    border-color: #cbd5e1;
-                }
-                QLineEdit:focus, QTextEdit:focus, QComboBox:focus {
-                    border-color: #2563eb;
-                }
-            """
-
-        if theme == "noturno":
-            noturno_styles = """
-                QWidget {
-                    color: #e5e7eb;
-                    background: #0b1120;
-                }
-                #content {
-                    background: #111827;
-                    border-color: #253246;
-                }
-                #sidebar {
-                    background: #020617;
-                    border: 1px solid #1f2937;
-                }
-                #appTitle {
-                    color: #f8fafc;
-                }
-                #appSubtitle {
-                    color: #99f6e4;
-                }
-                #appVersion {
-                    color: #94a3b8;
-                }
-                #sidebarFieldLabel {
-                    color: #99f6e4;
-                }
-                #themeSelect {
-                    color: #ccfbf1;
-                    background: #0f172a;
-                    border-color: #334155;
-                }
-                #themeSelect:focus {
-                    background: #111827;
-                    border-color: #14b8a6;
-                }
-                #themeSelect QLineEdit {
-                    color: #ccfbf1;
-                    background: transparent;
-                    border: none;
-                }
-                #sectionTitle, #cardTitle {
-                    color: #f8fafc;
-                }
-                #fieldLabel {
-                    color: #cbd5e1;
-                }
-                #configCard {
-                    background: #172033;
-                    border-color: #334155;
-                }
-                #settingsPanel {
-                    background: transparent;
-                }
-                #statusPill {
-                    color: #ccfbf1;
-                    background: #0f2f2b;
-                    border-color: #115e59;
-                }
-                #metricCard {
-                    background: #172033;
-                    border-color: #334155;
-                }
-                #metricValue {
-                    color: #5eead4;
-                }
-                #metricLabel {
-                    color: #cbd5e1;
-                }
-                QLineEdit, QTextEdit, QComboBox {
-                    color: #f8fafc;
-                    background: #0f172a;
-                    border-color: #334155;
-                }
-                QLineEdit:focus, QTextEdit:focus, QComboBox:focus {
-                    background: #111827;
-                    border-color: #14b8a6;
-                }
-                QCheckBox {
-                    color: #dbeafe;
-                }
-                QCheckBox::indicator {
-                    width: 16px;
-                    height: 16px;
-                    border: 1px solid #e5e7eb;
-                    border-radius: 4px;
-                    background: #020617;
-                }
-                QCheckBox::indicator:checked {
-                    background: #14b8a6;
-                    border-color: #ffffff;
-                    image: url("__CHECK_ICON__");
-                }
-                #validationBadge {
-                    color: #cbd5e1;
-                    background: #0f172a;
-                    border-color: #334155;
-                }
-                #validationBadge[valid="true"] {
-                    color: #ccfbf1;
-                    background: #0f2f2b;
-                    border-color: #115e59;
-                }
-                #stepButton, #toolButton, #compactToolButton, #helpButton {
-                    color: #e5e7eb;
-                    background: #1f2937;
-                    border-color: #334155;
-                }
-                #stepButton:hover, #toolButton:hover, #compactToolButton:hover, #helpButton:hover {
-                    background: #253246;
-                    border-color: #14b8a6;
-                }
-                #primaryButton {
-                    color: #042f2e;
-                    background: #5eead4;
-                }
-                #primaryButton:hover {
-                    background: #2dd4bf;
-                }
-                #secondaryButton {
-                    background: #334155;
-                }
-                #secondaryButton:hover {
-                    background: #475569;
-                }
-                #ghostButton {
-                    color: #e5e7eb;
-                    background: transparent;
-                    border-color: #475569;
-                }
-                #ghostButton:hover {
-                    color: #ccfbf1;
-                    background: #0f172a;
-                    border-color: #14b8a6;
-                }
-                #logs {
-                    background: #020617;
-                    color: #ccfbf1;
-                    border-color: #334155;
-                }
-                #dataTabs QTabBar::tab,
-                #configTabs QTabBar::tab {
-                    color: #cbd5e1;
-                    background: #172033;
-                    border-color: #334155;
-                }
-                #dataTabs QTabBar::tab:selected,
-                #configTabs QTabBar::tab:selected {
-                    color: #f8fafc;
-                    background: #111827;
-                    border-color: #475569;
-                }
-                #historyTable {
-                    color: #e5e7eb;
-                    background: #0f172a;
-                    alternate-background-color: #111827;
-                    border-color: #334155;
-                    gridline-color: #253246;
-                    selection-background-color: #1f6f78;
-                    selection-color: #f8fafc;
-                }
-                QTableWidget#historyTable::item:selected,
-                QTableWidget#historyTable::item:selected:active,
-                QTableWidget#historyTable::item:selected:!active {
-                    color: #f8fafc;
-                    background: #1f6f78;
-                    border: 0px;
-                    outline: none;
-                }
-                QTableWidget#historyTable::item:focus {
-                    border: none;
-                    outline: none;
-                }
-                #historyTable QHeaderView::section {
-                    color: #e5e7eb;
-                    background: #172033;
-                    border-right-color: #334155;
-                }
-            """
-            return common + noturno_styles.replace("__CHECK_ICON__", check_icon_path)
-
-        return common
-
     def apply_styles(self):
         check_icon_path = (RESOURCE_DIR / "assets" / "check_white.svg").as_posix()
         base_styles = """
             QWidget {
                 font-family: "Segoe UI";
                 font-size: 13px;
-                color: #18222f;
-                background: #f5f7fb;
+                color: #20372F;
+                background: #F9F6EB;
             }
             #sidebar {
-                background: #101827;
+                background: #20372F;
                 border-radius: 16px;
                 min-width: 270px;
                 max-width: 310px;
@@ -4082,7 +3710,7 @@ class MainWindow(QMainWindow):
             }
             #content {
                 background: #ffffff;
-                border: 1px solid #e2e8f0;
+                border: 1px solid #e5e1cd;
                 border-radius: 16px;
             }
             #appTitle {
@@ -4092,58 +3720,24 @@ class MainWindow(QMainWindow):
                 background: transparent;
             }
             #appSubtitle {
-                color: #b8c7dc;
+                color: #bcd9c4;
                 background: transparent;
             }
             #appVersion {
-                color: #94a3b8;
+                color: #93a99b;
                 background: transparent;
                 font-size: 12px;
-            }
-            #sidebarFieldLabel {
-                color: #94a3b8;
-                background: transparent;
-                font-size: 12px;
-                font-weight: 700;
-                padding: 0px;
-            }
-            #themeRow {
-                background: transparent;
-            }
-            #themeSelect {
-                color: #e2e8f0;
-                background: #111c2d;
-                border: 1px solid #334155;
-                border-radius: 10px;
-                padding: 9px 10px;
-                min-height: 24px;
-                text-align: center;
-                selection-background-color: #ef4444;
-            }
-            #themeSelect:focus {
-                border: 1px solid #ef4444;
-                background: #132238;
-            }
-            #themeSelect::drop-down {
-                border: none;
-                width: 28px;
-            }
-            #themeSelect QLineEdit {
-                color: #e2e8f0;
-                background: transparent;
-                border: none;
-                padding: 0px;
             }
             #statusPill {
-                color: #dbeafe;
-                background: #1d2a3f;
-                border: 1px solid #2b3b55;
+                color: #d9f0e1;
+                background: #2c4a3c;
+                border: 1px solid #3a5548;
                 border-radius: 10px;
                 padding: 12px;
             }
             #metricCard {
-                background: #18263b;
-                border: 1px solid #314460;
+                background: #2a4238;
+                border: 1px solid #3a5548;
                 border-radius: 12px;
             }
             #metricCard QLabel {
@@ -4156,16 +3750,16 @@ class MainWindow(QMainWindow):
                 background: transparent;
             }
             #metricLabel {
-                color: #b8c7dc;
+                color: #bcd9c4;
                 background: transparent;
             }
             #sectionTitle {
                 font-size: 20px;
                 font-weight: 700;
-                color: #111827;
+                color: #20372F;
             }
             #fieldLabel {
-                color: #475569;
+                color: #55695c;
                 font-weight: 600;
                 padding: 6px 8px;
                 min-height: 20px;
@@ -4174,44 +3768,52 @@ class MainWindow(QMainWindow):
                 background: transparent;
             }
             #helpButton {
-                color: #64748b;
-                background: #eef2f7;
-                border: 1px solid #cbd5e1;
+                color: #55695c;
+                background: #eef1ea;
+                border: 1px solid #d8d3bd;
                 border-radius: 10px;
                 padding: 0px;
                 font-size: 12px;
                 font-weight: 700;
             }
             #helpButton:hover {
-                color: #111827;
-                background: #e2e8f0;
-                border-color: #94a3b8;
+                color: #20372F;
+                background: #e2ddc4;
+                border-color: #b9c9bc;
             }
             #configCard {
                 background: #ffffff;
-                border: 1px solid #e2e8f0;
+                border: 1px solid #e5e1cd;
                 border-radius: 12px;
             }
             #settingsPanel {
                 background: transparent;
             }
             #cardTitle {
-                color: #111827;
+                color: #20372F;
                 background: transparent;
                 font-size: 15px;
                 font-weight: 700;
                 padding-bottom: 4px;
             }
-            QLineEdit, QTextEdit {
-                background: #f8fafc;
-                border: 1px solid #cbd5e1;
+            QLineEdit, QTextEdit, QComboBox {
+                background: #fbf9f2;
+                border: 1px solid #d8d3bd;
                 border-radius: 10px;
                 padding: 6px 12px;
-                selection-background-color: #ef4444;
+                selection-background-color: #518E45;
+                selection-color: #ffffff;
             }
-            QLineEdit:focus, QTextEdit:focus {
-                border: 1px solid #ef4444;
+            QLineEdit:focus, QTextEdit:focus, QComboBox:focus {
+                border: 1px solid #518E45;
                 background: #ffffff;
+            }
+            QComboBox {
+                padding: 9px;
+            }
+            QComboBox::drop-down {
+                border: none;
+                width: 28px;
             }
             QLineEdit[invalid="true"], QTextEdit[invalid="true"] {
                 border: 1px solid #ef4444;
@@ -4226,20 +3828,20 @@ class MainWindow(QMainWindow):
                 background: #fff1f2;
             }
             #stepButton {
-                color: #18222f;
-                background: #eef2f7;
-                border: 1px solid #cbd5e1;
+                color: #20372F;
+                background: #eef1ea;
+                border: 1px solid #d8d3bd;
                 border-radius: 10px;
                 padding: 0px;
                 font-size: 18px;
                 font-weight: 700;
             }
             #stepButton:hover {
-                background: #e2e8f0;
-                border-color: #94a3b8;
+                background: #e2ddc4;
+                border-color: #b9c9bc;
             }
             QCheckBox {
-                color: #334155;
+                color: #3a4a40;
                 spacing: 8px;
                 padding: 7px 8px;
                 min-height: 22px;
@@ -4247,28 +3849,28 @@ class MainWindow(QMainWindow):
             QCheckBox::indicator {
                 width: 16px;
                 height: 16px;
-                border: 1px solid #94a3b8;
+                border: 1px solid #b9c9bc;
                 border-radius: 4px;
                 background: #ffffff;
             }
             QCheckBox::indicator:checked {
-                background: #14b8a6;
-                border-color: #ffffff;
+                background: #518E45;
+                border-color: #518E45;
                 image: url("__CHECK_ICON__");
             }
             #validationBadge {
-                color: #64748b;
-                background: #f8fafc;
-                border: 1px solid #e2e8f0;
+                color: #55695c;
+                background: #eef1ea;
+                border: 1px solid #d8d3bd;
                 border-radius: 8px;
                 padding: 7px 10px;
                 font-size: 12px;
                 font-weight: 700;
             }
             #validationBadge[valid="true"] {
-                color: #166534;
-                background: #f0fdf4;
-                border-color: #bbf7d0;
+                color: #2f5e3c;
+                background: #eaf3e7;
+                border-color: #c8e1c2;
             }
             QPushButton {
                 border: none;
@@ -4277,28 +3879,28 @@ class MainWindow(QMainWindow):
                 font-weight: 700;
             }
             #primaryButton {
-                color: #ffffff;
-                background: #ef4444;
+                color: #20372F;
+                background: #F1CA30;
             }
             #primaryButton:hover {
-                background: #dc2626;
+                background: #e0b928;
             }
             #secondaryButton {
                 color: #ffffff;
-                background: #334155;
+                background: #3a4a40;
             }
             #secondaryButton:hover {
-                background: #1f2937;
+                background: #495c50;
             }
             #toolButton {
-                color: #1f2937;
-                background: #eef2f7;
-                border: 1px solid #cbd5e1;
+                color: #2a3a30;
+                background: #eef1ea;
+                border: 1px solid #d8d3bd;
                 padding: 8px 12px;
             }
             #toolButton:hover {
-                background: #e2e8f0;
-                border-color: #94a3b8;
+                background: #e2ddc4;
+                border-color: #b9c9bc;
             }
             #dangerToolButton {
                 color: #991b1b;
@@ -4310,17 +3912,17 @@ class MainWindow(QMainWindow):
                 border-color: #fda4af;
             }
             #compactToolButton {
-                color: #1f2937;
-                background: #eef2f7;
-                border: 1px solid #cbd5e1;
+                color: #2a3a30;
+                background: #eef1ea;
+                border: 1px solid #d8d3bd;
                 border-radius: 8px;
                 padding: 7px 12px;
                 font-size: 12px;
                 font-weight: 700;
             }
             #compactToolButton:hover {
-                background: #e2e8f0;
-                border-color: #94a3b8;
+                background: #e2ddc4;
+                border-color: #b9c9bc;
             }
             #compactDangerButton {
                 color: #991b1b;
@@ -4336,23 +3938,23 @@ class MainWindow(QMainWindow):
                 border-color: #fda4af;
             }
             #ghostButton {
-                color: #e2e8f0;
+                color: #e7e3d3;
                 background: transparent;
-                border: 1px solid #334155;
+                border: 1px solid #3a5548;
             }
             #ghostButton:hover {
                 color: #ffffff;
-                background: #111827;
-                border-color: #64748b;
+                background: #16241d;
+                border-color: #4a5c50;
             }
             QPushButton:disabled {
-                color: #94a3b8;
-                background: #e2e8f0;
+                color: #9aa89d;
+                background: #e2ddc4;
             }
             #logs {
-                background: #0f172a;
-                color: #dbeafe;
-                border: 1px solid #1e293b;
+                background: #16241d;
+                color: #dce8e0;
+                border: 1px solid #253a2e;
                 border-radius: 12px;
                 min-height: 210px;
                 font-family: Consolas, "Courier New";
@@ -4366,9 +3968,9 @@ class MainWindow(QMainWindow):
             }
             #dataTabs QTabBar::tab,
             #configTabs QTabBar::tab {
-                color: #475569;
-                background: #eef2f7;
-                border: 1px solid #dbe3ee;
+                color: #55695c;
+                background: #eef1ea;
+                border: 1px solid #ded9c1;
                 border-bottom: none;
                 border-top-left-radius: 8px;
                 border-top-right-radius: 8px;
@@ -4378,24 +3980,24 @@ class MainWindow(QMainWindow):
             }
             #dataTabs QTabBar::tab:selected,
             #configTabs QTabBar::tab:selected {
-                color: #111827;
+                color: #20372F;
                 background: #ffffff;
-                border-color: #cbd5e1;
+                border-color: #d8d3bd;
             }
             #historyTable {
                 background: #ffffff;
-                alternate-background-color: #f8fafc;
-                border: 1px solid #dbe3ee;
+                alternate-background-color: #f7f5ec;
+                border: 1px solid #ded9c1;
                 border-radius: 12px;
-                gridline-color: #e2e8f0;
-                selection-background-color: #bfd7f6;
-                selection-color: #111827;
+                gridline-color: #e5e1cd;
+                selection-background-color: #cfe6d1;
+                selection-color: #1c2a20;
             }
             QTableWidget#historyTable::item:selected,
             QTableWidget#historyTable::item:selected:active,
             QTableWidget#historyTable::item:selected:!active {
-                color: #111827;
-                background: #bfd7f6;
+                color: #1c2a20;
+                background: #cfe6d1;
                 border: 0px;
                 outline: none;
             }
@@ -4404,15 +4006,15 @@ class MainWindow(QMainWindow):
                 outline: none;
             }
             #historyTable QHeaderView::section {
-                color: #334155;
-                background: #eef2f7;
+                color: #3a4a40;
+                background: #eef1ea;
                 border: none;
-                border-right: 1px solid #dbe3ee;
+                border-right: 1px solid #ded9c1;
                 padding: 8px;
                 font-weight: 700;
             }
         """.replace("__CHECK_ICON__", check_icon_path)
-        self.setStyleSheet(base_styles + self.theme_overrides())
+        self.setStyleSheet(base_styles)
 
 
 def _filtrar_avisos_qt_benignos(tipo_msg, contexto, mensagem):
