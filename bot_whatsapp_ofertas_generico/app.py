@@ -1,4 +1,5 @@
 ﻿import csv
+import copy
 import os
 import shutil
 import re
@@ -519,7 +520,6 @@ class MainWindow(QMainWindow):
         self.processar_historico_input = QCheckBox("Processar histórico visível ao iniciar")
         self.ignorar_links_enviados_input = QCheckBox("Ignorar links já enviados anteriormente")
         self.aguardar_previa_input = QCheckBox("Aguardar imagem da prévia antes de enviar")
-        self.modo_simulacao_input = QCheckBox("Modo simulação: não enviar ofertas")
         self.headless_input = QCheckBox("Rodar navegador minimizado")
         self.agendamento_ativo_input = QCheckBox("Usar agendamento de funcionamento")
         self.horario_inicio_input = QLineEdit()
@@ -673,6 +673,13 @@ class MainWindow(QMainWindow):
         self.diagnostic_button.setObjectName("toolButton")
         self.diagnostic_button.setMinimumHeight(40)
         self.diagnostic_button.clicked.connect(self.run_diagnostics)
+        self.test_simulacao_button = QPushButton("Testar simulação")
+        self.test_simulacao_button.setObjectName("toolButton")
+        self.test_simulacao_button.setMinimumHeight(40)
+        self.test_simulacao_button.setToolTip(
+            "Roda um ciclo completo (busca a oferta, gera o link, formata o texto) sem enviar nada de verdade."
+        )
+        self.test_simulacao_button.clicked.connect(self.testar_simulacao)
         self.api_status_label = QLabel()
         self.api_status_label.setObjectName("validationBadge")
         self.api_status_label.setMinimumHeight(34)
@@ -741,10 +748,8 @@ class MainWindow(QMainWindow):
         options_layout.setContentsMargins(0, 0, 0, 0)
         options_layout.setSpacing(7)
         self.aguardar_previa_input.setToolTip("Espera a prévia do link aparecer no WhatsApp antes de enviar a mensagem.")
-        self.modo_simulacao_input.setToolTip("Converte e registra logs, mas não envia ofertas no grupo/canal de destino.")
         self.headless_input.setToolTip("Abre o navegador minimizado. O WhatsApp Web continua visível se você restaurar a janela.")
         options_layout.addWidget(self.aguardar_previa_input)
-        options_layout.addWidget(self.modo_simulacao_input)
         options_layout.addWidget(self.headless_input)
         options_layout.addSpacing(2)
         schedule_row = QHBoxLayout()
@@ -763,6 +768,7 @@ class MainWindow(QMainWindow):
         timing_layout.addWidget(self.recuperacao_automatica_input)
         timing_layout.addStretch(1)
         options_layout.addWidget(self.diagnostic_button)
+        options_layout.addWidget(self.test_simulacao_button)
         options_layout.addSpacing(14)
 
         config_file_buttons = QGridLayout()
@@ -1602,7 +1608,6 @@ class MainWindow(QMainWindow):
         self.processar_historico_input.setChecked(s.processar_historico_ao_iniciar)
         self.ignorar_links_enviados_input.setChecked(s.ignorar_links_ja_enviados)
         self.aguardar_previa_input.setChecked(s.aguardar_previa_link)
-        self.modo_simulacao_input.setChecked(s.modo_simulacao)
         self.headless_input.setChecked(s.headless)
         self.agendamento_ativo_input.setChecked(s.agendamento_ativo)
         self.horario_inicio_input.setText(s.horario_inicio)
@@ -1696,7 +1701,6 @@ class MainWindow(QMainWindow):
         self.settings.processar_historico_ao_iniciar = self.processar_historico_input.isChecked()
         self.settings.ignorar_links_ja_enviados = self.ignorar_links_enviados_input.isChecked()
         self.settings.aguardar_previa_link = self.aguardar_previa_input.isChecked()
-        self.settings.modo_simulacao = self.modo_simulacao_input.isChecked()
         self.settings.headless = self.headless_input.isChecked()
         self.settings.agendamento_ativo = self.agendamento_ativo_input.isChecked()
         self.settings.horario_inicio = self.horario_inicio_input.text().strip() or "07:00"
@@ -2133,8 +2137,6 @@ class MainWindow(QMainWindow):
 
         self.save_fields(show_message=False)
         self.add_log("Configurações salvas automaticamente antes de iniciar.")
-        if self.settings.modo_simulacao:
-            self.add_log("Modo simulação ativo: o bot vai converter e formatar, mas não vai enviar ofertas.")
         self.runner = BotRunner(
             self.settings,
             on_log=self.signals.log.emit,
@@ -2370,6 +2372,46 @@ class MainWindow(QMainWindow):
                 pass
             self.signals.test_finished.emit()
 
+    def testar_simulacao(self):
+        errors = self.validate_settings()
+        if errors:
+            message = "Corrija os campos abaixo antes de testar a simulação:\n\n"
+            message += "\n".join(f"- {error}" for error in errors)
+            QMessageBox.warning(self, "Configurações incompletas", message)
+            return
+
+        self.save_fields(show_message=False)
+        self.start_test("Testando simulação (1 ciclo, nada será enviado)...")
+        threading.Thread(target=self._run_simulacao_test, daemon=True).start()
+
+    def _run_simulacao_test(self):
+        # Copia as configuracoes pra nao alterar as reais com modo_simulacao
+        # (que nao tem mais campo na tela - e sempre False pro bot de verdade).
+        settings_teste = copy.deepcopy(self.settings)
+        settings_teste.modo_simulacao = True
+        runner = BotRunner(
+            settings_teste,
+            on_log=self.signals.log.emit,
+            on_status=self.signals.status.emit,
+            on_stats=lambda stats: None,
+            ciclo_unico=True,
+        )
+        try:
+            self.signals.log.emit("Iniciando ciclo de teste de simulação (nada será enviado de verdade)...")
+            runner._run()
+            if runner.stats["erros"] > 0:
+                self.signals.status.emit("Simulação encontrou um erro. Veja os logs.")
+            elif runner.stats["processadas"] > 0:
+                self.signals.status.emit("Simulação concluída com sucesso.")
+                self.signals.log.emit("Simulação concluída: oferta convertida e formatada, mas não enviada.")
+            else:
+                self.signals.status.emit("Simulação concluída: nenhuma oferta nova encontrada nesse ciclo.")
+        except Exception as e:
+            self.signals.log.emit(f"Falha na simulação: {self.friendly_error(e)}")
+            self.signals.status.emit("Simulação falhou.")
+        finally:
+            self.signals.test_finished.emit()
+
     def test_ai_gemini(self):
         self.clear_field_errors()
         self.collect_settings()
@@ -2450,6 +2492,7 @@ class MainWindow(QMainWindow):
         self.test_groups_button.setEnabled(False)
         self.test_ai_button.setEnabled(False)
         self.test_shopee_offers_button.setEnabled(False)
+        self.test_simulacao_button.setEnabled(False)
         self.save_button.setEnabled(False)
 
     def finish_test(self):
@@ -2547,7 +2590,6 @@ class MainWindow(QMainWindow):
             self.processar_historico_input,
             self.ignorar_links_enviados_input,
             self.aguardar_previa_input,
-            self.modo_simulacao_input,
             self.headless_input,
             self.agendamento_ativo_input,
             self.horario_inicio_input,
@@ -2590,6 +2632,7 @@ class MainWindow(QMainWindow):
             self.import_config_button,
             self.restore_backup_button,
             self.diagnostic_button,
+            self.test_simulacao_button,
             self.clear_logs_button,
             self.open_logs_button,
             self.copy_logs_button,
@@ -2828,7 +2871,6 @@ class MainWindow(QMainWindow):
             "Grupos ainda não validados pelo botão Testar grupos.",
         )
 
-        self.add_log(f"Modo simulação: {'ativo' if self.settings.modo_simulacao else 'desativado'}.")
         self.add_log(f"Navegador minimizado: {'ativo' if self.settings.headless else 'desativado'}.")
         self.add_log("Diagnóstico do ambiente concluído.")
         self.add_log("=" * 58)

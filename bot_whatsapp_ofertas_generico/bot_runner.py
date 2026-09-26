@@ -35,11 +35,16 @@ RENOVACAO_PAGINA_SHOPEE_SEGUNDOS = 3 * 60 * 60  # 3 horas
 
 
 class BotRunner:
-    def __init__(self, settings, on_log=None, on_status=None, on_stats=None):
+    def __init__(self, settings, on_log=None, on_status=None, on_stats=None, ciclo_unico=False):
         self.settings = settings
         self.on_log = on_log or (lambda text: None)
         self.on_status = on_status or (lambda text: None)
         self.on_stats = on_stats or (lambda stats: None)
+        # Usado pelo botao "Testar simulacao": roda exatamente um ciclo
+        # (sem esperar o horario agendado, sem tentar se recuperar de
+        # falha) e devolve o controle pro chamador, em vez de ficar em
+        # loop como o bot de verdade.
+        self.ciclo_unico = ciclo_unico
         self.stop_event = threading.Event()
         self.thread = None
         self.runtime_lock = threading.Lock()
@@ -88,7 +93,7 @@ class BotRunner:
             self.settings.profile_dir = str(profile_dir)
 
             while not self.stop_event.is_set():
-                if not self._esta_no_horario_ativo():
+                if not self.ciclo_unico and not self._esta_no_horario_ativo():
                     if self.zap or self.db or self.play:
                         self._status("Fora do horario agendado. Pausando e fechando navegador...")
                         self._fechar_recursos_runtime()
@@ -109,6 +114,8 @@ class BotRunner:
                         intervalo = self.settings.intervalo_ms / 1000
 
                     falhas_consecutivas = 0
+                    if self.ciclo_unico:
+                        break
                     self.stop_event.wait(intervalo)
 
                 except Exception as e:
@@ -118,6 +125,10 @@ class BotRunner:
                     self._log("Falha no monitoramento do bot:")
                     self._log(e)
                     self._log(traceback.format_exc())
+
+                    if self.ciclo_unico:
+                        self._status(f"Erro no ciclo de teste: {e}")
+                        break
 
                     if not self._deve_tentar_recuperar(falhas_consecutivas):
                         self._status(f"Erro no bot: {e}")
@@ -130,7 +141,8 @@ class BotRunner:
                     self._fechar_recursos_runtime()
                     self.stop_event.wait(self.settings.recuperacao_intervalo_segundos)
 
-            self._status("Bot parado.")
+            if not self.ciclo_unico:
+                self._status("Bot parado.")
 
         except Exception as e:
             self.stats["erros"] += 1
