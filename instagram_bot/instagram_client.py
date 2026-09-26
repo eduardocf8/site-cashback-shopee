@@ -1,4 +1,5 @@
 import json
+import logging
 import time
 
 import requests
@@ -6,13 +7,23 @@ from django.conf import settings
 
 API_VERSAO = "v21.0"
 
+logger = logging.getLogger(__name__)
+
 
 class InstagramConfigError(Exception):
     """As credenciais do Instagram não estão configuradas no .env."""
 
 
 class InstagramAPIError(Exception):
-    """Erro retornado pela Instagram Graph API."""
+    """Erro retornado pela Instagram Graph API. Carrega code/error_subcode (quando a
+    Meta devolve) pra quem chama poder distinguir um erro transitório (ex: container
+    invalidado, ver _SUBCODE_CONTAINER_INVALIDO) de um erro real sem precisar
+    re-parsear a mensagem formatada."""
+
+    def __init__(self, mensagem: str, code=None, error_subcode=None):
+        super().__init__(mensagem)
+        self.code = code
+        self.error_subcode = error_subcode
 
 
 def _url(caminho: str) -> str:
@@ -39,7 +50,10 @@ def _chamar(metodo: str, caminho: str, **params) -> dict:
         detalhes = ", ".join(
             f"{chave}={erro[chave]}" for chave in ("code", "error_subcode", "type", "fbtrace_id") if chave in erro
         )
-        raise InstagramAPIError(f"{mensagem} [{detalhes}]" if detalhes else mensagem)
+        raise InstagramAPIError(
+            f"{mensagem} [{detalhes}]" if detalhes else mensagem,
+            code=erro.get("code"), error_subcode=erro.get("error_subcode"),
+        )
     resposta.raise_for_status()
     return dados
 
@@ -101,12 +115,36 @@ def publicar_container(creation_id: str) -> str:
     return dados["id"]
 
 
+# "Media not found" - a Meta invalidou o container entre a criação e a publicação
+# (visto num story do combo diário em 2026-09-26: code=24, error_subcode=2207006,
+# "The requested resource does not exist"). A própria Meta documenta que o remédio é
+# recriar o container do zero, não repetir o mesmo creation_id - por isso o retry
+# abaixo chama criar_container_midia de novo em vez de só repetir
+# _aguardar_processamento/publicar_container. Só esse subcode específico dá retry:
+# outros erros (config errada, conteúdo reprovado, token expirado) devem continuar
+# falhando na hora e visíveis no Admin, não mascarados por uma segunda tentativa.
+_SUBCODE_CONTAINER_INVALIDO = 2207006
+
+
 def publicar_imagem(image_url: str, legenda: str = "", story: bool = False) -> str:
-    """Fluxo completo: cria o container e publica. Retorna o media_id publicado."""
+    """Fluxo completo: cria o container e publica. Retorna o media_id publicado.
+
+    Tenta 1 vez extra (com um container novo) se a Meta invalidar o primeiro -
+    ver _SUBCODE_CONTAINER_INVALIDO."""
     verificar_configuracao()
-    creation_id = criar_container_midia(image_url, legenda=legenda, story=story)
-    _aguardar_processamento(creation_id)
-    return publicar_container(creation_id)
+    for tentativa in range(2):
+        try:
+            creation_id = criar_container_midia(image_url, legenda=legenda, story=story)
+            _aguardar_processamento(creation_id)
+            return publicar_container(creation_id)
+        except InstagramAPIError as erro:
+            if tentativa == 0 and erro.error_subcode == _SUBCODE_CONTAINER_INVALIDO:
+                logger.warning(
+                    "[instagram_bot] container de mídia invalidado pela Meta, tentando de novo com "
+                    "container novo: %s", erro,
+                )
+                continue
+            raise
 
 
 def criar_item_carrossel(image_url: str) -> str:

@@ -637,6 +637,38 @@ depender do agendador compartilhado e gratuito do GitHub.
 pra disparar manualmente pela aba Actions do GitHub (ou via API,
 `workflow_dispatch`) sem esperar o agendador.
 
+### Story sumindo do combo diário - "Media not found" (code=24, error_subcode=2207006) (2026-09-26)
+
+O combo diário (`publicar_combo_de_stories`) publica 5 stories em
+sequência (capa, maior % de cashback, a conta dele, maior R$ de
+cashback, passos). Num dia específico, só o story do maior % não saiu -
+os outros 4 publicaram normal. O registro dele no Admin (Registros de
+Publicação) mostrava status Erro com esse texto no campo erro: "The
+requested resource does not exist [code=24, error_subcode=2207006,
+type=OAuthException, ...]".
+
+**Causa raiz**: a Meta documenta esse subcode como "Media not found" -
+o container de mídia criado pra esse story em particular foi invalidado
+do lado dela entre a criação (`/media`) e a publicação
+(`/media_publish`), provavelmente por instabilidade pontual da própria
+API. Diferente do incidente de `code=9007` acima (container que ainda
+não tinha terminado de processar), aqui o container simplesmente deixou
+de existir - publicar de novo com o mesmo `creation_id` não resolve, a
+própria Meta recomenda recriar o container do zero.
+
+Como `publicar_combo_de_stories` publica cada story isoladamente (um
+`_publicar_ou_simular` por vez, sem interromper os outros se um
+falhar), um erro pontual assim derruba só aquele story específico -
+explica por que só o do maior % sumiu, não o combo inteiro.
+
+**Correção**: `instagram_client.publicar_imagem` agora tenta 1 vez
+extra, com um container novo, especificamente pra
+`error_subcode=2207006` (`_SUBCODE_CONTAINER_INVALIDO`). Qualquer outro
+erro (token expirado, config errada, conteúdo reprovado) continua
+falhando na primeira tentativa - não é um retry genérico, pra não
+esconder erro de verdade atrás de uma segunda tentativa inútil. Testado
+em `instagram_bot/tests.py::RetryDeContainerInvalidoTests`.
+
 ## Posts de semeadura (pasta `posts-semeadura/`)
 
 8 imagens 1080×1080 (arquivo real 2160×2160, renderizado em dobro pra
