@@ -146,7 +146,7 @@ def enviar_email(settings, assunto, corpo_html, destinatarios=None):
         destinatarios = settings.normalized_destinatarios_relatorio()
 
     if not remetente:
-        raise ValueError("Preencha o email remetente nas configurações do relatório.")
+        raise ValueError("Preencha o email remetente (Gmail) nas configurações do relatório.")
     if not senha:
         raise ValueError("Preencha a senha de app nas configurações do relatório.")
     if not destinatarios:
