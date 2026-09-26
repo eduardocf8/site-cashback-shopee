@@ -148,8 +148,6 @@ class AppSettings:
     relatorio_email_destinatarios: str = ""
     relatorio_email_remetente: str = ""
     relatorio_email_senha_app: str = ""
-    relatorio_email_servidor_smtp: str = "smtp.gmail.com"
-    relatorio_email_porta_smtp: int = 587
     relatorio_email_ultimo_envio: str = ""
 
     # Licenca (assinatura). O bot so roda com uma chave valida, checada

@@ -1459,22 +1459,6 @@ class MainWindow(QMainWindow):
             "Não é a senha normal da conta.",
         ), self.relatorio_email_senha_input)
 
-        self.relatorio_email_servidor_input = QLineEdit()
-        self.relatorio_email_servidor_input.setPlaceholderText("smtp.gmail.com")
-        self.relatorio_email_servidor_input.setMinimumHeight(36)
-        email_report_form.addRow(self._form_label(
-            "Servidor SMTP",
-            "Opcional. Padrão smtp.gmail.com para contas Gmail.",
-        ), self.relatorio_email_servidor_input)
-
-        self.relatorio_email_porta_input = QLineEdit()
-        self.relatorio_email_porta_input.setPlaceholderText("587")
-        self.relatorio_email_porta_input.setMinimumHeight(36)
-        email_report_form.addRow(self._form_label(
-            "Porta SMTP",
-            "Opcional. Padrão 587.",
-        ), self.relatorio_email_porta_input)
-
         email_report_actions = QHBoxLayout()
         email_report_actions.setContentsMargins(0, 0, 0, 0)
         email_report_actions.setSpacing(10)
@@ -1618,8 +1602,6 @@ class MainWindow(QMainWindow):
         self.relatorio_email_destinatarios_input.setText(s.relatorio_email_destinatarios)
         self.relatorio_email_remetente_input.setText(s.relatorio_email_remetente)
         self.relatorio_email_senha_input.setText(s.relatorio_email_senha_app)
-        self.relatorio_email_servidor_input.setText(s.relatorio_email_servidor_smtp or "smtp.gmail.com")
-        self.relatorio_email_porta_input.setText(str(s.relatorio_email_porta_smtp or 587))
         if s.relatorio_email_ultimo_envio:
             self.relatorio_email_status_label.setText(f"Último envio: {s.relatorio_email_ultimo_envio}")
         else:
@@ -1704,12 +1686,6 @@ class MainWindow(QMainWindow):
         self.settings.relatorio_email_destinatarios = self.relatorio_email_destinatarios_input.text().strip()
         self.settings.relatorio_email_remetente = self.relatorio_email_remetente_input.text().strip()
         self.settings.relatorio_email_senha_app = self.relatorio_email_senha_input.text().strip()
-        self.settings.relatorio_email_servidor_smtp = self.relatorio_email_servidor_input.text().strip() or "smtp.gmail.com"
-        try:
-            porta_smtp = int(self.relatorio_email_porta_input.text().strip() or 587)
-        except ValueError:
-            porta_smtp = 587
-        self.settings.relatorio_email_porta_smtp = porta_smtp
         return self.settings
 
     def safe_int_from_field(self, widget, default=0):

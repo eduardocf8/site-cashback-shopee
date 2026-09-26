@@ -126,11 +126,19 @@ def montar_corpo_email(resumo_ontem, resumo_mes, data_referencia, titulo_mes="M�
     """
 
 
+# Suporte fixo a Gmail apenas (decisao de escopo - ver app.py, aba
+# "Relatorio por email"): a grande maioria usa Gmail, e documentar/testar
+# outros provedores fica pra depois. Nao expor servidor/porta na tela evita
+# alguem digitar um SMTP errado sem perceber por que parou de funcionar.
+SMTP_SERVIDOR_GMAIL = "smtp.gmail.com"
+SMTP_PORTA_GMAIL = 587
+
+
 def enviar_email(settings, assunto, corpo_html, destinatarios=None):
     """
     Envia o email de relatorio usando as configuracoes salvas em settings
-    (relatorio_email_remetente, relatorio_email_senha_app,
-    relatorio_email_servidor_smtp, relatorio_email_porta_smtp).
+    (relatorio_email_remetente, relatorio_email_senha_app). Só aceita
+    remetente @gmail.com - ver SMTP_SERVIDOR_GMAIL acima.
 
     Levanta excecao com uma mensagem legivel se algo estiver faltando ou
     o envio falhar - quem chama deve tratar/logar.
@@ -138,8 +146,6 @@ def enviar_email(settings, assunto, corpo_html, destinatarios=None):
 
     remetente = str(getattr(settings, "relatorio_email_remetente", "") or "").strip()
     senha = str(getattr(settings, "relatorio_email_senha_app", "") or "").strip()
-    servidor = str(getattr(settings, "relatorio_email_servidor_smtp", "") or "smtp.gmail.com").strip()
-    porta = int(getattr(settings, "relatorio_email_porta_smtp", 587) or 587)
 
     destinatarios = destinatarios or []
     if not destinatarios and hasattr(settings, "normalized_destinatarios_relatorio"):
@@ -147,6 +153,8 @@ def enviar_email(settings, assunto, corpo_html, destinatarios=None):
 
     if not remetente:
         raise ValueError("Preencha o email remetente (Gmail) nas configurações do relatório.")
+    if not remetente.lower().endswith("@gmail.com"):
+        raise ValueError("O email remetente precisa ser uma conta @gmail.com - só Gmail é suportado.")
     if not senha:
         raise ValueError("Preencha a senha de app nas configurações do relatório.")
     if not destinatarios:
@@ -158,7 +166,7 @@ def enviar_email(settings, assunto, corpo_html, destinatarios=None):
     mensagem["To"] = ", ".join(destinatarios)
     mensagem.attach(MIMEText(corpo_html, "html", "utf-8"))
 
-    with smtplib.SMTP(servidor, porta, timeout=30) as servidor_smtp:
+    with smtplib.SMTP(SMTP_SERVIDOR_GMAIL, SMTP_PORTA_GMAIL, timeout=30) as servidor_smtp:
         servidor_smtp.ehlo()
         servidor_smtp.starttls()
         servidor_smtp.ehlo()
