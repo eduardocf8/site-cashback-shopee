@@ -440,12 +440,11 @@ class MainWindow(QMainWindow):
         self.enviadas_label = QLabel("0")
         self.erros_label = QLabel("0")
 
-        stats_grid = QGridLayout()
-        stats_grid.setHorizontalSpacing(10)
-        stats_grid.setVerticalSpacing(10)
-        stats_grid.addWidget(self.metric_card("Processadas", self.processadas_label), 0, 0)
-        stats_grid.addWidget(self.metric_card("Enviadas", self.enviadas_label), 0, 1)
-        stats_grid.addWidget(self.metric_card("Erros", self.erros_label), 1, 0, 1, 2)
+        stats_grid = QVBoxLayout()
+        stats_grid.setSpacing(10)
+        stats_grid.addWidget(self.metric_card("Processadas", self.processadas_label))
+        stats_grid.addWidget(self.metric_card("Enviadas", self.enviadas_label))
+        stats_grid.addWidget(self.metric_card("Erros", self.erros_label))
 
         self.start_button = QPushButton("Iniciar bot")
         self.start_button.setObjectName("primaryButton")
