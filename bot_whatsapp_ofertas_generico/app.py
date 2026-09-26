@@ -1442,21 +1442,23 @@ class MainWindow(QMainWindow):
         ), self.relatorio_email_destinatarios_input)
 
         self.relatorio_email_remetente_input = QLineEdit()
-        self.relatorio_email_remetente_input.setPlaceholderText("seuemail@gmail.com")
+        self.relatorio_email_remetente_input.setPlaceholderText("seuemail@exemplo.com")
         self.relatorio_email_remetente_input.setMinimumHeight(36)
         email_report_form.addRow(self._form_label(
-            "Remetente (Gmail)",
-            "O email do Gmail que vai enviar o relatório.",
+            "Email remetente",
+            "O email que vai enviar o relatório. Funciona com Gmail, Outlook ou qualquer "
+            "provedor que aceite login SMTP - ajuste o Servidor SMTP abaixo de acordo.",
         ), self.relatorio_email_remetente_input)
 
         self.relatorio_email_senha_input = QLineEdit()
-        self.relatorio_email_senha_input.setPlaceholderText("Senha de app do Gmail (16 caracteres)")
+        self.relatorio_email_senha_input.setPlaceholderText("Senha de app (16 caracteres)")
         self.relatorio_email_senha_input.setEchoMode(QLineEdit.Password)
         self.relatorio_email_senha_input.setMinimumHeight(36)
         email_report_form.addRow(self._form_label(
             "Senha de app",
-            "No Gmail: Conta Google > Segurança > Verificação em duas etapas > Senhas de app. "
-            "Não é a senha normal da conta.",
+            "Não é a senha normal da conta. Gmail: Conta Google > Segurança > Verificação em "
+            "duas etapas > Senhas de app. Outlook/Microsoft: account.microsoft.com > Segurança > "
+            "Opções de segurança avançadas > Senhas de aplicativo (exige verificação em duas etapas ativada).",
         ), self.relatorio_email_senha_input)
 
         self.relatorio_email_servidor_input = QLineEdit()
@@ -1464,7 +1466,8 @@ class MainWindow(QMainWindow):
         self.relatorio_email_servidor_input.setMinimumHeight(36)
         email_report_form.addRow(self._form_label(
             "Servidor SMTP",
-            "Opcional. Padrão smtp.gmail.com para contas Gmail.",
+            "Gmail: smtp.gmail.com. Outlook/Hotmail: smtp-mail.outlook.com. Microsoft 365: "
+            "smtp.office365.com. Outro provedor: consulte as instruções de SMTP dele.",
         ), self.relatorio_email_servidor_input)
 
         self.relatorio_email_porta_input = QLineEdit()
