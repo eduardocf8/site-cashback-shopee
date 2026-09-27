@@ -94,8 +94,17 @@ build_exe.bat
 O executavel sera criado em:
 
 ```text
-dist\Bot.ee\Bot.ee.exe
+dist\app.dist\Bot.ee.exe
 ```
+
+O build usa **Nuitka** (compila o Python de verdade para código de
+máquina nativo), não PyInstaller. Motivo: o PyInstaller empacota um
+interpretador Python + bytecode e se "auto-extrai" ao rodar, um padrão
+que muitos antivírus com heurística marcam como falso positivo - o
+mesmo app compilado com Nuitka teve bem menos detecções. Único
+pré-requisito novo: um compilador C na máquina de build (o Nuitka baixa
+sozinho um MinGW64 portátil na primeira vez se não achar nenhum
+instalado - Visual Studio Build Tools também funciona).
 
 ## Gerar instalador
 
@@ -115,6 +124,17 @@ O instalador sera criado em:
 
 ```text
 installer\Bot.eeSetup.exe
+```
+
+Antes de distribuir uma versão nova, ajuda a reduzir avisos de
+antivírus/SmartScreen:
+
+1. Suba o instalador no [VirusTotal](https://www.virustotal.com/) e veja
+   se algum antivírus acusou falso positivo.
+2. Se acusou, envie o arquivo para análise da Microsoft em
+   [microsoft.com/en-us/wdsi/filesubmission](https://www.microsoft.com/en-us/wdsi/filesubmission)
+   (gratuito) - isso ajuda a remover a detecção mais rápido do que
+   esperar a reputação subir sozinha.
 ```
 
 Por padrao, o instalador sugere uma pasta dentro de `AppData` do usuario, mas a pessoa pode escolher outra pasta. O app salva `config_usuario.json`, `mensagens_app.db`, `logs/` e o perfil do WhatsApp na pasta escolhida na instalacao.

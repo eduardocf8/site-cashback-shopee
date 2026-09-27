@@ -27,7 +27,9 @@ Name: "brazilianportuguese"; MessagesFile: "compiler:Languages\BrazilianPortugue
 Name: "desktopicon"; Description: "Criar atalho na Área de Trabalho"; GroupDescription: "Atalhos:"; Flags: unchecked
 
 [Files]
-Source: "dist\Bot.ee\*"; DestDir: "{app}"; Flags: ignoreversion recursesubdirs createallsubdirs
+; A pasta de saida do Nuitka leva o nome do script de entrada (app.py ->
+; app.dist), nao o nome do produto - ver build_installer.ps1.
+Source: "dist\app.dist\*"; DestDir: "{app}"; Flags: ignoreversion recursesubdirs createallsubdirs
 
 [Icons]
 Name: "{group}\{#MyAppName}"; Filename: "{app}\{#MyAppExeName}"

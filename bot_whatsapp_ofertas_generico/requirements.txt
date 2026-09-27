@@ -1,4 +1,4 @@
 playwright
 PySide6
-pyinstaller
+nuitka
 pywin32; sys_platform == "win32"

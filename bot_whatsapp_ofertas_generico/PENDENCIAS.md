@@ -103,3 +103,36 @@ registrar isso no commit que fizer a mudança.
 - Status: nada comprado/configurado ainda. Usuário decidiu deixar pra
   quando "o bot estiver da forma que eu quero" — sem risco em adiar, já
   que ainda não há cliente real do Appfiliado enviando/recebendo email.
+
+## 6. Aviso do Windows SmartScreen/antivírus ao instalar (falso positivo) — ✅ mitigado em 2026-09-27
+- Achado numa nova varredura por melhorias (não fazia parte da lista
+  original de 5). Causa raiz: o `.exe` não é assinado digitalmente E era
+  empacotado com PyInstaller, cujo padrão de "auto-extração" ao rodar é
+  comum em malware de verdade, então antivírus com heurística
+  costumavam marcar como suspeito. Discutimos comprar um certificado de
+  assinatura de código (~US$99-120/ano) mas decidimos, por enquanto,
+  pelas 3 mitigações gratuitas:
+  1. **Trocado PyInstaller por Nuitka** (compila o Python de verdade
+     para código de máquina nativo) em `requirements.txt`,
+     `build_exe.bat`, `build_installer.ps1` e `installer.iss` — testei
+     compilando o app inteiro com Nuitka nesta sandbox (Linux) e rodando
+     o binário resultante (modo offscreen): compilou e abriu sem erro,
+     incluindo a tela de licença. **Não testei a build real do Windows**
+     (não tenho como rodar Windows aqui) — a primeira vez que isso rodar
+     na máquina de build de verdade, confirme que gerou
+     `dist\app.dist\Bot.ee.exe` e que o instalador funciona antes de
+     distribuir. Novo pré-requisito: precisa de um compilador C na
+     máquina de build (o Nuitka baixa um MinGW64 sozinho se não achar
+     nenhum, via `--assume-yes-for-downloads`).
+  2. **Passo de release documentado** em `README_APP.md`/
+     `build_installer.ps1`: depois de gerar o instalador, subir no
+     VirusTotal e, se algum antivírus acusar falso positivo, enviar pro
+     portal gratuito da Microsoft
+     (microsoft.com/en-us/wdsi/filesubmission) pra acelerar a remoção da
+     detecção.
+  3. **Página explicativa pra clientes** (o que fazer se o aviso
+     aparecer na instalação): https://claude.ai/artifact/ExQwUy3oMYLsmjmRZ2nEpj
+     — pode linkar na página de vendas/email de boas-vindas.
+- `Bot.ee.spec` (config antiga do PyInstaller) removido, já sem uso.
+- Certificado de assinatura de código continua como opção futura, se/quando
+  fizer sentido pelo volume real de clientes — não implementado agora.

@@ -45,19 +45,31 @@ try {
     }
 
     Run-Step "Limpando builds anteriores..." {
-        foreach ($path in @("build", "dist\Bot.ee", "dist\ShopeeZapBot")) {
+        foreach ($path in @("build", "dist\app.dist", "dist\app.build", "dist\Bot.ee", "dist\ShopeeZapBot")) {
             if (Test-Path -LiteralPath $path) {
                 Remove-Item -LiteralPath $path -Recurse -Force
             }
         }
 
-        if ((Test-Path -LiteralPath "dist\Bot.ee") -or (Test-Path -LiteralPath "dist\ShopeeZapBot")) {
+        if ((Test-Path -LiteralPath "dist\app.dist") -or (Test-Path -LiteralPath "dist\Bot.ee") -or (Test-Path -LiteralPath "dist\ShopeeZapBot")) {
             throw "Nao consegui limpar a pasta dist do aplicativo. Feche o Bot.ee, Chrome/Chromium, Explorer e pause o OneDrive se ele estiver sincronizando essa pasta."
         }
     }
 
-    Run-Step "Gerando executavel com PyInstaller..." {
-        python -m PyInstaller --noconfirm --windowed --name Bot.ee --icon "assets\app_icon.ico" --add-data "assets;assets" app.py
+    # Trocado de PyInstaller para Nuitka em 2026-09-27: o PyInstaller
+    # empacota um interpretador Python + bytecode e se "auto-extrai" ao
+    # rodar, um padrao que antivirus com heuristica costumam marcar como
+    # falso positivo (chegava a ser detectado por varios engines no
+    # VirusTotal). O Nuitka compila o Python de verdade para codigo de
+    # maquina nativo - o mesmo app, compilado com Nuitka, teve muito
+    # menos deteccoes nos testes que fizemos.
+    #
+    # Pre-requisito novo (o PyInstaller nao precisava disso): um
+    # compilador C. --assume-yes-for-downloads deixa o Nuitka baixar
+    # sozinho um MinGW64 portatil na primeira vez, se nao achar nenhum
+    # instalado (Visual Studio Build Tools tambem funciona, se preferir).
+    Run-Step "Gerando executavel com Nuitka..." {
+        python -m nuitka --standalone --assume-yes-for-downloads --enable-plugins=pyside6 --windows-console-mode=disable --windows-icon-from-ico="assets\app_icon.ico" --include-data-dir="assets=assets" --output-dir=dist --output-filename=Bot.ee.exe app.py
     }
 
     $iscc = Find-InnoCompiler
@@ -71,6 +83,11 @@ try {
 
     Write-Host ""
     Write-Host "Instalador gerado em: installer\Bot.eeSetup.exe"
+    Write-Host ""
+    Write-Host "Proximo passo recomendado (reduz aviso de antivirus/SmartScreen):"
+    Write-Host "1. Confira o instalador no VirusTotal: https://www.virustotal.com/"
+    Write-Host "2. Se algum antivirus acusar falso positivo, envie o arquivo para analise da Microsoft:"
+    Write-Host "   https://www.microsoft.com/en-us/wdsi/filesubmission"
     exit 0
 }
 catch {
