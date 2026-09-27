@@ -91,7 +91,10 @@ def _pagina(estado: str, foto: Path) -> str:
     else:
         pct, cor = None, None
 
-    selo = (f'<span class="cashback" style="background:{cor};">{_percentual(pct)}</span>'
+    # "1% cashback" e não só "1%": no site o selo vive dentro da vitrine, onde o
+    # contexto explica o número. Sozinho num vídeo, um "1%" solto não diz do que é -
+    # pode ler como desconto, que é justamente o outro selo do card.
+    selo = (f'<span class="cashback" style="background:{cor};">{_percentual(pct)} cashback</span>'
             if pct is not None else "")
     # visibility e não display: o espaço da linha continua reservado, então o card tem
     # a mesma altura nos três estados e nada se move na troca durante o vídeo.
@@ -113,6 +116,7 @@ def _pagina(estado: str, foto: Path) -> str:
     .desconto, .cashback {{
         position:absolute; top:8px; color:#fff;
         font-size:12px; font-weight:700; padding:3px 8px; border-radius:10px;
+        white-space:nowrap;
     }}
     .desconto {{ left:8px; background:{CORES['danger']}; }}
     .cashback {{ right:8px; }}
