@@ -120,7 +120,7 @@ registrar isso no commit que fizer a mudança.
      incluindo a tela de licença. **Não testei a build real do Windows**
      (não tenho como rodar Windows aqui) — a primeira vez que isso rodar
      na máquina de build de verdade, confirme que gerou
-     `dist\app.dist\Bot.ee.exe` e que o instalador funciona antes de
+     `dist\app.dist\Appfiliado.exe` e que o instalador funciona antes de
      distribuir. Novo pré-requisito: precisa de um compilador C na
      máquina de build (o Nuitka baixa um MinGW64 sozinho se não achar
      nenhum, via `--assume-yes-for-downloads`).
@@ -136,3 +136,17 @@ registrar isso no commit que fizer a mudança.
 - `Bot.ee.spec` (config antiga do PyInstaller) removido, já sem uso.
 - Certificado de assinatura de código continua como opção futura, se/quando
   fizer sentido pelo volume real de clientes — não implementado agora.
+- **Correção em seguida (mesmo dia)**: o usuário reparou que o instalador
+  gerado ainda ia se chamar `Bot.eeSetup.exe`/`Bot.ee.exe` — nome antigo
+  do app, de antes de virar "Appfiliado". Corrigido em `installer.iss`
+  (`MyAppName`, `MyAppExeName`, `AppPublisher`, `DefaultDirName`,
+  `OutputBaseFilename` — o `AppId` foi mantido igual de propósito, pra
+  não quebrar detecção de atualização), `build_exe.bat`,
+  `build_installer.ps1`/`.bat` e o texto de oferta de teste em `app.py`
+  ("OFERTA TESTE BOT.EE" → "OFERTA TESTE APPFILIADO"). Instalador agora
+  sai como `AppfiliadoSetup.exe`, e o app instala em
+  `%localappdata%\Appfiliado`.
+- **Observação**: existe uma pasta irmã `bot_whatsapp_ofertas/` (sem
+  "_generico") com os mesmos resquícios de "Bot.ee" - é um projeto
+  separado que não mexi nesta sessão. Perguntar ao usuário se quer o
+  mesmo tratamento lá antes de tocar.

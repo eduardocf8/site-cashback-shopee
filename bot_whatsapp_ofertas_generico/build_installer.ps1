@@ -45,6 +45,9 @@ try {
     }
 
     Run-Step "Limpando builds anteriores..." {
+        # dist\Bot.ee e dist\ShopeeZapBot: nomes usados antes do app se
+        # chamar Appfiliado - mantidos aqui so pra limpar builds antigas
+        # que ainda possam existir na maquina de quem gera o instalador.
         foreach ($path in @("build", "dist\app.dist", "dist\app.build", "dist\Bot.ee", "dist\ShopeeZapBot")) {
             if (Test-Path -LiteralPath $path) {
                 Remove-Item -LiteralPath $path -Recurse -Force
@@ -52,7 +55,7 @@ try {
         }
 
         if ((Test-Path -LiteralPath "dist\app.dist") -or (Test-Path -LiteralPath "dist\Bot.ee") -or (Test-Path -LiteralPath "dist\ShopeeZapBot")) {
-            throw "Nao consegui limpar a pasta dist do aplicativo. Feche o Bot.ee, Chrome/Chromium, Explorer e pause o OneDrive se ele estiver sincronizando essa pasta."
+            throw "Nao consegui limpar a pasta dist do aplicativo. Feche o Appfiliado, Chrome/Chromium, Explorer e pause o OneDrive se ele estiver sincronizando essa pasta."
         }
     }
 
@@ -69,7 +72,7 @@ try {
     # sozinho um MinGW64 portatil na primeira vez, se nao achar nenhum
     # instalado (Visual Studio Build Tools tambem funciona, se preferir).
     Run-Step "Gerando executavel com Nuitka..." {
-        python -m nuitka --standalone --assume-yes-for-downloads --enable-plugins=pyside6 --windows-console-mode=disable --windows-icon-from-ico="assets\app_icon.ico" --include-data-dir="assets=assets" --output-dir=dist --output-filename=Bot.ee.exe app.py
+        python -m nuitka --standalone --assume-yes-for-downloads --enable-plugins=pyside6 --windows-console-mode=disable --windows-icon-from-ico="assets\app_icon.ico" --include-data-dir="assets=assets" --output-dir=dist --output-filename=Appfiliado.exe app.py
     }
 
     $iscc = Find-InnoCompiler
@@ -82,7 +85,7 @@ try {
     }
 
     Write-Host ""
-    Write-Host "Instalador gerado em: installer\Bot.eeSetup.exe"
+    Write-Host "Instalador gerado em: installer\AppfiliadoSetup.exe"
     Write-Host ""
     Write-Host "Proximo passo recomendado (reduz aviso de antivirus/SmartScreen):"
     Write-Host "1. Confira o instalador no VirusTotal: https://www.virustotal.com/"

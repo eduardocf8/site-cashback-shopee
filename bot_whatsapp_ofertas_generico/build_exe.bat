@@ -16,8 +16,8 @@ rem maquina nativo, resultando em muito menos deteccoes.
 rem --assume-yes-for-downloads: se nao houver compilador C instalado, o
 rem Nuitka baixa sozinho um MinGW64 portatil na primeira vez (so acontece
 rem uma vez por maquina).
-python -m nuitka --standalone --assume-yes-for-downloads --enable-plugins=pyside6 --windows-console-mode=disable --windows-icon-from-ico="assets\app_icon.ico" --include-data-dir="assets=assets" --output-dir=dist --output-filename=Bot.ee.exe app.py
+python -m nuitka --standalone --assume-yes-for-downloads --enable-plugins=pyside6 --windows-console-mode=disable --windows-icon-from-ico="assets\app_icon.ico" --include-data-dir="assets=assets" --output-dir=dist --output-filename=Appfiliado.exe app.py
 
 echo.
-echo Aplicativo gerado em: dist\app.dist\Bot.ee.exe
+echo Aplicativo gerado em: dist\app.dist\Appfiliado.exe
 pause

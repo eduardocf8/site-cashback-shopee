@@ -1,18 +1,22 @@
-#define MyAppName "Bot.ee"
+#define MyAppName "Appfiliado"
 #define MyAppVersion "1.0.0"
-#define MyAppExeName "Bot.ee.exe"
+#define MyAppExeName "Appfiliado.exe"
 
 [Setup]
+; Mantido o mesmo AppId de quando o app se chamava "Bot.ee" - troca-lo
+; faria o Windows tratar isto como um produto diferente (perderia a
+; detecção de atualização e deixaria a instalação antiga órfã no
+; registro/desinstalação).
 AppId={{9F3F0E98-A5BD-43B4-8AE0-3C8E42685B01}
 AppName={#MyAppName}
 AppVersion={#MyAppVersion}
-AppPublisher=Bot.ee
-DefaultDirName={localappdata}\Bot.ee
+AppPublisher=Appfiliado
+DefaultDirName={localappdata}\Appfiliado
 DisableDirPage=no
 DefaultGroupName={#MyAppName}
 DisableProgramGroupPage=yes
 OutputDir=installer
-OutputBaseFilename=Bot.eeSetup
+OutputBaseFilename=AppfiliadoSetup
 SetupIconFile=assets\app_icon.ico
 Compression=lzma
 SolidCompression=yes

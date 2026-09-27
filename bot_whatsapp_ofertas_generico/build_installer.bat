@@ -7,7 +7,7 @@ powershell -NoProfile -ExecutionPolicy Bypass -File "%~dp0build_installer.ps1"
 if errorlevel 1 goto erro
 
 echo.
-echo Instalador gerado em: installer\Bot.eeSetup.exe
+echo Instalador gerado em: installer\AppfiliadoSetup.exe
 pause
 exit /b 0
 

@@ -1,4 +1,4 @@
-# Bot.ee - Aplicativo
+# Appfiliado - Aplicativo
 
 Versao atual: 1.0.0
 
@@ -94,7 +94,7 @@ build_exe.bat
 O executavel sera criado em:
 
 ```text
-dist\app.dist\Bot.ee.exe
+dist\app.dist\Appfiliado.exe
 ```
 
 O build usa **Nuitka** (compila o Python de verdade para código de
@@ -123,7 +123,7 @@ build_installer.bat
 O instalador sera criado em:
 
 ```text
-installer\Bot.eeSetup.exe
+installer\AppfiliadoSetup.exe
 ```
 
 Antes de distribuir uma versão nova, ajuda a reduzir avisos de

@@ -2475,7 +2475,7 @@ class MainWindow(QMainWindow):
 
     def _run_ai_test(self):
         texto_teste = (
-            "OFERTA TESTE BOT.EE\n\n"
+            "OFERTA TESTE APPFILIADO\n\n"
             "Mini processador elétrico 250ml\n"
             "Ideal para decorar seu ambiente com charme e elegância.\n\n"
             "De: R$ 79,90\n"
