@@ -1,0 +1,3 @@
+# Os cards gerados saem inteiros do script mais a foto em fotos/ - versionar o
+# resultado só engordaria o repositório. A foto fica, porque sem ela não dá para regerar.
+*.png
