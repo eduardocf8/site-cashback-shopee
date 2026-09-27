@@ -73,7 +73,7 @@ def webhook_kiwify(request):
 @csrf_exempt
 @require_POST
 def validar_licenca(request):
-    """Contrato documentado em bot_whatsapp_ofertas_generico/LICENCA.md - não mude a
+    """Contrato documentado em Appfiliado/LICENCA.md - não mude a
     forma da resposta sem atualizar o bot também."""
     try:
         payload = json.loads(request.body)

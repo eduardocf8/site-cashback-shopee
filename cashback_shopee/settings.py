@@ -206,7 +206,7 @@ INSTAGRAM_APROVADOR_EMAIL = os.environ.get("INSTAGRAM_APROVADOR_EMAIL", "contato
 AUTOMACAO_INSTAGRAM_INTERVALO_SEGUNDOS = int(os.environ.get("AUTOMACAO_INSTAGRAM_INTERVALO_SEGUNDOS", "30"))
 
 # App licencas: backend de validação de assinatura do Appfiliado (bot separado, ver
-# bot_whatsapp_ofertas_generico/LICENCA.md). O Appfiliado não tem relação de marca com a
+# Appfiliado/LICENCA.md). O Appfiliado não tem relação de marca com a
 # cash-b - reaproveitamos só a infraestrutura Django já existente.
 #
 # Token configurado no painel da Kiwify em Webhooks > (o webhook do Appfiliado) > Token.

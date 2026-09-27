@@ -8,7 +8,7 @@ consulta, periodicamente, um servidor próprio que sabe (através dos
 webhooks recebidos da plataforma de pagamento) se aquela chave ainda está
 com a assinatura em dia.
 
-Essa pasta (`bot_whatsapp_ofertas_generico`) já tem o lado do **bot**
+Essa pasta (`Appfiliado`) já tem o lado do **bot**
 pronto: tela de ativação, checagem periódica enquanto o app está aberto, e
 tolerância de alguns dias offline. Falta implementar o **servidor** que o
 bot consulta - o que está descrito abaixo.
