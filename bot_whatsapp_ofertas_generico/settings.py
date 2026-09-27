@@ -5,6 +5,11 @@ from dataclasses import asdict, dataclass, field
 from datetime import datetime
 from pathlib import Path
 
+import credenciais_seguras
+
+# Campos sensiveis que sao cifrados em disco - ver credenciais_seguras.py.
+CAMPOS_SECRETOS = ("shopee_api_secret", "relatorio_email_senha_app")
+
 
 def caminho_user_data_navegador_pessoal(tipo_navegador="chrome"):
     """
@@ -177,13 +182,31 @@ class AppSettings:
         data = json.loads(path.read_text(encoding="utf-8"))
         known_data = {key: value for key, value in data.items() if key in defaults}
         defaults.update(known_data)
-        return cls(**defaults)
+
+        # Campos sensiveis (segredo da API Shopee, senha de app do Gmail)
+        # ficam cifrados em disco (ver credenciais_seguras.py) - aqui
+        # decifra pra o resto do app sempre enxergar o valor em texto
+        # puro em memoria. Se algum nao puder ser decifrado (config veio
+        # de outra maquina/usuario do Windows), fica "" e a falha e
+        # sinalizada em credenciais_nao_recuperadas, pra quem importou/
+        # restaurou o arquivo avisar o usuario em vez de deixar a
+        # credencial sumir em silencio.
+        falhas_decodificacao = []
+        for campo in CAMPOS_SECRETOS:
+            defaults[campo] = credenciais_seguras.revelar(defaults.get(campo, ""), falhas_decodificacao)
+
+        settings = cls(**defaults)
+        settings.credenciais_nao_recuperadas = bool(falhas_decodificacao)
+        return settings
 
     def save(self, path=USER_CONFIG_PATH):
         path = Path(path)
         path.parent.mkdir(parents=True, exist_ok=True)
+        dados = asdict(self)
+        for campo in CAMPOS_SECRETOS:
+            dados[campo] = credenciais_seguras.proteger(dados.get(campo, ""))
         path.write_text(
-            json.dumps(asdict(self), ensure_ascii=False, indent=2),
+            json.dumps(dados, ensure_ascii=False, indent=2),
             encoding="utf-8",
         )
 

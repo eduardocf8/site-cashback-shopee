@@ -2943,7 +2943,19 @@ class MainWindow(QMainWindow):
             if backup_path:
                 self.add_log(f"Backup anterior preservado em: {backup_path}")
             self.add_log(f"Configurações importadas de: {file_path}")
-            QMessageBox.information(self, "Configurações importadas", "As configurações foram carregadas.")
+            mensagem = "As configurações foram carregadas."
+            if getattr(imported, "credenciais_nao_recuperadas", False):
+                mensagem += (
+                    "\n\nO segredo da API Shopee e/ou a senha de app do Gmail vieram "
+                    "protegidos por este computador e não puderam ser recuperados aqui "
+                    "(isso acontece ao importar configurações de outra máquina). "
+                    "Preencha essas credenciais de novo nas abas API e Relatório por email."
+                )
+                self.add_log(
+                    "Aviso: segredo da API Shopee e/ou senha de app do Gmail não "
+                    "puderam ser recuperados do arquivo importado - preencha de novo."
+                )
+            QMessageBox.information(self, "Configurações importadas", mensagem)
         except Exception as e:
             QMessageBox.warning(self, "Falha ao importar", f"Não consegui importar as configurações:\n\n{e}")
 
@@ -2993,7 +3005,18 @@ class MainWindow(QMainWindow):
                 self.add_log(f"Backup da configuração anterior criado em: {current_backup}")
             self.add_log(f"Backup restaurado: {file_path}")
             self.set_status("Backup restaurado.")
-            QMessageBox.information(self, "Backup restaurado", "As configurações foram restauradas.")
+            mensagem = "As configurações foram restauradas."
+            if getattr(restored, "credenciais_nao_recuperadas", False):
+                mensagem += (
+                    "\n\nO segredo da API Shopee e/ou a senha de app do Gmail vieram "
+                    "protegidos por outro computador e não puderam ser recuperados aqui. "
+                    "Preencha essas credenciais de novo nas abas API e Relatório por email."
+                )
+                self.add_log(
+                    "Aviso: segredo da API Shopee e/ou senha de app do Gmail não "
+                    "puderam ser recuperados do backup restaurado - preencha de novo."
+                )
+            QMessageBox.information(self, "Backup restaurado", mensagem)
         except Exception as e:
             QMessageBox.warning(self, "Falha ao restaurar", f"Não consegui restaurar o backup:\n\n{e}")
 

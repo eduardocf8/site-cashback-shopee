@@ -20,15 +20,24 @@ registrar isso no commit que fizer a mudança.
   - Testar o fluxo ponta a ponta com uma versão fictícia antes do primeiro
     uso real.
 
-## 2. Segredos salvos em texto puro
+## 2. Segredos salvos em texto puro — ✅ resolvido em 2026-09-27
 - `shopee_api_secret` e `relatorio_email_senha_app` (senha de app do
-  Gmail) ficam gravados sem criptografia em `config_usuario.json` e são
-  incluídos, também sem proteção, no recurso "Exportar configurações".
-- Risco: se o usuário mandar esse arquivo exportado pra suporte ou
-  guardar em nuvem, vaza credenciais.
-- Sugestão discutida: mascarar esses campos no export, ou cifrar com uma
-  chave derivada da máquina.
-- Status: não implementado, aguardando decisão do usuário.
+  Gmail) agora são cifrados em disco com o DPAPI do Windows (novo
+  módulo `credenciais_seguras.py`, chamado de dentro de
+  `AppSettings.load()`/`save()`). A cifra é amarrada à conta do usuário
+  do Windows na máquina atual — ninguém abre o `config_usuario.json`
+  (ou um arquivo exportado) num editor de texto e vê a credencial.
+- Continua funcionando sem pywin32/fora do Windows (fica em texto puro,
+  degradação segura) e migra sozinho configs antigas já salvas em texto
+  puro (decifra normal, recifra no próximo save).
+- Efeito colateral conhecido e tratado: um `config_usuario.json`
+  exportado/backupeado num computador não decifra em outro computador
+  (é o ponto todo do DPAPI). "Importar configurações" e "Restaurar
+  backup" agora detectam isso e avisam o usuário pra preencher a
+  credencial de novo, em vez de deixar a API falhar em silêncio.
+- Adicionado `pywin32` ao `requirements.txt` (só Windows) e
+  `win32crypt` aos `hiddenimports` do `Bot.ee.spec`, pra garantir que o
+  PyInstaller empacote o módulo no `.exe`.
 
 ## 3. Sem trava de instância única
 - Nada impede abrir o app duas vezes ao mesmo tempo (mesmo perfil do
