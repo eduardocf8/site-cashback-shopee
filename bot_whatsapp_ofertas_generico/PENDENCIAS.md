@@ -44,3 +44,25 @@ registrar isso no commit que fizer a mudança.
   (parser de ofertas, formatador, cálculo de indicadores) antes de partir
   pra UI/integração.
 - Status: não implementado, aguardando decisão do usuário.
+
+## 5. Email institucional da marca Appfiliado (contato@appfiliado.com.br)
+- Combinado em 2026-09-26 (madrugada). Diferente do "Relatório por email"
+  do bot (esse já existe e é só Gmail) — aqui é o email da marca/empresa,
+  usado por ex. pelo backend do site pra mandar a chave de licença.
+- Caminho decidido, nessa ordem:
+  1. Comprar o domínio `appfiliado.com.br` (Registro.br, ~R$40/ano).
+  2. Criar a caixa de email no **Zoho Mail, plano Mail Lite**
+     (R$5/usuário/mês, cobrado anual = R$60/ano por caixa — tem app
+     oficial iOS/Android e também funciona via IMAP/SMTP em qualquer
+     app de email).
+  3. Verificar o domínio `appfiliado.com.br` no painel do **Brevo**
+     (adicionar domínio + configurar os registros DNS SPF/DKIM que ele
+     pedir) — sem isso o envio automático de email pode cair em spam ou
+     ser recusado.
+  4. Só depois de tudo isso, trocar a variável `APPFILIADO_EMAIL_REMETENTE`
+     no Render (hoje ainda no valor provisório `Appfiliado
+     <contato@cash-b.com>`, ver `cashback_shopee/settings.py` e
+     `.env.example`) para `Appfiliado <contato@appfiliado.com.br>`.
+- Status: nada comprado/configurado ainda. Usuário decidiu deixar pra
+  quando "o bot estiver da forma que eu quero" — sem risco em adiar, já
+  que ainda não há cliente real do Appfiliado enviando/recebendo email.
