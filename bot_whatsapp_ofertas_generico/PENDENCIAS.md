@@ -57,13 +57,30 @@ registrar isso no commit que fizer a mudança.
   infraestrutura sem relação com o risco real.
 - `appfiliado.lock` adicionado ao `.gitignore`.
 
-## 4. Zero testes automatizados
-- App com mais de 12 mil linhas (`app.py`, `bot_runner.py`, `afiliados.py`,
-  `whatsapp.py` etc.) sem nenhum teste unitário.
-- Sugestão discutida: começar por partes isoladas e fáceis de testar
-  (parser de ofertas, formatador, cálculo de indicadores) antes de partir
-  pra UI/integração.
-- Status: não implementado, aguardando decisão do usuário.
+## 4. Zero testes automatizados — ✅ primeira leva feita em 2026-09-27
+- Criada a pasta `tests/` com 128 testes (pytest), cobrindo exatamente as
+  partes isoladas sugeridas antes de partir pra UI/integração:
+  - `parser.py` (extração/limpeza de links, id de mensagem).
+  - `formatador.py` (limpeza de linhas, preços, chamada/descrição da
+    oferta, pipeline completo de `formatar_texto_oferta`).
+  - `categorias_shopee.py` (normalização de texto, filtro de categoria).
+  - `afiliados.py` — o núcleo de cálculo de indicadores (`agrupar_indicadores`,
+    `calcular_resumo_status_pedidos`, `_comissao_conversao_valida`,
+    conversão de números BR, `oferta_passa_filtros` etc.), usando
+    `ConversorAfiliados()` sem rede/navegador (só a parte pura).
+  - `credenciais_seguras.py` e `atualizacao.py` (os dois módulos novos
+    desta sessão) — testes que simulam o DPAPI e usam um servidor HTTP
+    local de verdade pra cobrir os casos de erro (JSON quebrado, HTTP
+    500, servidor fora do ar, link malicioso etc.).
+- Ainda **não** cobre a interface (PySide6) nem a automação real do
+  WhatsApp/Shopee (browser/Playwright) — fica pra uma próxima etapa, se
+  quiser continuar.
+- `pytest.ini` (`testpaths = tests`) e `requirements-dev.txt` (pytest, sem
+  poluir o `requirements.txt` de produção/exe). Como rodar: documentado no
+  `README_APP.md`.
+- Não mexi no `.github/workflows/` do monorepo (CI automático a cada
+  push) — é uma decisão que afeta a infraestrutura compartilhada com o
+  site cash-b, então fica pra quando o usuário confirmar que quer isso.
 
 ## 5. Email institucional da marca Appfiliado (contato@appfiliado.com.br)
 - Combinado em 2026-09-26 (madrugada). Diferente do "Relatório por email"

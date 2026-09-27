@@ -37,6 +37,19 @@ python app.py
 4. Use os botoes `Testar API Shopee` e `Testar grupos` se quiser conferir tudo antes de iniciar.
 5. Clique em `Salvar configuracoes` e depois em `Iniciar bot`.
 
+## Rodar os testes automatizados
+
+Cobrem a parte de calculo/parsing que nao depende de navegador nem da API
+da Shopee de verdade (parser de links, formatador de texto das ofertas,
+calculo de indicadores, categorias, protecao de credenciais e checagem de
+atualizacao). Ainda nao cobrem a interface (PySide6) nem a automacao do
+WhatsApp/Shopee - isso fica pra uma proxima etapa.
+
+```bat
+python -m pip install -r requirements-dev.txt
+python -m pytest
+```
+
 ## Enviar para grupo e para canal do WhatsApp ao mesmo tempo
 
 Na aba "Execução" existem dois campos de destino separados:
