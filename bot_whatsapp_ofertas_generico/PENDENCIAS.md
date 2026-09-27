@@ -39,12 +39,23 @@ registrar isso no commit que fizer a mudança.
   `win32crypt` aos `hiddenimports` do `Bot.ee.spec`, pra garantir que o
   PyInstaller empacote o módulo no `.exe`.
 
-## 3. Sem trava de instância única
-- Nada impede abrir o app duas vezes ao mesmo tempo (mesmo perfil do
-  Chrome, mesmo banco SQLite) — risco de posts duplicados ou corrupção
-  de dados.
-- Sugestão discutida: lock local (arquivo ou porta) checado ao iniciar.
-- Status: não implementado, aguardando decisão do usuário.
+## 3. Sem trava de instância única — ✅ resolvido em 2026-09-27
+- `main()` (`app.py`) agora usa `QLockFile` (Qt) logo ao abrir, antes até
+  da tela de licença: tenta travar `appfiliado.lock` em `APP_DIR`. Se já
+  tiver outra janela aberta, mostra um aviso ("Appfiliado já está
+  aberto...") e fecha, sem chegar a mexer no perfil do Chrome/banco.
+- QLockFile já resolve sozinho o caso de a trava ter ficado "presa" por
+  um fechamento anormal (queda de energia, processo morto à força): ele
+  detecta que o PID dono não está mais rodando e libera a trava sozinho
+  — testei isso simulando um "crash" (processo morto sem chamar
+  `unlock()`) e confirmando que a trava é recuperada na tentativa
+  seguinte, sem travar o usuário pra sempre.
+- Só bloqueia de fato no erro `LockFailedError` (outra instância viva
+  segurando a trava). Em `PermissionError`/`UnknownError` (ex: pasta
+  sincronizada com OneDrive se comportando de forma estranha) deixa
+  seguir normal, pra não bloquear o app por causa de um problema de
+  infraestrutura sem relação com o risco real.
+- `appfiliado.lock` adicionado ao `.gitignore`.
 
 ## 4. Zero testes automatizados
 - App com mais de 12 mil linhas (`app.py`, `bot_runner.py`, `afiliados.py`,

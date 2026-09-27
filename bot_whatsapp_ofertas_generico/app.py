@@ -9,7 +9,7 @@ from datetime import datetime, timedelta
 from html import escape
 from pathlib import Path
 
-from PySide6.QtCore import QDate, QEvent, QObject, Qt, QTimer, QUrl, Signal, QtMsgType, qInstallMessageHandler
+from PySide6.QtCore import QDate, QEvent, QLockFile, QObject, Qt, QTimer, QUrl, Signal, QtMsgType, qInstallMessageHandler
 from PySide6.QtGui import QDesktopServices, QFont, QIcon, QStandardItem, QStandardItemModel, QTextCursor
 from PySide6.QtWidgets import (
     QApplication,
@@ -4193,6 +4193,31 @@ def main():
     qInstallMessageHandler(_filtrar_avisos_qt_benignos)
     app = QApplication(sys.argv)
     app.setFont(QFont("Segoe UI", 10))
+
+    # Trava de instância única: abrir o app duas vezes ao mesmo tempo
+    # arriscaria duas automações mexendo no mesmo perfil do Chrome e no
+    # mesmo banco (mensagens_app.db) ao mesmo tempo - risco real de
+    # oferta duplicada ou dado corrompido. QLockFile já resolve sozinho
+    # o caso de um lock antigo ter ficado "preso" por um fechamento
+    # anormal (queda de energia, processo morto à força): ele detecta
+    # que o processo dono não está mais rodando e libera a trava, então
+    # isso nunca deixa o usuário travado pra sempre.
+    lock = QLockFile(str(APP_DIR / "appfiliado.lock"))
+    if not lock.tryLock(150):
+        if lock.error() == QLockFile.LockError.LockFailedError:
+            QMessageBox.warning(
+                None,
+                "Appfiliado já está aberto",
+                "Já existe uma janela do Appfiliado aberta neste computador.\n\n"
+                "Feche a outra janela antes de abrir uma nova - rodar duas ao "
+                "mesmo tempo pode causar ofertas duplicadas ou problemas nos dados.",
+            )
+            sys.exit(0)
+        # PermissionError/UnknownError: não deu pra checar a trava (ex: pasta
+        # com sincronização de nuvem se comportando de forma estranha,
+        # permissão inesperada) - não bloqueia o usuário por causa de um
+        # problema de infraestrutura que não temos certeza do que é; segue
+        # rodando normalmente, igual antes dessa trava existir.
 
     # Trava de licenca: o app so segue pra janela principal com uma
     # assinatura ativa confirmada. Ver licenca.py e LicencaDialog.
