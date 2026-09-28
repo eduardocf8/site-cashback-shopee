@@ -1360,9 +1360,8 @@ class MainWindow(QMainWindow):
         indicators_filters_row1.addWidget(self.indicators_start_date)
         indicators_filters_row1.addWidget(QLabel("até"))
         indicators_filters_row1.addWidget(self.indicators_end_date)
-        indicators_filters_row1.addSpacing(12)
-        indicators_filters_row1.addWidget(self.refresh_indicators_button)
         indicators_filters_row1.addStretch(1)
+        indicators_filters_row1.addWidget(self.refresh_indicators_button)
 
         self.indicators_sales_label = QLabel("0")
         self.indicators_commission_label = QLabel("R$ 0,00")
