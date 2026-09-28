@@ -37,6 +37,10 @@ class WhatsApp:
         profile_dir = getattr(app_config, "profile_dir", "perfil_whatsapp")
         self.diagnostico_dir = Path(profile_dir).resolve().parent / "diagnosticos_whatsapp"
 
+        # Preenchido na primeira vez que a origem (grupo_origem) e aberta
+        # com sucesso - "grupo" ou "canal". Ver preparar_monitoramento_origem.
+        self._tipo_origem_detectado = None
+
         self.abrir_minimizado = bool(headless)
         browser_args = ["--window-size=1200,900"] if self.abrir_minimizado else ["--start-maximized"]
         if self.abrir_minimizado:
@@ -176,62 +180,6 @@ class WhatsApp:
 
         except Exception:
             pass
-
-    def abrir_grupo(self, nome):
-        print(f"Abrindo grupo: {nome}")
-        # Se o envio anterior foi para um canal (aba "Canais"), a lateral
-        # esquerda está mostrando canais, não conversas. Garante a volta
-        # para a aba normal antes de procurar o grupo de origem.
-        self.ir_para_aba_conversas()
-        self.fechar_dialogos_sobrepostos()
-        self.fechar_visualizador_midia()
-
-        # Mantém a ideia do método antigo que funcionava, mas limita a busca à lista lateral.
-        # Isso evita clicar no título do chat, no botão de nova conversa ou em itens de modal.
-        try:
-            self.page.wait_for_selector("#pane-side", timeout=12000)
-        except Exception:
-            pass
-
-        termo = (nome or "").lower().strip()
-        resultado = self.page.evaluate("""
-        (termo) => {
-            const pane = document.querySelector('#pane-side') || document.querySelector('div[data-testid="chat-list"]');
-            if (!pane) return {ok:false, motivo:'sem lista lateral'};
-
-            const spans = [...pane.querySelectorAll('span[title]')];
-            const alvo = spans.find(s => (s.getAttribute('title') || '').toLowerCase().includes(termo));
-            if (!alvo) {
-                return {ok:false, motivo:'titulo nao encontrado', titulos: spans.map(s => s.getAttribute('title')).filter(Boolean).slice(0, 20)};
-            }
-
-            const cell = alvo.closest('[data-testid="cell-frame-container"]') ||
-                         alvo.closest('[role="listitem"]') ||
-                         alvo.closest('[role="row"]') ||
-                         alvo.closest('[tabindex]') || alvo;
-            const r = cell.getBoundingClientRect();
-            return {
-                ok:true,
-                titulo: alvo.getAttribute('title') || alvo.textContent || '',
-                x: Math.round(r.left + Math.min(180, Math.max(50, r.width / 2))),
-                y: Math.round(r.top + r.height / 2),
-                w: Math.round(r.width),
-                h: Math.round(r.height)
-            };
-        }
-        """, termo)
-
-        if not resultado or not resultado.get("ok"):
-            print("DEBUG conversa não encontrada:", resultado)
-            self.debug_conversas_visiveis()
-            raise Exception(f"Não consegui abrir o grupo/conversa: {nome}")
-
-        print(f"Conversa encontrada pelo título: {resultado.get('titulo')}")
-        self.page.mouse.click(resultado["x"], resultado["y"])
-        self.page.wait_for_timeout(2200)
-        self.fechar_dialogos_sobrepostos()
-        print("Grupo aberto!")
-        return True
 
     def encontrar_lista_conversas(self):
         seletores = [
@@ -816,7 +764,11 @@ class WhatsApp:
             pass
 
     def preparar_monitoramento_origem(self, nome_origem):
-        """Garante o grupo de origem aberto e pronto para monitoramento.
+        """Garante a origem aberta e pronta para monitoramento.
+
+        A origem pode ser um grupo/conversa normal OU um canal do WhatsApp
+        (aba separada "Canais") - ver _abrir_origem, que detecta
+        automaticamente qual dos dois é.
 
         Esta versão evita qualquer Escape/click desnecessário para não fazer o
         WhatsApp sair da conversa e voltar para a tela inicial.
@@ -824,21 +776,80 @@ class WhatsApp:
         self.fechar_dialogos_sobrepostos()
 
         if not self.conversa_atual_tem_nome(nome_origem):
-            self.abrir_grupo(nome_origem)
+            self._abrir_origem(nome_origem)
         else:
-            print(f"Grupo de origem já está aberto: {nome_origem}")
+            print(f"Origem já está aberta: {nome_origem}")
 
         self.page.wait_for_timeout(900)
         self.ir_para_fim_da_conversa()
 
         # Confirma após a rolagem. Se por algum motivo a conversa fechou, reabre uma vez.
         if not self.conversa_atual_tem_nome(nome_origem):
-            print("Grupo de origem não permaneceu aberto após preparar. Reabrindo uma vez...")
-            self.abrir_grupo(nome_origem)
+            print("Origem não permaneceu aberta após preparar. Reabrindo uma vez...")
+            self._abrir_origem(nome_origem)
             self.page.wait_for_timeout(900)
             self.ir_para_fim_da_conversa()
 
         return True
+
+    def _abrir_origem(self, nome_origem):
+        """Abre a origem (grupo ou canal) por nome, descobrindo sozinho qual
+        dos dois é. Na primeira vez tenta como grupo (caso mais comum) e só
+        tenta como canal se não encontrar; depois de descoberto, guarda o
+        tipo em self._tipo_origem_detectado para não precisar tentar os
+        dois de novo a cada ciclo - só volta a detectar se o app for
+        reiniciado (uma instância nova de WhatsApp)."""
+        if self._tipo_origem_detectado:
+            self._abrir_origem_por_tipo(nome_origem, self._tipo_origem_detectado)
+            return
+
+        try:
+            self._abrir_origem_por_tipo(nome_origem, "grupo")
+            self._tipo_origem_detectado = "grupo"
+        except Exception:
+            print(f"Origem '{nome_origem}' não encontrada como grupo - tentando como canal...")
+            self._abrir_origem_por_tipo(nome_origem, "canal")
+            self._tipo_origem_detectado = "canal"
+
+    def _abrir_origem_por_tipo(self, nome, tipo, timeout_ms=20000):
+        """Abre a origem já sabendo o tipo ("grupo" ou "canal"). Confirma só
+        pelo nome no cabeçalho do painel direito (temNome) - diferente de
+        abrir_destino_para_envio(), NÃO exige caixa de mensagem/anexar,
+        porque a conta pode só seguir o canal de origem sem ser admin dele
+        (não precisa ser admin para ler, só para publicar)."""
+        rotulo_tipo = "canal" if tipo == "canal" else "grupo"
+        print(f"Abrindo origem ({rotulo_tipo}): {nome}")
+
+        if tipo == "canal":
+            if not self.ir_para_aba_canais():
+                raise Exception("Não consegui abrir a aba de Canais do WhatsApp.")
+        else:
+            self.ir_para_aba_conversas()
+
+        self.fechar_dialogos_sobrepostos()
+
+        fim = time.time() + (timeout_ms / 1000)
+        tentativa = 0
+
+        while time.time() < fim:
+            estado = self._estado_painel_direito(nome)
+            if estado.get("temNome"):
+                print(f"Origem ({rotulo_tipo}) confirmada no painel direito.")
+                return True
+
+            tentativa += 1
+            if tentativa <= 5:
+                if tipo == "canal":
+                    if not self._clicar_item_lateral_generico_por_titulo(nome):
+                        self.ir_para_aba_canais()
+                else:
+                    self._clicar_conversa_lateral_por_titulo(nome)
+            else:
+                self.page.wait_for_timeout(700)
+
+        print(f"DEBUG: origem ({rotulo_tipo}) não confirmada no painel direito:")
+        print(self._estado_painel_direito(nome))
+        raise Exception(f"Não encontrei a origem '{nome}' como {rotulo_tipo}.")
 
 
     # ======================================================================

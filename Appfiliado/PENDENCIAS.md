@@ -150,3 +150,32 @@ registrar isso no commit que fizer a mudança.
   "_generico") com os mesmos resquícios de "Bot.ee" - é um projeto
   separado que não mexi nesta sessão. Perguntar ao usuário se quer o
   mesmo tratamento lá antes de tocar.
+
+## 7. Modo Grupo: origem agora aceita canal, além de grupo — implementado em 2026-09-28, confirmar em uso real
+- Pedido do usuário: hoje a captura de mensagens (`grupo_origem`) só
+  funcionava com um grupo normal do WhatsApp; canais só eram suportados
+  como destino de envio.
+- Implementado em `whatsapp.py`: `preparar_monitoramento_origem` agora
+  detecta sozinho se `grupo_origem` é um grupo ou um canal (tenta grupo
+  primeiro, cai pra canal se não achar) e guarda o tipo detectado
+  (`self._tipo_origem_detectado`) pra não tentar os dois de novo a cada
+  ciclo - só redetecta se o app for reiniciado. Reaproveita a mesma
+  infraestrutura de navegação já usada pro envio a canais
+  (`ir_para_aba_canais`, `_clicar_item_lateral_generico_por_titulo`),
+  mas a confirmação de que abriu certo usa só o nome no cabeçalho
+  (`temNome`), sem exigir caixa de mensagem - a conta pode só *seguir*
+  o canal de origem sem ser admin dele (admin só é necessário pra
+  *publicar*, não pra ler).
+- `abrir_grupo()` (método antigo, só grupo) foi removido - não tinha
+  mais nenhuma chamada depois dessa mudança.
+- Testado nesta sessão: 5 testes novos (`tests/test_whatsapp_origem.py`)
+  cobrindo a lógica de detecção/cache/fallback com Playwright mockado
+  (detecta grupo de primeira, cai pra canal quando grupo falha, erro
+  quando nem um nem outro existe, reaproveita o tipo já descoberto nas
+  duas variações). App inteiro renderizado offscreen sem erro.
+- **O que NÃO pude testar**: se a captura de mensagens
+  (`capturar_mensagens`, que lê `div[data-testid='msg-container']`) lê
+  corretamente o conteúdo de dentro de um canal de verdade - só valida
+  isso com WhatsApp Web real, que não tenho acesso nesta sandbox. Testar
+  configurando `grupo_origem` com o nome de um canal de verdade e
+  conferindo se as ofertas aparecem na aba Logs/Histórico normalmente.

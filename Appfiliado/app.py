@@ -588,7 +588,7 @@ class MainWindow(QMainWindow):
 
         self.grupo_origem_input = QLineEdit()
         self.grupo_origem_input.setMinimumHeight(44)
-        self.grupo_origem_input.setPlaceholderText("Nome exato do grupo de origem")
+        self.grupo_origem_input.setPlaceholderText("Nome exato do grupo ou canal de origem")
         self.destinos_input = QLineEdit()
         self.destinos_input.setMinimumHeight(44)
         self.destinos_input.setPlaceholderText("Exemplo: Ofertas do grupo; Grupo de promoções")
@@ -892,7 +892,9 @@ class MainWindow(QMainWindow):
         group_fields_layout.setVerticalSpacing(12)
         group_fields_layout.addWidget(self.label_with_help(
             "Grupo de origem",
-            "Nome exato do grupo do WhatsApp de onde o bot vai ler as ofertas.",
+            "Nome exato do grupo ou canal do WhatsApp de onde o bot vai ler as "
+            "ofertas. Pode ser um grupo normal ou um canal (aba \"Canais\") - o "
+            "bot detecta sozinho qual dos dois é.",
         ), 0, 0)
         group_fields_layout.addWidget(self.grupo_origem_input, 0, 1)
         group_fields_layout.setRowMinimumHeight(0, 50)
@@ -2380,9 +2382,10 @@ class MainWindow(QMainWindow):
             play = sync_playwright().start()
             zap = WhatsApp(play, headless=self.settings.headless, app_config=self.settings)
 
-            self.signals.log.emit(f"Testando grupo de origem: {self.settings.grupo_origem}")
+            self.signals.log.emit(f"Testando origem: {self.settings.grupo_origem}")
             zap.preparar_monitoramento_origem(self.settings.grupo_origem)
-            self.signals.log.emit("Grupo de origem encontrado.")
+            rotulo_origem = "canal" if zap._tipo_origem_detectado == "canal" else "grupo"
+            self.signals.log.emit(f"Origem encontrada (é um {rotulo_origem}).")
 
             for grupo, tipo_destino in self.settings.normalized_destinos_com_tipo():
                 rotulo_destino = "canal" if tipo_destino == "canal" else "grupo"
