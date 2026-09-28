@@ -205,3 +205,16 @@ registrar isso no commit que fizer a mudança.
   lateral) - invisível no fundo claro do diálogo. Criado `#aboutTitle`
   próprio, com a mesma cor escura (`#20372F`) usada nos botões "Verificar
   atualizações"/"Fechar".
+- **Correção em seguida (mesmo dia)**: o usuário reportou que "Categoria/
+  nicho" continuava respondendo a clique (abria o popup e deixava marcar
+  categoria) mesmo com "Ofertas gerais" selecionado, apesar do
+  `setEnabled(False)`. Causa real: `ComboBoxMultiplaSelecao` guarda o
+  popup de seleção como uma janela separada (`Qt.Popup`) e intercepta
+  clique nela via `eventFilter` - o bloqueio automático de eventos que o
+  Qt aplica a um widget desabilitado não alcançava essa janela separada.
+  Corrigido fazendo o próprio `eventFilter` checar `self.isEnabled()` e
+  ignorar o clique quando desabilitado. Testado com 4 testes novos
+  (`tests/test_combo_multipla_selecao.py`): clique abre popup/marca item
+  quando habilitado (comportamento existente preservado), e não faz nada
+  quando desabilitado (bug corrigido) - usando `QMouseEvent` de verdade,
+  não só chamando a função Python isolada.

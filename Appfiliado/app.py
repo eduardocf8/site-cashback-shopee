@@ -399,6 +399,14 @@ class ComboBoxMultiplaSelecao(QComboBox):
         self._modelo.appendRow(item)
 
     def eventFilter(self, origem, evento):
+        # Sem isso, o combo continuava respondendo a clique (abrindo o
+        # popup e deixando marcar/desmarcar itens) mesmo desabilitado via
+        # setEnabled(False) - o popup de seleção é uma janela separada
+        # (Qt.Popup) e não fica sujeito ao bloqueio automático de eventos
+        # que o Qt aplica a um widget desabilitado e seus filhos diretos.
+        if not self.isEnabled():
+            return super().eventFilter(origem, evento)
+
         if origem is self.lineEdit() and evento.type() == QEvent.MouseButtonPress:
             if self.view().isVisible():
                 self.hidePopup()
