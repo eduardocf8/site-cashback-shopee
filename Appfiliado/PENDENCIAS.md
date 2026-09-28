@@ -218,3 +218,24 @@ registrar isso no commit que fizer a mudança.
   quando habilitado (comportamento existente preservado), e não faz nada
   quando desabilitado (bug corrigido) - usando `QMouseEvent` de verdade,
   não só chamando a função Python isolada.
+- **Correção importante em seguida (mesmo dia)**: o aumento de
+  `config_tabs.setMinimumHeight()` pra `440` piorou a situação no Windows
+  real - o usuário reportou sobreposição feia em praticamente todas as 6
+  abas (botões colados na barra de abas de baixo, texto cortado, vazios
+  enormes em abas com pouco conteúdo). **Revertido para `390`** (valor
+  original). Causa provável do "puxar o número mais alto não ajudou":
+  `config_tabs` não cresce à custa da janela - ele só tira espaço de
+  `data_tabs` (que tem o stretch todo). Se a janela real do usuário não
+  tem altura de sobra, aumentar o mínimo de um lado só empurra o
+  problema pra sobreposição em vez de resolver. Troquei a estratégia:
+  em vez de mexer no orçamento de altura compartilhado entre as 6 abas
+  (arriscado, já provou que piora as coisas), reduzi margens/espaçamento
+  *só* dentro das abas Execução e Modo Shopee (as duas que realmente
+  tinham conteúdo cortado): `execution_form`/`offers_form` com menos
+  margem vertical, espaçamento entre os itens do painel de opções
+  reduzido, e a caixa de status do Modo Shopee de 96px pra 70px mínimos
+  (ela é rolável, não perde texto). Renderizei as 6 abas de novo
+  (offscreen) pra confirmar que nenhuma ficou com sobreposição -
+  continua sem poder confirmar 100% no Windows real, mas essa
+  abordagem tem risco bem menor de piorar outras abas, já que só toca
+  no conteúdo interno das duas abas com problema relatado.

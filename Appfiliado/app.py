@@ -723,7 +723,7 @@ class MainWindow(QMainWindow):
         self.shopee_ofertas_status_box = QTextEdit()
         self.shopee_ofertas_status_box.setObjectName("aiStatusBox")
         self.shopee_ofertas_status_box.setReadOnly(True)
-        self.shopee_ofertas_status_box.setMinimumHeight(96)
+        self.shopee_ofertas_status_box.setMinimumHeight(70)
         self.shopee_ofertas_status_box.setPlainText(
             "Etapa 1 concluída: estas opções serão usadas na busca automática de ofertas da Shopee nas próximas etapas."
         )
@@ -790,11 +790,11 @@ class MainWindow(QMainWindow):
 
         self.config_tabs = QTabWidget()
         self.config_tabs.setObjectName("configTabs")
-        self.config_tabs.setMinimumHeight(440)
+        self.config_tabs.setMinimumHeight(390)
 
         execution_config = self.config_card("Execução")
         execution_form = QHBoxLayout(execution_config)
-        execution_form.setContentsMargins(22, 16, 22, 16)
+        execution_form.setContentsMargins(22, 12, 22, 12)
         execution_form.setSpacing(20)
 
         timing_panel = QFrame()
@@ -840,7 +840,7 @@ class MainWindow(QMainWindow):
         options_panel.setMinimumWidth(430)
         options_layout = QVBoxLayout(options_panel)
         options_layout.setContentsMargins(0, 0, 0, 0)
-        options_layout.setSpacing(7)
+        options_layout.setSpacing(6)
         self.aguardar_previa_input.setToolTip("Espera a prévia do link aparecer no WhatsApp antes de enviar a mensagem.")
         self.headless_input.setToolTip("Abre o navegador minimizado. O WhatsApp Web continua visível se você restaurar a janela.")
         self.ignorar_links_enviados_input.setToolTip(
@@ -868,12 +868,12 @@ class MainWindow(QMainWindow):
         timing_layout.addStretch(1)
         options_layout.addWidget(self.diagnostic_button)
         options_layout.addWidget(self.test_simulacao_button)
-        options_layout.addSpacing(14)
+        options_layout.addSpacing(8)
 
         config_file_buttons = QGridLayout()
         config_file_buttons.setContentsMargins(0, 0, 0, 0)
         config_file_buttons.setHorizontalSpacing(12)
-        config_file_buttons.setVerticalSpacing(8)
+        config_file_buttons.setVerticalSpacing(6)
         config_file_buttons.addWidget(self.first_setup_button, 0, 0)
         config_file_buttons.addWidget(self.export_config_button, 0, 1)
         config_file_buttons.addWidget(self.import_config_button, 1, 0)
@@ -1036,7 +1036,7 @@ class MainWindow(QMainWindow):
 
         offers_config = self.config_card("Modo Shopee")
         offers_form = QHBoxLayout(offers_config)
-        offers_form.setContentsMargins(22, 18, 22, 18)
+        offers_form.setContentsMargins(22, 12, 22, 12)
         offers_form.setSpacing(22)
 
         offers_search_panel = QFrame()
