@@ -1407,15 +1407,6 @@ class MainWindow(QMainWindow):
         conversoes_layout.setContentsMargins(0, 8, 6, 0)
         conversoes_layout.setSpacing(10)
 
-        conversoes_intro = QLabel(
-            "Produtos convertidos no período (dados da API de conversões da Shopee), "
-            "com quantidade vendida, preço, comissão e data da última compra. "
-            "Clique nos títulos das colunas para reordenar."
-        )
-        conversoes_intro.setWordWrap(True)
-        conversoes_intro.setObjectName("historySummary")
-        conversoes_layout.addWidget(conversoes_intro)
-
         conversoes_filters = QVBoxLayout()
         conversoes_filters.setContentsMargins(0, 0, 0, 0)
         conversoes_filters.setSpacing(8)
