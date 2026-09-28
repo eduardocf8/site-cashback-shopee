@@ -212,7 +212,7 @@ class SobreDialog(QDialog):
         layout = QVBoxLayout(self)
 
         titulo = QLabel(f"Appfiliado v{APP_VERSION}")
-        titulo.setObjectName("appTitle")
+        titulo.setObjectName("aboutTitle")
         descricao = QLabel("Automatiza ofertas do WhatsApp com links afiliados da Shopee.")
         descricao.setWordWrap(True)
         layout.addWidget(titulo)
@@ -782,7 +782,7 @@ class MainWindow(QMainWindow):
 
         self.config_tabs = QTabWidget()
         self.config_tabs.setObjectName("configTabs")
-        self.config_tabs.setMinimumHeight(390)
+        self.config_tabs.setMinimumHeight(440)
 
         execution_config = self.config_card("Execução")
         execution_form = QHBoxLayout(execution_config)
@@ -3872,6 +3872,12 @@ class MainWindow(QMainWindow):
                 font-weight: 700;
                 background: transparent;
             }
+            #aboutTitle {
+                color: #20372F;
+                font-size: 20px;
+                font-weight: 700;
+                background: transparent;
+            }
             #appSubtitle {
                 color: #bcd9c4;
                 background: transparent;
@@ -3960,6 +3966,11 @@ class MainWindow(QMainWindow):
             QLineEdit:focus, QTextEdit:focus, QComboBox:focus {
                 border: 1px solid #518E45;
                 background: #ffffff;
+            }
+            QLineEdit:disabled, QTextEdit:disabled, QComboBox:disabled {
+                background: #ece9dc;
+                color: #9aa39a;
+                border: 1px solid #e2ded0;
             }
             QComboBox {
                 padding: 9px;

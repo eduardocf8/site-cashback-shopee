@@ -179,3 +179,29 @@ registrar isso no commit que fizer a mudança.
   isso com WhatsApp Web real, que não tenho acesso nesta sandbox. Testar
   configurando `grupo_origem` com o nome de um canal de verdade e
   conferindo se as ofertas aparecem na aba Logs/Histórico normalmente.
+
+## 8. Ajustes de tela: botões cortados, campo Categoria/nicho e cor do título "Sobre" — resolvido em 2026-09-28
+- **Botões cortados nas abas Execução e Modo Shopee**: causa raiz era o
+  `config_tabs.setMinimumHeight(390)` - alto o suficiente pro conteúdo
+  caber com a fonte usada no teste (Linux), mas aparentemente insuficiente
+  no Windows de verdade (fonte Segoe UI renderiza um pouco mais larga/alta -
+  já vimos esse padrão várias vezes nesta sessão). Aumentado pra `440`,
+  dando ~50px de folga extra pras 6 abas de configuração de uma vez.
+  **Não pude confirmar no Windows real** (só o ambiente Linux desta
+  sandbox) - se ainda cortar em algum lugar, me avise que aumento mais.
+- **Filtro "Categoria/nicho" no Modo Shopee**: confirmado no código
+  (`afiliados.py::oferta_passa_filtros`) que as categorias já eram
+  *ignoradas* quando "Tipo de busca" não é "Por categoria" - ou seja,
+  selecionar categorias com "Ofertas gerais" escolhido nunca teve efeito
+  nenhum, é exatamente igual a rodar sem nenhuma categoria selecionada.
+  O campo já ficava desabilitado (`setEnabled(False)`) nesse caso, só não
+  tinha nenhum estilo visual de "desabilitado" - por isso parecia igual a
+  um campo normal. Adicionado `QLineEdit:disabled`/`QComboBox:disabled`
+  no `apply_styles()` (fundo e texto acinzentados), que agora vale pra
+  **todos** os campos desabilitados do app (não só esse), incluindo
+  Palavra-chave/nicho e Loja/marca que tinham o mesmo problema visual.
+- **Título "Appfiliado v1.0.0" ilegível na tela Sobre**: reaproveitava o
+  estilo `#appTitle` (texto branco, pensado pra o fundo escuro da barra
+  lateral) - invisível no fundo claro do diálogo. Criado `#aboutTitle`
+  próprio, com a mesma cor escura (`#20372F`) usada nos botões "Verificar
+  atualizações"/"Fechar".
