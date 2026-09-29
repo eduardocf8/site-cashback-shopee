@@ -9,30 +9,32 @@
  * cena usa caixa alta. */
 export const FPS = 30;
 
-/** As três primeiras cenas são UMA frase cortada em três. A ordem importa: a condição
+/** As cenas 2 e 3 são UMA frase cortada em duas. A ordem importa: a condição
  * ("comprando pela cash-b") vem antes da promessa ("parte do dinheiro volta"). Invertida
- * ou separada, a última cena sozinha viraria uma afirmação falsa. */
+ * ou separada, a última cena sozinha viraria uma afirmação falsa.
+ *
+ * O   é espaço que não quebra. Sem ele a última palavra cai sozinha numa linha, e
+ * palavra órfã em corpo de cartaz lê como erro de diagramação. */
 export const CENAS = [
-  // O \u00A0 é espaço que não quebra. Sem ele "Shopee" e "mais" caem sozinhos numa
-  // linha, e palavra órfã em corpo de cartaz lê como erro de diagramação.
-  {id: 'compra', frames: 54, texto: 'Você já compra na\u00A0Shopee'},
-  {id: 'condicao', frames: 42, texto: 'Comprando pela cash-b,'},
-  {id: 'promessa', frames: 54, texto: 'parte do dinheiro volta'},
   {
-    id: 'minimo',
-    frames: 66,
-    numero: '1%',
-    apoio: 'no mínimo, em toda compra',
+    id: 'compra',
+    frames: 72,
+    texto: 'Você já compra na Shopee\ne ainda não recebe cashback?',
+    // A pergunta de abertura é mais longa que as outras telas de propósito - é o gancho,
+    // e precisa de corpo menor e de mais tempo para ser lida.
+    corpo: 82,
   },
-  {id: 'mais', frames: 48, texto: 'Muitas vezes,\u00A0bem\u00A0mais'},
-  {
-    id: 'saque',
-    frames: 66,
-    numero: 'R$ 20',
-    apoio: 'saque a partir de, no Pix',
-  },
-  {id: 'semtaxa', frames: 48, texto: 'Sem mensalidade.\nSem taxa.'},
-  {id: 'marca', frames: 72, endereco: 'cash-b.com'},
+  {id: 'condicao', frames: 36, texto: 'Comprando pela cash-b,'},
+  {id: 'promessa', frames: 48, texto: 'parte do dinheiro volta'},
+  // `otico` corrige a folga do desenho do "1" e do "%" - ver o comentário em Numero,
+  // em Base.tsx. Valor medido na tinta do quadro renderizado, não chutado.
+  {id: 'minimo', frames: 66, numero: '1%', otico: -13, abaixo: 'no mínimo, em toda compra'},
+  {id: 'mais', frames: 42, texto: 'Muitas vezes, bem mais'},
+  // Aqui o rótulo vem ACIMA do número: "saque a partir de R$ 20" é uma frase só, e
+  // quebrá-la com o número no meio é o que a deixa legível de relance.
+  {id: 'saque', frames: 66, acima: 'saque a partir de', numero: 'R$ 20', abaixo: 'no Pix'},
+  {id: 'semtaxa', frames: 42, texto: 'Sem mensalidade.\nSem taxa.'},
+  {id: 'marca', frames: 96, convite: 'acesse', dominio: 'cash-b', sufixo: '.com'},
 ] as const;
 
 export const DURACAO = CENAS.reduce((total, cena) => total + cena.frames, 0);

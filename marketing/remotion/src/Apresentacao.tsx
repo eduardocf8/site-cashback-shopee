@@ -1,66 +1,81 @@
 import React from 'react';
-import {AbsoluteFill, Img, interpolate, Sequence, staticFile, useCurrentFrame} from 'remotion';
+import {AbsoluteFill, Sequence} from 'remotion';
 import {Apoio, Cena, Entra, Numero, Titulo} from './Base';
 import {CENAS} from './constantes';
-import {CORES, FONTE} from './marca';
+import {Fechamento} from './Fechamento';
+import {CORES} from './marca';
 
 const inicios = CENAS.reduce<number[]>(
-  (acc, cena, i) => [...acc, (acc[i - 1] ?? 0) + (CENAS[i - 1]?.frames ?? 0)],
+  (acc, _cena, i) => [...acc, (acc[i - 1] ?? 0) + (CENAS[i - 1]?.frames ?? 0)],
   [],
 );
 
-/** Fecha o vídeo: o wordmark e o endereço sobre o fundo halo.
+/** Rótulo e respiro das cenas de número.
  *
- * O halo é o único fundo da família em que o miolo NÃO fica vazio - ele existe para
- * emoldurar, e é exatamente o que uma cena de assinatura pede. */
-const Marca: React.FC<{endereco: string}> = ({endereco}) => {
-  const frame = useCurrentFrame();
-  const escala = interpolate(frame, [0, 70], [1, 1.05]);
-  return (
-    <Cena fundo="fundo-halo.png">
-      <div style={{textAlign: 'center', transform: `scale(${escala})`}}>
-        <Entra>
-          <Img src={staticFile('wordmark-claro.png')} style={{width: 620, margin: '0 auto'}} />
-        </Entra>
-        <Entra atraso={12}>
-          <div
-            style={{
-              fontFamily: FONTE.texto,
-              fontSize: 56,
-              fontWeight: 600,
-              marginTop: 44,
-              color: CORES.highlight,
-            }}
-          >
-            {endereco}
-          </div>
-        </Entra>
-      </div>
-    </Cena>
-  );
-};
+ * "saque a partir de / R$ 20 / no Pix" é uma frase só, quebrada em três linhas. Só lê
+ * como frase se as três linhas estiverem à mesma distância uma da outra e mais perto
+ * entre si do que da borda - por isso o mesmo GRAFO em cima e embaixo do número, e não
+ * a margem padrão do Apoio (que existe para texto solto). O rótulo também cresce junto
+ * com o número: em 44px ao lado de um algarismo de 300px ele virava legenda. */
+const CORPO_ROTULO = 56;
+// Os dois respiros não são iguais de propósito. O rótulo de cima termina em descida
+// ("saque a partir de" tem q e p), e descida é traço fino: o olho mede a distância a
+// partir da linha de base, não da ponta do q. O de baixo começa em maiúscula cheia.
+// Com o mesmo número nos dois lados o bloco parece encostado em cima e solto embaixo.
+const GRAFO_ACIMA = 32;
+const GRAFO_ABAIXO = 20;
+
+/** As cenas de número viram a cor de fundo junto: a diagonal na promessa, o claro na
+ * prova. A troca de cor marca a passagem de "promete" para "mostra" - todo site de
+ * cashback promete, e o que separa é mostrar como o dinheiro sai. */
+const CenaNumero: React.FC<{
+  claro: boolean;
+  acima?: string;
+  numero: string;
+  otico?: number;
+  abaixo: string;
+}> = ({claro, acima, numero, otico, abaixo}) => (
+  <Cena fundo={claro ? 'fundo-claro.png' : 'fundo-diagonal.png'} claro={claro}>
+    {acima ? (
+      <Entra>
+        <Apoio claro={claro} corpo={CORPO_ROTULO} margemTopo={0} margemBase={GRAFO_ACIMA}>
+          {acima}
+        </Apoio>
+      </Entra>
+    ) : null}
+    <Entra atraso={acima ? 6 : 0}>
+      <Numero cor={claro ? CORES.success : CORES.highlight} otico={otico}>
+        {numero}
+      </Numero>
+    </Entra>
+    <Entra atraso={acima ? 12 : 8}>
+      <Apoio claro={claro} corpo={CORPO_ROTULO} margemTopo={GRAFO_ABAIXO}>
+        {abaixo}
+      </Apoio>
+    </Entra>
+  </Cena>
+);
 
 export const Apresentacao: React.FC = () => (
   <AbsoluteFill>
     {CENAS.map((cena, i) => (
       <Sequence key={cena.id} from={inicios[i]} durationInFrames={cena.frames}>
-        {cena.id === 'marca' ? (
-          <Marca endereco={(cena as {endereco: string}).endereco} />
+        {'convite' in cena ? (
+          <Fechamento convite={cena.convite} dominio={cena.dominio} sufixo={cena.sufixo} />
         ) : 'numero' in cena ? (
-          // As cenas de número viram a cor de fundo junto: a diagonal na promessa, o
-          // claro na prova. A virada de cor marca a passagem de "promete" para "mostra".
-          <Cena fundo={cena.id === 'saque' ? 'fundo-claro.png' : 'fundo-diagonal.png'} claro={cena.id === 'saque'}>
-            <Entra>
-              <Numero cor={cena.id === 'saque' ? CORES.success : CORES.highlight}>{cena.numero}</Numero>
-            </Entra>
-            <Entra atraso={8}>
-              <Apoio claro={cena.id === 'saque'}>{cena.apoio}</Apoio>
-            </Entra>
-          </Cena>
+          <CenaNumero
+            claro={cena.id === 'saque'}
+            acima={'acima' in cena ? cena.acima : undefined}
+            numero={cena.numero}
+            otico={'otico' in cena ? cena.otico : undefined}
+            abaixo={cena.abaixo}
+          />
         ) : (
           <Cena fundo={cena.id === 'semtaxa' ? 'fundo-claro.png' : 'fundo-roxo.png'} claro={cena.id === 'semtaxa'}>
             <Entra>
-              <Titulo claro={cena.id === 'semtaxa'}>{(cena as {texto: string}).texto}</Titulo>
+              <Titulo claro={cena.id === 'semtaxa'} corpo={'corpo' in cena ? cena.corpo : undefined}>
+                {cena.texto}
+              </Titulo>
             </Entra>
           </Cena>
         )}
