@@ -239,3 +239,25 @@ registrar isso no commit que fizer a mudança.
   continua sem poder confirmar 100% no Windows real, mas essa
   abordagem tem risco bem menor de piorar outras abas, já que só toca
   no conteúdo interno das duas abas com problema relatado.
+
+## 9. Bloqueador crítico: nenhum cliente conseguia ativar a licença — ✅ resolvido em 2026-09-29
+- Achado na pergunta "o que falta pra divulgar": `licenca_servidor_url`
+  tinha default `""` em `settings.py`. Como esse campo não aparece em
+  nenhuma tela (é dev-only), **todo cliente novo cairia em "Servidor de
+  licenças não configurado"** ao tentar ativar a chave, sem nenhum jeito
+  de resolver sozinho - só descobrimos porque o próprio usuário passou por
+  isso e eu ajudei a editar o arquivo manualmente.
+- Corrigido: `licenca_servidor_url` agora tem como valor padrão
+  `https://site-cashback-shopee.onrender.com/licencas/validar/` (o
+  endereço real, já validado nesta sessão com uma licença de teste
+  criada direto no admin). Testado: uma instalação nova, sem nenhum
+  `config_usuario.json` prévio, já recebe esse valor certo automaticamente
+  (simulei isso diretamente, criando um `AppSettings.load()` num arquivo
+  que não existia ainda).
+- `LICENCA.md` atualizado (a seção "O que falta" estava desatualizada
+  nesse ponto).
+- **Ainda pendente, mesmo tema**: só o evento "compra aprovada" da Kiwify
+  foi confirmado contra um payload real - cancelamento/reembolso/
+  chargeback/atraso ainda não foram testados com um evento de verdade.
+  Recomendo testar isso (ex: assinar e cancelar de propósito, conferir no
+  admin se bloqueia) antes do primeiro cliente pagante.

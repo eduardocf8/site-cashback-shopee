@@ -100,12 +100,17 @@ Arquivos: `licencas/models.py` (`Licenca`, `EventoWebhookKiwify`),
 
 ### O que falta
 
-- Depois do deploy, configurar `licenca_servidor_url` no bot pra apontar
-  pra `https://<domínio do site>/licencas/validar/`.
-- Ver no admin (`/admin/licencas/`) os primeiros eventos reais chegando e
-  conferir se `webhook_event_type` de reembolso/chargeback/atraso batem
-  com o que `services.interpretar_evento` já espera - ainda só foi
-  confirmado o evento de compra aprovada.
+- ✅ `licenca_servidor_url` já vem preenchido por padrão em `settings.py`
+  apontando pra `https://site-cashback-shopee.onrender.com/licencas/validar/`
+  - testado de ponta a ponta em 2026-09-28/29 com uma licença real criada
+  direto no admin. Sem isso, todo cliente novo cairia em "Servidor de
+  licenças não configurado" sem conseguir resolver sozinho.
+- **Ainda falta**: ver no admin (`/admin/licencas/`) os primeiros eventos
+  reais de cancelamento/reembolso/chargeback/atraso chegando e conferir se
+  `webhook_event_type` bate com o que `services.interpretar_evento` já
+  espera - só foi confirmado o evento de compra aprovada até agora. Vale
+  testar isso (ex: assinar e cancelar) antes de vender pra clientes de
+  verdade, já que é justamente o mecanismo que impede uso sem pagamento.
 
 ## Comportamento do lado do bot (já implementado)
 

@@ -160,8 +160,14 @@ class AppSettings:
     # licenca_servidor_url deve apontar para o endpoint que recebe
     # {"chave": "..."} e responde {"valido": bool, "motivo": str,
     # "plano": str, "expira_em": str}.
+    #
+    # Preenchido com o endpoint real (backend Django do site cash-b, app
+    # licencas - ver LICENCA.md) porque o cliente final nao tem como editar
+    # isso sozinho: sem um valor padrao aqui, TODO cliente cairia em
+    # "Servidor de licencas nao configurado" ao tentar ativar a chave, sem
+    # nenhum jeito de resolver por conta propria.
     licenca_chave: str = ""
-    licenca_servidor_url: str = ""
+    licenca_servidor_url: str = "https://site-cashback-shopee.onrender.com/licencas/validar/"
 
     # Verificacao de nova versao disponivel (ver atualizacao.py). Vazio =
     # recurso desligado, nenhuma checagem de rede e feita.
