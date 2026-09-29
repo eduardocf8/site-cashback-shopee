@@ -1,6 +1,7 @@
 import React from 'react';
 import {
   AbsoluteFill,
+  Easing,
   Img,
   interpolate,
   interpolateColors,
@@ -22,22 +23,31 @@ export const Cena: React.FC<{fundo: string; children: React.ReactNode; claro?: b
 }) => (
   <AbsoluteFill style={{backgroundColor: claro ? CORES.paper : CORES.brandStrong}}>
     <Img src={staticFile(fundo)} style={{width: 1080, height: 1920}} />
-    <AbsoluteFill
-      style={{
-        paddingTop: SEGURO.topo,
-        paddingBottom: SEGURO.base,
-        paddingLeft: SEGURO.lateral,
-        paddingRight: SEGURO.lateral,
-        justifyContent: 'center',
-        // Tudo centralizado: em vídeo o olho já está no meio da tela, e texto à
-        // esquerda obriga a varrer de volta a cada corte. Em peça estática a borda
-        // reta ajuda a ler; aqui, com um corte a cada dois segundos, atrapalha.
-        alignItems: 'center',
-        textAlign: 'center',
-      }}
-    >
-      {children}
-    </AbsoluteFill>
+    <Palco>{children}</Palco>
+  </AbsoluteFill>
+);
+
+/** A faixa segura, sem o fundo.
+ *
+ * Existe separada porque a versão dinâmica precisa do fundo por fora (ele desliza e
+ * dá zoom com a cena inteira) e do texto por dentro (ele entra depois, quando o
+ * quadro já parou). Em Cena as duas coisas andam juntas; aqui, não. */
+export const Palco: React.FC<{children: React.ReactNode}> = ({children}) => (
+  <AbsoluteFill
+    style={{
+      paddingTop: SEGURO.topo,
+      paddingBottom: SEGURO.base,
+      paddingLeft: SEGURO.lateral,
+      paddingRight: SEGURO.lateral,
+      justifyContent: 'center',
+      // Tudo centralizado: em vídeo o olho já está no meio da tela, e texto à
+      // esquerda obriga a varrer de volta a cada corte. Em peça estática a borda
+      // reta ajuda a ler; aqui, com um corte a cada dois segundos, atrapalha.
+      alignItems: 'center',
+      textAlign: 'center',
+    }}
+  >
+    {children}
   </AbsoluteFill>
 );
 
@@ -68,6 +78,16 @@ export type Entrada = 'sobe' | 'desliza' | 'cresce' | 'linhas';
  * nesse ponto, mas margem que só vale enquanto ninguém vê não é margem. */
 const DESLOCAMENTO_LATERAL = 48;
 
+/** Desliga a entrada individual dos elementos.
+ *
+ * Na versão dinâmica quem traz o texto para a tela é o empurrão do quadro inteiro: o
+ * conteúdo já entra montado, vindo de baixo junto com o fundo. Se cada elemento ainda
+ * fizesse a entrada dele por cima disso, seriam dois movimentos no mesmo olho ao mesmo
+ * tempo. Como contexto e não como prop, porque quem precisa saber disso é o `Entra` lá
+ * no fundo da árvore, e passar a informação de mão em mão por cinco componentes que
+ * não a usam só suja a assinatura de todos eles. */
+export const SemEntrada = React.createContext(false);
+
 /** Entrada de um elemento: aparece, e o jeito de aparecer vem do tipo.
  *
  * A mola dá a desaceleração; a opacidade entra em interpolate separado porque mola em
@@ -79,6 +99,7 @@ export const Entra: React.FC<{
 }> = ({atraso = 0, tipo = 'sobe', children}) => {
   const frame = useCurrentFrame();
   const {fps} = useVideoConfig();
+  const desligada = React.useContext(SemEntrada);
   // O número é o único que ganha mola com sobra (damping menor): um passo além de 1 e
   // de volta é o que lê como impacto. Nos textos a sobra viraria balanço, e texto
   // balançando em corpo de cartaz parece erro de render.
@@ -99,6 +120,9 @@ export const Entra: React.FC<{
         ? `translateX(${interpolate(mola, [0, 1], [-DESLOCAMENTO_LATERAL, 0])}px)`
         : `translateY(${interpolate(mola, [0, 1], [44, 0])}px)`;
 
+  if (desligada) {
+    return <div>{children}</div>;
+  }
   return <div style={{transform: transformar, opacity: opacidade}}>{children}</div>;
 };
 
@@ -326,5 +350,50 @@ export const Destaque: React.FC<{
     >
       {children}
     </span>
+  );
+};
+
+
+/** O mesmo número, contando até o valor em vez de aparecer pronto.
+ *
+ * Só vale para número: contador em texto é truque de slide de vendas. Aqui ele ganha
+ * duas coisas de uma vez - o olho não tem como desviar de um dígito que muda, e a
+ * contagem dá ao valor uma duração, o que faz "R$ 20" parecer um resultado e não um
+ * rótulo.
+ *
+ * O formato sai da própria string do dado ("1%", "1,6%", "R$ 20"), e não de um campo
+ * novo: assim continua existindo um lugar só onde o valor está escrito, e a versão
+ * dinâmica não pode divergir da calma. `de` permite contar a partir de outro valor -
+ * é o que faz o mínimo subir de 1 para 1,6 em vez de recomeçar do zero. */
+const PARTES = /^([^0-9]*)([0-9]+(?:,[0-9]+)?)(.*)$/;
+
+export const NumeroContando: React.FC<{
+  valor: string;
+  de?: number;
+  duracao?: number;
+  atraso?: number;
+  cor?: string;
+  otico?: number;
+}> = ({valor, de = 0, duracao = 18, atraso = 0, cor, otico}) => {
+  const frame = useCurrentFrame();
+  const partes = valor.match(PARTES);
+  if (!partes) {
+    throw new Error(`Numero sem digito para contar: ${valor}`);
+  }
+  const [, prefixo, corpo, sufixo] = partes;
+  const casas = corpo.includes(',') ? corpo.split(',')[1].length : 0;
+  const alvo = Number(corpo.replace(',', '.'));
+  const atual = interpolate(frame - atraso, [0, duracao], [de, alvo], {
+    extrapolateLeft: 'clamp',
+    extrapolateRight: 'clamp',
+    easing: Easing.out(Easing.cubic),
+  });
+  // toFixed com vírgula: em pt-BR o separador decimal é vírgula, e trocar depois é
+  // mais previsível que depender do locale do ambiente que renderiza.
+  const texto = `${prefixo}${atual.toFixed(casas).replace('.', ',')}${sufixo}`;
+  return (
+    <Numero cor={cor} otico={otico}>
+      {texto}
+    </Numero>
   );
 };

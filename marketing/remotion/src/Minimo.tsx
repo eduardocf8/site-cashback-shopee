@@ -1,6 +1,6 @@
 import React from 'react';
 import {interpolate, spring, useCurrentFrame, useVideoConfig} from 'remotion';
-import {Apoio, Cena, Entra, Numero} from './Base';
+import {Apoio, Cena, Entra, Numero, NumeroContando} from './Base';
 
 /** A cena do mínimo, em dois tempos.
  *
@@ -41,10 +41,7 @@ const Y_ABAIXO = 1164;
  *
  * Antes dos 40 é 1,3s de leitura do primeiro tempo: o suficiente para "1% no mínimo"
  * virar informação, que é o que a troca depois nega. */
-const TROCA = 40;
-const SOBE_PALAVRA = TROCA + 10;
-const ENTRA_SEGUNDO = TROCA + 20;
-const ENTRA_CONDICAO = TROCA + 34;
+const TROCA_PADRAO = 40;
 const ROLAGEM = 110;
 
 const CORPO_ROTULO = 56;
@@ -70,15 +67,29 @@ const Faixa: React.FC<{
   </div>
 );
 
-export const Minimo: React.FC<{
+export const MinimoConteudo: React.FC<{
   primeiro: string;
   segundo: string;
   otico?: number;
   oticoSegundo?: number;
   condicao: string;
-}> = ({primeiro, segundo, otico, oticoSegundo, condicao}) => {
+  /** Na versão dinâmica o primeiro número conta até o valor em vez de aparecer
+   * pronto. O segundo continua rolando e não contando: ele entra partindo de 1,0 e,
+   * no frame da troca, o primeiro ainda mostra "1%" enquanto o segundo já mostraria
+   * "1,0%" - duas grafias do mesmo número trocando no mesmo instante, que se lê como
+   * defeito. Rolando, os dois nunca precisam concordar. */
+  contando?: boolean;
+  /** Desloca o relógio inteiro da cena. Na versão dinâmica o quadro leva alguns frames
+   * empurrando até parar, e os dois tempos só fazem sentido depois que ele parou. */
+  atraso?: number;
+}> = ({primeiro, segundo, otico, oticoSegundo, condicao, contando, atraso = 0}) => {
   const frame = useCurrentFrame();
   const {fps} = useVideoConfig();
+
+  const TROCA = TROCA_PADRAO + atraso;
+  const SOBE_PALAVRA = TROCA + 10;
+  const ENTRA_SEGUNDO = TROCA + 20;
+  const ENTRA_CONDICAO = TROCA + 34;
 
   const sobe = spring({frame: frame - SOBE_PALAVRA, fps, config: {damping: 200, mass: 1.1}});
   const saiPrimeiro = spring({frame: frame - (TROCA + 2), fps, config: {damping: 200}});
@@ -112,7 +123,7 @@ export const Minimo: React.FC<{
   );
 
   return (
-    <Cena fundo="fundo-diagonal.png">
+    <>
       {/* primeiro número: entra crescendo, sai rolando para cima */}
       <Faixa
         y={Y_NUMERO}
@@ -120,7 +131,11 @@ export const Minimo: React.FC<{
         opacidade={1 - faixa(TROCA + 2, TROCA + 14)}
       >
         <Entra tipo="cresce">
-          <Numero otico={otico}>{primeiro}</Numero>
+          {contando ? (
+            <NumeroContando valor={primeiro} otico={otico} duracao={26} />
+          ) : (
+            <Numero otico={otico}>{primeiro}</Numero>
+          )}
         </Entra>
       </Faixa>
 
@@ -168,6 +183,12 @@ export const Minimo: React.FC<{
           ))}
         </Apoio>
       </Faixa>
-    </Cena>
+    </>
   );
 };
+
+export const Minimo: React.FC<React.ComponentProps<typeof MinimoConteudo>> = (props) => (
+  <Cena fundo="fundo-diagonal.png">
+    <MinimoConteudo {...props} />
+  </Cena>
+);

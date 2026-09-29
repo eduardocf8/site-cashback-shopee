@@ -12,8 +12,9 @@ números reais do site, e o mesmo comando produz sempre o mesmo arquivo.
 ```bash
 cd marketing/remotion
 npm install
-npm run render     # gera saida/apresentacao.mp4
-npm run studio     # abre o editor visual, para ajustar tempo e ver ao vivo
+npm run studio            # abre o editor visual, para ajustar tempo e ver ao vivo
+npm run render            # versão calma  -> saida/cash-b-apresentacao.mp4
+npm run render:dinamica   # versão com mais movimento -> saida/cash-b-apresentacao-dinamica.mp4
 ```
 
 **A flag `--browser-executable` do script `render` não é opcional.** O Remotion tenta
@@ -28,7 +29,10 @@ com "Old Headless mode has been removed".
 | `src/constantes.ts` | **Todo o texto e todo o número.** É aqui que se faz variação |
 | `src/marca.ts` | Paleta, fontes e a faixa segura do Instagram |
 | `src/Base.tsx` | Cena, entrada animada, título, número e linha de apoio |
-| `src/Apresentacao.tsx` | Monta as cenas em `<Sequence>` |
+| `src/Apresentacao.tsx` | Versão calma: monta as cenas em `<Sequence>` |
+| `src/Dinamica.tsx` | Versão dinâmica: cenas que se empurram, fundo em zoom, números contando |
+| `src/Minimo.tsx` | A cena de dois tempos do piso de cashback |
+| `src/Fechamento.tsx` | O fechamento em dois tempos da assinatura |
 | `public/` | Fundos, logo e as fontes |
 
 Para um vídeo com outra mensagem, mexa só em `constantes.ts`. Os componentes não têm
@@ -50,15 +54,45 @@ texto escrito dentro deles de propósito.
 - **O nome da marca é sempre minúsculo**, inclusive em cena de caixa alta. Ver
   `BRAND.md`.
 
+## As duas versões
+
+| Composição | Duração | Para quê |
+|---|---|---|
+| `Apresentacao` | 18,3s | Corte seco entre cenas, quadro parado, números prontos |
+| `Dinamica` | 15,8s | As cenas se empurram, o fundo dá zoom lento, os números contam |
+
+**As duas leem os mesmos textos e os mesmos números de `constantes.ts`.** Só o tempo de
+cada cena é próprio de cada uma — é por isso que dá para manter as duas sem elas
+divergirem: corrigir uma frase corrige nos dois vídeos.
+
+Na dinâmica, o conteúdo **viaja junto com o quadro** em vez de entrar depois que ele
+para. A primeira tentativa fazia o contrário, e o resultado era meio segundo de tela sem
+texto a cada troca — oito vezes num vídeo de quinze segundos, que é exatamente o buraco
+em que o polegar rola. Por isso ela desliga a entrada individual de cada elemento (o
+contexto `SemEntrada`, em `Base.tsx`): o empurrão é a entrada.
+
+O que deliberadamente **não** entrou na dinâmica: partícula, brilho, tremor de câmera,
+giro de texto e transição de *glitch*. Todos aumentam movimento e todos custam a mesma
+coisa — a peça passa a parecer template, e um produto que guarda dinheiro do usuário não
+pode parecer template.
+
 ## O roteiro da apresentação
 
-15 segundos, 8 cenas. As três primeiras são **uma frase cortada em três** — e a ordem
-importa: a condição ("comprando pela cash-b") vem antes da promessa ("parte do dinheiro
-volta"). Separada, a terceira cena sozinha seria uma afirmação falsa.
+18 segundos na versão calma, 8 cenas. As três primeiras são **uma frase cortada em
+três** — e a ordem importa: a condição ("comprando pela cash-b") vem antes da promessa
+("parte do dinheiro volta"). Separada, a terceira cena sozinha seria uma afirmação
+falsa.
 
-A cena do `1%` mostra o piso da venda **indireta**, não o 1,6% da direta: o 1,6% exigiria
-explicar a diferença entre as duas, e isso não cabe em quinze segundos. Logo depois vem
-"muitas vezes, bem mais", que existe para o piso não ser lido como teto.
+A cena do `1%` tem dois tempos. Primeiro o piso da venda **indireta**, que vale para
+qualquer compra; depois a frase some, sobra a palavra "mínimo", que sobe e vira o rótulo
+do número, e o 1% dá lugar ao **1,6%** da venda direta, com "dependendo da forma que você
+compra" embaixo. O número subir na tela é a própria frase: o mínimo sobe. Logo depois vem
+"muitas vezes, bem mais", que existe para nenhum dos dois pisos ser lido como teto.
+
+Cada cena destaca no máximo uma palavra, e **os mecanismos nunca se repetem**: a cor
+varre "cashback", uma barra cresce atrás de "cash-b,", "volta" chega de fora depois do
+resto da frase, "bem mais" cresce. A cor é sempre âmbar — trocá-la a cada cena faria
+procurar significado onde não há. O que varia é como a ênfase funciona.
 
 A cena do saque vira para o fundo claro de propósito: a troca de cor marca a passagem de
 "promete" para "mostra". Todo site de cashback promete; o que separa é mostrar como o

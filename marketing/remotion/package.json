@@ -5,7 +5,8 @@
   "description": "Vídeos da cash-b gerados com Remotion. Ver README.md nesta pasta.",
   "scripts": {
     "studio": "remotion studio src/index.ts",
-    "render": "remotion render src/index.ts Apresentacao saida/apresentacao.mp4 --browser-executable=/opt/pw-browsers/chromium_headless_shell-1194/chrome-linux/headless_shell"
+    "render": "remotion render src/index.ts Apresentacao saida/cash-b-apresentacao.mp4 --browser-executable=/opt/pw-browsers/chromium_headless_shell-1194/chrome-linux/headless_shell",
+    "render:dinamica": "remotion render src/index.ts Dinamica saida/cash-b-apresentacao-dinamica.mp4 --browser-executable=/opt/pw-browsers/chromium_headless_shell-1194/chrome-linux/headless_shell"
   },
   "dependencies": {
     "@remotion/cli": "4.0.529",

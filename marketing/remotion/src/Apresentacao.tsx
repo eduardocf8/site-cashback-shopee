@@ -30,14 +30,14 @@ const GRAFO_ABAIXO = 20;
 /** As cenas de número viram a cor de fundo junto: a diagonal na promessa, o claro na
  * prova. A troca de cor marca a passagem de "promete" para "mostra" - todo site de
  * cashback promete, e o que separa é mostrar como o dinheiro sai. */
-const CenaNumero: React.FC<{
+export const ConteudoNumero: React.FC<{
   claro: boolean;
   acima?: string;
   numero: string;
   abaixo: string;
   entrada: Entrada;
 }> = ({claro, acima, numero, abaixo, entrada}) => (
-  <Cena fundo={claro ? 'fundo-claro.png' : 'fundo-diagonal.png'} claro={claro}>
+  <>
     {acima ? (
       <Entra>
         <Apoio claro={claro} corpo={CORPO_ROTULO} margemTopo={0} margemBase={GRAFO_ACIMA}>
@@ -57,6 +57,12 @@ const CenaNumero: React.FC<{
         {abaixo}
       </Apoio>
     </Entra>
+  </>
+);
+
+const CenaNumero: React.FC<React.ComponentProps<typeof ConteudoNumero>> = (props) => (
+  <Cena fundo={props.claro ? 'fundo-claro.png' : 'fundo-diagonal.png'} claro={props.claro}>
+    <ConteudoNumero {...props} />
   </Cena>
 );
 
@@ -73,7 +79,7 @@ const CenaNumero: React.FC<{
  * deixar para trás um destaque apontando para uma palavra que não existe mais. */
 const ATRASO_ENTRE_LINHAS = 7;
 
-const montarLinha = (
+export const montarLinha = (
   linha: string,
   claro: boolean,
   destaque?: {tipo: TipoDestaque; inicio: number},
@@ -90,7 +96,7 @@ const montarLinha = (
     ),
   );
 
-const CenaTexto: React.FC<{
+export const ConteudoTexto: React.FC<{
   claro: boolean;
   texto: string;
   corpo?: number;
@@ -98,29 +104,35 @@ const CenaTexto: React.FC<{
   destaque?: {tipo: TipoDestaque; inicio: number};
 }> = ({claro, texto, corpo, entrada, destaque}) => {
   const linhas = texto.split('\n');
-  const conteudo = (
-    <Titulo claro={claro} corpo={corpo}>
-      {linhas.map((linha) => (
-        <div key={linha}>{montarLinha(linha, claro, destaque)}</div>
-      ))}
-    </Titulo>
-  );
-  return (
-    <Cena fundo={claro ? 'fundo-claro.png' : 'fundo-roxo.png'} claro={claro}>
-      {entrada === 'linhas' ? (
-        linhas.map((linha, i) => (
+  if (entrada === 'linhas') {
+    return (
+      <>
+        {linhas.map((linha, i) => (
           <Entra key={linha} atraso={i * ATRASO_ENTRE_LINHAS}>
             <Titulo claro={claro} corpo={corpo}>
               <div>{montarLinha(linha, claro, destaque)}</div>
             </Titulo>
           </Entra>
-        ))
-      ) : (
-        <Entra tipo={entrada}>{conteudo}</Entra>
-      )}
-    </Cena>
+        ))}
+      </>
+    );
+  }
+  return (
+    <Entra tipo={entrada}>
+      <Titulo claro={claro} corpo={corpo}>
+        {linhas.map((linha) => (
+          <div key={linha}>{montarLinha(linha, claro, destaque)}</div>
+        ))}
+      </Titulo>
+    </Entra>
   );
 };
+
+const CenaTexto: React.FC<React.ComponentProps<typeof ConteudoTexto>> = (props) => (
+  <Cena fundo={props.claro ? 'fundo-claro.png' : 'fundo-roxo.png'} claro={props.claro}>
+    <ConteudoTexto {...props} />
+  </Cena>
+);
 
 export const Apresentacao: React.FC = () => (
   <AbsoluteFill>
