@@ -17,6 +17,10 @@ npm run render            # versão calma  -> saida/cash-b-apresentacao.mp4
 npm run render:dinamica   # versão com mais movimento -> saida/cash-b-apresentacao-dinamica.mp4
 ```
 
+`saida/` fica fora do git. Os dois vídeos prontos para baixar e postar estão em
+[`videos/`](videos/) — ver o README de lá para saber quando copiar um render para
+essa pasta.
+
 **A flag `--browser-executable` do script `render` não é opcional.** O Remotion tenta
 abrir o Chrome no modo headless antigo, que foi removido do binário; o ambiente tem um
 `chrome-headless-shell` separado e é para ele que a flag aponta. Sem ela o render quebra
