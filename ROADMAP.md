@@ -1720,6 +1720,54 @@ com textos diferentes).
       "lembrete_30_dias_enviados": 1}` batendo exatamente com quem deveria
       receber, e o conteúdo de cada e-mail saiu certo no backend de console.
 
+**Depois, mesma fase:** usuário pediu um terceiro lembrete - semanal (todo
+sábado 8h), pra quem comprou por venda indireta nos últimos 7 dias. Antes de
+implementar, perguntei 3 coisas: objetivo/conteúdo, definição exata de
+"venda indireta" pro filtro, e se respeita o opt-out. Usuário respondeu:
+lembrar que dá pra ganhar mais cashback, explicar a venda direta, linkar a
+página de regras + um Reel do Instagram que já existia explicando o tema
+(cada link com uma thumbnail/ícone), avisar que precisa comprar o produto
+exato do link pra valer como direta, definição simples (`click.tipo ==
+Click.TIPO_HOME`), e sim, respeita o opt-out.
+
+- [x] **`accounts/comunicacoes.py`** ganhou
+      `enviar_lembrete_venda_indireta_semanal` (novo) -
+      `_usuarios_com_venda_indireta_ultimos_dias(dias)` usa
+      `Pedido.objects.filter(click__tipo=Click.TIPO_HOME, data_compra__gte=...)`
+      (exclui cancelado, distinct por usuário) como definição prática de
+      "venda indireta" pro e-mail - mais simples que a verificação exata do
+      cálculo de cashback (`pedidos/services.py::_percentual_minimo_garantido`,
+      que também confere se o produto bate com o link clicado), suficiente
+      pro propósito do lembrete.
+- [x] **Primeiro e-mail automático em HTML** dos lembretes (os outros são só
+      texto) - precisa dos 2 ícones. `templates/emails/lembrete_venda_indireta.html`
+      (novo) segue o mesmo estilo table-based de `comunicacao_vitrine.html`,
+      com 2 "cards" clicáveis (ícone + título + subtítulo) pros links de
+      Regras do cashback e do Reel.
+- [x] **`scripts/gerar_icones_email.py`** (novo, roda 1x - resultado fica
+      versionado) gera os 2 ícones em `static/images/`: um círculo roxo da
+      marca com glifo de lista (`email-icone-regras.png`) e o glifo oficial
+      do Instagram com o gradiente de verdade (5 paradas: amarelo → laranja
+      → rosa → roxo → azul) sobre "rounded square", desenhados em 4x e
+      reduzidos com LANCZOS pra ter anti-aliasing (PIL não desenha
+      suavizado nativamente).
+- [x] Percentuais mínimos (direta/indireta) vêm de
+      `settings.CASHBACK_MINIMO_VENDA_DIRETA`/`_INDIRETA` (configuráveis via
+      env var), nunca hardcoded no texto do e-mail - fica sempre igual ao
+      que o site mostra de verdade.
+- [x] Testes cobrindo: manda pra quem comprou indireto na janela, não manda
+      pra venda direta/pedido cancelado/fora da janela/opt-out, não duplica
+      quem tem mais de 1 pedido indireto na semana, HTML inclui os 2
+      links+ícones, rodapé de descadastro no texto, e o endpoint de tarefa.
+      Verificado também via Playwright renderizando o HTML de verdade
+      (screenshot conferido) - os 2 cards com ícone saem limpos, percentuais
+      batendo com os valores reais do settings.
+- [x] Novo Cron Job **semanal** (diferente dos outros, que são diários):
+      `cron-lembrete-venda-indireta`, sábado 08:00 Brasília
+      (`/tarefas/lembrete-venda-indireta/`, documentado em
+      `marketing/instagram/README.md`, ainda precisa ser criado manualmente
+      no dashboard).
+
 ---
 
 Pra continuar esse roadmap numa conversa nova, basta apontar esse arquivo

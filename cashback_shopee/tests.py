@@ -231,6 +231,35 @@ class ExecutarLembretePrimeiraCompraTests(TestCase):
         mock_30_dias.assert_called_once()
 
 
+@override_settings(TAREFAS_TOKEN="segredo-de-teste")
+class ExecutarLembreteVendaIndiretaTests(TestCase):
+    """Cron semanal (sábado de manhã) - lembrete de venda direta x indireta pra quem
+    comprou indireto nos últimos 7 dias (ver accounts/comunicacoes.py)."""
+
+    def test_sem_token_retorna_forbidden(self):
+        resposta = self.client.get(reverse("executar_lembrete_venda_indireta"))
+        self.assertEqual(resposta.status_code, 403)
+
+    @patch("cashback_shopee.views.enviar_lembrete_venda_indireta_semanal")
+    def test_token_certo_manda_o_lembrete(self, mock_enviar):
+        mock_enviar.return_value = 6
+
+        resposta = self.client.get(reverse("executar_lembrete_venda_indireta"), {"token": "segredo-de-teste"})
+
+        self.assertEqual(resposta.status_code, 200)
+        self.assertEqual(resposta.json()["lembrete_venda_indireta_enviados"], 6)
+        mock_enviar.assert_called_once()
+
+    @patch("cashback_shopee.views.enviar_lembrete_venda_indireta_semanal")
+    def test_erro_fica_registrado_na_resposta_sem_quebrar(self, mock_enviar):
+        mock_enviar.side_effect = Exception("falha inesperada")
+
+        resposta = self.client.get(reverse("executar_lembrete_venda_indireta"), {"token": "segredo-de-teste"})
+
+        self.assertEqual(resposta.status_code, 200)
+        self.assertIn("lembrete_venda_indireta_erro", resposta.json())
+
+
 @override_settings(BREVO_API_KEY="chave-de-teste")
 class BrevoAPIEmailBackendTests(TestCase):
     """O Render bloqueia SMTP de saída, então o envio de e-mail usa a API HTTP do

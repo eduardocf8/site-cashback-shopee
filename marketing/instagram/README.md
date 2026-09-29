@@ -357,6 +357,7 @@ partir de um blueprint):
 | `cron-stories-oferta` | `0 11,13,18,21,23 * * *` | 08h, 10h, 15h, 18h, 20h | `pip install requests` | `python3 scripts/chamar_tarefa_agendada.py /tarefas/postar-story-oferta/` |
 | `cron-lembrete-verificacao-email` | `30 6 * * *` | 03:30 | `pip install requests` | `python3 scripts/chamar_tarefa_agendada.py /tarefas/lembrete-verificacao-email/` |
 | `cron-lembrete-primeira-compra` | `40 6 * * *` | 03:40 | `pip install requests` | `python3 scripts/chamar_tarefa_agendada.py /tarefas/lembrete-primeira-compra/` |
+| `cron-lembrete-venda-indireta` | `0 11 * * 6` | sábado, 08:00 | `pip install requests` | `python3 scripts/chamar_tarefa_agendada.py /tarefas/lembrete-venda-indireta/` |
 
 **`cron-resolver-item-alvo` ainda precisa ser criado manualmente** (Fase
 41/42) - segue exatamente a mesma "Configuração de cada Cron Job" abaixo, só
@@ -379,6 +380,15 @@ chamada só (7 e 30 dias após o cadastro, textos diferentes - ver
 `accounts/comunicacoes.py`), via BCC em lote (mesmo esquema de
 `enviar_comunicacao`, não 1 chamada por pessoa). Roda 10 minutos depois de
 `cron-lembrete-verificacao-email` (03:40).
+
+**`cron-lembrete-venda-indireta` ainda precisa ser criado manualmente** (Fase
+51, pedido explícito logo depois do lembrete de primeira compra) - único
+Cron Job **semanal** dos e-mails (os outros rodam todo dia) - sábado às
+08:00 (Brasília), olhando os pedidos de venda indireta (clique em "Ir pra
+Shopee") dos últimos 7 dias. E-mail em HTML (com 2 ícones - ver
+`accounts/comunicacoes.py::enviar_lembrete_venda_indireta_semanal` e
+`templates/emails/lembrete_venda_indireta.html`), diferente dos outros
+lembretes automáticos (que são só texto).
 
 `cron-stories-oferta` simplificou os horários de propósito (antes eram
 09:00/11:30/14:00/16:30/19:00 BRT, com minutos quebrados pra evitar o

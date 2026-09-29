@@ -7,7 +7,11 @@ from django.http import HttpResponse, HttpResponseForbidden, JsonResponse
 from django.utils import timezone
 from django.views.decorators.cache import cache_control
 
-from accounts.comunicacoes import enviar_lembrete_primeira_compra_7_dias, enviar_lembrete_primeira_compra_30_dias
+from accounts.comunicacoes import (
+    enviar_lembrete_primeira_compra_7_dias,
+    enviar_lembrete_primeira_compra_30_dias,
+    enviar_lembrete_venda_indireta_semanal,
+)
 from accounts.tokens import enviar_lembretes_verificacao_pendente
 from instagram_bot.lembrete_token import verificar_validade_token
 from instagram_bot.services import executar_publicacoes_do_dia, publicar_story_oferta_do_momento
@@ -218,6 +222,25 @@ def executar_lembrete_primeira_compra(request):
         resultado["lembrete_30_dias_enviados"] = enviar_lembrete_primeira_compra_30_dias(request)
     except Exception as erro:
         resultado["lembrete_30_dias_erro"] = str(erro)
+
+    return JsonResponse(resultado)
+
+
+def executar_lembrete_venda_indireta(request):
+    """Lembrete semanal (todo sábado de manhã) pra quem comprou por venda indireta
+    nos últimos 7 dias, explicando a venda direta (ver
+    accounts/comunicacoes.py::enviar_lembrete_venda_indireta_semanal).
+
+    Cron Job próprio: roda 1x/semana, num horário diferente dos lembretes diários.
+    """
+    if not _token_valido(request):
+        return HttpResponseForbidden("Token inválido ou não configurado.")
+
+    resultado = {}
+    try:
+        resultado["lembrete_venda_indireta_enviados"] = enviar_lembrete_venda_indireta_semanal(request)
+    except Exception as erro:
+        resultado["lembrete_venda_indireta_erro"] = str(erro)
 
     return JsonResponse(resultado)
 

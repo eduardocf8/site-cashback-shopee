@@ -40,6 +40,11 @@ urlpatterns = [
         views.executar_lembrete_primeira_compra,
         name="executar_lembrete_primeira_compra",
     ),
+    path(
+        "tarefas/lembrete-venda-indireta/",
+        views.executar_lembrete_venda_indireta,
+        name="executar_lembrete_venda_indireta",
+    ),
     path("robots.txt", views.robots_txt, name="robots_txt"),
     path("sw.js", views.service_worker, name="service_worker"),
     path("sitemap.xml", sitemap, {"sitemaps": sitemaps}, name="sitemap"),

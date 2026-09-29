@@ -20,6 +20,7 @@ from .comunicacoes import (
     enviar_comunicacao,
     enviar_lembrete_primeira_compra_7_dias,
     enviar_lembrete_primeira_compra_30_dias,
+    enviar_lembrete_venda_indireta_semanal,
     obter_destinatarios,
     renderizar_corpo_html,
 )
@@ -1307,6 +1308,121 @@ class LembretesPrimeiraCompraTests(TestCase):
             corpo_30_dias = MockEmail.call_args.kwargs["body"]
 
         self.assertNotEqual(corpo_7_dias, corpo_30_dias)
+
+
+class LembreteVendaIndiretaTests(TestCase):
+    def setUp(self):
+        self.request = RequestFactory().get("/tarefas/lembrete-venda-indireta/")
+
+    def _usuario(self, nome, email="tem@example.com", aceita_email_marketing=True):
+        self._n = getattr(self, "_n", 0) + 1
+        return User.objects.create_user(
+            username=nome, password="senha123", cpf=f"{self._n:011d}",
+            email=email, aceita_email_marketing=aceita_email_marketing,
+        )
+
+    def _click(self, usuario, tipo):
+        return Click.objects.create(
+            usuario=usuario, tipo=tipo,
+            url_original="https://shopee.com.br/x", link_gerado="https://s.shopee.com.br/y",
+        )
+
+    def _pedido(self, usuario, click, dias_atras=1, status=Pedido.STATUS_PENDENTE):
+        self._n_pedido = getattr(self, "_n_pedido", 0) + 1
+        pedido = Pedido.objects.create(
+            order_id=f"pedido-{self._n_pedido}", conversion_id="1", usuario=usuario, click=click,
+            status=status, status_shopee_bruto="COMPLETED",
+            valor_pedido=Decimal("100.00"), valor_comissao=Decimal("10.00"), valor_cashback=Decimal("5.00"),
+        )
+        Pedido.objects.filter(pk=pedido.pk).update(data_compra=timezone.now() - timedelta(days=dias_atras))
+        pedido.refresh_from_db()
+        return pedido
+
+    def test_manda_pra_quem_comprou_por_venda_indireta_na_semana(self):
+        alvo = self._usuario("indireta")
+        self._pedido(alvo, self._click(alvo, Click.TIPO_HOME), dias_atras=2)
+
+        with patch("accounts.comunicacoes.EmailMultiAlternatives") as MockEmail:
+            total = enviar_lembrete_venda_indireta_semanal(self.request)
+
+        self.assertEqual(total, 1)
+        MockEmail.return_value.send.assert_called_once()
+        self.assertEqual(MockEmail.call_args.kwargs["bcc"], [alvo.email])
+
+    def test_nao_manda_pra_quem_so_comprou_por_venda_direta(self):
+        alvo = self._usuario("direta")
+        self._pedido(alvo, self._click(alvo, Click.TIPO_PRODUTO), dias_atras=2)
+
+        with patch("accounts.comunicacoes.EmailMultiAlternatives") as MockEmail:
+            total = enviar_lembrete_venda_indireta_semanal(self.request)
+
+        self.assertEqual(total, 0)
+        MockEmail.assert_not_called()
+
+    def test_nao_manda_pra_pedido_cancelado(self):
+        alvo = self._usuario("cancelado")
+        self._pedido(alvo, self._click(alvo, Click.TIPO_HOME), dias_atras=2, status=Pedido.STATUS_CANCELADO)
+
+        with patch("accounts.comunicacoes.EmailMultiAlternatives") as MockEmail:
+            total = enviar_lembrete_venda_indireta_semanal(self.request)
+
+        self.assertEqual(total, 0)
+        MockEmail.assert_not_called()
+
+    def test_nao_manda_pra_pedido_fora_da_janela_de_7_dias(self):
+        alvo = self._usuario("antigo")
+        self._pedido(alvo, self._click(alvo, Click.TIPO_HOME), dias_atras=15)
+
+        with patch("accounts.comunicacoes.EmailMultiAlternatives") as MockEmail:
+            total = enviar_lembrete_venda_indireta_semanal(self.request)
+
+        self.assertEqual(total, 0)
+        MockEmail.assert_not_called()
+
+    def test_nao_manda_pra_quem_desligou_marketing(self):
+        alvo = self._usuario("optou_fora", aceita_email_marketing=False)
+        self._pedido(alvo, self._click(alvo, Click.TIPO_HOME), dias_atras=2)
+
+        with patch("accounts.comunicacoes.EmailMultiAlternatives") as MockEmail:
+            total = enviar_lembrete_venda_indireta_semanal(self.request)
+
+        self.assertEqual(total, 0)
+        MockEmail.assert_not_called()
+
+    def test_nao_duplica_quem_tem_mais_de_1_pedido_indireto_na_semana(self):
+        alvo = self._usuario("comprou_duas_vezes")
+        click = self._click(alvo, Click.TIPO_HOME)
+        self._pedido(alvo, click, dias_atras=1)
+        self._pedido(alvo, click, dias_atras=3)
+
+        with patch("accounts.comunicacoes.EmailMultiAlternatives") as MockEmail:
+            total = enviar_lembrete_venda_indireta_semanal(self.request)
+
+        self.assertEqual(total, 1)
+        self.assertEqual(MockEmail.call_args.kwargs["bcc"], [alvo.email])
+
+    def test_html_inclui_link_das_regras_e_do_reel(self):
+        alvo = self._usuario("indireta")
+        self._pedido(alvo, self._click(alvo, Click.TIPO_HOME), dias_atras=2)
+
+        with patch("accounts.comunicacoes.EmailMultiAlternatives") as MockEmail:
+            enviar_lembrete_venda_indireta_semanal(self.request)
+
+        html = MockEmail.return_value.attach_alternative.call_args.args[0]
+        self.assertIn(reverse("regras_cashback"), html)
+        self.assertIn("instagram.com/reel/Ddm_ZalNGKI", html)
+        self.assertIn("email-icone-regras", html)
+        self.assertIn("email-icone-instagram", html)
+
+    def test_inclui_rodape_de_descadastro_no_texto(self):
+        alvo = self._usuario("indireta")
+        self._pedido(alvo, self._click(alvo, Click.TIPO_HOME), dias_atras=2)
+
+        with patch("accounts.comunicacoes.EmailMultiAlternatives") as MockEmail:
+            enviar_lembrete_venda_indireta_semanal(self.request)
+
+        corpo = MockEmail.call_args.kwargs["body"]
+        self.assertIn("não quer mais receber e-mails de promoções", corpo.lower())
 
 
 class FunilCadastrosTests(TestCase):
