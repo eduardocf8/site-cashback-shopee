@@ -1708,8 +1708,9 @@ com textos diferentes).
       chama os dois lembretes numa única requisição - um erro num não
       impede o outro (cada um tem seu próprio try/except). Novo Cron Job do
       Render (`cron-lembrete-primeira-compra`, 03:40 - documentado em
-      `marketing/instagram/README.md`, ainda precisa ser criado
-      manualmente no dashboard).
+      `marketing/instagram/README.md`). **Criado e testado em produção em
+      2026-09-29**: disparo manual retornou
+      `{"lembrete_7_dias_enviados": 27, "lembrete_30_dias_enviados": 0}`.
 - [x] Testes cobrindo as duas janelas (manda/não manda por pedido
       existente, fora da janela, opt-out, sem e-mail), o rodapé de
       descadastro, que os dois textos são diferentes, e o endpoint de

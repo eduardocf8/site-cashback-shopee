@@ -369,13 +369,16 @@ o token bateu e o endpoint mandou os lembretes de verdade. Roda 10 minutos
 depois de `cron-resolver-item-alvo` (03:30), seguindo o mesmo espaçamento de
 sempre.
 
-**`cron-lembrete-primeira-compra` ainda precisa ser criado manualmente**
-(Fase 51, pedido explícito logo depois do lembrete de verificação) - mesma
-"Configuração de cada Cron Job" abaixo, Start Command e horário próprios
-(03:40, 10 minutos depois de `cron-lembrete-verificacao-email`). Manda 2
-lembretes por pessoa possível numa chamada só (7 e 30 dias após o cadastro,
-textos diferentes - ver `accounts/comunicacoes.py`), via BCC em lote (mesmo
-esquema de `enviar_comunicacao`, não 1 chamada por pessoa).
+✅ **`cron-lembrete-primeira-compra` criado e testado em produção em
+2026-09-29** (Fase 51, pedido explícito logo depois do lembrete de
+verificação) - disparo manual retornou `OK (200): {"lembrete_7_dias_enviados":
+27, "lembrete_30_dias_enviados": 0}`. O `0` na janela dos 30 dias é esperado
+(site ainda recente, sem cadastro nenhum exatamente naquela janela nesse
+disparo) - não é sinal de bug. Manda 2 lembretes por pessoa possível numa
+chamada só (7 e 30 dias após o cadastro, textos diferentes - ver
+`accounts/comunicacoes.py`), via BCC em lote (mesmo esquema de
+`enviar_comunicacao`, não 1 chamada por pessoa). Roda 10 minutos depois de
+`cron-lembrete-verificacao-email` (03:40).
 
 `cron-stories-oferta` simplificou os horários de propósito (antes eram
 09:00/11:30/14:00/16:30/19:00 BRT, com minutos quebrados pra evitar o
