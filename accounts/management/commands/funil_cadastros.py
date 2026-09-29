@@ -85,7 +85,7 @@ class Command(BaseCommand):
         fatia = f"{quantidade / base * 100:5.1f}%" if base else "    -"
         self.stdout.write(f"  {rotulo:<34} {quantidade:>6}  {fatia}  {extra}")
 
-    def _bloco(self, usuarios, custo_por_cadastro):
+    def _bloco(self, usuarios, custo_por_cadastro, fim_da_fatia=None):
         total = usuarios.count()
         if total == 0:
             self.stdout.write("  Nenhum cadastro nessa janela.")
@@ -103,12 +103,25 @@ class Command(BaseCommand):
         compradores = nao_cancelados.values("usuario").distinct().count()
 
         totais = nao_cancelados.aggregate(
-            valor=Sum("valor_pedido"), cashback=Sum("valor_cashback")
+            valor=Sum("valor_pedido"),
+            comissao=Sum("valor_comissao"),
+            cashback=Sum("valor_cashback"),
         )
         valor = totais["valor"] or Decimal("0")
+        comissao = totais["comissao"] or Decimal("0")
         cashback = totais["cashback"] or Decimal("0")
+        # O que sobra pra cash-b: a comissão que a Shopee paga menos o cashback que
+        # volta pro usuário. Sem esta linha o relatório mostrava só o custo (o
+        # cashback) e nenhuma receita, o que fazia qualquer campanha parecer prejuízo.
+        margem = comissao - cashback
 
         self.stdout.write(f"  {'cadastros':<34} {total:>6}")
+        if fim_da_fatia is not None:
+            # Uma coorte de 3 dias não teve tempo de comprar. Sem esta linha, a fatia
+            # mais recente sempre parece um desabamento, e a conclusão errada é cortar
+            # a campanha justamente quando ela está indo bem.
+            dias = max((timezone.now() - fim_da_fatia).days, 0)
+            self.stdout.write(f"  {'dias de maturação desde o fim':<34} {dias:>6}")
         self._linha("e-mail verificado", verificados, total)
         self._linha("gerou ao menos 1 link", com_clique, total)
         self._linha("comprou ao menos 1x", compradores, total)
@@ -120,10 +133,18 @@ class Command(BaseCommand):
             )
 
         self.stdout.write("")
-        self.stdout.write(f"  {'pedidos não cancelados':<34} {nao_cancelados.count():>6}")
-        self.stdout.write(f"  {'cancelados':<34} {pedidos.filter(status=Pedido.STATUS_CANCELADO).count():>6}")
-        self.stdout.write(f"  {'valor comprado':<34} {'R$ ' + f'{valor:.2f}':>9}")
-        self.stdout.write(f"  {'cashback gerado':<34} {'R$ ' + f'{cashback:.2f}':>9}")
+        for rotulo, status in (
+            ("pedidos pendentes", Pedido.STATUS_PENDENTE),
+            ("pedidos validados", Pedido.STATUS_VALIDADO),
+            ("pedidos liberados", Pedido.STATUS_LIBERADO),
+            ("pedidos cancelados", Pedido.STATUS_CANCELADO),
+        ):
+            self.stdout.write(f"  {rotulo:<34} {pedidos.filter(status=status).count():>6}")
+        self.stdout.write("")
+        self.stdout.write(f"  {'valor comprado (GMV)':<34} {'R$ ' + f'{valor:.2f}':>9}")
+        self.stdout.write(f"  {'comissão recebida':<34} {'R$ ' + f'{comissao:.2f}':>9}")
+        self.stdout.write(f"  {'cashback devolvido':<34} {'R$ ' + f'{cashback:.2f}':>9}")
+        self.stdout.write(f"  {'margem bruta':<34} {'R$ ' + f'{margem:.2f}':>9}")
 
         if custo_por_cadastro:
             self.stdout.write("")
@@ -137,10 +158,18 @@ class Command(BaseCommand):
             if compradores:
                 self.stdout.write(
                     f"  {'custo por comprador':<34} "
-                    f"{'R$ ' + f'{investido / compradores:.2f}':>9}  <- o número que decide"
+                    f"{'R$ ' + f'{investido / compradores:.2f}':>9}"
                 )
             else:
                 self.stdout.write("  custo por comprador               nenhum comprador ainda")
+            # O número que decide não é o custo por comprador: é quanto do investido
+            # voltou como margem. Abaixo de 100% a coorte ainda não se pagou na
+            # primeira compra - o que num negócio de recompra pode estar tudo bem,
+            # desde que a pessoa volte.
+            retorno = margem / investido * 100 if investido else Decimal("0")
+            self.stdout.write(
+                f"  {'margem / investido':<34} {f'{retorno:.1f}%':>9}  <- o número que decide"
+            )
 
     # ------------------------------------------------------------------ tempo
 
@@ -193,7 +222,7 @@ class Command(BaseCommand):
                 proxima = min(semana + timedelta(days=7), fim)
                 fatia = usuarios.filter(date_joined__gte=semana, date_joined__lt=proxima)
                 self.stdout.write(f"\n{semana:%d/%m} a {(proxima - timedelta(days=1)):%d/%m}")
-                self._bloco(fatia, opcoes["custo_por_cadastro"])
+                self._bloco(fatia, opcoes["custo_por_cadastro"], fim_da_fatia=proxima)
                 semana = proxima
 
         self.stdout.write(

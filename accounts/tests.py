@@ -1099,7 +1099,8 @@ class FunilCadastrosTests(TestCase):
         saida = self._rodar(dias=30)
 
         self.assertRegex(saida, r"comprou ao menos 1x\s+0\s")
-        self.assertIn("R$ 0.00", saida)
+        self.assertRegex(saida, r"pedidos cancelados\s+1")
+        self.assertRegex(saida, r"valor comprado \(GMV\)\s+R\$ 0\.00")
 
     def test_fora_da_janela_fica_de_fora(self):
         self._usuario("antiga", dias_atras=90)
@@ -1122,6 +1123,9 @@ class FunilCadastrosTests(TestCase):
         # a coorte INTEIRA dividida por quem comprou, não o CPA repetido.
         self.assertRegex(saida, r"investido na coorte\s+R\$ 8\.00")
         self.assertRegex(saida, r"custo por comprador\s+R\$ 8\.00")
+        # comissão 10,00 - cashback 5,00 = 5,00 de margem sobre 8,00 investidos
+        self.assertRegex(saida, r"margem bruta\s+R\$ 5\.00")
+        self.assertRegex(saida, r"margem / investido\s+62\.5%")
 
     def test_sem_indicados_tira_quem_veio_por_indicacao(self):
         indicador = self._usuario("indicador", dias_atras=10)
