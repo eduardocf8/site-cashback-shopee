@@ -105,11 +105,24 @@ Arquivos: `licencas/models.py` (`Licenca`, `EventoWebhookKiwify`),
   - testado de ponta a ponta em 2026-09-28/29 com uma licença real criada
   direto no admin. Sem isso, todo cliente novo cairia em "Servidor de
   licenças não configurado" sem conseguir resolver sozinho.
-- **Ainda falta**: ver no admin (`/admin/licencas/`) os primeiros eventos
-  reais de cancelamento/reembolso/chargeback/atraso chegando e conferir se
-  `webhook_event_type` bate com o que `services.interpretar_evento` já
-  espera - só foi confirmado o evento de compra aprovada até agora. Vale
-  testar isso (ex: assinar e cancelar) antes de vender pra clientes de
+- ✅ `licencas/tests.py` cobre com testes automatizados (17 testes,
+  incluindo ponta a ponta via HTTP com assinatura HMAC real) a lógica de
+  decisão para cancelamento, reembolso (por `webhook_event_type` e por
+  `order_status`), chargeback, atraso de pagamento e pagamento recusado -
+  além dos casos de segurança (status desconhecido bloqueia por padrão,
+  evento sem nenhum sinal reconhecido bloqueia por padrão). Também cobre
+  que o mesmo registro de `Licenca` é reaproveitado (não duplicado) ao
+  longo do ciclo de vida da assinatura e que o email só é enviado uma vez,
+  na criação.
+- **Ainda falta**: os testes acima confirmam que o *nosso código* decide
+  certo dado um payload no formato que a gente espera - mas só o evento de
+  compra aprovada (`order_approved`) já foi confirmado contra um payload
+  real da Kiwify. Falta ver no admin (`/admin/licencas/`) os primeiros
+  eventos reais de cancelamento/reembolso/chargeback/atraso chegando e
+  conferir se `webhook_event_type`/`order_status`/`Subscription.status`
+  batem com o que `services.interpretar_evento` espera. Vale testar isso
+  (ex: assinar com um cartão de teste e depois cancelar, ou usar os
+  eventos de teste do painel da Kiwify) antes de vender pra clientes de
   verdade, já que é justamente o mecanismo que impede uso sem pagamento.
 
 ## Comportamento do lado do bot (já implementado)
