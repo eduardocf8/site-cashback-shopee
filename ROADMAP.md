@@ -1659,10 +1659,10 @@ rate-limited, e saque já exige e-mail verificado.
       (novo, `cashback_shopee/views.py`/`urls.py`, mesmo padrão `TAREFAS_TOKEN`
       dos outros endpoints de tarefa), disparado por um novo Cron Job do
       Render (`cron-lembrete-verificacao-email`, 03:30 - documentado em
-      `marketing/instagram/README.md`, ainda precisa ser criado manualmente
-      no dashboard). Manda 1 e-mail por pessoa em série (BCC não dá - cada
-      token de verificação é individual), por isso roda de madrugada como os
-      outros.
+      `marketing/instagram/README.md`). Manda 1 e-mail por pessoa em série
+      (BCC não dá - cada token de verificação é individual), por isso roda
+      de madrugada como os outros. **Criado e testado em produção em
+      2026-09-29**: disparo manual retornou `{"lembretes_verificacao_enviados": 15}`.
 - [x] Testes cobrindo: as 3 situações do link vencido (reenvia, já verificado
       não reenvia, e-mail trocado não reenvia), token válido continua
       confirmando normal, rate limit da nova view, e o lembrete automático
