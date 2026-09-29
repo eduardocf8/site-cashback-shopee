@@ -13,13 +13,15 @@ de cashback de cada uma) - ver templates/emails/comunicacao_vitrine.html.
 """
 
 import logging
+from datetime import timedelta
 from email.utils import parseaddr
 
 from django.conf import settings
-from django.core.mail import EmailMultiAlternatives
+from django.core.mail import EmailMessage, EmailMultiAlternatives
 from django.db.models import QuerySet
 from django.template.loader import render_to_string
 from django.urls import reverse
+from django.utils import timezone
 from django.utils.html import escape
 
 from .models import ComunicacaoEmail, User
@@ -28,6 +30,13 @@ FILTROS = dict(ComunicacaoEmail.FILTRO_CHOICES)
 
 TAMANHO_LOTE = 50
 OFERTAS_POR_LINHA = 2
+
+# Janelas dos lembretes de primeira compra (ver enviar_lembrete_primeira_compra_7_dias/
+# 30_dias) - cadastrado há N dias, ainda sem nenhum pedido. Cada janela dura 24h (N a
+# N+1 dias) pra pegar cada pessoa 1 vez só, rodando o cron 1x/dia - mesmo esquema do
+# lembrete de verificação de e-mail (accounts/tokens.py).
+LEMBRETE_PRIMEIRA_COMPRA_7_DIAS = 7
+LEMBRETE_PRIMEIRA_COMPRA_30_DIAS = 30
 
 logger = logging.getLogger(__name__)
 
@@ -163,3 +172,74 @@ def enviar_comunicacao(
     if ofertas:
         comunicacao.ofertas.set(ofertas)
     return comunicacao
+
+
+def _usuarios_sem_primeiro_pedido_cadastrados_ha(dias: int) -> QuerySet:
+    """Quem se cadastrou entre `dias` e `dias + 1` atrás, ainda sem nenhum pedido, com
+    e-mail e sem ter desligado e-mail de marketing - usado pelos lembretes de primeira
+    compra (ver enviar_lembrete_primeira_compra_7_dias/30_dias)."""
+    agora = timezone.now()
+    return (
+        User.objects.exclude(email="")
+        .filter(aceita_email_marketing=True, pedidos__isnull=True)
+        .filter(date_joined__lt=agora - timedelta(days=dias), date_joined__gte=agora - timedelta(days=dias + 1))
+    )
+
+
+def _mandar_lembrete_em_lotes(usuarios: QuerySet, request, assunto: str, corpo: str) -> int:
+    """BCC em lotes, mesmo motivo de enviar_comunicacao (ver docstring do módulo) - o
+    conteúdo é igual pra todo mundo do lembrete (sem token individual por pessoa),
+    então BCC serve bem aqui também. Sempre leva o rodapé de descadastro - é um
+    lembrete promocional ("venha comprar"), respeita o mesmo opt-out dos e-mails da
+    tela de comunicação do admin."""
+    link_descadastro = request.build_absolute_uri(reverse("preferencias_email")) if request else None
+    corpo_completo = corpo + (_rodape_descadastro_texto(link_descadastro) if link_descadastro else "")
+    emails = list(usuarios.values_list("email", flat=True))
+    _, endereco_remetente = parseaddr(settings.DEFAULT_FROM_EMAIL)
+
+    total_enviados = 0
+    for lote in _lotes(emails, TAMANHO_LOTE):
+        try:
+            EmailMessage(subject=assunto, body=corpo_completo, to=[endereco_remetente], bcc=lote).send()
+            total_enviados += len(lote)
+        except Exception:
+            logger.warning(
+                "[comunicacoes] falha ao mandar lote de %d e-mail(s) (lembrete de primeira compra)",
+                len(lote), exc_info=True,
+            )
+    return total_enviados
+
+
+def enviar_lembrete_primeira_compra_7_dias(request) -> int:
+    usuarios = _usuarios_sem_primeiro_pedido_cadastrados_ha(LEMBRETE_PRIMEIRA_COMPRA_7_DIAS)
+    link_ofertas = request.build_absolute_uri(reverse("ofertas_lista"))
+    corpo = (
+        "Olá!\n\n"
+        "Notamos que você criou sua conta na cash-b, mas ainda não fez nenhuma compra "
+        "por aqui.\n\n"
+        "É simples: você gera um link com cashback pra qualquer produto da Shopee, "
+        "compra normalmente usando esse link, e uma parte do valor volta pra você em "
+        "dinheiro (via Pix, depois de juntar R$ 20,00 de saldo). Não tem nenhum custo "
+        "a mais nisso — você paga o mesmo preço de sempre, só que uma parte volta.\n\n"
+        f"Dá uma olhada nas ofertas: {link_ofertas}\n\n"
+        "Equipe cash-b"
+    )
+    return _mandar_lembrete_em_lotes(usuarios, request, "cash-b — ainda não fez seu primeiro pedido?", corpo)
+
+
+def enviar_lembrete_primeira_compra_30_dias(request) -> int:
+    usuarios = _usuarios_sem_primeiro_pedido_cadastrados_ha(LEMBRETE_PRIMEIRA_COMPRA_30_DIAS)
+    link_ofertas = request.build_absolute_uri(reverse("ofertas_lista"))
+    corpo = (
+        "Olá!\n\n"
+        "Faz um mês que você criou sua conta na cash-b e ainda não usou o cashback em "
+        "nenhuma compra na Shopee.\n\n"
+        "Não tem pegadinha nem prazo pra aproveitar: da próxima vez que for comprar na "
+        "Shopee, gere o link pela cash-b antes de fechar o pedido, e uma parte do "
+        "valor volta pra você — sem pagar nada a mais por isso.\n\n"
+        f"Ver ofertas: {link_ofertas}\n\n"
+        "Equipe cash-b"
+    )
+    return _mandar_lembrete_em_lotes(
+        usuarios, request, "cash-b — seu cashback ainda está te esperando", corpo
+    )

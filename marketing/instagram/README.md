@@ -356,6 +356,7 @@ partir de um blueprint):
 | `cron-instagram-diario` | `0 14 * * *` | 11:00 | `pip install requests` | `python3 scripts/chamar_tarefa_agendada.py /tarefas/publicar-instagram/` |
 | `cron-stories-oferta` | `0 11,13,18,21,23 * * *` | 08h, 10h, 15h, 18h, 20h | `pip install requests` | `python3 scripts/chamar_tarefa_agendada.py /tarefas/postar-story-oferta/` |
 | `cron-lembrete-verificacao-email` | `30 6 * * *` | 03:30 | `pip install requests` | `python3 scripts/chamar_tarefa_agendada.py /tarefas/lembrete-verificacao-email/` |
+| `cron-lembrete-primeira-compra` | `40 6 * * *` | 03:40 | `pip install requests` | `python3 scripts/chamar_tarefa_agendada.py /tarefas/lembrete-primeira-compra/` |
 
 **`cron-resolver-item-alvo` ainda precisa ser criado manualmente** (Fase
 41/42) - segue exatamente a mesma "Configuração de cada Cron Job" abaixo, só
@@ -366,8 +367,15 @@ trocando o Start Command e o horário.
 retornou `OK (200): {"lembretes_verificacao_enviados": 15}`, confirmando que
 o token bateu e o endpoint mandou os lembretes de verdade. Roda 10 minutos
 depois de `cron-resolver-item-alvo` (03:30), seguindo o mesmo espaçamento de
-sempre. Só falta observar o disparo automático (pelo `schedule`, não manual)
-acontecer sozinho no horário certo.
+sempre.
+
+**`cron-lembrete-primeira-compra` ainda precisa ser criado manualmente**
+(Fase 51, pedido explícito logo depois do lembrete de verificação) - mesma
+"Configuração de cada Cron Job" abaixo, Start Command e horário próprios
+(03:40, 10 minutos depois de `cron-lembrete-verificacao-email`). Manda 2
+lembretes por pessoa possível numa chamada só (7 e 30 dias após o cadastro,
+textos diferentes - ver `accounts/comunicacoes.py`), via BCC em lote (mesmo
+esquema de `enviar_comunicacao`, não 1 chamada por pessoa).
 
 `cron-stories-oferta` simplificou os horários de propósito (antes eram
 09:00/11:30/14:00/16:30/19:00 BRT, com minutos quebrados pra evitar o

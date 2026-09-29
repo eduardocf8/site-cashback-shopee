@@ -16,7 +16,13 @@ from ofertas.models import Oferta
 from pedidos.models import Pedido
 from saques.models import Saque
 
-from .comunicacoes import enviar_comunicacao, obter_destinatarios, renderizar_corpo_html
+from .comunicacoes import (
+    enviar_comunicacao,
+    enviar_lembrete_primeira_compra_7_dias,
+    enviar_lembrete_primeira_compra_30_dias,
+    obter_destinatarios,
+    renderizar_corpo_html,
+)
 from .forms import EditarPerfilForm
 from .models import ComunicacaoEmail, ConfiguracaoIndicacao, Indicacao, PushSubscription, User
 from .push import enviar_push
@@ -1185,6 +1191,122 @@ class LembretesVerificacaoTests(TestCase):
 
         self.assertEqual(total, 0)
         MockEmail.assert_not_called()
+
+
+class LembretesPrimeiraCompraTests(TestCase):
+    def _usuario(self, nome, dias_atras, email="tem@example.com", aceita_email_marketing=True):
+        self._n = getattr(self, "_n", 0) + 1
+        usuario = User.objects.create_user(
+            username=nome, password="senha123", cpf=f"{self._n:011d}",
+            email=email, aceita_email_marketing=aceita_email_marketing,
+        )
+        User.objects.filter(pk=usuario.pk).update(date_joined=timezone.now() - timedelta(days=dias_atras))
+        usuario.refresh_from_db()
+        return usuario
+
+    def _pedido(self, usuario):
+        self._n_pedido = getattr(self, "_n_pedido", 0) + 1
+        return Pedido.objects.create(
+            order_id=f"pedido-{self._n_pedido}", conversion_id="1", usuario=usuario,
+            status=Pedido.STATUS_PENDENTE, status_shopee_bruto="COMPLETED",
+            valor_pedido=Decimal("100.00"), valor_comissao=Decimal("10.00"), valor_cashback=Decimal("5.00"),
+        )
+
+    def test_7_dias_manda_pra_quem_esta_na_janela_sem_pedido(self):
+        alvo = self._usuario("dentro_da_janela", dias_atras=7)
+        request = RequestFactory().get("/tarefas/lembrete-primeira-compra/")
+
+        with patch("accounts.comunicacoes.EmailMessage") as MockEmail:
+            total = enviar_lembrete_primeira_compra_7_dias(request)
+
+        self.assertEqual(total, 1)
+        MockEmail.return_value.send.assert_called_once()
+        self.assertEqual(MockEmail.call_args.kwargs["bcc"], [alvo.email])
+
+    def test_7_dias_nao_manda_pra_quem_ja_fez_pedido(self):
+        alvo = self._usuario("ja_comprou", dias_atras=7)
+        self._pedido(alvo)
+        request = RequestFactory().get("/tarefas/lembrete-primeira-compra/")
+
+        with patch("accounts.comunicacoes.EmailMessage") as MockEmail:
+            total = enviar_lembrete_primeira_compra_7_dias(request)
+
+        self.assertEqual(total, 0)
+        MockEmail.assert_not_called()
+
+    def test_7_dias_nao_manda_fora_da_janela(self):
+        self._usuario("recem_cadastrado", dias_atras=2)
+        self._usuario("cadastro_antigo", dias_atras=15)
+        request = RequestFactory().get("/tarefas/lembrete-primeira-compra/")
+
+        with patch("accounts.comunicacoes.EmailMessage") as MockEmail:
+            total = enviar_lembrete_primeira_compra_7_dias(request)
+
+        self.assertEqual(total, 0)
+        MockEmail.assert_not_called()
+
+    def test_7_dias_nao_manda_pra_quem_desligou_marketing(self):
+        self._usuario("optou_fora", dias_atras=7, aceita_email_marketing=False)
+        request = RequestFactory().get("/tarefas/lembrete-primeira-compra/")
+
+        with patch("accounts.comunicacoes.EmailMessage") as MockEmail:
+            total = enviar_lembrete_primeira_compra_7_dias(request)
+
+        self.assertEqual(total, 0)
+        MockEmail.assert_not_called()
+
+    def test_7_dias_nao_manda_pra_quem_nao_tem_email(self):
+        self._usuario("sem_email", dias_atras=7, email="")
+        request = RequestFactory().get("/tarefas/lembrete-primeira-compra/")
+
+        with patch("accounts.comunicacoes.EmailMessage") as MockEmail:
+            total = enviar_lembrete_primeira_compra_7_dias(request)
+
+        self.assertEqual(total, 0)
+        MockEmail.assert_not_called()
+
+    def test_7_dias_inclui_rodape_de_descadastro(self):
+        self._usuario("dentro_da_janela", dias_atras=7)
+        request = RequestFactory().get("/tarefas/lembrete-primeira-compra/")
+
+        with patch("accounts.comunicacoes.EmailMessage") as MockEmail:
+            enviar_lembrete_primeira_compra_7_dias(request)
+
+        corpo = MockEmail.call_args.kwargs["body"]
+        self.assertIn("não quer mais receber e-mails de promoções", corpo.lower())
+
+    def test_30_dias_manda_pra_quem_esta_na_janela_sem_pedido(self):
+        alvo = self._usuario("dentro_da_janela_30", dias_atras=30)
+        request = RequestFactory().get("/tarefas/lembrete-primeira-compra/")
+
+        with patch("accounts.comunicacoes.EmailMessage") as MockEmail:
+            total = enviar_lembrete_primeira_compra_30_dias(request)
+
+        self.assertEqual(total, 1)
+        self.assertEqual(MockEmail.call_args.kwargs["bcc"], [alvo.email])
+
+    def test_30_dias_nao_pega_quem_esta_na_janela_dos_7_dias(self):
+        self._usuario("dentro_da_janela_7", dias_atras=7)
+        request = RequestFactory().get("/tarefas/lembrete-primeira-compra/")
+
+        with patch("accounts.comunicacoes.EmailMessage") as MockEmail:
+            total = enviar_lembrete_primeira_compra_30_dias(request)
+
+        self.assertEqual(total, 0)
+        MockEmail.assert_not_called()
+
+    def test_textos_dos_dois_lembretes_sao_diferentes(self):
+        self._usuario("aos_7_dias", dias_atras=7)
+        self._usuario("aos_30_dias", dias_atras=30)
+        request = RequestFactory().get("/tarefas/lembrete-primeira-compra/")
+
+        with patch("accounts.comunicacoes.EmailMessage") as MockEmail:
+            enviar_lembrete_primeira_compra_7_dias(request)
+            corpo_7_dias = MockEmail.call_args.kwargs["body"]
+            enviar_lembrete_primeira_compra_30_dias(request)
+            corpo_30_dias = MockEmail.call_args.kwargs["body"]
+
+        self.assertNotEqual(corpo_7_dias, corpo_30_dias)
 
 
 class FunilCadastrosTests(TestCase):

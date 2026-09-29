@@ -1679,6 +1679,46 @@ itens da análise (gravar UTM de origem no cadastro, mostrar "faltam R$X pro
 saque" no dashboard, re-medir o funil em ~30 dias) ficaram fora do escopo
 desta fase - não foram pedidos ainda.
 
+**Depois, mesma fase:** usuário pediu um segundo lembrete automático -
+"usuários que se cadastraram no site e, após 7 dias, ainda não fizeram
+nenhum pedido". Perguntei três coisas antes de implementar: se respeita o
+opt-out de marketing (sim - mesmo modelo de consentimento já combinado),
+texto simples ou vitrine em HTML (texto simples com link pra Ofertas), e se
+é único ou repete (usuário pediu pra repetir: 1x aos 7 dias, 1x aos 30 dias,
+com textos diferentes).
+
+- [x] **`accounts/comunicacoes.py`** ganhou
+      `enviar_lembrete_primeira_compra_7_dias`/`_30_dias` (novo) -
+      reaproveita a infra de BCC em lote já existente no módulo (`_lotes`,
+      `TAMANHO_LOTE`) e o rodapé de descadastro (`_rodape_descadastro_texto`),
+      já que o conteúdo é igual pra todo mundo do lembrete (sem token
+      individual por pessoa, diferente do lembrete de verificação de
+      e-mail). `_usuarios_sem_primeiro_pedido_cadastrados_ha(dias)` filtra
+      quem se cadastrou entre `dias` e `dias + 1` atrás
+      (`pedidos__isnull=True`, `aceita_email_marketing=True`, com e-mail) -
+      mesma lógica de janela de 24h do lembrete de verificação, garante 1
+      envio só por pessoa rodando o cron 1x/dia.
+- [x] Textos diferentes pra cada janela: aos 7 dias é uma apresentação
+      simples de como funciona ("é simples: você gera um link..."), aos 30
+      dias é mais direto ("faz um mês... não tem pegadinha nem prazo").
+      Ambos levam o link pra `/ofertas/` (`ofertas_lista`) e o rodapé de
+      descadastro padrão.
+- [x] **`/tarefas/lembrete-primeira-compra/`** (novo,
+      `cashback_shopee/views.py`/`urls.py`, mesmo padrão `TAREFAS_TOKEN`)
+      chama os dois lembretes numa única requisição - um erro num não
+      impede o outro (cada um tem seu próprio try/except). Novo Cron Job do
+      Render (`cron-lembrete-primeira-compra`, 03:40 - documentado em
+      `marketing/instagram/README.md`, ainda precisa ser criado
+      manualmente no dashboard).
+- [x] Testes cobrindo as duas janelas (manda/não manda por pedido
+      existente, fora da janela, opt-out, sem e-mail), o rodapé de
+      descadastro, que os dois textos são diferentes, e o endpoint de
+      tarefa (token, os dois lembretes juntos, erro num não impede o
+      outro). Verificado também via `runserver` local com usuários reais em
+      cada situação - retornou `{"lembrete_7_dias_enviados": 1,
+      "lembrete_30_dias_enviados": 1}` batendo exatamente com quem deveria
+      receber, e o conteúdo de cada e-mail saiu certo no backend de console.
+
 ---
 
 Pra continuar esse roadmap numa conversa nova, basta apontar esse arquivo

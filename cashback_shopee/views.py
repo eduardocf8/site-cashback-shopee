@@ -7,6 +7,7 @@ from django.http import HttpResponse, HttpResponseForbidden, JsonResponse
 from django.utils import timezone
 from django.views.decorators.cache import cache_control
 
+from accounts.comunicacoes import enviar_lembrete_primeira_compra_7_dias, enviar_lembrete_primeira_compra_30_dias
 from accounts.tokens import enviar_lembretes_verificacao_pendente
 from instagram_bot.lembrete_token import verificar_validade_token
 from instagram_bot.services import executar_publicacoes_do_dia, publicar_story_oferta_do_momento
@@ -191,6 +192,32 @@ def executar_lembrete_verificacao_email(request):
         resultado["lembretes_verificacao_enviados"] = enviar_lembretes_verificacao_pendente(request)
     except Exception as erro:
         resultado["lembretes_verificacao_erro"] = str(erro)
+
+    return JsonResponse(resultado)
+
+
+def executar_lembrete_primeira_compra(request):
+    """Manda um lembrete pra quem se cadastrou há 7 dias ou 30 dias e ainda não fez
+    nenhum pedido (ver accounts/comunicacoes.py::enviar_lembrete_primeira_compra_7_dias/
+    30_dias) - textos diferentes em cada janela, mesmo Cron Job chama os dois porque é
+    rápido (BCC em lote, não 1 e-mail por pessoa).
+
+    Cron Job dedicado, mesmo motivo dos outros: roda de madrugada, fora do horário de
+    pico.
+    """
+    if not _token_valido(request):
+        return HttpResponseForbidden("Token inválido ou não configurado.")
+
+    resultado = {}
+    try:
+        resultado["lembrete_7_dias_enviados"] = enviar_lembrete_primeira_compra_7_dias(request)
+    except Exception as erro:
+        resultado["lembrete_7_dias_erro"] = str(erro)
+
+    try:
+        resultado["lembrete_30_dias_enviados"] = enviar_lembrete_primeira_compra_30_dias(request)
+    except Exception as erro:
+        resultado["lembrete_30_dias_erro"] = str(erro)
 
     return JsonResponse(resultado)
 

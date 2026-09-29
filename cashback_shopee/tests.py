@@ -192,6 +192,45 @@ class ExecutarLembreteVerificacaoEmailTests(TestCase):
         self.assertIn("lembretes_verificacao_erro", resposta.json())
 
 
+@override_settings(TAREFAS_TOKEN="segredo-de-teste")
+class ExecutarLembretePrimeiraCompraTests(TestCase):
+    """Cron dedicado - lembrete pra quem se cadastrou e ainda não fez nenhum pedido,
+    em duas janelas (7 e 30 dias, ver accounts/comunicacoes.py)."""
+
+    def test_sem_token_retorna_forbidden(self):
+        resposta = self.client.get(reverse("executar_lembrete_primeira_compra"))
+        self.assertEqual(resposta.status_code, 403)
+
+    @patch("cashback_shopee.views.enviar_lembrete_primeira_compra_30_dias")
+    @patch("cashback_shopee.views.enviar_lembrete_primeira_compra_7_dias")
+    def test_token_certo_manda_os_dois_lembretes(self, mock_7_dias, mock_30_dias):
+        mock_7_dias.return_value = 3
+        mock_30_dias.return_value = 2
+
+        resposta = self.client.get(reverse("executar_lembrete_primeira_compra"), {"token": "segredo-de-teste"})
+
+        self.assertEqual(resposta.status_code, 200)
+        dados = resposta.json()
+        self.assertEqual(dados["lembrete_7_dias_enviados"], 3)
+        self.assertEqual(dados["lembrete_30_dias_enviados"], 2)
+        mock_7_dias.assert_called_once()
+        mock_30_dias.assert_called_once()
+
+    @patch("cashback_shopee.views.enviar_lembrete_primeira_compra_30_dias")
+    @patch("cashback_shopee.views.enviar_lembrete_primeira_compra_7_dias")
+    def test_erro_num_lembrete_nao_impede_o_outro(self, mock_7_dias, mock_30_dias):
+        mock_7_dias.side_effect = Exception("falha inesperada")
+        mock_30_dias.return_value = 2
+
+        resposta = self.client.get(reverse("executar_lembrete_primeira_compra"), {"token": "segredo-de-teste"})
+
+        self.assertEqual(resposta.status_code, 200)
+        dados = resposta.json()
+        self.assertIn("lembrete_7_dias_erro", dados)
+        self.assertEqual(dados["lembrete_30_dias_enviados"], 2)
+        mock_30_dias.assert_called_once()
+
+
 @override_settings(BREVO_API_KEY="chave-de-teste")
 class BrevoAPIEmailBackendTests(TestCase):
     """O Render bloqueia SMTP de saída, então o envio de e-mail usa a API HTTP do
