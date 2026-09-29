@@ -19,10 +19,15 @@ export const CENAS = [
   {
     id: 'compra',
     frames: 72,
-    texto: 'Você já compra na Shopee\ne ainda não recebe cashback?',
-    // A pergunta de abertura é mais longa que as outras telas de propósito - é o gancho,
-    // e precisa de corpo menor e de mais tempo para ser lida.
-    corpo: 82,
+    // Quatro linhas, e cada quebra cai numa fronteira de sentido: a frase são duas
+    // orações ("você já compra na Shopee" / "e ainda não recebe cashback?"), e cada uma
+    // se parte em duas. Quebrar à mão em vez de deixar o navegador embrulhar é o que
+    // permite o corpo maior: embrulhando sozinha, a linha mais longa era "Você já
+    // compra na Shopee", com 24 caracteres, e ela é que travava o tamanho em 82px.
+    // Terminar em "cashback?" sozinho é de propósito - é a palavra que o vídeo vende.
+    texto: 'Você já compra\nna Shopee\ne ainda não recebe\ncashback?',
+    // É o gancho: continua sendo a tela mais longa do vídeo e a que fica mais tempo.
+    corpo: 114,
   },
   {id: 'condicao', frames: 36, texto: 'Comprando pela cash-b,'},
   {id: 'promessa', frames: 48, texto: 'parte do dinheiro volta'},
