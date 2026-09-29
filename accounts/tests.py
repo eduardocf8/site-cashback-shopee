@@ -1,4 +1,9 @@
 import json
+from io import StringIO
+from datetime import timedelta
+from django.core.management import call_command
+from django.utils import timezone
+from links.models import Click
 from decimal import Decimal
 from unittest.mock import Mock, patch
 
@@ -1036,3 +1041,94 @@ class ComunicacaoViewPassaTipoTests(TestCase):
 class EditarPerfilFormTests(TestCase):
     def test_form_inclui_campo_de_marketing(self):
         self.assertIn("aceita_email_marketing", EditarPerfilForm.Meta.fields)
+
+
+class FunilCadastrosTests(TestCase):
+    """O comando responde a pergunta que decide se um CPA baixo é bom negócio, então
+    o que ele precisa provar é justamente onde é fácil errar: contar PESSOA e não
+    evento, e não somar pedido cancelado como compra."""
+
+    def _usuario(self, nome, dias_atras):
+        # CPF é unique e não aceita branco, então cada usuário da coorte precisa do
+        # seu: um contador simples basta, o comando não valida dígito.
+        self._n = getattr(self, "_n", 0) + 1
+        usuario = User.objects.create_user(
+            username=nome, password="senha123", cpf=f"{self._n:011d}"
+        )
+        User.objects.filter(pk=usuario.pk).update(
+            date_joined=timezone.now() - timedelta(days=dias_atras)
+        )
+        usuario.refresh_from_db()
+        return usuario
+
+    def _click(self, usuario):
+        return Click.objects.create(
+            usuario=usuario, tipo=Click.TIPO_PRODUTO,
+            url_original="https://shopee.com.br/x", link_gerado="https://s.shopee.com.br/y",
+        )
+
+    def _pedido(self, usuario, order_id, status, valor="100.00", cashback="5.00"):
+        return Pedido.objects.create(
+            order_id=order_id, conversion_id="1", usuario=usuario, status=status,
+            status_shopee_bruto="COMPLETED", valor_pedido=Decimal(valor),
+            valor_comissao=Decimal("10.00"), valor_cashback=Decimal(cashback),
+        )
+
+    def _rodar(self, **opcoes):
+        saida = StringIO()
+        call_command("funil_cadastros", stdout=saida, **opcoes)
+        return saida.getvalue()
+
+    def test_conta_pessoa_e_nao_clique(self):
+        usuario = self._usuario("ativa", dias_atras=5)
+        for _ in range(4):
+            self._click(usuario)
+        self._usuario("inerte", dias_atras=5)
+
+        saida = self._rodar(dias=30)
+
+        self.assertIn("cadastros                               2", saida)
+        # quatro cliques, uma pessoa só: quem gerou link é 1, não 4
+        self.assertRegex(saida, r"gerou ao menos 1 link\s+1\s")
+
+    def test_pedido_cancelado_nao_conta_como_compra(self):
+        usuario = self._usuario("desistente", dias_atras=3)
+        self._click(usuario)
+        self._pedido(usuario, "ORD-1", Pedido.STATUS_CANCELADO)
+
+        saida = self._rodar(dias=30)
+
+        self.assertRegex(saida, r"comprou ao menos 1x\s+0\s")
+        self.assertIn("R$ 0.00", saida)
+
+    def test_fora_da_janela_fica_de_fora(self):
+        self._usuario("antiga", dias_atras=90)
+        self._usuario("recente", dias_atras=2)
+
+        saida = self._rodar(dias=30)
+
+        self.assertIn("cadastros                               1", saida)
+
+    def test_custo_por_comprador_usa_a_coorte_inteira(self):
+        comprador = self._usuario("compradora", dias_atras=4)
+        self._click(comprador)
+        self._pedido(comprador, "ORD-2", Pedido.STATUS_VALIDADO)
+        for i in range(3):
+            self._usuario(f"so-cadastro-{i}", dias_atras=4)
+
+        saida = self._rodar(dias=30, custo_por_cadastro=2.0)
+
+        # 4 cadastros x R$ 2,00 = R$ 8,00, e um comprador só: o custo por comprador é
+        # a coorte INTEIRA dividida por quem comprou, não o CPA repetido.
+        self.assertRegex(saida, r"investido na coorte\s+R\$ 8\.00")
+        self.assertRegex(saida, r"custo por comprador\s+R\$ 8\.00")
+
+    def test_sem_indicados_tira_quem_veio_por_indicacao(self):
+        indicador = self._usuario("indicador", dias_atras=10)
+        indicado = self._usuario("indicado", dias_atras=5)
+        Indicacao.objects.create(indicador=indicador, indicado=indicado)
+
+        saida = self._rodar(dias=30, sem_indicados=True)
+
+        self.assertIn("(sem indicados)", saida)
+        self.assertIn("cadastros                               1", saida)

@@ -174,6 +174,27 @@ ASAAS_API_KEY=$aact_hmlg_sua_chave_aqui
 
 Se algum saque ficar muito tempo em "Processando" (raro, mas pode acontecer em processamento bancário), rode `python manage.py verificar_saques` para reconsultar o status na Asaas.
 
+## Medindo se o anúncio traz gente que compra
+
+O Gerenciador de Anúncios sabe quanto custou cada cadastro. Ele não sabe se aquela
+pessoa voltou, gerou link e comprou — isso só existe no banco daqui. E é essa segunda
+metade que decide se um custo por cadastro baixo é bom negócio ou é só tráfego barato.
+
+```bash
+python manage.py funil_cadastros --desde 2026-09-10 --custo-por-cadastro 1.65 --por-semana
+```
+
+Ele pega todo mundo que se cadastrou na janela e mostra quantos verificaram o e-mail,
+quantos geraram ao menos um link, quantos compraram, quanto de cashback saiu e — com
+`--custo-por-cadastro` — o **custo por comprador**, que é o número que decide se vale
+aumentar o orçamento. `--sem-indicados` tira quem entrou por indicação, que é a forma
+mais próxima de isolar quem veio de fora.
+
+Uma ressalva que o próprio comando imprime: **não existe campo de origem no `User`**,
+então a coorte é todo mundo que se cadastrou no período, não só quem veio do anúncio.
+Enquanto a campanha paga for a fonte dominante isso serve como aproximação; com duas
+fontes grandes ao mesmo tempo, deixa de separar as duas.
+
 ## Colocando o site no ar (Fase 7)
 
 Vamos usar a **Render** (tem plano gratuito) pra hospedar o site, com um banco de dados Postgres (o SQLite que usamos localmente não funciona em produção lá, porque o plano gratuito não guarda arquivos entre reinicializações).
