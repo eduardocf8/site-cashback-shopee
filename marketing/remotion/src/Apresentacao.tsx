@@ -1,7 +1,8 @@
 import React from 'react';
 import {AbsoluteFill, Sequence} from 'remotion';
-import {Apoio, Cena, Entra, Numero, Titulo} from './Base';
-import type {Entrada} from './Base';
+import {Apoio, Cena, Destaque, Entra, Numero, Titulo} from './Base';
+import type {Entrada, TipoDestaque} from './Base';
+import {Minimo} from './Minimo';
 import {CENAS} from './constantes';
 import {Fechamento} from './Fechamento';
 import {CORES} from './marca';
@@ -33,10 +34,9 @@ const CenaNumero: React.FC<{
   claro: boolean;
   acima?: string;
   numero: string;
-  otico?: number;
   abaixo: string;
   entrada: Entrada;
-}> = ({claro, acima, numero, otico, abaixo, entrada}) => (
+}> = ({claro, acima, numero, abaixo, entrada}) => (
   <Cena fundo={claro ? 'fundo-claro.png' : 'fundo-diagonal.png'} claro={claro}>
     {acima ? (
       <Entra>
@@ -48,7 +48,7 @@ const CenaNumero: React.FC<{
     {/* O tipo vale para o número, não para os rótulos: se a cena inteira crescesse,
         o bloco todo "respiraria" e o peso do algarismo se perderia no meio. */}
     <Entra atraso={acima ? 6 : 0} tipo={entrada}>
-      <Numero cor={claro ? CORES.success : CORES.highlight} otico={otico}>
+      <Numero cor={claro ? CORES.success : CORES.highlight}>
         {numero}
       </Numero>
     </Entra>
@@ -66,33 +66,61 @@ const CenaNumero: React.FC<{
  * linha entra 7 frames depois da anterior. 7 é o menor intervalo em que a pausa ainda
  * se percebe a 30fps - abaixo disso as linhas parecem entrar juntas, e o efeito vira
  * só um borrão. Nos outros tipos o texto continua sendo um bloco só: quebrar por
- * quebrar faria a frase perder a unidade. */
+ * quebrar faria a frase perder a unidade.
+ *
+ * O asterisco marca a palavra em destaque. Marcar dentro do próprio texto, e não num
+ * campo separado com a palavra repetida, evita o erro silencioso de mudar a frase e
+ * deixar para trás um destaque apontando para uma palavra que não existe mais. */
 const ATRASO_ENTRE_LINHAS = 7;
+
+const montarLinha = (
+  linha: string,
+  claro: boolean,
+  destaque?: {tipo: TipoDestaque; inicio: number},
+) =>
+  // split com grupo de captura devolve os pedaços intercalados: índice par é texto
+  // comum, ímpar é o que estava entre asteriscos.
+  linha.split(/\*([^*]+)\*/).map((pedaco, i) =>
+    i % 2 === 1 && destaque ? (
+      <Destaque key={i} tipo={destaque.tipo} inicio={destaque.inicio} claro={claro}>
+        {pedaco}
+      </Destaque>
+    ) : (
+      <React.Fragment key={i}>{pedaco}</React.Fragment>
+    ),
+  );
 
 const CenaTexto: React.FC<{
   claro: boolean;
   texto: string;
   corpo?: number;
   entrada: Entrada;
-}> = ({claro, texto, corpo, entrada}) => (
-  <Cena fundo={claro ? 'fundo-claro.png' : 'fundo-roxo.png'} claro={claro}>
-    {entrada === 'linhas' ? (
-      texto.split('\n').map((linha, i) => (
-        <Entra key={linha} atraso={i * ATRASO_ENTRE_LINHAS}>
-          <Titulo claro={claro} corpo={corpo}>
-            {linha}
-          </Titulo>
-        </Entra>
-      ))
-    ) : (
-      <Entra tipo={entrada}>
-        <Titulo claro={claro} corpo={corpo}>
-          {texto}
-        </Titulo>
-      </Entra>
-    )}
-  </Cena>
-);
+  destaque?: {tipo: TipoDestaque; inicio: number};
+}> = ({claro, texto, corpo, entrada, destaque}) => {
+  const linhas = texto.split('\n');
+  const conteudo = (
+    <Titulo claro={claro} corpo={corpo}>
+      {linhas.map((linha) => (
+        <div key={linha}>{montarLinha(linha, claro, destaque)}</div>
+      ))}
+    </Titulo>
+  );
+  return (
+    <Cena fundo={claro ? 'fundo-claro.png' : 'fundo-roxo.png'} claro={claro}>
+      {entrada === 'linhas' ? (
+        linhas.map((linha, i) => (
+          <Entra key={linha} atraso={i * ATRASO_ENTRE_LINHAS}>
+            <Titulo claro={claro} corpo={corpo}>
+              <div>{montarLinha(linha, claro, destaque)}</div>
+            </Titulo>
+          </Entra>
+        ))
+      ) : (
+        <Entra tipo={entrada}>{conteudo}</Entra>
+      )}
+    </Cena>
+  );
+};
 
 export const Apresentacao: React.FC = () => (
   <AbsoluteFill>
@@ -100,12 +128,19 @@ export const Apresentacao: React.FC = () => (
       <Sequence key={cena.id} from={inicios[i]} durationInFrames={cena.frames}>
         {'convite' in cena ? (
           <Fechamento convite={cena.convite} dominio={cena.dominio} sufixo={cena.sufixo} />
+        ) : 'primeiro' in cena ? (
+          <Minimo
+            primeiro={cena.primeiro}
+            segundo={cena.segundo}
+            otico={cena.otico}
+            oticoSegundo={cena.oticoSegundo}
+            condicao={cena.condicao}
+          />
         ) : 'numero' in cena ? (
           <CenaNumero
             claro={cena.id === 'saque'}
             acima={'acima' in cena ? cena.acima : undefined}
             numero={cena.numero}
-            otico={'otico' in cena ? cena.otico : undefined}
             abaixo={cena.abaixo}
             entrada={cena.entrada}
           />
@@ -115,6 +150,7 @@ export const Apresentacao: React.FC = () => (
             texto={cena.texto}
             corpo={'corpo' in cena ? cena.corpo : undefined}
             entrada={cena.entrada}
+            destaque={'destaque' in cena ? cena.destaque : undefined}
           />
         )}
       </Sequence>

@@ -25,28 +25,66 @@ export const CENAS = [
     // permite o corpo maior: embrulhando sozinha, a linha mais longa era "Você já
     // compra na Shopee", com 24 caracteres, e ela é que travava o tamanho em 82px.
     // Terminar em "cashback?" sozinho é de propósito - é a palavra que o vídeo vende.
-    texto: 'Você já compra\nna Shopee\ne ainda não recebe\ncashback?',
+    // O * marca a palavra que ganha ênfase. Ver TipoDestaque, em Base.tsx.
+    texto: 'Você já compra\nna Shopee\ne ainda não recebe\n*cashback*?',
     // É o gancho: continua sendo a tela mais longa do vídeo e a que fica mais tempo.
     corpo: 114,
     // Entra inteira e calma. É a pergunta que monta o problema; quatro linhas
     // entrando uma a uma aqui atrasariam a leitura logo no primeiro segundo.
     entrada: 'sobe',
+    // A palavra já está escrita em branco; o que chega depois é a tinta.
+    destaque: {tipo: 'pintura', inicio: 24},
   },
   // As duas entram deslizando do mesmo lado: é o que mantém a frase inteira. Ver o
   // comentário do tipo Entrada, em Base.tsx.
-  {id: 'condicao', frames: 36, texto: 'Comprando pela cash-b,', entrada: 'desliza'},
-  {id: 'promessa', frames: 48, texto: 'parte do dinheiro volta', entrada: 'desliza'},
+  {
+    id: 'condicao',
+    frames: 48,
+    // A vírgula entra no grifo junto. Fora dele ela ficaria branca colada na barra,
+    // e para evitar isso a barra tinha de parar rente ao "b", o que deixava a
+    // palavra torta dentro da pastilha. Caneta marca-texto passa por cima da
+    // pontuação mesmo - o que não muda é a palavra, que continua "cash-b".
+    texto: 'Comprando pela *cash-b,*',
+    entrada: 'desliza',
+    // 48 frames e não 36: a barra do grifo leva 20 para crescer, e numa cena de 36
+    // ela terminaria junto com o corte - o espectador veria o efeito, não a palavra.
+    destaque: {tipo: 'grifo', inicio: 16},
+  },
+  {
+    id: 'promessa',
+    frames: 48,
+    // A quebra é explícita para "volta" ficar sozinha na linha: é ela que se move, e
+    // palavra que se move no meio de uma linha empurra as vizinhas.
+    texto: 'parte do dinheiro\n*volta*',
+    entrada: 'desliza',
+    // A palavra chega depois do resto, vindo de fora. O movimento é a própria
+    // palavra: "volta" é a única da frase que pode entrar voltando.
+    destaque: {tipo: 'chega', inicio: 15},
+  },
   // `otico` corrige a folga do desenho do "1" e do "%" - ver o comentário em Numero,
   // em Base.tsx. Valor medido na tinta do quadro renderizado, não chutado.
+  // Cena de dois tempos, montada em Minimo.tsx: o piso de 1% vira 1,6% e a palavra
+  // "mínimo" sobrevive à troca. Os dois vêm de settings.py, não de estimativa -
+  // CASHBACK_MINIMO_VENDA_INDIRETA = 1 e CASHBACK_MINIMO_VENDA_DIRETA = 1.6.
   {
     id: 'minimo',
-    frames: 66,
-    numero: '1%',
+    frames: 136,
+    primeiro: '1%',
     otico: -13,
-    abaixo: 'no mínimo, em toda compra',
-    entrada: 'cresce',
+    segundo: '1,6%',
+    // Mesma correção de folga de desenho do "1%", medida de novo: a vírgula e o 6
+    // mudam as sobras laterais, então o valor não é o mesmo.
+    oticoSegundo: -14,
+    condicao: 'dependendo da forma\nque você compra',
   },
-  {id: 'mais', frames: 42, texto: 'Muitas vezes, bem mais', entrada: 'sobe'},
+  {
+    id: 'mais',
+    frames: 54,
+    texto: 'Muitas vezes,\n*bem mais*',
+    entrada: 'sobe',
+    // Cresce e fica maior que a linha de cima. É a ênfase que o próprio texto pede.
+    destaque: {tipo: 'cresce', inicio: 14},
+  },
   // Aqui o rótulo vem ACIMA do número: "saque a partir de R$ 20" é uma frase só, e
   // quebrá-la com o número no meio é o que a deixa legível de relance.
   {
@@ -60,7 +98,7 @@ export const CENAS = [
   // Duas frases, duas entradas: a pausa entre elas é o que faz o espectador contar
   // dois fatos em vez de ler uma linha só.
   {id: 'semtaxa', frames: 42, texto: 'Sem mensalidade.\nSem taxa.', entrada: 'linhas'},
-  {id: 'marca', frames: 96, convite: 'acesse', dominio: 'cash-b', sufixo: '.com'},
+  {id: 'marca', frames: 84, convite: 'acesse', dominio: 'cash-b', sufixo: '.com'},
 ] as const;
 
 export const DURACAO = CENAS.reduce((total, cena) => total + cena.frames, 0);

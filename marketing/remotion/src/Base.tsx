@@ -1,5 +1,14 @@
 import React from 'react';
-import {AbsoluteFill, Img, interpolate, spring, staticFile, useCurrentFrame, useVideoConfig} from 'remotion';
+import {
+  AbsoluteFill,
+  Img,
+  interpolate,
+  interpolateColors,
+  spring,
+  staticFile,
+  useCurrentFrame,
+  useVideoConfig,
+} from 'remotion';
 import {CORES, FONTE, SEGURO} from './marca';
 
 /** Fundo da cena + a faixa segura onde o texto pode cair.
@@ -51,10 +60,6 @@ export const Cena: React.FC<{fundo: string; children: React.ReactNode; claro?: b
  *             transforma "sem mensalidade, sem taxa" em dois fatos e não numa frase. */
 export type Entrada = 'sobe' | 'desliza' | 'cresce' | 'linhas';
 
-/** Entrada de um elemento: aparece, e o jeito de aparecer vem do tipo.
- *
- * A mola dá a desaceleração; a opacidade entra em interpolate separado porque mola em
- * opacidade passa de 1 no overshoot e a tinta "pisca". */
 /** Quanto o texto anda na horizontal em `desliza`.
  *
  * O teto não é estético: as duas cenas que deslizam param com 140px de margem, e a
@@ -63,6 +68,10 @@ export type Entrada = 'sobe' | 'desliza' | 'cresce' | 'linhas';
  * nesse ponto, mas margem que só vale enquanto ninguém vê não é margem. */
 const DESLOCAMENTO_LATERAL = 48;
 
+/** Entrada de um elemento: aparece, e o jeito de aparecer vem do tipo.
+ *
+ * A mola dá a desaceleração; a opacidade entra em interpolate separado porque mola em
+ * opacidade passa de 1 no overshoot e a tinta "pisca". */
 export const Entra: React.FC<{
   atraso?: number;
   tipo?: Entrada;
@@ -106,7 +115,6 @@ export const Titulo: React.FC<{children: React.ReactNode; claro?: boolean; corpo
       lineHeight: 1.04,
       letterSpacing: '-0.04em',
       color: claro ? CORES.ink : '#fff',
-      whiteSpace: 'pre-line',
     }}
   >
     {children}
@@ -159,8 +167,20 @@ export const Numero: React.FC<{children: string; cor?: string; otico?: number}> 
       color: cor ?? CORES.highlight,
     }}
   >
-    {children.split(' ').map((parte) => (
-      <span key={parte}>{parte}</span>
+    {children.split(' ').map((parte, i) => (
+      <span key={i}>
+        {/* A vírgula ocupa uma célula inteira da mono - 198px em corpo 330 - e o
+            desenho dela usa um sexto disso. Em "1,6%" o buraco resultante faz o olho
+            ler dois números em vez de um. A margem negativa devolve a diferença; o
+            letter-spacing sozinho não resolve, porque ele é igual para todo caractere
+            e apertar o resto na mesma medida colaria os algarismos. */}
+        {parte.split(',').map((trecho, j) => (
+          <React.Fragment key={j}>
+            {j > 0 ? <span style={{margin: '0 -0.15em'}}>,</span> : null}
+            {trecho}
+          </React.Fragment>
+        ))}
+      </span>
     ))}
   </div>
 );
@@ -186,3 +206,125 @@ export const Apoio: React.FC<{
     {children}
   </div>
 );
+
+
+/** Como uma palavra ganha ênfase dentro da frase.
+ *
+ * A cor é sempre a mesma - âmbar é a cor de atenção da marca, e trocá-la a cada cena
+ * faria o espectador procurar significado onde não há. O que muda é o MECANISMO: cada
+ * um é de uma família diferente, e é isso que impede o vídeo de ficar monótono sem
+ * virar feira de efeitos.
+ *
+ * - `pintura` a cor. Varre a palavra da esquerda para a direita, como caneta passando
+ *             por cima. A palavra já estava escrita; o que chega é a tinta.
+ * - `grifo`   a forma. Uma barra cresce POR TRÁS da palavra, do centro para fora. A
+ *             palavra não muda - o que aparece é o fundo dela. (A letra escurece junto
+ *             porque branco sobre âmbar não tem contraste para ler; a mudança de cor
+ *             aqui é consequência da barra, não o efeito.)
+ * - `chega`   o movimento. A palavra entra depois do resto da frase, vindo da direita.
+ *             Serve para "volta", onde o movimento diz a própria palavra.
+ * - `cresce`  o tamanho. A palavra aumenta e fica maior que as vizinhas. Serve para
+ *             "bem mais", pelo mesmo motivo.
+ *
+ * O `transform` de `cresce` e `chega` não reflui nada: o span é inline-block e o
+ * espaço que ele ocupa na linha continua sendo o do tamanho de repouso. Sem isso a
+ * linha inteira se mexeria junto e a ênfase viraria tremor. */
+export type TipoDestaque = 'pintura' | 'grifo' | 'chega' | 'cresce';
+
+const DURACAO_PINTURA = 12;
+const AVANCO_CHEGA = 120;
+const ESCALA_CRESCE = 1.18;
+
+export const Destaque: React.FC<{
+  tipo: TipoDestaque;
+  inicio: number;
+  claro?: boolean;
+  children: string;
+}> = ({tipo, inicio, claro, children}) => {
+  const frame = useCurrentFrame();
+  const {fps} = useVideoConfig();
+  const mola = spring({frame: frame - inicio, fps, config: {damping: 16}});
+  const base = claro ? CORES.ink : '#fff';
+
+  if (tipo === 'pintura') {
+    // Duas paradas no mesmo ponto fazem a borda dura: é o que dá a leitura de tinta
+    // avançando, e não de palavra trocando de cor.
+    const avanco =
+      interpolate(frame, [inicio, inicio + DURACAO_PINTURA], [0, 100], {
+        extrapolateLeft: 'clamp',
+        extrapolateRight: 'clamp',
+      });
+    return (
+      <span
+        style={{
+          backgroundImage: `linear-gradient(90deg, ${CORES.highlight} ${avanco}%, ${base} ${avanco}%)`,
+          backgroundClip: 'text',
+          WebkitBackgroundClip: 'text',
+          WebkitTextFillColor: 'transparent',
+        }}
+      >
+        {children}
+      </span>
+    );
+  }
+
+  if (tipo === 'grifo') {
+    const aberto = interpolate(mola, [0, 1], [0, 1]);
+    // A barra abre por clip-path, e não por scaleX, porque scaleX esmaga o raio dos
+    // cantos junto: no meio da animação a pastilha vira lente. Com clip-path a forma
+    // é sempre a mesma e o que muda é quanto dela se vê.
+    const recorte = (1 - aberto) * 50;
+    // A letra escurece enquanto a barra abre. Branco sobre âmbar tem contraste de 2:1
+    // e roxo sobre roxo não existe, então nenhuma das duas cores serve durante a
+    // travessia - o jeito é atravessar depressa, junto com a barra.
+    const tinta = interpolateColors(aberto, [0.3, 0.8], [base, CORES.brandStrong]);
+    return (
+      <span style={{position: 'relative', display: 'inline-block', isolation: 'isolate'}}>
+        <span
+          style={{
+            position: 'absolute',
+            left: '-0.09em',
+            right: '-0.07em',
+            top: '0.04em',
+            bottom: '0.1em',
+            background: CORES.highlight,
+            clipPath: `inset(0 ${recorte}% 0 ${recorte}% round 18px)`,
+            zIndex: 0,
+          }}
+        />
+        <span style={{position: 'relative', zIndex: 1, color: tinta}}>{children}</span>
+      </span>
+    );
+  }
+
+  if (tipo === 'chega') {
+    return (
+      <span
+        style={{
+          display: 'inline-block',
+          color: CORES.highlight,
+          opacity: interpolate(frame - inicio, [0, 8], [0, 1], {
+            extrapolateLeft: 'clamp',
+            extrapolateRight: 'clamp',
+          }),
+          transform: `translateX(${interpolate(mola, [0, 1], [AVANCO_CHEGA, 0])}px)`,
+        }}
+      >
+        {children}
+      </span>
+    );
+  }
+
+  return (
+    <span
+      style={{
+        display: 'inline-block',
+        color: CORES.highlight,
+        transform: `scale(${interpolate(mola, [0, 1], [1, ESCALA_CRESCE])})`,
+        transformOrigin: 'center',
+      }}
+    >
+      {children}
+    </span>
+  );
+};
