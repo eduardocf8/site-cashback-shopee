@@ -32,26 +32,65 @@ export const Cena: React.FC<{fundo: string; children: React.ReactNode; claro?: b
   </AbsoluteFill>
 );
 
-/** Entrada padrão de qualquer elemento: sobe alguns pixels e aparece.
+/** As entradas possíveis. São quatro, não oito.
+ *
+ * A tentação, num vídeo de oito cenas, é dar uma animação diferente para cada uma.
+ * O resultado é o contrário do pretendido: com oito movimentos diferentes em 15
+ * segundos, o espectador para de ler o texto e começa a assistir às transições, e o
+ * vídeo passa a parecer demonstração de template. O que dá dinâmica é o movimento
+ * *dizer* alguma coisa - então cada entrada aqui tem um papel, e cenas com o mesmo
+ * papel repetem a mesma entrada de propósito.
+ *
+ * - `sobe`    afirmação solta. É a calma, e é a padrão.
+ * - `desliza` frase que continua. As cenas 2 e 3 são uma frase só cortada em duas;
+ *             entrando do mesmo lado, o olho lê "ainda é a mesma frase". Se cada uma
+ *             entrasse de um jeito, a frase se partia em duas ideias.
+ * - `cresce`  número. Escala em vez de deslocamento, porque o que o número faz na
+ *             cena é aparecer com peso, não chegar de algum lugar.
+ * - `linhas`  lista. Cada linha entra por conta, e a pausa entre elas é o que
+ *             transforma "sem mensalidade, sem taxa" em dois fatos e não numa frase. */
+export type Entrada = 'sobe' | 'desliza' | 'cresce' | 'linhas';
+
+/** Entrada de um elemento: aparece, e o jeito de aparecer vem do tipo.
  *
  * A mola dá a desaceleração; a opacidade entra em interpolate separado porque mola em
  * opacidade passa de 1 no overshoot e a tinta "pisca". */
-export const Entra: React.FC<{atraso?: number; children: React.ReactNode}> = ({
-  atraso = 0,
-  children,
-}) => {
+/** Quanto o texto anda na horizontal em `desliza`.
+ *
+ * O teto não é estético: as duas cenas que deslizam param com 140px de margem, e a
+ * área segura do Instagram pede 90 - então 48px é o máximo que o texto pode recuar
+ * sem, no primeiro frame, começar fora dela. Na prática ele ainda está transparente
+ * nesse ponto, mas margem que só vale enquanto ninguém vê não é margem. */
+const DESLOCAMENTO_LATERAL = 48;
+
+export const Entra: React.FC<{
+  atraso?: number;
+  tipo?: Entrada;
+  children: React.ReactNode;
+}> = ({atraso = 0, tipo = 'sobe', children}) => {
   const frame = useCurrentFrame();
   const {fps} = useVideoConfig();
-  const mola = spring({frame: frame - atraso, fps, config: {damping: 200}});
+  // O número é o único que ganha mola com sobra (damping menor): um passo além de 1 e
+  // de volta é o que lê como impacto. Nos textos a sobra viraria balanço, e texto
+  // balançando em corpo de cartaz parece erro de render.
+  const mola = spring({
+    frame: frame - atraso,
+    fps,
+    config: tipo === 'cresce' ? {damping: 16} : {damping: 200},
+  });
   const opacidade = interpolate(frame - atraso, [0, 8], [0, 1], {
     extrapolateLeft: 'clamp',
     extrapolateRight: 'clamp',
   });
-  return (
-    <div style={{transform: `translateY(${interpolate(mola, [0, 1], [44, 0])}px)`, opacity: opacidade}}>
-      {children}
-    </div>
-  );
+
+  const transformar =
+    tipo === 'cresce'
+      ? `scale(${interpolate(mola, [0, 1], [0.86, 1])})`
+      : tipo === 'desliza'
+        ? `translateX(${interpolate(mola, [0, 1], [-DESLOCAMENTO_LATERAL, 0])}px)`
+        : `translateY(${interpolate(mola, [0, 1], [44, 0])}px)`;
+
+  return <div style={{transform: transformar, opacity: opacidade}}>{children}</div>;
 };
 
 export const Titulo: React.FC<{children: React.ReactNode; claro?: boolean; corpo?: number}> = ({

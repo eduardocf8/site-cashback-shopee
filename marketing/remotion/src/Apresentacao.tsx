@@ -1,6 +1,7 @@
 import React from 'react';
 import {AbsoluteFill, Sequence} from 'remotion';
 import {Apoio, Cena, Entra, Numero, Titulo} from './Base';
+import type {Entrada} from './Base';
 import {CENAS} from './constantes';
 import {Fechamento} from './Fechamento';
 import {CORES} from './marca';
@@ -34,7 +35,8 @@ const CenaNumero: React.FC<{
   numero: string;
   otico?: number;
   abaixo: string;
-}> = ({claro, acima, numero, otico, abaixo}) => (
+  entrada: Entrada;
+}> = ({claro, acima, numero, otico, abaixo, entrada}) => (
   <Cena fundo={claro ? 'fundo-claro.png' : 'fundo-diagonal.png'} claro={claro}>
     {acima ? (
       <Entra>
@@ -43,7 +45,9 @@ const CenaNumero: React.FC<{
         </Apoio>
       </Entra>
     ) : null}
-    <Entra atraso={acima ? 6 : 0}>
+    {/* O tipo vale para o número, não para os rótulos: se a cena inteira crescesse,
+        o bloco todo "respiraria" e o peso do algarismo se perderia no meio. */}
+    <Entra atraso={acima ? 6 : 0} tipo={entrada}>
       <Numero cor={claro ? CORES.success : CORES.highlight} otico={otico}>
         {numero}
       </Numero>
@@ -53,6 +57,40 @@ const CenaNumero: React.FC<{
         {abaixo}
       </Apoio>
     </Entra>
+  </Cena>
+);
+
+/** Cena de texto.
+ *
+ * Em `linhas` o bloco é quebrado nas próprias quebras que o texto já declara, e cada
+ * linha entra 7 frames depois da anterior. 7 é o menor intervalo em que a pausa ainda
+ * se percebe a 30fps - abaixo disso as linhas parecem entrar juntas, e o efeito vira
+ * só um borrão. Nos outros tipos o texto continua sendo um bloco só: quebrar por
+ * quebrar faria a frase perder a unidade. */
+const ATRASO_ENTRE_LINHAS = 7;
+
+const CenaTexto: React.FC<{
+  claro: boolean;
+  texto: string;
+  corpo?: number;
+  entrada: Entrada;
+}> = ({claro, texto, corpo, entrada}) => (
+  <Cena fundo={claro ? 'fundo-claro.png' : 'fundo-roxo.png'} claro={claro}>
+    {entrada === 'linhas' ? (
+      texto.split('\n').map((linha, i) => (
+        <Entra key={linha} atraso={i * ATRASO_ENTRE_LINHAS}>
+          <Titulo claro={claro} corpo={corpo}>
+            {linha}
+          </Titulo>
+        </Entra>
+      ))
+    ) : (
+      <Entra tipo={entrada}>
+        <Titulo claro={claro} corpo={corpo}>
+          {texto}
+        </Titulo>
+      </Entra>
+    )}
   </Cena>
 );
 
@@ -69,15 +107,15 @@ export const Apresentacao: React.FC = () => (
             numero={cena.numero}
             otico={'otico' in cena ? cena.otico : undefined}
             abaixo={cena.abaixo}
+            entrada={cena.entrada}
           />
         ) : (
-          <Cena fundo={cena.id === 'semtaxa' ? 'fundo-claro.png' : 'fundo-roxo.png'} claro={cena.id === 'semtaxa'}>
-            <Entra>
-              <Titulo claro={cena.id === 'semtaxa'} corpo={'corpo' in cena ? cena.corpo : undefined}>
-                {cena.texto}
-              </Titulo>
-            </Entra>
-          </Cena>
+          <CenaTexto
+            claro={cena.id === 'semtaxa'}
+            texto={cena.texto}
+            corpo={'corpo' in cena ? cena.corpo : undefined}
+            entrada={cena.entrada}
+          />
         )}
       </Sequence>
     ))}

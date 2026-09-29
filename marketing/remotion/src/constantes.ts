@@ -28,17 +28,38 @@ export const CENAS = [
     texto: 'Você já compra\nna Shopee\ne ainda não recebe\ncashback?',
     // É o gancho: continua sendo a tela mais longa do vídeo e a que fica mais tempo.
     corpo: 114,
+    // Entra inteira e calma. É a pergunta que monta o problema; quatro linhas
+    // entrando uma a uma aqui atrasariam a leitura logo no primeiro segundo.
+    entrada: 'sobe',
   },
-  {id: 'condicao', frames: 36, texto: 'Comprando pela cash-b,'},
-  {id: 'promessa', frames: 48, texto: 'parte do dinheiro volta'},
+  // As duas entram deslizando do mesmo lado: é o que mantém a frase inteira. Ver o
+  // comentário do tipo Entrada, em Base.tsx.
+  {id: 'condicao', frames: 36, texto: 'Comprando pela cash-b,', entrada: 'desliza'},
+  {id: 'promessa', frames: 48, texto: 'parte do dinheiro volta', entrada: 'desliza'},
   // `otico` corrige a folga do desenho do "1" e do "%" - ver o comentário em Numero,
   // em Base.tsx. Valor medido na tinta do quadro renderizado, não chutado.
-  {id: 'minimo', frames: 66, numero: '1%', otico: -13, abaixo: 'no mínimo, em toda compra'},
-  {id: 'mais', frames: 42, texto: 'Muitas vezes, bem mais'},
+  {
+    id: 'minimo',
+    frames: 66,
+    numero: '1%',
+    otico: -13,
+    abaixo: 'no mínimo, em toda compra',
+    entrada: 'cresce',
+  },
+  {id: 'mais', frames: 42, texto: 'Muitas vezes, bem mais', entrada: 'sobe'},
   // Aqui o rótulo vem ACIMA do número: "saque a partir de R$ 20" é uma frase só, e
   // quebrá-la com o número no meio é o que a deixa legível de relance.
-  {id: 'saque', frames: 66, acima: 'saque a partir de', numero: 'R$ 20', abaixo: 'no Pix'},
-  {id: 'semtaxa', frames: 42, texto: 'Sem mensalidade.\nSem taxa.'},
+  {
+    id: 'saque',
+    frames: 66,
+    acima: 'saque a partir de',
+    numero: 'R$ 20',
+    abaixo: 'no Pix',
+    entrada: 'cresce',
+  },
+  // Duas frases, duas entradas: a pausa entre elas é o que faz o espectador contar
+  // dois fatos em vez de ler uma linha só.
+  {id: 'semtaxa', frames: 42, texto: 'Sem mensalidade.\nSem taxa.', entrada: 'linhas'},
   {id: 'marca', frames: 96, convite: 'acesse', dominio: 'cash-b', sufixo: '.com'},
 ] as const;
 
