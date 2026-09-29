@@ -162,6 +162,36 @@ class ExecutarResolucaoItemIdAlvoTests(TestCase):
         self.assertIn("item_id_alvo_erro", resposta.json())
 
 
+@override_settings(TAREFAS_TOKEN="segredo-de-teste")
+class ExecutarLembreteVerificacaoEmailTests(TestCase):
+    """Cron dedicado (achado da análise de aquisição paga de 29/09): só 40,7% dos
+    cadastros verificam o e-mail e não existia nenhum reenvio automático - só o link
+    original (vale 3 dias) e o aviso passivo no dashboard."""
+
+    def test_sem_token_retorna_forbidden(self):
+        resposta = self.client.get(reverse("executar_lembrete_verificacao_email"))
+        self.assertEqual(resposta.status_code, 403)
+
+    @patch("cashback_shopee.views.enviar_lembretes_verificacao_pendente")
+    def test_token_certo_manda_os_lembretes(self, mock_enviar):
+        mock_enviar.return_value = 4
+
+        resposta = self.client.get(reverse("executar_lembrete_verificacao_email"), {"token": "segredo-de-teste"})
+
+        self.assertEqual(resposta.status_code, 200)
+        self.assertEqual(resposta.json()["lembretes_verificacao_enviados"], 4)
+        mock_enviar.assert_called_once()
+
+    @patch("cashback_shopee.views.enviar_lembretes_verificacao_pendente")
+    def test_erro_fica_registrado_na_resposta_sem_quebrar(self, mock_enviar):
+        mock_enviar.side_effect = Exception("falha inesperada")
+
+        resposta = self.client.get(reverse("executar_lembrete_verificacao_email"), {"token": "segredo-de-teste"})
+
+        self.assertEqual(resposta.status_code, 200)
+        self.assertIn("lembretes_verificacao_erro", resposta.json())
+
+
 @override_settings(BREVO_API_KEY="chave-de-teste")
 class BrevoAPIEmailBackendTests(TestCase):
     """O Render bloqueia SMTP de saída, então o envio de e-mail usa a API HTTP do

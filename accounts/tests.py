@@ -20,6 +20,7 @@ from .comunicacoes import enviar_comunicacao, obter_destinatarios, renderizar_co
 from .forms import EditarPerfilForm
 from .models import ComunicacaoEmail, ConfiguracaoIndicacao, Indicacao, PushSubscription, User
 from .push import enviar_push
+from .tokens import enviar_lembretes_verificacao_pendente, gerar_token_verificacao
 
 
 class CodigoIndicacaoTests(TestCase):
@@ -153,6 +154,15 @@ class RateLimitTests(TestCase):
             self.assertEqual(resposta.status_code, 302)
 
         resposta = self.client.get(reverse("reenviar_verificacao"))
+
+        self.assertEqual(resposta.status_code, 429)
+
+    def test_verificar_email_bloqueia_depois_do_limite(self):
+        for _ in range(5):
+            resposta = self.client.get(reverse("verificar_email", args=["token-qualquer"]))
+            self.assertEqual(resposta.status_code, 200)
+
+        resposta = self.client.get(reverse("verificar_email", args=["token-qualquer"]))
 
         self.assertEqual(resposta.status_code, 429)
 
@@ -1041,6 +1051,140 @@ class ComunicacaoViewPassaTipoTests(TestCase):
 class EditarPerfilFormTests(TestCase):
     def test_form_inclui_campo_de_marketing(self):
         self.assertIn("aceita_email_marketing", EditarPerfilForm.Meta.fields)
+
+
+# 10 dias atrás - bem além dos 3 dias de validade do token (accounts/tokens.py), pra
+# gerar um token com assinatura válida mas vencido nos testes abaixo.
+_HA_10_DIAS = timezone.now().timestamp() - 60 * 60 * 24 * 10
+
+
+class VerificarEmailTests(TestCase):
+    def setUp(self):
+        cache.clear()  # o rate limit de verificar_email usa o mesmo IP em todo teste
+        self.usuario = User.objects.create_user(
+            username="carla", password="senha123", cpf="61814274850", email="carla@example.com"
+        )
+
+    def _token_vencido(self):
+        with patch("django.core.signing.time.time", return_value=_HA_10_DIAS):
+            return gerar_token_verificacao(self.usuario)
+
+    def test_token_valido_confirma_email(self):
+        token = gerar_token_verificacao(self.usuario)
+
+        resposta = self.client.get(reverse("verificar_email", args=[token]), follow=True)
+
+        self.usuario.refresh_from_db()
+        self.assertTrue(self.usuario.email_verificado)
+        self.assertContains(resposta, "verificado com sucesso")
+
+    def test_token_invalido_nao_verifica_nem_reenvia(self):
+        with patch("accounts.views.enviar_email_verificacao") as mock_enviar:
+            resposta = self.client.get(reverse("verificar_email", args=["token-invalido"]), follow=True)
+
+        mock_enviar.assert_not_called()
+        self.usuario.refresh_from_db()
+        self.assertFalse(self.usuario.email_verificado)
+        self.assertContains(resposta, "inválido ou expirou")
+
+    def test_token_vencido_reenvia_um_novo_automaticamente(self):
+        token = self._token_vencido()
+
+        with patch("accounts.views.enviar_email_verificacao") as mock_enviar:
+            resposta = self.client.get(reverse("verificar_email", args=[token]), follow=True)
+
+        mock_enviar.assert_called_once()
+        self.assertEqual(mock_enviar.call_args.args[0], self.usuario)
+        self.usuario.refresh_from_db()
+        self.assertFalse(self.usuario.email_verificado)
+        self.assertContains(resposta, "mandamos um novo")
+
+    def test_token_vencido_de_quem_ja_verificou_nao_reenvia(self):
+        self.usuario.email_verificado = True
+        self.usuario.save(update_fields=["email_verificado"])
+        token = self._token_vencido()
+
+        with patch("accounts.views.enviar_email_verificacao") as mock_enviar:
+            resposta = self.client.get(reverse("verificar_email", args=[token]), follow=True)
+
+        mock_enviar.assert_not_called()
+        self.assertContains(resposta, "já não é mais necessário")
+
+    def test_token_vencido_com_email_trocado_nao_reenvia(self):
+        # O e-mail salvo no token é o de quando ele foi gerado - se a pessoa trocou de
+        # e-mail depois, não faz sentido reenviar pro endereço antigo.
+        token = self._token_vencido()
+        self.usuario.email = "novo@example.com"
+        self.usuario.save(update_fields=["email"])
+
+        with patch("accounts.views.enviar_email_verificacao") as mock_enviar:
+            resposta = self.client.get(reverse("verificar_email", args=[token]), follow=True)
+
+        mock_enviar.assert_not_called()
+        self.assertContains(resposta, "inválido ou expirou")
+
+
+class LembretesVerificacaoTests(TestCase):
+    def _usuario(self, nome, horas_atras, email_verificado=False, email="tem@example.com"):
+        self._n = getattr(self, "_n", 0) + 1
+        usuario = User.objects.create_user(
+            username=nome, password="senha123", cpf=f"{self._n:011d}",
+            email=email, email_verificado=email_verificado,
+        )
+        User.objects.filter(pk=usuario.pk).update(date_joined=timezone.now() - timedelta(hours=horas_atras))
+        usuario.refresh_from_db()
+        return usuario
+
+    def test_manda_pra_quem_esta_na_janela_de_24_a_48h_sem_verificar(self):
+        alvo = self._usuario("dentro_da_janela", horas_atras=30)
+        request = RequestFactory().get("/tarefas/lembrete-verificacao-email/")
+
+        with patch("accounts.tokens.EmailMessage") as MockEmail:
+            total = enviar_lembretes_verificacao_pendente(request)
+
+        self.assertEqual(total, 1)
+        MockEmail.return_value.send.assert_called_once()
+        self.assertEqual(MockEmail.call_args.kwargs["to"], [alvo.email])
+
+    def test_nao_manda_pra_quem_ainda_nao_completou_24h(self):
+        self._usuario("recem_cadastrado", horas_atras=5)
+        request = RequestFactory().get("/tarefas/lembrete-verificacao-email/")
+
+        with patch("accounts.tokens.EmailMessage") as MockEmail:
+            total = enviar_lembretes_verificacao_pendente(request)
+
+        self.assertEqual(total, 0)
+        MockEmail.assert_not_called()
+
+    def test_nao_manda_pra_quem_passou_de_48h(self):
+        self._usuario("cadastro_antigo", horas_atras=72)
+        request = RequestFactory().get("/tarefas/lembrete-verificacao-email/")
+
+        with patch("accounts.tokens.EmailMessage") as MockEmail:
+            total = enviar_lembretes_verificacao_pendente(request)
+
+        self.assertEqual(total, 0)
+        MockEmail.assert_not_called()
+
+    def test_nao_manda_pra_quem_ja_verificou(self):
+        self._usuario("ja_verificou", horas_atras=30, email_verificado=True)
+        request = RequestFactory().get("/tarefas/lembrete-verificacao-email/")
+
+        with patch("accounts.tokens.EmailMessage") as MockEmail:
+            total = enviar_lembretes_verificacao_pendente(request)
+
+        self.assertEqual(total, 0)
+        MockEmail.assert_not_called()
+
+    def test_nao_manda_pra_quem_nao_tem_email(self):
+        self._usuario("sem_email", horas_atras=30, email="")
+        request = RequestFactory().get("/tarefas/lembrete-verificacao-email/")
+
+        with patch("accounts.tokens.EmailMessage") as MockEmail:
+            total = enviar_lembretes_verificacao_pendente(request)
+
+        self.assertEqual(total, 0)
+        MockEmail.assert_not_called()
 
 
 class FunilCadastrosTests(TestCase):

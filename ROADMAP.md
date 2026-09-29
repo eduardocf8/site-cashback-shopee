@@ -1613,6 +1613,72 @@ achava que atrairia mais interação. Diferente da vitrine de ofertas (parte
       envio → `<img src="http://.../media/comunicacoes/banners/...">` sai
       certinho no e-mail (backend de console).
 
+## Fase 51 — Fechar buracos na verificação de e-mail ✅
+
+Vem de uma análise de aquisição paga (29/09/2026): cruzando Meta Ads com o
+banco de produção, o funil real de quem se cadastra por anúncio mostrou que só
+40,7% verificam o e-mail - maior alavanca de baixo custo encontrada (o e-mail é
+o canal mais barato de recompra, e saque exige e-mail verificado). Antes de
+mexer em qualquer coisa, li o fluxo inteiro (`accounts/views.py`,
+`accounts/tokens.py`, `saques/views.py`) pra separar o que já existia do que
+faltava de verdade.
+
+**O que já existia** (não precisou mudar): dashboard já mostra aviso + link de
+reenvio quando `not user.email_verificado`, `reenviar_verificacao` já era
+rate-limited, e saque já exige e-mail verificado.
+
+**Os 2 gaps reais encontrados, cada um com opção escolhida pelo usuário:**
+
+- [x] **Link expirado (token de 3 dias) virava beco sem saída.**
+      `accounts/tokens.py::decodificar_token_verificacao_mesmo_vencido` (novo)
+      decodifica o payload de um token com assinatura válida mas vencida
+      (`signing.loads(..., max_age=None)`, sem checar validade - só serve pra
+      descobrir de quem era, nunca pra confirmar o e-mail de verdade). Com
+      isso, `verificar_email` (`accounts/views.py`) já reenvia um link novo
+      automaticamente antes de mostrar qualquer coisa, distinguindo 3
+      situações: token só venceu (reenvia + avisa), token de quem já
+      verificou nesse meio tempo (não reenvia, só avisa), token genuinamente
+      inválido/adulterado ou de e-mail que já mudou (não reenvia, erro
+      genérico). Rate limit próprio (5/10min por IP) pra essa view evita abuso
+      do reenvio automático.
+- [x] **Página dedicada pro caso de link vencido** (pedido explícito do
+      usuário - "fica mais profissional" do que cair na home com uma
+      mensagem solta). `accounts/templates/accounts/link_verificacao.html`
+      (novo, estende `accounts/base.html`, mesmo estilo de
+      `senha_resetar_enviado.html`) mostra um título/texto diferente pra cada
+      uma das 3 situações acima, sempre com um link "Entrar na minha conta".
+      O caso de token válido (confirmação com sucesso) continua indo direto
+      pro dashboard/login, sem mudança - só o caminho de erro/vencido ganhou
+      página própria.
+- [x] **Nenhum reenvio proativo existia** - só acontecia se a pessoa notasse
+      o aviso do dashboard sozinha ou clicasse no link original dentro de 3
+      dias. `accounts/tokens.py::enviar_lembretes_verificacao_pendente`
+      (novo) manda o e-mail de novo pra quem se cadastrou entre 24h e 48h
+      atrás e ainda não verificou - janela de 24h evita mandar 2x pra mesma
+      pessoa rodando 1x/dia. Chamado por `/tarefas/lembrete-verificacao-email/`
+      (novo, `cashback_shopee/views.py`/`urls.py`, mesmo padrão `TAREFAS_TOKEN`
+      dos outros endpoints de tarefa), disparado por um novo Cron Job do
+      Render (`cron-lembrete-verificacao-email`, 03:30 - documentado em
+      `marketing/instagram/README.md`, ainda precisa ser criado manualmente
+      no dashboard). Manda 1 e-mail por pessoa em série (BCC não dá - cada
+      token de verificação é individual), por isso roda de madrugada como os
+      outros.
+- [x] Testes cobrindo: as 3 situações do link vencido (reenvia, já verificado
+      não reenvia, e-mail trocado não reenvia), token válido continua
+      confirmando normal, rate limit da nova view, e o lembrete automático
+      (dentro/fora da janela de 24-48h, já verificado, sem e-mail). Verificado
+      também via Playwright contra o `runserver` local: as 3 páginas
+      renderizam certo, e o e-mail de lembrete sai com o link certo no
+      backend de console.
+
+Fora do código (fica registrado pra não perder o contexto da análise): SPF/
+DKIM/DMARC do domínio não dava pra conferir a partir do sandbox (sem saída
+DNS) - `DOMINIO_EMAIL.md` diz que foi configurado junto com o DMARC na Brevo,
+mas só dá pra confirmar "Verificado" direto no painel da Brevo. Os outros 3
+itens da análise (gravar UTM de origem no cadastro, mostrar "faltam R$X pro
+saque" no dashboard, re-medir o funil em ~30 dias) ficaram fora do escopo
+desta fase - não foram pedidos ainda.
+
 ---
 
 Pra continuar esse roadmap numa conversa nova, basta apontar esse arquivo

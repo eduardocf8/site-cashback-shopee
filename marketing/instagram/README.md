@@ -355,10 +355,14 @@ partir de um blueprint):
 | `cron-resolver-item-alvo` | `20 6 * * *` | 03:20 | `pip install requests` | `python3 scripts/chamar_tarefa_agendada.py /tarefas/resolver-item-alvo/` |
 | `cron-instagram-diario` | `0 14 * * *` | 11:00 | `pip install requests` | `python3 scripts/chamar_tarefa_agendada.py /tarefas/publicar-instagram/` |
 | `cron-stories-oferta` | `0 11,13,18,21,23 * * *` | 08h, 10h, 15h, 18h, 20h | `pip install requests` | `python3 scripts/chamar_tarefa_agendada.py /tarefas/postar-story-oferta/` |
+| `cron-lembrete-verificacao-email` | `30 6 * * *` | 03:30 | `pip install requests` | `python3 scripts/chamar_tarefa_agendada.py /tarefas/lembrete-verificacao-email/` |
 
-**`cron-resolver-item-alvo` ainda precisa ser criado manualmente** (Fase 41/42 do
-ROADMAP.md, adicionada depois dos 4 originais) - segue exatamente a mesma
-"Configuração de cada Cron Job" abaixo, só trocando o Start Command e o horário.
+**`cron-resolver-item-alvo` e `cron-lembrete-verificacao-email` ainda precisam
+ser criados manualmente** (adicionados depois dos originais - Fase 41/42 e a
+análise de aquisição paga de 29/09, respectivamente) - seguem exatamente a
+mesma "Configuração de cada Cron Job" abaixo, só trocando o Start Command e o
+horário. `cron-lembrete-verificacao-email` roda 10 minutos depois de
+`cron-resolver-item-alvo` (03:30), seguindo o mesmo espaçamento de sempre.
 
 `cron-stories-oferta` simplificou os horários de propósito (antes eram
 09:00/11:30/14:00/16:30/19:00 BRT, com minutos quebrados pra evitar o

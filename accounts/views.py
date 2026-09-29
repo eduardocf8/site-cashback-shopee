@@ -22,7 +22,11 @@ from cashback_shopee.meta_capi import enviar_evento, gerar_event_id
 from .forms import ChavePixForm, EditarPerfilForm, RegistroForm
 from .models import ConfiguracaoIndicacao, Indicacao, PushSubscription
 from .ratelimit import limitar_por_ip
-from .tokens import enviar_email_verificacao, validar_token_verificacao
+from .tokens import (
+    decodificar_token_verificacao_mesmo_vencido,
+    enviar_email_verificacao,
+    validar_token_verificacao,
+)
 
 User = get_user_model()
 
@@ -70,11 +74,30 @@ def _criar_indicacao_se_valida(usuario, codigo_indicacao):
         Indicacao.objects.create(indicador=indicador, indicado=usuario)
 
 
+def _situacao_do_token_vencido(request, token) -> str:
+    """Chamado quando validar_token_verificacao rejeita o token - tenta distinguir
+    "só venceu" (assinatura ok, passou dos 3 dias) de "inválido de verdade"
+    (adulterado/garbage) pra já mandar um novo link automaticamente no primeiro caso,
+    em vez de deixar a pessoa numa página de erro sem saída. Devolve qual situação
+    aconteceu - accounts/templates/accounts/link_verificacao.html decide o texto/CTA
+    certo a partir disso."""
+    dados = decodificar_token_verificacao_mesmo_vencido(token)
+    if dados:
+        usuario = User.objects.filter(pk=dados["user_id"], email=dados["email"]).first()
+        if usuario and usuario.email_verificado:
+            return "ja_verificado"
+        if usuario:
+            enviar_email_verificacao(usuario, request)
+            return "reenviado"
+    return "invalido"
+
+
+@limitar_por_ip("verificar_email", limite=5, janela_segundos=600)
 def verificar_email(request, token):
     dados = validar_token_verificacao(token)
     if not dados:
-        messages.error(request, "Esse link de verificação é inválido ou expirou.")
-        return redirect("home")
+        situacao = _situacao_do_token_vencido(request, token)
+        return render(request, "accounts/link_verificacao.html", {"situacao": situacao})
 
     try:
         usuario = User.objects.get(pk=dados["user_id"])

@@ -7,6 +7,7 @@ from django.http import HttpResponse, HttpResponseForbidden, JsonResponse
 from django.utils import timezone
 from django.views.decorators.cache import cache_control
 
+from accounts.tokens import enviar_lembretes_verificacao_pendente
 from instagram_bot.lembrete_token import verificar_validade_token
 from instagram_bot.services import executar_publicacoes_do_dia, publicar_story_oferta_do_momento
 from links.services import resolver_item_id_alvo_pendentes
@@ -169,6 +170,27 @@ def executar_resolucao_item_id_alvo(request):
         resultado["item_id_alvo_resolvido"] = resolver_item_id_alvo_pendentes()
     except Exception as erro:
         resultado["item_id_alvo_erro"] = str(erro)
+
+    return JsonResponse(resultado)
+
+
+def executar_lembrete_verificacao_email(request):
+    """Manda um lembrete (novo link) pra quem se cadastrou entre 24h e 48h atrás e
+    ainda não confirmou o e-mail (ver accounts/tokens.py::enviar_lembretes_verificacao_pendente).
+
+    Cron Job dedicado de propósito, mesmo motivo de executar_encurtamento_nomes/
+    executar_resolucao_item_id_alvo: manda 1 e-mail por pessoa em série (BCC não dá,
+    cada um carrega um token diferente), então roda de madrugada, fora do horário de
+    pico - não cabe dividir o orçamento com executar_tarefas_agendadas.
+    """
+    if not _token_valido(request):
+        return HttpResponseForbidden("Token inválido ou não configurado.")
+
+    resultado = {}
+    try:
+        resultado["lembretes_verificacao_enviados"] = enviar_lembretes_verificacao_pendente(request)
+    except Exception as erro:
+        resultado["lembretes_verificacao_erro"] = str(erro)
 
     return JsonResponse(resultado)
 

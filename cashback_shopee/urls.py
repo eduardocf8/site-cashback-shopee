@@ -30,6 +30,11 @@ urlpatterns = [
         name="executar_resolucao_item_id_alvo",
     ),
     path("tarefas/postar-story-oferta/", views.executar_story_oferta, name="executar_story_oferta"),
+    path(
+        "tarefas/lembrete-verificacao-email/",
+        views.executar_lembrete_verificacao_email,
+        name="executar_lembrete_verificacao_email",
+    ),
     path("robots.txt", views.robots_txt, name="robots_txt"),
     path("sw.js", views.service_worker, name="service_worker"),
     path("sitemap.xml", sitemap, {"sitemaps": sitemaps}, name="sitemap"),
