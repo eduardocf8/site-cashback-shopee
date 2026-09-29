@@ -1,0 +1,20 @@
+{
+  "name": "cash-b-remotion",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Vídeos da cash-b gerados com Remotion. Ver README.md nesta pasta.",
+  "scripts": {
+    "studio": "remotion studio src/index.ts",
+    "render": "remotion render src/index.ts Apresentacao saida/apresentacao.mp4 --browser-executable=/opt/pw-browsers/chromium_headless_shell-1194/chrome-linux/headless_shell"
+  },
+  "dependencies": {
+    "@remotion/cli": "4.0.529",
+    "react": "^19.0.0",
+    "react-dom": "^19.0.0",
+    "remotion": "4.0.529"
+  },
+  "devDependencies": {
+    "@types/react": "^19.0.0",
+    "typescript": "^5.6.0"
+  }
+}
