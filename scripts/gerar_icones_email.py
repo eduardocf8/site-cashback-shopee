@@ -37,8 +37,9 @@ def _cor_gradiente(t: float) -> tuple:
 def gerar_icone_regras(caminho: str) -> None:
     img = Image.new("RGBA", (TAMANHO, TAMANHO), (0, 0, 0, 0))
     draw = ImageDraw.Draw(img)
-    margem = TAMANHO * 0.06
-    draw.ellipse([margem, margem, TAMANHO - margem, TAMANHO - margem], fill=BRAND_PURPLE)
+    # Mesmo formato do ícone do Instagram (rounded square, raio ~22% do lado) e mesmas
+    # dimensões - os 2 ícones do e-mail seguem o mesmo "porte" visual lado a lado.
+    draw.rounded_rectangle([0, 0, TAMANHO - 1, TAMANHO - 1], radius=int(TAMANHO * 0.22), fill=BRAND_PURPLE)
 
     # 3 linhas brancas (glifo de lista/regras), com uma bolinha antes de cada uma
     largura_linha = TAMANHO * 0.42
