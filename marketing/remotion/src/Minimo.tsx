@@ -100,9 +100,9 @@ export const Minimo: React.FC<{
   const resto = (texto: string) => (
     <span
       style={{
-        display: 'inline-block',
         overflow: 'hidden',
         whiteSpace: 'pre',
+        flexShrink: 0,
         opacity: tinta,
         maxWidth: `${largura * texto.length}ch`,
       }}
@@ -137,16 +137,25 @@ export const Minimo: React.FC<{
       <Faixa y={Y_ABAIXO}>
         <Entra atraso={8}>
           <Apoio corpo={CORPO_ROTULO} margemTopo={0}>
-            {resto('no ')}
-            <span
-              style={{
-                display: 'inline-block',
-                transform: `translateY(${interpolate(sobe, [0, 1], [0, Y_ACIMA - Y_ABAIXO])}px)`,
-              }}
-            >
-              mínimo
+            {/* Linha em flex, e não texto corrido, por causa da linha de base.
+                `overflow: hidden` num inline-block troca a linha de base do elemento
+                pela borda de baixo da caixa - e os dois pedaços que encolhem precisam
+                de overflow para encolher. Em texto corrido isso subia os dois meio
+                corpo e deixava "mínimo" pendurada sozinha na linha certa. Como itens
+                de flex de alturas iguais, alinhados pelo centro, os três voltam a
+                sentar na mesma linha, e o encolhimento continua funcionando. */}
+            <span style={{display: 'flex', justifyContent: 'center', alignItems: 'center'}}>
+              {resto('no ')}
+              <span
+                style={{
+                  flexShrink: 0,
+                  transform: `translateY(${interpolate(sobe, [0, 1], [0, Y_ACIMA - Y_ABAIXO])}px)`,
+                }}
+              >
+                mínimo
+              </span>
+              {resto(', em toda compra')}
             </span>
-            {resto(', em toda compra')}
           </Apoio>
         </Entra>
       </Faixa>
