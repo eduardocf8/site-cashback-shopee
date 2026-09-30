@@ -15,6 +15,7 @@ npm install
 npm run studio            # abre o editor visual, para ajustar tempo e ver ao vivo
 npm run render            # versão calma  -> saida/cash-b-apresentacao.mp4
 npm run render:dinamica   # versão com mais movimento -> saida/cash-b-apresentacao-dinamica.mp4
+npm run render:espera     # calma com o gancho "Espera." -> saida/cash-b-apresentacao-espera.mp4
 ```
 
 `saida/` fica fora do git. Os dois vídeos prontos para baixar e postar estão em
@@ -63,6 +64,7 @@ texto escrito dentro deles de propósito.
 | Composição | Duração | Para quê |
 |---|---|---|
 | `Apresentacao` | 18,3s | Corte seco entre cenas, quadro parado, números prontos |
+| `ApresentacaoEspera` | 18,1s | A calma com outro gancho ("Vai comprar na Shopee? Espera."); as demais cenas são as mesmas |
 | `Dinamica` | 15,8s | As cenas se empurram, o fundo dá zoom lento, os números contam |
 
 **As duas leem os mesmos textos e os mesmos números de `constantes.ts`.** Só o tempo de

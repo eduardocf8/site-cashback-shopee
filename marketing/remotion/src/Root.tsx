@@ -1,10 +1,13 @@
 import React from 'react';
 import {Composition} from 'remotion';
-import {Apresentacao} from './Apresentacao';
-import {DURACAO, FPS} from './constantes';
+import {Apresentacao, ApresentacaoEspera} from './Apresentacao';
+import {DURACAO, DURACAO_ESPERA, FPS} from './constantes';
 import {DURACAO_DINAMICA, Dinamica} from './Dinamica';
 
-/** Duas composições, mesma informação.
+/** Três composições, mesma informação.
+ *
+ * "ApresentacaoEspera" é a versão calma com outro gancho ("Vai comprar na Shopee?
+ * Espera."): as demais cenas são as mesmas.
  *
  * "Apresentacao" é a versão calma: corte seco entre cenas, quadro parado, números
  * prontos. "Dinamica" é a mesma coisa com as cenas se empurrando, o fundo em zoom
@@ -19,6 +22,14 @@ export const RemotionRoot: React.FC = () => (
       id="Apresentacao"
       component={Apresentacao}
       durationInFrames={DURACAO}
+      fps={FPS}
+      width={1080}
+      height={1920}
+    />
+    <Composition
+      id="ApresentacaoEspera"
+      component={ApresentacaoEspera}
+      durationInFrames={DURACAO_ESPERA}
       fps={FPS}
       width={1080}
       height={1920}

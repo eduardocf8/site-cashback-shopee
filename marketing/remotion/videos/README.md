@@ -7,6 +7,7 @@ sem precisar rodar o render.
 |---|---|---|
 | `apresentacao-calma.mp4` | 18,3s | Corte seco entre cenas, quadro parado, números prontos |
 | `apresentacao-dinamica.mp4` | 15,8s | As cenas se empurram, o fundo dá zoom lento, os números contam |
+| `apresentacao-calma-gancho-espera.mp4` | 18,1s | A calma com outro gancho: "Vai comprar na Shopee? Espera." |
 
 Ambos em 1080×1920, 30fps, H.264.
 

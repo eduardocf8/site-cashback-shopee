@@ -102,3 +102,30 @@ export const CENAS = [
 ] as const;
 
 export const DURACAO = CENAS.reduce((total, cena) => total + cena.frames, 0);
+
+/** Gancho alternativo: "Vai comprar na Shopee? Espera."
+ *
+ * Escolhido entre três ângulos (identificação, quebra de padrão, curiosidade com
+ * número). É o que mais para o dedo nos dois primeiros segundos, e "espera" é a
+ * instrução real do produto: o cashback só vale se o link for gerado ANTES da compra.
+ *
+ * Desemboca em "Comprando pela cash-b," sem repetir a promessa - por isso o gancho não
+ * fala de cashback: a cena 3 é quem paga isso.
+ *
+ * É mais curto que o gancho original (3 linhas de até 11 caracteres, contra 4 de até
+ * 18), então o texto cresce de 114 para 168px e a cena perde 6 frames de leitura. */
+export const GANCHO_ESPERA = {
+  id: 'compra',
+  frames: 66,
+  texto: 'Vai comprar\nna Shopee?\n*Espera.*',
+  corpo: 168,
+  entrada: 'sobe',
+  // A pergunta entra branca; "Espera." é pintada logo depois, como interrupção.
+  destaque: {tipo: 'pintura', inicio: 26},
+} as const;
+
+/** A versão calma com o gancho novo. As demais cenas são as mesmas de CENAS, então
+ * corrigir uma frase corrige nas duas versões. */
+export const CENAS_ESPERA = [GANCHO_ESPERA, ...CENAS.slice(1)] as const;
+
+export const DURACAO_ESPERA = CENAS_ESPERA.reduce((total, cena) => total + cena.frames, 0);

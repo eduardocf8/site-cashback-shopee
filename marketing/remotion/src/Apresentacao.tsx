@@ -3,14 +3,17 @@ import {AbsoluteFill, Sequence} from 'remotion';
 import {Apoio, Cena, Destaque, Entra, Numero, Titulo} from './Base';
 import type {Entrada, TipoDestaque} from './Base';
 import {Minimo} from './Minimo';
-import {CENAS} from './constantes';
+import {CENAS, CENAS_ESPERA} from './constantes';
 import {Fechamento} from './Fechamento';
 import {CORES} from './marca';
 
-const inicios = CENAS.reduce<number[]>(
-  (acc, _cena, i) => [...acc, (acc[i - 1] ?? 0) + (CENAS[i - 1]?.frames ?? 0)],
-  [],
-);
+type ListaDeCenas = readonly (typeof CENAS)[number][] | typeof CENAS_ESPERA;
+
+const iniciosDe = (cenas: ListaDeCenas) =>
+  cenas.reduce<number[]>(
+    (acc, _cena, i) => [...acc, (acc[i - 1] ?? 0) + (cenas[i - 1]?.frames ?? 0)],
+    [],
+  );
 
 /** Rótulo e respiro das cenas de número.
  *
@@ -134,38 +137,48 @@ const CenaTexto: React.FC<React.ComponentProps<typeof ConteudoTexto>> = (props) 
   </Cena>
 );
 
-export const Apresentacao: React.FC = () => (
-  <AbsoluteFill>
-    {CENAS.map((cena, i) => (
-      <Sequence key={cena.id} from={inicios[i]} durationInFrames={cena.frames}>
-        {'convite' in cena ? (
-          <Fechamento convite={cena.convite} dominio={cena.dominio} sufixo={cena.sufixo} />
-        ) : 'primeiro' in cena ? (
-          <Minimo
-            primeiro={cena.primeiro}
-            segundo={cena.segundo}
-            otico={cena.otico}
-            oticoSegundo={cena.oticoSegundo}
-            condicao={cena.condicao}
-          />
-        ) : 'numero' in cena ? (
-          <CenaNumero
-            claro={cena.id === 'saque'}
-            acima={'acima' in cena ? cena.acima : undefined}
-            numero={cena.numero}
-            abaixo={cena.abaixo}
-            entrada={cena.entrada}
-          />
-        ) : (
-          <CenaTexto
-            claro={cena.id === 'semtaxa'}
-            texto={cena.texto}
-            corpo={'corpo' in cena ? cena.corpo : undefined}
-            entrada={cena.entrada}
-            destaque={'destaque' in cena ? cena.destaque : undefined}
-          />
-        )}
-      </Sequence>
-    ))}
-  </AbsoluteFill>
-);
+/** Monta a apresentação a partir de uma lista de cenas. Existe como função porque a
+ * versão com o gancho "Espera." é a mesma peça com a primeira cena trocada - duplicar o
+ * componente inteiro faria as duas divergirem na primeira correção. */
+const montar = (cenas: ListaDeCenas): React.FC => {
+  const inicios = iniciosDe(cenas);
+  const Montada: React.FC = () => (
+    <AbsoluteFill>
+      {cenas.map((cena, i) => (
+        <Sequence key={cena.id} from={inicios[i]} durationInFrames={cena.frames}>
+          {'convite' in cena ? (
+            <Fechamento convite={cena.convite} dominio={cena.dominio} sufixo={cena.sufixo} />
+          ) : 'primeiro' in cena ? (
+            <Minimo
+              primeiro={cena.primeiro}
+              segundo={cena.segundo}
+              otico={cena.otico}
+              oticoSegundo={cena.oticoSegundo}
+              condicao={cena.condicao}
+            />
+          ) : 'numero' in cena ? (
+            <CenaNumero
+              claro={cena.id === 'saque'}
+              acima={'acima' in cena ? cena.acima : undefined}
+              numero={cena.numero}
+              abaixo={cena.abaixo}
+              entrada={cena.entrada}
+            />
+          ) : (
+            <CenaTexto
+              claro={cena.id === 'semtaxa'}
+              texto={cena.texto}
+              corpo={'corpo' in cena ? cena.corpo : undefined}
+              entrada={cena.entrada}
+              destaque={'destaque' in cena ? cena.destaque : undefined}
+            />
+          )}
+        </Sequence>
+      ))}
+    </AbsoluteFill>
+  );
+  return Montada;
+};
+
+export const Apresentacao = montar(CENAS);
+export const ApresentacaoEspera = montar(CENAS_ESPERA);
