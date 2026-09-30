@@ -94,6 +94,7 @@ INSTALLED_APPS = [
     "automacao_instagram",
     "axes",
     "licencas",
+    "pinterest",
 ]
 
 AUTH_USER_MODEL = "accounts.User"
@@ -256,6 +257,13 @@ INSTAGRAM_BOT_ATIVO = os.environ.get("INSTAGRAM_BOT_ATIVO", "False") == "True"
 INSTAGRAM_REQUER_APROVACAO = os.environ.get("INSTAGRAM_REQUER_APROVACAO", "True") == "True"
 INSTAGRAM_APROVADOR_EMAIL = os.environ.get("INSTAGRAM_APROVADOR_EMAIL", "contato@cash-b.com")
 
+# Pinterest (ver pinterest/services.py). O link do Pin usa o domínio próprio de
+# propósito - a imagem é que vai pelo host do Render, pelo mesmo motivo das artes do
+# Instagram (rastreador x Cloudflare). O board precisa existir na conta com esse nome
+# exato; {categoria} vira o nome da categoria da Shopee.
+PINTEREST_SITE_URL = os.environ.get("PINTEREST_SITE_URL", "https://cash-b.com").rstrip("/")
+PINTEREST_NOME_BOARD = os.environ.get("PINTEREST_NOME_BOARD", "Ofertas de {categoria} na Shopee")
+
 # App automacao_instagram: responde/envia DM em comentários com palavra-chave. Cada
 # conta conectada tem seu próprio token (guardado no banco, não aqui - ver
 # ContaInstagramConectada), então esse valor só controla o intervalo do worker
@@ -286,6 +294,7 @@ MIDDLEWARE = [
     "django.middleware.common.CommonMiddleware",
     "django.middleware.csrf.CsrfViewMiddleware",
     "django.contrib.auth.middleware.AuthenticationMiddleware",
+    "accounts.middleware.OrigemCadastroMiddleware",  # depois do Auth: precisa de request.user
     "django.contrib.messages.middleware.MessageMiddleware",
     "django.middleware.clickjacking.XFrameOptionsMiddleware",
     "axes.middleware.AxesMiddleware",  # precisa ser o último da lista (exigência do django-axes)

@@ -1535,3 +1535,44 @@ class FunilCadastrosTests(TestCase):
 
         self.assertIn("(sem indicados)", saida)
         self.assertIn("cadastros                               1", saida)
+
+
+class OrigemCadastroTests(TestCase):
+    """utm_source da primeira visita vira User.origem_cadastro (ver
+    accounts/middleware.py) - é o que deixa o funil separar Pinterest do resto."""
+
+    def setUp(self):
+        cache.clear()  # evita herdar contador de rate limit de outro teste
+
+    def _cadastrar(self):
+        self.client.post(reverse("registrar"), {
+            "username": "novaconta",
+            "email": "nova@example.com",
+            "cpf": "14783246947",
+            "password1": "senha-forte-123",
+            "password2": "senha-forte-123",
+        })
+        return User.objects.get(username="novaconta")
+
+    def test_grava_origem_da_primeira_visita_com_utm(self):
+        self.client.get(reverse("ofertas_lista"), {"utm_source": "Pinterest", "utm_campaign": "beleza"})
+        usuario = self._cadastrar()
+        self.assertEqual(usuario.origem_cadastro, "pinterest")
+        self.assertEqual(usuario.origem_campanha, "beleza")
+
+    def test_primeiro_toque_vence_visitas_seguintes(self):
+        self.client.get(reverse("ofertas_lista"), {"utm_source": "pinterest"})
+        self.client.get(reverse("registrar"), {"utm_source": "google"})
+        self.assertEqual(self._cadastrar().origem_cadastro, "pinterest")
+
+    def test_sem_utm_fica_vazio(self):
+        self.client.get(reverse("ofertas_lista"))
+        self.assertEqual(self._cadastrar().origem_cadastro, "")
+
+    def test_funil_filtra_por_origem(self):
+        User.objects.create_user(username="a", password="x", cpf="39053344705", origem_cadastro="pinterest")
+        User.objects.create_user(username="b", password="x", cpf="14783246947")
+        saida = StringIO()
+        call_command("funil_cadastros", "--origem", "pinterest", stdout=saida)
+        self.assertIn("(origem: pinterest)", saida.getvalue())
+        self.assertRegex(saida.getvalue(), r"cadastros\s+1\b")

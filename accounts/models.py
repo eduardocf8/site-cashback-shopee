@@ -45,6 +45,14 @@ class User(AbstractUser):
     codigo_indicacao = models.CharField(
         "Código de indicação", max_length=TAMANHO_CODIGO_INDICACAO, unique=True, blank=True
     )
+    # Preenchidos só no cadastro, a partir do utm_source/utm_campaign da primeira
+    # visita (ver accounts/middleware.py). Vazio = entrou sem UTM (direto, busca,
+    # indicação sem link com UTM) ou se cadastrou antes de existir o campo.
+    origem_cadastro = models.CharField(
+        "Origem do cadastro", max_length=50, blank=True, db_index=True,
+        help_text="utm_source da primeira visita (ex: pinterest, instagram).",
+    )
+    origem_campanha = models.CharField("Campanha de origem", max_length=100, blank=True)
 
     def clean(self):
         super().clean()

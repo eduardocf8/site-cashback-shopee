@@ -47,9 +47,12 @@ class Command(BaseCommand):
         )
         parser.add_argument(
             "--sem-indicados", action="store_true",
-            help="Tira da coorte quem entrou por indicação. Não existe campo de origem no "
-                 "User, então essa é a forma mais próxima de isolar quem veio de fora - "
-                 "ver a ressalva no fim da saída.",
+            help="Tira da coorte quem entrou por indicação.",
+        )
+        parser.add_argument(
+            "--origem", type=str, default="",
+            help="Só quem se cadastrou vindo desse utm_source (ex: pinterest, instagram). "
+                 "Use \"nenhuma\" pra quem entrou sem UTM. Ver accounts/middleware.py.",
         )
         parser.add_argument(
             "--por-semana", action="store_true",
@@ -198,10 +201,14 @@ class Command(BaseCommand):
         usuarios = Usuario.objects.filter(date_joined__gte=inicio, date_joined__lt=fim)
         if opcoes["sem_indicados"]:
             usuarios = usuarios.filter(indicacao_recebida__isnull=True)
+        origem = opcoes["origem"].strip().lower()
+        if origem:
+            usuarios = usuarios.filter(origem_cadastro="" if origem == "nenhuma" else origem)
 
         self.stdout.write(
             f"\nCoorte de cadastro: {inicio:%d/%m/%Y} a {(fim - timedelta(days=1)):%d/%m/%Y}"
             + ("  (sem indicados)" if opcoes["sem_indicados"] else "")
+            + (f"  (origem: {origem})" if origem else "")
         )
         self.stdout.write("=" * 70)
         self._bloco(usuarios, opcoes["custo_por_cadastro"])
@@ -225,9 +232,10 @@ class Command(BaseCommand):
                 self._bloco(fatia, opcoes["custo_por_cadastro"], fim_da_fatia=proxima)
                 semana = proxima
 
-        self.stdout.write(
-            "\nRessalva: não existe campo de origem no User, então esta coorte é TODO "
-            "mundo que se cadastrou na janela, não só quem veio do anúncio. Enquanto a "
-            "campanha for a fonte dominante, serve como aproximação - se um dia houver "
-            "duas fontes grandes ao mesmo tempo, o número deixa de separar as duas."
-        )
+        if not origem:
+            self.stdout.write(
+                "\nRessalva: sem --origem, esta coorte é TODO mundo que se cadastrou na "
+                "janela, não só quem veio do anúncio. A origem só existe pra cadastros "
+                "feitos depois da migração 0013 do accounts - antes disso o campo fica "
+                "vazio, e --origem nenhuma mistura os dois casos."
+            )

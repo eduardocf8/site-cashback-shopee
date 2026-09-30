@@ -17,9 +17,12 @@ class UserAdmin(BaseUserAdmin):
     # também na tela de criação, ela salva com cpf="" e o segundo usuário criado
     # pelo Admin esbarra na restrição de unicidade (erro 500 genérico).
     add_fieldsets = BaseUserAdmin.add_fieldsets + (("Dados adicionais", {"fields": ("cpf",)}),)
-    fieldsets = BaseUserAdmin.fieldsets + (("Dados adicionais", {"fields": ("cpf", "codigo_indicacao")}),)
-    list_display = ("username", "email", "cpf", "codigo_indicacao", "is_staff")
-    readonly_fields = ("codigo_indicacao",)
+    fieldsets = BaseUserAdmin.fieldsets + (
+        ("Dados adicionais", {"fields": ("cpf", "codigo_indicacao", "origem_cadastro", "origem_campanha")}),
+    )
+    list_display = ("username", "email", "cpf", "codigo_indicacao", "origem_cadastro", "is_staff")
+    list_filter = BaseUserAdmin.list_filter + ("origem_cadastro",)
+    readonly_fields = ("codigo_indicacao", "origem_cadastro", "origem_campanha")
 
     def get_urls(self):
         urls = [

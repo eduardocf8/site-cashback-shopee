@@ -20,6 +20,7 @@ from saques.services import calcular_saldo_disponivel
 from cashback_shopee.meta_capi import enviar_evento, gerar_event_id
 
 from .forms import ChavePixForm, EditarPerfilForm, RegistroForm
+from .middleware import SESSION_KEY_ORIGEM
 from .models import ConfiguracaoIndicacao, Indicacao, PushSubscription
 from .ratelimit import limitar_por_ip
 from .tokens import (
@@ -50,6 +51,7 @@ def registrar(request):
         form = RegistroForm(request.POST)
         if form.is_valid():
             usuario = form.save()
+            _gravar_origem(usuario, request)
             _criar_indicacao_se_valida(usuario, codigo_indicacao)
             enviar_email_verificacao(usuario, request)
             # Backend explícito: já temos o objeto usuario (não veio de authenticate()),
@@ -64,6 +66,15 @@ def registrar(request):
         form = RegistroForm()
 
     return render(request, "accounts/registrar.html", {"form": form, "codigo_indicacao": codigo_indicacao})
+
+
+def _gravar_origem(usuario, request):
+    origem = request.session.pop(SESSION_KEY_ORIGEM, None)
+    if not origem:
+        return
+    usuario.origem_cadastro = origem.get("origem", "")
+    usuario.origem_campanha = origem.get("campanha", "")
+    usuario.save(update_fields=["origem_cadastro", "origem_campanha"])
 
 
 def _criar_indicacao_se_valida(usuario, codigo_indicacao):

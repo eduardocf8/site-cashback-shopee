@@ -10,7 +10,9 @@ repetidos aqui porque quem desenha precisa lê-los, mas o CSS é quem manda —
 mudou lá, muda aqui junto. Três arquivos Python duplicam os mesmos tokens
 porque Pillow e Playwright não leem CSS: `marketing/instagram/carrossel_base.py`,
 `marketing/instagram/gerar_cards_produto.py` e `instagram_bot/templates_imagem.py`.
-Trocar uma cor significa trocar nos quatro.
+Trocar uma cor significa trocar nos quatro. O Pin do Pinterest (`pinterest/imagem.py`)
+importa a paleta do bot, mas repete o verde `--success`/`--success-bg`, que o bot
+não tem: se o verde mudar, muda lá também.
 
 **Texto não está aqui.** Tom de voz, verbos e grafia ficam em `VOZ.md` —
 inclusive as regras que afetam arte, como "a cash-b" (feminino) e "Pix"
@@ -348,6 +350,7 @@ script.
 | Card de produto (vídeo) | 1080×1200, cartão de 720 de largura | escala 2 no arquivo |
 | Tira do carrossel de produtos | 8100×1200 (1x) ou 16200×2400 (2x) | 10 elementos |
 | Destaque (capa) | 1080×1920 | recortado em círculo pelo Instagram |
+| Pin do Pinterest | 1000×1500 | 2:3; sem preço na arte (o Pin vive meses) |
 
 ### Faixas que a interface do Instagram cobre
 
