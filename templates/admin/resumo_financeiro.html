@@ -1,0 +1,252 @@
+{% extends "admin/base_site.html" %}
+
+{% block extrastyle %}
+{{ block.super }}
+<style>
+    .resumo-filtros {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 12px;
+        align-items: end;
+        margin: 0 0 20px;
+        padding: 14px;
+        border: 1px solid var(--border-color);
+        border-radius: 4px;
+        background: var(--darkened-bg);
+    }
+    .resumo-filtros label {
+        display: block;
+        font-size: 11px;
+        text-transform: uppercase;
+        color: var(--body-quiet-color);
+        margin-bottom: 4px;
+    }
+    .resumo-filtros .campo {
+        display: flex;
+        flex-direction: column;
+    }
+    .resumo-filtros input {
+        padding: 6px;
+        width: 90px;
+    }
+    .resumo-secao {
+        margin-bottom: 32px;
+    }
+    .resumo-secao h2 {
+        font-size: 15px;
+        margin-bottom: 10px;
+    }
+    #grafico-sacado {
+        width: 100%;
+        height: auto;
+        overflow: visible;
+    }
+    #grafico-sacado .grafico-barra {
+        fill: var(--primary);
+    }
+    #grafico-sacado a:hover .grafico-barra {
+        fill: var(--link-fg);
+    }
+    #grafico-sacado .grafico-grade {
+        stroke: var(--hairline-color);
+        stroke-width: 1;
+    }
+    #grafico-sacado .grafico-eixo {
+        font-size: 10px;
+        fill: var(--body-quiet-color);
+    }
+    #grafico-sacado .grafico-valor {
+        font-size: 10px;
+        fill: var(--body-loud-color);
+        font-weight: 600;
+    }
+    .resumo-tabela {
+        width: 100%;
+        border-collapse: collapse;
+        margin-bottom: 8px;
+    }
+    .resumo-tabela th, .resumo-tabela td {
+        padding: 10px 12px;
+        text-align: center;
+        border-bottom: 1px solid var(--border-color);
+    }
+    .resumo-tabela th {
+        font-size: 11px;
+        text-transform: uppercase;
+        letter-spacing: .03em;
+        color: var(--body-quiet-color);
+        font-weight: 600;
+    }
+    .resumo-tabela tr.resumo-atual {
+        background: var(--selected-row);
+    }
+    .resumo-tabela tr.resumo-projecao td {
+        color: var(--body-quiet-color);
+        font-style: italic;
+    }
+    .resumo-tabela .mes-rotulo {
+        font-weight: 600;
+    }
+    .resumo-tabela .mes-tag {
+        font-size: 10px;
+        text-transform: uppercase;
+        font-weight: 600;
+        color: var(--primary);
+        margin-left: 6px;
+    }
+    .resumo-valor-link {
+        color: inherit;
+        text-decoration: none;
+        border-bottom: 1px dotted var(--border-color);
+    }
+    .resumo-valor-link:hover {
+        color: var(--link-fg);
+        border-bottom-color: var(--link-fg);
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="resumo-secao">
+    <h2>Valor sacado por mês</h2>
+    <form class="resumo-filtros" method="get">
+        <div class="campo">
+            <label for="id_meses_passados">Meses pra trás</label>
+            <input type="number" name="meses_passados" id="id_meses_passados" value="{{ meses_passados }}" min="0" max="24">
+        </div>
+        <div class="acoes">
+            <input type="submit" class="button" value="Atualizar">
+        </div>
+    </form>
+    <p class="help" style="margin: -10px 0 20px;">
+        Soma dos saques efetivamente pagos (via Pix) em cada mês. Clique numa barra pra
+        ver a quebra por usuário.
+    </p>
+    <svg id="grafico-sacado" viewBox="0 0 900 260" preserveAspectRatio="xMidYMid meet"></svg>
+</div>
+
+<div class="resumo-secao">
+    <h2>Saldo liberado</h2>
+    <p class="help" style="margin: 0 0 20px;">
+        Mês atual é o saldo real (já processado). Os 2 meses seguintes são uma
+        <strong>projeção</strong>: soma o que está validado (previsto pra liberar
+        naquele mês) com o que ainda está pendente (assumindo, de forma otimista, que
+        vai validar logo - projetado a partir da data da compra). Clique num valor pra
+        ver a quebra por usuário.
+    </p>
+    <table class="resumo-tabela">
+        <thead>
+            <tr>
+                <th>Mês</th>
+                <th>Saldo liberado</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for linha in tabela_liberado %}
+            <tr class="{% if linha.eh_atual %}resumo-atual{% else %}resumo-projecao{% endif %}">
+                <td>
+                    <span class="mes-rotulo">{{ linha.rotulo }}</span>
+                    {% if linha.eh_atual %}<span class="mes-tag">mês atual</span>{% else %}<span class="mes-tag">projeção</span>{% endif %}
+                </td>
+                <td>
+                    <a class="resumo-valor-link" target="_blank" rel="noopener" href="{% url 'admin:pedidos_saldo_por_usuario' %}?ano={{ linha.ano }}&mes={{ linha.mes }}&tipo={% if linha.eh_atual %}liberado{% else %}projecao{% endif %}">
+                        R$ {{ linha.valor|floatformat:2 }}
+                    </a>
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+
+{{ grafico_sacado|json_script:"dados-grafico-sacado" }}
+<script>
+(function () {
+    var dados = JSON.parse(document.getElementById("dados-grafico-sacado").textContent);
+    var svg = document.getElementById("grafico-sacado");
+    var ns = "http://www.w3.org/2000/svg";
+    var LARGURA = 900, ALTURA = 260;
+    var MARGEM = {top: 16, right: 16, bottom: 28, left: 64};
+    var urlBase = "{% url 'admin:pedidos_saldo_por_usuario' %}";
+
+    function formatarMoeda(valor) {
+        return "R$ " + valor.toFixed(2).replace(".", ",");
+    }
+
+    function criar(tag, atributos) {
+        var elemento = document.createElementNS(ns, tag);
+        for (var nome in atributos) {
+            elemento.setAttribute(nome, atributos[nome]);
+        }
+        return elemento;
+    }
+
+    function desenhar() {
+        svg.innerHTML = "";
+        if (!dados.length) return;
+
+        var valores = dados.map(function (linha) { return parseFloat(linha.valor); });
+        var maximo = Math.max.apply(null, valores.concat([0]));
+        var alcance = maximo || 1;
+        var larguraUtil = LARGURA - MARGEM.left - MARGEM.right;
+        var alturaUtil = ALTURA - MARGEM.top - MARGEM.bottom;
+        var larguraBarra = (larguraUtil / dados.length) * 0.6;
+        var passoBarra = larguraUtil / dados.length;
+
+        function posY(valor) {
+            return MARGEM.top + alturaUtil - (valor / alcance) * alturaUtil;
+        }
+
+        for (var linhaGrade = 0; linhaGrade <= 4; linhaGrade++) {
+            var valorGrade = (alcance * linhaGrade) / 4;
+            svg.appendChild(criar("line", {
+                x1: MARGEM.left, x2: LARGURA - MARGEM.right,
+                y1: posY(valorGrade), y2: posY(valorGrade), class: "grafico-grade",
+            }));
+            var rotuloEixoY = criar("text", {
+                x: MARGEM.left - 8, y: posY(valorGrade) + 4, "text-anchor": "end", class: "grafico-eixo",
+            });
+            rotuloEixoY.textContent = formatarMoeda(valorGrade);
+            svg.appendChild(rotuloEixoY);
+        }
+
+        dados.forEach(function (linha, indice) {
+            var valor = parseFloat(linha.valor);
+            var x = MARGEM.left + indice * passoBarra + (passoBarra - larguraBarra) / 2;
+            var y = posY(valor);
+            var altura = MARGEM.top + alturaUtil - y;
+
+            var link = document.createElementNS(ns, "a");
+            link.setAttributeNS("http://www.w3.org/1999/xlink", "href", urlBase + "?ano=" + linha.ano + "&mes=" + linha.mes + "&tipo=pago");
+            link.setAttribute("target", "_blank");
+            link.setAttribute("rel", "noopener");
+
+            var barra = criar("rect", {
+                x: x, y: y, width: larguraBarra, height: Math.max(altura, 0), class: "grafico-barra",
+            });
+            var titulo = document.createElementNS(ns, "title");
+            titulo.textContent = linha.rotulo + ": " + formatarMoeda(valor);
+            barra.appendChild(titulo);
+            link.appendChild(barra);
+            svg.appendChild(link);
+
+            if (valor > 0) {
+                var rotuloValor = criar("text", {
+                    x: x + larguraBarra / 2, y: y - 6, "text-anchor": "middle", class: "grafico-valor",
+                });
+                rotuloValor.textContent = formatarMoeda(valor);
+                svg.appendChild(rotuloValor);
+            }
+
+            var rotuloEixoX = criar("text", {
+                x: x + larguraBarra / 2, y: ALTURA - 8, "text-anchor": "middle", class: "grafico-eixo",
+            });
+            rotuloEixoX.textContent = linha.rotulo;
+            svg.appendChild(rotuloEixoX);
+        });
+    }
+
+    desenhar();
+})();
+</script>
+{% endblock %}

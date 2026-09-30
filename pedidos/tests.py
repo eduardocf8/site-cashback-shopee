@@ -21,8 +21,9 @@ from saques.models import Saque
 from .admin import PedidoAdmin
 from .analytics import (
     obter_analytics,
+    obter_grafico_sacado,
+    obter_resumo_liberado,
     obter_saldo_por_usuario,
-    obter_saldos_por_mes,
     obter_serie_diaria,
     origem_detalhada,
 )
@@ -1174,10 +1175,82 @@ class ObterAnalyticsTests(TestCase):
         self.assertEqual(dados["saldo_a_liberar"], Decimal("5.00"))
 
 
-class ObterSaldosPorMesTests(TestCase):
-    """Saldo por mês, separado por status - o ponto central é que 'validado' aparece
-    no mês PREVISTO de liberação (2 meses depois), não no mês da compra, pra servir de
-    planejamento de caixa mesmo pros meses futuros sem nenhuma compra nova."""
+class ObterGraficoSacadoTests(TestCase):
+    """Valor sacado (Saque pago) por mês - o gráfico de barras da tela de Resumo
+    financeiro. Só olha pro passado + mês atual, não existe "saque futuro"."""
+
+    def setUp(self):
+        self.usuario = get_user_model().objects.create_user(
+            username="compradora", password="senha123", cpf="39053344705"
+        )
+        self.hoje = timezone.localdate()
+
+    def _mes_relativo(self, delta):
+        total = self.hoje.month - 1 + delta
+        return self.hoje.year + total // 12, total % 12 + 1
+
+    def _datetime_no_mes(self, delta, dia=15):
+        ano, mes = self._mes_relativo(delta)
+        return timezone.make_aware(datetime.combine(date(ano, mes, dia), datetime.min.time()))
+
+    def _linha(self, linhas, delta):
+        ano, mes = self._mes_relativo(delta)
+        return next(l for l in linhas if l["ano"] == ano and l["mes"] == mes)
+
+    def _saque_pago(self, valor, delta):
+        return Saque.objects.create(
+            usuario=self.usuario, valor=Decimal(valor), chave_pix="a@a.com",
+            tipo_chave_pix="EMAIL", status=Saque.STATUS_PAGO, pago_em=self._datetime_no_mes(delta),
+        )
+
+    def test_soma_saques_pagos_do_mes(self):
+        self._saque_pago("20.00", 0)
+        self._saque_pago("5.00", 0)
+
+        linha_atual = self._linha(obter_grafico_sacado(), 0)
+
+        self.assertEqual(linha_atual["valor"], Decimal("25.00"))
+
+    def test_saque_nao_pago_nao_conta(self):
+        Saque.objects.create(
+            usuario=self.usuario, valor=Decimal("20.00"), chave_pix="a@a.com",
+            tipo_chave_pix="EMAIL", status=Saque.STATUS_SOLICITADO,
+        )
+
+        linha_atual = self._linha(obter_grafico_sacado(), 0)
+
+        self.assertEqual(linha_atual["valor"], Decimal("0"))
+
+    def test_mes_passado_fora_da_janela_nao_aparece(self):
+        self._saque_pago("20.00", -10)
+
+        linhas = obter_grafico_sacado(meses_passados=6)
+
+        self.assertEqual(sum((l["valor"] for l in linhas), Decimal("0")), Decimal("0"))
+
+    def test_quantidade_de_linhas_bate_com_meses_passados(self):
+        linhas = obter_grafico_sacado(meses_passados=3)
+        self.assertEqual(len(linhas), 4)  # 3 passados + atual
+
+    def test_limite_maximo_e_respeitado(self):
+        linhas = obter_grafico_sacado(meses_passados=9999)
+        self.assertEqual(len(linhas), 24 + 1)
+
+    def test_valor_negativo_vira_zero_meses_passados(self):
+        linhas = obter_grafico_sacado(meses_passados=-5)
+        self.assertEqual(len(linhas), 1)  # só o mês atual
+
+    def test_nao_inclui_mes_futuro(self):
+        linhas = obter_grafico_sacado(meses_passados=0)
+        self.assertEqual(len(linhas), 1)
+        self.assertEqual((linhas[0]["ano"], linhas[0]["mes"]), self._mes_relativo(0))
+
+
+class ObterResumoLiberadoTests(TestCase):
+    """Tabela de saldo liberado (mês atual + 2 meses de projeção) da tela de Resumo
+    financeiro. Mês atual = saldo real (já processado por liberar_saldo); os 2 meses
+    seguintes somam validado (por data_prevista_liberacao) + pendente (projetado de
+    forma otimista a partir da data_compra + 2, já que ainda não tem data_validacao)."""
 
     def setUp(self):
         self.usuario = get_user_model().objects.create_user(
@@ -1200,131 +1273,100 @@ class ObterSaldosPorMesTests(TestCase):
         ano, mes = self._mes_relativo(delta)
         return next(l for l in linhas if l["ano"] == ano and l["mes"] == mes)
 
-    def _pedido(self, order_id, status, **datas):
-        return Pedido.objects.create(
-            order_id=order_id, conversion_id="1", usuario=self.usuario, status=status,
+    def test_sempre_retorna_exatamente_3_linhas(self):
+        linhas = obter_resumo_liberado()
+        self.assertEqual(len(linhas), 3)
+
+    def test_mes_atual_e_marcado_como_atual_e_futuros_como_projecao(self):
+        linhas = obter_resumo_liberado()
+        atual = self._linha(linhas, 0)
+        futuro_1 = self._linha(linhas, 1)
+        futuro_2 = self._linha(linhas, 2)
+
+        self.assertTrue(atual["eh_atual"])
+        self.assertFalse(atual["eh_projecao"])
+        self.assertTrue(futuro_1["eh_projecao"])
+        self.assertTrue(futuro_2["eh_projecao"])
+
+    def test_mes_atual_usa_liberado_real_por_data_liberacao(self):
+        Pedido.objects.create(
+            order_id="LIB-1", conversion_id="1", usuario=self.usuario, status=Pedido.STATUS_LIBERADO,
             status_shopee_bruto="COMPLETED", valor_comissao=Decimal("10.00"), valor_cashback=Decimal("5.00"),
-            **datas,
+            data_compra=self._datetime_no_mes(-2), data_liberacao=self._datetime_no_mes(0),
         )
 
-    def test_pendente_entra_no_mes_da_compra(self):
-        self._pedido("PEND-1", Pedido.STATUS_PENDENTE, data_compra=self._datetime_no_mes(0))
+        atual = self._linha(obter_resumo_liberado(), 0)
 
-        linha_atual = self._linha(obter_saldos_por_mes(), 0)
+        self.assertEqual(atual["valor"], Decimal("5.00"))
 
-        self.assertEqual(linha_atual["pendente"], Decimal("5.00"))
-        self.assertTrue(linha_atual["eh_atual"])
-
-    def test_cancelado_entra_no_mes_da_compra(self):
-        self._pedido("CANC-1", Pedido.STATUS_CANCELADO, data_compra=self._datetime_no_mes(0))
-
-        linha_atual = self._linha(obter_saldos_por_mes(), 0)
-
-        self.assertEqual(linha_atual["cancelado"], Decimal("5.00"))
-
-    def test_validado_entra_no_mes_previsto_de_liberacao_nao_no_mes_da_compra(self):
-        # Comprado/validado esse mês, mas a previsão real (calcular_data_prevista_liberacao)
-        # é sempre mês da validação + 2 - é essa regra que faz a projeção futura funcionar.
-        self._pedido(
-            "VAL-1", Pedido.STATUS_VALIDADO,
+    def test_validado_projeta_pela_data_prevista_liberacao(self):
+        Pedido.objects.create(
+            order_id="VAL-1", conversion_id="1", usuario=self.usuario, status=Pedido.STATUS_VALIDADO,
+            status_shopee_bruto="COMPLETED", valor_comissao=Decimal("10.00"), valor_cashback=Decimal("7.00"),
             data_compra=self._datetime_no_mes(0), data_validacao=self._datetime_no_mes(0),
             data_prevista_liberacao=self._data_no_mes(2),
         )
 
-        linhas = obter_saldos_por_mes()
-        linha_atual = self._linha(linhas, 0)
-        linha_futura = self._linha(linhas, 2)
+        linhas = obter_resumo_liberado()
 
-        self.assertEqual(linha_atual["validado_previsto"], Decimal("0"))
-        self.assertEqual(linha_futura["validado_previsto"], Decimal("5.00"))
-        self.assertTrue(linha_futura["eh_futuro"])
+        self.assertEqual(self._linha(linhas, 0)["valor"], Decimal("0"))
+        self.assertEqual(self._linha(linhas, 2)["valor"], Decimal("7.00"))
 
-    def test_liberado_entra_no_mes_em_que_foi_liberado(self):
-        self._pedido(
-            "LIB-1", Pedido.STATUS_LIBERADO,
-            data_compra=self._datetime_no_mes(-2), data_liberacao=self._datetime_no_mes(0),
+    def test_pendente_projeta_pela_data_compra_mais_2_meses(self):
+        Pedido.objects.create(
+            order_id="PEND-1", conversion_id="1", usuario=self.usuario, status=Pedido.STATUS_PENDENTE,
+            status_shopee_bruto="COMPLETED", valor_comissao=Decimal("10.00"), valor_cashback=Decimal("9.00"),
+            data_compra=self._datetime_no_mes(-1),
         )
 
-        linha_atual = self._linha(obter_saldos_por_mes(), 0)
+        linhas = obter_resumo_liberado()
 
-        self.assertEqual(linha_atual["liberado"], Decimal("5.00"))
+        self.assertEqual(self._linha(linhas, 1)["valor"], Decimal("9.00"))
 
-    def test_pedido_sem_usuario_fora_do_site_nao_entra_no_total(self):
-        # Achado real do usuário: pedido sem usuário vinculado (sincronizado da conta
-        # de afiliado Shopee, mas não gerado por um link daqui - "Fora do site", ver
-        # OrigemFilter/origem_detalhada em pedidos/admin.py) entrava no total agregado
-        # mas sumia na quebra por usuário (que exclui usuario=None) - o total parecia
-        # ter "gente escondida". Agora os dois batem: nenhum dos dois conta.
+    def test_pendente_e_validado_se_somam_no_mesmo_mes_projetado(self):
+        Pedido.objects.create(
+            order_id="PEND-1", conversion_id="1", usuario=self.usuario, status=Pedido.STATUS_PENDENTE,
+            status_shopee_bruto="COMPLETED", valor_comissao=Decimal("10.00"), valor_cashback=Decimal("9.00"),
+            data_compra=self._datetime_no_mes(0),
+        )
+        Pedido.objects.create(
+            order_id="VAL-1", conversion_id="1", usuario=self.usuario, status=Pedido.STATUS_VALIDADO,
+            status_shopee_bruto="COMPLETED", valor_comissao=Decimal("10.00"), valor_cashback=Decimal("3.00"),
+            data_compra=self._datetime_no_mes(0), data_validacao=self._datetime_no_mes(0),
+            data_prevista_liberacao=self._data_no_mes(2),
+        )
+
+        futuro_2 = self._linha(obter_resumo_liberado(), 2)
+
+        self.assertEqual(futuro_2["valor"], Decimal("12.00"))
+
+    def test_pedido_sem_usuario_fora_do_site_nunca_conta(self):
         Pedido.objects.create(
             order_id="FORA-DO-SITE", conversion_id="1", usuario=None, status=Pedido.STATUS_LIBERADO,
             status_shopee_bruto="COMPLETED", valor_comissao=Decimal("100.00"), valor_cashback=Decimal("50.00"),
             data_liberacao=self._datetime_no_mes(0),
         )
-
-        linha_atual = self._linha(obter_saldos_por_mes(), 0)
-
-        self.assertEqual(linha_atual["liberado"], Decimal("0"))
-        self.assertEqual(linha_atual["total"], Decimal("0"))
-
-    def test_total_soma_os_4_status_do_mes(self):
-        self._pedido("A", Pedido.STATUS_PENDENTE, data_compra=self._datetime_no_mes(0))
-        self._pedido("B", Pedido.STATUS_LIBERADO, data_liberacao=self._datetime_no_mes(0))
-
-        linha_atual = self._linha(obter_saldos_por_mes(), 0)
-
-        self.assertEqual(linha_atual["total"], Decimal("10.00"))
-
-    def test_pago_entra_no_mes_em_que_o_saque_foi_pago(self):
-        Saque.objects.create(
-            usuario=self.usuario, valor=Decimal("20.00"), chave_pix="a@a.com",
-            tipo_chave_pix="EMAIL", status=Saque.STATUS_PAGO, pago_em=self._datetime_no_mes(0),
+        Pedido.objects.create(
+            order_id="FORA-DO-SITE-2", conversion_id="1", usuario=None, status=Pedido.STATUS_VALIDADO,
+            status_shopee_bruto="COMPLETED", valor_comissao=Decimal("100.00"), valor_cashback=Decimal("50.00"),
+            data_compra=self._datetime_no_mes(0), data_validacao=self._datetime_no_mes(0),
+            data_prevista_liberacao=self._data_no_mes(2),
         )
 
-        linha_atual = self._linha(obter_saldos_por_mes(), 0)
+        linhas = obter_resumo_liberado()
 
-        self.assertEqual(linha_atual["pago"], Decimal("20.00"))
+        self.assertEqual(sum((l["valor"] for l in linhas), Decimal("0")), Decimal("0"))
 
-    def test_saque_nao_pago_nao_conta_como_pago(self):
-        Saque.objects.create(
-            usuario=self.usuario, valor=Decimal("20.00"), chave_pix="a@a.com",
-            tipo_chave_pix="EMAIL", status=Saque.STATUS_SOLICITADO,
+    def test_cancelado_nunca_conta(self):
+        Pedido.objects.create(
+            order_id="CANC-1", conversion_id="1", usuario=self.usuario, status=Pedido.STATUS_CANCELADO,
+            status_shopee_bruto="CANCELLED", valor_comissao=Decimal("10.00"), valor_cashback=Decimal("5.00"),
+            data_compra=self._datetime_no_mes(0),
         )
 
-        linha_atual = self._linha(obter_saldos_por_mes(), 0)
+        linhas = obter_resumo_liberado()
 
-        self.assertEqual(linha_atual["pago"], Decimal("0"))
-
-    def test_pago_nao_entra_no_total_pra_nao_contar_2x(self):
-        self._pedido("LIB-1", Pedido.STATUS_LIBERADO, data_liberacao=self._datetime_no_mes(0))
-        Saque.objects.create(
-            usuario=self.usuario, valor=Decimal("20.00"), chave_pix="a@a.com",
-            tipo_chave_pix="EMAIL", status=Saque.STATUS_PAGO, pago_em=self._datetime_no_mes(0),
-        )
-
-        linha_atual = self._linha(obter_saldos_por_mes(), 0)
-
-        self.assertEqual(linha_atual["liberado"], Decimal("5.00"))
-        self.assertEqual(linha_atual["pago"], Decimal("20.00"))
-        self.assertEqual(linha_atual["total"], Decimal("5.00"))
-
-    def test_fora_da_janela_pedida_nao_aparece_em_nenhuma_linha(self):
-        self._pedido("ANTIGO", Pedido.STATUS_PENDENTE, data_compra=self._datetime_no_mes(-10))
-
-        linhas = obter_saldos_por_mes(meses_passados=6, meses_futuros=2)
-
-        self.assertEqual(sum((l["pendente"] for l in linhas), Decimal("0")), Decimal("0"))
-
-    def test_quantidade_de_linhas_bate_com_meses_passados_e_futuros(self):
-        linhas = obter_saldos_por_mes(meses_passados=3, meses_futuros=1)
-        self.assertEqual(len(linhas), 5)  # 3 passados + atual + 1 futuro
-
-    def test_limites_maximos_sao_respeitados(self):
-        linhas = obter_saldos_por_mes(meses_passados=9999, meses_futuros=9999)
-        self.assertEqual(len(linhas), 24 + 1 + 12)
-
-    def test_valores_negativos_viram_zero(self):
-        linhas = obter_saldos_por_mes(meses_passados=-5, meses_futuros=-5)
-        self.assertEqual(len(linhas), 1)  # só o mês atual
+        self.assertEqual(sum((l["valor"] for l in linhas), Decimal("0")), Decimal("0"))
 
 
 class ObterSaldoPorUsuarioTests(TestCase):
@@ -1395,9 +1437,9 @@ class ObterSaldoPorUsuarioTests(TestCase):
         linhas = obter_saldo_por_usuario(self.hoje.year, self.hoje.month, "lixo")
         self.assertEqual(linhas, [])
 
-    def test_respeita_o_mesmo_campo_de_data_da_agregacao_mensal(self):
+    def test_projecao_usa_data_prevista_liberacao_do_validado(self):
         # "validado" usa data_prevista_liberacao, não data_compra - mesma regra de
-        # obter_saldos_por_mes.
+        # obter_resumo_liberado.
         mes_seguinte = self.hoje.month % 12 + 1
         ano_seguinte = self.hoje.year + (1 if self.hoje.month == 12 else 0)
         Pedido.objects.create(
@@ -1406,11 +1448,44 @@ class ObterSaldoPorUsuarioTests(TestCase):
             data_compra=self._datetime_no_mes_atual(), data_prevista_liberacao=date(ano_seguinte, mes_seguinte, 1),
         )
 
-        linhas_mes_atual = obter_saldo_por_usuario(self.hoje.year, self.hoje.month, "validado_previsto")
-        linhas_mes_seguinte = obter_saldo_por_usuario(ano_seguinte, mes_seguinte, "validado_previsto")
+        linhas_mes_atual = obter_saldo_por_usuario(self.hoje.year, self.hoje.month, "projecao")
+        linhas_mes_seguinte = obter_saldo_por_usuario(ano_seguinte, mes_seguinte, "projecao")
 
         self.assertEqual(linhas_mes_atual, [])
         self.assertEqual(linhas_mes_seguinte[0]["total"], Decimal("12.00"))
+
+    def test_projecao_usa_data_compra_mais_2_meses_do_pendente(self):
+        # Compra este mês, projeção cai 2 meses à frente (mesma conta de _somar_meses).
+        total = self.hoje.month - 1 + 2
+        ano_projetado, mes_projetado = self.hoje.year + total // 12, total % 12 + 1
+        Pedido.objects.create(
+            order_id="B", conversion_id="1", usuario=self.ana, status=Pedido.STATUS_PENDENTE,
+            status_shopee_bruto="COMPLETED", valor_comissao=Decimal("1.00"), valor_cashback=Decimal("9.00"),
+            data_compra=self._datetime_no_mes_atual(),
+        )
+
+        linhas = obter_saldo_por_usuario(ano_projetado, mes_projetado, "projecao")
+
+        self.assertEqual(linhas[0]["total"], Decimal("9.00"))
+
+    def test_projecao_soma_pendente_e_validado_do_mesmo_usuario_no_mesmo_mes(self):
+        total = self.hoje.month - 1 + 2
+        ano_projetado, mes_projetado = self.hoje.year + total // 12, total % 12 + 1
+        Pedido.objects.create(
+            order_id="C", conversion_id="1", usuario=self.ana, status=Pedido.STATUS_PENDENTE,
+            status_shopee_bruto="COMPLETED", valor_comissao=Decimal("1.00"), valor_cashback=Decimal("9.00"),
+            data_compra=self._datetime_no_mes_atual(),
+        )
+        Pedido.objects.create(
+            order_id="D", conversion_id="1", usuario=self.ana, status=Pedido.STATUS_VALIDADO,
+            status_shopee_bruto="COMPLETED", valor_comissao=Decimal("1.00"), valor_cashback=Decimal("4.00"),
+            data_compra=self._datetime_no_mes_atual(), data_prevista_liberacao=date(ano_projetado, mes_projetado, 1),
+        )
+
+        linhas = obter_saldo_por_usuario(ano_projetado, mes_projetado, "projecao")
+
+        self.assertEqual(len(linhas), 1)
+        self.assertEqual(linhas[0]["total"], Decimal("13.00"))
 
 
 class ObterSerieDiariaTests(TestCase):
@@ -1704,7 +1779,7 @@ class PedidoAdminValorCashbackExibidoTests(TestCase):
         self.assertEqual(PedidoAdmin(Pedido, admin.site).valor_cashback_exibido(pedido), "—")
 
 
-class SaldosPorMesAdminViewTests(TestCase):
+class ResumoFinanceiroAdminViewTests(TestCase):
     def setUp(self):
         self.staff = get_user_model().objects.create_user(
             username="equipe", password="senha123", cpf="39053344705", is_staff=True
@@ -1715,36 +1790,40 @@ class SaldosPorMesAdminViewTests(TestCase):
 
     def test_staff_acessa_a_tela(self):
         self.client.force_login(self.staff)
-        resposta = self.client.get(reverse("admin:pedidos_saldos_por_mes"))
+        resposta = self.client.get(reverse("admin:pedidos_resumo_financeiro"))
         self.assertEqual(resposta.status_code, 200)
-        self.assertContains(resposta, "Saldos por mês")
+        self.assertContains(resposta, "Resumo financeiro")
 
     def test_usuario_comum_nao_acessa(self):
         self.client.force_login(self.usuario_comum)
-        resposta = self.client.get(reverse("admin:pedidos_saldos_por_mes"))
+        resposta = self.client.get(reverse("admin:pedidos_resumo_financeiro"))
         self.assertEqual(resposta.status_code, 302)
 
     def test_anonimo_e_redirecionado_para_login(self):
-        resposta = self.client.get(reverse("admin:pedidos_saldos_por_mes"))
+        resposta = self.client.get(reverse("admin:pedidos_resumo_financeiro"))
         self.assertEqual(resposta.status_code, 302)
 
-    def test_parametros_da_querystring_sao_respeitados(self):
+    def test_contexto_traz_grafico_e_tabela(self):
         self.client.force_login(self.staff)
-        resposta = self.client.get(
-            reverse("admin:pedidos_saldos_por_mes"), {"meses_passados": 2, "meses_futuros": 1}
-        )
-        self.assertEqual(len(resposta.context["linhas"]), 4)
+        resposta = self.client.get(reverse("admin:pedidos_resumo_financeiro"))
+        self.assertIn("grafico_sacado", resposta.context)
+        self.assertIn("tabela_liberado", resposta.context)
+        self.assertEqual(len(resposta.context["tabela_liberado"]), 3)
+
+    def test_parametro_meses_passados_e_respeitado(self):
+        self.client.force_login(self.staff)
+        resposta = self.client.get(reverse("admin:pedidos_resumo_financeiro"), {"meses_passados": 2})
+        self.assertEqual(len(resposta.context["grafico_sacado"]), 3)
         self.assertEqual(resposta.context["meses_passados"], 2)
-        self.assertEqual(resposta.context["meses_futuros"], 1)
 
     def test_parametro_invalido_cai_no_padrao(self):
         self.client.force_login(self.staff)
-        resposta = self.client.get(reverse("admin:pedidos_saldos_por_mes"), {"meses_passados": "lixo"})
+        resposta = self.client.get(reverse("admin:pedidos_resumo_financeiro"), {"meses_passados": "lixo"})
         self.assertEqual(resposta.context["meses_passados"], 6)
 
-    def test_valores_da_tabela_linkam_pra_tela_de_saldo_por_usuario(self):
+    def test_valores_linkam_pra_tela_de_saldo_por_usuario_em_nova_aba(self):
         self.client.force_login(self.staff)
-        resposta = self.client.get(reverse("admin:pedidos_saldos_por_mes"))
+        resposta = self.client.get(reverse("admin:pedidos_resumo_financeiro"))
         self.assertContains(resposta, reverse("admin:pedidos_saldo_por_usuario"))
         self.assertContains(resposta, "target=\"_blank\"")
 
@@ -1791,12 +1870,12 @@ class SaldoPorUsuarioAdminViewTests(TestCase):
             reverse("admin:pedidos_saldo_por_usuario"),
             {"ano": self.hoje.year, "mes": self.hoje.month, "tipo": "lixo"},
         )
-        self.assertRedirects(resposta, reverse("admin:pedidos_saldos_por_mes"))
+        self.assertRedirects(resposta, reverse("admin:pedidos_resumo_financeiro"))
 
     def test_sem_parametros_redireciona_pra_tela_principal(self):
         self.client.force_login(self.staff)
         resposta = self.client.get(reverse("admin:pedidos_saldo_por_usuario"))
-        self.assertRedirects(resposta, reverse("admin:pedidos_saldos_por_mes"))
+        self.assertRedirects(resposta, reverse("admin:pedidos_resumo_financeiro"))
 
     def test_link_do_usuario_aponta_pro_change_dele_no_admin(self):
         self.client.force_login(self.staff)

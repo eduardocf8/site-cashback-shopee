@@ -10,16 +10,16 @@ from django.urls import path
 
 from .analytics import (
     INDICADORES_SERIE_DIARIA,
-    MESES_FUTUROS_PADRAO,
-    MESES_PASSADOS_PADRAO,
+    MESES_GRAFICO_SACADO_PADRAO,
     ORIGEM_FORA,
     ORIGEM_SITE,
-    TIPOS_SALDO,
+    ROTULOS_TIPO_SALDO,
     gerar_planilha_analytics,
     obter_analytics,
+    obter_grafico_sacado,
     obter_pedidos_filtrados,
+    obter_resumo_liberado,
     obter_saldo_por_usuario,
-    obter_saldos_por_mes,
     obter_serie_diaria,
     origem_detalhada as origem_detalhada_pedido,
 )
@@ -145,12 +145,12 @@ class PedidoAdmin(admin.ModelAdmin):
                 name="pedidos_analytics_exportar_excel",
             ),
             path(
-                "analytics/saldos-por-mes/",
-                self.admin_site.admin_view(self.saldos_por_mes_view),
-                name="pedidos_saldos_por_mes",
+                "analytics/resumo-financeiro/",
+                self.admin_site.admin_view(self.resumo_financeiro_view),
+                name="pedidos_resumo_financeiro",
             ),
             path(
-                "analytics/saldos-por-mes/usuarios/",
+                "analytics/resumo-financeiro/usuarios/",
                 self.admin_site.admin_view(self.saldo_por_usuario_view),
                 name="pedidos_saldo_por_usuario",
             ),
@@ -237,31 +237,29 @@ class PedidoAdmin(admin.ModelAdmin):
         livro.save(resposta)
         return resposta
 
-    def saldos_por_mes_view(self, request):
-        meses_passados = _parse_inteiro(request.GET.get("meses_passados"), MESES_PASSADOS_PADRAO)
-        meses_futuros = _parse_inteiro(request.GET.get("meses_futuros"), MESES_FUTUROS_PADRAO)
+    def resumo_financeiro_view(self, request):
+        meses_passados = _parse_inteiro(request.GET.get("meses_passados"), MESES_GRAFICO_SACADO_PADRAO)
         contexto = {
             **self.admin_site.each_context(request),
-            "title": "Saldos por mês",
-            "linhas": obter_saldos_por_mes(meses_passados, meses_futuros),
+            "title": "Resumo financeiro",
+            "grafico_sacado": obter_grafico_sacado(meses_passados),
+            "tabela_liberado": obter_resumo_liberado(),
             "meses_passados": meses_passados,
-            "meses_futuros": meses_futuros,
-            "tipos_saldo": TIPOS_SALDO,
         }
-        return TemplateResponse(request, "admin/saldos_por_mes.html", contexto)
+        return TemplateResponse(request, "admin/resumo_financeiro.html", contexto)
 
     def saldo_por_usuario_view(self, request):
         ano = _parse_inteiro(request.GET.get("ano"), None)
         mes = _parse_inteiro(request.GET.get("mes"), None)
         tipo = request.GET.get("tipo")
-        if tipo not in TIPOS_SALDO or not ano or not mes or not (1 <= mes <= 12):
-            return redirect("admin:pedidos_saldos_por_mes")
+        if tipo not in ROTULOS_TIPO_SALDO or not ano or not mes or not (1 <= mes <= 12):
+            return redirect("admin:pedidos_resumo_financeiro")
 
         contexto = {
             **self.admin_site.each_context(request),
-            "title": f"Saldo por usuário — {TIPOS_SALDO[tipo]['rotulo']} em {mes:02d}/{ano}",
+            "title": f"Saldo por usuário — {ROTULOS_TIPO_SALDO[tipo]} em {mes:02d}/{ano}",
             "linhas": obter_saldo_por_usuario(ano, mes, tipo),
-            "rotulo_tipo": TIPOS_SALDO[tipo]["rotulo"],
+            "rotulo_tipo": ROTULOS_TIPO_SALDO[tipo],
             "rotulo_mes": f"{mes:02d}/{ano}",
         }
         return TemplateResponse(request, "admin/saldo_por_usuario.html", contexto)

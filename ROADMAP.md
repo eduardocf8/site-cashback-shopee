@@ -1915,6 +1915,50 @@ feitos fora do site não devem mostrar cashback, pois realmente não há".
       valor real pro outro; tela de Analytics soma comissão dos dois mas
       cashback só do que tem usuário.
 
+**Depois, mesma fase — redesenho pra "Resumo financeiro":** usuário achou
+que a tabela de 4 status + pago não fazia muito sentido ("o objetivo dela
+é, resumidamente, conseguir ver o quanto tem de saldo liberado e saques
+solicitados") e pediu pra separar em 2 partes, renomear a tela e tirar o
+botão da tela inicial do admin (deixar só dentro de Analytics).
+
+- [x] **`obter_saldos_por_mes`/`TIPOS_SALDO` removidos**, substituídos por
+      2 funções novas em `pedidos/analytics.py`:
+      - `obter_grafico_sacado(meses_passados=6)` - só saques pagos
+        (`Saque.pago_em`), do mês atual pra trás (não existe "saque
+        futuro" pra projetar).
+      - `obter_resumo_liberado()` - sempre 3 linhas (mês atual + 2 meses à
+        frente), só saldo liberado: mês atual é o real
+        (`data_liberacao`); os 2 meses futuros são uma **projeção** que
+        soma validado (`data_prevista_liberacao`, a regra de verdade) +
+        pendente (projetado de forma otimista por `data_compra + 2
+        meses`, já que pendente ainda não tem data de validação real -
+        decisão do usuário via pergunta direta: "Assume mês da compra +
+        2"). Pedido sem usuário ("Fora do site") nunca conta.
+      - `obter_saldo_por_usuario` manteve a mesma tela/URL de quebra por
+        usuário (drill-down em nova aba, com botão de voltar), só trocou
+        os `tipo` aceitos pros 3 novos: `"liberado"`, `"projecao"`, `"pago"`.
+- [x] Tela renomeada pra **"Resumo financeiro"**
+      (`templates/admin/resumo_financeiro.html`,
+      `/admin/pedidos/pedido/analytics/resumo-financeiro/`, nome de URL
+      `pedidos_resumo_financeiro`) com 2 seções: gráfico de barras (SVG +
+      JS vanilla, mesmo padrão da "Evolução diária") do valor sacado por
+      mês (com filtro "meses pra trás", padrão 6 - decisão do usuário) e
+      tabela de 3 linhas do saldo liberado (mês atual destacado + 2
+      projeções). Toda barra/valor é clicável e abre a quebra por usuário
+      em nova aba.
+- [x] Botão **removido da tela inicial do admin**
+      (`templates/admin/index_customizado.html`) - só existe dentro da
+      tela de Analytics (`templates/admin/analytics.html`) agora.
+- [x] `pedidos/tests.py` reescrito: `ObterGraficoSacadoTests` e
+      `ObterResumoLiberadoTests` novas (substituindo
+      `ObterSaldosPorMesTests`), `ObterSaldoPorUsuarioTests` com os novos
+      `tipo`s (incluindo teste de pendente+validado somando no mesmo mês
+      projetado pro mesmo usuário), e `ResumoFinanceiroAdminViewTests`
+      (substituindo `SaldosPorMesAdminViewTests`). Suite completa
+      verificada rodando, e a tela nova verificada visualmente via
+      Playwright (gráfico, tabela, drill-down em nova aba nos 2 formatos,
+      botão de voltar, filtro de meses pra trás).
+
 ---
 
 Pra continuar esse roadmap numa conversa nova, basta apontar esse arquivo
