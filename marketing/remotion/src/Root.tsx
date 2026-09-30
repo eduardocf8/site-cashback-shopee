@@ -3,8 +3,12 @@ import {Composition} from 'remotion';
 import {Apresentacao, ApresentacaoEspera} from './Apresentacao';
 import {DURACAO, DURACAO_ESPERA, FPS} from './constantes';
 import {DURACAO_DINAMICA, Dinamica} from './Dinamica';
+import {DURACAO_ANIMADA, EsperaAnimada} from './animada/EsperaAnimada';
 
-/** Três composições, mesma informação.
+/** Quatro composições, mesma informação.
+ *
+ * "EsperaAnimada" é a de mais movimento: seis transições, a moeda da marca em voo, números
+ * que contam e rolam. Vive em src/animada/.
  *
  * "ApresentacaoEspera" é a versão calma com outro gancho ("Vai comprar na Shopee?
  * Espera."): as demais cenas são as mesmas.
@@ -30,6 +34,14 @@ export const RemotionRoot: React.FC = () => (
       id="ApresentacaoEspera"
       component={ApresentacaoEspera}
       durationInFrames={DURACAO_ESPERA}
+      fps={FPS}
+      width={1080}
+      height={1920}
+    />
+    <Composition
+      id="EsperaAnimada"
+      component={EsperaAnimada}
+      durationInFrames={DURACAO_ANIMADA}
       fps={FPS}
       width={1080}
       height={1920}

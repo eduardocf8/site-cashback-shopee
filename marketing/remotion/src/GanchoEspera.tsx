@@ -61,6 +61,9 @@ export const GanchoEspera: React.FC<{
           letterSpacing: '-0.04em',
           color: CORES.highlight,
           marginTop: 8,
+          // O letter-spacing negativo vale também depois do ponto final: a caixa fica
+          // 0,04em mais estreita que a tinta e a palavra escorrega 5px para a direita.
+          marginRight: '0.04em',
           opacity: aparece,
           transform: `scale(${escala})`,
         }}

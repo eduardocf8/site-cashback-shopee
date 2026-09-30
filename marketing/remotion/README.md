@@ -16,6 +16,7 @@ npm run studio            # abre o editor visual, para ajustar tempo e ver ao vi
 npm run render            # versão calma  -> saida/cash-b-apresentacao.mp4
 npm run render:dinamica   # versão com mais movimento -> saida/cash-b-apresentacao-dinamica.mp4
 npm run render:espera     # calma com o gancho "Espera." -> saida/cash-b-apresentacao-espera.mp4
+npm run render:animada    # a de mais movimento -> saida/cash-b-espera-animada.mp4
 ```
 
 `saida/` fica fora do git. Os dois vídeos prontos para baixar e postar estão em
@@ -36,6 +37,7 @@ com "Old Headless mode has been removed".
 | `src/Base.tsx` | Cena, entrada animada, título, número e linha de apoio |
 | `src/Apresentacao.tsx` | Versão calma: monta as cenas em `<Sequence>` |
 | `src/Dinamica.tsx` | Versão dinâmica: cenas que se empurram, fundo em zoom, números contando |
+| `src/animada/` | A versão animada: `elementos.tsx` (moeda, raios, barras, marcas), `transicoes.tsx` (as seis transições), `cenas.tsx` (as sete cenas) e `EsperaAnimada.tsx` (a linha do tempo) |
 | `src/Minimo.tsx` | A cena de dois tempos do piso de cashback |
 | `src/Fechamento.tsx` | O fechamento em dois tempos da assinatura |
 | `public/` | Fundos, logo e as fontes |
@@ -64,6 +66,7 @@ texto escrito dentro deles de propósito.
 | Composição | Duração | Para quê |
 |---|---|---|
 | `Apresentacao` | 18,3s | Corte seco entre cenas, quadro parado, números prontos |
+| `EsperaAnimada` | 20,4s | Mesmas informações, com seis transições, a moeda da marca em voo, números que contam e rolam e o halo ondulando. Ver `src/animada/` |
 | `ApresentacaoEspera` | 18,4s | A calma com outro gancho em dois tempos ("Vai comprar na Shopee?" ... "Espera." aos 0,9s); as demais cenas são as mesmas |
 | `Dinamica` | 15,8s | As cenas se empurram, o fundo dá zoom lento, os números contam |
 
