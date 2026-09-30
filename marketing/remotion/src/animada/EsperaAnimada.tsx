@@ -32,12 +32,12 @@ type Def = {
 
 const CENAS_ANIMADAS: Def[] = [
   {id: 'gancho', dur: 72, Cena: CenaGancho, para: {tipo: 'iris', dur: 14}},
-  {id: 'frase', dur: 120, Cena: CenaFrase, para: {tipo: 'empurraCima', dur: 14}},
+  {id: 'frase', dur: 148, Cena: CenaFrase, para: {tipo: 'empurraCima', dur: 14}},
   {id: 'minimo', dur: 150, Cena: CenaMinimo, para: {tipo: 'portas', dur: 16}},
   {id: 'mais', dur: 84, Cena: CenaMais, para: {tipo: 'irisBaixo', dur: 14}},
   {id: 'saque', dur: 88, Cena: CenaSaque, para: {tipo: 'empurraLado', dur: 14}},
   {id: 'semtaxa', dur: 62, Cena: CenaSemTaxa, para: {tipo: 'relogio', dur: 16}},
-  {id: 'marca', dur: 124, Cena: CenaMarca},
+  {id: 'marca', dur: 110, Cena: CenaMarca},
 ];
 
 const inicios = CENAS_ANIMADAS.reduce<number[]>((acc, cena, i) => {

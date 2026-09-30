@@ -3,6 +3,7 @@ import {
   AbsoluteFill,
   Img,
   interpolate,
+  interpolateColors,
   spring,
   staticFile,
   useCurrentFrame,
@@ -15,7 +16,6 @@ import {CORES, FONTE} from '../marca';
 import {
   Barras,
   Check,
-  ChuvaDeMoedas,
   LinhaSobe,
   Moeda,
   Onda,
@@ -75,55 +75,29 @@ const Faixa: React.FC<{y: number; children: React.ReactNode; style?: React.CSSPr
 
 const g = GANCHO_ESPERA;
 const CHEGA = 33;
-// Centro vertical da palavra em repouso, medido no quadro renderizado.
-const PALAVRA_Y = 1143;
 
 /** "Vai comprar na Shopee?" ... "Espera."
  *
- * Quatro palavras sobem das máscaras, uma pausa, e a palavra chega como uma batida: escala
- * grande que assenta com mola, um anel que se expande, raios que contornam a palavra, um
- * clarão âmbar que some rápido e um soco de câmera de 3,5% em tudo. Tudo isso dura 15
- * frames - o que dá impacto é a pausa antes, e o resto só precisa confirmá-lo. */
+ * Quatro palavras sobem das máscaras, uma pausa, e a palavra entra de uma vez: sem fade,
+ * sem mola, sem sobra. Aparece no quadro exato, 28% maior, e encolhe até o tamanho em 5
+ * frames. A cena acompanha com um soco de câmera de 3% e a pergunta escurece.
+ *
+ * A primeira versão juntava a isso um anel, raios, um clarão e uma mola que passava do
+ * tamanho e voltava. Era muito: cada efeito disputava com os outros o instante que a
+ * pausa já tinha preparado. O impacto vem da pausa e do corte seco, não da decoração. */
 export const CenaGancho: React.FC<{dur: number}> = ({dur}) => {
   const frame = useCurrentFrame();
-  const {fps} = useVideoConfig();
 
-  const mola = spring({frame: frame - CHEGA, fps, config: {damping: 9, stiffness: 220}});
-  const aparece = prog(frame, CHEGA, CHEGA + 3);
-  const escurece = interpolate(prog(frame, CHEGA, CHEGA + 8), [0, 1], [1, 0.5]);
-  const empurra = -12 * prog(frame, CHEGA, CHEGA + 10, saida);
-  const soco = frame >= CHEGA ? 1 + 0.035 * (1 - prog(frame, CHEGA, CHEGA + 9, saida)) : 1;
-  const clarao = frame >= CHEGA ? 1 - prog(frame, CHEGA, CHEGA + 11) : 0;
+  const entra = frame >= CHEGA;
+  const escala = 1.28 - 0.28 * prog(frame, CHEGA, CHEGA + 5, saida);
+  const escurece = interpolate(prog(frame, CHEGA, CHEGA + 6), [0, 1], [1, 0.5]);
+  const empurra = -12 * prog(frame, CHEGA, CHEGA + 8, saida);
+  const soco = entra ? 1 + 0.03 * (1 - prog(frame, CHEGA, CHEGA + 7, saida)) : 1;
 
   const linhas = g.pergunta.split('\n');
   return (
     <AbsoluteFill style={{transform: `scale(${soco})`}}>
       <Fundo arquivo="fundo-roxo.png" dur={dur} />
-      <div
-        style={{
-          position: 'absolute',
-          left: CX - 560,
-          top: PALAVRA_Y - 560,
-          width: 1120,
-          height: 1120,
-          borderRadius: '50%',
-          background:
-            'radial-gradient(circle, rgba(245,158,11,0.42) 0%, rgba(245,158,11,0) 62%)',
-          opacity: clarao,
-        }}
-      />
-      <Onda x={CX} y={PALAVRA_Y} p={prog(frame, CHEGA, CHEGA + 20)} r0={140} r1={640} largura={10} />
-      <Raios
-        x={CX}
-        y={PALAVRA_Y}
-        p={prog(frame, CHEGA + 1, CHEGA + 17)}
-        n={14}
-        base={contorno(400, 150, 26)}
-        comp={170}
-        largura={11}
-        giro={7}
-        semOsDeCima
-      />
       <Palco>
         <div style={{opacity: escurece, transform: `translateY(${empurra}px)`}}>
           <Titulo corpo={g.corpo}>
@@ -143,12 +117,12 @@ export const CenaGancho: React.FC<{dur: number}> = ({dur}) => {
             letterSpacing: '-0.04em',
             color: CORES.highlight,
             marginTop: 8,
-            // O letter-spacing negativo também vale depois do ponto final: a caixa fica
-            // 0,04em mais estreita que a tinta, e centralizar a caixa empurra a palavra
-            // para a direita (medido: 5,5px). A margem devolve essa largura.
+            // O letter-spacing negativo vale também depois do ponto final: a caixa fica
+            // 0,04em mais estreita que a tinta e a palavra escorrega 5px para a direita.
             marginRight: '0.04em',
-            opacity: aparece,
-            transform: `scale(${interpolate(mola, [0, 1], [1.45, 1])})`,
+            // Corte seco: a palavra existe no quadro exato, e não some e reaparece.
+            opacity: entra ? 1 : 0,
+            transform: `scale(${escala})`,
           }}
         >
           {g.palavra}
@@ -190,25 +164,33 @@ const DESLOCA_INICIAL = (LINHA_FRASE + LINHA_VOLTA) / 2;
  * corte é o que a fazia se partir. Aqui a primeira metade fica na tela e a segunda chega
  * embaixo dela.
  *
- * E a moeda: sai de "cash-b," para fora da tela quando o texto diz "parte", e volta de
- * baixo, em arco, para aterrissar em "volta". O gesto da palavra vira o gesto da imagem. */
-const SAI_DE = 30;
-const SAI_ATE = 58;
-const VOLTA_DE = 62;
-const POUSA = 88;
+ * E a moeda: a palavra "dinheiro" vira a moeda. Ela se apaga até uma sombra fraca - o
+ * bastante para ver que a palavra estava ali - e a moeda nasce no lugar dela, sai voando
+ * quando o texto diz "parte" e volta de baixo, em arco, para pousar em "volta". A palavra
+ * que a frase diz é a coisa que voa. */
+const FALA_DE = 32; // "parte do dinheiro" começa a subir
+const MORFA = 58; // "dinheiro" vira a moeda
+const SAI_DE = 64;
+const SAI_ATE = 86;
+const VOLTA_DE = 90;
+const POUSA = 112;
+// Centro de "dinheiro" na tela, medido no quadro renderizado (x 557 a 948, y 950 a 1031).
+// Medido e não calculado porque depende da largura que a fonte dá à palavra.
+const DINHEIRO: [number, number] = [752, 990];
+const SOMBRA = 'rgba(17,24,39,0.3)';
 
 export const CenaFrase: React.FC<{dur: number}> = ({dur}) => {
   const frame = useCurrentFrame();
   const {fps} = useVideoConfig();
 
-  const chegaMeta = prog(frame, 42, 60, saida);
+  const chegaMeta = prog(frame, FALA_DE - 4, FALA_DE + 14, saida);
   const desloca = (1 - chegaMeta) * DESLOCA_INICIAL;
 
   const YV = Y_LINHA[3];
   const P_SAI: [[number, number], [number, number], [number, number]] = [
-    [CX, Y_LINHA[1] + DESLOCA_INICIAL],
-    [980, 560],
-    [1400, -260],
+    DINHEIRO,
+    [1020, 620],
+    [1420, -260],
   ];
   const P_VOLTA: [[number, number], [number, number], [number, number]] = [
     [-330, 1800],
@@ -218,17 +200,23 @@ export const CenaFrase: React.FC<{dur: number}> = ({dur}) => {
 
   const voltando = frame >= VOLTA_DE;
   const bruto = voltando ? prog(frame, VOLTA_DE, POUSA) : prog(frame, SAI_DE, SAI_ATE);
-  const nasce = spring({frame: frame - SAI_DE, fps, config: {damping: 12, stiffness: 200}});
+  const nasce = spring({frame: frame - MORFA, fps, config: {damping: 12, stiffness: 220}});
   const pouso = prog(frame, POUSA, POUSA + 7, saida);
   const escalaMoeda = voltando
     ? interpolate(suave(bruto), [0, 1], [1.05, 0.8]) * (1 - pouso)
     : interpolate(nasce, [0, 1], [0, 1]);
-  const visivel = frame >= SAI_DE && frame < SAI_ATE + 4 ? true : voltando && pouso < 1;
+  const visivel = (frame >= MORFA && frame < SAI_ATE + 4) || (voltando && pouso < 1);
+
+  // "dinheiro" vira sombra: da cor do texto para um escuro translúcido, com um borrão
+  // leve. Branco a 16% leria como palavra desbotada; escuro lê como marca deixada.
+  const morfa = prog(frame, MORFA, MORFA + 8);
+  const corDinheiro = interpolateColors(morfa, [0, 1], ['rgba(255,255,255,1)', SOMBRA]);
 
   // A moeda deixa um rastro de três cópias, cada uma mais atrás no caminho e mais fraca:
   // é o que dá velocidade ao movimento, sem borrão.
   const coin = (folga: number, opacidade: number, escala: number, chave: number) => {
-    const t = suave(Math.max(0, bruto - folga));
+    const parada = !voltando && frame < SAI_DE;
+    const t = parada ? 0 : suave(Math.max(0, bruto - folga));
     const pos = bezier(...(voltando ? P_VOLTA : P_SAI), t);
     const giro = t * Math.PI * (voltando ? 3 : 4);
     return (
@@ -248,6 +236,10 @@ export const CenaFrase: React.FC<{dur: number}> = ({dur}) => {
   const chegaVolta = POUSA;
   const molaVolta = spring({frame: frame - chegaVolta, fps, config: {damping: 9, stiffness: 220}});
   const apareceVolta = prog(frame, chegaVolta, chegaVolta + 3);
+
+  const palavrasProm = PROM_A.split(' ');
+  const ultimaProm = palavrasProm[palavrasProm.length - 1];
+  const restoProm = palavrasProm.slice(0, -1).join(' ');
 
   return (
     <AbsoluteFill>
@@ -279,13 +271,18 @@ export const CenaFrase: React.FC<{dur: number}> = ({dur}) => {
             </div>
             <div>
               <Sobe inicio={13}>
-                <Destaque tipo="grifo" inicio={24}>
+                <Destaque tipo="grifo" inicio={22}>
                   {MARCADA}
                 </Destaque>
               </Sobe>
             </div>
-            <div style={{opacity: chegaMeta}}>
-              <LinhaSobe texto={PROM_A} inicio={46} passo={4} />
+            <div>
+              <LinhaSobe texto={restoProm} inicio={FALA_DE} passo={4} />{' '}
+              <Sobe inicio={FALA_DE + 4 * palavrasProm.length - 4}>
+                <span style={{color: corDinheiro, filter: `blur(${1.6 * morfa}px)`}}>
+                  {ultimaProm}
+                </span>
+              </Sobe>
             </div>
             <div
               style={{
@@ -362,7 +359,12 @@ const NumeroRolando: React.FC<{
         style={{
           display: 'flex',
           alignItems: 'center',
-          width: `${abre * 0.78}em`,
+          // 0,84em e não 0,78: o conteúdo (vírgula + célula do algarismo) ocupa 0,84em
+          // de tinta, e a margem negativa devolve os 0,06em de letter-spacing ao layout.
+          // Com 0,78 a caixa aparava o lado direito do "6" - que é o que o % parecia
+          // estar cortando.
+          width: `${abre * 0.84}em`,
+          marginRight: `${-0.06 * abre}em`,
           overflow: 'hidden',
           flexShrink: 0,
         }}
@@ -374,7 +376,10 @@ const NumeroRolando: React.FC<{
             height: '1em',
             width: '0.6em',
             marginRight: '-0.06em',
-            overflow: 'hidden',
+            // Recorte só em cima e embaixo, que é o que o hodômetro precisa (o algarismo
+            // vizinho não pode aparecer). Com overflow: hidden a célula também aparava os
+            // lados, e o "6" saía com a curva da direita cortada reta.
+            clipPath: 'inset(0 -0.5em)',
             flexShrink: 0,
           }}
         >
@@ -636,53 +641,25 @@ export const CenaSemTaxa: React.FC<{dur: number}> = ({dur}) => {
 
 const marca = CENAS[7];
 const ATRASO_FECHAMENTO = 14;
-const INICIO_MOEDAS = 34 + ATRASO_FECHAMENTO + 10;
 
-/** O fechamento, com o halo em movimento.
+/** O fechamento da primeira versão calma: "acesse / cash-b.com", depois só "cash-b", que
+ * cresce e vira o centro, sobre o halo parado.
  *
- * Nas outras versões o halo (arcos concêntricos) é uma imagem parada. Aqui são anéis que
- * ondulam para fora sem parar, e no instante em que "cash-b" cresce e vira o centro, uma
- * onda mais forte parte dele e um punhado de moedas estoura de trás da palavra. É o único
- * momento de comemoração do vídeo, e por isso fica no final. */
-export const CenaMarca: React.FC<{dur: number}> = ({dur}) => {
-  const frame = useCurrentFrame();
-  return (
-    <AbsoluteFill>
-      <Fundo arquivo="fundo-roxo.png" dur={dur} />
-      {[0, 1, 2].map((k) => {
-        const p = (((frame + k * 26) % 78) / 78) as number;
-        return (
-          <Onda
-            key={k}
-            x={CX}
-            y={CENTRO_Y + 20}
-            p={p}
-            r0={190}
-            r1={980}
-            largura={5}
-            opacidade={0.22}
-          />
-        );
-      })}
-      <Onda
-        x={CX}
-        y={CENTRO_Y + 20}
-        p={prog(frame, INICIO_MOEDAS, INICIO_MOEDAS + 22)}
-        r0={120}
-        r1={780}
-        largura={14}
-        cor={CORES.highlight}
-        opacidade={0.7}
-      />
-      <ChuvaDeMoedas x={CX} y={CENTRO_Y + 20} inicio={INICIO_MOEDAS} />
-      <Palco>
-        <FechamentoConteudo
-          convite={marca.convite}
-          dominio={marca.dominio}
-          sufixo={marca.sufixo}
-          atraso={ATRASO_FECHAMENTO}
-        />
-      </Palco>
+ * A versão animada tinha um halo ondulando e moedas estourando aqui. Trocei por este: o
+ * halo estático emoldura a marca sem disputar com ela, e o vídeo já tem movimento de sobra
+ * até aqui. A transição que leva até ele (o ponteiro de relógio) continua. */
+export const CenaMarca: React.FC = () => (
+  <AbsoluteFill>
+    <AbsoluteFill style={{backgroundColor: CORES.brandStrong}}>
+      <Img src={staticFile('fundo-halo.png')} style={{width: 1080, height: 1920}} />
     </AbsoluteFill>
-  );
-};
+    <Palco>
+      <FechamentoConteudo
+        convite={marca.convite}
+        dominio={marca.dominio}
+        sufixo={marca.sufixo}
+        atraso={ATRASO_FECHAMENTO}
+      />
+    </Palco>
+  </AbsoluteFill>
+);

@@ -66,7 +66,7 @@ texto escrito dentro deles de propósito.
 | Composição | Duração | Para quê |
 |---|---|---|
 | `Apresentacao` | 18,3s | Corte seco entre cenas, quadro parado, números prontos |
-| `EsperaAnimada` | 20,4s | Mesmas informações, com seis transições, a moeda da marca em voo, números que contam e rolam e o halo ondulando. Ver `src/animada/` |
+| `EsperaAnimada` | 20,9s | Mesmas informações, com seis transições, a moeda da marca em voo (nascida da palavra "dinheiro") e números que contam e rolam. O fechamento é o da versão calma. Ver `src/animada/` |
 | `ApresentacaoEspera` | 18,4s | A calma com outro gancho em dois tempos ("Vai comprar na Shopee?" ... "Espera." aos 0,9s); as demais cenas são as mesmas |
 | `Dinamica` | 15,8s | As cenas se empurram, o fundo dá zoom lento, os números contam |
 
