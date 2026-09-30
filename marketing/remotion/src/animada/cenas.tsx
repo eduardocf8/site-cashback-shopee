@@ -75,29 +75,91 @@ const Faixa: React.FC<{y: number; children: React.ReactNode; style?: React.CSSPr
 
 const g = GANCHO_ESPERA;
 const CHEGA = 33;
+// Centro vertical da palavra em repouso, medido no quadro renderizado.
+const PALAVRA_Y = 1143;
 
 /** "Vai comprar na Shopee?" ... "Espera."
  *
- * Quatro palavras sobem das máscaras, uma pausa, e a palavra entra de uma vez: sem fade,
- * sem mola, sem sobra. Aparece no quadro exato, 28% maior, e encolhe até o tamanho em 5
- * frames. A cena acompanha com um soco de câmera de 3% e a pergunta escurece.
+ * Quatro palavras sobem das máscaras, uma pausa, e a palavra chega no quadro exato, sem
+ * fade. O que varia entre as versões é o que acompanha essa chegada:
  *
- * A primeira versão juntava a isso um anel, raios, um clarão e uma mola que passava do
- * tamanho e voltava. Era muito: cada efeito disputava com os outros o instante que a
- * pausa já tinha preparado. O impacto vem da pausa e do corte seco, não da decoração. */
-export const CenaGancho: React.FC<{dur: number}> = ({dur}) => {
+ * - `seco`       só o encolher de 28% para 100%, o soco de câmera e a pergunta escurecendo.
+ * - `explosaoA`  o `seco` mais uma rajada de raios que contorna a palavra. Um efeito só.
+ * - `explosaoB`  o `explosaoA` mais um anel fino que se expande e um resto de mola, para a
+ *                palavra assentar com uma pequena sobra em vez de parar de uma vez.
+ *
+ * A primeira versão tinha anel, raios, clarão e mola juntos, e ficou demais; a `seco`
+ * ficou de menos. As duas explosões são o meio do caminho: a pausa continua sendo o que
+ * dá o impacto, e o efeito só o confirma. */
+export type EfeitoGancho = 'seco' | 'explosaoA' | 'explosaoB';
+
+export const CenaGancho: React.FC<{dur: number; efeito?: EfeitoGancho}> = ({
+  dur,
+  efeito = 'seco',
+}) => {
   const frame = useCurrentFrame();
+  const {fps} = useVideoConfig();
 
   const entra = frame >= CHEGA;
-  const escala = 1.28 - 0.28 * prog(frame, CHEGA, CHEGA + 5, saida);
+  // Em `explosaoB` a palavra assenta com mola de pouca sobra; nas outras, sem mola.
+  const escala =
+    efeito === 'explosaoB'
+      ? interpolate(
+          spring({frame: frame - CHEGA, fps, config: {damping: 12, stiffness: 240}}),
+          [0, 1],
+          [1.3, 1],
+        )
+      : 1.3 - 0.3 * prog(frame, CHEGA, CHEGA + 5, saida);
   const escurece = interpolate(prog(frame, CHEGA, CHEGA + 6), [0, 1], [1, 0.5]);
   const empurra = -12 * prog(frame, CHEGA, CHEGA + 8, saida);
-  const soco = entra ? 1 + 0.03 * (1 - prog(frame, CHEGA, CHEGA + 7, saida)) : 1;
+  const soco = entra ? 1 + 0.035 * (1 - prog(frame, CHEGA, CHEGA + 7, saida)) : 1;
 
   const linhas = g.pergunta.split('\n');
   return (
     <AbsoluteFill style={{transform: `scale(${soco})`}}>
       <Fundo arquivo="fundo-roxo.png" dur={dur} />
+      {efeito === 'explosaoB' ? (
+        <>
+          {/* O clarão é o que faz a chegada parecer um estouro e não só uma palavra
+              maior: um círculo âmbar que acende e apaga em 8 frames. A 18% e não a 42%
+              como na primeira versão, onde ele virava uma mancha. */}
+          <div
+            style={{
+              position: 'absolute',
+              left: CX - 480,
+              top: PALAVRA_Y - 480,
+              width: 960,
+              height: 960,
+              borderRadius: '50%',
+              background:
+                'radial-gradient(circle, rgba(245,158,11,0.26) 0%, rgba(245,158,11,0) 64%)',
+              opacity: entra ? 1 - prog(frame, CHEGA, CHEGA + 9) : 0,
+            }}
+          />
+          <Onda
+            x={CX}
+            y={PALAVRA_Y}
+            p={prog(frame, CHEGA, CHEGA + 14)}
+            r0={150}
+            r1={540}
+            largura={7}
+            opacidade={0.35}
+          />
+        </>
+      ) : null}
+      {efeito !== 'seco' ? (
+        <Raios
+          x={CX}
+          y={PALAVRA_Y}
+          p={prog(frame, CHEGA, CHEGA + 11)}
+          n={18}
+          base={contorno(400, 150, 34)}
+          comp={230}
+          largura={15}
+          giro={5}
+          semOsDeCima
+        />
+      ) : null}
       <Palco>
         <div style={{opacity: escurece, transform: `translateY(${empurra}px)`}}>
           <Titulo corpo={g.corpo}>

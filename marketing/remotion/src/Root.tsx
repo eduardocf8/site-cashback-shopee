@@ -4,6 +4,7 @@ import {Apresentacao, ApresentacaoEspera} from './Apresentacao';
 import {DURACAO, DURACAO_ESPERA, FPS} from './constantes';
 import {DURACAO_DINAMICA, Dinamica} from './Dinamica';
 import {DURACAO_ANIMADA, EsperaAnimada} from './animada/EsperaAnimada';
+import {DURACAO_GANCHO_TESTE, GanchoExplosaoA, GanchoExplosaoB} from './animada/GanchoTeste';
 
 /** Quatro composições, mesma informação.
  *
@@ -42,6 +43,22 @@ export const RemotionRoot: React.FC = () => (
       id="EsperaAnimada"
       component={EsperaAnimada}
       durationInFrames={DURACAO_ANIMADA}
+      fps={FPS}
+      width={1080}
+      height={1920}
+    />
+    <Composition
+      id="GanchoExplosaoA"
+      component={GanchoExplosaoA}
+      durationInFrames={DURACAO_GANCHO_TESTE}
+      fps={FPS}
+      width={1080}
+      height={1920}
+    />
+    <Composition
+      id="GanchoExplosaoB"
+      component={GanchoExplosaoB}
+      durationInFrames={DURACAO_GANCHO_TESTE}
       fps={FPS}
       width={1080}
       height={1920}
