@@ -1,0 +1,61 @@
+{% extends "admin/base_site.html" %}
+
+{% block extrastyle %}
+{{ block.super }}
+<style>
+    .saldo-usuario-tabela {
+        width: 100%;
+        border-collapse: collapse;
+        margin-bottom: 8px;
+    }
+    .saldo-usuario-tabela th, .saldo-usuario-tabela td {
+        padding: 10px 12px;
+        text-align: center;
+        border-bottom: 1px solid var(--border-color);
+    }
+    .saldo-usuario-tabela th {
+        font-size: 11px;
+        text-transform: uppercase;
+        letter-spacing: .03em;
+        color: var(--body-quiet-color);
+        font-weight: 600;
+    }
+    .saldo-usuario-tabela tr:first-child td {
+        font-weight: 600;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<p style="margin: 0 0 20px;">
+    <a class="button" href="{% url 'admin:pedidos_saldos_por_mes' %}">← Voltar pros Saldos por mês</a>
+</p>
+
+<h2 style="margin: 0 0 4px;">{{ rotulo_tipo }} em {{ rotulo_mes }}</h2>
+<p class="help" style="margin: 0 0 20px;">
+    {% if linhas %}
+        {{ linhas|length }} usuário{{ linhas|length|pluralize }} com saldo nesse mês, do maior pro menor.
+    {% else %}
+        Ninguém com saldo nesse tipo/mês.
+    {% endif %}
+</p>
+
+{% if linhas %}
+<table class="saldo-usuario-tabela">
+    <thead>
+        <tr>
+            <th>Usuário</th>
+            <th>Valor</th>
+        </tr>
+    </thead>
+    <tbody>
+        {% for linha in linhas %}
+        <tr>
+            <td><a href="{% url 'admin:accounts_user_change' linha.usuario_id %}">{{ linha.username }}</a></td>
+            <td>R$ {{ linha.total|floatformat:2 }}</td>
+        </tr>
+        {% endfor %}
+    </tbody>
+</table>
+{% endif %}
+{% endblock %}

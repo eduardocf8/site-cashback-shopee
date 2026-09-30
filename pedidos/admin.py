@@ -3,6 +3,7 @@ from datetime import datetime
 
 from django.contrib import admin
 from django.http import HttpResponse
+from django.shortcuts import redirect
 from django.template.response import TemplateResponse
 from django.urls import path
 
@@ -12,9 +13,11 @@ from .analytics import (
     MESES_PASSADOS_PADRAO,
     ORIGEM_FORA,
     ORIGEM_SITE,
+    TIPOS_SALDO,
     gerar_planilha_analytics,
     obter_analytics,
     obter_pedidos_filtrados,
+    obter_saldo_por_usuario,
     obter_saldos_por_mes,
     obter_serie_diaria,
     origem_detalhada as origem_detalhada_pedido,
@@ -136,6 +139,11 @@ class PedidoAdmin(admin.ModelAdmin):
                 self.admin_site.admin_view(self.saldos_por_mes_view),
                 name="pedidos_saldos_por_mes",
             ),
+            path(
+                "analytics/saldos-por-mes/usuarios/",
+                self.admin_site.admin_view(self.saldo_por_usuario_view),
+                name="pedidos_saldo_por_usuario",
+            ),
         ]
         return urls + super().get_urls()
 
@@ -228,8 +236,25 @@ class PedidoAdmin(admin.ModelAdmin):
             "linhas": obter_saldos_por_mes(meses_passados, meses_futuros),
             "meses_passados": meses_passados,
             "meses_futuros": meses_futuros,
+            "tipos_saldo": TIPOS_SALDO,
         }
         return TemplateResponse(request, "admin/saldos_por_mes.html", contexto)
+
+    def saldo_por_usuario_view(self, request):
+        ano = _parse_inteiro(request.GET.get("ano"), None)
+        mes = _parse_inteiro(request.GET.get("mes"), None)
+        tipo = request.GET.get("tipo")
+        if tipo not in TIPOS_SALDO or not ano or not mes or not (1 <= mes <= 12):
+            return redirect("admin:pedidos_saldos_por_mes")
+
+        contexto = {
+            **self.admin_site.each_context(request),
+            "title": f"Saldo por usuário — {TIPOS_SALDO[tipo]['rotulo']} em {mes:02d}/{ano}",
+            "linhas": obter_saldo_por_usuario(ano, mes, tipo),
+            "rotulo_tipo": TIPOS_SALDO[tipo]["rotulo"],
+            "rotulo_mes": f"{mes:02d}/{ano}",
+        }
+        return TemplateResponse(request, "admin/saldo_por_usuario.html", contexto)
 
 
 # Mostra um link pra tela de analytics no topo da página inicial do admin. Precisa ser um

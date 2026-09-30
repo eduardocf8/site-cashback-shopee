@@ -17,7 +17,13 @@ from accounts.models import Indicacao
 from links.models import Click
 from saques.models import Saque
 
-from .analytics import obter_analytics, obter_saldos_por_mes, obter_serie_diaria, origem_detalhada
+from .analytics import (
+    obter_analytics,
+    obter_saldo_por_usuario,
+    obter_saldos_por_mes,
+    obter_serie_diaria,
+    origem_detalhada,
+)
 from .models import CampanhaCashback, Pedido
 from .notificacoes import notificar_indicador_bonus_pendente
 from .services import calcular_data_prevista_liberacao, liberar_saldo, mapear_status, resolver_click, sincronizar
@@ -1280,6 +1286,92 @@ class ObterSaldosPorMesTests(TestCase):
         self.assertEqual(len(linhas), 1)  # só o mês atual
 
 
+class ObterSaldoPorUsuarioTests(TestCase):
+    """Quebra de 1 mês+tipo (1 célula da tela de Saldos por mês) por usuário - usado
+    pra achar quem já tem saldo suficiente pra sacar escondido dentro de um total."""
+
+    def setUp(self):
+        self.hoje = timezone.localdate()
+        self.ana = get_user_model().objects.create_user(username="ana", password="senha123", cpf="39053344705")
+        self.bia = get_user_model().objects.create_user(username="bia", password="senha123", cpf="14783246947")
+
+    def _datetime_no_mes_atual(self, dia=15):
+        return timezone.make_aware(datetime.combine(date(self.hoje.year, self.hoje.month, dia), datetime.min.time()))
+
+    def test_soma_por_usuario_do_tipo_liberado_no_mes_certo(self):
+        Pedido.objects.create(
+            order_id="A", conversion_id="1", usuario=self.ana, status=Pedido.STATUS_LIBERADO,
+            status_shopee_bruto="COMPLETED", valor_comissao=Decimal("10.00"), valor_cashback=Decimal("20.00"),
+            data_liberacao=self._datetime_no_mes_atual(),
+        )
+        Pedido.objects.create(
+            order_id="B", conversion_id="1", usuario=self.ana, status=Pedido.STATUS_LIBERADO,
+            status_shopee_bruto="COMPLETED", valor_comissao=Decimal("5.00"), valor_cashback=Decimal("8.00"),
+            data_liberacao=self._datetime_no_mes_atual(),
+        )
+        Pedido.objects.create(
+            order_id="C", conversion_id="1", usuario=self.bia, status=Pedido.STATUS_LIBERADO,
+            status_shopee_bruto="COMPLETED", valor_comissao=Decimal("5.00"), valor_cashback=Decimal("3.00"),
+            data_liberacao=self._datetime_no_mes_atual(),
+        )
+
+        linhas = obter_saldo_por_usuario(self.hoje.year, self.hoje.month, "liberado")
+
+        por_usuario = {linha["username"]: linha["total"] for linha in linhas}
+        self.assertEqual(por_usuario["ana"], Decimal("28.00"))
+        self.assertEqual(por_usuario["bia"], Decimal("3.00"))
+
+    def test_ordenado_do_maior_pro_menor(self):
+        Pedido.objects.create(
+            order_id="A", conversion_id="1", usuario=self.ana, status=Pedido.STATUS_LIBERADO,
+            status_shopee_bruto="COMPLETED", valor_comissao=Decimal("1.00"), valor_cashback=Decimal("3.00"),
+            data_liberacao=self._datetime_no_mes_atual(),
+        )
+        Pedido.objects.create(
+            order_id="B", conversion_id="1", usuario=self.bia, status=Pedido.STATUS_LIBERADO,
+            status_shopee_bruto="COMPLETED", valor_comissao=Decimal("1.00"), valor_cashback=Decimal("30.00"),
+            data_liberacao=self._datetime_no_mes_atual(),
+        )
+
+        linhas = obter_saldo_por_usuario(self.hoje.year, self.hoje.month, "liberado")
+
+        self.assertEqual([linha["username"] for linha in linhas], ["bia", "ana"])
+
+    def test_nao_traz_pedido_de_outro_mes(self):
+        mes_passado = self.hoje.month - 1 or 12
+        ano_passado = self.hoje.year if self.hoje.month > 1 else self.hoje.year - 1
+        Pedido.objects.create(
+            order_id="A", conversion_id="1", usuario=self.ana, status=Pedido.STATUS_LIBERADO,
+            status_shopee_bruto="COMPLETED", valor_comissao=Decimal("1.00"), valor_cashback=Decimal("3.00"),
+            data_liberacao=timezone.make_aware(datetime(ano_passado, mes_passado, 15)),
+        )
+
+        linhas = obter_saldo_por_usuario(self.hoje.year, self.hoje.month, "liberado")
+
+        self.assertEqual(linhas, [])
+
+    def test_tipo_invalido_retorna_lista_vazia(self):
+        linhas = obter_saldo_por_usuario(self.hoje.year, self.hoje.month, "lixo")
+        self.assertEqual(linhas, [])
+
+    def test_respeita_o_mesmo_campo_de_data_da_agregacao_mensal(self):
+        # "validado" usa data_prevista_liberacao, não data_compra - mesma regra de
+        # obter_saldos_por_mes.
+        mes_seguinte = self.hoje.month % 12 + 1
+        ano_seguinte = self.hoje.year + (1 if self.hoje.month == 12 else 0)
+        Pedido.objects.create(
+            order_id="A", conversion_id="1", usuario=self.ana, status=Pedido.STATUS_VALIDADO,
+            status_shopee_bruto="COMPLETED", valor_comissao=Decimal("1.00"), valor_cashback=Decimal("12.00"),
+            data_compra=self._datetime_no_mes_atual(), data_prevista_liberacao=date(ano_seguinte, mes_seguinte, 1),
+        )
+
+        linhas_mes_atual = obter_saldo_por_usuario(self.hoje.year, self.hoje.month, "validado_previsto")
+        linhas_mes_seguinte = obter_saldo_por_usuario(ano_seguinte, mes_seguinte, "validado_previsto")
+
+        self.assertEqual(linhas_mes_atual, [])
+        self.assertEqual(linhas_mes_seguinte[0]["total"], Decimal("12.00"))
+
+
 class ObterSerieDiariaTests(TestCase):
     """Série dia a dia usada no gráfico de linha da tela de analytics."""
 
@@ -1544,3 +1636,67 @@ class SaldosPorMesAdminViewTests(TestCase):
         self.client.force_login(self.staff)
         resposta = self.client.get(reverse("admin:pedidos_saldos_por_mes"), {"meses_passados": "lixo"})
         self.assertEqual(resposta.context["meses_passados"], 6)
+
+    def test_valores_da_tabela_linkam_pra_tela_de_saldo_por_usuario(self):
+        self.client.force_login(self.staff)
+        resposta = self.client.get(reverse("admin:pedidos_saldos_por_mes"))
+        self.assertContains(resposta, reverse("admin:pedidos_saldo_por_usuario"))
+        self.assertContains(resposta, "target=\"_blank\"")
+
+
+class SaldoPorUsuarioAdminViewTests(TestCase):
+    def setUp(self):
+        self.staff = get_user_model().objects.create_user(
+            username="equipe", password="senha123", cpf="39053344705", is_staff=True
+        )
+        self.usuario_comum = get_user_model().objects.create_user(
+            username="comum", password="senha123", cpf="14783246947"
+        )
+        self.comprador = get_user_model().objects.create_user(
+            username="compradora", password="senha123", cpf="93541134780"
+        )
+        self.hoje = timezone.localdate()
+        Pedido.objects.create(
+            order_id="ORD-1", conversion_id="1", usuario=self.comprador, status=Pedido.STATUS_LIBERADO,
+            status_shopee_bruto="COMPLETED", valor_comissao=Decimal("10.00"), valor_cashback=Decimal("25.00"),
+            data_liberacao=timezone.make_aware(datetime(self.hoje.year, self.hoje.month, 15)),
+        )
+
+    def test_staff_ve_a_quebra_por_usuario(self):
+        self.client.force_login(self.staff)
+        resposta = self.client.get(
+            reverse("admin:pedidos_saldo_por_usuario"),
+            {"ano": self.hoje.year, "mes": self.hoje.month, "tipo": "liberado"},
+        )
+        self.assertEqual(resposta.status_code, 200)
+        self.assertContains(resposta, "compradora")
+        self.assertContains(resposta, "R$ 25,00")
+
+    def test_usuario_comum_nao_acessa(self):
+        self.client.force_login(self.usuario_comum)
+        resposta = self.client.get(
+            reverse("admin:pedidos_saldo_por_usuario"),
+            {"ano": self.hoje.year, "mes": self.hoje.month, "tipo": "liberado"},
+        )
+        self.assertEqual(resposta.status_code, 302)
+
+    def test_tipo_invalido_redireciona_pra_tela_principal(self):
+        self.client.force_login(self.staff)
+        resposta = self.client.get(
+            reverse("admin:pedidos_saldo_por_usuario"),
+            {"ano": self.hoje.year, "mes": self.hoje.month, "tipo": "lixo"},
+        )
+        self.assertRedirects(resposta, reverse("admin:pedidos_saldos_por_mes"))
+
+    def test_sem_parametros_redireciona_pra_tela_principal(self):
+        self.client.force_login(self.staff)
+        resposta = self.client.get(reverse("admin:pedidos_saldo_por_usuario"))
+        self.assertRedirects(resposta, reverse("admin:pedidos_saldos_por_mes"))
+
+    def test_link_do_usuario_aponta_pro_change_dele_no_admin(self):
+        self.client.force_login(self.staff)
+        resposta = self.client.get(
+            reverse("admin:pedidos_saldo_por_usuario"),
+            {"ano": self.hoje.year, "mes": self.hoje.month, "tipo": "liberado"},
+        )
+        self.assertContains(resposta, reverse("admin:accounts_user_change", args=[self.comprador.pk]))

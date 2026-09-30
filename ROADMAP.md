@@ -1848,6 +1848,38 @@ validado esse mês será pago daqui 2 meses somente".
       tela renderiza certo, e o pedido validado esse mês realmente aparece
       projetado 2 meses à frente, exatamente como pedido.
 
+**Depois, mesma fase:** usuário pediu pra abrir o saldo de uma célula (mês +
+tipo) quebrado por usuário - exemplo real: "mês 09/2026 tem R$ 80,96
+liberado, se desses 20 pertencem a só um usuário, ele já poderia ter
+solicitado o saque". Pediu também que isso abrisse "igual foi feito pra
+tabela de pedidos" - perguntei se era nova aba ou modal, usuário confirmou
+nova aba.
+
+- [x] **`pedidos/analytics.py`** reestruturado: a config de "qual
+      campo/model cada tipo usa" virou um dicionário único (`TIPOS_SALDO`),
+      compartilhado entre `obter_saldos_por_mes` (agregado por mês) e o novo
+      `obter_saldo_por_usuario(ano, mes, tipo)` (quebra de 1 mês+tipo por
+      usuário, ordenado do maior pro menor) - fonte única de verdade, evita
+      duplicar (e desalinhar) essa regra em 2 lugares.
+- [x] Cada valor da tabela de Saldos por mês virou um link (`target="_blank"`)
+      pra `/admin/pedidos/pedido/analytics/saldos-por-mes/usuarios/?ano=X&mes=Y&tipo=Z`
+      (novo, `templates/admin/saldo_por_usuario.html`) - abre numa aba nova,
+      tabela usuário/valor, cada usuário linkado pro `change` dele no admin
+      (accounts), botão "← Voltar pros Saldos por mês". Só "Total" não é
+      clicável (é soma de vários tipos, quebrar por usuário exigiria
+      combinar querysets diferentes - fora de escopo por ora).
+- [x] Cabeçalho da coluna "Validado" simplificado (era "Validado (previsto
+      p/ liberar)") e todas as colunas centralizadas (inclusive
+      verticalmente no cabeçalho) - ajustes visuais pedidos pelo usuário
+      depois de ver a prévia.
+- [x] Testes cobrindo: soma certa por usuário, ordenação decrescente, mês
+      errado não contamina, tipo inválido retorna lista vazia, usa o mesmo
+      campo de data da agregação mensal (validado por data_prevista_liberacao,
+      não data_compra), acesso restrito a staff, link do usuário aponta pro
+      change dele. Verificado também via Playwright: clique na célula abre
+      de fato uma aba nova (2 abas no contexto do navegador), com a quebra
+      por usuário correta.
+
 ---
 
 Pra continuar esse roadmap numa conversa nova, basta apontar esse arquivo

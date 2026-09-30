@@ -72,6 +72,15 @@
         color: var(--primary);
         margin-left: 6px;
     }
+    .saldos-valor-link {
+        color: inherit;
+        text-decoration: none;
+        border-bottom: 1px dotted var(--border-color);
+    }
+    .saldos-valor-link:hover {
+        color: var(--link-fg);
+        border-bottom-color: var(--link-fg);
+    }
 </style>
 {% endblock %}
 
@@ -103,6 +112,7 @@
     pro usuário sacar. <strong>Pago</strong> é diferente dos outros - não é um status de
     pedido, é a soma dos saques efetivamente pagos (via Pix) naquele mês; não entra no
     "Total" (que é só o fluxo de pedido) pra não contar a mesma grana 2x.
+    <strong>Clique em qualquer valor</strong> pra ver esse total quebrado por usuário.
 </p>
 
 <table class="saldos-tabela">
@@ -124,12 +134,12 @@
                 <span class="mes-rotulo">{{ linha.rotulo }}</span>
                 {% if linha.eh_atual %}<span class="mes-tag">mês atual</span>{% elif linha.eh_futuro %}<span class="mes-tag">projeção</span>{% endif %}
             </td>
-            <td>R$ {{ linha.pendente|floatformat:2 }}</td>
-            <td>R$ {{ linha.validado_previsto|floatformat:2 }}</td>
-            <td>R$ {{ linha.liberado|floatformat:2 }}</td>
-            <td>R$ {{ linha.cancelado|floatformat:2 }}</td>
+            <td><a class="saldos-valor-link" target="_blank" rel="noopener" href="{% url 'admin:pedidos_saldo_por_usuario' %}?ano={{ linha.ano }}&mes={{ linha.mes }}&tipo=pendente">R$ {{ linha.pendente|floatformat:2 }}</a></td>
+            <td><a class="saldos-valor-link" target="_blank" rel="noopener" href="{% url 'admin:pedidos_saldo_por_usuario' %}?ano={{ linha.ano }}&mes={{ linha.mes }}&tipo=validado_previsto">R$ {{ linha.validado_previsto|floatformat:2 }}</a></td>
+            <td><a class="saldos-valor-link" target="_blank" rel="noopener" href="{% url 'admin:pedidos_saldo_por_usuario' %}?ano={{ linha.ano }}&mes={{ linha.mes }}&tipo=liberado">R$ {{ linha.liberado|floatformat:2 }}</a></td>
+            <td><a class="saldos-valor-link" target="_blank" rel="noopener" href="{% url 'admin:pedidos_saldo_por_usuario' %}?ano={{ linha.ano }}&mes={{ linha.mes }}&tipo=cancelado">R$ {{ linha.cancelado|floatformat:2 }}</a></td>
             <td>R$ {{ linha.total|floatformat:2 }}</td>
-            <td class="saldos-divisor">R$ {{ linha.pago|floatformat:2 }}</td>
+            <td class="saldos-divisor"><a class="saldos-valor-link" target="_blank" rel="noopener" href="{% url 'admin:pedidos_saldo_por_usuario' %}?ano={{ linha.ano }}&mes={{ linha.mes }}&tipo=pago">R$ {{ linha.pago|floatformat:2 }}</a></td>
         </tr>
         {% endfor %}
     </tbody>
