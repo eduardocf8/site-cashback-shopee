@@ -2,7 +2,7 @@ from datetime import date, datetime, timedelta
 from decimal import Decimal
 
 from django.contrib.auth import get_user_model
-from django.db.models import Count, Q, QuerySet, Sum
+from django.db.models import Case, Count, DecimalField, F, Q, QuerySet, Sum, Value, When
 from django.db.models.functions import ExtractMonth, ExtractYear, TruncDate
 from django.utils import timezone
 
@@ -11,6 +11,20 @@ from links.models import Click
 from saques.models import Saque
 
 from .models import Pedido
+
+# Pedido sem usuário ("Fora do site" - importado da conta de afiliado Shopee sem ter
+# sido gerado por um link daqui, ver OrigemFilter/origem_detalhada abaixo) não tem
+# cashback de verdade pra mostrar/somar em lugar nenhum do admin - não existe ninguém
+# pra receber esse valor, por mais que o campo valor_cashback tenha um número
+# calculado (guardado só de referência). Essa expressão zera esse valor em qualquer
+# agregação (Sum) sem precisar filtrar o queryset inteiro - assim comissão/contagem de
+# pedidos continuam contando esses pedidos normalmente (a comissão é real, a Shopee
+# pagou), só o cashback que fica de fora.
+CASHBACK_REAL = Case(
+    When(usuario__isnull=True, then=Value(Decimal("0"))),
+    default=F("valor_cashback"),
+    output_field=DecimalField(max_digits=10, decimal_places=2),
+)
 
 ORIGEM_DETALHADA_LABELS = {
     Click.TIPO_PRODUTO: "Link direto",
@@ -77,7 +91,7 @@ def obter_analytics(data_inicio=None, data_fim=None, status=None, origem=None) -
     pedidos = obter_pedidos_filtrados(data_inicio, data_fim, status, origem)
 
     totais_pedidos = pedidos.aggregate(
-        total_comissao=Sum("valor_comissao"), total_cashback=Sum("valor_cashback"), total=Count("id")
+        total_comissao=Sum("valor_comissao"), total_cashback=Sum(CASHBACK_REAL), total=Count("id")
     )
     total_comissao = totais_pedidos["total_comissao"] or Decimal("0")
     total_cashback = totais_pedidos["total_cashback"] or Decimal("0")
@@ -86,7 +100,7 @@ def obter_analytics(data_inicio=None, data_fim=None, status=None, origem=None) -
     por_status_bruto = {
         linha["status"]: linha
         for linha in pedidos.values("status").annotate(
-            total=Count("id"), comissao=Sum("valor_comissao"), cashback=Sum("valor_cashback")
+            total=Count("id"), comissao=Sum("valor_comissao"), cashback=Sum(CASHBACK_REAL)
         )
     }
     resumo_status = [
@@ -191,7 +205,7 @@ def obter_serie_diaria(data_inicio=None, data_fim=None, status=None, origem=None
         linha["dia"]: linha
         for linha in pedidos.annotate(dia=TruncDate("data_compra"))
         .values("dia")
-        .annotate(total=Count("id"), comissao=Sum("valor_comissao"), cashback=Sum("valor_cashback"))
+        .annotate(total=Count("id"), comissao=Sum("valor_comissao"), cashback=Sum(CASHBACK_REAL))
     }
 
     saques = _no_periodo(Saque.objects.all(), "criado_em", inicio, fim)
@@ -365,7 +379,8 @@ def gerar_planilha_analytics(data_inicio=None, data_fim=None, status=None, orige
         aba_pedidos.cell(row=linha, column=4, value=pedido.get_status_display())
         aba_pedidos.cell(row=linha, column=5, value=pedido.valor_pedido).number_format = FORMATO_MOEDA
         aba_pedidos.cell(row=linha, column=6, value=pedido.valor_comissao).number_format = FORMATO_MOEDA
-        aba_pedidos.cell(row=linha, column=7, value=pedido.valor_cashback).number_format = FORMATO_MOEDA
+        cashback_exibido = pedido.valor_cashback if pedido.usuario_id else Decimal("0")
+        aba_pedidos.cell(row=linha, column=7, value=cashback_exibido).number_format = FORMATO_MOEDA
         for coluna, valor_data in ((8, pedido.data_compra), (9, pedido.data_validacao), (10, pedido.data_liberacao)):
             # Excel não aceita datetime com timezone - convertemos pro horário local e
             # removemos o tzinfo antes de escrever na célula.
@@ -402,27 +417,38 @@ def _somar_meses(ano: int, mes: int, delta: int) -> tuple[int, int]:
 # - liberado: data_liberacao (quando o comando liberar_saldo realmente processou).
 # - pago: não é status de Pedido, é Saque (status pago, por Saque.pago_em) - o saldo
 #   que de fato SAIU via Pix, depois do usuário pedir o saque.
+#
+# Todo tipo baseado em Pedido exclui quem não tem usuário vinculado ("Fora do site" -
+# ver OrigemFilter/origem_detalhada em pedidos/admin.py: pedido importado da conta de
+# afiliado Shopee sem ter sido gerado por um link daqui, então usuario=None desde a
+# sincronização - ver pedidos/services.py). Sem esse exclude, esse valor entrava no
+# total agregado mas sumia na quebra por usuário (que exclui usuario=None, já que não
+# pertence a ninguém) - o total parecia ter "gente escondida" que não existia.
+def _pedidos(status):
+    return Pedido.objects.filter(status=status).exclude(usuario__isnull=True)
+
+
 TIPOS_SALDO = {
     "pendente": {
-        "queryset": lambda: Pedido.objects.filter(status=Pedido.STATUS_PENDENTE),
+        "queryset": lambda: _pedidos(Pedido.STATUS_PENDENTE),
         "campo_data": "data_compra",
         "campo_valor": "valor_cashback",
         "rotulo": "Pendente",
     },
     "validado_previsto": {
-        "queryset": lambda: Pedido.objects.filter(status=Pedido.STATUS_VALIDADO),
+        "queryset": lambda: _pedidos(Pedido.STATUS_VALIDADO),
         "campo_data": "data_prevista_liberacao",
         "campo_valor": "valor_cashback",
         "rotulo": "Validado",
     },
     "liberado": {
-        "queryset": lambda: Pedido.objects.filter(status=Pedido.STATUS_LIBERADO),
+        "queryset": lambda: _pedidos(Pedido.STATUS_LIBERADO),
         "campo_data": "data_liberacao",
         "campo_valor": "valor_cashback",
         "rotulo": "Liberado",
     },
     "cancelado": {
-        "queryset": lambda: Pedido.objects.filter(status=Pedido.STATUS_CANCELADO),
+        "queryset": lambda: _pedidos(Pedido.STATUS_CANCELADO),
         "campo_data": "data_compra",
         "campo_valor": "valor_cashback",
         "rotulo": "Cancelado",
@@ -529,7 +555,6 @@ def obter_saldo_por_usuario(ano: int, mes: int, tipo: str) -> list[dict]:
     agregados = (
         config["queryset"]()
         .filter(**{f"{campo_data}__gte": limite_inicio, f"{campo_data}__lt": limite_fim})
-        .exclude(usuario__isnull=True)
         .values("usuario_id", "usuario__username")
         .annotate(total=Sum(config["campo_valor"]))
         .order_by("-total")

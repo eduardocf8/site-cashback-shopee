@@ -5,6 +5,7 @@ from unittest.mock import patch
 
 from openpyxl import load_workbook
 
+from django.contrib import admin
 from django.contrib.auth import get_user_model
 from django.core import mail
 from django.db import connection
@@ -17,6 +18,7 @@ from accounts.models import Indicacao
 from links.models import Click
 from saques.models import Saque
 
+from .admin import PedidoAdmin
 from .analytics import (
     obter_analytics,
     obter_saldo_por_usuario,
@@ -1149,6 +1151,28 @@ class ObterAnalyticsTests(TestCase):
         self.assertEqual(por_status[Saque.STATUS_PAGO]["valor"], Decimal("50.00"))
         self.assertEqual(por_status[Saque.STATUS_SOLICITADO]["valor"], Decimal("30.00"))
 
+    def test_pedido_sem_usuario_conta_comissao_mas_nao_cashback(self):
+        # "Fora do site" (sem usuário - sincronizado da conta de afiliado Shopee sem
+        # ter sido gerado por um link daqui) não tem cashback de verdade: ninguém vai
+        # receber esse valor. A comissão é real (a Shopee pagou de verdade), então
+        # essa continua contando - só o cashback que precisa ficar de fora.
+        Pedido.objects.create(
+            order_id="FORA-DO-SITE", conversion_id="1", usuario=None, status=Pedido.STATUS_VALIDADO,
+            status_shopee_bruto="COMPLETED", valor_comissao=Decimal("100.00"), valor_cashback=Decimal("50.00"),
+            data_compra=timezone.now(),
+        )
+        self._criar_pedido("COM-USUARIO", Pedido.STATUS_VALIDADO, "10.00", "5.00", timezone.now())
+
+        dados = obter_analytics()
+
+        self.assertEqual(dados["total_pedidos"], 2)
+        self.assertEqual(dados["total_comissao"], Decimal("110.00"))
+        self.assertEqual(dados["total_cashback"], Decimal("5.00"))
+        por_status = {linha["status"]: linha for linha in dados["resumo_status"]}
+        self.assertEqual(por_status[Pedido.STATUS_VALIDADO]["comissao"], Decimal("110.00"))
+        self.assertEqual(por_status[Pedido.STATUS_VALIDADO]["cashback"], Decimal("5.00"))
+        self.assertEqual(dados["saldo_a_liberar"], Decimal("5.00"))
+
 
 class ObterSaldosPorMesTests(TestCase):
     """Saldo por mês, separado por status - o ponto central é que 'validado' aparece
@@ -1224,6 +1248,23 @@ class ObterSaldosPorMesTests(TestCase):
         linha_atual = self._linha(obter_saldos_por_mes(), 0)
 
         self.assertEqual(linha_atual["liberado"], Decimal("5.00"))
+
+    def test_pedido_sem_usuario_fora_do_site_nao_entra_no_total(self):
+        # Achado real do usuário: pedido sem usuário vinculado (sincronizado da conta
+        # de afiliado Shopee, mas não gerado por um link daqui - "Fora do site", ver
+        # OrigemFilter/origem_detalhada em pedidos/admin.py) entrava no total agregado
+        # mas sumia na quebra por usuário (que exclui usuario=None) - o total parecia
+        # ter "gente escondida". Agora os dois batem: nenhum dos dois conta.
+        Pedido.objects.create(
+            order_id="FORA-DO-SITE", conversion_id="1", usuario=None, status=Pedido.STATUS_LIBERADO,
+            status_shopee_bruto="COMPLETED", valor_comissao=Decimal("100.00"), valor_cashback=Decimal("50.00"),
+            data_liberacao=self._datetime_no_mes(0),
+        )
+
+        linha_atual = self._linha(obter_saldos_por_mes(), 0)
+
+        self.assertEqual(linha_atual["liberado"], Decimal("0"))
+        self.assertEqual(linha_atual["total"], Decimal("0"))
 
     def test_total_soma_os_4_status_do_mes(self):
         self._pedido("A", Pedido.STATUS_PENDENTE, data_compra=self._datetime_no_mes(0))
@@ -1403,6 +1444,20 @@ class ObterSerieDiariaTests(TestCase):
         self.assertEqual(serie["series"]["pedidos"], [2, 1, 0])
         self.assertEqual(serie["series"]["comissao"], [30.0, 6.0, 0])
         self.assertEqual(serie["series"]["cashback"], [13.0, 3.0, 0])
+
+    def test_pedido_sem_usuario_conta_no_grafico_de_pedidos_mas_nao_no_de_cashback(self):
+        Pedido.objects.create(
+            order_id="FORA-DO-SITE", conversion_id="1", usuario=None,
+            status=Pedido.STATUS_VALIDADO, status_shopee_bruto="COMPLETED",
+            valor_comissao=Decimal("100.00"), valor_cashback=Decimal("50.00"),
+            data_compra=timezone.make_aware(datetime(2026, 3, 1, 8)),
+        )
+
+        serie = obter_serie_diaria(data_inicio=date(2026, 3, 1), data_fim=date(2026, 3, 1))
+
+        self.assertEqual(serie["series"]["pedidos"], [1])
+        self.assertEqual(serie["series"]["comissao"], [100.0])
+        self.assertEqual(serie["series"]["cashback"], [0])
 
     def test_agrupa_saques_indicacoes_e_novos_usuarios_por_dia(self):
         # criado_em é auto_now_add em Saque/Indicacao - passar no create() é ignorado,
@@ -1597,6 +1652,56 @@ class AnalyticsAdminViewTests(TestCase):
         self.client.force_login(self.usuario_comum)
         resposta = self.client.get(reverse("admin:pedidos_analytics_exportar_excel"))
         self.assertEqual(resposta.status_code, 302)
+
+    def test_exportar_csv_zera_cashback_de_pedido_sem_usuario(self):
+        Pedido.objects.create(
+            order_id="FORA-DO-SITE", conversion_id="2", usuario=None,
+            status=Pedido.STATUS_VALIDADO, status_shopee_bruto="COMPLETED",
+            valor_comissao=Decimal("100.00"), valor_cashback=Decimal("50.00"), data_compra=timezone.now(),
+        )
+        self.client.force_login(self.staff)
+        resposta = self.client.get(reverse("admin:pedidos_analytics_exportar"))
+        conteudo = resposta.content.decode()
+        linha = next(l for l in conteudo.splitlines() if l.startswith("FORA-DO-SITE"))
+        self.assertIn(",100.00,0", linha)
+
+    def test_exportar_excel_zera_cashback_de_pedido_sem_usuario(self):
+        Pedido.objects.create(
+            order_id="FORA-DO-SITE", conversion_id="2", usuario=None,
+            status=Pedido.STATUS_VALIDADO, status_shopee_bruto="COMPLETED",
+            valor_comissao=Decimal("100.00"), valor_cashback=Decimal("50.00"), data_compra=timezone.now(),
+        )
+        self.client.force_login(self.staff)
+        resposta = self.client.get(reverse("admin:pedidos_analytics_exportar_excel"))
+
+        livro = load_workbook(BytesIO(resposta.content))
+        aba_pedidos = livro["Pedidos"]
+        linhas = {linha[0]: linha for linha in aba_pedidos.iter_rows(min_row=2, values_only=True)}
+        self.assertEqual(linhas["FORA-DO-SITE"][5], Decimal("100.00"))  # comissão real
+        self.assertEqual(linhas["FORA-DO-SITE"][6], Decimal("0"))  # cashback zerado
+
+
+class PedidoAdminValorCashbackExibidoTests(TestCase):
+    def test_pedido_com_usuario_mostra_o_valor_de_verdade(self):
+        usuario = get_user_model().objects.create_user(
+            username="compradora", password="senha123", cpf="39053344705"
+        )
+        pedido = Pedido.objects.create(
+            order_id="COM-USUARIO", conversion_id="1", usuario=usuario,
+            status=Pedido.STATUS_VALIDADO, status_shopee_bruto="COMPLETED",
+            valor_comissao=Decimal("10.00"), valor_cashback=Decimal("5.00"),
+        )
+
+        self.assertEqual(PedidoAdmin(Pedido, admin.site).valor_cashback_exibido(pedido), Decimal("5.00"))
+
+    def test_pedido_sem_usuario_mostra_travessao(self):
+        pedido = Pedido.objects.create(
+            order_id="FORA-DO-SITE", conversion_id="1", usuario=None,
+            status=Pedido.STATUS_VALIDADO, status_shopee_bruto="COMPLETED",
+            valor_comissao=Decimal("10.00"), valor_cashback=Decimal("5.00"),
+        )
+
+        self.assertEqual(PedidoAdmin(Pedido, admin.site).valor_cashback_exibido(pedido), "—")
 
 
 class SaldosPorMesAdminViewTests(TestCase):

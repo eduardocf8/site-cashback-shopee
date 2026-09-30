@@ -1880,6 +1880,41 @@ nova aba.
       de fato uma aba nova (2 abas no contexto do navegador), com a quebra
       por usuário correta.
 
+**Depois, mesma fase - achado real de bug:** usuário clicou num valor de
+"Liberado" (R$ 80,98 em 09/2026) e a quebra por usuário veio vazia
+("Ninguém com saldo nesse tipo/mês"). Causa raiz: pedido "Fora do site"
+(sem `usuario` - sincronizado da conta de afiliado Shopee sem ter sido
+gerado por um link daqui, `usuario = click.usuario if click else None` em
+`pedidos/services.py`) contava no total agregado de `obter_saldos_por_mes`
+mas sumia na quebra por usuário (que já excluía `usuario=None`, já que não
+pertence a ninguém) - o total "tinha gente escondida" que não existia de
+verdade. Usuário pediu pra generalizar o ajuste pro admin inteiro: "pedidos
+feitos fora do site não devem mostrar cashback, pois realmente não há".
+
+- [x] **`pedidos/analytics.py::CASHBACK_REAL`** (nova expressão `Case/When`)
+      zera `valor_cashback` em qualquer `Sum()` quando `usuario__isnull` -
+      usada em `obter_analytics` (total, resumo por status, saldo a
+      liberar/liberado) e `obter_serie_diaria` (gráfico). **Comissão
+      continua contando normalmente** - é dinheiro real que a Shopee pagou,
+      só o cashback (que seria repassado a um usuário que não existe) que
+      zera.
+- [x] **`TIPOS_SALDO`** (Saldos por mês) ganhou um helper `_pedidos(status)`
+      que já exclui `usuario__isnull=True` de saída, então a agregação
+      mensal e a quebra por usuário usam exatamente a mesma base - não tem
+      mais como um total aparecer sem ninguém por trás dele.
+- [x] Exportações (CSV e Excel, por linha de pedido) e o **`list_display`**
+      do `PedidoAdmin` (`valor_cashback_exibido`, novo método) também
+      mostram `0`/"—" pra pedido sem usuário, em vez do valor calculado
+      (guardado no banco só de referência, nunca repassado a ninguém).
+- [x] Testes cobrindo: `obter_analytics` conta comissão mas zera cashback
+      pra pedido sem usuário (total, resumo por status, saldo a liberar),
+      mesmo em `obter_serie_diaria`, exportação CSV/Excel zerando a coluna
+      de cashback nesse caso, e o método de exibição do admin (com
+      usuário mostra o valor, sem usuário mostra "—"). Verificado também
+      via Playwright: changelist de pedidos mostra "—" pro sem usuário e o
+      valor real pro outro; tela de Analytics soma comissão dos dois mas
+      cashback só do que tem usuário.
+
 ---
 
 Pra continuar esse roadmap numa conversa nova, basta apontar esse arquivo

@@ -1,5 +1,6 @@
 import csv
 from datetime import datetime
+from decimal import Decimal
 
 from django.contrib import admin
 from django.http import HttpResponse
@@ -104,7 +105,7 @@ class PedidoAdmin(admin.ModelAdmin):
         "motivo_cancelamento",
         "valor_pedido",
         "valor_comissao",
-        "valor_cashback",
+        "valor_cashback_exibido",
         "multiplicador_campanha",
         "data_compra",
         "data_validacao",
@@ -120,6 +121,15 @@ class PedidoAdmin(admin.ModelAdmin):
     @admin.display(description="Origem")
     def origem_detalhada(self, obj):
         return origem_detalhada_pedido(obj)
+
+    @admin.display(description="Valor cashback", ordering="valor_cashback")
+    def valor_cashback_exibido(self, obj):
+        # Pedido "Fora do site" (sem usuário, ver OrigemFilter) não tem cashback de
+        # verdade - não existe ninguém pra receber esse valor, mesmo o campo tendo um
+        # número calculado guardado só de referência.
+        if not obj.usuario_id:
+            return "—"
+        return obj.valor_cashback
 
     def get_urls(self):
         urls = [
@@ -208,7 +218,7 @@ class PedidoAdmin(admin.ModelAdmin):
                     pedido.get_status_display(),
                     pedido.valor_pedido,
                     pedido.valor_comissao,
-                    pedido.valor_cashback,
+                    pedido.valor_cashback if pedido.usuario_id else Decimal("0"),
                     pedido.data_compra.strftime("%Y-%m-%d %H:%M") if pedido.data_compra else "",
                     pedido.data_validacao.strftime("%Y-%m-%d %H:%M") if pedido.data_validacao else "",
                     pedido.data_liberacao.strftime("%Y-%m-%d %H:%M") if pedido.data_liberacao else "",
