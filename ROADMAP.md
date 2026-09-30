@@ -1765,8 +1765,12 @@ Click.TIPO_HOME`), e sim, respeita o opt-out.
 - [x] Novo Cron Job **semanal** (diferente dos outros, que são diários):
       `cron-lembrete-venda-indireta`, sábado 08:00 Brasília
       (`/tarefas/lembrete-venda-indireta/`, documentado em
-      `marketing/instagram/README.md`, ainda precisa ser criado manualmente
-      no dashboard).
+      `marketing/instagram/README.md`). **Criado e testado em produção em
+      2026-09-30**: disparo manual retornou
+      `{"lembrete_venda_indireta_enviados": 4}`.
+- [x] Ícone de Regras do cashback ajustado pra ter o mesmo formato (rounded
+      square) e dimensões do ícone do Instagram, a pedido do usuário depois
+      de ver a prévia - antes era um círculo.
 
 ---
 

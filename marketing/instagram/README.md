@@ -381,11 +381,12 @@ chamada só (7 e 30 dias após o cadastro, textos diferentes - ver
 `enviar_comunicacao`, não 1 chamada por pessoa). Roda 10 minutos depois de
 `cron-lembrete-verificacao-email` (03:40).
 
-**`cron-lembrete-venda-indireta` ainda precisa ser criado manualmente** (Fase
-51, pedido explícito logo depois do lembrete de primeira compra) - único
-Cron Job **semanal** dos e-mails (os outros rodam todo dia) - sábado às
-08:00 (Brasília), olhando os pedidos de venda indireta (clique em "Ir pra
-Shopee") dos últimos 7 dias. E-mail em HTML (com 2 ícones - ver
+✅ **`cron-lembrete-venda-indireta` criado e testado em produção em
+2026-09-30** (Fase 51, pedido explícito logo depois do lembrete de primeira
+compra) - disparo manual retornou `OK (200): {"lembrete_venda_indireta_enviados":
+4}`. Único Cron Job **semanal** dos e-mails (os outros rodam todo dia) -
+sábado às 08:00 (Brasília), olhando os pedidos de venda indireta (clique em
+"Ir pra Shopee") dos últimos 7 dias. E-mail em HTML (com 2 ícones - ver
 `accounts/comunicacoes.py::enviar_lembrete_venda_indireta_semanal` e
 `templates/emails/lembrete_venda_indireta.html`), diferente dos outros
 lembretes automáticos (que são só texto).
