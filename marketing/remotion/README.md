@@ -64,7 +64,7 @@ texto escrito dentro deles de propósito.
 | Composição | Duração | Para quê |
 |---|---|---|
 | `Apresentacao` | 18,3s | Corte seco entre cenas, quadro parado, números prontos |
-| `ApresentacaoEspera` | 18,1s | A calma com outro gancho ("Vai comprar na Shopee? Espera."); as demais cenas são as mesmas |
+| `ApresentacaoEspera` | 18,4s | A calma com outro gancho em dois tempos ("Vai comprar na Shopee?" ... "Espera." aos 0,9s); as demais cenas são as mesmas |
 | `Dinamica` | 15,8s | As cenas se empurram, o fundo dá zoom lento, os números contam |
 
 **As duas leem os mesmos textos e os mesmos números de `constantes.ts`.** Só o tempo de

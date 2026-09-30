@@ -5,6 +5,7 @@ import type {Entrada, TipoDestaque} from './Base';
 import {Minimo} from './Minimo';
 import {CENAS, CENAS_ESPERA} from './constantes';
 import {Fechamento} from './Fechamento';
+import {GanchoEspera} from './GanchoEspera';
 import {CORES} from './marca';
 
 type ListaDeCenas = readonly (typeof CENAS)[number][] | typeof CENAS_ESPERA;
@@ -146,7 +147,15 @@ const montar = (cenas: ListaDeCenas): React.FC => {
     <AbsoluteFill>
       {cenas.map((cena, i) => (
         <Sequence key={cena.id} from={inicios[i]} durationInFrames={cena.frames}>
-          {'convite' in cena ? (
+          {'palavra' in cena ? (
+            <GanchoEspera
+              pergunta={cena.pergunta}
+              palavra={cena.palavra}
+              corpo={cena.corpo}
+              corpoPalavra={cena.corpoPalavra}
+              chega={cena.chega}
+            />
+          ) : 'convite' in cena ? (
             <Fechamento convite={cena.convite} dominio={cena.dominio} sufixo={cena.sufixo} />
           ) : 'primeiro' in cena ? (
             <Minimo
