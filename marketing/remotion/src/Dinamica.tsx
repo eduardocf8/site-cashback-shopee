@@ -85,8 +85,9 @@ const Quadro: React.FC<{
   claro: boolean;
   duracao: number;
   primeira?: boolean;
+  ultima?: boolean;
   children: React.ReactNode;
-}> = ({fundo, claro, duracao, primeira, children}) => {
+}> = ({fundo, claro, duracao, primeira, ultima, children}) => {
   const frame = useCurrentFrame();
 
   // A primeira cena não desliza: não há nada atrás dela para empurrar, e entrar de
@@ -99,11 +100,16 @@ const Quadro: React.FC<{
         extrapolateRight: 'clamp',
         easing: Easing.out(Easing.cubic),
       });
-  const saindo = interpolate(frame, [duracao, duracao + TRANSICAO], [0, -1920], {
-    extrapolateLeft: 'clamp',
-    extrapolateRight: 'clamp',
-    easing: Easing.in(Easing.cubic),
-  });
+  // A última cena também não sai: não há nada depois dela para entrar no lugar, e
+  // sair deixaria o vídeo terminando num fundo vazio, sem a marca - justamente o
+  // quadro que fica parado na tela quando o vídeo acaba.
+  const saindo = ultima
+    ? 0
+    : interpolate(frame, [duracao, duracao + TRANSICAO], [0, -1920], {
+        extrapolateLeft: 'clamp',
+        extrapolateRight: 'clamp',
+        easing: Easing.in(Easing.cubic),
+      });
   // A saída de uma cena e a entrada da seguinte são a MESMA janela de tempo. Uma sobe
   // e a outra vem de baixo com a mesma curva, então as duas viajam coladas e a tela
   // nunca mostra vão.
@@ -292,6 +298,7 @@ export const Dinamica: React.FC = () => (
               claro={claro}
               duracao={duracao}
               primeira={i === 0}
+              ultima={i === CENAS.length - 1}
             >
               {'convite' in cena ? (
                 <FechamentoConteudo

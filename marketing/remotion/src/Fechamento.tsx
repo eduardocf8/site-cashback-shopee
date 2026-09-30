@@ -41,7 +41,15 @@ export const FechamentoConteudo: React.FC<{
   });
 
   const corpo = interpolate(troca, [0, 1], [68, 168]);
-  const sobe = interpolate(troca, [0, 1], [0, -70]);
+  // -47, e não -70: o alvo é o centro da tela, e -70 deixava a palavra 29px acima dele.
+  // A linha "acesse" some por opacidade mas continua ocupando espaço no bloco, então a
+  // conta "quanto subir" tem de partir do que foi medido no quadro final, não do que
+  // parece razoável. Medido: com -47, o centro da caixa de tinta fica em y=953 e o do
+  // corpo das letras minúsculas em y=966, ou seja, 7px para cada lado de 960. Não dá
+  // para os dois coincidirem: "b" e "h" têm haste e nenhuma letra tem descida, então a
+  // caixa é mais alta em cima do que o olho percebe. Centralizar só a caixa deixaria a
+  // palavra visivelmente alta; só o corpo das letras a deixaria baixa.
+  const sobe = interpolate(troca, [0, 1], [0, -47]);
   // Do âmbar para o branco: enquanto é endereço ele é chamada (âmbar é a cor de
   // atenção da marca); quando vira marca, é a marca.
   const cor = troca < 0.5 ? CORES.highlight : '#fff';
@@ -75,7 +83,20 @@ export const FechamentoConteudo: React.FC<{
             lineHeight: 1,
           }}
         >
-          <span style={{color: cor, whiteSpace: 'nowrap'}}>{dominio}</span>
+          <span
+            style={{
+              color: cor,
+              whiteSpace: 'nowrap',
+              // O letter-spacing negativo também vale depois da última letra: a caixa
+              // fica 0.04em mais estreita que a tinta, e centralizar a caixa empurra a
+              // palavra 3px para a direita. A margem devolve essa largura - mas só no
+              // fim, quando o ".com" já saiu; antes disso ela abriria um vão entre
+              // "cash-b" e ".com".
+              marginRight: `${0.04 * (1 - saiSufixo)}em`,
+            }}
+          >
+            {dominio}
+          </span>
           <span
             style={{
               color: CORES.highlight,
