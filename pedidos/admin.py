@@ -8,11 +8,14 @@ from django.urls import path
 
 from .analytics import (
     INDICADORES_SERIE_DIARIA,
+    MESES_FUTUROS_PADRAO,
+    MESES_PASSADOS_PADRAO,
     ORIGEM_FORA,
     ORIGEM_SITE,
     gerar_planilha_analytics,
     obter_analytics,
     obter_pedidos_filtrados,
+    obter_saldos_por_mes,
     obter_serie_diaria,
     origem_detalhada as origem_detalhada_pedido,
 )
@@ -26,6 +29,13 @@ def _parse_data(valor):
         return datetime.strptime(valor, "%Y-%m-%d").date()
     except ValueError:
         return None
+
+
+def _parse_inteiro(valor, padrao):
+    try:
+        return int(valor)
+    except (TypeError, ValueError):
+        return padrao
 
 
 class OrigemFilter(admin.SimpleListFilter):
@@ -121,6 +131,11 @@ class PedidoAdmin(admin.ModelAdmin):
                 self.admin_site.admin_view(self.analytics_exportar_excel),
                 name="pedidos_analytics_exportar_excel",
             ),
+            path(
+                "analytics/saldos-por-mes/",
+                self.admin_site.admin_view(self.saldos_por_mes_view),
+                name="pedidos_saldos_por_mes",
+            ),
         ]
         return urls + super().get_urls()
 
@@ -203,6 +218,18 @@ class PedidoAdmin(admin.ModelAdmin):
         resposta["Content-Disposition"] = 'attachment; filename="analytics.xlsx"'
         livro.save(resposta)
         return resposta
+
+    def saldos_por_mes_view(self, request):
+        meses_passados = _parse_inteiro(request.GET.get("meses_passados"), MESES_PASSADOS_PADRAO)
+        meses_futuros = _parse_inteiro(request.GET.get("meses_futuros"), MESES_FUTUROS_PADRAO)
+        contexto = {
+            **self.admin_site.each_context(request),
+            "title": "Saldos por mês",
+            "linhas": obter_saldos_por_mes(meses_passados, meses_futuros),
+            "meses_passados": meses_passados,
+            "meses_futuros": meses_futuros,
+        }
+        return TemplateResponse(request, "admin/saldos_por_mes.html", contexto)
 
 
 # Mostra um link pra tela de analytics no topo da página inicial do admin. Precisa ser um

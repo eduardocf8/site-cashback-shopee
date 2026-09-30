@@ -1,9 +1,9 @@
-from datetime import timedelta
+from datetime import date, datetime, timedelta
 from decimal import Decimal
 
 from django.contrib.auth import get_user_model
 from django.db.models import Count, Q, QuerySet, Sum
-from django.db.models.functions import TruncDate
+from django.db.models.functions import ExtractMonth, ExtractYear, TruncDate
 from django.utils import timezone
 
 from accounts.models import Indicacao
@@ -375,3 +375,104 @@ def gerar_planilha_analytics(data_inicio=None, data_fim=None, status=None, orige
         linha += 1
 
     return livro
+
+
+MESES_PASSADOS_PADRAO = 6
+MESES_FUTUROS_PADRAO = 2
+MESES_PASSADOS_MAXIMO = 24
+MESES_FUTUROS_MAXIMO = 12
+
+
+def _somar_meses(ano: int, mes: int, delta: int) -> tuple[int, int]:
+    total = mes - 1 + delta
+    return ano + total // 12, total % 12 + 1
+
+
+def obter_saldos_por_mes(meses_passados: int = MESES_PASSADOS_PADRAO, meses_futuros: int = MESES_FUTUROS_PADRAO) -> list[dict]:
+    """Saldo de cashback por mês, separado por status - pensado pra planejamento de
+    caixa: um pedido validado só vira liberado (disponível pro usuário sacar) 2 meses
+    depois da validação (ver Pedido.data_prevista_liberacao e
+    pedidos/services.py::calcular_data_prevista_liberacao), então os próximos meses já
+    têm uma previsão real de quanto vai ser preciso ter disponível, mesmo sem nenhuma
+    compra nova acontecer nesse meio tempo.
+
+    Cada status usa a data que faz sentido "financeiramente" pra ele, não sempre
+    data_compra - é esse detalhe que faz a projeção futura funcionar:
+    - pendente/cancelado: data_compra (ainda não têm previsão de liberação nenhuma).
+    - validado: data_prevista_liberacao - é a projeção em si, geralmente caindo nos
+      próximos 1-2 meses (por isso aparece nos meses futuros mesmo sem compra nova).
+    - liberado: data_liberacao (quando o comando liberar_saldo realmente processou).
+
+    "pago" é um número à parte, não um status de Pedido: soma de Saque.valor (status
+    pago, por Saque.pago_em) - é o saldo que de fato SAIU via Pix, depois do usuário
+    pedir o saque. Não entra na soma de "total" (que é só o fluxo de Pedido) pra não
+    contar a mesma grana 2x - dinheiro liberado que depois é sacado aparece em
+    "liberado" no mês da liberação E em "pago" no mês (possivelmente diferente,
+    quase sempre posterior) em que o saque foi efetivamente pago.
+    """
+    meses_passados = max(0, min(meses_passados, MESES_PASSADOS_MAXIMO))
+    meses_futuros = max(0, min(meses_futuros, MESES_FUTUROS_MAXIMO))
+
+    hoje = timezone.localdate()
+    meses = [_somar_meses(hoje.year, hoje.month, delta) for delta in range(-meses_passados, meses_futuros + 1)]
+
+    data_minima = date(meses[0][0], meses[0][1], 1)
+    ano_limite, mes_limite = _somar_meses(meses[-1][0], meses[-1][1], 1)
+    data_limite = date(ano_limite, mes_limite, 1)  # exclusiva - 1º dia do mês seguinte ao último
+
+    # DateTimeField (data_compra, data_liberacao) precisa de datetime com timezone pro
+    # filtro - passar date puro funciona, mas dispara RuntimeWarning do Django (naive
+    # datetime) mesmo só filtrando, não salvando. data_prevista_liberacao é DateField
+    # (sem timezone), esse aqui continua recebendo date puro normalmente.
+    datetime_minimo = timezone.make_aware(datetime.combine(data_minima - timedelta(days=1), datetime.min.time()))
+    datetime_maximo = timezone.make_aware(datetime.combine(data_limite + timedelta(days=1), datetime.min.time()))
+
+    linhas = {
+        (ano, mes): {
+            "ano": ano,
+            "mes": mes,
+            "rotulo": date(ano, mes, 1).strftime("%m/%Y"),
+            "eh_atual": (ano, mes) == (hoje.year, hoje.month),
+            "eh_futuro": (ano, mes) > (hoje.year, hoje.month),
+            "pendente": Decimal("0"),
+            "validado_previsto": Decimal("0"),
+            "liberado": Decimal("0"),
+            "cancelado": Decimal("0"),
+            "pago": Decimal("0"),
+        }
+        for ano, mes in meses
+    }
+
+    def _preencher(
+        queryset: QuerySet, campo_data: str, chave: str, limite_inicio, limite_fim, campo_valor: str = "valor_cashback"
+    ) -> None:
+        # limite_inicio/limite_fim só delimitam a consulta (com folga de 1 dia) - quem
+        # realmente decide o mês de cada linha é o Extract abaixo, que já usa o fuso
+        # local (ver settings.TIME_ZONE).
+        agregados = (
+            queryset.filter(**{f"{campo_data}__gte": limite_inicio, f"{campo_data}__lt": limite_fim})
+            .annotate(ano=ExtractYear(campo_data), mes=ExtractMonth(campo_data))
+            .values("ano", "mes")
+            .annotate(total=Sum(campo_valor))
+        )
+        for linha in agregados:
+            chave_mes = (linha["ano"], linha["mes"])
+            if chave_mes in linhas:
+                linhas[chave_mes][chave] = linha["total"] or Decimal("0")
+
+    _preencher(Pedido.objects.filter(status=Pedido.STATUS_PENDENTE), "data_compra", "pendente", datetime_minimo, datetime_maximo)
+    _preencher(Pedido.objects.filter(status=Pedido.STATUS_CANCELADO), "data_compra", "cancelado", datetime_minimo, datetime_maximo)
+    _preencher(
+        Pedido.objects.filter(status=Pedido.STATUS_VALIDADO), "data_prevista_liberacao", "validado_previsto",
+        data_minima - timedelta(days=1), data_limite + timedelta(days=1),
+    )
+    _preencher(Pedido.objects.filter(status=Pedido.STATUS_LIBERADO), "data_liberacao", "liberado", datetime_minimo, datetime_maximo)
+    _preencher(
+        Saque.objects.filter(status=Saque.STATUS_PAGO), "pago_em", "pago", datetime_minimo, datetime_maximo,
+        campo_valor="valor",
+    )
+
+    linhas_ordenadas = [linhas[chave] for chave in meses]
+    for linha in linhas_ordenadas:
+        linha["total"] = linha["pendente"] + linha["validado_previsto"] + linha["liberado"] + linha["cancelado"]
+    return linhas_ordenadas

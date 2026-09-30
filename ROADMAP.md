@@ -1797,6 +1797,57 @@ cópia de verdade lá.
       `runserver` local: e-mail de verdade saiu com `To:
       no-reply@cash-b.com` no backend de console.
 
+## Fase 52 — Saldos por mês no admin (projeção de caixa) ✅
+
+Usuário pediu uma tela no analytics do admin pra visualizar o saldo por
+mês, separado por tipo, considerando também os próximos 2 meses - "o que é
+validado esse mês será pago daqui 2 meses somente".
+
+- [x] **`pedidos/analytics.py::obter_saldos_por_mes`** (novo) - uma linha
+      por mês (padrão: 6 meses pra trás + mês atual + 2 meses pra frente,
+      configurável e limitado a 24/12 no máximo), com 4 colunas de status
+      de `Pedido` + 1 de `Saque`. **A decisão central**: cada status usa a
+      data que faz sentido financeiramente pra ele, não sempre
+      `data_compra` - é isso que faz a projeção futura funcionar de
+      verdade:
+      - `pendente`/`cancelado`: `data_compra` (ainda sem previsão de
+        liberação).
+      - `validado`: `data_prevista_liberacao` - a projeção em si (mês da
+        validação + 2, ver `pedidos/services.py::calcular_data_prevista_liberacao`)
+        - por isso os meses futuros já mostram valor mesmo sem nenhuma
+        compra nova nesse meio tempo.
+      - `liberado`: `data_liberacao` (quando o comando `liberar_saldo`
+        realmente processou).
+      - `pago`: soma de `Saque.valor` (status pago, por `Saque.pago_em`) -
+        pedido explícito do usuário numa mensagem separada, logo depois da
+        tela inicial. Não é status de `Pedido` e não entra no "Total" (que
+        é só o fluxo de pedido) pra não contar a mesma grana 2x - dinheiro
+        liberado que depois é sacado aparece em "liberado" no mês da
+        liberação E em "pago" no mês (normalmente posterior) em que o
+        saque foi de fato pago.
+- [x] Tela nova (`templates/admin/saldos_por_mes.html`,
+      `/admin/pedidos/pedido/analytics/saldos-por-mes/`) - tabela com mês
+      atual destacado e meses futuros em itálico com a tag "projeção",
+      filtros de quantos meses pra trás/frente (querystring), coluna "Pago
+      (saques)" com uma borda separando das colunas de pedido. Todas as
+      colunas centralizadas (ajuste pedido pelo usuário depois de ver a
+      prévia). Link de ida e volta com a tela de Analytics e com a home do
+      admin.
+- [x] Corrigido no caminho: filtrar um `DateTimeField` (`data_compra`,
+      `data_liberacao`, `pago_em`) com um `date` puro funciona mas dispara
+      `RuntimeWarning` de "naive datetime" do Django mesmo só filtrando
+      (não só ao salvar) - os testes pegaram isso. Corrigido convertendo
+      os limites da consulta pra datetime com timezone antes de filtrar
+      esses 3 campos (`data_prevista_liberacao`, que é `DateField`, continua
+      recebendo `date` puro normalmente).
+- [x] Testes cobrindo: cada status aparecendo no mês certo (destaque pro
+      validado aparecendo no mês futuro, não no mês da compra), `pago` não
+      entrando no total, filtro de janela excluindo o que está fora, limites
+      de meses pra trás/frente respeitados (inclusive valores negativos e
+      exagerados). Verificado também via Playwright com dados reais - a
+      tela renderiza certo, e o pedido validado esse mês realmente aparece
+      projetado 2 meses à frente, exatamente como pedido.
+
 ---
 
 Pra continuar esse roadmap numa conversa nova, basta apontar esse arquivo
