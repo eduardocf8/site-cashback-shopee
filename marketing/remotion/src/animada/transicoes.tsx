@@ -1,6 +1,6 @@
 import React from 'react';
 import {AbsoluteFill, useCurrentFrame} from 'remotion';
-import {H, W, prog, suave} from './util';
+import {H, W, prog, saida, suave} from './util';
 
 /** Seis transições, uma para cada tipo de passagem que o vídeo faz.
  *
@@ -133,7 +133,11 @@ export const Camada: React.FC<{
 }> = ({id, z, dur, entra, sai, children}) => {
   const frame = useCurrentFrame();
   const pEntra = entra ? prog(frame, 0, entra.dur, suave) : 1;
-  const pSai = sai ? prog(frame, dur - sai.dur, dur, suave) : 0;
+  // As portas abrem na batida do drop, então arrancam de uma vez (curva de saída) em vez
+  // de esperar a curva acelerar: com `suave` as metades mal se mexiam nos 3 primeiros
+  // quadros, e o golpe chegava 100ms depois da música.
+  const pSai = sai ? prog(frame, dur - sai.dur, dur, sai.tipo === 'portas' ? saida : suave) : 0;
+  const saiu = sai ? frame >= dur - sai.dur : false;
 
   const a = entra ? entrando(entra.tipo, pEntra) : {estilo: {}};
   const b = sai ? saindo(sai.tipo, pSai) : {estilo: {}};
@@ -143,9 +147,12 @@ export const Camada: React.FC<{
   // As portas são o único caso em que a cena que SAI é desenhada duas vezes: a metade de
   // cima sobe e a de baixo desce. O filho é o mesmo; como o render é função do frame, as
   // duas cópias ficam idênticas.
-  if (sai?.tipo === 'portas' && pSai > 0) {
+  if (sai?.tipo === 'portas' && saiu) {
     return (
-      <AbsoluteFill style={{zIndex: z + 3}}>
+      // A cena que sai fica ACIMA da que entra (as portas se abrem para revelá-la), então o
+      // z precisa passar do z da próxima cena, que é z + 4. Com `z + 3` ela ficava por
+      // baixo e as portas se abriam atrás da cena nova: o que se via era um corte seco.
+      <AbsoluteFill style={{zIndex: z + 5}}>
         {[0, 1].map((k) => (
           <AbsoluteFill
             key={k}

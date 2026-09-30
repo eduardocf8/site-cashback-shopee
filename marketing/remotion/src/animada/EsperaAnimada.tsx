@@ -30,14 +30,23 @@ type Def = {
   para?: Janela;
 };
 
+/** Toda transição dura uma batida (16 quadros, que é 16,17 a 111 BPM) e começa em cima de
+ * uma batida da música. A cena que entra recebe o primeiro movimento exatamente quando a
+ * transição termina, que é a batida seguinte. As durações abaixo foram escolhidas para
+ * isso: cada uma é a distância entre duas batidas mais a transição que a fecha.
+ *
+ * A grade é `17,25 + 16,17 k` quadros (música começando junto com o vídeo). O drop da
+ * música entra na batida 19 (quadro 325), que é onde as portas se abrem. */
+const BATIDA = 16;
+
 const CENAS_ANIMADAS: Def[] = [
-  {id: 'gancho', dur: 72, Cena: CenaGancho, para: {tipo: 'iris', dur: 14}},
-  {id: 'frase', dur: 148, Cena: CenaFrase, para: {tipo: 'empurraCima', dur: 14}},
-  {id: 'minimo', dur: 150, Cena: CenaMinimo, para: {tipo: 'portas', dur: 16}},
-  {id: 'mais', dur: 84, Cena: CenaMais, para: {tipo: 'irisBaixo', dur: 14}},
-  {id: 'saque', dur: 88, Cena: CenaSaque, para: {tipo: 'empurraLado', dur: 14}},
-  {id: 'semtaxa', dur: 62, Cena: CenaSemTaxa, para: {tipo: 'relogio', dur: 16}},
-  {id: 'marca', dur: 110, Cena: CenaMarca},
+  {id: 'gancho', dur: 82, Cena: CenaGancho, para: {tipo: 'iris', dur: BATIDA}},
+  {id: 'frase', dur: 145, Cena: CenaFrase, para: {tipo: 'empurraCima', dur: BATIDA}},
+  {id: 'minimo', dur: 146, Cena: CenaMinimo, para: {tipo: 'portas', dur: BATIDA}},
+  {id: 'mais', dur: 80, Cena: CenaMais, para: {tipo: 'irisBaixo', dur: BATIDA}},
+  {id: 'saque', dur: 81, Cena: CenaSaque, para: {tipo: 'empurraLado', dur: BATIDA}},
+  {id: 'semtaxa', dur: 64, Cena: CenaSemTaxa, para: {tipo: 'relogio', dur: BATIDA}},
+  {id: 'marca', dur: 113, Cena: CenaMarca},
 ];
 
 const inicios = CENAS_ANIMADAS.reduce<number[]>((acc, cena, i) => {

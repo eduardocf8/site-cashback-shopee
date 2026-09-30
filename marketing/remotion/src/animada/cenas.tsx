@@ -233,12 +233,16 @@ const DESLOCA_INICIAL = (LINHA_FRASE + LINHA_VOLTA) / 2;
  * bastante para ver que a palavra estava ali - e a moeda nasce no lugar dela, sai voando
  * quando o texto diz "parte" e volta de baixo, em arco, para pousar em "volta". A palavra
  * que a frase diz é a coisa que voa. */
+// Tempos encaixados na batida da música (ver videos/README.md, "Sincronia com a música").
+// Frame global = frame local + 66 (início desta cena). A batida k cai no quadro
+// 17,25 + 16,17 k, então: fala em k=5 (98), "dinheiro" vira moeda em k=7 (130), a moeda
+// sai na meia-batida 7,5 (138), volta em k=9 (163) e pousa em k=10 (179).
 const FALA_DE = 32; // "parte do dinheiro" começa a subir
-const MORFA = 58; // "dinheiro" vira a moeda
-const SAI_DE = 64;
-const SAI_ATE = 86;
-const VOLTA_DE = 90;
-const POUSA = 112;
+const MORFA = 64; // "dinheiro" vira a moeda
+const SAI_DE = 72;
+const SAI_ATE = 92;
+const VOLTA_DE = 97;
+const POUSA = 113;
 // Centro de "dinheiro" na tela, medido no quadro renderizado (x 557 a 948, y 950 a 1031).
 // Medido e não calculado porque depende da largura que a fonte dá à palavra.
 const DINHEIRO: [number, number] = [752, 990];
@@ -300,7 +304,9 @@ export const CenaFrase: React.FC<{dur: number}> = ({dur}) => {
 
   const chegaVolta = POUSA;
   const molaVolta = spring({frame: frame - chegaVolta, fps, config: {damping: 9, stiffness: 220}});
-  const apareceVolta = prog(frame, chegaVolta, chegaVolta + 3);
+  // Sem rampa: "volta" existe no quadro em que a moeda pousa. Com fade de 3 quadros, o
+  // golpe na batida chegava 100ms depois dela.
+  const apareceVolta = frame >= chegaVolta ? 1 : 0;
 
   const palavrasProm = PROM_A.split(' ');
   const ultimaProm = palavrasProm[palavrasProm.length - 1];
@@ -336,7 +342,7 @@ export const CenaFrase: React.FC<{dur: number}> = ({dur}) => {
             </div>
             <div>
               <Sobe inicio={13}>
-                <Destaque tipo="grifo" inicio={22}>
+                <Destaque tipo="grifo" inicio={24}>
                   {MARCADA}
                 </Destaque>
               </Sobe>
@@ -382,7 +388,7 @@ const Y_NUMERO = 944;
 const Y_ABAIXO = 1164;
 const CORPO_ROTULO = 56;
 const CORPO_NUMERO = 330;
-const TROCA = 46;
+const TROCA = 49;
 
 /** O número em que só o último algarismo muda: "1%" vira "1,6%" abrindo espaço no meio e
  * rolando o "6" como um hodômetro.
@@ -479,8 +485,8 @@ export const CenaMinimo: React.FC<{dur: number}> = ({dur}) => {
   const frame = useCurrentFrame();
   const {fps} = useVideoConfig();
 
-  const nasce = spring({frame: frame - 6, fps, config: {damping: 12, stiffness: 170}});
-  const apareceNumero = prog(frame, 6, 10);
+  const nasce = spring({frame: frame - 8, fps, config: {damping: 12, stiffness: 170}});
+  const apareceNumero = prog(frame, 8, 12);
 
   // O resto da frase some por opacidade e só depois fecha a largura - se as duas coisas
   // fossem juntas, a linha centralizada mostraria fragmentos soltos do meio do texto.
@@ -502,11 +508,11 @@ export const CenaMinimo: React.FC<{dur: number}> = ({dur}) => {
 
   // Em sequência, e não ao mesmo tempo: primeiro a palavra dá a volta e chega em cima,
   // depois o número se abre. Juntos, o "6" e a palavra disputariam o mesmo lado da tela.
-  const orbita = prog(frame, TROCA + 8, TROCA + 34, suave);
-  const abre = prog(frame, TROCA + 36, TROCA + 50, saida);
-  const rola = prog(frame, TROCA + 38, TROCA + 64, suave);
+  const orbita = prog(frame, TROCA + 8, TROCA + 28, suave);
+  const abre = prog(frame, TROCA + 30, TROCA + 42, saida);
+  const rola = prog(frame, TROCA + 32, TROCA + 54, suave);
   const oticoAtual = interpolate(abre, [0, 1], [-13, -14]);
-  const entraCondicao = TROCA + 60;
+  const entraCondicao = TROCA + 50;
 
   return (
     <AbsoluteFill>
@@ -517,7 +523,7 @@ export const CenaMinimo: React.FC<{dur: number}> = ({dur}) => {
             abre={abre}
             rola={rola}
             otico={oticoAtual}
-            velocidade={Math.abs(rola - prog(frame - 1, TROCA + 38, TROCA + 64, suave))}
+            velocidade={Math.abs(rola - prog(frame - 1, TROCA + 32, TROCA + 54, suave))}
           />
         </div>
       </Faixa>
@@ -525,7 +531,7 @@ export const CenaMinimo: React.FC<{dur: number}> = ({dur}) => {
       <Faixa y={Y_ABAIXO}>
         <Apoio corpo={CORPO_ROTULO} margemTopo={0}>
           <span style={{display: 'flex', justifyContent: 'center', alignItems: 'center'}}>
-            <Sobe inicio={16}>
+            <Sobe inicio={18}>
               <span style={{opacity: tinta, whiteSpace: 'pre'}}>{'no '}</span>
             </Sobe>
             <span
@@ -536,7 +542,7 @@ export const CenaMinimo: React.FC<{dur: number}> = ({dur}) => {
                 }px)`,
               }}
             >
-              <Sobe inicio={18}>mínimo</Sobe>
+              <Sobe inicio={20}>mínimo</Sobe>
             </span>
             {resto(', em toda compra')}
           </span>
@@ -570,8 +576,9 @@ export const CenaMais: React.FC<{dur: number}> = ({dur}) => {
   const {fps} = useVideoConfig();
   const [linhaA, linhaB] = mais.texto.split('\n');
   const chave = linhaB.replace(/\*/g, '');
-  const mola = spring({frame: frame - 22, fps, config: {damping: 11, stiffness: 170}});
-  const apareceChave = prog(frame, 22, 26);
+  const mola = spring({frame: frame - 24, fps, config: {damping: 11, stiffness: 170}});
+  // Instantâneo, como "volta" e "Espera.": o golpe cai no quadro da batida, e não 3 depois.
+  const apareceChave = frame >= 24 ? 1 : 0;
 
   return (
     <AbsoluteFill>
@@ -584,7 +591,7 @@ export const CenaMais: React.FC<{dur: number}> = ({dur}) => {
             </div>
             <div style={{position: 'relative', display: 'inline-block', fontSize: 150}}>
               {[0, 1].map((k) => {
-                const p = prog(frame, 24 + k * 6, 24 + k * 6 + 18, saida);
+                const p = prog(frame, 26 + k * 6, 26 + k * 6 + 18, saida);
                 return (
                   <div
                     key={k}
@@ -613,7 +620,8 @@ export const CenaMais: React.FC<{dur: number}> = ({dur}) => {
           </Titulo>
         </div>
       </Palco>
-      <Barras inicio={30} alturas={[80, 140, 208, 288, 388]} baseY={1470} largura={92} folga={30} />
+      {/* passo de 8 quadros = meia batida: cada barra entra numa colcheia. */}
+      <Barras inicio={32} passo={8} alturas={[80, 140, 208, 288, 388]} baseY={1470} largura={92} folga={30} />
     </AbsoluteFill>
   );
 };
@@ -634,8 +642,8 @@ const TRILHO_LARG = 640;
 export const CenaSaque: React.FC<{dur: number}> = ({dur}) => {
   const frame = useCurrentFrame();
   const {fps} = useVideoConfig();
-  const enche = prog(frame, 14, 44, saida);
-  const molaNumero = spring({frame: frame - 12, fps, config: {damping: 14, stiffness: 170}});
+  const enche = prog(frame, 16, 48, saida);
+  const molaNumero = spring({frame: frame - 16, fps, config: {damping: 14, stiffness: 170}});
 
   return (
     <AbsoluteFill>
@@ -648,21 +656,21 @@ export const CenaSaque: React.FC<{dur: number}> = ({dur}) => {
       <Faixa
         y={S_NUMERO}
         style={{
-          opacity: prog(frame, 12, 16),
+          opacity: prog(frame, 16, 20),
           transform: `translateY(-50%) scale(${interpolate(molaNumero, [0, 1], [0.8, 1])})`,
         }}
       >
-        <NumeroContando valor={saq.numero} cor={CORES.success} duracao={30} atraso={14} />
+        <NumeroContando valor={saq.numero} cor={CORES.success} duracao={32} atraso={16} />
       </Faixa>
       <Faixa y={S_TRILHO} style={{display: 'flex', justifyContent: 'center'}}>
         <Trilho p={enche} largura={TRILHO_LARG} />
       </Faixa>
       <div style={{position: 'absolute', left: CX + TRILHO_LARG / 2 + 20, top: S_TRILHO - 36}}>
-        <Check inicio={46} tam={72} />
+        <Check inicio={48} tam={72} />
       </div>
       <Faixa y={S_ABAIXO}>
         <Apoio claro corpo={CORPO_ROTULO} margemTopo={0}>
-          <LinhaSobe texto={saq.abaixo} inicio={50} />
+          <LinhaSobe texto={saq.abaixo} inicio={52} />
         </Apoio>
       </Faixa>
     </AbsoluteFill>
@@ -688,10 +696,10 @@ export const CenaSemTaxa: React.FC<{dur: number}> = ({dur}) => {
         <div style={{display: 'flex', flexDirection: 'column', alignItems: 'flex-start', gap: 46}}>
           {linhas.map((linha, i) => (
             <div key={i} style={{display: 'flex', alignItems: 'center', gap: 30}}>
-              <Check inicio={8 + i * 12} tam={88} />
+              <Check inicio={8 + i * 16} tam={88} />
               <Titulo claro corpo={98}>
                 <div style={{textAlign: 'left'}}>
-                  <LinhaSobe texto={linha} inicio={10 + i * 12} passo={4} />
+                  <LinhaSobe texto={linha} inicio={10 + i * 16} passo={4} />
                 </div>
               </Titulo>
             </div>
