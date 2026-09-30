@@ -14,7 +14,6 @@ de cashback de cada uma) - ver templates/emails/comunicacao_vitrine.html.
 
 import logging
 from datetime import timedelta
-from email.utils import parseaddr
 
 from django.conf import settings
 from django.core.mail import EmailMessage, EmailMultiAlternatives
@@ -160,13 +159,12 @@ def enviar_comunicacao(
     )
 
     emails = list(obter_destinatarios(filtro, tipo).values_list("email", flat=True))
-    _, endereco_remetente = parseaddr(settings.DEFAULT_FROM_EMAIL)
 
     total_enviados = 0
     for lote in _lotes(emails, TAMANHO_LOTE):
         try:
             mensagem = EmailMultiAlternatives(
-                subject=assunto, body=corpo_enviado, to=[endereco_remetente], bcc=lote
+                subject=assunto, body=corpo_enviado, to=[settings.EMAIL_BCC_PARA_PLACEHOLDER], bcc=lote
             )
             if corpo_html:
                 mensagem.attach_alternative(corpo_html, "text/html")
@@ -205,12 +203,13 @@ def _mandar_lembrete_em_lotes(usuarios: QuerySet, request, assunto: str, corpo: 
     link_descadastro = request.build_absolute_uri(reverse("preferencias_email")) if request else None
     corpo_completo = corpo + (_rodape_descadastro_texto(link_descadastro) if link_descadastro else "")
     emails = list(usuarios.values_list("email", flat=True))
-    _, endereco_remetente = parseaddr(settings.DEFAULT_FROM_EMAIL)
 
     total_enviados = 0
     for lote in _lotes(emails, TAMANHO_LOTE):
         try:
-            EmailMessage(subject=assunto, body=corpo_completo, to=[endereco_remetente], bcc=lote).send()
+            EmailMessage(
+                subject=assunto, body=corpo_completo, to=[settings.EMAIL_BCC_PARA_PLACEHOLDER], bcc=lote
+            ).send()
             total_enviados += len(lote)
         except Exception:
             logger.warning(
@@ -351,12 +350,13 @@ def _mandar_lembrete_html_em_lotes(usuarios: QuerySet, assunto: str, corpo: str,
     vez de EmailMessage) - usado pelo lembrete de venda indireta, o único lembrete
     automático que leva ícone."""
     emails = list(usuarios.values_list("email", flat=True))
-    _, endereco_remetente = parseaddr(settings.DEFAULT_FROM_EMAIL)
 
     total_enviados = 0
     for lote in _lotes(emails, TAMANHO_LOTE):
         try:
-            mensagem = EmailMultiAlternatives(subject=assunto, body=corpo, to=[endereco_remetente], bcc=lote)
+            mensagem = EmailMultiAlternatives(
+                subject=assunto, body=corpo, to=[settings.EMAIL_BCC_PARA_PLACEHOLDER], bcc=lote
+            )
             mensagem.attach_alternative(corpo_html, "text/html")
             mensagem.send()
             total_enviados += len(lote)

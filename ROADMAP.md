@@ -1772,6 +1772,31 @@ Click.TIPO_HOME`), e sim, respeita o opt-out.
       square) e dimensões do ícone do Instagram, a pedido do usuário depois
       de ver a prévia - antes era um círculo.
 
+**Depois, mesma fase:** usuário notou que estava recebendo os e-mails em
+massa (lembretes automáticos + tela de comunicação do admin) na própria
+caixa pessoal, mesmo sem conta cadastrada com esse endereço. Causa: o campo
+"Para" desses e-mails usava `DEFAULT_FROM_EMAIL` (`contato@cash-b.com`) como
+placeholder (a API da Brevo exige um destinatário em "to" mesmo quando todo
+mundo vai em "bcc") - e `contato@cash-b.com` encaminha pro Gmail pessoal de
+quem administra o site (ver `DOMINIO_EMAIL.md`), então cada lote virava uma
+cópia de verdade lá.
+
+- [x] **`settings.EMAIL_BCC_PARA_PLACEHOLDER`** (novo, default
+      `no-reply@cash-b.com`) - endereço dedicado só pra esse placeholder,
+      separado do `DEFAULT_FROM_EMAIL` (que continua sendo o remetente
+      visível de tudo, incluindo esses e-mails). Precisa existir no
+      Cloudflare Email Routing com ação **"Drop"** (descarta sem encaminhar
+      pra lugar nenhum) - senão a mensagem retorna (bounce) pra Brevo.
+      Configurado pelo usuário no Cloudflare antes dessa mudança ir pro ar.
+- [x] As 3 funções que mandam em lote via BCC (`enviar_comunicacao`,
+      `_mandar_lembrete_em_lotes`, `_mandar_lembrete_html_em_lotes`, todas
+      em `accounts/comunicacoes.py`) passaram a usar esse placeholder no
+      campo `to`, em vez de `parseaddr(settings.DEFAULT_FROM_EMAIL)`.
+- [x] Testes cobrindo que o campo `to` usa o placeholder novo (não mais o
+      remetente de verdade) nas 3 funções. Verificado também via
+      `runserver` local: e-mail de verdade saiu com `To:
+      no-reply@cash-b.com` no backend de console.
+
 ---
 
 Pra continuar esse roadmap numa conversa nova, basta apontar esse arquivo

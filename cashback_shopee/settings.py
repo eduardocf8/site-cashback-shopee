@@ -401,6 +401,14 @@ EMAIL_BACKEND = (
 EMAIL_TIMEOUT = int(os.environ.get("EMAIL_TIMEOUT", "10"))
 DEFAULT_FROM_EMAIL = os.environ.get("DEFAULT_FROM_EMAIL", "cash-b <contato@cash-b.com>")
 
+# Placeholder do campo "Para" nos e-mails em massa via BCC (ver accounts/comunicacoes.py) -
+# a API da Brevo exige um destinatário em "to" mesmo quando todo mundo vai em "bcc".
+# Usar o próprio DEFAULT_FROM_EMAIL ali fazia cada lote render uma cópia de verdade na
+# caixa de quem administra o site (contato@cash-b.com encaminha pro Gmail pessoal, ver
+# DOMINIO_EMAIL.md) - esse endereço separado existe só pra isso, configurado no
+# Cloudflare Email Routing com ação "Drop" (descarta sem encaminhar pra lugar nenhum).
+EMAIL_BCC_PARA_PLACEHOLDER = os.environ.get("EMAIL_BCC_PARA_PLACEHOLDER", "no-reply@cash-b.com")
+
 # Notificações push do PWA (Web Push/VAPID). Sem as duas chaves configuradas, o botão
 # "Ativar notificações" no painel some e nenhum push é enviado - só os e-mails de
 # sempre continuam funcionando. Gerar um par novo com:

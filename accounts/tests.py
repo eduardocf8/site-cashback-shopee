@@ -7,6 +7,7 @@ from links.models import Click
 from decimal import Decimal
 from unittest.mock import Mock, patch
 
+from django.conf import settings
 from django.core.cache import cache
 from django.core.files.uploadedfile import SimpleUploadedFile
 from django.test import RequestFactory, TestCase, override_settings
@@ -582,6 +583,20 @@ class EnviarComunicacaoTests(TestCase):
         self.assertEqual(comunicacao.total_destinatarios, 3)
         self.assertEqual(comunicacao.total_enviados, 3)
         self.assertEqual(comunicacao.enviado_por, self.staff)
+
+    @patch("accounts.comunicacoes.EmailMultiAlternatives")
+    def test_campo_para_usa_o_placeholder_dedicado_nao_o_remetente_de_verdade(self, MockEmailMessage):
+        # O "to" precisa ser um endereço que só existe pra descartar (Cloudflare Email
+        # Routing com ação "Drop") - contato@cash-b.com encaminha pro Gmail pessoal de
+        # quem administra o site, então usá-lo aqui faria cada lote de e-mail em massa
+        # render uma cópia de verdade nessa caixa (achado real, não hipotético).
+        mock_instancia = Mock()
+        MockEmailMessage.return_value = mock_instancia
+
+        enviar_comunicacao(assunto="Assunto", corpo="Corpo", filtro="todos", enviado_por=self.staff)
+
+        self.assertEqual(MockEmailMessage.call_args.kwargs["to"], [settings.EMAIL_BCC_PARA_PLACEHOLDER])
+        self.assertNotIn(settings.DEFAULT_FROM_EMAIL, MockEmailMessage.call_args.kwargs["to"])
 
     @patch("accounts.comunicacoes.EmailMultiAlternatives")
     def test_falha_num_lote_nao_impede_os_outros_e_conta_certo(self, MockEmailMessage):
@@ -1223,6 +1238,7 @@ class LembretesPrimeiraCompraTests(TestCase):
         self.assertEqual(total, 1)
         MockEmail.return_value.send.assert_called_once()
         self.assertEqual(MockEmail.call_args.kwargs["bcc"], [alvo.email])
+        self.assertEqual(MockEmail.call_args.kwargs["to"], [settings.EMAIL_BCC_PARA_PLACEHOLDER])
 
     def test_7_dias_nao_manda_pra_quem_ja_fez_pedido(self):
         alvo = self._usuario("ja_comprou", dias_atras=7)
@@ -1348,6 +1364,7 @@ class LembreteVendaIndiretaTests(TestCase):
         self.assertEqual(total, 1)
         MockEmail.return_value.send.assert_called_once()
         self.assertEqual(MockEmail.call_args.kwargs["bcc"], [alvo.email])
+        self.assertEqual(MockEmail.call_args.kwargs["to"], [settings.EMAIL_BCC_PARA_PLACEHOLDER])
 
     def test_nao_manda_pra_quem_so_comprou_por_venda_direta(self):
         alvo = self._usuario("direta")

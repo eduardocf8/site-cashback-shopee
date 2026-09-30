@@ -44,6 +44,21 @@ normal).
   rejeitados/marcados como spam, e ajuda a proteger contra alguém se
   passar pelo domínio).
 
+## `no-reply@cash-b.com` (placeholder dos e-mails em massa, 2026-09-30)
+
+Os e-mails em massa via BCC (lembretes automáticos e a tela de comunicação
+do admin, ver `accounts/comunicacoes.py`) precisam de um destinatário no
+campo "Para" mesmo com todo mundo em BCC - a API da Brevo exige isso. Usar
+`contato@cash-b.com` ali fazia cada lote virar uma cópia de verdade na
+caixa pessoal (por causa do encaminhamento acima), o que o usuário notou e
+achou estranho.
+
+Solução: `no-reply@cash-b.com`, configurado no Cloudflare Email Routing com
+ação **"Drop"** (aceita a mensagem e descarta, sem encaminhar pra lugar
+nenhum, sem bounce) - existe só pra isso, ninguém lê. Configurável via
+`EMAIL_BCC_PARA_PLACEHOLDER` (`.env`/Render), separado do
+`DEFAULT_FROM_EMAIL` (que continua sendo o remetente visível de tudo).
+
 Os valores exatos dos registros de DNS (SPF/DKIM/DMARC/MX, e a regra de
 encaminhamento do Email Routing) ficam só no painel do Cloudflare e nas
 configurações de domínio remetente da Brevo - esse arquivo documenta a
