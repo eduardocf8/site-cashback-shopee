@@ -33,7 +33,7 @@ quadros).
 
 | Tempo | Quadro | Cena | O que acontece | Efeito sonoro sugerido |
 |---|---|---|---|---|
-| 1,10s | 33 | Gancho | "Espera." entra em corte seco | impacto grave; é o momento da fala "espera" |
+| 1,10s | 33 | Gancho | "Espera." entra de uma vez, com a rajada de raios | impacto grave; é o momento da fala "espera" |
 | 1,93s | 58 | Transição 1 | íris abre do centro | whoosh curto |
 | 2,67s | 80 | Frase | o grifo abre atrás de "cash-b," | marca de caneta / swipe leve |
 | 3,00s | 90 | Frase | "parte do dinheiro" sobe | leve, sem destaque |

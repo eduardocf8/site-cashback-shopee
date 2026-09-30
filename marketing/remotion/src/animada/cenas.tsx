@@ -90,12 +90,15 @@ const PALAVRA_Y = 1143;
  *
  * A primeira versão tinha anel, raios, clarão e mola juntos, e ficou demais; a `seco`
  * ficou de menos. As duas explosões são o meio do caminho: a pausa continua sendo o que
- * dá o impacto, e o efeito só o confirma. */
+ * dá o impacto, e o efeito só o confirma.
+ *
+ * O dono escolheu a `explosaoA`, que é o padrão do vídeo completo. As outras duas seguem
+ * aqui porque é o parâmetro que permite compará-las de novo. */
 export type EfeitoGancho = 'seco' | 'explosaoA' | 'explosaoB';
 
 export const CenaGancho: React.FC<{dur: number; efeito?: EfeitoGancho}> = ({
   dur,
-  efeito = 'seco',
+  efeito = 'explosaoA',
 }) => {
   const frame = useCurrentFrame();
   const {fps} = useVideoConfig();
