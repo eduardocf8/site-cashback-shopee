@@ -9,10 +9,12 @@ links/home.html e ofertas/lista.html.
 
 As URLs precisam ser absolutas: Facebook/WhatsApp não resolvem caminho relativo.
 {% endcomment %}
-{# Reivindicação do domínio no Pinterest (Configurações > Reivindicar). Pode sair depois
+{% comment %}
+Reivindicação do domínio no Pinterest (Configurações > Reivindicar). Pode sair depois
 que o site aparecer como verificado lá - mas sem ela o Pinterest volta a mostrar o site
 como não verificado se checar de novo, então o seguro é deixar. Fica aqui porque este
-include já está no <head> da home, que é a página que o Pinterest confere. #}
+include já está no <head> da home, que é a página que o Pinterest confere.
+{% endcomment %}
 <meta name="p:domain_verify" content="1ded1c934ffed64be56d8dd0eb403aca"/>
 <meta property="og:type" content="website">
 <meta property="og:site_name" content="cash-b">
