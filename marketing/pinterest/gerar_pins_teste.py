@@ -73,8 +73,10 @@ def _passo(numero, titulo, texto):
 def _html(pin):
     passos = "".join(_passo(i, t, x) for i, (t, x) in enumerate(PASSOS, start=1))
     # Grifo âmbar uma vez só na peça (BRAND.md > O grifo), como background da própria
-    # palavra - não pseudo-elemento, que some atrás do fundo.
-    grifo = f"background:linear-gradient(to top, {HIGHLIGHT} 0 14px, transparent 14px); padding:0 4px;"
+    # palavra - não pseudo-elemento, que some atrás do fundo. Cobrindo a palavra
+    # inteira, não só a faixa de baixo: texto escuro sobre o roxo só fica legível com
+    # o âmbar atrás de tudo (pedido do dono do produto, 2026-10-01).
+    grifo = f"background:{HIGHLIGHT}; padding:0 12px; border-radius:6px;"
     return f"""<!doctype html><html><head><meta charset="utf-8"><style>
     {FONT_FACES}
     body {{ margin:0; width:{LARGURA}px; height:{ALTURA}px; overflow:hidden; position:relative; }}
@@ -104,7 +106,7 @@ def _html(pin):
         <div style="display:flex; justify-content:space-between; align-items:baseline;">
             <div style="font-family:Familjen; font-weight:700; font-size:64px; letter-spacing:-0.03em;
                         color:#fff;">{MARCA}</div>
-            <div style="font-family:Familjen; font-size:30px; color:{BRAND_LIGHT};">Toque para ver as ofertas</div>
+            <div style="font-family:Familjen; font-size:30px; color:#ede9f7;">Toque para ver as ofertas</div>
         </div>
     </div>
     </body></html>"""

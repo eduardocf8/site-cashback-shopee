@@ -228,6 +228,11 @@ Em arte gerada, o grifo é `background` da própria palavra, não pseudo-element
 atrás dela: `linear-gradient(to top, #f59e0b 0 24px, transparent 24px)`. Com
 `z-index` negativo ele cai atrás de qualquer véu ou fundo irmão e some.
 
+**Sobre fundo roxo, o grifo cobre a palavra inteira** (`background` âmbar chapado,
+`border-radius: 6px`), não só a faixa de baixo: texto escuro com âmbar só embaixo fica
+ilegível sobre o roxo. Decisão do dono do produto nos Pins do Pinterest (2026-10-01),
+`marketing/pinterest/gerar_pins_teste.py`.
+
 ### A barra lateral
 
 Bloco com borda esquerda grossa (12px) na cor do papel semântico e fundo na
