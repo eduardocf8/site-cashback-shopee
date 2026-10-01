@@ -40,3 +40,13 @@ Cadastro que chega com `utm_source` grava a origem no `User` (primeiro toque, ve
 `accounts/middleware.py`). Para ver o funil só de quem veio do Pinterest:
 
     python manage.py funil_cadastros --origem pinterest
+
+## Registro do teste manual (passo 0)
+
+Comparação entre Pin que leva para a cash-b e Pin com a marcação nativa da Shopee.
+Conferir os cliques de cada grupo em Análises, no Pinterest, 3 a 4 semanas depois.
+
+| Data de envio | Pins | Destino |
+|---|---|---|
+| 01/10/2026 | 5 tipográficos: Casa e decoração, Beleza, Celular e acessórios, Moda feminina, Esporte e ar livre (`marketing/pinterest/pins-teste/`) | Página da categoria na cash-b, `utm_source=pinterest` |
+| — | 5 com foto do produto e "Marcar produtos" | Tag nativa da Shopee (ainda não enviados) |
