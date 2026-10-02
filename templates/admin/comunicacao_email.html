@@ -144,7 +144,7 @@
     <div class="form-row">
         <label for="id_banner">Imagem de banner (opcional)</label>
         <input type="file" name="banner" id="id_banner" accept="image/*">
-        <p class="ajuda">Aparece no topo do e-mail - tipo o banner de campanha que a Shopee usa nos e-mails deles - e substitui o texto do corpo, que deixa de aparecer abaixo dele (o texto vai só na versão sem imagem). O e-mail ganha o banner clicável, um rodapé com o site e o Instagram e o link de descadastro. Precisa de HTML pra aparecer (já ativa automaticamente quando você sobe uma imagem aqui, mesmo sem escolher nenhuma oferta).</p>
+        <p class="ajuda">Aparece no topo do e-mail - tipo o banner de campanha que a Shopee usa nos e-mails deles - e substitui o texto do corpo, que deixa de aparecer abaixo dele (o corpo aparece só no lugar do banner, se a imagem não carregar, e na versão em texto simples). O e-mail ganha o banner clicável, um rodapé com o site e o Instagram e o link de descadastro. Precisa de HTML pra aparecer (já ativa automaticamente quando você sobe uma imagem aqui, mesmo sem escolher nenhuma oferta).</p>
         <img id="banner-preview" style="display:none; max-width:100%; margin-top:8px; border-radius:8px;">
     </div>
     <div class="form-row">
@@ -168,7 +168,7 @@
     <div class="form-row">
         <label for="id_corpo">Corpo do e-mail</label>
         <textarea name="corpo" id="id_corpo" required></textarea>
-        <p class="ajuda">Texto simples, sem formatação/HTML - mesmo formato dos outros e-mails do site. Deixe uma linha em branco entre parágrafos. <strong>Com banner, este texto não aparece no e-mail com imagem</strong> (o banner é o conteúdo): ele vai só na versão em texto simples, para quem não vê imagem - escreva o essencial em poucas linhas.</p>
+        <p class="ajuda">Texto simples, sem formatação/HTML - mesmo formato dos outros e-mails do site. Deixe uma linha em branco entre parágrafos. <strong>Com banner, este texto não aparece abaixo dele</strong> (o banner é o conteúdo). Ele vira o texto que aparece NO LUGAR do banner quando o programa de e-mail bloqueia imagens, e é a versão em texto simples - escreva o essencial em poucas linhas.</p>
     </div>
     <div class="form-row">
         <label for="ofertas-busca-input">Ofertas em destaque (opcional)</label>

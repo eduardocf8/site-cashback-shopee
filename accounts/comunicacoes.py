@@ -123,8 +123,12 @@ def renderizar_corpo_html(
             "ofertas_em_linhas": linhas,
             "link_descadastro": link_descadastro,
             "banner_url": banner_url,
-            # O assunto serve de texto alternativo do banner: é a frase que já resume o e-mail.
-            "banner_alt": assunto,
+            # Texto alternativo do banner: o corpo digitado, numa linha só. Quem bloqueia imagens (o
+            # caso típico do Outlook) vê o HTML sem o banner, e o que aparece no lugar dele é
+            # este texto - então ele precisa carregar a mensagem, não só o assunto. Quem vê a
+            # imagem não vê duplicação (alt não aparece), e leitores de tela leem o texto inteiro.
+            # O assunto só entra se o corpo estiver vazio.
+            "banner_alt": " ".join(corpo.split()) or assunto,
             # O banner leva à vitrine (onde se compra); o "cash-b.com" do rodapé, à home.
             "link_site": request.build_absolute_uri(reverse("ofertas_lista")) + "?utm_source=email&utm_medium=comunicacao",
             "link_home": request.build_absolute_uri(reverse("home")) + "?utm_source=email&utm_medium=comunicacao",

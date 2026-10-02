@@ -2037,7 +2037,7 @@ a 50% da comissão; nenhum pedido passa de 100%. Na coorte de 09 a 28/09: cashba
       ~343px, e fonte de 12,5px sobre 560 viraria 7,6px. Parametrizado por `DATA` e `PERCENTUAL_EXTRA`; os pisos e
       o saque mínimo vêm de `settings.py` (conferir antes de mandar).
 - [x] **Template do e-mail (`comunicacao_vitrine.html`)**: com banner, ele passa a ser clicável
-      (vitrine, `utm_source=email`), ganha texto alternativo (o assunto) e um **rodapé em HTML**
+      (vitrine, `utm_source=email`), ganha como texto alternativo o CORPO digitado, numa linha (cai no assunto se o corpo estiver vazio) e um **rodapé em HTML**
       colado no pé da imagem: "Sem mensalidade. Sem taxa." com "cash-b.com" (home) e "@usecashb"
       (`URL_INSTAGRAM`) como links de verdade. A imagem só tem UM link, então esses dois, se
       fossem pixels, não clicariam - e o do Instagram cairia na vitrine. Sem fresta entre imagem
@@ -2045,7 +2045,9 @@ a 50% da comissão; nenhum pedido passa de 100%. Na coorte de 09 a 28/09: cashba
       tela; só batem numa largura, porque a imagem escala e o rodapé não.
 - [x] **Com banner, o corpo digitado não aparece em HTML** (o banner é o conteúdo; repetir o
       texto num cartão embaixo duplicava). O campo "Corpo" continua obrigatório e vai na versão
-      em TEXTO do e-mail, para quem não vê imagem; os textos de ajuda do admin dizem isso.
+      em TEXTO do e-mail e é o texto alternativo do banner. Quem só bloqueia imagens (Outlook) vê o
+      HTML SEM o banner, não a versão em texto: o que aparece no lugar é o alt, então ele carrega
+      a mensagem. Os textos de ajuda do admin dizem isso.
 - [x] **Corpo do e-mail não quebra mais "cash-b" no hífen** (`_sem_quebra_no_nome`): o texto é
       digitado no admin e o navegador partia o nome em "cash-" e "b".
 - [x] 33 testes novos.

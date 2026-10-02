@@ -14,8 +14,8 @@
 Banner que carrega o conteúdo inteiro do e-mail (como nos e-mails da Shopee). O que não cabe
 numa imagem vive aqui, em HTML de verdade:
 
-- o texto alternativo (o assunto), para quem tem imagem bloqueada - sem ele o e-mail chega
-  em branco;
+- o texto alternativo (o corpo digitado, numa linha), que é o que aparece no lugar do banner
+  para quem tem imagem bloqueada - sem ele o e-mail chega em branco;
 - o link no banner, porque uma imagem sozinha não leva a lugar nenhum;
 - o RODAPÉ, colado no pé da imagem. Uma imagem só pode ter UM link, então "cash-b.com" e
   "@usecashb" desenhados dentro dela seriam pixels, não links - e quem tocasse no Instagram
@@ -51,8 +51,9 @@ margens só batem numa largura, e é essa; a 390px a diferença é de 1px, a 560
 
 {% comment %}
 Com banner, o conteúdo do e-mail É o banner: repetir o texto num cartão embaixo só duplica o que
-a imagem já diz. O corpo digitado no admin continua indo na versão em TEXTO do e-mail (para quem
-não vê imagem), só não aparece aqui em HTML.
+a imagem já diz. O corpo digitado no admin continua indo na versão em TEXTO do e-mail e é o
+texto alternativo do banner (aparece no lugar dele quando a imagem não carrega); só não
+aparece aqui em HTML como cartão.
 {% endcomment %}
 {% if not banner_url %}
 <tr><td style="background:#ffffff; border-radius:12px; padding:24px 20px; color:#111827; font-size:15px; line-height:1.5;">

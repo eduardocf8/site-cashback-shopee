@@ -767,13 +767,26 @@ class RenderizarCorpoHtmlTests(TestCase):
 
     # --- banner que carrega o conteúdo inteiro do e-mail
 
-    def test_banner_leva_o_assunto_como_texto_alternativo(self):
-        # Com imagem bloqueada o e-mail seria um buraco em branco; o alt é o que resta.
+    def test_banner_leva_o_corpo_como_texto_alternativo(self):
+        # Quem bloqueia imagens vê o HTML sem o banner, e o que aparece no lugar é o alt. Com o
+        # corpo escondido do HTML, o alt tem de carregar a mensagem, não só o assunto.
         html = renderizar_corpo_html(
-            "Confira!", [], self.request, banner_url="https://cash-b.com/b.png",
-            assunto="10.10: 50% a mais de cashback",
+            "No dia 10/10,\n\ntodos os pedidos terão 50% a mais.", [], self.request,
+            banner_url="https://cash-b.com/b.png", assunto="10.10: 50% a mais de cashback",
         )
+        self.assertIn('alt="No dia 10/10, todos os pedidos terão 50% a mais."', html)
+        self.assertNotIn('alt="10.10: 50% a mais de cashback"', html)
+
+    def test_texto_alternativo_cai_no_assunto_se_o_corpo_estiver_vazio(self):
+        html = renderizar_corpo_html("", [], self.request, banner_url="https://cash-b.com/b.png",
+                                     assunto="10.10: 50% a mais de cashback")
         self.assertIn('alt="10.10: 50% a mais de cashback"', html)
+
+    def test_texto_alternativo_escapa_aspas_e_html_do_corpo(self):
+        html = renderizar_corpo_html('Dia "10" <script>x</script>', [], self.request,
+                                     banner_url="https://cash-b.com/b.png")
+        self.assertNotIn("<script>", html)
+        self.assertIn('alt="Dia &quot;10&quot; &lt;script&gt;x&lt;/script&gt;"', html)
 
     def test_banner_e_clicavel_e_leva_ao_site_com_utm(self):
         html = renderizar_corpo_html("Confira!", [], self.request, banner_url="https://cash-b.com/b.png")
@@ -792,11 +805,12 @@ class RenderizarCorpoHtmlTests(TestCase):
         self.assertIn("Sem mensalidade. Sem taxa.", html)
 
     def test_com_banner_o_corpo_nao_aparece_em_html_mas_o_banner_sim(self):
-        # o banner é o conteúdo do e-mail; repetir o texto num cartão embaixo só duplica
-        html = renderizar_corpo_html(
-            "Texto que só vale na versão sem imagem", [], self.request, banner_url="https://cash-b.com/b.png"
-        )
-        self.assertNotIn("Texto que só vale na versão sem imagem", html)
+        # o banner é o conteúdo do e-mail; repetir o texto num cartão embaixo só duplica.
+        # O corpo só aparece como texto alternativo da imagem (quando ela é bloqueada).
+        texto = "Texto que só vale na versão sem imagem"
+        html = renderizar_corpo_html(texto, [], self.request, banner_url="https://cash-b.com/b.png")
+        self.assertEqual(html.count(texto), 1)
+        self.assertIn(f'alt="{texto}"', html)
         self.assertIn("https://cash-b.com/b.png", html)
 
     def test_sem_banner_o_corpo_continua_aparecendo(self):
@@ -922,10 +936,11 @@ class EnviarComunicacaoComBannerTests(TestCase):
         self.assertTrue(comunicacao.banner)
         self.assertIn(comunicacao.banner.url, html_enviado)
         self.assertIn(comunicacao.banner.url, comunicacao.corpo_html)
-        # o assunto do envio vira o texto alternativo do banner
-        self.assertIn('alt="Campanha"', html_enviado)
-        # o corpo digitado não aparece em HTML (o banner é o conteúdo), mas vai na versão em texto
-        self.assertNotIn("Confira!", html_enviado)
+        # o corpo digitado vira o texto alternativo do banner (o que aparece se a imagem não carregar)
+        self.assertIn('alt="Confira!"', html_enviado)
+        # o corpo digitado não aparece como cartão no HTML (o banner é o conteúdo), mas vai na
+        # versão em texto
+        self.assertNotIn("<p style='margin:0 0 12px;'>Confira!", html_enviado)
         self.assertIn("Confira!", MockEmail.call_args.kwargs["body"])
 
     @patch("accounts.comunicacoes.EmailMultiAlternatives")
