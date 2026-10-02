@@ -12,7 +12,12 @@ Estrutura, de cima para baixo:
 2. Como funciona: três passos.
 3. Quanto você recebe: o cashback mínimo antes e depois da campanha, em % e em reais.
 4. Bom saber: as condições, na barra lateral âmbar. É a parte que evita reclamação depois.
-5. Rodapé (roxo): "Sem mensalidade. Sem taxa." e o endereço do site e do Instagram.
+
+A faixa roxa do rodapé ("Sem mensalidade. Sem taxa." com o site e o Instagram) NÃO é parte da
+imagem: é HTML no template do e-mail (`templates/emails/comunicacao_vitrine.html`), colada no
+pé do banner. Dentro de uma imagem "cash-b.com" e "@usecashb" seriam só pixels, e o único link
+possível é o da imagem inteira; como HTML, cada um é um link de verdade e leva ao seu destino.
+A imagem termina no "Bom saber".
 
 **Por que a tela tem 400 unidades de largura, e não 560.** O e-mail é exibido com ~528px em
 desktop e ~343px em celular. Uma fonte de 12,5px desenhada sobre 560 vira 7,6px no celular,
@@ -34,23 +39,20 @@ dimensionado para o celular, que é onde a maioria abre o e-mail.
 `SAQUE_VALOR_MINIMO`. Arte prometendo número diferente do que o sistema paga é o pior erro
 possível aqui: conferir os quatro antes de mandar.
 
-**Margens.** A de cima (do alto da imagem ao selo) e a de baixo (do texto do rodapé ao pé da
-imagem) são medidas nos pixels da imagem final e igualadas. Não dá para igualar só pelo CSS: a
-caixa de texto tem folga interna de entrelinha que o olho não vê.
+**Margens.** A margem de cima (selo) é a de baixo do rodapé HTML. Como o rodapé é HTML em px
+fixos e a imagem escala com a largura do e-mail, elas só são iguais numa largura: a do celular
+(~375px de tela, imagem a ~343px), que é onde o e-mail é mais aberto. Ver o comentário do
+rodapé no template.
 
-O template arredonda a imagem (`border-radius:12px`), então a arte é um bloco inteiro, sem
-faixa branca no pé.
+O template arredonda só o topo da imagem; o pé arredondado é o do rodapé HTML.
 
 Como usar:
     python3 marketing/gerar_banner_email.py
 """
 import base64
-import io
 from decimal import Decimal
 from pathlib import Path
 
-import numpy as np
-from PIL import Image
 from playwright.sync_api import sync_playwright
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
@@ -73,7 +75,7 @@ CORES = {
 
 LARGURA = 400   # unidades; o arquivo sai em ESCALA x isso
 ESCALA = 3      # 1200px de largura: nítido em tela densa sem passar do razoável de peso
-PADDING_VERTICAL = 30   # alvo da margem de cima e de baixo (unidades)
+PADDING_VERTICAL = 30   # margem de cima (unidades); a do rodapé HTML é ajustada a ela no template
 
 # --- o que a campanha paga -------------------------------------------------------------
 DATA = "10.10"
@@ -84,9 +86,6 @@ MINIMO_DIRETA = Decimal("1.6")      # CASHBACK_MINIMO_VENDA_DIRETA
 MINIMO_INDIRETA = Decimal("1")      # CASHBACK_MINIMO_VENDA_INDIRETA
 SAQUE_MINIMO = 20                   # SAQUE_VALOR_MINIMO
 COMPRA_EXEMPLO = Decimal("100")
-
-SITE = "cash-b.com"
-INSTAGRAM = "@usecashb"
 
 MANCHETE = f"{PERCENTUAL_EXTRA}% a mais de cashback"
 PARAGRAFO = (f"Durante todo o {DIA_MES}, todos os pedidos realizados terão {PERCENTUAL_EXTRA}% a mais de "
@@ -127,7 +126,7 @@ def _sobre(cor: str, base: str, opacidade: float) -> str:
     return "#" + "".join(f"{round(x * opacidade + y * (1 - opacidade)):02x}" for x, y in zip(c, b))
 
 
-def _pagina(ajuste_rodape: float) -> str:
+def _pagina() -> str:
     arte64 = base64.b64encode(ARTE.read_bytes()).decode()
     direta_hoje, direta_nova = MINIMO_DIRETA, MINIMO_DIRETA * MULTIPLICADOR
     ind_hoje, ind_nova = MINIMO_INDIRETA, MINIMO_INDIRETA * MULTIPLICADOR
@@ -162,7 +161,7 @@ def _pagina(ajuste_rodape: float) -> str:
     .manchete {{ margin-top:0; font-size:19px; font-weight:700; letter-spacing:0.02em; text-transform:uppercase; color:{CORES['highlight']}; }}
     .paragrafo {{ margin:12px auto 0; max-width:330px; font-size:14px; font-weight:500; line-height:1.42; color:rgba(255,255,255,0.92); text-wrap:balance; }}
 
-    .miolo {{ padding:28px 24px 26px; }}
+    .miolo {{ padding:28px 24px 28px; }}
     .tag {{ font-size:12px; font-weight:700; letter-spacing:2px; text-transform:uppercase; color:{CORES['brand']}; margin-bottom:14px; }}
     .passo {{ display:flex; gap:14px; align-items:flex-start; margin-bottom:16px; }}
     .num {{
@@ -195,12 +194,6 @@ def _pagina(ajuste_rodape: float) -> str:
     .bom-saber li {{ font-size:13px; line-height:1.4; padding:3px 0 3px 16px; position:relative; }}
     .bom-saber li::before {{ content:""; position:absolute; left:0; top:10px; width:6px; height:6px; border-radius:50%; background:{CORES['highlight']}; }}
 
-    .rodape {{
-        text-align:center; color:#fff; padding:26px 24px {PADDING_VERTICAL + ajuste_rodape}px;
-        background:linear-gradient(160deg, {CORES['brand-dark']} 0%, {CORES['brand']} 100%);
-    }}
-    .rodape-t {{ font-size:18px; font-weight:700; letter-spacing:-0.01em; }}
-    .rodape-l {{ margin-top:8px; font-size:14px; font-weight:500; color:rgba(255,255,255,0.88); }}
     </style></head><body>
         <section class="topo">
             <span class="selo">campanha</span>
@@ -236,24 +229,7 @@ def _pagina(ajuste_rodape: float) -> str:
             </div>
         </section>
 
-        <section class="rodape">
-            <div class="rodape-t">Sem mensalidade. Sem taxa.</div>
-            <div class="rodape-l">{SITE}&nbsp;&nbsp;·&nbsp;&nbsp;{INSTAGRAM}</div>
-        </section>
     </body></html>"""
-
-
-def _margens(png: bytes) -> tuple[int, int]:
-    """Margem de cima (alto da imagem ao selo âmbar) e de baixo (último texto claro do rodapé ao
-    pé da imagem), em pixels da imagem final."""
-    a = np.asarray(Image.open(io.BytesIO(png)).convert("RGB")).astype(int)
-    h, w, _ = a.shape
-    ambar = np.abs(a - np.array([0xF5, 0x9E, 0x0B])).sum(axis=2) < 40
-    topo = int(np.nonzero(ambar[: h // 4, w // 2 - 160: w // 2 + 160].any(axis=1))[0].min())
-    janela = 140 * ESCALA
-    claro = a[h - janela:, :].min(axis=2) > 200
-    ultima = int(np.nonzero(claro.any(axis=1))[0].max()) + (h - janela)
-    return topo, h - 1 - ultima
 
 
 def gerar() -> Path:
@@ -261,25 +237,14 @@ def gerar() -> Path:
     destino = OUT_DIR / f"banner-{DATA.replace('.', '-')}-completo.png"
     with sync_playwright() as p:
         navegador = p.chromium.launch(executable_path="/opt/pw-browsers/chromium")
-        ajuste = 0.0
-        for _ in range(3):
-            pagina = navegador.new_page(viewport={"width": LARGURA, "height": 800}, device_scale_factor=ESCALA)
-            pagina.set_content(_pagina(ajuste))
-            pagina.wait_for_timeout(300)
-            altura = pagina.evaluate("document.documentElement.scrollHeight")
-            png = pagina.screenshot(clip={"x": 0, "y": 0, "width": LARGURA, "height": altura}, full_page=True)
-            pagina.close()
-            cima, baixo = _margens(png)
-            if abs(cima - baixo) <= 1:
-                break
-            # a diferença sai em pixels da imagem; o ajuste é em unidades do CSS
-            ajuste += (cima - baixo) / ESCALA
+        pagina = navegador.new_page(viewport={"width": LARGURA, "height": 800}, device_scale_factor=ESCALA)
+        pagina.set_content(_pagina())
+        pagina.wait_for_timeout(300)
+        altura = pagina.evaluate("document.documentElement.scrollHeight")
+        png = pagina.screenshot(clip={"x": 0, "y": 0, "width": LARGURA, "height": altura}, full_page=True)
         navegador.close()
-    if abs(cima - baixo) > 1:
-        raise SystemExit(f"Margens desiguais: cima {cima}px, baixo {baixo}px.")
     destino.write_bytes(png)
     print(f"gerado: {destino.relative_to(REPO_ROOT)} ({LARGURA * ESCALA}x{altura * ESCALA}, {len(png) / 1024:.0f} KB)")
-    print(f"margens medidas nos pixels: cima {cima}px, baixo {baixo}px")
     return destino
 
 

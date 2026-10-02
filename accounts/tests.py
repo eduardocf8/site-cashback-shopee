@@ -740,6 +740,17 @@ class RenderizarCorpoHtmlTests(TestCase):
         self.assertNotIn("<script>alert(1)</script>", html)
         self.assertIn("&lt;script&gt;", html)
 
+    def test_nome_da_marca_no_corpo_nao_quebra_linha_no_hifen(self):
+        html = renderizar_corpo_html("Entre em cash-b.com e veja a cash-b.", [], self.request)
+        self.assertEqual(html.count('<span style="white-space:nowrap;">cash-b</span>'), 2)
+        # o span envolve só o nome: o resto do texto, inclusive o ".com", fica como estava
+        self.assertIn('nowrap;">cash-b</span>.com', html)
+
+    def test_nowrap_do_nome_nao_abre_brecha_para_html_digitado(self):
+        html = renderizar_corpo_html("<b>cash-b</b>", [], self.request)
+        self.assertIn("&lt;b&gt;", html)
+        self.assertNotIn("<b>", html)
+
     def test_sem_ofertas_nao_quebra(self):
         html = renderizar_corpo_html("Só um aviso, sem produtos.", [], self.request)
         self.assertIn("Só um aviso, sem produtos.", html)
@@ -770,16 +781,24 @@ class RenderizarCorpoHtmlTests(TestCase):
         self.assertIn(f'<a href="http://testserver{link}"', html)
 
     @override_settings(URL_INSTAGRAM="https://www.instagram.com/usecashb/")
-    def test_com_banner_ha_botoes_de_verdade_para_o_site_e_o_instagram(self):
-        # Uma imagem só pode ter um link: o site e o Instagram escritos DENTRO do banner não
-        # seriam clicáveis, então precisam existir também como link de texto.
+    def test_rodape_tem_link_proprio_para_o_site_e_para_o_instagram(self):
+        # Uma imagem só pode ter um link: "cash-b.com" e "@usecashb" desenhados dentro dela não
+        # seriam clicáveis (e o do Instagram cairia na vitrine). No rodapé em HTML, cada um leva
+        # ao seu destino.
         html = renderizar_corpo_html("Confira!", [], self.request, banner_url="https://cash-b.com/b.png")
-        self.assertIn(">Ver ofertas</a>", html)
-        self.assertIn('href="https://www.instagram.com/usecashb/"', html)
+        home = reverse("home") + "?utm_source=email&amp;utm_medium=comunicacao"
+        self.assertIn(f'<a href="http://testserver{home}" style="color:#e9e1fb; text-decoration:underline;">cash-b.com</a>', html)
+        self.assertIn('href="https://www.instagram.com/usecashb/" style="color:#e9e1fb; text-decoration:underline;">@usecashb</a>', html)
+        self.assertIn("Sem mensalidade. Sem taxa.", html)
 
-    def test_sem_banner_nao_ha_botoes(self):
-        html = renderizar_corpo_html("Só texto.", [], self.request)
+    def test_os_botoes_de_baixo_do_banner_nao_existem_mais(self):
+        html = renderizar_corpo_html("Confira!", [], self.request, banner_url="https://cash-b.com/b.png")
         self.assertNotIn(">Ver ofertas</a>", html)
+        self.assertNotIn("Instagram @usecashb", html)
+
+    def test_sem_banner_nao_ha_rodape_nem_links_de_marca(self):
+        html = renderizar_corpo_html("Só texto.", [], self.request)
+        self.assertNotIn("Sem mensalidade", html)
         self.assertNotIn("instagram.com", html)
 
 

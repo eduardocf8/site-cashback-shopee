@@ -2032,16 +2032,20 @@ a 50% da comissão; nenhum pedido passa de 100%. Na coorte de 09 a 28/09: cashba
 - [x] **Banner de e-mail com o conteúdo inteiro da campanha**
       (`marketing/gerar_banner_email.py` -> `banner-email/banner-10-10-completo.png`): topo com
       data, manchete e parágrafo; como funciona (3 passos); quanto recebe (mínimo direto 1,6% ->
-      2,4%, indireto 1% -> 1,5%, e R$ 100 -> R$ 2,40); bom saber (condições); rodapé com site e
-      Instagram. Tela de 400 unidades de largura (não 560): no celular o e-mail aparece com
-      ~343px, e fonte de 12,5px sobre 560 viraria 7,6px. Margens de cima e de baixo medidas nos
-      pixels e igualadas (90px/91px). Parametrizado por `DATA` e `PERCENTUAL_EXTRA`; os pisos e
+      2,4%, indireto 1% -> 1,5%, e R$ 100 -> R$ 2,40); bom saber (condições). O rodapé não é da
+      imagem (ver o template, abaixo). Tela de 400 unidades de largura (não 560): no celular o e-mail aparece com
+      ~343px, e fonte de 12,5px sobre 560 viraria 7,6px. Parametrizado por `DATA` e `PERCENTUAL_EXTRA`; os pisos e
       o saque mínimo vêm de `settings.py` (conferir antes de mandar).
-- [x] **Template do e-mail (`comunicacao_vitrine.html`)**: com banner, ele passa a ser clicável,
-      ganha texto alternativo (o assunto) e dois botões de verdade (site com
-      `utm_source=email` e Instagram, `URL_INSTAGRAM`). Imagem só tem UM link e o site/Instagram
-      escritos dentro dela não clicam. Sem banner nada muda.
-- [x] 31 testes novos.
+- [x] **Template do e-mail (`comunicacao_vitrine.html`)**: com banner, ele passa a ser clicável
+      (vitrine, `utm_source=email`), ganha texto alternativo (o assunto) e um **rodapé em HTML**
+      colado no pé da imagem: "Sem mensalidade. Sem taxa." com "cash-b.com" (home) e "@usecashb"
+      (`URL_INSTAGRAM`) como links de verdade. A imagem só tem UM link, então esses dois, se
+      fossem pixels, não clicariam - e o do Instagram cairia na vitrine. Sem fresta entre imagem
+      e rodapé (0px a 375, 390 e 560). Margem de cima e de baixo: 26,0px e 25,7px a 375px de
+      tela; só batem numa largura, porque a imagem escala e o rodapé não.
+- [x] **Corpo do e-mail não quebra mais "cash-b" no hífen** (`_sem_quebra_no_nome`): o texto é
+      digitado no admin e o navegador partia o nome em "cash-" e "b".
+- [x] 33 testes novos.
 
 **Para ligar a campanha:** no admin, "Campanhas de cashback" -> multiplicador `1.5`, início
 10/10/2026 00:00, fim 10/10/2026 23:59:59 (horário de Brasília). Pode ser criada antes: a

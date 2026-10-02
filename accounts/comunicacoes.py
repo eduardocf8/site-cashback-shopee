@@ -84,8 +84,17 @@ def _texto_para_html(corpo: str) -> str:
     é texto puro digitado no formulário, nunca deve virar HTML de verdade."""
     paragrafos = [p.strip() for p in corpo.split("\n\n") if p.strip()]
     return "".join(
-        f"<p style='margin:0 0 12px;'>{escape(p).replace(chr(10), '<br>')}</p>" for p in paragrafos
+        f"<p style='margin:0 0 12px;'>{_sem_quebra_no_nome(escape(p)).replace(chr(10), '<br>')}</p>"
+        for p in paragrafos
     )
+
+
+def _sem_quebra_no_nome(texto_escapado: str) -> str:
+    """Impede a quebra de linha no hífen de "cash-b" (e de "cash-b.com"). O texto vem digitado
+    no admin e o navegador quebra depois de qualquer hífen, o que partia o nome em "cash-" e "b".
+    Roda DEPOIS do escape, sobre o texto já seguro, e só envolve o nome num span: o texto
+    copiado continua sendo "cash-b"."""
+    return texto_escapado.replace("cash-b", '<span style="white-space:nowrap;">cash-b</span>')
 
 
 def _rodape_descadastro_texto(link: str) -> str:
@@ -116,7 +125,9 @@ def renderizar_corpo_html(
             "banner_url": banner_url,
             # O assunto serve de texto alternativo do banner: é a frase que já resume o e-mail.
             "banner_alt": assunto,
+            # O banner leva à vitrine (onde se compra); o "cash-b.com" do rodapé, à home.
             "link_site": request.build_absolute_uri(reverse("ofertas_lista")) + "?utm_source=email&utm_medium=comunicacao",
+            "link_home": request.build_absolute_uri(reverse("home")) + "?utm_source=email&utm_medium=comunicacao",
             "link_instagram": settings.URL_INSTAGRAM,
         },
     )
