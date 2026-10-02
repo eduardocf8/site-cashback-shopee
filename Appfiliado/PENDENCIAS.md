@@ -256,8 +256,61 @@ registrar isso no commit que fizer a mudança.
   que não existia ainda).
 - `LICENCA.md` atualizado (a seção "O que falta" estava desatualizada
   nesse ponto).
+- **Atualização (2026-09-30)**: adicionados 17 testes automatizados
+  (`licencas/tests.py`, nas duas branches) cobrindo a lógica de decisão
+  pra cancelamento/reembolso/chargeback/atraso/recusa, incluindo testes de
+  ponta a ponta via HTTP com assinatura HMAC real. Isso confirma que o
+  *nosso código* decide certo dado um payload no formato esperado.
 - **Ainda pendente, mesmo tema**: só o evento "compra aprovada" da Kiwify
-  foi confirmado contra um payload real - cancelamento/reembolso/
-  chargeback/atraso ainda não foram testados com um evento de verdade.
+  foi confirmado contra um payload **real** - cancelamento/reembolso/
+  chargeback/atraso ainda não foram testados com um evento de verdade
+  vindo da Kiwify (os testes acima cobrem a lógica, não o formato real).
   Recomendo testar isso (ex: assinar e cancelar de propósito, conferir no
   admin se bloqueia) antes do primeiro cliente pagante.
+
+## 10. Nova aba "Faturamento Validado" — implementado em 2026-10-02
+- Pedido do usuário: acompanhar a meta mensal de faturamento como afiliado
+  Shopee, que não aparece no portal normal - só numa página separada
+  ("Consultor de Metas") que a Shopee compartilha por fora da API.
+- **Descoberta importante** (confirmada comparando com o relatório de
+  vendas exportado direto da Shopee pelo usuário): "faturamento do mês"
+  (usado na meta) e "comissão validada" **não** usam o mesmo critério:
+  - **Faturamento/qtde de pedidos**: contam pela **data da compra**
+    (`purchaseTime`), incluindo pedidos ainda `PENDING` (só exclui
+    `CANCELLED`/`UNPAID`) - um pedido comprado no fim do mês entra no
+    faturamento mesmo que ainda possa ser cancelado depois.
+  - **Comissão**: conta pela **data em que o pedido validou de verdade**
+    (`completeTime` de cada item), só pedidos `COMPLETED` - pode incluir
+    pedidos comprados em outro mês que só completaram agora, e excluir
+    pedidos comprados nesse mês que ainda não completaram.
+  - Testamos isso a fundo (7 versões de script rodadas pelo usuário via
+    Google Colab, já que a API da Shopee não é alcançável nem desta
+    sandbox - bloqueio de rede - nem da rede da empresa do usuário -
+    proxy corporativo) até o usuário confirmar comparando com o relatório
+    de vendas real da Shopee: filtrando por data de compra (exceto
+    cancelado/não pago) bateu quase exato com o valor do Consultor de
+    Metas.
+- Implementado em `afiliados.py`: `ConversorAfiliados.obter_faturamento_validado(ano, mes)`,
+  usando as duas regras acima, com janela de busca mais larga que o mês
+  (até ~90 dias antes, limitada pelo teto de "últimos 3 meses" que a
+  própria API da Shopee impõe) pra pegar pedidos comprados antes que só
+  validaram dentro do mês escolhido. 8 testes novos
+  (`tests/test_afiliados_faturamento_validado.py`), cobrindo cada
+  combinação (comprado e validado no mês, só comprado, só validado em
+  outro mês, cancelado não conta em nada, mês fora da janela da API
+  levanta erro, etc).
+- Nova aba em `app.py` (`data_tabs`), entre "Relatório de conversões" e
+  "Relatório por email": filtro de mês (combo com os últimos 6 meses,
+  mês atual primeiro) + botão "Atualizar"; lado esquerdo mostra o resumo
+  do mês (3 cards: Pedidos, Faturamento, Comissão validada); lado direito
+  mostra a mesma coisa dia a dia numa tabela. Texto explicativo fixo na
+  aba avisando sobre os dois critérios de data diferentes, pra não
+  confundir quem for ler os números.
+- Testado nesta sessão: app inteiro renderiza offscreen sem erro com a
+  aba nova, combo de mês popula certo, e a renderização da tabela/cards
+  bate exatamente com os números esperados dado um relatório fictício
+  (incluindo o caso de um dia só ter comissão sem ter faturamento, por
+  causa dos critérios de data diferentes). **Não pude testar contra a API
+  real da Shopee a partir do app** (mesma restrição de rede desta
+  sandbox) - vale rodar uma vez na sua máquina e comparar com o Consultor
+  de Metas antes de confiar 100%.

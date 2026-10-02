@@ -84,6 +84,7 @@ class BotSignals(QObject):
     indicators_loaded = Signal(dict)
     conversoes_loaded = Signal(dict)
     conversoes_button_enable = Signal()
+    faturamento_validado_loaded = Signal(dict)
     shopee_offers_status = Signal(str)
     relatorio_email_status = Signal(str)
     relatorio_email_button_enable = Signal()
@@ -484,6 +485,7 @@ class MainWindow(QMainWindow):
         self.signals.conversoes_button_enable.connect(
             lambda: self.refresh_conversoes_button.setEnabled(True)
         )
+        self.signals.faturamento_validado_loaded.connect(self.render_faturamento_validado_report)
         self.signals.shopee_offers_status.connect(self.update_shopee_offers_status)
         self.history_timer = QTimer(self)
         self.history_timer.setInterval(30000)
@@ -1515,6 +1517,96 @@ class MainWindow(QMainWindow):
         self._conversoes_report_atual = None
         self.update_conversoes_period_fields()
 
+        # ===================== Faturamento Validado =====================
+        faturamento_validado_tab = QWidget()
+        faturamento_validado_layout = QVBoxLayout(faturamento_validado_tab)
+        faturamento_validado_layout.setContentsMargins(0, 8, 6, 0)
+        faturamento_validado_layout.setSpacing(10)
+
+        faturamento_validado_filters_row = QHBoxLayout()
+        faturamento_validado_filters_row.setContentsMargins(0, 0, 0, 0)
+        faturamento_validado_filters_row.setSpacing(10)
+
+        self.faturamento_validado_mes_label = QLabel("Mês")
+        self.faturamento_validado_mes_label.setObjectName("historyFilterLabel")
+        self.faturamento_validado_mes_label.setAlignment(Qt.AlignRight | Qt.AlignVCenter)
+        self.faturamento_validado_mes_input = QComboBox()
+        self.faturamento_validado_mes_input.setObjectName("historyPeriod")
+        self.faturamento_validado_mes_input.setMinimumHeight(36)
+        for ano, mes, rotulo in self.opcoes_mes_faturamento_validado():
+            self.faturamento_validado_mes_input.addItem(rotulo, (ano, mes))
+
+        self.refresh_faturamento_validado_button = QPushButton("Atualizar")
+        self.refresh_faturamento_validado_button.setObjectName("compactToolButton")
+        self.refresh_faturamento_validado_button.clicked.connect(self.refresh_faturamento_validado)
+
+        faturamento_validado_filters_row.addWidget(self.faturamento_validado_mes_label)
+        faturamento_validado_filters_row.addWidget(self.faturamento_validado_mes_input)
+        faturamento_validado_filters_row.addStretch(1)
+        faturamento_validado_filters_row.addWidget(self.refresh_faturamento_validado_button)
+
+        faturamento_validado_hint = QLabel(
+            "\"Faturamento\" conta pedidos pela data da compra (inclui pedidos ainda "
+            "pendentes, que podem ser cancelados depois) - mesmo critério do "
+            "faturamento do mês usado nas metas da Shopee. \"Comissão\" conta pela data "
+            "em que cada pedido validou de verdade (só pedidos já concluídos), podendo "
+            "incluir pedidos comprados em outro mês."
+        )
+        faturamento_validado_hint.setWordWrap(True)
+        faturamento_validado_hint.setObjectName("historySummary")
+
+        faturamento_validado_content = QHBoxLayout()
+        faturamento_validado_content.setContentsMargins(0, 0, 0, 0)
+        faturamento_validado_content.setSpacing(14)
+
+        faturamento_validado_resumo = QVBoxLayout()
+        faturamento_validado_resumo.setContentsMargins(0, 0, 0, 0)
+        faturamento_validado_resumo.setSpacing(10)
+        self.faturamento_validado_pedidos_label = QLabel("0")
+        self.faturamento_validado_faturamento_label = QLabel("R$ 0,00")
+        self.faturamento_validado_comissao_label = QLabel("R$ 0,00")
+        faturamento_validado_resumo.addWidget(
+            self.metric_card("Pedidos no mês", self.faturamento_validado_pedidos_label)
+        )
+        faturamento_validado_resumo.addWidget(
+            self.metric_card("Faturamento do mês", self.faturamento_validado_faturamento_label)
+        )
+        faturamento_validado_resumo.addWidget(
+            self.metric_card("Comissão validada", self.faturamento_validado_comissao_label)
+        )
+        faturamento_validado_resumo.addStretch(1)
+
+        faturamento_validado_resumo_widget = QWidget()
+        faturamento_validado_resumo_widget.setLayout(faturamento_validado_resumo)
+        faturamento_validado_resumo_widget.setMaximumWidth(220)
+
+        self.faturamento_validado_table = QTableWidget(0, 4)
+        self.faturamento_validado_table.setObjectName("historyTable")
+        self.faturamento_validado_table.setHorizontalHeaderLabels([
+            "Dia",
+            "Pedidos",
+            "Faturamento",
+            "Comissão",
+        ])
+        self.faturamento_validado_table.setEditTriggers(QAbstractItemView.EditTrigger.NoEditTriggers)
+        self.faturamento_validado_table.setSelectionBehavior(QAbstractItemView.SelectionBehavior.SelectRows)
+        self.faturamento_validado_table.setFocusPolicy(Qt.FocusPolicy.NoFocus)
+        self.faturamento_validado_table.setItemDelegate(NoFocusTableDelegate(self.faturamento_validado_table))
+        self.faturamento_validado_table.verticalHeader().setVisible(False)
+        faturamento_validado_header = self.faturamento_validado_table.horizontalHeader()
+        faturamento_validado_header.setStretchLastSection(True)
+        faturamento_validado_header.resizeSection(0, 100)
+        faturamento_validado_header.resizeSection(1, 80)
+        faturamento_validado_header.resizeSection(2, 120)
+
+        faturamento_validado_content.addWidget(faturamento_validado_resumo_widget)
+        faturamento_validado_content.addWidget(self.faturamento_validado_table, 1)
+
+        faturamento_validado_layout.addLayout(faturamento_validado_filters_row)
+        faturamento_validado_layout.addWidget(faturamento_validado_hint)
+        faturamento_validado_layout.addLayout(faturamento_validado_content, 1)
+
+        self._faturamento_validado_atual = None
 
         email_report_tab = QWidget()
         email_report_layout = QVBoxLayout(email_report_tab)
@@ -1593,6 +1685,7 @@ class MainWindow(QMainWindow):
         self.data_tabs.addTab(history_tab, "Histórico")
         self.data_tabs.addTab(indicators_tab, "Indicadores")
         self.data_tabs.addTab(conversoes_tab, "Relatório de conversões")
+        self.data_tabs.addTab(faturamento_validado_tab, "Faturamento Validado")
         self.data_tabs.addTab(email_report_tab, "Relatório por email")
         self.update_indicator_period_fields()
 
@@ -3593,6 +3686,95 @@ class MainWindow(QMainWindow):
                 writer.writerow(linha_csv)
             writer.writerow([])
             writer.writerow(["TOTAL", "", total_qtd, "", f"{total_comissao:.2f}".replace(".", ","), "", ""])
+
+    # ===================== Faturamento Validado =====================
+    def opcoes_mes_faturamento_validado(self, quantidade=6):
+        """Últimos N meses (o atual primeiro), como (ano, mes, 'Mês/Ano')."""
+        nomes_mes = [
+            "Janeiro", "Fevereiro", "Março", "Abril", "Maio", "Junho",
+            "Julho", "Agosto", "Setembro", "Outubro", "Novembro", "Dezembro",
+        ]
+        hoje = datetime.now()
+        opcoes = []
+        ano, mes = hoje.year, hoje.month
+        for _ in range(quantidade):
+            opcoes.append((ano, mes, f"{nomes_mes[mes - 1]}/{ano}"))
+            mes -= 1
+            if mes == 0:
+                mes = 12
+                ano -= 1
+        return opcoes
+
+    def refresh_faturamento_validado(self):
+        errors = self.validate_api_settings()
+        api_errors = [error for error in errors if "grupo" not in error.lower()]
+        if api_errors:
+            message = "Corrija os campos abaixo antes de buscar o faturamento validado:\n\n"
+            message += "\n".join(f"- {error}" for error in api_errors)
+            QMessageBox.warning(self, "Configurações incompletas", message)
+            return
+
+        ano_mes = self.faturamento_validado_mes_input.currentData()
+        if not ano_mes:
+            return
+        ano, mes = ano_mes
+
+        self.save_fields(show_message=False)
+        self.refresh_faturamento_validado_button.setEnabled(False)
+        self.set_status("Buscando faturamento validado na Shopee...")
+        self.add_log(f"Buscando faturamento validado de {mes:02d}/{ano}...")
+        threading.Thread(
+            target=self._run_faturamento_validado_refresh,
+            args=(ano, mes),
+            daemon=True,
+        ).start()
+
+    def _run_faturamento_validado_refresh(self, ano, mes):
+        try:
+            conversor = ConversorAfiliados(app_config=self.settings)
+            report = conversor.obter_faturamento_validado(ano, mes)
+            self.signals.faturamento_validado_loaded.emit(report)
+            debug = report.get("debug") or {}
+            self.signals.log.emit(
+                "Faturamento validado atualizado: "
+                f"{debug.get('conversoes', 0)} conversão(ões) analisada(s)."
+            )
+            self.signals.status.emit("Faturamento validado atualizado.")
+        except Exception as e:
+            self.signals.log.emit(f"Falha ao buscar faturamento validado: {self.friendly_error(e)}")
+            self.signals.status.emit("Falha ao buscar faturamento validado.")
+            self.signals.faturamento_validado_loaded.emit({"erro": str(e)})
+
+    def render_faturamento_validado_report(self, report):
+        self.refresh_faturamento_validado_button.setEnabled(True)
+        if report.get("erro"):
+            QMessageBox.warning(
+                self,
+                "Falha ao buscar faturamento validado",
+                "Não consegui buscar o faturamento validado pela API da Shopee.\n\n"
+                f"{report['erro']}",
+            )
+            return
+
+        self._faturamento_validado_atual = report
+        resumo = report.get("resumo") or {}
+        self.faturamento_validado_pedidos_label.setText(str(int(resumo.get("pedidos") or 0)))
+        self.faturamento_validado_faturamento_label.setText(self.format_money(resumo.get("faturamento") or 0))
+        self.faturamento_validado_comissao_label.setText(self.format_money(resumo.get("comissao") or 0))
+
+        linhas = report.get("diario") or []
+        self.faturamento_validado_table.setRowCount(len(linhas))
+        for row_index, linha in enumerate(linhas):
+            dia = linha.get("dia")
+            dia_txt = dia.strftime("%d/%m/%Y") if dia else "-"
+            valores = [
+                NumericTableItem(dia.toordinal() if dia else 0, dia_txt),
+                NumericTableItem(linha.get("pedidos") or 0, str(int(linha.get("pedidos") or 0))),
+                NumericTableItem(linha.get("faturamento") or 0, self.format_money(linha.get("faturamento") or 0)),
+                NumericTableItem(linha.get("comissao") or 0, self.format_money(linha.get("comissao") or 0)),
+            ]
+            for col_index, item in enumerate(valores):
+                self.faturamento_validado_table.setItem(row_index, col_index, item)
 
     def verificar_envio_relatorio_agendado(self):
         if not self.settings.relatorio_email_ativo:
