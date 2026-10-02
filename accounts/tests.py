@@ -791,6 +791,18 @@ class RenderizarCorpoHtmlTests(TestCase):
         self.assertIn('href="https://www.instagram.com/usecashb/" style="color:#e9e1fb; text-decoration:underline;">@usecashb</a>', html)
         self.assertIn("Sem mensalidade. Sem taxa.", html)
 
+    def test_com_banner_o_corpo_nao_aparece_em_html_mas_o_banner_sim(self):
+        # o banner é o conteúdo do e-mail; repetir o texto num cartão embaixo só duplica
+        html = renderizar_corpo_html(
+            "Texto que só vale na versão sem imagem", [], self.request, banner_url="https://cash-b.com/b.png"
+        )
+        self.assertNotIn("Texto que só vale na versão sem imagem", html)
+        self.assertIn("https://cash-b.com/b.png", html)
+
+    def test_sem_banner_o_corpo_continua_aparecendo(self):
+        html = renderizar_corpo_html("Só texto, sem imagem.", [], self.request)
+        self.assertIn("Só texto, sem imagem.", html)
+
     def test_os_botoes_de_baixo_do_banner_nao_existem_mais(self):
         html = renderizar_corpo_html("Confira!", [], self.request, banner_url="https://cash-b.com/b.png")
         self.assertNotIn(">Ver ofertas</a>", html)
@@ -912,6 +924,9 @@ class EnviarComunicacaoComBannerTests(TestCase):
         self.assertIn(comunicacao.banner.url, comunicacao.corpo_html)
         # o assunto do envio vira o texto alternativo do banner
         self.assertIn('alt="Campanha"', html_enviado)
+        # o corpo digitado não aparece em HTML (o banner é o conteúdo), mas vai na versão em texto
+        self.assertNotIn("Confira!", html_enviado)
+        self.assertIn("Confira!", MockEmail.call_args.kwargs["body"])
 
     @patch("accounts.comunicacoes.EmailMultiAlternatives")
     def test_sem_banner_nao_grava_arquivo_nem_anexa_html(self, MockEmail):

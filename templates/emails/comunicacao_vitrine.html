@@ -49,9 +49,16 @@ margens só batem numa largura, e é essa; a 390px a diferença é de 1px, a 560
 </td></tr>
 {% endif %}
 
+{% comment %}
+Com banner, o conteúdo do e-mail É o banner: repetir o texto num cartão embaixo só duplica o que
+a imagem já diz. O corpo digitado no admin continua indo na versão em TEXTO do e-mail (para quem
+não vê imagem), só não aparece aqui em HTML.
+{% endcomment %}
+{% if not banner_url %}
 <tr><td style="background:#ffffff; border-radius:12px; padding:24px 20px; color:#111827; font-size:15px; line-height:1.5;">
     {{ corpo_html_intro|safe }}
 </td></tr>
+{% endif %}
 
 {% if ofertas %}
 <tr><td style="padding:20px 4px 0;">

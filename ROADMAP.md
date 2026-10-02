@@ -2043,6 +2043,9 @@ a 50% da comissão; nenhum pedido passa de 100%. Na coorte de 09 a 28/09: cashba
       fossem pixels, não clicariam - e o do Instagram cairia na vitrine. Sem fresta entre imagem
       e rodapé (0px a 375, 390 e 560). Margem de cima e de baixo: 26,0px e 25,7px a 375px de
       tela; só batem numa largura, porque a imagem escala e o rodapé não.
+- [x] **Com banner, o corpo digitado não aparece em HTML** (o banner é o conteúdo; repetir o
+      texto num cartão embaixo duplicava). O campo "Corpo" continua obrigatório e vai na versão
+      em TEXTO do e-mail, para quem não vê imagem; os textos de ajuda do admin dizem isso.
 - [x] **Corpo do e-mail não quebra mais "cash-b" no hífen** (`_sem_quebra_no_nome`): o texto é
       digitado no admin e o navegador partia o nome em "cash-" e "b".
 - [x] 33 testes novos.
