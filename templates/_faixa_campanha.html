@@ -17,7 +17,7 @@ O texto diz "50% a mais de cashback", e não "+50%": "+50%" pode ser lido como "
 <div class="faixa-campanha" role="status">
     {% if faixa.ativa %}
         {% if campanha.percentual_extra == 100 %}Cashback em dobro{% else %}{{ campanha.percentual_extra }}% a mais de cashback{% endif %}
-        em toda compra{% if campanha.fim %} até {{ campanha.fim|date:"d/m, H\hi" }}{% else %} por tempo limitado{% endif %}.
+        em toda compra{% if campanha.fim %}{% if campanha.um_so_dia %} no {% else %} até {% endif %}{{ campanha.fim|date:"d/m" }}{% else %} por tempo limitado{% endif %}.
         <a href="{% url 'ofertas_lista' %}">Ver ofertas</a>
     {% else %}
         Dia {{ campanha.inicio|date:"d.m" }}:

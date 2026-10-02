@@ -2078,6 +2078,32 @@ class FaixaCampanhaTests(TestCase):
         self.assertContains(resposta, "50% a mais de cashback")
         self.assertNotContains(resposta, "+50%")
 
+    def test_campanha_de_um_dia_diz_no_dia_e_nao_diz_a_hora(self):
+        hoje = timezone.localtime(self.agora)
+        inicio = hoje.replace(hour=0, minute=0, second=0, microsecond=0)
+        CampanhaCashback.objects.create(
+            multiplicador=Decimal("1.5"), inicio=inicio, fim=inicio.replace(hour=23, minute=59, second=59)
+        )
+        resposta = self.client.get(reverse("home"))
+        self.assertContains(resposta, f"em toda compra no {hoje:%d/%m}.")
+        self.assertNotContains(resposta, "23h59")
+
+    def test_campanha_de_varios_dias_diz_ate_e_nao_no(self):
+        self._campanha(inicio_em_dias=-1, fim_em_dias=2)
+        fim = timezone.localtime(self.agora + timedelta(days=2))
+        resposta = self.client.get(reverse("home"))
+        self.assertContains(resposta, f"em toda compra até {fim:%d/%m}.")
+
+    def test_campanha_sem_fim_diz_por_tempo_limitado(self):
+        self._campanha(fim_em_dias=None)
+        self.assertContains(self.client.get(reverse("home")), "por tempo limitado")
+
+    def test_um_so_dia_so_vale_com_fim_no_mesmo_dia_local(self):
+        inicio = timezone.localtime(self.agora).replace(hour=1)
+        self.assertTrue(CampanhaCashback(inicio=inicio, fim=inicio.replace(hour=23)).um_so_dia)
+        self.assertFalse(CampanhaCashback(inicio=inicio, fim=inicio + timedelta(days=1)).um_so_dia)
+        self.assertFalse(CampanhaCashback(inicio=inicio, fim=None).um_so_dia)
+
     def test_multiplicador_2_vira_em_dobro(self):
         self._campanha(multiplicador="2")
         resposta = self.client.get(reverse("home"))

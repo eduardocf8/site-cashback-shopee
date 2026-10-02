@@ -86,8 +86,20 @@ ARQ = DATA.replace(".", "-")   # nome dos arquivos: banner-10-10-...
 #
 # "50% a mais de cashback" e não "+50%": "+50%" lê como "cashback de 50%", o mal-entendido que
 # vira reclamação depois. Se a campanha for de multiplicador 2, trocar por "Cashback em dobro".
-MANCHETE_COM_NUMERO = "50% a mais de cashback"
+PERCENTUAL_EXTRA = 50
+MANCHETE_COM_NUMERO = f"{PERCENTUAL_EXTRA}% a mais de cashback"
 MANCHETE_SEM_NUMERO = "Cashback aumentado"
+
+# O parágrafo explica o que a manchete promete: quando vale, em quais pedidos e o que a
+# pessoa ganha. Na versão sem número a frase não cita o percentual (é a que se usa quando o
+# multiplicador ainda não está decidido).
+DIA_MES = DATA.replace(".", "/")
+
+
+def _texto(com_numero: bool) -> str:
+    quanto = f"{PERCENTUAL_EXTRA}% a mais de cashback" if com_numero else "mais cashback"
+    return (f"Durante todo o {DIA_MES}, todos os pedidos realizados terão {quanto}. "
+            "Essa é a sua chance de poupar e ainda receber mais dinheiro de volta!")
 
 BENEFICIOS = [
     "Vale em toda compra",
@@ -163,13 +175,17 @@ def _pagina(com_numero: bool, ilustrado: bool) -> str:
        sem apagar a arte. */
     .veu {{ position:absolute; inset:0; background:rgba(46,16,101,0.22); }}
     .decoracao {{ position:absolute; inset:0; width:100%; height:100%; }}
-    .conteudo {{ position:relative; padding:24px 44px 0; text-align:center; }}
-    /* Na versão ilustrada o texto fica ancorado no alto, e não centralizado: as caixas
-       de presente da arte sobem até cerca de 60% da altura, então o miolo livre é só a
-       metade de cima. Centralizado, a manchete caía em cima delas. */
-    .topo.ilustrado .conteudo {{ padding-top:18px; }}
-    .topo.ilustrado .data {{ margin-top:8px; font-size:92px; }}
-    .topo.ilustrado .manchete {{ font-size:23px; }}
+    /* O bloco inteiro é centralizado na vertical (e não ancorado no alto): sobra a mesma
+       folga em cima do selo e embaixo das pastilhas. A margem é medida no navegador a cada
+       render (ver _medir_margens) e o gerador falha se cima e baixo diferirem. */
+    .topo {{ display:flex; flex-direction:column; justify-content:center; }}
+    .conteudo {{ position:relative; padding:0 40px; text-align:center; }}
+    .topo .data {{ margin-top:8px; font-size:84px; }}
+    .topo .manchete {{ font-size:22px; margin-top:2px; }}
+    .texto {{
+        margin:9px auto 0; max-width:430px; font-size:12.5px; font-weight:500; line-height:1.42;
+        color:rgba(255,255,255,0.9); text-wrap:balance;
+    }}
     .selo {{
         display:inline-block; padding:7px 18px; border-radius:999px;
         background:{CORES['highlight']}; color:{CORES['ink']};
@@ -187,7 +203,7 @@ def _pagina(com_numero: bool, ilustrado: bool) -> str:
        referência não cabe aqui, porque o template arredonda a imagem inteira e uma
        faixa branca no pé apareceria com o canto cortado. */
     .beneficios {{
-        position:relative; margin-top:16px; display:flex; gap:8px;
+        position:relative; margin-top:13px; display:flex; gap:8px;
         padding:0 30px; justify-content:center;
     }}
     .beneficio {{
@@ -202,10 +218,30 @@ def _pagina(com_numero: bool, ilustrado: bool) -> str:
                 <span class="selo">campanha</span>
                 <div class="data">{DATA}</div>
                 <div class="manchete">{manchete}</div>
+                <p class="texto">{_texto(com_numero)}</p>
                 {pastilhas}
             </div>
         </div>
     </body></html>"""
+
+
+TOLERANCIA_MARGEM = 1.0   # px (na escala do banner, 560x315)
+
+
+def _medir_margens(pagina) -> dict:
+    """Margens reais do conteúdo, medidas no navegador: do topo do selo ao topo do banner e do
+    pé das pastilhas ao pé do banner, e as laterais do bloco inteiro."""
+    return pagina.evaluate("""() => {
+        const caixa = (el) => el.getBoundingClientRect();
+        const selo = caixa(document.querySelector('.selo'));
+        const pastilhas = [...document.querySelectorAll('.beneficio')].map(caixa);
+        const todos = [selo, caixa(document.querySelector('.data')),
+                       caixa(document.querySelector('.manchete')), caixa(document.querySelector('.texto')),
+                       ...pastilhas];
+        const l = Math.min(...todos.map(b => b.left)), r = Math.max(...todos.map(b => b.right));
+        const fundo = Math.max(...pastilhas.map(b => b.bottom));
+        return {cima: selo.top, baixo: innerHeight - fundo, esq: l, dir: innerWidth - r};
+    }""")
 
 
 def _render(com_numero: bool, ilustrado: bool, destino: Path):
@@ -217,9 +253,14 @@ def _render(com_numero: bool, ilustrado: bool, destino: Path):
         )
         pagina.set_content(_pagina(com_numero, ilustrado))
         pagina.wait_for_timeout(300)
+        m = _medir_margens(pagina)
+        if abs(m["cima"] - m["baixo"]) > TOLERANCIA_MARGEM:
+            raise SystemExit(f"Margens desiguais em {destino.name}: cima {m['cima']:.1f}px, "
+                             f"baixo {m['baixo']:.1f}px - ajustar o layout antes de usar o banner.")
         pagina.screenshot(path=str(destino))
         navegador.close()
-    print("gerado:", destino.relative_to(REPO_ROOT), f"({LARGURA*ESCALA}x{ALTURA*ESCALA})")
+    print("gerado:", destino.relative_to(REPO_ROOT), f"({LARGURA*ESCALA}x{ALTURA*ESCALA})",
+          f"| margens cima {m['cima']:.1f} / baixo {m['baixo']:.1f}px, laterais {m['esq']:.0f} / {m['dir']:.0f}px")
 
 
 def gerar():

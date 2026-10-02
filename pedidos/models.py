@@ -158,6 +158,14 @@ class CampanhaCashback(models.Model):
         nunca divergir do que o sistema de fato paga."""
         return int(((self.multiplicador - 1) * 100).quantize(Decimal("1")))
 
+    @property
+    def um_so_dia(self) -> bool:
+        """True se a campanha começa e termina no mesmo dia (no horário local). É o que decide
+        entre "no 10/10" e "até 12/10" na faixa do site: "no" só é verdade para um dia."""
+        if self.fim is None:
+            return False
+        return timezone.localtime(self.inicio).date() == timezone.localtime(self.fim).date()
+
     @classmethod
     def para_faixa(cls, agora=None, campanhas: "list[CampanhaCashback] | None" = None):
         """Dados da faixa de campanha do site, ou None se não há o que mostrar.

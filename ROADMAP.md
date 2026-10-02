@@ -2024,12 +2024,16 @@ a 50% da comissão; nenhum pedido passa de 100%. Na coorte de 09 a 28/09: cashba
       processor, para só consultar nas páginas que mostram a faixa. Sem cache: aparece e some
       no mesmo instante em que os cards de oferta mudam. Texto "50% a mais de cashback",
       nunca "+50%" (lê como "cashback de 50%"); multiplicador 2 vira "Cashback em dobro".
+      Campanha de um dia diz "no 10/10"; de vários dias, "até 12/10" (`um_so_dia`) - "no"
+      só é verdade para um dia. Sem fim definido: "por tempo limitado".
 - [x] **`manage.py simular_campanha`** - refaz o cashback dos pedidos recentes com outro
       multiplicador e acusa pedido em que o cashback passaria da comissão. Só leitura. Tira
       bônus de indicação e cancelados; separa indireta de vitrine.
-- [x] Banner de e-mail do 10.10 (`marketing/gerar_banner_email.py`, agora parametrizado por
-      `DATA` e `MANCHETE_COM_NUMERO`).
-- [x] 23 testes novos. Suíte completa: 464 verdes.
+- [x] Banner de e-mail do 10.10 (`marketing/gerar_banner_email.py`, parametrizado por `DATA` e
+      `PERCENTUAL_EXTRA`), com o parágrafo explicando a campanha e o conteúdo centralizado na
+      vertical. O gerador mede as margens no navegador a cada render e FALHA se a de cima e a
+      de baixo diferirem mais que 1px.
+- [x] 27 testes novos.
 
 **Para ligar a campanha:** no admin, "Campanhas de cashback" -> multiplicador `1.5`, início
 10/10/2026 00:00, fim 10/10/2026 23:59:59 (horário de Brasília). Pode ser criada antes: a
