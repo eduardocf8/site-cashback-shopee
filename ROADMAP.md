@@ -2029,11 +2029,19 @@ a 50% da comissão; nenhum pedido passa de 100%. Na coorte de 09 a 28/09: cashba
 - [x] **`manage.py simular_campanha`** - refaz o cashback dos pedidos recentes com outro
       multiplicador e acusa pedido em que o cashback passaria da comissão. Só leitura. Tira
       bônus de indicação e cancelados; separa indireta de vitrine.
-- [x] Banner de e-mail do 10.10 (`marketing/gerar_banner_email.py`, parametrizado por `DATA` e
-      `PERCENTUAL_EXTRA`), com o parágrafo explicando a campanha e o conteúdo centralizado na
-      vertical. O gerador mede as margens no navegador a cada render e FALHA se a de cima e a
-      de baixo diferirem mais que 1px.
-- [x] 27 testes novos.
+- [x] **Banner de e-mail com o conteúdo inteiro da campanha**
+      (`marketing/gerar_banner_email.py` -> `banner-email/banner-10-10-completo.png`): topo com
+      data, manchete e parágrafo; como funciona (3 passos); quanto recebe (mínimo direto 1,6% ->
+      2,4%, indireto 1% -> 1,5%, e R$ 100 -> R$ 2,40); bom saber (condições); rodapé com site e
+      Instagram. Tela de 400 unidades de largura (não 560): no celular o e-mail aparece com
+      ~343px, e fonte de 12,5px sobre 560 viraria 7,6px. Margens de cima e de baixo medidas nos
+      pixels e igualadas (90px/91px). Parametrizado por `DATA` e `PERCENTUAL_EXTRA`; os pisos e
+      o saque mínimo vêm de `settings.py` (conferir antes de mandar).
+- [x] **Template do e-mail (`comunicacao_vitrine.html`)**: com banner, ele passa a ser clicável,
+      ganha texto alternativo (o assunto) e dois botões de verdade (site com
+      `utm_source=email` e Instagram, `URL_INSTAGRAM`). Imagem só tem UM link e o site/Instagram
+      escritos dentro dela não clicam. Sem banner nada muda.
+- [x] 31 testes novos.
 
 **Para ligar a campanha:** no admin, "Campanhas de cashback" -> multiplicador `1.5`, início
 10/10/2026 00:00, fim 10/10/2026 23:59:59 (horário de Brasília). Pode ser criada antes: a

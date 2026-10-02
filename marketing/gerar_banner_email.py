@@ -1,57 +1,62 @@
-"""Banner de e-mail para campanha de cashback aumentado em data dupla (hoje: 10.10, 50% a mais).
+"""Banner de e-mail com o conteúdo INTEIRO de uma campanha de cashback (hoje: 10.10, 50% a mais).
 
-Estrutura inspirada no e-mail de afiliados da Shopee que o dono do produto trouxe como
-referência: bloco de cor no topo com a data em corpo enorme, uma curva branca fechando
-esse bloco, e uma fileira de pastilhas com os benefícios. O que muda é tudo o resto -
-cor, tipografia e conteúdo são da cash-b.
+O e-mail da campanha é essa imagem. É o jeito dos e-mails de afiliados da Shopee, que serviram
+de referência de estrutura: bloco de cor no topo com a data em corpo enorme, e embaixo tudo o
+que a pessoa precisa para decidir - como funciona, quanto recebe, as condições. Cor,
+tipografia e conteúdo são da cash-b. Nada da Shopee entra na arte além do nome dela escrito: a
+cash-b é afiliada independente, e arte com a marca da Shopee sugeriria um vínculo que não existe.
 
-Nada da Shopee entra na arte além do nome dela escrito: a cash-b é afiliada
-independente (é o que o rodapé do site declara), e banner com a marca da Shopee sugere
-um vínculo que não existe - ainda mais num e-mail que sai em nome da cash-b.
+Estrutura, de cima para baixo:
 
-Dois fundos possíveis, escolhidos por `FUNDO_ILUSTRADO`:
+1. Topo (roxo, com o fundo abstrato da marca): selo, data, manchete e um parágrafo.
+2. Como funciona: três passos.
+3. Quanto você recebe: o cashback mínimo antes e depois da campanha, em % e em reais.
+4. Bom saber: as condições, na barra lateral âmbar. É a parte que evita reclamação depois.
+5. Rodapé (roxo): "Sem mensalidade. Sem taxa." e o endereço do site e do Instagram.
 
-- Ilustração em `arte/fundo-campanha.webp`, se o arquivo existir. É arte plana em
-  vetor, nas cores da marca, com o centro vazio - gerada por modelo de imagem e
-  aprovada pelo dono do produto. Casa com a regra do BRAND.md (forma chapada, sem
-  fotografia e sem render 3D) apesar da origem.
-- Senão, moedas e manchas desenhadas aqui mesmo em SVG. É o retrato de reserva: sai
-  sempre, não depende de arquivo externo e é o que a marca já usa nos painéis de login.
+**Por que a tela tem 400 unidades de largura, e não 560.** O e-mail é exibido com ~528px em
+desktop e ~343px em celular. Uma fonte de 12,5px desenhada sobre 560 vira 7,6px no celular,
+que não se lê. Sobre 400, a mesma fonte vira 10,7px e a de 14px vira 12px. Tudo aqui é
+dimensionado para o celular, que é onde a maioria abre o e-mail.
 
-O banner tem a mesma proporção 16:9 da arte, de propósito. Num quadro mais quadrado o
-"cover" ampliava a ilustração para preencher a altura, e aí as caixas de presente dos
-cantos inferiores cresciam para cima do texto. Na proporção nativa ela entra inteira, e
-cada elemento fica no canto onde foi desenhado.
+**O que NÃO cabe dentro da imagem, e por isso vive fora dela** (ver
+`templates/emails/comunicacao_vitrine.html`):
 
-**O número do multiplicador é parâmetro.** Quem decide é a campanha cadastrada no admin
-(pedidos.CampanhaCashback), não a arte - por isso a manchete é uma constante aqui, e por isso sai
-também uma versão sem número nenhum, para quando a campanha ainda não estiver fechada.
+- Links. Uma imagem só tem um link; o site e o Instagram escritos aqui dentro não são
+  clicáveis. O template põe botões de verdade logo abaixo e torna o banner inteiro clicável.
+- O descadastro e o texto alternativo (o assunto do e-mail), para quem tem imagem bloqueada.
+- A vitrine de produtos, que tem um link por produto.
 
-Feito para o campo de banner da comunicação em massa do admin
-(`accounts.ComunicacaoEmail.banner`, Fase 50). O template
-`templates/emails/comunicacao_vitrine.html` já imprime o wordmark da cash-b ACIMA do
-banner e já traz o corpo do texto e os links abaixo dele - por isso a peça aqui não
-repete nada disso: sem wordmark (seriam dois empilhados), sem corpo de texto e sem
-botão (botão desenhado dentro de imagem não é clicável).
+**Os números não são livres.** `PERCENTUAL_EXTRA` vem da campanha cadastrada no admin
+(`pedidos.CampanhaCashback.percentual_extra`; multiplicador 1,5 = 50). Os pisos
+(`MINIMO_DIRETA`, `MINIMO_INDIRETA`) são `CASHBACK_MINIMO_VENDA_DIRETA` e
+`CASHBACK_MINIMO_VENDA_INDIRETA` de `cashback_shopee/settings.py`, e o saque mínimo é
+`SAQUE_VALOR_MINIMO`. Arte prometendo número diferente do que o sistema paga é o pior erro
+possível aqui: conferir os quatro antes de mandar.
 
-O container do e-mail tem 560px e a célula do banner tem 16px de recuo de cada lado,
-então a imagem é exibida com cerca de 528px de largura. O arquivo sai em 2x para não
-borrar em tela densa; o template já cuida da escala com width=100%.
+**Margens.** A de cima (do alto da imagem ao selo) e a de baixo (do texto do rodapé ao pé da
+imagem) são medidas nos pixels da imagem final e igualadas. Não dá para igualar só pelo CSS: a
+caixa de texto tem folga interna de entrelinha que o olho não vê.
 
-O template também aplica `border-radius:12px` na imagem, então a arte é um bloco de cor
-inteiro - não tem faixa branca no pé que ficaria com canto arredondado por fora.
+O template arredonda a imagem (`border-radius:12px`), então a arte é um bloco inteiro, sem
+faixa branca no pé.
 
 Como usar:
     python3 marketing/gerar_banner_email.py
 """
 import base64
+import io
+from decimal import Decimal
 from pathlib import Path
 
+import numpy as np
+from PIL import Image
 from playwright.sync_api import sync_playwright
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
 FONT_DIR = REPO_ROOT / "static" / "fonts"
 OUT_DIR = Path(__file__).resolve().parent / "banner-email"
+ARTE = Path(__file__).resolve().parent / "fundos-marca" / "fundo-03-canto-roxo-16x9.png"
 
 FAMILJEN_B64 = base64.b64encode((FONT_DIR / "familjen-grotesk.woff2").read_bytes()).decode()
 
@@ -60,215 +65,222 @@ CORES = {
     "muted": "#6b7280",
     "brand": "#6d28d9",
     "brand-dark": "#4c1d95",
-    "brand-light": "#a78bfa",
     "highlight": "#f59e0b",
+    "success": "#059669",
     "paper": "#f8fafc",
     "line": "#e0dcef",
 }
 
-LARGURA, ALTURA = 560, 315
-ESCALA = 2
+LARGURA = 400   # unidades; o arquivo sai em ESCALA x isso
+ESCALA = 3      # 1200px de largura: nítido em tela densa sem passar do razoável de peso
+PADDING_VERTICAL = 30   # alvo da margem de cima e de baixo (unidades)
 
-# Fundo da peça. Aponta para um dos fundos da família da marca
-# (marketing/gerar_fundos_marca.py); trocar o nome aqui troca a cara do banner sem
-# mexer em mais nada. A arte gerada por IA continua em banner-email/arte/, se um dia
-# a campanha pedir algo mais ilustrado.
-ARTE = Path(__file__).resolve().parent / "fundos-marca" / "fundo-03-canto-roxo-16x9.png"
-
+# --- o que a campanha paga -------------------------------------------------------------
 DATA = "10.10"
-DIA = DATA.split(".")[0]   # "10": só vale no dia
-ARQ = DATA.replace(".", "-")   # nome dos arquivos: banner-10-10-...
-
-# O que a campanha paga, em palavras. Sai da linha cadastrada em pedidos.CampanhaCashback
-# (CampanhaCashback.percentual_extra: multiplicador 1,5 = 50). Conferir no admin antes de
-# mandar o e-mail: arte prometendo um número diferente do que o sistema paga é o pior erro
-# possível aqui.
-#
-# "50% a mais de cashback" e não "+50%": "+50%" lê como "cashback de 50%", o mal-entendido que
-# vira reclamação depois. Se a campanha for de multiplicador 2, trocar por "Cashback em dobro".
-PERCENTUAL_EXTRA = 50
-MANCHETE_COM_NUMERO = f"{PERCENTUAL_EXTRA}% a mais de cashback"
-MANCHETE_SEM_NUMERO = "Cashback aumentado"
-
-# O parágrafo explica o que a manchete promete: quando vale, em quais pedidos e o que a
-# pessoa ganha. Na versão sem número a frase não cita o percentual (é a que se usa quando o
-# multiplicador ainda não está decidido).
 DIA_MES = DATA.replace(".", "/")
+PERCENTUAL_EXTRA = 50
+MULTIPLICADOR = 1 + Decimal(PERCENTUAL_EXTRA) / 100
+MINIMO_DIRETA = Decimal("1.6")      # CASHBACK_MINIMO_VENDA_DIRETA
+MINIMO_INDIRETA = Decimal("1")      # CASHBACK_MINIMO_VENDA_INDIRETA
+SAQUE_MINIMO = 20                   # SAQUE_VALOR_MINIMO
+COMPRA_EXEMPLO = Decimal("100")
 
+SITE = "cash-b.com"
+INSTAGRAM = "@usecashb"
 
-def _texto(com_numero: bool) -> str:
-    quanto = f"{PERCENTUAL_EXTRA}% a mais de cashback" if com_numero else "mais cashback"
-    return (f"Durante todo o {DIA_MES}, todos os pedidos realizados terão {quanto}. "
-            "Essa é a sua chance de poupar e ainda receber mais dinheiro de volta!")
+MANCHETE = f"{PERCENTUAL_EXTRA}% a mais de cashback"
+PARAGRAFO = (f"Durante todo o {DIA_MES}, todos os pedidos realizados terão {PERCENTUAL_EXTRA}% a mais de "
+             "cashback. Essa é a sua chance de poupar e ainda receber mais dinheiro de volta!")
 
-BENEFICIOS = [
-    "Vale em toda compra",
-    "Entra automático",
-    f"Só no dia {DIA}",
+# Cada informação aparece UMA vez. Na primeira versão a pendência ("até a Shopee validar") estava
+# no passo 3 e de novo no "Bom saber", e o dia 10/10 no passo 2 e na primeira condição: repetir
+# faz o banner parecer mais longo do que é e esconde o que é novo em cada bloco.
+PASSOS = [
+    ("Entre na cash-b e escolha o produto",
+     "Cole o link, use a vitrine ou o botão “Ir pra Shopee”."),
+    (f"Compre na Shopee no dia {DIA_MES}",
+     "Vale para qualquer pedido do dia."),
+    (f"Receba {PERCENTUAL_EXTRA}% a mais de cashback",
+     "Ele entra na sua conta da cash-b."),
+]
+
+CONDICOES = [
+    "O dia vale no horário de Brasília, das 0h às 23h59.",
+    "O cashback fica pendente até a Shopee validar a compra.",
+    f"Saque via Pix a partir de R$ {SAQUE_MINIMO}, com o e-mail verificado.",
 ]
 
 
-def _moeda(x: int, y: int, tamanho: int, giro: int = 0, opacidade: float = 1.0) -> str:
-    """Moeda chapada, no mesmo desenho da ilustração dos painéis de login."""
-    r = tamanho / 2
-    return f"""
-    <g transform="translate({x},{y}) rotate({giro})" opacity="{opacidade}">
-        <circle cx="0" cy="0" r="{r}" fill="{CORES['highlight']}"/>
-        <circle cx="0" cy="0" r="{r * 0.76}" fill="none"
-                stroke="rgba(120,53,15,0.28)" stroke-width="{max(2, tamanho * 0.05)}"/>
-        <text x="0" y="{r * 0.34}" text-anchor="middle" font-family="Familjen"
-              font-weight="700" font-size="{r * 0.92}" fill="rgba(120,53,15,0.55)"
-              letter-spacing="-1">R$</text>
-    </g>
-    """
+def _pct(valor: Decimal) -> str:
+    return f"{valor.normalize():f}".replace(".", ",") + "%"
 
 
-def _decoracao() -> str:
-    """Moedas e manchas nas bordas, com o centro livre para o texto."""
-    return f"""
-    <svg class="decoracao" viewBox="0 0 560 360" xmlns="http://www.w3.org/2000/svg">
-        <circle cx="516" cy="34" r="128" fill="{CORES['brand-light']}" opacity="0.20"/>
-        <circle cx="34" cy="322" r="104" fill="{CORES['brand-light']}" opacity="0.16"/>
-        {_moeda(58, 70, 50, -14)}
-        {_moeda(118, 142, 30, 18, 0.9)}
-        {_moeda(40, 200, 24, 8, 0.75)}
-        {_moeda(512, 96, 52, 12)}
-        {_moeda(458, 178, 28, -16, 0.9)}
-        {_moeda(528, 236, 22, 6, 0.75)}
-    </svg>
-    """
+def _reais(valor: Decimal) -> str:
+    return "R$ " + f"{valor:.2f}".replace(".", ",")
 
 
-def _pagina(com_numero: bool, ilustrado: bool) -> str:
-    manchete = MANCHETE_COM_NUMERO if com_numero else MANCHETE_SEM_NUMERO
-    classe_topo = "ilustrado" if ilustrado else ""
-    if ilustrado:
-        arte64 = base64.b64encode(ARTE.read_bytes()).decode()
-        fundo_css = (f"background-image:url(data:image/png;base64,{arte64});"
-                     "background-size:cover; background-position:center;")
-        decoracao = ""
-        # O fundo abstrato deixa o miolo livre, então as pastilhas voltam: era a
-        # ilustração cheia (caixas de presente no pé) que disputava esse espaço.
-        pastilhas = ('<div class="beneficios">'
-                     + "".join(f'<div class="beneficio">{b}</div>' for b in BENEFICIOS)
-                     + "</div>")
-    else:
-        fundo_css = ""
-        decoracao = _decoracao()
-        pastilhas = ('<div class="beneficios">'
-                     + "".join(f'<div class="beneficio">{b}</div>' for b in BENEFICIOS)
-                     + "</div>")
+def _sobre(cor: str, base: str, opacidade: float) -> str:
+    """Cor translúcida já misturada com o fundo (opaca). Sobre imagem, translúcido deixa o fundo
+    aparecer através do texto; misturado, o contraste é o calculado."""
+    c = [int(cor[i:i + 2], 16) for i in (1, 3, 5)]
+    b = [int(base[i:i + 2], 16) for i in (1, 3, 5)]
+    return "#" + "".join(f"{round(x * opacidade + y * (1 - opacidade)):02x}" for x, y in zip(c, b))
+
+
+def _pagina(ajuste_rodape: float) -> str:
+    arte64 = base64.b64encode(ARTE.read_bytes()).decode()
+    direta_hoje, direta_nova = MINIMO_DIRETA, MINIMO_DIRETA * MULTIPLICADOR
+    ind_hoje, ind_nova = MINIMO_INDIRETA, MINIMO_INDIRETA * MULTIPLICADOR
+    exemplo_hoje = COMPRA_EXEMPLO * direta_hoje / 100
+    exemplo_novo = COMPRA_EXEMPLO * direta_nova / 100
+    fundo_barra = _sobre(CORES["highlight"], CORES["paper"], 0.14)
+
+    passos = "".join(
+        f'<div class="passo"><div class="num">{i}</div>'
+        f'<div><div class="passo-t">{t}</div><div class="passo-d">{d}</div></div></div>'
+        for i, (t, d) in enumerate(PASSOS, start=1)
+    )
+    condicoes = "".join(f"<li>{c}</li>" for c in CONDICOES)
+
     return f"""<html><head><style>
     @font-face {{ font-family:"Familjen"; src:url(data:font/woff2;base64,{FAMILJEN_B64}) format("woff2"); font-weight:400 700; }}
     * {{ box-sizing:border-box; margin:0; padding:0; }}
-    html, body {{
-        width:{LARGURA}px; height:{ALTURA}px; background:#fff;
-        font-family:"Familjen", Arial, sans-serif;
-    }}
+    html, body {{ width:{LARGURA}px; background:{CORES['paper']}; font-family:"Familjen", Arial, sans-serif; color:{CORES['ink']}; }}
+
     .topo {{
-        position:relative; height:{ALTURA}px; overflow:hidden;
+        position:relative; text-align:center; color:#fff;
+        padding:{PADDING_VERTICAL}px 30px 34px;
         background:linear-gradient(160deg, {CORES['brand-dark']} 0%, {CORES['brand']} 62%, #5b21b6 100%);
-        {fundo_css}
-    }}
-    /* Véu escuro sobre a ilustração. Sem ele o texto branco disputa com as moedas
-       âmbar nas bordas; com ele o miolo escurece de leve e o texto ganha a frente,
-       sem apagar a arte. */
-    .veu {{ position:absolute; inset:0; background:rgba(46,16,101,0.22); }}
-    .decoracao {{ position:absolute; inset:0; width:100%; height:100%; }}
-    /* O bloco inteiro é centralizado na vertical (e não ancorado no alto): sobra a mesma
-       folga em cima do selo e embaixo das pastilhas. A margem é medida no navegador a cada
-       render (ver _medir_margens) e o gerador falha se cima e baixo diferirem. */
-    .topo {{ display:flex; flex-direction:column; justify-content:center; }}
-    .conteudo {{ position:relative; padding:0 40px; text-align:center; }}
-    .topo .data {{ margin-top:8px; font-size:84px; }}
-    .topo .manchete {{ font-size:22px; margin-top:2px; }}
-    .texto {{
-        margin:9px auto 0; max-width:430px; font-size:12.5px; font-weight:500; line-height:1.42;
-        color:rgba(255,255,255,0.9); text-wrap:balance;
+        background-image:url(data:image/png;base64,{arte64}); background-size:cover; background-position:center;
     }}
     .selo {{
-        display:inline-block; padding:7px 18px; border-radius:999px;
+        display:inline-block; padding:6px 16px; border-radius:999px;
         background:{CORES['highlight']}; color:{CORES['ink']};
-        font-size:13px; font-weight:700; letter-spacing:2px; text-transform:uppercase;
+        font-size:12px; font-weight:700; letter-spacing:2px; text-transform:uppercase;
     }}
-    .data {{
-        margin-top:10px; font-size:100px; font-weight:700; line-height:0.94;
-        letter-spacing:-0.05em; color:#fff;
+    .data {{ margin-top:6px; font-size:78px; font-weight:700; line-height:1; letter-spacing:-0.05em; }}
+    .manchete {{ margin-top:0; font-size:19px; font-weight:700; letter-spacing:0.02em; text-transform:uppercase; color:{CORES['highlight']}; }}
+    .paragrafo {{ margin:12px auto 0; max-width:330px; font-size:14px; font-weight:500; line-height:1.42; color:rgba(255,255,255,0.92); text-wrap:balance; }}
+
+    .miolo {{ padding:28px 24px 26px; }}
+    .tag {{ font-size:12px; font-weight:700; letter-spacing:2px; text-transform:uppercase; color:{CORES['brand']}; margin-bottom:14px; }}
+    .passo {{ display:flex; gap:14px; align-items:flex-start; margin-bottom:16px; }}
+    .num {{
+        flex:none; width:30px; height:30px; border-radius:50%; background:{CORES['brand']}; color:#fff;
+        font-size:15px; font-weight:700; display:flex; align-items:center; justify-content:center;
     }}
-    .manchete {{
-        margin-top:0; font-size:26px; font-weight:700; letter-spacing:0.02em;
-        text-transform:uppercase; color:{CORES['highlight']};
+    .passo-t {{ font-size:16px; font-weight:700; line-height:1.25; }}
+    .passo-d {{ margin-top:3px; font-size:13.5px; line-height:1.4; color:{CORES['muted']}; }}
+
+    .bloco2 {{ margin-top:26px; }}
+    .cartao {{ background:#fff; border:1px solid {CORES['line']}; border-radius:16px; padding:6px 18px; }}
+    .linha {{ display:flex; justify-content:space-between; align-items:center; padding:14px 0; }}
+    .linha + .linha {{ border-top:1px solid {CORES['line']}; }}
+    .linha-t {{ font-size:15px; font-weight:700; line-height:1.25; }}
+    .linha-s {{ font-size:12.5px; color:{CORES['muted']}; margin-top:2px; }}
+    .valores {{ display:flex; align-items:baseline; gap:8px; white-space:nowrap; }}
+    .antes {{ font-size:15px; color:{CORES['muted']}; text-decoration:line-through; }}
+    .seta {{ font-size:14px; color:{CORES['muted']}; }}
+    .agora {{ font-size:26px; font-weight:700; color:{CORES['success']}; letter-spacing:-0.02em; }}
+    .exemplo {{ margin-top:12px; font-size:13.5px; line-height:1.45; color:{CORES['ink']}; }}
+    .exemplo b {{ color:{CORES['success']}; }}
+    .mais {{ margin-top:4px; font-size:13px; line-height:1.4; color:{CORES['muted']}; }}
+
+    .bom-saber {{
+        margin-top:24px; padding:16px 18px; border-left:6px solid {CORES['highlight']};
+        background:{fundo_barra}; border-radius:0 12px 12px 0;
     }}
-    /* Pastilhas claras sobre o roxo, dentro do próprio bloco: a faixa branca da
-       referência não cabe aqui, porque o template arredonda a imagem inteira e uma
-       faixa branca no pé apareceria com o canto cortado. */
-    .beneficios {{
-        position:relative; margin-top:13px; display:flex; gap:8px;
-        padding:0 30px; justify-content:center;
+    .bom-saber .tag {{ color:{CORES['ink']}; margin-bottom:8px; }}
+    .bom-saber ul {{ list-style:none; }}
+    .bom-saber li {{ font-size:13px; line-height:1.4; padding:3px 0 3px 16px; position:relative; }}
+    .bom-saber li::before {{ content:""; position:absolute; left:0; top:10px; width:6px; height:6px; border-radius:50%; background:{CORES['highlight']}; }}
+
+    .rodape {{
+        text-align:center; color:#fff; padding:26px 24px {PADDING_VERTICAL + ajuste_rodape}px;
+        background:linear-gradient(160deg, {CORES['brand-dark']} 0%, {CORES['brand']} 100%);
     }}
-    .beneficio {{
-        padding:7px 13px; border-radius:999px;
-        background:rgba(255,255,255,0.14); border:1px solid rgba(255,255,255,0.28);
-        font-size:12px; font-weight:700; color:#fff; white-space:nowrap;
-    }}
+    .rodape-t {{ font-size:18px; font-weight:700; letter-spacing:-0.01em; }}
+    .rodape-l {{ margin-top:8px; font-size:14px; font-weight:500; color:rgba(255,255,255,0.88); }}
     </style></head><body>
-        <div class="topo {classe_topo}">
-            {decoracao}
-            <div class="conteudo">
-                <span class="selo">campanha</span>
-                <div class="data">{DATA}</div>
-                <div class="manchete">{manchete}</div>
-                <p class="texto">{_texto(com_numero)}</p>
-                {pastilhas}
+        <section class="topo">
+            <span class="selo">campanha</span>
+            <div class="data">{DATA}</div>
+            <div class="manchete">{MANCHETE}</div>
+            <p class="paragrafo">{PARAGRAFO}</p>
+        </section>
+
+        <section class="miolo">
+            <div class="tag">como funciona</div>
+            {passos}
+
+            <div class="bloco2">
+                <div class="tag">quanto você recebe</div>
+                <div class="cartao">
+                    <div class="linha">
+                        <div><div class="linha-t">Por link ou vitrine</div><div class="linha-s">cashback mínimo</div></div>
+                        <div class="valores"><span class="antes">{_pct(direta_hoje)}</span><span class="seta">→</span><span class="agora">{_pct(direta_nova)}</span></div>
+                    </div>
+                    <div class="linha">
+                        <div><div class="linha-t">Botão “Ir pra Shopee”</div><div class="linha-s">cashback mínimo</div></div>
+                        <div class="valores"><span class="antes">{_pct(ind_hoje)}</span><span class="seta">→</span><span class="agora">{_pct(ind_nova)}</span></div>
+                    </div>
+                </div>
+                <p class="exemplo">Em uma compra de {_reais(COMPRA_EXEMPLO)} pelo link, no mínimo:
+                    <b>{_reais(exemplo_novo)}</b> de volta, em vez de {_reais(exemplo_hoje)}.</p>
+                <p class="mais">Muitas vezes, bem mais: o valor de cada produto aparece no card da vitrine.</p>
             </div>
-        </div>
+
+            <div class="bom-saber">
+                <div class="tag">bom saber</div>
+                <ul>{condicoes}</ul>
+            </div>
+        </section>
+
+        <section class="rodape">
+            <div class="rodape-t">Sem mensalidade. Sem taxa.</div>
+            <div class="rodape-l">{SITE}&nbsp;&nbsp;·&nbsp;&nbsp;{INSTAGRAM}</div>
+        </section>
     </body></html>"""
 
 
-TOLERANCIA_MARGEM = 1.0   # px (na escala do banner, 560x315)
+def _margens(png: bytes) -> tuple[int, int]:
+    """Margem de cima (alto da imagem ao selo âmbar) e de baixo (último texto claro do rodapé ao
+    pé da imagem), em pixels da imagem final."""
+    a = np.asarray(Image.open(io.BytesIO(png)).convert("RGB")).astype(int)
+    h, w, _ = a.shape
+    ambar = np.abs(a - np.array([0xF5, 0x9E, 0x0B])).sum(axis=2) < 40
+    topo = int(np.nonzero(ambar[: h // 4, w // 2 - 160: w // 2 + 160].any(axis=1))[0].min())
+    janela = 140 * ESCALA
+    claro = a[h - janela:, :].min(axis=2) > 200
+    ultima = int(np.nonzero(claro.any(axis=1))[0].max()) + (h - janela)
+    return topo, h - 1 - ultima
 
 
-def _medir_margens(pagina) -> dict:
-    """Margens reais do conteúdo, medidas no navegador: do topo do selo ao topo do banner e do
-    pé das pastilhas ao pé do banner, e as laterais do bloco inteiro."""
-    return pagina.evaluate("""() => {
-        const caixa = (el) => el.getBoundingClientRect();
-        const selo = caixa(document.querySelector('.selo'));
-        const pastilhas = [...document.querySelectorAll('.beneficio')].map(caixa);
-        const todos = [selo, caixa(document.querySelector('.data')),
-                       caixa(document.querySelector('.manchete')), caixa(document.querySelector('.texto')),
-                       ...pastilhas];
-        const l = Math.min(...todos.map(b => b.left)), r = Math.max(...todos.map(b => b.right));
-        const fundo = Math.max(...pastilhas.map(b => b.bottom));
-        return {cima: selo.top, baixo: innerHeight - fundo, esq: l, dir: innerWidth - r};
-    }""")
-
-
-def _render(com_numero: bool, ilustrado: bool, destino: Path):
-    destino.parent.mkdir(parents=True, exist_ok=True)
+def gerar() -> Path:
+    OUT_DIR.mkdir(parents=True, exist_ok=True)
+    destino = OUT_DIR / f"banner-{DATA.replace('.', '-')}-completo.png"
     with sync_playwright() as p:
         navegador = p.chromium.launch(executable_path="/opt/pw-browsers/chromium")
-        pagina = navegador.new_page(
-            viewport={"width": LARGURA, "height": ALTURA}, device_scale_factor=ESCALA
-        )
-        pagina.set_content(_pagina(com_numero, ilustrado))
-        pagina.wait_for_timeout(300)
-        m = _medir_margens(pagina)
-        if abs(m["cima"] - m["baixo"]) > TOLERANCIA_MARGEM:
-            raise SystemExit(f"Margens desiguais em {destino.name}: cima {m['cima']:.1f}px, "
-                             f"baixo {m['baixo']:.1f}px - ajustar o layout antes de usar o banner.")
-        pagina.screenshot(path=str(destino))
+        ajuste = 0.0
+        for _ in range(3):
+            pagina = navegador.new_page(viewport={"width": LARGURA, "height": 800}, device_scale_factor=ESCALA)
+            pagina.set_content(_pagina(ajuste))
+            pagina.wait_for_timeout(300)
+            altura = pagina.evaluate("document.documentElement.scrollHeight")
+            png = pagina.screenshot(clip={"x": 0, "y": 0, "width": LARGURA, "height": altura}, full_page=True)
+            pagina.close()
+            cima, baixo = _margens(png)
+            if abs(cima - baixo) <= 1:
+                break
+            # a diferença sai em pixels da imagem; o ajuste é em unidades do CSS
+            ajuste += (cima - baixo) / ESCALA
         navegador.close()
-    print("gerado:", destino.relative_to(REPO_ROOT), f"({LARGURA*ESCALA}x{ALTURA*ESCALA})",
-          f"| margens cima {m['cima']:.1f} / baixo {m['baixo']:.1f}px, laterais {m['esq']:.0f} / {m['dir']:.0f}px")
-
-
-def gerar():
-    for ilustrado in ([True, False] if ARTE.exists() else [False]):
-        sufixo = "" if ilustrado else "-vetor"
-        _render(True, ilustrado, OUT_DIR / f"banner-{ARQ}-mais-50{sufixo}.png")
-        _render(False, ilustrado, OUT_DIR / f"banner-{ARQ}-sem-numero{sufixo}.png")
-    print("\nSubir no campo de banner da comunicação em massa do admin.")
+    if abs(cima - baixo) > 1:
+        raise SystemExit(f"Margens desiguais: cima {cima}px, baixo {baixo}px.")
+    destino.write_bytes(png)
+    print(f"gerado: {destino.relative_to(REPO_ROOT)} ({LARGURA * ESCALA}x{altura * ESCALA}, {len(png) / 1024:.0f} KB)")
+    print(f"margens medidas nos pixels: cima {cima}px, baixo {baixo}px")
+    return destino
 
 
 if __name__ == "__main__":

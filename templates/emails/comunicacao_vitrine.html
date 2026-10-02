@@ -10,8 +10,21 @@
 </td></tr>
 
 {% if banner_url %}
+{% comment %}
+Banner que carrega o conteúdo inteiro do e-mail (como nos e-mails da Shopee). Três coisas
+tornam isso seguro: (1) o texto alternativo, para quem tem imagem bloqueada - sem ele o
+e-mail chega em branco; (2) o link no banner, porque uma imagem sozinha não leva a lugar
+nenhum; (3) os botões abaixo, que são texto e link de verdade: uma imagem só pode ter UM
+link, então o site e o Instagram escritos DENTRO dela não seriam clicáveis.
+{% endcomment %}
 <tr><td style="padding:0 16px 16px;">
-    <img src="{{ banner_url }}" alt="" width="100%" style="display:block; width:100%; max-width:100%; height:auto; border-radius:12px;">
+    <a href="{{ link_site }}" style="text-decoration:none;">
+        <img src="{{ banner_url }}" alt="{{ banner_alt }}" width="100%" style="display:block; width:100%; max-width:100%; height:auto; border-radius:12px; border:0;">
+    </a>
+</td></tr>
+<tr><td style="padding:0 16px 20px; text-align:center;">
+    <a href="{{ link_site }}" style="display:inline-block; background:#6d28d9; color:#ffffff; font-weight:bold; font-size:15px; text-decoration:none; padding:13px 26px; border-radius:8px; margin:0 4px 8px;">Ver ofertas</a>
+    <a href="{{ link_instagram }}" style="display:inline-block; background:#ffffff; color:#6d28d9; font-weight:bold; font-size:15px; text-decoration:none; padding:11px 24px; border:2px solid #6d28d9; border-radius:8px; margin:0 4px 8px;">Instagram @usecashb</a>
 </td></tr>
 {% endif %}
 

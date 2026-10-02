@@ -754,6 +754,34 @@ class RenderizarCorpoHtmlTests(TestCase):
         html = renderizar_corpo_html("Só texto.", [], self.request)
         self.assertNotIn('<img src="" alt=""', html)
 
+    # --- banner que carrega o conteúdo inteiro do e-mail
+
+    def test_banner_leva_o_assunto_como_texto_alternativo(self):
+        # Com imagem bloqueada o e-mail seria um buraco em branco; o alt é o que resta.
+        html = renderizar_corpo_html(
+            "Confira!", [], self.request, banner_url="https://cash-b.com/b.png",
+            assunto="10.10: 50% a mais de cashback",
+        )
+        self.assertIn('alt="10.10: 50% a mais de cashback"', html)
+
+    def test_banner_e_clicavel_e_leva_ao_site_com_utm(self):
+        html = renderizar_corpo_html("Confira!", [], self.request, banner_url="https://cash-b.com/b.png")
+        link = reverse("ofertas_lista") + "?utm_source=email&amp;utm_medium=comunicacao"
+        self.assertIn(f'<a href="http://testserver{link}"', html)
+
+    @override_settings(URL_INSTAGRAM="https://www.instagram.com/usecashb/")
+    def test_com_banner_ha_botoes_de_verdade_para_o_site_e_o_instagram(self):
+        # Uma imagem só pode ter um link: o site e o Instagram escritos DENTRO do banner não
+        # seriam clicáveis, então precisam existir também como link de texto.
+        html = renderizar_corpo_html("Confira!", [], self.request, banner_url="https://cash-b.com/b.png")
+        self.assertIn(">Ver ofertas</a>", html)
+        self.assertIn('href="https://www.instagram.com/usecashb/"', html)
+
+    def test_sem_banner_nao_ha_botoes(self):
+        html = renderizar_corpo_html("Só texto.", [], self.request)
+        self.assertNotIn(">Ver ofertas</a>", html)
+        self.assertNotIn("instagram.com", html)
+
 
 class EnviarComunicacaoComOfertasTests(TestCase):
     def setUp(self):
@@ -863,6 +891,8 @@ class EnviarComunicacaoComBannerTests(TestCase):
         self.assertTrue(comunicacao.banner)
         self.assertIn(comunicacao.banner.url, html_enviado)
         self.assertIn(comunicacao.banner.url, comunicacao.corpo_html)
+        # o assunto do envio vira o texto alternativo do banner
+        self.assertIn('alt="Campanha"', html_enviado)
 
     @patch("accounts.comunicacoes.EmailMultiAlternatives")
     def test_sem_banner_nao_grava_arquivo_nem_anexa_html(self, MockEmail):

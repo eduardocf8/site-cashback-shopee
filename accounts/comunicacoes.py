@@ -96,7 +96,8 @@ def _rodape_descadastro_texto(link: str) -> str:
 
 
 def renderizar_corpo_html(
-    corpo: str, ofertas, request, link_descadastro: str | None = None, banner_url: str | None = None
+    corpo: str, ofertas, request, link_descadastro: str | None = None, banner_url: str | None = None,
+    assunto: str = "",
 ) -> str:
     """request é necessário pra montar o link absoluto (https://cash-b.com/...) de
     cada oferta - fora de uma view não tem como saber o domínio."""
@@ -113,6 +114,10 @@ def renderizar_corpo_html(
             "ofertas_em_linhas": linhas,
             "link_descadastro": link_descadastro,
             "banner_url": banner_url,
+            # O assunto serve de texto alternativo do banner: é a frase que já resume o e-mail.
+            "banner_alt": assunto,
+            "link_site": request.build_absolute_uri(reverse("ofertas_lista")) + "?utm_source=email&utm_medium=comunicacao",
+            "link_instagram": settings.URL_INSTAGRAM,
         },
     )
 
@@ -153,7 +158,9 @@ def enviar_comunicacao(
     banner_url = request.build_absolute_uri(comunicacao.banner.url) if comunicacao.banner and request else None
     corpo_enviado = corpo + (_rodape_descadastro_texto(link_descadastro) if link_descadastro else "")
     corpo_html = (
-        renderizar_corpo_html(corpo, ofertas, request, link_descadastro=link_descadastro, banner_url=banner_url)
+        renderizar_corpo_html(
+            corpo, ofertas, request, link_descadastro=link_descadastro, banner_url=banner_url, assunto=assunto
+        )
         if (ofertas or banner_url) and request
         else ""
     )
