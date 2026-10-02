@@ -23,6 +23,7 @@ from .analytics import (
     obter_analytics,
     obter_grafico_sacado,
     obter_resumo_liberado,
+    obter_saldo_disponivel,
     obter_saldo_por_usuario,
     obter_serie_diaria,
     origem_detalhada,
@@ -1369,6 +1370,79 @@ class ObterResumoLiberadoTests(TestCase):
         self.assertEqual(sum((l["valor"] for l in linhas), Decimal("0")), Decimal("0"))
 
 
+class ObterSaldoDisponivelTests(TestCase):
+    """Saldo acumulado de sempre disponível pra saque (linha "Disponível pra saque" da
+    tela de Resumo financeiro) - diferente do "mês atual" de obter_resumo_liberado, que
+    só olha o liberado NESSE mês. Aqui soma todo liberado histórico menos todo pago
+    histórico, não importa o mês."""
+
+    def setUp(self):
+        self.usuario = get_user_model().objects.create_user(
+            username="compradora", password="senha123", cpf="39053344705"
+        )
+        self.hoje = timezone.localdate()
+
+    def _mes_relativo(self, delta):
+        total = self.hoje.month - 1 + delta
+        return self.hoje.year + total // 12, total % 12 + 1
+
+    def _datetime_no_mes(self, delta, dia=15):
+        ano, mes = self._mes_relativo(delta)
+        return timezone.make_aware(datetime.combine(date(ano, mes, dia), datetime.min.time()))
+
+    def test_soma_liberado_de_varios_meses_passados(self):
+        Pedido.objects.create(
+            order_id="A", conversion_id="1", usuario=self.usuario, status=Pedido.STATUS_LIBERADO,
+            status_shopee_bruto="COMPLETED", valor_comissao=Decimal("10.00"), valor_cashback=Decimal("20.00"),
+            data_liberacao=self._datetime_no_mes(-5),
+        )
+        Pedido.objects.create(
+            order_id="B", conversion_id="1", usuario=self.usuario, status=Pedido.STATUS_LIBERADO,
+            status_shopee_bruto="COMPLETED", valor_comissao=Decimal("10.00"), valor_cashback=Decimal("15.00"),
+            data_liberacao=self._datetime_no_mes(0),
+        )
+
+        self.assertEqual(obter_saldo_disponivel(), Decimal("35.00"))
+
+    def test_desconta_saques_pagos_de_qualquer_mes(self):
+        Pedido.objects.create(
+            order_id="A", conversion_id="1", usuario=self.usuario, status=Pedido.STATUS_LIBERADO,
+            status_shopee_bruto="COMPLETED", valor_comissao=Decimal("10.00"), valor_cashback=Decimal("50.00"),
+            data_liberacao=self._datetime_no_mes(-3),
+        )
+        Saque.objects.create(
+            usuario=self.usuario, valor=Decimal("20.00"), chave_pix="a@a.com",
+            tipo_chave_pix="EMAIL", status=Saque.STATUS_PAGO, pago_em=self._datetime_no_mes(-1),
+        )
+
+        self.assertEqual(obter_saldo_disponivel(), Decimal("30.00"))
+
+    def test_saque_nao_pago_nao_desconta(self):
+        Pedido.objects.create(
+            order_id="A", conversion_id="1", usuario=self.usuario, status=Pedido.STATUS_LIBERADO,
+            status_shopee_bruto="COMPLETED", valor_comissao=Decimal("10.00"), valor_cashback=Decimal("50.00"),
+            data_liberacao=self._datetime_no_mes(0),
+        )
+        Saque.objects.create(
+            usuario=self.usuario, valor=Decimal("20.00"), chave_pix="a@a.com",
+            tipo_chave_pix="EMAIL", status=Saque.STATUS_SOLICITADO,
+        )
+
+        self.assertEqual(obter_saldo_disponivel(), Decimal("50.00"))
+
+    def test_pedido_sem_usuario_fora_do_site_nunca_conta(self):
+        Pedido.objects.create(
+            order_id="FORA-DO-SITE", conversion_id="1", usuario=None, status=Pedido.STATUS_LIBERADO,
+            status_shopee_bruto="COMPLETED", valor_comissao=Decimal("100.00"), valor_cashback=Decimal("50.00"),
+            data_liberacao=self._datetime_no_mes(0),
+        )
+
+        self.assertEqual(obter_saldo_disponivel(), Decimal("0"))
+
+    def test_sem_nada_retorna_zero(self):
+        self.assertEqual(obter_saldo_disponivel(), Decimal("0"))
+
+
 class ObterSaldoPorUsuarioTests(TestCase):
     """Quebra de 1 mês+tipo (1 célula da tela de Saldos por mês) por usuário - usado
     pra achar quem já tem saldo suficiente pra sacar escondido dentro de um total."""
@@ -1486,6 +1560,43 @@ class ObterSaldoPorUsuarioTests(TestCase):
 
         self.assertEqual(len(linhas), 1)
         self.assertEqual(linhas[0]["total"], Decimal("13.00"))
+
+    def test_disponivel_soma_liberado_de_varios_meses_menos_o_que_ja_foi_sacado(self):
+        Pedido.objects.create(
+            order_id="A", conversion_id="1", usuario=self.ana, status=Pedido.STATUS_LIBERADO,
+            status_shopee_bruto="COMPLETED", valor_comissao=Decimal("1.00"), valor_cashback=Decimal("30.00"),
+            data_liberacao=timezone.make_aware(datetime(self.hoje.year, self.hoje.month, 15)) - timedelta(days=90),
+        )
+        Pedido.objects.create(
+            order_id="B", conversion_id="1", usuario=self.ana, status=Pedido.STATUS_LIBERADO,
+            status_shopee_bruto="COMPLETED", valor_comissao=Decimal("1.00"), valor_cashback=Decimal("10.00"),
+            data_liberacao=self._datetime_no_mes_atual(),
+        )
+        Saque.objects.create(
+            usuario=self.ana, valor=Decimal("15.00"), chave_pix="a@a.com",
+            tipo_chave_pix="EMAIL", status=Saque.STATUS_PAGO, pago_em=self._datetime_no_mes_atual(),
+        )
+
+        linhas = obter_saldo_por_usuario(None, None, "disponivel")
+
+        self.assertEqual(len(linhas), 1)
+        self.assertEqual(linhas[0]["username"], "ana")
+        self.assertEqual(linhas[0]["total"], Decimal("25.00"))
+
+    def test_disponivel_nao_traz_usuario_com_saldo_zero_ou_negativo(self):
+        Pedido.objects.create(
+            order_id="A", conversion_id="1", usuario=self.ana, status=Pedido.STATUS_LIBERADO,
+            status_shopee_bruto="COMPLETED", valor_comissao=Decimal("1.00"), valor_cashback=Decimal("20.00"),
+            data_liberacao=self._datetime_no_mes_atual(),
+        )
+        Saque.objects.create(
+            usuario=self.ana, valor=Decimal("20.00"), chave_pix="a@a.com",
+            tipo_chave_pix="EMAIL", status=Saque.STATUS_PAGO, pago_em=self._datetime_no_mes_atual(),
+        )
+
+        linhas = obter_saldo_por_usuario(None, None, "disponivel")
+
+        self.assertEqual(linhas, [])
 
 
 class ObterSerieDiariaTests(TestCase):
@@ -1808,7 +1919,9 @@ class ResumoFinanceiroAdminViewTests(TestCase):
         resposta = self.client.get(reverse("admin:pedidos_resumo_financeiro"))
         self.assertIn("grafico_sacado", resposta.context)
         self.assertIn("tabela_liberado", resposta.context)
-        self.assertEqual(len(resposta.context["tabela_liberado"]), 3)
+        # linha de "disponível pra saque" (acumulado) + mês atual + 2 meses de projeção.
+        self.assertEqual(len(resposta.context["tabela_liberado"]), 4)
+        self.assertTrue(resposta.context["tabela_liberado"][0]["eh_disponivel"])
 
     def test_parametro_meses_passados_e_respeitado(self):
         self.client.force_login(self.staff)
@@ -1884,3 +1997,11 @@ class SaldoPorUsuarioAdminViewTests(TestCase):
             {"ano": self.hoje.year, "mes": self.hoje.month, "tipo": "liberado"},
         )
         self.assertContains(resposta, reverse("admin:accounts_user_change", args=[self.comprador.pk]))
+
+    def test_tipo_disponivel_nao_precisa_de_ano_e_mes(self):
+        self.client.force_login(self.staff)
+        resposta = self.client.get(reverse("admin:pedidos_saldo_por_usuario"), {"tipo": "disponivel"})
+        self.assertEqual(resposta.status_code, 200)
+        self.assertContains(resposta, "compradora")
+        self.assertContains(resposta, "R$ 25,00")
+        self.assertContains(resposta, "acumulado até hoje")

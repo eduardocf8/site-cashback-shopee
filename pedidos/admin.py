@@ -19,6 +19,7 @@ from .analytics import (
     obter_grafico_sacado,
     obter_pedidos_filtrados,
     obter_resumo_liberado,
+    obter_saldo_disponivel,
     obter_saldo_por_usuario,
     obter_serie_diaria,
     origem_detalhada as origem_detalhada_pedido,
@@ -239,20 +240,40 @@ class PedidoAdmin(admin.ModelAdmin):
 
     def resumo_financeiro_view(self, request):
         meses_passados = _parse_inteiro(request.GET.get("meses_passados"), MESES_GRAFICO_SACADO_PADRAO)
+        linha_disponivel = {
+            "rotulo": "Disponível pra saque",
+            "eh_atual": False,
+            "eh_projecao": False,
+            "eh_disponivel": True,
+            "valor": obter_saldo_disponivel(),
+        }
         contexto = {
             **self.admin_site.each_context(request),
             "title": "Resumo financeiro",
             "grafico_sacado": obter_grafico_sacado(meses_passados),
-            "tabela_liberado": obter_resumo_liberado(),
+            "tabela_liberado": [linha_disponivel, *obter_resumo_liberado()],
             "meses_passados": meses_passados,
         }
         return TemplateResponse(request, "admin/resumo_financeiro.html", contexto)
 
     def saldo_por_usuario_view(self, request):
+        tipo = request.GET.get("tipo")
+        if tipo not in ROTULOS_TIPO_SALDO:
+            return redirect("admin:pedidos_resumo_financeiro")
+
+        if tipo == "disponivel":
+            contexto = {
+                **self.admin_site.each_context(request),
+                "title": f"Saldo por usuário — {ROTULOS_TIPO_SALDO[tipo]}",
+                "linhas": obter_saldo_por_usuario(None, None, tipo),
+                "rotulo_tipo": ROTULOS_TIPO_SALDO[tipo],
+                "eh_acumulado": True,
+            }
+            return TemplateResponse(request, "admin/saldo_por_usuario.html", contexto)
+
         ano = _parse_inteiro(request.GET.get("ano"), None)
         mes = _parse_inteiro(request.GET.get("mes"), None)
-        tipo = request.GET.get("tipo")
-        if tipo not in ROTULOS_TIPO_SALDO or not ano or not mes or not (1 <= mes <= 12):
+        if not ano or not mes or not (1 <= mes <= 12):
             return redirect("admin:pedidos_resumo_financeiro")
 
         contexto = {
@@ -261,6 +282,7 @@ class PedidoAdmin(admin.ModelAdmin):
             "linhas": obter_saldo_por_usuario(ano, mes, tipo),
             "rotulo_tipo": ROTULOS_TIPO_SALDO[tipo],
             "rotulo_mes": f"{mes:02d}/{ano}",
+            "eh_acumulado": False,
         }
         return TemplateResponse(request, "admin/saldo_por_usuario.html", contexto)
 

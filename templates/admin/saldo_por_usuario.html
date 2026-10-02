@@ -31,12 +31,15 @@
     <a class="button" href="{% url 'admin:pedidos_resumo_financeiro' %}">← Voltar pro Resumo financeiro</a>
 </p>
 
-<h2 style="margin: 0 0 4px;">{{ rotulo_tipo }} em {{ rotulo_mes }}</h2>
+<h2 style="margin: 0 0 4px;">
+    {% if eh_acumulado %}{{ rotulo_tipo }} — acumulado até hoje{% else %}{{ rotulo_tipo }} em {{ rotulo_mes }}{% endif %}
+</h2>
 <p class="help" style="margin: 0 0 20px;">
     {% if linhas %}
-        {{ linhas|length }} usuário{{ linhas|length|pluralize }} com saldo nesse mês, do maior pro menor.
+        {{ linhas|length }} usuário{{ linhas|length|pluralize }}
+        {% if eh_acumulado %}com saldo disponível pra saque{% else %}com saldo nesse mês{% endif %}, do maior pro menor.
     {% else %}
-        Ninguém com saldo nesse tipo/mês.
+        Ninguém com saldo {% if eh_acumulado %}disponível pra saque no momento{% else %}nesse tipo/mês{% endif %}.
     {% endif %}
 </p>
 

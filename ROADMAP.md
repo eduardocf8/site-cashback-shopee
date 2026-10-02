@@ -1959,6 +1959,50 @@ botão da tela inicial do admin (deixar só dentro de Analytics).
       Playwright (gráfico, tabela, drill-down em nova aba nos 2 formatos,
       botão de voltar, filtro de meses pra trás).
 
+**Depois, mesma fase — linha de "saldo disponível acumulado":** usuário
+perguntou se o "mês atual" da tabela já somava saldo liberado em meses
+passados e ainda não sacado - a resposta era não (só olha
+`data_liberacao` dentro do mês corrente), o que significava que não tinha
+nenhum lugar na tela mostrando "quanto dá pra sacar agora de verdade".
+Pediu pra implementar, como uma linha extra (destacada) na própria
+tabela "Saldo liberado", acima da linha do mês atual - decisão tomada via
+pergunta direta sobre onde posicionar (as outras opções eram um card de
+destaque no topo da tela, ou só um texto auxiliar).
+
+- [x] **`pedidos/analytics.py::obter_saldo_disponivel`** (nova) - soma
+      TODO `valor_cashback` de pedido liberado desde sempre (não só o mês
+      atual) menos TODO `Saque.valor` pago desde sempre. Pedido sem
+      usuário nunca conta, igual ao resto da tela.
+- [x] **`ROTULOS_TIPO_SALDO`** ganhou o tipo `"disponivel"`, e
+      `obter_saldo_por_usuario` um novo branch pra ele - mesma conta de
+      `obter_saldo_disponivel`, mas por usuário (liberado histórico menos
+      pago histórico, agrupado por `usuario_id`), só retornando quem tem
+      saldo positivo (serve exatamente o caso de uso original: achar quem
+      já tem saldo acumulado suficiente pra sacar, mesmo que esteja
+      "escondido" dentro de vários meses diferentes).
+- [x] `pedidos/admin.py::resumo_financeiro_view` monta essa linha
+      (`eh_disponivel: True`, sem `ano`/`mes`) e antepõe às 3 linhas de
+      `obter_resumo_liberado()` antes de mandar pro template.
+      `saldo_por_usuario_view` trata `tipo=disponivel` como um caso à
+      parte, que não exige `ano`/`mes` na querystring (o acumulado não
+      tem mês - a tela de drill-down mostra "acumulado até hoje" no lugar
+      da data).
+- [x] Linha renderizada com destaque visual próprio
+      (`.resumo-disponivel`, fundo na cor primária, texto branco em
+      negrito) pra não ser confundida com as linhas de fluxo mensal
+      (mesmo risco que gerou a pergunta original do usuário) -
+      `templates/admin/resumo_financeiro.html`.
+- [x] Testes novos: `ObterSaldoDisponivelTests` (soma de vários meses,
+      desconto de saque pago, pedido sem usuário nunca conta, zero sem
+      dado nenhum), 2 testes novos em `ObterSaldoPorUsuarioTests` pro
+      tipo `"disponivel"` (soma de vários meses por usuário descontando
+      saque, e usuário com saldo zerado/negativo não aparece), e testes
+      de view cobrindo o contexto com 4 linhas e o drill-down sem
+      `ano`/`mes`. Suite completa rodando, e verificado visualmente via
+      Playwright (linha destacada no topo da tabela, valor acumulado
+      batendo com liberado de meses diferentes menos saque pago, e
+      drill-down mostrando a quebra por usuário certa).
+
 ---
 
 Pra continuar esse roadmap numa conversa nova, basta apontar esse arquivo

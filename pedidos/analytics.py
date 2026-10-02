@@ -401,6 +401,7 @@ ROTULOS_TIPO_SALDO = {
     "liberado": "Liberado",
     "projecao": "Projeção de liberação",
     "pago": "Pago (saques)",
+    "disponivel": "Saldo disponível pra saque",
 }
 
 
@@ -515,12 +516,33 @@ def obter_resumo_liberado() -> list[dict]:
     ]
 
 
-def obter_saldo_por_usuario(ano: int, mes: int, tipo: str) -> list[dict]:
+def obter_saldo_disponivel() -> Decimal:
+    """Saldo total disponível pra saque AGORA: todo cashback já liberado desde sempre
+    (não só o mês atual, diferente da linha "mês atual" de obter_resumo_liberado) menos
+    todo saque já pago desde sempre. É o número que responde "quanto dá pra sacar hoje,
+    considerando também saldo liberado em meses passados e nunca sacado". Pedido sem
+    usuário ("Fora do site") nunca conta - não tem cashback de verdade."""
+    liberado_total = (
+        Pedido.objects.filter(status=Pedido.STATUS_LIBERADO)
+        .exclude(usuario__isnull=True)
+        .aggregate(total=Sum("valor_cashback"))["total"]
+    ) or Decimal("0")
+    pago_total = (Saque.objects.filter(status=Saque.STATUS_PAGO).aggregate(total=Sum("valor"))["total"]) or Decimal(
+        "0"
+    )
+    return liberado_total - pago_total
+
+
+def obter_saldo_por_usuario(ano: int | None, mes: int | None, tipo: str) -> list[dict]:
     """Quebra por usuário de 1 valor da tela de Resumo financeiro:
     - "liberado": saldo real do mês atual (mesma consulta de obter_resumo_liberado).
     - "projecao": meses futuros - combina pendente (projetado por data_compra + 2) e
       validado (por data_prevista_liberacao) do mesmo jeito que obter_resumo_liberado.
     - "pago": 1 barra do gráfico de saques pagos.
+    - "disponivel": acumulado de sempre (mesma conta de obter_saldo_disponivel, por
+      usuário) - ignora ano/mes. Só traz quem tem saldo positivo (negativo indicaria
+      saque pago maior que liberado, o que seria um bug - não ajuda achar quem pode
+      sacar mesmo assim).
     Sempre ordenado do maior pro menor - útil pra achar quem já tem saldo suficiente
     pra sacar escondido dentro de um total agregado."""
     if tipo == "liberado":
@@ -568,6 +590,35 @@ def obter_saldo_por_usuario(ano: int, mes: int, tipo: str) -> list[dict]:
             )
             acumulado["total"] += linha["total"] or Decimal("0")
         return sorted(combinados.values(), key=lambda linha: linha["total"], reverse=True)
+    elif tipo == "disponivel":
+        liberados = (
+            Pedido.objects.filter(status=Pedido.STATUS_LIBERADO)
+            .exclude(usuario__isnull=True)
+            .values("usuario_id", "usuario__username")
+            .annotate(total=Sum("valor_cashback"))
+        )
+        pagos = (
+            Saque.objects.filter(status=Saque.STATUS_PAGO)
+            .values("usuario_id", "usuario__username")
+            .annotate(total=Sum("valor"))
+        )
+        combinados: dict = {}
+        for linha in liberados:
+            chave = linha["usuario_id"]
+            acumulado = combinados.setdefault(
+                chave, {"usuario_id": chave, "username": linha["usuario__username"], "total": Decimal("0")}
+            )
+            acumulado["total"] += linha["total"] or Decimal("0")
+        for linha in pagos:
+            chave = linha["usuario_id"]
+            acumulado = combinados.setdefault(
+                chave, {"usuario_id": chave, "username": linha["usuario__username"], "total": Decimal("0")}
+            )
+            acumulado["total"] -= linha["total"] or Decimal("0")
+        return sorted(
+            (linha for linha in combinados.values() if linha["total"] > 0),
+            key=lambda linha: linha["total"], reverse=True,
+        )
     else:
         return []
 
