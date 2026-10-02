@@ -48,5 +48,5 @@ Conferir os cliques de cada grupo em Análises, no Pinterest, 3 a 4 semanas depo
 
 | Data de envio | Pins | Destino |
 |---|---|---|
-| 30/09/2026 | 5 tipográficos: Casa e decoração, Beleza, Celular e acessórios, Moda feminina, Esporte e ar livre (`marketing/pinterest/pins-teste/`) | Página da categoria na cash-b, `utm_source=pinterest` |
+| 01/10/2026 | 5 tipográficos: Casa e decoração, Beleza, Celular e acessórios, Moda feminina, Esporte e ar livre (`marketing/pinterest/pins-teste/`) | Página da categoria na cash-b, `utm_source=pinterest` |
 | 01/10/2026 | 5 com foto do produto e "Marcar produtos": 01 (produto não informado), 02 mop spray com reservatório (Casa e Decoração), 03 ventilador de teto com luminária (Eletrodomésticos), 04 kit 7 saquinhos maternidade (Mãe e Bebê), 05 legging com cinta modeladora (Roupas Femininas) | Tag nativa da Shopee, sem link de destino |
