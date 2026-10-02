@@ -195,6 +195,19 @@ então a coorte é todo mundo que se cadastrou no período, não só quem veio d
 Enquanto a campanha paga for a fonte dominante isso serve como aproximação; com duas
 fontes grandes ao mesmo tempo, deixa de separar as duas.
 
+## Conferindo a margem de uma campanha de cashback
+
+Antes de anunciar uma campanha, veja o que ela custaria com os pedidos reais:
+
+```bash
+python manage.py simular_campanha --multiplicador 1.5 --dias 60
+```
+
+Mostra cashback e margem de hoje contra a simulada, quanto da comissão vira cashback na
+venda por link/vitrine e na indireta, e lista qualquer pedido que pagaria mais cashback do
+que a comissão recebida. Só lê, não altera nada. A campanha em si é uma linha em "Campanhas
+de cashback" no admin, e o site mostra a faixa de aviso sozinho.
+
 ## Colocando o site no ar (Fase 7)
 
 Vamos usar a **Render** (tem plano gratuito) pra hospedar o site, com um banco de dados Postgres (o SQLite que usamos localmente não funciona em produção lá, porque o plano gratuito não guarda arquivos entre reinicializações).

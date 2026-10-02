@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-{% load static %}
+{% load static campanha_tags %}
 <html lang="pt-br">
 <head>
     <meta charset="UTF-8">
@@ -125,6 +125,7 @@
     </style>
 </head>
 <body>
+    {% faixa_campanha %}
     {% block layout %}
     <div class="topo"><a class="marca" href="{% url 'home' %}">cash-b</a></div>
     <div class="container">

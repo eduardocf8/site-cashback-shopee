@@ -1,4 +1,4 @@
-"""Banner de e-mail para campanha de cashback aumentado em data dupla.
+"""Banner de e-mail para campanha de cashback aumentado em data dupla (hoje: 10.10, 50% a mais).
 
 Estrutura inspirada no e-mail de afiliados da Shopee que o dono do produto trouxe como
 referência: bloco de cor no topo com a data em corpo enorme, uma curva branca fechando
@@ -24,7 +24,7 @@ cantos inferiores cresciam para cima do texto. Na proporção nativa ela entra i
 cada elemento fica no canto onde foi desenhado.
 
 **O número do multiplicador é parâmetro.** Quem decide é a campanha cadastrada no admin
-(pedidos.CampanhaCashback), não a arte - por isso MULTIPLICADOR aqui, e por isso sai
+(pedidos.CampanhaCashback), não a arte - por isso a manchete é uma constante aqui, e por isso sai
 também uma versão sem número nenhum, para quando a campanha ainda não estiver fechada.
 
 Feito para o campo de banner da comunicação em massa do admin
@@ -75,16 +75,24 @@ ESCALA = 2
 # a campanha pedir algo mais ilustrado.
 ARTE = Path(__file__).resolve().parent / "fundos-marca" / "fundo-03-canto-roxo-16x9.png"
 
-DATA = "11.11"
-# O que a campanha paga. Sai da linha cadastrada em pedidos.CampanhaCashback - o padrão
-# do modelo é 2 (cashback em dobro). Conferir no admin antes de mandar o e-mail: arte
-# prometendo um número diferente do que o sistema paga é o pior erro possível aqui.
-MULTIPLICADOR = "em dobro"
+DATA = "10.10"
+DIA = DATA.split(".")[0]   # "10": só vale no dia
+ARQ = DATA.replace(".", "-")   # nome dos arquivos: banner-10-10-...
+
+# O que a campanha paga, em palavras. Sai da linha cadastrada em pedidos.CampanhaCashback
+# (CampanhaCashback.percentual_extra: multiplicador 1,5 = 50). Conferir no admin antes de
+# mandar o e-mail: arte prometendo um número diferente do que o sistema paga é o pior erro
+# possível aqui.
+#
+# "50% a mais de cashback" e não "+50%": "+50%" lê como "cashback de 50%", o mal-entendido que
+# vira reclamação depois. Se a campanha for de multiplicador 2, trocar por "Cashback em dobro".
+MANCHETE_COM_NUMERO = "50% a mais de cashback"
+MANCHETE_SEM_NUMERO = "Cashback aumentado"
 
 BENEFICIOS = [
     "Vale em toda compra",
     "Entra automático",
-    "Sem cupom nenhum",
+    f"Só no dia {DIA}",
 ]
 
 
@@ -120,7 +128,7 @@ def _decoracao() -> str:
 
 
 def _pagina(com_numero: bool, ilustrado: bool) -> str:
-    manchete = f"Cashback {MULTIPLICADOR}" if com_numero else "Cashback aumentado"
+    manchete = MANCHETE_COM_NUMERO if com_numero else MANCHETE_SEM_NUMERO
     classe_topo = "ilustrado" if ilustrado else ""
     if ilustrado:
         arte64 = base64.b64encode(ARTE.read_bytes()).decode()
@@ -217,8 +225,8 @@ def _render(com_numero: bool, ilustrado: bool, destino: Path):
 def gerar():
     for ilustrado in ([True, False] if ARTE.exists() else [False]):
         sufixo = "" if ilustrado else "-vetor"
-        _render(True, ilustrado, OUT_DIR / f"banner-11-11-em-dobro{sufixo}.png")
-        _render(False, ilustrado, OUT_DIR / f"banner-11-11-sem-numero{sufixo}.png")
+        _render(True, ilustrado, OUT_DIR / f"banner-{ARQ}-mais-50{sufixo}.png")
+        _render(False, ilustrado, OUT_DIR / f"banner-{ARQ}-sem-numero{sufixo}.png")
     print("\nSubir no campo de banner da comunicação em massa do admin.")
 
 

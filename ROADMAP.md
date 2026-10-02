@@ -2005,6 +2005,38 @@ destaque no topo da tela, ou só um texto auxiliar).
 
 ---
 
+## Fase 52 — Campanha de datas duplas: 50% a mais de cashback ✅
+
+Primeira campanha: 10.10 (sábado). A mecânica já existia (`CampanhaCashback`, Fase 44);
+faltava o site avisar e uma forma de conferir a margem antes de prometer.
+
+Decisão do dono: **50% a mais** (multiplicador 1,5), não "em dobro". Conferido no código:
+a cash-b repassa 20% da comissão (o piso de 1,6% da venda direta é 20% dos 8% que a Shopee
+paga no mínimo) e na venda indireta repassa 1% de 3% (33%). Com 1,5, o pior caso é a indireta
+a 50% da comissão; nenhum pedido passa de 100%. Na coorte de 09 a 28/09: cashback R$ 45,74
+-> R$ 68,61, margem R$ 156,28 -> R$ 133,41 (-14,6%).
+
+- [x] **`CampanhaCashback.para_faixa()`** - campanha em curso (mesma regra de
+      `multiplicador_em`) ou a que começa em até 3 dias; multiplicador 1 não gera faixa.
+      `percentual_extra` (1,5 = 50) é o número que vai em toda arte.
+- [x] **Faixa no topo da home, ofertas, cadastro/login e painel**
+      (`templates/_faixa_campanha.html` + `{% faixa_campanha %}`). Template tag e não context
+      processor, para só consultar nas páginas que mostram a faixa. Sem cache: aparece e some
+      no mesmo instante em que os cards de oferta mudam. Texto "50% a mais de cashback",
+      nunca "+50%" (lê como "cashback de 50%"); multiplicador 2 vira "Cashback em dobro".
+- [x] **`manage.py simular_campanha`** - refaz o cashback dos pedidos recentes com outro
+      multiplicador e acusa pedido em que o cashback passaria da comissão. Só leitura. Tira
+      bônus de indicação e cancelados; separa indireta de vitrine.
+- [x] Banner de e-mail do 10.10 (`marketing/gerar_banner_email.py`, agora parametrizado por
+      `DATA` e `MANCHETE_COM_NUMERO`).
+- [x] 23 testes novos. Suíte completa: 464 verdes.
+
+**Para ligar a campanha:** no admin, "Campanhas de cashback" -> multiplicador `1.5`, início
+10/10/2026 00:00, fim 10/10/2026 23:59:59 (horário de Brasília). Pode ser criada antes: a
+faixa só avisa nos 3 dias anteriores e o cashback só muda a partir do início.
+
+---
+
 Pra continuar esse roadmap numa conversa nova, basta apontar esse arquivo
 (`ROADMAP.md`) e o `BRAND.md` — juntos eles dão o contexto de identidade
 visual e do que falta implementar, sem precisar reconstruir o histórico da
