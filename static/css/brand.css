@@ -164,9 +164,15 @@ body {
     margin: 0 auto;
 }
 .pwa-banner[hidden] { display: none; }
-.pwa-banner-texto { flex: 1; line-height: 1.4; }
+.pwa-banner-texto { flex: 1; min-width: 0; line-height: 1.4; }
 .pwa-banner-texto strong { color: var(--paper); }
 .pwa-banner-acao {
+    /* width/flex-shrink explícitos porque algumas páginas (ex: accounts/base.html) têm
+       um "button { width: 100%; }" genérico pros botões de formulário - sem isso aqui,
+       esse botão (e o de fechar, abaixo) herdava 100% e espremia .pwa-banner-texto a 0px
+       de largura, quebrando o texto palavra por palavra. */
+    width: auto;
+    flex-shrink: 0;
     background: var(--brand);
     color: var(--paper);
     border: none;
@@ -180,6 +186,7 @@ body {
 }
 .pwa-banner-acao:hover { background: var(--brand-strong); }
 .pwa-banner-fechar {
+    width: auto;
     background: none;
     border: none;
     color: var(--paper);
