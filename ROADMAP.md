@@ -2056,6 +2056,12 @@ a 50% da comissão; nenhum pedido passa de 100%. Na coorte de 09 a 28/09: cashba
       são digitados de novo. A peça "faltam 2 dias" só vale postada na quinta 8/10; o teaser e
       as outras não citam contagem. Margens seguras do Instagram (250px em cima, 300 embaixo),
       sem a figurinha de contagem regressiva na arte (ela é colada na hora de postar).
+- [x] **Cards "antes -> agora"** (`marketing/instagram/gerar_cards_antes_agora.py` ->
+      `cards-antes-agora/`): o Kit Peseira da vitrine com 5,8% / R$ 4,05 (dia normal) e 8,7% /
+      R$ 6,08 (10.10), `card-antes.png` e `card-agora.png` (mesmo tamanho, mesmo pixel) e um story
+      com a conta lado a lado. % e valor seguem a conta do site (`% x multiplicador`, valor sobre
+      o preço base); a multiplicação sai de `gerar_banner_email.py`. `gerar_cards_vitrine._pagina`
+      ganhou o parâmetro `percentual_direta` para reaproveitar o card sem copiar o HTML.
 - [x] 33 testes novos.
 
 **Para ligar a campanha:** no admin, "Campanhas de cashback" -> multiplicador `1.5`, início

@@ -83,9 +83,12 @@ def _foto_embutida(caminho: Path) -> str:
     return f"data:image/{tipo};base64,{base64.b64encode(caminho.read_bytes()).decode()}"
 
 
-def _pagina(estado: str, foto: Path) -> str:
+def _pagina(estado: str, foto: Path, percentual_direta: Decimal | None = None) -> str:
+    """`percentual_direta` troca o % do estado "direta" (a campanha usa para mostrar o
+    mesmo card com o cashback multiplicado, sem copiar o HTML do card)."""
     if estado == "direta":
-        pct, cor = Decimal(PRODUTO["percentual_direta"]), CORES["success"]
+        pct = percentual_direta if percentual_direta is not None else Decimal(PRODUTO["percentual_direta"])
+        cor = CORES["success"]
     elif estado == "indireta":
         pct, cor = MINIMO_INDIRETA, CORES["muted"]
     else:
