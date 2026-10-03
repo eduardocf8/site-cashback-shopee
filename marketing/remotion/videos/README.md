@@ -9,8 +9,10 @@ sem precisar rodar o render.
 | `apresentacao-dinamica.mp4` | 15,8s | As cenas se empurram, o fundo dá zoom lento, os números contam |
 | `apresentacao-espera-animada.mp4` | 20,5s | A versão com mais movimento: seis transições, a moeda da marca em voo, números que contam e rolam |
 | `apresentacao-calma-gancho-espera.mp4` | 18,4s | A calma com outro gancho em dois tempos: a pergunta "Vai comprar na Shopee?" e, 0,9s depois, "Espera." grande |
+| `campanha-10-10-a-objetos.mp4` | 18,0s | Reel da campanha 10.10 (50% a mais de cashback), versão A: calendário, letreiro, recibo e relógio sobre cores chapadas |
+| `campanha-10-10-b-gravacao-de-tela.mp4` | 18,0s | O mesmo reel, versão B: gravação de tela de app, com uma rolagem contínua e um dedo que toca |
 
-Ambos em 1080×1920, 30fps, H.264.
+Todos em 1080×1920, 30fps, H.264. Os dois reels da campanha 10.10 são sem música: ela é colocada no editor. Para renderizar de novo (rode antes `python3 exportar_dados_campanha.py`): `npm run render:campanha` e `npm run render:campanha-b`.
 
 **Estes arquivos são saída, não fonte.** Quem manda é `../src/`: mexer no MP4 faz o
 ajuste sumir no próximo render. Para gerar de novo:

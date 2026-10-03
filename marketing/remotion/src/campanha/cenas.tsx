@@ -615,10 +615,10 @@ export const CenaDia: React.FC = () => {
 
       <div style={{position: 'absolute', left: 0, right: 0, top: 1130}}>
         <LinhaSobe inicio={68} tam={84}>
-          todo pedido vale
+          todo pedido na Shopee
         </LinhaSobe>
         <LinhaSobe inicio={74} tam={110} cor={CORES.highlight}>
-          {EXTRA} a mais
+          vale {EXTRA} a mais
         </LinhaSobe>
       </div>
     </AbsoluteFill>
@@ -671,7 +671,7 @@ export const CenaFecho: React.FC = () => {
           {EXTRA} a mais de cashback
         </LinhaSobe>
         <LinhaSobe inicio={24} tam={66} cor={CORES.brand}>
-          no dia {dados.diaMes}
+          na Shopee, dia {dados.diaMes}
         </LinhaSobe>
       </div>
       <div
