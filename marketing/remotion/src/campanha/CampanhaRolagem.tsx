@@ -100,7 +100,7 @@ const virgula = (n: number, casas = 2) => n.toFixed(casas).replace('.', ',');
 type Ponto = {f: number; x: number; y: number};
 // O dedo anda entre pontos, aperta nos quadros de `toques` e some depois do último.
 const TRAJETOS: {pontos: Ponto[]; toque: number}[] = [
-  {pontos: [{f: 66, x: 790, y: 1320}, {f: 84, x: 912, y: 962}], toque: 86},
+  {pontos: [{f: 66, x: 790, y: 1380}, {f: 84, x: 912, y: 1077}], toque: 86},
   {pontos: [{f: 150, x: 640, y: 1250}, {f: 168, x: 700, y: 478}], toque: 170},
 ];
 
@@ -160,7 +160,7 @@ const Tela1: React.FC = () => {
   const texto = 'kit peseira para cama';
   const digitado = Math.floor(prog(frame, 34, 72) * texto.length);
   const caret = Math.floor(frame / 8) % 2 === 0 || digitado < texto.length;
-  const chip = prog(frame, 20, 34, saida);
+  const chip = prog(frame, 26, 40, saida);
   const enviado = prog(frame, 86, 92);
   return (
     <AbsoluteFill style={{background: LAV}}>
@@ -184,14 +184,17 @@ const Tela1: React.FC = () => {
           O que você vai
         </Sobe>
         <Sobe de={10} tam={104}>
-          comprar no <span style={{color: CORES.brand}}>{dados.data}</span>?
+          comprar no <span style={{color: CORES.brand}}>{dados.data}</span>
+        </Sobe>
+        <Sobe de={16} tam={104}>
+          na Shopee?
         </Sobe>
       </div>
       <div
         style={{
           position: 'absolute',
           left: 90,
-          top: 800,
+          top: 905,
           opacity: chip,
           transform: `translateY(${(1 - chip) * 24}px)`,
         }}
@@ -215,7 +218,7 @@ const Tela1: React.FC = () => {
         style={{
           position: 'absolute',
           left: 90,
-          top: 900,
+          top: 1015,
           width: 900,
           height: 124,
           borderRadius: 62,
