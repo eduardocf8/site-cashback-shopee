@@ -5,6 +5,7 @@ import {DURACAO, DURACAO_ESPERA, FPS} from './constantes';
 import {DURACAO_DINAMICA, Dinamica} from './Dinamica';
 import {DURACAO_ANIMADA, EsperaAnimada} from './animada/EsperaAnimada';
 import {Campanha1010, DURACAO_CAMPANHA} from './campanha/Campanha1010';
+import {CampanhaRolagem, DURACAO_ROLAGEM} from './campanha/CampanhaRolagem';
 import {DURACAO_GANCHO_TESTE, GanchoExplosaoA, GanchoExplosaoB} from './animada/GanchoTeste';
 
 /** Quatro composições, mesma informação.
@@ -68,6 +69,14 @@ export const RemotionRoot: React.FC = () => (
       id="Campanha1010"
       component={Campanha1010}
       durationInFrames={DURACAO_CAMPANHA}
+      fps={FPS}
+      width={1080}
+      height={1920}
+    />
+    <Composition
+      id="CampanhaRolagem"
+      component={CampanhaRolagem}
+      durationInFrames={DURACAO_ROLAGEM}
       fps={FPS}
       width={1080}
       height={1920}

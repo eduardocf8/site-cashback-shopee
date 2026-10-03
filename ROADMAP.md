@@ -2068,6 +2068,15 @@ a 50% da comissão; nenhum pedido passa de 100%. Na coorte de 09 a 28/09: cashba
       (5,8% / R$ 4,05 -> 8,7% / R$ 6,08) e bom saber. Números vindos de `gerar_banner_email.py`
       e `gerar_cards_vitrine.PRODUTO`. A legenda não diz "hoje", porque o post fica no perfil
       depois do dia.
+- [x] **Dois reels da campanha, 18 s cada** (`marketing/remotion/src/campanha/`), com linguagem
+      visual própria e diferente do vídeo do "Espera" (nada de roxo + texto gigante + moeda +
+      íris/empurrar/portas/relógio). **A** (`Campanha1010`): calendário -> letreiro de aeroporto ->
+      recibo -> relógio de 24 h, objetos sobre cor chapada, passagens por persianas, queda e página
+      que vira. **B** (`CampanhaRolagem`): gravação de tela de app, uma rolagem contínua por
+      cinco telas, dedo que toca, o card do site trocando de 5,8% para 8,7%. Números de
+      `dados.json`, gerado por `marketing/remotion/exportar_dados_campanha.py` a partir das
+      mesmas constantes do banner (rodar de novo se a campanha mudar). Sem música: é escolhida e
+      colocada no editor.
 - [x] 33 testes novos.
 
 **Para ligar a campanha:** no admin, "Campanhas de cashback" -> multiplicador `1.5`, início

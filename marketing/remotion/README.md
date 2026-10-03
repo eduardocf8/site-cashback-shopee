@@ -18,7 +18,8 @@ npm run render:dinamica   # versão com mais movimento -> saida/cash-b-apresenta
 npm run render:espera     # calma com o gancho "Espera." -> saida/cash-b-apresentacao-espera.mp4
 npm run render:animada    # a de mais movimento -> saida/cash-b-espera-animada.mp4
 python3 exportar_dados_campanha.py   # antes: atualiza os números da campanha 10.10
-npm run render:campanha   # reel 10.10, 18 s -> saida/cash-b-campanha-10-10.mp4
+npm run render:campanha   # reel 10.10 A (objetos), 18 s -> saida/cash-b-campanha-10-10.mp4
+npm run render:campanha-b # reel 10.10 B (gravação de tela) -> saida/cash-b-campanha-10-10-b.mp4
 ```
 
 `saida/` fica fora do git. Os dois vídeos prontos para baixar e postar estão em
@@ -40,7 +41,7 @@ com "Old Headless mode has been removed".
 | `src/Apresentacao.tsx` | Versão calma: monta as cenas em `<Sequence>` |
 | `src/Dinamica.tsx` | Versão dinâmica: cenas que se empurram, fundo em zoom, números contando |
 | `src/animada/` | A versão animada: `elementos.tsx` (moeda, raios, barras, marcas), `transicoes.tsx` (as seis transições), `cenas.tsx` (as sete cenas) e `EsperaAnimada.tsx` (a linha do tempo) |
-| `src/campanha/` | O reel da campanha 10.10 (18 s): calendário, letreiro, recibo, relógio. Outra linguagem visual da do "Espera", de propósito. Os números vêm de `dados.json`, gerado por `exportar_dados_campanha.py` |
+| `src/campanha/` | Os dois reels da campanha 10.10 (18 s cada). A (`Campanha1010`): calendário, letreiro, recibo, relógio, fundos de cor chapada. B (`CampanhaRolagem`): gravação de tela, uma rolagem contínua por telas de app, com dedo tocando. Linguagem visual diferente entre si e da do "Espera", de propósito. Os números vêm de `dados.json`, gerado por `exportar_dados_campanha.py` |
 | `src/Minimo.tsx` | A cena de dois tempos do piso de cashback |
 | `src/Fechamento.tsx` | O fechamento em dois tempos da assinatura |
 | `public/` | Fundos, logo e as fontes |

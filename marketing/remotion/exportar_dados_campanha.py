@@ -12,6 +12,7 @@ Rode de novo sempre que a campanha, o piso de cashback ou o produto de exemplo m
     python3 marketing/remotion/exportar_dados_campanha.py
 """
 import json
+import shutil
 import sys
 from decimal import Decimal
 from pathlib import Path
@@ -33,7 +34,12 @@ from gerar_banner_email import (  # noqa: E402
     _reais,
 )
 
-SAIDA = Path(__file__).resolve().parent / "src" / "campanha" / "dados.json"
+AQUI = Path(__file__).resolve().parent
+SAIDA = AQUI / "src" / "campanha" / "dados.json"
+# O Remotion só serve arquivos de public/. Os cards antes/agora (gerar_cards_antes_agora.py)
+# entram no reel B copiados para lá; a pasta é ignorada pelo git porque é cópia.
+CARDS = REPO_ROOT / "marketing" / "instagram" / "cards-antes-agora"
+PUBLICO = AQUI / "public" / "campanha"
 
 
 def exportar():
@@ -57,6 +63,9 @@ def exportar():
     dados["produto"]["percentualAgora"] = vitrine._percentual(dados["produto"]["percentualAgora"])
     dados["produto"]["valorAntes"] = vitrine._reais(dados["produto"]["valorAntes"])
     dados["produto"]["valorAgora"] = vitrine._reais(dados["produto"]["valorAgora"])
+    PUBLICO.mkdir(parents=True, exist_ok=True)
+    for nome in ("card-antes.png", "card-agora.png"):
+        shutil.copy(CARDS / nome, PUBLICO / nome)
     SAIDA.write_text(json.dumps(dados, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
     print("gerado:", SAIDA.relative_to(REPO_ROOT))
     print(json.dumps(dados, ensure_ascii=False, indent=2))
