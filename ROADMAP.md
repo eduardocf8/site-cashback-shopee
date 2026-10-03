@@ -2062,6 +2062,12 @@ a 50% da comissão; nenhum pedido passa de 100%. Na coorte de 09 a 28/09: cashba
       com a conta lado a lado. % e valor seguem a conta do site (`% x multiplicador`, valor sobre
       o preço base); a multiplicação sai de `gerar_banner_email.py`. `gerar_cards_vitrine._pagina`
       ganhou o parâmetro `percentual_direta` para reaproveitar o card sem copiar o HTML.
+- [x] **Carrossel 12 da campanha** (`marketing/instagram/gerar_carrossel_10_10.py` ->
+      `carrossel-12-10-10/`, 5 slides + `legenda.txt`): capa, como funciona (3 passos), quanto
+      você recebe (1,6% -> 2,4% e 1% -> 1,5%), exemplo com o Kit Peseira da vitrine
+      (5,8% / R$ 4,05 -> 8,7% / R$ 6,08) e bom saber. Números vindos de `gerar_banner_email.py`
+      e `gerar_cards_vitrine.PRODUTO`. A legenda não diz "hoje", porque o post fica no perfil
+      depois do dia.
 - [x] 33 testes novos.
 
 **Para ligar a campanha:** no admin, "Campanhas de cashback" -> multiplicador `1.5`, início
