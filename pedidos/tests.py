@@ -1,6 +1,6 @@
 from datetime import date, datetime, timedelta, timezone as dt_timezone
 from decimal import Decimal
-from io import BytesIO
+from io import BytesIO, StringIO
 from unittest.mock import patch
 
 from openpyxl import load_workbook
@@ -8,6 +8,7 @@ from openpyxl import load_workbook
 from django.contrib import admin
 from django.contrib.auth import get_user_model
 from django.core import mail
+from django.core.management import call_command
 from django.db import connection
 from django.test import TestCase, override_settings
 from django.test.utils import CaptureQueriesContext
@@ -2005,3 +2006,199 @@ class SaldoPorUsuarioAdminViewTests(TestCase):
         self.assertContains(resposta, "compradora")
         self.assertContains(resposta, "R$ 25,00")
         self.assertContains(resposta, "acumulado até hoje")
+
+
+
+class FaixaCampanhaTests(TestCase):
+    """A faixa do site anuncia a campanha. O que importa provar: ela nunca anuncia uma
+    campanha diferente da que está pagando, e o texto não promete mais do que o sistema paga."""
+
+    def setUp(self):
+        self.agora = timezone.now()
+
+    def _campanha(self, multiplicador="1.5", inicio_em_dias=-1, fim_em_dias=1):
+        return CampanhaCashback.objects.create(
+            multiplicador=Decimal(multiplicador),
+            inicio=self.agora + timedelta(days=inicio_em_dias),
+            fim=None if fim_em_dias is None else self.agora + timedelta(days=fim_em_dias),
+        )
+
+    def test_percentual_extra_sai_do_multiplicador(self):
+        self.assertEqual(CampanhaCashback(multiplicador=Decimal("1.5")).percentual_extra, 50)
+        self.assertEqual(CampanhaCashback(multiplicador=Decimal("2")).percentual_extra, 100)
+        self.assertEqual(CampanhaCashback(multiplicador=Decimal("1.25")).percentual_extra, 25)
+
+    def test_sem_campanha_nao_ha_faixa(self):
+        self.assertIsNone(CampanhaCashback.para_faixa(self.agora))
+
+    def test_campanha_em_curso_vira_faixa_ativa(self):
+        c = self._campanha()
+        faixa = CampanhaCashback.para_faixa(self.agora)
+        self.assertTrue(faixa["ativa"])
+        self.assertEqual(faixa["campanha"], c)
+
+    def test_campanha_que_comeca_em_ate_3_dias_vira_aviso(self):
+        c = self._campanha(inicio_em_dias=2, fim_em_dias=3)
+        faixa = CampanhaCashback.para_faixa(self.agora)
+        self.assertFalse(faixa["ativa"])
+        self.assertEqual(faixa["campanha"], c)
+
+    def test_campanha_longe_demais_nao_vira_aviso(self):
+        self._campanha(inicio_em_dias=4, fim_em_dias=5)
+        self.assertIsNone(CampanhaCashback.para_faixa(self.agora))
+
+    def test_campanha_encerrada_nao_vira_faixa(self):
+        self._campanha(inicio_em_dias=-5, fim_em_dias=-1)
+        self.assertIsNone(CampanhaCashback.para_faixa(self.agora))
+
+    def test_multiplicador_1_nao_gera_faixa(self):
+        self._campanha(multiplicador="1")
+        self.assertIsNone(CampanhaCashback.para_faixa(self.agora))
+
+    def test_em_curso_tem_prioridade_sobre_a_que_vem_ai(self):
+        atual = self._campanha(inicio_em_dias=-1, fim_em_dias=1)
+        self._campanha(inicio_em_dias=2, fim_em_dias=3)
+        self.assertEqual(CampanhaCashback.para_faixa(self.agora)["campanha"], atual)
+
+    def test_entre_duas_futuras_avisa_a_mais_proxima(self):
+        proxima = self._campanha(inicio_em_dias=1, fim_em_dias=2)
+        self._campanha(inicio_em_dias=3, fim_em_dias=4)
+        self.assertEqual(CampanhaCashback.para_faixa(self.agora)["campanha"], proxima)
+
+    def test_campanha_sem_fim_continua_ativa(self):
+        self._campanha(fim_em_dias=None)
+        self.assertTrue(CampanhaCashback.para_faixa(self.agora)["ativa"])
+
+    # --- o que aparece de fato nas páginas
+
+    def test_home_mostra_50_por_cento_a_mais_quando_ativa(self):
+        self._campanha()
+        resposta = self.client.get(reverse("home"))
+        self.assertContains(resposta, "faixa-campanha")
+        self.assertContains(resposta, "50% a mais de cashback")
+        self.assertNotContains(resposta, "+50%")
+
+    def test_campanha_de_um_dia_diz_no_dia_e_nao_diz_a_hora(self):
+        hoje = timezone.localtime(self.agora)
+        inicio = hoje.replace(hour=0, minute=0, second=0, microsecond=0)
+        CampanhaCashback.objects.create(
+            multiplicador=Decimal("1.5"), inicio=inicio, fim=inicio.replace(hour=23, minute=59, second=59)
+        )
+        resposta = self.client.get(reverse("home"))
+        self.assertContains(resposta, f"em toda compra no {hoje:%d/%m}.")
+        self.assertNotContains(resposta, "23h59")
+
+    def test_campanha_de_varios_dias_diz_ate_e_nao_no(self):
+        self._campanha(inicio_em_dias=-1, fim_em_dias=2)
+        fim = timezone.localtime(self.agora + timedelta(days=2))
+        resposta = self.client.get(reverse("home"))
+        self.assertContains(resposta, f"em toda compra até {fim:%d/%m}.")
+
+    def test_campanha_sem_fim_diz_por_tempo_limitado(self):
+        self._campanha(fim_em_dias=None)
+        self.assertContains(self.client.get(reverse("home")), "por tempo limitado")
+
+    def test_um_so_dia_so_vale_com_fim_no_mesmo_dia_local(self):
+        inicio = timezone.localtime(self.agora).replace(hour=1)
+        self.assertTrue(CampanhaCashback(inicio=inicio, fim=inicio.replace(hour=23)).um_so_dia)
+        self.assertFalse(CampanhaCashback(inicio=inicio, fim=inicio + timedelta(days=1)).um_so_dia)
+        self.assertFalse(CampanhaCashback(inicio=inicio, fim=None).um_so_dia)
+
+    def test_multiplicador_2_vira_em_dobro(self):
+        self._campanha(multiplicador="2")
+        resposta = self.client.get(reverse("home"))
+        self.assertContains(resposta, "Cashback em dobro")
+        self.assertNotContains(resposta, "100% a mais")
+
+    def test_aviso_previo_diz_o_dia_e_nao_diz_ate_quando(self):
+        inicio = (self.agora + timedelta(days=2)).replace(hour=3, minute=0)
+        CampanhaCashback.objects.create(multiplicador=Decimal("1.5"), inicio=inicio, fim=inicio + timedelta(hours=20))
+        resposta = self.client.get(reverse("home"))
+        self.assertContains(resposta, "50% a mais de cashback")
+        self.assertContains(resposta, f"Dia {timezone.localtime(inicio):%d.%m}")
+
+    def test_sem_campanha_a_pagina_nao_tem_faixa(self):
+        resposta = self.client.get(reverse("home"))
+        self.assertNotContains(resposta, "faixa-campanha")
+
+    def test_faixa_aparece_na_pagina_de_cadastro_onde_o_anuncio_aponta(self):
+        self._campanha()
+        resposta = self.client.get(reverse("registrar"))
+        self.assertContains(resposta, "50% a mais de cashback")
+
+    def test_faixa_aparece_na_lista_de_ofertas(self):
+        self._campanha()
+        resposta = self.client.get(reverse("ofertas_lista"))
+        self.assertContains(resposta, "50% a mais de cashback")
+
+
+class SimularCampanhaTests(TestCase):
+    """O comando responde se uma campanha dá prejuízo. O que ele precisa acertar: normalizar o
+    multiplicador que já estava gravado, separar indireta de vitrine e não contar bônus de
+    indicação nem pedido cancelado."""
+
+    def setUp(self):
+        self.usuario = get_user_model().objects.create_user(username="u", password="x", cpf="39053344705")
+        self.n = 0
+
+    def _pedido(self, comissao, cashback, tipo=Click.TIPO_PRODUTO, status=Pedido.STATUS_VALIDADO,
+                multiplicador="1", valor="100.00", dias_atras=3):
+        self.n += 1
+        click = Click.objects.create(usuario=self.usuario, tipo=tipo, url_original="https://shopee.com.br/x",
+                                     link_gerado="https://s.shopee.com.br/y")
+        return Pedido.objects.create(
+            order_id=f"ORD-{self.n}", conversion_id="1", click=click, usuario=self.usuario, status=status,
+            valor_pedido=Decimal(valor), valor_comissao=Decimal(comissao), valor_cashback=Decimal(cashback),
+            multiplicador_campanha=Decimal(multiplicador),
+            data_compra=timezone.now() - timedelta(days=dias_atras),
+        )
+
+    def _rodar(self, **opcoes):
+        saida = StringIO()
+        call_command("simular_campanha", stdout=saida, **opcoes)
+        return saida.getvalue()
+
+    def test_margem_simulada_com_multiplicador(self):
+        self._pedido("8.00", "1.60")                       # 20% da comissão
+        saida = self._rodar(multiplicador="1.5")
+        self.assertRegex(saida, r"cashback hoje\s+R\$ 1,60")
+        self.assertRegex(saida, r"cashback simulado \(x1\.5\)\s+R\$ 2,40")
+        self.assertRegex(saida, r"margem simulada\s+R\$ 5,60")
+        self.assertIn("Nenhum pedido pagaria mais cashback do que a comissão", saida)
+
+    def test_indireta_a_33_por_cento_nao_da_prejuizo_a_1_5_mas_da_a_3(self):
+        self._pedido("3.00", "1.00", tipo=Click.TIPO_HOME)  # 1% de cashback sobre 3% de comissão
+        self.assertIn("Nenhum pedido pagaria mais", self._rodar(multiplicador="1.5"))
+        saida = self._rodar(multiplicador="3.5")
+        self.assertIn("1 pedido(s) pagariam MAIS cashback", saida)
+
+    def test_normaliza_o_multiplicador_ja_gravado(self):
+        # pedido feito durante uma campanha x2: cashback gravado 3,20 vem de uma base de 1,60
+        self._pedido("8.00", "3.20", multiplicador="2")
+        saida = self._rodar(multiplicador="1.5")
+        self.assertRegex(saida, r"cashback hoje\s+R\$ 1,60")
+        self.assertRegex(saida, r"cashback simulado \(x1\.5\)\s+R\$ 2,40")
+
+    def test_separa_indireta_de_vitrine(self):
+        self._pedido("8.00", "1.60", tipo=Click.TIPO_VITRINE)
+        self._pedido("3.00", "1.00", tipo=Click.TIPO_HOME)
+        saida = self._rodar()
+        self.assertRegex(saida, r"link / vitrine\s+1 pedidos")
+        self.assertRegex(saida, r"indireta\)\s+1 pedidos")
+
+    def test_cancelado_e_fora_da_janela_nao_entram(self):
+        self._pedido("8.00", "1.60", status=Pedido.STATUS_CANCELADO)
+        self._pedido("8.00", "1.60", dias_atras=90)
+        self.assertIn("Nenhum pedido na janela", self._rodar(dias=60))
+
+    def test_pedido_de_bonus_de_indicacao_fica_de_fora(self):
+        pedido = self._pedido("8.00", "3.20")              # já dobrado pela indicação
+        outro = get_user_model().objects.create_user(username="i", password="x", cpf="52998224725")
+        Indicacao.objects.create(indicador=outro, indicado=self.usuario, pedido_bonus_indicado=pedido)
+        saida = self._rodar()
+        self.assertIn("fora da conta (bônus de indicação): 1", saida)
+        self.assertIn("Nenhum pedido na janela", saida)
+
+    def test_multiplicador_invalido_da_erro_claro(self):
+        with self.assertRaisesMessage(Exception, "precisa ser um número"):
+            self._rodar(multiplicador="abc")

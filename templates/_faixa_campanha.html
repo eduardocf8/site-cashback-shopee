@@ -1,0 +1,29 @@
+{% comment %}
+Faixa de campanha de cashback (ver pedidos/templatetags/campanha_tags.py). Autocontida de
+propósito: cada página do site tem o próprio CSS embutido, então a faixa leva o dela e só
+usa as variáveis da marca com valor de reserva.
+
+O texto diz "50% a mais de cashback", e não "+50%": "+50%" pode ser lido como "cashback de
+50%", e é exatamente o mal-entendido que vira reclamação depois. Em campanha de multiplicador
+2, o número vira "cashback em dobro".
+{% endcomment %}
+{% if faixa %}
+{% with campanha=faixa.campanha %}
+<style>
+    .faixa-campanha { background: var(--highlight, #f59e0b); color: var(--ink, #111827); text-align: center;
+        padding: 10px 16px; font-size: 14px; font-weight: 700; line-height: 1.4; }
+    .faixa-campanha a { color: inherit; text-decoration: underline; white-space: nowrap; }
+</style>
+<div class="faixa-campanha" role="status">
+    {% if faixa.ativa %}
+        {% if campanha.percentual_extra == 100 %}Cashback em dobro{% else %}{{ campanha.percentual_extra }}% a mais de cashback{% endif %}
+        em toda compra{% if campanha.fim %}{% if campanha.um_so_dia %} no {% else %} até {% endif %}{{ campanha.fim|date:"d/m" }}{% else %} por tempo limitado{% endif %}.
+        <a href="{% url 'ofertas_lista' %}">Ver ofertas</a>
+    {% else %}
+        Dia {{ campanha.inicio|date:"d.m" }}:
+        {% if campanha.percentual_extra == 100 %}cashback em dobro{% else %}{{ campanha.percentual_extra }}% a mais de cashback{% endif %}
+        em toda compra.
+    {% endif %}
+</div>
+{% endwith %}
+{% endif %}

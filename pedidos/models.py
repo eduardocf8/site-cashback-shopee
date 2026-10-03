@@ -1,7 +1,9 @@
+from datetime import timedelta
 from decimal import Decimal
 
 from django.conf import settings
 from django.db import models
+from django.utils import timezone
 
 from links.models import Click
 
@@ -143,6 +145,51 @@ class CampanhaCashback(models.Model):
             if campanha.inicio <= momento and (campanha.fim is None or campanha.fim >= momento):
                 return campanha.multiplicador
         return Decimal("1")
+
+    # Quantos dias antes do início a faixa do site já avisa que a campanha vem aí. 3 dias é
+    # o bastante para quem entrar no site marcar a data, e curto o bastante para a faixa não
+    # virar parte fixa da página.
+    DIAS_AVISO_PREVIO = 3
+
+    @property
+    def percentual_extra(self) -> int:
+        """Quanto a mais de cashback a campanha paga, em %: multiplicador 1,5 = 50,
+        multiplicador 2 = 100. É o número que vai nas artes e na faixa, e sai daqui para
+        nunca divergir do que o sistema de fato paga."""
+        return int(((self.multiplicador - 1) * 100).quantize(Decimal("1")))
+
+    @property
+    def um_so_dia(self) -> bool:
+        """True se a campanha começa e termina no mesmo dia (no horário local). É o que decide
+        entre "no 10/10" e "até 12/10" na faixa do site: "no" só é verdade para um dia."""
+        if self.fim is None:
+            return False
+        return timezone.localtime(self.inicio).date() == timezone.localtime(self.fim).date()
+
+    @classmethod
+    def para_faixa(cls, agora=None, campanhas: "list[CampanhaCashback] | None" = None):
+        """Dados da faixa de campanha do site, ou None se não há o que mostrar.
+
+        Mostra a campanha em curso e, se não houver nenhuma, a que começa nos próximos
+        DIAS_AVISO_PREVIO dias. A escolha da campanha em curso segue a mesma regra de
+        multiplicador_em (a primeira que cobre o momento, da mais recente para a mais
+        antiga): a faixa nunca anuncia uma campanha diferente da que está pagando.
+
+        Campanha com multiplicador 1 (ou menor) não gera faixa - não tem o que anunciar."""
+        agora = agora or timezone.now()
+        campanhas = cls.listar() if campanhas is None else campanhas
+
+        for campanha in campanhas:
+            if campanha.inicio <= agora and (campanha.fim is None or campanha.fim >= agora):
+                if campanha.multiplicador > 1:
+                    return {"ativa": True, "campanha": campanha}
+                break
+
+        limite = agora + timedelta(days=cls.DIAS_AVISO_PREVIO)
+        proximas = [c for c in campanhas if c.multiplicador > 1 and agora < c.inicio <= limite]
+        if proximas:
+            return {"ativa": False, "campanha": min(proximas, key=lambda c: c.inicio)}
+        return None
 
     @classmethod
     def multiplicador_atual(cls) -> Decimal:

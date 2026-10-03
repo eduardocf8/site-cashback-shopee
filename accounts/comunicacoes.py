@@ -84,8 +84,17 @@ def _texto_para_html(corpo: str) -> str:
     é texto puro digitado no formulário, nunca deve virar HTML de verdade."""
     paragrafos = [p.strip() for p in corpo.split("\n\n") if p.strip()]
     return "".join(
-        f"<p style='margin:0 0 12px;'>{escape(p).replace(chr(10), '<br>')}</p>" for p in paragrafos
+        f"<p style='margin:0 0 12px;'>{_sem_quebra_no_nome(escape(p)).replace(chr(10), '<br>')}</p>"
+        for p in paragrafos
     )
+
+
+def _sem_quebra_no_nome(texto_escapado: str) -> str:
+    """Impede a quebra de linha no hífen de "cash-b" (e de "cash-b.com"). O texto vem digitado
+    no admin e o navegador quebra depois de qualquer hífen, o que partia o nome em "cash-" e "b".
+    Roda DEPOIS do escape, sobre o texto já seguro, e só envolve o nome num span: o texto
+    copiado continua sendo "cash-b"."""
+    return texto_escapado.replace("cash-b", '<span style="white-space:nowrap;">cash-b</span>')
 
 
 def _rodape_descadastro_texto(link: str) -> str:
@@ -96,7 +105,8 @@ def _rodape_descadastro_texto(link: str) -> str:
 
 
 def renderizar_corpo_html(
-    corpo: str, ofertas, request, link_descadastro: str | None = None, banner_url: str | None = None
+    corpo: str, ofertas, request, link_descadastro: str | None = None, banner_url: str | None = None,
+    assunto: str = "",
 ) -> str:
     """request é necessário pra montar o link absoluto (https://cash-b.com/...) de
     cada oferta - fora de uma view não tem como saber o domínio."""
@@ -113,6 +123,16 @@ def renderizar_corpo_html(
             "ofertas_em_linhas": linhas,
             "link_descadastro": link_descadastro,
             "banner_url": banner_url,
+            # Texto alternativo do banner: o corpo digitado, numa linha só. Quem bloqueia imagens (o
+            # caso típico do Outlook) vê o HTML sem o banner, e o que aparece no lugar dele é
+            # este texto - então ele precisa carregar a mensagem, não só o assunto. Quem vê a
+            # imagem não vê duplicação (alt não aparece), e leitores de tela leem o texto inteiro.
+            # O assunto só entra se o corpo estiver vazio.
+            "banner_alt": " ".join(corpo.split()) or assunto,
+            # O banner leva à vitrine (onde se compra); o "cash-b.com" do rodapé, à home.
+            "link_site": request.build_absolute_uri(reverse("ofertas_lista")) + "?utm_source=email&utm_medium=comunicacao",
+            "link_home": request.build_absolute_uri(reverse("home")) + "?utm_source=email&utm_medium=comunicacao",
+            "link_instagram": settings.URL_INSTAGRAM,
         },
     )
 
@@ -153,7 +173,9 @@ def enviar_comunicacao(
     banner_url = request.build_absolute_uri(comunicacao.banner.url) if comunicacao.banner and request else None
     corpo_enviado = corpo + (_rodape_descadastro_texto(link_descadastro) if link_descadastro else "")
     corpo_html = (
-        renderizar_corpo_html(corpo, ofertas, request, link_descadastro=link_descadastro, banner_url=banner_url)
+        renderizar_corpo_html(
+            corpo, ofertas, request, link_descadastro=link_descadastro, banner_url=banner_url, assunto=assunto
+        )
         if (ofertas or banner_url) and request
         else ""
     )

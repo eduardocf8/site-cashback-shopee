@@ -740,6 +740,17 @@ class RenderizarCorpoHtmlTests(TestCase):
         self.assertNotIn("<script>alert(1)</script>", html)
         self.assertIn("&lt;script&gt;", html)
 
+    def test_nome_da_marca_no_corpo_nao_quebra_linha_no_hifen(self):
+        html = renderizar_corpo_html("Entre em cash-b.com e veja a cash-b.", [], self.request)
+        self.assertEqual(html.count('<span style="white-space:nowrap;">cash-b</span>'), 2)
+        # o span envolve só o nome: o resto do texto, inclusive o ".com", fica como estava
+        self.assertIn('nowrap;">cash-b</span>.com', html)
+
+    def test_nowrap_do_nome_nao_abre_brecha_para_html_digitado(self):
+        html = renderizar_corpo_html("<b>cash-b</b>", [], self.request)
+        self.assertIn("&lt;b&gt;", html)
+        self.assertNotIn("<b>", html)
+
     def test_sem_ofertas_nao_quebra(self):
         html = renderizar_corpo_html("Só um aviso, sem produtos.", [], self.request)
         self.assertIn("Só um aviso, sem produtos.", html)
@@ -753,6 +764,68 @@ class RenderizarCorpoHtmlTests(TestCase):
     def test_sem_banner_nao_inclui_a_tag_de_imagem_do_banner(self):
         html = renderizar_corpo_html("Só texto.", [], self.request)
         self.assertNotIn('<img src="" alt=""', html)
+
+    # --- banner que carrega o conteúdo inteiro do e-mail
+
+    def test_banner_leva_o_corpo_como_texto_alternativo(self):
+        # Quem bloqueia imagens vê o HTML sem o banner, e o que aparece no lugar é o alt. Com o
+        # corpo escondido do HTML, o alt tem de carregar a mensagem, não só o assunto.
+        html = renderizar_corpo_html(
+            "No dia 10/10,\n\ntodos os pedidos terão 50% a mais.", [], self.request,
+            banner_url="https://cash-b.com/b.png", assunto="10.10: 50% a mais de cashback",
+        )
+        self.assertIn('alt="No dia 10/10, todos os pedidos terão 50% a mais."', html)
+        self.assertNotIn('alt="10.10: 50% a mais de cashback"', html)
+
+    def test_texto_alternativo_cai_no_assunto_se_o_corpo_estiver_vazio(self):
+        html = renderizar_corpo_html("", [], self.request, banner_url="https://cash-b.com/b.png",
+                                     assunto="10.10: 50% a mais de cashback")
+        self.assertIn('alt="10.10: 50% a mais de cashback"', html)
+
+    def test_texto_alternativo_escapa_aspas_e_html_do_corpo(self):
+        html = renderizar_corpo_html('Dia "10" <script>x</script>', [], self.request,
+                                     banner_url="https://cash-b.com/b.png")
+        self.assertNotIn("<script>", html)
+        self.assertIn('alt="Dia &quot;10&quot; &lt;script&gt;x&lt;/script&gt;"', html)
+
+    def test_banner_e_clicavel_e_leva_ao_site_com_utm(self):
+        html = renderizar_corpo_html("Confira!", [], self.request, banner_url="https://cash-b.com/b.png")
+        link = reverse("ofertas_lista") + "?utm_source=email&amp;utm_medium=comunicacao"
+        self.assertIn(f'<a href="http://testserver{link}"', html)
+
+    @override_settings(URL_INSTAGRAM="https://www.instagram.com/usecashb/")
+    def test_rodape_tem_link_proprio_para_o_site_e_para_o_instagram(self):
+        # Uma imagem só pode ter um link: "cash-b.com" e "@usecashb" desenhados dentro dela não
+        # seriam clicáveis (e o do Instagram cairia na vitrine). No rodapé em HTML, cada um leva
+        # ao seu destino.
+        html = renderizar_corpo_html("Confira!", [], self.request, banner_url="https://cash-b.com/b.png")
+        home = reverse("home") + "?utm_source=email&amp;utm_medium=comunicacao"
+        self.assertIn(f'<a href="http://testserver{home}" style="color:#e9e1fb; text-decoration:underline;">cash-b.com</a>', html)
+        self.assertIn('href="https://www.instagram.com/usecashb/" style="color:#e9e1fb; text-decoration:underline;">@usecashb</a>', html)
+        self.assertIn("Sem mensalidade. Sem taxa.", html)
+
+    def test_com_banner_o_corpo_nao_aparece_em_html_mas_o_banner_sim(self):
+        # o banner é o conteúdo do e-mail; repetir o texto num cartão embaixo só duplica.
+        # O corpo só aparece como texto alternativo da imagem (quando ela é bloqueada).
+        texto = "Texto que só vale na versão sem imagem"
+        html = renderizar_corpo_html(texto, [], self.request, banner_url="https://cash-b.com/b.png")
+        self.assertEqual(html.count(texto), 1)
+        self.assertIn(f'alt="{texto}"', html)
+        self.assertIn("https://cash-b.com/b.png", html)
+
+    def test_sem_banner_o_corpo_continua_aparecendo(self):
+        html = renderizar_corpo_html("Só texto, sem imagem.", [], self.request)
+        self.assertIn("Só texto, sem imagem.", html)
+
+    def test_os_botoes_de_baixo_do_banner_nao_existem_mais(self):
+        html = renderizar_corpo_html("Confira!", [], self.request, banner_url="https://cash-b.com/b.png")
+        self.assertNotIn(">Ver ofertas</a>", html)
+        self.assertNotIn("Instagram @usecashb", html)
+
+    def test_sem_banner_nao_ha_rodape_nem_links_de_marca(self):
+        html = renderizar_corpo_html("Só texto.", [], self.request)
+        self.assertNotIn("Sem mensalidade", html)
+        self.assertNotIn("instagram.com", html)
 
 
 class EnviarComunicacaoComOfertasTests(TestCase):
@@ -863,6 +936,12 @@ class EnviarComunicacaoComBannerTests(TestCase):
         self.assertTrue(comunicacao.banner)
         self.assertIn(comunicacao.banner.url, html_enviado)
         self.assertIn(comunicacao.banner.url, comunicacao.corpo_html)
+        # o corpo digitado vira o texto alternativo do banner (o que aparece se a imagem não carregar)
+        self.assertIn('alt="Confira!"', html_enviado)
+        # o corpo digitado não aparece como cartão no HTML (o banner é o conteúdo), mas vai na
+        # versão em texto
+        self.assertNotIn("<p style='margin:0 0 12px;'>Confira!", html_enviado)
+        self.assertIn("Confira!", MockEmail.call_args.kwargs["body"])
 
     @patch("accounts.comunicacoes.EmailMultiAlternatives")
     def test_sem_banner_nao_grava_arquivo_nem_anexa_html(self, MockEmail):

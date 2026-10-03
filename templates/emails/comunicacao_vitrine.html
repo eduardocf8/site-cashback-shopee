@@ -10,14 +10,56 @@
 </td></tr>
 
 {% if banner_url %}
+{% comment %}
+Banner que carrega o conteúdo inteiro do e-mail (como nos e-mails da Shopee). O que não cabe
+numa imagem vive aqui, em HTML de verdade:
+
+- o texto alternativo (o corpo digitado, numa linha), que é o que aparece no lugar do banner
+  para quem tem imagem bloqueada - sem ele o e-mail chega em branco;
+- o link no banner, porque uma imagem sozinha não leva a lugar nenhum;
+- o RODAPÉ, colado no pé da imagem. Uma imagem só pode ter UM link, então "cash-b.com" e
+  "@usecashb" desenhados dentro dela seriam pixels, não links - e quem tocasse no Instagram
+  cairia na vitrine. Aqui cada um é um link e leva ao seu destino.
+
+A imagem tem só o topo arredondado e o rodapé só o pé, para os dois formarem um bloco único. Os
+dois ficam na mesma largura e sem espaço entre eles. O rodapé usa cor sólida (bgcolor) com o
+degradê por cima: Outlook ignora o degradê e fica na cor sólida, sem quebrar.
+
+O padding de baixo do rodapé (22px) iguala a margem de baixo à de cima do banner (selo, 30
+unidades de uma tela de 400) na largura de celular: o e-mail aparece com ~343px, escala 0,86, e
+30 unidades viram ~26px. São 22 e não 26 porque a caixa de texto tem ~4px de folga de entrelinha
+que o olho não vê - medido nos pixels: 26,0px em cima e 25,7px embaixo a 375px de tela. As duas
+margens só batem numa largura, e é essa; a 390px a diferença é de 1px, a 560px (desktop), de
+~15px, porque a imagem escala e o rodapé não.
+{% endcomment %}
+<tr><td style="padding:0 16px;">
+    <a href="{{ link_site }}" style="text-decoration:none;">
+        <img src="{{ banner_url }}" alt="{{ banner_alt }}" width="100%" style="display:block; width:100%; max-width:100%; height:auto; border-radius:12px 12px 0 0; border:0;">
+    </a>
+</td></tr>
 <tr><td style="padding:0 16px 16px;">
-    <img src="{{ banner_url }}" alt="" width="100%" style="display:block; width:100%; max-width:100%; height:auto; border-radius:12px;">
+    <div bgcolor="#5b21b6" style="background-color:#5b21b6; background-image:linear-gradient(160deg, #4c1d95 0%, #6d28d9 100%); border-radius:0 0 12px 12px; padding:26px 20px 22px; text-align:center; font-family:Arial, Helvetica, sans-serif;">
+        <div style="font-size:18px; font-weight:bold; color:#ffffff; line-height:1.25;">Sem mensalidade. Sem taxa.</div>
+        <div style="margin-top:8px; font-size:14px; line-height:1.4; color:#e9e1fb;">
+            <a href="{{ link_home }}" style="color:#e9e1fb; text-decoration:underline;">cash-b.com</a>
+            &nbsp;&middot;&nbsp;
+            <a href="{{ link_instagram }}" style="color:#e9e1fb; text-decoration:underline;">@usecashb</a>
+        </div>
+    </div>
 </td></tr>
 {% endif %}
 
+{% comment %}
+Com banner, o conteúdo do e-mail É o banner: repetir o texto num cartão embaixo só duplica o que
+a imagem já diz. O corpo digitado no admin continua indo na versão em TEXTO do e-mail e é o
+texto alternativo do banner (aparece no lugar dele quando a imagem não carrega); só não
+aparece aqui em HTML como cartão.
+{% endcomment %}
+{% if not banner_url %}
 <tr><td style="background:#ffffff; border-radius:12px; padding:24px 20px; color:#111827; font-size:15px; line-height:1.5;">
     {{ corpo_html_intro|safe }}
 </td></tr>
+{% endif %}
 
 {% if ofertas %}
 <tr><td style="padding:20px 4px 0;">

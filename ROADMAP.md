@@ -2005,6 +2005,65 @@ destaque no topo da tela, ou só um texto auxiliar).
 
 ---
 
+## Fase 52 — Campanha de datas duplas: 50% a mais de cashback ✅
+
+Primeira campanha: 10.10 (sábado). A mecânica já existia (`CampanhaCashback`, Fase 44);
+faltava o site avisar e uma forma de conferir a margem antes de prometer.
+
+Decisão do dono: **50% a mais** (multiplicador 1,5), não "em dobro". Conferido no código:
+a cash-b repassa 20% da comissão (o piso de 1,6% da venda direta é 20% dos 8% que a Shopee
+paga no mínimo) e na venda indireta repassa 1% de 3% (33%). Com 1,5, o pior caso é a indireta
+a 50% da comissão; nenhum pedido passa de 100%. Na coorte de 09 a 28/09: cashback R$ 45,74
+-> R$ 68,61, margem R$ 156,28 -> R$ 133,41 (-14,6%).
+
+- [x] **`CampanhaCashback.para_faixa()`** - campanha em curso (mesma regra de
+      `multiplicador_em`) ou a que começa em até 3 dias; multiplicador 1 não gera faixa.
+      `percentual_extra` (1,5 = 50) é o número que vai em toda arte.
+- [x] **Faixa no topo da home, ofertas, cadastro/login e painel**
+      (`templates/_faixa_campanha.html` + `{% faixa_campanha %}`). Template tag e não context
+      processor, para só consultar nas páginas que mostram a faixa. Sem cache: aparece e some
+      no mesmo instante em que os cards de oferta mudam. Texto "50% a mais de cashback",
+      nunca "+50%" (lê como "cashback de 50%"); multiplicador 2 vira "Cashback em dobro".
+      Campanha de um dia diz "no 10/10"; de vários dias, "até 12/10" (`um_so_dia`) - "no"
+      só é verdade para um dia. Sem fim definido: "por tempo limitado".
+- [x] **`manage.py simular_campanha`** - refaz o cashback dos pedidos recentes com outro
+      multiplicador e acusa pedido em que o cashback passaria da comissão. Só leitura. Tira
+      bônus de indicação e cancelados; separa indireta de vitrine.
+- [x] **Banner de e-mail com o conteúdo inteiro da campanha**
+      (`marketing/gerar_banner_email.py` -> `banner-email/banner-10-10-completo.png`): topo com
+      data, manchete e parágrafo; como funciona (3 passos); quanto recebe (mínimo direto 1,6% ->
+      2,4%, indireto 1% -> 1,5%, e R$ 100 -> R$ 2,40); bom saber (condições). O rodapé não é da
+      imagem (ver o template, abaixo). Tela de 400 unidades de largura (não 560): no celular o e-mail aparece com
+      ~343px, e fonte de 12,5px sobre 560 viraria 7,6px. Parametrizado por `DATA` e `PERCENTUAL_EXTRA`; os pisos e
+      o saque mínimo vêm de `settings.py` (conferir antes de mandar).
+- [x] **Template do e-mail (`comunicacao_vitrine.html`)**: com banner, ele passa a ser clicável
+      (vitrine, `utm_source=email`), ganha como texto alternativo o CORPO digitado, numa linha (cai no assunto se o corpo estiver vazio) e um **rodapé em HTML**
+      colado no pé da imagem: "Sem mensalidade. Sem taxa." com "cash-b.com" (home) e "@usecashb"
+      (`URL_INSTAGRAM`) como links de verdade. A imagem só tem UM link, então esses dois, se
+      fossem pixels, não clicariam - e o do Instagram cairia na vitrine. Sem fresta entre imagem
+      e rodapé (0px a 375, 390 e 560). Margem de cima e de baixo: 26,0px e 25,7px a 375px de
+      tela; só batem numa largura, porque a imagem escala e o rodapé não.
+- [x] **Com banner, o corpo digitado não aparece em HTML** (o banner é o conteúdo; repetir o
+      texto num cartão embaixo duplicava). O campo "Corpo" continua obrigatório e vai na versão
+      em TEXTO do e-mail e é o texto alternativo do banner. Quem só bloqueia imagens (Outlook) vê o
+      HTML SEM o banner, não a versão em texto: o que aparece no lugar é o alt, então ele carrega
+      a mensagem. Os textos de ajuda do admin dizem isso.
+- [x] **Corpo do e-mail não quebra mais "cash-b" no hífen** (`_sem_quebra_no_nome`): o texto é
+      digitado no admin e o navegador partia o nome em "cash-" e "b".
+- [x] **4 stories da campanha** (`marketing/instagram/gerar_stories_10_10.py` ->
+      `stories-10-10/`): teaser "vem aí", "faltam 2 dias" (1,6% -> 2,4% e 1% -> 1,5%), "hoje"
+      (3 passos, até 23h59) e "últimas horas". Os números vêm de `gerar_banner_email.py`, não
+      são digitados de novo. A peça "faltam 2 dias" só vale postada na quinta 8/10; o teaser e
+      as outras não citam contagem. Margens seguras do Instagram (250px em cima, 300 embaixo),
+      sem a figurinha de contagem regressiva na arte (ela é colada na hora de postar).
+- [x] 33 testes novos.
+
+**Para ligar a campanha:** no admin, "Campanhas de cashback" -> multiplicador `1.5`, início
+10/10/2026 00:00, fim 10/10/2026 23:59:59 (horário de Brasília). Pode ser criada antes: a
+faixa só avisa nos 3 dias anteriores e o cashback só muda a partir do início.
+
+---
+
 Pra continuar esse roadmap numa conversa nova, basta apontar esse arquivo
 (`ROADMAP.md`) e o `BRAND.md` — juntos eles dão o contexto de identidade
 visual e do que falta implementar, sem precisar reconstruir o histórico da
