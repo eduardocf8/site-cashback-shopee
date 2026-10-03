@@ -1,0 +1,21 @@
+{
+  "data": "10.10",
+  "diaMes": "10/10",
+  "percentualExtra": 50,
+  "direta": {
+    "antes": "1,6%",
+    "agora": "2,4%"
+  },
+  "indireta": {
+    "antes": "1%",
+    "agora": "1,5%"
+  },
+  "produto": {
+    "nome": "Kit Peseira para Cama",
+    "preco": "R$ 69,90",
+    "percentualAntes": "5,8%",
+    "percentualAgora": "8,7%",
+    "valorAntes": "R$ 4,05",
+    "valorAgora": "R$ 6,08"
+  }
+}
