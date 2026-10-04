@@ -26,6 +26,18 @@ class InstagramAPIError(Exception):
         self.error_subcode = error_subcode
 
 
+# Dois subcodes que a própria Meta documenta como transitórios ("tenta de novo daqui
+# a pouco"), não erro de verdade - distintos de _SUBCODE_CONTAINER_INVALIDO (esse sim
+# precisa de um container novo, não adianta só esperar):
+#   2207027 "Media ID is not available" - o container ainda não terminou de processar
+#   do lado da Meta. Pode acontecer tanto ao publicar cedo demais (por isso
+#   _aguardar_processamento existe) quanto numa CONSULTA de status feita logo após
+#   criar o container (replicação ainda não propagou do lado da Meta) - visto de novo
+#   em 2026-10-xx mesmo com _aguardar_processamento no meio, porque o GET de status
+#   também pode vir como erro em vez de um status_code comum (ver _aguardar_processamento).
+_SUBCODE_AINDA_NAO_PRONTO = 2207027
+
+
 def _url(caminho: str) -> str:
     return f"{settings.INSTAGRAM_GRAPH_API_URL}/{API_VERSAO}/{caminho}"
 
@@ -63,9 +75,23 @@ def _aguardar_processamento(creation_id: str, tentativas: int = 10, intervalo: f
     Meta) antes de publicar. Sem isso, publicar_container logo em seguida à criação às
     vezes devolve "Media ID is not available" [code=9007, error_subcode=2207027] -
     a Meta documenta esse erro como "a mídia ainda não está pronta pra publicar,
-    aguarde um momento" (ver marketing/instagram/README.md, troubleshooting)."""
+    aguarde um momento" (ver marketing/instagram/README.md, troubleshooting).
+
+    A própria CONSULTA de status (o GET abaixo) também pode devolver esse mesmo erro
+    em vez de um status_code normal - visto de novo em 2026-10-xx, mesmo já tendo essa
+    função no meio: o replay aconteceu bem no início do polling, quando o container
+    ainda nem tinha propagado o suficiente do lado da Meta pra responder o GET direito.
+    Sem tratar isso, a exceção escapava do loop na primeira tentativa, sem nunca
+    chegar a esperar/tentar de novo - por isso trata igual a "ainda não terminou", só
+    que vindo como erro em vez de status_code."""
     for _ in range(tentativas):
-        dados = _chamar("GET", creation_id, fields="status_code")
+        try:
+            dados = _chamar("GET", creation_id, fields="status_code")
+        except InstagramAPIError as erro:
+            if erro.error_subcode == _SUBCODE_AINDA_NAO_PRONTO:
+                time.sleep(intervalo)
+                continue
+            raise
         status = dados.get("status_code")
         if status == "FINISHED":
             return
@@ -106,13 +132,30 @@ def criar_container_midia(image_url: str, legenda: str = "", story: bool = False
     return dados["id"]
 
 
-def publicar_container(creation_id: str) -> str:
-    """Publica um container já criado (passo 2 de 2). Retorna o media_id publicado."""
+def publicar_container(creation_id: str, tentativas: int = 3, intervalo: float = 2.0) -> str:
+    """Publica um container já criado (passo 2 de 2). Retorna o media_id publicado.
+
+    Tenta de novo (mesmo creation_id, só espera um pouco) se a Meta disser que o
+    container ainda não está disponível - mesmo com _aguardar_processamento já tendo
+    visto status_code=FINISHED antes de chamar isso aqui, status=FINISHED não é
+    garantia de que o /media_publish também já está pronto do lado da Meta (replicação
+    entre os serviços dela não é instantânea - ver _SUBCODE_AINDA_NAO_PRONTO)."""
     _exigir_config()
-    dados = _chamar(
-        "POST", f"{settings.INSTAGRAM_BUSINESS_ACCOUNT_ID}/media_publish", creation_id=creation_id
-    )
-    return dados["id"]
+    for tentativa in range(tentativas):
+        try:
+            dados = _chamar(
+                "POST", f"{settings.INSTAGRAM_BUSINESS_ACCOUNT_ID}/media_publish", creation_id=creation_id
+            )
+            return dados["id"]
+        except InstagramAPIError as erro:
+            if tentativa < tentativas - 1 and erro.error_subcode == _SUBCODE_AINDA_NAO_PRONTO:
+                logger.warning(
+                    "[instagram_bot] container %s ainda não disponível pra publicar, tentando de novo: %s",
+                    creation_id, erro,
+                )
+                time.sleep(intervalo)
+                continue
+            raise
 
 
 # "Media not found" - a Meta invalidou o container entre a criação e a publicação

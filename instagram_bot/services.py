@@ -585,9 +585,24 @@ def reprocessar_erros_do_dia(data, request) -> None:
     Chamada por publicar_story_oferta_do_momento, que já roda várias vezes ao dia -
     não precisa de cron dedicado só pra isso.
 
+    NÃO reprocessa CONTEUDO_COMBO_DIARIO de propósito: os 5 stories do combo formam
+    uma sequência (capa -> % -> conta -> R$ -> passos) que só faz sentido na ORDEM em
+    que foram publicados, e o Instagram não deixa reordenar stories depois de
+    publicados. Esse reprocessamento aqui só roda de novo horas depois (no próximo
+    cron de story de oferta) - se um story do combo falhar e os outros 4 já tiverem
+    saído, republicar ele mais tarde o colocaria DEPOIS dos que vieram depois dele na
+    sequência, o que é pior que simplesmente faltar (quem assiste vê os stories fora
+    de ordem, sem entender a lógica). Pro combo, a única defesa é o retry imediato
+    dentro da própria publicação, antes do loop seguir pro próximo story (ver
+    instagram_client.publicar_imagem/_aguardar_processamento/publicar_container) - se
+    mesmo assim falhar, fica como Erro mesmo, pra alguém decidir à mão no Admin se
+    vale a pena postar atrasado e fora de ordem, ou deixar faltando mesmo.
+
     Reaproveita tentar_publicar_de_novo (mesma ação do botão do Admin) - mesmo
     comportamento dos dois lugares, sem duplicar lógica de reconversão/republicação."""
-    erros_de_hoje = RegistroPublicacao.objects.filter(data=data, status=RegistroPublicacao.STATUS_ERRO)
+    erros_de_hoje = RegistroPublicacao.objects.filter(
+        data=data, status=RegistroPublicacao.STATUS_ERRO,
+    ).exclude(conteudo_tipo=RegistroPublicacao.CONTEUDO_COMBO_DIARIO)
     for registro in erros_de_hoje:
         try:
             tentar_publicar_de_novo(registro, request)
