@@ -2088,6 +2088,57 @@ faixa só avisa nos 3 dias anteriores e o cashback só muda a partir do início.
 
 ---
 
+## Fase 53 — Auditoria do FAQ: 29 perguntas sem resposta hoje no site ✅
+
+Usuário trouxe uma auditoria (comparando o site com o que o código realmente faz) com
+29 perguntas que um usuário faria mas as páginas públicas não respondiam, divididas em
+3 grupos: A (13 - resposta já existe no sistema, só faltava publicar), B (12 - precisava
+de decisão do dono do produto) e C (4 - contradições reais no próprio site).
+
+- [x] **Grupo A** (13 perguntas) publicadas no FAQ, cada resposta conferida direto no
+      código antes de escrever (indicação em `pedidos/services.py`, saque em
+      `saques/services.py`, cálculo do cashback em `_montar_defaults`, tipos de chave
+      Pix em `accounts/models.py`) - achei de passagem que o próprio relatório da
+      auditoria esquecia o CNPJ como tipo de chave válido.
+- [x] **Grupo C** (4 contradições) resolvidas: FAQ não mostrava o valor mínimo de saque
+      (só dizia "está no painel"); FAQ/regras chamavam o botão de "Ir para a Shopee" (o
+      nome real é "Ir pra Shopee"); home usava "pode gerar até X%" (condicional, que o
+      VOZ.md evita pro cashback) onde o parágrafo logo acima já usava a forma afirmativa
+      certa; e a contradição real entre "sem comissão, sem cashback" e o piso mínimo
+      (ver continuação da Fase 39, acima) - essa precisou de mudança no cálculo, não só
+      no texto.
+- [x] **Grupo B** (12 perguntas) resolvidas em 2 rodadas de decisão do dono do produto:
+      saque só pra chave do titular, conta só maior de 18 anos, CNPJ divulgado
+      (63.842.267/0001-46), app ainda não publicado nas lojas, prazo do Pix (1 dia útil
+      após aprovado), janela de validade do link (7 dias, só valendo pra compra direta
+      via "Comprar agora" - não carrinho), devolução parcial (perde só o item), Shopee
+      Mall/produto internacional (gera cashback normal), horário de atendimento (1 dia
+      útil).
+- [x] **Revisão do próprio dono encontrou mais 5 furos** depois da 1ª leva: regra dos 7
+      dias e regra do carrinho conviviam mal no texto (reescritas juntas, deixando claro
+      que os 7 dias só valem se a pessoa voltar pelo link e usar "Comprar agora");
+      termos de uso não tinha a regra dos 7 dias (só FAQ/regras tinham - adicionada);
+      chave Pix tipo CNPJ contradizia "precisa ser do titular" (conta é por CPF) -
+      explicado no FAQ que CNPJ vale pra MEI/negócio próprio em nome do mesmo titular;
+      prazo do saque só cobria o Pix, não a aprovação manual (trocado pra "até 2 dias
+      úteis no total, da solicitação até o Pix cair").
+- [x] **Varredura de "pra" vs "para"** (regra do `VOZ.md`: "pra" só quando contrai "para"
+      + "a" artigo feminino) em ~35 ocorrências erradas nos textos público do site
+      (verbo no infinitivo, pronome/advérbio sem artigo, substantivo masculino, nome
+      próprio, e-mail) - `faq.html`, `regras_cashback.html`, `termos.html`,
+      `privacidade.html`, `cashback_vale_a_pena.html`, `e_confiavel.html`,
+      `checklist_cashback_confiavel.html`, `cookies.html`, `home.html`,
+      `dashboard.html`, `login.html`, `senha_resetar.html`, `login_bloqueado.html`,
+      `chave_pix.html`, `link_verificacao.html`, `base.html`. Deixados como estavam os
+      casos realmente corretos ("pra gente" = "para a gente", "pra chave"/"pra sua
+      conta" com substantivo feminino definido, "Ir pra Shopee"/"Ir pra oferta" como
+      nome literal do botão). Não mexido em textos internos (comentários de código,
+      READMEs de automação) - fora do escopo do que o bot lê.
+- [x] Suite completa (2 testes novos em `pedidos/tests.py` pra comissão zerada) rodando
+      a cada rodada, e verificação visual via Playwright em cada página alterada.
+
+---
+
 Pra continuar esse roadmap numa conversa nova, basta apontar esse arquivo
 (`ROADMAP.md`) e o `BRAND.md` — juntos eles dão o contexto de identidade
 visual e do que falta implementar, sem precisar reconstruir o histórico da

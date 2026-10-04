@@ -4,13 +4,13 @@
     <div class="conteudo-centralizado">
         {% if situacao == "reenviado" %}
             <h1>Esse link expirou</h1>
-            <p class="legenda">Por segurança, o link de confirmação vale só por alguns dias. Já mandamos um novo pro seu e-mail — é só clicar nele pra confirmar.</p>
+            <p class="legenda">Por segurança, o link de confirmação vale só por alguns dias. Já mandamos um novo pro seu e-mail — é só clicar nele para confirmar.</p>
         {% elif situacao == "ja_verificado" %}
             <h1>Seu e-mail já está confirmado</h1>
             <p class="legenda">Esse link já não é mais necessário — seu e-mail já está confirmado.</p>
         {% else %}
             <h1>Link inválido</h1>
-            <p class="legenda">Esse link de verificação é inválido ou expirou, e não conseguimos identificar sua conta pra mandar um novo automaticamente. Entre na sua conta e peça um novo direto no painel.</p>
+            <p class="legenda">Esse link de verificação é inválido ou expirou, e não conseguimos identificar sua conta para mandar um novo automaticamente. Entre na sua conta e peça um novo direto no painel.</p>
         {% endif %}
         <p class="rodape"><a href="{% url 'login' %}">Entrar na minha conta</a></p>
     </div>

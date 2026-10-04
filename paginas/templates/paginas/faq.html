@@ -15,7 +15,7 @@
     <details class="faq-item">
         <summary>O que é a cash-b?</summary>
         <p class="faq-resposta">
-            É um serviço de cashback independente pra quem compra na Shopee. Você
+            É um serviço de cashback independente para quem compra na Shopee. Você
             gera um link de afiliado pela cash-b, compra normalmente, e recebe de
             volta uma parte da comissão que a Shopee paga por essa venda. Se ficou
             em dúvida se compensa usar, tem mais detalhes em
@@ -24,11 +24,11 @@
     </details>
 
     <details class="faq-item">
-        <summary>Custa alguma coisa pra usar?</summary>
+        <summary>Custa alguma coisa para usar?</summary>
         <p class="faq-resposta">
             Não. Você paga o mesmo preço de sempre na Shopee — a diferença é que uma
             parte da comissão de afiliado volta pro seu bolso. Não cobramos
-            mensalidade nem taxa nenhuma. Pra entender como o saque é pago e como
+            mensalidade nem taxa nenhuma. Para entender como o saque é pago e como
             seus dados são protegidos, veja
             <a href="{% url 'e_confiavel' %}">a cash-b é confiável?</a>
         </p>
@@ -68,7 +68,7 @@
         <p class="faq-resposta">
             Sim: {{ cashback_minimo_direta|floatformat:"-1" }}% em venda direta e
             {{ cashback_minimo_indireta|floatformat:"-1" }}% em venda indireta, sempre
-            que a Shopee reportar alguma comissão pra aquele produto (mesmo que
+            que a Shopee reportar alguma comissão para aquele produto (mesmo que
             pequena). Produto de categoria sem comissão de afiliado nenhuma (ex:
             alimentos e bebidas) não tem cashback.
         </p>
@@ -107,8 +107,8 @@
             alguns formatos de link — principalmente links curtos do próprio app da
             Shopee — uma restrição de segurança da própria Shopee impede essa consulta
             automática. Isso não afeta o cashback de verdade: o link funciona
-            normalmente e a compra gera cashback do mesmo jeito, só não dá pra confirmar
-            o valor exato na hora. Dá pra conferir no seu painel assim que a Shopee
+            normalmente e a compra gera cashback do mesmo jeito, só não dá para confirmar
+            o valor exato na hora. Dá para conferir no seu painel assim que a Shopee
             validar o pedido.
         </p>
     </details>
@@ -127,7 +127,7 @@
     </details>
 
     <details class="faq-item">
-        <summary>Quando meu pedido passa de Pendente pra Validado?</summary>
+        <summary>Quando meu pedido passa de Pendente para Validado?</summary>
         <p class="faq-resposta">
             Quando a Shopee confirma o pedido como concluído — normalmente depois
             que o prazo de devolução do produto já passou. A confirmação não é
@@ -141,13 +141,13 @@
         <p class="faq-resposta">
             Sim. Ao criar sua conta, mandamos um link de confirmação pro e-mail
             cadastrado (válido por 3 dias). Você já consegue usar o site normalmente
-            antes de confirmar, mas precisa confirmar o e-mail pra poder solicitar um
-            saque. Se não achar o e-mail, dá pra reenviar o link direto no seu painel.
+            antes de confirmar, mas precisa confirmar o e-mail para poder solicitar um
+            saque. Se não achar o e-mail, dá para reenviar o link direto no seu painel.
         </p>
     </details>
 
     <details class="faq-item">
-        <summary>Quanto tempo demora pra meu cashback ser liberado?</summary>
+        <summary>Quanto tempo demora para meu cashback ser liberado?</summary>
         <p class="faq-resposta">
             O saldo validado é liberado no dia 1º do segundo mês seguinte ao mês da
             validação do pedido. Por exemplo: um pedido validado em janeiro
@@ -169,11 +169,14 @@
     <details class="faq-item">
         <summary>Por quanto tempo o link vale depois que eu clico?</summary>
         <p class="faq-resposta">
-            Até 7 dias. Se você clicar num link da cash-b e comprar dentro desse
-            prazo, a compra fica associada à cash-b. Importante: se você clicar em
-            qualquer outro link de afiliado (de outro site ou app de cashback)
-            antes de finalizar a compra, mesmo dentro dos 7 dias, a compra deixa
-            de ficar associada à cash-b e não gera cashback.
+            Até 7 dias — mas valem para compra feita direto pelo botão "Comprar
+            agora", a partir do link. Se dentro desses 7 dias você voltar, acessar
+            o produto pelo link da cash-b de novo e comprar na hora com "Comprar
+            agora", a compra fica associada à cash-b. Comprar pelo carrinho, mesmo
+            dentro desse prazo, não garante o cashback (veja a próxima pergunta).
+            Importante: se você clicar em qualquer outro link de afiliado (de
+            outro site ou app de cashback) antes de finalizar a compra, mesmo
+            dentro dos 7 dias, a compra deixa de ficar associada à cash-b.
         </p>
     </details>
 
@@ -181,9 +184,10 @@
         <summary>Coloquei o produto no carrinho antes de clicar no link da cash-b. A compra conta?</summary>
         <p class="faq-resposta">
             Só conta quando você acessa o produto pelo link da cash-b e compra na
-            hora, pelo botão "Comprar agora". Produto adicionado ao carrinho (antes
-            ou depois de clicar no link) e comprado depois, direto do carrinho,
-            não garante o cashback.
+            hora, pelo botão "Comprar agora" — não pelo carrinho. Isso vale mesmo
+            dentro da janela de 7 dias do link: se você clicar no link hoje, mas
+            comprar depois pelo carrinho em vez de voltar e clicar no link de
+            novo, o cashback não é garantido.
         </p>
     </details>
 
@@ -215,7 +219,7 @@
     </details>
 
     <details class="faq-item">
-        <summary>Qual o valor mínimo pra sacar?</summary>
+        <summary>Qual o valor mínimo para sacar?</summary>
         <p class="faq-resposta">
             R$ {{ saque_valor_minimo|floatformat:2 }}. Só é possível solicitar saque
             do saldo já liberado.
@@ -226,7 +230,7 @@
         <summary>Posso sacar só uma parte do saldo?</summary>
         <p class="faq-resposta">
             Não. O saque é sempre do valor total do saldo liberado disponível — não
-            dá pra escolher sacar só uma parte.
+            dá para escolher sacar só uma parte.
         </p>
     </details>
 
@@ -243,12 +247,14 @@
         <summary>Quais tipos de chave Pix posso cadastrar?</summary>
         <p class="faq-resposta">
             CPF, CNPJ, e-mail, telefone ou chave aleatória. Você cadastra e edita
-            isso direto no seu painel.
+            isso direto no seu painel. A chave CNPJ é para quem é MEI ou tem negócio
+            próprio em nome individual — precisa ser o mesmo titular da sua conta
+            cash-b (seu CPF), não de outra pessoa ou empresa de terceiro.
         </p>
     </details>
 
     <details class="faq-item">
-        <summary>Troquei a chave Pix depois de pedir o saque. Pra onde vai o dinheiro?</summary>
+        <summary>Troquei a chave Pix depois de pedir o saque. Para onde vai o dinheiro?</summary>
         <p class="faq-resposta">
             Pra chave que estava cadastrada no momento em que você solicitou o
             saque — trocar a chave depois não muda um pedido já em andamento.
@@ -263,9 +269,10 @@
     </details>
 
     <details class="faq-item">
-        <summary>Quanto tempo demora o Pix depois que eu peço o saque?</summary>
+        <summary>Quanto tempo demora para receber depois que eu peço o saque?</summary>
         <p class="faq-resposta">
-            Até 1 dia útil depois do saque ser aprovado.
+            Até 2 dias úteis no total, da solicitação até o Pix cair na sua conta
+            (inclui a aprovação, que é feita manualmente pela nossa equipe).
         </p>
     </details>
 
@@ -273,7 +280,7 @@
         <summary>Meu saque falhou. Perdi o dinheiro?</summary>
         <p class="faq-resposta">
             Não. Se um saque falha, o valor volta pro seu saldo disponível
-            automaticamente, e dá pra solicitar de novo. Confira se sua chave Pix
+            automaticamente, e dá para solicitar de novo. Confira se sua chave Pix
             está certa antes de pedir de novo.
         </p>
     </details>
@@ -282,7 +289,7 @@
         <summary>Esqueci minha senha. Como faço?</summary>
         <p class="faq-resposta">
             Na tela de login, clique em "Esqueceu sua senha?" e informe o e-mail
-            cadastrado na sua conta. A gente manda um link pra você criar uma senha
+            cadastrado na sua conta. A gente manda um link para você criar uma senha
             nova.
         </p>
     </details>
@@ -291,7 +298,7 @@
         <summary>Quero trocar minha senha ou editar meus dados cadastrais. Como faço?</summary>
         <p class="faq-resposta">
             Estando logado, use os links "Trocar senha" e "Editar dados" no topo do
-            seu painel. Dá pra atualizar nome de usuário, e-mail e CPF por ali — se
+            seu painel. Dá para atualizar nome de usuário, e-mail e CPF por ali — se
             você mudar o e-mail, precisa confirmar o novo endereço de novo antes de
             poder sacar.
         </p>
@@ -307,7 +314,7 @@
     <details class="faq-item">
         <summary>Menor de idade pode usar a cash-b?</summary>
         <p class="faq-resposta">
-            Não. É preciso ter 18 anos ou mais pra criar uma conta.
+            Não. É preciso ter 18 anos ou mais para criar uma conta.
         </p>
     </details>
 
@@ -322,7 +329,7 @@
         <summary>Vocês têm aplicativo?</summary>
         <p class="faq-resposta">
             A cash-b não tem um app nas lojas (Play Store/App Store) ainda, mas dá
-            pra instalar o site como um app no seu celular: abra o menu do
+            para instalar o site como um app no seu celular: abra o menu do
             navegador e procure a opção "Adicionar à tela de início" (ou
             "Instalar app").
         </p>
@@ -352,7 +359,7 @@
     <details class="faq-item">
         <summary>Como eu excluo minha conta?</summary>
         <p class="faq-resposta">
-            Mande um e-mail pra <a href="mailto:contato@cash-b.com">contato@cash-b.com</a>
+            Mande um e-mail para <a href="mailto:contato@cash-b.com">contato@cash-b.com</a>
             pedindo a exclusão. A gente remove seus dados pessoais, exceto o que
             precisamos manter por obrigação legal (como registros fiscais de
             valores já pagos).
@@ -373,7 +380,7 @@
         <p class="faq-resposta">
             Todo e-mail de promoção ou oferta tem um link "não quero mais receber"
             no rodapé, que leva pra sua página de preferências de e-mail (precisa
-            estar logado pra confirmar). Os e-mails importantes da sua conta —
+            estar logado para confirmar). Os e-mails importantes da sua conta —
             como aviso de saldo liberado e saque pago — continuam chegando
             normalmente, só os promocionais param.
         </p>

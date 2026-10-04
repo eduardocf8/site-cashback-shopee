@@ -265,7 +265,7 @@
                     <span class="balao-ajuda" id="ajuda-saldo-texto" role="tooltip">
                         <p><strong>Pendente</strong>: aguardando confirmação da Shopee.</p>
                         <p><strong>Validado</strong>: confirmado, aguardando o prazo de liberação.</p>
-                        <p><strong>Liberado</strong>: confirmado e ainda disponível pra saque via Pix.</p>
+                        <p><strong>Liberado</strong>: confirmado e ainda disponível para saque via Pix.</p>
                         <p><strong>Já sacado</strong>: já solicitado ou pago em algum saque anterior.</p>
                         <p><strong>Cancelado</strong>: pedidos cancelados ou não pagos não geram cashback.</p>
                     </span>
@@ -339,12 +339,12 @@
                     {% else %}
                         <div class="progresso-saque">
                             <div class="progresso-saque-legenda">
-                                <span>R$ {{ saldo_disponivel|floatformat:2 }} de R$ {{ saque_valor_minimo|floatformat:2 }} pra sacar</span>
+                                <span>R$ {{ saldo_disponivel|floatformat:2 }} de R$ {{ saque_valor_minimo|floatformat:2 }} para sacar</span>
                                 <span>{{ progresso_saque_percentual }}%</span>
                             </div>
                             <div class="progresso-saque-barra"><span style="width: {{ progresso_saque_percentual }}%;"></span></div>
                         </div>
-                        <p class="legenda">Continue comprando pra acumular saldo liberado.</p>
+                        <p class="legenda">Continue comprando para acumular saldo liberado.</p>
                     {% endif %}
                 {% endif %}
             </div>
@@ -406,7 +406,7 @@
             <h2 class="titulo-secao">Meus pedidos</h2>
             <p class="nota-secao">
                 Sua compra não aparece na hora nem no dia seguinte: a Shopee pode levar
-                alguns dias pra confirmar o pedido pra gente. É normal, não precisa se
+                alguns dias para confirmar o pedido pra gente. É normal, não precisa se
                 preocupar.
             </p>
             <form method="get" action="{% url 'dashboard' %}#pedidos" class="filtro-secao">
