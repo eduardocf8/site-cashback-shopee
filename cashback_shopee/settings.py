@@ -95,6 +95,7 @@ INSTALLED_APPS = [
     "axes",
     "licencas",
     "pinterest",
+    "assistente",
 ]
 
 AUTH_USER_MODEL = "accounts.User"
@@ -180,6 +181,15 @@ CASHBACK_MULTIPLICADOR_INDICACAO = float(os.environ.get("CASHBACK_MULTIPLICADOR_
 GEMINI_API_KEY = os.environ.get("GEMINI_API_KEY", "")
 GEMINI_API_URL = os.environ.get("GEMINI_API_URL", "https://generativelanguage.googleapis.com/v1beta")
 GEMINI_MODEL = os.environ.get("GEMINI_MODEL", "gemini-3.1-flash-lite")
+
+# Assistente de dúvidas gerais (futuro bot de WhatsApp) - ver assistente/README.md. A
+# chamada à IA fica isolada em assistente/ia.py: trocar de modelo é só mudar
+# ASSISTENTE_IA_MODELO, e trocar de empresa é escrever um provedor novo em
+# assistente/provedores/ e apontar ASSISTENTE_IA_PROVEDOR para ele. Sem
+# ANTHROPIC_API_KEY, nada no site quebra - só o assistente fica indisponível.
+ANTHROPIC_API_KEY = os.environ.get("ANTHROPIC_API_KEY", "")
+ASSISTENTE_IA_PROVEDOR = os.environ.get("ASSISTENTE_IA_PROVEDOR", "claude")
+ASSISTENTE_IA_MODELO = os.environ.get("ASSISTENTE_IA_MODELO", "claude-sonnet-5-5")
 
 # Credenciais da API da Asaas para pagar os saques via PIX (ficam no arquivo .env, nunca no código)
 ASAAS_API_KEY = os.environ.get("ASAAS_API_KEY", "")

@@ -11,3 +11,6 @@ media/
 *.crt
 *.key
 secrets/
+
+# Relatório gerado por "python manage.py comparar_modelos_assistente" (ver assistente/README.md)
+relatorio_comparacao_assistente.html

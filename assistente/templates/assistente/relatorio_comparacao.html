@@ -1,0 +1,114 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Comparação de modelos do assistente</title>
+<style>
+    :root { --ink: #111827; --muted: #6b7280; --brand: #6d28d9; --paper: #f8fafc; --paper-2: #f1eefb;
+            --line: #e0dcef; --success: #059669; --success-bg: #ecfdf5; --danger: #dc2626; --danger-bg: #fee2e2;
+            --highlight: #f59e0b; }
+    * { box-sizing: border-box; }
+    body { margin: 0; padding: 24px 16px; font-family: system-ui, sans-serif; color: var(--ink); background: var(--paper); line-height: 1.5; }
+    main { max-width: 1200px; margin: 0 auto; }
+    h1 { color: var(--brand); margin: 0 0 4px; font-size: 24px; }
+    .legenda { color: var(--muted); font-size: 14px; margin: 0 0 24px; }
+    .resumo { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 12px; margin-bottom: 32px; }
+    .cartao { background: #fff; border: 1px solid var(--line); border-radius: 10px; padding: 16px; }
+    .cartao h2 { font-size: 16px; margin: 0 0 8px; font-family: ui-monospace, monospace; }
+    .cartao dl { display: grid; grid-template-columns: 1fr auto; gap: 4px 12px; margin: 0; font-size: 14px; }
+    .cartao dd { margin: 0; text-align: right; font-weight: 600; }
+    .caso { background: #fff; border: 1px solid var(--line); border-radius: 10px; padding: 16px; margin-bottom: 16px; }
+    .caso h3 { margin: 0 0 4px; font-size: 13px; font-family: ui-monospace, monospace; color: var(--muted); font-weight: 500; }
+    .conversa p { margin: 4px 0; }
+    .conversa .assistente { color: var(--muted); }
+    .conferir { background: var(--paper-2); border-radius: 8px; padding: 8px 12px; font-size: 14px; margin: 10px 0 12px; }
+    .respostas { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 12px; }
+    .resposta { border: 1px solid var(--line); border-radius: 8px; padding: 12px; }
+    .resposta h4 { margin: 0 0 8px; font-size: 13px; font-family: ui-monospace, monospace; display: flex; justify-content: space-between; gap: 8px; flex-wrap: wrap; }
+    .texto { white-space: pre-wrap; margin: 0 0 8px; }
+    .meta { font-size: 12px; color: var(--muted); font-family: ui-monospace, monospace; }
+    .selo { font-size: 12px; padding: 1px 8px; border-radius: 999px; font-weight: 600; }
+    .selo.ok { background: var(--success-bg); color: var(--success); }
+    .selo.revisar, .selo.falha { background: var(--danger-bg); color: var(--danger); }
+    .alerta { color: var(--danger); font-size: 13px; margin: 4px 0 0; }
+    .humano { font-size: 13px; margin: 0 0 6px; }
+</style>
+</head>
+<body>
+<main>
+    <h1>Comparação de modelos do assistente</h1>
+    <p class="legenda">
+        Gerado em {{ gerado_em|date:"d/m/Y H:i" }} · {{ linhas|length }} pergunta{{ linhas|length|pluralize }} ·
+        custo em R$ com cotação de {{ cotacao }}. A primeira resposta de cada modelo grava a base no cache
+        (mais cara); as seguintes leem do cache, como num dia de movimento.
+    </p>
+
+    <section class="resumo">
+        {% for r in resumo %}
+            <div class="cartao">
+                <h2>{{ r.modelo }}</h2>
+                <dl>
+                    <dt>Custo total</dt><dd>R$ {{ r.custo_total_brl|floatformat:2 }}</dd>
+                    <dt>Custo médio por resposta</dt><dd>R$ {{ r.custo_medio_brl|floatformat:3 }}</dd>
+                    <dt>Tempo médio de resposta</dt><dd>{{ r.tempo_medio|floatformat:1 }} s</dd>
+                    <dt>Respostas com problema de voz</dt><dd>{{ r.problemas_voz }}</dd>
+                    <dt>Erros de passagem para humano</dt><dd>{{ r.erros_humano }}</dd>
+                    <dt>Falhas</dt><dd>{{ r.falhas }}</dd>
+                </dl>
+            </div>
+        {% endfor %}
+    </section>
+
+    {% for linha in linhas %}
+        <article class="caso">
+            <h3>{{ linha.caso.id }}</h3>
+            <div class="conversa">
+                {% for m in linha.caso.mensagens %}
+                    <p class="{{ m.papel }}"><strong>{% if m.papel == "pessoa" %}Pessoa{% else %}Assistente{% endif %}:</strong> {{ m.texto }}</p>
+                {% endfor %}
+            </div>
+            <div class="conferir">
+                <strong>O que conferir:</strong> {{ linha.caso.o_que_conferir }}
+                {% if linha.caso.espera_humano is True %}<br>Deve passar para uma pessoa.{% elif linha.caso.espera_humano is False %}<br>Não deve passar para uma pessoa.{% endif %}
+            </div>
+            <div class="respostas">
+                {% for r in linha.resultados %}
+                    <div class="resposta">
+                        <h4>
+                            <span>{{ r.modelo }}</span>
+                            {% if r.erro %}
+                                <span class="selo falha">erro</span>
+                            {% elif r.situacao == "ok" %}
+                                <span class="selo ok">ok</span>
+                            {% else %}
+                                <span class="selo revisar">{{ r.situacao }}</span>
+                            {% endif %}
+                        </h4>
+                        {% if r.erro %}
+                            <p class="alerta">{{ r.erro }}</p>
+                        {% else %}
+                            <p class="texto">{{ r.resposta.texto }}</p>
+                            <p class="humano">
+                                {% if r.resposta.passar_para_humano %}➜ passa para uma pessoa{% else %}➜ responde sozinho{% endif %}
+                                {% if r.humano_errado %}<span class="alerta">(esperado o contrário)</span>{% endif %}
+                            </p>
+                            {% for problema in r.problemas %}
+                                <p class="alerta">Voz: {{ problema }}</p>
+                            {% endfor %}
+                            <p class="meta">
+                                {{ r.segundos|floatformat:1 }} s ·
+                                US$ {{ r.resposta.custo_usd|floatformat:5 }} ·
+                                entrada {{ r.resposta.tokens_entrada }} · cache gravado {{ r.resposta.tokens_cache_escrita }} ·
+                                cache lido {{ r.resposta.tokens_cache_leitura }} · saída {{ r.resposta.tokens_saida }}
+                                {% if r.resposta.modelo != r.modelo %}· respondido por {{ r.resposta.modelo }}{% endif %}
+                            </p>
+                        {% endif %}
+                    </div>
+                {% endfor %}
+            </div>
+        </article>
+    {% endfor %}
+</main>
+</body>
+</html>
