@@ -1,0 +1,164 @@
+RESUMO: BOT DE WHATSAPP DA CASH-B (dúvidas gerais dos usuários)
+Escrito em 04/10/2026, para continuar o assunto numa conversa nova.
+Este arquivo está na branch claude/cash-b-virtual-assistant-m7tgpk (raiz do repositório).
+Nada do bot foi construído ainda: até aqui foi só planejamento e levantamento de custo.
+
+
+1. O QUE O USUÁRIO QUER
+-----------------------
+Um "bot" no WhatsApp que sabe tudo sobre a cash-b e tira dúvida dos usuários.
+Escopo decidido: APENAS DÚVIDAS GERAIS por enquanto (como funciona, quando o cashback cai,
+saque via Pix, "é confiável?", campanhas). Nada de consultar dados pessoais da conta
+("cadê meu cashback?", "meu saque") nesta primeira etapa.
+
+
+2. O QUE O USUÁRIO JÁ TEM / JÁ RESPONDEU
+----------------------------------------
+- Tem CNPJ.
+- A empresa JÁ ESTÁ VERIFICADA na Meta (feito para a automação que responde comentários
+  em posts/stories do Instagram, igual ManyChat). Isso encurta o caminho: a verificação
+  costuma ser a parte mais demorada.
+- AINDA NÃO TEM número exclusivo para o bot.
+- Escopo: só dúvidas gerais.
+
+
+3. O QUE É NECESSÁRIO (quatro peças)
+------------------------------------
+3.1 Canal: API oficial do WhatsApp Business (Cloud API, da Meta)
+  - Número exclusivo, que NÃO esteja ativo no WhatsApp pessoal nem no WhatsApp Business.
+    Um chip pré-pago comum serve; precisa receber um SMS ou ligação uma vez, para verificar.
+    Esse número vira o telefone de atendimento da cash-b (divulgar no site e no Instagram).
+  - Se o número entra na API, não dá para usá-lo ao mesmo tempo no app do WhatsApp. A Meta
+    tem um recurso novo que permite os dois juntos (coexistência); confirmar no painel se
+    vale para a conta e para o Brasil.
+  - Adicionar o produto "WhatsApp" ao app da Meta que ele já tem (dá para reaproveitar).
+    Precisa de: token de acesso permanente (usuário do sistema), ID do número (Phone
+    Number ID), ID da conta do WhatsApp Business (WABA ID), token de verificação do webhook
+    e o segredo do app (para validar a assinatura).
+  - A Meta dá um NÚMERO DE TESTE grátis (envia só para até 5 telefones cadastrados). Dá
+    para construir e testar tudo com ele; o número real entra no fim, trocando variáveis de
+    ambiente no Render.
+  - Aprovar o nome de exibição ("cash-b") e preencher o perfil (foto, descrição, horário).
+  - NÃO usar bibliotecas/serviços não oficiais (Baileys, whatsapp-web.js, serviços que
+    simulam o WhatsApp Web): violam as regras e o número pode ser banido.
+
+3.2 Cérebro: modelo de linguagem (API da Claude)
+  - Chave de API em console.anthropic.com, com cartão cadastrado (cobrada à parte do plano
+    usado no Claude Code).
+  - Modelo recomendado: Sonnet 5.5 (ID: claude-sonnet-5-5). Haiku 4.5 (claude-haiku-4-5)
+    é metade do preço, mas o bot fala de dinheiro e prazo, e um erro custa mais do que a
+    diferença. Decisão final: do usuário.
+  - A base de conhecimento é pequena (uns 12 mil tokens): cabe inteira no prompt, em
+    cache, sem banco vetorial.
+
+3.3 Base de conhecimento (o que o bot "sabe")
+  - Já existe no repositório: paginas/templates/paginas/ (faq.html, regras_cashback.html,
+    termos.html, privacidade.html, e_confiavel.html, cashback_vale_a_pena.html,
+    checklist_cashback_confiavel.html, contato.html, cookies.html) e VOZ.md (tom da marca).
+  - Os NÚMEROS NÃO devem ser digitados no prompt. Devem vir do sistema, para o bot nunca
+    contradizer o site:
+      * pisos de cashback: CASHBACK_MINIMO_VENDA_DIRETA (1,6%) e
+        CASHBACK_MINIMO_VENDA_INDIRETA (1%), em cashback_shopee/settings.py
+      * saque mínimo: SAQUE_VALOR_MINIMO (R$ 20)
+      * campanha ativa: pedidos.CampanhaCashback (multiplicador e janela; método
+        para_faixa() e multiplicador_atual()). Campanha em andamento: 10/10/2026,
+        50% a mais de cashback (multiplicador 1,5), das 0h às 23h59 de Brasília.
+  - Regra de ouro: se a resposta não está na base, o bot diz que não sabe e passa para
+    uma pessoa. Nunca inventar valor, prazo ou regra.
+  - Voz (VOZ.md): cashback sempre afirmativo ("volta", "gera", nunca "pode voltar"),
+    "você", a cash-b no feminino, "Pix" (não "PIX"), nome sempre minúsculo "cash-b" sem
+    quebrar linha no hífen, "50% a mais" (nunca "+50%"), "pra" só como para + a
+    (exceção: o botão "Ir pra Shopee").
+  - A cash-b é afiliada independente da Shopee: o bot não pode sugerir vínculo oficial.
+
+3.4 Ponte com o site (Django)
+  - Endereço público HTTPS (webhook) que valida a assinatura (X-Hub-Signature-256), guarda
+    a mensagem e responde 200 rápido. A resposta da Claude é processada em segundo plano.
+    O WhatsApp NÃO tem polling: precisa de webhook (diferente da automação do Instagram,
+    que foi feita com polling).
+  - Padrão a reaproveitar: app automacao_instagram/ (README.md lá explica as decisões):
+    Background Worker no Render (o site já está num plano pago), logins separados por
+    is_staff, múltiplas contas. Também existe webhook.py nesse app.
+  - Modelos para guardar conversas e mensagens; tela no admin para revisar o que
+    perguntaram e melhorar a base.
+  - Passagem para humano: "falar com atendente" marca a conversa e avisa o dono (e-mail ou
+    painel). Como o número entra na API, a resposta humana seria por uma CAIXA DE RESPOSTA
+    NO ADMIN (janela de 24h depois da última mensagem da pessoa).
+  - Comandos: "sair" (descadastrar), e áudio/imagem recebem "só entendo texto".
+  - Testes com a Claude e a Meta simuladas; documentação do passo a passo da Meta.
+  - Texto na política de privacidade: uma linha sobre atendimento por WhatsApp e registro
+    das conversas (LGPD).
+
+
+4. CUSTOS (ESTIMATIVAS - CONFERIR NOS PAINÉIS ANTES DE DECIDIR)
+---------------------------------------------------------------
+Não foi possível abrir a página oficial de preços do WhatsApp (bloqueada no ambiente);
+os valores da Meta vêm de fontes secundárias. Os da Claude vêm da tabela de preços da API.
+
+- WhatsApp (Meta): sem mensalidade pela Cloud API usada direto. Respostas a quem escreveu
+  dentro de 24 horas (mensagens de serviço) não são cobradas. Mensagens iniciadas pela
+  cash-b (modelos aprovados: avisos, promoções) são cobradas; para o Brasil, fontes
+  secundárias citam ~US$ 0,0625 por marketing e ~US$ 0,022 por utilidade/autenticação.
+  Fora do escopo agora.
+- Chip pré-pago: alguns reais por mês de recarga (uns R$ 15 a R$ 30).
+- Render: R$ 0 se o bot rodar no worker e no site que já existem; um worker novo custaria
+  algo a partir de ~US$ 7/mês (conferir no painel).
+- Claude (preços por 1 milhão de tokens): Sonnet 5.5: US$ 2 entrada / US$ 10 saída (cache
+  lido US$ 0,20); Haiku 4.5: US$ 1 / US$ 5; Opus 5.5: US$ 4 / US$ 20.
+- Conta de uma conversa de 5 mensagens (base de 12 mil tokens, câmbio ~R$ 5,50/US$, cache
+  vencido no começo de cada conversa = cenário mais caro):
+      Sonnet 5.5: ~R$ 0,35 por conversa  |  Haiku 4.5: ~R$ 0,17 por conversa
+      Conversas/mês:   100     500     1.000
+      Sonnet 5.5:     ~R$35   ~R$175   ~R$350
+      Haiku 4.5:      ~R$17   ~R$85    ~R$170
+  (100 conversas/mês no Sonnet = ~R$ 35/mês; o usuário confirmou esse entendimento.)
+
+TETO DIÁRIO DE GASTO (proteção, não é cobrança):
+- Valor máximo que o bot pode gastar com a Claude por dia. Ao atingir, o bot para de
+  chamar a Claude, responde uma mensagem fixa ("recebemos muitas mensagens hoje, uma pessoa
+  responde assim que possível"), joga a conversa na fila humana e volta no dia seguinte.
+- Proposta: R$ 10 por dia no início (~28 conversas/dia no Sonnet; R$ 20 = ~57). No pior
+  caso (teto batido todo dia) seriam R$ 300 a R$ 600 por mês; é o máximo, não o esperado.
+- Complementos: limite por pessoa (~20 mensagens por dia por número), aviso por e-mail aos
+  80% do teto do dia, e limite mensal de gasto no console da Anthropic (confirmar onde fica).
+- O usuário ainda NÃO confirmou o valor do teto (R$ 10/dia foi a proposta).
+
+
+5. PLANO RECOMENDADO (FASES)
+----------------------------
+Fase 0 (agora, sem código): WhatsApp Business (app) com respostas rápidas para as 10
+  perguntas mais comuns e mensagem de ausência: mostra quais dúvidas realmente aparecem.
+Fase 1: bot de dúvidas gerais pela Cloud API + Claude + base atual + passagem para humano +
+  tela no admin + teto de gasto. Viável em uma ou duas sessões de trabalho; o que mais
+  demora é a Meta (número, nome de exibição). Não precisa ficar pronto antes do 10/10:
+  o bot só ajuda se não errar sobre dinheiro, então vale testar bem antes de falar com
+  usuários.
+Fase 2 (depois): consultas à conta com autenticação (ex.: código enviado ao e-mail),
+  consultas só de leitura. Envolve LGPD e muito mais cuidado.
+
+
+6. O QUE FALTA / PRÓXIMOS PASSOS
+--------------------------------
+Do usuário:
+  1. Arranjar o número exclusivo (chip pré-pago).
+  2. Criar a chave da API da Claude (console.anthropic.com), com cartão e, se possível,
+     limite mensal de gasto.
+  3. Adicionar o produto WhatsApp ao app da Meta e anotar: token permanente, Phone Number ID,
+     WABA ID, token de verificação, segredo do app.
+  4. Confirmar o teto diário (proposta: R$ 10) e o modelo (proposta: Sonnet 5.5).
+Do assistente (aguardando o "pode começar"):
+  - Criar o app novo (webhook, worker, modelos, admin com caixa de resposta, base montada
+    das páginas e dos settings, teto/limites, testes, README do passo a passo da Meta).
+  - Variáveis de ambiente previstas no Render: ANTHROPIC_API_KEY, WHATSAPP_TOKEN,
+    WHATSAPP_PHONE_NUMBER_ID, WHATSAPP_VERIFY_TOKEN, WHATSAPP_APP_SECRET (e o teto diário).
+  - Atualizar a política de privacidade com a linha sobre atendimento por WhatsApp.
+
+Observações:
+- Existe uma branch remota claude/shopee-offers-whatsapp-bot-uhf17u. Pelos commits, parece
+  uma automação de envio de ofertas pelo WhatsApp Web (outra coisa); NÃO foi analisada e
+  não deve ser tomada como base deste bot.
+- O WhatsApp Channel da cash-b já existe (URL_WHATSAPP_CANAL em settings.py) e é só de
+  transmissão, não responde dúvidas.
+- Código novo nas branches: o trabalho desta conversa foi para
+  claude/cash-b-virtual-assistant-m7tgpk; a branch de produção é
+  claude/shopee-cashback-site-6hb939 (só recebe com autorização do usuário).
