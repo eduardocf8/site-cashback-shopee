@@ -385,7 +385,7 @@
                         {{ form.url_produto }}
                         {% if form.url_produto.errors %}<div class="erros">{{ form.url_produto.errors|striptags }}</div>{% endif %}
                         <p class="estimativa-cashback" id="estimativa-cashback">
-                            💰 Essa compra pode gerar até {{ cashback_percentual_maximo|floatformat:"-1" }}% de cashback,
+                            💰 Essa compra gera até {{ cashback_percentual_maximo|floatformat:"-1" }}% de cashback,
                             sem limite por produto.
                         </p>
                         <button type="submit">Gerar link com cashback</button>
