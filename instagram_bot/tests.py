@@ -578,7 +578,9 @@ class ReprocessamentoDeErrosTests(TestCase):
     publicação errou e ninguém reparou/reprocessou - ver instagram_client.py, retry de
     container invalidado. reprocessar_erros_do_dia é a rede de segurança: dá mais uma
     chance, automaticamente, pra qualquer publicação de hoje que ficou com status
-    Erro, reaproveitando a mesma ação que já existia no Admin (tentar_publicar_de_novo)."""
+    Erro, reaproveitando a mesma ação que já existia no Admin (tentar_publicar_de_novo).
+
+    NÃO vale pro combo diário - ver test_combo_nao_e_reprocessado_automaticamente."""
 
     def setUp(self):
         self.request = RequestFactory().get("/")
@@ -587,7 +589,7 @@ class ReprocessamentoDeErrosTests(TestCase):
         campos = {
             "data": data or timezone.localdate(),
             "tipo": RegistroPublicacao.TIPO_STORY,
-            "conteudo_tipo": RegistroPublicacao.CONTEUDO_COMBO_DIARIO,
+            "conteudo_tipo": RegistroPublicacao.CONTEUDO_OFERTA_DIARIA,
             "legenda": "texto do story",
             "imagem_url": "https://exemplo.com/media/instagram/abc123.jpg",
             "status": RegistroPublicacao.STATUS_ERRO,
@@ -596,6 +598,23 @@ class ReprocessamentoDeErrosTests(TestCase):
         }
         campos.update(kwargs)
         return RegistroPublicacao.objects.create(**campos)
+
+    @patch("instagram_bot.instagram_client.publicar_imagem")
+    def test_combo_nao_e_reprocessado_automaticamente(self, mock_publicar):
+        """Os 5 stories do combo formam uma sequência com ordem que importa (capa ->
+        % -> conta -> R$ -> passos) e o Instagram não deixa reordenar depois de
+        publicado - reprocessar um deles horas depois (quando os outros já saíram) o
+        colocaria FORA de ordem, pior que simplesmente faltar. Pro combo, só o retry
+        imediato (dentro da própria publicação) vale - esse reprocessamento
+        automático, que só roda de novo no próximo cron (horas depois), não."""
+        mock_publicar.return_value = "media999"
+        registro = self._criar_registro_com_erro(conteudo_tipo=RegistroPublicacao.CONTEUDO_COMBO_DIARIO)
+
+        services.reprocessar_erros_do_dia(timezone.localdate(), self.request)
+
+        registro.refresh_from_db()
+        self.assertEqual(registro.status, RegistroPublicacao.STATUS_ERRO)
+        mock_publicar.assert_not_called()
 
     @patch("instagram_bot.instagram_client.publicar_imagem")
     def test_erro_de_hoje_e_republicado_com_sucesso(self, mock_publicar):
@@ -744,3 +763,58 @@ class RetryDeContainerInvalidoTests(TestCase):
             instagram_client.publicar_imagem("https://exemplo.com/story.jpg", story=True)
 
         self.assertEqual(mock_request.call_count, 4)
+
+
+@override_settings(
+    INSTAGRAM_ACCESS_TOKEN="token-de-teste",
+    INSTAGRAM_BUSINESS_ACCOUNT_ID="conta123",
+)
+class RetryDeMidiaAindaNaoProntaTests(TestCase):
+    """"Media ID is not available" [code=9007, error_subcode=2207027] - a Meta
+    documenta como "ainda não terminou de processar, espera um pouco". Pode
+    acontecer tanto na CONSULTA de status (_aguardar_processamento) quanto na
+    publicação em si (publicar_container), mesmo depois de já ter visto
+    status_code=FINISHED - visto de novo em 2026-10-xx, mesmo já existindo
+    _aguardar_processamento desde 2026-08-10 (que tratava só o caso de publicar
+    cedo demais, não o da própria consulta de status vir como erro)."""
+
+    def _resposta_erro_nao_pronto(self):
+        return _resposta({
+            "error": {
+                "message": "Media ID is not available",
+                "code": 9007, "error_subcode": 2207027,
+                "type": "OAuthException", "fbtrace_id": "A-teste",
+            }
+        })
+
+    @patch("instagram_bot.instagram_client.time.sleep")
+    @patch("instagram_bot.instagram_client.requests.request")
+    def test_consulta_de_status_com_erro_tenta_de_novo_ate_ficar_pronta(self, mock_request, mock_sleep):
+        mock_request.side_effect = [
+            _resposta({"id": "conta123"}),  # verificar_configuracao
+            _resposta({"id": "container1"}),  # criar_container_midia
+            self._resposta_erro_nao_pronto(),  # 1ª consulta de status: ainda não propagou
+            _resposta({"status_code": "FINISHED"}),  # 2ª consulta: pronto
+            _resposta({"id": "media123"}),  # publicar_container
+        ]
+
+        media_id = instagram_client.publicar_imagem("https://exemplo.com/story.jpg", story=True)
+
+        self.assertEqual(media_id, "media123")
+        self.assertEqual(mock_request.call_count, 5)
+
+    @patch("instagram_bot.instagram_client.time.sleep")
+    @patch("instagram_bot.instagram_client.requests.request")
+    def test_publicar_container_tenta_de_novo_mesmo_depois_do_finished(self, mock_request, mock_sleep):
+        mock_request.side_effect = [
+            _resposta({"id": "conta123"}),  # verificar_configuracao
+            _resposta({"id": "container1"}),  # criar_container_midia
+            _resposta({"status_code": "FINISHED"}),  # _aguardar_processamento confirma pronto
+            self._resposta_erro_nao_pronto(),  # mas publicar ainda falha dessa vez
+            _resposta({"id": "media123"}),  # 2ª tentativa de publicar funciona
+        ]
+
+        media_id = instagram_client.publicar_imagem("https://exemplo.com/story.jpg", story=True)
+
+        self.assertEqual(media_id, "media123")
+        self.assertEqual(mock_request.call_count, 5)
