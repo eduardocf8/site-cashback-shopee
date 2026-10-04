@@ -700,6 +700,83 @@ falhando na primeira tentativa - não é um retry genérico, pra não
 esconder erro de verdade atrás de uma segunda tentativa inútil. Testado
 em `instagram_bot/tests.py::RetryDeContainerInvalidoTests`.
 
+### O mesmo story sumiu de novo, mesmo com o retry acima (2026-10-04) - rede de segurança: reprocessamento automático
+
+O retry de container invalidado (incidente acima) reduz a chance desse
+tipo de falha pontual, mas não elimina: é só 1 tentativa extra, e uma
+falha da própria API da Meta pode acontecer de novo (de novo só o story
+do maior % faltou, com a "conta" do mesmo produto saindo normal logo
+depois - confirma que é falha pontual de publicação, não erro de dado).
+Sem alguém entrar no Admin e clicar em "Tentar publicar de novo", o
+story simplesmente não volta.
+
+**Correção**: nova função `services.reprocessar_erros_do_dia(data,
+request)` - reprocessa (reaproveitando a mesma
+`tentar_publicar_de_novo` do botão do Admin) qualquer `RegistroPublicacao`
+de **hoje** com status Erro. Chamada no início de
+`publicar_story_oferta_do_momento`, que o Cron Job `cron-stories-oferta`
+já chama várias vezes ao dia, nos horários 08h/10h/15h/18h/20h (ver
+"Cron Jobs do Render" acima) - não precisou de um cron novo, só
+aproveitar a frequência que já existia. Na prática qualquer erro de hoje
+tem uma nova chance de corrigir sozinho em algumas horas (o maior
+intervalo entre chamadas é das 10h às 15h), em vez de ficar faltando até
+alguém perceber e mexer no Admin.
+
+De propósito só reprocessa o dia de **hoje** (campo `data` do registro,
+não `criado_em`): conteúdo de oferta é sempre relativo ao dia da
+publicação (preço, desconto, "maior cashback hoje") - reprocessar um
+erro de dias atrás postaria um story alegando um número que já não é
+mais verdade. Se o reprocessamento falhar de novo, o campo `erro` é
+atualizado com a falha mais recente (mesmo esperado do botão do Admin) e
+o registro continua com status Erro, disponível pra nova tentativa no
+próximo cron ou pelo Admin. Testado em
+`instagram_bot/tests.py::ReprocessamentoDeErrosTests`.
+
+**Ajuste importante (mesmo dia)**: esse reprocessamento de propósito
+**exclui `CONTEUDO_COMBO_DIARIO`**. Os 5 stories do combo formam uma
+sequência com ordem que importa (capa -> % -> conta -> R$ -> passos), e
+o Instagram não deixa reordenar stories depois de publicados -
+reprocessar um deles só no próximo cron (horas depois, quando os outros
+4 já saíram) o colocaria **depois** de stories que vêm depois dele na
+sequência, pior que simplesmente faltar (quem assiste vê fora de ordem,
+sem entender a lógica). Pro combo, a única defesa continua sendo o retry
+imediato (dentro da própria publicação, antes do loop seguir pro próximo
+story - ver incidentes de `instagram_client.py` abaixo e acima); se
+mesmo assim falhar, fica como Erro mesmo, pra decisão manual no Admin
+(postar atrasado e fora de ordem é uma escolha consciente, não algo pra
+acontecer sozinho).
+
+### O mesmo story sumiu de novo, erro diferente - "Media ID is not available" (code=9007, error_subcode=2207027) de novo (2026-10-xx)
+
+Terceira recorrência do mesmo sintoma (story do maior % faltando no
+combo), mas com o erro ORIGINAL de 2026-08-10 (`code=9007,
+error_subcode=2207027`) - o que `_aguardar_processamento` deveria ter
+prevenido, esperando `status_code=FINISHED` antes de publicar.
+
+**Causa raiz**: `_aguardar_processamento` fazia o `GET
+{creation_id}?fields=status_code` **sem tratar a possibilidade da
+própria consulta vir como erro** - só tratava `status_code=="ERROR"`
+(uma resposta de sucesso que diz "deu erro"), não uma falha de verdade
+na chamada. Bem no início do polling (logo após criar o container), a
+Meta pode responder esse GET com o mesmo erro "Media ID is not
+available" em vez de um `status_code` normal (replicação entre os
+serviços dela não é instantânea) - e como esse erro não era tratado, ele
+escapava do loop de retry na primeira tentativa, sem nunca chegar a
+esperar e tentar de novo.
+
+**Correção**: `_aguardar_processamento` agora trata um
+`error_subcode=2207027` na própria consulta de status do mesmo jeito que
+trata `status_code` ainda não `FINISHED` - espera e tenta de novo, sem
+estourar. Além disso, `publicar_container` (o `/media_publish` em si)
+também ganhou o mesmo retry: mesmo depois de `_aguardar_processamento`
+confirmar `FINISHED`, isso não é garantia de que o passo de publicar já
+está pronto do lado da Meta (a mesma falta de instantaneidade entre
+serviços internos dela) - visto nessa recorrência. Os dois retries usam
+o mesmo subcode (`_SUBCODE_AINDA_NAO_PRONTO = 2207027`), com um limite
+curto de tentativas (3, 2s de intervalo) pra não travar a publicação
+indefinidamente se o problema for outra coisa. Testado em
+`instagram_bot/tests.py::RetryDeMidiaAindaNaoProntaTests`.
+
 ## Posts de semeadura (pasta `posts-semeadura/`)
 
 8 imagens 1080×1080 (arquivo real 2160×2160, renderizado em dobro pra
