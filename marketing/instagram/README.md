@@ -669,6 +669,38 @@ falhando na primeira tentativa - não é um retry genérico, pra não
 esconder erro de verdade atrás de uma segunda tentativa inútil. Testado
 em `instagram_bot/tests.py::RetryDeContainerInvalidoTests`.
 
+### O mesmo story sumiu de novo, mesmo com o retry acima (2026-10-04) - rede de segurança: reprocessamento automático
+
+O retry de container invalidado (incidente acima) reduz a chance desse
+tipo de falha pontual, mas não elimina: é só 1 tentativa extra, e uma
+falha da própria API da Meta pode acontecer de novo (de novo só o story
+do maior % faltou, com a "conta" do mesmo produto saindo normal logo
+depois - confirma que é falha pontual de publicação, não erro de dado).
+Sem alguém entrar no Admin e clicar em "Tentar publicar de novo", o
+story simplesmente não volta.
+
+**Correção**: nova função `services.reprocessar_erros_do_dia(data,
+request)` - reprocessa (reaproveitando a mesma
+`tentar_publicar_de_novo` do botão do Admin) qualquer `RegistroPublicacao`
+de **hoje** com status Erro. Chamada no início de
+`publicar_story_oferta_do_momento`, que o Cron Job `cron-stories-oferta`
+já chama várias vezes ao dia, nos horários 08h/10h/15h/18h/20h (ver
+"Cron Jobs do Render" acima) - não precisou de um cron novo, só
+aproveitar a frequência que já existia. Na prática qualquer erro de hoje
+tem uma nova chance de corrigir sozinho em algumas horas (o maior
+intervalo entre chamadas é das 10h às 15h), em vez de ficar faltando até
+alguém perceber e mexer no Admin.
+
+De propósito só reprocessa o dia de **hoje** (campo `data` do registro,
+não `criado_em`): conteúdo de oferta é sempre relativo ao dia da
+publicação (preço, desconto, "maior cashback hoje") - reprocessar um
+erro de dias atrás postaria um story alegando um número que já não é
+mais verdade. Se o reprocessamento falhar de novo, o campo `erro` é
+atualizado com a falha mais recente (mesmo esperado do botão do Admin) e
+o registro continua com status Erro, disponível pra nova tentativa no
+próximo cron ou pelo Admin. Testado em
+`instagram_bot/tests.py::ReprocessamentoDeErrosTests`.
+
 ## Posts de semeadura (pasta `posts-semeadura/`)
 
 8 imagens 1080×1080 (arquivo real 2160×2160, renderizado em dobro pra

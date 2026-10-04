@@ -337,7 +337,14 @@ def publicar_story_oferta_do_momento(data, request) -> RegistroPublicacao | None
     story de oferta por chamada, respeitando o limite diário
     (NUMERO_STORIES_OFERTAS_POR_DIA) e o espaçamento entre eles
     (_horario_do_proximo_story) - se o cron chamar antes da hora do próximo story
-    ainda não publicado, devolve None sem postar (tenta de novo na próxima chamada)."""
+    ainda não publicado, devolve None sem postar (tenta de novo na próxima chamada).
+
+    Também reprocessa qualquer publicação de hoje que tenha ficado com status Erro
+    (ver reprocessar_erros_do_dia) antes de decidir o que fazer agora - esse cron já
+    roda várias vezes ao dia, então é o lugar natural pra dar mais uma chance pra
+    quem falhou mais cedo, sem precisar de um cron dedicado só pra isso."""
+    reprocessar_erros_do_dia(data, request)
+
     if data.weekday() not in conteudo.DIAS_COM_STORIES_DE_OFERTA:
         return None
 
@@ -561,3 +568,36 @@ def tentar_publicar_de_novo(registro: RegistroPublicacao, request) -> None:
     registro.erro = ""
     registro.instagram_media_id = media_id
     registro.save(update_fields=["status", "sucesso", "erro", "instagram_media_id", "imagem_url", "imagem_urls"])
+
+
+def reprocessar_erros_do_dia(data, request) -> None:
+    """Dá mais uma chance pra qualquer publicação de HOJE (data de referência) que
+    ficou com status Erro - rede de segurança pra falha pontual e imprevisível da
+    própria API da Meta (ex: container de mídia invalidado, ver
+    marketing/instagram/README.md) não deixar um story faltando pra sempre só porque
+    ninguém entrou no Admin pra clicar em "Tentar publicar de novo" (ver
+    PublicacaoDoComboTests - foi o que aconteceu com o story do maior % de cashback
+    em 2026-09-26 e de novo em 2026-10-04).
+
+    Só reprocessa o dia de HOJE de propósito: o conteúdo de oferta é sempre "hoje"
+    (preço, desconto e "maior cashback" valem pro dia da publicação) - reprocessar um
+    erro de dias atrás postaria um story alegando um número que já não é de hoje.
+    Chamada por publicar_story_oferta_do_momento, que já roda várias vezes ao dia -
+    não precisa de cron dedicado só pra isso.
+
+    Reaproveita tentar_publicar_de_novo (mesma ação do botão do Admin) - mesmo
+    comportamento dos dois lugares, sem duplicar lógica de reconversão/republicação."""
+    erros_de_hoje = RegistroPublicacao.objects.filter(data=data, status=RegistroPublicacao.STATUS_ERRO)
+    for registro in erros_de_hoje:
+        try:
+            tentar_publicar_de_novo(registro, request)
+            logger.info("[instagram_bot] reprocessamento automático corrigiu o registro %s", registro.pk)
+        except Exception as erro:
+            # Atualiza o campo erro com a falha mais recente (mesmo comportamento da
+            # ação "Tentar publicar de novo" no Admin) - senão o registro continua
+            # mostrando o erro original mesmo depois de já ter tentado de novo.
+            registro.erro = str(erro)
+            registro.save(update_fields=["erro"])
+            logger.exception(
+                "[instagram_bot] reprocessamento automático falhou de novo (registro %s)", registro.pk
+            )
