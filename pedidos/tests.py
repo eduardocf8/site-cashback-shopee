@@ -478,6 +478,25 @@ class CashbackMinimoGarantidoTests(TestCase):
         self.assertEqual(pedido.valor_cashback, Decimal("1.60"))
 
     @patch("pedidos.services.buscar_conversoes")
+    def test_comissao_zerada_nao_usa_o_piso_cashback_fica_zero(self, mock_buscar):
+        # Categoria sem comissão de afiliado nenhuma (ex: alimentos/bebidas) - a Shopee
+        # reporta itemTotalCommission=0. O piso só existe pra cobrir comissão BAIXA,
+        # nunca ausente - senão a cash-b pagaria cashback sem ter recebido nada da
+        # Shopee, contradizendo a mensagem "sem comissão, sem cashback" mostrada ao
+        # converter o link (ver links/views.py::_buscar_cashback_real).
+        click = Click.objects.create(
+            usuario=self.usuario, tipo=Click.TIPO_PRODUTO, item_id_alvo=1,
+            url_original="https://shopee.com.br/produto-i.1.1", link_gerado="https://shope.ee/abc",
+        )
+        mock_buscar.return_value = self._pagina(click, "ORD-SEM-COMISSAO", "0", "100.00", item_id=1)
+
+        sincronizar(1690000000, 1700000000)
+
+        pedido = Pedido.objects.get(order_id="ORD-SEM-COMISSAO")
+        self.assertEqual(pedido.valor_comissao, Decimal("0"))
+        self.assertEqual(pedido.valor_cashback, Decimal("0"))
+
+    @patch("pedidos.services.buscar_conversoes")
     def test_venda_indireta_com_comissao_baixa_usa_o_piso_de_1_por_cento(self, mock_buscar):
         click = Click.objects.create(
             usuario=self.usuario, tipo=Click.TIPO_HOME,
@@ -613,6 +632,52 @@ class CashbackMinimoGarantidoTests(TestCase):
         # Item 1 (bate com o link): piso de 1,6% de 100 = 1,60. Item 2 (não bate):
         # piso de 1% de 100 = 1,00. Total: 2,60.
         self.assertEqual(pedido.valor_cashback, Decimal("2.60"))
+
+    @patch("pedidos.services.buscar_conversoes")
+    def test_pedido_com_varios_itens_item_sem_comissao_nao_soma_piso_so_o_outro(self, mock_buscar):
+        # Mesmo pedido, 2 itens: item 1 com comissão normal (ganha o piso de venda
+        # direta), item 2 com comissão zerada (categoria sem comissão nenhuma - não
+        # ganha cashback nenhum, nem o piso). O cálculo é por item, então um pedido
+        # pode ter os dois comportamentos ao mesmo tempo.
+        click = Click.objects.create(
+            usuario=self.usuario, tipo=Click.TIPO_PRODUTO, item_id_alvo=1,
+            url_original="https://shopee.com.br/produto-i.1.1", link_gerado="https://shope.ee/abc",
+        )
+        pagina = {
+            "nodes": [
+                {
+                    "conversionId": "999",
+                    "purchaseTime": 1700000000,
+                    "utmContent": f"{click.sub_id_usuario()},{click.sub_id_click()}",
+                    "orders": [
+                        {
+                            "orderId": "ORD-MULTI-ITEM-SEM-COMISSAO",
+                            "orderStatus": "PENDING",
+                            "items": [
+                                {
+                                    "itemId": 1, "completeTime": None,
+                                    "itemTotalCommission": "0.50", "actualAmount": "100.00",
+                                },
+                                {
+                                    "itemId": 2, "completeTime": None,
+                                    "itemTotalCommission": "0", "actualAmount": "100.00",
+                                },
+                            ],
+                        }
+                    ],
+                }
+            ],
+            "pageInfo": {"hasNextPage": False, "scrollId": ""},
+        }
+        mock_buscar.return_value = pagina
+
+        sincronizar(1690000000, 1700000000)
+
+        pedido = Pedido.objects.get(order_id="ORD-MULTI-ITEM-SEM-COMISSAO")
+        # Item 1 (bate com o link, comissão 0,50): piso de 1,6% de 100 = 1,60. Item 2
+        # (comissão zerada): 0, mesmo sendo o resto do mesmo pedido. Total: 1,60.
+        self.assertEqual(pedido.valor_comissao, Decimal("0.50"))
+        self.assertEqual(pedido.valor_cashback, Decimal("1.60"))
 
 
 @override_settings(SHOPEE_CASHBACK_PERCENTUAL=20)

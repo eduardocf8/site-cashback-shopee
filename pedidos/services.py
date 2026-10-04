@@ -115,7 +115,11 @@ def _percentual_minimo_garantido(click: Click, item_bate_com_o_link: bool) -> De
     """Cashback mínimo garantido por produto, mesmo quando a comissão real da Shopee
     resultaria em menos - ao contrário do resto do cálculo (sempre uma fração da
     comissão real recebida, nunca um prejuízo), esse piso pode fazer a cash-b pagar
-    mais do que recebeu de comissão naquele item específico. Venda direta (link
+    mais do que recebeu de comissão naquele item específico. Só vale quando a Shopee
+    reporta ALGUMA comissão (mesmo pequena) - item com comissão zerada (ex: categorias
+    como alimentos/bebidas, que a Shopee não paga comissão de afiliado nenhuma) não
+    tem direito ao piso, senão a cash-b pagaria cashback do próprio bolso sem ter
+    recebido nada em troca (ver chamada em _montar_defaults). Venda direta (link
     específico/vitrine) só tem o piso maior quando o item comprado é comprovadamente
     o mesmo do link/card clicado (ver _item_bate_com_o_click) - senão vale o piso de
     venda indireta, mesmo que o Click tenha vindo de um link/vitrine específico."""
@@ -139,6 +143,12 @@ def _montar_defaults(conversao, pedido_shopee, click, data_compra, percentual_ba
     # com o que gerou o clique (ver _item_bate_com_o_click) - um pedido com vários
     # itens pode ter só um deles qualificado.
     #
+    # O piso só entra quando comissao_item > 0: categoria sem comissão de afiliado
+    # nenhuma (ex: alimentos/bebidas) tem que pagar cashback zero, nunca o piso - senão
+    # contradiria a mensagem mostrada ao converter o link ("sem comissão, sem
+    # cashback", ver links/views.py::_buscar_cashback_real) e a cash-b pagaria do
+    # próprio bolso por um item que não gerou nenhuma receita de comissão.
+    #
     # Sem Click identificado, o pedido não veio daqui (outra campanha, compra pessoal etc.
     # - ver OrigemFilter em pedidos/admin.py) e não tem usuário pra receber o cashback, então
     # não faz sentido calcular um valor que nunca vai ser pago a ninguém. valor_comissao
@@ -152,7 +162,7 @@ def _montar_defaults(conversao, pedido_shopee, click, data_compra, percentual_ba
         pedido_valor += valor_item
         comissao_item = Decimal(str(item.get("itemTotalCommission") or "0"))
         comissao += comissao_item
-        if click:
+        if click and comissao_item > 0:
             item_bate_com_o_link = _item_bate_com_o_click(click, item.get("itemId"))
             percentual_minimo = _percentual_minimo_garantido(click, item_bate_com_o_link)
             cashback_base_item = max(comissao_item * percentual_base, valor_item * percentual_minimo)

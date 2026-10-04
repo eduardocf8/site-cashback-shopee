@@ -67,7 +67,10 @@
         <summary>Existe um cashback mínimo garantido?</summary>
         <p class="faq-resposta">
             Sim: {{ cashback_minimo_direta|floatformat:"-1" }}% em venda direta e
-            {{ cashback_minimo_indireta|floatformat:"-1" }}% em venda indireta.
+            {{ cashback_minimo_indireta|floatformat:"-1" }}% em venda indireta, sempre
+            que a Shopee reportar alguma comissão pra aquele produto (mesmo que
+            pequena). Produto de categoria sem comissão de afiliado nenhuma (ex:
+            alimentos e bebidas) não tem cashback.
         </p>
     </details>
 

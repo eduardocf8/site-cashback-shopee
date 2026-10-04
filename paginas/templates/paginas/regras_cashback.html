@@ -46,7 +46,9 @@
         <p>
             Cashback mínimo: <strong>{{ cashback_minimo_direta|floatformat:"-1" }}%</strong>
             em venda direta e <strong>{{ cashback_minimo_indireta|floatformat:"-1" }}%</strong>
-            em venda indireta.
+            em venda indireta, sempre que a Shopee reportar alguma comissão pra aquele
+            produto, mesmo que pequena. Produto de categoria sem comissão de afiliado
+            nenhuma (ex: alimentos e bebidas) não tem cashback.
         </p>
 
         <h2>Cashback real ao converter um link</h2>
