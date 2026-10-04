@@ -40,6 +40,7 @@ def regras_cashback(request):
 
 def faq(request):
     contexto = {
+        "saque_valor_minimo": settings.SAQUE_VALOR_MINIMO,
         "cashback_minimo_direta": settings.CASHBACK_MINIMO_VENDA_DIRETA,
         "cashback_minimo_indireta": settings.CASHBACK_MINIMO_VENDA_INDIRETA,
     }

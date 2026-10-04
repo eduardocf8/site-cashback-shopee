@@ -39,7 +39,7 @@
         <p class="faq-resposta">
             Venda direta é quando você converte o link de um produto específico e
             compra exatamente aquele produto — dá acesso a bônus de campanhas de
-            comissão extra. Venda indireta é quando você entra pelo botão "Ir para a
+            comissão extra. Venda indireta é quando você entra pelo botão "Ir pra
             Shopee" e compra o que quiser, sem link específico. As duas geram
             cashback, mas só a venda direta tem acesso aos bônus. Veja mais detalhes
             nas <a href="{% url 'regras_cashback' %}">regras do cashback</a>.
@@ -47,10 +47,56 @@
     </details>
 
     <details class="faq-item">
+        <summary>Comprar pela vitrine de ofertas conta como venda direta?</summary>
+        <p class="faq-resposta">
+            Sim, desde que você compre o mesmo produto do card em que clicou.
+            Clicar num card da vitrine funciona igual converter o link daquele
+            produto específico.
+        </p>
+    </details>
+
+    <details class="faq-item">
+        <summary>O link funciona no app da Shopee, ou só no navegador?</summary>
+        <p class="faq-resposta">
+            Funciona nos dois. Você pode gerar o link e abrir tanto no navegador
+            quanto no app da Shopee — não precisa escolher um ou outro.
+        </p>
+    </details>
+
+    <details class="faq-item">
         <summary>Existe um cashback mínimo garantido?</summary>
         <p class="faq-resposta">
             Sim: {{ cashback_minimo_direta|floatformat:"-1" }}% em venda direta e
-            {{ cashback_minimo_indireta|floatformat:"-1" }}% em venda indireta.
+            {{ cashback_minimo_indireta|floatformat:"-1" }}% em venda indireta, sempre
+            que a Shopee reportar alguma comissão pra aquele produto (mesmo que
+            pequena). Produto de categoria sem comissão de afiliado nenhuma (ex:
+            alimentos e bebidas) não tem cashback.
+        </p>
+    </details>
+
+    <details class="faq-item">
+        <summary>Cupom ou desconto diminui o cashback?</summary>
+        <p class="faq-resposta">
+            Sim. O cashback é calculado sobre o valor que você realmente pagou, já
+            com o desconto do cupom aplicado — não sobre o preço cheio do produto.
+        </p>
+    </details>
+
+    <details class="faq-item">
+        <summary>Comprei vários produtos no mesmo pedido, mas só converti o link de um deles. Como fica o cashback?</summary>
+        <p class="faq-resposta">
+            Cada item do pedido é calculado separadamente. Só o produto do link
+            convertido conta como venda direta
+            ({{ cashback_minimo_direta|floatformat:"-1" }}% de piso); os outros itens
+            do mesmo pedido contam como venda indireta
+            ({{ cashback_minimo_indireta|floatformat:"-1" }}% de piso).
+        </p>
+    </details>
+
+    <details class="faq-item">
+        <summary>O frete entra no cálculo do cashback?</summary>
+        <p class="faq-resposta">
+            Não. O cashback é calculado em cima do valor do produto, não do frete.
         </p>
     </details>
 
@@ -81,6 +127,16 @@
     </details>
 
     <details class="faq-item">
+        <summary>Quando meu pedido passa de Pendente pra Validado?</summary>
+        <p class="faq-resposta">
+            Quando a Shopee confirma o pedido como concluído — normalmente depois
+            que o prazo de devolução do produto já passou. A confirmação não é
+            imediata à compra: depende do processo da própria Shopee, não da cash-b,
+            e costuma ser o motivo de um pedido ficar Pendente por um tempo.
+        </p>
+    </details>
+
+    <details class="faq-item">
         <summary>Preciso confirmar meu e-mail?</summary>
         <p class="faq-resposta">
             Sim. Ao criar sua conta, mandamos um link de confirmação pro e-mail
@@ -103,9 +159,47 @@
         <summary>Por que meu pedido apareceu como Cancelado?</summary>
         <p class="faq-resposta">
             Isso acontece quando a compra é cancelada ou devolvida na Shopee, o
-            pagamento não é confirmado, ou você clicou em outro link de afiliado
-            (de outro site ou app) depois de clicar num link da cash-b e antes de
-            terminar a compra.
+            pagamento não é confirmado, você demorou mais de 7 dias entre clicar
+            no link e comprar, ou você clicou em outro link de afiliado (de outro
+            site ou app) depois de clicar num link da cash-b e antes de terminar a
+            compra.
+        </p>
+    </details>
+
+    <details class="faq-item">
+        <summary>Por quanto tempo o link vale depois que eu clico?</summary>
+        <p class="faq-resposta">
+            Até 7 dias. Se você clicar num link da cash-b e comprar dentro desse
+            prazo, a compra fica associada à cash-b. Importante: se você clicar em
+            qualquer outro link de afiliado (de outro site ou app de cashback)
+            antes de finalizar a compra, mesmo dentro dos 7 dias, a compra deixa
+            de ficar associada à cash-b e não gera cashback.
+        </p>
+    </details>
+
+    <details class="faq-item">
+        <summary>Coloquei o produto no carrinho antes de clicar no link da cash-b. A compra conta?</summary>
+        <p class="faq-resposta">
+            Só conta quando você acessa o produto pelo link da cash-b e compra na
+            hora, pelo botão "Comprar agora". Produto adicionado ao carrinho (antes
+            ou depois de clicar no link) e comprado depois, direto do carrinho,
+            não garante o cashback.
+        </p>
+    </details>
+
+    <details class="faq-item">
+        <summary>Devolvi só um item do meu pedido. Perco o cashback todo?</summary>
+        <p class="faq-resposta">
+            Não. Você perde só o cashback do item específico que foi devolvido —
+            o resto do pedido continua normalmente.
+        </p>
+    </details>
+
+    <details class="faq-item">
+        <summary>Produto da Shopee Mall ou internacional também gera cashback?</summary>
+        <p class="faq-resposta">
+            Sim, gera cashback normalmente, do mesmo jeito que qualquer outro
+            produto.
         </p>
     </details>
 
@@ -123,8 +217,64 @@
     <details class="faq-item">
         <summary>Qual o valor mínimo pra sacar?</summary>
         <p class="faq-resposta">
-            O valor mínimo de saque aparece direto no seu painel, na seção "Saque via
-            Pix". Só é possível solicitar saque do saldo já liberado.
+            R$ {{ saque_valor_minimo|floatformat:2 }}. Só é possível solicitar saque
+            do saldo já liberado.
+        </p>
+    </details>
+
+    <details class="faq-item">
+        <summary>Posso sacar só uma parte do saldo?</summary>
+        <p class="faq-resposta">
+            Não. O saque é sempre do valor total do saldo liberado disponível — não
+            dá pra escolher sacar só uma parte.
+        </p>
+    </details>
+
+    <details class="faq-item">
+        <summary>Tem limite de quantos saques posso pedir por mês?</summary>
+        <p class="faq-resposta">
+            Não. O único limite é o valor mínimo de
+            R$ {{ saque_valor_minimo|floatformat:2 }} — você pode sacar quantas
+            vezes quiser, sempre que o saldo liberado atingir esse valor.
+        </p>
+    </details>
+
+    <details class="faq-item">
+        <summary>Quais tipos de chave Pix posso cadastrar?</summary>
+        <p class="faq-resposta">
+            CPF, CNPJ, e-mail, telefone ou chave aleatória. Você cadastra e edita
+            isso direto no seu painel.
+        </p>
+    </details>
+
+    <details class="faq-item">
+        <summary>Troquei a chave Pix depois de pedir o saque. Pra onde vai o dinheiro?</summary>
+        <p class="faq-resposta">
+            Pra chave que estava cadastrada no momento em que você solicitou o
+            saque — trocar a chave depois não muda um pedido já em andamento.
+        </p>
+    </details>
+
+    <details class="faq-item">
+        <summary>Posso sacar pra chave Pix de outra pessoa?</summary>
+        <p class="faq-resposta">
+            Não. A chave Pix cadastrada precisa ser sua, do titular da conta.
+        </p>
+    </details>
+
+    <details class="faq-item">
+        <summary>Quanto tempo demora o Pix depois que eu peço o saque?</summary>
+        <p class="faq-resposta">
+            Até 1 dia útil depois do saque ser aprovado.
+        </p>
+    </details>
+
+    <details class="faq-item">
+        <summary>Meu saque falhou. Perdi o dinheiro?</summary>
+        <p class="faq-resposta">
+            Não. Se um saque falha, o valor volta pro seu saldo disponível
+            automaticamente, e dá pra solicitar de novo. Confira se sua chave Pix
+            está certa antes de pedir de novo.
         </p>
     </details>
 
@@ -151,6 +301,81 @@
         <summary>Posso ter mais de uma conta?</summary>
         <p class="faq-resposta">
             Não. Cada CPF só pode ter uma conta na cash-b.
+        </p>
+    </details>
+
+    <details class="faq-item">
+        <summary>Menor de idade pode usar a cash-b?</summary>
+        <p class="faq-resposta">
+            Não. É preciso ter 18 anos ou mais pra criar uma conta.
+        </p>
+    </details>
+
+    <details class="faq-item">
+        <summary>Qual é o CNPJ da cash-b?</summary>
+        <p class="faq-resposta">
+            63.842.267/0001-46.
+        </p>
+    </details>
+
+    <details class="faq-item">
+        <summary>Vocês têm aplicativo?</summary>
+        <p class="faq-resposta">
+            A cash-b não tem um app nas lojas (Play Store/App Store) ainda, mas dá
+            pra instalar o site como um app no seu celular: abra o menu do
+            navegador e procure a opção "Adicionar à tela de início" (ou
+            "Instalar app").
+        </p>
+    </details>
+
+    <details class="faq-item">
+        <summary>Como funciona o indique e ganhe?</summary>
+        <p class="faq-resposta">
+            O primeiro pedido validado de quem você indicou tem o cashback em
+            dobro. Depois disso, o próximo pedido validado seu também ganha o
+            dobro. Vale uma vez por pessoa indicada, sem limite de quantas pessoas
+            você pode indicar. Seu link de indicação e o histórico de bônus ficam
+            no seu painel.
+        </p>
+    </details>
+
+    <details class="faq-item">
+        <summary>A indicação soma com uma campanha de cashback em andamento?</summary>
+        <p class="faq-resposta">
+            Não, os dois bônus não se acumulam no mesmo pedido. Se o pedido que
+            receberia o dobro da indicação cair dentro de uma campanha de cashback
+            (que já aumenta o valor por conta própria), o bônus da indicação fica
+            guardado e é aplicado no seu próximo pedido validado fora da campanha.
+        </p>
+    </details>
+
+    <details class="faq-item">
+        <summary>Como eu excluo minha conta?</summary>
+        <p class="faq-resposta">
+            Mande um e-mail pra <a href="mailto:contato@cash-b.com">contato@cash-b.com</a>
+            pedindo a exclusão. A gente remove seus dados pessoais, exceto o que
+            precisamos manter por obrigação legal (como registros fiscais de
+            valores já pagos).
+        </p>
+    </details>
+
+    <details class="faq-item">
+        <summary>Qual o horário de atendimento? Em quanto tempo vocês respondem?</summary>
+        <p class="faq-resposta">
+            Respondemos em até 1 dia útil pelo
+            <a href="{% url 'contato' %}">Fale conosco</a> ou por
+            <a href="mailto:contato@cash-b.com">contato@cash-b.com</a>.
+        </p>
+    </details>
+
+    <details class="faq-item">
+        <summary>Como paro de receber e-mails de promoção da cash-b?</summary>
+        <p class="faq-resposta">
+            Todo e-mail de promoção ou oferta tem um link "não quero mais receber"
+            no rodapé, que leva pra sua página de preferências de e-mail (precisa
+            estar logado pra confirmar). Os e-mails importantes da sua conta —
+            como aviso de saldo liberado e saque pago — continuam chegando
+            normalmente, só os promocionais param.
         </p>
     </details>
 {% endblock %}

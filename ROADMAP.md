@@ -1115,6 +1115,30 @@ só a direta tem acesso a bônus de campanha).
 Suite completa (226 testes) verde. Textos do site atualizados pra anunciar essa
 garantia como diferencial explícito na Fase 40, logo abaixo.
 
+**Depois, mesma fase — piso não vale pra item com comissão zerada:** achado durante
+a auditoria do FAQ (ver Fase 53): a home mostra "A Shopee não oferece comissão
+para esse produto, portanto também não há cashback" ao converter o link de um
+produto sem comissão (ex: alimentos e bebidas) - mas o cálculo de verdade do
+pedido aplicava o piso mínimo (`max(comissão x fração, valor x piso)`) mesmo
+quando a comissão reportada fosse R$ 0,00, contradizendo essa mensagem. Usuário
+confirmou que não tinha visto isso acontecer na prática, mas decidiu: "nesses
+casos, não podemos pagar cashback" - a comissão zerada significa que a Shopee
+não pagou nada pra cash-b repassar, e o piso existe pra cobrir comissão BAIXA,
+nunca AUSENTE.
+
+- [x] **`pedidos/services.py::_montar_defaults`** - o piso só entra quando
+      `comissao_item > 0`; com comissão zerada, `cashback_base_item` fica
+      `comissao_item * percentual_base` (ou seja, zero), sem aplicar
+      `max(...)` com o piso. Cálculo continua por item (um pedido pode ter 1
+      item sem comissão e outro com, ao mesmo tempo).
+- [x] Textos atualizados pra deixar a condição explícita ("sempre que a
+      Shopee reportar alguma comissão, mesmo que pequena") em
+      `faq.html`, `regras_cashback.html`, `termos.html` e `home.html`
+      (todo lugar que já anunciava o "cashback mínimo garantido").
+- [x] Testes novos: comissão zerada com Click não usa o piso (cashback fica
+      zero), e pedido com 2 itens onde só 1 tem comissão (o outro fica sem
+      cashback, o que tem continua ganhando o piso normalmente).
+
 ---
 
 ## Fase 40 — Anunciar o cashback mínimo garantido nos textos do site ✅
