@@ -73,18 +73,18 @@ só do preço: o bot fala de dinheiro e prazo.
    `--cotacao 5.50` (reais por dólar).
 4. Abra o `relatorio_comparacao_assistente.html` gerado (fica fora do Git).
 
-Uma rodada completa (24 perguntas x 2 modelos) custa menos de US$ 0,50 (menos de
+Uma rodada completa (28 perguntas x 2 modelos) custa menos de US$ 0,50 (menos de
 R$ 3). A pergunta sobre campanha só faz sentido com a campanha cadastrada no banco
 usado. No banco local, cadastre a do 10/10 no admin antes de rodar.
 
 Para escolher o modelo, mude `ASSISTENTE_IA_MODELO` no `.env` (ou no Render).
 
-## O que a base ainda não cobre
+## Quando a base não cobre uma pergunta
 
-- **Programa de indicação ("indique e ganhe")**: só aparece no painel de quem está
-  logado, não nas páginas públicas. Hoje o assistente não sabe responder e passa para uma
-  pessoa. Se for comum perguntarem, vale uma pergunta no FAQ.
-- **Saque para chave Pix de outra pessoa**: o site não diz. Mesma situação.
+O jeito certo de ensinar algo novo ao assistente é escrever a resposta no FAQ do site
+(`paginas/templates/paginas/faq.html`): o assistente lê o FAQ, então quem entra no site
+e quem pergunta no WhatsApp leem a mesma resposta. Depois, acrescente a pergunta em
+`perguntas_teste.py` para a próxima comparação conferir.
 
 ## Próximos passos (o bot em si)
 
