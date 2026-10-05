@@ -108,16 +108,54 @@ def montar_tabela_html(titulo, resumo):
     """
 
 
-def montar_corpo_email(resumo_ontem, resumo_mes, data_referencia, titulo_mes="Mês (até ontem)"):
+def montar_bloco_validado_html(titulo, dados):
+    """Bloco simples (sem quebra por Sub ID) com os totais de faturamento/
+    comissão validada - mesmos 3 números mostrados na aba "Comissões
+    validadas" do app, pra "Ontem" ou pro mês."""
+    dados = dados or {}
+    pedidos = int(dados.get("pedidos") or 0)
+    faturamento = formatar_moeda(dados.get("faturamento"))
+    comissao = formatar_moeda(dados.get("comissao"))
+
+    return f"""
+    <div style="margin:0 0 16px;font-family:Arial,sans-serif;">
+      <h4 style="margin:0 0 4px;color:#222;">{titulo}</h4>
+      <p style="margin:0;font-size:14px;color:#333;">
+        Pedidos: <strong>{pedidos}</strong> &nbsp;·&nbsp;
+        Faturamento: <strong>{faturamento}</strong> &nbsp;·&nbsp;
+        Comissão: <strong>{comissao}</strong>
+      </p>
+    </div>
+    """
+
+
+def montar_corpo_email(
+    resumo_ontem,
+    resumo_mes,
+    data_referencia,
+    titulo_mes="Mês (até ontem)",
+    validado_ontem=None,
+    validado_mes=None,
+):
     tabela_ontem = montar_tabela_html("Ontem", resumo_ontem)
     tabela_mes = montar_tabela_html(titulo_mes, resumo_mes)
+
+    bloco_comissoes_validadas = ""
+    if validado_ontem is not None or validado_mes is not None:
+        bloco_comissoes_validadas = f"""
+        <h2 style="margin:28px 0 8px;font-family:Arial,sans-serif;color:#222;">Comissões validadas</h2>
+        {montar_bloco_validado_html("Ontem", validado_ontem)}
+        {montar_bloco_validado_html(titulo_mes, validado_mes)}
+        """
 
     return f"""
     <div style="font-family:Arial,sans-serif;color:#222;max-width:640px;">
       <h2 style="margin:0 0 4px;">Relatório de vendas/comissão — Shopee</h2>
       <p style="margin:0 0 16px;color:#666;">Gerado automaticamente em {data_referencia}</p>
+      <h2 style="margin:16px 0 8px;font-family:Arial,sans-serif;color:#222;">Comissões estimadas</h2>
       {tabela_ontem}
       {tabela_mes}
+      {bloco_comissoes_validadas}
       <p style="margin-top:24px;font-size:12px;color:#999;">
         Relatório enviado automaticamente pelo bot. Os valores de comissão podem
         sofrer pequenos ajustes até serem validados/pagos pela Shopee.
