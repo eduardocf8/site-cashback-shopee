@@ -1682,10 +1682,10 @@ class MainWindow(QMainWindow):
         email_report_layout.addStretch(1)
 
         self.data_tabs.addTab(logs_tab, "Logs")
-        self.data_tabs.addTab(history_tab, "Histórico")
-        self.data_tabs.addTab(indicators_tab, "Indicadores")
+        self.data_tabs.addTab(history_tab, "Histórico de envios")
+        self.data_tabs.addTab(indicators_tab, "Comissões estimadas")
         self.data_tabs.addTab(conversoes_tab, "Relatório de conversões")
-        self.data_tabs.addTab(faturamento_validado_tab, "Faturamento Validado")
+        self.data_tabs.addTab(faturamento_validado_tab, "Comissões validadas")
         self.data_tabs.addTab(email_report_tab, "Relatório por e-mail")
         self.update_indicator_period_fields()
 
