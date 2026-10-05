@@ -3612,9 +3612,32 @@ class MainWindow(QMainWindow):
             resumo_ontem = conversor.obter_indicadores_por_sub_id(ontem_inicio, ontem_fim)
             resumo_mes = conversor.obter_indicadores_por_sub_id(mes_inicio, mes_fim)
 
+            # Comissões validadas: mesmo mês de referência das comissões
+            # estimadas acima (o mês de "ontem", não o de "hoje") - evita
+            # misturar meses diferentes no mesmo email quando o envio
+            # acontece logo no início de um mês novo.
+            relatorio_validado = conversor.obter_faturamento_validado(mes_inicio.year, mes_inicio.month)
+            dia_ontem = ontem_inicio.date()
+            linha_ontem_validada = next(
+                (
+                    linha
+                    for linha in (relatorio_validado.get("diario") or [])
+                    if linha.get("dia") == dia_ontem
+                ),
+                None,
+            ) or {"pedidos": 0, "faturamento": 0.0, "comissao": 0.0}
+            resumo_mes_validado = relatorio_validado.get("resumo") or {}
+
             data_referencia = agora.strftime("%d/%m/%Y %H:%M")
             titulo_mes = f"{MESES_PT[mes_inicio.month]}/{mes_inicio.year} (até ontem)"
-            corpo_html = montar_corpo_email(resumo_ontem, resumo_mes, data_referencia, titulo_mes)
+            corpo_html = montar_corpo_email(
+                resumo_ontem,
+                resumo_mes,
+                data_referencia,
+                titulo_mes,
+                validado_ontem=linha_ontem_validada,
+                validado_mes=resumo_mes_validado,
+            )
             assunto = f"Relatório Shopee — {agora.strftime('%d/%m/%Y')}"
 
             enviar_email(self.settings, assunto, corpo_html)
