@@ -1667,7 +1667,7 @@ class MainWindow(QMainWindow):
         email_report_actions = QHBoxLayout()
         email_report_actions.setContentsMargins(0, 0, 0, 0)
         email_report_actions.setSpacing(10)
-        self.relatorio_email_testar_button = QPushButton("Enviar relatório de teste agora")
+        self.relatorio_email_testar_button = QPushButton("Enviar relatório agora")
         self.relatorio_email_testar_button.setObjectName("compactToolButton")
         self.relatorio_email_testar_button.clicked.connect(self.enviar_relatorio_email_teste)
         self.relatorio_email_status_label = QLabel("Nunca enviado")
@@ -1686,7 +1686,7 @@ class MainWindow(QMainWindow):
         self.data_tabs.addTab(indicators_tab, "Indicadores")
         self.data_tabs.addTab(conversoes_tab, "Relatório de conversões")
         self.data_tabs.addTab(faturamento_validado_tab, "Faturamento Validado")
-        self.data_tabs.addTab(email_report_tab, "Relatório por email")
+        self.data_tabs.addTab(email_report_tab, "Relatório por e-mail")
         self.update_indicator_period_fields()
 
         right_layout.addWidget(config_title)
