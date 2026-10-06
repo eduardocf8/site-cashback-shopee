@@ -120,6 +120,10 @@
         /* ---------- Conversor de link no hero ---------- */
         .conversor-hero {
             background: var(--paper); border: 1px solid var(--line); border-radius: 14px; padding: 24px;
+            /* Compensa o header fixo (.nav é sticky) - sem isso, o link "#converter-link"
+               (usado pelo botão "Gerar novo link de cashback" do painel) rola o topo do
+               formulário pra debaixo do header, escondendo quase tudo atrás dele. */
+            scroll-margin-top: 80px;
         }
         .conversor-hero label { display: block; font-size: 13px; font-weight: 600; margin-bottom: 6px; }
         .conversor-hero input[type="url"] {
@@ -190,6 +194,9 @@
             .nav .botao-cta { order: 2; margin-left: auto; }
             .nav .nav-secundario { order: 3; flex-basis: 100%; justify-content: space-between; }
             .nav-busca { order: 4; flex-basis: 100%; max-width: none; margin-right: 0; }
+            /* Header sticky vira 3 linhas no mobile (bem mais alto que os 64px do
+               desktop) - precisa de mais espaço reservado pra não esconder o conversor. */
+            .conversor-hero { scroll-margin-top: 170px; }
         }
 
         /* ---------- Seção genérica ---------- */
