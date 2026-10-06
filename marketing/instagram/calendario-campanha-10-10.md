@@ -8,7 +8,7 @@ Brasília).
 "Quando seus seguidores estão online" e troque pelos horários em que o seu público está de fato.
 Feed e reels dá para agendar no Meta Business Suite; stories também.
 
-## Antes de tudo (você, hoje)
+## Antes de tudo (você)
 
 1. No Shell do Render: `python manage.py simular_campanha --multiplicador 1.5 --dias 60`
    (confirma a margem com pedidos reais antes de anunciar).
