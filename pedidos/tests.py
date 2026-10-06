@@ -2523,8 +2523,151 @@ class PreviaCampanhaTests(TestCase):
         self._ligar()
         resposta = self.client.get(reverse("ofertas_lista"))
         self.assertContains(resposta, f"{com_campanha}% cashback")
-        self.assertNotContains(resposta, f"{normal}% cashback")
+        # com ">" e "<" para não confundir "5,0%" com o final de "15,0%"
+        self.assertNotContains(resposta, f">{normal}% cashback<")
         # e quem não é o administrador continua vendo o valor normal
         from django.test import Client
 
         self.assertContains(Client().get(reverse("ofertas_lista")), f"{normal}% cashback")
+
+    def test_cards_da_home_tambem_mudam_na_previa(self):
+        """Oferta do dia e "Ofertas em alta" usam o mesmo cálculo dos cards da lista."""
+        from ofertas.models import Oferta
+
+        from .previa import _campanha_previa
+
+        for i, comissao in enumerate(("0.0500", "0.1000"), start=1):
+            Oferta.objects.create(
+                item_id=900 + i, nome=f"Produto da home {i}", categoria_id=1,
+                product_link=f"https://shopee.com.br/produto-{900 + i}-i.1.{900 + i}",
+                percentual_comissao=Decimal(comissao), preco_min=Decimal("100"), preco_max=Decimal("100"),
+                vendas=100 - i,
+            )
+        oferta = Oferta.objects.get(item_id=901)
+        formata = lambda v: str(v).replace(".", ",")  # noqa: E731
+        normal = formata(oferta.percentual_cashback)
+        token = _campanha_previa.set(self.campanha)
+        try:
+            com_campanha = formata(oferta.percentual_cashback)
+        finally:
+            _campanha_previa.reset(token)
+        self.assertNotEqual(com_campanha, normal)
+
+        self._ligar()
+        resposta = self.client.get(reverse("home"))
+        self.assertContains(resposta, f"{com_campanha}% cashback")
+        # com ">" e "<" para não confundir "5,0%" com o final de "15,0%"
+        self.assertNotContains(resposta, f">{normal}% cashback<")
+
+
+class BarraCampanhaNosCardsTests(TestCase):
+    """O card de oferta já mostra o valor com o extra da campanha; a barra do topo explica por que ele é
+    maior. Só aparece com a campanha de fato ativa - nunca no aviso prévio, quando os valores
+    ainda são os normais."""
+
+    def setUp(self):
+        from ofertas.models import Oferta
+
+        self.agora = timezone.now()
+        Oferta.objects.create(
+            item_id=777, nome="Produto do selo", categoria_id=1,
+            product_link="https://shopee.com.br/produto-777-i.1.777",
+            percentual_comissao=Decimal("0.1000"), preco_min=Decimal("100"), preco_max=Decimal("100"), vendas=9,
+        )
+
+    def _campanha(self, multiplicador="1.5", inicio_em_dias=-1, fim_em_dias=1):
+        return CampanhaCashback.objects.create(
+            multiplicador=Decimal(multiplicador),
+            inicio=self.agora + timedelta(days=inicio_em_dias),
+            fim=self.agora + timedelta(days=fim_em_dias),
+        )
+
+    def test_sem_campanha_nao_ha_barra(self):
+        for url in (reverse("ofertas_lista"), reverse("home")):
+            self.assertNotContains(self.client.get(url), "campanha-barra\">", msg_prefix=url)
+
+    def test_campanha_ativa_poe_a_barra_nos_cards_da_lista_e_da_home(self):
+        from ofertas.models import Oferta
+
+        # com 2 ofertas, a mais vendida vira "Oferta do dia" e a outra cai no carrossel "em alta"
+        Oferta.objects.create(
+            item_id=778, nome="Outro produto", categoria_id=1,
+            product_link="https://shopee.com.br/produto-778-i.1.778",
+            percentual_comissao=Decimal("0.0800"), preco_min=Decimal("50"), preco_max=Decimal("50"), vendas=1,
+        )
+        self._campanha()
+        for url in (reverse("ofertas_lista"), reverse("home")):
+            resposta = self.client.get(url)
+            self.assertContains(resposta, "50% a mais de cashback</div>", msg_prefix=url)
+            self.assertContains(resposta, 'class="campanha-barra"', msg_prefix=url)
+            self.assertNotContains(resposta, "+50%", msg_prefix=url)
+
+    def test_campanha_de_um_dia_abre_com_a_data_como_pediu_o_texto(self):
+        hoje = timezone.localtime(self.agora)
+        inicio = hoje.replace(hour=0, minute=0, second=0, microsecond=0)
+        CampanhaCashback.objects.create(
+            multiplicador=Decimal("1.5"), inicio=inicio, fim=inicio.replace(hour=23, minute=59, second=59)
+        )
+        self.assertContains(
+            self.client.get(reverse("ofertas_lista")), f'class="campanha-barra">{hoje:%d.%m}: 50% a mais de cashback</div>'
+        )
+
+    def test_campanha_de_varios_dias_nao_diz_o_dia(self):
+        self._campanha(inicio_em_dias=-1, fim_em_dias=3)
+        resposta = self.client.get(reverse("ofertas_lista"))
+        self.assertContains(resposta, 'class="campanha-barra">50% a mais de cashback</div>')
+
+    def test_multiplicador_2_vira_em_dobro(self):
+        self._campanha(multiplicador="2")
+        self.assertContains(self.client.get(reverse("ofertas_lista")), "Cashback em dobro")
+
+    def test_aviso_previo_nao_poe_barra_porque_os_valores_ainda_sao_normais(self):
+        self._campanha(inicio_em_dias=2, fim_em_dias=3)
+        resposta = self.client.get(reverse("ofertas_lista"))
+        self.assertContains(resposta, "faixa-campanha")
+        self.assertNotContains(resposta, 'class="campanha-barra"')
+
+    def test_campanha_encerrada_ou_multiplicador_1_nao_poe_barra(self):
+        self._campanha(inicio_em_dias=-5, fim_em_dias=-1)
+        self._campanha(multiplicador="1")
+        self.assertNotContains(self.client.get(reverse("ofertas_lista")), 'class="campanha-barra"')
+
+    def test_barra_acompanha_o_valor_do_card(self):
+        """Quando o selo está lá, o card mostra o valor com a campanha (10% x 1,5 = 15%)."""
+        self._campanha()
+        resposta = self.client.get(reverse("ofertas_lista"))
+        self.assertContains(resposta, ">15,0% cashback<")
+        self.assertContains(resposta, "campanha-barra")
+
+    def test_na_previa_do_administrador_a_barra_aparece_so_para_ele(self):
+        from django.test import Client
+
+        CampanhaCashback.objects.create(
+            multiplicador=Decimal("1.5"), inicio=self.agora + timedelta(days=4), fim=self.agora + timedelta(days=5)
+        )
+        admin = get_user_model().objects.create_user(username="dono2", password="senha123", cpf="39053344705")
+        admin.is_staff = admin.is_superuser = True
+        admin.save()
+        self.client.force_login(admin)
+        self.client.post(reverse("previa_campanha"), {"acao": "ligar"})
+        self.assertContains(self.client.get(reverse("ofertas_lista")), 'class="campanha-barra"')
+        self.assertNotContains(Client().get(reverse("ofertas_lista")), 'class="campanha-barra"')
+
+    def test_a_campanha_e_consultada_uma_vez_por_requisicao(self):
+        from types import SimpleNamespace
+
+        from pedidos.templatetags.campanha_tags import barra_campanha_card
+
+        pedido = SimpleNamespace()
+        with patch.object(CampanhaCashback, "ativa_agora", return_value=None) as consulta:
+            barra_campanha_card({"request": pedido})
+            barra_campanha_card({"request": pedido})
+            barra_campanha_card({"request": pedido})
+        self.assertEqual(consulta.call_count, 1)
+
+    def test_oferta_do_dia_da_home_tambem_leva_a_barra(self):
+        self._campanha()
+        resposta = self.client.get(reverse("home"))
+        self.assertContains(resposta, "destaque-cartao")
+        self.assertContains(resposta, 'class="campanha-barra"')
+        self.assertContains(resposta, "50% a mais de cashback</div>")

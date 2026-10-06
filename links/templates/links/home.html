@@ -285,6 +285,8 @@
         .destaque-preco-avista { font-size: 14px; color: var(--muted); margin-top: -6px; }
         .destaque-cashback { color: var(--success); font-weight: 700; font-size: 15px; }
         .destaque-corpo .botao-cta { align-self: flex-start; font-size: 15px; padding: 13px 28px; margin-top: 6px; }
+        .destaque-cartao { flex-wrap: wrap; }
+        .destaque-cartao .campanha-barra { flex: 0 0 100%; }
         @media (max-width: 720px) {
             .destaque-cartao { flex-direction: column; }
             .destaque-imagem { flex-basis: auto; }
@@ -440,6 +442,7 @@
         <div class="envolve">
             <h2 class="titulo-secao">Oferta <span class="destaque-marca">do dia</span></h2>
             <div class="destaque-cartao">
+                {% if oferta_destaque.percentual_cashback %}{% barra_campanha_card %}{% endif %}
                 <div class="destaque-imagem">
                     {% if oferta_destaque.percentual_desconto %}
                         <span class="desconto">-{{ oferta_destaque.percentual_desconto }}%</span>
