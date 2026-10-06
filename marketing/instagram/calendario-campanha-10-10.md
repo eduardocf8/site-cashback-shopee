@@ -26,8 +26,8 @@ Feed e reels dá para agendar no Meta Business Suite; stories também.
 | **Ter 6** | horário calmo | **Teste da campanha:** campanha de teste de 10 minutos (multiplicador 1.5, sem sobrepor a do dia 10); conferir cards (Kit Peseira 8,7% / R$ 6,08) e faixa nas 4 páginas; **não apagar ainda** (ver observações) | — |
 | Ter 6 | 19h | **Reel A** (objetos: calendário, letreiro, recibo, relógio) | `remotion/videos/campanha-10-10-a-objetos.mp4` + `legenda-campanha-10-10-a.txt` |
 | **Qua 7** | 12h | **Story 1, teaser "vem aí"**, com a **figurinha de contagem regressiva** para 10/10 | `stories-10-10/story-01-teaser.png` |
-| Qua 7 | depois das 3h | Apagar a campanha de teste (só depois da sincronização das 3h) | admin |
 | Qua 7 | de manhã | Abrir o site e conferir que a **faixa** apareceu ("Dia 10.10: 50% a mais de cashback...") | — |
+| Qua 7 | depois das 3h | Apagar a campanha de teste (só depois da sincronização das 3h) | admin |
 | **Qui 8** | 12h | **Story 2, "faltam 2 dias"** (1,6% → 2,4% e 1% → 1,5%). Só vale postado neste dia | `stories-10-10/story-02-faltam-2-dias.png` |
 | Qui 8 | 19h | **Story "antes → agora"** (Kit Peseira: R$ 4,05 → R$ 6,08) | `cards-antes-agora/story-antes-agora.png` |
 | **Sex 9** | 12h | **Reel B** (gravação de tela, abre com "na Shopee?") | `remotion/videos/campanha-10-10-b-gravacao-de-tela.mp4` + `legenda-campanha-10-10-b.txt` |
