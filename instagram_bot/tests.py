@@ -10,6 +10,7 @@ from django.utils import timezone
 
 from links.models import Click
 from ofertas.models import Oferta, OfertaManual
+from pedidos.models import CampanhaCashback
 
 from . import conteudo, instagram_client, services, templates_imagem
 from .models import RegistroPublicacao
@@ -272,6 +273,83 @@ class AlinhamentoDosPassosTests(TestCase):
         # 4px é o resíduo normal entre o centro óptico da fonte e o centro do
         # desenho; desalinhado de verdade dá 12. O limite separa os dois casos.
         self.assertLess(abs(centro_circulo - centro_texto), 7)
+
+
+class BarraCampanhaNoStoryTests(TestCase):
+    """Campanha 10.10 (ver RESUMO_BARRA_CAMPANHA_BOT_INSTAGRAM.txt): o selo "X%
+    cashback" do story de oferta usa o mesmo cálculo do site
+    (CampanhaCashback.multiplicador_atual via ofertas/models.py), então durante uma
+    campanha ele sai inflado sem nada que explique - a barra no topo avisa, mesma
+    regra de texto da barra do site (pedidos/tests.py::BarraCampanhaNosCardsTests)."""
+
+    def setUp(self):
+        self.oferta = Oferta.objects.create(
+            item_id=900, nome="Produto do selo", nome_curto="produto do selo",
+            preco_min=Decimal("100.00"), preco_max=Decimal("100.00"),
+            imagem_url="", percentual_comissao=Decimal("0.1000"), categoria_id=1,
+        )
+        self.agora = timezone.now()
+
+    def _campanha(self, multiplicador="1.5", inicio_em_dias=-1, fim_em_dias=1):
+        return CampanhaCashback.objects.create(
+            multiplicador=Decimal(multiplicador),
+            inicio=self.agora + timedelta(days=inicio_em_dias),
+            fim=self.agora + timedelta(days=fim_em_dias),
+        )
+
+    def _cor_do_topo(self, imagem):
+        # Em qualquer y dentro da faixa onde a barra (quando existe) é desenhada,
+        # bem acima de onde o resto do conteúdo (centralizado mais abaixo) começa.
+        return imagem.getpixel((imagem.width // 2, 270))
+
+    def test_sem_campanha_nao_desenha_barra(self):
+        from PIL import ImageColor
+
+        imagem = templates_imagem.gerar_imagem_oferta_story(self.oferta)
+
+        self.assertNotEqual(self._cor_do_topo(imagem), ImageColor.getrgb(templates_imagem.CORES["highlight"]))
+
+    def test_campanha_ativa_desenha_barra_no_topo(self):
+        from PIL import ImageColor
+
+        self._campanha()
+        imagem = templates_imagem.gerar_imagem_oferta_story(self.oferta)
+
+        self.assertEqual(self._cor_do_topo(imagem), ImageColor.getrgb(templates_imagem.CORES["highlight"]))
+
+    def test_sem_campanha_imagem_nao_muda_nada(self):
+        """Sem campanha ativa, a função devolve exatamente a mesma imagem de antes
+        dessa mudança - mesmo tamanho, mesmos pixels."""
+        imagem_a = templates_imagem.gerar_imagem_oferta_story(self.oferta)
+        imagem_b = templates_imagem.gerar_imagem_oferta_story(self.oferta)
+
+        self.assertEqual(list(imagem_a.getdata()), list(imagem_b.getdata()))
+
+    def test_texto_campanha_de_um_dia_abre_com_a_data(self):
+        hoje = timezone.localtime(self.agora)
+        inicio = hoje.replace(hour=0, minute=0, second=0, microsecond=0)
+        campanha = CampanhaCashback.objects.create(
+            multiplicador=Decimal("1.5"), inicio=inicio, fim=inicio.replace(hour=23, minute=59, second=59),
+        )
+
+        self.assertEqual(
+            templates_imagem._texto_barra_campanha(campanha), f"{hoje:%d.%m}: 50% a mais de cashback",
+        )
+
+    def test_texto_campanha_de_varios_dias_nao_diz_o_dia(self):
+        campanha = self._campanha(inicio_em_dias=-1, fim_em_dias=3)
+
+        self.assertEqual(templates_imagem._texto_barra_campanha(campanha), "50% a mais de cashback")
+
+    def test_texto_multiplicador_2_vira_em_dobro(self):
+        campanha = self._campanha(multiplicador="2", inicio_em_dias=-1, fim_em_dias=3)
+
+        self.assertEqual(templates_imagem._texto_barra_campanha(campanha), "Cashback em dobro")
+
+    def test_nunca_usa_o_formato_mais_percentual(self):
+        campanha = self._campanha()
+
+        self.assertNotIn("+50%", templates_imagem._texto_barra_campanha(campanha))
 
 
 @override_settings(
