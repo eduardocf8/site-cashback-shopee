@@ -200,6 +200,14 @@ class CampanhaCashback(models.Model):
         return None
 
     @classmethod
+    def ativa_agora(cls):
+        """A campanha que está pagando mais cashback neste momento (ou, na prévia do
+        administrador, a que ela mostra), ou None. Mesma regra da faixa: é o que decide o selo
+        "50% a mais" dos cards, que só pode aparecer quando o valor do card já inclui o extra."""
+        faixa = cls.para_faixa()
+        return faixa["campanha"] if faixa and faixa["ativa"] else None
+
+    @classmethod
     def proxima_para_previa(cls, agora=None):
         """A campanha que a prévia do administrador mostra: a que ainda não terminou e começa
         primeiro (multiplicador maior que 1). None se não há nenhuma cadastrada."""

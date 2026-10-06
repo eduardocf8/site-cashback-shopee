@@ -2087,6 +2087,13 @@ a 50% da comissão; nenhum pedido passa de 100%. Na coorte de 09 a 28/09: cashba
       logout; resposta com `Cache-Control: private, no-store` e `Vary: Cookie`; a prévia vive numa
       variável de contexto restaurada em `finally`. Não toca `multiplicador_em` (o que carimba o
       pedido) e não grava nada. 24 testes.
+- [x] **Barra da campanha no topo de cada card** (`{% barra_campanha_card %}`,
+      `templates/_barra_campanha_card.html`, `.campanha-barra` em `brand.css`): enquanto a campanha está
+      no ar (ou na prévia do administrador), cada card de oferta, o "Oferta do dia" e o carrossel "em alta"
+      da home abrem com "10.10: 50% a mais de cashback" (campanha de um dia só abre com a data;
+      multiplicador 2 vira "Cashback em dobro"). Explica por que o valor do card é maior. Nunca no aviso
+      prévio (os valores ainda são os normais). A campanha é consultada uma vez por requisição, não por
+      card.
 - [x] 33 testes novos.
 
 **Para ligar a campanha:** no admin, "Campanhas de cashback" -> multiplicador `1.5`, início
