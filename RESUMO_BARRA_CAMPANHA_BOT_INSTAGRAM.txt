@@ -1,0 +1,96 @@
+RESUMO: BARRA DA CAMPANHA 10.10 NAS IMAGENS DO BOT DO INSTAGRAM
+Escrito em 06/10/2026, para a conversa que cuida do bot do Instagram (instagram_bot/).
+Origem: conversa sobre a campanha "50% a mais de cashback" do dia 10/10/2026.
+
+
+1. O PEDIDO (DECISÃO DO USUÁRIO)
+--------------------------------
+Os stories de oferta que o bot do Instagram monta sozinho passam a mostrar, no topo da imagem, uma
+barra com o texto "10.10: 50% a mais de cashback" enquanto a campanha estiver no ar. É a mesma
+barra que acabou de entrar nos cards do site. O usuário escolheu esta opção entre quatro
+(a outra considerada era pausar os stories de oferta nas últimas horas do dia 10; ficou de fora).
+
+Por quê: o selo "X% cashback" da imagem do bot usa o mesmo cálculo do site, então no dia 10 ele já
+sai com o valor 50% maior, mas sem nada que explique a campanha. Além disso, um story dura 24 h:
+  - postado no dia 10 à noite, continua visível no dia 11 com o valor da campanha, quando o site já
+    voltou ao normal (quem clicar vê 4,2% no site e 6,3% no story);
+  - postado no dia 9 à noite, aparece com o valor normal durante parte do dia 10.
+A barra com a DATA deixa claro de que dia é o valor.
+
+
+2. O QUE É A CAMPANHA
+---------------------
+- Cadastro: pedidos.CampanhaCashback (admin, "Campanhas de cashback"): multiplicador 1,5, início
+  10/10/2026 00:00, fim 10/10/2026 23:59:59 (horário de Brasília; TIME_ZONE = America/Sao_Paulo).
+- O cashback de um cartão/oferta = comissão x repasse x multiplicador_atual, com piso mínimo (1,6%
+  direta, 1% indireta). `ofertas/models.py::_CashbackEstimadoMixin` (percentual_cashback,
+  valor_cashback_estimado) usa CampanhaCashback.multiplicador_atual(). A imagem do story lê essas
+  propriedades; por isso o valor já sobe sozinho.
+- CampanhaCashback.percentual_extra: 1,5 -> 50; 2 -> 100. Um_so_dia: início e fim no mesmo dia local.
+- CampanhaCashback.ativa_agora() (NOVO, já em produção): devolve a campanha que está pagando mais
+  agora (ou None). Mesma regra da faixa do site. É o que o bot deve consultar.
+  Fora de uma requisição de página (cron, management command, Shell) a "prévia do administrador"
+  nunca se aplica: ela só existe numa variável de contexto ligada pelo middleware em GET de cinco
+  páginas públicas. Não mexer em pedidos/previa.py nem em multiplicador_em (carimba o cashback pago).
+
+
+3. O QUE JÁ ESTÁ NO SITE (PRODUÇÃO, COMMIT 7a40f7b)
+---------------------------------------------------
+- Template tag {% barra_campanha_card %} (pedidos/templatetags/campanha_tags.py) e
+  templates/_barra_campanha_card.html; CSS .campanha-barra em static/css/brand.css (fundo
+  var(--highlight) âmbar #f59e0b, texto var(--highlight-ink), 11,5 px, negrito, centralizado).
+- Texto: campanha de um dia só -> "{dd.mm}: {N}% a mais de cashback" (ex.: "10.10: 50% a mais de
+  cashback"); vários dias -> "{N}% a mais de cashback"; multiplicador 2 -> "Cashback em dobro".
+  NUNCA "+50%" (lê como "cashback de 50%"). Só com a campanha de fato ativa: no aviso prévio dos 3
+  dias antes os valores ainda são os normais, então não aparece barra.
+- Testes: pedidos/tests.py::BarraCampanhaNosCardsTests e PreviaCampanhaTests.
+
+
+4. O QUE FAZER NO BOT
+---------------------
+Onde está o código:
+  - instagram_bot/templates_imagem.py::gerar_imagem_oferta_story (linha ~247): é o story de oferta
+    do momento, 1080x1920, com selo âmbar "X% cashback" no canto da foto.
+  - instagram_bot/templates_imagem.py::gerar_imagem_oferta_carrossel (~185): carrossel semanal de
+    ofertas (1080x1080), também mostra percentual_cashback.
+  - instagram_bot/services.py: publicar_story_oferta_do_momento (~335, chamado várias vezes ao dia
+    por /tarefas/postar-story-oferta/), publicar_story_oferta_especifica,
+    publicar_story_oferta_curada, e a geração do carrossel (~436).
+Especificação:
+  1. Se CampanhaCashback.ativa_agora() não for None, desenhar uma barra âmbar de largura total no
+     TOPO da imagem do story, com o texto acima (mesma regra do template do site). Fonte e cores
+     da marca (Familjen; CORES["highlight"] de fundo e CORES["ink"] de texto). Respeitar as margens
+     seguras do Instagram nos stories (cerca de 250 px em cima e 300 px embaixo livres: a interface
+     cobre isso). Se a barra cair na zona coberta pela interface, posicioná-la logo abaixo da
+     zona segura, não no limite da imagem.
+  2. Mesma regra no carrossel de ofertas, se o formato aguentar (decisão a confirmar com o usuário:
+     o pedido foi sobre os STORIES).
+  3. Sem campanha ativa: a imagem fica exatamente como hoje (nenhum pixel muda).
+  4. Atenção ao momento em que a imagem é GERADA: alguns stories pedem aprovação por e-mail antes
+     de publicar, e o carrossel semanal é gerado para aprovação dias antes. O valor e a barra
+     ficam "congelados" no momento da geração. Se a geração e a publicação cruzarem a meia-noite
+     do dia 10 (ou o fim da campanha), a imagem pode sair com o estado errado. Vale decidir: regerar
+     a imagem na hora da publicação, ou ao menos checar a campanha de novo antes de publicar.
+  5. Testes: com e sem campanha ativa (barra presente/ausente, texto certo para um dia e para vários
+     dias, multiplicador 2 -> "Cashback em dobro"), e que sem campanha a imagem não muda.
+
+
+5. PRAZO E FLUXO
+----------------
+- A campanha é no sábado 10/10/2026. A barra precisa estar em produção antes dos primeiros stories
+  do dia 10 (o bot posta a partir da madrugada/manhã, conforme o cron).
+- A branch de produção é claude/shopee-cashback-site-6hb939 e o Render faz DEPLOY AUTOMÁTICO a
+  cada push nela. Só enviar para lá com autorização explícita do usuário e depois de a suíte
+  completa passar. Outras conversas também empurram para essa branch: sempre buscar a versão
+  atual, aplicar a mudança em cima dela (sem forçar push) e rodar a suíte.
+- Ambiente de testes (quirks já descobertos): variável DJANGO_DEBUG=True (não DEBUG), rodar
+  collectstatic antes, ter openpyxl, e um stub para pywebpush. A suíte completa leva uns 3 a 7 min.
+
+
+6. OUTRAS ARTES (FORA DO ESCOPO DESTA CONVERSA, SÓ PARA SABER)
+--------------------------------------------------------------
+Os stories da campanha, os cards antes/agora, o carrossel 12 e os dois reels foram feitos à parte,
+em marketing/instagram/ e marketing/remotion/, e o usuário os posta manualmente (não passam pelo
+bot). Os cards antes/agora (marketing/instagram/gerar_cards_antes_agora.py) não têm a barra; se o
+usuário quiser, dá para colocá-la neles também para ficarem iguais ao site.
+Calendário completo da campanha: marketing/instagram/calendario-campanha-10-10.md (e .pdf).
