@@ -7,6 +7,8 @@ from django.utils import timezone
 
 from links.models import Click
 
+from .previa import campanha_da_previa
+
 
 class Pedido(models.Model):
     STATUS_PENDENTE = "pendente"
@@ -176,6 +178,12 @@ class CampanhaCashback(models.Model):
         antiga): a faixa nunca anuncia uma campanha diferente da que está pagando.
 
         Campanha com multiplicador 1 (ou menor) não gera faixa - não tem o que anunciar."""
+        previa = campanha_da_previa()
+        if previa is not None:
+            # Só existe para o superusuário que ligou a prévia, numa requisição de página
+            # pública (ver pedidos/previa.py): mostra a campanha como se já estivesse no ar.
+            return {"ativa": True, "campanha": previa}
+
         agora = agora or timezone.now()
         campanhas = cls.listar() if campanhas is None else campanhas
 
@@ -192,10 +200,24 @@ class CampanhaCashback(models.Model):
         return None
 
     @classmethod
+    def proxima_para_previa(cls, agora=None):
+        """A campanha que a prévia do administrador mostra: a que ainda não terminou e começa
+        primeiro (multiplicador maior que 1). None se não há nenhuma cadastrada."""
+        agora = agora or timezone.now()
+        futuras = [
+            c for c in cls.listar()
+            if c.multiplicador > 1 and (c.fim is None or c.fim >= agora)
+        ]
+        return min(futuras, key=lambda c: c.inicio) if futuras else None
+
+    @classmethod
     def multiplicador_atual(cls) -> Decimal:
         """Multiplicador vigente agora - usado pra exibir o cashback estimado nos
         cards de oferta (ver ofertas/models.py), já que ali não existe uma
         data_compra real (a compra ainda não aconteceu)."""
-        from django.utils import timezone
-
+        previa = campanha_da_previa()
+        if previa is not None:
+            # Prévia do administrador (ver pedidos/previa.py). NÃO afeta multiplicador_em,
+            # que é o que carimba o cashback pago no pedido.
+            return previa.multiplicador
         return cls.multiplicador_em(timezone.now())
