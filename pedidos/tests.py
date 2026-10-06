@@ -2202,3 +2202,264 @@ class SimularCampanhaTests(TestCase):
     def test_multiplicador_invalido_da_erro_claro(self):
         with self.assertRaisesMessage(Exception, "precisa ser um número"):
             self._rodar(multiplicador="abc")
+
+
+class PreviaCampanhaTests(TestCase):
+    """A prévia da campanha (pedidos/previa.py) só pode ser vista pelo superusuário que a ligou,
+    em páginas públicas, em GET, por tempo limitado, sem cache e sem vazar para a requisição
+    seguinte. Cada teste aqui prova uma dessas travas - e a campanha usada começa daqui a 4 dias,
+    fora da janela de 3 dias da faixa de aviso: tudo o que aparecer na página é, portanto, a prévia."""
+
+    def setUp(self):
+        from types import SimpleNamespace
+
+        self.SimpleNamespace = SimpleNamespace
+        self.agora = timezone.now()
+        self.campanha = CampanhaCashback.objects.create(
+            multiplicador=Decimal("1.5"),
+            inicio=self.agora + timedelta(days=4),
+            fim=self.agora + timedelta(days=4, hours=23),
+        )
+        User = get_user_model()
+        self.admin = User.objects.create_user(username="dono", password="senha123", cpf="39053344705")
+        self.admin.is_staff = self.admin.is_superuser = True
+        self.admin.save()
+        self.staff = User.objects.create_user(username="influencer", password="senha123", cpf="52998224725")
+        self.staff.is_staff = True
+        self.staff.save()
+        self.comum = User.objects.create_user(username="cliente", password="senha123", cpf="11144477735")
+
+    def _ligar(self):
+        self.client.force_login(self.admin)
+        self.client.post(reverse("previa_campanha"), {"acao": "ligar"})
+
+    def _marca_futura(self):
+        return (timezone.now() + timedelta(hours=1)).isoformat()
+
+    # --- quem liga
+
+    def test_anonimo_recebe_404_na_tela(self):
+        self.assertEqual(self.client.get(reverse("previa_campanha")).status_code, 404)
+        self.assertEqual(self.client.post(reverse("previa_campanha"), {"acao": "ligar"}).status_code, 404)
+
+    def test_usuario_comum_e_staff_que_nao_e_superusuario_recebem_404(self):
+        for usuario in (self.comum, self.staff):
+            self.client.force_login(usuario)
+            self.assertEqual(self.client.get(reverse("previa_campanha")).status_code, 404, usuario.username)
+            self.assertEqual(
+                self.client.post(reverse("previa_campanha"), {"acao": "ligar"}).status_code, 404, usuario.username
+            )
+            self.assertNotIn("previa_campanha_ate", self.client.session)
+
+    def test_superusuario_abre_a_tela_e_liga(self):
+        self.client.force_login(self.admin)
+        self.assertContains(self.client.get(reverse("previa_campanha")), "Prévia desligada")
+        self.client.post(reverse("previa_campanha"), {"acao": "ligar"})
+        self.assertIn("previa_campanha_ate", self.client.session)
+        self.assertContains(self.client.get(reverse("previa_campanha")), "Prévia LIGADA")
+
+    def test_desligar_remove_a_marca(self):
+        self._ligar()
+        self.client.post(reverse("previa_campanha"), {"acao": "desligar"})
+        self.assertNotIn("previa_campanha_ate", self.client.session)
+        self.assertNotContains(self.client.get(reverse("home")), "faixa-campanha")
+
+    def test_sem_campanha_cadastrada_a_previa_nao_liga(self):
+        CampanhaCashback.objects.all().delete()
+        self.client.force_login(self.admin)
+        self.client.post(reverse("previa_campanha"), {"acao": "ligar"})
+        self.assertNotIn("previa_campanha_ate", self.client.session)
+        self.assertContains(self.client.get(reverse("previa_campanha")), "Não há campanha cadastrada")
+
+    # --- quem vê
+
+    def test_superusuario_ve_a_faixa_e_o_aviso_vermelho(self):
+        self._ligar()
+        resposta = self.client.get(reverse("home"))
+        self.assertContains(resposta, "faixa-campanha")
+        self.assertContains(resposta, "50% a mais de cashback")
+        self.assertContains(resposta, "PRÉVIA DA CAMPANHA")
+
+    def test_sem_a_previa_ligada_nem_o_superusuario_ve(self):
+        self.client.force_login(self.admin)
+        self.assertNotContains(self.client.get(reverse("home")), "faixa-campanha")
+
+    def test_outro_navegador_nao_ve_nada(self):
+        from django.test import Client
+
+        self._ligar()
+        self.assertContains(self.client.get(reverse("home")), "faixa-campanha")
+        anonimo = Client()
+        for url in (reverse("home"), reverse("ofertas_lista"), reverse("registrar"), reverse("login")):
+            resposta = anonimo.get(url)
+            self.assertNotContains(resposta, "faixa-campanha", msg_prefix=url)
+            self.assertNotContains(resposta, "PRÉVIA", msg_prefix=url)
+
+    def test_marca_forjada_na_sessao_de_usuario_comum_nao_mostra_nada(self):
+        self.client.force_login(self.comum)
+        sessao = self.client.session
+        sessao["previa_campanha_ate"] = self._marca_futura()
+        sessao.save()
+        resposta = self.client.get(reverse("home"))
+        self.assertNotContains(resposta, "faixa-campanha")
+        self.assertNotContains(resposta, "PRÉVIA")
+
+    def test_marca_forjada_na_sessao_de_staff_nao_superusuario_nao_mostra_nada(self):
+        self.client.force_login(self.staff)
+        sessao = self.client.session
+        sessao["previa_campanha_ate"] = self._marca_futura()
+        sessao.save()
+        self.assertNotContains(self.client.get(reverse("home")), "faixa-campanha")
+
+    def test_marca_forjada_sem_login_nao_mostra_nada(self):
+        sessao = self.client.session
+        sessao["previa_campanha_ate"] = self._marca_futura()
+        sessao.save()
+        self.assertNotContains(self.client.get(reverse("home")), "faixa-campanha")
+
+    def test_perdeu_o_poder_de_superusuario_deixa_de_ver(self):
+        self._ligar()
+        self.admin.is_superuser = False
+        self.admin.save()
+        self.assertNotContains(self.client.get(reverse("home")), "faixa-campanha")
+
+    def test_usuario_desativado_nao_ve(self):
+        from .previa import pode_ver_previa
+
+        self.admin.is_active = False
+        self.assertFalse(pode_ver_previa(self.admin))
+        self.assertFalse(pode_ver_previa(None))
+
+    def test_marca_expirada_nao_mostra_nada(self):
+        self._ligar()
+        sessao = self.client.session
+        sessao["previa_campanha_ate"] = (timezone.now() - timedelta(minutes=1)).isoformat()
+        sessao.save()
+        self.assertNotContains(self.client.get(reverse("home")), "faixa-campanha")
+
+    def test_marca_ilegivel_nao_quebra_a_pagina(self):
+        self._ligar()
+        sessao = self.client.session
+        sessao["previa_campanha_ate"] = "lixo"
+        sessao.save()
+        self.assertEqual(self.client.get(reverse("home")).status_code, 200)
+
+    def test_logout_desliga_a_previa(self):
+        self._ligar()
+        self.client.logout()
+        self.client.force_login(self.admin)
+        self.assertNotContains(self.client.get(reverse("home")), "faixa-campanha")
+
+    # --- onde vale
+
+    def test_so_vale_em_get_ou_head_nas_paginas_publicas_da_lista(self):
+        from .middleware import campanha_para_previa
+
+        def pedido(metodo, caminho, usuario=None):
+            return self.SimpleNamespace(
+                method=metodo, path=caminho, user=usuario or self.admin,
+                session={"previa_campanha_ate": self._marca_futura()},
+            )
+
+        self.assertEqual(campanha_para_previa(pedido("GET", "/")), self.campanha)
+        self.assertEqual(campanha_para_previa(pedido("HEAD", "/ofertas/")), self.campanha)
+        # POST nunca (gravaria/publicaria um valor da prévia)
+        self.assertIsNone(campanha_para_previa(pedido("POST", "/")))
+        # admin, tarefas agendadas, geração de story e de e-mail: fora da lista
+        for caminho in (
+            "/admin/", "/admin/ofertas/oferta/", "/tarefas/executar/", "/tarefas/postar-story-oferta/",
+            "/ofertas/1/ir/", "/previa-campanha/", "/automacao/", "/links/", "/ir-para-shopee/", "/healthz/",
+        ):
+            self.assertIsNone(campanha_para_previa(pedido("GET", caminho)), caminho)
+        # e só para superusuário
+        self.assertIsNone(campanha_para_previa(pedido("GET", "/", self.comum)))
+        self.assertIsNone(campanha_para_previa(pedido("GET", "/", self.staff)))
+
+    def test_a_tela_da_previa_e_o_admin_nao_mostram_a_previa(self):
+        self._ligar()
+        self.assertNotContains(self.client.get(reverse("previa_campanha")), "PRÉVIA DA CAMPANHA")
+        self.assertNotContains(self.client.get("/admin/"), "PRÉVIA DA CAMPANHA")
+
+    # --- cache e vazamento entre requisições
+
+    def test_resposta_da_previa_sai_sem_cache(self):
+        self._ligar()
+        resposta = self.client.get(reverse("home"))
+        controle = resposta["Cache-Control"]
+        self.assertIn("no-store", controle)
+        self.assertIn("private", controle)
+        self.assertIn("Cookie", resposta["Vary"])
+
+    def test_nao_vaza_para_a_requisicao_seguinte(self):
+        from .previa import campanha_da_previa
+
+        self._ligar()
+        self.client.get(reverse("home"))
+        self.assertIsNone(campanha_da_previa())
+        self.assertEqual(CampanhaCashback.multiplicador_atual(), Decimal("1"))
+        self.assertIsNone(CampanhaCashback.para_faixa())
+
+    def test_a_variavel_da_previa_e_restaurada_mesmo_se_a_pagina_falhar(self):
+        from django.test import RequestFactory
+
+        from .middleware import PreviaCampanhaMiddleware
+        from .previa import campanha_da_previa
+
+        def view_que_falha(request):
+            self.assertEqual(campanha_da_previa(), self.campanha)
+            raise RuntimeError("falhou")
+
+        pedido = RequestFactory().get("/")
+        pedido.user = self.admin
+        pedido.session = {"previa_campanha_ate": self._marca_futura()}
+        with self.assertRaises(RuntimeError):
+            PreviaCampanhaMiddleware(view_que_falha)(pedido)
+        self.assertIsNone(campanha_da_previa())
+
+    # --- o que a prévia NÃO pode tocar
+
+    def test_nao_muda_o_multiplicador_que_carimba_o_pedido(self):
+        from .previa import _campanha_previa
+
+        token = _campanha_previa.set(self.campanha)
+        try:
+            self.assertEqual(CampanhaCashback.multiplicador_atual(), Decimal("1.5"))
+            self.assertEqual(CampanhaCashback.multiplicador_em(timezone.now()), Decimal("1"))
+        finally:
+            _campanha_previa.reset(token)
+
+    def test_nao_grava_nada_no_banco(self):
+        self._ligar()
+        antes = (CampanhaCashback.objects.count(), Pedido.objects.count(), Click.objects.count())
+        for url in (reverse("home"), reverse("ofertas_lista"), reverse("registrar")):
+            self.client.get(url)
+        depois = (CampanhaCashback.objects.count(), Pedido.objects.count(), Click.objects.count())
+        self.assertEqual(antes, depois)
+
+    def test_card_de_oferta_mostra_o_valor_da_campanha_so_na_previa(self):
+        from ofertas.models import Oferta
+
+        from .previa import _campanha_previa
+
+        oferta = Oferta.objects.create(
+            item_id=991, nome="Produto de prévia", categoria_id=1,
+            product_link="https://shopee.com.br/produto-991-i.1.991",
+            percentual_comissao=Decimal("0.1000"), preco_min=Decimal("100"), preco_max=Decimal("100"), vendas=5,
+        )
+        normal = str(oferta.percentual_cashback).replace(".", ",")  # a página usa vírgula
+        token = _campanha_previa.set(self.campanha)
+        try:
+            com_campanha = str(oferta.percentual_cashback).replace(".", ",")
+        finally:
+            _campanha_previa.reset(token)
+        self.assertNotEqual(com_campanha, normal)
+
+        self.assertContains(self.client.get(reverse("ofertas_lista")), f"{normal}% cashback")
+        self._ligar()
+        resposta = self.client.get(reverse("ofertas_lista"))
+        self.assertContains(resposta, f"{com_campanha}% cashback")
+        self.assertNotContains(resposta, f"{normal}% cashback")
+        # e quem não é o administrador continua vendo o valor normal
+        from django.test import Client
+
+        self.assertContains(Client().get(reverse("ofertas_lista")), f"{normal}% cashback")

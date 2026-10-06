@@ -23,7 +23,7 @@ Feed e reels dá para agendar no Meta Business Suite; stories também.
 | **Sáb 3** | 19h | Story seu, falando: "sábado que vem, dia 10/10, 50% a mais de cashback em todo pedido na Shopee pelo nosso site". Sem figurinha de contagem ainda | roteiro na conversa |
 | **Dom 4** | — | Descanso. Se ainda não postou, o carrossel 11 (datas duplas) pode entrar aqui, às 12h | `carrossel-11-datas-duplas/` |
 | **Seg 5** | — | Carrossel não foi postado hoje: passa para terça às 12h | — |
-| **Ter 6** | 10h | **Verificações sem exposição** (nada fica visível para o público): no Shell do Render, o teste das bordas da campanha e o `simular_campanha`; no admin, conferir a campanha cadastrada. Ver "Como testar sem expor a campanha" abaixo | — |
+| **Ter 6** | 10h | **Verificações sem exposição** (nada fica visível para o público): no Shell do Render, o teste das bordas da campanha e o `simular_campanha`; no admin, conferir a campanha cadastrada; e a **prévia do administrador** em `/previa-campanha/` (só você vê). Ver "Como testar sem expor a campanha" abaixo | — |
 | Ter 6 | 12h | **Feed: carrossel 12** (a explicação completa). Compartilhe no story às 12h30 | `carrossel-12-10-10/` + `legenda.txt` |
 | **Qua 7** | de manhã | Abrir o site e conferir que a **faixa** apareceu ("Dia 10.10: 50% a mais de cashback..."). É o aviso de 3 dias, previsto; os cards ainda mostram o valor normal | — |
 | Qua 7 | 12h | **Story 1, teaser "vem aí"**, com a **figurinha de contagem regressiva** para 10/10 | `stories-10-10/story-01-teaser.png` |
@@ -50,11 +50,16 @@ campanha de teste ativa no site**. O que dá para provar antes, sem expor nada:
 2. **Margem (Shell do Render):** `python manage.py simular_campanha --multiplicador 1.5 --dias 60`.
 3. **Código:** os testes automáticos de campanha, faixa, simulação e carimbo do pedido (38 testes),
    todos passando na versão atual.
-4. **A faixa de aviso (dia 7)** é o único trecho que o público vê antes do dia 10, e é a regra
+4. **Prévia do administrador (só você):** logado como superusuário, abra `/previa-campanha/` e ligue a
+   prévia por 2 horas. Aí, no seu navegador, a home, as ofertas, o painel e o cadastro aparecem com a
+   campanha no ar (faixa e cards; um aviso vermelho lembra que é prévia). Qualquer outra pessoa,
+   inclusive outro usuário logado, enxerga o site normal; para quem não é superusuário a tela
+   responde 404. Não grava nada e não muda o cashback pago.
+5. **A faixa de aviso (dia 7)** é o único trecho que o público vê antes do dia 10, e é a regra
    combinada de 3 dias antes.
-5. **O teste de verdade é no dia 10, às 00h05**, com a campanha no ar de propósito. Reversível na
+6. **O teste de verdade é no dia 10, às 00h05**, com a campanha no ar de propósito. Reversível na
    hora no admin, sem deploy.
-6. **Pedido carimbado:** conferir no dia 11, depois da sincronização das 3h, que os pedidos de 10/10
+7. **Pedido carimbado:** conferir no dia 11, depois da sincronização das 3h, que os pedidos de 10/10
    têm multiplicador `1.50` e os de 9/10 às 23h59 e de 11/10 às 00h têm `1.00`.
 
 ## Observações

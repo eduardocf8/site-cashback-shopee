@@ -2077,6 +2077,16 @@ a 50% da comissão; nenhum pedido passa de 100%. Na coorte de 09 a 28/09: cashba
       `dados.json`, gerado por `marketing/remotion/exportar_dados_campanha.py` a partir das
       mesmas constantes do banner (rodar de novo se a campanha mudar). Sem música: é escolhida e
       colocada no editor.
+- [x] **Prévia da campanha só para o administrador** (`pedidos/previa.py`, `pedidos/middleware.py`,
+      `/previa-campanha/`): o superusuário logado liga, por 2 horas, uma visão do site com a
+      campanha no ar (faixa + cards), para conferir antes do dia 10 sem expor nada ao público.
+      Seis travas, cada uma suficiente: só superusuário ativo liga (404 para os demais); o middleware
+      reconfere o superusuário a cada requisição (marca forjada na sessão não adianta); só GET/HEAD e só
+      em `/`, `/ofertas/`, `/dashboard/`, `/login/`, `/registrar/` (ficam de fora admin, tarefas
+      agendadas, story e e-mail, que usam o mesmo cashback estimado); a marca expira em 2 h e some no
+      logout; resposta com `Cache-Control: private, no-store` e `Vary: Cookie`; a prévia vive numa
+      variável de contexto restaurada em `finally`. Não toca `multiplicador_em` (o que carimba o
+      pedido) e não grava nada. 24 testes.
 - [x] 33 testes novos.
 
 **Para ligar a campanha:** no admin, "Campanhas de cashback" -> multiplicador `1.5`, início

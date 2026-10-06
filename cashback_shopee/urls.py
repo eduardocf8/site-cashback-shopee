@@ -21,6 +21,7 @@ urlpatterns = [
     path("", include("automacao_instagram.urls")),
     path("", include("licencas.urls")),
     path("", include("pinterest.urls")),
+    path("", include("pedidos.urls")),
     path("healthz/", views.healthcheck, name="healthcheck"),
     path("tarefas/executar/", views.executar_tarefas_agendadas, name="executar_tarefas_agendadas"),
     path("tarefas/publicar-instagram/", views.executar_publicacoes_instagram, name="executar_publicacoes_instagram"),

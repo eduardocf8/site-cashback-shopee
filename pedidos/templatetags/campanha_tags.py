@@ -1,6 +1,7 @@
 from django import template
 
 from pedidos.models import CampanhaCashback
+from pedidos.previa import campanha_da_previa
 
 register = template.Library()
 
@@ -14,4 +15,4 @@ def faixa_campanha():
     páginas que mostram a faixa. A tabela tem poucas linhas, então é uma consulta barata
     por página vista - e sem cache, para a faixa aparecer e sumir no mesmo instante em que
     os cards de oferta mudam de valor (eles usam o mesmo multiplicador_atual)."""
-    return {"faixa": CampanhaCashback.para_faixa()}
+    return {"faixa": CampanhaCashback.para_faixa(), "previa": campanha_da_previa() is not None}
