@@ -295,6 +295,7 @@ MIDDLEWARE = [
     "django.middleware.csrf.CsrfViewMiddleware",
     "django.contrib.auth.middleware.AuthenticationMiddleware",
     "accounts.middleware.OrigemCadastroMiddleware",  # depois do Auth: precisa de request.user
+    "pedidos.middleware.PreviaCampanhaMiddleware",  # depois do Auth: só superusuário logado vê a prévia
     "django.contrib.messages.middleware.MessageMiddleware",
     "django.middleware.clickjacking.XFrameOptionsMiddleware",
     "axes.middleware.AxesMiddleware",  # precisa ser o último da lista (exigência do django-axes)

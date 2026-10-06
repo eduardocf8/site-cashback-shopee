@@ -2080,6 +2080,23 @@ a 50% da comissão; nenhum pedido passa de 100%. Na coorte de 09 a 28/09: cashba
       são digitados de novo. A peça "faltam 2 dias" só vale postada na quinta 8/10; o teaser e
       as outras não citam contagem. Margens seguras do Instagram (250px em cima, 300 embaixo),
       sem a figurinha de contagem regressiva na arte (ela é colada na hora de postar).
+- [x] **Prévia da campanha só para o administrador** (`pedidos/previa.py`, `pedidos/middleware.py`,
+      `/previa-campanha/`): o superusuário logado liga, por 2 horas, uma visão do site com a
+      campanha no ar (faixa + cards), para conferir antes do dia 10 sem expor nada ao público.
+      Seis travas, cada uma suficiente: só superusuário ativo liga (404 para os demais); o middleware
+      reconfere o superusuário a cada requisição (marca forjada na sessão não adianta); só GET/HEAD e só
+      em `/`, `/ofertas/`, `/dashboard/`, `/login/`, `/registrar/` (ficam de fora admin, tarefas
+      agendadas, story e e-mail, que usam o mesmo cashback estimado); a marca expira em 2 h e some no
+      logout; resposta com `Cache-Control: private, no-store` e `Vary: Cookie`; a prévia vive numa
+      variável de contexto restaurada em `finally`. Não toca `multiplicador_em` (o que carimba o
+      pedido) e não grava nada. 24 testes.
+- [x] **Barra da campanha no topo de cada card** (`{% barra_campanha_card %}`,
+      `templates/_barra_campanha_card.html`, `.campanha-barra` em `brand.css`): enquanto a campanha está
+      no ar (ou na prévia do administrador), cada card de oferta, o "Oferta do dia" e o carrossel "em alta"
+      da home abrem com "10.10: 50% a mais de cashback" (campanha de um dia só abre com a data;
+      multiplicador 2 vira "Cashback em dobro"). Explica por que o valor do card é maior. Nunca no aviso
+      prévio (os valores ainda são os normais). A campanha é consultada uma vez por requisição, não por
+      card.
 - [x] 33 testes novos.
 
 **Para ligar a campanha:** no admin, "Campanhas de cashback" -> multiplicador `1.5`, início

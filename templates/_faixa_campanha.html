@@ -7,6 +7,12 @@ O texto diz "50% a mais de cashback", e não "+50%": "+50%" pode ser lido como "
 50%", e é exatamente o mal-entendido que vira reclamação depois. Em campanha de multiplicador
 2, o número vira "cashback em dobro".
 {% endcomment %}
+{% if previa %}
+<div role="alert" style="background:#991b1b; color:#fff; text-align:center; padding:10px 16px; font-size:14px; font-weight:700; line-height:1.4;">
+    PRÉVIA DA CAMPANHA: só você (administrador) vê o site assim. Para todas as outras pessoas, a campanha ainda não está no ar.
+    <a href="{% url 'previa_campanha' %}" style="color:#fff; text-decoration:underline; white-space:nowrap;">Sair da prévia</a>
+</div>
+{% endif %}
 {% if faixa %}
 {% with campanha=faixa.campanha %}
 <style>

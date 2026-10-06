@@ -9,6 +9,7 @@ import logging
 from pathlib import Path
 
 import requests
+from django.utils import timezone
 from PIL import Image, ImageColor, ImageDraw, ImageFont
 
 logger = logging.getLogger(__name__)
@@ -244,6 +245,49 @@ def gerar_imagem_oferta_carrossel(oferta, indice: int, total: int, tamanho=(1080
     return img
 
 
+def _texto_barra_campanha(campanha) -> str:
+    """Mesmo texto da barra do site (ver templates/_barra_campanha_card.html), pra
+    nunca divergir: nunca "+50%" (lê como "cashback de 50%"), campanha de um dia só
+    abre com a data do fim ("10.10: ..."), multiplicador 2 vira "Cashback em dobro"."""
+    if campanha.percentual_extra == 100:
+        texto = "Cashback em dobro"
+    else:
+        texto = f"{campanha.percentual_extra}% a mais de cashback"
+    if campanha.um_so_dia:
+        texto = f"{timezone.localtime(campanha.fim):%d.%m}: {texto}"
+    return texto
+
+
+def _desenhar_barra_campanha(draw, tamanho, y_topo: float) -> float:
+    """Barra âmbar de largura total avisando da campanha em cima, mesma regra do site
+    (ver pedidos/models.py::CampanhaCashback.ativa_agora e
+    templates/_barra_campanha_card.html) - o selo "X% cashback" da imagem usa o mesmo
+    cálculo do site (CampanhaCashback.multiplicador_atual via
+    ofertas/models.py::_CashbackEstimadoMixin), então sem isso o valor sai inflado
+    pela campanha sem nada que explique o porquê.
+
+    Sem campanha ativa agora, não desenha nada e devolve 0 - a imagem fica igual à de
+    antes dessa mudança, pixel a pixel. Consultada a cada chamada (não cacheada): tem
+    que ser exatamente a mesma campanha (ou ausência dela) que decidiu o número do
+    selo - uma divergindo da outra confundiria mais do que ajuda.
+
+    Devolve a altura ocupada, pra quem chama empurrar o resto do conteúdo pra baixo e
+    manter tudo dentro da área segura do Instagram."""
+    from pedidos.models import CampanhaCashback
+
+    campanha = CampanhaCashback.ativa_agora()
+    if campanha is None:
+        return 0.0
+
+    texto = _texto_barra_campanha(campanha)
+    escala = tamanho[1] / 1080
+    fonte = _fonte(int(32 * min(escala, 1.4)), negrito=True)
+    altura = int(fonte.size * 2.3)
+    draw.rectangle([(0, y_topo), (tamanho[0], y_topo + altura)], fill=CORES["highlight"])
+    draw.text((tamanho[0] / 2, y_topo + altura / 2), texto, font=fonte, fill=CORES["ink"], anchor="mm")
+    return altura
+
+
 def gerar_imagem_oferta_story(oferta, tamanho=(1080, 1920)) -> Image.Image:
     """Layout "hero" pra 1 oferta só ocupando o story inteiro - é sempre 1 oferta por
     story (ver publicar_story_oferta_do_momento/NUMERO_STORIES_OFERTAS_POR_DIA), então
@@ -254,12 +298,17 @@ def gerar_imagem_oferta_story(oferta, tamanho=(1080, 1920)) -> Image.Image:
     topo_seguro/rodape_seguro reservam espaço pra UI do próprio Instagram (ícone/nome
     da conta no topo, barra de resposta embaixo) não sobrepor a arte - o bloco inteiro
     (selo + imagem + texto) é centralizado dentro dessa área segura, em vez de fixo
-    encostado nas bordas."""
+    encostado nas bordas. Com campanha ativa (ver _desenhar_barra_campanha), a barra
+    entra bem no início da área segura e o bloco centraliza no espaço que sobra."""
     bg = CORES["paper"]
     img = Image.new("RGB", tamanho, bg)
     draw = ImageDraw.Draw(img)
     margem = 72
     topo_seguro, rodape_seguro = 260, 260
+
+    altura_barra = _desenhar_barra_campanha(draw, tamanho, topo_seguro)
+    espaco_barra = (altura_barra + 20) if altura_barra else 0
+    topo_conteudo = topo_seguro + espaco_barra
 
     fonte_eyebrow = _fonte(30, mono=True, negrito=True)
     fonte_nome = _fonte(46, negrito=True)
@@ -278,13 +327,13 @@ def gerar_imagem_oferta_story(oferta, tamanho=(1080, 1920)) -> Image.Image:
     altura_nome = len(linhas_nome) * int(fonte_nome.size * 1.25)
     altura_preco = int(fonte_preco.size * 1.3)
     espacos = 28 * 3
-    area_util = tamanho[1] - topo_seguro - rodape_seguro
+    area_util = tamanho[1] - topo_conteudo - rodape_seguro
     lado_imagem = min(largura_util, area_util - altura_cabecalho - altura_nome - altura_preco - espacos)
 
     # "link na bio" fica fora desse bloco (desenhado depois, centralizado e perto do
     # rodapé seguro) - só cabeçalho/imagem/nome/preço centralizam juntos aqui.
     altura_bloco = altura_cabecalho + 28 + lado_imagem + 28 + altura_nome + 20 + altura_preco
-    y = topo_seguro + max(0, (area_util - altura_bloco) // 2)
+    y = topo_conteudo + max(0, (area_util - altura_bloco) // 2)
 
     # anchor "m" (middle) nos dois - não "a" (ascender) - pra alinhar pelo centro
     # visual da linha, já que "OFERTA DO MOMENTO" e "cash-b" usam tamanhos de fonte

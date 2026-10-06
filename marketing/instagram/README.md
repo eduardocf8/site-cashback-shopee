@@ -777,6 +777,47 @@ curto de tentativas (3, 2s de intervalo) pra não travar a publicação
 indefinidamente se o problema for outra coisa. Testado em
 `instagram_bot/tests.py::RetryDeMidiaAindaNaoProntaTests`.
 
+### Barra da campanha 10.10 no story de oferta (2026-10-06)
+
+A campanha "50% a mais de cashback" do dia 10/10/2026
+(`pedidos.CampanhaCashback`, multiplicador 1,5, 00:00 às 23:59:59 do dia)
+já sobe sozinha o percentual de cashback mostrado no selo do story de
+oferta (`gerar_imagem_oferta_story`) - o selo lê
+`oferta.percentual_cashback`, que já é calculado com
+`CampanhaCashback.multiplicador_atual()` (ver `ofertas/models.py`,
+`_CashbackEstimadoMixin`). Sem nada explicando, quem vê o story (que
+dura 24h, podendo cruzar pro dia seguinte já sem a campanha) vê um
+número maior sem saber por quê.
+
+**O que foi feito**: `gerar_imagem_oferta_story` agora desenha uma barra
+âmbar de largura total no topo da imagem, só quando
+`CampanhaCashback.ativa_agora()` devolve uma campanha - mesmo texto e
+mesma regra da barra que já existe nos cards do site
+(`pedidos/templatetags/campanha_tags.py`,
+`templates/_barra_campanha_card.html`): nunca "+50%" (lê como "cashback
+de 50%"), campanha de um dia só abre com a data do fim ("10.10: ..."),
+multiplicador 2 vira "Cashback em dobro". Sem campanha ativa, a função
+devolve a imagem pixel a pixel igual à de antes - nada muda fora da
+janela da campanha.
+
+A campanha é consultada a cada chamada (não cacheada) - tem que ser
+sempre a mesma campanha (ou ausência dela) que decidiu o número do selo,
+senão os dois divergem e confundem mais do que ajudam. Como os stories
+automáticos (`publicar_story_oferta_do_momento`) são gerados e
+publicados praticamente no mesmo instante (sem fila de aprovação - ver
+"Publicação direta sem aprovação" acima), não há risco de a imagem
+"congelar" um estado da campanha que já mudou até a hora de publicar.
+
+**Fora do escopo desta mudança, de propósito** (pedido foi só pelos
+stories de oferta): o carrossel semanal (`gerar_imagem_oferta_carrossel`,
+post no feed, não story) e os 2 stories do combo diário que também
+mostram foto+número de produto (`gerar_imagem_numero_com_produto`, formato
+"maior % / maior R$") não ganharam a barra. Se precisar neles também, é
+reaproveitar `_desenhar_barra_campanha`/`_texto_barra_campanha` (mesmas
+funções usadas aqui).
+
+Testado em `instagram_bot/tests.py::BarraCampanhaNoStoryTests`.
+
 ## Posts de semeadura (pasta `posts-semeadura/`)
 
 8 imagens 1080×1080 (arquivo real 2160×2160, renderizado em dobro pra

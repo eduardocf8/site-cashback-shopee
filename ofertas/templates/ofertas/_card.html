@@ -1,4 +1,5 @@
-<div class="oferta-cartao{% if oferta.imperdivel %} imperdivel{% endif %}">
+{% load campanha_tags %}<div class="oferta-cartao{% if oferta.imperdivel %} imperdivel{% endif %}">
+    {% if oferta.percentual_cashback %}{% barra_campanha_card %}{% endif %}
     {% if oferta.imperdivel %}<div class="selo-imperdivel">🔥 Oferta imperdível</div>{% endif %}
     <div class="imagem">
         {% if oferta.percentual_desconto %}

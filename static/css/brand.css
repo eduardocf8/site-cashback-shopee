@@ -128,6 +128,14 @@ body {
 .oferta-cartao .cashback-valor { font-size: 12.5px; font-weight: 700; color: var(--success); }
 .oferta-cartao .botao-cta { text-align: center; margin: 4px 14px 14px; }
 
+/* barra da campanha de cashback no topo dos cards e do "Oferta do dia" da home (ver
+   pedidos/templatetags/campanha_tags.py::barra_campanha_card). Mesma família da barra "oferta
+   imperdível", só que em tom mais claro para as duas não brigarem quando aparecem juntas. */
+.campanha-barra {
+    background: var(--highlight); color: var(--highlight-ink); text-align: center;
+    font-size: 11.5px; font-weight: 700; padding: 6px 6px; line-height: 1.3;
+}
+
 /* selo "oferta imperdível" - só nas ofertas cadastradas manualmente no admin (ver
    OfertaManual.imperdivel) */
 .oferta-cartao.imperdivel { border-color: var(--highlight); }

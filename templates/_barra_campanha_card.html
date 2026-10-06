@@ -1,0 +1,6 @@
+{% comment %}
+Barra do topo do card de oferta durante a campanha (ver pedidos/templatetags/campanha_tags.py).
+Mesmo texto da faixa do topo: "50% a mais de cashback", nunca "+50%". Campanha de um dia só abre com a
+data ("10.10: ..."); campanha de vários dias não (a data seria só a do fim). Multiplicador 2 vira
+"Cashback em dobro".
+{% endcomment %}{% if campanha %}<div class="campanha-barra">{% if campanha.um_so_dia %}{{ campanha.fim|date:"d.m" }}: {% endif %}{% if campanha.percentual_extra == 100 %}Cashback em dobro{% else %}{{ campanha.percentual_extra }}% a mais de cashback{% endif %}</div>{% endif %}
