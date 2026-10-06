@@ -22,12 +22,13 @@ Feed e reels dá para agendar no Meta Business Suite; stories também.
 |---|---|---|---|
 | **Sáb 3** | 19h | Story seu, falando: "sábado que vem, dia 10/10, 50% a mais de cashback em todo pedido na Shopee pelo nosso site". Sem figurinha de contagem ainda | roteiro na conversa |
 | **Dom 4** | — | Descanso. Se ainda não postou, o carrossel 11 (datas duplas) pode entrar aqui, às 12h | `carrossel-11-datas-duplas/` |
-| **Seg 5** | 12h | **Feed: carrossel 12** (a explicação completa). Compartilhe no story às 12h30 | `carrossel-12-10-10/` + `legenda.txt` |
-| **Ter 6** | horário calmo | **Teste da campanha:** campanha de teste de 10 minutos (multiplicador 1.5, sem sobrepor a do dia 10); conferir cards (Kit Peseira 8,7% / R$ 6,08) e faixa nas 4 páginas; **não apagar ainda** (ver observações) | — |
-| Ter 6 | 19h | **Reel A** (objetos: calendário, letreiro, recibo, relógio) | `remotion/videos/campanha-10-10-a-objetos.mp4` + `legenda-campanha-10-10-a.txt` |
-| **Qua 7** | 12h | **Story 1, teaser "vem aí"**, com a **figurinha de contagem regressiva** para 10/10 | `stories-10-10/story-01-teaser.png` |
+| **Seg 5** | — | Carrossel não foi postado hoje: passa para terça às 12h | — |
+| **Ter 6** | 10h | **Teste da campanha:** campanha de teste de 10 minutos (multiplicador 1.5, sem sobrepor a do dia 10); conferir cards (Kit Peseira 8,7% / R$ 6,08) e faixa nas 4 páginas. Fica de manhã, antes de postar, para quem chega pelo carrossel não pegar a janela do teste. **Não apagar ainda** (ver observações) | — |
+| Ter 6 | 12h | **Feed: carrossel 12** (a explicação completa). Compartilhe no story às 12h30 | `carrossel-12-10-10/` + `legenda.txt` |
+| **Qua 7** | depois das 3h | Apagar a campanha de teste (só depois da sincronização das 3h) | admin |
 | Qua 7 | de manhã | Abrir o site e conferir que a **faixa** apareceu ("Dia 10.10: 50% a mais de cashback...") | — |
-| Qua 7 | depois das 3h | Apagar a campanha de teste (só depois da sincronização das 3h) | admin |
+| Qua 7 | 12h | **Story 1, teaser "vem aí"**, com a **figurinha de contagem regressiva** para 10/10 | `stories-10-10/story-01-teaser.png` |
+| Qua 7 | 19h | **Reel A** (objetos: calendário, letreiro, recibo, relógio) | `remotion/videos/campanha-10-10-a-objetos.mp4` + `legenda-campanha-10-10-a.txt` |
 | **Qui 8** | 12h | **Story 2, "faltam 2 dias"** (1,6% → 2,4% e 1% → 1,5%). Só vale postado neste dia | `stories-10-10/story-02-faltam-2-dias.png` |
 | Qui 8 | 19h | **Story "antes → agora"** (Kit Peseira: R$ 4,05 → R$ 6,08) | `cards-antes-agora/story-antes-agora.png` |
 | **Sex 9** | 12h | **Reel B** (gravação de tela, abre com "na Shopee?") | `remotion/videos/campanha-10-10-b-gravacao-de-tela.mp4` + `legenda-campanha-10-10-b.txt` |
@@ -41,8 +42,8 @@ Feed e reels dá para agendar no Meta Business Suite; stories também.
 
 ## Observações
 
-- **Reels A e B** dizem a mesma coisa de formas bem diferentes: o espaço de 3 dias entre eles evita
-  repetição.
+- **Reels A e B** dizem a mesma coisa de formas bem diferentes: o espaço de 2 dias entre eles (A na quarta,
+  B na sexta) evita repetição.
 - **Contagem regressiva:** a figurinha do Instagram vai no teaser (qua 7). Quem toca nela recebe o
   lembrete no dia.
 - **E-mail:** uma vez só, no dia, às 8h30. Alternativa: sexta às 19h, avisando de véspera. Mandar
