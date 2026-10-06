@@ -48,7 +48,7 @@ campanha de teste ativa no site**. O que dá para provar antes, sem expor nada:
 1. **Lógica de datas (Shell do Render):** as bordas do dia 10 (23h59 do dia 9, 0h e 23h59:59 do dia 10,
    0h do dia 11) e quando a faixa liga (madrugada do dia 7). Só leitura, ninguém vê.
 2. **Margem (Shell do Render):** `python manage.py simular_campanha --multiplicador 1.5 --dias 60`.
-3. **Código:** os testes automáticos de campanha, faixa, simulação e carimbo do pedido (38 testes),
+3. **Código:** os testes automáticos de campanha, faixa, simulação e carimbo do pedido (62 testes),
    todos passando na versão atual.
 4. **Prévia do administrador (só você):** logado como superusuário, abra `/previa-campanha/` e ligue a
    prévia por 2 horas. Aí, no seu navegador, a home, as ofertas, o painel e o cadastro aparecem com a
