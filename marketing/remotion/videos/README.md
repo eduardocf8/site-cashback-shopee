@@ -11,8 +11,9 @@ sem precisar rodar o render.
 | `apresentacao-calma-gancho-espera.mp4` | 18,4s | A calma com outro gancho em dois tempos: a pergunta "Vai comprar na Shopee?" e, 0,9s depois, "Espera." grande |
 | `campanha-10-10-a-objetos.mp4` | 18,0s | Reel da campanha 10.10 (50% a mais de cashback), versão A: calendário, letreiro, recibo e relógio sobre cores chapadas |
 | `campanha-10-10-b-gravacao-de-tela.mp4` | 18,0s | O mesmo reel, versão B: gravação de tela de app, com uma rolagem contínua e um dedo que toca |
+| `campanha-10-10-b-anuncio-cadastre-se.mp4` | 20,0s | O Reel B para o anúncio pago: fecho prolongado (2 s a mais) com o botão "Cadastre-se grátis", `cash-b.com` e "Sem mensalidade. Sem taxa." |
 
-Todos em 1080×1920, 30fps, H.264. As legendas dos reels da campanha estão em `legenda-campanha-10-10-a.txt` e `legenda-campanha-10-10-b.txt` (os números batem com `dados.json`; conferir de novo se a campanha mudar). Os dois reels da campanha 10.10 são sem música: ela é colocada no editor. Para renderizar de novo (rode antes `python3 exportar_dados_campanha.py`): `npm run render:campanha` e `npm run render:campanha-b`.
+Todos em 1080×1920, 30fps, H.264. As legendas dos reels da campanha estão em `legenda-campanha-10-10-a.txt` e `legenda-campanha-10-10-b.txt` (os números batem com `dados.json`; conferir de novo se a campanha mudar). Os dois reels da campanha 10.10 são sem música: ela é colocada no editor. Para renderizar de novo (rode antes `python3 exportar_dados_campanha.py`): `npm run render:campanha`, `npm run render:campanha-b` e `npm run render:campanha-b-anuncio`.
 
 **Estes arquivos são saída, não fonte.** Quem manda é `../src/`: mexer no MP4 faz o
 ajuste sumir no próximo render. Para gerar de novo:

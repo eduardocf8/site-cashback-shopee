@@ -15,6 +15,9 @@ O site grava o `utm_source` e o `utm_campaign` da primeira visita no cadastro, e
 
 ## Criativo 1: Reel B
 
+Vídeo: `remotion/videos/campanha-10-10-b-anuncio-cadastre-se.mp4` (20 s: o Reel B com o fecho prolongado e o botão
+"Cadastre-se grátis"). O Reel B original (sem o botão) é o que vai ao feed orgânico.
+
 **Botão:** Cadastre-se
 
 **Texto principal (opção A, completa):**

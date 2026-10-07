@@ -18,6 +18,8 @@ import dados from './dados.json';
 
 const EXTRA = `${dados.percentualExtra}%`;
 export const DURACAO_ROLAGEM = 540;
+// Versão para anúncio: o mesmo vídeo com o fecho prolongado e um botão "Cadastre-se grátis".
+export const DURACAO_ROLAGEM_ANUNCIO = 600;
 
 // Rolagens entre as telas: [quadro em que começa, quadro em que termina].
 const ROLAGENS: [number, number][] = [
@@ -663,10 +665,13 @@ const Tela4: React.FC<{t0: number}> = ({t0}) => {
 };
 
 /** Tela 5: o fecho. */
-const Tela5: React.FC<{t0: number}> = ({t0}) => {
+const Tela5: React.FC<{t0: number; anuncio?: boolean}> = ({t0, anuncio}) => {
   const frame = useCurrentFrame();
   const marca = prog(frame, t0, t0 + 20, saida);
   const pilula = prog(frame, t0 + 26, t0 + 40, saida);
+  // no anúncio o botão respira de leve depois de aparecer, para chamar o olho sem piscar
+  const pulso = anuncio ? 1 + 0.025 * Math.sin(Math.max(0, frame - (t0 + 44)) / 5) : 1;
+  const rodape = prog(frame, t0 + 44, t0 + 56, saida);
   return (
     <AbsoluteFill
       style={{background: `linear-gradient(165deg, ${CORES.brandStrong} 0%, ${CORES.brand} 60%, #a78bfa 100%)`}}
@@ -707,31 +712,54 @@ const Tela5: React.FC<{t0: number}> = ({t0}) => {
           display: 'flex',
           justifyContent: 'center',
           opacity: pilula,
-          transform: `scale(${interpolate(pilula, [0, 1], [0.7, 1])})`,
+          transform: `scale(${interpolate(pilula, [0, 1], [0.7, 1]) * pulso})`,
         }}
       >
         <div
           style={{
             background: '#fff',
             color: CORES.brandStrong,
-            fontFamily: FONTE.numero,
+            fontFamily: anuncio ? FONTE.texto : FONTE.numero,
             fontWeight: 700,
-            fontSize: 54,
-            padding: '22px 58px',
+            fontSize: anuncio ? 62 : 54,
+            letterSpacing: anuncio ? '-0.02em' : undefined,
+            padding: anuncio ? '26px 64px' : '22px 58px',
             borderRadius: 999,
             boxShadow: '0 20px 50px rgba(17,10,50,0.35)',
+            whiteSpace: 'nowrap',
+          }}
+        >
+          {anuncio ? 'Cadastre-se grátis →' : 'cash-b.com'}
+        </div>
+      </div>
+      {anuncio ? (
+        <div
+          style={{
+            position: 'absolute',
+            left: 0,
+            right: 0,
+            top: 1340,
+            textAlign: 'center',
+            fontFamily: FONTE.numero,
+            fontWeight: 700,
+            fontSize: 38,
+            color: 'rgba(255,255,255,0.88)',
+            opacity: rodape,
           }}
         >
           cash-b.com
+          <div style={{fontFamily: FONTE.texto, fontWeight: 400, fontSize: 34, marginTop: 10, opacity: 0.85}}>
+            Sem mensalidade. Sem taxa.
+          </div>
         </div>
-      </div>
+      ) : null}
     </AbsoluteFill>
   );
 };
 
 // ------------------------------------------------------------------------------ a montagem
 
-export const CampanhaRolagem: React.FC = () => {
+export const CampanhaRolagem: React.FC<{anuncio?: boolean}> = ({anuncio}) => {
   const frame = useCurrentFrame();
   const y = rolagemEm(frame);
   // borrão de movimento vertical, proporcional à velocidade da rolagem
@@ -756,7 +784,7 @@ export const CampanhaRolagem: React.FC = () => {
           filter: borrao > 0.4 ? 'url(#rolagem)' : undefined,
         }}
       >
-        {[<Tela1 key={1} />, <Tela2 key={2} t0={ROLAGENS[0][0] + 6} />, <Tela3 key={3} t0={ROLAGENS[1][0] + 6} />, <Tela4 key={4} t0={ROLAGENS[2][0] + 6} />, <Tela5 key={5} t0={ROLAGENS[3][0] + 6} />].map(
+        {[<Tela1 key={1} />, <Tela2 key={2} t0={ROLAGENS[0][0] + 6} />, <Tela3 key={3} t0={ROLAGENS[1][0] + 6} />, <Tela4 key={4} t0={ROLAGENS[2][0] + 6} />, <Tela5 key={5} t0={ROLAGENS[3][0] + 6} anuncio={anuncio} />].map(
           (tela, i) => (
             <div key={i} style={{position: 'absolute', left: 0, top: i * H, width: W, height: H}}>
               {tela}

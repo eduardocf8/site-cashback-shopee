@@ -2076,7 +2076,9 @@ a 50% da comissão; nenhum pedido passa de 100%. Na coorte de 09 a 28/09: cashba
       cinco telas, dedo que toca, o card do site trocando de 5,8% para 8,7%. Números de
       `dados.json`, gerado por `marketing/remotion/exportar_dados_campanha.py` a partir das
       mesmas constantes do banner (rodar de novo se a campanha mudar). Sem música: é escolhida e
-      colocada no editor.
+      colocada no editor. Há também uma versão para o anúncio pago (`CampanhaRolagemAnuncio`,
+      20 s): mesmo vídeo com o fecho prolongado e o botão "Cadastre-se grátis". Texto do anúncio em
+      `marketing/instagram/anuncio-10-10.md`.
 - [x] **Prévia da campanha só para o administrador** (`pedidos/previa.py`, `pedidos/middleware.py`,
       `/previa-campanha/`): o superusuário logado liga, por 2 horas, uma visão do site com a
       campanha no ar (faixa + cards), para conferir antes do dia 10 sem expor nada ao público.

@@ -10,6 +10,7 @@
     "render:espera": "remotion render src/index.ts ApresentacaoEspera saida/cash-b-apresentacao-espera.mp4 --browser-executable=/opt/pw-browsers/chromium_headless_shell-1194/chrome-linux/headless_shell",
     "render:campanha": "remotion render src/index.ts Campanha1010 saida/cash-b-campanha-10-10.mp4 --browser-executable=/opt/pw-browsers/chromium_headless_shell-1194/chrome-linux/headless_shell",
     "render:campanha-b": "remotion render src/index.ts CampanhaRolagem saida/cash-b-campanha-10-10-b.mp4 --browser-executable=/opt/pw-browsers/chromium_headless_shell-1194/chrome-linux/headless_shell",
+    "render:campanha-b-anuncio": "remotion render src/index.ts CampanhaRolagemAnuncio saida/cash-b-campanha-10-10-b-anuncio.mp4 --browser-executable=/opt/pw-browsers/chromium_headless_shell-1194/chrome-linux/headless_shell",
     "render:animada": "remotion render src/index.ts EsperaAnimada saida/cash-b-espera-animada.mp4 --browser-executable=/opt/pw-browsers/chromium_headless_shell-1194/chrome-linux/headless_shell"
   },
   "dependencies": {
