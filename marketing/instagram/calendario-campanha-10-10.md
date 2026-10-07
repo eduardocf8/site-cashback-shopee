@@ -27,10 +27,9 @@ Feed e reels dá para agendar no Meta Business Suite; stories também.
 | Ter 6 | 12h | **Feed: carrossel 12** (a explicação completa). Compartilhe no story às 12h30 | `carrossel-12-10-10/` + `legenda.txt` |
 | **Qua 7** | de manhã | Abrir o site e conferir que a **faixa** apareceu ("Dia 10.10: 50% a mais de cashback..."). É o aviso de 3 dias, previsto; os cards ainda mostram o valor normal | — |
 | Qua 7 | 12h | **Story 1, teaser "vem aí"**, com a **figurinha de contagem regressiva** para 10/10 | `stories-10-10/story-01-teaser.png` |
-| Qua 7 | 19h | **Reel A** (objetos: calendário, letreiro, recibo, relógio) | `remotion/videos/campanha-10-10-a-objetos.mp4` + `legenda-campanha-10-10-a.txt` |
 | **Qui 8** | 12h | **Story 2, "faltam 2 dias"** (1,6% → 2,4% e 1% → 1,5%). Só vale postado neste dia | `stories-10-10/story-02-faltam-2-dias.png` |
 | Qui 8 | 19h | **Story "antes → agora"** (Kit Peseira: R$ 4,05 → R$ 6,08) | `cards-antes-agora/story-antes-agora.png` |
-| **Sex 9** | 12h | **Reel B** (gravação de tela, abre com "na Shopee?") | `remotion/videos/campanha-10-10-b-gravacao-de-tela.mp4` + `legenda-campanha-10-10-b.txt` |
+| **Sex 9** | 12h | **Reel B** (gravação de tela, abre com "na Shopee?"). É o único reel da campanha. Compartilhe no story às 12h30 | `remotion/videos/campanha-10-10-b-gravacao-de-tela.mp4` + `legenda-campanha-10-10-b.txt` |
 | Sex 9 | à noite | **Anúncio pago no ar (a decidir):** arte nova como segundo anúncio, sem mexer na campanha que converte | — |
 | Sex 9 | 20h | Story seu, curto: "amanhã é o dia". Ainda não existe arte de "amanhã" (ver abaixo) | — |
 | **Sáb 10** | 00h05 | **Conferência ao vivo:** campanha no ar. Abrir o site e conferir a faixa ("no 10/10") e os cards (Kit Peseira 8,7% / R$ 6,08). Se algo estiver errado, editar ou apagar a campanha no admin: vale na hora, sem deploy | — |
@@ -64,8 +63,9 @@ campanha de teste ativa no site**. O que dá para provar antes, sem expor nada:
 
 ## Observações
 
-- **Reels A e B** dizem a mesma coisa de formas bem diferentes: o espaço de 2 dias entre eles (A na quarta,
-  B na sexta) evita repetição.
+- **Só o Reel B vai ao ar.** O Reel A (objetos) ficou de fora por decisão do usuário; os arquivos dele continuam no
+  repositório, sem uso. Com um reel só, ele fica na sexta, véspera da campanha. Se preferir mais dias de
+  alcance, dá para antecipá-lo para quarta às 19h (o horário onde estava o A).
 - **Contagem regressiva:** a figurinha do Instagram vai no teaser (qua 7). Quem toca nela recebe o
   lembrete no dia.
 - **E-mail:** uma vez só, no dia, às 8h30. Alternativa: sexta às 19h, avisando de véspera. Mandar
