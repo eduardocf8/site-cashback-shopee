@@ -32,7 +32,7 @@ Feed e reels dá para agendar no Meta Business Suite; stories também.
 | Qui 8 | 20h30 | **Story "antes → agora"** (Kit Peseira: R$ 4,05 → R$ 6,08) | `cards-antes-agora/story-antes-agora.png` |
 | **Sex 9** | 19h | **Compartilhar o Reel B no story** (lembrete de que é amanhã): quem não viu na quarta vê agora, na janela de maior atividade | — |
 | Sex 9 | à noite | **Anúncio pago no ar (a decidir):** arte nova como segundo anúncio, sem mexer na campanha que converte | — |
-| Sex 9 | 20h30 | Story seu, curto: "amanhã é o dia". Ainda não existe arte de "amanhã" (ver abaixo) | — |
+| Sex 9 | 20h30 | **Story "amanhã"** (só vale postado na sexta, 9/10) | `stories-10-10/story-05-amanha.png` |
 | **Sáb 10** | 00h05 | **Conferência ao vivo:** campanha no ar. Abrir o site e conferir a faixa ("no 10/10") e os cards (Kit Peseira 8,7% / R$ 6,08). Se algo estiver errado, editar ou apagar a campanha no admin: vale na hora, sem deploy | — |
 | Sáb 10 | 8h30 | **E-mail** da campanha (banner `banner-10-10-completo.png`, Corpo curto, tipo "Anúncio/promoção", filtro "e-mail verificado") | `banner-email/` |
 | Sáb 10 | de manhã | **Push (a decidir):** ainda não verifiquei se o push tem envio em massa | — |
@@ -75,8 +75,7 @@ campanha de teste ativa no site**. O que dá para provar antes, sem expor nada:
   lembrete no dia.
 - **E-mail:** uma vez só, no dia, às 8h30. Alternativa: sexta às 19h, avisando de véspera. Mandar
   nos dois cansa quem está na lista.
-- **Story de sexta ("amanhã"):** ainda não existe arte. Dá para fazer falando, ou pedir uma peça
-  nova.
+- **Story "amanhã":** a arte existe (`story-05-amanha.png`). Diz "amanhã", então só vale na sexta.
 - **Push e anúncio pago:** estavam no plano de 2/10 e ficam marcados como "a decidir".
 - **Nada de "hoje" nos posts de feed e reels:** eles ficam no perfil depois do dia 10.
 - **Só publicar os stories 3 e 4 com a campanha cadastrada no admin.**

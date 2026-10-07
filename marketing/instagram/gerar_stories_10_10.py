@@ -1,4 +1,4 @@
-"""Sequência de 4 stories da campanha 10.10 (50% a mais de cashback).
+"""Sequência de 5 stories da campanha 10.10 (50% a mais de cashback).
 
 A sequência acompanha a contagem regressiva, do mais leve ao mais urgente:
 
@@ -8,6 +8,9 @@ A sequência acompanha a contagem regressiva, do mais leve ao mais urgente:
    comprar precisa saber o que ganha para decidir esperar o dia.
 3. HOJE: a campanha está no ar. Três passos e o horário limite.
 4. ÚLTIMAS HORAS: urgência. O dia acaba à meia-noite, horário de Brasília.
+5. AMANHÃ (arquivo `story-05-amanha.png`): a véspera, entre o "faltam 2 dias" e o "hoje". Pede
+   para deixar a compra para o dia e repete a janela (0h às 23h59). A numeração dos arquivos é a
+   ordem em que foram criados; a ordem de postagem está no calendário.
 
 Os números NÃO são digitados aqui: vêm de `marketing/gerar_banner_email.py`, que por sua vez
 os documenta como cópia dos settings (pisos de cashback) e da campanha cadastrada no admin.
@@ -16,9 +19,11 @@ percentual da campanha mudar, muda numa constante só e o banner e os stories sa
 
 IMPORTANTE ao postar:
 - Só publicar com a campanha cadastrada no admin ("Campanhas de cashback": multiplicador
-  1,5, 10/10 das 00:00 às 23:59:59). Os stories 3 e 4 afirmam que o cashback já está maior.
+  1,5, 10/10 das 00:00 às 23:59:59). Os stories "hoje" e "últimas horas" afirmam que o cashback
+  já está maior.
 - A peça 2 diz "faltam 2 dias": só vale se postada na quinta, 8/10. Em outro dia a contagem
   fica errada. O teaser não cita contagem e serve de qualquer dia antes.
+- A peça "amanhã" só vale se postada na sexta, 9/10 (diz "amanhã").
 - Coloque a figurinha de CONTAGEM REGRESSIVA do Instagram no teaser e na peça 2: ela fica
   na faixa livre abaixo do texto (o texto não passa de ~65% da altura) e quem toca nela
   recebe o lembrete no dia.
@@ -150,6 +155,16 @@ def _faltam_2_dias() -> str:
     """
 
 
+def _amanha() -> str:
+    return f"""
+        <div class="selo">amanhã</div>
+        <div class="data">{DATA}</div>
+        <div class="manchete">{MANCHETE}</div>
+        <div class="texto">Deixe a sua compra para amanhã: das 0h às 23h59, todo pedido feito na Shopee pela {MARCA} tem <b>{EXTRA} a mais</b>.</div>
+        <div class="nota">Horário de Brasília.</div>
+    """
+
+
 def _hoje() -> str:
     return f"""
         <div class="selo">hoje</div>
@@ -179,6 +194,7 @@ STORIES = [
     ("02-faltam-2-dias", "fundo-03-canto-roxo-9x16.png", _faltam_2_dias),
     ("03-hoje", "fundo-03-canto-roxo-9x16.png", _hoje),
     ("04-ultimas-horas", "fundo-06-halo-roxo-9x16.png", _ultimas_horas),
+    ("05-amanha", "fundo-03-canto-roxo-9x16.png", _amanha),
 ]
 
 

@@ -2050,9 +2050,9 @@ a 50% da comissão; nenhum pedido passa de 100%. Na coorte de 09 a 28/09: cashba
       a mensagem. Os textos de ajuda do admin dizem isso.
 - [x] **Corpo do e-mail não quebra mais "cash-b" no hífen** (`_sem_quebra_no_nome`): o texto é
       digitado no admin e o navegador partia o nome em "cash-" e "b".
-- [x] **4 stories da campanha** (`marketing/instagram/gerar_stories_10_10.py` ->
+- [x] **5 stories da campanha** (`marketing/instagram/gerar_stories_10_10.py` ->
       `stories-10-10/`): teaser "vem aí", "faltam 2 dias" (1,6% -> 2,4% e 1% -> 1,5%), "hoje"
-      (3 passos, até 23h59) e "últimas horas". Os números vêm de `gerar_banner_email.py`, não
+      (3 passos, até 23h59), "últimas horas" e "amanhã" (a véspera; `story-05-amanha.png`, só vale postado na sexta 9/10). Os números vêm de `gerar_banner_email.py`, não
       são digitados de novo. A peça "faltam 2 dias" só vale postada na quinta 8/10; o teaser e
       as outras não citam contagem. Margens seguras do Instagram (250px em cima, 300 embaixo),
       sem a figurinha de contagem regressiva na arte (ela é colada na hora de postar).
