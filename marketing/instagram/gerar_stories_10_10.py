@@ -160,7 +160,7 @@ def _amanha() -> str:
         <div class="selo">amanhã</div>
         <div class="data">{DATA}</div>
         <div class="manchete">{MANCHETE}</div>
-        <div class="texto">Deixe a sua compra para amanhã: das 0h às 23h59, todo pedido feito na Shopee pela {MARCA} tem <b>{EXTRA} a mais</b>.</div>
+        <div class="texto">Deixe a sua compra para amanhã: das 0h às 23h59, todo pedido feito na Shopee pela {MARCA} te dá <b>{EXTRA} mais dinheiro de volta</b>.</div>
         <div class="nota">Horário de Brasília.</div>
     """
 
