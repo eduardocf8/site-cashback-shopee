@@ -116,8 +116,13 @@ class CampanhaCashback(models.Model):
         ordering = ["-inicio"]
 
     def __str__(self):
-        fim = self.fim.strftime("%d/%m/%Y %H:%M") if self.fim else "sem fim definido"
-        return f"{self.multiplicador}x ({self.inicio.strftime('%d/%m/%Y %H:%M')} até {fim})"
+        # timezone.localtime() é essencial aqui - os campos já são datetime com
+        # timezone (USE_TZ=True), mas strftime() direto nele formata em UTC, não no
+        # horário de Brasília (TIME_ZONE) que foi digitado no admin. Sem isso, uma
+        # campanha cadastrada como "00:00 até 23:59" aparecia como "03:00 até 02:59"
+        # no texto, embora a data/hora guardada estivesse certa.
+        fim = timezone.localtime(self.fim).strftime("%d/%m/%Y %H:%M") if self.fim else "sem fim definido"
+        return f"{self.multiplicador}x ({timezone.localtime(self.inicio).strftime('%d/%m/%Y %H:%M')} até {fim})"
 
     @classmethod
     def listar(cls) -> list["CampanhaCashback"]:

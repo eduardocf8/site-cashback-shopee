@@ -403,6 +403,18 @@ class CampanhaCashbackModelTests(TestCase):
         )
         self.assertEqual(CampanhaCashback.multiplicador_atual(), Decimal("3"))
 
+    def test_str_mostra_horario_de_brasilia_nao_utc(self):
+        # Cadastrado no admin como 00:00 até 23:59:59 em horário de Brasília (UTC-3) -
+        # guardado no banco como 03:00 até 02:59:59 (do dia seguinte) em UTC. O __str__
+        # precisa converter de volta pra Brasília antes de formatar, senão mostra um
+        # horário que não bate com o que a pessoa digitou (ver ROADMAP.md).
+        campanha = CampanhaCashback.objects.create(
+            multiplicador=Decimal("1.5"),
+            inicio=timezone.make_aware(datetime(2026, 10, 10, 0, 0, 0)),
+            fim=timezone.make_aware(datetime(2026, 10, 10, 23, 59, 59)),
+        )
+        self.assertEqual(str(campanha), "1.5x (10/10/2026 00:00 até 10/10/2026 23:59)")
+
 
 @override_settings(
     SHOPEE_AFFILIATE_APP_ID="app123", SHOPEE_AFFILIATE_SECRET="segredo123",
