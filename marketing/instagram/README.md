@@ -350,7 +350,8 @@ partir de um blueprint):
 
 | Nome | Horário (UTC) | Horário (Brasília) | Build Command | Start Command |
 |---|---|---|---|---|
-| `cron-tarefas-financeiras` | `0 6 * * *` | 03:00 | `pip install requests` | `python3 scripts/chamar_tarefa_agendada.py /tarefas/executar/` |
+| `cron-tarefas-financeiras` | `0 13 * * *` | 10:00 | `pip install requests` | `python3 scripts/chamar_tarefa_agendada.py /tarefas/executar/` |
+| `cron-sincronizacao-semanal` | `0 6 * * 0` | domingo, 03:00 | `pip install requests` | `python3 scripts/chamar_tarefa_agendada.py /tarefas/sincronizacao-semanal/` |
 | `cron-encurtar-nomes` | `10 6 * * *` | 03:10 | `pip install requests` | `python3 scripts/chamar_tarefa_agendada.py /tarefas/encurtar-nomes/` |
 | `cron-resolver-item-alvo` | `20 6 * * *` | 03:20 | `pip install requests` | `python3 scripts/chamar_tarefa_agendada.py /tarefas/resolver-item-alvo/` |
 | `cron-instagram-diario` | `0 14 * * *` | 11:00 | `pip install requests` | `python3 scripts/chamar_tarefa_agendada.py /tarefas/publicar-instagram/` |
@@ -362,6 +363,15 @@ partir de um blueprint):
 **`cron-resolver-item-alvo` ainda precisa ser criado manualmente** (Fase
 41/42) - segue exatamente a mesma "Configuração de cada Cron Job" abaixo, só
 trocando o Start Command e o horário.
+
+**`cron-tarefas-financeiras` mudou de 03:00 pra 10:00, e `cron-sincronizacao-semanal`
+é novo** (Fase 54) - precisa trocar o horário do primeiro e criar o segundo
+manualmente no dashboard do Render. Ver ROADMAP.md, Fase 54, pro motivo completo:
+resumindo, a tarefa das 10h só sincroniza os últimos `DIAS_SINCRONIZACAO_DIARIA`
+(10) dias da Shopee agora (rápida o bastante pra rodar num horário de tráfego real
+sem arriscar estourar o timeout de 120s do único worker gunicorn do site), e a
+reconciliação de 60 dias completa (mais pesada) ficou numa tarefa separada, semanal,
+de madrugada.
 
 ✅ **`cron-lembrete-verificacao-email` criado e testado em produção em
 2026-09-29** (Fase 51, análise de aquisição paga de 29/09) - disparo manual
@@ -398,15 +408,14 @@ pro Render) e mudou pro novo horário pedido (08h, 10h, 15h, 18h, 20h) -
 1 Cron Job só, 5 horários no mesmo campo `schedule` (cron padrão aceita
 lista separada por vírgula no campo de hora).
 
-`cron-encurtar-nomes` roda 10 minutos depois de `cron-tarefas-financeiras`
-de propósito - mesmo motivo de sempre terem sido chamadas HTTP separadas
-(ver comentário em `tarefas-diarias.yml`): a sincronização com a Shopee
-sozinha já usa boa parte do orçamento de 120s antes do timeout do
-gunicorn, então enfileirar o encurtamento via Gemini atrás dela na mesma
-chamada estourava o timeout quase toda vez. 10 minutos é folga de sobra
-pra tarefa financeira terminar antes. `cron-resolver-item-alvo` roda mais
-10 minutos depois (03:20) pelo mesmo motivo - seguir redirecionamento de
-link curto também pode levar até 10s por clique.
+`cron-encurtar-nomes` e `cron-resolver-item-alvo` continuam de madrugada
+(03:10/03:20) mesmo depois de `cron-tarefas-financeiras` ter mudado pra
+10h (Fase 54) - cada chamada HTTP é separada de propósito (ver comentário
+em `tarefas-diarias.yml`), pra uma tarefa longa não estourar o timeout de
+120s do único worker gunicorn levando outra tarefa (ou pedido de usuário
+de verdade) junto. 10 minutos de espaçamento entre as duas é folga de
+sobra: `cron-resolver-item-alvo` segue redirecionamento de link curto, que
+pode levar até 10s por clique.
 
 **Configuração de cada Cron Job** (dashboard do Render → New → Cron Job):
 - Repositório/branch: os mesmos do serviço web.

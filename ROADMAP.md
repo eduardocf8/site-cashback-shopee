@@ -2156,6 +2156,43 @@ de decisão do dono do produto) e C (4 - contradições reais no próprio site).
 
 ---
 
+## Fase 54 — Sincronização diária move pra 10h, sem arriscar o único worker do site ✅
+
+Usuário queria mudar a tarefa financeira das 3h da manhã pra meio-dia (a Shopee só
+reporta os pedidos do dia anterior por volta das 7h-8h, então rodar de madrugada
+fazia o pedido do dia D só aparecer no site em D+2 - rodando depois das 7h-8h,
+aparece em D+1). A preocupação: meio-dia é horário de tráfego real, e o site roda
+com **1 worker gunicorn só, 4 threads** (`--workers 1 --threads 4 --worker-class
+gthread --timeout 120`, ver incidente documentado em
+`marketing/instagram/README.md`) - uma tarefa lenta ocupando 1 das 4 threads nesse
+horário reduz a capacidade do site, e se a tarefa algum dia estourar os 120s, o
+gunicorn mata o único worker (site inteiro fora do ar até reiniciar, não só a
+tarefa). A causa da lentidão: `executar_tarefas_agendadas` sempre sincronizava 60
+dias de conversões da Shopee **todo santo dia**, um volume que só cresce com o
+tempo - já descrito em outro lugar do código como "usando boa parte do orçamento
+de 120s".
+
+- [x] **`cashback_shopee/views.py::DIAS_SINCRONIZACAO_DIARIA`** (novo, = 10) - a
+      sincronização diária (`executar_tarefas_agendadas`) passou a buscar só os
+      últimos 10 dias de conversões, o suficiente pra cobrir o atraso normal de
+      relato da Shopee com folga, em vez dos 60 dias inteiros.
+- [x] **`executar_sincronizacao_semanal`** (nova view/URL,
+      `/tarefas/sincronizacao-semanal/`) - reconciliação pesada, com os 60 dias
+      completos (`DIAS_SINCRONIZACAO_RECONCILIACAO`), pra recapturar status que
+      mudou tarde (cancelamento/devolução reportado bem depois da compra) e que a
+      janela curta da diária não pegaria. Só faz a sincronização de conversões (não
+      duplica ofertas/liberar saldo/saques, que continuam diários) - roda 1x por
+      semana, de madrugada, longe de qualquer tráfego real.
+- [x] Testes cobrindo a janela de cada tarefa (10 dias na diária, 60 dias na
+      semanal) e o comportamento de erro de cada uma (`cashback_shopee/tests.py`).
+- [x] `marketing/instagram/README.md` atualizado: `cron-tarefas-financeiras` muda de
+      03:00 pra **10:00** (Brasília) - `cron-sincronizacao-semanal` é novo, domingo
+      03:00. Os dois precisam ser configurados manualmente no dashboard do Render
+      (não é Blueprint) - mudar o horário do primeiro e criar o segundo do zero,
+      mesmo padrão dos outros Cron Jobs (`scripts/chamar_tarefa_agendada.py`).
+
+---
+
 Pra continuar esse roadmap numa conversa nova, basta apontar esse arquivo
 (`ROADMAP.md`) e o `BRAND.md` — juntos eles dão o contexto de identidade
 visual e do que falta implementar, sem precisar reconstruir o histórico da

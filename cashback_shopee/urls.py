@@ -24,6 +24,11 @@ urlpatterns = [
     path("", include("pedidos.urls")),
     path("healthz/", views.healthcheck, name="healthcheck"),
     path("tarefas/executar/", views.executar_tarefas_agendadas, name="executar_tarefas_agendadas"),
+    path(
+        "tarefas/sincronizacao-semanal/",
+        views.executar_sincronizacao_semanal,
+        name="executar_sincronizacao_semanal",
+    ),
     path("tarefas/publicar-instagram/", views.executar_publicacoes_instagram, name="executar_publicacoes_instagram"),
     path("tarefas/encurtar-nomes/", views.executar_encurtamento_nomes, name="executar_encurtamento_nomes"),
     path(

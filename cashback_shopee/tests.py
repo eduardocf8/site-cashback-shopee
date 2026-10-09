@@ -10,6 +10,7 @@ from django.urls import reverse
 
 from .brevo_email_backend import BrevoAPIEmailBackend
 from .meta_capi import _hash, enviar_evento, gerar_event_id
+from .views import DIAS_SINCRONIZACAO_DIARIA, DIAS_SINCRONIZACAO_RECONCILIACAO
 
 
 class HealthcheckTests(TestCase):
@@ -94,6 +95,60 @@ class ExecutarTarefasAgendadasTests(TestCase):
         self.assertIn("sincronizacao_erro", dados)
         mock_liberar.assert_called_once()
         mock_verificar.assert_called_once()
+
+    @patch("cashback_shopee.views.verificar_saques_pendentes")
+    @patch("cashback_shopee.views.liberar_saldo")
+    @patch("cashback_shopee.views.sincronizar")
+    def test_janela_da_sincronizacao_diaria_e_curta_nao_60_dias(
+        self, mock_sincronizar, mock_liberar, mock_verificar
+    ):
+        # A sincronização diária (rodando num horário de tráfego real, 10h) precisa
+        # cobrir só o atraso normal da Shopee - não os 60 dias inteiros (isso ficou
+        # pra executar_sincronizacao_semanal, de madrugada). Janela grande demais aqui
+        # arrisca estourar o timeout de 120s do único worker gunicorn do site.
+        mock_sincronizar.return_value = {"novos": 0, "atualizados": 0, "nao_identificados": 0}
+        mock_liberar.return_value = 0
+        mock_verificar.return_value = {"verificados": 0, "atualizados": 0}
+
+        self.client.get(reverse("executar_tarefas_agendadas"), {"token": "segredo-de-teste"})
+
+        inicio_chamado, fim_chamado = mock_sincronizar.call_args[0]
+        dias_cobertos = (fim_chamado - inicio_chamado) / 86400
+        self.assertEqual(dias_cobertos, DIAS_SINCRONIZACAO_DIARIA)
+
+
+@override_settings(TAREFAS_TOKEN="segredo-de-teste")
+class ExecutarSincronizacaoSemanalTests(TestCase):
+    """Reconciliação pesada (60 dias) - separada da diária de propósito, pra rodar só
+    de madrugada, longe do horário de tráfego real (ver executar_tarefas_agendadas)."""
+
+    def test_sem_token_retorna_forbidden(self):
+        resposta = self.client.get(reverse("executar_sincronizacao_semanal"))
+        self.assertEqual(resposta.status_code, 403)
+
+    @patch("cashback_shopee.views.sincronizar")
+    def test_token_certo_sincroniza_60_dias(self, mock_sincronizar):
+        mock_sincronizar.return_value = {"novos": 1, "atualizados": 2, "nao_identificados": 0}
+
+        resposta = self.client.get(reverse("executar_sincronizacao_semanal"), {"token": "segredo-de-teste"})
+
+        self.assertEqual(resposta.status_code, 200)
+        dados = resposta.json()
+        self.assertEqual(dados["sincronizacao"]["novos"], 1)
+        inicio_chamado, fim_chamado = mock_sincronizar.call_args[0]
+        dias_cobertos = (fim_chamado - inicio_chamado) / 86400
+        self.assertEqual(dias_cobertos, DIAS_SINCRONIZACAO_RECONCILIACAO)
+
+    @patch("cashback_shopee.views.sincronizar")
+    def test_erro_na_shopee_retorna_200_com_erro_no_corpo(self, mock_sincronizar):
+        from links.shopee_client import ShopeeConfigError
+
+        mock_sincronizar.side_effect = ShopeeConfigError("Configure as credenciais.")
+
+        resposta = self.client.get(reverse("executar_sincronizacao_semanal"), {"token": "segredo-de-teste"})
+
+        self.assertEqual(resposta.status_code, 200)
+        self.assertIn("sincronizacao_erro", resposta.json())
 
 
 @override_settings(TAREFAS_TOKEN="segredo-de-teste")

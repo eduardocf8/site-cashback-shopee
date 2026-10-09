@@ -82,22 +82,46 @@ def _token_valido(request) -> bool:
     return bool(token_esperado) and hmac.compare_digest(token_esperado, token_recebido)
 
 
+# Janela da sincronização diária com a Shopee - só precisa cobrir o atraso normal da
+# Shopee pra reportar conversões (girando em torno de 1 dia, mas com folga pra atrasos
+# maiores) - não o histórico inteiro. Rodar com 60 dias TODO dia (como era antes)
+# reprocessava um volume que só cresce com o tempo, deixando a tarefa cada vez mais
+# perto do timeout de 120s do gunicorn - arriscado rodando num horário de tráfego real
+# (ver DIAS_SINCRONIZACAO_RECONCILIACAO, abaixo, pra reconciliação).
+DIAS_SINCRONIZACAO_DIARIA = 10
+
+# Janela da sincronização semanal de reconciliação (executar_sincronizacao_semanal) -
+# cobre o mesmo histórico de 60 dias que a sincronização diária cobria antes,
+# recapturando status que mudou tarde (cancelamento/devolução reportado bem depois da
+# compra) e que a janela curta da diária não pegaria. Roda só 1x por semana, de
+# madrugada (baixo tráfego), já que é a parte mais pesada.
+DIAS_SINCRONIZACAO_RECONCILIACAO = 60
+
+
 def executar_tarefas_agendadas(request):
-    """Roda a sincronização diária com a Shopee, a liberação de saldo e a checagem de saques.
+    """Roda a sincronização diária (janela curta) com a Shopee, a liberação de saldo e
+    a checagem de saques.
 
     Protegido por um token (TAREFAS_TOKEN) em vez de exigir login, porque quem chama
     esse endereço é o agendamento automático (GitHub Actions), não uma pessoa logada.
 
+    Roda às 10h (Brasília) - depois da Shopee atualizar os pedidos do dia anterior
+    (por volta das 7h-8h), pra eles aparecerem no site em D+1 em vez de D+2. Mudou de
+    madrugada pra esse horário só depois de encolher a janela de sincronização pra 10
+    dias (ver DIAS_SINCRONIZACAO_DIARIA) - o site roda com 1 worker gunicorn só (ver
+    README.md), então uma tarefa pesada demais nesse horário de tráfego real arriscava
+    tirar o site do ar (timeout de 120s matando o único worker). A reconciliação de 60
+    dias continua rodando de madrugada, mas numa tarefa separada e semanal (ver
+    executar_sincronizacao_semanal).
+
     Separado de propósito dos posts do Instagram (executar_publicacoes_instagram) -
-    essa tarefa mexe com dinheiro de gente de verdade (saldo, saques), então roda de
-    madrugada, enquanto os posts do Instagram têm um horário próprio pensado pro
-    alcance (de madrugada o engajamento é baixo).
+    essa tarefa mexe com dinheiro de gente de verdade (saldo, saques).
     """
     if not _token_valido(request):
         return HttpResponseForbidden("Token inválido ou não configurado.")
 
     agora = datetime.now(tz=dt_timezone.utc)
-    inicio = agora - timedelta(days=60)
+    inicio = agora - timedelta(days=DIAS_SINCRONIZACAO_DIARIA)
 
     resultado = {}
     try:
@@ -112,6 +136,30 @@ def executar_tarefas_agendadas(request):
 
     resultado["saldos_liberados"] = liberar_saldo()
     resultado["saques_verificados"] = verificar_saques_pendentes()
+
+    return JsonResponse(resultado)
+
+
+def executar_sincronizacao_semanal(request):
+    """Reconciliação semanal: reprocessa os últimos 60 dias de conversões da Shopee,
+    pra recapturar status que mudou tarde (cancelamento/devolução reportado bem depois
+    da compra original) e que a janela curta da sincronização diária (10 dias, ver
+    executar_tarefas_agendadas) não pegaria.
+
+    Separada da diária de propósito - é a parte pesada (reprocessa um volume bem maior
+    de pedidos), então fica de madrugada, 1x por semana, longe de qualquer horário de
+    tráfego real (ver README.md sobre o único worker gunicorn do site)."""
+    if not _token_valido(request):
+        return HttpResponseForbidden("Token inválido ou não configurado.")
+
+    agora = datetime.now(tz=dt_timezone.utc)
+    inicio = agora - timedelta(days=DIAS_SINCRONIZACAO_RECONCILIACAO)
+
+    resultado = {}
+    try:
+        resultado["sincronizacao"] = sincronizar(int(inicio.timestamp()), int(agora.timestamp()))
+    except (ShopeeConfigError, ShopeeAPIError) as erro:
+        resultado["sincronizacao_erro"] = str(erro)
 
     return JsonResponse(resultado)
 
