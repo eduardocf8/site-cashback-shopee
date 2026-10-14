@@ -2,6 +2,8 @@ from urllib.parse import urlparse
 
 from django import forms
 
+from .models import URL_MAX_LENGTH
+
 # shopee.com.br: domínio padrão de produto. shp.ee: domínio oficial de link curto da
 # Shopee (gerado por "Compartilhar > Copiar link" no app), com subdomínios por país
 # (ex: br.shp.ee) - por isso comparamos com endswith, não só "in".
@@ -11,6 +13,8 @@ DOMINIOS_SHOPEE_VALIDOS = ("shopee.com.br", "shp.ee")
 class LinkProdutoForm(forms.Form):
     url_produto = forms.URLField(
         label="Link do produto na Shopee",
+        max_length=URL_MAX_LENGTH,
+        error_messages={"max_length": "Esse link é longo demais. Copie o link do produto pelo botão Compartilhar do app da Shopee."},
         widget=forms.URLInput(attrs={"placeholder": "https://shopee.com.br/produto-exemplo-i.123.456"}),
     )
 

@@ -11,7 +11,7 @@ from ofertas.models import CashbackMaximoCache, Oferta, OfertaDestaqueManual, Of
 from ofertas.services import LinkProdutoInvalidoError, SemComissaoError
 
 from . import services as links_services
-from .models import Click
+from .models import URL_MAX_LENGTH, Click
 from .services import gerar_click, resolver_item_id_alvo_pendentes
 from .shopee_client import (
     ShopeeAPIError,
@@ -469,3 +469,46 @@ class HomeDestaqueManualTests(TestCase):
         self.assertEqual(resposta.context["oferta_destaque"], destaque)
         self.assertContains(resposta, "R$ 99,90")
         self.assertNotContains(resposta, '<span class="destaque-preco-riscado">')
+
+
+class LinkLongoTests(TestCase):
+    """Link da Shopee copiado do navegador (com parâmetros de rastreio) passa de 200
+    caracteres, o padrão do URLField: o Postgres recusava (varchar(200)) e o usuário via
+    erro 500 na home. Os campos de URL do Click agora comportam links longos e o
+    formulário recusa só o que passa do limite, com mensagem em vez de erro."""
+
+    def setUp(self):
+        self.usuario = get_user_model().objects.create_user(
+            username="colalinklongo", password="senha123", cpf="39053344705"
+        )
+        self.client.force_login(self.usuario)
+
+    def _url(self, tamanho):
+        base = "https://shopee.com.br/produto-exemplo-i.123.456?"
+        return base + "x=" + "a" * (tamanho - len(base) - 2)
+
+    def test_campos_de_url_do_click_aceitam_mais_de_200_caracteres(self):
+        self.assertGreater(Click._meta.get_field("url_original").max_length, 1000)
+        self.assertGreater(Click._meta.get_field("link_gerado").max_length, 1000)
+
+    @patch("links.views._buscar_cashback_real", return_value=(None, False))
+    @patch("links.services.gerar_link_curto")
+    def test_home_converte_link_com_mais_de_200_caracteres(self, mock_gerar_link, _):
+        mock_gerar_link.return_value = "https://shope.ee/longo123"
+        url = self._url(600)
+
+        resposta = self.client.post("/", {"url_produto": url})
+
+        self.assertEqual(resposta.status_code, 200)
+        click = Click.objects.get()
+        self.assertEqual(click.url_original, url)
+        self.assertContains(resposta, "https://shope.ee/longo123")
+
+    @patch("links.services.gerar_link_curto")
+    def test_home_recusa_link_acima_do_limite_com_mensagem_e_sem_erro(self, mock_gerar_link):
+        resposta = self.client.post("/", {"url_produto": self._url(URL_MAX_LENGTH + 100)})
+
+        self.assertEqual(resposta.status_code, 200)
+        self.assertContains(resposta, "Esse link é longo demais")
+        self.assertEqual(Click.objects.count(), 0)
+        mock_gerar_link.assert_not_called()
