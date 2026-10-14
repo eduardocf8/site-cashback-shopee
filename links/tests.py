@@ -309,6 +309,32 @@ class HomeCashbackMaximoTests(TestCase):
         self.assertContains(resposta, "até 10%")
 
 
+class HomeConversorVisitanteNaoLogadoTests(TestCase):
+    """Quem chega de anúncio e tenta converter um link sem estar logado vai pro
+    cadastro, não pro login - a maior parte de quem clica num anúncio ainda não tem
+    conta (ver ROADMAP.md). O link colado é preservado na querystring, pra continuar
+    de onde parou depois de criar a conta (ver accounts/views.py::registrar)."""
+
+    def test_redireciona_pro_cadastro_preservando_o_link_colado(self):
+        resposta = self.client.post(
+            reverse("home"), {"url_produto": "https://shopee.com.br/produto-exemplo-i.1.999"}
+        )
+
+        self.assertRedirects(
+            resposta,
+            "/registrar/?next=%2F%3Furl_produto%3Dhttps%253A%252F%252Fshopee.com.br%252Fproduto-exemplo-i.1.999",
+            fetch_redirect_response=False,
+        )
+
+    def test_nao_cria_click_nem_tenta_converter_sem_estar_logado(self):
+        resposta = self.client.post(
+            reverse("home"), {"url_produto": "https://shopee.com.br/produto-exemplo-i.1.999"}
+        )
+
+        self.assertEqual(resposta.status_code, 302)
+        self.assertEqual(Click.objects.count(), 0)
+
+
 @override_settings(SHOPEE_CASHBACK_PERCENTUAL=100)
 class HomeConversaoCashbackRealTests(TestCase):
     """Ao converter um link no site, o resultado mostra a comissão REAL daquele

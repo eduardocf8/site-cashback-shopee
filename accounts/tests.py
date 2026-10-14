@@ -99,6 +99,46 @@ class RegistrarComIndicacaoTests(TestCase):
         self.assertFalse(Indicacao.objects.filter(indicado=novo_usuario).exists())
 
 
+class RegistrarComNextTests(TestCase):
+    """Quem tentou converter um link sem estar logado cai no cadastro com "next"
+    preenchido (ver links/views.py::home) - depois de criar a conta, precisa voltar pra
+    onde estava, não parar genericamente no dashboard. Só honra "next" interno (ver
+    url_has_allowed_host_and_scheme em accounts/views.py::registrar), nunca um destino
+    externo vindo da querystring."""
+
+    def setUp(self):
+        cache.clear()  # evita herdar contador de rate limit de outro teste (ver RateLimitTests)
+
+    def _dados_cadastro(self, **extra):
+        dados = {
+            "username": "novaconta",
+            "email": "nova@example.com",
+            "cpf": "14783246947",
+            "password1": "senha-forte-123",
+            "password2": "senha-forte-123",
+        }
+        dados.update(extra)
+        return dados
+
+    def test_pagina_de_cadastro_preenche_campo_oculto_com_next_da_url(self):
+        resposta = self.client.get(reverse("registrar"), {"next": "/?url_produto=https://shopee.com.br/x"})
+        self.assertContains(resposta, 'name="next" value="/?url_produto=https://shopee.com.br/x"')
+
+    def test_cadastro_com_next_interno_redireciona_pra_la_em_vez_do_dashboard(self):
+        resposta = self.client.post(reverse("registrar"), self._dados_cadastro(next="/?url_produto=abc"))
+        self.assertRedirects(resposta, "/?url_produto=abc", fetch_redirect_response=False)
+
+    def test_cadastro_sem_next_redireciona_pro_dashboard(self):
+        resposta = self.client.post(reverse("registrar"), self._dados_cadastro())
+        self.assertRedirects(resposta, reverse("dashboard"), fetch_redirect_response=False)
+
+    def test_cadastro_com_next_externo_ignora_e_cai_no_dashboard(self):
+        resposta = self.client.post(
+            reverse("registrar"), self._dados_cadastro(next="https://evil.com/golpe")
+        )
+        self.assertRedirects(resposta, reverse("dashboard"), fetch_redirect_response=False)
+
+
 class MetaPixelCadastroTests(TestCase):
     """CompleteRegistration sai pelos dois canais: Conversions API (servidor, disparada
     na hora do cadastro) e Pixel (navegador, disparado na 1ª renderização do dashboard

@@ -10,6 +10,7 @@ from django.db.models import Sum
 from django.http import JsonResponse
 from django.shortcuts import redirect, render
 from django.urls import reverse
+from django.utils.http import url_has_allowed_host_and_scheme
 from django.views.decorators.http import require_POST
 
 from links.models import Click
@@ -46,6 +47,10 @@ def registrar(request):
         return redirect("dashboard")
 
     codigo_indicacao = request.POST.get("ref") or request.GET.get("ref", "")
+    # Mesmo parâmetro "next" do login (ver links/views.py::home) - quem tentou
+    # converter um link sem estar logado cai aqui com o link preservado na
+    # querystring, pra continuar de onde parou depois de criar a conta.
+    proximo = request.POST.get("next") or request.GET.get("next", "")
 
     if request.method == "POST":
         form = RegistroForm(request.POST)
@@ -61,11 +66,17 @@ def registrar(request):
             event_id = gerar_event_id()
             enviar_evento("CompleteRegistration", request, event_id)
             request.session[SESSION_KEY_EVENTO_CADASTRO_PIXEL] = event_id
+            if proximo and url_has_allowed_host_and_scheme(
+                proximo, allowed_hosts={request.get_host()}, require_https=request.is_secure()
+            ):
+                return redirect(proximo)
             return redirect("dashboard")
     else:
         form = RegistroForm()
 
-    return render(request, "accounts/registrar.html", {"form": form, "codigo_indicacao": codigo_indicacao})
+    return render(
+        request, "accounts/registrar.html", {"form": form, "codigo_indicacao": codigo_indicacao, "proximo": proximo}
+    )
 
 
 def _gravar_origem(usuario, request):

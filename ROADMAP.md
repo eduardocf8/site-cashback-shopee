@@ -2193,6 +2193,40 @@ de 120s".
 
 ---
 
+## Fase 55 — Botão de cadastro visível na home, pra conversão dos anúncios ✅
+
+Usuário roda anúncios no Meta Ads levando pra home do site, mas quem chega
+anônimo não tinha nenhum caminho direto pro cadastro - só dava pra achar
+clicando no ícone de usuário e depois em "Cadastrar" no menu. Hipótese: isso
+derruba a conversão de quem vem do anúncio.
+
+- [x] **Botão "Cadastre-se grátis" na nav** (`links/templates/links/home.html`) -
+      visitante anônimo vê esse botão onde o usuário logado vê "Ir pra Shopee".
+- [x] **Botão "Cadastre-se grátis" no hero**, acima do conversor de link, com "ou
+      cole o link de um produto da Shopee abaixo" separando as duas opções - o
+      conversor continua funcionando, mas deixa de ser a única forma visível de
+      começar.
+- [x] **Conversor manda pro cadastro, não pro login, quando anônimo**
+      (`links/views.py::home`) - antes, colar um link sem estar logado levava pra
+      tela de login (a maioria de quem clica em anúncio ainda não tem conta). O
+      link colado é preservado via querystring (`next`) e reaplicado
+      automaticamente depois do cadastro.
+- [x] **`accounts/views.py::registrar`** passou a aceitar e honrar esse `next`
+      (mesmo padrão que o `login` do Django já tinha, só que o `registrar` é view
+      própria - usa `url_has_allowed_host_and_scheme` pra nunca redirecionar pra
+      fora do site, mesmo padrão interno do Django). `next` some sozinho do
+      dashboard, só é usado quando presente.
+- [x] Rastreamento de origem/UTM não precisou mudar - já é capturado na primeira
+      visita via sessão (`accounts/middleware.py`), independente de qual botão a
+      pessoa usou pra chegar no cadastro.
+- [x] Testes novos em `links/tests.py` (redirecionamento com link preservado) e
+      `accounts/tests.py` (campo oculto `next` no formulário, redirecionamento pro
+      destino interno depois do cadastro, proteção contra `next` externo).
+      Verificação visual via Playwright (desktop e mobile, fluxo completo
+      colar-link → cadastro → volta pra home com o link preenchido).
+
+---
+
 Pra continuar esse roadmap numa conversa nova, basta apontar esse arquivo
 (`ROADMAP.md`) e o `BRAND.md` — juntos eles dão o contexto de identidade
 visual e do que falta implementar, sem precisar reconstruir o histórico da

@@ -38,8 +38,12 @@ def home(request):
 
     if request.method == "POST":
         if not request.user.is_authenticated:
+            # Manda pro cadastro, não pro login - quem chega de anúncio colando um link
+            # geralmente ainda não tem conta (ver ROADMAP.md). O link colado é
+            # preservado e reaplicado automaticamente depois do cadastro (ver
+            # accounts/views.py::registrar, parâmetro "next").
             proximo = f"{reverse('home')}?{urlencode({'url_produto': request.POST.get('url_produto', '')})}"
-            return redirect(f"{reverse('login')}?{urlencode({'next': proximo})}")
+            return redirect(f"{reverse('registrar')}?{urlencode({'next': proximo})}")
 
         form = LinkProdutoForm(request.POST)
         if form.is_valid():

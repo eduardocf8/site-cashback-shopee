@@ -19,6 +19,9 @@
                 {% if codigo_indicacao %}
                     <input type="hidden" name="ref" value="{{ codigo_indicacao }}">
                 {% endif %}
+                {% if proximo %}
+                    <input type="hidden" name="next" value="{{ proximo }}">
+                {% endif %}
                 {% for field in form %}
                     {% include "accounts/_campo_formulario.html" with field=field %}
                 {% endfor %}

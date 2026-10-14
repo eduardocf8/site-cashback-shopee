@@ -109,6 +109,8 @@
         .hero-text h1 { font-size: 42px; line-height: 1.18; letter-spacing: -0.015em; margin: 0 0 18px; }
         .hero-text p.subtitulo { font-size: 18px; color: var(--muted); max-width: 480px; margin: 0 0 32px; }
         .hero .botao-cta { font-size: 16px; padding: 14px 32px; }
+        .hero-cta-cadastro { display: block; width: 100%; box-sizing: border-box; text-align: center; margin-bottom: 14px; font-size: 17px; padding: 16px 32px; }
+        .hero-ou-separador { text-align: center; color: var(--muted); font-size: 13px; margin: 0 0 20px; }
         .hero-graphic { flex: 1 1 340px; display: flex; justify-content: center; }
         .hero-graphic-panel {
             width: 100%; max-width: 420px; aspect-ratio: 4 / 5; border-radius: 28px;
@@ -364,6 +366,8 @@
             </div>
             {% if user.is_authenticated %}
                 <a class="botao-cta" href="{% url 'ir_para_shopee' %}">Ir pra Shopee &rarr;</a>
+            {% else %}
+                <a class="botao-cta" href="{% url 'registrar' %}">Cadastre-se grátis</a>
             {% endif %}
         </div>
     </nav>
@@ -387,6 +391,10 @@
                     cashback, sem limite por produto.
                     Após atingir o saldo de R$ {{ saque_valor_minimo|floatformat:2 }}, saque via Pix.
                 </p>
+                {% if not user.is_authenticated %}
+                    <a class="botao-cta hero-cta-cadastro" href="{% url 'registrar' %}">Cadastre-se grátis &rarr;</a>
+                    <p class="hero-ou-separador">ou cole o link de um produto da Shopee abaixo</p>
+                {% endif %}
                 <div class="conversor-hero" id="converter-link">
                     <form method="post" action="{% url 'home' %}#converter-link">
                         {% csrf_token %}
