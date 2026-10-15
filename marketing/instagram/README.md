@@ -395,11 +395,22 @@ chamada só (7 e 30 dias após o cadastro, textos diferentes - ver
 2026-09-30** (Fase 51, pedido explícito logo depois do lembrete de primeira
 compra) - disparo manual retornou `OK (200): {"lembrete_venda_indireta_enviados":
 4}`. Único Cron Job **semanal** dos e-mails (os outros rodam todo dia) -
-sábado às 08:00 (Brasília), olhando os pedidos de venda indireta (clique em
-"Ir pra Shopee") dos últimos 7 dias. E-mail em HTML (com 2 ícones - ver
+sábado às 08:00 (Brasília), olhando os pedidos de venda indireta dos últimos 7
+dias. E-mail em HTML (com ícones - ver
 `accounts/comunicacoes.py::enviar_lembrete_venda_indireta_semanal` e
 `templates/emails/lembrete_venda_indireta.html`), diferente dos outros
-lembretes automáticos (que são só texto).
+lembretes automáticos (que ainda são só texto).
+
+**Fase 56**: esse lembrete deixou de ser genérico (mesmo texto pra todo mundo,
+via BCC em lote) e passou a ser personalizado - mostra produto a produto quanto
+cada pessoa pagou de cashback na compra indireta e quanto teria pago se fosse
+direta, com a comissão real de cada item (ver `pedidos/models.py::ItemPedido`).
+Também passou a cobrir quem converteu o link de um produto e comprou outro no
+lugar (antes só pegava clique em "Ir pra Shopee"). Como o conteúdo agora é
+diferente por pessoa, não dá mais pra usar BCC em lote - manda 1 e-mail por
+usuário (mesmo esquema de `pedidos/notificacoes.py`), o que muda o perfil de
+carga desse Cron Job (mais chamadas HTTP à API do Brevo, mas continua rodando
+de madrugada de sábado, longe de qualquer tráfego real).
 
 `cron-stories-oferta` simplificou os horários de propósito (antes eram
 09:00/11:30/14:00/16:30/19:00 BRT, com minutos quebrados pra evitar o

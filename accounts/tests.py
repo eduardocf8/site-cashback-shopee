@@ -14,7 +14,7 @@ from django.test import RequestFactory, TestCase, override_settings
 from django.urls import reverse
 
 from ofertas.models import Oferta
-from pedidos.models import Pedido
+from pedidos.models import ItemPedido, Pedido
 from saques.models import Saque
 
 from .comunicacoes import (
@@ -1446,6 +1446,10 @@ class LembretesPrimeiraCompraTests(TestCase):
 
 
 class LembreteVendaIndiretaTests(TestCase):
+    """O lembrete agora é personalizado (produto a produto, pago x hipotético se
+    fosse direto - ver ItemPedido), então cada usuário recebe um e-mail individual
+    (to=[usuario.email]), não mais um lote por BCC com o mesmo texto pra todo mundo."""
+
     def setUp(self):
         self.request = RequestFactory().get("/tarefas/lembrete-venda-indireta/")
 
@@ -1462,32 +1466,42 @@ class LembreteVendaIndiretaTests(TestCase):
             url_original="https://shopee.com.br/x", link_gerado="https://s.shopee.com.br/y",
         )
 
-    def _pedido(self, usuario, click, dias_atras=1, status=Pedido.STATUS_PENDENTE):
+    def _pedido_com_item(
+        self, usuario, click, dias_atras=1, status=Pedido.STATUS_PENDENTE, venda_direta=False,
+        comissao_item=Decimal("0.50"), valor_item=Decimal("100.00"), cashback_pago=Decimal("1.00"),
+        nome="Produto Teste",
+    ):
+        # comissao_item/valor_item default abaixo do piso direto (1,6% de 100 = 1,60)
+        # de propósito - garante que cashback_hipotetico_direto > cashback_pago sem
+        # cada teste precisar calcular isso.
         self._n_pedido = getattr(self, "_n_pedido", 0) + 1
         pedido = Pedido.objects.create(
             order_id=f"pedido-{self._n_pedido}", conversion_id="1", usuario=usuario, click=click,
             status=status, status_shopee_bruto="COMPLETED",
-            valor_pedido=Decimal("100.00"), valor_comissao=Decimal("10.00"), valor_cashback=Decimal("5.00"),
+            valor_pedido=valor_item, valor_comissao=comissao_item, valor_cashback=cashback_pago,
         )
         Pedido.objects.filter(pk=pedido.pk).update(data_compra=timezone.now() - timedelta(days=dias_atras))
         pedido.refresh_from_db()
+        ItemPedido.objects.create(
+            pedido=pedido, item_id=1, nome=nome, valor_item=valor_item, comissao_item=comissao_item,
+            venda_direta=venda_direta, cashback_pago=cashback_pago,
+        )
         return pedido
 
     def test_manda_pra_quem_comprou_por_venda_indireta_na_semana(self):
         alvo = self._usuario("indireta")
-        self._pedido(alvo, self._click(alvo, Click.TIPO_HOME), dias_atras=2)
+        self._pedido_com_item(alvo, self._click(alvo, Click.TIPO_HOME), dias_atras=2)
 
         with patch("accounts.comunicacoes.EmailMultiAlternatives") as MockEmail:
             total = enviar_lembrete_venda_indireta_semanal(self.request)
 
         self.assertEqual(total, 1)
         MockEmail.return_value.send.assert_called_once()
-        self.assertEqual(MockEmail.call_args.kwargs["bcc"], [alvo.email])
-        self.assertEqual(MockEmail.call_args.kwargs["to"], [settings.EMAIL_BCC_PARA_PLACEHOLDER])
+        self.assertEqual(MockEmail.call_args.kwargs["to"], [alvo.email])
 
     def test_nao_manda_pra_quem_so_comprou_por_venda_direta(self):
         alvo = self._usuario("direta")
-        self._pedido(alvo, self._click(alvo, Click.TIPO_PRODUTO), dias_atras=2)
+        self._pedido_com_item(alvo, self._click(alvo, Click.TIPO_PRODUTO), dias_atras=2, venda_direta=True)
 
         with patch("accounts.comunicacoes.EmailMultiAlternatives") as MockEmail:
             total = enviar_lembrete_venda_indireta_semanal(self.request)
@@ -1497,7 +1511,9 @@ class LembreteVendaIndiretaTests(TestCase):
 
     def test_nao_manda_pra_pedido_cancelado(self):
         alvo = self._usuario("cancelado")
-        self._pedido(alvo, self._click(alvo, Click.TIPO_HOME), dias_atras=2, status=Pedido.STATUS_CANCELADO)
+        self._pedido_com_item(
+            alvo, self._click(alvo, Click.TIPO_HOME), dias_atras=2, status=Pedido.STATUS_CANCELADO
+        )
 
         with patch("accounts.comunicacoes.EmailMultiAlternatives") as MockEmail:
             total = enviar_lembrete_venda_indireta_semanal(self.request)
@@ -1507,7 +1523,7 @@ class LembreteVendaIndiretaTests(TestCase):
 
     def test_nao_manda_pra_pedido_fora_da_janela_de_7_dias(self):
         alvo = self._usuario("antigo")
-        self._pedido(alvo, self._click(alvo, Click.TIPO_HOME), dias_atras=15)
+        self._pedido_com_item(alvo, self._click(alvo, Click.TIPO_HOME), dias_atras=15)
 
         with patch("accounts.comunicacoes.EmailMultiAlternatives") as MockEmail:
             total = enviar_lembrete_venda_indireta_semanal(self.request)
@@ -1517,7 +1533,22 @@ class LembreteVendaIndiretaTests(TestCase):
 
     def test_nao_manda_pra_quem_desligou_marketing(self):
         alvo = self._usuario("optou_fora", aceita_email_marketing=False)
-        self._pedido(alvo, self._click(alvo, Click.TIPO_HOME), dias_atras=2)
+        self._pedido_com_item(alvo, self._click(alvo, Click.TIPO_HOME), dias_atras=2)
+
+        with patch("accounts.comunicacoes.EmailMultiAlternatives") as MockEmail:
+            total = enviar_lembrete_venda_indireta_semanal(self.request)
+
+        self.assertEqual(total, 0)
+        MockEmail.assert_not_called()
+
+    def test_nao_manda_quando_nao_ha_diferenca_nenhuma(self):
+        # Comissão alta o bastante pra já bater (ou passar) o piso direto - sem
+        # diferença nenhuma pra mostrar, não manda e-mail (ver ROADMAP.md).
+        alvo = self._usuario("sem_diferenca")
+        self._pedido_com_item(
+            alvo, self._click(alvo, Click.TIPO_HOME), dias_atras=2,
+            comissao_item=Decimal("50.00"), valor_item=Decimal("100.00"), cashback_pago=Decimal("50.00"),
+        )
 
         with patch("accounts.comunicacoes.EmailMultiAlternatives") as MockEmail:
             total = enviar_lembrete_venda_indireta_semanal(self.request)
@@ -1528,18 +1559,36 @@ class LembreteVendaIndiretaTests(TestCase):
     def test_nao_duplica_quem_tem_mais_de_1_pedido_indireto_na_semana(self):
         alvo = self._usuario("comprou_duas_vezes")
         click = self._click(alvo, Click.TIPO_HOME)
-        self._pedido(alvo, click, dias_atras=1)
-        self._pedido(alvo, click, dias_atras=3)
+        self._pedido_com_item(alvo, click, dias_atras=1, nome="Produto A")
+        self._pedido_com_item(alvo, click, dias_atras=3, nome="Produto B")
 
         with patch("accounts.comunicacoes.EmailMultiAlternatives") as MockEmail:
             total = enviar_lembrete_venda_indireta_semanal(self.request)
 
         self.assertEqual(total, 1)
-        self.assertEqual(MockEmail.call_args.kwargs["bcc"], [alvo.email])
+        self.assertEqual(MockEmail.call_args.kwargs["to"], [alvo.email])
+        html = MockEmail.return_value.attach_alternative.call_args.args[0]
+        self.assertIn("Produto A", html)
+        self.assertIn("Produto B", html)
+
+    def test_html_mostra_produto_pago_hipotetico_e_total(self):
+        alvo = self._usuario("indireta")
+        self._pedido_com_item(
+            alvo, self._click(alvo, Click.TIPO_HOME), dias_atras=2, nome="Panificadora Philco",
+            comissao_item=Decimal("0.50"), valor_item=Decimal("100.00"), cashback_pago=Decimal("1.00"),
+        )
+
+        with patch("accounts.comunicacoes.EmailMultiAlternatives") as MockEmail:
+            enviar_lembrete_venda_indireta_semanal(self.request)
+
+        html = MockEmail.return_value.attach_alternative.call_args.args[0]
+        self.assertIn("Panificadora Philco", html)
+        self.assertIn("1,00", html)  # pago
+        self.assertIn("1,60", html)  # hipotético (piso direto 1,6% de 100)
 
     def test_html_inclui_link_das_regras_e_do_reel(self):
         alvo = self._usuario("indireta")
-        self._pedido(alvo, self._click(alvo, Click.TIPO_HOME), dias_atras=2)
+        self._pedido_com_item(alvo, self._click(alvo, Click.TIPO_HOME), dias_atras=2)
 
         with patch("accounts.comunicacoes.EmailMultiAlternatives") as MockEmail:
             enviar_lembrete_venda_indireta_semanal(self.request)
@@ -1552,7 +1601,7 @@ class LembreteVendaIndiretaTests(TestCase):
 
     def test_inclui_rodape_de_descadastro_no_texto(self):
         alvo = self._usuario("indireta")
-        self._pedido(alvo, self._click(alvo, Click.TIPO_HOME), dias_atras=2)
+        self._pedido_com_item(alvo, self._click(alvo, Click.TIPO_HOME), dias_atras=2)
 
         with patch("accounts.comunicacoes.EmailMultiAlternatives") as MockEmail:
             enviar_lembrete_venda_indireta_semanal(self.request)

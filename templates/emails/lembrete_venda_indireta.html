@@ -11,7 +11,56 @@
 
 <tr><td style="background:#ffffff; border-radius:12px; padding:24px 20px; color:#111827; font-size:15px; line-height:1.6;">
     {{ corpo_html_intro|safe }}
+    {% if total_perdido %}
+    <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:#6d28d9; border-radius:10px;">
+        <tr><td style="padding:16px 18px; text-align:center;">
+            <div style="font-family:Arial, Helvetica, sans-serif; font-size:26px; font-weight:bold; color:#ffffff;">R$ {{ total_perdido }}</div>
+            <div style="font-family:Arial, Helvetica, sans-serif; font-size:13px; color:#e9e4fb; margin-top:2px;">a mais de cashback que você teria ganho comprando direto</div>
+        </td></tr>
+    </table>
+    {% endif %}
 </td></tr>
+
+{% if itens %}
+<tr><td style="padding:14px 4px 0;">
+    <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:#ffffff; border-radius:12px; padding:4px 20px;">
+        {% for item in itens %}
+        <tr><td style="padding:14px 0; {% if not forloop.first %}border-top:1px solid #e0dcef;{% endif %}">
+            <table role="presentation" width="100%" cellpadding="0" cellspacing="0"><tr>
+                {% if item.imagem_url %}
+                <td width="56" style="vertical-align:top; padding-right:12px;">
+                    <img src="{{ item.imagem_url }}" width="56" height="56" alt="" style="display:block; border-radius:8px; object-fit:cover;">
+                </td>
+                {% endif %}
+                <td style="vertical-align:top;">
+                    <div style="font-family:Arial, Helvetica, sans-serif; font-weight:bold; font-size:14px; color:#111827; margin:0 0 8px;">{{ item.nome }}</div>
+                    <table role="presentation" cellpadding="0" cellspacing="0"><tr>
+                        <td style="padding-right:18px; font-family:Arial, Helvetica, sans-serif; font-size:12px; color:#6b7280;">
+                            Pago (indireto)<br>
+                            <span style="font-size:13px; font-weight:bold; color:#111827;">R$ {{ item.cashback_pago }}</span>
+                        </td>
+                        <td style="padding-right:18px; font-family:Arial, Helvetica, sans-serif; font-size:12px; color:#6b7280;">
+                            Se fosse direto<br>
+                            <span style="font-size:13px; font-weight:bold; color:#111827;">R$ {{ item.cashback_hipotetico }}</span>
+                        </td>
+                        <td style="font-family:Arial, Helvetica, sans-serif; font-size:12px; color:#6b7280;">
+                            Diferença<br>
+                            <span style="font-size:13px; font-weight:bold; color:#16a34a;">+R$ {{ item.diferenca }}</span>
+                        </td>
+                    </tr></table>
+                </td>
+            </tr></table>
+        </td></tr>
+        {% endfor %}
+        <tr><td style="padding-top:14px; border-top:2px solid #e0dcef;">
+            <table role="presentation" width="100%" cellpadding="0" cellspacing="0"><tr>
+                <td style="font-family:Arial, Helvetica, sans-serif; font-size:14px; font-weight:bold; color:#111827;">Total da semana</td>
+                <td style="font-family:Arial, Helvetica, sans-serif; font-size:14px; font-weight:bold; color:#111827; text-align:right;">R$ {{ total_pago }} &rarr; R$ {{ total_hipotetico }}</td>
+            </tr></table>
+        </td></tr>
+    </table>
+</td></tr>
+{% endif %}
 
 <tr><td style="padding:16px 4px 0;">
     <table role="presentation" width="100%" cellpadding="0" cellspacing="0">

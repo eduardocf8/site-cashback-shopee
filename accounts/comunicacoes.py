@@ -13,7 +13,9 @@ de cashback de cada uma) - ver templates/emails/comunicacao_vitrine.html.
 """
 
 import logging
+from collections import defaultdict
 from datetime import timedelta
+from decimal import Decimal
 
 from django.conf import settings
 from django.core.mail import EmailMessage, EmailMultiAlternatives
@@ -22,10 +24,11 @@ from django.template.loader import render_to_string
 from django.templatetags.static import static
 from django.urls import reverse
 from django.utils import timezone
+from django.utils.formats import number_format
 from django.utils.html import escape
 
 from links.models import Click
-from pedidos.models import Pedido
+from pedidos.models import ItemPedido, Pedido
 
 from .models import ComunicacaoEmail, User
 
@@ -276,73 +279,53 @@ def enviar_lembrete_primeira_compra_30_dias(request) -> int:
     )
 
 
-def _usuarios_com_venda_indireta_ultimos_dias(dias: int) -> QuerySet:
-    """Quem tem pelo menos 1 pedido não cancelado por venda indireta (clique em "Ir
-    pra Shopee" - Click.TIPO_HOME - em vez de um link de produto específico ou card
-    da vitrine) nos últimos `dias` dias. Não é a mesma verificação exata do cálculo de
-    cashback (pedidos/services.py::_percentual_minimo_garantido, que também confere
-    se o produto comprado bate com o link clicado) - aqui só o tipo do clique já é o
-    suficiente pro propósito do lembrete (pedido cancelado não conta como compra de
-    verdade, mesmo padrão de accounts/management/commands/funil_cadastros.py)."""
+def _itens_indiretos_por_usuario(dias: int) -> dict[int, list[ItemPedido]]:
+    """Agrupa por usuário todo ItemPedido de venda indireta (clique em "Ir pra
+    Shopee" OU produto comprado diferente do link que gerou o clique - ver
+    ItemPedido.venda_direta) comprado nos últimos `dias` dias, de pedido não
+    cancelado. Base de quem recebe o lembrete semanal E do conteúdo de cada e-mail
+    (ver enviar_lembrete_venda_indireta_semanal) - diferente da versão antiga desse
+    lembrete, que só checava click.tipo == TIPO_HOME e deixava passar batido quem
+    converteu o link de um produto e comprou outro no lugar."""
     agora = timezone.now()
-    ids_usuarios = (
-        Pedido.objects.filter(click__tipo=Click.TIPO_HOME, data_compra__gte=agora - timedelta(days=dias))
-        .exclude(status=Pedido.STATUS_CANCELADO)
-        .values_list("usuario_id", flat=True)
-        .distinct()
+    itens = (
+        ItemPedido.objects.filter(
+            venda_direta=False,
+            pedido__usuario_id__isnull=False,
+            pedido__data_compra__gte=agora - timedelta(days=dias),
+        )
+        .exclude(pedido__status=Pedido.STATUS_CANCELADO)
+        .select_related("pedido")
+        .order_by("pedido__usuario_id", "-pedido__data_compra")
     )
-    return User.objects.filter(pk__in=ids_usuarios, aceita_email_marketing=True).exclude(email="")
+    agrupado: dict[int, list[ItemPedido]] = defaultdict(list)
+    for item in itens:
+        agrupado[item.pedido.usuario_id].append(item)
+    return agrupado
 
 
 def enviar_lembrete_venda_indireta_semanal(request) -> int:
     """Lembrete semanal (Cron Job próprio, sábado de manhã - ver
     /tarefas/lembrete-venda-indireta/ em cashback_shopee/views.py e "Cron Jobs do
     Render" em marketing/instagram/README.md) pra quem comprou por venda indireta nos
-    últimos 7 dias - explica que existe a venda direta (cashback mínimo garantido
-    maior) e linka a página de regras + o Reel do Instagram que explica a diferença.
-    Sempre em HTML (tem os 2 ícones - ver templates/emails/lembrete_venda_indireta.html),
-    diferente dos outros lembretes automáticos, que são só texto."""
-    usuarios = _usuarios_com_venda_indireta_ultimos_dias(LEMBRETE_VENDA_INDIRETA_DIAS)
+    últimos 7 dias - mostra produto a produto quanto foi pago de cashback e quanto
+    teria sido pago se a compra fosse direta, com a comissão real de cada item (ver
+    ItemPedido.cashback_hipotetico_direto), não só o piso mínimo.
+
+    Diferente dos outros lembretes automáticos (e da versão antiga deste): o
+    conteúdo é diferente pra cada pessoa (os produtos que ela comprou), então não dá
+    pra mandar em lote por BCC como o resto dos e-mails em massa deste módulo (ver
+    docstring do módulo) - 1 envio por usuário, igual pedidos/notificacoes.py."""
+    itens_por_usuario = _itens_indiretos_por_usuario(LEMBRETE_VENDA_INDIRETA_DIAS)
+    if not itens_por_usuario:
+        return 0
+
+    usuarios = User.objects.filter(
+        pk__in=itens_por_usuario.keys(), aceita_email_marketing=True
+    ).exclude(email="")
+
     link_regras = request.build_absolute_uri(reverse("regras_cashback"))
     link_descadastro = request.build_absolute_uri(reverse("preferencias_email"))
-    percentual_direta = settings.CASHBACK_MINIMO_VENDA_DIRETA
-    percentual_indireta = settings.CASHBACK_MINIMO_VENDA_INDIRETA
-
-    corpo = (
-        "Olá!\n\n"
-        "Notamos que você comprou pela cash-b essa semana usando o link \"Ir pra "
-        "Shopee\" - e talvez você não saiba, mas dá pra ganhar ainda mais cashback "
-        "nas próximas compras.\n\n"
-        "Existem duas formas de comprar pela cash-b:\n"
-        f"- Venda direta: você gera o link de um produto específico (ou clica num "
-        f"card da vitrine) e compra exatamente esse produto - o cashback mínimo "
-        f"garantido é maior (hoje, {percentual_direta}%).\n"
-        f"- Venda indireta: você clica em \"Ir pra Shopee\" sem escolher um produto "
-        f"antes - o cashback mínimo garantido é menor (hoje, {percentual_indireta}%).\n\n"
-        "Detalhe importante: pra valer como venda direta, você precisa comprar "
-        "exatamente o mesmo produto do link que gerou - comprando outro produto, "
-        "mesmo saindo de um link específico, ainda conta como venda indireta.\n\n"
-        f"Regras completas do cashback: {link_regras}\n"
-        f"Veja no Instagram: {REEL_VENDA_INDIRETA_URL}\n\n"
-        "Equipe cash-b"
-        + _rodape_descadastro_texto(link_descadastro)
-    )
-
-    corpo_html_intro = (
-        "<p style='margin:0 0 12px;'>Notamos que você comprou pela cash-b essa semana "
-        "usando o link \u201cIr pra Shopee\u201d \u2014 e talvez você não saiba, mas dá pra "
-        "ganhar ainda mais cashback nas próximas compras.</p>"
-        "<p style='margin:0 0 12px;'>Existem duas formas de comprar pela cash-b: "
-        f"<strong>venda direta</strong> (gerando o link de um produto específico, ou "
-        f"clicando num card da vitrine, e comprando exatamente esse produto) garante "
-        f"um cashback mínimo maior, hoje {percentual_direta}%. <strong>Venda "
-        f"indireta</strong> (clicar em \u201cIr pra Shopee\u201d sem escolher um produto "
-        f"antes) garante um mínimo menor, hoje {percentual_indireta}%.</p>"
-        "<p style='margin:0;'>Detalhe importante: pra valer como venda direta, você "
-        "precisa comprar exatamente o mesmo produto do link que gerou - comprando "
-        "outro produto, mesmo saindo de um link específico, ainda conta como venda "
-        "indireta.</p>"
-    )
     links_com_icone = [
         {
             "titulo": "Regras completas do cashback",
@@ -357,14 +340,90 @@ def enviar_lembrete_venda_indireta_semanal(request) -> int:
             "icone_url": request.build_absolute_uri(static("images/email-icone-instagram.png")),
         },
     ]
-    corpo_html = render_to_string(
-        "emails/lembrete_venda_indireta.html",
-        {"corpo_html_intro": corpo_html_intro, "links": links_com_icone, "link_descadastro": link_descadastro},
+
+    corpo_html_intro = (
+        "<p style='margin:0 0 12px;'>Essa semana você comprou pela cash-b usando "
+        "<strong>venda indireta</strong> (clicando em “Ir pra Shopee” sem "
+        "escolher um produto antes, ou comprando um produto diferente do link que "
+        "você converteu) — e isso rendeu menos cashback do que podia.</p>"
     )
 
-    return _mandar_lembrete_html_em_lotes(
-        usuarios, "cash-b — você pode ganhar mais cashback nas suas compras", corpo, corpo_html
-    )
+    total_enviados = 0
+    for usuario in usuarios:
+        itens = itens_por_usuario[usuario.pk]
+        total_pago = sum((item.cashback_pago for item in itens), Decimal("0.00"))
+        total_hipotetico = sum((item.cashback_hipotetico_direto for item in itens), Decimal("0.00"))
+        total_perdido = total_hipotetico - total_pago
+        if total_perdido <= 0:
+            # Matematicamente não deveria acontecer (o piso direto é sempre >= o
+            # indireto - ver ItemPedido.cashback_perdido), mas sem nenhuma diferença
+            # pra mostrar não tem o que esse e-mail diria.
+            continue
+
+        itens_contexto = [
+            {
+                "nome": item.nome or "Produto",
+                "imagem_url": item.imagem_url,
+                "cashback_pago": number_format(item.cashback_pago, decimal_pos=2),
+                "cashback_hipotetico": number_format(item.cashback_hipotetico_direto, decimal_pos=2),
+                "diferenca": number_format(item.cashback_perdido, decimal_pos=2),
+            }
+            for item in itens
+        ]
+
+        corpo_html = render_to_string(
+            "emails/lembrete_venda_indireta.html",
+            {
+                "corpo_html_intro": corpo_html_intro,
+                "itens": itens_contexto,
+                "total_pago": number_format(total_pago, decimal_pos=2),
+                "total_hipotetico": number_format(total_hipotetico, decimal_pos=2),
+                "total_perdido": number_format(total_perdido, decimal_pos=2),
+                "links": links_com_icone,
+                "link_descadastro": link_descadastro,
+            },
+        )
+
+        linhas_itens_texto = "\n".join(
+            f"- {item['nome']}: pago R$ {item['cashback_pago']} | se fosse direto "
+            f"R$ {item['cashback_hipotetico']} (+R$ {item['diferenca']})"
+            for item in itens_contexto
+        )
+        corpo = (
+            f"Olá, {usuario.username}!\n\n"
+            "Essa semana você comprou pela cash-b usando venda indireta (clicando em "
+            "\"Ir pra Shopee\" sem escolher um produto antes, ou comprando um produto "
+            "diferente do link que você converteu) - e isso rendeu menos cashback do "
+            "que podia.\n\n"
+            f"Nessas compras, você deixou R$ {number_format(total_perdido, decimal_pos=2)} "
+            "de cashback na mesa:\n\n"
+            f"{linhas_itens_texto}\n\n"
+            f"Total da semana: R$ {number_format(total_pago, decimal_pos=2)} -> "
+            f"R$ {number_format(total_hipotetico, decimal_pos=2)}\n\n"
+            "Pra próxima, é só converter o link do produto específico (ou comprar "
+            "pela vitrine de ofertas) e comprar exatamente esse produto.\n\n"
+            f"Regras completas do cashback: {link_regras}\n"
+            f"Veja no Instagram: {REEL_VENDA_INDIRETA_URL}\n\n"
+            "Equipe cash-b"
+            + _rodape_descadastro_texto(link_descadastro)
+        )
+
+        try:
+            mensagem = EmailMultiAlternatives(
+                subject="cash-b — quanto você deixou de ganhar essa semana",
+                body=corpo,
+                to=[usuario.email],
+            )
+            mensagem.attach_alternative(corpo_html, "text/html")
+            mensagem.send()
+            total_enviados += 1
+        except Exception:
+            logger.warning(
+                "[comunicacoes] falha ao mandar lembrete de venda indireta pro usuário %s",
+                usuario.pk, exc_info=True,
+            )
+
+    return total_enviados
 
 
 def _mandar_lembrete_html_em_lotes(usuarios: QuerySet, assunto: str, corpo: str, corpo_html: str) -> int:

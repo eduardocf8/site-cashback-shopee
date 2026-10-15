@@ -2261,6 +2261,40 @@ do email em si foi mandado pra aprovação antes de implementar (ver próxima fa
 - [x] Testes novos em `pedidos/tests.py` (`ItemPedidoTests` + ajuste em
       `SincronizarBonusIndicacaoTests`).
 
+**Depois, mesma fase:** o lembrete semanal de venda indireta (Fase 51) deixou de
+ser genérico e virou personalizado, usando a base de dados acima. Mockup do
+email mandado pro usuário aprovar antes de implementar.
+
+- [x] **`accounts/comunicacoes.py::enviar_lembrete_venda_indireta_semanal`**
+      reescrito - mostra produto a produto quanto cada pessoa pagou de cashback
+      na compra indireta e quanto teria pago se fosse direta (com a comissão
+      real de cada item, não só o piso), mais o total da semana em destaque no
+      topo. Passou a cobrir também quem converteu o link de um produto e
+      comprou outro no lugar (antes só pegava clique em "Ir pra Shopee" -
+      `_itens_indiretos_por_usuario` substitui a antiga
+      `_usuarios_com_venda_indireta_ultimos_dias`). Usuário sem diferença
+      nenhuma entre pago e hipotético (comissão já alta o bastante) não recebe
+      o e-mail - nada pra mostrar.
+- [x] **Deixou de ser BCC em lote**: como o conteúdo agora é diferente por
+      pessoa, cada usuário recebe seu próprio envio (`to=[usuario.email]`,
+      mesmo esquema de `pedidos/notificacoes.py`) em vez do lote por BCC que os
+      outros e-mails em massa usam (ver docstring do módulo
+      `accounts/comunicacoes.py`) - único jeito de personalizar o conteúdo.
+- [x] **`templates/emails/lembrete_venda_indireta.html`** reformulado - tabela
+      por produto (pago / se fosse direto / diferença) e um destaque com o
+      total perdido na semana, mantendo os 2 cards de link (regras + Instagram)
+      que já existiam.
+- [x] Testes novos/reescritos em `accounts/tests.py::LembreteVendaIndiretaTests`
+      (e-mail individual por usuário, não manda quando não há diferença,
+      produto aparece no corpo do e-mail com os valores certos).
+- [x] Verificação visual do template real (não só o mockup aprovado) via
+      Playwright, desktop e mobile.
+
+**Próximo passo combinado com o usuário** (ainda não feito): padronizar os
+outros 5 e-mails automáticos que hoje são só texto puro (lembrete de primeira
+compra 7 e 30 dias, pedido validado, cashback liberado, bônus de indicação
+validado) pro mesmo visual HTML deste.
+
 ---
 
 Pra continuar esse roadmap numa conversa nova, basta apontar esse arquivo
