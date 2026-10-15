@@ -2359,6 +2359,13 @@ resultado deste).
       valor pago fica pequeno e cinza, e o hipotético (o que poderia ter sido
       ganho) fica maior, em negrito e na cor roxa da marca - destaque pro
       número que interessa chamar atenção.
+- [x] **Card roxo sólido do total perdido trocado por painel claro** - mesmo
+      motivo do ajuste no email de pedido validado (Fase 56): o usuário achou
+      pesado. Mandei 3 opções pra aprovação (painel claro, linha
+      rótulo+valor igual "Total da semana", número solto sem caixa); aprovada
+      a do painel claro (fundo lavanda `#f1eefb`, valor grande em roxo
+      `#6d28d9`, legenda cinza) - mesma linguagem visual do resto do email
+      depois dos ajustes anteriores, nada mais em roxo sólido.
 
 ---
 
