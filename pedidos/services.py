@@ -11,7 +11,7 @@ from accounts.models import Indicacao
 from links.models import Click
 from links.shopee_client import buscar_conversoes
 
-from .models import CampanhaCashback, Pedido
+from .models import CampanhaCashback, ItemPedido, Pedido
 from .notificacoes import notificar_indicador_bonus_pendente, notificar_pedido_liberado, notificar_pedido_validado
 
 PADRAO_USUARIO = re.compile(r"^user(\d+)$")
@@ -157,16 +157,39 @@ def _montar_defaults(conversao, pedido_shopee, click, data_compra, percentual_ba
     pedido_valor = Decimal("0")
     comissao = Decimal("0")
     cashback = Decimal("0")
+    itens_detalhe = []
     for item in itens:
         valor_item = Decimal(str(item.get("actualAmount") or "0"))
         pedido_valor += valor_item
         comissao_item = Decimal(str(item.get("itemTotalCommission") or "0"))
         comissao += comissao_item
+        venda_direta_item = False
+        cashback_item = Decimal("0.00")
         if click and comissao_item > 0:
             item_bate_com_o_link = _item_bate_com_o_click(click, item.get("itemId"))
+            venda_direta_item = click.tipo != Click.TIPO_HOME and item_bate_com_o_link
             percentual_minimo = _percentual_minimo_garantido(click, item_bate_com_o_link)
             cashback_base_item = max(comissao_item * percentual_base, valor_item * percentual_minimo)
-            cashback += (cashback_base_item * multiplicador).quantize(Decimal("0.01"))
+            cashback_item = (cashback_base_item * multiplicador).quantize(Decimal("0.01"))
+            cashback += cashback_item
+
+        # Detalhe por item - ver ItemPedido (pedidos/models.py) e _persistir_itens.
+        # Gravado mesmo quando não bate com o clique ou não tem clique nenhum, pra
+        # manter o mesmo retrato completo do pedido que produto_nome/imagem_produto
+        # já dão hoje.
+        try:
+            item_id_int = int(item["itemId"]) if item.get("itemId") else None
+        except (TypeError, ValueError):
+            item_id_int = None
+        itens_detalhe.append({
+            "item_id": item_id_int,
+            "nome": (item.get("itemName") or "")[:255],
+            "imagem_url": item.get("imageUrl") or "",
+            "valor_item": valor_item,
+            "comissao_item": comissao_item,
+            "venda_direta": venda_direta_item,
+            "cashback_pago": cashback_item,
+        })
 
     tempos_conclusao = [item["completeTime"] for item in itens if item.get("completeTime")]
     data_validacao = _converter_timestamp(max(tempos_conclusao)) if tempos_conclusao else None
@@ -187,7 +210,7 @@ def _montar_defaults(conversao, pedido_shopee, click, data_compra, percentual_ba
                 motivos.append(motivo)
         motivo_cancelamento = "; ".join(motivos)[:255]
 
-    return {
+    defaults = {
         "conversion_id": str(conversao.get("conversionId", "")),
         "click": click,
         "usuario": click.usuario if click else None,
@@ -203,9 +226,12 @@ def _montar_defaults(conversao, pedido_shopee, click, data_compra, percentual_ba
         "data_validacao": data_validacao,
         "data_prevista_liberacao": calcular_data_prevista_liberacao(data_validacao),
     }
+    return defaults, itens_detalhe
 
 
-def _montar_linhas(brutos_por_order_id: dict[str, tuple], percentual_base: Decimal) -> dict[str, dict]:
+def _montar_linhas(
+    brutos_por_order_id: dict[str, tuple], percentual_base: Decimal
+) -> tuple[dict[str, dict], dict[str, list[dict]]]:
     """Monta os defaults de cada pedido já com o multiplicador de campanha correto.
 
     Pedido novo usa o multiplicador que valia na data_compra real (ver
@@ -229,6 +255,10 @@ def _montar_linhas(brutos_por_order_id: dict[str, tuple], percentual_base: Decim
     mesmo não importa quando a sincronização roda.
 
     É o mesmo cuidado que _reaplicar_bonus_ja_concedido tem com o bônus de indicação.
+
+    Retorna (linhas, itens_por_order_id): o 2º dicionário traz o detalhe por item de
+    cada pedido (ver ItemPedido), na mesma chave order_id - usado por
+    _persistir_itens depois que os Pedidos existem de verdade no banco.
     """
     ja_gravados = dict(
         Pedido.objects.filter(order_id__in=brutos_por_order_id.keys()).values_list(
@@ -241,17 +271,19 @@ def _montar_linhas(brutos_por_order_id: dict[str, tuple], percentual_base: Decim
     campanhas = CampanhaCashback.listar()
 
     linhas: dict[str, dict] = {}
+    itens_por_order_id: dict[str, list[dict]] = {}
     for order_id, (conversao, pedido_shopee, click, data_compra) in brutos_por_order_id.items():
         if order_id in ja_gravados:
             multiplicador = ja_gravados[order_id]
         else:
             multiplicador = CampanhaCashback.multiplicador_em(data_compra, campanhas=campanhas)
-        defaults = _montar_defaults(
+        defaults, itens_detalhe = _montar_defaults(
             conversao, pedido_shopee, click, data_compra, percentual_base, multiplicador
         )
         defaults["multiplicador_campanha"] = multiplicador
         linhas[order_id] = defaults
-    return linhas
+        itens_por_order_id[order_id] = itens_detalhe
+    return linhas, itens_por_order_id
 
 
 def sincronizar(purchase_time_start: int, purchase_time_end: int) -> dict:
@@ -290,9 +322,9 @@ def sincronizar(purchase_time_start: int, purchase_time_end: int) -> dict:
         if not pagina["pageInfo"].get("hasNextPage"):
             break
 
-    linhas_por_order_id = _montar_linhas(brutos_por_order_id, percentual_base)
+    linhas_por_order_id, itens_por_order_id = _montar_linhas(brutos_por_order_id, percentual_base)
 
-    _reaplicar_bonus_ja_concedido(linhas_por_order_id)
+    _reaplicar_bonus_ja_concedido(linhas_por_order_id, itens_por_order_id)
 
     novos = 0
     atualizados = 0
@@ -325,7 +357,7 @@ def sincronizar(purchase_time_start: int, purchase_time_end: int) -> dict:
 
     # Dobra o cashback dos pedidos que disparam bônus de indicação antes de salvar -
     # os objetos em recem_validados são os mesmos que estão em novos_objs/atualizados_objs.
-    vinculos_indicacao = _selecionar_bonus_indicacao(recem_validados)
+    vinculos_indicacao = _selecionar_bonus_indicacao(recem_validados, itens_por_order_id)
 
     # batch_size evita um único UPDATE/INSERT gigante quando a janela de 60 dias
     # acumula muitos pedidos - sem isso, o Postgres pode demorar a ponto de
@@ -334,6 +366,9 @@ def sincronizar(purchase_time_start: int, purchase_time_end: int) -> dict:
         Pedido.objects.bulk_create(novos_objs, batch_size=200)
     if atualizados_objs:
         Pedido.objects.bulk_update(atualizados_objs, CAMPOS_ATUALIZAVEIS, batch_size=200)
+
+    pedidos_por_order_id = {p.order_id: p for p in novos_objs + atualizados_objs}
+    _persistir_itens(pedidos_por_order_id, itens_por_order_id)
 
     _persistir_vinculos_indicacao(vinculos_indicacao)
 
@@ -348,12 +383,22 @@ def sincronizar(purchase_time_start: int, purchase_time_end: int) -> dict:
     return {"novos": novos, "atualizados": atualizados, "nao_identificados": nao_identificados}
 
 
-def _reaplicar_bonus_ja_concedido(linhas_por_order_id: dict[str, dict]) -> None:
+def _dobrar_cashback_dos_itens(order_id: str, multiplicador: Decimal, itens_por_order_id: dict[str, list[dict]]) -> None:
+    """Aplica o mesmo multiplicador de bônus de indicação no cashback_pago de cada
+    item do pedido (ver ItemPedido) - sem isso, a soma dos itens de um pedido com
+    bônus de indicação ficaria menor que o valor_cashback agregado do Pedido
+    (que já leva o dobro), o que faria o lembrete de venda indireta por produto (ver
+    accounts/comunicacoes.py) subestimar o cashback já pago nesses pedidos."""
+    for item in itens_por_order_id.get(order_id, []):
+        item["cashback_pago"] = (item["cashback_pago"] * multiplicador).quantize(Decimal("0.01"))
+
+
+def _reaplicar_bonus_ja_concedido(linhas_por_order_id: dict[str, dict], itens_por_order_id: dict[str, list[dict]]) -> None:
     """A Shopee reenvia o mesmo pedido validado em toda sincronização seguinte, e
     _montar_defaults recalcula valor_cashback do zero a cada vez - sem isso, o dobro
     de cashback já concedido por indicação seria substituído pelo valor normal na
-    primeira sincronização depois de concedido. Muta linhas_por_order_id em memória,
-    antes de qualquer Pedido ser criado/atualizado."""
+    primeira sincronização depois de concedido. Muta linhas_por_order_id (e os itens
+    em itens_por_order_id) em memória, antes de qualquer Pedido ser criado/atualizado."""
     order_ids = list(linhas_por_order_id.keys())
     if not order_ids:
         return
@@ -368,11 +413,15 @@ def _reaplicar_bonus_ja_concedido(linhas_por_order_id: dict[str, dict]) -> None:
             if pedido_bonus and pedido_bonus.order_id in linhas_por_order_id:
                 defaults = linhas_por_order_id[pedido_bonus.order_id]
                 defaults["valor_cashback"] = (defaults["valor_cashback"] * multiplicador).quantize(Decimal("0.01"))
+                _dobrar_cashback_dos_itens(pedido_bonus.order_id, multiplicador, itens_por_order_id)
 
 
-def _selecionar_bonus_indicacao(recem_validados: list[Pedido]) -> list[tuple[Indicacao, str, str]]:
+def _selecionar_bonus_indicacao(
+    recem_validados: list[Pedido], itens_por_order_id: dict[str, list[dict]]
+) -> list[tuple[Indicacao, str, str]]:
     """Decide quais pedidos recém-validados NESTA sincronização ganham o dobro de
-    cashback do programa "indique e ganhe", e já dobra o valor_cashback deles.
+    cashback do programa "indique e ganhe", e já dobra o valor_cashback deles (e o
+    cashback_pago de cada item deles - ver _dobrar_cashback_dos_itens).
 
     Só considera pedidos validando pela primeira vez agora (não todo pedido validado
     já existente) - o vínculo gravado em Indicacao garante que o mesmo pedido continue
@@ -415,10 +464,12 @@ def _selecionar_bonus_indicacao(recem_validados: list[Pedido]) -> list[tuple[Ind
         if pedido.usuario_id in indicado_pendente:
             indicacao = indicado_pendente.pop(pedido.usuario_id)
             pedido.valor_cashback = (pedido.valor_cashback * multiplicador).quantize(Decimal("0.01"))
+            _dobrar_cashback_dos_itens(pedido.order_id, multiplicador, itens_por_order_id)
             vinculos.append((indicacao, "pedido_bonus_indicado", pedido.order_id))
         elif indicador_fila.get(pedido.usuario_id):
             indicacao = indicador_fila[pedido.usuario_id].pop(0)
             pedido.valor_cashback = (pedido.valor_cashback * multiplicador).quantize(Decimal("0.01"))
+            _dobrar_cashback_dos_itens(pedido.order_id, multiplicador, itens_por_order_id)
             vinculos.append((indicacao, "pedido_bonus_indicador", pedido.order_id))
 
     return vinculos
@@ -438,6 +489,32 @@ def _persistir_vinculos_indicacao(vinculos: list[tuple[Indicacao, str, str]]) ->
     Indicacao.objects.bulk_update(
         [indicacao for indicacao, _, _ in vinculos], ["pedido_bonus_indicado", "pedido_bonus_indicador"]
     )
+
+
+def _persistir_itens(pedidos_por_order_id: dict[str, Pedido], itens_por_order_id: dict[str, list[dict]]) -> None:
+    """Grava o detalhe por item de cada pedido sincronizado (ver ItemPedido). Sempre
+    apaga e recria os itens do pedido em vez de tentar casar item a item entre
+    sincronizações - a Shopee não garante uma chave estável por linha (ex: duas
+    compras do mesmo item no mesmo pedido), e o volume por pedido é pequeno o
+    bastante pra isso não pesar. Roda depois do bulk_create/bulk_update de Pedido
+    (precisa do pk de cada um já existir de verdade no banco).
+
+    Processado em lote (1 delete + 1 bulk_create, não por pedido) pelo mesmo motivo
+    do resto da sincronização - ver sincronizar()."""
+    pedido_ids = [pedido.pk for pedido in pedidos_por_order_id.values()]
+    if not pedido_ids:
+        return
+
+    ItemPedido.objects.filter(pedido_id__in=pedido_ids).delete()
+
+    novos_itens = [
+        ItemPedido(pedido=pedidos_por_order_id[order_id], **item_detalhe)
+        for order_id, itens_detalhe in itens_por_order_id.items()
+        if order_id in pedidos_por_order_id
+        for item_detalhe in itens_detalhe
+    ]
+    if novos_itens:
+        ItemPedido.objects.bulk_create(novos_itens, batch_size=200)
 
 
 def liberar_saldo() -> int:

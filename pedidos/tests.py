@@ -29,7 +29,7 @@ from .analytics import (
     obter_serie_diaria,
     origem_detalhada,
 )
-from .models import CampanhaCashback, Pedido
+from .models import CampanhaCashback, ItemPedido, Pedido
 from .notificacoes import notificar_indicador_bonus_pendente
 from .services import calcular_data_prevista_liberacao, liberar_saldo, mapear_status, resolver_click, sincronizar
 
@@ -692,6 +692,222 @@ class CashbackMinimoGarantidoTests(TestCase):
         self.assertEqual(pedido.valor_cashback, Decimal("1.60"))
 
 
+class ItemPedidoTests(TestCase):
+    """ItemPedido guarda o detalhe por item de cada pedido (nome, imagem, valor,
+    comissão real e se foi venda direta) - viabiliza o lembrete semanal de venda
+    indireta por produto (ver accounts/comunicacoes.py e ROADMAP.md)."""
+
+    def setUp(self):
+        self.usuario = get_user_model().objects.create_user(
+            username="compradora", password="senha123", cpf="39053344705"
+        )
+
+    def _pagina(self, click, order_id, itens):
+        return {
+            "nodes": [
+                {
+                    "conversionId": "999",
+                    "purchaseTime": 1700000000,
+                    "utmContent": f"{click.sub_id_usuario()},{click.sub_id_click()}",
+                    "orders": [{"orderId": order_id, "orderStatus": "PENDING", "items": itens}],
+                }
+            ],
+            "pageInfo": {"hasNextPage": False, "scrollId": ""},
+        }
+
+    @patch("pedidos.services.buscar_conversoes")
+    def test_grava_um_item_por_linha_com_nome_imagem_valor_e_comissao(self, mock_buscar):
+        click = Click.objects.create(
+            usuario=self.usuario, tipo=Click.TIPO_PRODUTO, item_id_alvo=1,
+            url_original="https://shopee.com.br/produto-i.1.1", link_gerado="https://shope.ee/abc",
+        )
+        mock_buscar.return_value = self._pagina(
+            click, "ORD-ITEM-1",
+            [{
+                "itemId": 1, "completeTime": None, "itemTotalCommission": "5.00", "actualAmount": "100.00",
+                "itemName": "Panificadora", "imageUrl": "https://cf.shopee.com.br/panificadora.jpg",
+            }],
+        )
+
+        sincronizar(1690000000, 1700000000)
+
+        pedido = Pedido.objects.get(order_id="ORD-ITEM-1")
+        item = pedido.itens.get()
+        self.assertEqual(item.item_id, 1)
+        self.assertEqual(item.nome, "Panificadora")
+        self.assertEqual(item.imagem_url, "https://cf.shopee.com.br/panificadora.jpg")
+        self.assertEqual(item.valor_item, Decimal("100.00"))
+        self.assertEqual(item.comissao_item, Decimal("5.00"))
+        self.assertTrue(item.venda_direta)
+        self.assertEqual(item.cashback_pago, Decimal("5.00"))
+
+    @patch("pedidos.services.buscar_conversoes")
+    def test_clique_em_ir_pra_shopee_marca_item_como_nao_direto(self, mock_buscar):
+        click = Click.objects.create(
+            usuario=self.usuario, tipo=Click.TIPO_HOME,
+            url_original="https://shopee.com.br/", link_gerado="https://shope.ee/abc",
+        )
+        mock_buscar.return_value = self._pagina(
+            click, "ORD-ITEM-INDIRETO",
+            [{"itemId": 42, "completeTime": None, "itemTotalCommission": "5.00", "actualAmount": "100.00"}],
+        )
+
+        sincronizar(1690000000, 1700000000)
+
+        item = Pedido.objects.get(order_id="ORD-ITEM-INDIRETO").itens.get()
+        self.assertFalse(item.venda_direta)
+
+    @patch("pedidos.services.buscar_conversoes")
+    def test_item_diferente_do_link_marca_como_nao_direto_mesmo_com_click_de_produto(self, mock_buscar):
+        click = Click.objects.create(
+            usuario=self.usuario, tipo=Click.TIPO_PRODUTO, item_id_alvo=1,
+            url_original="https://shopee.com.br/produto-i.1.1", link_gerado="https://shope.ee/abc",
+        )
+        mock_buscar.return_value = self._pagina(
+            click, "ORD-ITEM-TROCADO",
+            [{"itemId": 999, "completeTime": None, "itemTotalCommission": "5.00", "actualAmount": "100.00"}],
+        )
+
+        sincronizar(1690000000, 1700000000)
+
+        item = Pedido.objects.get(order_id="ORD-ITEM-TROCADO").itens.get()
+        self.assertFalse(item.venda_direta)
+
+    @patch("pedidos.services.buscar_conversoes")
+    def test_item_sem_comissao_fica_sem_cashback_e_sem_venda_direta(self, mock_buscar):
+        click = Click.objects.create(
+            usuario=self.usuario, tipo=Click.TIPO_PRODUTO, item_id_alvo=1,
+            url_original="https://shopee.com.br/produto-i.1.1", link_gerado="https://shope.ee/abc",
+        )
+        mock_buscar.return_value = self._pagina(
+            click, "ORD-ITEM-SEM-COMISSAO",
+            [{"itemId": 1, "completeTime": None, "itemTotalCommission": "0", "actualAmount": "100.00"}],
+        )
+
+        sincronizar(1690000000, 1700000000)
+
+        item = Pedido.objects.get(order_id="ORD-ITEM-SEM-COMISSAO").itens.get()
+        self.assertFalse(item.venda_direta)
+        self.assertEqual(item.cashback_pago, Decimal("0.00"))
+
+    @patch("pedidos.services.buscar_conversoes")
+    def test_pedido_sem_click_tambem_grava_os_itens(self, mock_buscar):
+        click = Click.objects.create(
+            usuario=self.usuario, tipo=Click.TIPO_PRODUTO, item_id_alvo=1,
+            url_original="https://shopee.com.br/produto-i.1.1", link_gerado="https://shope.ee/abc",
+        )
+        pagina = self._pagina(
+            click, "ORD-ITEM-SEM-CLICK",
+            [{"itemId": 1, "completeTime": None, "itemTotalCommission": "5.00", "actualAmount": "100.00"}],
+        )
+        pagina["nodes"][0]["utmContent"] = "origem-desconhecida"
+        mock_buscar.return_value = pagina
+
+        sincronizar(1690000000, 1700000000)
+
+        item = Pedido.objects.get(order_id="ORD-ITEM-SEM-CLICK").itens.get()
+        self.assertEqual(item.valor_item, Decimal("100.00"))
+        self.assertEqual(item.comissao_item, Decimal("5.00"))
+        self.assertFalse(item.venda_direta)
+        self.assertEqual(item.cashback_pago, Decimal("0.00"))
+
+    @patch("pedidos.services.buscar_conversoes")
+    def test_pedido_com_varios_itens_grava_uma_linha_por_item(self, mock_buscar):
+        click = Click.objects.create(
+            usuario=self.usuario, tipo=Click.TIPO_PRODUTO, item_id_alvo=1,
+            url_original="https://shopee.com.br/produto-i.1.1", link_gerado="https://shope.ee/abc",
+        )
+        mock_buscar.return_value = self._pagina(
+            click, "ORD-MULTI",
+            [
+                {"itemId": 1, "completeTime": None, "itemTotalCommission": "0.50", "actualAmount": "100.00"},
+                {"itemId": 2, "completeTime": None, "itemTotalCommission": "0.30", "actualAmount": "100.00"},
+            ],
+        )
+
+        sincronizar(1690000000, 1700000000)
+
+        pedido = Pedido.objects.get(order_id="ORD-MULTI")
+        self.assertEqual(pedido.itens.count(), 2)
+        item_1 = pedido.itens.get(item_id=1)
+        item_2 = pedido.itens.get(item_id=2)
+        self.assertTrue(item_1.venda_direta)
+        self.assertFalse(item_2.venda_direta)
+
+    @patch("pedidos.services.buscar_conversoes")
+    def test_ressincronizar_substitui_os_itens_sem_duplicar(self, mock_buscar):
+        click = Click.objects.create(
+            usuario=self.usuario, tipo=Click.TIPO_PRODUTO, item_id_alvo=1,
+            url_original="https://shopee.com.br/produto-i.1.1", link_gerado="https://shope.ee/abc",
+        )
+        mock_buscar.return_value = self._pagina(
+            click, "ORD-RESSINC",
+            [{"itemId": 1, "completeTime": None, "itemTotalCommission": "0.50", "actualAmount": "100.00"}],
+        )
+        sincronizar(1690000000, 1700000000)
+
+        # A Shopee reenvia o mesmo pedido, agora validado e com comissão diferente
+        # (ex: ajuste de categoria) - os itens antigos não podem continuar junto.
+        mock_buscar.return_value = self._pagina(
+            click, "ORD-RESSINC",
+            [{"itemId": 1, "completeTime": 1700000500, "itemTotalCommission": "0.80", "actualAmount": "100.00"}],
+        )
+        sincronizar(1690000000, 1700000000)
+
+        pedido = Pedido.objects.get(order_id="ORD-RESSINC")
+        self.assertEqual(pedido.itens.count(), 1)
+        self.assertEqual(pedido.itens.get().comissao_item, Decimal("0.80"))
+
+    def test_cashback_hipotetico_direto_usa_a_comissao_real_nao_so_o_piso(self):
+        pedido = Pedido.objects.create(order_id="ORD-HIPOTETICO", conversion_id="1", status_shopee_bruto="PENDING")
+        # Comissão real de 10% dos 100 (10,00) rende bem mais que o piso direto de 1,6%
+        # (1,60) - o hipotético tem que refletir a comissão real, não ficar preso no piso.
+        item = ItemPedido.objects.create(
+            pedido=pedido, item_id=1, valor_item=Decimal("100.00"), comissao_item=Decimal("10.00"),
+            venda_direta=False, cashback_pago=Decimal("1.00"),
+        )
+        self.assertEqual(item.cashback_hipotetico_direto, Decimal("10.00"))
+        self.assertEqual(item.cashback_perdido, Decimal("9.00"))
+
+    def test_cashback_hipotetico_direto_usa_o_piso_quando_comissao_e_baixa(self):
+        pedido = Pedido.objects.create(order_id="ORD-HIPOTETICO-PISO", conversion_id="1", status_shopee_bruto="PENDING")
+        item = ItemPedido.objects.create(
+            pedido=pedido, item_id=1, valor_item=Decimal("100.00"), comissao_item=Decimal("0.50"),
+            venda_direta=False, cashback_pago=Decimal("0.50"),
+        )
+        # Comissão real (100% de 0,50 = 0,50) fica abaixo do piso direto (1,6% de 100 = 1,60).
+        self.assertEqual(item.cashback_hipotetico_direto, Decimal("1.60"))
+        self.assertEqual(item.cashback_perdido, Decimal("1.10"))
+
+    def test_cashback_hipotetico_direto_considera_o_multiplicador_de_campanha(self):
+        pedido = Pedido.objects.create(
+            order_id="ORD-HIPOTETICO-CAMPANHA", conversion_id="1", status_shopee_bruto="PENDING",
+            multiplicador_campanha=Decimal("2"),
+        )
+        item = ItemPedido.objects.create(
+            pedido=pedido, item_id=1, valor_item=Decimal("100.00"), comissao_item=Decimal("0.50"),
+            venda_direta=False, cashback_pago=Decimal("1.00"),
+        )
+        self.assertEqual(item.cashback_hipotetico_direto, Decimal("3.20"))
+
+    def test_sem_comissao_nenhuma_o_hipotetico_tambem_e_zero(self):
+        pedido = Pedido.objects.create(order_id="ORD-HIPOTETICO-ZERO", conversion_id="1", status_shopee_bruto="PENDING")
+        item = ItemPedido.objects.create(
+            pedido=pedido, item_id=1, valor_item=Decimal("100.00"), comissao_item=Decimal("0"),
+            venda_direta=False, cashback_pago=Decimal("0"),
+        )
+        self.assertEqual(item.cashback_hipotetico_direto, Decimal("0.00"))
+        self.assertEqual(item.cashback_perdido, Decimal("0.00"))
+
+    def test_apagar_pedido_apaga_os_itens_junto(self):
+        pedido = Pedido.objects.create(order_id="ORD-CASCADE", conversion_id="1", status_shopee_bruto="PENDING")
+        ItemPedido.objects.create(pedido=pedido, item_id=1, valor_item=Decimal("10"), comissao_item=Decimal("1"))
+
+        pedido.delete()
+
+        self.assertEqual(ItemPedido.objects.count(), 0)
+
+
 @override_settings(SHOPEE_CASHBACK_PERCENTUAL=20)
 class MultiplicadorCampanhaTests(TestCase):
     """O multiplicador de campanha fica congelado no pedido quando ele é registrado.
@@ -885,6 +1101,10 @@ class SincronizarBonusIndicacaoTests(TestCase):
         self.indicacao.refresh_from_db()
         self.assertEqual(self.indicacao.pedido_bonus_indicado, pedido)
         self.assertIsNone(self.indicacao.pedido_bonus_indicador)
+        # O item do pedido também precisa levar o dobro - senão a soma dos itens
+        # (usada no lembrete de venda indireta por produto, ver ItemPedido) ficaria
+        # menor que o valor_cashback agregado do próprio pedido.
+        self.assertEqual(pedido.itens.get().cashback_pago, Decimal("20.00"))
 
     @patch("pedidos.services.buscar_conversoes")
     def test_primeira_compra_validada_do_indicado_notifica_o_indicador_por_email(self, mock_buscar):

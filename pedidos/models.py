@@ -76,6 +76,67 @@ class Pedido(models.Model):
         return f"Pedido {self.order_id} ({self.get_status_display()})"
 
 
+class ItemPedido(models.Model):
+    """Detalhe por item de um Pedido - a Shopee agrupa vários produtos num único
+    pedido (orderId), e cada item pode ter comissão e classificação direta/indireta
+    diferentes entre si (ver pedidos/services.py::_item_bate_com_o_click). O Pedido
+    guarda só o agregado (valor_comissao, valor_cashback somados); esse modelo existe
+    pra viabilizar o lembrete semanal de venda indireta por produto (ver
+    accounts/comunicacoes.py e ROADMAP.md), que precisa mostrar, item a item, quanto
+    foi pago de cashback e quanto teria sido pago se a compra tivesse sido direta.
+
+    Sempre apagado e recriado em cada sincronização desse pedido (ver
+    pedidos/services.py::_persistir_itens) - não tenta casar item a item entre
+    sincronizações porque a Shopee não garante uma chave estável por linha (e o
+    volume por pedido é pequeno o bastante pra isso não pesar)."""
+
+    pedido = models.ForeignKey(Pedido, on_delete=models.CASCADE, related_name="itens")
+    item_id = models.BigIntegerField(null=True, blank=True)
+    nome = models.CharField(max_length=255, blank=True)
+    imagem_url = models.URLField(blank=True)
+    valor_item = models.DecimalField(max_digits=10, decimal_places=2, default=Decimal("0"))
+    comissao_item = models.DecimalField(max_digits=10, decimal_places=2, default=Decimal("0"))
+    venda_direta = models.BooleanField(
+        default=False,
+        help_text=(
+            "Só True quando o item comprado bate com o link/card que gerou o clique E "
+            "o clique não foi o genérico \"Ir pra Shopee\" (ver "
+            "pedidos/services.py::_item_bate_com_o_click)."
+        ),
+    )
+    cashback_pago = models.DecimalField(max_digits=10, decimal_places=2, default=Decimal("0"))
+    criado_em = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ["pedido", "id"]
+
+    def __str__(self):
+        return f"{self.nome or self.item_id} ({self.pedido.order_id})"
+
+    @property
+    def cashback_hipotetico_direto(self) -> Decimal:
+        """Quanto esse item teria rendido de cashback se a compra tivesse sido feita
+        de forma direta (link do produto certo, ou vitrine) em vez de indireta - usa a
+        comissão real já registrada aqui (não só o piso de venda direta), pela mesma
+        fórmula de pedidos/services.py::_montar_defaults, só trocando o piso mínimo
+        indireto pelo direto. Mesma regra do piso real: sem comissão nenhuma nesse
+        item, não tem hipotético nenhum (ver _percentual_minimo_garantido)."""
+        if self.comissao_item <= 0:
+            return Decimal("0.00")
+        percentual_base = Decimal(str(settings.SHOPEE_CASHBACK_PERCENTUAL)) / Decimal("100")
+        piso_direto = Decimal(str(settings.CASHBACK_MINIMO_VENDA_DIRETA)) / Decimal("100")
+        base = max(self.comissao_item * percentual_base, self.valor_item * piso_direto)
+        return (base * self.pedido.multiplicador_campanha).quantize(Decimal("0.01"))
+
+    @property
+    def cashback_perdido(self) -> Decimal:
+        """Quanto esse item "deixou na mesa" por ter sido comprado de forma indireta -
+        nunca negativo (o piso direto é sempre >= o indireto, então matematicamente
+        isso nunca deveria dar negativo, mas o max() aqui evita qualquer susto de
+        arredondamento)."""
+        return max(Decimal("0"), self.cashback_hipotetico_direto - self.cashback_pago)
+
+
 class CampanhaCashback(models.Model):
     """Janela de datas com multiplicador de cashback em dobro (ou outro valor) -
     substitui o antigo CASHBACK_MULTIPLICADOR_CAMPANHA fixo no .env (ver ROADMAP.md,

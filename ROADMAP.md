@@ -2227,6 +2227,42 @@ derruba a conversão de quem vem do anúncio.
 
 ---
 
+## Fase 56 — Detalhe por item do pedido, base pro lembrete de venda indireta personalizado
+
+Objetivo final: o lembrete semanal de venda indireta (ver Fase antiga,
+`accounts/comunicacoes.py::enviar_lembrete_venda_indireta_semanal`) virar
+personalizado - mostrar pra cada usuário, produto a produto, quanto ele pagou
+indireto e quanto teria ganho de cashback se tivesse comprado direto, com base
+na comissão REAL de cada item (não só o piso de 1,6%) - pra deixar a diferença
+visível e chamar mais atenção. Essa fase é só a base de dados; o texto/layout
+do email em si foi mandado pra aprovação antes de implementar (ver próxima fase).
+
+- [x] **`ItemPedido`** (novo modelo, `pedidos/models.py`) - detalhe por item de
+      cada pedido (nome, imagem, valor, comissão real, se foi venda direta
+      verificada e o cashback efetivamente pago). O `Pedido` só guardava o
+      agregado do pedido inteiro; a classificação direta/indireta já existia por
+      item na sincronização (`_item_bate_com_o_click`), mas era descartada depois
+      de calcular o total - agora fica gravada.
+- [x] **`ItemPedido.cashback_hipotetico_direto`** - quanto esse item teria
+      rendido se a compra fosse direta, usando a comissão real do item (não o
+      piso) sempre que ela render mais, com o piso de venda direta (1,6%) só como
+      mínimo - mesma fórmula de `_montar_defaults`, trocando o piso indireto pelo
+      direto. `cashback_perdido` é a diferença (nunca negativa).
+- [x] **Sincronização (`pedidos/services.py`)** passou a gravar os itens de cada
+      pedido - apaga e recria a cada sincronização (a Shopee não garante uma
+      chave estável por linha), em lote (1 delete + 1 bulk_create, não por
+      pedido). O bônus de indicação (que dobra `valor_cashback` do pedido) agora
+      dobra o `cashback_pago` de cada item junto, pra nunca ficar menor que o
+      agregado.
+- [x] **Backfill limitado**: como o detalhe por item nunca foi guardado antes, só
+      preenche pra trás até onde a sincronização ainda rebusca (10 dias todo dia +
+      60 dias na reconciliação semanal, ver Fase 54) - pedidos mais antigos que
+      isso não entram no histórico por item.
+- [x] Testes novos em `pedidos/tests.py` (`ItemPedidoTests` + ajuste em
+      `SincronizarBonusIndicacaoTests`).
+
+---
+
 Pra continuar esse roadmap numa conversa nova, basta apontar esse arquivo
 (`ROADMAP.md`) e o `BRAND.md` — juntos eles dão o contexto de identidade
 visual e do que falta implementar, sem precisar reconstruir o histórico da
