@@ -1,5 +1,6 @@
 import logging
 
+from django.conf import settings
 from django.core.mail import EmailMultiAlternatives
 from django.template.loader import render_to_string
 from django.utils.formats import number_format
@@ -7,6 +8,25 @@ from django.utils.formats import number_format
 from accounts.push import enviar_push
 
 logger = logging.getLogger(__name__)
+
+
+def _contexto_redes_sociais() -> dict:
+    """Mesmo rodapé de redes sociais do accounts/comunicacoes.py (duplicado aqui de
+    propósito - são só 3 leituras de settings, não vale acoplar os dois módulos por
+    isso) - ver templates/emails/lembrete_automatico.html."""
+    return {
+        "url_instagram": settings.URL_INSTAGRAM,
+        "url_whatsapp_canal": settings.URL_WHATSAPP_CANAL,
+        "url_youtube": settings.URL_YOUTUBE,
+    }
+
+
+def _rodape_redes_sociais_texto() -> str:
+    return (
+        f"\n\nInstagram: {settings.URL_INSTAGRAM}\n"
+        f"WhatsApp: {settings.URL_WHATSAPP_CANAL}\n"
+        f"YouTube: {settings.URL_YOUTUBE}"
+    )
 
 
 def _enviar(usuario, assunto, corpo, corpo_html):
@@ -34,6 +54,7 @@ def notificar_pedido_validado(pedido):
         f"Cashback: R$ {valor}\n\n"
         f"Esse saldo fica disponível pra saque a partir de {prazo}.\n\n"
         "Equipe cash-b"
+        + _rodape_redes_sociais_texto()
     )
     corpo_html = render_to_string(
         "emails/lembrete_automatico.html",
@@ -44,7 +65,11 @@ def notificar_pedido_validado(pedido):
                 "pela Shopee.</p>"
             ),
             "destaque_valor": f"R$ {valor}",
-            "destaque_legenda": f"de cashback, disponível pra saque a partir de {prazo}",
+            "corpo_html_depois": (
+                f"<p style='margin:0;'>Esse saldo fica disponível pra saque a partir "
+                f"de {prazo}.</p>"
+            ),
+            **_contexto_redes_sociais(),
         },
     )
     _enviar(pedido.usuario, "cash-b — seu pedido foi validado", corpo, corpo_html)
@@ -64,6 +89,7 @@ def notificar_pedido_liberado(pedido):
         f'O cashback de "{produto}" (R$ {valor}) já está liberado e pode ser '
         "sacado via Pix no seu painel.\n\n"
         "Equipe cash-b"
+        + _rodape_redes_sociais_texto()
     )
     corpo_html = render_to_string(
         "emails/lembrete_automatico.html",
@@ -74,7 +100,7 @@ def notificar_pedido_liberado(pedido):
                 "liberado e pode ser sacado via Pix no seu painel.</p>"
             ),
             "destaque_valor": f"R$ {valor}",
-            "destaque_legenda": "já disponível pra saque via Pix",
+            **_contexto_redes_sociais(),
         },
     )
     _enviar(pedido.usuario, "cash-b — cashback liberado pra saque", corpo, corpo_html)
@@ -102,6 +128,7 @@ def notificar_indicador_bonus_pendente(indicacao):
         "valor aumentado da campanha e o bônus da indicação fica guardado para o "
         "pedido seguinte, depois que ela terminar.\n\n"
         "Equipe cash-b"
+        + _rodape_redes_sociais_texto()
     )
     corpo_html = render_to_string(
         "emails/lembrete_automatico.html",
@@ -117,6 +144,7 @@ def notificar_indicador_bonus_pendente(indicacao):
                 "indicação fica guardado para o pedido seguinte, depois que ela "
                 "terminar.</p>"
             ),
+            **_contexto_redes_sociais(),
         },
     )
     _enviar(

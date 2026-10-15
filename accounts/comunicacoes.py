@@ -111,6 +111,26 @@ def _rodape_descadastro_texto(link: str) -> str:
     )
 
 
+def _contexto_redes_sociais() -> dict:
+    """Contexto comum das redes sociais, pro rodapé de
+    templates/emails/lembrete_automatico.html e lembrete_venda_indireta.html."""
+    return {
+        "url_instagram": settings.URL_INSTAGRAM,
+        "url_whatsapp_canal": settings.URL_WHATSAPP_CANAL,
+        "url_youtube": settings.URL_YOUTUBE,
+    }
+
+
+def _rodape_redes_sociais_texto() -> str:
+    """Mesmas redes sociais de _contexto_redes_sociais(), pro rodapé da versão em
+    texto puro do e-mail."""
+    return (
+        f"\n\nInstagram: {settings.URL_INSTAGRAM}\n"
+        f"WhatsApp: {settings.URL_WHATSAPP_CANAL}\n"
+        f"YouTube: {settings.URL_YOUTUBE}"
+    )
+
+
 def renderizar_corpo_html(
     corpo: str, ofertas, request, link_descadastro: str | None = None, banner_url: str | None = None,
     assunto: str = "",
@@ -237,6 +257,7 @@ def enviar_lembrete_primeira_compra_7_dias(request) -> int:
         "a mais nisso — você paga o mesmo preço de sempre, só que uma parte volta.\n\n"
         f"Dá uma olhada nas ofertas: {link_ofertas}\n\n"
         "Equipe cash-b"
+        + _rodape_redes_sociais_texto()
         + _rodape_descadastro_texto(link_descadastro)
     )
     corpo_html_intro = (
@@ -256,6 +277,7 @@ def enviar_lembrete_primeira_compra_7_dias(request) -> int:
             "cta_url": link_ofertas,
             "cta_texto": "Ver ofertas",
             "link_descadastro": link_descadastro,
+            **_contexto_redes_sociais(),
         },
     )
     return _mandar_lembrete_html_em_lotes(
@@ -276,6 +298,7 @@ def enviar_lembrete_primeira_compra_30_dias(request) -> int:
         "valor volta pra você — sem pagar nada a mais por isso.\n\n"
         f"Ver ofertas: {link_ofertas}\n\n"
         "Equipe cash-b"
+        + _rodape_redes_sociais_texto()
         + _rodape_descadastro_texto(link_descadastro)
     )
     corpo_html_intro = (
@@ -294,6 +317,7 @@ def enviar_lembrete_primeira_compra_30_dias(request) -> int:
             "cta_url": link_ofertas,
             "cta_texto": "Ver ofertas",
             "link_descadastro": link_descadastro,
+            **_contexto_redes_sociais(),
         },
     )
     return _mandar_lembrete_html_em_lotes(
@@ -403,6 +427,7 @@ def enviar_lembrete_venda_indireta_semanal(request) -> int:
                 "total_perdido": number_format(total_perdido, decimal_pos=2),
                 "links": links_com_icone,
                 "link_descadastro": link_descadastro,
+                **_contexto_redes_sociais(),
             },
         )
 
@@ -427,6 +452,7 @@ def enviar_lembrete_venda_indireta_semanal(request) -> int:
             f"Regras completas do cashback: {link_regras}\n"
             f"Veja no Instagram: {REEL_VENDA_INDIRETA_URL}\n\n"
             "Equipe cash-b"
+            + _rodape_redes_sociais_texto()
             + _rodape_descadastro_texto(link_descadastro)
         )
 

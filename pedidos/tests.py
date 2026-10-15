@@ -5,6 +5,7 @@ from unittest.mock import patch
 
 from openpyxl import load_workbook
 
+from django.conf import settings
 from django.contrib import admin
 from django.contrib.auth import get_user_model
 from django.core import mail
@@ -1311,6 +1312,21 @@ class NotificarPedidoTests(TestCase):
         self.assertIn("Fone Bluetooth", html)
         self.assertIn("3,20", html)
         self.assertIn("Pix", html)
+
+    def test_pedido_validado_inclui_redes_sociais_no_texto_e_no_html(self):
+        pedido = Pedido.objects.create(
+            order_id="ORD-REDES", conversion_id="1", usuario=self.usuario,
+            status=Pedido.STATUS_VALIDADO, status_shopee_bruto="COMPLETED",
+            produto_nome="Panificadora Philco", valor_cashback=Decimal("12.50"),
+        )
+
+        notificar_pedido_validado(pedido)
+
+        email = mail.outbox[0]
+        html, _mimetype = email.alternatives[0]
+        for link in (settings.URL_INSTAGRAM, settings.URL_WHATSAPP_CANAL, settings.URL_YOUTUBE):
+            self.assertIn(link, email.body)
+            self.assertIn(link, html)
 
 
 class LiberarSaldoTests(TestCase):

@@ -417,11 +417,28 @@ de madrugada de sábado, longe de qualquer tráfego real).
 puro, passaram pro mesmo visual HTML (logo cash-b, cartão branco arredondado) -
 template compartilhado `templates/emails/lembrete_automatico.html`. Lembrete de
 primeira compra (7 e 30 dias) ganhou botão "Ver ofertas"; pedido validado e
-cashback liberado ganharam um destaque roxo com o valor; bônus de indicação
-ficou só o texto estilizado, sem destaque nem botão (não tem um valor único pra
+cashback liberado ganharam um destaque com o valor; bônus de indicação ficou só
+o texto estilizado, sem destaque nem botão (não tem um valor único pra
 mostrar). Os 3 de `pedidos/notificacoes.py` continuam sem rodapé de
 descadastro - são notificação de um pedido específico, não lembrete
 promocional, e nunca passaram pelo filtro `aceita_email_marketing`.
+
+**Ajustes pedidos depois de ver o resultado**: o destaque de pedido
+validado/liberado começou como uma caixa roxa grande (mesmo visual do "total
+perdido" do lembrete de venda indireta) - usuário achou pesado demais pra uma
+notificação simples de 1 valor só. Virou uma linha clara (fundo lavanda claro,
+não roxo sólido), com o rótulo "Cashback" à esquerda e o valor em destaque à
+direita - o texto que antes ficava dentro da caixa (prazo de saque, etc.) saiu
+pra um parágrafo normal depois dela. Mecanismo novo no template:
+`destaque_valor`/`destaque_label` (a linha) e `corpo_html_depois` (parágrafo
+livre depois da linha, antes do rodapé) - `destaque_legenda` foi removido.
+
+Também foi pedido colocar as redes sociais da cash-b (Instagram, WhatsApp,
+YouTube - mesmas 3 de `cashback_shopee/settings.py`) no rodapé de **todos** os
+e-mails automáticos (`lembrete_automatico.html` e `lembrete_venda_indireta.html`,
+não o broadcast manual do admin) - como texto simples (sem ícone, pra não
+precisar de imagem com URL absoluta nas funções de `pedidos/notificacoes.py`,
+que não recebem `request`).
 
 `cron-stories-oferta` simplificou os horários de propósito (antes eram
 09:00/11:30/14:00/16:30/19:00 BRT, com minutos quebrados pra evitar o

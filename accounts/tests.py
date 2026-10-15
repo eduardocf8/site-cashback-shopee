@@ -1422,6 +1422,19 @@ class LembretesPrimeiraCompraTests(TestCase):
         self.assertIn(reverse("ofertas_lista"), html)
         self.assertIn("Ver ofertas", html)
 
+    def test_7_dias_inclui_redes_sociais_no_texto_e_no_html(self):
+        self._usuario("dentro_da_janela", dias_atras=7)
+        request = RequestFactory().get("/tarefas/lembrete-primeira-compra/")
+
+        with patch("accounts.comunicacoes.EmailMultiAlternatives") as MockEmail:
+            enviar_lembrete_primeira_compra_7_dias(request)
+
+        corpo = MockEmail.call_args.kwargs["body"]
+        html = MockEmail.return_value.attach_alternative.call_args.args[0]
+        for link in (settings.URL_INSTAGRAM, settings.URL_WHATSAPP_CANAL, settings.URL_YOUTUBE):
+            self.assertIn(link, corpo)
+            self.assertIn(link, html)
+
     def test_30_dias_manda_pra_quem_esta_na_janela_sem_pedido(self):
         alvo = self._usuario("dentro_da_janela_30", dias_atras=30)
         request = RequestFactory().get("/tarefas/lembrete-primeira-compra/")
@@ -1619,6 +1632,19 @@ class LembreteVendaIndiretaTests(TestCase):
 
         corpo = MockEmail.call_args.kwargs["body"]
         self.assertIn("não quer mais receber e-mails de promoções", corpo.lower())
+
+    def test_inclui_redes_sociais_no_texto_e_no_html(self):
+        alvo = self._usuario("indireta")
+        self._pedido_com_item(alvo, self._click(alvo, Click.TIPO_HOME), dias_atras=2)
+
+        with patch("accounts.comunicacoes.EmailMultiAlternatives") as MockEmail:
+            enviar_lembrete_venda_indireta_semanal(self.request)
+
+        corpo = MockEmail.call_args.kwargs["body"]
+        html = MockEmail.return_value.attach_alternative.call_args.args[0]
+        for link in (settings.URL_INSTAGRAM, settings.URL_WHATSAPP_CANAL, settings.URL_YOUTUBE):
+            self.assertIn(link, corpo)
+            self.assertIn(link, html)
 
 
 class FunilCadastrosTests(TestCase):

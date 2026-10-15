@@ -2295,10 +2295,11 @@ puro, passaram pro mesmo visual HTML (combinado com o usuário depois de ver o
 resultado deste).
 
 - [x] **`templates/emails/lembrete_automatico.html`** (novo, compartilhado) -
-      logo cash-b, cartão branco arredondado, com 3 blocos opcionais: destaque
-      roxo com um valor em R$ (`destaque_valor`/`destaque_legenda`), botão de
-      ação (`cta_url`/`cta_texto`) e rodapé de descadastro (`link_descadastro`,
-      só quando faz sentido - ver abaixo).
+      logo cash-b, cartão branco arredondado, com blocos opcionais: destaque
+      com um valor em R$ (`destaque_valor`/`destaque_label`), parágrafo livre
+      depois do destaque (`corpo_html_depois`), botão de ação
+      (`cta_url`/`cta_texto`) e rodapé de descadastro (`link_descadastro`, só
+      quando faz sentido - ver abaixo).
 - [x] **Lembrete de primeira compra (7 e 30 dias)** - `accounts/comunicacoes.py`
       passou a usar `_mandar_lembrete_html_em_lotes` (BCC em lote, já existia
       pro lembrete de venda indireta antigo) com botão "Ver ofertas". Continua
@@ -2308,9 +2309,9 @@ resultado deste).
 - [x] **Pedido validado, cashback liberado, bônus de indicação** -
       `pedidos/notificacoes.py::_enviar` passou a mandar texto + HTML
       (`EmailMultiAlternatives`). Pedido validado/liberado mostram o valor do
-      cashback no destaque roxo; bônus de indicação fica só o texto (não tem
-      um valor único pra destacar). Sem botão (não tinha link nenhum antes,
-      não dá pra montar URL absoluta sem `request`, que essas funções não
+      cashback no destaque; bônus de indicação fica só o texto (não tem um
+      valor único pra destacar). Sem botão (não tinha link nenhum antes, não
+      dá pra montar URL absoluta sem `request`, que essas funções não
       recebem) nem rodapé de descadastro (notificação de pedido específico,
       não lembrete promocional - nunca passou pelo filtro
       `aceita_email_marketing`).
@@ -2320,6 +2321,28 @@ resultado deste).
       `NotificarIndicadorBonusPendenteTests`).
 - [x] Verificação visual dos 3 templates (primeira compra, pedido validado,
       bônus de indicação) via Playwright.
+
+**Ajustes pedidos depois de ver o resultado:**
+
+- [x] **Destaque de pedido validado/liberado trocado** - a primeira versão
+      usava uma caixa roxa sólida grande (mesmo visual do "total perdido" do
+      lembrete de venda indireta), com texto demais dentro dela; usuário achou
+      pesado pra uma notificação de 1 valor só. Mandei 2 opções (mockup num
+      Artifact) pra aprovação; aprovada a opção de linha clara (fundo lavanda,
+      não roxo sólido) com rótulo "Cashback" à esquerda e valor em destaque à
+      direita - o texto que antes ficava dentro da caixa (prazo de saque, "via
+      Pix") virou um parágrafo normal logo depois da linha
+      (`corpo_html_depois`). `destaque_legenda` foi removido do template.
+- [x] **Redes sociais no rodapé** de todos os e-mails automáticos (Instagram,
+      WhatsApp, YouTube - mesmas URLs de `cashback_shopee/settings.py`), como
+      texto simples (sem ícone - pedidos/notificacoes.py não recebe `request`,
+      então não dá pra montar URL absoluta pra uma imagem de ícone sem criar
+      infraestrutura nova só pra isso). Helpers `_contexto_redes_sociais`/
+      `_rodape_redes_sociais_texto` duplicados em `accounts/comunicacoes.py` e
+      `pedidos/notificacoes.py` de propósito (só 3 leituras de settings, não
+      vale acoplar os 2 módulos por isso).
+- [x] Testes novos confirmando as redes sociais no texto e no HTML de cada
+      e-mail, e verificação visual (desktop e mobile) do resultado final.
 
 ---
 
