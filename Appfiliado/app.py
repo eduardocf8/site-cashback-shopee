@@ -2758,7 +2758,6 @@ class MainWindow(QMainWindow):
             self.open_logs_button,
             self.copy_logs_button,
             self.export_logs_button,
-            self.refresh_indicators_button,
             self.clear_history_button,
             self.save_button,
         ):
