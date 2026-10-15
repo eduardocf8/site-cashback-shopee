@@ -2349,7 +2349,16 @@ resultado deste).
       `lembrete_venda_indireta.html`) - antes esse email não explicava como
       comprar direto, só mostrava os números. A mesma frase que já existia no
       texto puro (no fim do email) foi movida pra essa posição, em vez de
-      duplicada.
+      duplicada. Ajustes de texto depois de ver o resultado: "garante um
+      cashback mínimo maior" virou só "garante um cashback maior", e o final
+      "Pra próxima, é só isso" foi removido; em troca, ganhou um link pra
+      página de regras do cashback ("Se tiver mais dúvidas, consulte a nossa
+      página de regras de cashback").
+- [x] **Linha "Total da semana" com ênfase visual** - antes mostrava os dois
+      valores (pago x hipotético) do mesmo jeito, mesmo peso e cor; agora o
+      valor pago fica pequeno e cinza, e o hipotético (o que poderia ter sido
+      ganho) fica maior, em negrito e na cor roxa da marca - destaque pro
+      número que interessa chamar atenção.
 
 ---
 

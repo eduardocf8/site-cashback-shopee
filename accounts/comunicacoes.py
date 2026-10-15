@@ -394,10 +394,12 @@ def enviar_lembrete_venda_indireta_semanal(request) -> int:
         "você converteu) — e isso rendeu menos cashback do que podia.</p>"
     )
     corpo_html_explicacao = (
-        "<p style='margin:0;'><strong>Venda direta</strong> é quando você converte "
-        "o link de um produto específico (ou compra pela vitrine de ofertas) e "
-        "compra exatamente esse produto — garante um cashback mínimo maior. Pra "
-        "próxima, é só isso.</p>"
+        "<p style='margin:0 0 10px;'><strong>Venda direta</strong> é quando você "
+        "converte o link de um produto específico (ou compra pela vitrine de "
+        "ofertas) e compra exatamente esse produto — garante um cashback maior.</p>"
+        "<p style='margin:0; font-size:13px; color:#6b7280;'>Se tiver mais dúvidas, "
+        f"consulte a nossa <a href='{link_regras}' style='color:#6d28d9;'>página de "
+        "regras de cashback</a>.</p>"
     )
 
     total_enviados = 0
@@ -451,7 +453,9 @@ def enviar_lembrete_venda_indireta_semanal(request) -> int:
             "que podia.\n\n"
             "Venda direta é quando você converte o link de um produto específico "
             "(ou compra pela vitrine de ofertas) e compra exatamente esse produto "
-            "- garante um cashback mínimo maior. Pra próxima, é só isso.\n\n"
+            "- garante um cashback maior.\n"
+            f"Se tiver mais dúvidas, consulte a nossa página de regras de cashback: "
+            f"{link_regras}\n\n"
             f"Nessas compras, você deixou R$ {number_format(total_perdido, decimal_pos=2)} "
             "de cashback na mesa:\n\n"
             f"{linhas_itens_texto}\n\n"
