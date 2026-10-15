@@ -2343,6 +2343,13 @@ resultado deste).
       vale acoplar os 2 módulos por isso).
 - [x] Testes novos confirmando as redes sociais no texto e no HTML de cada
       e-mail, e verificação visual (desktop e mobile) do resultado final.
+- [x] **Explicação do que é venda direta** adicionada no lembrete de venda
+      indireta, entre o card roxo do total perdido e a lista de produtos
+      (`corpo_html_explicacao`, novo bloco opcional em
+      `lembrete_venda_indireta.html`) - antes esse email não explicava como
+      comprar direto, só mostrava os números. A mesma frase que já existia no
+      texto puro (no fim do email) foi movida pra essa posição, em vez de
+      duplicada.
 
 ---
 

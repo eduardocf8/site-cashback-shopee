@@ -393,6 +393,12 @@ def enviar_lembrete_venda_indireta_semanal(request) -> int:
         "escolher um produto antes, ou comprando um produto diferente do link que "
         "você converteu) — e isso rendeu menos cashback do que podia.</p>"
     )
+    corpo_html_explicacao = (
+        "<p style='margin:0;'><strong>Venda direta</strong> é quando você converte "
+        "o link de um produto específico (ou compra pela vitrine de ofertas) e "
+        "compra exatamente esse produto — garante um cashback mínimo maior. Pra "
+        "próxima, é só isso.</p>"
+    )
 
     total_enviados = 0
     for usuario in usuarios:
@@ -421,6 +427,7 @@ def enviar_lembrete_venda_indireta_semanal(request) -> int:
             "emails/lembrete_venda_indireta.html",
             {
                 "corpo_html_intro": corpo_html_intro,
+                "corpo_html_explicacao": corpo_html_explicacao,
                 "itens": itens_contexto,
                 "total_pago": number_format(total_pago, decimal_pos=2),
                 "total_hipotetico": number_format(total_hipotetico, decimal_pos=2),
@@ -442,13 +449,14 @@ def enviar_lembrete_venda_indireta_semanal(request) -> int:
             "\"Ir pra Shopee\" sem escolher um produto antes, ou comprando um produto "
             "diferente do link que você converteu) - e isso rendeu menos cashback do "
             "que podia.\n\n"
+            "Venda direta é quando você converte o link de um produto específico "
+            "(ou compra pela vitrine de ofertas) e compra exatamente esse produto "
+            "- garante um cashback mínimo maior. Pra próxima, é só isso.\n\n"
             f"Nessas compras, você deixou R$ {number_format(total_perdido, decimal_pos=2)} "
             "de cashback na mesa:\n\n"
             f"{linhas_itens_texto}\n\n"
             f"Total da semana: R$ {number_format(total_pago, decimal_pos=2)} -> "
             f"R$ {number_format(total_hipotetico, decimal_pos=2)}\n\n"
-            "Pra próxima, é só converter o link do produto específico (ou comprar "
-            "pela vitrine de ofertas) e comprar exatamente esse produto.\n\n"
             f"Regras completas do cashback: {link_regras}\n"
             f"Veja no Instagram: {REEL_VENDA_INDIRETA_URL}\n\n"
             "Equipe cash-b"

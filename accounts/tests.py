@@ -1610,6 +1610,23 @@ class LembreteVendaIndiretaTests(TestCase):
         self.assertIn("1,00", html)  # pago
         self.assertIn("1,60", html)  # hipotético (piso direto 1,6% de 100)
 
+    def test_html_explica_o_que_e_venda_direta_entre_o_destaque_e_a_lista(self):
+        alvo = self._usuario("indireta")
+        self._pedido_com_item(alvo, self._click(alvo, Click.TIPO_HOME), dias_atras=2)
+
+        with patch("accounts.comunicacoes.EmailMultiAlternatives") as MockEmail:
+            enviar_lembrete_venda_indireta_semanal(self.request)
+
+        html = MockEmail.return_value.attach_alternative.call_args.args[0]
+        corpo = MockEmail.call_args.kwargs["body"]
+        self.assertIn("vitrine de ofertas", html)
+        self.assertIn("vitrine de ofertas", corpo)
+        # Tem que estar entre o destaque do total perdido e a lista de produtos.
+        posicao_destaque = html.index("a mais de cashback que você teria ganho")
+        posicao_explicacao = html.index("vitrine de ofertas")
+        posicao_lista = html.index("Pago (indireto)")
+        self.assertTrue(posicao_destaque < posicao_explicacao < posicao_lista)
+
     def test_html_inclui_link_das_regras_e_do_reel(self):
         alvo = self._usuario("indireta")
         self._pedido_com_item(alvo, self._click(alvo, Click.TIPO_HOME), dias_atras=2)
