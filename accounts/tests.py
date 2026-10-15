@@ -1351,7 +1351,7 @@ class LembretesPrimeiraCompraTests(TestCase):
         alvo = self._usuario("dentro_da_janela", dias_atras=7)
         request = RequestFactory().get("/tarefas/lembrete-primeira-compra/")
 
-        with patch("accounts.comunicacoes.EmailMessage") as MockEmail:
+        with patch("accounts.comunicacoes.EmailMultiAlternatives") as MockEmail:
             total = enviar_lembrete_primeira_compra_7_dias(request)
 
         self.assertEqual(total, 1)
@@ -1364,7 +1364,7 @@ class LembretesPrimeiraCompraTests(TestCase):
         self._pedido(alvo)
         request = RequestFactory().get("/tarefas/lembrete-primeira-compra/")
 
-        with patch("accounts.comunicacoes.EmailMessage") as MockEmail:
+        with patch("accounts.comunicacoes.EmailMultiAlternatives") as MockEmail:
             total = enviar_lembrete_primeira_compra_7_dias(request)
 
         self.assertEqual(total, 0)
@@ -1375,7 +1375,7 @@ class LembretesPrimeiraCompraTests(TestCase):
         self._usuario("cadastro_antigo", dias_atras=15)
         request = RequestFactory().get("/tarefas/lembrete-primeira-compra/")
 
-        with patch("accounts.comunicacoes.EmailMessage") as MockEmail:
+        with patch("accounts.comunicacoes.EmailMultiAlternatives") as MockEmail:
             total = enviar_lembrete_primeira_compra_7_dias(request)
 
         self.assertEqual(total, 0)
@@ -1385,7 +1385,7 @@ class LembretesPrimeiraCompraTests(TestCase):
         self._usuario("optou_fora", dias_atras=7, aceita_email_marketing=False)
         request = RequestFactory().get("/tarefas/lembrete-primeira-compra/")
 
-        with patch("accounts.comunicacoes.EmailMessage") as MockEmail:
+        with patch("accounts.comunicacoes.EmailMultiAlternatives") as MockEmail:
             total = enviar_lembrete_primeira_compra_7_dias(request)
 
         self.assertEqual(total, 0)
@@ -1395,7 +1395,7 @@ class LembretesPrimeiraCompraTests(TestCase):
         self._usuario("sem_email", dias_atras=7, email="")
         request = RequestFactory().get("/tarefas/lembrete-primeira-compra/")
 
-        with patch("accounts.comunicacoes.EmailMessage") as MockEmail:
+        with patch("accounts.comunicacoes.EmailMultiAlternatives") as MockEmail:
             total = enviar_lembrete_primeira_compra_7_dias(request)
 
         self.assertEqual(total, 0)
@@ -1405,17 +1405,28 @@ class LembretesPrimeiraCompraTests(TestCase):
         self._usuario("dentro_da_janela", dias_atras=7)
         request = RequestFactory().get("/tarefas/lembrete-primeira-compra/")
 
-        with patch("accounts.comunicacoes.EmailMessage") as MockEmail:
+        with patch("accounts.comunicacoes.EmailMultiAlternatives") as MockEmail:
             enviar_lembrete_primeira_compra_7_dias(request)
 
         corpo = MockEmail.call_args.kwargs["body"]
         self.assertIn("não quer mais receber e-mails de promoções", corpo.lower())
 
+    def test_7_dias_manda_tambem_em_html_com_botao_de_ofertas(self):
+        self._usuario("dentro_da_janela", dias_atras=7)
+        request = RequestFactory().get("/tarefas/lembrete-primeira-compra/")
+
+        with patch("accounts.comunicacoes.EmailMultiAlternatives") as MockEmail:
+            enviar_lembrete_primeira_compra_7_dias(request)
+
+        html = MockEmail.return_value.attach_alternative.call_args.args[0]
+        self.assertIn(reverse("ofertas_lista"), html)
+        self.assertIn("Ver ofertas", html)
+
     def test_30_dias_manda_pra_quem_esta_na_janela_sem_pedido(self):
         alvo = self._usuario("dentro_da_janela_30", dias_atras=30)
         request = RequestFactory().get("/tarefas/lembrete-primeira-compra/")
 
-        with patch("accounts.comunicacoes.EmailMessage") as MockEmail:
+        with patch("accounts.comunicacoes.EmailMultiAlternatives") as MockEmail:
             total = enviar_lembrete_primeira_compra_30_dias(request)
 
         self.assertEqual(total, 1)
@@ -1425,7 +1436,7 @@ class LembretesPrimeiraCompraTests(TestCase):
         self._usuario("dentro_da_janela_7", dias_atras=7)
         request = RequestFactory().get("/tarefas/lembrete-primeira-compra/")
 
-        with patch("accounts.comunicacoes.EmailMessage") as MockEmail:
+        with patch("accounts.comunicacoes.EmailMultiAlternatives") as MockEmail:
             total = enviar_lembrete_primeira_compra_30_dias(request)
 
         self.assertEqual(total, 0)
@@ -1436,7 +1447,7 @@ class LembretesPrimeiraCompraTests(TestCase):
         self._usuario("aos_30_dias", dias_atras=30)
         request = RequestFactory().get("/tarefas/lembrete-primeira-compra/")
 
-        with patch("accounts.comunicacoes.EmailMessage") as MockEmail:
+        with patch("accounts.comunicacoes.EmailMultiAlternatives") as MockEmail:
             enviar_lembrete_primeira_compra_7_dias(request)
             corpo_7_dias = MockEmail.call_args.kwargs["body"]
             enviar_lembrete_primeira_compra_30_dias(request)

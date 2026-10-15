@@ -1,6 +1,7 @@
 import logging
 
-from django.core.mail import EmailMessage
+from django.core.mail import EmailMultiAlternatives
+from django.template.loader import render_to_string
 from django.utils.formats import number_format
 
 from accounts.push import enviar_push
@@ -8,11 +9,13 @@ from accounts.push import enviar_push
 logger = logging.getLogger(__name__)
 
 
-def _enviar(usuario, assunto, corpo):
+def _enviar(usuario, assunto, corpo, corpo_html):
     if not usuario or not usuario.email:
         return
     try:
-        EmailMessage(subject=assunto, body=corpo, to=[usuario.email]).send()
+        mensagem = EmailMultiAlternatives(subject=assunto, body=corpo, to=[usuario.email])
+        mensagem.attach_alternative(corpo_html, "text/html")
+        mensagem.send()
     except Exception:
         logger.exception("Falha ao enviar e-mail de notificação de pedido pro usuário %s", usuario.pk)
 
@@ -32,7 +35,19 @@ def notificar_pedido_validado(pedido):
         f"Esse saldo fica disponível pra saque a partir de {prazo}.\n\n"
         "Equipe cash-b"
     )
-    _enviar(pedido.usuario, "cash-b — seu pedido foi validado", corpo)
+    corpo_html = render_to_string(
+        "emails/lembrete_automatico.html",
+        {
+            "corpo_html_intro": (
+                f"<p style='margin:0 0 12px;'>Olá, {pedido.usuario.username}!</p>"
+                f"<p style='margin:0;'>Seu pedido “{produto}” foi validado "
+                "pela Shopee.</p>"
+            ),
+            "destaque_valor": f"R$ {valor}",
+            "destaque_legenda": f"de cashback, disponível pra saque a partir de {prazo}",
+        },
+    )
+    _enviar(pedido.usuario, "cash-b — seu pedido foi validado", corpo, corpo_html)
     enviar_push(
         pedido.usuario,
         "Pedido validado!",
@@ -50,7 +65,19 @@ def notificar_pedido_liberado(pedido):
         "sacado via Pix no seu painel.\n\n"
         "Equipe cash-b"
     )
-    _enviar(pedido.usuario, "cash-b — cashback liberado pra saque", corpo)
+    corpo_html = render_to_string(
+        "emails/lembrete_automatico.html",
+        {
+            "corpo_html_intro": (
+                f"<p style='margin:0 0 12px;'>Olá, {pedido.usuario.username}!</p>"
+                f"<p style='margin:0;'>O cashback de “{produto}” já está "
+                "liberado e pode ser sacado via Pix no seu painel.</p>"
+            ),
+            "destaque_valor": f"R$ {valor}",
+            "destaque_legenda": "já disponível pra saque via Pix",
+        },
+    )
+    _enviar(pedido.usuario, "cash-b — cashback liberado pra saque", corpo, corpo_html)
     enviar_push(
         pedido.usuario,
         "Cashback liberado!",
@@ -76,7 +103,25 @@ def notificar_indicador_bonus_pendente(indicacao):
         "pedido seguinte, depois que ela terminar.\n\n"
         "Equipe cash-b"
     )
-    _enviar(indicador, "cash-b — sua indicação validou! seu próximo pedido vem em dobro", corpo)
+    corpo_html = render_to_string(
+        "emails/lembrete_automatico.html",
+        {
+            "corpo_html_intro": (
+                f"<p style='margin:0 0 12px;'>Olá, {indicador.username}!</p>"
+                f"<p style='margin:0 0 12px;'>A pessoa que você indicou "
+                f"(@{indicacao.indicado.username}) teve a 1ª compra validada! \U0001F389</p>"
+                "<p style='margin:0 0 12px;'>Isso significa que o <strong>seu próximo "
+                "pedido validado</strong> vai vir com o dobro de cashback. Aproveite!</p>"
+                "<p style='margin:0;'>Se estiver rolando uma campanha de cashback extra, "
+                "seu pedido já vem com o valor aumentado da campanha e o bônus da "
+                "indicação fica guardado para o pedido seguinte, depois que ela "
+                "terminar.</p>"
+            ),
+        },
+    )
+    _enviar(
+        indicador, "cash-b — sua indicação validou! seu próximo pedido vem em dobro", corpo, corpo_html
+    )
     enviar_push(
         indicador,
         "Sua indicação validou!",

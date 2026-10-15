@@ -1,0 +1,45 @@
+<!doctype html>
+<html>
+<body style="margin:0; padding:0; background:#f1eefb; font-family:Arial, Helvetica, sans-serif;">
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:#f1eefb; padding:24px 0;">
+<tr><td align="center">
+<table role="presentation" width="100%" style="max-width:560px;" cellpadding="0" cellspacing="0">
+
+<tr><td style="padding:0 16px 20px; text-align:center;">
+    <span style="font-family:Arial, Helvetica, sans-serif; font-weight:bold; font-size:22px; color:#6d28d9;">cash-b</span>
+</td></tr>
+
+<tr><td style="background:#ffffff; border-radius:12px; padding:24px 20px; color:#111827; font-size:15px; line-height:1.6;">
+    {{ corpo_html_intro|safe }}
+    {% if destaque_valor %}
+    <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:#6d28d9; border-radius:10px;">
+        <tr><td style="padding:16px 18px; text-align:center;">
+            <div style="font-family:Arial, Helvetica, sans-serif; font-size:26px; font-weight:bold; color:#ffffff;">{{ destaque_valor }}</div>
+            {% if destaque_legenda %}
+            <div style="font-family:Arial, Helvetica, sans-serif; font-size:13px; color:#e9e4fb; margin-top:2px;">{{ destaque_legenda }}</div>
+            {% endif %}
+        </td></tr>
+    </table>
+    {% endif %}
+    {% if cta_url %}
+    <table role="presentation" cellpadding="0" cellspacing="0" style="margin-top:{% if destaque_valor %}14px{% else %}4px{% endif %};">
+        <tr><td style="border-radius:8px; background:#6d28d9;">
+            <a href="{{ cta_url }}" style="display:inline-block; padding:12px 22px; font-family:Arial, Helvetica, sans-serif; font-size:14px; font-weight:bold; color:#ffffff; text-decoration:none; border-radius:8px;">{{ cta_texto }}</a>
+        </td></tr>
+    </table>
+    {% endif %}
+</td></tr>
+
+<tr><td style="padding:24px 16px 0; text-align:center; font-size:12px; color:#6b7280;">
+    Você recebeu esse e-mail porque tem uma conta na cash-b.
+    {% if link_descadastro %}
+        <br>
+        <a href="{{ link_descadastro }}" style="color:#6b7280;">Não quer mais receber e-mails de promoções?</a>
+    {% endif %}
+</td></tr>
+
+</table>
+</td></tr>
+</table>
+</body>
+</html>

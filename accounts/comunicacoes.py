@@ -10,6 +10,10 @@ documentado da API (99 destinatários por chamada) por margem de segurança.
 Quando tem ofertas escolhidas e/ou uma imagem de banner, o e-mail também sai
 em HTML - banner no topo, texto, depois a vitrine de produtos (imagem + link
 de cashback de cada uma) - ver templates/emails/comunicacao_vitrine.html.
+
+Única exceção ao BCC em lote: o lembrete de venda indireta
+(enviar_lembrete_venda_indireta_semanal), cujo conteúdo é diferente por
+pessoa (produtos que ela comprou) e por isso manda 1 e-mail por usuário.
 """
 
 import logging
@@ -18,7 +22,7 @@ from datetime import timedelta
 from decimal import Decimal
 
 from django.conf import settings
-from django.core.mail import EmailMessage, EmailMultiAlternatives
+from django.core.mail import EmailMultiAlternatives
 from django.db.models import QuerySet
 from django.template.loader import render_to_string
 from django.templatetags.static import static
@@ -219,34 +223,10 @@ def _usuarios_sem_primeiro_pedido_cadastrados_ha(dias: int) -> QuerySet:
     )
 
 
-def _mandar_lembrete_em_lotes(usuarios: QuerySet, request, assunto: str, corpo: str) -> int:
-    """BCC em lotes, mesmo motivo de enviar_comunicacao (ver docstring do módulo) - o
-    conteúdo é igual pra todo mundo do lembrete (sem token individual por pessoa),
-    então BCC serve bem aqui também. Sempre leva o rodapé de descadastro - é um
-    lembrete promocional ("venha comprar"), respeita o mesmo opt-out dos e-mails da
-    tela de comunicação do admin."""
-    link_descadastro = request.build_absolute_uri(reverse("preferencias_email")) if request else None
-    corpo_completo = corpo + (_rodape_descadastro_texto(link_descadastro) if link_descadastro else "")
-    emails = list(usuarios.values_list("email", flat=True))
-
-    total_enviados = 0
-    for lote in _lotes(emails, TAMANHO_LOTE):
-        try:
-            EmailMessage(
-                subject=assunto, body=corpo_completo, to=[settings.EMAIL_BCC_PARA_PLACEHOLDER], bcc=lote
-            ).send()
-            total_enviados += len(lote)
-        except Exception:
-            logger.warning(
-                "[comunicacoes] falha ao mandar lote de %d e-mail(s) (lembrete de primeira compra)",
-                len(lote), exc_info=True,
-            )
-    return total_enviados
-
-
 def enviar_lembrete_primeira_compra_7_dias(request) -> int:
     usuarios = _usuarios_sem_primeiro_pedido_cadastrados_ha(LEMBRETE_PRIMEIRA_COMPRA_7_DIAS)
     link_ofertas = request.build_absolute_uri(reverse("ofertas_lista"))
+    link_descadastro = request.build_absolute_uri(reverse("preferencias_email"))
     corpo = (
         "Olá!\n\n"
         "Notamos que você criou sua conta na cash-b, mas ainda não fez nenhuma compra "
@@ -257,13 +237,36 @@ def enviar_lembrete_primeira_compra_7_dias(request) -> int:
         "a mais nisso — você paga o mesmo preço de sempre, só que uma parte volta.\n\n"
         f"Dá uma olhada nas ofertas: {link_ofertas}\n\n"
         "Equipe cash-b"
+        + _rodape_descadastro_texto(link_descadastro)
     )
-    return _mandar_lembrete_em_lotes(usuarios, request, "cash-b — ainda não fez seu primeiro pedido?", corpo)
+    corpo_html_intro = (
+        "<p style='margin:0 0 12px;'>Olá!</p>"
+        "<p style='margin:0 0 12px;'>Notamos que você criou sua conta na cash-b, mas "
+        "ainda não fez nenhuma compra por aqui.</p>"
+        "<p style='margin:0;'>É simples: você gera um link com cashback pra qualquer "
+        "produto da Shopee, compra normalmente usando esse link, e uma parte do valor "
+        "volta pra você em dinheiro (via Pix, depois de juntar R$ 20,00 de saldo). Não "
+        "tem nenhum custo a mais nisso — você paga o mesmo preço de sempre, só que "
+        "uma parte volta.</p>"
+    )
+    corpo_html = render_to_string(
+        "emails/lembrete_automatico.html",
+        {
+            "corpo_html_intro": corpo_html_intro,
+            "cta_url": link_ofertas,
+            "cta_texto": "Ver ofertas",
+            "link_descadastro": link_descadastro,
+        },
+    )
+    return _mandar_lembrete_html_em_lotes(
+        usuarios, "cash-b — ainda não fez seu primeiro pedido?", corpo, corpo_html
+    )
 
 
 def enviar_lembrete_primeira_compra_30_dias(request) -> int:
     usuarios = _usuarios_sem_primeiro_pedido_cadastrados_ha(LEMBRETE_PRIMEIRA_COMPRA_30_DIAS)
     link_ofertas = request.build_absolute_uri(reverse("ofertas_lista"))
+    link_descadastro = request.build_absolute_uri(reverse("preferencias_email"))
     corpo = (
         "Olá!\n\n"
         "Faz um mês que você criou sua conta na cash-b e ainda não usou o cashback em "
@@ -273,9 +276,28 @@ def enviar_lembrete_primeira_compra_30_dias(request) -> int:
         "valor volta pra você — sem pagar nada a mais por isso.\n\n"
         f"Ver ofertas: {link_ofertas}\n\n"
         "Equipe cash-b"
+        + _rodape_descadastro_texto(link_descadastro)
     )
-    return _mandar_lembrete_em_lotes(
-        usuarios, request, "cash-b — seu cashback ainda está te esperando", corpo
+    corpo_html_intro = (
+        "<p style='margin:0 0 12px;'>Olá!</p>"
+        "<p style='margin:0 0 12px;'>Faz um mês que você criou sua conta na cash-b e "
+        "ainda não usou o cashback em nenhuma compra na Shopee.</p>"
+        "<p style='margin:0;'>Não tem pegadinha nem prazo pra aproveitar: da próxima "
+        "vez que for comprar na Shopee, gere o link pela cash-b antes de fechar o "
+        "pedido, e uma parte do valor volta pra você — sem pagar nada a mais por "
+        "isso.</p>"
+    )
+    corpo_html = render_to_string(
+        "emails/lembrete_automatico.html",
+        {
+            "corpo_html_intro": corpo_html_intro,
+            "cta_url": link_ofertas,
+            "cta_texto": "Ver ofertas",
+            "link_descadastro": link_descadastro,
+        },
+    )
+    return _mandar_lembrete_html_em_lotes(
+        usuarios, "cash-b — seu cashback ainda está te esperando", corpo, corpo_html
     )
 
 
@@ -427,9 +449,10 @@ def enviar_lembrete_venda_indireta_semanal(request) -> int:
 
 
 def _mandar_lembrete_html_em_lotes(usuarios: QuerySet, assunto: str, corpo: str, corpo_html: str) -> int:
-    """Igual _mandar_lembrete_em_lotes, mas com versão HTML (EmailMultiAlternatives em
-    vez de EmailMessage) - usado pelo lembrete de venda indireta, o único lembrete
-    automático que leva ícone."""
+    """BCC em lotes (mesmo motivo de enviar_comunicacao, ver docstring do módulo) -
+    usado pelos lembretes automáticos cujo conteúdo é igual pra todo mundo (sem token
+    individual por pessoa), então BCC serve bem. Sempre manda as duas versões,
+    texto (`corpo`) e HTML (`corpo_html`, via EmailMultiAlternatives)."""
     emails = list(usuarios.values_list("email", flat=True))
 
     total_enviados = 0
@@ -443,7 +466,7 @@ def _mandar_lembrete_html_em_lotes(usuarios: QuerySet, assunto: str, corpo: str,
             total_enviados += len(lote)
         except Exception:
             logger.warning(
-                "[comunicacoes] falha ao mandar lote de %d e-mail(s) (lembrete de venda indireta)",
+                "[comunicacoes] falha ao mandar lote de %d e-mail(s) de lembrete automático",
                 len(lote), exc_info=True,
             )
     return total_enviados

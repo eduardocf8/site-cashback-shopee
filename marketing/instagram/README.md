@@ -398,8 +398,9 @@ compra) - disparo manual retornou `OK (200): {"lembrete_venda_indireta_enviados"
 sábado às 08:00 (Brasília), olhando os pedidos de venda indireta dos últimos 7
 dias. E-mail em HTML (com ícones - ver
 `accounts/comunicacoes.py::enviar_lembrete_venda_indireta_semanal` e
-`templates/emails/lembrete_venda_indireta.html`), diferente dos outros
-lembretes automáticos (que ainda são só texto).
+`templates/emails/lembrete_venda_indireta.html`) - foi o primeiro lembrete
+automático a sair de texto puro pra HTML; os outros 5 seguiram o mesmo visual
+depois (ver nota da Fase 56 logo abaixo).
 
 **Fase 56**: esse lembrete deixou de ser genérico (mesmo texto pra todo mundo,
 via BCC em lote) e passou a ser personalizado - mostra produto a produto quanto
@@ -411,6 +412,16 @@ diferente por pessoa, não dá mais pra usar BCC em lote - manda 1 e-mail por
 usuário (mesmo esquema de `pedidos/notificacoes.py`), o que muda o perfil de
 carga desse Cron Job (mais chamadas HTTP à API do Brevo, mas continua rodando
 de madrugada de sábado, longe de qualquer tráfego real).
+
+**Fase 56 (continuação)**: os outros 5 e-mails automáticos, que eram só texto
+puro, passaram pro mesmo visual HTML (logo cash-b, cartão branco arredondado) -
+template compartilhado `templates/emails/lembrete_automatico.html`. Lembrete de
+primeira compra (7 e 30 dias) ganhou botão "Ver ofertas"; pedido validado e
+cashback liberado ganharam um destaque roxo com o valor; bônus de indicação
+ficou só o texto estilizado, sem destaque nem botão (não tem um valor único pra
+mostrar). Os 3 de `pedidos/notificacoes.py` continuam sem rodapé de
+descadastro - são notificação de um pedido específico, não lembrete
+promocional, e nunca passaram pelo filtro `aceita_email_marketing`.
 
 `cron-stories-oferta` simplificou os horários de propósito (antes eram
 09:00/11:30/14:00/16:30/19:00 BRT, com minutos quebrados pra evitar o

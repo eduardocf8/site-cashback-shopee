@@ -30,7 +30,7 @@ from .analytics import (
     origem_detalhada,
 )
 from .models import CampanhaCashback, ItemPedido, Pedido
-from .notificacoes import notificar_indicador_bonus_pendente
+from .notificacoes import notificar_indicador_bonus_pendente, notificar_pedido_liberado, notificar_pedido_validado
 from .services import calcular_data_prevista_liberacao, liberar_saldo, mapear_status, resolver_click, sincronizar
 
 
@@ -1255,6 +1255,62 @@ class NotificarIndicadorBonusPendenteTests(TestCase):
         notificar_indicador_bonus_pendente(self.indicacao)
 
         self.assertEqual(len(mail.outbox), 0)
+
+    def test_email_sai_tambem_em_html(self):
+        notificar_indicador_bonus_pendente(self.indicacao)
+
+        email = mail.outbox[0]
+        self.assertEqual(len(email.alternatives), 1)
+        html, mimetype = email.alternatives[0]
+        self.assertEqual(mimetype, "text/html")
+        self.assertIn(self.indicado.username, html)
+        self.assertIn("dobro", html.lower())
+
+
+class NotificarPedidoTests(TestCase):
+    """notificar_pedido_validado/liberado (pedidos/notificacoes.py) mandam texto +
+    HTML (ver templates/emails/lembrete_automatico.html), mesmo padrão do lembrete de
+    venda indireta - mas sem rodapé de descadastro nem CTA: são notificações
+    transacionais de um pedido específico, não lembrete promocional."""
+
+    def setUp(self):
+        self.usuario = get_user_model().objects.create_user(
+            username="compradora", password="senha123", cpf="39053344705", email="compradora@example.com"
+        )
+
+    def test_pedido_validado_manda_texto_e_html_com_o_valor_em_destaque(self):
+        pedido = Pedido.objects.create(
+            order_id="ORD-VALIDADO", conversion_id="1", usuario=self.usuario,
+            status=Pedido.STATUS_VALIDADO, status_shopee_bruto="COMPLETED",
+            produto_nome="Panificadora Philco", valor_cashback=Decimal("12.50"),
+            data_prevista_liberacao=date(2026, 12, 1),
+        )
+
+        notificar_pedido_validado(pedido)
+
+        self.assertEqual(len(mail.outbox), 1)
+        email = mail.outbox[0]
+        self.assertEqual(email.to, ["compradora@example.com"])
+        self.assertIn("Panificadora Philco", email.body)
+        html, _mimetype = email.alternatives[0]
+        self.assertIn("Panificadora Philco", html)
+        self.assertIn("12,50", html)
+        self.assertIn("01/12/2026", html)
+
+    def test_pedido_liberado_manda_texto_e_html_com_o_valor_em_destaque(self):
+        pedido = Pedido.objects.create(
+            order_id="ORD-LIBERADO", conversion_id="1", usuario=self.usuario,
+            status=Pedido.STATUS_LIBERADO, status_shopee_bruto="COMPLETED",
+            produto_nome="Fone Bluetooth", valor_cashback=Decimal("3.20"),
+        )
+
+        notificar_pedido_liberado(pedido)
+
+        self.assertEqual(len(mail.outbox), 1)
+        html, _mimetype = mail.outbox[0].alternatives[0]
+        self.assertIn("Fone Bluetooth", html)
+        self.assertIn("3,20", html)
+        self.assertIn("Pix", html)
 
 
 class LiberarSaldoTests(TestCase):

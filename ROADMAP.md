@@ -2290,10 +2290,36 @@ email mandado pro usuário aprovar antes de implementar.
 - [x] Verificação visual do template real (não só o mockup aprovado) via
       Playwright, desktop e mobile.
 
-**Próximo passo combinado com o usuário** (ainda não feito): padronizar os
-outros 5 e-mails automáticos que hoje são só texto puro (lembrete de primeira
-compra 7 e 30 dias, pedido validado, cashback liberado, bônus de indicação
-validado) pro mesmo visual HTML deste.
+**Depois, mesma fase:** os outros 5 e-mails automáticos, que eram só texto
+puro, passaram pro mesmo visual HTML (combinado com o usuário depois de ver o
+resultado deste).
+
+- [x] **`templates/emails/lembrete_automatico.html`** (novo, compartilhado) -
+      logo cash-b, cartão branco arredondado, com 3 blocos opcionais: destaque
+      roxo com um valor em R$ (`destaque_valor`/`destaque_legenda`), botão de
+      ação (`cta_url`/`cta_texto`) e rodapé de descadastro (`link_descadastro`,
+      só quando faz sentido - ver abaixo).
+- [x] **Lembrete de primeira compra (7 e 30 dias)** - `accounts/comunicacoes.py`
+      passou a usar `_mandar_lembrete_html_em_lotes` (BCC em lote, já existia
+      pro lembrete de venda indireta antigo) com botão "Ver ofertas". Continua
+      BCC porque o conteúdo é igual pra todo mundo (sem personalização).
+      `_mandar_lembrete_em_lotes` (só texto) ficou sem uso nenhum e foi
+      removida.
+- [x] **Pedido validado, cashback liberado, bônus de indicação** -
+      `pedidos/notificacoes.py::_enviar` passou a mandar texto + HTML
+      (`EmailMultiAlternatives`). Pedido validado/liberado mostram o valor do
+      cashback no destaque roxo; bônus de indicação fica só o texto (não tem
+      um valor único pra destacar). Sem botão (não tinha link nenhum antes,
+      não dá pra montar URL absoluta sem `request`, que essas funções não
+      recebem) nem rodapé de descadastro (notificação de pedido específico,
+      não lembrete promocional - nunca passou pelo filtro
+      `aceita_email_marketing`).
+- [x] Testes atualizados/novos em `accounts/tests.py` (`EmailMultiAlternatives`
+      no lugar de `EmailMessage`, HTML com o link de ofertas) e
+      `pedidos/tests.py` (`NotificarPedidoTests` novo, + teste de HTML em
+      `NotificarIndicadorBonusPendenteTests`).
+- [x] Verificação visual dos 3 templates (primeira compra, pedido validado,
+      bônus de indicação) via Playwright.
 
 ---
 
