@@ -2405,6 +2405,37 @@ Efeito colateral esperado: as campanhas passam a medir só quem aceitar.
 
 ---
 
+## Fase 58 — % real do produto ao colar o link no conversor ✅
+
+O texto verde que aparece ao colar um link no conversor da home era fixo: mostrava
+sempre o "até X%" do catálogo, sem consultar o produto - a % real só aparecia
+DEPOIS de clicar em "Gerar link" (Fase 34), e o dono do produto (com razão) leu
+isso como "o conversor não puxa a %".
+
+- [x] **`links/views.py::cashback_estimado`** (`/cashback-estimado/?url=...`) -
+      rota pública (quem chega de anúncio ainda não tem conta) que devolve a % e o
+      R$ reais do produto (`ok`), `sem_comissao`, `link_curto`,
+      `nao_identificado` ou `indisponivel`. Limite de 30 consultas/min por IP
+      (`limitar_por_ip`) e cache de 10 min por item_id.
+- [x] **Só link com o item_id na própria URL** (`resolver_item_id_sem_rede`) - link
+      curto exigiria seguir redirecionamento (até 10s, quase sempre falha do
+      servidor, Fases 35-37); numa rota pública com 1 worker só isso travaria o
+      site. Pra link curto, o texto genérico ganha a explicação de como ver o
+      valor exato (colar o link completo da página do produto).
+- [x] **`ofertas/services.py::buscar_oferta_por_item`** - extraída de
+      `buscar_oferta_por_link` pra reaproveitar a mesma conta (piso, campanha).
+- [x] **`home.html`** - consulta 350ms depois de colar/digitar (cancelando a
+      anterior), "Consultando..." enquanto espera, estilo neutro (não verde) pro
+      "sem comissão", e o texto da caixa passou a ser centralizado.
+- [x] Testes do endpoint (os 5 estados, formato "9,8"/"12", cache, limite por IP).
+      Estados conferidos no navegador com respostas simuladas - sem credenciais da
+      Shopee neste ambiente, a consulta real à API só dá pra conferir em produção.
+
+Continua em aberto: **link curto** (`s.shopee.com.br`, `br.shp.ee`) segue sem % exata
+antes da compra - mesma limitação das Fases 35-37.
+
+---
+
 Pra continuar esse roadmap numa conversa nova, basta apontar esse arquivo
 (`ROADMAP.md`) e o `BRAND.md` — juntos eles dão o contexto de identidade
 visual e do que falta implementar, sem precisar reconstruir o histórico da
