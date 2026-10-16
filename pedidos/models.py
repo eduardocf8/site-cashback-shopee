@@ -218,6 +218,7 @@ class CampanhaCashback(models.Model):
     # o bastante para quem entrar no site marcar a data, e curto o bastante para a faixa não
     # virar parte fixa da página.
     DIAS_AVISO_PREVIO = 3
+    HORAS_CONTADOR = 48
 
     @property
     def percentual_extra(self) -> int:
@@ -235,6 +236,18 @@ class CampanhaCashback(models.Model):
         return timezone.localtime(self.inicio).date() == timezone.localtime(self.fim).date()
 
     @classmethod
+    def _contador(cls, campanha, agora) -> dict:
+        """Contador regressivo da faixa, só nas últimas HORAS_CONTADOR horas: um
+        contador de vários dias não gera urgência (ROADMAP 13.14)."""
+        if campanha.fim is None:
+            return {"segundos_restantes": None}
+        segundos = int((campanha.fim - agora).total_seconds())
+        if segundos > cls.HORAS_CONTADOR * 3600:
+            return {"segundos_restantes": None}
+        horas, resto = divmod(max(segundos, 0), 3600)
+        return {"segundos_restantes": max(segundos, 0), "contador_inicial": f"{horas:02d}:{resto // 60:02d}:{resto % 60:02d}"}
+
+    @classmethod
     def para_faixa(cls, agora=None, campanhas: "list[CampanhaCashback] | None" = None):
         """Dados da faixa de campanha do site, ou None se não há o que mostrar.
 
@@ -248,7 +261,7 @@ class CampanhaCashback(models.Model):
         if previa is not None:
             # Só existe para o superusuário que ligou a prévia, numa requisição de página
             # pública (ver pedidos/previa.py): mostra a campanha como se já estivesse no ar.
-            return {"ativa": True, "campanha": previa}
+            return {"ativa": True, "campanha": previa, **cls._contador(previa, timezone.now())}
 
         agora = agora or timezone.now()
         campanhas = cls.listar() if campanhas is None else campanhas
@@ -256,7 +269,7 @@ class CampanhaCashback(models.Model):
         for campanha in campanhas:
             if campanha.inicio <= agora and (campanha.fim is None or campanha.fim >= agora):
                 if campanha.multiplicador > 1:
-                    return {"ativa": True, "campanha": campanha}
+                    return {"ativa": True, "campanha": campanha, **cls._contador(campanha, agora)}
                 break
 
         limite = agora + timedelta(days=cls.DIAS_AVISO_PREVIO)

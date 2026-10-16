@@ -116,8 +116,8 @@ def _descricao(categoria_nome: str) -> str:
     # afiliado. Voz: ver VOZ.md (cashback afirmativo, "você", "a cash-b", "Pix").
     return (
         f"Os produtos mais vendidos de {categoria_nome} na Shopee, reunidos na cash-b. "
-        "Você compra normalmente na Shopee e parte do valor volta para você via Pix: "
-        "toda compra gera cashback. Contém link de afiliado."
+        "Você compra normalmente na Shopee e parte do valor volta para você via Pix, "
+        "sem limite de compras. Contém link de afiliado."
     )
 
 

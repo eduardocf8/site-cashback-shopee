@@ -202,8 +202,16 @@ Itens novos/atualizados a partir dele - **ordem sugerida de implementação**:
        toda compra" foi descartado: categorias sem comissão (alimentos, bebidas)
        não geram cashback, então seria falso - regra registrada no `VOZ.md`. Sem
        citar concorrente pelo nome (publicidade comparativa / CONAR).
-2. [ ] **13.14 Urgência das campanhas** (rápido) - mostrar "era X%" + contador nas
-       janelas de `CampanhaCashback` que já existem (Fases 44/52).
+2. [x] **13.14 Urgência das campanhas** (rápido) - sobre o que já existia (faixa
+       do topo + barra no card, Fases 44/52):
+       - card e destaque da home mostram o valor normal riscado ao lado do da
+         campanha (`percentual_cashback_sem_campanha`, `_card.html`);
+       - faixa ganha contador regressivo "Termina em HH:MM:SS" só nas últimas
+         48h (`CampanhaCashback.HORAS_CONTADOR`; o tempo vem do servidor);
+       - "em toda compra" saiu da faixa ("nas suas compras") e do selo/descrição
+         dos pins do Pinterest ("sem limite de compras") - regra do `VOZ.md`.
+         Ficaram de fora: scripts de arte em `marketing/` (já geradas) e os
+         banners cadastrados no banco ("em todas as compras"), editáveis no admin.
 3. [ ] **13.8 Prova social real** (rápido/médio, já existia) - reforçado pelo
        benchmark: total pago, número de usuários, "atualizado hoje"; só números
        reais.

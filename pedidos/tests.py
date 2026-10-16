@@ -2454,18 +2454,36 @@ class FaixaCampanhaTests(TestCase):
             multiplicador=Decimal("1.5"), inicio=inicio, fim=inicio.replace(hour=23, minute=59, second=59)
         )
         resposta = self.client.get(reverse("home"))
-        self.assertContains(resposta, f"em toda compra no {hoje:%d/%m}.")
+        self.assertContains(resposta, f"nas suas compras no {hoje:%d/%m}.")
         self.assertNotContains(resposta, "23h59")
 
     def test_campanha_de_varios_dias_diz_ate_e_nao_no(self):
         self._campanha(inicio_em_dias=-1, fim_em_dias=2)
         fim = timezone.localtime(self.agora + timedelta(days=2))
         resposta = self.client.get(reverse("home"))
-        self.assertContains(resposta, f"em toda compra até {fim:%d/%m}.")
+        self.assertContains(resposta, f"nas suas compras até {fim:%d/%m}.")
 
     def test_campanha_sem_fim_diz_por_tempo_limitado(self):
         self._campanha(fim_em_dias=None)
         self.assertContains(self.client.get(reverse("home")), "por tempo limitado")
+
+    def test_contador_so_aparece_nas_ultimas_48_horas(self):
+        self._campanha(inicio_em_dias=-1, fim_em_dias=1)
+        resposta = self.client.get(reverse("home"))
+        self.assertContains(resposta, 'class="faixa-contador"')
+        self.assertContains(resposta, "Termina em 2")  # ~24h restantes: "Termina em 23:59:5x"/"24:00:00"
+
+    def test_sem_contador_com_mais_de_48_horas_ou_sem_fim(self):
+        self._campanha(inicio_em_dias=-1, fim_em_dias=3)
+        self.assertNotContains(self.client.get(reverse("home")), 'class="faixa-contador"')
+        CampanhaCashback.objects.all().delete()
+        self._campanha(fim_em_dias=None)
+        self.assertNotContains(self.client.get(reverse("home")), 'class="faixa-contador"')
+
+    def test_faixa_nao_promete_toda_compra(self):
+        """Categorias sem comissão não geram cashback nem na campanha (VOZ.md)."""
+        self._campanha()
+        self.assertNotContains(self.client.get(reverse("home")), "toda compra")
 
     def test_um_so_dia_so_vale_com_fim_no_mesmo_dia_local(self):
         inicio = timezone.localtime(self.agora).replace(hour=1)
@@ -2940,7 +2958,9 @@ class BarraCampanhaNosCardsTests(TestCase):
         """Quando o selo está lá, o card mostra o valor com a campanha (10% x 1,5 = 15%)."""
         self._campanha()
         resposta = self.client.get(reverse("ofertas_lista"))
-        self.assertContains(resposta, ">15,0% cashback<")
+        self.assertContains(resposta, "</s> 15,0% cashback<")
+        # e o valor normal riscado ao lado, "era 10%" (ROADMAP 13.14)
+        self.assertContains(resposta, '<s class="cashback-era">10,0%</s>')
         self.assertContains(resposta, "campanha-barra")
 
     def test_na_previa_do_administrador_a_barra_aparece_so_para_ele(self):
