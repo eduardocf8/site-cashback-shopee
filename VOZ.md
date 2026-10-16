@@ -7,10 +7,16 @@ o dono da marca aponta o que soa diferente do jeito dele de falar.
 ## Regras já validadas
 
 - **Nunca descreva o cashback base como condicional ("pode voltar", "pode
-  gerar").** Toda compra na Shopee gera cashback — o que varia é só o
-  valor, conforme a % de comissão. Frases como "toda compra pode voltar
-  parte do dinheiro" dão a entender (errado) que às vezes não tem
-  cashback nenhum. Usar sempre afirmativo: "volta", "gera", "cai".
+  gerar").** O que varia é o valor, conforme a % de comissão. Frases como
+  "toda compra pode voltar parte do dinheiro" dão a entender (errado) que
+  às vezes não tem cashback nenhum por acaso. Usar sempre afirmativo:
+  "volta", "gera", "cai".
+  - Mas **não prometer "toda compra" / "em toda compra"**: categorias sem
+    comissão de afiliado na Shopee (ex: alimentos e bebidas) não geram
+    cashback. O diferencial que dá pra afirmar sem ressalva é não ter
+    limite: "sem limite por produto nem por número de compras" (hero da
+    home) - na Cuponomia, por exemplo, o cashback na Shopee acaba depois
+    da primeira compra (benchmark, ROADMAP Fase 13).
   - Exceção: bônus de campanha de comissão extra (link de produto
     específico) é de fato condicional — aí "pode render mais cashback"
     está correto, porque só ativa quando a Shopee tem campanha rodando.

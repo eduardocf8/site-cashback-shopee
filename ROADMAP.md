@@ -197,9 +197,11 @@ automatizado (403) - não foi contornado; dela só o HTML público.
 
 Itens novos/atualizados a partir dele - **ordem sugerida de implementação**:
 
-1. [ ] **13.13 Anunciar a vantagem na Shopee** (muito rápido) - "Cashback em toda
-       compra na Shopee, não só na primeira - mínimo de 1,6%" no hero e nos
-       anúncios. Sem citar concorrente pelo nome (publicidade comparativa / CONAR).
+1. [x] **13.13 Anunciar a vantagem na Shopee** (muito rápido) - o hero passou a
+       dizer "sem limite por produto **nem por número de compras**". "Cashback em
+       toda compra" foi descartado: categorias sem comissão (alimentos, bebidas)
+       não geram cashback, então seria falso - regra registrada no `VOZ.md`. Sem
+       citar concorrente pelo nome (publicidade comparativa / CONAR).
 2. [ ] **13.14 Urgência das campanhas** (rápido) - mostrar "era X%" + contador nas
        janelas de `CampanhaCashback` que já existem (Fases 44/52).
 3. [ ] **13.8 Prova social real** (rápido/médio, já existia) - reforçado pelo
