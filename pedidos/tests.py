@@ -1020,6 +1020,12 @@ class SincronizarBonusIndicacaoTests(TestCase):
         self.indicado = get_user_model().objects.create_user(
             username="indicado", password="senha123", cpf="14783246947"
         )
+        # O bônus só ativa com as chaves Pix dos dois verificadas (Fase 61).
+        get_user_model().objects.filter(pk__in=[self.indicador.pk, self.indicado.pk]).update(
+            chave_pix="chave@ex.com", tipo_chave_pix="EMAIL", chave_pix_status="verificada"
+        )
+        self.indicador.refresh_from_db()
+        self.indicado.refresh_from_db()
         self.indicacao = Indicacao.objects.create(indicador=self.indicador, indicado=self.indicado)
 
         self.click_indicador = Click.objects.create(
@@ -1184,7 +1190,8 @@ class SincronizarBonusIndicacaoTests(TestCase):
     @patch("pedidos.services.buscar_conversoes")
     def test_fila_fifo_quando_indicador_tem_duas_indicacoes_pendentes(self, mock_buscar):
         indicado2 = get_user_model().objects.create_user(
-            username="indicado2", password="senha123", cpf="52914637837"
+            username="indicado2", password="senha123", cpf="52914637837",
+            chave_pix="indicado2@ex.com", tipo_chave_pix="EMAIL", chave_pix_status="verificada",
         )
         indicacao2 = Indicacao.objects.create(indicador=self.indicador, indicado=indicado2)
         click_indicado2 = Click.objects.create(
@@ -2995,3 +3002,45 @@ class BarraCampanhaNosCardsTests(TestCase):
         self.assertContains(resposta, "destaque-cartao")
         self.assertContains(resposta, 'class="campanha-barra"')
         self.assertContains(resposta, "50% a mais de cashback</div>")
+
+
+class BonusIndicacaoExigeChavesVerificadasTests(TestCase):
+    """Fase 61: o dobro só ativa com as chaves Pix dos DOIS verificadas."""
+
+    def setUp(self):
+        self.indicador = get_user_model().objects.create_user(username="indicador", password="x", cpf="39053344705")
+        self.indicado = get_user_model().objects.create_user(username="indicado", password="x", cpf="14783246947")
+        self.indicacao = Indicacao.objects.create(indicador=self.indicador, indicado=self.indicado)
+        self.click = Click.objects.create(
+            usuario=self.indicado, tipo=Click.TIPO_HOME,
+            url_original="https://shopee.com.br/", link_gerado="https://shope.ee/x",
+        )
+
+    def _verificar(self, *usuarios):
+        get_user_model().objects.filter(pk__in=[u.pk for u in usuarios]).update(
+            chave_pix="k@ex.com", tipo_chave_pix="EMAIL", chave_pix_status="verificada"
+        )
+
+    def _no(self, order_id):
+        return SincronizarBonusIndicacaoTests._no(self, self.click, order_id, "10.00")
+
+    def _pagina(self, nos):
+        return SincronizarBonusIndicacaoTests._pagina(self, nos)
+
+    @patch("pedidos.services.buscar_conversoes")
+    def test_so_o_indicado_verificado_nao_ativa(self, mock_buscar):
+        self._verificar(self.indicado)
+        mock_buscar.return_value = self._pagina([self._no("ORD-A")])
+        sincronizar(1690000000, 1700000000)
+        self.indicacao.refresh_from_db()
+        self.assertIsNone(self.indicacao.pedido_bonus_indicado_id)
+
+    @patch("pedidos.services.buscar_conversoes")
+    def test_ativa_na_primeira_compra_validada_depois_dos_dois_verificados(self, mock_buscar):
+        mock_buscar.return_value = self._pagina([self._no("ORD-ANTES")])
+        sincronizar(1690000000, 1700000000)
+        self._verificar(self.indicado, self.indicador)
+        mock_buscar.return_value = self._pagina([self._no("ORD-ANTES"), self._no("ORD-DEPOIS")])
+        sincronizar(1690000000, 1700000000)
+        self.indicacao.refresh_from_db()
+        self.assertEqual(self.indicacao.pedido_bonus_indicado.order_id, "ORD-DEPOIS")

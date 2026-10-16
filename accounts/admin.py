@@ -18,11 +18,21 @@ class UserAdmin(BaseUserAdmin):
     # pelo Admin esbarra na restrição de unicidade (erro 500 genérico).
     add_fieldsets = BaseUserAdmin.add_fieldsets + (("Dados adicionais", {"fields": ("cpf",)}),)
     fieldsets = BaseUserAdmin.fieldsets + (
-        ("Dados adicionais", {"fields": ("cpf", "codigo_indicacao", "origem_cadastro", "origem_campanha")}),
+        ("Dados adicionais", {"fields": (
+            "nome_completo", "celular", "cpf", "codigo_indicacao", "origem_cadastro", "origem_campanha",
+        )}),
+        ("Chave Pix", {"fields": (
+            "tipo_chave_pix", "chave_pix", "chave_pix_status", "chave_pix_titular_nome",
+            "chave_pix_titular_documento", "chave_pix_nome_confere", "chave_pix_verificada_em",
+        )}),
     )
-    list_display = ("username", "email", "cpf", "codigo_indicacao", "origem_cadastro", "is_staff")
-    list_filter = BaseUserAdmin.list_filter + ("origem_cadastro",)
-    readonly_fields = ("codigo_indicacao", "origem_cadastro", "origem_campanha")
+    list_display = ("username", "nome_completo", "email", "cpf", "chave_pix_status", "origem_cadastro", "is_staff")
+    list_filter = BaseUserAdmin.list_filter + ("origem_cadastro", "chave_pix_status", "chave_pix_nome_confere")
+    search_fields = BaseUserAdmin.search_fields + ("nome_completo", "cpf", "celular")
+    readonly_fields = (
+        "codigo_indicacao", "origem_cadastro", "origem_campanha", "chave_pix_status", "chave_pix_titular_nome",
+        "chave_pix_titular_documento", "chave_pix_nome_confere", "chave_pix_verificada_em",
+    )
 
     def get_urls(self):
         urls = [

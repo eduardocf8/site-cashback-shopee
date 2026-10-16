@@ -12,7 +12,12 @@ from django.views.decorators.csrf import csrf_exempt
 from django.views.decorators.http import require_POST
 
 from .models import Saque
-from .services import ChavePixNaoConfiguradaError, ValorAbaixoDoMinimoError, solicitar_saque
+from .services import (
+    ChavePixNaoConfiguradaError,
+    ChavePixNaoVerificadaError,
+    ValorAbaixoDoMinimoError,
+    solicitar_saque,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -30,7 +35,7 @@ def pedir_saque(request):
                 request,
                 f"Saque de R$ {valor_formatado} solicitado! Assim que for aprovado, o Pix cai na sua chave cadastrada.",
             )
-        except ChavePixNaoConfiguradaError as erro:
+        except (ChavePixNaoConfiguradaError, ChavePixNaoVerificadaError) as erro:
             messages.error(request, str(erro))
         except ValorAbaixoDoMinimoError as erro:
             messages.error(request, str(erro))

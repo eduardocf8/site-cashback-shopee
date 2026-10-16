@@ -47,9 +47,21 @@ class SaqueAdmin(admin.ModelAdmin):
         "provedor",
         "tipo_chave_pix",
         "chave_pix",
+        "titular_da_chave",
         "criado_em",
         "pago_em",
     )
+
+    @admin.display(description="Titular da chave (Asaas)")
+    def titular_da_chave(self, saque):
+        """Conferir antes de aprovar: nome do cadastro x titular devolvido pela Asaas
+        (accounts/verificacao_pix.py). "⚠" = nome não confere."""
+        usuario = saque.usuario
+        if not usuario.chave_pix_titular_nome:
+            return usuario.get_chave_pix_status_display()
+        alerta = "⚠ " if usuario.chave_pix_nome_confere is False else ""
+        return f"{alerta}{usuario.chave_pix_titular_nome} (cadastro: {usuario.nome_completo or '—'})"
     list_filter = ("status", "provedor")
+    list_select_related = ("usuario",)
     search_fields = ("usuario__username", "usuario__cpf", "chave_pix", "asaas_transfer_id", "inter_codigo_solicitacao")
     actions = [aprovar_e_pagar_asaas, aprovar_e_pagar_inter, cancelar_solicitacao]

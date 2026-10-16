@@ -132,6 +132,7 @@ class SolicitarSaqueTests(TestCase):
     def test_saldo_abaixo_do_minimo_nao_deixa_solicitar(self):
         self.usuario.chave_pix = "fulano@example.com"
         self.usuario.tipo_chave_pix = "EMAIL"
+        self.usuario.chave_pix_status = "verificada"
         self.usuario.save()
         self._liberar_saldo(Decimal("10.00"))
 
@@ -141,6 +142,7 @@ class SolicitarSaqueTests(TestCase):
     def test_solicita_saque_do_saldo_total_disponivel(self):
         self.usuario.chave_pix = "fulano@example.com"
         self.usuario.tipo_chave_pix = "EMAIL"
+        self.usuario.chave_pix_status = "verificada"
         self.usuario.save()
         self._liberar_saldo(Decimal("75.00"))
 
@@ -341,6 +343,7 @@ class PedirSaqueViewTests(TestCase):
     def test_com_saldo_e_chave_cria_saque(self):
         self.usuario.chave_pix = "fulano@example.com"
         self.usuario.tipo_chave_pix = "EMAIL"
+        self.usuario.chave_pix_status = "verificada"
         self.usuario.save()
         Pedido.objects.create(
             order_id="P2", conversion_id="1", usuario=self.usuario, status=Pedido.STATUS_LIBERADO,
@@ -393,3 +396,43 @@ class WebhookValidacaoAsaasTests(TestCase):
     def test_sem_token_configurado_recusa_com_403(self):
         resposta = self._postar({"type": "TRANSFER", "transfer": {"id": "tr_conhecida"}})
         self.assertEqual(resposta.status_code, 403)
+
+
+@override_settings(SAQUE_VALOR_MINIMO=Decimal("20.00"))
+class SaqueExigeChaveVerificadaTests(TestCase):
+    """Fase 61: o saque só sai pra chave Pix cujo titular é o CPF da conta."""
+
+    def setUp(self):
+        from django.core.cache import cache
+        cache.clear()
+        self.usuario = get_user_model().objects.create_user(
+            username="ana", password="x", cpf="39053344705", chave_pix="ana@ex.com", tipo_chave_pix="EMAIL",
+        )
+        Pedido.objects.create(
+            order_id="P1", conversion_id="1", usuario=self.usuario, status=Pedido.STATUS_LIBERADO,
+            status_shopee_bruto="COMPLETED", valor_comissao=Decimal("50"), valor_cashback=Decimal("50"),
+        )
+
+    @patch("accounts.verificacao_pix.consultar_chave_pix",
+           return_value={"owner": {"name": "Ana", "cpfCnpj": "***.533.447-**"}})
+    def test_chave_antiga_e_verificada_na_hora_do_saque(self, _mock):
+        saque = solicitar_saque(self.usuario)
+        self.assertEqual(saque.valor, Decimal("50"))
+
+    @patch("accounts.verificacao_pix.consultar_chave_pix",
+           return_value={"owner": {"name": "Outro", "cpfCnpj": "***.111.222-**"}})
+    def test_chave_de_outra_pessoa_bloqueia(self, _mock):
+        from .services import ChavePixNaoVerificadaError
+        with self.assertRaises(ChavePixNaoVerificadaError):
+            solicitar_saque(self.usuario)
+        self.assertEqual(Saque.objects.count(), 0)
+
+    @patch("accounts.verificacao_pix.consultar_chave_pix")
+    def test_asaas_fora_do_ar_bloqueia_sem_recusar_a_chave(self, mock_consulta):
+        from .asaas_client import AsaasIndisponivelError
+        from .services import ChavePixNaoVerificadaError
+        mock_consulta.side_effect = AsaasIndisponivelError("HTTP 503")
+        with self.assertRaises(ChavePixNaoVerificadaError):
+            solicitar_saque(self.usuario)
+        self.usuario.refresh_from_db()
+        self.assertEqual(self.usuario.chave_pix_status, "pendente")
