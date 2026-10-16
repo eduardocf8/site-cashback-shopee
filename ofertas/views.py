@@ -1,11 +1,11 @@
 import requests
 from django.contrib import messages
-from django.contrib.auth.decorators import login_required
 from django.core.paginator import Paginator
 from django.db.models import F
 from django.shortcuts import get_object_or_404, redirect, render
 from django.utils import timezone
 
+from accounts.funil import exigir_login_medindo, registrar_primeiro_link
 from links.models import Click
 from links.services import gerar_click
 from links.shopee_client import ShopeeAPIError, ShopeeConfigError, SubIdInvalidoError
@@ -106,10 +106,11 @@ def _ir_com_click_ou_erro(request, product_link, nome_da_view_de_erro, item_id_c
     # pro link da Shopee (externo), então não sobra nenhuma página nossa renderizando
     # de novo pra disparar o Pixel do navegador (ver ROADMAP.md).
     enviar_evento("GerouLinkCashback", request, gerar_event_id(), {"tipo_click": click.tipo})
+    registrar_primeiro_link(request)
     return redirect(click.link_gerado)
 
 
-@login_required
+@exigir_login_medindo("oferta")
 def ir_para_oferta(request, oferta_id):
     oferta = get_object_or_404(Oferta, pk=oferta_id)
     # Oferta já tem o item_id certo (vem da sincronização) - passa direto, sem
@@ -117,7 +118,7 @@ def ir_para_oferta(request, oferta_id):
     return _ir_com_click_ou_erro(request, oferta.product_link, "ofertas_lista", item_id_conhecido=oferta.item_id)
 
 
-@login_required
+@exigir_login_medindo("oferta")
 def ir_para_oferta_manual(request, oferta_manual_id):
     """Mesmo fluxo de ir_para_oferta, mas pra uma OfertaManual (cadastrada no admin) -
     essas só aparecem no carrossel da home, então o erro volta pra lá, não pra
@@ -126,7 +127,7 @@ def ir_para_oferta_manual(request, oferta_manual_id):
     return _ir_com_click_ou_erro(request, oferta.product_link, "home")
 
 
-@login_required
+@exigir_login_medindo("oferta")
 def ir_para_oferta_destaque_manual(request, oferta_destaque_manual_id):
     """Mesmo fluxo de ir_para_oferta, mas pra OfertaDestaqueManual (a "Oferta do dia"
     manual, cadastrada na página dedicada do admin) - só aparece na home."""

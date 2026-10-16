@@ -272,3 +272,35 @@ class ComunicacaoEmail(models.Model):
 
     def __str__(self):
         return f"{self.assunto} ({self.enviado_em:%d/%m/%Y %H:%M})"
+
+
+class EventoFunil(models.Model):
+    """Funil de quem chega sem conta (ROADMAP 13.11 - medir antes de construir): tentou
+    usar o site sem conta -> se cadastrou -> gerou o primeiro link. Um registro por
+    etapa por visitante (funil_id guardado na sessão, que sobrevive ao login). Ver
+    accounts/funil.py."""
+
+    TENTATIVA = "tentativa"
+    CADASTRO = "cadastro"
+    PRIMEIRO_LINK = "primeiro_link"
+    ETAPA_CHOICES = [
+        (TENTATIVA, "Tentou usar sem conta"),
+        (CADASTRO, "Cadastrou"),
+        (PRIMEIRO_LINK, "Gerou o primeiro link"),
+    ]
+
+    funil_id = models.CharField(max_length=32, db_index=True)
+    etapa = models.CharField(max_length=16, choices=ETAPA_CHOICES)
+    origem = models.CharField(
+        max_length=20, blank=True, help_text="Onde esbarrou no cadastro: conversor, ir_shopee, oferta, story.",
+    )
+    metodo = models.CharField(max_length=12, blank=True, help_text="Cadastro: formulario ou google.")
+    criado_em = models.DateTimeField(auto_now_add=True, db_index=True)
+
+    class Meta:
+        verbose_name = "Evento do funil sem conta"
+        verbose_name_plural = "Eventos do funil sem conta"
+        constraints = [models.UniqueConstraint(fields=["funil_id", "etapa"], name="funil_uma_vez_por_etapa")]
+
+    def __str__(self):
+        return f"{self.funil_id[:8]} {self.etapa}"

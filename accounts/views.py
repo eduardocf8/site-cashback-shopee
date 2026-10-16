@@ -24,6 +24,7 @@ from saques.services import calcular_saldo_disponivel
 from cashback_shopee.meta_capi import DADOS_CADASTRO, enviar_evento, gerar_event_id
 
 from . import google_oauth
+from .funil import registrar_cadastro
 from .forms import ChavePixForm, EditarPerfilForm, RegistroForm
 from .verificacao_pix import CAMPOS_VERIFICACAO, LimiteDeTentativasError, nomes_conferem, verificar_chave_pix
 from .middleware import SESSION_KEY_ORIGEM
@@ -63,7 +64,7 @@ def registrar(request):
         if form.is_valid():
             usuario = form.save()
             enviar_email_verificacao(usuario, request)
-            _concluir_cadastro(request, usuario, codigo_indicacao)
+            _concluir_cadastro(request, usuario, codigo_indicacao, metodo="formulario")
             return _redirecionar_depois_de_entrar(request, proximo)
     else:
         form = RegistroForm()
@@ -73,8 +74,9 @@ def registrar(request):
     )
 
 
-def _concluir_cadastro(request, usuario, codigo_indicacao):
+def _concluir_cadastro(request, usuario, codigo_indicacao, metodo):
     """Passos comuns a todo cadastro novo - formulário ou Google (callback_google)."""
+    registrar_cadastro(request, metodo)
     _gravar_origem(usuario, request)
     _criar_indicacao_se_valida(usuario, codigo_indicacao)
     # Backend explícito: já temos o objeto usuario (não veio de authenticate()),
@@ -133,7 +135,7 @@ def callback_google(request):
 
     usuario, criado = _usuario_do_google(perfil)
     if criado:
-        _concluir_cadastro(request, usuario, dados.get("ref", ""))
+        _concluir_cadastro(request, usuario, dados.get("ref", ""), metodo="google")
     else:
         login(request, usuario, backend="django.contrib.auth.backends.ModelBackend")
     return _redirecionar_depois_de_entrar(request, dados.get("next", ""))

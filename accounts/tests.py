@@ -2067,3 +2067,59 @@ class GoogleOAuthClienteTests(TestCase):
         mock_post.return_value = Mock(status_code=400, json=lambda: {"error": "invalid_grant"})
         with self.assertRaises(GoogleOAuthError):
             obter_perfil("code", "https://cash-b.com/login/google/callback/")
+
+
+class FunilSemContaTests(TestCase):
+    """Fase 62: medição do funil de quem chega sem conta (base do ROADMAP 13.11)."""
+
+    def _dados(self):
+        return {
+            "nome_completo": "Nova Conta Teste", "username": "novaconta", "email": "nova@example.com",
+            "cpf": "14783246947", "password1": "senha-forte-123", "password2": "senha-forte-123",
+        }
+
+    def test_tentativa_cadastro_e_primeiro_link_no_mesmo_funil(self):
+        from .models import EventoFunil
+        self.client.post(reverse("home"), {"url_produto": "https://shopee.com.br/p-i.1.2"})
+        self.client.post(reverse("registrar"), self._dados())
+        with patch("links.services.gerar_link_curto", return_value="https://s.shopee.com.br/x"), \
+             patch("links.views._buscar_cashback_real", return_value=(None, False)):
+            self.client.post(reverse("home"), {"url_produto": "https://shopee.com.br/p-i.1.2"})
+        etapas = dict(EventoFunil.objects.values_list("etapa", "origem"))
+        self.assertEqual(etapas.get("tentativa"), "conversor")
+        self.assertIn("cadastro", etapas)
+        self.assertIn("primeiro_link", etapas)
+        self.assertEqual(EventoFunil.objects.values("funil_id").distinct().count(), 1)
+
+    def test_ir_pra_shopee_sem_login_conta_tentativa_e_manda_pro_login(self):
+        from .models import EventoFunil
+        resposta = self.client.get(reverse("ir_para_shopee"))
+        self.assertEqual(resposta.status_code, 302)
+        self.assertIn(reverse("login"), resposta.url)
+        self.assertTrue(EventoFunil.objects.filter(etapa="tentativa", origem="ir_shopee").exists())
+
+    def test_robo_nao_conta(self):
+        from .models import EventoFunil
+        self.client.get(reverse("ir_para_shopee"), HTTP_USER_AGENT="WhatsApp/2.23.20 A")
+        self.client.get(reverse("ir_para_shopee"), HTTP_USER_AGENT="facebookexternalhit/1.1")
+        self.assertFalse(EventoFunil.objects.exists())
+
+    def test_tentativa_repetida_conta_uma_vez(self):
+        from .models import EventoFunil
+        for _ in range(3):
+            self.client.get(reverse("ir_para_shopee"))
+        self.assertEqual(EventoFunil.objects.filter(etapa="tentativa").count(), 1)
+
+    def test_resumo_do_funil(self):
+        from .funil import obter_funil
+        from .models import EventoFunil
+        for i, etapas in enumerate([("tentativa",), ("tentativa", "cadastro"), ("tentativa", "cadastro", "primeiro_link")]):
+            for etapa in etapas:
+                EventoFunil.objects.create(funil_id=f"f{i}", etapa=etapa, origem="conversor",
+                                           metodo="google" if etapa == "cadastro" else "")
+        EventoFunil.objects.create(funil_id="direto", etapa="cadastro", metodo="formulario")
+        f = obter_funil()
+        self.assertEqual((f["tentativas"], f["cadastraram"], f["geraram_link"]), (3, 2, 1))
+        self.assertEqual(f["taxa_cadastro"], 66.7)
+        self.assertEqual(f["cadastros_periodo"], 3)
+        self.assertEqual(f["cadastraram_google"], 2)
