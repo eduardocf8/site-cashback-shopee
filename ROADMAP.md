@@ -2457,7 +2457,7 @@ Retomada das Fases 35-37. Abrindo de verdade os links curtos (`s.shopee.com.br`,
 `br.shp.ee`) e olhando a resposta inteira, a causa apareceu: a página (200, sem
 redirecionamento HTTP) **já traz o endereço do produto embutido**, só que escrito
 de formas que o regex não reconhecia - com barras escapadas de JSON
-(`https:\\/\\/shopee.com.br\\/product\\/<loja>\\/<item>`), em codificação de URL
+(`https:\/\/shopee.com.br\/product\/<loja>\/<item>`), em codificação de URL
 (`navigate_url=https%3A%2F%2Fshopee.com.br%2Fproduct%2F...`) e num terceiro formato
 de caminho, `/opaanlp/<loja>/<item>`. Não era bloqueio nem JavaScript obrigatório.
 
