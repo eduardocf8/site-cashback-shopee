@@ -2,11 +2,12 @@ import csv
 from datetime import datetime
 from decimal import Decimal
 
-from django.contrib import admin
+from django.contrib import admin, messages
 from django.http import HttpResponse
 from django.shortcuts import redirect
 from django.template.response import TemplateResponse
 from django.urls import path
+from django.utils import timezone
 
 from accounts.funil import obter_funil
 
@@ -26,7 +27,8 @@ from .analytics import (
     obter_serie_diaria,
     origem_detalhada as origem_detalhada_pedido,
 )
-from .models import CampanhaCashback, Pedido
+from .models import CampanhaCashback, Pedido, ReclamacaoPedido
+from .reclamacoes import ReclamacaoInvalida, cashback_previsto, recusar, vincular
 
 
 def _parse_data(valor):
@@ -63,10 +65,10 @@ class OrigemFilter(admin.SimpleListFilter):
 
     def queryset(self, request, queryset):
         if self.value() == "fora":
-            return queryset.filter(click__isnull=True)
+            return queryset.exclude(Pedido.filtro_do_site())
         if self.value() == "todos":
             return queryset
-        return queryset.filter(click__isnull=False)
+        return queryset.filter(Pedido.filtro_do_site())
 
     def choices(self, changelist):
         for lookup, title in self.lookup_choices:
@@ -294,3 +296,123 @@ class PedidoAdmin(admin.ModelAdmin):
 # nome de template DIFERENTE de "admin/index.html" - senão o {% extends %} dentro dele
 # resolveria pra ele mesmo (mesmo caminho) e entraria em recursão infinita.
 admin.site.index_template = "admin/index_customizado.html"
+
+
+class SituacaoReclamacaoFilter(admin.SimpleListFilter):
+    """Abre direto nas que esperam decisão do admin (em análise)."""
+
+    title = "situação"
+    parameter_name = "situacao"
+
+    def lookups(self, request, model_admin):
+        return [*ReclamacaoPedido.STATUS_CHOICES, ("todas", "Todas")]
+
+    def queryset(self, request, queryset):
+        valor = self.value() or ReclamacaoPedido.STATUS_EM_ANALISE
+        if valor == "todas":
+            return queryset
+        return queryset.filter(status=valor)
+
+    def choices(self, changelist):
+        for lookup, title in self.lookup_choices:
+            selecionado = self.value() == lookup or (
+                self.value() is None and lookup == ReclamacaoPedido.STATUS_EM_ANALISE
+            )
+            yield {
+                "selected": selecionado,
+                "query_string": changelist.get_query_string({self.parameter_name: lookup}),
+                "display": title,
+            }
+
+
+@admin.register(ReclamacaoPedido)
+class ReclamacaoPedidoAdmin(admin.ModelAdmin):
+    """Reclamações de compra não registrada (Fase 64). Compare o que a pessoa informou
+    (data e produto) com o pedido encontrado e use a ação "Vincular" ou "Recusar".
+    Para recusar com uma explicação própria, escreva no campo "Resposta pra pessoa"
+    antes (abrindo a reclamação) e depois use a ação."""
+
+    list_display = (
+        "order_id",
+        "usuario",
+        "status",
+        "data_informada",
+        "data_real",
+        "data_confere",
+        "produto_informado",
+        "produto_real",
+        "valor_pedido",
+        "cashback_se_vincular",
+        "criado_em",
+    )
+    list_filter = (SituacaoReclamacaoFilter,)
+    search_fields = ("order_id", "usuario__username", "usuario__email", "produto_informado")
+    list_select_related = ("usuario", "pedido")
+    readonly_fields = (
+        "usuario", "order_id", "data_compra_informada", "produto_informado", "pedido",
+        "status", "criado_em", "resolvido_em",
+    )
+    fields = readonly_fields[:6] + ("resposta",) + readonly_fields[6:]
+    actions = ("acao_vincular", "acao_recusar")
+
+    def has_add_permission(self, request):
+        return False
+
+    @admin.display(description="Data informada", ordering="data_compra_informada")
+    def data_informada(self, obj):
+        return obj.data_compra_informada.strftime("%d/%m/%Y")
+
+    @admin.display(description="Data real")
+    def data_real(self, obj):
+        if not obj.pedido or not obj.pedido.data_compra:
+            return "—"
+        return timezone.localtime(obj.pedido.data_compra).strftime("%d/%m/%Y")
+
+    @admin.display(description="Data bate?", boolean=True)
+    def data_confere(self, obj):
+        if not obj.pedido or not obj.pedido.data_compra:
+            return None
+        dias = abs((timezone.localtime(obj.pedido.data_compra).date() - obj.data_compra_informada).days)
+        return dias <= 1
+
+    @admin.display(description="Produto real")
+    def produto_real(self, obj):
+        return obj.pedido.produto_nome if obj.pedido else "—"
+
+    @admin.display(description="Valor do pedido")
+    def valor_pedido(self, obj):
+        return obj.pedido.valor_pedido if obj.pedido else "—"
+
+    @admin.display(description="Cashback se vincular")
+    def cashback_se_vincular(self, obj):
+        if not obj.pedido or obj.pedido.usuario_id:
+            return "—"
+        return cashback_previsto(obj.pedido)
+
+    @admin.action(description="Vincular pedido à conta de quem reclamou")
+    def acao_vincular(self, request, queryset):
+        feitas, erros = 0, []
+        for reclamacao in queryset.select_related("usuario", "pedido"):
+            try:
+                vincular(reclamacao)
+                feitas += 1
+            except ReclamacaoInvalida as erro:
+                erros.append(f"{reclamacao.order_id}: {erro}")
+        if feitas:
+            self.message_user(request, f"{feitas} pedido(s) vinculado(s). A pessoa recebe um e-mail.")
+        for erro in erros:
+            self.message_user(request, erro, level=messages.WARNING)
+
+    @admin.action(description="Recusar (avisa a pessoa)")
+    def acao_recusar(self, request, queryset):
+        feitas, erros = 0, []
+        for reclamacao in queryset.select_related("usuario"):
+            try:
+                recusar(reclamacao, reclamacao.resposta)
+                feitas += 1
+            except ReclamacaoInvalida as erro:
+                erros.append(f"{reclamacao.order_id}: {erro}")
+        if feitas:
+            self.message_user(request, f"{feitas} reclamação(ões) recusada(s).")
+        for erro in erros:
+            self.message_user(request, erro, level=messages.WARNING)

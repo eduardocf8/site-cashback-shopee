@@ -37,7 +37,7 @@ def _calcular_frases() -> list[str]:
 
     # Só pedidos vindos de um clique do site: os "fora do site" não geram cashback
     # pra ninguém (ver pedidos/analytics.py::obter_pedidos_filtrados).
-    pedidos = Pedido.objects.filter(click__isnull=False).exclude(status=Pedido.STATUS_CANCELADO).count()
+    pedidos = Pedido.objects.filter(Pedido.filtro_do_site()).exclude(status=Pedido.STATUS_CANCELADO).count()
     if pedidos >= settings.PROVA_SOCIAL_MIN_PEDIDOS:
         frases.append(f"{_aproximado(pedidos)} compras com cashback")
 
