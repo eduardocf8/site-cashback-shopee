@@ -1,22 +1,30 @@
+import hashlib
 import logging
-from urllib.parse import urlencode
+from urllib.parse import urlencode, urlparse
 
 import requests
 from django.conf import settings
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
+from django.core.cache import cache
+from django.http import JsonResponse
 from django.shortcuts import redirect, render
+from django.views.decorators.http import require_GET
 from django.urls import reverse
 
 from ofertas.services import (
     LinkProdutoInvalidoError,
     SemComissaoError,
+    buscar_oferta_por_item,
     buscar_oferta_por_link,
     categorias_mais_vendidas,
     obter_cashback_maximo_anunciado,
+    resolver_item_id_com_rede,
+    resolver_item_id_sem_rede,
     selecionar_carrossel_home,
 )
 from saques.services import calcular_resumo_saldo_nav
+from accounts.ratelimit import limitar_por_ip
 
 from cashback_shopee.meta_capi import enviar_evento, gerar_event_id
 
@@ -29,6 +37,15 @@ logger = logging.getLogger(__name__)
 
 NUMERO_OFERTAS_EM_ALTA = 8
 NUMERO_CATEGORIAS_HOME = 12
+
+# Estimativa ao vivo do conversor (cashback_estimado): a comissão de um produto não muda
+# de minuto em minuto, então guarda por item_id e evita chamar a API da Shopee a cada
+# tecla/colagem repetida do mesmo link.
+CACHE_ESTIMATIVA_SEGUNDOS = 10 * 60
+DOMINIOS_LINK_CURTO = ("s.shopee.com.br", "shp.ee")
+# Abrir o link curto leva menos de 1s normalmente; o teto curto protege o único worker
+# do gunicorn se a Shopee ficar lenta.
+TIMEOUT_LINK_CURTO_SEGUNDOS = 4
 
 
 def home(request):
@@ -154,3 +171,50 @@ def _criar_click_e_avisar(request, tipo, url_produto, mensagem_sucesso="Link ger
     except (requests.RequestException, KeyError):
         messages.error(request, "Não foi possível gerar o link agora. Tente novamente em instantes.")
     return None
+
+
+@require_GET
+@limitar_por_ip("cashback_estimado", limite=30, janela_segundos=60)
+def cashback_estimado(request):
+    """% e R$ de cashback reais de um produto, consultados ASSIM QUE o link é colado no
+    conversor da home (antes de gerar o link) - o "até X%" genérico do catálogo não diz
+    nada sobre o produto específico. Pública (quem chega de anúncio ainda não tem
+    conta), por isso com limite por IP e cache por item_id.
+
+    Link com o item_id na própria URL resolve sem rede. Link curto (s.shopee.com.br,
+    shp.ee) abre a página da Shopee pra achar o produto (ver
+    ofertas/services.py::_texto_da_pagina_normalizado) - com timeout curto e o item_id
+    guardado em cache por URL, porque a rota é pública e o gunicorn tem 1 worker só. Se
+    não der pra identificar, responde "link_curto" e a home explica como ver o valor."""
+    url = request.GET.get("url", "").strip()
+    item_id = resolver_item_id_sem_rede(url)
+    if item_id is None:
+        host = urlparse(url).netloc.lower()
+        if not any(host == d or host.endswith("." + d) for d in DOMINIOS_LINK_CURTO):
+            return JsonResponse({"status": "nao_identificado"})
+        chave_url = f"cashback_estimado:url:{hashlib.sha256(url.encode()).hexdigest()}"
+        item_id = cache.get(chave_url)
+        if item_id is None:
+            item_id = resolver_item_id_com_rede(url, timeout=TIMEOUT_LINK_CURTO_SEGUNDOS)
+            if item_id is None:
+                return JsonResponse({"status": "link_curto"})
+            cache.set(chave_url, item_id, CACHE_ESTIMATIVA_SEGUNDOS)
+
+    chave = f"cashback_estimado:{item_id}"
+    resultado = cache.get(chave)
+    if resultado is None:
+        try:
+            oferta = buscar_oferta_por_item(item_id)
+            resultado = {
+                "status": "ok",
+                # Mesmo formato do floatformat:"-1" usado no resto da home (9,8 / 12).
+                "percentual": f"{oferta.percentual_cashback:.1f}".removesuffix(".0").replace(".", ","),
+                "valor": f"{oferta.valor_cashback_estimado:.2f}".replace(".", ","),
+            }
+        except SemComissaoError:
+            resultado = {"status": "sem_comissao"}
+        except (ShopeeConfigError, ShopeeAPIError, requests.RequestException, KeyError) as erro:
+            logger.warning("[links] estimativa ao vivo falhou pro item %s: %s", item_id, erro)
+            return JsonResponse({"status": "indisponivel"})
+        cache.set(chave, resultado, CACHE_ESTIMATIVA_SEGUNDOS)
+    return JsonResponse(resultado)

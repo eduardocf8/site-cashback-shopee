@@ -11,6 +11,23 @@ logger = logging.getLogger(__name__)
 API_VERSAO = "v21.0"
 TIMEOUT_SEGUNDOS = 5
 
+# Cookie gravado pelo banner de consentimento (templates/_meta_pixel.html) - "aceito"
+# ou "recusado"; ausente = a pessoa ainda não escolheu. Pixel e CAPI só rodam com
+# "aceito" (LGPD: cookie/rastreamento de publicidade não é essencial e precisa de
+# consentimento prévio).
+COOKIE_CONSENTIMENTO = "cashb_consentimento"
+CONSENTIMENTO_ACEITO = "aceito"
+
+
+# Cadastro não tem valor em dinheiro, mas a Meta acusa no Diagnóstico ("Envie
+# informações de moeda válidas") quando CompleteRegistration chega sem currency/value -
+# e otimiza pior as campanhas. Mesmo conteúdo no Pixel (accounts/dashboard.html).
+DADOS_CADASTRO = {"currency": "BRL", "value": 0}
+
+
+def tem_consentimento_de_marketing(request) -> bool:
+    return request.COOKIES.get(COOKIE_CONSENTIMENTO) == CONSENTIMENTO_ACEITO
+
 
 def gerar_event_id() -> str:
     """ID compartilhado entre o evento mandado pelo Pixel (navegador, ver
@@ -57,8 +74,13 @@ def enviar_evento(nome_evento: str, request, event_id: str, dados_customizados: 
     uma exceção - rastreamento de anúncio não pode derrubar uma ação real do usuário
     (cadastro, gerar link de cashback) se a Meta estiver fora do ar ou lenta. Timeout
     curto (5s) pelo mesmo motivo - isso roda no meio do fluxo normal da pessoa, não faz
-    sentido ela esperar muito por uma chamada que nem aparece pra ela."""
+    sentido ela esperar muito por uma chamada que nem aparece pra ela.
+
+    Também não manda nada sem consentimento de marketing no banner de cookies - a CAPI
+    é o mesmo rastreamento do Pixel por outro canal, então segue a mesma escolha."""
     if not settings.META_PIXEL_ID or not settings.META_CAPI_ACCESS_TOKEN:
+        return
+    if not tem_consentimento_de_marketing(request):
         return
 
     payload = {

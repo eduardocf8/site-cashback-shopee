@@ -629,7 +629,7 @@
         <script>
             {# event_id igual ao que a Conversions API já mandou em accounts/views.py::registrar - #}
             {# é assim que a Meta deduplica os dois lados desse mesmo evento de cadastro. #}
-            if (window.fbq) { fbq("track", "CompleteRegistration", {}, {eventID: "{{ evento_cadastro_pixel }}"}); }
+            if (window.fbq) { fbq("track", "CompleteRegistration", {currency: "BRL", value: 0}, {eventID: "{{ evento_cadastro_pixel }}"}); }
         </script>
     {% endif %}
 </body>

@@ -1,13 +1,13 @@
 {% extends "accounts/base.html" %}
 {% block titulo %}Política de Cookies{% endblock %}
-{% block meta_descricao %}Veja quais cookies a cash-b usa (apenas os essenciais de sessão e segurança) e como isso pode mudar no futuro.{% endblock %}
+{% block meta_descricao %}Veja quais cookies a cash-b usa: os essenciais de sessão e segurança e, só com a sua permissão, o Meta Pixel.{% endblock %}
 {% block largura_container %}760px{% endblock %}
 {% block conteudo %}
     <div class="nav-topo">
         <a href="{% url 'home' %}">&larr; Voltar pro início</a>
     </div>
     <h1>Política de Cookies</h1>
-    <p class="atualizado-em">Última atualização: 10 de setembro de 2026.</p>
+    <p class="atualizado-em">Última atualização: 16 de outubro de 2026.</p>
 
     <div class="texto-legal">
         <h2>O que são cookies</h2>
@@ -17,10 +17,10 @@
             você logado enquanto navega.
         </p>
 
-        <h2>Quais cookies a cash-b usa</h2>
+        <h2>Cookies essenciais</h2>
         <p>
-            Usamos apenas cookies <strong>estritamente necessários</strong> pro
-            funcionamento do site:
+            Estes cookies são <strong>estritamente necessários</strong> para o
+            funcionamento do site e não dependem de consentimento:
         </p>
         <ul>
             <li>
@@ -35,35 +35,53 @@
                 <strong>Cookie de segurança (CSRF)</strong> — protege os formulários
                 do site contra um tipo comum de ataque.
             </li>
+            <li>
+                <strong>Cookie de preferência de cookies</strong>
+                (<code>cashb_consentimento</code>) — guarda se você aceitou ou recusou
+                os cookies de publicidade abaixo, por 6 meses. Depois disso,
+                perguntamos de novo.
+            </li>
         </ul>
         <p>
-            Esses cookies são essenciais: sem eles, não é possível fazer login ou
-            usar formulários na cash-b (como gerar links ou pedir saque).
+            Sem eles, não é possível fazer login ou usar formulários na cash-b (como
+            gerar links ou pedir saque).
         </p>
 
-        <h2>Cookies de terceiros</h2>
+        <h2>Cookies de publicidade (só com a sua permissão)</h2>
         <p>
-            A cash-b usa o <strong>Meta Pixel</strong> (Facebook/Instagram), uma
-            ferramenta de medição de anúncios da Meta. Ela guarda cookies como
+            Se você clicar em <strong>Aceitar</strong> no aviso de cookies, a cash-b
+            ativa o <strong>Meta Pixel</strong> (Facebook/Instagram), uma ferramenta
+            de medição de anúncios da Meta. Ele guarda cookies como
             <code>_fbp</code> e <code>_fbc</code> no seu navegador e nos ajuda a
             entender quais páginas você visitou e quais ações realizou no site
             (por exemplo, ter se cadastrado), para medir e melhorar a performance
-            das nossas campanhas de anúncio. Também enviamos alguns desses eventos
-            diretamente do nosso servidor pra Meta (Conversions API), de forma
-            complementar ao Pixel — sem depender só de cookies do navegador.
+            das nossas campanhas de anúncio. Nesse caso, também enviamos alguns
+            desses eventos diretamente do nosso servidor para a Meta (Conversions
+            API), como complemento ao Pixel.
+        </p>
+        <p>
+            Enquanto você não aceitar, nem o Pixel nem esses envios pelo servidor
+            acontecem. Recusar não muda nada no seu cashback nem no uso do site.
         </p>
         <p>
             Não usamos Google Analytics nem outras ferramentas de terceiros além
-            da Meta. Se isso mudar no futuro, esta página será atualizada e, se
-            exigido por lei, vamos pedir seu consentimento antes de ativar qualquer
-            cookie não essencial.
+            da Meta. Se isso mudar, esta página será atualizada.
         </p>
 
         <h2>Como gerenciar cookies</h2>
         <p>
-            Você pode bloquear ou apagar cookies nas configurações do seu navegador a
-            qualquer momento. Como os cookies da cash-b são essenciais, bloqueá-los
-            impede o funcionamento normal do login e dos formulários do site.
+            Você pode mudar sua escolha quando quiser.
+            {% if meta_pixel_id %}
+                <a href="#" onclick="cashbGerenciarCookies(); return false;">Clique aqui para abrir as preferências de cookies</a>
+                (também tem o link "Gerenciar cookies" no rodapé da página inicial).
+            {% endif %}
+            Se você recusar depois de ter aceitado, apagamos os cookies da Meta
+            guardados pela cash-b no seu navegador.
+        </p>
+        <p>
+            Você também pode bloquear ou apagar cookies nas configurações do seu
+            navegador. Bloquear os cookies essenciais impede o funcionamento normal do
+            login e dos formulários do site.
         </p>
     </div>
 {% endblock %}

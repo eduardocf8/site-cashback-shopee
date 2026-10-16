@@ -9,7 +9,7 @@ from django.test import RequestFactory, TestCase, override_settings
 from django.urls import reverse
 
 from .brevo_email_backend import BrevoAPIEmailBackend
-from .meta_capi import _hash, enviar_evento, gerar_event_id
+from .meta_capi import COOKIE_CONSENTIMENTO, _hash, enviar_evento, gerar_event_id
 from .views import DIAS_SINCRONIZACAO_DIARIA, DIAS_SINCRONIZACAO_RECONCILIACAO
 
 
@@ -397,9 +397,11 @@ class MetaCapiTests(TestCase):
     def setUp(self):
         self.factory = RequestFactory()
 
-    def _request(self, usuario=None, **cookies):
+    def _request(self, usuario=None, consentimento="aceito", **cookies):
         request = self.factory.get("/qualquer-pagina/")
         request.COOKIES = cookies
+        if consentimento is not None:
+            request.COOKIES[COOKIE_CONSENTIMENTO] = consentimento
         request.user = usuario or AnonymousUser()
         return request
 
@@ -414,6 +416,21 @@ class MetaCapiTests(TestCase):
     @patch("cashback_shopee.meta_capi.requests.post")
     def test_sem_credenciais_configuradas_nao_manda_nada(self, mock_post):
         enviar_evento("TesteEvento", self._request(), gerar_event_id())
+
+        mock_post.assert_not_called()
+
+    @override_settings(META_PIXEL_ID="123456", META_CAPI_ACCESS_TOKEN="token-teste")
+    @patch("cashback_shopee.meta_capi.requests.post")
+    def test_sem_resposta_no_banner_de_cookies_nao_manda_nada(self, mock_post):
+        """LGPD: sem consentimento de marketing a CAPI segue a mesma regra do Pixel."""
+        enviar_evento("TesteEvento", self._request(consentimento=None), gerar_event_id())
+
+        mock_post.assert_not_called()
+
+    @override_settings(META_PIXEL_ID="123456", META_CAPI_ACCESS_TOKEN="token-teste")
+    @patch("cashback_shopee.meta_capi.requests.post")
+    def test_cookies_recusados_no_banner_nao_manda_nada(self, mock_post):
+        enviar_evento("TesteEvento", self._request(consentimento="recusado"), gerar_event_id())
 
         mock_post.assert_not_called()
 
@@ -500,3 +517,24 @@ class MetaCapiTests(TestCase):
 
         payload = mock_post.call_args.kwargs["json"]
         self.assertEqual(payload["test_event_code"], "TEST12345")
+
+
+class BannerConsentimentoCookiesTests(TestCase):
+    """templates/_meta_pixel.html: o Pixel só pode sair do navegador depois do
+    "Aceitar" no banner - nada de <script src> nem <img> da Meta direto no HTML."""
+
+    @override_settings(META_PIXEL_ID="123456")
+    def test_pagina_tem_banner_e_nao_carrega_o_pixel_direto_no_html(self):
+        resposta = self.client.get(reverse("cookies"))
+
+        self.assertContains(resposta, "cashbGerenciarCookies")
+        self.assertContains(resposta, f'var COOKIE = "{COOKIE_CONSENTIMENTO}"')
+        self.assertNotContains(resposta, "<noscript><img")
+        self.assertNotContains(resposta, 'src="https://connect.facebook.net')
+
+    @override_settings(META_PIXEL_ID="")
+    def test_sem_pixel_configurado_nao_tem_banner(self):
+        resposta = self.client.get(reverse("cookies"))
+
+        self.assertNotContains(resposta, "cashbGerenciarCookies")
+        self.assertNotContains(resposta, "fbevents.js")

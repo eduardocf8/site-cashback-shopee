@@ -143,7 +143,9 @@
             color: var(--success); font-size: 13px; font-weight: 600;
             opacity: 0; max-height: 0; overflow: hidden; transition: opacity 0.25s ease, max-height 0.25s ease;
         }
-        .conversor-hero .estimativa-cashback.visivel { opacity: 1; max-height: 60px; margin-top: 8px; padding: 8px 12px; }
+        .conversor-hero .estimativa-cashback { text-align: center; }
+        .conversor-hero .estimativa-cashback.visivel { opacity: 1; max-height: 120px; margin-top: 8px; padding: 8px 12px; }
+        .conversor-hero .estimativa-cashback.neutra { background: var(--paper-2); color: var(--ink-soft); }
         .conversor-hero .resultado-link {
             margin-top: 14px; padding: 8px; border-radius: 8px; background: var(--paper-2);
             border: 1px dashed var(--line); text-align: center;
@@ -154,9 +156,10 @@
         .conversor-hero .resultado-sub { margin: 0 0 8px; font-size: 12px; color: var(--muted); }
         .conversor-hero .resultado-url { display: block; word-break: break-all; font-size: 13px; font-weight: 600; font-family: "JB Mono", ui-monospace, monospace; }
 
+        .conversor-hero label { text-align: center; }
+        .conversor-hero input[type="url"] { text-align: center; }
         @media (min-width: 861px) {
-            .conversor-hero label { text-align: center; font-size: 15px; }
-            .conversor-hero input[type="url"] { text-align: center; }
+            .conversor-hero label { font-size: 15px; }
         }
 
         .selo-sucesso { position: relative; width: 28px; height: 28px; margin: 0 auto 8px; }
@@ -614,6 +617,7 @@
                 <a href="{% url 'termos_de_uso' %}">Termos de Uso</a>
                 <a href="{% url 'privacidade' %}">Privacidade</a>
                 <a href="{% url 'cookies' %}">Cookies</a>
+                {% if meta_pixel_id %}<a href="#" onclick="cashbGerenciarCookies(); return false;">Gerenciar cookies</a>{% endif %}
             </div>
             <div class="rodape-redes">
                 <a href="{{ url_instagram }}" target="_blank" rel="noopener noreferrer" aria-label="cash-b no Instagram">
@@ -662,6 +666,37 @@
             if (!input || !estimativa) return;
 
             var dominiosValidos = ["shopee.com.br", "shp.ee"];
+            var textoGenerico = estimativa.textContent.trim();
+            var urlEstimativa = "{% url 'cashback_estimado' %}";
+            var temporizador = null;
+            var consultaAtual = null;
+
+            function mostrar(texto, neutra) {
+                estimativa.textContent = texto;
+                estimativa.classList.toggle("neutra", !!neutra);
+            }
+
+            // Consulta a % real do produto (links/views.py::cashback_estimado) - o texto
+            // genérico "até X%" fica só de reserva, se a consulta não der certo.
+            function consultar(url) {
+                if (consultaAtual) consultaAtual.abort();
+                consultaAtual = new AbortController();
+                mostrar("🔎 Consultando o cashback desse produto...");
+                fetch(urlEstimativa + "?" + new URLSearchParams({ url: url }), { signal: consultaAtual.signal })
+                    .then(function (r) { return r.ok ? r.json() : { status: "indisponivel" }; })
+                    .then(function (dados) {
+                        if (dados.status === "ok") {
+                            mostrar("💰 Esse produto rende " + dados.percentual + "% de cashback (R$ " + dados.valor + " de volta).");
+                        } else if (dados.status === "sem_comissao") {
+                            mostrar("A Shopee não oferece comissão para esse produto, portanto também não há cashback.", true);
+                        } else if (dados.status === "link_curto") {
+                            mostrar(textoGenerico + " Não consegui identificar o produto desse link curto: para ver a % exata, cole o link completo da página do produto.");
+                        } else {
+                            mostrar(textoGenerico);
+                        }
+                    })
+                    .catch(function (erro) { if (erro.name !== "AbortError") mostrar(textoGenerico); });
+            }
 
             function pareceLinkShopee(valor) {
                 try {
@@ -675,7 +710,11 @@
             }
 
             function atualizar() {
-                estimativa.classList.toggle("visivel", pareceLinkShopee(input.value.trim()));
+                var valor = input.value.trim();
+                var valido = pareceLinkShopee(valor);
+                estimativa.classList.toggle("visivel", valido);
+                clearTimeout(temporizador);
+                if (valido) temporizador = setTimeout(function () { consultar(valor); }, 350);
             }
 
             input.addEventListener("input", atualizar);

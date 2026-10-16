@@ -18,7 +18,7 @@ from pedidos.models import Pedido
 from saques.models import Saque
 from saques.services import calcular_saldo_disponivel
 
-from cashback_shopee.meta_capi import enviar_evento, gerar_event_id
+from cashback_shopee.meta_capi import DADOS_CADASTRO, enviar_evento, gerar_event_id
 
 from .forms import ChavePixForm, EditarPerfilForm, RegistroForm
 from .middleware import SESSION_KEY_ORIGEM
@@ -64,7 +64,7 @@ def registrar(request):
             # não consegue mais inferir sozinho qual backend usar com 2 configurados.
             login(request, usuario, backend="django.contrib.auth.backends.ModelBackend")
             event_id = gerar_event_id()
-            enviar_evento("CompleteRegistration", request, event_id)
+            enviar_evento("CompleteRegistration", request, event_id, DADOS_CADASTRO)
             request.session[SESSION_KEY_EVENTO_CADASTRO_PIXEL] = event_id
             if proximo and url_has_allowed_host_and_scheme(
                 proximo, allowed_hosts={request.get_host()}, require_https=request.is_secure()
