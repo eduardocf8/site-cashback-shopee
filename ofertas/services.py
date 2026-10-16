@@ -5,6 +5,7 @@ import time
 import unicodedata
 from decimal import Decimal, InvalidOperation
 from pathlib import Path
+from urllib.parse import unquote
 
 import requests
 from django.conf import settings
@@ -89,11 +90,12 @@ class SemComissaoError(LinkProdutoInvalidoError):
     quem já trata esse tipo de erro genericamente continuar funcionando sem mudança."""
 
 
-# Dois formatos de link de produto observados na Shopee: o mais antigo
+# Formatos de link de produto observados na Shopee: o mais antigo
 # .../produto-exemplo-i.<shopId>.<itemId> (documentado em links/forms.py,
-# LinkProdutoForm) e .../product/<shopId>/<itemId>, que apareceu resolvendo um link
-# curto de verdade (ver ROADMAP.md, Fase 35).
-PADRAO_ITEM_ID_NA_URL = re.compile(r"-i\.\d+\.(\d+)|/product/\d+/(\d+)")
+# LinkProdutoForm), .../product/<shopId>/<itemId> (ROADMAP.md, Fase 35) e
+# .../opaanlp/<shopId>/<itemId> (destino embutido na página de links curtos
+# s.shopee.com.br, ver _texto_da_pagina_normalizado).
+PADRAO_ITEM_ID_NA_URL = re.compile(r"-i\.\d+\.(\d+)|/(?:product|opaanlp)/\d+/(\d+)")
 
 
 def resolver_item_id_sem_rede(url: str) -> int | None:
@@ -110,7 +112,16 @@ def resolver_item_id_sem_rede(url: str) -> int | None:
     return None
 
 
-def _resolver_item_id(url: str) -> int:
+def _texto_da_pagina_normalizado(html: str) -> str:
+    """O link curto (s.shopee.com.br, br.shp.ee) responde 200 sem redirecionamento HTTP:
+    é uma página que redireciona via JavaScript, com o endereço do produto embutido -
+    mas escrito com as barras escapadas de JSON ("https:\\/\\/shopee.com.br\\/product\\/1\\/2")
+    e também em codificação de URL ("navigate_url=https%3A%2F%2Fshopee.com.br%2Fproduct..."),
+    formas que o PADRAO_ITEM_ID_NA_URL não reconhece. Desfaz as duas antes de procurar."""
+    return unquote(html.replace("\\/", "/"))
+
+
+def _resolver_item_id(url: str, timeout: int = 10) -> int:
     """Extrai o item_id de um link de produto da Shopee. Se for link curto (shp.ee,
     s.shopee.com.br), o padrão -i.<shopId>.<itemId> só aparece depois do
     redirecionamento, então segue ele primeiro - com um User-Agent de navegador de
@@ -149,11 +160,13 @@ def _resolver_item_id(url: str) -> int:
         "Sec-Fetch-Dest": "document",
     }
     try:
-        resposta = requests.get(url, allow_redirects=True, timeout=10, headers=cabecalhos)
+        resposta = requests.get(url, allow_redirects=True, timeout=timeout, headers=cabecalhos)
     except requests.RequestException as erro:
         raise LinkProdutoInvalidoError(f"Não consegui abrir o link {url}: {erro}") from erro
 
-    match = PADRAO_ITEM_ID_NA_URL.search(resposta.url) or PADRAO_ITEM_ID_NA_URL.search(resposta.text)
+    match = PADRAO_ITEM_ID_NA_URL.search(resposta.url) or PADRAO_ITEM_ID_NA_URL.search(
+        _texto_da_pagina_normalizado(resposta.text)
+    )
     if not match:
         raise LinkProdutoInvalidoError(
             f"Não consegui identificar o produto a partir do link {url} "
@@ -166,7 +179,7 @@ def _resolver_item_id(url: str) -> int:
     return int(match.group(1) or match.group(2))
 
 
-def resolver_item_id_com_rede(url: str) -> int | None:
+def resolver_item_id_com_rede(url: str, timeout: int = 10) -> int | None:
     """Como resolver_item_id_sem_rede, mas segue redirecionamento quando precisa
     (pode levar até 10s pra link curto) - só chame isso FORA do ciclo de requisição
     de um usuário. Usado pela tarefa agendada que tenta resolver, aos poucos, o
@@ -175,7 +188,7 @@ def resolver_item_id_com_rede(url: str) -> int | None:
     Retorna None em vez de levantar erro - "não identificado" é um resultado normal
     aqui, não uma falha."""
     try:
-        return _resolver_item_id(url.strip().strip("<>\"' "))
+        return _resolver_item_id(url.strip().strip("<>\"' "), timeout=timeout)
     except LinkProdutoInvalidoError:
         return None
 

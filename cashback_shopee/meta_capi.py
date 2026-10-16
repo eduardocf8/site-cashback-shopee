@@ -19,6 +19,12 @@ COOKIE_CONSENTIMENTO = "cashb_consentimento"
 CONSENTIMENTO_ACEITO = "aceito"
 
 
+# Cadastro não tem valor em dinheiro, mas a Meta acusa no Diagnóstico ("Envie
+# informações de moeda válidas") quando CompleteRegistration chega sem currency/value -
+# e otimiza pior as campanhas. Mesmo conteúdo no Pixel (accounts/dashboard.html).
+DADOS_CADASTRO = {"currency": "BRL", "value": 0}
+
+
 def tem_consentimento_de_marketing(request) -> bool:
     return request.COOKIES.get(COOKIE_CONSENTIMENTO) == CONSENTIMENTO_ACEITO
 

@@ -158,13 +158,14 @@ class MetaPixelCadastroTests(TestCase):
         self.client.post(reverse("registrar"), self._dados_cadastro())
 
         mock_enviar_evento.assert_called_once()
-        nome_evento, _request, event_id = mock_enviar_evento.call_args[0]
+        nome_evento, _request, event_id, dados_customizados = mock_enviar_evento.call_args[0]
         self.assertEqual(nome_evento, "CompleteRegistration")
         self.assertTrue(event_id)
+        self.assertEqual(dados_customizados, {"currency": "BRL", "value": 0})
 
     def test_dashboard_dispara_o_pixel_do_navegador_so_na_primeira_visita(self):
         resposta = self.client.post(reverse("registrar"), self._dados_cadastro(), follow=True)
-        self.assertContains(resposta, 'fbq("track", "CompleteRegistration"')
+        self.assertContains(resposta, 'fbq("track", "CompleteRegistration", {currency: "BRL", value: 0}')
 
         resposta_seguinte = self.client.get(reverse("dashboard"))
         self.assertNotContains(resposta_seguinte, 'fbq("track", "CompleteRegistration"')
