@@ -614,6 +614,7 @@
                 <a href="{% url 'termos_de_uso' %}">Termos de Uso</a>
                 <a href="{% url 'privacidade' %}">Privacidade</a>
                 <a href="{% url 'cookies' %}">Cookies</a>
+                {% if meta_pixel_id %}<a href="#" onclick="cashbGerenciarCookies(); return false;">Gerenciar cookies</a>{% endif %}
             </div>
             <div class="rodape-redes">
                 <a href="{{ url_instagram }}" target="_blank" rel="noopener noreferrer" aria-label="cash-b no Instagram">

@@ -1,29 +1,143 @@
 {% comment %}
-Meta Pixel (rastreamento de conversão pra campanha de anúncio no Instagram/Facebook).
-Incluir dentro do <head>, o mais no topo possível (fbq precisa existir antes de
-qualquer outro script tentar chamar fbq('track', ...) - ver dashboard.html).
+Meta Pixel (rastreamento de conversão pra campanha de anúncio no Instagram/Facebook)
++ banner de consentimento de cookies. Incluir dentro do <head>, o mais no topo
+possível (fbq precisa existir antes de qualquer outro script tentar chamar
+fbq('track', ...) - ver dashboard.html).
 
 Sem META_PIXEL_ID configurado (settings.py), meta_pixel_id vem vazio e nada é
-renderizado - recurso desligado até alguém configurar.
+renderizado - recurso desligado até alguém configurar. Sem Pixel o site só usa
+cookies essenciais, então também não precisa de banner.
+
+Consentimento (LGPD): o fbq existe desde o início só como fila local - chamadas como
+fbq('track', ...) ficam guardadas no navegador, sem nenhuma requisição à Meta. O
+fbevents.js (que grava _fbp e manda os eventos) só é carregado depois de "Aceitar" no
+banner; aí ele processa a fila acumulada normalmente. Com "Recusar" (ou sem resposta)
+nada sai do navegador. A escolha fica no cookie {{ cookie_consentimento }}, o mesmo que
+a Conversions API lê no servidor (cashback_shopee/meta_capi.py) - o evento server-side
+segue a mesma escolha.
 
 O mesmo evento de conversão também é mandado pelo servidor via Conversions API (ver
 cashback_shopee/meta_capi.py) com o event_id compartilhado - a CAPI existe porque o
 Pixel sozinho perde boa parte dos eventos hoje (iOS 14.5+, Safari ITP, ad blocker).
 {% endcomment %}
 {% if meta_pixel_id %}
+<style>
+.cb-cookies {
+    position: fixed; left: 16px; right: 16px; bottom: 16px; z-index: 9999;
+    max-width: 560px; margin: 0 auto; padding: 16px 18px;
+    background: #fff; color: #111827; border: 1px solid #e0dcef; border-radius: 12px;
+    box-shadow: 0 10px 30px rgba(17, 24, 39, .18);
+    font-family: inherit; font-size: 14px; line-height: 1.5;
+}
+.cb-cookies p { margin: 0 0 12px; }
+.cb-cookies a { color: #6d28d9; font-weight: 600; }
+.cb-cookies-botoes { display: flex; gap: 10px; }
+.cb-cookies-botoes button {
+    flex: 1; padding: 10px 14px; border-radius: 8px; border: 2px solid #6d28d9;
+    font: inherit; font-weight: 600; cursor: pointer;
+}
+.cb-cookies-recusar { background: #fff; color: #6d28d9; }
+.cb-cookies-aceitar { background: #6d28d9; color: #fff; }
+.cb-cookies-recusar:hover { background: #f1eefb; }
+.cb-cookies-aceitar:hover { background: #4c1d95; border-color: #4c1d95; }
+</style>
 <script>
-!function(f,b,e,v,n,t,s)
-{if(f.fbq)return;n=f.fbq=function(){n.callMethod?
-n.callMethod.apply(n,arguments):n.queue.push(arguments)};
-if(!f._fbq)f._fbq=n;n.push=n;n.loaded=!0;n.version='2.0';
-n.queue=[];t=b.createElement(e);t.async=!0;
-t.src=v;s=b.getElementsByTagName(e)[0];
-s.parentNode.insertBefore(t,s)}(window, document,'script',
-'https://connect.facebook.net/en_US/fbevents.js');
-fbq('init', '{{ meta_pixel_id }}');
-fbq('track', 'PageView');
+(function (w, d) {
+    var COOKIE = "{{ cookie_consentimento|escapejs }}";
+    var ACEITO = "{{ consentimento_aceito|escapejs }}";
+    var RECUSADO = "recusado";
+    var VALIDADE_SEGUNDOS = 60 * 60 * 24 * 180; // 6 meses - depois disso pergunta de novo
+
+    function lerEscolha() {
+        var m = d.cookie.match(new RegExp("(?:^|; )" + COOKIE + "=([^;]*)"));
+        return m ? m[1] : null;
+    }
+
+    function gravarEscolha(valor) {
+        d.cookie = COOKIE + "=" + valor + "; Max-Age=" + VALIDADE_SEGUNDOS + "; Path=/; SameSite=Lax"
+            + (location.protocol === "https:" ? "; Secure" : "");
+    }
+
+    // Fila local do fbq (mesmo stub do snippet oficial da Meta, só que SEM inserir o
+    // fbevents.js) - nenhuma requisição sai daqui enquanto não houver consentimento.
+    if (!w.fbq) {
+        var n = w.fbq = function () {
+            n.callMethod ? n.callMethod.apply(n, arguments) : n.queue.push(arguments);
+        };
+        if (!w._fbq) w._fbq = n;
+        n.push = n; n.loaded = true; n.version = "2.0"; n.queue = [];
+    }
+    fbq("init", "{{ meta_pixel_id|escapejs }}");
+    fbq("track", "PageView");
+
+    var pixelCarregado = false;
+    function carregarPixel() {
+        if (pixelCarregado) return;
+        pixelCarregado = true;
+        var s = d.createElement("script");
+        s.async = true;
+        s.src = "https://connect.facebook.net/en_US/fbevents.js";
+        d.head.appendChild(s);
+    }
+
+    function apagarCookiesDaMeta() {
+        // _fbp/_fbc ficam no domínio raiz (.cash-b.com); apaga nas duas variações.
+        var raiz = location.hostname.replace(/^www\./, "");
+        ["_fbp", "_fbc"].forEach(function (nome) {
+            d.cookie = nome + "=; Max-Age=0; Path=/";
+            d.cookie = nome + "=; Max-Age=0; Path=/; Domain=." + raiz;
+        });
+    }
+
+    function fecharBanner() {
+        var b = d.getElementById("cb-cookies");
+        if (b) b.remove();
+    }
+
+    function escolher(valor) {
+        var anterior = lerEscolha();
+        gravarEscolha(valor);
+        fecharBanner();
+        if (valor === ACEITO) {
+            carregarPixel();
+        } else {
+            apagarCookiesDaMeta();
+            // Pixel já rodando nesta página (aceitou antes e mudou de ideia agora): só
+            // recarregando a página ele para de vez.
+            if (anterior === ACEITO && pixelCarregado) location.reload();
+        }
+    }
+
+    function mostrarBanner() {
+        if (d.getElementById("cb-cookies")) return;
+        var b = d.createElement("div");
+        b.id = "cb-cookies";
+        b.className = "cb-cookies";
+        b.setAttribute("role", "region");
+        b.setAttribute("aria-label", "Preferências de cookies");
+        b.innerHTML =
+            '<p>A cash-b usa cookies essenciais para o site funcionar. Com a sua permissão, '
+            + 'também usamos o Meta Pixel para medir nossos anúncios. '
+            + '<a href="{% url "cookies" %}">Saiba mais</a></p>'
+            + '<div class="cb-cookies-botoes">'
+            + '<button type="button" class="cb-cookies-recusar">Recusar</button>'
+            + '<button type="button" class="cb-cookies-aceitar">Aceitar</button>'
+            + '</div>';
+        b.querySelector(".cb-cookies-recusar").addEventListener("click", function () { escolher(RECUSADO); });
+        b.querySelector(".cb-cookies-aceitar").addEventListener("click", function () { escolher(ACEITO); });
+        d.body.appendChild(b);
+    }
+
+    // "Gerenciar cookies" (rodapé da home e página de cookies) reabre o banner.
+    w.cashbGerenciarCookies = mostrarBanner;
+
+    var escolha = lerEscolha();
+    if (escolha === ACEITO) {
+        carregarPixel();
+    } else if (escolha === null) {
+        if (d.readyState === "loading") d.addEventListener("DOMContentLoaded", mostrarBanner);
+        else mostrarBanner();
+    }
+})(window, document);
 </script>
-<noscript><img height="1" width="1" style="display:none"
-src="https://www.facebook.com/tr?id={{ meta_pixel_id }}&ev=PageView&noscript=1"
-/></noscript>
 {% endif %}
