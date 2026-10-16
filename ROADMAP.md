@@ -2536,8 +2536,8 @@ de caminho, `/opaanlp/<loja>/<item>`. Não era bloqueio nem JavaScript obrigató
       a acertar os links curtos - inclusive os cliques antigos ainda pendentes.
 - [x] Testes com trechos reais (encurtados) das duas páginas.
 
-Pendente: confirmar a partir do servidor do Render (IP diferente do ambiente onde
-foi testado) com `python manage.py testar_resolucao_links_curtos`.
+Confirmado em produção (16/10): todos os links curtos convertidos no site trazem a %
+de cashback.
 
 ---
 
@@ -2611,9 +2611,12 @@ home - é a dúvida que mais gera desconfiança em quem não conhece cashback.
       do app não mostra a %, resolvido na Fase 60.
 
 Outras ideias do benchmark, ainda não feitas (ordem sugerida):
-1. [ ] **Linha do tempo + exclusões antes da compra** (ShopBack): "aparece na conta em
-       ~X dias · validado após o prazo de devolução · liberado no dia 1º do 2º mês"
-       no resultado do conversor e nas ofertas, mais o que não gera cashback.
+1. [x] **Prazos + exclusões antes da compra** (ShopBack): no resultado do conversor,
+       "O pedido aparece na sua conta em até 2 dias" + "Prazos e o que não gera
+       cashback" fechado até a pessoa tocar (versão completa sempre aberta ficou
+       poluída; linha nos cards de oferta descartada pelo mesmo motivo). FAQ e painel
+       passaram de "alguns dias" para "em até 2 dias" (sincronização diária das 10h,
+       com folga pra atraso da Shopee).
 2. [ ] **Reclamação de compra não registrada** (TopCashback/Rakuten): a pessoa informa
        o nº do pedido Shopee; se bater com um pedido "fora do site" já sincronizado,
        o admin vincula com 1 clique.

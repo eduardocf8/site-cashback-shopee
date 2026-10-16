@@ -362,6 +362,8 @@ class HomeConversaoCashbackRealTests(TestCase):
         )
 
         self.assertContains(resposta, "Cashback ativado! 🎉")
+        self.assertContains(resposta, "O pedido aparece na sua conta em até 2 dias.")
+        self.assertContains(resposta, "Prazos e o que não gera cashback")
         self.assertContains(resposta, "Esse produto rende 8,0% de cashback (R$ 4,00 de volta).")
 
     @patch("links.views.buscar_oferta_por_link")
@@ -398,7 +400,7 @@ class HomeConversaoCashbackRealTests(TestCase):
         )
 
         self.assertContains(resposta, "Link gerado!")
-        self.assertContains(resposta, "Para conferir o cashback desse produto, acesse sua conta em alguns dias.")
+        self.assertContains(resposta, "Para conferir o cashback desse produto, acesse sua conta em até 2 dias.")
         self.assertContains(resposta, "https://shope.ee/produto123")
         self.assertNotContains(resposta, "Cashback ativado")
         self.assertNotContains(resposta, '<span class="confete confete-1">')
