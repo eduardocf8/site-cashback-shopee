@@ -31,3 +31,22 @@ def validar_cpf(cpf: str) -> str:
         raise ValidationError("CPF inválido.")
 
     return digitos
+
+
+def validar_celular(celular: str) -> str:
+    """Celular brasileiro: DDD + 9 + 8 dígitos. Aceita formatado e com +55; devolve só
+    os 11 dígitos."""
+    digitos = _apenas_digitos(celular)
+    if len(digitos) == 13 and digitos.startswith("55"):
+        digitos = digitos[2:]
+    if len(digitos) != 11 or digitos[2] != "9" or digitos[0] == "0":
+        raise ValidationError("Informe um celular válido com DDD, ex: (11) 98765-4321.")
+    return digitos
+
+
+def validar_nome_completo(nome: str) -> str:
+    """Nome e sobrenome - é comparado com o titular da chave Pix."""
+    nome = " ".join((nome or "").split())
+    if len(nome.split(" ")) < 2:
+        raise ValidationError("Informe seu nome completo (nome e sobrenome).")
+    return nome

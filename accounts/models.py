@@ -31,9 +31,47 @@ class User(AbstractUser):
         unique=True,
         help_text="Apenas números, sem pontos ou traço.",
     )
+    nome_completo = models.CharField(
+        "Nome completo", max_length=150, blank=True,
+        help_text="Nome real da pessoa - comparado com o titular da chave Pix (accounts/verificacao_pix.py). "
+        "Vazio só em contas criadas antes de o campo existir.",
+    )
+    celular = models.CharField(
+        "Celular", max_length=11, blank=True,
+        help_text="DDD + número, só dígitos (ex: 11987654321). Vazio só em contas antigas.",
+    )
     chave_pix = models.CharField("Chave Pix", max_length=140, blank=True)
     tipo_chave_pix = models.CharField(
         "Tipo da chave Pix", max_length=10, choices=TIPO_CHAVE_CHOICES, blank=True
+    )
+    # Verificação da titularidade da chave Pix na Asaas (accounts/verificacao_pix.py):
+    # o CPF do titular da chave tem que bater com o CPF da conta. Bloqueia CPF de
+    # gerador (não tem chave Pix de ninguém) e saque pra chave de outra pessoa.
+    PIX_NAO_VERIFICADA = ""
+    PIX_VERIFICADA = "verificada"
+    PIX_RECUSADA = "recusada"
+    PIX_PENDENTE = "pendente"
+    PIX_STATUS_CHOICES = [
+        (PIX_NAO_VERIFICADA, "Não verificada"),
+        (PIX_VERIFICADA, "Verificada"),
+        (PIX_RECUSADA, "Recusada (titular não confere)"),
+        (PIX_PENDENTE, "Verificação pendente"),
+    ]
+    chave_pix_status = models.CharField(
+        "Verificação da chave Pix", max_length=12, choices=PIX_STATUS_CHOICES, blank=True, default="",
+    )
+    chave_pix_titular_nome = models.CharField(
+        "Titular da chave Pix (Asaas)", max_length=200, blank=True,
+        help_text="Nome devolvido pela Asaas na consulta da chave - conferir no admin antes de aprovar saques.",
+    )
+    chave_pix_titular_documento = models.CharField(
+        "CPF/CNPJ do titular (mascarado)", max_length=20, blank=True,
+    )
+    chave_pix_verificada_em = models.DateTimeField("Chave Pix verificada em", null=True, blank=True)
+    chave_pix_nome_confere = models.BooleanField(
+        "Nome do titular confere", null=True, blank=True,
+        help_text="Nome completo x titular devolvido pela Asaas. Não bloqueia sozinho (bancos abreviam "
+        "nomes) - Não = conferir no admin antes de aprovar saques.",
     )
     email_verificado = models.BooleanField("E-mail verificado", default=False)
     aceita_email_marketing = models.BooleanField(
@@ -70,6 +108,10 @@ class User(AbstractUser):
             codigo = "".join(secrets.choice(ALFABETO_CODIGO_INDICACAO) for _ in range(TAMANHO_CODIGO_INDICACAO))
             if not cls.objects.filter(codigo_indicacao=codigo).exists():
                 return codigo
+
+    @property
+    def chave_pix_verificada(self) -> bool:
+        return bool(self.chave_pix) and self.chave_pix_status == self.PIX_VERIFICADA
 
     def __str__(self):
         return self.username

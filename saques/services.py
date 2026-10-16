@@ -29,6 +29,11 @@ class ChavePixNaoConfiguradaError(Exception):
     """O usuário ainda não cadastrou uma chave Pix."""
 
 
+class ChavePixNaoVerificadaError(Exception):
+    """Titular da chave Pix não confere com o CPF da conta, ou ainda não deu pra
+    confirmar com o banco (accounts/verificacao_pix.py)."""
+
+
 class ValorAbaixoDoMinimoError(Exception):
     """O saldo disponível é menor que o valor mínimo de saque."""
 
@@ -61,10 +66,34 @@ def calcular_resumo_saldo_nav(usuario) -> dict:
     }
 
 
+def _exigir_chave_verificada(usuario) -> None:
+    """O saque só sai pra chave Pix cujo titular é o dono do CPF da conta. Chave antiga
+    (cadastrada antes da verificação existir) ou pendente é conferida agora."""
+    from accounts.verificacao_pix import LimiteDeTentativasError, verificar_chave_pix
+
+    if usuario.chave_pix_verificada:
+        return
+    status = usuario.chave_pix_status
+    if status in (usuario.PIX_NAO_VERIFICADA, usuario.PIX_PENDENTE):
+        try:
+            status = verificar_chave_pix(usuario)
+        except LimiteDeTentativasError as erro:
+            raise ChavePixNaoVerificadaError(str(erro)) from erro
+    if status == usuario.PIX_RECUSADA:
+        raise ChavePixNaoVerificadaError(
+            "Sua chave Pix não está no CPF da sua conta. Cadastre uma chave Pix no seu nome e CPF para sacar."
+        )
+    if status != usuario.PIX_VERIFICADA:
+        raise ChavePixNaoVerificadaError(
+            "Ainda não conseguimos confirmar o titular da sua chave Pix com o banco. Tente de novo mais tarde."
+        )
+
+
 def solicitar_saque(usuario) -> Saque:
     """Cria uma solicitação de saque do saldo disponível total do usuário."""
     if not usuario.chave_pix or not usuario.tipo_chave_pix:
         raise ChavePixNaoConfiguradaError("Cadastre sua chave Pix antes de solicitar um saque.")
+    _exigir_chave_verificada(usuario)
 
     saldo_disponivel = calcular_saldo_disponivel(usuario)
     if saldo_disponivel < settings.SAQUE_VALOR_MINIMO:

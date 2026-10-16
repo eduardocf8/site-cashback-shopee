@@ -60,7 +60,7 @@ class RegistrarComIndicacaoTests(TestCase):
             "username": "novaconta",
             "email": "nova@example.com",
             "cpf": "14783246947",
-            "password1": "senha-forte-123",
+            "nome_completo": "Nova Conta Teste", "password1": "senha-forte-123",
             "password2": "senha-forte-123",
         }
         dados.update(extra)
@@ -114,7 +114,7 @@ class RegistrarComNextTests(TestCase):
             "username": "novaconta",
             "email": "nova@example.com",
             "cpf": "14783246947",
-            "password1": "senha-forte-123",
+            "nome_completo": "Nova Conta Teste", "password1": "senha-forte-123",
             "password2": "senha-forte-123",
         }
         dados.update(extra)
@@ -148,7 +148,7 @@ class MetaPixelCadastroTests(TestCase):
     def _dados_cadastro(self, **extra):
         dados = {
             "username": "novaconta", "email": "nova@example.com", "cpf": "14783246947",
-            "password1": "senha-forte-123", "password2": "senha-forte-123",
+            "nome_completo": "Nova Conta Teste", "password1": "senha-forte-123", "password2": "senha-forte-123",
         }
         dados.update(extra)
         return dados
@@ -1785,7 +1785,7 @@ class OrigemCadastroTests(TestCase):
             "username": "novaconta",
             "email": "nova@example.com",
             "cpf": "14783246947",
-            "password1": "senha-forte-123",
+            "nome_completo": "Nova Conta Teste", "password1": "senha-forte-123",
             "password2": "senha-forte-123",
         })
         return User.objects.get(username="novaconta")
@@ -1812,3 +1812,148 @@ class OrigemCadastroTests(TestCase):
         call_command("funil_cadastros", "--origem", "pinterest", stdout=saida)
         self.assertIn("(origem: pinterest)", saida.getvalue())
         self.assertRegex(saida.getvalue(), r"cadastros\s+1\b")
+
+
+TITULAR_OK = {"owner": {"name": "Ana Maria da Silva", "cpfCnpj": "***.533.447-**"}}  # CPF 39053344705
+
+
+class VerificacaoChavePixTests(TestCase):
+    """Fase 61: o titular da chave Pix (Asaas) tem que ser o CPF da conta."""
+
+    def setUp(self):
+        from django.core.cache import cache as cache_padrao
+        cache_padrao.clear()
+        self.usuario = User.objects.create_user(
+            username="ana", password="senha123", cpf="39053344705", nome_completo="Ana Silva",
+            chave_pix="ana@ex.com", tipo_chave_pix="EMAIL",
+        )
+
+    def test_cpf_confere_so_nas_posicoes_visiveis(self):
+        from .verificacao_pix import cpf_confere
+        self.assertTrue(cpf_confere("39053344705", "***.533.447-**"))
+        self.assertTrue(cpf_confere("39053344705", "390.533.447-05"))  # se vier sem máscara
+        self.assertFalse(cpf_confere("39053344705", "***.533.448-**"))
+        self.assertFalse(cpf_confere("39053344705", "**.533.447/0001-**"))  # CNPJ
+        self.assertFalse(cpf_confere("39053344705", "***.***.***-**"))
+        self.assertFalse(cpf_confere("39053344705", ""))
+
+    def test_nomes_conferem_por_primeiro_nome_e_ultimo_sobrenome(self):
+        from .verificacao_pix import nomes_conferem
+        self.assertTrue(nomes_conferem("Ana Silva", "ANA MARIA DA SILVA"))
+        self.assertTrue(nomes_conferem("João Souza", "Joao Pedro de Souza"))
+        self.assertFalse(nomes_conferem("Ana Silva", "Bruno Silva"))
+        self.assertIsNone(nomes_conferem("", "Ana Silva"))
+
+    @patch("accounts.verificacao_pix.consultar_chave_pix", return_value=TITULAR_OK)
+    def test_titular_com_o_mesmo_cpf_verifica(self, mock_consulta):
+        from .verificacao_pix import verificar_chave_pix
+        self.assertEqual(verificar_chave_pix(self.usuario), User.PIX_VERIFICADA)
+        self.usuario.refresh_from_db()
+        self.assertTrue(self.usuario.chave_pix_verificada)
+        self.assertEqual(self.usuario.chave_pix_titular_nome, "Ana Maria da Silva")
+        self.assertTrue(self.usuario.chave_pix_nome_confere)
+        mock_consulta.assert_called_once_with("EMAIL", "ana@ex.com")
+
+    @patch("accounts.verificacao_pix.consultar_chave_pix",
+           return_value={"owner": {"name": "Outra Pessoa", "cpfCnpj": "***.111.222-**"}})
+    def test_titular_com_outro_cpf_recusa(self, _mock):
+        from .verificacao_pix import verificar_chave_pix
+        self.assertEqual(verificar_chave_pix(self.usuario), User.PIX_RECUSADA)
+
+    @patch("accounts.verificacao_pix.consultar_chave_pix")
+    def test_chave_inexistente_recusa_e_asaas_fora_do_ar_fica_pendente(self, mock_consulta):
+        from saques.asaas_client import AsaasAPIError, AsaasIndisponivelError
+        from .verificacao_pix import verificar_chave_pix
+        mock_consulta.side_effect = AsaasAPIError("Chave não encontrada")
+        self.assertEqual(verificar_chave_pix(self.usuario), User.PIX_RECUSADA)
+        mock_consulta.side_effect = AsaasIndisponivelError("HTTP 429")
+        self.assertEqual(verificar_chave_pix(self.usuario), User.PIX_PENDENTE)
+
+    @patch("accounts.verificacao_pix.consultar_chave_pix", return_value=TITULAR_OK)
+    def test_limite_de_tres_tentativas_por_dia(self, _mock):
+        """Chave inexistente custa 15 das 300 fichas da conta na Asaas."""
+        from .verificacao_pix import LimiteDeTentativasError, verificar_chave_pix
+        for _ in range(3):
+            verificar_chave_pix(self.usuario)
+        with self.assertRaises(LimiteDeTentativasError):
+            verificar_chave_pix(self.usuario)
+
+    @patch("accounts.verificacao_pix.consultar_chave_pix",
+           return_value={"owner": {"name": "Outra Pessoa", "cpfCnpj": "***.111.222-**"}})
+    def test_tela_recusa_chave_de_outra_pessoa_e_nao_salva(self, _mock):
+        self.client.force_login(self.usuario)
+        resposta = self.client.post(reverse("editar_chave_pix"), {"tipo_chave_pix": "EMAIL", "chave_pix": "outra@ex.com"})
+        self.assertContains(resposta, "não está no CPF da sua conta")
+        self.usuario.refresh_from_db()
+        self.assertEqual(self.usuario.chave_pix, "ana@ex.com")
+
+    @patch("accounts.verificacao_pix.consultar_chave_pix", return_value=TITULAR_OK)
+    def test_tela_salva_chave_verificada(self, _mock):
+        self.client.force_login(self.usuario)
+        resposta = self.client.post(
+            reverse("editar_chave_pix"), {"tipo_chave_pix": "EMAIL", "chave_pix": "nova@ex.com"}, follow=True
+        )
+        self.assertContains(resposta, "Chave Pix salva e verificada")
+        self.usuario.refresh_from_db()
+        self.assertEqual(self.usuario.chave_pix, "nova@ex.com")
+        self.assertTrue(self.usuario.chave_pix_verificada)
+
+    def test_conta_antiga_sem_nome_precisa_informar_junto_com_a_chave(self):
+        self.usuario.nome_completo = ""
+        self.usuario.save()
+        self.client.force_login(self.usuario)
+        resposta = self.client.post(reverse("editar_chave_pix"), {"tipo_chave_pix": "EMAIL", "chave_pix": "a@ex.com"})
+        self.assertContains(resposta, "Nome completo")
+        self.assertContains(resposta, "obrigatório")
+        self.usuario.refresh_from_db()
+        self.assertEqual(self.usuario.chave_pix, "ana@ex.com")
+
+    @patch("accounts.verificacao_pix.consultar_chave_pix", return_value=TITULAR_OK)
+    def test_trocar_o_cpf_no_perfil_invalida_a_verificacao(self, _mock):
+        from .verificacao_pix import verificar_chave_pix
+        verificar_chave_pix(self.usuario)
+        self.client.force_login(self.usuario)
+        self.client.post(reverse("editar_perfil"), {
+            "nome_completo": "Ana Silva", "username": "ana", "email": "ana@ex.com", "celular": "",
+            "cpf": "14783246947", "aceita_email_marketing": "on",
+        })
+        self.usuario.refresh_from_db()
+        self.assertEqual(self.usuario.cpf, "14783246947")
+        self.assertFalse(self.usuario.chave_pix_verificada)
+
+    @patch("accounts.verificacao_pix.consultar_chave_pix", return_value=TITULAR_OK)
+    def test_tarefa_diaria_verifica_pendentes_respeitando_o_limite(self, mock_consulta):
+        from .verificacao_pix import verificar_pendentes
+        for i in range(6):
+            User.objects.create_user(
+                username=f"u{i}", password="x", cpf=f"{i:011d}", chave_pix=f"u{i}@ex.com", tipo_chave_pix="EMAIL",
+            )
+        resultado = verificar_pendentes(limite=4)
+        self.assertEqual(mock_consulta.call_count, 4)
+        self.assertEqual(sum(resultado.values()), 4)
+
+
+class CadastroNomeCelularTests(TestCase):
+    def _dados(self, **extra):
+        dados = {
+            "nome_completo": "Nova Conta Teste", "username": "novaconta", "email": "nova@example.com",
+            "cpf": "14783246947", "password1": "senha-forte-123", "password2": "senha-forte-123",
+        }
+        dados.update(extra)
+        return dados
+
+    def test_nome_completo_e_obrigatorio_e_precisa_de_sobrenome(self):
+        resposta = self.client.post(reverse("registrar"), self._dados(nome_completo="Ana"))
+        self.assertContains(resposta, "nome completo")
+        self.assertFalse(User.objects.filter(username="novaconta").exists())
+
+    def test_celular_e_opcional_e_guardado_so_com_digitos(self):
+        self.client.post(reverse("registrar"), self._dados())
+        self.assertEqual(User.objects.get(username="novaconta").celular, "")
+        User.objects.all().delete()
+        self.client.post(reverse("registrar"), self._dados(celular="+55 (11) 98765-4321"))
+        self.assertEqual(User.objects.get(username="novaconta").celular, "11987654321")
+
+    def test_celular_invalido_e_recusado(self):
+        resposta = self.client.post(reverse("registrar"), self._dados(celular="1234"))
+        self.assertContains(resposta, "celular válido")

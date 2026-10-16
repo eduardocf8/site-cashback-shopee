@@ -2530,6 +2530,43 @@ foi testado) com `python manage.py testar_resolucao_links_curtos`.
 
 ---
 
+## Fase 61 — Verificação do titular da chave Pix + nome e celular no cadastro ✅
+
+A validação do CPF no cadastro só conferia os dígitos verificadores - CPF tirado de
+gerador passava, e o saque não conferia o titular da chave. O risco real era o
+Indique e ganhe: conta falsa indicando a si mesma pra ganhar o dobro dos dois lados.
+
+- [x] **`saques/asaas_client.py::consultar_chave_pix`** - `GET /pix/addressKeys/external`
+      da Asaas devolve o titular da chave (`owner.name` + `owner.cpfCnpj` mascarado,
+      "***.202.745-**"). Limites: 5 consultas/min por conta e Token Bucket de 300
+      fichas (PJ), chave inexistente custa 15. `AsaasIndisponivelError` separa "não
+      deu pra saber agora" (rede/429/5xx) de "chave não existe".
+- [x] **`accounts/verificacao_pix.py`** - CPF da conta tem que bater com as posições
+      visíveis do CPF do titular (trava); nome completo x nome do titular só marca
+      `chave_pix_nome_confere=False` pra conferir no admin (bancos abreviam nomes).
+      Limite de 3 verificações por pessoa por dia. Status: verificada / recusada /
+      pendente (Asaas fora do ar - tentado de novo na tarefa diária, 4 por execução,
+      priorizando quem tem indicação).
+- [x] **Tela da chave Pix** - chave de outra pessoa é recusada e não é salva; o painel
+      mostra "✓ Verificada" / "Verificação pendente" / "Não está no seu CPF".
+- [x] **Saque** só sai pra chave verificada; chave antiga é verificada na hora do saque.
+- [x] **Indique e ganhe** - o dobro só ativa com as chaves Pix dos DOIS lados
+      verificadas, na 1ª compra validada depois disso (`_selecionar_bonus_indicacao`).
+      Regra comunicada no painel (de quem indicou e de quem foi indicado), no
+      cadastro via link de indicação, no FAQ, nos Termos (seções 6 e 7) e na legenda
+      do carrossel do Instagram (`marketing/instagram/carrossel-10-indique-e-ganhe`).
+- [x] **Cadastro** ganhou nome completo (obrigatório, nome e sobrenome) e celular
+      (opcional, guardado só com dígitos). Contas antigas sem nome informam junto com
+      a chave Pix. Política de Privacidade atualizada (nome, celular, consulta do
+      titular pela Asaas).
+- [x] **Admin** - usuário mostra status/titular da chave (filtros por status e "nome
+      confere"); saque mostra "Titular da chave (Asaas)" com ⚠ quando o nome não confere.
+
+Pendente: primeira verificação real em produção (o sandbox só aceita consultar uma
+chave de teste) - confirmar que a resposta vem no formato da documentação.
+
+---
+
 Pra continuar esse roadmap numa conversa nova, basta apontar esse arquivo
 (`ROADMAP.md`) e o `BRAND.md` — juntos eles dão o contexto de identidade
 visual e do que falta implementar, sem precisar reconstruir o histórico da

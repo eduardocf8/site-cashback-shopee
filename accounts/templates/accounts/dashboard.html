@@ -165,6 +165,8 @@
             display: inline-block; padding: 3px 10px; border-radius: 12px; font-size: 12px; font-weight: 600;
         }
         .etiqueta-status.pendente { background: var(--line-soft); color: var(--muted); }
+        .aviso-indicacao { padding: 10px 12px; border-radius: 8px; background: var(--paper-2); font-size: 14px; }
+        .aviso-indicacao strong { font-family: inherit; font-size: inherit; font-weight: 700; }
         .etiqueta-status.validado { background: var(--info-bg); color: var(--info); }
         .etiqueta-status.liberado, .etiqueta-status.pago { background: var(--success-bg); color: var(--success); }
         .etiqueta-status.cancelado, .etiqueta-status.falhou { background: var(--danger-bg); color: var(--danger); }
@@ -309,13 +311,29 @@
                         <span class="chave-pix-label">Chave Pix:</span>
                         <span class="chave-pix-tipo">{{ user.get_tipo_chave_pix_display }}</span>
                         <span class="chave-pix-valor">{{ user.chave_pix }}</span>
+                        {% if user.chave_pix_status == "verificada" %}
+                            <span class="etiqueta-status liberado">✓ Verificada</span>
+                        {% elif user.chave_pix_status == "recusada" %}
+                            <span class="etiqueta-status cancelado">Não está no seu CPF</span>
+                        {% else %}
+                            <span class="etiqueta-status pendente">Verificação pendente</span>
+                        {% endif %}
                         <button type="button" class="botao-editar-chave" onclick="modalChavePix.showModal()">Editar</button>
                     </div>
+                    {% if user.chave_pix_status == "recusada" %}
+                        <p class="legenda">O titular dessa chave não é o CPF da sua conta. Cadastre uma chave Pix no seu nome e CPF para poder sacar.</p>
+                    {% elif user.chave_pix_status != "verificada" %}
+                        <p class="legenda">Conferimos com o banco se a chave está no seu CPF antes do primeiro saque.</p>
+                    {% endif %}
 
                     <dialog id="modalChavePix" class="modal-chave-pix">
                         <form method="post" action="{% url 'editar_chave_pix' %}">
                             {% csrf_token %}
                             <h3>Editar chave Pix</h3>
+                            {% if chave_pix_form.nome_completo %}
+                                <label for="{{ chave_pix_form.nome_completo.id_for_label }}">{{ chave_pix_form.nome_completo.label }}</label>
+                                {{ chave_pix_form.nome_completo }}
+                            {% endif %}
                             <label for="{{ chave_pix_form.tipo_chave_pix.id_for_label }}">{{ chave_pix_form.tipo_chave_pix.label }}</label>
                             {{ chave_pix_form.tipo_chave_pix }}
                             <label for="{{ chave_pix_form.chave_pix.id_for_label }}">{{ chave_pix_form.chave_pix.label }}</label>
@@ -350,6 +368,16 @@
             </div>
         </section>
 
+        {% if indicacao_recebida_pendente %}
+        <section>
+            <p class="aviso-indicacao">
+                🎁 <strong>{{ indicacao_recebida_pendente.indicador.username }}</strong> te indicou: sua
+                primeira compra validada terá <strong>cashback em dobro</strong>. O bônus é ativado depois que
+                vocês dois tiverem uma chave Pix cadastrada e verificada (no CPF de cada um).
+                {% if not user.chave_pix_verificada %}<a href="{% url 'editar_chave_pix' %}">Cadastrar minha chave Pix</a>{% endif %}
+            </p>
+        </section>
+        {% endif %}
         {% if indicacao_ativa %}
         <section id="indicacoes">
             <h2 class="titulo-secao">Indique e ganhe</h2>
@@ -358,6 +386,12 @@
                     Compartilhe seu link com quem você quer indicar. O primeiro pedido do indicado terá
                     o dobro do cashback e, assim que ele for validado, o seu próximo pedido também terá.
                     Quanto mais indicações, mais cashback. Aproveite!
+                </p>
+                <p class="aviso-indicacao">
+                    <strong>Importante:</strong> o bônus só é ativado depois que você e a pessoa indicada
+                    tiverem uma chave Pix cadastrada e verificada (no CPF de cada um). O dobro vale para a
+                    primeira compra validada depois disso.
+                    {% if not user.chave_pix_verificada %}<a href="{% url 'editar_chave_pix' %}">Cadastrar minha chave Pix</a>{% endif %}
                 </p>
                 <p class="legenda">
                     Se o pedido cair durante uma campanha de cashback extra, ele já vem com o valor
@@ -387,6 +421,12 @@
                                         <span class="etiqueta-status liberado">Concluída</span>
                                     {% elif indicacao.pedido_bonus_indicado_id %}
                                         <span class="etiqueta-status validado">Indicado confirmou — aguardando sua próxima compra</span>
+                                    {% elif not user.chave_pix_verificada and not indicacao.indicado.chave_pix_verificada %}
+                                        <span class="etiqueta-status pendente">Aguardando a chave Pix verificada de vocês dois</span>
+                                    {% elif not user.chave_pix_verificada %}
+                                        <span class="etiqueta-status pendente">Aguardando a sua chave Pix verificada</span>
+                                    {% elif not indicacao.indicado.chave_pix_verificada %}
+                                        <span class="etiqueta-status pendente">Aguardando a chave Pix verificada do indicado</span>
                                     {% else %}
                                         <span class="etiqueta-status pendente">Aguardando 1ª compra do indicado</span>
                                     {% endif %}

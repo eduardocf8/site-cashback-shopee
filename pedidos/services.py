@@ -7,7 +7,7 @@ from django.conf import settings
 from django.db.models import Q
 from django.utils import timezone
 
-from accounts.models import Indicacao
+from accounts.models import Indicacao, User
 from links.models import Click
 from links.shopee_client import buscar_conversoes
 
@@ -435,11 +435,20 @@ def _selecionar_bonus_indicacao(
     if not usuario_ids:
         return []
 
+    # O bônus só é ativado quando as chaves Pix dos DOIS lados estão verificadas
+    # (titular = CPF da conta, accounts/verificacao_pix.py) - fecha a fraude de indicar
+    # a si mesmo com uma conta de CPF gerado. Enquanto isso a Indicacao segue
+    # pendente e o dobro vale na 1ª compra validada depois da verificação.
+    verificado = User.PIX_VERIFICADA
     indicacoes = list(
         Indicacao.objects.filter(
             Q(indicado_id__in=usuario_ids, pedido_bonus_indicado__isnull=True)
             | Q(indicador_id__in=usuario_ids, pedido_bonus_indicado__isnull=False, pedido_bonus_indicador__isnull=True)
-        ).order_by("criado_em")
+        )
+        .filter(indicado__chave_pix_status=verificado, indicador__chave_pix_status=verificado)
+        .exclude(indicado__chave_pix="")
+        .exclude(indicador__chave_pix="")
+        .order_by("criado_em")
     )
     indicado_pendente = {i.indicado_id: i for i in indicacoes if i.pedido_bonus_indicado_id is None}
     indicador_fila = defaultdict(list)

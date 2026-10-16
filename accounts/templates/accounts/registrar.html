@@ -14,6 +14,13 @@
                 </ul>
             {% endif %}
             <h1>Criar conta</h1>
+            {% if codigo_indicacao %}
+                <p class="legenda" style="margin-bottom: 14px;">
+                    🎁 Você veio por uma indicação: sua primeira compra validada terá cashback em dobro.
+                    O bônus é ativado depois que você e quem te indicou tiverem uma chave Pix cadastrada e
+                    verificada, no CPF de cada um.
+                </p>
+            {% endif %}
             <form method="post">
                 {% csrf_token %}
                 {% if codigo_indicacao %}

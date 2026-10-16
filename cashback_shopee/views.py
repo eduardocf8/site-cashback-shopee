@@ -18,6 +18,7 @@ from instagram_bot.services import executar_publicacoes_do_dia, publicar_story_o
 from links.services import resolver_item_id_alvo_pendentes
 from links.shopee_client import ShopeeAPIError, ShopeeConfigError
 from ofertas.services import encurtar_nomes_pendentes, sincronizar_ofertas
+from accounts.verificacao_pix import verificar_pendentes
 from pedidos.services import liberar_saldo, sincronizar
 from saques.services import verificar_saques_pendentes
 
@@ -124,6 +125,9 @@ def executar_tarefas_agendadas(request):
     inicio = agora - timedelta(days=DIAS_SINCRONIZACAO_DIARIA)
 
     resultado = {}
+    # Chaves Pix pendentes ou antigas, poucas por dia (limite da Asaas) - ANTES da
+    # sincronização, para o bônus de indicação já poder ativar nela.
+    resultado["chaves_pix"] = verificar_pendentes()
     try:
         resultado["sincronizacao"] = sincronizar(int(inicio.timestamp()), int(agora.timestamp()))
     except (ShopeeConfigError, ShopeeAPIError) as erro:

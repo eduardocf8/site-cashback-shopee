@@ -21,6 +21,7 @@ from saques.services import calcular_saldo_disponivel
 from cashback_shopee.meta_capi import DADOS_CADASTRO, enviar_evento, gerar_event_id
 
 from .forms import ChavePixForm, EditarPerfilForm, RegistroForm
+from .verificacao_pix import CAMPOS_VERIFICACAO, LimiteDeTentativasError, nomes_conferem, verificar_chave_pix
 from .middleware import SESSION_KEY_ORIGEM
 from .models import ConfiguracaoIndicacao, Indicacao, PushSubscription
 from .ratelimit import limitar_por_ip
@@ -186,6 +187,11 @@ def dashboard(request):
     link_indicacao = request.build_absolute_uri(f"{reverse('registrar')}?ref={request.user.codigo_indicacao}")
     indicacoes = request.user.indicacoes_feitas.select_related("indicado").all()
     indicacoes_concluidas = sum(1 for indicacao in indicacoes if indicacao.pedido_bonus_indicador_id)
+    # Quem foi indicado e ainda não recebeu o dobro vê a regra de ativação no painel.
+    indicacao_recebida_pendente = (
+        Indicacao.objects.filter(indicado=request.user, pedido_bonus_indicado__isnull=True)
+        .select_related("indicador").first()
+    )
 
     contexto = {
         "saldo_pendente": saldos[Pedido.STATUS_PENDENTE],
@@ -213,6 +219,7 @@ def dashboard(request):
         "link_indicacao": link_indicacao,
         "indicacoes": indicacoes,
         "indicacoes_concluidas": indicacoes_concluidas,
+        "indicacao_recebida_pendente": indicacao_recebida_pendente,
         "vapid_public_key": settings.VAPID_PUBLIC_KEY,
         # .pop() de propósito: só dispara o CompleteRegistration do Pixel na PRIMEIRA
         # renderização do dashboard depois do cadastro, não em toda visita seguinte.
@@ -224,10 +231,34 @@ def dashboard(request):
 @login_required
 def editar_chave_pix(request):
     if request.method == "POST":
+        # Antes do is_valid(): o form escreve os valores novos direto no request.user.
+        chave_antes = (request.user.tipo_chave_pix, request.user.chave_pix)
         form = ChavePixForm(request.POST, instance=request.user)
         if form.is_valid():
-            form.save()
-            messages.success(request, "Chave Pix atualizada com sucesso!")
+            usuario = form.save(commit=False)
+            mudou = (usuario.tipo_chave_pix, usuario.chave_pix) != chave_antes
+            if mudou or not usuario.chave_pix_verificada:
+                try:
+                    status = verificar_chave_pix(usuario, salvar=False)
+                except LimiteDeTentativasError as erro:
+                    form.add_error(None, str(erro))
+                    return render(request, "accounts/chave_pix.html", {"form": form})
+                if status == User.PIX_RECUSADA:
+                    form.add_error(
+                        "chave_pix",
+                        "Essa chave Pix não está no CPF da sua conta. Cadastre uma chave Pix que "
+                        "esteja no seu nome e CPF (pode ser o próprio CPF, e-mail, celular ou chave aleatória).",
+                    )
+                    return render(request, "accounts/chave_pix.html", {"form": form})
+            usuario.save()
+            if usuario.chave_pix_status == User.PIX_PENDENTE:
+                messages.success(
+                    request,
+                    "Chave Pix salva! Não conseguimos confirmar o titular com o banco agora - "
+                    "tentamos de novo automaticamente em até 1 dia.",
+                )
+            else:
+                messages.success(request, "Chave Pix salva e verificada!")
             return redirect("dashboard")
     else:
         form = ChavePixForm(instance=request.user)
@@ -240,7 +271,8 @@ def excluir_chave_pix(request):
     if request.method == "POST":
         request.user.chave_pix = ""
         request.user.tipo_chave_pix = ""
-        request.user.save(update_fields=["chave_pix", "tipo_chave_pix"])
+        verificar_chave_pix(request.user, salvar=False)  # sem chave: só zera a verificação
+        request.user.save(update_fields=["chave_pix", "tipo_chave_pix", *CAMPOS_VERIFICACAO])
         messages.success(request, "Chave Pix removida.")
 
     return redirect("dashboard")
@@ -253,12 +285,20 @@ def editar_perfil(request):
         # instance=request.user (mesmo objeto), form.is_valid() já escreve o
         # e-mail novo direto no request.user em memória.
         email_antigo = request.user.email
+        cpf_antigo = request.user.cpf
         form = EditarPerfilForm(request.POST, instance=request.user)
         if form.is_valid():
             usuario = form.save(commit=False)
             email_mudou = usuario.email != email_antigo
             if email_mudou:
                 usuario.email_verificado = False
+            if usuario.cpf != cpf_antigo and usuario.chave_pix:
+                # A verificação da chave era contra o CPF antigo - vale de novo só
+                # depois de conferir (no próximo saque ou na tarefa diária).
+                usuario.chave_pix_status = User.PIX_NAO_VERIFICADA
+                usuario.chave_pix_verificada_em = None
+            if usuario.chave_pix_titular_nome:
+                usuario.chave_pix_nome_confere = nomes_conferem(usuario.nome_completo, usuario.chave_pix_titular_nome)
             usuario.save()
 
             if email_mudou:
