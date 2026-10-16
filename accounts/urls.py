@@ -39,6 +39,9 @@ urlpatterns = [
             auth_views.PasswordResetView.as_view(
                 template_name="accounts/senha_resetar.html",
                 email_template_name="accounts/email_senha_resetar.txt",
+                # Versão HTML (botão) além do texto puro: o Django manda os dois no mesmo
+                # e-mail (multipart/alternative) e o cliente de e-mail escolhe qual mostrar.
+                html_email_template_name="accounts/email_senha_resetar.html",
                 subject_template_name="accounts/email_senha_resetar_assunto.txt",
             )
         ),

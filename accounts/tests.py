@@ -1655,3 +1655,59 @@ class OrigemCadastroTests(TestCase):
         call_command("funil_cadastros", "--origem", "pinterest", stdout=saida)
         self.assertIn("(origem: pinterest)", saida.getvalue())
         self.assertRegex(saida.getvalue(), r"cadastros\s+1\b")
+
+
+class EmailRedefinirSenhaTests(TestCase):
+    """O e-mail de redefinição de senha sai em texto puro E em HTML (botão), no mesmo
+    e-mail: o cliente escolhe qual mostrar. O backend do Brevo manda a alternativa
+    text/html como htmlContent (ver cashback_shopee/brevo_email_backend.py). Nada de
+    banner aqui: é e-mail de segurança, curto e sem imagem."""
+
+    def setUp(self):
+        cache.clear()
+        self.usuario = User.objects.create_user(
+            username="redefinir", email="redefinir@example.com", password="senha-forte-123", cpf="39053344705"
+        )
+
+    def _pedir_redefinicao(self):
+        from django.core import mail
+
+        resposta = self.client.post(reverse("password_reset"), {"email": "redefinir@example.com"})
+        self.assertEqual(resposta.status_code, 302)
+        self.assertEqual(len(mail.outbox), 1)
+        return mail.outbox[0]
+
+    def _link_do_texto(self, mensagem):
+        return next(linha for linha in mensagem.body.splitlines() if "/resetar-senha/" in linha).strip()
+
+    def test_email_sai_em_texto_e_em_html(self):
+        mensagem = self._pedir_redefinicao()
+
+        self.assertEqual(mensagem.subject, "cash-b — link para redefinir sua senha")
+        self.assertIn("Recebemos um pedido para redefinir a senha", mensagem.body)
+        html = next(conteudo for conteudo, tipo in mensagem.alternatives if tipo == "text/html")
+        self.assertIn("Redefinir minha senha", html)
+        self.assertIn("Olá, redefinir.", html)
+
+    def test_link_do_botao_e_o_mesmo_do_texto_puro(self):
+        mensagem = self._pedir_redefinicao()
+        link = self._link_do_texto(mensagem)
+        html = next(conteudo for conteudo, tipo in mensagem.alternatives if tipo == "text/html")
+
+        self.assertIn(f'href="{link}"', html)
+        self.assertGreater(html.count(link), 1)  # botão + endereço por extenso, pro caso do botão não abrir
+
+    def test_html_nao_tem_banner_nem_imagem(self):
+        mensagem = self._pedir_redefinicao()
+        html = next(conteudo for conteudo, tipo in mensagem.alternatives if tipo == "text/html")
+
+        self.assertNotIn("<img", html)
+
+    def test_nome_de_usuario_e_escapado_no_html(self):
+        User.objects.filter(pk=self.usuario.pk).update(username="<b>x</b>")
+
+        mensagem = self._pedir_redefinicao()
+        html = next(conteudo for conteudo, tipo in mensagem.alternatives if tipo == "text/html")
+
+        self.assertNotIn("<b>x</b>", html)
+        self.assertIn("&lt;b&gt;x&lt;/b&gt;", html)
