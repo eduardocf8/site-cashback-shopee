@@ -214,6 +214,10 @@
         p.intro-secao { max-width: 560px; margin: -20px auto 40px; text-align: center; color: var(--muted); font-size: 15px; line-height: 1.6; }
 
         /* ---------- Benefícios (scroll reveal) ---------- */
+        .como-ganhamos { max-width: 720px; margin: 32px auto 0; padding: 14px 18px; border: 1px solid var(--line);
+            border-radius: 12px; background: var(--paper); }
+        .como-ganhamos summary { cursor: pointer; font-weight: 700; font-size: 16px; color: var(--ink); }
+        .como-ganhamos p { margin: 10px 0 0; color: var(--ink-soft); line-height: 1.6; }
         .beneficios { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 24px; }
         .beneficio {
             background: var(--paper);
@@ -571,6 +575,16 @@
                     <p>Não cobramos nada de você. Você paga o mesmo preço da Shopee, só que com uma parte voltando pro seu bolso.</p>
                 </div>
             </div>
+            <details class="como-ganhamos reveal">
+                <summary>Como a cash-b ganha dinheiro?</summary>
+                <p>
+                    A Shopee paga uma comissão à cash-b por cada compra feita pelo nosso link
+                    (é o programa de afiliados dela). A gente repassa uma parte dessa comissão
+                    para você como cashback e fica com o restante, que mantém o site funcionando.
+                    Você não paga nada a mais: o preço na Shopee é o mesmo, com ou sem a cash-b.
+                    <a href="{% url 'faq' %}">Mais perguntas frequentes</a>
+                </p>
+            </details>
         </div>
     </section>
 
