@@ -1,4 +1,7 @@
 import json
+import logging
+import re
+import secrets
 from decimal import Decimal
 
 from django.conf import settings
@@ -7,7 +10,7 @@ from django.contrib.auth import get_user_model, login
 from django.contrib.auth.decorators import login_required
 from django.core.paginator import Paginator
 from django.db.models import Sum
-from django.http import JsonResponse
+from django.http import Http404, JsonResponse
 from django.shortcuts import redirect, render
 from django.urls import reverse
 from django.utils.http import url_has_allowed_host_and_scheme
@@ -20,6 +23,7 @@ from saques.services import calcular_saldo_disponivel
 
 from cashback_shopee.meta_capi import DADOS_CADASTRO, enviar_evento, gerar_event_id
 
+from . import google_oauth
 from .forms import ChavePixForm, EditarPerfilForm, RegistroForm
 from .verificacao_pix import CAMPOS_VERIFICACAO, LimiteDeTentativasError, nomes_conferem, verificar_chave_pix
 from .middleware import SESSION_KEY_ORIGEM
@@ -32,6 +36,7 @@ from .tokens import (
 )
 
 User = get_user_model()
+logger = logging.getLogger(__name__)
 
 ITENS_POR_PAGINA = 10
 
@@ -57,27 +62,111 @@ def registrar(request):
         form = RegistroForm(request.POST)
         if form.is_valid():
             usuario = form.save()
-            _gravar_origem(usuario, request)
-            _criar_indicacao_se_valida(usuario, codigo_indicacao)
             enviar_email_verificacao(usuario, request)
-            # Backend explícito: já temos o objeto usuario (não veio de authenticate()),
-            # e com o AxesBackend adicionado (proteção de força bruta no login) o Django
-            # não consegue mais inferir sozinho qual backend usar com 2 configurados.
-            login(request, usuario, backend="django.contrib.auth.backends.ModelBackend")
-            event_id = gerar_event_id()
-            enviar_evento("CompleteRegistration", request, event_id, DADOS_CADASTRO)
-            request.session[SESSION_KEY_EVENTO_CADASTRO_PIXEL] = event_id
-            if proximo and url_has_allowed_host_and_scheme(
-                proximo, allowed_hosts={request.get_host()}, require_https=request.is_secure()
-            ):
-                return redirect(proximo)
-            return redirect("dashboard")
+            _concluir_cadastro(request, usuario, codigo_indicacao)
+            return _redirecionar_depois_de_entrar(request, proximo)
     else:
         form = RegistroForm()
 
     return render(
         request, "accounts/registrar.html", {"form": form, "codigo_indicacao": codigo_indicacao, "proximo": proximo}
     )
+
+
+def _concluir_cadastro(request, usuario, codigo_indicacao):
+    """Passos comuns a todo cadastro novo - formulário ou Google (callback_google)."""
+    _gravar_origem(usuario, request)
+    _criar_indicacao_se_valida(usuario, codigo_indicacao)
+    # Backend explícito: já temos o objeto usuario (não veio de authenticate()),
+    # e com o AxesBackend adicionado (proteção de força bruta no login) o Django
+    # não consegue mais inferir sozinho qual backend usar com 2 configurados.
+    login(request, usuario, backend="django.contrib.auth.backends.ModelBackend")
+    event_id = gerar_event_id()
+    enviar_evento("CompleteRegistration", request, event_id, DADOS_CADASTRO)
+    request.session[SESSION_KEY_EVENTO_CADASTRO_PIXEL] = event_id
+
+
+def _redirecionar_depois_de_entrar(request, proximo):
+    if proximo and url_has_allowed_host_and_scheme(
+        proximo, allowed_hosts={request.get_host()}, require_https=request.is_secure()
+    ):
+        return redirect(proximo)
+    return redirect("dashboard")
+
+
+SESSION_KEY_GOOGLE = "login_google"
+
+
+def login_google(request):
+    """Manda pro Google escolher a conta. "next" e "ref" (indicação) ficam na sessão,
+    junto com o state que protege o callback contra CSRF."""
+    if not google_oauth.configurado():
+        raise Http404
+    state = secrets.token_urlsafe(32)
+    request.session[SESSION_KEY_GOOGLE] = {
+        "state": state, "next": request.GET.get("next", ""), "ref": request.GET.get("ref", ""),
+    }
+    return redirect(google_oauth.url_autorizacao(request.build_absolute_uri(reverse("google_callback")), state))
+
+
+def callback_google(request):
+    if not google_oauth.configurado():
+        raise Http404
+    dados = request.session.pop(SESSION_KEY_GOOGLE, None)
+    if (
+        not dados or not request.GET.get("code")
+        or not secrets.compare_digest(request.GET.get("state", ""), dados["state"])
+    ):
+        messages.error(request, "Não foi possível entrar com o Google. Tente de novo.")
+        return redirect("login")
+    try:
+        perfil = google_oauth.obter_perfil(
+            request.GET["code"], request.build_absolute_uri(reverse("google_callback"))
+        )
+    except google_oauth.GoogleOAuthError as erro:
+        logger.warning("[google] login falhou: %s", erro)
+        messages.error(request, "Não foi possível entrar com o Google. Tente de novo.")
+        return redirect("login")
+    if not perfil.get("email_verified"):
+        messages.error(request, "Seu e-mail do Google ainda não foi verificado pelo Google.")
+        return redirect("login")
+
+    usuario, criado = _usuario_do_google(perfil)
+    if criado:
+        _concluir_cadastro(request, usuario, dados.get("ref", ""))
+    else:
+        login(request, usuario, backend="django.contrib.auth.backends.ModelBackend")
+    return _redirecionar_depois_de_entrar(request, dados.get("next", ""))
+
+
+def _usuario_do_google(perfil) -> tuple:
+    """Conta já vinculada (pelo sub) > conta existente com o mesmo e-mail (vincula -
+    o Google garante que a pessoa é dona do e-mail) > conta nova, sem CPF ainda."""
+    usuario = User.objects.filter(google_sub=perfil["sub"]).first()
+    if usuario:
+        return usuario, False
+    email = perfil["email"].strip().lower()
+    usuario = User.objects.filter(email__iexact=email).first()
+    if usuario:
+        usuario.google_sub = perfil["sub"]
+        usuario.email_verificado = True
+        if not usuario.nome_completo and perfil.get("name"):
+            usuario.nome_completo = perfil["name"][:150]
+        usuario.save(update_fields=["google_sub", "email_verificado", "nome_completo"])
+        return usuario, False
+
+    base = re.sub(r"[^\w.@+-]", "", email.split("@")[0])[:140] or "usuario"
+    username, sufixo = base, 1
+    while User.objects.filter(username=username).exists():
+        sufixo += 1
+        username = f"{base}{sufixo}"
+    usuario = User(
+        username=username, email=email, email_verificado=True, google_sub=perfil["sub"],
+        nome_completo=(perfil.get("name") or "")[:150],
+    )
+    usuario.set_unusable_password()
+    usuario.save()
+    return usuario, True
 
 
 def _gravar_origem(usuario, request):

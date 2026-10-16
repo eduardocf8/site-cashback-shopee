@@ -334,6 +334,10 @@
                                 <label for="{{ chave_pix_form.nome_completo.id_for_label }}">{{ chave_pix_form.nome_completo.label }}</label>
                                 {{ chave_pix_form.nome_completo }}
                             {% endif %}
+                            {% if chave_pix_form.cpf %}
+                                <label for="{{ chave_pix_form.cpf.id_for_label }}">{{ chave_pix_form.cpf.label }}</label>
+                                {{ chave_pix_form.cpf }}
+                            {% endif %}
                             <label for="{{ chave_pix_form.tipo_chave_pix.id_for_label }}">{{ chave_pix_form.tipo_chave_pix.label }}</label>
                             {{ chave_pix_form.tipo_chave_pix }}
                             <label for="{{ chave_pix_form.chave_pix.id_for_label }}">{{ chave_pix_form.chave_pix.label }}</label>

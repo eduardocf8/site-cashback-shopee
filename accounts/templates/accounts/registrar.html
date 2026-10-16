@@ -21,6 +21,7 @@
                     verificada, no CPF de cada um.
                 </p>
             {% endif %}
+            {% include "accounts/_botao_google.html" %}
             <form method="post">
                 {% csrf_token %}
                 {% if codigo_indicacao %}

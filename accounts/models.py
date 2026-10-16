@@ -25,11 +25,20 @@ class User(AbstractUser):
         (TIPO_CHAVE_ALEATORIA, "Chave aleatória"),
     ]
 
+    # Vazio (NULL) só em conta criada pelo login com Google: o CPF é pedido junto com a
+    # chave Pix, antes do primeiro saque (ver ChavePixForm). NULL e não "" porque a
+    # unicidade (uma conta por CPF) precisa ignorar quem ainda não informou.
     cpf = models.CharField(
         "CPF",
         max_length=11,
         unique=True,
+        null=True,
+        blank=True,
         help_text="Apenas números, sem pontos ou traço.",
+    )
+    google_sub = models.CharField(
+        "ID da conta Google", max_length=255, unique=True, null=True, blank=True, editable=False,
+        help_text="Identificador estável da conta Google vinculada (accounts/google_oauth.py).",
     )
     nome_completo = models.CharField(
         "Nome completo", max_length=150, blank=True,

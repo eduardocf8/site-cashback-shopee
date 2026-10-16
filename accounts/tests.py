@@ -1957,3 +1957,113 @@ class CadastroNomeCelularTests(TestCase):
     def test_celular_invalido_e_recusado(self):
         resposta = self.client.post(reverse("registrar"), self._dados(celular="1234"))
         self.assertContains(resposta, "celular válido")
+
+
+PERFIL_GOOGLE = {"sub": "g-123", "email": "Nova.Pessoa@gmail.com", "email_verified": True, "name": "Nova Pessoa"}
+
+
+@override_settings(GOOGLE_CLIENT_ID="id-teste", GOOGLE_CLIENT_SECRET="segredo-teste")
+class LoginGoogleTests(TestCase):
+    """ROADMAP 13.15: login/cadastro com Google, CPF só junto com a chave Pix."""
+
+    def _iniciar(self, **params):
+        resposta = self.client.get(reverse("login_google"), params)
+        self.assertEqual(resposta.status_code, 302)
+        self.assertTrue(resposta.url.startswith("https://accounts.google.com/"))
+        return self.client.session["login_google"]["state"]
+
+    def _callback(self, state, perfil=PERFIL_GOOGLE):
+        with patch("accounts.google_oauth.obter_perfil", return_value=perfil):
+            return self.client.get(reverse("google_callback"), {"state": state, "code": "abc"})
+
+    @override_settings(GOOGLE_CLIENT_ID="", GOOGLE_CLIENT_SECRET="")
+    def test_desligado_sem_credenciais(self):
+        self.assertEqual(self.client.get(reverse("login_google")).status_code, 404)
+        self.assertNotContains(self.client.get(reverse("login")), "Continuar com Google")
+
+    def test_botao_aparece_no_login_e_no_cadastro(self):
+        self.assertContains(self.client.get(reverse("login")), "Continuar com Google")
+        self.assertContains(self.client.get(reverse("registrar")), "Continuar com Google")
+
+    def test_state_invalido_nao_entra(self):
+        self._iniciar()
+        resposta = self._callback("state-falso")
+        self.assertRedirects(resposta, reverse("login"), fetch_redirect_response=False)
+        self.assertFalse(User.objects.filter(google_sub="g-123").exists())
+
+    @patch("accounts.views.enviar_evento")
+    def test_cria_conta_sem_cpf_com_email_verificado_e_indicacao(self, mock_evento):
+        indicador = User.objects.create_user(username="ind", password="x", cpf="39053344705")
+        state = self._iniciar(ref=indicador.codigo_indicacao)
+        resposta = self._callback(state)
+        self.assertRedirects(resposta, reverse("dashboard"), fetch_redirect_response=False)
+        usuario = User.objects.get(google_sub="g-123")
+        self.assertEqual(usuario.email, "nova.pessoa@gmail.com")
+        self.assertTrue(usuario.email_verificado)
+        self.assertEqual(usuario.nome_completo, "Nova Pessoa")
+        self.assertIsNone(usuario.cpf)
+        self.assertFalse(usuario.has_usable_password())
+        self.assertTrue(Indicacao.objects.filter(indicador=indicador, indicado=usuario).exists())
+        self.assertEqual(mock_evento.call_args[0][0], "CompleteRegistration")
+        self.assertEqual(int(self.client.session["_auth_user_id"]), usuario.pk)
+
+    def test_duas_contas_google_sem_cpf_nao_colidem(self):
+        self._callback(self._iniciar())
+        self.client.logout()
+        self._callback(self._iniciar(), {**PERFIL_GOOGLE, "sub": "g-456", "email": "outra@gmail.com"})
+        self.assertEqual(User.objects.filter(cpf__isnull=True).count(), 2)
+
+    def test_email_ja_cadastrado_vincula_em_vez_de_duplicar(self):
+        existente = User.objects.create_user(
+            username="antiga", password="x", cpf="39053344705", email="nova.pessoa@gmail.com"
+        )
+        self._callback(self._iniciar())
+        existente.refresh_from_db()
+        self.assertEqual(existente.google_sub, "g-123")
+        self.assertEqual(User.objects.count(), 1)
+
+    def test_email_nao_verificado_pelo_google_nao_entra(self):
+        self._callback(self._iniciar(), {**PERFIL_GOOGLE, "email_verified": False})
+        self.assertFalse(User.objects.exists())
+
+    def test_next_interno_e_respeitado(self):
+        state = self._iniciar(next="/ofertas/")
+        self.assertRedirects(self._callback(state), "/ofertas/", fetch_redirect_response=False)
+
+    def test_conta_google_informa_cpf_junto_com_a_chave_pix(self):
+        self._callback(self._iniciar())
+        usuario = User.objects.get(google_sub="g-123")
+        User.objects.create_user(username="dono", password="x", cpf="39053344705")
+
+        resposta = self.client.post(reverse("editar_chave_pix"), {
+            "nome_completo": "Nova Pessoa", "cpf": "390.533.447-05", "tipo_chave_pix": "EMAIL", "chave_pix": "a@ex.com",
+        })
+        self.assertContains(resposta, "Já existe uma conta cadastrada com este CPF")
+
+        with patch("accounts.verificacao_pix.consultar_chave_pix",
+                   return_value={"owner": {"name": "Nova Pessoa", "cpfCnpj": "***.832.469-**"}}):
+            self.client.post(reverse("editar_chave_pix"), {
+                "nome_completo": "Nova Pessoa", "cpf": "147.832.469-47", "tipo_chave_pix": "EMAIL", "chave_pix": "a@ex.com",
+            })
+        usuario.refresh_from_db()
+        self.assertEqual(usuario.cpf, "14783246947")
+        self.assertTrue(usuario.chave_pix_verificada)
+
+
+@override_settings(GOOGLE_CLIENT_ID="id-teste", GOOGLE_CLIENT_SECRET="segredo-teste")
+class GoogleOAuthClienteTests(TestCase):
+    @patch("accounts.google_oauth.requests.get")
+    @patch("accounts.google_oauth.requests.post")
+    def test_troca_codigo_e_le_perfil(self, mock_post, mock_get):
+        from .google_oauth import obter_perfil
+        mock_post.return_value = Mock(status_code=200, json=lambda: {"access_token": "tok"})
+        mock_get.return_value = Mock(status_code=200, json=lambda: PERFIL_GOOGLE)
+        self.assertEqual(obter_perfil("code", "https://cash-b.com/login/google/callback/")["sub"], "g-123")
+        self.assertEqual(mock_get.call_args.kwargs["headers"]["Authorization"], "Bearer tok")
+
+    @patch("accounts.google_oauth.requests.post")
+    def test_codigo_recusado_vira_erro(self, mock_post):
+        from .google_oauth import GoogleOAuthError, obter_perfil
+        mock_post.return_value = Mock(status_code=400, json=lambda: {"error": "invalid_grant"})
+        with self.assertRaises(GoogleOAuthError):
+            obter_perfil("code", "https://cash-b.com/login/google/callback/")

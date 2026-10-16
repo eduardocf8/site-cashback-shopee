@@ -221,9 +221,15 @@ Itens novos/atualizados a partir dele - **ordem sugerida de implementação**:
        pedidos e R$ 0 sacado (ainda escondidos - aparecem sozinhos ao passar do
        mínimo). Vitrine mostra "Ofertas atualizadas hoje às HHhMM" com o horário
        real da última sincronização.
-4. [ ] **13.15 Login com Google + CPF só no primeiro saque** (médio) - a Cuponomia
-       usa só login social; hoje o cadastro da cash-b é formulário com CPF.
-       Depende de criar credenciais OAuth no Google Cloud.
+4. [x] **13.15 Login com Google + CPF só no primeiro saque** (médio) - botão
+       "Continuar com Google" no login e no cadastro (`accounts/google_oauth.py`, OAuth
+       direto, sem biblioteca nova). Conta nova sai com nome e e-mail verificado do
+       Google e sem CPF (`cpf` passou a aceitar NULL) - o CPF é pedido junto com a
+       chave Pix (`ChavePixForm`), antes do primeiro saque, mantendo "uma conta por
+       CPF". Conta existente com o mesmo e-mail é vinculada (`google_sub`), não
+       duplicada. Indicação, origem e evento de cadastro da Meta iguais ao formulário.
+       Desligado sem `GOOGLE_CLIENT_ID`/`GOOGLE_CLIENT_SECRET`; URI de redirecionamento
+       no Google Cloud: `https://cash-b.com/login/google/callback/`.
 5. [ ] **13.11 Converter sem cadastro** (grande, já existia) - a Méliuz prova que
        funciona: guardar o clique anônimo num cookie e ligar à conta quando a
        pessoa se cadastrar no mesmo navegador; cashback só pago com cadastro.
@@ -2562,8 +2568,8 @@ Indique e ganhe: conta falsa indicando a si mesma pra ganhar o dobro dos dois la
 - [x] **Admin** - usuário mostra status/titular da chave (filtros por status e "nome
       confere"); saque mostra "Titular da chave (Asaas)" com ⚠ quando o nome não confere.
 
-Pendente: primeira verificação real em produção (o sandbox só aceita consultar uma
-chave de teste) - confirmar que a resposta vem no formato da documentação.
+Confirmado em produção em 16/10: a Asaas devolveu nome completo e CPF mascarado
+(também mascarado em produção) no formato da documentação, e o nome conferiu.
 
 ---
 
