@@ -1,9 +1,9 @@
 import requests
 from django.contrib import messages
-from django.contrib.auth.decorators import login_required
 from django.http import HttpResponse
 from django.shortcuts import get_object_or_404, redirect
 
+from accounts.funil import exigir_login_medindo, registrar_primeiro_link
 from links.models import Click
 from links.services import gerar_click
 from links.shopee_client import ShopeeAPIError, ShopeeConfigError, SubIdInvalidoError
@@ -21,7 +21,7 @@ def aprovar_publicacao(request, token):
     return HttpResponse(mensagem, content_type="text/plain; charset=utf-8")
 
 
-@login_required
+@exigir_login_medindo("story")
 def ir_para_story_de_oferta(request, registro_id):
     """Link enviado por DM pra quem responde um story de oferta (ver
     automacao_instagram/webhook.py, modo "link do produto") - mesmo fluxo de
@@ -56,4 +56,5 @@ def ir_para_story_de_oferta(request, registro_id):
     # ofertas/views.py::_ir_com_click_ou_erro (redireciona direto pro link da Shopee,
     # sem página nossa pra disparar o Pixel do navegador).
     enviar_evento("GerouLinkCashback", request, gerar_event_id(), {"tipo_click": click.tipo})
+    registrar_primeiro_link(request)
     return redirect(click.link_gerado)

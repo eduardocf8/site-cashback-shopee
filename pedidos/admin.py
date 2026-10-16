@@ -8,6 +8,8 @@ from django.shortcuts import redirect
 from django.template.response import TemplateResponse
 from django.urls import path
 
+from accounts.funil import obter_funil
+
 from .analytics import (
     INDICADORES_SERIE_DIARIA,
     MESES_GRAFICO_SACADO_PADRAO,
@@ -176,6 +178,7 @@ class PedidoAdmin(admin.ModelAdmin):
             "title": "Analytics",
             "dados": obter_analytics(data_inicio, data_fim, status, origem),
             "serie_diaria": obter_serie_diaria(data_inicio, data_fim, status, origem),
+            "funil_sem_conta": obter_funil(data_inicio, data_fim),
             "indicadores_serie_diaria": INDICADORES_SERIE_DIARIA,
             "status_choices": Pedido.STATUS_CHOICES,
             "filtro_data_inicio": request.GET.get("data_inicio", ""),

@@ -316,6 +316,40 @@
 </script>
 
 <div class="analytics-secao">
+    <h2>Funil de quem chega sem conta</h2>
+    <p class="help">
+        Quem tentou converter um link, ir pra Shopee ou abrir uma oferta sem estar logado (e esbarrou no
+        cadastro) - quantos se cadastraram e quantos geraram o primeiro link depois. Coorte pela data da
+        tentativa. Base pra decidir o item 13.11 do ROADMAP (converter sem cadastro). Medição começou
+        com a Fase 62; antes disso não há dados.
+    </p>
+    {% with f=funil_sem_conta %}
+    <div class="analytics-cards">
+        <div class="analytics-card">
+            <h3>Tentaram sem conta</h3>
+            <div class="valor">{{ f.tentativas }}</div>
+            <div class="legenda">conversor {{ f.tentativas_por_origem.conversor }} · ir pra Shopee {{ f.tentativas_por_origem.ir_shopee }} · ofertas {{ f.tentativas_por_origem.oferta }} · story {{ f.tentativas_por_origem.story }}</div>
+        </div>
+        <div class="analytics-card">
+            <h3>Se cadastraram</h3>
+            <div class="valor">{{ f.cadastraram }}{% if f.taxa_cadastro is not None %} <small>({{ f.taxa_cadastro }}%)</small>{% endif %}</div>
+            <div class="legenda">{{ f.cadastraram_google }} pelo Google</div>
+        </div>
+        <div class="analytics-card">
+            <h3>Geraram o 1º link</h3>
+            <div class="valor">{{ f.geraram_link }}{% if f.taxa_link is not None %} <small>({{ f.taxa_link }}%)</small>{% endif %}</div>
+            <div class="legenda">% sobre quem tentou sem conta</div>
+        </div>
+        <div class="analytics-card">
+            <h3>Cadastros no período</h3>
+            <div class="valor">{{ f.cadastros_periodo }}</div>
+            <div class="legenda">{{ f.cadastros_periodo_google }} pelo Google (inclui quem já chegou decidido)</div>
+        </div>
+    </div>
+    {% endwith %}
+</div>
+
+<div class="analytics-secao">
     <h2>Pedidos por status</h2>
     <table>
         <tr>

@@ -12,6 +12,8 @@ from django.shortcuts import redirect, render
 from django.views.decorators.http import require_GET
 from django.urls import reverse
 
+from accounts.funil import exigir_login_medindo, registrar_primeiro_link, registrar_tentativa
+from accounts.ratelimit import limitar_por_ip
 from ofertas.services import (
     LinkProdutoInvalidoError,
     SemComissaoError,
@@ -25,7 +27,6 @@ from ofertas.services import (
 )
 from paginas.prova_social import frases_prova_social
 from saques.services import calcular_resumo_saldo_nav
-from accounts.ratelimit import limitar_por_ip
 
 from cashback_shopee.meta_capi import enviar_evento, gerar_event_id
 
@@ -56,6 +57,7 @@ def home(request):
 
     if request.method == "POST":
         if not request.user.is_authenticated:
+            registrar_tentativa(request, "conversor")
             # Manda pro cadastro, não pro login - quem chega de anúncio colando um link
             # geralmente ainda não tem conta (ver ROADMAP.md). O link colado é
             # preservado e reaplicado automaticamente depois do cadastro (ver
@@ -105,7 +107,7 @@ def home(request):
     return render(request, "links/home.html", contexto)
 
 
-@login_required
+@exigir_login_medindo("ir_shopee")
 def ir_para_shopee(request):
     click = _criar_click_e_avisar(request, Click.TIPO_HOME, None, mensagem_sucesso=None)
     if click is None:
@@ -161,6 +163,7 @@ def _criar_click_e_avisar(request, tipo, url_produto, mensagem_sucesso="Link ger
         # ofertas/views.py::_ir_com_click_ou_erro (nem todo caminho até aqui
         # renderiza uma página nossa depois, pra disparar o Pixel do navegador).
         enviar_evento("GerouLinkCashback", request, gerar_event_id(), {"tipo_click": tipo})
+        registrar_primeiro_link(request)
         if mensagem_sucesso:
             messages.success(request, mensagem_sucesso)
         return click

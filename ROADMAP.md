@@ -230,7 +230,12 @@ Itens novos/atualizados a partir dele - **ordem sugerida de implementação**:
        duplicada. Indicação, origem e evento de cadastro da Meta iguais ao formulário.
        Desligado sem `GOOGLE_CLIENT_ID`/`GOOGLE_CLIENT_SECRET`; URI de redirecionamento
        no Google Cloud: `https://cash-b.com/login/google/callback/`.
-5. [ ] **13.11 Converter sem cadastro** (grande, já existia) - a Méliuz prova que
+5. [ ] **13.11 Converter sem cadastro** (grande, já existia) - **em espera, medindo
+       antes de construir (Fase 62)**: com o login com Google (13.15) o pedido de
+       cadastro virou 1 clique, então parte do ganho pode já ter vindo. Decidir com 2-3
+       semanas de dados do "Funil de quem chega sem conta" (admin > Analytics). Se
+       fizer: considerar pedir só e-mail/Google ao gerar o link, porque o navegador
+       interno do Instagram perde o cookie do clique anônimo. - a Méliuz prova que
        funciona: guardar o clique anônimo num cookie e ligar à conta quando a
        pessoa se cadastrar no mesmo navegador; cashback só pago com cadastro.
        Mexe em `gerar_click`, sincronização e Termos de Uso. Fica por último
@@ -2570,6 +2575,26 @@ Indique e ganhe: conta falsa indicando a si mesma pra ganhar o dobro dos dois la
 
 Confirmado em produção em 16/10: a Asaas devolveu nome completo e CPF mascarado
 (também mascarado em produção) no formato da documentação, e o nome conferiu.
+
+---
+
+## Fase 62 — Medição do funil de quem chega sem conta ✅
+
+Base pra decidir o 13.11 (converter sem cadastro) com dado em vez de palpite.
+
+- [x] **`accounts.EventoFunil`** + **`accounts/funil.py`** - um registro por etapa por
+      visitante (`funil_id` na sessão, sobrevive ao login): **tentativa** (esbarrou no
+      cadastro no conversor, "Ir pra Shopee", ofertas ou link de story - com a origem),
+      **cadastro** (formulário ou Google - todo cadastro entra, inclusive quem chegou
+      decidido) e **primeiro_link** (gerou o 1º link depois de se cadastrar). Robôs de
+      prévia de link (WhatsApp, Facebook, Pinterest) e buscadores não contam.
+      `exigir_login_medindo` substitui o `@login_required` nos pontos de entrada.
+- [x] **Admin > Analytics** - seção "Funil de quem chega sem conta" com tentativas por
+      origem, % que se cadastrou (e quantos pelo Google), % que gerou o 1º link e
+      cadastros do período por método. Respeita o filtro de datas (coorte pela data
+      da tentativa).
+- [x] Testes do fluxo completo (conversor -> cadastro -> 1º link no mesmo funil),
+      robôs, tentativa repetida e o resumo.
 
 ---
 
