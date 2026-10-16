@@ -181,6 +181,42 @@ implementando. Cada item pode virar uma conversa própria.
       prioridade) — print ou mockup da tela de saldo/histórico, pra
       reduzir a incerteza de quem ainda não decidiu se cadastra.
 
+### Benchmark Méliuz × Cuponomia (16/10/2026, com o REA)
+
+Páginas públicas da Shopee nos dois concorrentes, navegando como visitante (sem
+criar conta, sem descompilar app/extensão). A Cuponomia bloqueia navegador
+automatizado (403) - não foi contornado; dela só o HTML público.
+
+| | cash-b | Méliuz | Cuponomia |
+|---|---|---|---|
+| Cashback na Shopee | mín. 1,6% (direta), até 9,8%, em toda compra | 1% | 5% só na 1ª compra; da 2ª em diante "cashback indisponível" |
+| Login pra ativar | cadastro antes de converter | **nenhum** - visitante vai direto pra Shopee (link de afiliado com `sub_id` anônimo) | cadastro (Google/Facebook/Apple) |
+| Urgência | campanhas pouco visíveis | - | "Super cashback (era 2%)" + contagem regressiva |
+| Prova social | nenhuma | "50 milhões de pessoas", nota 4,7 (298), "Atualizado em ..." | "270 usados hoje" por cupom |
+| Cookies | opt-in de verdade (Fase 57) | GTM/Amplitude/PostHog sem aviso | "ao continuar, você concorda" |
+
+Itens novos/atualizados a partir dele - **ordem sugerida de implementação**:
+
+1. [x] **13.13 Anunciar a vantagem na Shopee** (muito rápido) - o hero passou a
+       dizer "sem limite por produto **nem por número de compras**". "Cashback em
+       toda compra" foi descartado: categorias sem comissão (alimentos, bebidas)
+       não geram cashback, então seria falso - regra registrada no `VOZ.md`. Sem
+       citar concorrente pelo nome (publicidade comparativa / CONAR).
+2. [ ] **13.14 Urgência das campanhas** (rápido) - mostrar "era X%" + contador nas
+       janelas de `CampanhaCashback` que já existem (Fases 44/52).
+3. [ ] **13.8 Prova social real** (rápido/médio, já existia) - reforçado pelo
+       benchmark: total pago, número de usuários, "atualizado hoje"; só números
+       reais.
+4. [ ] **13.15 Login com Google + CPF só no primeiro saque** (médio) - a Cuponomia
+       usa só login social; hoje o cadastro da cash-b é formulário com CPF.
+       Depende de criar credenciais OAuth no Google Cloud.
+5. [ ] **13.11 Converter sem cadastro** (grande, já existia) - a Méliuz prova que
+       funciona: guardar o clique anônimo num cookie e ligar à conta quando a
+       pessoa se cadastrar no mesmo navegador; cashback só pago com cadastro.
+       Mexe em `gerar_click`, sincronização e Termos de Uso. Fica por último
+       porque fica bem melhor com o 13.15 pronto (cadastro em 1 clique depois da
+       compra) e com os itens 1-3 já medindo a conversão atual.
+
 ## Fase 14 — Redesign: de "gerador de link" a vitrine de ofertas ✅ (pausada por decisão do dono, ver abaixo)
 
 Motivada por uma pesquisa de UI/UX comparando a cash-b com portais grandes de
