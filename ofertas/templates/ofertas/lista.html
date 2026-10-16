@@ -75,6 +75,7 @@
         .cabecalho { padding: 40px 0 8px; text-align: center; }
         .cabecalho h1 { font-size: 30px; margin: 0 0 8px; letter-spacing: -0.01em; }
         .cabecalho p { color: var(--muted); margin: 0; font-size: 15px; }
+        .cabecalho .ofertas-atualizadas { margin-top: 6px; font-size: 13px; }
 
         .filtro-secao {
             display: flex; flex-wrap: wrap; align-items: flex-end; gap: 16px 20px;
@@ -170,6 +171,7 @@
         <div class="cabecalho">
             <h1>Ofertas da Shopee</h1>
             <p>Clique em qualquer oferta e já saia com o cashback rastreado.</p>
+            {% if ofertas_atualizadas_em %}<p class="ofertas-atualizadas">Ofertas atualizadas {% if ofertas_atualizadas_hoje %}hoje{% else %}em {{ ofertas_atualizadas_em|date:"d/m" }}{% endif %} às {{ ofertas_atualizadas_em|date:"H\hi" }}.</p>{% endif %}
         </div>
 
         <form method="get" action="{% url 'ofertas_lista' %}" class="filtro-secao">

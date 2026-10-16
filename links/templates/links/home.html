@@ -156,6 +156,7 @@
         .conversor-hero .resultado-sub { margin: 0 0 8px; font-size: 12px; color: var(--muted); }
         .conversor-hero .resultado-url { display: block; word-break: break-all; font-size: 13px; font-weight: 600; font-family: "JB Mono", ui-monospace, monospace; }
 
+        .prova-social { display: flex; flex-wrap: wrap; justify-content: center; text-align: center; gap: 6px 16px; margin: -8px 0 20px; font-size: 14px; font-weight: 600; color: var(--success); }
         .conversor-hero label { text-align: center; }
         .conversor-hero input[type="url"] { text-align: center; }
         @media (min-width: 861px) {
@@ -394,6 +395,9 @@
                     cashback, sem limite por produto nem por número de compras.
                     Após atingir o saldo de R$ {{ saque_valor_minimo|floatformat:2 }}, saque via Pix.
                 </p>
+                {% if prova_social %}
+                    <p class="prova-social">{% for frase in prova_social %}<span>✓ {{ frase }}</span>{% endfor %}</p>
+                {% endif %}
                 {% if not user.is_authenticated %}
                     <a class="botao-cta hero-cta-cadastro" href="{% url 'registrar' %}">Cadastre-se grátis &rarr;</a>
                     <p class="hero-ou-separador">ou cole o link de um produto da Shopee abaixo</p>
