@@ -191,7 +191,13 @@ def buscar_oferta_por_link(url: str) -> Oferta:
     # algum app que formata como link (WhatsApp, Markdown) - sem isso, requests.get dá
     # "No connection adapters were found for '<https://...>'" em vez de abrir a URL.
     url = url.strip().strip("<>\"' ")
-    item_id = _resolver_item_id(url)
+    return buscar_oferta_por_item(_resolver_item_id(url))
+
+
+def buscar_oferta_por_item(item_id: int) -> Oferta:
+    """Como buscar_oferta_por_link, a partir do item_id já conhecido - usado também
+    pela estimativa ao vivo do conversor (links/views.py::cashback_estimado), que só
+    aceita links com o item_id na própria URL, sem seguir redirecionamento."""
     node = buscar_oferta_por_item_id(item_id)
     if node is None:
         raise SemComissaoError(

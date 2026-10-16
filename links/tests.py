@@ -4,6 +4,7 @@ from decimal import Decimal
 from unittest.mock import patch
 
 from django.contrib.auth import get_user_model
+from django.core.cache import cache
 from django.test import TestCase, override_settings
 from django.urls import reverse
 
@@ -512,3 +513,86 @@ class LinkLongoTests(TestCase):
         self.assertContains(resposta, "Esse link é longo demais")
         self.assertEqual(Click.objects.count(), 0)
         mock_gerar_link.assert_not_called()
+
+
+class CashbackEstimadoAoVivoTests(TestCase):
+    """Estimativa consultada assim que o link é colado no conversor da home, antes de
+    gerar o link - ver links/views.py::cashback_estimado."""
+
+    URL_COMPLETA = "https://shopee.com.br/Geladeira-437L-Philco-i.123.456"
+
+    def setUp(self):
+        cache.clear()
+
+    def _consultar(self, url):
+        return self.client.get(reverse("cashback_estimado"), {"url": url}).json()
+
+    @patch("links.views.buscar_oferta_por_item")
+    def test_link_completo_traz_percentual_e_valor_reais(self, mock_buscar):
+        mock_buscar.return_value = Oferta(
+            item_id=456, nome="Geladeira", preco_min=Decimal("100.00"), percentual_comissao=Decimal("0.098"),
+        )
+
+        dados = self._consultar(self.URL_COMPLETA)
+
+        mock_buscar.assert_called_once_with(456)
+        self.assertEqual(dados, {"status": "ok", "percentual": "9,8", "valor": "9,80"})
+
+    @patch("links.views.buscar_oferta_por_item")
+    def test_percentual_inteiro_sai_sem_casa_decimal(self, mock_buscar):
+        mock_buscar.return_value = Oferta(
+            item_id=456, nome="Geladeira", preco_min=Decimal("100.00"), percentual_comissao=Decimal("0.12"),
+        )
+
+        self.assertEqual(self._consultar(self.URL_COMPLETA)["percentual"], "12")
+
+    @patch("links.views.buscar_oferta_por_item")
+    def test_produto_sem_comissao(self, mock_buscar):
+        mock_buscar.side_effect = SemComissaoError("sem comissão")
+
+        self.assertEqual(self._consultar(self.URL_COMPLETA), {"status": "sem_comissao"})
+
+    @patch("links.views.buscar_oferta_por_item")
+    def test_link_curto_nao_segue_redirecionamento(self, mock_buscar):
+        """Seguir o redirecionamento leva até 10s e quase sempre falha do servidor -
+        numa rota pública, com 1 worker só, isso travaria o site."""
+        for url in ("https://s.shopee.com.br/8V9juuKQqX", "https://br.shp.ee/SPbtUzbT"):
+            self.assertEqual(self._consultar(url), {"status": "link_curto"})
+        mock_buscar.assert_not_called()
+
+    @patch("links.views.buscar_oferta_por_item")
+    def test_link_completo_sem_id_do_produto_nao_e_chamado_de_link_curto(self, mock_buscar):
+        self.assertEqual(self._consultar("https://shopee.com.br/flash_sale"), {"status": "nao_identificado"})
+        mock_buscar.assert_not_called()
+
+    @patch("links.views.buscar_oferta_por_item")
+    def test_falha_na_api_da_shopee_vira_indisponivel_sem_guardar_no_cache(self, mock_buscar):
+        mock_buscar.side_effect = ShopeeAPIError("fora do ar")
+        self.assertEqual(self._consultar(self.URL_COMPLETA), {"status": "indisponivel"})
+
+        mock_buscar.side_effect = None
+        mock_buscar.return_value = Oferta(
+            item_id=456, nome="Geladeira", preco_min=Decimal("100.00"), percentual_comissao=Decimal("0.098"),
+        )
+        self.assertEqual(self._consultar(self.URL_COMPLETA)["status"], "ok")
+
+    @patch("links.views.buscar_oferta_por_item")
+    def test_mesmo_produto_consultado_de_novo_usa_o_cache(self, mock_buscar):
+        mock_buscar.return_value = Oferta(
+            item_id=456, nome="Geladeira", preco_min=Decimal("100.00"), percentual_comissao=Decimal("0.098"),
+        )
+
+        self._consultar(self.URL_COMPLETA)
+        self._consultar(self.URL_COMPLETA + "?sp_atk=abc")
+
+        mock_buscar.assert_called_once()
+
+    @patch("links.views.buscar_oferta_por_item")
+    def test_limite_de_consultas_por_ip(self, mock_buscar):
+        mock_buscar.side_effect = SemComissaoError("sem comissão")
+        for _ in range(30):
+            self.client.get(reverse("cashback_estimado"), {"url": self.URL_COMPLETA})
+
+        resposta = self.client.get(reverse("cashback_estimado"), {"url": self.URL_COMPLETA})
+
+        self.assertEqual(resposta.status_code, 429)
