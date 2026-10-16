@@ -4,6 +4,7 @@ from django.contrib.auth.decorators import login_required
 from django.core.paginator import Paginator
 from django.db.models import F
 from django.shortcuts import get_object_or_404, redirect, render
+from django.utils import timezone
 
 from links.models import Click
 from links.services import gerar_click
@@ -12,7 +13,7 @@ from saques.services import calcular_resumo_saldo_nav
 
 from cashback_shopee.meta_capi import enviar_evento, gerar_event_id
 
-from .models import Oferta, OfertaDestaqueManual, OfertaManual
+from .models import CashbackMaximoCache, Oferta, OfertaDestaqueManual, OfertaManual
 from .services import carregar_categorias_nivel1
 
 ITENS_POR_PAGINA = 24
@@ -72,7 +73,14 @@ def lista(request):
         "busca": busca,
         "ordenacao_selecionada": ordenacao,
         "ordenacoes": ORDENACOES_ROTULOS.items(),
+        # Horário real da última sincronização do catálogo - "Ofertas atualizadas hoje
+        # às 10h05" (ROADMAP 13.8), mesmo sinal de frescor que a Méliuz mostra.
+        "ofertas_atualizadas_em": getattr(CashbackMaximoCache.obter(), "atualizado_em", None),
     }
+    if contexto["ofertas_atualizadas_em"]:
+        contexto["ofertas_atualizadas_hoje"] = (
+            timezone.localtime(contexto["ofertas_atualizadas_em"]).date() == timezone.localdate()
+        )
     if request.user.is_authenticated:
         contexto.update(calcular_resumo_saldo_nav(request.user))
     return render(request, "ofertas/lista.html", contexto)

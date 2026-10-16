@@ -167,6 +167,12 @@ CASHBACK_MAXIMO_ANUNCIADO = round(SHOPEE_CASHBACK_PERCENTUAL / 100 * SHOPEE_COMI
 CASHBACK_MINIMO_VENDA_DIRETA = float(os.environ.get("CASHBACK_MINIMO_VENDA_DIRETA", "1.6"))
 CASHBACK_MINIMO_VENDA_INDIRETA = float(os.environ.get("CASHBACK_MINIMO_VENDA_INDIRETA", "1"))
 
+# Prova social na home (paginas/prova_social.py, ROADMAP 13.8): cada número só aparece
+# a partir desse mínimo - número pequeno passa a impressão contrária.
+PROVA_SOCIAL_MIN_USUARIOS = int(os.environ.get("PROVA_SOCIAL_MIN_USUARIOS", "500"))
+PROVA_SOCIAL_MIN_PEDIDOS = int(os.environ.get("PROVA_SOCIAL_MIN_PEDIDOS", "500"))
+PROVA_SOCIAL_MIN_PAGO = int(os.environ.get("PROVA_SOCIAL_MIN_PAGO", "1000"))
+
 # Multiplicador do programa "indique e ganhe": aplicado só ao pedido que dispara o
 # bônus (1ª compra validada do indicado, e a compra seguinte de quem indicou) - não é
 # um valor fixo em R$, dobra o cashback daquele pedido específico. Ver

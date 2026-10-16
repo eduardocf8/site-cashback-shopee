@@ -212,9 +212,15 @@ Itens novos/atualizados a partir dele - **ordem sugerida de implementação**:
          dos pins do Pinterest ("sem limite de compras") - regra do `VOZ.md`.
          Ficaram de fora: scripts de arte em `marketing/` (já geradas) e os
          banners cadastrados no banco ("em todas as compras"), editáveis no admin.
-3. [ ] **13.8 Prova social real** (rápido/médio, já existia) - reforçado pelo
-       benchmark: total pago, número de usuários, "atualizado hoje"; só números
-       reais.
+3. [x] **13.8 Prova social real** (rápido/médio, já existia) -
+       `paginas/prova_social.py`: frases com números reais na home ("Mais de 600
+       pessoas já se cadastraram", "Mais de X compras com cashback", "Mais de R$ X
+       já pagos via Pix"), cada uma só a partir de um mínimo
+       (`PROVA_SOCIAL_MIN_USUARIOS`=500, `_PEDIDOS`=500, `_PAGO`=1000, no `.env`) e
+       arredondada para baixo; cache de 1h. Em 16/10: 674 usuários (aparece), 218
+       pedidos e R$ 0 sacado (ainda escondidos - aparecem sozinhos ao passar do
+       mínimo). Vitrine mostra "Ofertas atualizadas hoje às HHhMM" com o horário
+       real da última sincronização.
 4. [ ] **13.15 Login com Google + CPF só no primeiro saque** (médio) - a Cuponomia
        usa só login social; hoje o cadastro da cash-b é formulário com CPF.
        Depende de criar credenciais OAuth no Google Cloud.

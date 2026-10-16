@@ -23,6 +23,7 @@ from ofertas.services import (
     resolver_item_id_sem_rede,
     selecionar_carrossel_home,
 )
+from paginas.prova_social import frases_prova_social
 from saques.services import calcular_resumo_saldo_nav
 from accounts.ratelimit import limitar_por_ip
 
@@ -89,6 +90,7 @@ def home(request):
         "oferta_convertida": oferta_convertida,
         "sem_comissao_convertida": sem_comissao_convertida,
         "cashback_percentual_maximo": cashback_percentual_maximo,
+        "prova_social": frases_prova_social(),
         "cashback_minimo_direta": settings.CASHBACK_MINIMO_VENDA_DIRETA,
         "cashback_minimo_indireta": settings.CASHBACK_MINIMO_VENDA_INDIRETA,
         "saque_valor_minimo": settings.SAQUE_VALOR_MINIMO,

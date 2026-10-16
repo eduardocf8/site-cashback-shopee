@@ -163,3 +163,53 @@ class PaginaDeBioTests(TestCase):
 
         self.assertIn("https://whatsapp.com/channel/novo", home)
         self.assertIn("https://whatsapp.com/channel/novo", links)
+
+
+class ProvaSocialTests(TestCase):
+    """ROADMAP 13.8: números reais, só a partir de um mínimo, arredondados para baixo."""
+
+    def setUp(self):
+        from django.core.cache import cache
+        cache.clear()
+
+    def _usuarios(self, quantidade):
+        from django.contrib.auth import get_user_model
+        for i in range(quantidade):
+            get_user_model().objects.create_user(username=f"u{i}", password="x", cpf=f"{i:011d}")
+
+    def test_aproximado_arredonda_para_baixo_e_nao_diz_mais_de_quando_exato(self):
+        from .prova_social import _aproximado
+        self.assertEqual(_aproximado(674), "Mais de 600")
+        self.assertEqual(_aproximado(600), "600")
+        self.assertEqual(_aproximado(12_345), "Mais de 12.000")
+        self.assertEqual(_aproximado(Decimal("1234.56")), "Mais de 1.200")
+
+    @override_settings(PROVA_SOCIAL_MIN_USUARIOS=5, PROVA_SOCIAL_MIN_PEDIDOS=10**9, PROVA_SOCIAL_MIN_PAGO=10**9)
+    def test_home_mostra_so_o_que_passou_do_minimo(self):
+        self._usuarios(7)
+        resposta = self.client.get(reverse("home"))
+        self.assertContains(resposta, "7 pessoas já se cadastraram")
+        self.assertNotContains(resposta, "compras com cashback")
+        self.assertNotContains(resposta, "já pagos via Pix")
+
+    @override_settings(PROVA_SOCIAL_MIN_USUARIOS=50)
+    def test_abaixo_do_minimo_nao_mostra_nada(self):
+        self._usuarios(7)
+        self.assertNotContains(self.client.get(reverse("home")), 'class="prova-social"')
+
+    @override_settings(PROVA_SOCIAL_MIN_USUARIOS=10**9, PROVA_SOCIAL_MIN_PEDIDOS=10**9, PROVA_SOCIAL_MIN_PAGO=100)
+    def test_total_pago_soma_so_saques_pagos(self):
+        from django.contrib.auth import get_user_model
+        from saques.models import Saque
+        usuario = get_user_model().objects.create_user(username="ana", password="x", cpf="39053344705")
+        Saque.objects.create(usuario=usuario, valor=Decimal("150"), chave_pix="a", tipo_chave_pix="email", status=Saque.STATUS_PAGO)
+        Saque.objects.create(usuario=usuario, valor=Decimal("900"), chave_pix="a", tipo_chave_pix="email", status=Saque.STATUS_SOLICITADO)
+        self.assertContains(self.client.get(reverse("home")), "Mais de R$ 100 já pagos via Pix")
+
+
+class OfertasAtualizadasTests(TestCase):
+    def test_vitrine_mostra_horario_da_ultima_sincronizacao(self):
+        from ofertas.models import CashbackMaximoCache
+        self.assertNotContains(self.client.get(reverse("ofertas_lista")), "Ofertas atualizadas")
+        CashbackMaximoCache.atualizar(Decimal("9.8"))
+        self.assertContains(self.client.get(reverse("ofertas_lista")), "Ofertas atualizadas hoje às")
