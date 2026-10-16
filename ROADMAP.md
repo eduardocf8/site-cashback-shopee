@@ -2598,6 +2598,32 @@ Base pra decidir o 13.11 (converter sem cadastro) com dado em vez de palpite.
 
 ---
 
+## Fase 63 — "Como a cash-b ganha dinheiro?" (benchmark internacional) ✅
+
+Benchmark de 16/10 com ShopBack (Shopee em Singapura), TopCashback (UK) e Rakuten
+(EUA), páginas públicas. A TopCashback responde "Como ganhamos dinheiro?" na própria
+home - é a dúvida que mais gera desconfiança em quem não conhece cashback.
+
+- [x] Pergunta abre/fecha logo abaixo de "Por que usar a cash-b?" na home e no FAQ:
+      a Shopee paga comissão à cash-b pelo link, a cash-b repassa parte como cashback
+      e fica com o resto; o preço na Shopee é o mesmo.
+- [x] FAQ "Por que às vezes não aparece o %" atualizado - ainda dizia que link curto
+      do app não mostra a %, resolvido na Fase 60.
+
+Outras ideias do benchmark, ainda não feitas (ordem sugerida):
+1. [ ] **Linha do tempo + exclusões antes da compra** (ShopBack): "aparece na conta em
+       ~X dias · validado após o prazo de devolução · liberado no dia 1º do 2º mês"
+       no resultado do conversor e nas ofertas, mais o que não gera cashback.
+2. [ ] **Reclamação de compra não registrada** (TopCashback/Rakuten): a pessoa informa
+       o nº do pedido Shopee; se bater com um pedido "fora do site" já sincronizado,
+       o admin vincula com 1 clique.
+3. [ ] **Bônus de boas-vindas com teto** (Rakuten Welcome Boost, faixa "cliente novo"
+       da ShopBack) - decisão de margem, avaliar com o funil da Fase 62.
+4. [ ] Avaliar: saque mínimo menor (TopCashback não tem mínimo; depende da taxa do Pix
+       na Asaas), perfil no Reclame Aqui (equivalente local ao Trustpilot).
+
+---
+
 Pra continuar esse roadmap numa conversa nova, basta apontar esse arquivo
 (`ROADMAP.md`) e o `BRAND.md` — juntos eles dão o contexto de identidade
 visual e do que falta implementar, sem precisar reconstruir o histórico da
