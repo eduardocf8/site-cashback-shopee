@@ -552,13 +552,36 @@ class CashbackEstimadoAoVivoTests(TestCase):
 
         self.assertEqual(self._consultar(self.URL_COMPLETA), {"status": "sem_comissao"})
 
+    @patch("links.views.resolver_item_id_com_rede", return_value=456)
     @patch("links.views.buscar_oferta_por_item")
-    def test_link_curto_nao_segue_redirecionamento(self, mock_buscar):
-        """Seguir o redirecionamento leva até 10s e quase sempre falha do servidor -
-        numa rota pública, com 1 worker só, isso travaria o site."""
+    def test_link_curto_resolvido_traz_percentual_real(self, mock_buscar, mock_resolver):
+        mock_buscar.return_value = Oferta(
+            item_id=456, nome="Geladeira", preco_min=Decimal("100.00"), percentual_comissao=Decimal("0.098"),
+        )
+
+        dados = self._consultar("https://s.shopee.com.br/8V9juuKQqX")
+
+        self.assertEqual(dados["status"], "ok")
+        mock_buscar.assert_called_once_with(456)
+        # Timeout curto: rota pública com 1 worker só no gunicorn.
+        self.assertLessEqual(mock_resolver.call_args.kwargs["timeout"], 5)
+
+    @patch("links.views.resolver_item_id_com_rede", return_value=None)
+    @patch("links.views.buscar_oferta_por_item")
+    def test_link_curto_nao_identificado(self, mock_buscar, _mock_resolver):
         for url in ("https://s.shopee.com.br/8V9juuKQqX", "https://br.shp.ee/SPbtUzbT"):
             self.assertEqual(self._consultar(url), {"status": "link_curto"})
         mock_buscar.assert_not_called()
+
+    @patch("links.views.resolver_item_id_com_rede", return_value=456)
+    @patch("links.views.buscar_oferta_por_item")
+    def test_link_curto_repetido_nao_abre_a_pagina_da_shopee_de_novo(self, mock_buscar, mock_resolver):
+        mock_buscar.side_effect = SemComissaoError("sem comissão")
+
+        self._consultar("https://br.shp.ee/SPbtUzbT")
+        self._consultar("https://br.shp.ee/SPbtUzbT")
+
+        mock_resolver.assert_called_once()
 
     @patch("links.views.buscar_oferta_por_item")
     def test_link_completo_sem_id_do_produto_nao_e_chamado_de_link_curto(self, mock_buscar):

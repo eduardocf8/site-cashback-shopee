@@ -364,6 +364,32 @@ class ResolverItemIdComRedeTests(TestCase):
 
         self.assertIsNone(resolver_item_id_com_rede("https://s.shopee.com.br/abc123"))
 
+    # Trechos reais (encurtados) da página que a Shopee devolve pra um link curto: 200
+    # sem redirecionamento HTTP, com o destino embutido no HTML só de forma escapada.
+    PAGINA_S_SHOPEE = (
+        '<script>var u="https:\\/\\/shopee.com.br\\/opaanlp\\/1356856417\\/22893790071'
+        '?__mobile__=1\\u0026exp_group=rollout";</script>'
+    )
+    PAGINA_SHP_EE = (
+        '<a href="\\/\\/reactPath?navigate_url=https%3A%2F%2Fshopee.com.br%2Fproduct'
+        '%2F1356856417%2F22893790071%3Fd_id%3D09b43\\u0026path=shopee%2FTRANSFER_PAGE">'
+    )
+
+    @patch("ofertas.services.requests.get")
+    def test_link_curto_com_destino_escapado_no_html(self, mock_get):
+        for url, pagina in (
+            ("https://s.shopee.com.br/8V9juuKQqX", self.PAGINA_S_SHOPEE),
+            ("https://br.shp.ee/SPbtUzbT", self.PAGINA_SHP_EE),
+        ):
+            mock_get.return_value = Mock(url=url, text=pagina, status_code=200, history=[])
+
+            self.assertEqual(resolver_item_id_com_rede(url), 22893790071)
+
+    def test_formato_opaanlp_reconhecido_sem_rede(self):
+        self.assertEqual(
+            resolver_item_id_sem_rede("https://shopee.com.br/opaanlp/1356856417/22893790071?x=1"), 22893790071,
+        )
+
 
 @override_settings(**CREDENCIAIS_TESTE)
 class IrParaOfertaTests(TestCase):

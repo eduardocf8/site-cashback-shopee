@@ -2436,6 +2436,50 @@ antes da compra - mesma limitação das Fases 35-37.
 
 ---
 
+## Fase 59 — Moeda no evento de cadastro da Meta ✅
+
+O Diagnóstico do Gerenciador de Eventos acusava: "100% dos seus eventos
+CompleteRegistration não estão enviando informações de moeda válidas".
+
+- [x] Pixel (`accounts/dashboard.html`) e CAPI (`accounts/views.py`, via
+      `meta_capi.DADOS_CADASTRO`) mandam `currency: "BRL"` e `value: 0` no
+      CompleteRegistration.
+- [x] Fica de fora o outro alerta ("Adicione os eventos ausentes" →
+      "Configure para mim"): o evento já existe no código e a ferramenta da Meta
+      criaria eventos por fora dele - a expectativa é ele sumir com os novos
+      cadastros chegando.
+
+---
+
+## Fase 60 — Links curtos resolvidos de verdade (destino escapado no HTML) ✅
+
+Retomada das Fases 35-37. Abrindo de verdade os links curtos (`s.shopee.com.br`,
+`br.shp.ee`) e olhando a resposta inteira, a causa apareceu: a página (200, sem
+redirecionamento HTTP) **já traz o endereço do produto embutido**, só que escrito
+de formas que o regex não reconhecia - com barras escapadas de JSON
+(`https:\\/\\/shopee.com.br\\/product\\/<loja>\\/<item>`), em codificação de URL
+(`navigate_url=https%3A%2F%2Fshopee.com.br%2Fproduct%2F...`) e num terceiro formato
+de caminho, `/opaanlp/<loja>/<item>`. Não era bloqueio nem JavaScript obrigatório.
+
+- [x] **`ofertas/services.py::_texto_da_pagina_normalizado`** - desfaz as barras
+      escapadas e a codificação de URL antes de procurar o produto na página;
+      `PADRAO_ITEM_ID_NA_URL` passou a aceitar `/opaanlp/<loja>/<item>`.
+      Conferido contra os dois links curtos reais dos prints do dono do produto:
+      antes falhavam (mesma mensagem de produção), agora resolvem em < 1s.
+- [x] **Conversor ao vivo** (`links/views.py::cashback_estimado`) passou a
+      resolver link curto também - timeout de 4s (rota pública, 1 worker só) e o
+      item_id guardado em cache por URL. Se mesmo assim não identificar, mantém o
+      texto que orienta a colar o link completo.
+- [x] De quebra, a conversão ("Gerar link") e a tarefa diária
+      `resolver_item_id_alvo_pendentes` (Fase 42), que usam a mesma função, passam
+      a acertar os links curtos - inclusive os cliques antigos ainda pendentes.
+- [x] Testes com trechos reais (encurtados) das duas páginas.
+
+Pendente: confirmar a partir do servidor do Render (IP diferente do ambiente onde
+foi testado) com `python manage.py testar_resolucao_links_curtos`.
+
+---
+
 Pra continuar esse roadmap numa conversa nova, basta apontar esse arquivo
 (`ROADMAP.md`) e o `BRAND.md` — juntos eles dão o contexto de identidade
 visual e do que falta implementar, sem precisar reconstruir o histórico da

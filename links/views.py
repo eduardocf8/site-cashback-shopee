@@ -1,3 +1,4 @@
+import hashlib
 import logging
 from urllib.parse import urlencode, urlparse
 
@@ -18,6 +19,7 @@ from ofertas.services import (
     buscar_oferta_por_link,
     categorias_mais_vendidas,
     obter_cashback_maximo_anunciado,
+    resolver_item_id_com_rede,
     resolver_item_id_sem_rede,
     selecionar_carrossel_home,
 )
@@ -41,6 +43,9 @@ NUMERO_CATEGORIAS_HOME = 12
 # tecla/colagem repetida do mesmo link.
 CACHE_ESTIMATIVA_SEGUNDOS = 10 * 60
 DOMINIOS_LINK_CURTO = ("s.shopee.com.br", "shp.ee")
+# Abrir o link curto leva menos de 1s normalmente; o teto curto protege o único worker
+# do gunicorn se a Shopee ficar lenta.
+TIMEOUT_LINK_CURTO_SEGUNDOS = 4
 
 
 def home(request):
@@ -176,17 +181,24 @@ def cashback_estimado(request):
     nada sobre o produto específico. Pública (quem chega de anúncio ainda não tem
     conta), por isso com limite por IP e cache por item_id.
 
-    Só aceita link com o item_id na própria URL (resolver_item_id_sem_rede) - link curto
-    (s.shopee.com.br, shp.ee) precisaria seguir redirecionamento, que pode levar até 10s
-    e quase sempre falha a partir do servidor (ROADMAP.md, Fases 35-37); com 1 worker só
-    no gunicorn, uma rota pública fazendo isso travaria o site. Pra esses, responde
-    "link_curto" e a home explica como ver o valor exato."""
-    url = request.GET.get("url", "")
+    Link com o item_id na própria URL resolve sem rede. Link curto (s.shopee.com.br,
+    shp.ee) abre a página da Shopee pra achar o produto (ver
+    ofertas/services.py::_texto_da_pagina_normalizado) - com timeout curto e o item_id
+    guardado em cache por URL, porque a rota é pública e o gunicorn tem 1 worker só. Se
+    não der pra identificar, responde "link_curto" e a home explica como ver o valor."""
+    url = request.GET.get("url", "").strip()
     item_id = resolver_item_id_sem_rede(url)
     if item_id is None:
-        host = urlparse(url.strip()).netloc.lower()
-        eh_link_curto = any(host == d or host.endswith("." + d) for d in DOMINIOS_LINK_CURTO)
-        return JsonResponse({"status": "link_curto" if eh_link_curto else "nao_identificado"})
+        host = urlparse(url).netloc.lower()
+        if not any(host == d or host.endswith("." + d) for d in DOMINIOS_LINK_CURTO):
+            return JsonResponse({"status": "nao_identificado"})
+        chave_url = f"cashback_estimado:url:{hashlib.sha256(url.encode()).hexdigest()}"
+        item_id = cache.get(chave_url)
+        if item_id is None:
+            item_id = resolver_item_id_com_rede(url, timeout=TIMEOUT_LINK_CURTO_SEGUNDOS)
+            if item_id is None:
+                return JsonResponse({"status": "link_curto"})
+            cache.set(chave_url, item_id, CACHE_ESTIMATIVA_SEGUNDOS)
 
     chave = f"cashback_estimado:{item_id}"
     resultado = cache.get(chave)
