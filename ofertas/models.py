@@ -43,18 +43,30 @@ class _CashbackEstimadoMixin:
         diferente do que é pago. Usa o multiplicador de campanha vigente AGORA (ver
         CampanhaCashback.multiplicador_atual) - é uma estimativa de quem comprar
         agora, não uma promessa carimbada como no pedido de verdade."""
-        multiplicador = CampanhaCashback.multiplicador_atual()
+        return self._valor_cashback_com(CampanhaCashback.multiplicador_atual())
+
+    def _valor_cashback_com(self, multiplicador: Decimal) -> Decimal:
         valor_bruto = self.preco_base_cashback * self._fracao_cashback * multiplicador
         return valor_bruto.quantize(Decimal("0.01"))
+
+    def _percentual_cashback_com(self, multiplicador: Decimal) -> Decimal:
+        if not self.preco_base_cashback:
+            return (self._fracao_cashback * Decimal("100") * multiplicador).quantize(Decimal("0.1"))
+        valor = self._valor_cashback_com(multiplicador)
+        return (valor / self.preco_base_cashback * Decimal("100")).quantize(Decimal("0.1"))
 
     @property
     def percentual_cashback(self) -> Decimal:
         """% de cashback exibida, derivada do valor em R$ (já arredondado, já com o
         piso aplicado) - pra badge (%) e valor (R$) sempre baterem um com o outro."""
-        if not self.preco_base_cashback:
-            multiplicador = CampanhaCashback.multiplicador_atual()
-            return (self._fracao_cashback * Decimal("100") * multiplicador).quantize(Decimal("0.1"))
-        return (self.valor_cashback_estimado / self.preco_base_cashback * Decimal("100")).quantize(Decimal("0.1"))
+        return self._percentual_cashback_com(CampanhaCashback.multiplicador_atual())
+
+    @property
+    def percentual_cashback_sem_campanha(self) -> Decimal:
+        """% normal, sem o multiplicador de campanha - o "era X%" riscado no card
+        durante a campanha (ROADMAP 13.14). Fora de campanha é igual a
+        percentual_cashback, e o card não mostra nada riscado."""
+        return self._percentual_cashback_com(Decimal("1"))
 
 
 class Oferta(_CashbackEstimadoMixin, models.Model):

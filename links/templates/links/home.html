@@ -478,7 +478,7 @@
                         <span class="destaque-preco">R$ {{ oferta_destaque.preco_min|floatformat:2 }}</span>
                         {% if oferta_destaque.percentual_cashback %}
                             <span class="destaque-cashback">
-                                + R$ {{ oferta_destaque.valor_cashback_estimado|floatformat:2 }} de volta ({{ oferta_destaque.percentual_cashback }}% cashback)
+                                + R$ {{ oferta_destaque.valor_cashback_estimado|floatformat:2 }} de volta ({% if oferta_destaque.percentual_cashback_sem_campanha != oferta_destaque.percentual_cashback %}<s>{{ oferta_destaque.percentual_cashback_sem_campanha }}%</s> {% endif %}{{ oferta_destaque.percentual_cashback }}% cashback)
                             </span>
                         {% endif %}
                     </div>

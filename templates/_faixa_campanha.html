@@ -19,17 +19,41 @@ O texto diz "50% a mais de cashback", e não "+50%": "+50%" pode ser lido como "
     .faixa-campanha { background: var(--highlight, #f59e0b); color: var(--ink, #111827); text-align: center;
         padding: 10px 16px; font-size: 14px; font-weight: 700; line-height: 1.4; }
     .faixa-campanha a { color: inherit; text-decoration: underline; white-space: nowrap; }
+    .faixa-contador { display: inline-block; margin: 0 6px; padding: 1px 8px; border-radius: 6px;
+        background: rgba(17, 24, 39, .12); font-variant-numeric: tabular-nums; white-space: nowrap; }
 </style>
 <div class="faixa-campanha" role="status">
     {% if faixa.ativa %}
         {% if campanha.percentual_extra == 100 %}Cashback em dobro{% else %}{{ campanha.percentual_extra }}% a mais de cashback{% endif %}
-        em toda compra{% if campanha.fim %}{% if campanha.um_so_dia %} no {% else %} até {% endif %}{{ campanha.fim|date:"d/m" }}{% else %} por tempo limitado{% endif %}.
+        nas suas compras{% if campanha.fim %}{% if campanha.um_so_dia %} no {% else %} até {% endif %}{{ campanha.fim|date:"d/m" }}{% else %} por tempo limitado{% endif %}.
+        {% if faixa.segundos_restantes is not None %}
+            <span class="faixa-contador" data-segundos="{{ faixa.segundos_restantes }}">Termina em {{ faixa.contador_inicial }}</span>
+        {% endif %}
         <a href="{% url 'ofertas_lista' %}">Ver ofertas</a>
     {% else %}
         Dia {{ campanha.inicio|date:"d.m" }}:
         {% if campanha.percentual_extra == 100 %}cashback em dobro{% else %}{{ campanha.percentual_extra }}% a mais de cashback{% endif %}
-        em toda compra.
+        nas suas compras.
     {% endif %}
 </div>
+{% if faixa.segundos_restantes is not None %}
+<script>
+(function () {
+    // Contador das últimas horas da campanha (ROADMAP 13.14). Parte do tempo calculado
+    // no servidor e só desconta localmente - não depende do relógio do aparelho estar certo.
+    var el = document.querySelector(".faixa-contador");
+    if (!el) return;
+    var fim = Date.now() + parseInt(el.dataset.segundos, 10) * 1000;
+    function dois(n) { return (n < 10 ? "0" : "") + n; }
+    function tick() {
+        var s = Math.max(0, Math.round((fim - Date.now()) / 1000));
+        if (s === 0) { el.textContent = "Últimos instantes"; return; }
+        el.textContent = "Termina em " + dois(Math.floor(s / 3600)) + ":" + dois(Math.floor(s % 3600 / 60)) + ":" + dois(s % 60);
+        setTimeout(tick, 1000);
+    }
+    tick();
+})();
+</script>
+{% endif %}
 {% endwith %}
 {% endif %}

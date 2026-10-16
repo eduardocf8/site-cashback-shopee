@@ -87,7 +87,7 @@ def gerar_imagem_pin_categoria(categoria_nome: str, ofertas, tamanho=TAMANHO_PIN
         )
     y += lado * 2 + espaco + 48
 
-    selo = "cashback em toda compra"
+    selo = "cashback sem limite de compras"
     largura_selo = draw.textlength(selo, font=fonte_selo) + 48
     draw.rounded_rectangle([(margem, y), (margem + largura_selo, y + 64)], radius=16, fill=VERDE_DINHEIRO_FUNDO)
     draw.text((margem + largura_selo / 2, y + 32), selo, font=fonte_selo, fill=VERDE_DINHEIRO, anchor="mm")

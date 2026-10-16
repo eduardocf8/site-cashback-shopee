@@ -146,6 +146,22 @@ class MontarOfertaTests(TestCase):
 
 @override_settings(SHOPEE_CASHBACK_PERCENTUAL=100)
 class CashbackEstimadoTests(TestCase):
+    def test_percentual_sem_campanha_e_o_era_riscado_durante_a_campanha(self):
+        """ROADMAP 13.14: durante a campanha o card mostra "~~10%~~ 15%"; fora dela
+        os dois valores são iguais e nada aparece riscado."""
+        oferta = Oferta(
+            item_id=1, nome="Produto", categoria_id=1, product_link="https://shopee.com.br/p-i.1.1",
+            preco_min=Decimal("100.00"), preco_max=Decimal("100.00"), percentual_comissao=Decimal("0.10"),
+        )
+        self.assertEqual(oferta.percentual_cashback_sem_campanha, oferta.percentual_cashback)
+
+        agora = timezone.now()
+        CampanhaCashback.objects.create(
+            multiplicador=Decimal("1.5"), inicio=agora - timedelta(days=1), fim=agora + timedelta(days=1),
+        )
+        self.assertEqual(oferta.percentual_cashback_sem_campanha, Decimal("10.0"))
+        self.assertEqual(oferta.percentual_cashback, Decimal("15.0"))
+
     def test_calcula_valor_e_percentual_sem_limite(self):
         oferta = Oferta(
             item_id=1, nome="Produto com comissão alta", categoria_id=1,
