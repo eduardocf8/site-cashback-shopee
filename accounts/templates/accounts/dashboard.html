@@ -449,9 +449,8 @@
         <section id="pedidos">
             <h2 class="titulo-secao">Meus pedidos</h2>
             <p class="nota-secao">
-                Sua compra não aparece na hora nem no dia seguinte: a Shopee pode levar
-                alguns dias para confirmar o pedido pra gente. É normal, não precisa se
-                preocupar.
+                Sua compra não aparece na hora: a Shopee leva até 2 dias para informar o
+                pedido pra gente. É normal, não precisa se preocupar.
             </p>
             <form method="get" action="{% url 'dashboard' %}#pedidos" class="filtro-secao">
                 <label for="status_pedido" style="margin: 0; color: var(--muted);">Status:</label>
@@ -530,7 +529,7 @@
                     </div>
                 {% endif %}
             {% else %}
-                <p class="vazio">Você ainda não tem pedidos{% if filtro_pedidos %} com esse status{% endif %}. Compre pela Shopee usando seus links de cashback e eles aparecem aqui em alguns dias.</p>
+                <p class="vazio">Você ainda não tem pedidos{% if filtro_pedidos %} com esse status{% endif %}. Compre pela Shopee usando seus links de cashback e eles aparecem aqui em até 2 dias.</p>
             {% endif %}
         </section>
 
