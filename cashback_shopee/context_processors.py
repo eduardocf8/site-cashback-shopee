@@ -14,3 +14,8 @@ def meta_pixel(request):
         "cookie_consentimento": COOKIE_CONSENTIMENTO,
         "consentimento_aceito": CONSENTIMENTO_ACEITO,
     }
+
+
+def google_login(request):
+    """Mostra o botão "Continuar com Google" só com as credenciais configuradas."""
+    return {"google_login_ativo": bool(settings.GOOGLE_CLIENT_ID and settings.GOOGLE_CLIENT_SECRET)}

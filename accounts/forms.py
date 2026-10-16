@@ -12,6 +12,23 @@ def _campo_nome_completo():
     )
 
 
+def _campo_cpf(required=True):
+    return forms.CharField(
+        required=required, label="CPF", max_length=14,
+        widget=forms.TextInput(attrs={"placeholder": "000.000.000-00", "inputmode": "numeric"}),
+    )
+
+
+def _validar_cpf_unico(cpf, instance=None):
+    cpf = validar_cpf(cpf)
+    outros = User.objects.filter(cpf=cpf)
+    if instance is not None and instance.pk:
+        outros = outros.exclude(pk=instance.pk)
+    if outros.exists():
+        raise forms.ValidationError("Já existe uma conta cadastrada com este CPF.")
+    return cpf
+
+
 def _campo_celular():
     return forms.CharField(
         required=False, label="Celular com DDD (opcional)", max_length=20,
@@ -57,12 +74,7 @@ class RegistroForm(UserCreationForm):
 class EditarPerfilForm(forms.ModelForm):
     nome_completo = _campo_nome_completo()
     celular = _campo_celular()
-    cpf = forms.CharField(
-        required=True,
-        label="CPF",
-        max_length=14,
-        widget=forms.TextInput(attrs={"placeholder": "000.000.000-00"}),
-    )
+    cpf = _campo_cpf()
 
     class Meta:
         model = User
@@ -75,11 +87,18 @@ class EditarPerfilForm(forms.ModelForm):
         celular = self.cleaned_data.get("celular", "")
         return validar_celular(celular) if celular.strip() else ""
 
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        # Conta criada pelo Google ainda sem CPF: não obriga aqui (ele é pedido junto
+        # com a chave Pix, antes do primeiro saque), mas deixa informar.
+        if not self.instance.cpf:
+            self.fields["cpf"].required = False
+
     def clean_cpf(self):
-        cpf = validar_cpf(self.cleaned_data["cpf"])
-        if User.objects.filter(cpf=cpf).exclude(pk=self.instance.pk).exists():
-            raise forms.ValidationError("Já existe uma conta cadastrada com este CPF.")
-        return cpf
+        cpf = self.cleaned_data.get("cpf") or ""
+        if not cpf.strip():
+            return self.instance.cpf or None
+        return _validar_cpf_unico(cpf, self.instance)
 
     def clean_email(self):
         email = self.cleaned_data["email"]
@@ -109,10 +128,17 @@ class ChavePixForm(forms.ModelForm):
         # chave (accounts/verificacao_pix.py) - pede aqui, junto com a chave.
         if not self.instance.nome_completo:
             self.fields["nome_completo"] = _campo_nome_completo()
-            self.order_fields(["nome_completo", "tipo_chave_pix", "chave_pix"])
+        # Conta criada pelo Google: o CPF entra aqui, porque é com ele que o titular da
+        # chave é conferido (accounts/verificacao_pix.py).
+        if not self.instance.cpf:
+            self.fields["cpf"] = _campo_cpf()
+        self.order_fields(["nome_completo", "cpf", "tipo_chave_pix", "chave_pix"])
 
     def clean_nome_completo(self):
         return validar_nome_completo(self.cleaned_data["nome_completo"])
+
+    def clean_cpf(self):
+        return _validar_cpf_unico(self.cleaned_data["cpf"], self.instance)
 
     def clean(self):
         cleaned = super().clean()
@@ -123,4 +149,6 @@ class ChavePixForm(forms.ModelForm):
     def save(self, commit=True):
         if "nome_completo" in self.cleaned_data:
             self.instance.nome_completo = self.cleaned_data["nome_completo"]
+        if "cpf" in self.cleaned_data:
+            self.instance.cpf = self.cleaned_data["cpf"]
         return super().save(commit=commit)

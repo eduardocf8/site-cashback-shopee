@@ -14,6 +14,7 @@
                 </ul>
             {% endif %}
             <h1>Entrar</h1>
+            {% include "accounts/_botao_google.html" with proximo=next %}
             <form method="post">
                 {% csrf_token %}
                 {% for field in form %}

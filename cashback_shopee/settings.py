@@ -188,6 +188,11 @@ GEMINI_API_URL = os.environ.get("GEMINI_API_URL", "https://generativelanguage.go
 GEMINI_MODEL = os.environ.get("GEMINI_MODEL", "gemini-3.1-flash-lite")
 
 # Credenciais da API da Asaas para pagar os saques via PIX (ficam no arquivo .env, nunca no código)
+# Login com Google (accounts/google_oauth.py). Sem os dois, o botão "Continuar com
+# Google" não aparece e as rotas respondem 404 - recurso desligado.
+GOOGLE_CLIENT_ID = os.environ.get("GOOGLE_CLIENT_ID", "")
+GOOGLE_CLIENT_SECRET = os.environ.get("GOOGLE_CLIENT_SECRET", "")
+
 ASAAS_API_KEY = os.environ.get("ASAAS_API_KEY", "")
 ASAAS_API_URL = os.environ.get("ASAAS_API_URL", "https://sandbox.asaas.com/api/v3")
 
@@ -320,6 +325,7 @@ TEMPLATES = [
                 "django.contrib.auth.context_processors.auth",
                 "django.contrib.messages.context_processors.messages",
                 "cashback_shopee.context_processors.meta_pixel",
+                "cashback_shopee.context_processors.google_login",
             ],
         },
     },

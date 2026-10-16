@@ -7,6 +7,8 @@ from .ratelimit import limitar_por_ip
 urlpatterns = [
     path("registrar/", views.registrar, name="registrar"),
     path("login/", auth_views.LoginView.as_view(template_name="accounts/login.html"), name="login"),
+    path("login/google/", views.login_google, name="login_google"),
+    path("login/google/callback/", views.callback_google, name="google_callback"),
     path("logout/", auth_views.LogoutView.as_view(next_page="home"), name="logout"),
     path("dashboard/", views.dashboard, name="dashboard"),
     path("chave-pix/", views.editar_chave_pix, name="editar_chave_pix"),
