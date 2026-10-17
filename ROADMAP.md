@@ -2596,6 +2596,19 @@ Base pra decidir o 13.11 (converter sem cadastro) com dado em vez de palpite.
 - [x] Testes do fluxo completo (conversor -> cadastro -> 1º link no mesmo funil),
       robôs, tentativa repetida e o resumo.
 
+**Ajuste em 17/10** (primeiros dados: 69 tentativas, todas por ofertas, 0 cadastros
+dessa coorte, enquanto 37 pessoas se cadastraram direto):
+
+- [x] Filtro de robôs ampliado: robô da Meta que abre links compartilhados no
+      Instagram (`meta-externalagent`), catálogo do Facebook, scripts (python, curl...),
+      ferramentas de SEO/teste e requisição sem User-Agent.
+- [x] `EventoFunil.user_agent` - navegador guardado na tentativa e no cadastro, pra
+      conferir depois quem é gente (Admin > Accounts > Eventos do funil, só leitura).
+- [x] Tabela **"Cadastros por dia"** (Total / Google / Formulário) na seção do funil
+      do Analytics, respeitando o filtro de datas (padrão: últimos 30 dias).
+- Limitação conhecida: quem clica numa oferta no navegador do Instagram e termina o
+  cadastro no Safari/Chrome vira outro visitante - o cadastro não é ligado à tentativa.
+
 ---
 
 ## Fase 63 — "Como a cash-b ganha dinheiro?" (benchmark internacional) ✅

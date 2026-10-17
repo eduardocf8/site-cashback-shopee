@@ -9,7 +9,7 @@ from django.template.response import TemplateResponse
 from django.urls import path
 from django.utils import timezone
 
-from accounts.funil import obter_funil
+from accounts.funil import obter_cadastros_por_dia, obter_funil
 
 from .analytics import (
     INDICADORES_SERIE_DIARIA,
@@ -181,6 +181,7 @@ class PedidoAdmin(admin.ModelAdmin):
             "dados": obter_analytics(data_inicio, data_fim, status, origem),
             "serie_diaria": obter_serie_diaria(data_inicio, data_fim, status, origem),
             "funil_sem_conta": obter_funil(data_inicio, data_fim),
+            "cadastros_por_dia": obter_cadastros_por_dia(data_inicio, data_fim),
             "indicadores_serie_diaria": INDICADORES_SERIE_DIARIA,
             "status_choices": Pedido.STATUS_CHOICES,
             "filtro_data_inicio": request.GET.get("data_inicio", ""),
