@@ -20,6 +20,7 @@ from links.shopee_client import ShopeeAPIError, ShopeeConfigError
 from ofertas.services import encurtar_nomes_pendentes, sincronizar_ofertas
 from accounts.verificacao_pix import verificar_pendentes
 from pedidos.services import liberar_saldo, sincronizar
+from pedidos.reclamacoes import atualizar_reclamacoes
 from saques.services import verificar_saques_pendentes
 
 ROBOTS_TXT = """User-agent: *
@@ -137,6 +138,9 @@ def executar_tarefas_agendadas(request):
         resultado["ofertas_sincronizadas"] = sincronizar_ofertas()
     except (ShopeeConfigError, ShopeeAPIError) as erro:
         resultado["ofertas_erro"] = str(erro)
+
+    # Depois da sincronização: procura de novo os pedidos que as pessoas reclamaram.
+    resultado["reclamacoes"] = atualizar_reclamacoes()
 
     resultado["saldos_liberados"] = liberar_saldo()
     resultado["saques_verificados"] = verificar_saques_pendentes()

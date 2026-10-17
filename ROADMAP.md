@@ -2617,13 +2617,35 @@ Outras ideias do benchmark, ainda não feitas (ordem sugerida):
        poluída; linha nos cards de oferta descartada pelo mesmo motivo). FAQ e painel
        passaram de "alguns dias" para "em até 2 dias" (sincronização diária das 10h,
        com folga pra atraso da Shopee).
-2. [ ] **Reclamação de compra não registrada** (TopCashback/Rakuten): a pessoa informa
-       o nº do pedido Shopee; se bater com um pedido "fora do site" já sincronizado,
-       o admin vincula com 1 clique.
+2. [x] **Reclamação de compra não registrada** (TopCashback/Rakuten) - feito na Fase 64.
 3. [ ] **Bônus de boas-vindas com teto** (Rakuten Welcome Boost, faixa "cliente novo"
        da ShopBack) - decisão de margem, avaliar com o funil da Fase 62.
 4. [ ] Avaliar: saque mínimo menor (TopCashback não tem mínimo; depende da taxa do Pix
        na Asaas), perfil no Reclame Aqui (equivalente local ao Trustpilot).
+
+---
+
+## Fase 64 — Reclamação de compra não registrada ✅
+
+Antes, compra que não aparecia virava e-mail pelo "Fale conosco". Agora:
+
+- [x] Página `/compra-nao-apareceu/` (link em "Meus pedidos" e no FAQ): nº do pedido
+      da Shopee, data da compra e produto. Regras em `pedidos/reclamacoes.py`: só a
+      partir de 2 dias depois da compra e até 60 dias; até 3 avisos abertos por pessoa;
+      pedido que já é da pessoa ou de outra conta é respondido na hora, sem criar aviso.
+- [x] Pedido já sincronizado sem dono ("fora do site") → **Em análise**. Ainda não
+      chegou → **Procurando**; a tarefa diária das 10h procura de novo por 10 dias e
+      depois encerra como **Não encontrado** (com e-mail explicando o motivo provável).
+- [x] Admin "Reclamações de compra": abre nas em análise, compara data/produto
+      informados com os reais ("Data bate?") e mostra o cashback que a pessoa vai
+      receber. Ações "Vincular" e "Recusar" (resposta própria no campo "Resposta pra
+      pessoa"); as duas mandam e-mail/push.
+- [x] Vínculo durável: `Pedido.vinculado_manualmente_em`. A sincronização mantém o dono
+      e calcula o cashback como **venda indireta** (piso de 1%; zero sem comissão), já
+      que sem clique não dá pra provar qual link foi usado. Esses pedidos contam como
+      "do site" no admin, analytics e prova social (`Pedido.filtro_do_site()`).
+- Limitação: vincular um pedido que já estava validado não dispara o bônus de
+  indicação (ele só é avaliado quando o pedido passa a validado).
 
 ---
 

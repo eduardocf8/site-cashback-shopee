@@ -451,6 +451,7 @@
             <p class="nota-secao">
                 Sua compra não aparece na hora: a Shopee leva até 2 dias para informar o
                 pedido pra gente. É normal, não precisa se preocupar.
+                Passou disso? <a href="{% url 'compra_nao_apareceu' %}">Avise a gente</a>.
             </p>
             <form method="get" action="{% url 'dashboard' %}#pedidos" class="filtro-secao">
                 <label for="status_pedido" style="margin: 0; color: var(--muted);">Status:</label>

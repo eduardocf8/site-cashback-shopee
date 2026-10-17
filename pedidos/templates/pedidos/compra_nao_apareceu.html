@@ -1,0 +1,58 @@
+{% extends "accounts/base.html" %}
+{% block titulo %}Compra não apareceu{% endblock %}
+{% block largura_container %}520px{% endblock %}
+{% block conteudo %}
+    <style>
+        .ajuda-campo { color: var(--muted); font-size: 12px; margin-top: 4px; }
+        .antes-de-avisar { background: var(--paper-2); border-radius: 8px; padding: 12px 14px; font-size: 13px; color: var(--ink-soft); line-height: 1.5; }
+        .antes-de-avisar ul { margin: 6px 0 0; padding-left: 18px; }
+        .reclamacao-status { display: inline-block; padding: 2px 8px; border-radius: 999px; font-size: 12px; font-weight: 600; background: var(--paper-2); color: var(--ink-soft); }
+        .reclamacao-status.vinculada { background: var(--success-bg); color: var(--success); }
+        .reclamacao-status.recusada, .reclamacao-status.nao_encontrada { background: var(--danger-bg); color: var(--danger); }
+        .tabela-avisos td { vertical-align: top; }
+        .tabela-avisos td:first-child { width: 42%; }
+        .tabela-avisos .numero-pedido { word-break: break-all; }
+        .reclamacao-resposta { color: var(--muted); font-size: 12px; margin-top: 4px; }
+    </style>
+    <div class="nav-topo">
+        <a href="{% url 'dashboard' %}#pedidos">&larr; Voltar pro painel</a>
+    </div>
+    <h1>Sua compra não apareceu?</h1>
+    <div class="antes-de-avisar">
+        A compra aparece em <strong>Meus pedidos</strong> em até 2 dias. Se passou disso, confira:
+        <ul>
+            <li>Você abriu o link da cash-b e finalizou a compra sem abrir outro link de afiliado ou cupom de outro site depois?</li>
+            <li>A compra foi feita na mesma conta da Shopee em que você abriu o link?</li>
+        </ul>
+    </div>
+
+    <form method="post">
+        {% csrf_token %}
+        {% if form.non_field_errors %}<p class="erros">{{ form.non_field_errors|striptags }}</p>{% endif %}
+        {% for field in form %}
+            {% include "accounts/_campo_formulario.html" with field=field %}
+            {% if field.help_text %}<div class="ajuda-campo">{{ field.help_text }}</div>{% endif %}
+        {% endfor %}
+        <button type="submit">Avisar a cash-b</button>
+    </form>
+
+    {% if reclamacoes %}
+        <h2 class="titulo-bloco">Seus avisos</h2>
+        <table class="tabela-avisos">
+            <tr><th>Pedido</th><th>Situação</th></tr>
+            {% for reclamacao in reclamacoes %}
+                <tr>
+                    <td>
+                        <span class="numero-pedido">{{ reclamacao.order_id }}</span>
+                        <div class="reclamacao-resposta">{{ reclamacao.produto_informado }}</div>
+                        <div class="reclamacao-resposta">Enviado em {{ reclamacao.criado_em|date:"d/m/Y" }}</div>
+                    </td>
+                    <td>
+                        <span class="reclamacao-status {{ reclamacao.status }}">{{ reclamacao.get_status_display }}</span>
+                        {% if reclamacao.resposta and not reclamacao.aberta %}<div class="reclamacao-resposta">{{ reclamacao.resposta }}</div>{% endif %}
+                    </td>
+                </tr>
+            {% endfor %}
+        </table>
+    {% endif %}
+{% endblock %}

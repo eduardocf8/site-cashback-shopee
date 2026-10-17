@@ -4,6 +4,7 @@ from django.conf import settings
 from django.core.mail import EmailMultiAlternatives
 from django.template.loader import render_to_string
 from django.utils.formats import number_format
+from django.utils.html import escape
 
 from accounts.push import enviar_push
 
@@ -155,4 +156,54 @@ def notificar_indicador_bonus_pendente(indicacao):
         "Sua indicação validou!",
         f"@{indicacao.indicado.username} teve a 1ª compra validada — seu próximo pedido vem em dobro.",
         url="/dashboard/#indicacoes",
+    )
+
+
+def _notificar_simples(usuario, assunto, linhas, titulo_push, texto_push):
+    """E-mail + push com o mesmo layout dos avisos de pedido, para textos curtos."""
+    corpo = (
+        f"Olá, {usuario.username}!\n\n" + "\n\n".join(linhas) + "\n\nEquipe cash-b" + _rodape_redes_sociais_texto()
+    )
+    corpo_html = render_to_string(
+        "emails/lembrete_automatico.html",
+        {
+            "corpo_html_intro": (
+                f"<p style='margin:0 0 12px;'>Olá, {escape(usuario.username)}!</p>"
+                + "".join(f"<p style='margin:0 0 12px;'>{escape(linha)}</p>" for linha in linhas)
+            ),
+            **_contexto_redes_sociais(),
+        },
+    )
+    _enviar(usuario, assunto, corpo, corpo_html)
+    enviar_push(usuario, titulo_push, texto_push, url="/dashboard/#pedidos")
+
+
+def notificar_reclamacao_vinculada(reclamacao):
+    pedido = reclamacao.pedido
+    valor = number_format(pedido.valor_cashback, decimal_pos=2)
+    _notificar_simples(
+        reclamacao.usuario,
+        "cash-b — encontramos sua compra",
+        [
+            f"Encontramos o pedido {reclamacao.order_id} e ele já está na sua conta, em Meus pedidos.",
+            f"Cashback: R$ {valor}. Ele segue os prazos normais: validado depois da entrega e do "
+            "prazo de devolução, e liberado no dia 1º do segundo mês após a validação.",
+        ],
+        "Encontramos sua compra!",
+        f"O pedido {reclamacao.order_id} foi adicionado à sua conta (R$ {valor} de cashback).",
+    )
+
+
+def notificar_reclamacao_encerrada(reclamacao):
+    _notificar_simples(
+        reclamacao.usuario,
+        "cash-b — sobre a compra que você nos avisou",
+        [
+            f"Conferimos o pedido {reclamacao.order_id} e não foi possível adicioná-lo à sua conta.",
+            reclamacao.resposta,
+            "Na próxima compra, abra o link da cash-b e finalize a compra sem abrir outros links "
+            "no caminho. Qualquer dúvida, fale com a gente pelo Fale conosco no site.",
+        ],
+        "Sobre a compra que você nos avisou",
+        f"Não foi possível adicionar o pedido {reclamacao.order_id}. Veja o motivo no seu painel.",
     )

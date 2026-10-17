@@ -66,6 +66,15 @@ class Pedido(models.Model):
     data_liberacao = models.DateTimeField(
         null=True, blank=True, help_text="Momento em que o comando liberar_saldo efetivamente liberou este pedido."
     )
+    vinculado_manualmente_em = models.DateTimeField(
+        null=True, blank=True,
+        help_text=(
+            "Preenchido quando o admin aprova uma reclamação de compra não registrada "
+            "(ReclamacaoPedido) e liga este pedido sem clique a um usuário. A sincronização "
+            "respeita esse vínculo e calcula o cashback como venda indireta (ver "
+            "pedidos/services.py::_montar_defaults)."
+        ),
+    )
     criado_em = models.DateTimeField(auto_now_add=True)
     atualizado_em = models.DateTimeField(auto_now=True)
 
@@ -74,6 +83,15 @@ class Pedido(models.Model):
 
     def __str__(self):
         return f"Pedido {self.order_id} ({self.get_status_display()})"
+
+    @staticmethod
+    def filtro_do_site() -> models.Q:
+        """Pedidos que pagam cashback a alguém da cash-b: os com clique do site e os sem
+        clique que o admin vinculou a um usuário por reclamação (ReclamacaoPedido). O
+        resto é "fora do site" (ver pedidos/admin.py::OrigemFilter)."""
+        return models.Q(click__isnull=False) | models.Q(
+            vinculado_manualmente_em__isnull=False, usuario__isnull=False
+        )
 
 
 class ItemPedido(models.Model):
@@ -308,3 +326,55 @@ class CampanhaCashback(models.Model):
             # que é o que carimba o cashback pago no pedido.
             return previa.multiplicador
         return cls.multiplicador_em(timezone.now())
+
+
+class ReclamacaoPedido(models.Model):
+    """Compra feita pelo link da cash-b que não apareceu no painel (Fase 64).
+
+    A pessoa informa o nº do pedido da Shopee. Se ele já chegou na sincronização sem
+    clique identificado (pedido "fora do site"), fica em análise e o admin vincula com
+    1 clique (pedidos/admin.py). Se ainda não chegou, a tarefa diária volta a procurar
+    por alguns dias (pedidos/reclamacoes.py::atualizar_reclamacoes)."""
+
+    STATUS_AGUARDANDO = "aguardando"
+    STATUS_EM_ANALISE = "em_analise"
+    STATUS_VINCULADA = "vinculada"
+    STATUS_RECUSADA = "recusada"
+    STATUS_NAO_ENCONTRADA = "nao_encontrada"
+    STATUS_CHOICES = [
+        (STATUS_AGUARDANDO, "Procurando o pedido"),
+        (STATUS_EM_ANALISE, "Pedido encontrado, em análise"),
+        (STATUS_VINCULADA, "Adicionado à sua conta"),
+        (STATUS_RECUSADA, "Não aprovado"),
+        (STATUS_NAO_ENCONTRADA, "Não encontrado"),
+    ]
+    STATUS_ABERTOS = (STATUS_AGUARDANDO, STATUS_EM_ANALISE)
+
+    usuario = models.ForeignKey(
+        settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name="reclamacoes_pedido"
+    )
+    order_id = models.CharField("Nº do pedido na Shopee", max_length=64, db_index=True)
+    data_compra_informada = models.DateField("Data da compra (informada)")
+    produto_informado = models.CharField("Produto (informado)", max_length=200)
+    pedido = models.ForeignKey(
+        Pedido, on_delete=models.SET_NULL, null=True, blank=True, related_name="reclamacoes"
+    )
+    status = models.CharField(max_length=16, choices=STATUS_CHOICES, default=STATUS_AGUARDANDO)
+    resposta = models.CharField(
+        "Resposta pra pessoa", max_length=255, blank=True,
+        help_text="Aparece no painel dela quando a reclamação é recusada ou não encontrada.",
+    )
+    criado_em = models.DateTimeField(auto_now_add=True)
+    resolvido_em = models.DateTimeField(null=True, blank=True)
+
+    class Meta:
+        ordering = ["-criado_em"]
+        verbose_name = "reclamação de compra"
+        verbose_name_plural = "reclamações de compra"
+
+    def __str__(self):
+        return f"Pedido {self.order_id} - {self.usuario}"
+
+    @property
+    def aberta(self) -> bool:
+        return self.status in self.STATUS_ABERTOS
