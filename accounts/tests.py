@@ -2072,6 +2072,16 @@ class GoogleOAuthClienteTests(TestCase):
 class FunilSemContaTests(TestCase):
     """Fase 62: medição do funil de quem chega sem conta (base do ROADMAP 13.11)."""
 
+    NAVEGADOR = (
+        "Mozilla/5.0 (iPhone; CPU iPhone OS 17_5 like Mac OS X) AppleWebKit/605.1.15 "
+        "(KHTML, like Gecko) Mobile/15E148 Instagram 330.0.0.0"
+    )
+
+    def setUp(self):
+        # Sem User-Agent a requisição conta como robô (ver accounts/funil.py).
+        from django.test import Client
+        self.client = Client(HTTP_USER_AGENT=self.NAVEGADOR)
+
     def _dados(self):
         return {
             "nome_completo": "Nova Conta Teste", "username": "novaconta", "email": "nova@example.com",
@@ -2103,6 +2113,61 @@ class FunilSemContaTests(TestCase):
         self.client.get(reverse("ir_para_shopee"), HTTP_USER_AGENT="WhatsApp/2.23.20 A")
         self.client.get(reverse("ir_para_shopee"), HTTP_USER_AGENT="facebookexternalhit/1.1")
         self.assertFalse(EventoFunil.objects.exists())
+
+    def test_robos_que_passavam_pelo_filtro_e_user_agent_vazio_nao_contam(self):
+        from django.test import Client
+
+        from .models import EventoFunil
+        for user_agent in (
+            "meta-externalagent/1.1 (+https://developers.facebook.com/docs/sharing/webmasters/crawler)",
+            "facebookcatalog/1.0",
+            "python-requests/2.31.0",
+            "Mozilla/5.0 (compatible; Google-InspectionTool/1.0)",
+            "",
+        ):
+            Client(HTTP_USER_AGENT=user_agent).get(reverse("ir_para_shopee"))
+        self.assertFalse(EventoFunil.objects.exists())
+
+    def test_guarda_o_navegador_da_tentativa_e_do_cadastro(self):
+        from .models import EventoFunil
+        self.client.get(reverse("ir_para_shopee"))
+        self.client.post(reverse("registrar"), self._dados())
+        self.assertEqual(
+            set(EventoFunil.objects.values_list("user_agent", flat=True)), {self.NAVEGADOR}
+        )
+
+    def test_cadastros_por_dia(self):
+        from datetime import timedelta
+
+        from django.utils import timezone
+
+        from .funil import obter_cadastros_por_dia
+        from .models import EventoFunil
+        hoje = timezone.localdate()
+        EventoFunil.objects.create(funil_id="a", etapa="cadastro", metodo="google")
+        EventoFunil.objects.create(funil_id="b", etapa="cadastro", metodo="formulario")
+        EventoFunil.objects.create(funil_id="c", etapa="tentativa", origem="oferta")
+        ontem = EventoFunil.objects.create(funil_id="d", etapa="cadastro", metodo="formulario")
+        EventoFunil.objects.filter(pk=ontem.pk).update(criado_em=timezone.now() - timedelta(days=1))
+
+        linhas = obter_cadastros_por_dia(hoje - timedelta(days=2), hoje)
+        self.assertEqual([l["dia"] for l in linhas], [hoje, hoje - timedelta(days=1), hoje - timedelta(days=2)])
+        self.assertEqual((linhas[0]["total"], linhas[0]["google"], linhas[0]["formulario"]), (2, 1, 1))
+        self.assertEqual((linhas[1]["total"], linhas[1]["google"], linhas[1]["formulario"]), (1, 0, 1))
+        self.assertEqual(linhas[2]["total"], 0)
+        # Sem período: últimos 30 dias.
+        self.assertEqual(len(obter_cadastros_por_dia()), 30)
+
+    def test_analytics_mostra_cadastros_por_dia(self):
+        from .models import EventoFunil, User
+        EventoFunil.objects.create(funil_id="a", etapa="cadastro", metodo="google")
+        admin = User.objects.create_superuser(
+            username="chefe", password="senha123", email="chefe@example.com", cpf="11144477735"
+        )
+        self.client.force_login(admin)
+        resposta = self.client.get(reverse("admin:pedidos_analytics"))
+        self.assertContains(resposta, "Cadastros por dia")
+        self.assertContains(resposta, 'class="cadastros-por-dia"')
 
     def test_tentativa_repetida_conta_uma_vez(self):
         from .models import EventoFunil

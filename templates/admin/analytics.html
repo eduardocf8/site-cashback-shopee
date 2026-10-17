@@ -347,6 +347,27 @@
         </div>
     </div>
     {% endwith %}
+
+    <h3>Cadastros por dia</h3>
+    <p class="help">
+        Todos os cadastros novos, dia a dia (mais recente primeiro), dentro do período filtrado acima. Sem
+        período escolhido, mostra os últimos 30 dias; períodos maiores que 90 dias mostram só os 90 dias finais.
+    </p>
+    <table class="cadastros-por-dia">
+        <thead>
+            <tr><th>Dia</th><th>Total</th><th>Google</th><th>Formulário</th></tr>
+        </thead>
+        <tbody>
+            {% for linha in cadastros_por_dia %}
+                <tr>
+                    <td>{{ linha.dia|date:"d/m/Y (D)" }}</td>
+                    <td><strong>{{ linha.total }}</strong></td>
+                    <td>{{ linha.google }}</td>
+                    <td>{{ linha.formulario }}</td>
+                </tr>
+            {% endfor %}
+        </tbody>
+    </table>
 </div>
 
 <div class="analytics-secao">
