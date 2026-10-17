@@ -1,8 +1,12 @@
+import threading
+import time
 from decimal import Decimal
 from unittest.mock import patch
 
 from django.contrib.auth import get_user_model
-from django.test import TestCase, override_settings
+from django.db import connection
+from django.db.utils import OperationalError
+from django.test import TestCase, TransactionTestCase, override_settings
 from django.urls import reverse
 
 from pedidos.models import Pedido
@@ -154,6 +158,79 @@ class SolicitarSaqueTests(TestCase):
         self.assertEqual(saque.status, Saque.STATUS_SOLICITADO)
         # o saldo disponível cai a zero, já que o saque em si passa a reservar o valor
         self.assertEqual(calcular_saldo_disponivel(self.usuario), Decimal("0"))
+
+
+@override_settings(SAQUE_VALOR_MINIMO=Decimal("20.00"))
+class SolicitarSaqueConcorrenteTests(TransactionTestCase):
+    """select_for_update em solicitar_saque - sem ele, duas solicitações no mesmo
+    instante (duplo clique, duas abas) podiam ler o mesmo saldo_disponivel antes de
+    qualquer uma das duas gravar o Saque, e as duas passavam no "saldo >= mínimo",
+    sacando o dobro do saldo real. TransactionTestCase (não TestCase) é necessário
+    aqui porque o teste roda em 2 threads de verdade, cada uma com sua própria
+    conexão - TestCase envolve o teste numa transação só, que esconderia justamente a
+    condição de corrida que queremos reproduzir."""
+
+    def setUp(self):
+        self.usuario = get_user_model().objects.create_user(
+            username="compradora", password="senha123", cpf="39053344705"
+        )
+        self.usuario.chave_pix = "fulano@example.com"
+        self.usuario.tipo_chave_pix = "EMAIL"
+        self.usuario.chave_pix_status = "verificada"
+        self.usuario.save()
+        Pedido.objects.create(
+            order_id="P1", conversion_id="1", usuario=self.usuario, status=Pedido.STATUS_LIBERADO,
+            status_shopee_bruto="COMPLETED", valor_comissao=Decimal("75.00"), valor_cashback=Decimal("75.00"),
+        )
+
+    def test_duas_solicitacoes_simultaneas_nao_duplicam_o_saque(self):
+        # Quem pegar a trava (select_for_update) primeiro segura ela por 0,3s depois
+        # de ler o saldo - tempo de sobra pra outra thread, que já está tentando
+        # adquirir a mesma trava, ficar bloqueada esperando. Sem o select_for_update,
+        # as duas leriam o saldo cheio quase ao mesmo tempo e as duas passariam,
+        # gerando 2 Saques (confirmado rodando este teste contra o código sem a
+        # trava: dá exatamente esse resultado, 2 Saques de R$ 75 cada um).
+        #
+        # A trava em si o SQLite trata como um lock de escrita exclusivo da tabela
+        # inteira (não por linha, como no Postgres de produção - ver README.md) - a
+        # segunda thread não fica esperando educadamente a primeira liberar, estoura
+        # OperationalError("database table is locked") na hora. No Postgres de
+        # verdade, o resultado observável é outro (a segunda thread espera, lê o
+        # saldo já reduzido e cai em ValorAbaixoDoMinimoError) - mas a garantia que
+        # importa é a mesma nos dois bancos: nunca os dois Saques são criados.
+        barreira_inicio = threading.Barrier(2)
+        resultados = []
+
+        saldo_real = calcular_saldo_disponivel
+
+        def saldo_com_atraso(usuario):
+            valor = saldo_real(usuario)
+            time.sleep(0.3)
+            return valor
+
+        def tentar():
+            barreira_inicio.wait()
+            try:
+                solicitar_saque(self.usuario)
+                resultados.append("ok")
+            except (ValorAbaixoDoMinimoError, OperationalError):
+                resultados.append("bloqueado")
+            finally:
+                connection.close()
+
+        with patch("saques.services.calcular_saldo_disponivel", side_effect=saldo_com_atraso):
+            threads = [threading.Thread(target=tentar) for _ in range(2)]
+            for t in threads:
+                t.start()
+            for t in threads:
+                t.join()
+
+        # Só uma das duas pode ter conseguido - a outra tem que falhar de algum jeito
+        # (seja pelo saldo já reservado, seja pelo lock do SQLite), nunca as duas
+        # passarem.
+        self.assertEqual(sorted(resultados), ["bloqueado", "ok"])
+        self.assertEqual(Saque.objects.filter(usuario=self.usuario).count(), 1)
+        self.assertEqual(Saque.objects.get(usuario=self.usuario).valor, Decimal("75.00"))
 
 
 class ProcessarSaqueAsaasTests(TestCase):

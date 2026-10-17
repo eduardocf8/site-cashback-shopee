@@ -2598,6 +2598,37 @@ Base pra decidir o 13.11 (converter sem cadastro) com dado em vez de palpite.
 
 ---
 
+## Fase 61 — Revisão de segurança (checklist de um Reel) e correção de condição de corrida no saque
+
+Usuário mandou um checklist de segurança de app (XSS, CSRF, SSRF, IDOR, webhooks sem
+assinatura, rate limit, etc.) pedindo pra conferir o que a cash-b já cobre. A maioria
+já estava coberta (CSRF middleware, domínio da Shopee validado antes de qualquer
+request de SSRF, webhooks com HMAC, rate limit nos endpoints de abuso, nenhum
+upload público, etc. - ver resumo completo na conversa). Um problema real apareceu
+numa área fora da lista, mas no mesmo espírito (integridade de pagamento):
+
+- [x] **Condição de corrida em `saques/services.py::solicitar_saque`** - o saldo
+      disponível era lido e o `Saque` criado sem travar nada. Duas solicitações
+      simultâneas (duplo clique, duas abas) liam o mesmo saldo antes de qualquer
+      uma gravar, e as duas passavam no "saldo >= mínimo" - saldo sacado em dobro
+      sobre o mesmo dinheiro. Corrigido com `select_for_update()` na linha do
+      usuário dentro de uma `transaction.atomic()`, serializando as duas chamadas.
+- [x] **Bug pego pelo próprio teste**: a primeira versão usava `type(usuario)` pra
+      achar o modelo - funciona com um `User` de verdade, mas quebra com
+      `request.user` (que chega como `SimpleLazyObject`, e `type()` nele devolve a
+      classe do wrapper, não do usuário). Trocado por `usuario._meta.model`, que
+      dispara o unwrap preguiçoso corretamente.
+- [x] **Teste de concorrência de verdade** (`SolicitarSaqueConcorrenteTests`, 2
+      threads reais com `TransactionTestCase`) - confirmado rodando contra o código
+      sem a correção que ele pega o bug (2 Saques criados); e que, com a correção,
+      só 1 dos 2 passa. No SQLite do teste o resultado observável da segunda thread
+      é diferente do Postgres de produção (erro de lock de tabela em vez de saldo
+      insuficiente, porque SQLite não trava por linha) - o teste aceita os dois
+      desfechos, já que a garantia que importa (nunca criar os 2 Saques) é a mesma
+      nos dois bancos.
+
+---
+
 Pra continuar esse roadmap numa conversa nova, basta apontar esse arquivo
 (`ROADMAP.md`) e o `BRAND.md` — juntos eles dão o contexto de identidade
 visual e do que falta implementar, sem precisar reconstruir o histórico da

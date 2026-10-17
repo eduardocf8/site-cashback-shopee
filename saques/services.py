@@ -2,6 +2,7 @@ from decimal import Decimal
 
 import requests
 from django.conf import settings
+from django.db import transaction
 from django.db.models import Sum
 from django.utils import timezone
 from django.utils.formats import number_format
@@ -95,18 +96,32 @@ def solicitar_saque(usuario) -> Saque:
         raise ChavePixNaoConfiguradaError("Cadastre sua chave Pix antes de solicitar um saque.")
     _exigir_chave_verificada(usuario)
 
-    saldo_disponivel = calcular_saldo_disponivel(usuario)
-    if saldo_disponivel < settings.SAQUE_VALOR_MINIMO:
-        raise ValorAbaixoDoMinimoError(
-            f"O saldo mínimo para saque é R$ {number_format(settings.SAQUE_VALOR_MINIMO, decimal_pos=2)}."
-        )
+    # select_for_update trava a linha do usuário até o fim da transação - sem isso,
+    # duas solicitações simultâneas (duplo clique, duas abas) podiam ler o mesmo
+    # saldo_disponivel antes de qualquer uma das duas gravar o Saque, e as duas
+    # passavam no "saldo >= mínimo" e criavam um Saque pelo valor cheio cada - saldo
+    # sacado em dobro sobre o mesmo dinheiro. Travar a linha do usuário serializa as
+    # duas chamadas: a segunda só lê o saldo depois que a primeira já commitou (e já
+    # reservou o valor, via STATUS_QUE_RESERVAM_SALDO em calcular_saldo_disponivel).
+    with transaction.atomic():
+        # usuario._meta.model em vez de type(usuario): request.user chega aqui como
+        # SimpleLazyObject (ver django.contrib.auth.middleware), e type() nele
+        # devolve a classe do wrapper, não o modelo de usuário de verdade - só o
+        # acesso a atributo (como _meta) dispara o unwrap preguiçoso.
+        usuario_travado = usuario._meta.model.objects.select_for_update().get(pk=usuario.pk)
 
-    return Saque.objects.create(
-        usuario=usuario,
-        valor=saldo_disponivel,
-        chave_pix=usuario.chave_pix,
-        tipo_chave_pix=usuario.tipo_chave_pix,
-    )
+        saldo_disponivel = calcular_saldo_disponivel(usuario_travado)
+        if saldo_disponivel < settings.SAQUE_VALOR_MINIMO:
+            raise ValorAbaixoDoMinimoError(
+                f"O saldo mínimo para saque é R$ {number_format(settings.SAQUE_VALOR_MINIMO, decimal_pos=2)}."
+            )
+
+        return Saque.objects.create(
+            usuario=usuario_travado,
+            valor=saldo_disponivel,
+            chave_pix=usuario_travado.chave_pix,
+            tipo_chave_pix=usuario_travado.tipo_chave_pix,
+        )
 
 
 def _mapear_status_asaas(status_bruto: str) -> str:
