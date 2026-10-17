@@ -38,6 +38,8 @@ def origem_detalhada(pedido: Pedido) -> str:
     card da vitrine de ofertas e venda indireta (botão "Ir pra Shopee"), além do caso
     sem Click (pedido não gerado por aqui - ver OrigemFilter em pedidos/admin.py)."""
     if not pedido.click:
+        if pedido.vinculado_manualmente_em and pedido.usuario_id:
+            return "Compra reclamada (vinculada pelo admin)"
         return "Fora do site"
     return ORIGEM_DETALHADA_LABELS.get(pedido.click.tipo, pedido.click.tipo)
 
@@ -73,9 +75,9 @@ def obter_pedidos_filtrados(data_inicio=None, data_fim=None, status=None, origem
     if status:
         pedidos = pedidos.filter(status=status)
     if origem == ORIGEM_SITE:
-        pedidos = pedidos.filter(click__isnull=False)
+        pedidos = pedidos.filter(Pedido.filtro_do_site())
     elif origem == ORIGEM_FORA:
-        pedidos = pedidos.filter(click__isnull=True)
+        pedidos = pedidos.exclude(Pedido.filtro_do_site())
     return pedidos
 
 

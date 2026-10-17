@@ -129,7 +129,21 @@ def _percentual_minimo_garantido(click: Click, item_bate_com_o_link: bool) -> De
     return Decimal(str(settings.CASHBACK_MINIMO_VENDA_INDIRETA)) / Decimal("100")
 
 
-def _montar_defaults(conversao, pedido_shopee, click, data_compra, percentual_base, multiplicador):
+def cashback_item_vinculado_manualmente(valor_item, comissao_item, percentual_base, multiplicador) -> Decimal:
+    """Cashback de um item de pedido vinculado pelo admin (reclamação de compra não
+    registrada, ver ReclamacaoPedido): sem clique não dá pra provar qual link a pessoa
+    usou, então vale a regra de venda indireta - mesma fórmula de _montar_defaults com
+    o piso indireto, e zero pra item sem comissão."""
+    if comissao_item <= 0:
+        return Decimal("0.00")
+    piso = Decimal(str(settings.CASHBACK_MINIMO_VENDA_INDIRETA)) / Decimal("100")
+    base = max(comissao_item * percentual_base, valor_item * piso)
+    return (base * multiplicador).quantize(Decimal("0.01"))
+
+
+def _montar_defaults(
+    conversao, pedido_shopee, click, data_compra, percentual_base, multiplicador, usuario_manual=None
+):
     status_shopee = mapear_status(pedido_shopee.get("orderStatus"))
     itens = pedido_shopee.get("items", [])
 
@@ -153,7 +167,9 @@ def _montar_defaults(conversao, pedido_shopee, click, data_compra, percentual_ba
     # - ver OrigemFilter em pedidos/admin.py) e não tem usuário pra receber o cashback, então
     # não faz sentido calcular um valor que nunca vai ser pago a ninguém. valor_comissao
     # continua sendo somado normalmente - é o que a Shopee realmente paga pra conta de
-    # afiliado, independente da origem do pedido.
+    # afiliado, independente da origem do pedido. Exceção: pedido sem clique que o admin
+    # já vinculou a alguém (usuario_manual, ver ReclamacaoPedido) - esse paga cashback
+    # como venda indireta, senão a sincronização seguinte zeraria o que foi aprovado.
     pedido_valor = Decimal("0")
     comissao = Decimal("0")
     cashback = Decimal("0")
@@ -171,6 +187,11 @@ def _montar_defaults(conversao, pedido_shopee, click, data_compra, percentual_ba
             percentual_minimo = _percentual_minimo_garantido(click, item_bate_com_o_link)
             cashback_base_item = max(comissao_item * percentual_base, valor_item * percentual_minimo)
             cashback_item = (cashback_base_item * multiplicador).quantize(Decimal("0.01"))
+            cashback += cashback_item
+        elif click is None and usuario_manual is not None:
+            cashback_item = cashback_item_vinculado_manualmente(
+                valor_item, comissao_item, percentual_base, multiplicador
+            )
             cashback += cashback_item
 
         # Detalhe por item - ver ItemPedido (pedidos/models.py) e _persistir_itens.
@@ -213,7 +234,7 @@ def _montar_defaults(conversao, pedido_shopee, click, data_compra, percentual_ba
     defaults = {
         "conversion_id": str(conversao.get("conversionId", "")),
         "click": click,
-        "usuario": click.usuario if click else None,
+        "usuario": click.usuario if click else usuario_manual,
         "status": status_shopee,
         "status_shopee_bruto": pedido_shopee.get("orderStatus") or "",
         "valor_pedido": pedido_valor,
@@ -269,6 +290,16 @@ def _montar_linhas(
     # consulta ao banco (ver CampanhaCashback.multiplicador_em), o que não escala
     # numa sincronização com muitos pedidos.
     campanhas = CampanhaCashback.listar()
+    # Pedidos sem clique que o admin já vinculou a alguém (ReclamacaoPedido) - o vínculo
+    # não vem da Shopee, então precisa ser lido daqui pra sobreviver a cada sincronização.
+    vinculados_manualmente = {
+        p.order_id: p.usuario
+        for p in Pedido.objects.filter(
+            order_id__in=brutos_por_order_id.keys(),
+            vinculado_manualmente_em__isnull=False,
+            usuario__isnull=False,
+        ).select_related("usuario")
+    }
 
     linhas: dict[str, dict] = {}
     itens_por_order_id: dict[str, list[dict]] = {}
@@ -278,7 +309,8 @@ def _montar_linhas(
         else:
             multiplicador = CampanhaCashback.multiplicador_em(data_compra, campanhas=campanhas)
         defaults, itens_detalhe = _montar_defaults(
-            conversao, pedido_shopee, click, data_compra, percentual_base, multiplicador
+            conversao, pedido_shopee, click, data_compra, percentual_base, multiplicador,
+            usuario_manual=vinculados_manualmente.get(order_id),
         )
         defaults["multiplicador_campanha"] = multiplicador
         linhas[order_id] = defaults

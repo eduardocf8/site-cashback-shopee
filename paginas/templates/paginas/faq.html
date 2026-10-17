@@ -35,6 +35,16 @@
     </details>
 
     <details class="faq-item">
+        <summary>Como a cash-b ganha dinheiro?</summary>
+        <p class="faq-resposta">
+            A Shopee paga uma comissão à cash-b por cada compra feita pelo nosso link
+            (é o programa de afiliados dela). A gente repassa uma parte dessa comissão
+            para você como cashback e fica com o restante, que mantém o site funcionando.
+            Você não paga nada a mais: o preço na Shopee é o mesmo, com ou sem a cash-b.
+        </p>
+    </details>
+
+    <details class="faq-item">
         <summary>Qual a diferença entre venda direta e venda indireta?</summary>
         <p class="faq-resposta">
             Venda direta é quando você converte o link de um produto específico e
@@ -103,10 +113,10 @@
     <details class="faq-item">
         <summary>Por que às vezes não aparece o % de cashback ao converter um link?</summary>
         <p class="faq-resposta">
-            A cash-b tenta mostrar na hora o cashback real do produto convertido, mas em
-            alguns formatos de link — principalmente links curtos do próprio app da
-            Shopee — uma restrição de segurança da própria Shopee impede essa consulta
-            automática. Isso não afeta o cashback de verdade: o link funciona
+            A cash-b mostra o cashback real do produto assim que você cola o link,
+            inclusive nos links curtos do app da Shopee. Em casos raros a consulta não
+            dá certo na hora (por exemplo, se a Shopee demorar a responder ou o link não
+            for de um produto). Isso não afeta o cashback de verdade: o link funciona
             normalmente e a compra gera cashback do mesmo jeito, só não dá para confirmar
             o valor exato na hora. Dá para conferir no seu painel assim que a Shopee
             validar o pedido.
@@ -210,11 +220,12 @@
     <details class="faq-item">
         <summary>Minha compra na Shopee não apareceu no meu painel. O que faço?</summary>
         <p class="faq-resposta">
-            É normal: a Shopee não confirma o pedido na hora, nem no dia seguinte —
-            costuma levar alguns dias até ele aparecer como "Pendente" no seu painel.
-            Se já se passou mais de uma semana e a compra continua sem aparecer, entra
-            em contato pelo <a href="{% url 'contato' %}">Fale conosco</a> com o link
-            que você usou e a data da compra.
+            É normal: a Shopee não confirma o pedido na hora. Ele aparece como
+            "Pendente" no seu painel em até 2 dias.
+            Se já se passaram 2 dias e a compra continua sem aparecer, avise a gente em
+            <a href="{% url 'compra_nao_apareceu' %}">Minha compra não apareceu</a> (precisa
+            estar logado) com o número do pedido da Shopee. A gente procura o pedido e,
+            se ele veio pelo link da cash-b, adiciona na sua conta.
         </p>
     </details>
 
