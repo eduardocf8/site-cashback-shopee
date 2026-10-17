@@ -268,7 +268,18 @@ class CompraNaoApareceuViewTests(ReclamacaoTestBase):
     def test_painel_tem_link_para_avisar(self):
         self.client.force_login(self.usuario)
         resposta = self.client.get(reverse("dashboard"))
-        self.assertContains(resposta, reverse("compra_nao_apareceu"))
+        self.assertContains(resposta, "Compra não apareceu?")
+        # Sem pedidos: botão em destaque na mensagem de lista vazia.
+        self.assertContains(resposta, "Já comprei e não apareceu")
+
+    def test_painel_com_pedidos_mantem_so_o_link_do_titulo(self):
+        pedido = self._pedido_fora()
+        pedido.usuario = self.usuario
+        pedido.save()
+        self.client.force_login(self.usuario)
+        resposta = self.client.get(reverse("dashboard"))
+        self.assertContains(resposta, "Compra não apareceu?")
+        self.assertNotContains(resposta, "Já comprei e não apareceu")
 
 
 class ReclamacaoAdminTests(ReclamacaoTestBase):

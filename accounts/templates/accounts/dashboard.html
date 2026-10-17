@@ -182,6 +182,15 @@
         .vazio { color: var(--muted); font-size: 14px; padding: 20px; text-align: center; }
         .rolar-tabela { overflow-x: auto; }
         .nota-secao { color: var(--muted); font-size: 13px; margin: -8px 0 16px; }
+        .topo-secao { display: flex; align-items: baseline; justify-content: space-between; gap: 8px 16px; flex-wrap: wrap; margin-bottom: 16px; }
+        .topo-secao h2.titulo-secao { margin: 0; }
+        .link-secao { color: var(--brand); font-size: 13px; font-weight: 600; text-decoration: none; white-space: nowrap; }
+        .link-secao:hover { text-decoration: underline; }
+        .vazio .botao-vazio {
+            display: inline-block; margin-top: 12px; padding: 9px 16px; border-radius: 6px;
+            background: var(--brand); color: var(--paper); font-weight: 600; font-size: 13px; text-decoration: none;
+        }
+        .vazio .botao-vazio:hover { background: var(--brand-strong); }
 
         .filtro-secao { display: flex; align-items: center; flex-wrap: wrap; row-gap: 10px; column-gap: 12px; margin-bottom: 16px; }
         .filtro-secao label { flex-shrink: 0; min-width: 52px; }
@@ -447,11 +456,13 @@
         {% endif %}
 
         <section id="pedidos">
-            <h2 class="titulo-secao">Meus pedidos</h2>
+            <div class="topo-secao">
+                <h2 class="titulo-secao">Meus pedidos</h2>
+                <a class="link-secao" href="{% url 'compra_nao_apareceu' %}">Compra não apareceu? &rarr;</a>
+            </div>
             <p class="nota-secao">
                 Sua compra não aparece na hora: a Shopee leva até 2 dias para informar o
                 pedido pra gente. É normal, não precisa se preocupar.
-                Passou disso? <a href="{% url 'compra_nao_apareceu' %}">Avise a gente</a>.
             </p>
             <form method="get" action="{% url 'dashboard' %}#pedidos" class="filtro-secao">
                 <label for="status_pedido" style="margin: 0; color: var(--muted);">Status:</label>
@@ -530,7 +541,10 @@
                     </div>
                 {% endif %}
             {% else %}
-                <p class="vazio">Você ainda não tem pedidos{% if filtro_pedidos %} com esse status{% endif %}. Compre pela Shopee usando seus links de cashback e eles aparecem aqui em até 2 dias.</p>
+                <p class="vazio">
+                    Você ainda não tem pedidos{% if filtro_pedidos %} com esse status{% endif %}. Compre pela Shopee usando seus links de cashback e eles aparecem aqui em até 2 dias.
+                    {% if not filtro_pedidos %}<br><a class="botao-vazio" href="{% url 'compra_nao_apareceu' %}">Já comprei e não apareceu</a>{% endif %}
+                </p>
             {% endif %}
         </section>
 
