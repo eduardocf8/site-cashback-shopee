@@ -17,8 +17,15 @@ Contrato esperado do servidor:
         "valido": true/false,
         "motivo": "texto explicando por que nao e valido, se for o caso",
         "plano": "nome do plano (opcional)",
-        "expira_em": "data ISO da proxima cobranca/expiracao (opcional)"
+        "expira_em": "data ISO da proxima cobranca/expiracao (opcional)",
+        "conta_ativa": true/false,
+        "modulos": ["whatsapp", "site", ...]
     }
+
+"valido" quer dizer "pode usar o bot de WhatsApp" (contrato antigo). O app
+abre com "conta_ativa" (a conta tem algum modulo liberado) e usa "modulos"
+pra decidir o que liberar e o que mostrar com cadeado. Servidor antigo, sem
+esses dois campos: conta_ativa = valido e modulos = ["whatsapp"] se valido.
 
 Como o bot pode ficar sem internet por um tempo sem travar: guardamos a
 ultima validacao BEM-SUCEDIDA num arquivo local (licenca_estado.json, ao
@@ -36,6 +43,20 @@ from pathlib import Path
 
 DIAS_TOLERANCIA_OFFLINE = 5
 TIMEOUT_PADRAO_SEGUNDOS = 10
+
+MODULO_WHATSAPP = "whatsapp"
+MODULO_SITE = "site"
+MODULO_VITRINE = "vitrine"
+MODULO_VIDEOS = "videos"
+MODULO_INSTAGRAM = "instagram"
+
+
+def _modulos_da_resposta(dados, valido):
+    """Lista de modulos liberados, aceitando servidor antigo (sem "modulos")."""
+    modulos = dados.get("modulos")
+    if isinstance(modulos, list):
+        return [str(m) for m in modulos if m]
+    return [MODULO_WHATSAPP] if valido else []
 
 
 class LicencaEstado:
@@ -63,14 +84,23 @@ class LicencaEstado:
         except OSError:
             pass
 
-    def registrar_validacao_ok(self, chave, plano="", expira_em=""):
+    def registrar_validacao_ok(self, chave, plano="", expira_em="", modulos=None):
         self.dados = {
             "chave": chave,
             "plano": plano,
             "expira_em": expira_em,
+            "modulos": list(modulos) if modulos is not None else [MODULO_WHATSAPP],
             "verificado_em": datetime.now(timezone.utc).isoformat(),
         }
         self.salvar()
+
+    def modulos(self):
+        """Modulos da ultima validacao. Cache de antes dos modulos existirem
+        so podia ser do bot de WhatsApp."""
+        modulos = self.dados.get("modulos")
+        if isinstance(modulos, list):
+            return [str(m) for m in modulos if m]
+        return [MODULO_WHATSAPP] if self.dados else []
 
     def limpar(self):
         self.dados = {}
@@ -98,13 +128,15 @@ def validar_licenca_online(servidor_url, chave, timeout=TIMEOUT_PADRAO_SEGUNDOS)
     Retorna sempre um dict com "ok" (True se conseguiu conversar com o
     servidor, mesmo que a resposta seja "invalido"; False se nem deu pra
     consultar - sem internet, servidor fora do ar, timeout etc.):
-        {"ok": True,  "valido": bool, "motivo": str, "plano": str, "expira_em": str}
+        {"ok": True,  "valido": bool, "conta_ativa": bool, "modulos": list,
+         "motivo": str, "plano": str, "expira_em": str}
         {"ok": False, "motivo": str}
     """
     if not servidor_url:
         return {"ok": False, "motivo": "Servidor de licenças não configurado."}
     if not chave:
-        return {"ok": True, "valido": False, "motivo": "Preencha a chave de licença."}
+        return {"ok": True, "valido": False, "conta_ativa": False, "modulos": [],
+                "motivo": "Preencha a chave de licença."}
 
     payload = json.dumps({"chave": chave}).encode("utf-8")
     request = urllib.request.Request(
@@ -116,9 +148,13 @@ def validar_licenca_online(servidor_url, chave, timeout=TIMEOUT_PADRAO_SEGUNDOS)
     try:
         with urllib.request.urlopen(request, timeout=timeout) as resposta:
             dados = json.loads(resposta.read().decode("utf-8"))
+        valido = bool(dados.get("valido"))
+        modulos = _modulos_da_resposta(dados, valido)
         return {
             "ok": True,
-            "valido": bool(dados.get("valido")),
+            "valido": valido,
+            "conta_ativa": bool(dados.get("conta_ativa", valido)) or bool(modulos),
+            "modulos": modulos,
             "motivo": str(dados.get("motivo") or ""),
             "plano": str(dados.get("plano") or ""),
             "expira_em": str(dados.get("expira_em") or ""),
@@ -132,13 +168,17 @@ def validar_licenca_online(servidor_url, chave, timeout=TIMEOUT_PADRAO_SEGUNDOS)
         # HTTPError significa que o servidor respondeu (mesmo que com erro),
         # entao trata como resposta valida do tipo "invalido", nao como
         # falha de conexao - nao deve cair na tolerancia offline.
-        return {"ok": True, "valido": False, "motivo": motivo}
+        return {"ok": True, "valido": False, "conta_ativa": False, "modulos": [], "motivo": motivo}
     except (urllib.error.URLError, TimeoutError, OSError, ValueError) as erro:
         return {"ok": False, "motivo": f"Não consegui conectar ao servidor de licenças: {erro}"}
 
 
 def verificar_licenca(chave, servidor_url, caminho_estado):
     """Retorna (liberado: bool, motivo: str, detalhes: dict).
+
+    "liberado" = a conta tem algum modulo (o app pode abrir). Os modulos
+    liberados ficam em detalhes["modulos"] - inclusive no modo offline, vindos
+    do cache.
 
     Tenta validar online primeiro; se nao conseguir conectar, cai para o
     cache local (tolerancia de alguns dias), desde que seja a mesma chave.
@@ -148,19 +188,22 @@ def verificar_licenca(chave, servidor_url, caminho_estado):
     estado = LicencaEstado(caminho_estado)
 
     if not chave:
-        return False, "Nenhuma chave de licença configurada.", {}
+        return False, "Nenhuma chave de licença configurada.", {"modulos": []}
 
     resultado = validar_licenca_online(servidor_url, chave)
 
     if resultado["ok"]:
-        if resultado["valido"]:
-            estado.registrar_validacao_ok(chave, resultado.get("plano", ""), resultado.get("expira_em", ""))
+        if resultado["conta_ativa"]:
+            estado.registrar_validacao_ok(
+                chave, resultado.get("plano", ""), resultado.get("expira_em", ""), resultado["modulos"],
+            )
             return True, "Licença ativa.", resultado
         estado.limpar()
         return False, resultado.get("motivo") or "Licença inválida ou assinatura cancelada.", resultado
 
     if estado.chave_corresponde(chave) and estado.dentro_da_tolerancia_offline():
-        return True, "Licença validada offline (última verificação recente ainda dentro do prazo).", resultado
+        detalhes = dict(resultado, modulos=estado.modulos(), plano=estado.dados.get("plano", ""))
+        return True, "Licença validada offline (última verificação recente ainda dentro do prazo).", detalhes
 
     motivo = resultado.get("motivo") or "Não foi possível validar a licença."
-    return False, motivo, resultado
+    return False, motivo, dict(resultado, modulos=[])

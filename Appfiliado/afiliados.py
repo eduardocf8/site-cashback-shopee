@@ -324,85 +324,97 @@ class ConversorAfiliados:
             "debug": {"conversoes": len(conversoes), "itens": total_itens},
         }
 
-    def obter_faturamento_validado(self, ano, mes):
-        """
-        Calcula o faturamento do mes (GMV) e a comissao validada, dia a dia,
-        pra aba "Faturamento Validado".
+    # Campos do conversionReport usados nos resultados por período. Os de
+    # comissão no nível da conversão (netCommission/totalCommission) são a
+    # comissão ESTIMADA, a mesma que o relatório por Sub ID sempre usou; se a
+    # API de alguma conta não tiver um deles, executar_relatorio_com_campos
+    # tira o campo e tenta de novo.
+    CAMPOS_RESULTADOS_PERIODO = (
+        "conversionId",
+        "purchaseTime",
+        "utmContent",
+        "netCommission",
+        "totalCommission",
+        "orders{orderId orderStatus items{itemPrice qty itemTotalCommission completeTime}}",
+    )
 
-        Sao DUAS leituras diferentes dos mesmos dados, nao duas formas de
-        calcular a mesma coisa - confirmado comparando com o relatorio de
-        vendas exportado direto da Shopee:
+    def obter_resultados_periodo(self, inicio, fim):
+        """
+        Faturamento, pedidos, comissão estimada e comissão validada de um
+        período qualquer (dia, semana, mês, personalizado), dia a dia, mais a
+        comissão estimada por Sub ID - tudo numa consulta só à API.
+
+        Sao leituras diferentes dos mesmos dados - confirmado comparando com o
+        relatorio de vendas exportado direto da Shopee:
 
         - "Faturamento" e "pedidos": somados pela DATA DE COMPRA
-          (purchaseTime) dentro do mes, contando qualquer pedido que nao
-          seja CANCELLED/UNPAID (inclui PENDING, que ainda pode ser
-          cancelado depois) - e o mesmo criterio do "faturamento do mes" que
-          aparece no Consultor de Metas da Shopee.
-        - "Comissao": somada pela DATA DE VALIDACAO (completeTime de cada
-          item), so para pedidos com orderStatus COMPLETED - por isso um
-          pedido comprado no fim do mes pode entrar no faturamento daquele
-          dia mas a comissao dele so aparecer depois (as vezes num mes
-          seguinte), quando de fato validar.
+          (purchaseTime), contando qualquer pedido que nao seja
+          CANCELLED/UNPAID (inclui PENDING, que ainda pode ser cancelado
+          depois) - o mesmo criterio do "faturamento do mes" que aparece no
+          Consultor de Metas da Shopee.
+        - "Comissao estimada": pela DATA DE COMPRA, com a comissao da conversao
+          (zerada se todos os pedidos dela foram cancelados) - a mesma conta do
+          relatorio por Sub ID.
+        - "Comissao validada": pela DATA DE VALIDACAO (completeTime de cada
+          item), so para pedidos COMPLETED - um pedido comprado antes do
+          periodo pode validar dentro dele.
 
-        Por causa da comissao (que pode vir de pedidos comprados antes do
-        mes escolhido), a busca na API usa uma janela de compra mais larga
-        que o mes - limitada pelo maximo de ~3 meses que a propria API
-        permite consultar a partir de hoje.
+        Por causa da comissao validada, a busca na API usa uma janela de compra
+        mais larga que o periodo - limitada pelo maximo de ~3 meses que a
+        propria API permite consultar a partir de hoje. Se o inicio do periodo
+        ja estiver fora dessa janela, o resultado sai com "parcial": True.
         """
-        mes_inicio = datetime(ano, mes, 1, 0, 0, 0)
-        if mes == 12:
-            mes_fim_exclusivo = datetime(ano + 1, 1, 1)
-        else:
-            mes_fim_exclusivo = datetime(ano, mes + 1, 1)
-        mes_fim = datetime.fromtimestamp(int(mes_fim_exclusivo.timestamp()) - 1)
+        if not isinstance(inicio, datetime):
+            inicio = datetime.combine(inicio, datetime.min.time())
+        if not isinstance(fim, datetime):
+            fim = datetime.combine(fim, datetime.max.time())
+        inicio = inicio.replace(hour=0, minute=0, second=0, microsecond=0)
+        fim = fim.replace(hour=23, minute=59, second=59, microsecond=0)
+        if inicio > fim:
+            raise ValueError("A data inicial não pode ser maior que a data final.")
 
-        mes_inicio_ts = int(mes_inicio.timestamp())
-        mes_fim_ts = int(mes_fim.timestamp())
+        inicio_ts = int(inicio.timestamp())
+        fim_ts = int(fim.timestamp())
 
         agora = datetime.now()
         limite_minimo_busca_ts = int(
             (agora - timedelta(days=LIMITE_API_CONVERSION_REPORT_DIAS)).timestamp()
         )
-        if limite_minimo_busca_ts > mes_fim_ts:
+        if limite_minimo_busca_ts > fim_ts:
             raise Exception(
-                "Esse mes já está fora da janela de ~3 meses que a API da "
+                "Esse período já está fora da janela de ~3 meses que a API da "
                 "Shopee permite consultar a partir de hoje."
             )
-        busca_inicio_ts = max(mes_inicio_ts - 90 * 86400, limite_minimo_busca_ts)
+        busca_inicio_ts = max(inicio_ts - 90 * 86400, limite_minimo_busca_ts)
 
-        campos = [
-            "conversionId",
-            "purchaseTime",
-            "orders{orderId orderStatus items{itemPrice qty itemTotalCommission completeTime}}",
-        ]
         nodes = self.executar_relatorio_paginado(
             "conversionReport",
             "purchaseTimeStart",
             "purchaseTimeEnd",
             busca_inicio_ts,
-            mes_fim_ts,
-            campos,
+            fim_ts,
+            list(self.CAMPOS_RESULTADOS_PERIODO),
         )
 
-        dias_no_mes = (mes_fim.date() - mes_inicio.date()).days + 1
+        dias_no_periodo = (fim.date() - inicio.date()).days + 1
         diario = {
-            mes_inicio.date() + timedelta(days=i): {
+            inicio.date() + timedelta(days=i): {
                 "pedidos": set(),
                 "faturamento": 0.0,
-                "comissao": 0.0,
+                "comissao_estimada": 0.0,
+                "comissao_validada": 0.0,
             }
-            for i in range(dias_no_mes)
+            for i in range(dias_no_periodo)
         }
 
-        pedidos_faturamento_unicos = set()
+        pedidos_unicos = set()
+        conversoes_no_periodo = []
         total_faturamento = 0.0
-        total_comissao = 0.0
+        total_estimada = 0.0
+        total_validada = 0.0
 
         for conv in nodes:
             if not isinstance(conv, dict):
-                continue
-            pedidos = conv.get("orders")
-            if not isinstance(pedidos, list):
                 continue
 
             purchase_time = conv.get("purchaseTime")
@@ -410,12 +422,23 @@ class ConversorAfiliados:
                 purchase_time = int(purchase_time)
             except (TypeError, ValueError):
                 purchase_time = None
-            compra_no_mes = (
-                purchase_time is not None and mes_inicio_ts <= purchase_time <= mes_fim_ts
+            compra_no_periodo = (
+                purchase_time is not None and inicio_ts <= purchase_time <= fim_ts
             )
             dia_compra = (
-                datetime.fromtimestamp(purchase_time).date() if compra_no_mes else None
+                datetime.fromtimestamp(purchase_time).date() if compra_no_periodo else None
             )
+
+            if compra_no_periodo:
+                conversoes_no_periodo.append(conv)
+                estimada = self.comissao_estimada_conversao(conv)
+                total_estimada += estimada
+                if dia_compra in diario:
+                    diario[dia_compra]["comissao_estimada"] += estimada
+
+            pedidos = conv.get("orders")
+            if not isinstance(pedidos, list):
+                continue
 
             for pedido in pedidos:
                 if not isinstance(pedido, dict):
@@ -426,7 +449,7 @@ class ConversorAfiliados:
                 if not isinstance(itens, list):
                     itens = []
 
-                if compra_no_mes and status not in self.STATUS_PEDIDO_INVALIDOS:
+                if compra_no_periodo and status not in self.STATUS_PEDIDO_INVALIDOS:
                     fat_pedido = sum(
                         self._para_numero(item.get("itemPrice"))
                         * (self._para_numero(item.get("qty")) or 1)
@@ -434,7 +457,7 @@ class ConversorAfiliados:
                         if isinstance(item, dict)
                     )
                     total_faturamento += fat_pedido
-                    pedidos_faturamento_unicos.add(order_id)
+                    pedidos_unicos.add(order_id)
                     if dia_compra in diario:
                         diario[dia_compra]["faturamento"] += fat_pedido
                         diario[dia_compra]["pedidos"].add(order_id)
@@ -448,34 +471,72 @@ class ConversorAfiliados:
                             complete_time = int(complete_time)
                         except (TypeError, ValueError):
                             continue
-                        if not (mes_inicio_ts <= complete_time <= mes_fim_ts):
+                        if not (inicio_ts <= complete_time <= fim_ts):
                             continue
                         comissao_item = self._para_numero(item.get("itemTotalCommission"))
-                        total_comissao += comissao_item
+                        total_validada += comissao_item
                         dia_validacao = datetime.fromtimestamp(complete_time).date()
                         if dia_validacao in diario:
-                            diario[dia_validacao]["comissao"] += comissao_item
+                            diario[dia_validacao]["comissao_validada"] += comissao_item
 
         linhas_diarias = [
             {
                 "dia": dia,
                 "pedidos": len(dados_dia["pedidos"]),
                 "faturamento": dados_dia["faturamento"],
-                "comissao": dados_dia["comissao"],
+                "comissao_estimada": dados_dia["comissao_estimada"],
+                "comissao_validada": dados_dia["comissao_validada"],
             }
             for dia, dados_dia in sorted(diario.items())
         ]
+        por_sub_id = self.agrupar_indicadores(conversoes_no_periodo)
 
+        return {
+            "inicio": inicio,
+            "fim": fim,
+            "parcial": inicio_ts < limite_minimo_busca_ts,
+            "resumo": {
+                "pedidos": len(pedidos_unicos),
+                "faturamento": total_faturamento,
+                "comissao_estimada": total_estimada,
+                "comissao_validada": total_validada,
+                "vendas": len(conversoes_no_periodo),
+            },
+            "diario": linhas_diarias,
+            "sub_ids": por_sub_id["linhas"],
+            "debug": {"conversoes": len(nodes)},
+        }
+
+    def obter_faturamento_validado(self, ano, mes):
+        """Faturamento e comissão validada de um mês fechado, no formato que o
+        relatório por e-mail usa. Ver obter_resultados_periodo."""
+        mes_inicio = datetime(ano, mes, 1, 0, 0, 0)
+        if mes == 12:
+            mes_fim_exclusivo = datetime(ano + 1, 1, 1)
+        else:
+            mes_fim_exclusivo = datetime(ano, mes + 1, 1)
+        mes_fim = datetime.fromtimestamp(int(mes_fim_exclusivo.timestamp()) - 1)
+
+        resultado = self.obter_resultados_periodo(mes_inicio, mes_fim)
+        resumo = resultado["resumo"]
         return {
             "mes_inicio": mes_inicio,
             "mes_fim": mes_fim,
             "resumo": {
-                "pedidos": len(pedidos_faturamento_unicos),
-                "faturamento": total_faturamento,
-                "comissao": total_comissao,
+                "pedidos": resumo["pedidos"],
+                "faturamento": resumo["faturamento"],
+                "comissao": resumo["comissao_validada"],
             },
-            "diario": linhas_diarias,
-            "debug": {"conversoes": len(nodes)},
+            "diario": [
+                {
+                    "dia": linha["dia"],
+                    "pedidos": linha["pedidos"],
+                    "faturamento": linha["faturamento"],
+                    "comissao": linha["comissao_validada"],
+                }
+                for linha in resultado["diario"]
+            ],
+            "debug": resultado["debug"],
         }
 
     def obter_relatorio_conversoes(self, inicio_ts, fim_ts, incluir_itens=False):
@@ -1563,6 +1624,24 @@ class ConversorAfiliados:
         texto = str(sub_id or "").strip()
         return texto if texto else "sem_subid"
 
+    def comissao_estimada_conversao(self, conversao):
+        """Comissão estimada de uma conversão (zerada se todos os pedidos dela
+        foram cancelados/não pagos)."""
+        comissao = self.extrair_primeiro_numero(
+            conversao,
+            (
+                "netCommission",
+                "grossCommission",
+                "cappedCommission",
+                "totalCommission",
+                "sellerCommission",
+                "commission",
+                "commissionAmount",
+                "estCommission",
+            ),
+        )
+        return self._comissao_conversao_valida(conversao, comissao)
+
     def agrupar_indicadores(self, conversoes):
         grupos = {}
         for conversao in conversoes:
@@ -1570,20 +1649,7 @@ class ConversorAfiliados:
             if not sub_ids:
                 sub_ids = ["sem_subid"]
 
-            comissao = self.extrair_primeiro_numero(
-                conversao,
-                (
-                    "netCommission",
-                    "grossCommission",
-                    "cappedCommission",
-                    "totalCommission",
-                    "sellerCommission",
-                    "commission",
-                    "commissionAmount",
-                    "estCommission",
-                ),
-            )
-            comissao = self._comissao_conversao_valida(conversao, comissao)
+            comissao = self.comissao_estimada_conversao(conversao)
             valor = self.extrair_primeiro_numero(
                 conversao,
                 ("orderAmount", "purchaseAmount", "salesAmount", "itemPrice", "actualAmount"),

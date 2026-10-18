@@ -115,6 +115,7 @@ class LicencaDialog(QDialog):
         self.settings = settings
         self.obrigatorio = obrigatorio
         self.licenca_liberada = False
+        self.modulos = []
         self.setWindowTitle("Licença do Appfiliado")
         self.setMinimumWidth(440)
         self.setModal(True)
@@ -174,10 +175,12 @@ class LicencaDialog(QDialog):
         ).start()
 
     def _verificar_em_thread(self, chave, servidor_url):
-        liberado, motivo, _ = licenca.verificar_licenca(
+        liberado, motivo, detalhes = licenca.verificar_licenca(
             chave, servidor_url, CAMINHO_ESTADO_LICENCA
         )
-        self._signals.resultado.emit(liberado, motivo, {"chave": chave})
+        self._signals.resultado.emit(
+            liberado, motivo, {"chave": chave, "modulos": detalhes.get("modulos") or []}
+        )
 
     def _ao_receber_resultado(self, liberado, motivo, extra):
         self.ativar_button.setEnabled(True)
@@ -188,6 +191,7 @@ class LicencaDialog(QDialog):
             self.settings.licenca_chave = extra.get("chave", self.chave_input.text().strip())
             self.settings.save()
             self.licenca_liberada = True
+            self.modulos = list(extra.get("modulos") or [])
             # So fecha sozinho na tela obrigatoria de entrada (obrigatorio=True) -
             # aberta pelo botao "Licenca" (obrigatorio=False), o objetivo e so
             # conferir o status, entao fica aberta ate o usuario clicar em Fechar.
@@ -3187,13 +3191,16 @@ class MainWindow(QMainWindow):
         threading.Thread(target=self._checar_licenca_thread, daemon=True).start()
 
     def _checar_licenca_thread(self):
-        liberado, motivo, _ = licenca.verificar_licenca(
+        liberado, motivo, detalhes = licenca.verificar_licenca(
             self.settings.licenca_chave,
             self.settings.licenca_servidor_url,
             CAMINHO_ESTADO_LICENCA,
         )
         if not liberado:
             self.signals.licenca_invalida.emit(motivo)
+        elif licenca.MODULO_WHATSAPP not in (detalhes.get("modulos") or []):
+            # A conta continua ativa, mas o plano não inclui mais o bot.
+            self.signals.licenca_invalida.emit("Seu plano não inclui o bot de WhatsApp.")
 
     def _ao_licenca_ficar_invalida(self, motivo):
         # Para o bot se estiver rodando - nao faz sentido continuar
@@ -4439,6 +4446,13 @@ def main():
     settings_iniciais = AppSettings.load()
     dialogo_licenca = LicencaDialog(settings_iniciais, obrigatorio=True)
     if dialogo_licenca.exec() != QDialog.Accepted or not dialogo_licenca.licenca_liberada:
+        sys.exit(0)
+    if licenca.MODULO_WHATSAPP not in dialogo_licenca.modulos:
+        QMessageBox.warning(
+            None,
+            "Bot de WhatsApp não incluído",
+            "Sua conta do Appfiliado está ativa, mas o seu plano não inclui o bot de WhatsApp.",
+        )
         sys.exit(0)
 
     window = MainWindow()

@@ -155,6 +155,10 @@ class AppSettings:
     relatorio_email_senha_app: str = ""
     relatorio_email_ultimo_envio: str = ""
 
+    # Metas mensais de faturamento da Shopee (ate 3 faixas por mes, cada uma
+    # com bonus), cadastradas a mao - ver metas.py. Chave "AAAA-MM".
+    metas_mensais: dict = field(default_factory=dict)
+
     # Licenca (assinatura). O bot so roda com uma chave valida, checada
     # contra o servidor abaixo - ver licenca.py e o gate em app.py/main().
     # licenca_servidor_url deve apontar para o endpoint que recebe
