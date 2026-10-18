@@ -1,6 +1,6 @@
 from django.conf import settings
 from django.contrib import messages
-from django.http import Http404
+from django.http import Http404, JsonResponse
 from django.shortcuts import redirect, render
 from datetime import timedelta
 
@@ -200,6 +200,16 @@ def atualizar_resultados(request):
             resultados.pedir_atualizacao(conta)
         messages.info(request, "Pedimos os números novos à Shopee. Em até 1 minuto eles aparecem aqui.")
     return redirect(destino_seguro(request, request.POST.get("voltar", "")))
+
+
+@conta_requerida
+def estado_resultados(request):
+    """A tela com "Atualizando com a Shopee…" pergunta aqui, de tempos em tempos, se
+    a busca terminou - e se recarrega sozinha quando terminar."""
+    conta = conta_logada(request)
+    estado = telas.estado_sincronizacao(conta)
+    atualizando = bool(conta.shopee_validado_em) and (not estado or estado.atualizando)
+    return JsonResponse({"atualizando": atualizando})
 
 
 @conta_requerida

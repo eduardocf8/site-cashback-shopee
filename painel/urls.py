@@ -11,6 +11,7 @@ urlpatterns = [
     path("plano/", views.plano, name="painel_plano"),
     path("resultados/", views.resultados_view, name="painel_resultados"),
     path("resultados/atualizar/", views.atualizar_resultados, name="painel_atualizar_resultados"),
+    path("resultados/estado/", views.estado_resultados, name="painel_estado_resultados"),
     path("metas/", views.metas_view, name="painel_metas"),
     path("configuracoes/", views.configuracoes, name="painel_configuracoes"),
     path("m/<slug:slug>/", views.modulo, name="painel_modulo"),
