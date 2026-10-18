@@ -52,6 +52,11 @@ class TestDominio(BasePainel):
         )
         self.assertTrue(resposta.json()["valido"])
 
+    def test_deixa_claro_que_e_so_pra_shopee(self):
+        html = self.client.get("/entrar/").content.decode()
+        self.assertIn("afiliados Shopee", html)
+        self.assertIn("sem vínculo oficial com a Shopee", html)
+
     def test_painel_nao_existe_no_dominio_da_cash_b(self):
         self.assertEqual(Client().get("/entrar/").status_code, 404)
 
@@ -448,6 +453,12 @@ class TestTelasDeResultados(BasePainel):
         html = self.client.get("/").content.decode()
         self.assertIn("Conectar sua conta de afiliado da Shopee", html)
 
+    def test_inicio_sem_metas_oferece_cadastrar_sem_cobrar(self, _):
+        self.conectar_shopee()
+        html = self.client.get("/").content.decode()
+        self.assertIn("Cadastrar metas", html)
+        self.assertNotIn("Primeiros passos", html)  # metas são opcionais: não viram passo pendente
+
     def test_resultados_do_mes(self, _):
         self.conectar_shopee()
         html = self.client.get("/resultados/").content.decode()
@@ -472,11 +483,17 @@ class TestTelasDeResultados(BasePainel):
         ])
         html = self.client.get("/resultados/").content.decode()
         self.assertIn("Meta do mês", html)
+        self.assertIn("faltam R$ 699,50", html)  # falta para 150%
+        self.assertIn("batendo a faixa 150%", html)
+
+        # o Início só resume: sem gráfico, sem Sub IDs, sem a lista de faixas
         html = self.client.get("/").content.decode()
         self.assertIn("R$ 3.800,50", html)
-        self.assertIn("faltam R$ 699,50", html)  # falta pra 150%
-        self.assertIn("batendo a faixa 150%", html)
+        self.assertIn("Faltam <strong>R$ 699,50</strong> para a faixa <strong>150%</strong>", html)
+        self.assertIn("Bônus garantido até agora: <strong>R$ 200,00</strong>", html)
         self.assertNotIn("Cadastrar as metas do mês", html)
+        self.assertNotIn("grafico", html)
+        self.assertNotIn("Sub ID", html)
 
     def test_atualizar_agora_pede_uma_vez_e_volta(self, _):
         self.conectar_shopee()

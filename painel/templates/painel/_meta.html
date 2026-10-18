@@ -19,7 +19,7 @@
     {% endfor %}
   </ul>
   {% if meta.proxima and meta.dias_restantes %}
-    <p class="pequeno">Pra chegar em <strong>{{ meta.proxima.faturamento|brl0 }}</strong>: <strong>{{ meta.por_dia|brl }} por dia</strong> nos {{ meta.dias_restantes }} dia{{ meta.dias_restantes|pluralize }} que faltam.</p>
+    <p class="pequeno">Para chegar em <strong>{{ meta.proxima.faturamento|brl0 }}</strong>: <strong>{{ meta.por_dia|brl }} por dia</strong> nos {{ meta.dias_restantes }} dia{{ meta.dias_restantes|pluralize }} que faltam.</p>
   {% endif %}
   {% if meta.dias_restantes %}
     <p class="pequeno suave">No ritmo atual o mês fecha em {{ meta.projecao|brl0 }}{% if meta.nome_faixa_projetada %}, batendo a faixa {{ meta.nome_faixa_projetada }}{% endif %}.</p>

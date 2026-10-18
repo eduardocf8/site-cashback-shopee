@@ -1,6 +1,6 @@
 """O que aparece no menu do painel e o estado de cada módulo para uma conta:
 liberado, "Em breve" (ainda não construído no painel) ou bloqueado (o plano
-não inclui - mostra cadeado e o convite pra assinar)."""
+não inclui - mostra cadeado e o convite para assinar)."""
 
 from django.urls import reverse
 
@@ -22,13 +22,14 @@ ICONES = {
     "configuracoes": "M4 6h9M17 6h3M4 12h3M11 12h9M4 18h11M19 18h1M15 4v4M9 10v4M17 16v4",
     "cadeado": "M6 11h12v10H6zM8 11V8a4 4 0 0 1 8 0v3",
     "check": "M5 12l4 4 10-10",
+    "mais": "M12 5v14M5 12h14",
     "metas": "M12 3a9 9 0 1 0 0 18 9 9 0 0 0 0-18zM12 7a5 5 0 1 0 0 10 5 5 0 0 0 0-10zM12 11a1 1 0 1 0 0 2 1 1 0 0 0 0-2z",
     "atualizar": "M20 11a8 8 0 1 0-2.3 5.7M20 4v7h-7",
 }
 
 # slug -> configuração. "modulo": código da licença que libera (None = todos
-# têm). "pronto": já existe no painel. "so_em_breve": ainda não dá pra vender
-# pra ninguém (ex: Instagram, esperando a Meta).
+# têm). "pronto": já existe no painel. "so_em_breve": ainda não dá para vender
+# para ninguém (ex: Instagram, esperando a Meta).
 MODULOS_DO_MENU = [
     {"slug": "inicio", "nome": "Início", "icone": "inicio", "modulo": None, "pronto": True},
     {"slug": "resultados", "nome": "Resultados", "icone": "resultados", "modulo": None, "pronto": True},
@@ -47,13 +48,13 @@ MODULOS_DO_MENU = [
         "texto_em_breve": "Você vai editar aqui o seu site com conversor de links e vitrine "
                           "de produtos, no endereço seunome.appfiliado.com.br.",
         "texto_bloqueado": "Tenha seu próprio site com conversor de links e vitrine de produtos, pronto "
-                           "pra usar como link na bio.",
+                           "para usar como link na bio.",
     },
     {
         "slug": "videos", "nome": "Gerador de vídeos", "icone": "videos", "modulo": MODULO_VIDEOS,
         "pronto": False,
-        "texto_em_breve": "Cole o link de um produto e receba um vídeo curto pronto pra postar.",
-        "texto_bloqueado": "Cole o link de um produto e receba um vídeo curto pronto pra Reels, TikTok "
+        "texto_em_breve": "Cole o link de um produto e receba um vídeo curto pronto para postar.",
+        "texto_bloqueado": "Cole o link de um produto e receba um vídeo curto pronto para Reels, TikTok "
                            "e Shopee Vídeo.",
     },
     {

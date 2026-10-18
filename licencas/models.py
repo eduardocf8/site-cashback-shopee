@@ -5,7 +5,7 @@ from django.db import models
 from django.utils import timezone
 
 # Módulos que uma conta do Appfiliado pode ter liberados. O código (chave) é o que vai
-# na resposta do /licencas/validar/ e o que o app usa pra decidir o que mostrar - não
+# na resposta do /licencas/validar/ e o que o app usa para decidir o que mostrar - não
 # mude um código existente sem atualizar o app também.
 MODULO_WHATSAPP = "whatsapp"
 MODULO_SITE = "site"
@@ -23,7 +23,7 @@ CODIGOS_MODULOS = [codigo for codigo, _ in MODULOS]
 
 
 def gerar_chave() -> str:
-    """Chave de licença legível e com entropia suficiente (80 bits) pra não dar pra
+    """Chave de licença legível e com entropia suficiente (80 bits) para não dar para
     adivinhar por tentativa. Formato "AF-XXXXXXXXXXXXXXXXXXXX" (hex maiúsculo)."""
     return f"AF-{secrets.token_hex(10).upper()}"
 
@@ -36,11 +36,11 @@ def modulos_de_texto(texto: str) -> list[str]:
 
 
 class ContaAppfiliado(models.Model):
-    """Uma pessoa que usa o Appfiliado. A chave de licença é da conta (uma só, vale pra
+    """Uma pessoa que usa o Appfiliado. A chave de licença é da conta (uma só, vale para
     todos os módulos): comprar outro serviço depois só soma módulos à mesma chave.
 
     Criada sozinha pelo webhook da Zouti na primeira assinatura daquele e-mail. Também
-    dá pra criar à mão no /admin/ pra liberar módulos de cortesia (uso próprio, clientes
+    dá para criar à mão no /admin/ para liberar módulos de cortesia (uso próprio, clientes
     antigos do conversor etc.) - ver modulos_cortesia."""
 
     email = models.EmailField(unique=True)
@@ -125,10 +125,10 @@ class ProdutoZouti(models.Model):
 
     O vínculo é pelo ID do produto (prod_...), que vem em line_items[].product_id dos
     webhooks de assinatura. Como os módulos são calculados na hora da validação, mudar
-    o mapeamento aqui vale na hora pra todo mundo que já assinou aquele produto."""
+    o mapeamento aqui vale na hora para todo mundo que já assinou aquele produto."""
 
     zouti_product_id = models.CharField("ID do produto na Zouti", max_length=64, unique=True)
-    nome = models.CharField(max_length=140, help_text="Só pra você reconhecer o produto aqui.")
+    nome = models.CharField(max_length=140, help_text="Só para você reconhecer o produto aqui.")
     modulos = models.CharField(max_length=200, blank=True)
 
     class Meta:
@@ -174,7 +174,7 @@ class Assinatura(models.Model):
     zouti_subscription_id = models.CharField(max_length=64, unique=True)
     zouti_order_id = models.CharField(
         max_length=64, blank=True, db_index=True,
-        help_text="Pedido que originou a assinatura - usado pra achar a assinatura num estorno/chargeback.",
+        help_text="Pedido que originou a assinatura - usado para achar a assinatura num estorno/chargeback.",
     )
     zouti_product_ids = models.CharField(
         max_length=300, blank=True,
@@ -190,7 +190,7 @@ class Assinatura(models.Model):
     proxima_cobranca = models.DateField(null=True, blank=True)
     acesso_ate = models.DateField(
         null=True, blank=True,
-        help_text="Pra assinatura cancelada: acesso continua até o fim do período já pago.",
+        help_text="Para assinatura cancelada: acesso continua até o fim do período já pago.",
     )
 
     zouti_atualizada_em = models.DateTimeField(
@@ -225,8 +225,8 @@ class Assinatura(models.Model):
 
 
 class EventoWebhookZouti(models.Model):
-    """Guarda cada webhook recebido, cru, antes de qualquer interpretação - serve pra
-    depurar, pra auditoria e pra não processar duas vezes o mesmo evento (a Zouti
+    """Guarda cada webhook recebido, cru, antes de qualquer interpretação - serve para
+    depurar, para auditoria e para não processar duas vezes o mesmo evento (a Zouti
     reenvia por até 4 dias quando não recebe 2xx)."""
 
     zouti_event_id = models.CharField(max_length=64, blank=True, db_index=True)

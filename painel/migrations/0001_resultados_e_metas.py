@@ -33,7 +33,7 @@ class Migration(migrations.Migration):
                     "cobertura_inicio",
                     models.DateField(
                         blank=True,
-                        help_text="Dia mais antigo com dados guardados (a API da Shopee só alcança ~3 meses pra trás).",
+                        help_text="Dia mais antigo com dados guardados (a API da Shopee só alcança ~3 meses para trás).",
                         null=True,
                     ),
                 ),

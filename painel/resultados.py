@@ -35,12 +35,12 @@ CAMPOS_COMISSAO_ESTIMADA = (
     "netCommission", "grossCommission", "cappedCommission", "totalCommission",
     "sellerCommission", "commission", "commissionAmount", "estCommission",
 )
-# A API só deixa consultar ~3 meses pra trás (erro 11001 depois disso).
+# A API só deixa consultar ~3 meses para trás (erro 11001 depois disso).
 JANELA_API_DIAS = 89
 # Pedidos mudam de status (pendente -> concluído/cancelado) por semanas; a comissão
 # validada de um dia só fica completa quando as compras que validam nele estão dentro
 # da janela - por isso ela é recalculada só nos últimos 60 dias, e os dias mais antigos
-# ficam como estavam na última vez em que dava pra calcular direito.
+# ficam como estavam na última vez em que dava para calcular direito.
 DIAS_RECALCULO_VALIDADA = 60
 INTERVALO_SINCRONIZACAO_AUTOMATICA = timedelta(hours=3)
 

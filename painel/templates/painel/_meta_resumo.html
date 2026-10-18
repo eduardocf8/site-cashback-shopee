@@ -1,0 +1,17 @@
+{% load painel_extras %}
+<div class="meta meta-resumo">
+  <div class="meta-topo">
+    <strong class="meta-valor">{{ meta.faturamento|brl }}</strong>
+    <span class="suave pequeno">faturados em {{ meta.nome_mes }}</span>
+  </div>
+  <div class="meta-trilho" aria-hidden="true">
+    <div class="meta-preenchido" style="width: {{ meta.porcentagem_barra }}%"></div>
+    {% for f in meta.faixas_tela %}<span class="meta-marca{% if f.batida %} batida{% endif %}" style="left: {{ f.posicao }}%"></span>{% endfor %}
+  </div>
+  {% if meta.proxima %}
+    <p class="pequeno">Faltam <strong>{{ meta.falta|brl }}</strong> para a faixa <strong>{{ meta.nome_proxima }}</strong>{% if meta.proxima.bonus %} (bônus {{ meta.proxima.bonus|brl0 }}){% endif %}.</p>
+  {% else %}
+    <p class="pequeno bom"><strong>Todas as faixas do mês batidas!</strong></p>
+  {% endif %}
+  {% if meta.bonus_garantido %}<p class="pequeno bom">Bônus garantido até agora: <strong>{{ meta.bonus_garantido|brl }}</strong></p>{% endif %}
+</div>

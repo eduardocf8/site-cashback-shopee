@@ -55,7 +55,7 @@ class SincronizacaoResultados(models.Model):
     erro = models.TextField(blank=True)
     cobertura_inicio = models.DateField(
         null=True, blank=True,
-        help_text="Dia mais antigo com dados guardados (a API da Shopee só alcança ~3 meses pra trás).",
+        help_text="Dia mais antigo com dados guardados (a API da Shopee só alcança ~3 meses para trás).",
     )
 
     class Meta:
@@ -75,7 +75,7 @@ class SincronizacaoResultados(models.Model):
 
 
 class MetaMensal(models.Model):
-    """As faixas de meta de faturamento que a Shopee deu pra conta num mês (até 3,
+    """As faixas de meta de faturamento que a Shopee deu para a conta num mês (até 3,
     ex: 100%, 125% e 150%, cada uma com um bônus). Cadastradas à mão - a Shopee não
     entrega isso pela API. faixas = [{"percentual": 100, "faturamento": 30000.0,
     "bonus": 300.0}, ...]; ver painel/metas.py."""

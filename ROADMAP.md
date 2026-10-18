@@ -2780,8 +2780,15 @@ reaproveitando `Appfiliado/periodos.py`, `Appfiliado/metas.py` e
       e sem faturamento é calculada pela primeira faixa preenchida. Situação: faixas
       batidas, quanto falta, quanto faturar por dia, projeção no ritmo atual e bônus
       garantido - no Início, em Metas e em Resultados (quando o período é de um mês só).
-- [x] **Início**: números do mês, faturamento por dia, meta do mês, top Sub IDs e
-      primeiros passos (conectar Shopee, cadastrar metas, WhatsApp em breve).
+- [x] **Início** só com o geral: números do mês, o dia de hoje e a meta resumida (sem
+      meta cadastrada, um botão "+ Cadastrar metas" - nem todo afiliado tem metas, então
+      isso não vira passo pendente). Gráficos, Sub IDs e detalhes ficam em Resultados.
+- [x] **Só Shopee, deixado claro**: slogan "Para afiliados Shopee" no painel, texto da
+      tela de entrar, assinatura dos e-mails e aviso no rodapé: "ferramentas feitas só
+      para afiliados da Shopee. Somos independentes, sem vínculo oficial com a Shopee."
+      A página de vendas (fase 5) deve repetir isso.
+- [x] **Português dos textos**: "pra" só quando dá para trocar por "para a"; nos outros
+      casos, "para" (telas, e-mails, admin e comentários do painel e das licenças).
 - [x] **Como os números chegam**: as telas só leem o banco (`ResultadoDiario`,
       `ResultadoSubIdDiario`). Quem busca na Shopee é o comando
       `python manage.py sincronizar_painel --loop` (`painel/resultados.py`): a cada 30 s
@@ -2791,7 +2798,7 @@ reaproveitando `Appfiliado/periodos.py`, `Appfiliado/metas.py` e
       últimos 60 dias (dias mais antigos ficam como estavam). Regras iguais às do app:
       faturamento e estimada pela data da compra sem CANCELLED/UNPAID, validada pela
       data de validação do item (COMPLETED). Erros aparecem na tela e no admin.
-- [x] Admin: "Sincronizações de resultados" (com ação pra buscar de novo) e "Metas
+- [x] Admin: "Sincronizações de resultados" (com ação para buscar de novo) e "Metas
       mensais".
 
 Para ligar em produção: criar no Render um **Background Worker** do mesmo repositório,

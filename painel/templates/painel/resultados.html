@@ -72,7 +72,7 @@
     <section class="card">
       <h2>Como os números são contados</h2>
       <p class="suave pequeno"><strong>Faturamento</strong> e <strong>pedidos</strong> contam pela data da compra, sem os cancelados - o mesmo critério das metas da Shopee. A <strong>comissão estimada</strong> também conta pela compra e ainda pode mudar. A <strong>validada</strong> conta pela data em que a Shopee confirmou o pedido.</p>
-      {% if sincronizacao.cobertura_inicio %}<p class="suave pequeno" style="margin-top:8px">Dados guardados desde {{ sincronizacao.cobertura_inicio|date:"d/m/Y" }} - a API da Shopee só alcança uns 3 meses pra trás.</p>{% endif %}
+      {% if sincronizacao.cobertura_inicio %}<p class="suave pequeno" style="margin-top:8px">Dados guardados desde {{ sincronizacao.cobertura_inicio|date:"d/m/Y" }} - a API da Shopee só alcança uns 3 meses para trás.</p>{% endif %}
     </section>
   {% endif %}
 </div>

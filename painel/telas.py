@@ -118,6 +118,7 @@ def situacao_meta(conta, ano: int, mes: int, hoje: date) -> dict:
             for faixa in faixas
         ],
         "porcentagem_barra": min(100, round(situacao["fracao"] * 100)),
+        "nome_proxima": regras_metas.nome_faixa(situacao["proxima"]) if situacao.get("proxima") else "",
         "nome_faixa_projetada": (
             regras_metas.nome_faixa(situacao["faixa_projetada"]) if situacao.get("faixa_projetada") else ""
         ),

@@ -9,7 +9,7 @@ CONSULTA_TESTE = "query{productOfferV2(limit:1){nodes{itemId}}}"
 
 
 def testar_credenciais(app_id: str, secret: str) -> tuple[bool, str]:
-    """(funcionou, mensagem pra mostrar)."""
+    """(funcionou, mensagem para mostrar)."""
     if not app_id or not secret:
         return False, "Preencha o AppID e o Secret."
     try:

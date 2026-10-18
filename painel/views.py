@@ -93,7 +93,7 @@ def esqueci_senha(request):
             conta = ContaAppfiliado.objects.filter(email__iexact=form.cleaned_data["email"].strip()).first()
             if conta:
                 enviar_email_recuperar_senha(conta)
-        # Mesma resposta exista ou não a conta - não dá pra descobrir quem é cliente.
+        # Mesma resposta exista ou não a conta - não dá para descobrir quem é cliente.
         enviado = True
     return render(request, "painel/esqueci_senha.html", {"form": form, "enviado": enviado})
 
@@ -124,7 +124,6 @@ def inicio(request):
     liberados = conta.modulos_liberados()
     hoje = telas.hoje()
     inicio_mes = hoje.replace(day=1)
-    tem_metas = MetaMensal.objects.filter(conta=conta, ano=hoje.year, mes=hoje.month).exists()
 
     cartoes_modulos = [
         {**item, "estado": mod.estado(item, liberados), "icone_path": mod.ICONES[item["icone"]],
@@ -135,8 +134,6 @@ def inicio(request):
     passos = [
         {"titulo": "Conectar sua conta de afiliado da Shopee", "feito": bool(conta.shopee_validado_em),
          "acao": "Conectar", "href": "painel_configuracoes"},
-        {"titulo": "Cadastrar as metas do mês da Shopee", "feito": tem_metas,
-         "acao": "Cadastrar", "href": "painel_metas"},
         {"titulo": "Conectar seu WhatsApp pelo QR Code", "feito": False, "em_breve": True},
     ]
     contexto = {
@@ -155,9 +152,7 @@ def inicio(request):
         contexto.update({
             "mes": mes,
             "do_dia": do_dia,
-            "grafico": telas.barras(resultados.serie(conta, inicio_mes, hoje, "dia"), "faturamento"),
             "meta": telas.situacao_meta(conta, hoje.year, hoje.month, hoje),
-            "sub_ids": resultados.por_sub_id(conta, inicio_mes, hoje, limite=5),
         })
     return render(request, "painel/inicio.html", _contexto(request, "inicio", **contexto))
 

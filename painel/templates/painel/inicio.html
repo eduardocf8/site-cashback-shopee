@@ -32,27 +32,25 @@
 
   <div class="duas-colunas">
     <section class="card">
-      <div class="card-topo">
-        <h2>Faturamento por dia</h2>
-        <span class="suave pequeno">Hoje: {{ do_dia.faturamento|brl }} · {{ do_dia.pedidos|numero }} pedido{{ do_dia.pedidos|pluralize }}</span>
-      </div>
-      {% include "painel/_grafico.html" with titulo_grafico="Faturamento por dia do mês" %}
-      <p style="margin-top:12px"><a class="pequeno" href="{% url 'painel_resultados' %}">Ver todos os resultados</a></p>
-    </section>
-    <section class="card">
-      <div class="card-topo"><h2>Meta do mês</h2><a class="pequeno" href="{% url 'painel_metas' %}">{% if meta.metas %}Editar{% else %}Cadastrar{% endif %}</a></div>
       {% if meta.metas %}
-        {% include "painel/_meta.html" %}
+        <div class="card-topo"><h2>Meta do mês</h2><a class="pequeno" href="{% url 'painel_metas' %}">Ver metas</a></div>
+        {% include "painel/_meta_resumo.html" %}
       {% else %}
-        <p class="suave pequeno">Cadastre as faixas que a Shopee te deu este mês (ex: 100%, 125% e 150%) pra ver quanto falta pra cada bônus.</p>
+        <h2>Meta do mês</h2>
+        <p class="suave pequeno" style="margin-bottom:14px">Se a Shopee te deu metas com bônus este mês, cadastre aqui e acompanhe quanto falta para cada faixa.</p>
+        <a class="botao botao-claro botao-pequeno" href="{% url 'painel_metas' %}">{% include "painel/_icone.html" with caminho=icones.mais %}Cadastrar metas</a>
       {% endif %}
     </section>
+    <section class="card hoje">
+      <h2>Hoje</h2>
+      <dl class="resumo-hoje">
+        <div><dt>Faturamento</dt><dd>{{ do_dia.faturamento|brl }}</dd></div>
+        <div><dt>Comissão estimada</dt><dd>{{ do_dia.comissao_estimada|brl }}</dd></div>
+        <div><dt>Pedidos</dt><dd>{{ do_dia.pedidos|numero }}</dd></div>
+      </dl>
+      <a class="botao botao-claro botao-pequeno" href="{% url 'painel_resultados' %}">Ver resultados detalhados</a>
+    </section>
   </div>
-
-  <section class="card">
-    <h2>Comissão estimada por Sub ID · {{ nome_mes }}</h2>
-    {% include "painel/_sub_ids.html" %}
-  </section>
 {% endif %}
 
 <section aria-labelledby="titulo-modulos">

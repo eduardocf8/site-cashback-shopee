@@ -22,7 +22,7 @@ def brl(valor):
 
 @register.filter
 def brl0(valor):
-    """1234.5 -> "R$ 1.235" (sem centavos, pra números grandes)."""
+    """1234.5 -> "R$ 1.235" (sem centavos, para números grandes)."""
     return f"R$ {_formatar(valor, 0)}"
 
 

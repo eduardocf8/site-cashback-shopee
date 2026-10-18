@@ -3,7 +3,7 @@
 {% block titulo %}Metas{% endblock %}
 {% block conteudo %}
 <header class="cabecalho">
-  <div><h1>Metas da Shopee</h1><p>As faixas de faturamento do mês e o bônus de cada uma.</p></div>
+  <div><h1>Metas da Shopee</h1><p>Opcional: se a Shopee te deu metas no mês, cadastre as faixas de faturamento e o bônus de cada uma.</p></div>
 </header>
 
 <nav class="chips" aria-label="Mês">
@@ -39,9 +39,9 @@
     <h2>Como está {{ nome_mes }}</h2>
     {% if situacao %}
       {% include "painel/_meta.html" with meta=situacao %}
-      {% if not shopee_conectada %}<p class="suave pequeno" style="margin-top:8px">Conecte sua conta da Shopee em <a href="{% url 'painel_configuracoes' %}">Configurações</a> pra ver o faturamento.</p>{% endif %}
+      {% if not shopee_conectada %}<p class="suave pequeno" style="margin-top:8px">Conecte sua conta da Shopee em <a href="{% url 'painel_configuracoes' %}">Configurações</a> para ver o faturamento.</p>{% endif %}
     {% else %}
-      <p class="suave">Cadastre as faixas ao lado pra acompanhar quanto falta pra cada bônus e a projeção do mês.</p>
+      <p class="suave">Cadastre as faixas ao lado para acompanhar quanto falta para cada bônus e a projeção do mês.</p>
     {% endif %}
   </section>
 </div>

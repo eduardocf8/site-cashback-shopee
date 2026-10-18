@@ -30,7 +30,7 @@ def cifrar(texto: str) -> str:
 
 
 def decifrar(cifrado: str) -> str:
-    """Texto original, ou "" se não der pra decifrar (chave trocada)."""
+    """Texto original, ou "" se não der para decifrar (chave trocada)."""
     if not cifrado:
         return ""
     try:

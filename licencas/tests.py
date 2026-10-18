@@ -295,7 +295,7 @@ class TestMigracaoDasLicencasAntigas(TransactionTestCase):
 
         executor = MigrationExecutor(connection)
         executor.loader.build_graph()
-        # Até a última migração, pra o modelo atual bater com as colunas do banco.
+        # Até a última migração, para o modelo atual bater com as colunas do banco.
         executor.migrate(executor.loader.graph.leaf_nodes())
 
         dono = ContaAppfiliado.objects.get(chave="AF-ANTIGA1")
