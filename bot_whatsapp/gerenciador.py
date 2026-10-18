@@ -15,6 +15,7 @@ import base64
 import logging
 import os
 import queue
+import sys
 import threading
 import time
 from datetime import timedelta
@@ -42,6 +43,24 @@ def endereco_do_banco() -> str:
     return str(settings.BASE_DIR / "whatsapp_sessoes.sqlite3")
 
 
+def propriedades_do_aparelho():
+    """Como o servidor se apresenta ao WhatsApp. O bot não usa o histórico das
+    conversas, então pede o mínimo possível: ao conectar um aparelho novo, o celular
+    manda o histórico dos chats, e num número com muitos grupos isso passava dos
+    512 MB do worker (o Render reiniciava). Só vale para conexões feitas depois
+    desta mudança - quem já estava conectado precisa desconectar e ler o QR de novo."""
+    from neonize.proto.waCompanionReg.WAWebProtobufsCompanionReg_pb2 import DeviceProps
+
+    return DeviceProps(
+        os="Appfiliado",
+        platformType=DeviceProps.DESKTOP,
+        requireFullSync=False,
+        historySyncConfig=DeviceProps.HistorySyncConfig(
+            fullSyncDaysLimit=1, fullSyncSizeMbLimit=1, storageQuotaMb=10, recentSyncDaysLimit=1,
+        ),
+    )
+
+
 def _jid_texto(jid) -> str:
     return f"{jid.User}@{jid.Server}"
 
@@ -60,7 +79,6 @@ class Sessao:
             LoggedOutEv,
         )
         from neonize.proto.Neonize_pb2 import JID
-        from neonize.proto.waCompanionReg.WAWebProtobufsCompanionReg_pb2 import DeviceProps
 
         self.conta_id = conta_id
         self.fila = fila
@@ -72,7 +90,7 @@ class Sessao:
         self.cliente = NewClient(
             endereco_do_banco(),
             jid=jid,
-            props=DeviceProps(os="Appfiliado", platformType=DeviceProps.DESKTOP),
+            props=propriedades_do_aparelho(),
             uuid=f"appfiliado-{conta_id}",
             new_device=jid is None,
         )
@@ -363,9 +381,26 @@ class Gerenciador:
             envio.save(update_fields=["estado", "enviado_em"])
 
 
+LIMITE_DE_MEMORIA_GO = "200MiB"
+
+
+def garantir_limite_de_memoria(argv: list[str]) -> None:
+    """A parte em Go da biblioteca tem coleta de lixo própria e, sem limite, deixa a
+    memória crescer até perto do teto da máquina (o Render reinicia o worker em 512
+    MB). O Go só lê o GOMEMLIMIT do ambiente com que o processo nasceu - definir
+    depois, de dentro do Python, não tem efeito. Então, se não veio definido, o
+    processo se reinicia uma vez (exec) com ele. Quem já define no Render não passa
+    por aqui."""
+    if os.environ.get("GOMEMLIMIT"):
+        return
+    os.execve(sys.executable, [sys.executable, *argv], {**os.environ, "GOMEMLIMIT": LIMITE_DE_MEMORIA_GO})
+
+
 def iniciar_em_segundo_plano():
     """Chamado pelo sincronizar_painel --loop. Se a biblioteca não carregar (ex:
     falta algo no servidor), avisa no log e deixa o resto do worker funcionando."""
+    # O limite de memória da parte em Go (GOMEMLIMIT) é definido pelo
+    # sincronizar_painel antes de o processo começar - ver garantir_limite_de_memoria.
     try:
         import neonize.client  # noqa: F401
     except Exception:  # noqa: BLE001
