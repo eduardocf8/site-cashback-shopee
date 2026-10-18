@@ -33,6 +33,20 @@ conta**. A comissão passa a entrar sempre. O cashback continua exigindo conta: 
    "Ir pra Shopee" e story, e por último o conversor (que mostra o link na tela, então é
    o mais fácil de abusar).
 
+## Tela-ponte (textos aprovados pelo dono em 18/10)
+
+De cima para baixo, no celular:
+
+1. Card do produto clicado: foto, nome e preço.
+2. Título **"Ative seu cashback de X%"** e a linha "São **R$ Y de volta** nesta compra, pra
+   sacar via Pix" (valores do mesmo cálculo dos cards de oferta).
+3. Botão principal roxo **"Continuar com Google"**.
+4. Link **"Prefiro criar conta com e-mail"**.
+5. Uma linha cinza: "✓ Grátis  ✓ Saque via Pix" (o "Mesmo preço na Shopee" saiu, a pedido
+   do dono, pra caber numa linha só).
+6. Divisória "ou" e botão discreto com borda **"Ir pra Shopee sem cadastro"**, com a nota
+   "Ainda dá pra receber o cashback: crie sua conta neste aparelho em até 30 dias."
+
 ## Como funciona (fluxo)
 
 ```
