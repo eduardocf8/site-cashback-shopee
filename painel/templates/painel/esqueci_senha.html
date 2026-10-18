@@ -4,9 +4,9 @@
 <section class="card">
   <h1>Criar ou recuperar senha</h1>
   {% if enviado %}
-    <p class="suave">Se esse e-mail tiver uma assinatura do Appfiliado, você vai receber um link pra criar a senha em alguns minutos. Confira também a caixa de spam.</p>
+    <p class="suave">Se esse e-mail tiver uma assinatura do Appfiliado, você vai receber um link para criar a senha em alguns minutos. Confira também a caixa de spam.</p>
   {% else %}
-    <p class="suave">Informe o e-mail da sua assinatura. Mandamos um link pra você criar uma senha nova.</p>
+    <p class="suave">Informe o e-mail da sua assinatura. Mandamos um link para você criar uma senha nova.</p>
     <form method="post" class="formulario" style="margin-top:20px">
       {% csrf_token %}
       {% include "painel/_campos.html" %}
@@ -14,5 +14,5 @@
     </form>
   {% endif %}
 </section>
-<p class="links-abaixo"><a href="{% url 'painel_entrar' %}">Voltar pra entrar</a></p>
+<p class="links-abaixo"><a href="{% url 'painel_entrar' %}">Voltar pra tela de entrar</a></p>
 {% endblock %}

@@ -83,7 +83,7 @@ class ContaAppfiliadoAdmin(admin.ModelAdmin):
     def tem_senha_painel(self, obj):
         return obj.tem_senha
 
-    @admin.action(description="Enviar link pra criar/trocar a senha do painel")
+    @admin.action(description="Enviar link para criar/trocar a senha do painel")
     def enviar_link_senha(self, request, queryset):
         from painel.emails import enviar_email_recuperar_senha
 

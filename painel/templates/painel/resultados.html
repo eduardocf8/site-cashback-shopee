@@ -1,0 +1,80 @@
+{% extends "painel/base.html" %}
+{% load painel_extras %}
+{% block titulo %}Resultados{% endblock %}
+{% block conteudo %}
+<header class="cabecalho">
+  <div><h1>Resultados</h1><p>{{ periodo.descricao }}</p></div>
+  {% if shopee_conectada %}{% include "painel/_sincronizacao.html" %}{% endif %}
+</header>
+
+{% if not shopee_conectada %}
+  {% include "painel/_conectar_shopee.html" %}
+{% else %}
+<section class="card filtros" aria-label="Período">
+  <nav class="chips" aria-label="Período">
+    {% for chave, nome in presets %}{% if chave != "personalizado" %}
+      <a class="chip{% if periodo.chave == chave %} ativo{% endif %}" href="?{% querystring periodo=chave de=None ate=None agrupar=None %}"{% if periodo.chave == chave %} aria-current="true"{% endif %}>{{ nome }}</a>
+    {% endif %}{% endfor %}
+  </nav>
+  <form method="get" class="filtro-datas">
+    <input type="hidden" name="periodo" value="personalizado">
+    <input type="hidden" name="metrica" value="{{ periodo.metrica }}">
+    <label>De <input type="date" name="de" value="{{ periodo.inicio|date:'Y-m-d' }}"></label>
+    <label>Até <input type="date" name="ate" value="{{ periodo.fim|date:'Y-m-d' }}"></label>
+    <button type="submit" class="botao botao-escuro botao-pequeno">Ver período</button>
+  </form>
+</section>
+
+{% include "painel/_kpis.html" with valores=totais legenda=periodo.descricao %}
+
+<div class="duas-colunas">
+  <section class="card">
+    <div class="card-topo">
+      <h2>{{ nome_metrica }} {% if periodo.agrupar == "dia" %}por dia{% elif periodo.agrupar == "semana" %}por semana{% else %}por mês{% endif %}</h2>
+      <nav class="chips chips-pequenos" aria-label="Agrupar">
+        {% for chave, nome in agrupamentos %}<a class="chip{% if periodo.agrupar == chave %} ativo{% endif %}" href="?{% querystring agrupar=chave %}">{{ nome }}</a>{% endfor %}
+      </nav>
+    </div>
+    <nav class="chips chips-pequenos" aria-label="O que mostrar no gráfico" style="margin-bottom:14px">
+      {% for chave, nome in metricas %}<a class="chip{% if periodo.metrica == chave %} ativo{% endif %}" href="?{% querystring metrica=chave %}">{{ nome }}</a>{% endfor %}
+    </nav>
+    {% include "painel/_grafico.html" with titulo_grafico=nome_metrica %}
+  </section>
+
+  <section class="card">
+    {% if meta and meta.metas %}
+      <h2>Meta do mês</h2>
+      {% include "painel/_meta.html" %}
+    {% else %}
+      <h2>Comissão por Sub ID</h2>
+      {% include "painel/_sub_ids.html" %}
+    {% endif %}
+  </section>
+</div>
+
+<div class="duas-colunas">
+  <section class="card">
+    <h2>Detalhe {% if periodo.agrupar == "dia" %}por dia{% elif periodo.agrupar == "semana" %}por semana{% else %}por mês{% endif %}</h2>
+    <div class="tabela-rolagem">
+      <table class="numeros">
+        <thead><tr><th scope="col">Período</th><th scope="col">Pedidos</th><th scope="col">Faturamento</th><th scope="col">Estimada</th><th scope="col">Validada</th></tr></thead>
+        <tbody>
+          {% for l in linhas %}
+            <tr><td>{{ l.rotulo }}</td><td>{{ l.pedidos|numero }}</td><td>{{ l.faturamento|brl }}</td><td>{{ l.comissao_estimada|brl }}</td><td>{{ l.comissao_validada|brl }}</td></tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </section>
+  {% if meta and meta.metas %}
+    <section class="card"><h2>Comissão por Sub ID</h2>{% include "painel/_sub_ids.html" %}</section>
+  {% else %}
+    <section class="card">
+      <h2>Como os números são contados</h2>
+      <p class="suave pequeno"><strong>Faturamento</strong> e <strong>pedidos</strong> contam pela data da compra, sem os cancelados - o mesmo critério das metas da Shopee. A <strong>comissão estimada</strong> também conta pela compra e ainda pode mudar. A <strong>validada</strong> conta pela data em que a Shopee confirmou o pedido.</p>
+      {% if sincronizacao.cobertura_inicio %}<p class="suave pequeno" style="margin-top:8px">Dados guardados desde {{ sincronizacao.cobertura_inicio|date:"d/m/Y" }} - a API da Shopee só alcança uns 3 meses para trás.</p>{% endif %}
+    </section>
+  {% endif %}
+</div>
+{% endif %}
+{% endblock %}

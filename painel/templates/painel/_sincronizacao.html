@@ -1,0 +1,19 @@
+<div class="sincronizacao">
+  <span class="suave pequeno">
+    {% if not sincronizacao %}
+      Buscando seus números na Shopee pela primeira vez…
+    {% elif sincronizacao.aguardando or sincronizacao.em_andamento %}
+      Atualizando com a Shopee…
+    {% elif sincronizacao.concluida_em %}
+      Atualizado {{ sincronizacao.concluida_em|date:"d/m" }} às {{ sincronizacao.concluida_em|date:"H:i" }}
+    {% endif %}
+  </span>
+  <form method="post" action="{% url 'painel_atualizar_resultados' %}">
+    {% csrf_token %}
+    <input type="hidden" name="voltar" value="{{ request.get_full_path }}">
+    <button type="submit" class="botao botao-claro botao-pequeno">{% include "painel/_icone.html" with caminho=icones.atualizar %}Atualizar agora</button>
+  </form>
+</div>
+{% if sincronizacao.erro %}
+  <p class="aviso aviso-warning pequeno">A última busca na Shopee deu erro: {{ sincronizacao.erro }}. Confira o AppID e o Secret em <a href="{% url 'painel_configuracoes' %}">Configurações</a>.</p>
+{% endif %}

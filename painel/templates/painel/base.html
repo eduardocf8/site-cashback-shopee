@@ -9,7 +9,7 @@
   <aside class="menu">
     <a class="marca" href="{% url 'painel_inicio' %}">
       {% include "painel/_logo.html" %}
-      <span class="marca-texto"><strong>Appfiliado</strong><small>Ferramentas pra afiliados</small></span>
+      <span class="marca-texto"><strong>Appfiliado</strong><small>Para afiliados Shopee</small></span>
     </a>
     <nav aria-label="Menu principal">
       {% for item in menu %}
@@ -40,6 +40,7 @@
       <ul class="avisos">{% for m in messages %}<li class="aviso aviso-{{ m.tags }}">{{ m }}</li>{% endfor %}</ul>
     {% endif %}
     {% block conteudo %}{% endblock %}
+    {% include "painel/_aviso_shopee.html" %}
   </main>
 </div>
 </body>

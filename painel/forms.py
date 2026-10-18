@@ -52,5 +52,5 @@ class ShopeeForm(forms.Form):
     secret = forms.CharField(
         label="Secret", max_length=200, required=False,
         widget=forms.PasswordInput(attrs={"autocomplete": "off"}),
-        help_text="Deixe em branco pra manter o que já está salvo.",
+        help_text="Deixe em branco para manter o que já está salvo.",
     )

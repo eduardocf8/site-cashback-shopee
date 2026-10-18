@@ -109,7 +109,8 @@ svg.icone { width: 18px; height: 18px; flex: none; fill: none; stroke: currentCo
 .card h2 { margin: 0 0 12px; font-size: 16px; }
 .card p { margin: 0; }
 .grade { display: grid; gap: 16px; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); }
-.duas-colunas { display: grid; gap: 16px; grid-template-columns: 2fr 1fr; align-items: start; }
+.duas-colunas { display: grid; gap: 16px; grid-template-columns: minmax(0, 2fr) minmax(0, 1fr); align-items: start; }
+.duas-colunas > * { min-width: 0; }
 .suave { color: var(--suave); }
 .pequeno { font-size: 13px; }
 
@@ -213,3 +214,85 @@ tr:last-child td { border-bottom: none; }
 }
 
 .sr { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+
+/* ---------- Fase 2: resultados e metas ---------- */
+.sincronizacao { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
+.sincronizacao form { margin: 0; }
+.card-topo { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; flex-wrap: wrap; margin-bottom: 12px; }
+.card-topo h2 { margin: 0; }
+.bom { color: var(--bom-tinta); }
+
+.kpis { display: grid; gap: 16px; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); }
+.kpi { display: flex; flex-direction: column; gap: 4px; }
+.kpi-titulo { color: var(--suave); font-size: 13px; }
+.kpi-valor { font-size: 26px; letter-spacing: -0.02em; line-height: 1.2; }
+.kpi-detalhe { color: var(--suave); font-size: 12px; }
+
+.chips { display: flex; flex-wrap: wrap; gap: 8px; }
+.chip {
+  display: inline-flex; align-items: center; min-height: 36px; padding: 0 14px; border-radius: 999px;
+  border: 1px solid var(--borda); background: #fff; color: var(--texto); text-decoration: none; font-size: 14px; font-weight: 500;
+}
+.chip:hover { border-color: var(--borda-forte); color: var(--texto); }
+.chip.ativo { background: var(--verde); border-color: var(--verde); color: var(--menu-texto); font-weight: 700; }
+.chips-pequenos .chip { min-height: 32px; padding: 0 12px; font-size: 13px; }
+
+.filtros { display: flex; flex-direction: column; gap: 14px; }
+.filtro-datas { display: flex; flex-wrap: wrap; align-items: flex-end; gap: 10px; }
+.filtro-datas label { display: flex; flex-direction: column; gap: 4px; font-size: 13px; font-weight: 700; }
+.filtro-datas input {
+  min-height: 38px; padding: 0 10px; border-radius: 10px; border: 1px solid var(--borda);
+  background: var(--campo); font: inherit; color: inherit;
+}
+
+.grafico { height: 220px; display: flex; align-items: stretch; gap: 4px; padding-bottom: 22px; border-bottom: 1px solid var(--borda); }
+.grafico-coluna { flex: 1; min-width: 0; display: flex; flex-direction: column; justify-content: flex-end; position: relative; }
+.grafico-barra { background: var(--verde); border-radius: 5px 5px 2px 2px; min-height: 0; }
+.grafico-barra.destaque { background: var(--amarelo); }
+.grafico-coluna:hover .grafico-barra { opacity: .8; }
+.grafico-rotulo { position: absolute; bottom: -22px; left: 50%; transform: translateX(-50%); font-size: 11px; color: var(--suave); white-space: nowrap; }
+.grafico-vazio { height: 220px; display: grid; place-items: center; margin: 0; border: 1px dashed var(--borda); border-radius: 12px; }
+
+table.numeros td + td, table.numeros th + th { text-align: right; }
+table.numeros td, table.numeros th { white-space: nowrap; }
+
+.lista-barras { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 14px; }
+.lista-barras-topo { display: flex; justify-content: space-between; gap: 8px; font-size: 14px; }
+.lista-barras-topo span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.trilho-fino { height: 6px; border-radius: 999px; background: var(--trilho); margin: 6px 0 4px; overflow: hidden; }
+.trilho-fino div { height: 100%; background: var(--verde); border-radius: 999px; }
+
+.meta { display: flex; flex-direction: column; gap: 12px; }
+.meta-topo { display: flex; flex-direction: column; gap: 2px; }
+.meta-valor { font-size: 24px; letter-spacing: -0.02em; }
+.meta-trilho { position: relative; height: 12px; border-radius: 999px; background: var(--trilho); }
+.meta-preenchido { height: 100%; border-radius: 999px; background: var(--verde); }
+.meta-marca { position: absolute; top: -4px; width: 4px; height: 20px; margin-left: -2px; border-radius: 2px; background: var(--borda-forte); }
+.meta-marca.batida { background: var(--amarelo); }
+.faixas { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; }
+.faixas li { display: grid; grid-template-columns: 1fr auto; gap: 2px 12px; align-items: center; padding: 9px 0; border-bottom: 1px solid var(--trilho); font-size: 14px; }
+.faixas li > span { white-space: nowrap; }
+.faixa-valor { font-weight: 700; text-align: right; }
+.faixa-falta { font-size: 13px; }
+.faixas li:last-child { border-bottom: none; }
+.faixas li.batida .faixa-nome { color: var(--bom-tinta); }
+.faixa-nome { display: inline-flex; align-items: center; gap: 4px; font-weight: 700; }
+.faixa-nome svg.icone { width: 14px; height: 14px; stroke-width: 3; }
+.faixa-bonus { color: var(--amarelo-tinta); font-weight: 700; font-size: 13px; text-align: right; }
+
+.tabela-metas input {
+  width: 100%; min-width: 90px; min-height: 42px; padding: 0 12px; border-radius: 10px;
+  border: 1px solid var(--borda); background: var(--campo); font: inherit; color: inherit;
+}
+.tabela-metas td { padding-right: 10px; }
+
+/* Início: meta resumida e o dia de hoje */
+.meta-resumo .meta-topo { flex-direction: row; align-items: baseline; flex-wrap: wrap; gap: 4px 10px; }
+.resumo-hoje { margin: 0 0 16px; display: flex; flex-direction: column; gap: 10px; }
+.resumo-hoje div { display: flex; justify-content: space-between; gap: 12px; border-bottom: 1px solid var(--trilho); padding-bottom: 8px; }
+.resumo-hoje div:last-child { border-bottom: none; padding-bottom: 0; }
+.resumo-hoje dt { color: var(--suave); font-size: 14px; }
+.resumo-hoje dd { margin: 0; font-weight: 700; }
+
+/* Aviso de que o Appfiliado é só pra Shopee (e independente dela) */
+.aviso-shopee { margin: 28px 0 0; font-size: 12px; color: var(--suave); text-align: center; }

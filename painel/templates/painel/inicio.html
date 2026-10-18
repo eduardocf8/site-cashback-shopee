@@ -1,4 +1,5 @@
 {% extends "painel/base.html" %}
+{% load painel_extras %}
 {% block titulo %}Início{% endblock %}
 {% block conteudo %}
 <header class="cabecalho">
@@ -6,9 +7,10 @@
     <h1>Olá{% if primeiro_nome %}, {{ primeiro_nome }}{% endif %}!</h1>
     <p>{{ hoje }}</p>
   </div>
+  {% if shopee_conectada %}{% include "painel/_sincronizacao.html" %}{% endif %}
 </header>
 
-<div class="duas-colunas">
+{% if passos_pendentes %}
   <section class="card" aria-labelledby="titulo-passos">
     <h2 id="titulo-passos">Primeiros passos</h2>
     <ul class="passos">
@@ -16,23 +18,40 @@
         <li>
           <span class="marcador {% if passo.feito %}feito{% endif %}">{% include "painel/_icone.html" with caminho=icones.check %}</span>
           <span class="titulo {% if passo.feito %}feito-texto{% endif %}">{{ passo.titulo }}</span>
-          {% if passo.feito %}
-            <span class="estado estado-liberado">Feito</span>
-          {% elif passo.em_breve %}
-            <span class="estado estado-em_breve">Em breve</span>
-          {% elif passo.href %}
-            <a class="botao botao-escuro botao-pequeno" href="{% url passo.href %}">{{ passo.acao }}</a>
-          {% endif %}
+          {% if passo.feito %}<span class="estado estado-liberado">Feito</span>
+          {% elif passo.em_breve %}<span class="estado estado-em_breve">Em breve</span>
+          {% elif passo.href %}<a class="botao botao-escuro botao-pequeno" href="{% url passo.href %}">{{ passo.acao }}</a>{% endif %}
         </li>
       {% endfor %}
     </ul>
   </section>
+{% endif %}
 
-  <section class="card" aria-labelledby="titulo-novidades">
-    <h2 id="titulo-novidades">O que vem por aí</h2>
-    <p class="suave pequeno">Este é o novo painel do Appfiliado. Nas próximas semanas chegam aqui os seus resultados da Shopee (faturamento, comissões e metas), o bot de WhatsApp sem programa no computador e o seu site com vitrine.</p>
-  </section>
-</div>
+{% if shopee_conectada %}
+  {% include "painel/_kpis.html" with valores=mes legenda=nome_mes %}
+
+  <div class="duas-colunas">
+    <section class="card">
+      {% if meta.metas %}
+        <div class="card-topo"><h2>Meta do mês</h2><a class="pequeno" href="{% url 'painel_metas' %}">Ver metas</a></div>
+        {% include "painel/_meta_resumo.html" %}
+      {% else %}
+        <h2>Meta do mês</h2>
+        <p class="suave pequeno" style="margin-bottom:14px">Se a Shopee te deu metas com bônus este mês, cadastre aqui e acompanhe quanto falta para cada faixa.</p>
+        <a class="botao botao-claro botao-pequeno" href="{% url 'painel_metas' %}">{% include "painel/_icone.html" with caminho=icones.mais %}Cadastrar metas</a>
+      {% endif %}
+    </section>
+    <section class="card hoje">
+      <h2>Hoje</h2>
+      <dl class="resumo-hoje">
+        <div><dt>Faturamento</dt><dd>{{ do_dia.faturamento|brl }}</dd></div>
+        <div><dt>Comissão estimada</dt><dd>{{ do_dia.comissao_estimada|brl }}</dd></div>
+        <div><dt>Pedidos</dt><dd>{{ do_dia.pedidos|numero }}</dd></div>
+      </dl>
+      <a class="botao botao-claro botao-pequeno" href="{% url 'painel_resultados' %}">Ver resultados detalhados</a>
+    </section>
+  </div>
+{% endif %}
 
 <section aria-labelledby="titulo-modulos">
   <h2 id="titulo-modulos" style="font-size:16px;margin:4px 0 12px">Seus módulos</h2>

@@ -20,7 +20,7 @@ def assinatura_webhook_valida(corpo: bytes, cabecalho: str, segredo: str) -> boo
 
     A documentação da Zouti diz que v1 é o HMAC-SHA256 do corpo bruto com o segredo do
     webhook. Também aceitamos o formato "<t>.<corpo>" (o padrão de quem manda o
-    timestamp junto) pra não quebrar se a Zouti assinar assim - os dois exigem o
+    timestamp junto) para não quebrar se a Zouti assinar assim - os dois exigem o
     segredo, então nenhum enfraquece a verificação. Confirme com o "Testar Webhook" do
     painel da Zouti: o EventoWebhookZouti guarda se a assinatura bateu."""
     if not segredo or not cabecalho:
@@ -191,7 +191,7 @@ def resposta_validacao(conta: ContaAppfiliado) -> dict:
     "valido", "motivo", "plano" e "expira_em" são o contrato que o app já usa hoje
     (Appfiliado/licenca.py) e continuam querendo dizer "pode abrir o bot de WhatsApp".
     "conta_ativa" e "modulos" são novos: a versão do app com módulos usa esses dois
-    pra decidir o que liberar e o que mostrar com cadeado."""
+    para decidir o que liberar e o que mostrar com cadeado."""
     hoje = timezone.localdate()
     modulos = conta.modulos_liberados(hoje)
     assinaturas = list(conta.assinaturas.all())
@@ -231,14 +231,14 @@ def resposta_validacao(conta: ContaAppfiliado) -> dict:
 # --- E-mail com a chave ----------------------------------------------------------------
 
 def _trecho_painel(conta: ContaAppfiliado) -> str:
-    """Convite pro painel web no e-mail da chave: link de criar senha pra quem
-    ainda não tem, ou só o endereço pra quem já tem."""
+    """Convite pro painel web no e-mail da chave: link de criar senha para quem
+    ainda não tem, ou só o endereço para quem já tem."""
     from painel.emails import link_definir_senha, url_do_painel
 
     if conta.tem_senha:
         return f"Seu painel: {url_do_painel('painel_inicio')}\n\n"
     return (
-        "Crie sua senha pra acessar o painel do Appfiliado (o link vale por 3 dias - "
+        "Crie sua senha para acessar o painel do Appfiliado (o link vale por 3 dias - "
         "depois disso, use \"Criar ou recuperar senha\" na tela de entrar):\n"
         f"{link_definir_senha(conta)}\n\n"
     )
@@ -255,12 +255,12 @@ def enviar_email_chave(conta_pk: int) -> bool:
         "Sua assinatura do Appfiliado foi confirmada. Essa é a sua chave de licença - "
         "cole ela na tela de ativação do aplicativo:\n\n"
         f"{conta.chave}\n\n"
-        "Ela vale pra todos os serviços que você assinar com este e-mail: se contratar "
+        "Ela vale para todos os serviços que você assinar com este e-mail: se contratar "
         "outro depois, é só continuar usando a mesma chave.\n\n"
         "Guarde esse e-mail: se precisar reinstalar o app ou trocar de computador, "
         "é só usar a chave de novo.\n\n"
         f"{_trecho_painel(conta)}"
-        "Equipe Appfiliado"
+        "Equipe Appfiliado\nFerramentas para afiliados Shopee"
     )
     try:
         EmailMessage(
@@ -270,7 +270,7 @@ def enviar_email_chave(conta_pk: int) -> bool:
             from_email=settings.APPFILIADO_EMAIL_REMETENTE,
         ).send()
     except Exception:
-        logger.exception("Falha ao enviar e-mail de licença pra %s", conta.email)
+        logger.exception("Falha ao enviar e-mail de licença para %s", conta.email)
         return False
 
     conta.chave_enviada_em = timezone.now()

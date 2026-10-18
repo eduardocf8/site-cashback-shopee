@@ -26,11 +26,11 @@ def link_definir_senha(conta) -> str:
 def enviar_email_recuperar_senha(conta) -> bool:
     corpo = (
         f"Olá{', ' + conta.nome if conta.nome else ''}!\n\n"
-        "Recebemos um pedido pra criar ou trocar a senha do seu painel do Appfiliado. "
+        "Recebemos um pedido para criar ou trocar a senha do seu painel do Appfiliado. "
         "Use o link abaixo (vale por 3 dias e só uma vez):\n\n"
         f"{link_definir_senha(conta)}\n\n"
         "Se não foi você, pode ignorar este e-mail - sua senha continua a mesma.\n\n"
-        "Equipe Appfiliado"
+        "Equipe Appfiliado\nFerramentas para afiliados Shopee"
     )
     try:
         EmailMessage(

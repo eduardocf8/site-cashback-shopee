@@ -2,6 +2,8 @@ from django.conf import settings
 from django.contrib import messages
 from django.http import Http404
 from django.shortcuts import redirect, render
+from datetime import timedelta
+
 from django.utils import timezone
 from django.utils.encoding import force_str
 from django.utils.http import urlsafe_base64_decode
@@ -13,6 +15,8 @@ from licencas.services import resposta_validacao
 
 from . import cripto
 from . import modulos as mod
+from . import periodos, resultados, telas
+from .models import MetaMensal
 from .autenticacao import (
     conta_logada,
     conta_requerida,
@@ -89,7 +93,7 @@ def esqueci_senha(request):
             conta = ContaAppfiliado.objects.filter(email__iexact=form.cleaned_data["email"].strip()).first()
             if conta:
                 enviar_email_recuperar_senha(conta)
-        # Mesma resposta exista ou não a conta - não dá pra descobrir quem é cliente.
+        # Mesma resposta exista ou não a conta - não dá para descobrir quem é cliente.
         enviado = True
     return render(request, "painel/esqueci_senha.html", {"form": form, "enviado": enviado})
 
@@ -118,6 +122,9 @@ def definir_senha(request, uidb64, token):
 def inicio(request):
     conta = conta_logada(request)
     liberados = conta.modulos_liberados()
+    hoje = telas.hoje()
+    inicio_mes = hoje.replace(day=1)
+
     cartoes_modulos = [
         {**item, "estado": mod.estado(item, liberados), "icone_path": mod.ICONES[item["icone"]],
          "href": item_menu["href"]}
@@ -125,15 +132,109 @@ def inicio(request):
         if item["modulo"]
     ]
     passos = [
-        {"titulo": "Criar sua senha do painel", "feito": True},
         {"titulo": "Conectar sua conta de afiliado da Shopee", "feito": bool(conta.shopee_validado_em),
          "acao": "Conectar", "href": "painel_configuracoes"},
         {"titulo": "Conectar seu WhatsApp pelo QR Code", "feito": False, "em_breve": True},
-        {"titulo": "Cadastrar as metas do mês da Shopee", "feito": False, "em_breve": True},
     ]
-    return render(request, "painel/inicio.html", _contexto(
-        request, "inicio", hoje=_hoje_por_extenso(), passos=passos, cartoes_modulos=cartoes_modulos,
-        primeiro_nome=(conta.nome or "").split(" ")[0],
+    contexto = {
+        "hoje": _hoje_por_extenso(),
+        "passos": passos,
+        "passos_pendentes": any(not p["feito"] and not p.get("em_breve") for p in passos),
+        "cartoes_modulos": cartoes_modulos,
+        "primeiro_nome": (conta.nome or "").split(" ")[0],
+        "shopee_conectada": bool(conta.shopee_validado_em),
+        "sincronizacao": telas.estado_sincronizacao(conta),
+        "nome_mes": telas.nome_mes(hoje.year, hoje.month),
+    }
+    if conta.shopee_validado_em:
+        mes = resultados.totais(conta, inicio_mes, hoje)
+        do_dia = resultados.totais(conta, hoje, hoje)
+        contexto.update({
+            "mes": mes,
+            "do_dia": do_dia,
+            "meta": telas.situacao_meta(conta, hoje.year, hoje.month, hoje),
+        })
+    return render(request, "painel/inicio.html", _contexto(request, "inicio", **contexto))
+
+
+@conta_requerida
+def resultados_view(request):
+    conta = conta_logada(request)
+    hoje = telas.hoje()
+    periodo = telas.periodo_da_requisicao(request.GET, hoje)
+    contexto = {
+        "periodo": periodo,
+        "presets": periodos.PRESETS,
+        "agrupamentos": periodos.AGRUPAMENTOS,
+        "metricas": telas.METRICAS,
+        "nome_metrica": telas.NOMES_METRICAS[periodo["metrica"]],
+        "shopee_conectada": bool(conta.shopee_validado_em),
+        "sincronizacao": telas.estado_sincronizacao(conta),
+    }
+    if conta.shopee_validado_em:
+        linhas = resultados.serie(conta, periodo["inicio"], periodo["fim"], periodo["agrupar"])
+        mesmo_mes = (periodo["inicio"].year, periodo["inicio"].month) == (periodo["fim"].year, periodo["fim"].month)
+        contexto.update({
+            "totais": resultados.totais(conta, periodo["inicio"], periodo["fim"]),
+            "linhas": list(reversed(linhas)),
+            "grafico": telas.barras(linhas, periodo["metrica"]),
+            "sub_ids": resultados.por_sub_id(conta, periodo["inicio"], periodo["fim"]),
+            "meta": telas.situacao_meta(conta, periodo["fim"].year, periodo["fim"].month, hoje) if mesmo_mes else None,
+        })
+    return render(request, "painel/resultados.html", _contexto(request, "resultados", **contexto))
+
+
+@require_POST
+@conta_requerida
+def atualizar_resultados(request):
+    conta = conta_logada(request)
+    if conta.shopee_validado_em:
+        estado = telas.estado_sincronizacao(conta)
+        recente = estado and estado.pedido_em and timezone.now() - estado.pedido_em < timedelta(minutes=2)
+        if not recente:
+            resultados.pedir_atualizacao(conta)
+        messages.info(request, "Pedimos os números novos à Shopee. Em até 1 minuto eles aparecem aqui.")
+    return redirect(destino_seguro(request, request.POST.get("voltar", "")))
+
+
+@conta_requerida
+def metas_view(request):
+    conta = conta_logada(request)
+    hoje = telas.hoje()
+    opcoes = telas.meses_para_metas(hoje)
+    escolhido = request.GET.get("mes") or request.POST.get("mes") or f"{hoje.year}-{hoje.month:02d}"
+    ano_mes = next(((a, m) for a, m in opcoes if f"{a}-{m:02d}" == escolhido), (hoje.year, hoje.month))
+    ano, mes = ano_mes
+
+    if request.method == "POST":
+        faixas = telas.faixas_do_formulario(request.POST)
+        if faixas:
+            MetaMensal.objects.update_or_create(conta=conta, ano=ano, mes=mes, defaults={"faixas": faixas})
+            messages.success(request, f"Metas de {telas.nome_mes(ano, mes)} salvas.")
+        else:
+            MetaMensal.objects.filter(conta=conta, ano=ano, mes=mes).delete()
+            messages.info(request, f"Metas de {telas.nome_mes(ano, mes)} apagadas.")
+        return redirect(f"{request.path}?mes={ano}-{mes:02d}")
+
+    faixas = telas.faixas_do_mes(conta, ano, mes)
+    padrao = [100, 125, 150]
+    linhas = []
+    for i in range(3):
+        faixa = faixas[i] if i < len(faixas) else {}
+        linhas.append({
+            "n": i + 1,
+            "percentual": faixa.get("percentual") or padrao[i],
+            "faturamento": faixa.get("faturamento"),
+            "bonus": faixa.get("bonus"),
+        })
+    return render(request, "painel/metas.html", _contexto(
+        request, "metas",
+        opcoes=[{"valor": f"{a}-{m:02d}", "nome": telas.nome_mes(a, m), "ativo": (a, m) == ano_mes} for a, m in opcoes],
+        mes_valor=f"{ano}-{mes:02d}",
+        nome_mes=telas.nome_mes(ano, mes),
+        linhas=linhas,
+        situacao=telas.situacao_meta(conta, ano, mes, hoje) if faixas else None,
+        shopee_conectada=bool(conta.shopee_validado_em),
     ))
 
 
@@ -191,7 +292,8 @@ def configuracoes(request):
                     conta.save(update_fields=[
                         "shopee_app_id", "shopee_secret_cifrado", "shopee_validado_em", "atualizada_em",
                     ])
-                    messages.success(request, mensagem)
+                    resultados.pedir_atualizacao(conta)
+                    messages.success(request, f"{mensagem} Seus resultados aparecem em Resultados em instantes.")
                     return redirect("painel_configuracoes")
                 form_shopee.add_error(None, mensagem)
 
