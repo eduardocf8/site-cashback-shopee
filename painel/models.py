@@ -73,6 +73,10 @@ class SincronizacaoResultados(models.Model):
     def aguardando(self) -> bool:
         return bool(self.pedido_em and (not self.iniciada_em or self.pedido_em > self.iniciada_em))
 
+    @property
+    def atualizando(self) -> bool:
+        return self.aguardando or self.em_andamento
+
 
 class MetaMensal(models.Model):
     """As faixas de meta de faturamento que a Shopee deu pra conta num mês (até 3,

@@ -1,8 +1,9 @@
-<div class="sincronizacao">
-  <span class="suave pequeno">
+{% load static %}
+<div class="sincronizacao"{% if not sincronizacao or sincronizacao.atualizando %} data-estado-url="{% url 'painel_estado_resultados' %}"{% endif %}>
+  <span class="suave pequeno" data-estado-texto>
     {% if not sincronizacao %}
       Buscando seus números na Shopee pela primeira vez…
-    {% elif sincronizacao.aguardando or sincronizacao.em_andamento %}
+    {% elif sincronizacao.atualizando %}
       Atualizando com a Shopee…
     {% elif sincronizacao.concluida_em %}
       Atualizado {{ sincronizacao.concluida_em|date:"d/m" }} às {{ sincronizacao.concluida_em|date:"H:i" }}
@@ -14,6 +15,7 @@
     <button type="submit" class="botao botao-claro botao-pequeno">{% include "painel/_icone.html" with caminho=icones.atualizar %}Atualizar agora</button>
   </form>
 </div>
+{% if not sincronizacao or sincronizacao.atualizando %}<script src="{% static 'painel/sincronizacao.js' %}" defer></script>{% endif %}
 {% if sincronizacao.erro %}
   <p class="aviso aviso-warning pequeno">A última busca na Shopee deu erro: {{ sincronizacao.erro }}. Confira o AppID e o Secret em <a href="{% url 'painel_configuracoes' %}">Configurações</a>.</p>
 {% endif %}

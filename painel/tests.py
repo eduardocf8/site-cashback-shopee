@@ -607,6 +607,18 @@ class TestTelasDeResultados(BasePainel):
         self.assertEqual(SincronizacaoResultados.objects.get(conta=self.conta).pedido_em, primeiro)
         self.assertContains(self.client.get("/resultados/"), "Atualizando com a Shopee")
 
+    def test_pagina_se_atualiza_sozinha_quando_a_busca_termina(self, _):
+        self.conectar_shopee()
+        resultados.pedir_atualizacao(self.conta)
+        self.assertContains(self.client.get("/resultados/"), "painel/sincronizacao")
+        self.assertEqual(self.client.get("/resultados/estado/").json(), {"atualizando": True})
+
+        SincronizacaoResultados.objects.filter(conta=self.conta).update(
+            iniciada_em=timezone.now(), concluida_em=timezone.now() + timedelta(seconds=30),
+        )
+        self.assertEqual(self.client.get("/resultados/estado/").json(), {"atualizando": False})
+        self.assertNotContains(self.client.get("/resultados/"), "painel/sincronizacao")
+
     def test_cadastrar_e_apagar_metas(self, _):
         resposta = self.client.post("/metas/?mes=2026-11", {
             "percentual_1": "100", "faturamento_1": "30.000,00", "bonus_1": "250",
