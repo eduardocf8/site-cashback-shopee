@@ -190,7 +190,7 @@ class Assinatura(models.Model):
     proxima_cobranca = models.DateField(null=True, blank=True)
     acesso_ate = models.DateField(
         null=True, blank=True,
-        help_text="Para assinatura cancelada: acesso continua até o fim do período já pago.",
+        help_text="Pra assinatura cancelada: acesso continua até o fim do período já pago.",
     )
 
     zouti_atualizada_em = models.DateTimeField(

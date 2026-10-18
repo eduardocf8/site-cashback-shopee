@@ -40,6 +40,6 @@ def enviar_email_recuperar_senha(conta) -> bool:
             from_email=settings.APPFILIADO_EMAIL_REMETENTE,
         ).send()
     except Exception:
-        logger.exception("Painel: falha ao enviar e-mail de senha para conta %s", conta.pk)
+        logger.exception("Painel: falha ao enviar e-mail de senha pra conta %s", conta.pk)
         return False
     return True

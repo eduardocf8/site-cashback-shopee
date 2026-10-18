@@ -18,7 +18,7 @@ def webhook_zouti(request):
     """Recebe os webhooks da Zouti (Integrações > Webhooks no painel dela).
 
     Só responde 2xx quando o evento foi guardado - se der erro ao processar, responde
-    500 para a Zouti tentar de novo (ela reenvia por até 4 dias)."""
+    500 pra Zouti tentar de novo (ela reenvia por até 4 dias)."""
     cabecalho = request.headers.get("x-zouti-signature", "")
     assinatura_ok = assinatura_webhook_valida(request.body, cabecalho, settings.ZOUTI_WEBHOOK_SECRET)
 

@@ -489,7 +489,7 @@ class TestTelasDeResultados(BasePainel):
         # o Início só resume: sem gráfico, sem Sub IDs, sem a lista de faixas
         html = self.client.get("/").content.decode()
         self.assertIn("R$ 3.800,50", html)
-        self.assertIn("Faltam <strong>R$ 699,50</strong> para a faixa <strong>150%</strong>", html)
+        self.assertIn("Faltam <strong>R$ 699,50</strong> pra faixa <strong>150%</strong>", html)
         self.assertIn("Bônus garantido até agora: <strong>R$ 200,00</strong>", html)
         self.assertNotIn("Cadastrar as metas do mês", html)
         self.assertNotIn("grafico", html)

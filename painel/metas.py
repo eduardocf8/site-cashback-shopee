@@ -18,7 +18,7 @@ def chave_mes(ano: int, mes: int) -> str:
 
 
 def normalizar(metas) -> list[dict]:
-    """Só as faixas com faturamento > 0, da menor para a maior."""
+    """Só as faixas com faturamento > 0, da menor pra maior."""
     limpas = []
     for meta in metas or []:
         try:
@@ -48,7 +48,7 @@ def situacao(faturamento: float, metas: list[dict], hoje: date, ano: int, mes: i
       faixa_projetada = maior faixa que essa projeção alcança.
     - por_dia: quanto precisa faturar por dia, nos dias que restam (contando
       hoje), para chegar na próxima faixa.
-    - fracao: faturamento / maior faixa (para a barra de progresso)."""
+    - fracao: faturamento / maior faixa (pra barra de progresso)."""
     metas = normalizar(metas)
     inicio_mes = date(ano, mes, 1)
     fim_mes = ultimo_dia_do_mes(inicio_mes)
