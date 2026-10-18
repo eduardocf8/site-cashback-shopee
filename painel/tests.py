@@ -220,3 +220,287 @@ class TestEmailDaChave(TestCase):
         enviar_email_chave(conta.pk)
         self.assertIn(conta.chave, mail.outbox[0].body)
         self.assertIn(f"https://{HOST}/senha/definir/", mail.outbox[0].body)
+
+
+# --- Fase 2: resultados, metas e Início --------------------------------------------
+
+from datetime import date, datetime  # noqa: E402
+from decimal import Decimal  # noqa: E402
+from io import StringIO  # noqa: E402
+from zoneinfo import ZoneInfo  # noqa: E402
+
+from django.core.management import call_command  # noqa: E402
+
+from . import resultados, telas  # noqa: E402
+from .models import MetaMensal, ResultadoDiario, ResultadoSubIdDiario, SincronizacaoResultados  # noqa: E402
+from .shopee import ShopeeAPIError, buscar_conversoes  # noqa: E402
+
+SP = ZoneInfo("America/Sao_Paulo")
+
+
+def ts(ano, mes, dia, hora=12):
+    """Timestamp de um horário de São Paulo."""
+    return int(datetime(ano, mes, dia, hora, tzinfo=SP).timestamp())
+
+
+def conversao(compra, pedidos, comissao="10,00", utm="", conversion_id="c1"):
+    return {"conversionId": conversion_id, "purchaseTime": compra, "netCommission": comissao,
+            "utmContent": utm, "orders": pedidos}
+
+
+def pedido(order_id, status, itens):
+    return {"orderId": order_id, "orderStatus": status, "items": itens}
+
+
+def item(preco, qtd=1, comissao="0", validado_em=None):
+    return {"itemPrice": preco, "qty": qtd, "itemTotalCommission": comissao, "completeTime": validado_em}
+
+
+class TestCalculo(TestCase):
+    def test_regras_de_faturamento_e_comissoes(self):
+        conversoes = [
+            # compra 10/10, validada em 15/10
+            conversao(ts(2026, 10, 10), [pedido("p1", "COMPLETED", [item("50,00", 2, "8,00", ts(2026, 10, 15))])],
+                      comissao="8,00", utm="grupoA|story"),
+            # compra 10/10 cancelada: não entra no faturamento nem na estimada
+            conversao(ts(2026, 10, 10), [pedido("p2", "CANCELLED", [item("200")])], comissao="30"),
+            # 23h de 09/10 em São Paulo (02h de 10/10 em UTC) conta no dia 09
+            conversao(ts(2026, 10, 9, 23), [pedido("p3", "PENDING", [item("40")])], comissao="4"),
+        ]
+        por_dia, por_sub_id = resultados.calcular_por_dia(conversoes)
+
+        dia10 = por_dia[date(2026, 10, 10)]
+        self.assertEqual(dia10["faturamento"], 100.0)
+        self.assertEqual(dia10["pedidos"], {"p1"})
+        self.assertEqual(dia10["comissao_estimada"], 8.0)
+        self.assertEqual(dia10["comissao_validada"], 0.0)
+        self.assertEqual(por_dia[date(2026, 10, 15)]["comissao_validada"], 8.0)
+        self.assertEqual(por_dia[date(2026, 10, 9)]["faturamento"], 40.0)
+        self.assertEqual(por_sub_id[(date(2026, 10, 10), "grupoA")]["vendas"], 1)
+        self.assertEqual(por_sub_id[(date(2026, 10, 10), "story")]["comissao_estimada"], 8.0)
+        self.assertEqual(por_sub_id[(date(2026, 10, 10), "sem_subid")]["comissao_estimada"], 0.0)
+
+    def test_numeros_em_varios_formatos(self):
+        self.assertEqual(resultados.para_numero("1.234,56"), 1234.56)
+        self.assertEqual(resultados.para_numero("12.5"), 12.5)
+        self.assertEqual(resultados.para_numero(None), 0.0)
+
+
+class TestSincronizacao(TestCase):
+    AGORA = datetime(2026, 10, 18, 15, 0, tzinfo=SP)
+
+    def setUp(self):
+        self.conta = ContaAppfiliado.objects.create(
+            email="bia@exemplo.com", shopee_app_id="123", shopee_secret_cifrado=cripto.cifrar("segredo"),
+            shopee_validado_em=timezone.now(),
+        )
+
+    def sincronizar(self, conversoes):
+        with mock.patch("painel.resultados.buscar_conversoes", return_value=conversoes) as buscar:
+            resumo = resultados.sincronizar_conta(self.conta, agora=self.AGORA)
+        return buscar, resumo
+
+    def test_guarda_os_dias_da_janela_e_zera_os_sem_venda(self):
+        antigo = ResultadoDiario.objects.create(
+            conta=self.conta, dia=date(2026, 7, 1), faturamento=Decimal("999"), comissao_validada=Decimal("50"),
+        )
+        validada_velha = ResultadoDiario.objects.create(
+            conta=self.conta, dia=date(2026, 8, 1), faturamento=Decimal("1"), comissao_validada=Decimal("77"),
+        )
+        ResultadoSubIdDiario.objects.create(conta=self.conta, dia=date(2026, 10, 1), sub_id="velho", vendas=3)
+
+        buscar, resumo = self.sincronizar([
+            conversao(ts(2026, 10, 10), [pedido("p1", "COMPLETED", [item("50", 1, "5", ts(2026, 10, 12))])],
+                      comissao="5", utm="grupoA"),
+        ])
+
+        app_id, secret, inicio_ts, fim_ts = buscar.call_args.args
+        self.assertEqual((app_id, secret), ("123", "segredo"))
+        self.assertEqual(fim_ts, int(self.AGORA.timestamp()))
+        self.assertEqual(resumo["dias"], 89)
+
+        dia10 = ResultadoDiario.objects.get(conta=self.conta, dia=date(2026, 10, 10))
+        self.assertEqual((dia10.pedidos, dia10.faturamento, dia10.comissao_estimada), (1, Decimal("50.00"), Decimal("5.00")))
+        self.assertEqual(ResultadoDiario.objects.get(conta=self.conta, dia=date(2026, 10, 12)).comissao_validada, Decimal("5.00"))
+        self.assertEqual(ResultadoDiario.objects.get(conta=self.conta, dia=date(2026, 10, 18)).faturamento, 0)
+
+        # fora da janela da API: fica como estava
+        antigo.refresh_from_db()
+        self.assertEqual(antigo.faturamento, Decimal("999"))
+        # dentro da janela, mas com mais de 60 dias: faturamento recalculado, validada mantida
+        validada_velha.refresh_from_db()
+        self.assertEqual((validada_velha.faturamento, validada_velha.comissao_validada), (0, Decimal("77")))
+
+        self.assertEqual(list(ResultadoSubIdDiario.objects.values_list("sub_id", flat=True)), ["grupoA"])
+        estado = SincronizacaoResultados.objects.get(conta=self.conta)
+        self.assertEqual(estado.cobertura_inicio, date(2026, 7, 22))
+
+    def test_sem_credenciais_nao_busca(self):
+        self.conta.shopee_secret_cifrado = ""
+        with self.assertRaises(ValueError):
+            resultados.sincronizar_conta(self.conta)
+
+    def test_fila_pedidos_manuais_primeiro_e_depois_os_atrasados(self):
+        recente = ContaAppfiliado.objects.create(
+            email="recente@exemplo.com", shopee_app_id="1", shopee_secret_cifrado=cripto.cifrar("s"),
+            shopee_validado_em=timezone.now(),
+        )
+        SincronizacaoResultados.objects.create(conta=recente, iniciada_em=timezone.now(), concluida_em=timezone.now())
+        pediu = ContaAppfiliado.objects.create(
+            email="pediu@exemplo.com", shopee_app_id="2", shopee_secret_cifrado=cripto.cifrar("s"),
+            shopee_validado_em=timezone.now(),
+        )
+        SincronizacaoResultados.objects.create(conta=pediu, iniciada_em=timezone.now() - timedelta(minutes=5))
+        resultados.pedir_atualizacao(pediu)
+        ContaAppfiliado.objects.create(email="semshopee@exemplo.com")
+
+        self.assertEqual(resultados.contas_pendentes(), [pediu, self.conta])
+
+    def test_processar_guarda_o_erro_e_o_comando_roda_a_fila(self):
+        with mock.patch("painel.resultados.buscar_conversoes", side_effect=ShopeeAPIError("Credenciais inválidas")):
+            saida = StringIO()
+            call_command("sincronizar_painel", stdout=saida)
+        self.assertIn("erro", saida.getvalue())
+        estado = SincronizacaoResultados.objects.get(conta=self.conta)
+        self.assertIn("Credenciais inválidas", estado.erro)
+        self.assertFalse(estado.em_andamento)
+
+        with mock.patch("painel.resultados.buscar_conversoes", return_value=[]):
+            resultados.pedir_atualizacao(self.conta)
+            call_command("sincronizar_painel", stdout=StringIO())
+        estado.refresh_from_db()
+        self.assertEqual(estado.erro, "")
+        self.assertFalse(estado.aguardando)
+
+
+class TestBuscaNaShopee(TestCase):
+    def test_pagina_e_tira_campo_que_a_api_nao_conhece(self):
+        respostas = [
+            ShopeeAPIError('Cannot query field "netCommission" on type "ConversionReport".'),
+            {"conversionReport": {"nodes": [{"conversionId": "1"}], "pageInfo": {"scrollId": "abc", "hasNextPage": True}}},
+            {"conversionReport": {"nodes": [{"conversionId": "2"}], "pageInfo": {"scrollId": "", "hasNextPage": False}}},
+        ]
+        with mock.patch("painel.shopee.executar_graphql_com_credenciais", side_effect=respostas) as executar:
+            conversoes = buscar_conversoes("123", "segredo", 1, 2)
+        self.assertEqual([c["conversionId"] for c in conversoes], ["1", "2"])
+        consultas = [chamada.args[2] for chamada in executar.call_args_list]
+        self.assertIn("netCommission", consultas[0])
+        self.assertNotIn("netCommission", consultas[1])
+        self.assertIn('scrollId:"abc"', consultas[2])
+        self.assertNotIn("netCommission", consultas[2])
+
+    def test_outros_erros_sobem(self):
+        with mock.patch("painel.shopee.executar_graphql_com_credenciais", side_effect=ShopeeAPIError("Sem permissão")):
+            with self.assertRaises(ShopeeAPIError):
+                buscar_conversoes("123", "segredo", 1, 2)
+
+
+class TestTelas(TestCase):
+    def test_ler_numero_br(self):
+        self.assertEqual(telas.ler_numero_br("30.000,00"), 30000.0)
+        self.assertEqual(telas.ler_numero_br("R$ 30.000"), 30000.0)
+        self.assertEqual(telas.ler_numero_br("1250,5"), 1250.5)
+        self.assertEqual(telas.ler_numero_br("37500"), 37500.0)
+        self.assertEqual(telas.ler_numero_br("12.50"), 12.5)
+        self.assertIsNone(telas.ler_numero_br(""))
+
+    def test_faixas_do_formulario_completa_o_faturamento_pelo_percentual(self):
+        faixas = telas.faixas_do_formulario({
+            "percentual_1": "100", "faturamento_1": "30.000", "bonus_1": "300",
+            "percentual_2": "125", "faturamento_2": "", "bonus_2": "500",
+            "percentual_3": "150", "faturamento_3": "", "bonus_3": "",
+        })
+        self.assertEqual([f["faturamento"] for f in faixas], [30000.0, 37500.0, 45000.0])
+        self.assertEqual(faixas[2]["bonus"], 0)
+
+    def test_periodo_personalizado_e_validado(self):
+        hoje = date(2026, 10, 18)
+        periodo = telas.periodo_da_requisicao({"periodo": "personalizado", "de": "2026-12-01", "ate": "2026-10-01"}, hoje)
+        self.assertEqual((periodo["inicio"], periodo["fim"]), (date(2026, 10, 1), hoje))
+        periodo = telas.periodo_da_requisicao({"periodo": "personalizado", "de": "2020-01-01", "ate": "2026-10-10"}, hoje)
+        self.assertEqual(periodo["inicio"], date(2025, 10, 10))
+        periodo = telas.periodo_da_requisicao({"periodo": "xyz", "metrica": "nada"}, hoje)
+        self.assertEqual((periodo["chave"], periodo["inicio"], periodo["metrica"]), ("mes", date(2026, 10, 1), "faturamento"))
+
+
+@mock.patch("painel.telas.hoje", return_value=date(2026, 10, 18))
+class TestTelasDeResultados(BasePainel):
+    def setUp(self):
+        super().setUp()
+        self.entrar()
+
+    def conectar_shopee(self):
+        self.conta.shopee_app_id = "123"
+        self.conta.shopee_secret_cifrado = cripto.cifrar("segredo")
+        self.conta.shopee_validado_em = timezone.now()
+        self.conta.save()
+        for dia, faturamento, estimada, validada in [(1, "1000", "80", "0"), (10, "2500.50", "200", "35.5"), (18, "300", "25", "0")]:
+            ResultadoDiario.objects.create(
+                conta=self.conta, dia=date(2026, 10, dia), pedidos=3, faturamento=Decimal(faturamento),
+                comissao_estimada=Decimal(estimada), comissao_validada=Decimal(validada),
+            )
+        ResultadoDiario.objects.create(conta=self.conta, dia=date(2026, 9, 30), faturamento=Decimal("777"))
+        ResultadoSubIdDiario.objects.create(conta=self.conta, dia=date(2026, 10, 10), sub_id="grupoA",
+                                            vendas=2, comissao_estimada=Decimal("150"))
+
+    def test_sem_shopee_pede_pra_conectar(self, _):
+        self.assertContains(self.client.get("/resultados/"), "Conecte sua conta da Shopee")
+        html = self.client.get("/").content.decode()
+        self.assertIn("Conectar sua conta de afiliado da Shopee", html)
+
+    def test_resultados_do_mes(self, _):
+        self.conectar_shopee()
+        html = self.client.get("/resultados/").content.decode()
+        self.assertIn("R$ 3.800,50", html)  # faturamento de outubro (sem o 30/09)
+        self.assertIn("R$ 305,00", html)  # estimada
+        self.assertIn("R$ 35,50", html)  # validada
+        self.assertIn("grupoA", html)
+
+    def test_resultados_por_periodo_personalizado_e_mes_passado(self, _):
+        self.conectar_shopee()
+        html = self.client.get("/resultados/?periodo=personalizado&de=2026-09-30&ate=2026-10-01").content.decode()
+        self.assertIn("R$ 1.777,00", html)
+        html = self.client.get("/resultados/?periodo=mes_passado&agrupar=semana&metrica=pedidos").content.decode()
+        self.assertIn("R$ 777,00", html)
+
+    def test_meta_aparece_nos_resultados_e_no_inicio(self, _):
+        self.conectar_shopee()
+        MetaMensal.objects.create(conta=self.conta, ano=2026, mes=10, faixas=[
+            {"percentual": 100, "faturamento": 3000, "bonus": 100},
+            {"percentual": 125, "faturamento": 3750, "bonus": 200},
+            {"percentual": 150, "faturamento": 4500, "bonus": 300},
+        ])
+        html = self.client.get("/resultados/").content.decode()
+        self.assertIn("Meta do mês", html)
+        html = self.client.get("/").content.decode()
+        self.assertIn("R$ 3.800,50", html)
+        self.assertIn("faltam R$ 699,50", html)  # falta pra 150%
+        self.assertIn("batendo a faixa 150%", html)
+        self.assertNotIn("Cadastrar as metas do mês", html)
+
+    def test_atualizar_agora_pede_uma_vez_e_volta(self, _):
+        self.conectar_shopee()
+        resposta = self.client.post("/resultados/atualizar/", {"voltar": "/resultados/?periodo=7dias"})
+        self.assertRedirects(resposta, "/resultados/?periodo=7dias", fetch_redirect_response=False)
+        primeiro = SincronizacaoResultados.objects.get(conta=self.conta).pedido_em
+        self.client.post("/resultados/atualizar/", {"voltar": "https://golpe.com/"})
+        self.assertEqual(SincronizacaoResultados.objects.get(conta=self.conta).pedido_em, primeiro)
+        self.assertContains(self.client.get("/resultados/"), "Atualizando com a Shopee")
+
+    def test_cadastrar_e_apagar_metas(self, _):
+        resposta = self.client.post("/metas/?mes=2026-11", {
+            "percentual_1": "100", "faturamento_1": "30.000,00", "bonus_1": "250",
+            "percentual_2": "125", "faturamento_2": "", "bonus_2": "400",
+            "percentual_3": "", "faturamento_3": "", "bonus_3": "",
+        })
+        self.assertRedirects(resposta, "/metas/?mes=2026-11", fetch_redirect_response=False)
+        meta = MetaMensal.objects.get(conta=self.conta, ano=2026, mes=11)
+        self.assertEqual([f["faturamento"] for f in meta.faixas], [30000.0, 37500.0])
+        self.assertContains(self.client.get("/metas/?mes=2026-11"), "37.500")
+
+        self.client.post("/metas/?mes=2026-11", {"faturamento_1": ""})
+        self.assertFalse(MetaMensal.objects.exists())
+
+    def test_mes_fora_das_opcoes_cai_no_mes_atual(self, _):
+        self.client.post("/metas/?mes=2030-01", {"percentual_1": "100", "faturamento_1": "1000"})
+        self.assertTrue(MetaMensal.objects.filter(ano=2026, mes=10).exists())

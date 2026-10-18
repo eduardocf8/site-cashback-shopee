@@ -2769,6 +2769,41 @@ personalizado; estimada, validada e faturamento) e metas mensais (3 faixas com b
 reaproveitando `Appfiliado/periodos.py`, `Appfiliado/metas.py` e
 `ConversorAfiliados.obter_resultados_periodo`.
 
+## Fase 68 — Painel do Appfiliado: Resultados, Metas e Início com números reais
+
+- [x] **Resultados** (`/resultados/`): hoje, ontem, últimos 7 dias, esta semana, semana
+      passada, este mês, mês passado, últimos 30 dias ou datas escolhidas (até 1 ano);
+      faturamento, comissão estimada, comissão validada e pedidos; gráfico por dia, semana
+      ou mês (escolhendo a métrica), tabela de detalhe e comissão por Sub ID.
+- [x] **Metas** (`/metas/`): até 3 faixas por mês (100/125/150% por padrão) com
+      faturamento e bônus, digitadas à mão (mês passado, este e o próximo). Faixa com %
+      e sem faturamento é calculada pela primeira faixa preenchida. Situação: faixas
+      batidas, quanto falta, quanto faturar por dia, projeção no ritmo atual e bônus
+      garantido - no Início, em Metas e em Resultados (quando o período é de um mês só).
+- [x] **Início**: números do mês, faturamento por dia, meta do mês, top Sub IDs e
+      primeiros passos (conectar Shopee, cadastrar metas, WhatsApp em breve).
+- [x] **Como os números chegam**: as telas só leem o banco (`ResultadoDiario`,
+      `ResultadoSubIdDiario`). Quem busca na Shopee é o comando
+      `python manage.py sincronizar_painel --loop` (`painel/resultados.py`): a cada 30 s
+      atende quem clicou em "Atualizar agora" e, a cada 3 h, atualiza todas as contas
+      com Shopee conectada. Busca os últimos 89 dias (limite da API, paginando) e
+      recalcula faturamento/estimada/pedidos/Sub IDs da janela toda e a validada só dos
+      últimos 60 dias (dias mais antigos ficam como estavam). Regras iguais às do app:
+      faturamento e estimada pela data da compra sem CANCELLED/UNPAID, validada pela
+      data de validação do item (COMPLETED). Erros aparecem na tela e no admin.
+- [x] Admin: "Sincronizações de resultados" (com ação pra buscar de novo) e "Metas
+      mensais".
+
+Para ligar em produção: criar no Render um **Background Worker** do mesmo repositório,
+com build `pip install -r requirements.txt` e start
+`python manage.py sincronizar_painel --loop`, e as **mesmas variáveis de ambiente** do
+serviço web (no mínimo `DATABASE_URL`, `DJANGO_SECRET_KEY` e, se usar,
+`APPFILIADO_CHAVE_CRIPTOGRAFIA` - sem elas o worker não decifra o Secret da Shopee).
+Sem o worker, as telas abrem mas os números não chegam.
+
+Próximo: fase 0 do bot no servidor (teste com número de teste), depois o Bot de
+WhatsApp dentro do painel.
+
 ---
 
 Pra continuar esse roadmap numa conversa nova, basta apontar esse arquivo
