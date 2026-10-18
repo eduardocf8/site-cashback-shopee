@@ -57,8 +57,8 @@ svg.icone { width: 18px; height: 18px; flex: none; fill: none; stroke: currentCo
 .marca:hover { color: inherit; }
 .logo {
   width: 40px; height: 40px; border-radius: 11px;
-  background: var(--amarelo); color: var(--texto);
-  display: grid; place-items: center; font-weight: 800; font-size: 17px; flex: none;
+  background: var(--amarelo); color: var(--verde);
+  display: grid; place-items: center; flex: none;
 }
 /* Nome e slogan num bloco da mesma altura do quadrado do logo, centralizados
    com ele (antes o line-height padrão deixava o texto mais alto que o ícone). */
