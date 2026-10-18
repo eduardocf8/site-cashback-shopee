@@ -1,170 +1,263 @@
+import hashlib
+import hmac
 import logging
 from datetime import date, datetime
 
 from django.conf import settings
 from django.core.mail import EmailMessage
+from django.db import transaction
+from django.utils import timezone
 
-from .models import Licenca
+from .models import MODULO_WHATSAPP, Assinatura, ContaAppfiliado
 
 logger = logging.getLogger(__name__)
 
 
-def _data_de_iso(valor: str | None) -> date | None:
+# --- Assinatura do webhook -------------------------------------------------------------
+
+def assinatura_webhook_valida(corpo: bytes, cabecalho: str, segredo: str) -> bool:
+    """Confere o cabeçalho x-zouti-signature ("t=<ms>,v1=<hex>").
+
+    A documentação da Zouti diz que v1 é o HMAC-SHA256 do corpo bruto com o segredo do
+    webhook. Também aceitamos o formato "<t>.<corpo>" (o padrão de quem manda o
+    timestamp junto) pra não quebrar se a Zouti assinar assim - os dois exigem o
+    segredo, então nenhum enfraquece a verificação. Confirme com o "Testar Webhook" do
+    painel da Zouti: o EventoWebhookZouti guarda se a assinatura bateu."""
+    if not segredo or not cabecalho:
+        return False
+    partes = {}
+    for pedaco in cabecalho.split(","):
+        chave, _, valor = pedaco.strip().partition("=")
+        if chave and valor:
+            partes[chave] = valor
+    recebida = partes.get("v1", "")
+    if not recebida:
+        return False
+    chave = segredo.encode()
+    candidatas = [hmac.new(chave, corpo, hashlib.sha256).hexdigest()]
+    if partes.get("t"):
+        candidatas.append(hmac.new(chave, partes["t"].encode() + b"." + corpo, hashlib.sha256).hexdigest())
+    return any(hmac.compare_digest(recebida, esperada) for esperada in candidatas)
+
+
+# --- Interpretação dos eventos ---------------------------------------------------------
+
+def _datahora(valor) -> datetime | None:
     if not valor:
         return None
     try:
-        # Kiwify manda algo como "2026-09-30T01:44:17.150Z"
-        return datetime.fromisoformat(valor.replace("Z", "+00:00")).date()
+        # A Zouti manda algo como "2026-05-01T00:00:00.000Z"
+        return datetime.fromisoformat(str(valor).replace("Z", "+00:00"))
     except ValueError:
         return None
 
 
-def interpretar_evento(payload: dict) -> dict:
-    """Decide o status da licença a partir de um payload de webhook da Kiwify já
-    verificado (assinatura conferida em views.webhook_kiwify).
+def _data(valor) -> date | None:
+    dh = _datahora(valor)
+    if not dh:
+        return None
+    return timezone.localtime(dh).date() if timezone.is_aware(dh) else dh.date()
 
-    Prioriza sinais fortes e explícitos (reembolso, chargeback, recusa) sobre o status
-    geral da assinatura, porque esses eventos podem chegar antes da Kiwify atualizar
-    Subscription.status. Quando nada bate com o que a gente já viu em produção, bloqueia
-    por padrão em vez de arriscar liberar - ver Licenca.STATUS_QUE_LIBERAM."""
 
-    webhook_event_type = (payload.get("webhook_event_type") or "").lower()
-    order_status = (payload.get("order_status") or "").lower()
-    subscription = payload.get("Subscription") or {}
-    sub_status = (subscription.get("status") or "").lower()
+STATUS_ZOUTI = {
+    "ACTIVE": (Assinatura.STATUS_ATIVA, ""),
+    "TRIAL": (Assinatura.STATUS_TESTE, ""),
+    "PAST_DUE": (Assinatura.STATUS_ATRASADA, "Pagamento da assinatura está atrasado."),
+    "CANCELED": (Assinatura.STATUS_CANCELADA, "Assinatura cancelada."),
+    "INCOMPLETE": (Assinatura.STATUS_INCOMPLETA, "Pagamento ainda não confirmado."),
+}
 
-    plano = ""
-    plano_info = subscription.get("plan") or {}
-    if plano_info.get("name"):
-        plano = plano_info["name"]
-    elif plano_info.get("frequency"):
-        plano = plano_info["frequency"]
+EVENTOS_ESTORNO = {"ORDER_REFUNDED", "PAYMENT_REFUNDED"}
+EVENTOS_CHARGEBACK = {"ORDER_DISPUTED", "PAYMENT_DISPUTED"}
 
-    expira_em = _data_de_iso(subscription.get("next_payment"))
 
-    if "refund" in webhook_event_type or order_status == "refunded":
-        return {
-            "status": Licenca.STATUS_REEMBOLSADA,
-            "motivo": "Compra reembolsada.",
-            "plano": plano,
-            "expira_em": expira_em,
-        }
+def processar_evento(tipo_evento: str, tipo_objeto: str, payload: dict) -> str:
+    """Aplica um evento já verificado (assinatura do webhook conferida). Devolve um
+    resumo do que foi feito, que fica guardado no EventoWebhookZouti."""
+    tipo_evento = (tipo_evento or "").upper()
+    tipo_objeto = tipo_objeto or ""
 
-    if "chargeback" in webhook_event_type or order_status in ("chargeback", "chargedback"):
-        return {
-            "status": Licenca.STATUS_CHARGEBACK,
-            "motivo": "Chargeback registrado nesta compra.",
-            "plano": plano,
-            "expira_em": expira_em,
-        }
+    if tipo_objeto == "Subscription" or tipo_evento.startswith("SUBSCRIPTION_"):
+        return _aplicar_evento_assinatura(tipo_evento, payload)
+    if tipo_evento in EVENTOS_ESTORNO or tipo_evento in EVENTOS_CHARGEBACK:
+        return _aplicar_estorno_ou_chargeback(tipo_evento, payload)
+    return f"Ignorado: evento {tipo_evento or '?'} não muda licenças."
 
-    if "refus" in webhook_event_type or order_status in ("refused", "recused"):
-        return {
-            "status": Licenca.STATUS_RECUSADA,
-            "motivo": "Pagamento recusado.",
-            "plano": plano,
-            "expira_em": expira_em,
-        }
 
-    if sub_status:
-        if sub_status == "active":
-            return {"status": Licenca.STATUS_ATIVA, "motivo": "", "plano": plano, "expira_em": expira_em}
-        if sub_status in ("late", "overdue", "past_due"):
-            return {
-                "status": Licenca.STATUS_ATRASADA,
-                "motivo": "Pagamento da assinatura está atrasado.",
-                "plano": plano,
-                "expira_em": expira_em,
-            }
-        if sub_status in ("canceled", "cancelled", "expired", "inactive"):
-            return {
-                "status": Licenca.STATUS_CANCELADA,
-                "motivo": "Assinatura cancelada.",
-                "plano": plano,
-                "expira_em": expira_em,
-            }
-        logger.warning("Licencas: Subscription.status desconhecido da Kiwify: %r", sub_status)
-        return {
-            "status": Licenca.STATUS_CANCELADA,
-            "motivo": "Status da assinatura não reconhecido - verifique manualmente.",
-            "plano": plano,
-            "expira_em": expira_em,
-        }
+@transaction.atomic
+def _aplicar_evento_assinatura(tipo_evento: str, payload: dict) -> str:
+    sub_id = str(payload.get("id") or "")[:64]
+    customer = payload.get("customer") or {}
+    email = str(customer.get("email") or "").strip().lower()[:254]
+    nome = str(customer.get("name") or "")[:140]
+    if not sub_id or not email:
+        raise ValueError("Evento de assinatura sem id ou sem e-mail do cliente.")
 
-    if order_status == "paid":
-        return {"status": Licenca.STATUS_ATIVA, "motivo": "", "plano": plano, "expira_em": expira_em}
+    conta, _ = ContaAppfiliado.objects.get_or_create(email=email, defaults={"nome": nome})
+    if not conta.nome and nome:
+        conta.nome = nome
+        conta.save(update_fields=["nome", "atualizada_em"])
 
-    logger.warning(
-        "Licencas: evento sem Subscription e sem order_status=paid (webhook_event_type=%r, order_status=%r)",
-        webhook_event_type, order_status,
+    assinatura, _ = Assinatura.objects.select_for_update().get_or_create(
+        zouti_subscription_id=sub_id, defaults={"conta": conta},
     )
+
+    atualizado_em = _datahora(payload.get("updated_at"))
+    if assinatura.zouti_atualizada_em and atualizado_em and atualizado_em < assinatura.zouti_atualizada_em:
+        return f"Ignorado: {tipo_evento} mais antigo que o último já aplicado em {sub_id}."
+
+    status_zouti = (payload.get("status") or "").upper()
+    novo_status, motivo = STATUS_ZOUTI.get(
+        status_zouti, (Assinatura.STATUS_INCOMPLETA, "Status da assinatura não reconhecido - fale com o suporte."),
+    )
+    if status_zouti not in STATUS_ZOUTI:
+        logger.warning("Licencas: status de assinatura desconhecido da Zouti: %r", status_zouti)
+    if tipo_evento == "SUBSCRIPTION_LATE_RENEWAL_WARNING":
+        novo_status, motivo = STATUS_ZOUTI["PAST_DUE"]
+    elif tipo_evento == "SUBSCRIPTION_CANCELED":
+        novo_status, motivo = STATUS_ZOUTI["CANCELED"]
+
+    # Estorno e chargeback só são desfeitos por uma renovação paga de verdade - nunca
+    # por um evento de status qualquer que chegue depois.
+    bloqueio_forte = assinatura.status in (Assinatura.STATUS_REEMBOLSADA, Assinatura.STATUS_CHARGEBACK)
+    if bloqueio_forte and tipo_evento != "SUBSCRIPTION_RENEWED":
+        novo_status, motivo = assinatura.status, assinatura.motivo
+
+    plano = payload.get("plan") or {}
+    product_ids = [i.get("product_id") for i in payload.get("line_items") or [] if i.get("product_id")]
+
+    assinatura.conta = conta
+    assinatura.status = novo_status
+    assinatura.motivo = motivo
+    assinatura.plano = str(plano.get("name") or assinatura.plano)[:80]
+    if product_ids:
+        assinatura.zouti_product_ids = ",".join(dict.fromkeys(str(p) for p in product_ids))[:300]
+    assinatura.zouti_order_id = str(payload.get("order_id") or assinatura.zouti_order_id)[:64]
+    assinatura.proxima_cobranca = _data(payload.get("next_payment_date")) or _data(payload.get("current_period_end"))
+    assinatura.acesso_ate = (
+        _data(payload.get("current_period_end")) if novo_status == Assinatura.STATUS_CANCELADA else None
+    )
+    if atualizado_em:
+        assinatura.zouti_atualizada_em = atualizado_em
+    assinatura.save()
+
+    if novo_status in Assinatura.STATUS_QUE_LIBERAM and conta.chave_enviada_em is None:
+        transaction.on_commit(lambda: enviar_email_chave(conta.pk))
+
+    return f"{tipo_evento}: assinatura {sub_id} de {email} agora está '{novo_status}'."
+
+
+@transaction.atomic
+def _aplicar_estorno_ou_chargeback(tipo_evento: str, payload: dict) -> str:
+    status_objeto = (payload.get("status") or "").upper()
+    estorno = tipo_evento in EVENTOS_ESTORNO
+    if estorno and status_objeto != "REFUNDED":
+        # Estorno parcial (PARTIALLY_REFUNDED) não tira o acesso.
+        return f"Ignorado: {tipo_evento} com status {status_objeto or '?'} (estorno parcial)."
+
+    # Payment traz subscription_id e order_id; Order só o próprio id (= order_id).
+    if tipo_evento.startswith("PAYMENT_"):
+        sub_id = payload.get("subscription_id") or ""
+        order_id = payload.get("order_id") or ""
+    else:
+        sub_id = ""
+        order_id = payload.get("id") or ""
+
+    assinaturas = []
+    if sub_id:
+        assinaturas = list(Assinatura.objects.select_for_update().filter(zouti_subscription_id=sub_id))
+    if not assinaturas and order_id:
+        assinaturas = list(Assinatura.objects.select_for_update().filter(zouti_order_id=order_id))
+    if not assinaturas:
+        return f"{tipo_evento}: nenhuma assinatura vinculada (pedido {order_id or '?'})."
+
+    novo_status = Assinatura.STATUS_REEMBOLSADA if estorno else Assinatura.STATUS_CHARGEBACK
+    motivo = "Compra reembolsada." if estorno else "Chargeback registrado nesta compra."
+    ids = []
+    for assinatura in assinaturas:
+        assinatura.status = novo_status
+        assinatura.motivo = motivo
+        assinatura.acesso_ate = None
+        assinatura.save()
+        ids.append(assinatura.zouti_subscription_id)
+    return f"{tipo_evento}: {', '.join(ids)} agora '{novo_status}'."
+
+
+# --- Validação pelo app ----------------------------------------------------------------
+
+def resposta_validacao(conta: ContaAppfiliado) -> dict:
+    """Corpo da resposta do /licencas/validar/.
+
+    "valido", "motivo", "plano" e "expira_em" são o contrato que o app já usa hoje
+    (Appfiliado/licenca.py) e continuam querendo dizer "pode abrir o bot de WhatsApp".
+    "conta_ativa" e "modulos" são novos: a versão do app com módulos usa esses dois
+    pra decidir o que liberar e o que mostrar com cadeado."""
+    hoje = timezone.localdate()
+    modulos = conta.modulos_liberados(hoje)
+    assinaturas = list(conta.assinaturas.all())
+    com_acesso = [a for a in assinaturas if a.da_acesso(hoje)]
+
+    planos = [a.plano for a in com_acesso if a.plano]
+    if not planos and conta.cortesia_vigente(hoje):
+        planos = ["Cortesia"]
+
+    datas = [a.proxima_cobranca or a.acesso_ate for a in com_acesso]
+    if conta.cortesia_vigente(hoje):
+        datas.append(conta.cortesia_ate)
+    datas = [d for d in datas if d]
+    expira_em = min(datas).isoformat() if datas else ""
+
+    valido = MODULO_WHATSAPP in modulos
+    if valido:
+        motivo = ""
+    elif modulos:
+        motivo = "Seu plano não inclui o bot de WhatsApp."
+    elif assinaturas:
+        mais_recente = max(assinaturas, key=lambda a: a.atualizada_em)
+        motivo = mais_recente.motivo or "Assinatura não está ativa."
+    else:
+        motivo = "Nenhuma assinatura ativa nesta conta."
+
     return {
-        "status": Licenca.STATUS_CANCELADA,
-        "motivo": "Evento não reconhecido - verifique manualmente.",
-        "plano": plano,
+        "valido": valido,
+        "motivo": motivo,
+        "plano": " + ".join(dict.fromkeys(planos)),
         "expira_em": expira_em,
+        "conta_ativa": bool(modulos),
+        "modulos": modulos,
     }
 
 
-def aplicar_evento_webhook(payload: dict) -> Licenca:
-    """Aplica um evento já verificado (assinatura conferida) a uma Licenca, criando-a
-    (e enviando a chave por e-mail) se ainda não existir."""
+# --- E-mail com a chave ----------------------------------------------------------------
 
-    customer = payload.get("Customer") or {}
-    email = (customer.get("email") or "").strip().lower()
-    nome = customer.get("full_name") or ""
-    subscription = payload.get("Subscription") or {}
-    subscription_id = subscription.get("id") or payload.get("subscription_id") or ""
-
-    interpretado = interpretar_evento(payload)
-
-    if subscription_id:
-        licenca, criada = Licenca.objects.get_or_create(
-            kiwify_subscription_id=subscription_id,
-            defaults={"email": email, "nome": nome},
-        )
-    else:
-        licenca, criada = Licenca.objects.get_or_create(
-            email=email,
-            kiwify_subscription_id="",
-            defaults={"nome": nome},
-        )
-
-    licenca.email = email or licenca.email
-    licenca.kiwify_customer_email = email or licenca.kiwify_customer_email
-    licenca.nome = nome or licenca.nome
-    licenca.status = interpretado["status"]
-    licenca.motivo = interpretado["motivo"]
-    licenca.plano = interpretado["plano"]
-    licenca.expira_em = interpretado["expira_em"]
-    licenca.save()
-
-    if criada:
-        enviar_email_licenca(licenca)
-
-    return licenca
-
-
-def enviar_email_licenca(licenca: Licenca) -> None:
-    if not licenca.email:
-        logger.warning("Licencas: licenca %s sem e-mail, não foi possível enviar a chave.", licenca.pk)
-        return
+def enviar_email_chave(conta_pk: int) -> bool:
+    conta = ContaAppfiliado.objects.filter(pk=conta_pk).first()
+    if not conta or not conta.email:
+        logger.warning("Licencas: conta %s sem e-mail, não foi possível enviar a chave.", conta_pk)
+        return False
 
     corpo = (
-        f"Olá{', ' + licenca.nome if licenca.nome else ''}!\n\n"
+        f"Olá{', ' + conta.nome if conta.nome else ''}!\n\n"
         "Sua assinatura do Appfiliado foi confirmada. Essa é a sua chave de licença - "
         "cole ela na tela de ativação do aplicativo:\n\n"
-        f"{licenca.chave}\n\n"
+        f"{conta.chave}\n\n"
+        "Ela vale pra todos os serviços que você assinar com este e-mail: se contratar "
+        "outro depois, é só continuar usando a mesma chave.\n\n"
         "Guarde esse e-mail: se precisar reinstalar o app ou trocar de computador, "
-        "é só usar a mesma chave de novo.\n\n"
+        "é só usar a chave de novo.\n\n"
         "Equipe Appfiliado"
     )
     try:
         EmailMessage(
             subject="Appfiliado — sua chave de licença",
             body=corpo,
-            to=[licenca.email],
+            to=[conta.email],
             from_email=settings.APPFILIADO_EMAIL_REMETENTE,
         ).send()
     except Exception:
-        logger.exception("Falha ao enviar e-mail de licença pra %s", licenca.email)
+        logger.exception("Falha ao enviar e-mail de licença pra %s", conta.email)
+        return False
+
+    conta.chave_enviada_em = timezone.now()
+    conta.save(update_fields=["chave_enviada_em", "atualizada_em"])
+    return True

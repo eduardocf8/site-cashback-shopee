@@ -282,24 +282,33 @@ PINTEREST_NOME_BOARD = os.environ.get("PINTEREST_NOME_BOARD", "Ofertas de {categ
 # automacao_instagram/management/commands/automacao_instagram_worker.py).
 AUTOMACAO_INSTAGRAM_INTERVALO_SEGUNDOS = int(os.environ.get("AUTOMACAO_INSTAGRAM_INTERVALO_SEGUNDOS", "30"))
 
-# App licencas: backend de validação de assinatura do Appfiliado (bot separado, ver
-# Appfiliado/LICENCA.md). O Appfiliado não tem relação de marca com a
+# App licencas: backend de assinatura do Appfiliado (contas, módulos e validação da
+# chave pelo app - ver licencas/models.py). O Appfiliado não tem relação de marca com a
 # cash-b - reaproveitamos só a infraestrutura Django já existente.
 #
-# Token configurado no painel da Kiwify em Webhooks > (o webhook do Appfiliado) > Token.
-# Usado pra conferir a assinatura HMAC-SHA1 que a Kiwify manda em ?signature= na própria
-# URL do webhook (ver licencas/views.py::_assinatura_valida - formato confirmado contra
-# um payload de teste real, não está documentado publicamente).
-KIWIFY_WEBHOOK_TOKEN = os.environ.get("KIWIFY_WEBHOOK_TOKEN", "")
+# Segredo do webhook da Zouti (painel da Zouti > Integrações > Webhooks > o webhook do
+# Appfiliado). Usado pra conferir o cabeçalho x-zouti-signature (HMAC-SHA256) de cada
+# aviso - sem ele preenchido, todo webhook é recusado. Ver
+# licencas/services.py::assinatura_webhook_valida.
+ZOUTI_WEBHOOK_SECRET = os.environ.get("ZOUTI_WEBHOOK_SECRET", "")
 
-# Remetente do e-mail com a chave de licença. Como o Appfiliado ainda não tem domínio
-# próprio, isso usa o mesmo endereço verificado da cash-b no Brevo (contato@cash-b.com)
-# só como transporte técnico - o nome de exibição já é "Appfiliado", sem menção a cash-b
-# no corpo do e-mail. Troque pra um domínio próprio do Appfiliado assim que existir um.
+# Domínios que só servem a API do Appfiliado (ex: api.appfiliado.com.br). Em qualquer
+# um deles, só /licencas/ responde - o resto do site da cash-b dá 404, pra não aparecer
+# a cash-b num endereço do Appfiliado. Cada domínio também precisa estar em
+# DJANGO_ALLOWED_HOSTS. Separados por vírgula.
+APPFILIADO_API_HOSTS = [
+    h.strip().lower() for h in os.environ.get("APPFILIADO_API_HOSTS", "").split(",") if h.strip()
+]
+
+# Remetente do e-mail com a chave de licença. O padrão usa o endereço da cash-b já
+# verificado no Brevo só como transporte técnico (o nome de exibição já é "Appfiliado").
+# Depois de autenticar appfiliado.com.br no Brevo, troque pela variável de ambiente:
+# APPFILIADO_EMAIL_REMETENTE="Appfiliado <contato@appfiliado.com.br>".
 APPFILIADO_EMAIL_REMETENTE = os.environ.get("APPFILIADO_EMAIL_REMETENTE", "Appfiliado <contato@cash-b.com>")
 
 MIDDLEWARE = [
     "django.middleware.security.SecurityMiddleware",
+    "licencas.middleware.SoApiNoDominioAppfiliadoMiddleware",  # api.appfiliado.com.br só responde /licencas/
     "whitenoise.middleware.WhiteNoiseMiddleware",
     "django.contrib.sessions.middleware.SessionMiddleware",
     "django.middleware.common.CommonMiddleware",
