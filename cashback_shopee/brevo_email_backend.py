@@ -78,6 +78,12 @@ class BrevoAPIEmailBackend(BaseEmailBackend):
                 timeout=settings.EMAIL_TIMEOUT,
             )
             resposta.raise_for_status()
+        except requests.HTTPError as erro:
+            if not self.fail_silently:
+                # O motivo de verdade (ex: remetente não autorizado) vem no corpo da resposta.
+                detalhe = erro.response.text[:500] if erro.response is not None else ""
+                raise requests.HTTPError(f"{erro} - {detalhe}", response=erro.response) from erro
+            return False
         except requests.RequestException:
             if not self.fail_silently:
                 raise
