@@ -289,6 +289,10 @@ class TestTelaDoWhatsApp(BasePainel):
         self.assertEqual(EnvioWhatsApp.objects.get().destino_nome, "Ofertas VIP")
         self.client.post("/whatsapp/desconectar/")
         self.assertTrue(ConexaoWhatsApp.objects.get(conta=self.conta).pedido_desconectar)
+        html = self.client.get("/whatsapp/").content.decode()
+        self.assertIn("Desconectando…", html)
+        self.assertIn('data-desconectando="1"', html)  # a tela fica conferindo e recarrega sozinha
+        self.assertTrue(self.client.get("/whatsapp/estado/").json()["desconectando"])
 
     def test_conta_sem_o_modulo_ve_o_convite(self):
         self.conta.modulos_cortesia = ""

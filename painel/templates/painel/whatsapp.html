@@ -12,11 +12,15 @@
 <div class="duas-colunas" id="whatsapp"
      data-url="{% url 'painel_whatsapp_estado' %}" data-estado="{{ tela.estado }}"
      data-pendentes="{{ tela.pendentes }}" data-grupos="{{ tela.pedido_grupos|yesno:'1,0' }}"
-     data-sem-resposta="{{ tela.sem_resposta|yesno:'1,0' }}">
+     data-sem-resposta="{{ tela.sem_resposta|yesno:'1,0' }}" data-desconectando="{{ tela.desconectando|yesno:'1,0' }}">
   <section class="card" aria-labelledby="titulo-conexao">
     <h2 id="titulo-conexao">Conexão</h2>
 
-    {% if conexao.estado == ConexaoWhatsApp.CONECTADO %}
+    {% if tela.desconectando and conexao.estado != ConexaoWhatsApp.DESCONECTADO %}
+      <p class="status-zap"><span class="ponto atencao" aria-hidden="true"></span><strong>Desconectando…</strong> {{ conexao.numero_formatado }}</p>
+      <p class="suave pequeno">Em alguns segundos o “Appfiliado” some da lista de aparelhos do celular e esta tela atualiza sozinha.</p>
+
+    {% elif conexao.estado == ConexaoWhatsApp.CONECTADO %}
       <p class="status-zap"><span class="ponto ok" aria-hidden="true"></span><strong>Conectado</strong> {{ conexao.numero_formatado }}{% if conexao.nome %} · {{ conexao.nome }}{% endif %}</p>
       <p class="suave pequeno">Desde {{ conexao.conectado_em|date:"d/m" }} às {{ conexao.conectado_em|date:"H:i" }}. O servidor aparece como “Appfiliado” em Aparelhos conectados, no seu celular. Não precisa deixar computador ligado.</p>
       <form method="post" action="{% url 'painel_whatsapp_desconectar' %}" onsubmit="return confirm('Desconectar o WhatsApp do Appfiliado?');" style="margin-top:16px">

@@ -94,5 +94,6 @@ def estado_para_tela(conta) -> dict:
         "qr": qr_svg(conexao.qr_codigo) if conexao.estado == ConexaoWhatsApp.AGUARDANDO_QR else "",
         "pendentes": EnvioWhatsApp.objects.filter(conta=conta, estado=EnvioWhatsApp.PENDENTE).count(),
         "pedido_grupos": conexao.pedido_grupos,
+        "desconectando": conexao.pedido_desconectar,
         "sem_resposta": worker_sem_resposta(conexao),
     }
