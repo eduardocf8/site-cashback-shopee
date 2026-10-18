@@ -230,6 +230,20 @@ def resposta_validacao(conta: ContaAppfiliado) -> dict:
 
 # --- E-mail com a chave ----------------------------------------------------------------
 
+def _trecho_painel(conta: ContaAppfiliado) -> str:
+    """Convite pro painel web no e-mail da chave: link de criar senha pra quem
+    ainda não tem, ou só o endereço pra quem já tem."""
+    from painel.emails import link_definir_senha, url_do_painel
+
+    if conta.tem_senha:
+        return f"Seu painel: {url_do_painel('painel_inicio')}\n\n"
+    return (
+        "Crie sua senha pra acessar o painel do Appfiliado (o link vale por 3 dias - "
+        "depois disso, use \"Criar ou recuperar senha\" na tela de entrar):\n"
+        f"{link_definir_senha(conta)}\n\n"
+    )
+
+
 def enviar_email_chave(conta_pk: int) -> bool:
     conta = ContaAppfiliado.objects.filter(pk=conta_pk).first()
     if not conta or not conta.email:
@@ -245,6 +259,7 @@ def enviar_email_chave(conta_pk: int) -> bool:
         "outro depois, é só continuar usando a mesma chave.\n\n"
         "Guarde esse e-mail: se precisar reinstalar o app ou trocar de computador, "
         "é só usar a chave de novo.\n\n"
+        f"{_trecho_painel(conta)}"
         "Equipe Appfiliado"
     )
     try:

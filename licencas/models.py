@@ -60,6 +60,19 @@ class ContaAppfiliado(models.Model):
         help_text="Até quando a cortesia vale. Vazio = sem prazo.",
     )
 
+    # Login no painel web (app.appfiliado.com.br) - ver painel/autenticacao.py.
+    # Senha guardada com o hasher padrão do Django (nunca em texto). Vazia = a
+    # pessoa ainda não definiu (o link vai no e-mail da chave).
+    senha = models.CharField(max_length=128, blank=True)
+    ultimo_login = models.DateTimeField(null=True, blank=True)
+
+    # Credenciais da Open API de afiliados da Shopee da própria pessoa - os
+    # relatórios e o bot do painel usam essas, não as da cash-b. O Secret fica
+    # cifrado (painel/cripto.py).
+    shopee_app_id = models.CharField(max_length=64, blank=True)
+    shopee_secret_cifrado = models.TextField(blank=True)
+    shopee_validado_em = models.DateTimeField(null=True, blank=True)
+
     criada_em = models.DateTimeField(auto_now_add=True)
     atualizada_em = models.DateTimeField(auto_now=True)
 
@@ -70,6 +83,24 @@ class ContaAppfiliado(models.Model):
 
     def __str__(self):
         return f"{self.email} ({self.chave})"
+
+    def definir_senha(self, senha_crua: str):
+        from django.contrib.auth.hashers import make_password
+
+        self.senha = make_password(senha_crua)
+
+    def confere_senha(self, senha_crua: str) -> bool:
+        from django.contrib.auth.hashers import check_password
+
+        return bool(self.senha) and check_password(senha_crua, self.senha)
+
+    @property
+    def tem_senha(self) -> bool:
+        return bool(self.senha)
+
+    @property
+    def shopee_configurada(self) -> bool:
+        return bool(self.shopee_app_id and self.shopee_secret_cifrado)
 
     def cortesia_vigente(self, hoje: date | None = None) -> list[str]:
         hoje = hoje or timezone.localdate()

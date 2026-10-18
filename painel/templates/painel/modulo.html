@@ -1,0 +1,17 @@
+{% extends "painel/base.html" %}
+{% block titulo %}{{ item.nome }}{% endblock %}
+{% block conteudo %}
+<header class="cabecalho"><div><h1>{{ item.nome }}</h1></div></header>
+<section class="card pagina-modulo">
+  {% if situacao == "bloqueado" %}
+    <span class="circulo">{% include "painel/_icone.html" with caminho=icones.cadeado %}</span>
+    <h2>Não incluso no seu plano</h2>
+    <p class="suave">{{ item.texto_bloqueado }}</p>
+    <a class="botao botao-principal" href="{{ url_planos }}" target="_blank" rel="noopener">Conhecer os planos</a>
+  {% else %}
+    <span class="circulo">{% include "painel/_icone.html" with caminho=item.icone_path|default:"" %}</span>
+    <h2>Chegando em breve</h2>
+    <p class="suave">{{ item.texto_em_breve }}</p>
+  {% endif %}
+</section>
+{% endblock %}

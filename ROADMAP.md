@@ -2735,6 +2735,42 @@ com o novo layout.
 
 ---
 
+## Fase 67 — Painel web do Appfiliado (base)
+
+Decisão: o Appfiliado vira um **painel no navegador** (`app.appfiliado.com.br`) em vez de
+um app de Windows com tudo dentro. O bot de WhatsApp deve passar a rodar no servidor
+(conexão por QR Code, sem programa no computador) - depende de um teste com número de
+teste antes (ver plano na conversa). Esta fase é só a base, no app `painel`:
+
+- [x] **Domínio próprio**: com o domínio em `APPFILIADO_PAINEL_HOSTS`, o middleware
+      `painel.middleware.DominioDoPainelMiddleware` troca as URLs pelas de
+      `painel/urls_dominio.py` - painel na raiz, `/licencas/` e `/healthz/`; nada da
+      cash-b (nem /admin/), e 404/500 com a cara do Appfiliado. O painel não existe no
+      domínio da cash-b.
+- [x] **Login próprio**, separado do login da cash-b: senha (hasher do Django) na
+      `ContaAppfiliado`; sessão guarda a conta e uma assinatura da senha (trocar a senha
+      derruba as outras sessões); 8 erros em 15 min por IP ou e-mail bloqueiam; links de
+      criar/recuperar senha no mesmo esquema do "esqueci a senha" do Django (uso único,
+      3 dias). O e-mail da chave (webhook da Zouti) já leva o link de criar senha.
+- [x] **Telas**: Início (primeiros passos e módulos), páginas de módulo com cadeado ou
+      "Em breve", Plano e assinatura (módulos, assinaturas, chave do app), Configurações
+      (conta da Shopee e troca de senha). Visual da proposta C, funciona no celular.
+- [x] **Credenciais da Shopee de cada conta**: o Secret é guardado cifrado
+      (`painel/cripto.py`, Fernet, chave em `APPFILIADO_CHAVE_CRIPTOGRAFIA`) e só é salvo
+      depois de a Shopee aceitar (`painel/shopee.py`).
+- [x] Admin: ação "Enviar link pra criar/trocar a senha do painel".
+
+Para ligar em produção: CNAME `app` -> serviço do Render (nuvem cinza na Cloudflare),
+domínio adicionado no Render, `app.appfiliado.com.br` em `DJANGO_ALLOWED_HOSTS` e em
+`APPFILIADO_PAINEL_HOSTS`, e de preferência `APPFILIADO_CHAVE_CRIPTOGRAFIA`.
+
+Próximo: fase 2 do painel - Início com números reais, Resultados (dia/semana/mês/
+personalizado; estimada, validada e faturamento) e metas mensais (3 faixas com bônus),
+reaproveitando `Appfiliado/periodos.py`, `Appfiliado/metas.py` e
+`ConversorAfiliados.obter_resultados_periodo`.
+
+---
+
 Pra continuar esse roadmap numa conversa nova, basta apontar esse arquivo
 (`ROADMAP.md`) e o `BRAND.md` — juntos eles dão o contexto de identidade
 visual e do que falta implementar, sem precisar reconstruir o histórico da
