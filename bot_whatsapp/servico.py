@@ -81,7 +81,10 @@ def qr_svg(codigo: str) -> str:
         return ""
     import segno
 
-    return segno.make_qr(codigo, error="l").svg_inline(scale=6, border=2, dark="#1F3A2E", light="#FFFFFF")
+    # omitsize: sai com viewBox e sem largura fixa, para o CSS diminuir o desenho
+    # inteiro (sem isso o navegador cortava o código, que é grande). border=4 é a
+    # margem branca que os leitores de QR esperam.
+    return segno.make_qr(codigo, error="l").svg_inline(border=4, omitsize=True, dark="#1F3A2E", light="#FFFFFF")
 
 
 def estado_para_tela(conta) -> dict:
