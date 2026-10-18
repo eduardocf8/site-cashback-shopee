@@ -77,7 +77,7 @@ class ContaAppfiliadoAdmin(admin.ModelAdmin):
         "criada_em", "atualizada_em",
     )
     inlines = [AssinaturaInline]
-    actions = ["reenviar_chave", "enviar_link_senha"]
+    actions = ["reenviar_chave", "enviar_link_senha", "mostrar_link_senha"]
 
     @admin.display(description="Senha do painel criada?", boolean=True)
     def tem_senha_painel(self, obj):
@@ -87,8 +87,39 @@ class ContaAppfiliadoAdmin(admin.ModelAdmin):
     def enviar_link_senha(self, request, queryset):
         from painel.emails import enviar_email_recuperar_senha
 
-        enviados = sum(1 for conta in queryset if enviar_email_recuperar_senha(conta))
-        self.message_user(request, f"Link enviado para {enviados} conta(s).")
+        falharam = [conta.email for conta in queryset if not enviar_email_recuperar_senha(conta)]
+        enviados = queryset.count() - len(falharam)
+        if enviados:
+            self.message_user(request, f"Link enviado para {enviados} conta(s).")
+        if falharam:
+            self.message_user(
+                request,
+                f"Não consegui enviar para: {', '.join(falharam)}. O motivo aparece nos logs do Render "
+                "(\"falha ao enviar e-mail de senha\"). Use \"Mostrar link para criar a senha\" "
+                "para pegar o link sem e-mail.",
+                messages.ERROR,
+            )
+
+    @admin.action(description="Mostrar link para criar a senha do painel (sem e-mail)")
+    def mostrar_link_senha(self, request, queryset):
+        """Para suporte (ou quando o e-mail não chega): mostra o link aqui mesmo, para
+        abrir ou mandar para a pessoa por outro canal. Vale por 3 dias e uma vez só."""
+        from django.utils.html import format_html
+
+        from painel.emails import link_definir_senha
+
+        if queryset.count() != 1:
+            self.message_user(request, "Selecione uma conta só.", messages.WARNING)
+            return
+        conta = queryset.get()
+        link = link_definir_senha(conta)
+        self.message_user(
+            request,
+            format_html(
+                'Link para {} criar a senha (vale por 3 dias e uma vez só): <a href="{}">{}</a>',
+                conta.email, link, link,
+            ),
+        )
 
     @admin.display(description="Módulos liberados agora")
     def modulos_agora(self, obj):

@@ -2,6 +2,7 @@ import hashlib
 import hmac
 import json
 from datetime import date, timedelta
+from unittest import mock
 
 from django.core import mail
 from django.db import connection
@@ -270,6 +271,33 @@ class TestAdmin(BaseZouti):
         })
         self.assertEqual(resposta.status_code, 302)
         self.assertEqual(ProdutoZouti.objects.get(zouti_product_id="prod_pacote").modulos, "site,videos")
+
+
+@override_settings(APPFILIADO_PAINEL_URL="https://app.appfiliado.com.br")
+class TestAdminLinkDaSenha(TestCase):
+    def setUp(self):
+        from django.contrib.auth import get_user_model
+
+        admin = get_user_model().objects.create_superuser(
+            username="admin", email="admin@exemplo.com", password="senha-forte-123",
+        )
+        self.client.force_login(admin)
+        self.conta = ContaAppfiliado.objects.create(email="dono@exemplo.com")
+
+    def acao(self, nome):
+        return self.client.post("/admin/licencas/contaappfiliado/", {
+            "action": nome, "_selected_action": [self.conta.pk],
+        }, follow=True)
+
+    def test_mostra_o_link_na_tela(self):
+        resposta = self.acao("mostrar_link_senha")
+        self.assertContains(resposta, "https://app.appfiliado.com.br/senha/definir/")
+        self.assertEqual(len(mail.outbox), 0)
+
+    def test_avisa_quando_o_email_falha(self):
+        with mock.patch("painel.emails.EmailMessage.send", side_effect=Exception("remetente não autorizado")):
+            resposta = self.acao("enviar_link_senha")
+        self.assertContains(resposta, "Não consegui enviar para: dono@exemplo.com")
 
 
 @override_settings(APPFILIADO_API_HOSTS=["api.appfiliado.com.br"], ALLOWED_HOSTS=["api.appfiliado.com.br", "testserver"])
