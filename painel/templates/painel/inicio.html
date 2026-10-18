@@ -42,12 +42,17 @@
       {% endif %}
     </section>
     <section class="card hoje">
-      <h2>Hoje</h2>
+      <div class="card-topo"><h2>Ontem</h2><span class="suave pequeno">{{ ontem|date:"d/m" }}</span></div>
       <dl class="resumo-hoje">
-        <div><dt>Faturamento</dt><dd>{{ do_dia.faturamento|brl }}</dd></div>
-        <div><dt>Comissão estimada</dt><dd>{{ do_dia.comissao_estimada|brl }}</dd></div>
-        <div><dt>Pedidos</dt><dd>{{ do_dia.pedidos|numero }}</dd></div>
+        <div><dt>Faturamento</dt><dd>{{ do_ontem.faturamento|brl }}</dd></div>
+        <div><dt>Comissão estimada</dt><dd>{{ do_ontem.comissao_estimada|brl }}</dd></div>
+        <div><dt>Pedidos</dt><dd>{{ do_ontem.pedidos|numero }}</dd></div>
       </dl>
+      <div class="validada-hoje">
+        <span>Comissão validada hoje</span>
+        <strong>{{ do_dia.comissao_validada|brl }}</strong>
+      </div>
+      <p class="suave pequeno" style="margin:8px 0 16px">A Shopee libera faturamento, comissão estimada e pedidos no dia seguinte. A comissão validada vai entrando ao longo do dia.</p>
       <a class="botao botao-claro botao-pequeno" href="{% url 'painel_resultados' %}">Ver resultados detalhados</a>
     </section>
   </div>

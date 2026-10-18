@@ -296,3 +296,5 @@ table.numeros td, table.numeros th { white-space: nowrap; }
 
 /* Aviso de que o Appfiliado é só pra Shopee (e independente dela) */
 .aviso-shopee { margin: 28px 0 0; font-size: 12px; color: var(--suave); text-align: center; }
+.validada-hoje { display: flex; justify-content: space-between; align-items: center; gap: 12px; padding: 10px 12px; border-radius: 10px; background: var(--bom-suave); color: var(--bom-tinta); font-size: 14px; }
+.validada-hoje strong { font-size: 15px; }

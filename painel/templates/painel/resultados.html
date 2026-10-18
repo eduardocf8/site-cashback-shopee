@@ -26,6 +26,9 @@
 </section>
 
 {% include "painel/_kpis.html" with valores=totais legenda=periodo.descricao %}
+{% if inclui_hoje %}
+  <p class="aviso aviso-info pequeno">De hoje só aparece a comissão validada: a Shopee libera faturamento, comissão estimada e pedidos no dia seguinte.</p>
+{% endif %}
 
 <div class="duas-colunas">
   <section class="card">

@@ -2787,6 +2787,10 @@ reaproveitando `Appfiliado/periodos.py`, `Appfiliado/metas.py` e
       tela de entrar, assinatura dos e-mails e aviso no rodapé: "ferramentas feitas só
       para afiliados da Shopee. Somos independentes, sem vínculo oficial com a Shopee."
       A página de vendas (fase 5) deve repetir isso.
+- [x] **A Shopee só libera faturamento, comissão estimada e pedidos no dia seguinte**
+      (no mesmo dia só a comissão validada vai entrando): o Início mostra "Ontem" e a
+      "Comissão validada hoje"; Resultados avisa quando o período inclui hoje; a
+      projeção da meta usa o ritmo até ontem (painel e app de Windows).
 - [x] **Português dos textos**: "pra" só quando dá para trocar por "para a"; nos outros
       casos, "para" (telas, e-mails, admin e comentários do painel e das licenças).
 - [x] **Como os números chegam**: as telas só leem o banco (`ResultadoDiario`,

@@ -459,6 +459,24 @@ class TestTelasDeResultados(BasePainel):
         self.assertIn("Cadastrar metas", html)
         self.assertNotIn("Primeiros passos", html)  # metas são opcionais: não viram passo pendente
 
+    def test_inicio_mostra_ontem_e_a_validada_de_hoje(self, _):
+        self.conectar_shopee()
+        ResultadoDiario.objects.create(conta=self.conta, dia=date(2026, 10, 17), pedidos=7,
+                                       faturamento=Decimal("812.40"), comissao_estimada=Decimal("61.10"))
+        ResultadoDiario.objects.filter(conta=self.conta, dia=date(2026, 10, 18)).update(comissao_validada=Decimal("42.75"))
+        html = self.client.get("/").content.decode()
+        self.assertIn("<h2>Ontem</h2>", html)
+        self.assertIn("R$ 812,40", html)
+        self.assertIn("R$ 61,10", html)
+        self.assertIn("Comissão validada hoje", html)
+        self.assertIn("R$ 42,75", html)
+
+    def test_resultados_avisam_quando_o_periodo_inclui_hoje(self, _):
+        self.conectar_shopee()
+        aviso = "De hoje só aparece a comissão validada"
+        self.assertContains(self.client.get("/resultados/?periodo=hoje"), aviso)
+        self.assertNotContains(self.client.get("/resultados/?periodo=mes_passado"), aviso)
+
     def test_resultados_do_mes(self, _):
         self.conectar_shopee()
         html = self.client.get("/resultados/").content.decode()

@@ -149,9 +149,12 @@ def inicio(request):
     if conta.shopee_validado_em:
         mes = resultados.totais(conta, inicio_mes, hoje)
         do_dia = resultados.totais(conta, hoje, hoje)
+        ontem = hoje - timedelta(days=1)
         contexto.update({
             "mes": mes,
             "do_dia": do_dia,
+            "ontem": ontem,
+            "do_ontem": resultados.totais(conta, ontem, ontem),
             "meta": telas.situacao_meta(conta, hoje.year, hoje.month, hoje),
         })
     return render(request, "painel/inicio.html", _contexto(request, "inicio", **contexto))
@@ -176,6 +179,7 @@ def resultados_view(request):
         mesmo_mes = (periodo["inicio"].year, periodo["inicio"].month) == (periodo["fim"].year, periodo["fim"].month)
         contexto.update({
             "totais": resultados.totais(conta, periodo["inicio"], periodo["fim"]),
+            "inclui_hoje": periodo["fim"] >= hoje,
             "linhas": list(reversed(linhas)),
             "grafico": telas.barras(linhas, periodo["metrica"]),
             "sub_ids": resultados.por_sub_id(conta, periodo["inicio"], periodo["fim"]),
