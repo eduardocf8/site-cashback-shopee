@@ -193,13 +193,13 @@ class TestPaginas(BasePainel):
     def test_menu_mostra_cadeado_e_em_breve(self):
         html = self.client.get("/").content.decode()
         self.assertIn("Não incluso no seu plano", html)  # vídeos (fora do plano): cadeado
-        self.assertIn("Em breve", html)  # Bot (liberado, mas ainda não está no painel)
+        self.assertIn("Em breve", html)  # Instagram (ainda não está no painel)
 
     def test_modulo_fora_do_plano_mostra_convite(self):
         self.assertContains(self.client.get("/m/site/"), "Não incluso no seu plano")
 
-    def test_modulo_do_plano_ainda_nao_pronto_mostra_em_breve(self):
-        self.assertContains(self.client.get("/m/whatsapp/"), "Em breve")
+    def test_modulo_ainda_nao_pronto_mostra_em_breve(self):
+        self.assertContains(self.client.get("/m/instagram/"), "Em breve")
 
     def test_modulo_inexistente(self):
         self.assertEqual(self.client.get("/m/nada/").status_code, 404)
@@ -511,7 +511,7 @@ class TestTelasDeResultados(BasePainel):
         self.conectar_shopee()
         html = self.client.get("/").content.decode()
         self.assertIn("Cadastrar metas", html)
-        self.assertNotIn("Primeiros passos", html)  # metas são opcionais: não viram passo pendente
+        self.assertNotIn("Cadastrar as metas do mês", html)  # metas são opcionais: não viram passo pendente
 
     def test_inicio_mostra_ontem_e_a_validada_de_hoje(self, _):
         self.conectar_shopee()

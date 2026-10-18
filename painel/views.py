@@ -10,7 +10,8 @@ from django.utils.http import urlsafe_base64_decode
 from django.views.decorators.http import require_POST
 
 from accounts.ratelimit import _incrementar_contador, _obter_ip
-from licencas.models import MODULOS, ContaAppfiliado
+from bot_whatsapp.models import ConexaoWhatsApp
+from licencas.models import MODULO_WHATSAPP, MODULOS, ContaAppfiliado
 from licencas.services import resposta_validacao
 
 from . import cripto
@@ -135,8 +136,14 @@ def inicio(request):
     passos = [
         {"titulo": "Conectar sua conta de afiliado da Shopee", "feito": bool(conta.shopee_validado_em),
          "acao": "Conectar", "href": "painel_configuracoes"},
-        {"titulo": "Conectar seu WhatsApp pelo QR Code", "feito": False, "em_breve": True},
     ]
+    if MODULO_WHATSAPP in liberados:
+        conexao = ConexaoWhatsApp.objects.filter(conta=conta).first()
+        passos.append({
+            "titulo": "Conectar seu WhatsApp pelo QR Code",
+            "feito": bool(conexao and conexao.estado != ConexaoWhatsApp.DESCONECTADO),
+            "acao": "Conectar", "href": "painel_whatsapp",
+        })
     contexto = {
         "hoje": _hoje_por_extenso(),
         "passos": passos,

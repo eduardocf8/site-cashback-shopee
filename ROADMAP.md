@@ -2823,6 +2823,30 @@ Sem o worker, as telas abrem mas os números não chegam.
 Próximo: fase 0 do bot no servidor (teste com número de teste), depois o Bot de
 WhatsApp dentro do painel.
 
+
+## Fase 69 — Bot de WhatsApp no servidor (versão de teste)
+
+Objetivo: ver se a conexão do WhatsApp pelo servidor fica estável com o número que já
+posta as ofertas, sem programa no computador e sem janela de navegador.
+
+- [x] App `bot_whatsapp`: `ConexaoWhatsApp` (estado, QR, número, grupos, pedidos do
+      painel), `EnvioWhatsApp` (fila de mensagens) e `EventoWhatsApp` (histórico de
+      quedas e reconexões).
+- [x] Biblioteca **neonize** (Python, por cima do whatsmeow): o servidor entra como
+      mais um "aparelho conectado" ("Appfiliado"), igual ao WhatsApp Web. A sessão fica
+      no próprio Postgres (tabelas `whatsmeow_*`), então deploy e reinício não pedem QR
+      de novo (`WHATSAPP_DATABASE_URL` opcional; padrão `DATABASE_URL`).
+- [x] Roda no mesmo Background Worker do `sincronizar_painel --loop`, numa thread
+      (`bot_whatsapp/gerenciador.py`) - sem serviço novo nem custo a mais.
+      `APPFILIADO_WHATSAPP_NO_WORKER=False` desliga. Se a biblioteca não carregar, só o
+      WhatsApp fica desligado (a busca da Shopee continua).
+- [x] Painel `/whatsapp/`: conectar pelo QR (atualiza sozinho), conectado/reconectando/
+      desconectar, lista de grupos, mensagem de teste (texto ou foto com legenda) e
+      histórico da conexão. Passo "Conectar seu WhatsApp" no Início.
+- [ ] Teste real: deixar conectado alguns dias e olhar o histórico.
+- [ ] Próximo: levar o bot de ofertas (busca na Shopee, texto, agendamento) para o
+      painel, enviando por esta conexão.
+
 ---
 
 Pra continuar esse roadmap numa conversa nova, basta apontar esse arquivo
