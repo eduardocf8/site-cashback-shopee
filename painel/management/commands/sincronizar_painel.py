@@ -1,4 +1,20 @@
+import os
+import sys
 import time
+
+MINUTOS_ENTRE_LOGS_DE_MEMORIA = 10
+
+
+def memoria_em_uso_mb() -> int:
+    """Memória do processo (RSS) em MB, lida do Linux; 0 se não der."""
+    try:
+        with open("/proc/self/status") as status:
+            for linha in status:
+                if linha.startswith("VmRSS:"):
+                    return int(linha.split()[1]) // 1024
+    except OSError:
+        pass
+    return 0
 
 from django.conf import settings
 from django.core.management.base import BaseCommand
@@ -21,11 +37,18 @@ class Command(BaseCommand):
 
     def handle(self, *args, loop=False, intervalo=30, **options):
         if loop and settings.APPFILIADO_WHATSAPP_NO_WORKER:
-            from bot_whatsapp.gerenciador import iniciar_em_segundo_plano
+            from bot_whatsapp.gerenciador import garantir_limite_de_memoria, iniciar_em_segundo_plano
 
+            garantir_limite_de_memoria(sys.argv)  # pode reiniciar o processo uma vez
             if iniciar_em_segundo_plano():
-                self.stdout.write("Bot de WhatsApp ligado neste worker.")
+                self.stdout.write(f"Bot de WhatsApp ligado neste worker (GOMEMLIMIT={os.environ['GOMEMLIMIT']}).")
+        proximo_log_de_memoria = 0.0
         while True:
+            if loop and time.monotonic() >= proximo_log_de_memoria:
+                # O Render reinicia o worker se passar de 512 MB (plano Starter): este
+                # número no log mostra se está chegando perto.
+                self.stdout.write(f"Memória em uso: {memoria_em_uso_mb()} MB")
+                proximo_log_de_memoria = time.monotonic() + MINUTOS_ENTRE_LOGS_DE_MEMORIA * 60
             close_old_connections()  # o worker fica dias no ar; conexões velhas caem
             try:
                 for conta in contas_pendentes():

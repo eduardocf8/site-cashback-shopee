@@ -198,6 +198,23 @@ class TestGerenciador(TestCase):
         self.assertEqual(self.conexao().estado, "reconectando")
         self.assertEqual(ConexaoWhatsApp.objects.get(conta=outra).estado, "desconectado")
 
+    def test_pede_o_minimo_de_historico_ao_conectar(self):
+        props = g.propriedades_do_aparelho()
+        self.assertEqual(props.os, "Appfiliado")
+        self.assertFalse(props.requireFullSync)
+        self.assertEqual(props.historySyncConfig.fullSyncDaysLimit, 1)
+        self.assertEqual(props.historySyncConfig.recentSyncDaysLimit, 1)
+
+    def test_limite_de_memoria_reinicia_o_processo_so_quando_falta(self):
+        with mock.patch.dict("os.environ", {"GOMEMLIMIT": "300MiB"}), mock.patch("os.execve") as execve:
+            g.garantir_limite_de_memoria(["manage.py", "sincronizar_painel", "--loop"])
+        execve.assert_not_called()
+        with mock.patch.dict("os.environ", {"GOMEMLIMIT": ""}), mock.patch("os.execve") as execve:
+            g.garantir_limite_de_memoria(["manage.py", "sincronizar_painel", "--loop"])
+        argv, ambiente = execve.call_args.args[1], execve.call_args.args[2]
+        self.assertEqual(argv[1:], ["manage.py", "sincronizar_painel", "--loop"])
+        self.assertEqual(ambiente["GOMEMLIMIT"], g.LIMITE_DE_MEMORIA_GO)
+
     def test_banco_da_sessao(self):
         with mock.patch.dict("os.environ", {"DATABASE_URL": "postgresql://u:s@host/db"}, clear=False):
             self.assertEqual(g.endereco_do_banco(), "postgresql://u:s@host/db")
