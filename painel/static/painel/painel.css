@@ -56,11 +56,14 @@ svg.icone { width: 18px; height: 18px; flex: none; fill: none; stroke: currentCo
 .marca { display: flex; align-items: center; gap: 10px; padding: 0 8px; text-decoration: none; color: inherit; }
 .marca:hover { color: inherit; }
 .logo {
-  width: 34px; height: 34px; border-radius: 10px;
+  width: 40px; height: 40px; border-radius: 11px;
   background: var(--amarelo); color: var(--texto);
   display: grid; place-items: center; font-weight: 800; font-size: 17px; flex: none;
 }
-.marca strong { display: block; font-size: 17px; }
+/* Nome e slogan num bloco da mesma altura do quadrado do logo, centralizados
+   com ele (antes o line-height padrão deixava o texto mais alto que o ícone). */
+.marca-texto { display: flex; flex-direction: column; justify-content: center; gap: 2px; line-height: 1.15; }
+.marca strong { display: block; font-size: 17px; letter-spacing: -0.01em; }
 .marca small { display: block; color: var(--menu-suave); font-size: 12px; }
 
 .menu nav { display: flex; flex-direction: column; gap: 4px; min-width: 0; }
