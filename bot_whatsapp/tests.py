@@ -226,7 +226,9 @@ class TestServico(TestCase):
         self.assertEqual(EnvioWhatsApp.objects.first().destino_nome, "Ofertas")
 
     def test_qr_vira_svg_e_detecta_worker_parado(self):
-        self.assertTrue(servico.qr_svg("2@abc").startswith("<svg"))
+        svg = servico.qr_svg("2@" + "A" * 230)  # o código de verdade é grande assim
+        self.assertTrue(svg.startswith("<svg viewBox="))  # sem viewBox o navegador cortava o QR
+        self.assertNotIn("width=", svg.split(">")[0])
         conexao = servico.pedir_conexao(self.conta)
         self.assertFalse(servico.worker_sem_resposta(conexao))
         conexao.qr_em = timezone.now() - timedelta(minutes=3)
