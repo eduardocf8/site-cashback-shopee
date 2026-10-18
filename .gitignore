@@ -11,3 +11,4 @@ media/
 *.crt
 *.key
 secrets/
+whatsapp_sessoes.sqlite3

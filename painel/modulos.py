@@ -28,7 +28,7 @@ ICONES = {
 }
 
 # slug -> configuração. "modulo": código da licença que libera (None = todos
-# têm). "pronto": já existe no painel. "so_em_breve": ainda não dá para vender
+# têm). "pronto": já existe no painel. "teste": já funciona, mas em versão de teste. "so_em_breve": ainda não dá para vender
 # para ninguém (ex: Instagram, esperando a Meta).
 MODULOS_DO_MENU = [
     {"slug": "inicio", "nome": "Início", "icone": "inicio", "modulo": None, "pronto": True},
@@ -36,10 +36,7 @@ MODULOS_DO_MENU = [
     {"slug": "metas", "nome": "Metas", "icone": "metas", "modulo": None, "pronto": True},
     {
         "slug": "whatsapp", "nome": "Bot de WhatsApp", "icone": "whatsapp", "modulo": MODULO_WHATSAPP,
-        "pronto": False,
-        "texto_em_breve": "Você vai conectar seu WhatsApp aqui pelo QR Code e controlar o bot "
-                          "pelo painel, sem programa no computador. Enquanto isso, continue usando o "
-                          "app do Appfiliado no seu computador.",
+        "pronto": True, "teste": True,
         "texto_bloqueado": "Envie ofertas com seu link de afiliado nos seus grupos e canais do WhatsApp, "
                            "no automático.",
     },
@@ -70,6 +67,7 @@ URL_DE_SLUG = {
     "inicio": "painel_inicio",
     "resultados": "painel_resultados",
     "metas": "painel_metas",
+    "whatsapp": "painel_whatsapp",
     "configuracoes": "painel_configuracoes",
 }
 
@@ -90,6 +88,8 @@ def menu(liberados: list[str], ativo: str) -> list[dict]:
         url_name = URL_DE_SLUG.get(item["slug"])
         href = reverse(url_name) if url_name else reverse("painel_modulo", args=[item["slug"]])
         selo = {"bloqueado": ("Desbloquear", "bloqueado"), "em_breve": ("Em breve", "breve")}.get(situacao)
+        if situacao == "liberado" and item.get("teste"):
+            selo = ("Teste", "breve")
         itens.append({
             **item,
             "href": href,

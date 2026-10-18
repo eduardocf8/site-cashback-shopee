@@ -96,6 +96,7 @@ INSTALLED_APPS = [
     "licencas",
     "pinterest",
     "painel",
+    "bot_whatsapp",
 ]
 
 AUTH_USER_MODEL = "accounts.User"
@@ -318,6 +319,9 @@ APPFILIADO_CHAVE_CRIPTOGRAFIA = os.environ.get("APPFILIADO_CHAVE_CRIPTOGRAFIA", 
 # verificado no Brevo só como transporte técnico (o nome de exibição já é "Appfiliado").
 # Depois de autenticar appfiliado.com.br no Brevo, troque pela variável de ambiente:
 # APPFILIADO_EMAIL_REMETENTE="Appfiliado <contato@appfiliado.com.br>".
+# Bot de WhatsApp no servidor (app bot_whatsapp): o Background Worker do
+# sincronizar_painel --loop também mantém as conexões de WhatsApp. "False" desliga.
+APPFILIADO_WHATSAPP_NO_WORKER = os.environ.get("APPFILIADO_WHATSAPP_NO_WORKER", "True").lower() in ("1", "true", "yes", "sim")
 APPFILIADO_EMAIL_REMETENTE = os.environ.get("APPFILIADO_EMAIL_REMETENTE", "Appfiliado <contato@cash-b.com>")
 
 MIDDLEWARE = [
