@@ -2693,6 +2693,48 @@ numa área fora da lista, mas no mesmo espírito (integridade de pagamento):
 
 ---
 
+## Fase 66 — Appfiliado: Zouti no lugar da Kiwify, conta com módulos
+
+O Appfiliado deixa de ser "só o bot de WhatsApp" e vira uma marca com vários serviços
+(bot, Meu site, vitrine, vídeos, Instagram), vendidos avulsos ou em pacotes. A
+plataforma de pagamento troca da Kiwify pra Zouti (taxa menor; nenhum assinante tinha
+entrado pela Kiwify ainda). Tudo no app `licencas`:
+
+- [x] **`ContaAppfiliado`** no lugar de `Licenca`: uma chave por pessoa (e-mail), que
+      vale pra todos os módulos. Comprar outro serviço depois só soma módulos à mesma
+      chave. Também aceita **módulos de cortesia** à mão no /admin/ (uso próprio,
+      clientes antigos do conversor), com prazo opcional.
+- [x] **`Assinatura`** (uma por `sub_...` da Zouti) e **`ProdutoZouti`**, que diz
+      quais módulos cada produto libera. Os módulos são calculados na hora da
+      validação, então cadastrar ou mudar um produto no /admin/ vale na hora, sem
+      deploy.
+- [x] **Webhook `/licencas/webhook/zouti/`**: confere o `x-zouti-signature`
+      (HMAC-SHA256, segredo em `ZOUTI_WEBHOOK_SECRET`), guarda tudo cru em
+      `EventoWebhookZouti`, ignora evento repetido (`x-zouti-event-id`) e ignora
+      evento mais antigo que o último aplicado (`updated_at`), porque a Zouti reenvia
+      por até 4 dias. Responde 500 quando falha ao processar, pra ela tentar de novo.
+- [x] **Regras**: ativa e teste grátis liberam; atrasada bloqueia; cancelada mantém o
+      acesso até o fim do período já pago; estorno (`ORDER_REFUNDED`/`PAYMENT_REFUNDED`,
+      só total) e chargeback bloqueiam na hora e só uma `SUBSCRIPTION_RENEWED` reabre.
+- [x] **`/licencas/validar/` compatível com o app atual**: `valido`, `motivo`, `plano` e
+      `expira_em` continuam querendo dizer "pode abrir o bot de WhatsApp". Novos:
+      `conta_ativa` e `modulos`, pra versão do app com módulos.
+- [x] **Migração**: as licenças da época da Kiwify viram contas com a mesma chave; a
+      ativa ganha cortesia do módulo de WhatsApp (ninguém precisa reativar o app).
+- [x] **`api.appfiliado.com.br` pronto pra ligar**: com o domínio em
+      `APPFILIADO_API_HOSTS` (e em `DJANGO_ALLOWED_HOSTS`), só `/licencas/` responde
+      nele; o resto da cash-b dá 404 (`licencas/middleware.py`).
+
+Falta, fora do código: criar os produtos na Zouti e cadastrar cada um em Admin >
+Produtos da Zouti; criar o webhook na Zouti apontando pra
+`https://<domínio>/licencas/webhook/zouti/` com os eventos de assinatura, estorno e
+chargeback; e testar com o "Testar Webhook" do painel (o evento aparece em Admin >
+Eventos de webhook da Zouti, com "assinatura válida" marcada). Do lado do app:
+`Appfiliado/licenca.py` ainda só lê os campos antigos - ler `modulos` entra junto
+com o novo layout.
+
+---
+
 Pra continuar esse roadmap numa conversa nova, basta apontar esse arquivo
 (`ROADMAP.md`) e o `BRAND.md` — juntos eles dão o contexto de identidade
 visual e do que falta implementar, sem precisar reconstruir o histórico da

@@ -1,25 +1,102 @@
-from django.contrib import admin
+from django import forms
+from django.contrib import admin, messages
 
-from .models import EventoWebhookKiwify, Licenca
+from .models import MODULOS, Assinatura, ContaAppfiliado, EventoWebhookZouti, ProdutoZouti, modulos_de_texto
+from .services import enviar_email_chave
 
-
-@admin.register(Licenca)
-class LicencaAdmin(admin.ModelAdmin):
-    list_display = ("chave", "email", "status", "plano", "expira_em", "atualizada_em")
-    list_filter = ("status",)
-    search_fields = ("chave", "email", "kiwify_subscription_id")
-    readonly_fields = ("chave", "criada_em", "atualizada_em")
+NOMES_MODULOS = dict(MODULOS)
 
 
-@admin.register(EventoWebhookKiwify)
-class EventoWebhookKiwifyAdmin(admin.ModelAdmin):
-    list_display = (
-        "webhook_event_type", "order_status", "subscription_status", "email",
-        "assinatura_valida", "processado_com_sucesso", "recebido_em",
+class CampoModulos(forms.MultipleChoiceField):
+    """Mostra os módulos como caixinhas e guarda como texto "whatsapp,site"."""
+
+    def __init__(self, **kwargs):
+        kwargs.setdefault("required", False)
+        super().__init__(choices=MODULOS, widget=forms.CheckboxSelectMultiple, **kwargs)
+
+    def prepare_value(self, value):
+        if isinstance(value, str):
+            return modulos_de_texto(value)
+        return value
+
+    def clean(self, value):
+        return ",".join(super().clean(value))
+
+
+class ProdutoZoutiForm(forms.ModelForm):
+    modulos = CampoModulos(label="Módulos que este produto libera")
+
+    class Meta:
+        model = ProdutoZouti
+        fields = "__all__"
+
+
+@admin.register(ProdutoZouti)
+class ProdutoZoutiAdmin(admin.ModelAdmin):
+    form = ProdutoZoutiForm
+    list_display = ("nome", "zouti_product_id", "modulos_legiveis")
+    search_fields = ("nome", "zouti_product_id")
+
+    @admin.display(description="Módulos")
+    def modulos_legiveis(self, obj):
+        return ", ".join(NOMES_MODULOS[m] for m in obj.lista_modulos()) or "-"
+
+
+class AssinaturaInline(admin.TabularInline):
+    model = Assinatura
+    extra = 0
+    can_delete = False
+    fields = ("zouti_subscription_id", "plano", "status", "motivo", "proxima_cobranca", "acesso_ate", "zouti_product_ids")
+    readonly_fields = fields
+
+    def has_add_permission(self, request, obj=None):
+        return False
+
+
+class ContaAppfiliadoForm(forms.ModelForm):
+    modulos_cortesia = CampoModulos(label="Módulos de cortesia")
+
+    class Meta:
+        model = ContaAppfiliado
+        fields = "__all__"
+
+
+@admin.register(ContaAppfiliado)
+class ContaAppfiliadoAdmin(admin.ModelAdmin):
+    form = ContaAppfiliadoForm
+    list_display = ("email", "nome", "chave", "modulos_agora", "criada_em")
+    search_fields = ("email", "nome", "chave", "assinaturas__zouti_subscription_id")
+    readonly_fields = ("chave", "chave_enviada_em", "modulos_agora", "criada_em", "atualizada_em")
+    fields = (
+        "email", "nome", "chave", "chave_enviada_em", "modulos_agora",
+        "modulos_cortesia", "cortesia_ate", "criada_em", "atualizada_em",
     )
-    list_filter = ("assinatura_valida", "processado_com_sucesso", "webhook_event_type")
-    search_fields = ("email", "kiwify_subscription_id", "corpo_bruto")
-    readonly_fields = [f.name for f in EventoWebhookKiwify._meta.fields]
+    inlines = [AssinaturaInline]
+    actions = ["reenviar_chave"]
+
+    @admin.display(description="Módulos liberados agora")
+    def modulos_agora(self, obj):
+        if not obj.pk:
+            return "-"
+        return ", ".join(NOMES_MODULOS[m] for m in obj.modulos_liberados()) or "Nenhum"
+
+    @admin.action(description="Reenviar a chave por e-mail")
+    def reenviar_chave(self, request, queryset):
+        enviados = sum(1 for conta in queryset if enviar_email_chave(conta.pk))
+        falhas = queryset.count() - enviados
+        self.message_user(request, f"Chave reenviada para {enviados} conta(s).")
+        if falhas:
+            self.message_user(request, f"{falhas} envio(s) falharam - veja os logs.", level=messages.WARNING)
+
+
+@admin.register(EventoWebhookZouti)
+class EventoWebhookZoutiAdmin(admin.ModelAdmin):
+    list_display = (
+        "tipo_evento", "email", "assinatura_valida", "processado_com_sucesso", "resultado", "recebido_em",
+    )
+    list_filter = ("assinatura_valida", "processado_com_sucesso", "tipo_evento")
+    search_fields = ("email", "zouti_event_id", "zouti_object_id", "corpo_bruto")
+    readonly_fields = [f.name for f in EventoWebhookZouti._meta.fields]
 
     def has_add_permission(self, request):
         return False
