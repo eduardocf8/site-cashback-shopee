@@ -2787,6 +2787,18 @@ reaproveitando `Appfiliado/periodos.py`, `Appfiliado/metas.py` e
       tela de entrar, assinatura dos e-mails e aviso no rodapé: "ferramentas feitas só
       para afiliados da Shopee. Somos independentes, sem vínculo oficial com a Shopee."
       A página de vendas (fase 5) deve repetir isso.
+- [x] **A Shopee só libera faturamento, comissão estimada e pedidos no dia seguinte**
+      (no mesmo dia só a comissão validada vai entrando): o Início mostra "Ontem" e a
+      "Comissão validada hoje"; Resultados avisa quando o período inclui hoje; a
+      projeção da meta usa o ritmo até ontem (painel e app de Windows).
+- [x] **Agrupar Sub IDs** (Configurações): regras "começa com / não começa com /
+      contém / não contém / termina com / não termina com" + nome do grupo, sem
+      diferenciar maiúsculas; vale a primeira regra que casar (até 20 por conta). Só
+      muda como os Sub IDs aparecem em Resultados - os dados guardados não mudam.
+- [x] **Sub ID lido do jeito da Shopee**: o `utmContent` traz os 5 Sub IDs do link
+      separados por "-" ("----" = nenhum). Cada venda conta uma vez, com os campos
+      preenchidos juntos ("siteconversor----" vira "siteconversor"). Os dados antigos
+      se corrigem na próxima sincronização (a janela de 89 dias é refeita toda vez).
 - [x] **Português dos textos**: "pra" só quando dá para trocar por "para a"; nos outros
       casos, "para" (telas, e-mails, admin e comentários do painel e das licenças).
 - [x] **Como os números chegam**: as telas só leem o banco (`ResultadoDiario`,

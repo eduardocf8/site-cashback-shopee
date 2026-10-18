@@ -80,8 +80,9 @@ def test_situacao_no_meio_do_mes():
     assert s["bonus_garantido"] == 300
     assert s["proxima"]["percentual"] == 125
     assert s["falta"] == 6500
-    # 31.000 em 18 dias -> ~53.389 em 31 dias: passa da faixa de 150%
-    assert s["projecao"] == pytest.approx(31000 / 18 * 31)
+    # 31.000 em 17 dias com dados (hoje a Shopee ainda não mostrou) -> ~56.529
+    # em 31 dias: passa da faixa de 150%
+    assert s["projecao"] == pytest.approx(31000 / 17 * 31)
     assert s["faixa_projetada"]["percentual"] == 150
     assert s["dias_restantes"] == 14  # 18 a 31, contando hoje
     assert s["por_dia"] == pytest.approx(6500 / 14)
@@ -91,6 +92,12 @@ def test_situacao_sem_metas():
     s = metas.situacao(1000, [], date(2026, 10, 18), 2026, 10)
     assert s["proxima"] is None
     assert s["fracao"] == 0
+
+
+def test_primeiro_dia_do_mes_nao_projeta():
+    s = metas.situacao(0, FAIXAS, date(2026, 10, 1), 2026, 10)
+    assert s["projecao"] == 0
+    assert s["dias_restantes"] == 31
 
 
 def test_mes_fechado_nao_projeta():

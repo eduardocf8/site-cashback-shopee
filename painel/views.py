@@ -16,7 +16,7 @@ from licencas.services import resposta_validacao
 from . import cripto
 from . import modulos as mod
 from . import periodos, resultados, telas
-from .models import MetaMensal
+from .models import MetaMensal, RegraSubId
 from .autenticacao import (
     conta_logada,
     conta_requerida,
@@ -28,10 +28,11 @@ from .autenticacao import (
     token_senha,
 )
 from .emails import enviar_email_recuperar_senha
-from .forms import EntrarForm, EsqueciSenhaForm, NovaSenhaForm, ShopeeForm, TrocarSenhaForm
+from .forms import EntrarForm, EsqueciSenhaForm, NovaSenhaForm, RegraSubIdForm, ShopeeForm, TrocarSenhaForm
 from .shopee import testar_credenciais
 
 NOMES_MODULOS = dict(MODULOS)
+MAXIMO_REGRAS_SUB_ID = 20
 DIAS_SEMANA = ["segunda-feira", "terça-feira", "quarta-feira", "quinta-feira", "sexta-feira", "sábado", "domingo"]
 MESES = ["janeiro", "fevereiro", "março", "abril", "maio", "junho", "julho", "agosto",
          "setembro", "outubro", "novembro", "dezembro"]
@@ -149,9 +150,12 @@ def inicio(request):
     if conta.shopee_validado_em:
         mes = resultados.totais(conta, inicio_mes, hoje)
         do_dia = resultados.totais(conta, hoje, hoje)
+        ontem = hoje - timedelta(days=1)
         contexto.update({
             "mes": mes,
             "do_dia": do_dia,
+            "ontem": ontem,
+            "do_ontem": resultados.totais(conta, ontem, ontem),
             "meta": telas.situacao_meta(conta, hoje.year, hoje.month, hoje),
         })
     return render(request, "painel/inicio.html", _contexto(request, "inicio", **contexto))
@@ -176,6 +180,7 @@ def resultados_view(request):
         mesmo_mes = (periodo["inicio"].year, periodo["inicio"].month) == (periodo["fim"].year, periodo["fim"].month)
         contexto.update({
             "totais": resultados.totais(conta, periodo["inicio"], periodo["fim"]),
+            "inclui_hoje": periodo["fim"] >= hoje,
             "linhas": list(reversed(linhas)),
             "grafico": telas.barras(linhas, periodo["metrica"]),
             "sub_ids": resultados.por_sub_id(conta, periodo["inicio"], periodo["fim"]),
@@ -275,6 +280,7 @@ def configuracoes(request):
     conta = conta_logada(request)
     form_shopee = ShopeeForm(initial={"app_id": conta.shopee_app_id})
     form_senha = TrocarSenhaForm(conta=conta)
+    form_regra = RegraSubIdForm()
 
     if request.method == "POST" and request.POST.get("formulario") == "shopee":
         form_shopee = ShopeeForm(request.POST)
@@ -306,8 +312,23 @@ def configuracoes(request):
             messages.success(request, "Senha alterada.")
             return redirect("painel_configuracoes")
 
+    elif request.method == "POST" and request.POST.get("formulario") == "regra_sub_id":
+        form_regra = RegraSubIdForm(request.POST)
+        if conta.regras_sub_id.count() >= MAXIMO_REGRAS_SUB_ID:
+            form_regra.add_error(None, f"Dá para ter até {MAXIMO_REGRAS_SUB_ID} agrupamentos.")
+        elif form_regra.is_valid():
+            RegraSubId.objects.create(conta=conta, **form_regra.cleaned_data)
+            messages.success(request, "Agrupamento criado.")
+            return redirect(f"{request.path}#sub-ids")
+
+    elif request.method == "POST" and request.POST.get("formulario") == "apagar_regra_sub_id":
+        RegraSubId.objects.filter(conta=conta, pk=request.POST.get("regra")).delete()
+        messages.info(request, "Agrupamento apagado.")
+        return redirect(f"{request.path}#sub-ids")
+
     return render(request, "painel/configuracoes.html", _contexto(
-        request, "configuracoes", form_shopee=form_shopee, form_senha=form_senha,
+        request, "configuracoes", form_shopee=form_shopee, form_senha=form_senha, form_regra=form_regra,
+        regras=resultados.resumo_das_regras(conta, telas.hoje()),
     ))
 
 

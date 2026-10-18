@@ -237,7 +237,9 @@ from zoneinfo import ZoneInfo  # noqa: E402
 from django.core.management import call_command  # noqa: E402
 
 from . import resultados, telas  # noqa: E402
-from .models import MetaMensal, ResultadoDiario, ResultadoSubIdDiario, SincronizacaoResultados  # noqa: E402
+from .models import (  # noqa: E402
+    MetaMensal, RegraSubId, ResultadoDiario, ResultadoSubIdDiario, SincronizacaoResultados,
+)
 from .shopee import ShopeeAPIError, buscar_conversoes  # noqa: E402
 
 SP = ZoneInfo("America/Sao_Paulo")
@@ -266,7 +268,7 @@ class TestCalculo(TestCase):
         conversoes = [
             # compra 10/10, validada em 15/10
             conversao(ts(2026, 10, 10), [pedido("p1", "COMPLETED", [item("50,00", 2, "8,00", ts(2026, 10, 15))])],
-                      comissao="8,00", utm="grupoA|story"),
+                      comissao="8,00", utm="grupoA-story---"),
             # compra 10/10 cancelada: não entra no faturamento nem na estimada
             conversao(ts(2026, 10, 10), [pedido("p2", "CANCELLED", [item("200")])], comissao="30"),
             # 23h de 09/10 em São Paulo (02h de 10/10 em UTC) conta no dia 09
@@ -281,9 +283,17 @@ class TestCalculo(TestCase):
         self.assertEqual(dia10["comissao_validada"], 0.0)
         self.assertEqual(por_dia[date(2026, 10, 15)]["comissao_validada"], 8.0)
         self.assertEqual(por_dia[date(2026, 10, 9)]["faturamento"], 40.0)
-        self.assertEqual(por_sub_id[(date(2026, 10, 10), "grupoA")]["vendas"], 1)
-        self.assertEqual(por_sub_id[(date(2026, 10, 10), "story")]["comissao_estimada"], 8.0)
+        # cada venda conta uma vez, com os Sub IDs preenchidos juntos
+        self.assertEqual(por_sub_id[(date(2026, 10, 10), "grupoA-story")]["vendas"], 1)
+        self.assertEqual(por_sub_id[(date(2026, 10, 10), "grupoA-story")]["comissao_estimada"], 8.0)
         self.assertEqual(por_sub_id[(date(2026, 10, 10), "sem_subid")]["comissao_estimada"], 0.0)
+
+    def test_sub_id_vem_com_os_5_campos_separados_por_hifen(self):
+        self.assertEqual(resultados.sub_id({"utmContent": "----"}), "sem_subid")
+        self.assertEqual(resultados.sub_id({"utmContent": "-"}), "sem_subid")
+        self.assertEqual(resultados.sub_id({}), "sem_subid")
+        self.assertEqual(resultados.sub_id({"utmContent": "siteconversor----"}), "siteconversor")
+        self.assertEqual(resultados.sub_id({"utmContent": "grupoA--story--"}), "grupoA-story")
 
     def test_numeros_em_varios_formatos(self):
         self.assertEqual(resultados.para_numero("1.234,56"), 1234.56)
@@ -378,6 +388,50 @@ class TestSincronizacao(TestCase):
         self.assertFalse(estado.aguardando)
 
 
+class TestAgruparSubIds(TestCase):
+    def setUp(self):
+        self.conta = ContaAppfiliado.objects.create(email="bia@exemplo.com")
+
+    def regra(self, operador, texto, nome="Grupo"):
+        return RegraSubId.objects.create(conta=self.conta, operador=operador, texto=texto, nome=nome)
+
+    def test_os_6_filtros_sem_diferenciar_maiusculas(self):
+        casos = [
+            ("comeca", "GRUPO", "grupoVip", True), ("comeca", "grupo", "vipgrupo", False),
+            ("nao_comeca", "grupo", "vipgrupo", True), ("nao_comeca", "grupo", "grupoVip", False),
+            ("contem", "vip", "grupoVipNoite", True), ("contem", "vip", "grupoNoite", False),
+            ("nao_contem", "vip", "grupoNoite", True), ("nao_contem", "vip", "grupoVip", False),
+            ("termina", "noite", "grupoNOITE", True), ("termina", "noite", "noiteGrupo", False),
+            ("nao_termina", "noite", "noiteGrupo", True), ("nao_termina", "noite", "grupoNoite", False),
+        ]
+        for operador, texto, valor, esperado in casos:
+            with self.subTest(operador=operador, valor=valor):
+                self.assertEqual(RegraSubId(operador=operador, texto=texto).casa(valor), esperado)
+
+    def test_agrupa_na_ordem_e_soma(self):
+        dia = date(2026, 10, 10)
+        for sub, vendas, comissao in [("grupoA", 2, "10"), ("grupoB", 3, "20"), ("story", 1, "50"),
+                                      ("sem_subid", 4, "5")]:
+            ResultadoSubIdDiario.objects.create(conta=self.conta, dia=dia, sub_id=sub, vendas=vendas,
+                                                comissao_estimada=Decimal(comissao))
+        self.regra("comeca", "grupo", "Grupos")
+        self.regra("contem", "a", "Nunca usado para grupoA")  # a primeira regra que casa vale
+        linhas = resultados.por_sub_id(self.conta, dia, dia)
+        self.assertEqual(
+            [(l["sub_id"], l["vendas"], l["comissao"], l["quantidade"]) for l in linhas],
+            [("story", 1, Decimal("50"), 1), ("Grupos", 5, Decimal("30"), 2), ("Sem Sub ID", 4, Decimal("5"), 1)],
+        )
+
+    def test_resumo_mostra_quantos_sub_ids_cada_regra_junta(self):
+        hoje = date(2026, 10, 18)
+        for sub in ("grupoA", "grupoB", "story"):
+            ResultadoSubIdDiario.objects.create(conta=self.conta, dia=hoje, sub_id=sub, vendas=1)
+        self.regra("comeca", "grupo")
+        self.regra("termina", "zzz")
+        resumo = resultados.resumo_das_regras(self.conta, hoje)
+        self.assertEqual([(r["quantidade"], r["exemplos"]) for r in resumo], [(2, ["grupoA", "grupoB"]), (0, [])])
+
+
 class TestBuscaNaShopee(TestCase):
     def test_pagina_e_tira_campo_que_a_api_nao_conhece(self):
         respostas = [
@@ -458,6 +512,55 @@ class TestTelasDeResultados(BasePainel):
         html = self.client.get("/").content.decode()
         self.assertIn("Cadastrar metas", html)
         self.assertNotIn("Primeiros passos", html)  # metas são opcionais: não viram passo pendente
+
+    def test_inicio_mostra_ontem_e_a_validada_de_hoje(self, _):
+        self.conectar_shopee()
+        ResultadoDiario.objects.create(conta=self.conta, dia=date(2026, 10, 17), pedidos=7,
+                                       faturamento=Decimal("812.40"), comissao_estimada=Decimal("61.10"))
+        ResultadoDiario.objects.filter(conta=self.conta, dia=date(2026, 10, 18)).update(comissao_validada=Decimal("42.75"))
+        html = self.client.get("/").content.decode()
+        self.assertIn("<h2>Ontem</h2>", html)
+        self.assertIn("R$ 812,40", html)
+        self.assertIn("R$ 61,10", html)
+        self.assertIn("Comissão validada hoje", html)
+        self.assertIn("R$ 42,75", html)
+
+    def test_resultados_avisam_quando_o_periodo_inclui_hoje(self, _):
+        self.conectar_shopee()
+        aviso = "De hoje só aparece a comissão validada"
+        self.assertContains(self.client.get("/resultados/?periodo=hoje"), aviso)
+        self.assertNotContains(self.client.get("/resultados/?periodo=mes_passado"), aviso)
+
+    def test_criar_e_apagar_agrupamento_nas_configuracoes(self, _):
+        self.conectar_shopee()
+        resposta = self.client.post("/configuracoes/", {
+            "formulario": "regra_sub_id", "operador": "comeca", "texto": " grupo ", "nome": "Grupos de WhatsApp",
+        })
+        self.assertRedirects(resposta, "/configuracoes/#sub-ids", fetch_redirect_response=False)
+        regra = RegraSubId.objects.get(conta=self.conta)
+        self.assertEqual((regra.operador, regra.texto), ("comeca", "grupo"))
+
+        html = self.client.get("/configuracoes/").content.decode()
+        self.assertIn("Grupos de WhatsApp", html)
+        self.assertIn("Junta 1 Sub ID", html)  # o grupoA dos dados de exemplo
+        html = self.client.get("/resultados/").content.decode()
+        self.assertIn("Grupos de WhatsApp", html)
+
+        self.client.post("/configuracoes/", {"formulario": "apagar_regra_sub_id", "regra": regra.pk})
+        self.assertFalse(RegraSubId.objects.exists())
+
+    def test_agrupamento_de_outra_conta_nao_e_apagado(self, _):
+        outra = ContaAppfiliado.objects.create(email="outra@exemplo.com")
+        regra = RegraSubId.objects.create(conta=outra, operador="contem", texto="x", nome="X")
+        self.client.post("/configuracoes/", {"formulario": "apagar_regra_sub_id", "regra": regra.pk})
+        self.assertTrue(RegraSubId.objects.filter(pk=regra.pk).exists())
+
+    def test_agrupamento_sem_texto_e_recusado(self, _):
+        resposta = self.client.post("/configuracoes/", {
+            "formulario": "regra_sub_id", "operador": "comeca", "texto": "  ", "nome": "Grupos",
+        })
+        self.assertEqual(resposta.status_code, 200)
+        self.assertFalse(RegraSubId.objects.exists())
 
     def test_resultados_do_mes(self, _):
         self.conectar_shopee()

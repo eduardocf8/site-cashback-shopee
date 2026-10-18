@@ -94,3 +94,42 @@ class MetaMensal(models.Model):
 
     def __str__(self):
         return f"{self.conta.email} {self.mes:02d}/{self.ano}"
+
+
+class RegraSubId(models.Model):
+    """Junta vários Sub IDs num nome só nas telas (ex: todo Sub ID que começa com
+    "grupo" aparece como "Grupos de WhatsApp"). As regras são conferidas na ordem em que foram
+    criadas; vale a primeira que casar. Não mexe nos dados guardados."""
+
+    COMECA, NAO_COMECA = "comeca", "nao_comeca"
+    CONTEM, NAO_CONTEM = "contem", "nao_contem"
+    TERMINA, NAO_TERMINA = "termina", "nao_termina"
+    OPERADORES = [
+        (COMECA, "começa com"), (NAO_COMECA, "não começa com"),
+        (CONTEM, "contém"), (NAO_CONTEM, "não contém"),
+        (TERMINA, "termina com"), (NAO_TERMINA, "não termina com"),
+    ]
+
+    conta = models.ForeignKey(ContaAppfiliado, on_delete=models.CASCADE, related_name="regras_sub_id")
+    operador = models.CharField(max_length=12, choices=OPERADORES)
+    texto = models.CharField(max_length=120)
+    nome = models.CharField("nome do grupo", max_length=60)
+    criada_em = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ["id"]
+        verbose_name = "regra de Sub ID"
+        verbose_name_plural = "regras de Sub ID"
+
+    def __str__(self):
+        return f'{self.get_operador_display()} "{self.texto}" -> {self.nome}'
+
+    def casa(self, sub_id: str) -> bool:
+        """Sem diferenciar maiúsculas de minúsculas."""
+        valor, texto = sub_id.lower(), self.texto.lower()
+        testes = {
+            self.COMECA: valor.startswith(texto), self.CONTEM: texto in valor, self.TERMINA: valor.endswith(texto),
+        }
+        positivo = self.operador.replace("nao_", "")
+        resultado = testes.get(positivo, False)
+        return not resultado if self.operador.startswith("nao_") else resultado

@@ -48,7 +48,7 @@ def situacao(faturamento: float, metas: list[dict], hoje: date, ano: int, mes: i
 
     - batidas: faixas já alcançadas; bonus_garantido = bônus da maior delas.
     - proxima / falta: próxima faixa e quanto falta pra ela.
-    - projecao: faturamento no fim do mês mantendo o ritmo diário até hoje;
+    - projecao: faturamento no fim do mês mantendo o ritmo diário até ontem;
       faixa_projetada = maior faixa que essa projeção alcança.
     - por_dia: quanto precisa faturar por dia, nos dias que restam (contando
       hoje), pra chegar na próxima faixa.
@@ -66,8 +66,11 @@ def situacao(faturamento: float, metas: list[dict], hoje: date, ano: int, mes: i
         dias_passados = hoje.day
     dias_restantes = dias_no_mes - dias_passados + (1 if inicio_mes <= hoje <= fim_mes else 0)
 
-    if dias_passados and dias_passados < dias_no_mes:
-        projecao = faturamento / dias_passados * dias_no_mes
+    # A Shopee só libera o faturamento de um dia no dia seguinte: o ritmo do mês é
+    # medido com os dias até ontem (hoje ainda aparece zerado).
+    dias_com_dados = dias_passados - 1 if inicio_mes <= hoje <= fim_mes else dias_passados
+    if dias_com_dados and dias_com_dados < dias_no_mes:
+        projecao = faturamento / dias_com_dados * dias_no_mes
     else:
         projecao = faturamento
 

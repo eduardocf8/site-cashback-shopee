@@ -1,7 +1,7 @@
 {% extends "painel/base.html" %}
 {% block titulo %}Configurações{% endblock %}
 {% block conteudo %}
-<header class="cabecalho"><div><h1>Configurações</h1><p>Sua conta da Shopee e sua senha.</p></div></header>
+<header class="cabecalho"><div><h1>Configurações</h1><p>Sua conta da Shopee, agrupamentos de Sub IDs e sua senha.</p></div></header>
 
 <div class="duas-colunas">
   <section class="card" aria-labelledby="titulo-shopee">
@@ -29,4 +29,35 @@
     </form>
   </section>
 </div>
+
+<section class="card" id="sub-ids" aria-labelledby="titulo-sub-ids" style="margin-top:16px">
+  <h2 id="titulo-sub-ids">Agrupar Sub IDs</h2>
+  <p class="suave pequeno" style="margin-bottom:16px">Junte vários Sub IDs num nome só nos seus resultados. Ex: todo Sub ID que <strong>começa com</strong> "grupo" aparece como "Grupos de WhatsApp". Sem diferença entre maiúsculas e minúsculas. Se um Sub ID se encaixar em mais de um agrupamento, vale o primeiro da lista.</p>
+
+  {% if regras %}
+    <ol class="regras">
+      {% for item in regras %}
+        <li>
+          <div class="regra-texto">
+            <span>Se o Sub ID <strong>{{ item.regra.get_operador_display }}</strong> “{{ item.regra.texto }}”, mostrar como <strong>{{ item.regra.nome }}</strong></span>
+            <span class="suave pequeno">{% if item.quantidade %}Junta {{ item.quantidade }} Sub ID{{ item.quantidade|pluralize }} dos últimos 90 dias (ex: {{ item.exemplos|join:", " }}){% else %}Nenhum Sub ID dos últimos 90 dias entra aqui{% endif %}</span>
+          </div>
+          <form method="post">
+            {% csrf_token %}
+            <input type="hidden" name="formulario" value="apagar_regra_sub_id">
+            <input type="hidden" name="regra" value="{{ item.regra.pk }}">
+            <button type="submit" class="botao botao-claro botao-pequeno">Apagar</button>
+          </form>
+        </li>
+      {% endfor %}
+    </ol>
+  {% endif %}
+
+  <form method="post" class="formulario form-regra">
+    {% csrf_token %}
+    <input type="hidden" name="formulario" value="regra_sub_id">
+    {% include "painel/_campos.html" with form=form_regra %}
+    <div><button type="submit" class="botao botao-escuro">{% include "painel/_icone.html" with caminho=icones.mais %}Adicionar agrupamento</button></div>
+  </form>
+</section>
 {% endblock %}

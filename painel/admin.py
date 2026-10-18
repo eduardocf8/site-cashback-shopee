@@ -1,6 +1,6 @@
 from django.contrib import admin
 
-from .models import MetaMensal, SincronizacaoResultados
+from .models import MetaMensal, RegraSubId, SincronizacaoResultados
 
 
 @admin.register(SincronizacaoResultados)
@@ -26,3 +26,9 @@ class MetaMensalAdmin(admin.ModelAdmin):
     list_display = ("conta", "ano", "mes")
     list_filter = ("ano", "mes")
     search_fields = ("conta__email",)
+
+
+@admin.register(RegraSubId)
+class RegraSubIdAdmin(admin.ModelAdmin):
+    list_display = ("conta", "operador", "texto", "nome")
+    search_fields = ("conta__email", "texto", "nome")
