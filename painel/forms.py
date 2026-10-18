@@ -54,3 +54,24 @@ class ShopeeForm(forms.Form):
         widget=forms.PasswordInput(attrs={"autocomplete": "off"}),
         help_text="Deixe em branco para manter o que já está salvo.",
     )
+
+
+class RegraSubIdForm(forms.Form):
+    operador = forms.ChoiceField(label="Se o Sub ID", choices=[])
+    texto = forms.CharField(label="Texto", max_length=120, widget=forms.TextInput(attrs={"placeholder": "ex: grupo"}))
+    nome = forms.CharField(label="Mostrar como", max_length=60, widget=forms.TextInput(attrs={"placeholder": "ex: Grupos de WhatsApp"}))
+
+    def __init__(self, *args, **kwargs):
+        from .models import RegraSubId
+
+        super().__init__(*args, **kwargs)
+        self.fields["operador"].choices = RegraSubId.OPERADORES
+
+    def clean_texto(self):
+        texto = self.cleaned_data["texto"].strip()
+        if not texto:
+            raise forms.ValidationError("Informe o texto.")
+        return texto
+
+    def clean_nome(self):
+        return self.cleaned_data["nome"].strip()

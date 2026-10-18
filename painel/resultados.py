@@ -24,7 +24,7 @@ from django.db.models import Sum
 from django.utils import timezone
 
 from . import cripto
-from .models import ResultadoDiario, ResultadoSubIdDiario, SincronizacaoResultados
+from .models import RegraSubId, ResultadoDiario, ResultadoSubIdDiario, SincronizacaoResultados
 from .periodos import agrupar
 from .shopee import buscar_conversoes
 
@@ -95,26 +95,31 @@ def comissao_estimada(conversao: dict) -> float:
     return comissao
 
 
-def _partes_sub_id(valor) -> list[str]:
+SEM_SUB_ID = "sem_subid"
+NOME_SEM_SUB_ID = "Sem Sub ID"
+
+
+def _textos(valor) -> list[str]:
     if isinstance(valor, list):
-        return [p for item in valor for p in _partes_sub_id(item)]
+        return [t for item in valor for t in _textos(item)]
     if isinstance(valor, dict):
-        return [p for item in valor.values() for p in _partes_sub_id(item)]
+        return [t for item in valor.values() for t in _textos(item)]
     texto = str(valor or "").strip()
-    if not texto:
-        return []
-    for separador in ("|", ";", ","):
-        if separador in texto:
-            return [parte.strip() for parte in texto.split(separador) if parte.strip()]
-    return [texto]
+    return [texto] if texto else []
 
 
-def sub_ids(conversao: dict) -> list[str]:
-    encontrados = []
-    for parte in _partes_sub_id(conversao.get("utmContent")):
-        if parte not in encontrados:
-            encontrados.append(parte)
-    return encontrados or ["sem_subid"]
+def sub_id(conversao: dict) -> str:
+    """O utmContent da Shopee traz os 5 Sub IDs do link juntos, separados por "-"
+    (ex: "grupoA-story---", ou "----" quando não tem nenhum). Sub ID só aceita
+    letras e números, então o "-" não aparece dentro deles. Cada venda fica com um
+    rótulo só, com os campos preenchidos: "grupoA-story"."""
+    partes = [
+        parte.strip()
+        for texto in _textos(conversao.get("utmContent"))
+        for parte in re.split(r"[-|;,]", texto)
+        if parte.strip()
+    ]
+    return "-".join(partes)[:120] or SEM_SUB_ID
 
 
 def _dia_local(ts: int) -> date:
@@ -148,10 +153,9 @@ def calcular_por_dia(conversoes: list[dict]) -> tuple[dict, dict]:
         if dia_compra:
             estimada = comissao_estimada(conversao)
             por_dia[dia_compra]["comissao_estimada"] += estimada
-            for sub_id in sub_ids(conversao):
-                item = por_sub_id[(dia_compra, sub_id[:120])]
-                item["vendas"] += 1
-                item["comissao_estimada"] += estimada
+            item = por_sub_id[(dia_compra, sub_id(conversao))]
+            item["vendas"] += 1
+            item["comissao_estimada"] += estimada
 
         pedidos = conversao.get("orders")
         for pedido in pedidos if isinstance(pedidos, list) else []:
@@ -303,10 +307,50 @@ def serie(conta, inicio: date, fim: date, modo: str = "dia") -> list[dict]:
     return agrupar(linhas, modo)
 
 
+def nome_do_grupo(sub_id_bruto: str, regras) -> str:
+    if sub_id_bruto == SEM_SUB_ID:
+        return NOME_SEM_SUB_ID
+    for regra in regras:
+        if regra.casa(sub_id_bruto):
+            return regra.nome
+    return sub_id_bruto
+
+
 def por_sub_id(conta, inicio: date, fim: date, limite: int = 8) -> list[dict]:
-    return list(
+    """Comissão estimada e vendas por Sub ID no período, já com os agrupamentos da
+    conta aplicados (ver RegraSubId)."""
+    brutos = (
         ResultadoSubIdDiario.objects.filter(conta=conta, dia__gte=inicio, dia__lte=fim)
         .values("sub_id")
         .annotate(vendas=Sum("vendas"), comissao=Sum("comissao_estimada"))
-        .order_by("-comissao", "-vendas")[:limite]
     )
+    regras = list(RegraSubId.objects.filter(conta=conta))
+    grupos = {}
+    for bruto in brutos:
+        nome = nome_do_grupo(bruto["sub_id"], regras)
+        grupo = grupos.setdefault(nome, {"sub_id": nome, "vendas": 0, "comissao": Decimal(0), "quantidade": 0})
+        grupo["vendas"] += bruto["vendas"] or 0
+        grupo["comissao"] += bruto["comissao"] or 0
+        grupo["quantidade"] += 1
+    ordenados = sorted(grupos.values(), key=lambda g: (g["comissao"], g["vendas"]), reverse=True)
+    return ordenados[:limite]
+
+
+def resumo_das_regras(conta, hoje: date) -> list[dict]:
+    """Cada regra com quantos Sub IDs dos últimos 90 dias ela junta (e exemplos)."""
+    regras = list(RegraSubId.objects.filter(conta=conta))
+    pegos = {regra.pk: [] for regra in regras}
+    brutos = (
+        ResultadoSubIdDiario.objects.filter(conta=conta, dia__gte=hoje - timedelta(days=90))
+        .values_list("sub_id", flat=True).distinct()
+    )
+    for bruto in brutos:
+        if bruto == SEM_SUB_ID:
+            continue
+        regra = next((r for r in regras if r.casa(bruto)), None)
+        if regra:
+            pegos[regra.pk].append(bruto)
+    return [
+        {"regra": regra, "quantidade": len(pegos[regra.pk]), "exemplos": sorted(pegos[regra.pk])[:2]}
+        for regra in regras
+    ]

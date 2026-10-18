@@ -49,7 +49,7 @@
       <h2>Meta do mês</h2>
       {% include "painel/_meta.html" %}
     {% else %}
-      <h2>Comissão por Sub ID</h2>
+      <div class="card-topo"><h2>Comissão por Sub ID</h2><a class="pequeno" href="{% url 'painel_configuracoes' %}#sub-ids">Agrupar</a></div>
       {% include "painel/_sub_ids.html" %}
     {% endif %}
   </section>
@@ -70,7 +70,7 @@
     </div>
   </section>
   {% if meta and meta.metas %}
-    <section class="card"><h2>Comissão por Sub ID</h2>{% include "painel/_sub_ids.html" %}</section>
+    <section class="card"><div class="card-topo"><h2>Comissão por Sub ID</h2><a class="pequeno" href="{% url 'painel_configuracoes' %}#sub-ids">Agrupar</a></div>{% include "painel/_sub_ids.html" %}</section>
   {% else %}
     <section class="card">
       <h2>Como os números são contados</h2>
