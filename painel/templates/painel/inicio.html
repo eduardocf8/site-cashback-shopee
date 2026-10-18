@@ -1,0 +1,51 @@
+{% extends "painel/base.html" %}
+{% block titulo %}Início{% endblock %}
+{% block conteudo %}
+<header class="cabecalho">
+  <div>
+    <h1>Olá{% if primeiro_nome %}, {{ primeiro_nome }}{% endif %}!</h1>
+    <p>{{ hoje }}</p>
+  </div>
+</header>
+
+<div class="duas-colunas">
+  <section class="card" aria-labelledby="titulo-passos">
+    <h2 id="titulo-passos">Primeiros passos</h2>
+    <ul class="passos">
+      {% for passo in passos %}
+        <li>
+          <span class="marcador {% if passo.feito %}feito{% endif %}">{% include "painel/_icone.html" with caminho=icones.check %}</span>
+          <span class="titulo {% if passo.feito %}feito-texto{% endif %}">{{ passo.titulo }}</span>
+          {% if passo.feito %}
+            <span class="estado estado-liberado">Feito</span>
+          {% elif passo.em_breve %}
+            <span class="estado estado-em_breve">Em breve</span>
+          {% elif passo.href %}
+            <a class="botao botao-escuro botao-pequeno" href="{% url passo.href %}">{{ passo.acao }}</a>
+          {% endif %}
+        </li>
+      {% endfor %}
+    </ul>
+  </section>
+
+  <section class="card" aria-labelledby="titulo-novidades">
+    <h2 id="titulo-novidades">O que vem por aí</h2>
+    <p class="suave pequeno">Este é o novo painel do Appfiliado. Nas próximas semanas chegam aqui os seus resultados da Shopee (faturamento, comissões e metas), o bot de WhatsApp sem programa no computador e o seu site com vitrine.</p>
+  </section>
+</div>
+
+<section aria-labelledby="titulo-modulos">
+  <h2 id="titulo-modulos" style="font-size:16px;margin:4px 0 12px">Seus módulos</h2>
+  <div class="grade">
+    {% for m in cartoes_modulos %}
+      <a class="card modulo-card" href="{{ m.href }}">
+        <div class="topo">
+          <span class="icone-redondo">{% include "painel/_icone.html" with caminho=m.icone_path %}</span>
+          <span class="estado estado-{{ m.estado }}">{% if m.estado == "liberado" %}Liberado{% elif m.estado == "bloqueado" %}Não incluso{% else %}Em breve{% endif %}</span>
+        </div>
+        <strong>{{ m.nome }}</strong>
+      </a>
+    {% endfor %}
+  </div>
+</section>
+{% endblock %}

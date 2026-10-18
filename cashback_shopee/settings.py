@@ -95,6 +95,7 @@ INSTALLED_APPS = [
     "axes",
     "licencas",
     "pinterest",
+    "painel",
 ]
 
 AUTH_USER_MODEL = "accounts.User"
@@ -300,6 +301,19 @@ APPFILIADO_API_HOSTS = [
     h.strip().lower() for h in os.environ.get("APPFILIADO_API_HOSTS", "").split(",") if h.strip()
 ]
 
+# Painel web do Appfiliado (app painel). APPFILIADO_PAINEL_HOSTS: domínios que mostram
+# só o painel (cada um também precisa estar em DJANGO_ALLOWED_HOSTS).
+# APPFILIADO_PAINEL_URL: endereço usado nos links dos e-mails.
+APPFILIADO_PAINEL_HOSTS = [
+    h.strip().lower() for h in os.environ.get("APPFILIADO_PAINEL_HOSTS", "").split(",") if h.strip()
+]
+APPFILIADO_PAINEL_URL = os.environ.get("APPFILIADO_PAINEL_URL", "https://app.appfiliado.com.br")
+# Página com os planos (botão "Desbloquear" dos módulos que a conta não tem).
+APPFILIADO_URL_PLANOS = os.environ.get("APPFILIADO_URL_PLANOS", "https://appfiliado.com.br")
+# Chave Fernet pra cifrar os segredos das contas (ex: Secret da Shopee) - ver painel/cripto.py.
+# Gerar com: python -c "from cryptography.fernet import Fernet; print(Fernet.generate_key().decode())"
+APPFILIADO_CHAVE_CRIPTOGRAFIA = os.environ.get("APPFILIADO_CHAVE_CRIPTOGRAFIA", "")
+
 # Remetente do e-mail com a chave de licença. O padrão usa o endereço da cash-b já
 # verificado no Brevo só como transporte técnico (o nome de exibição já é "Appfiliado").
 # Depois de autenticar appfiliado.com.br no Brevo, troque pela variável de ambiente:
@@ -309,6 +323,7 @@ APPFILIADO_EMAIL_REMETENTE = os.environ.get("APPFILIADO_EMAIL_REMETENTE", "Appfi
 MIDDLEWARE = [
     "django.middleware.security.SecurityMiddleware",
     "licencas.middleware.SoApiNoDominioAppfiliadoMiddleware",  # api.appfiliado.com.br só responde /licencas/
+    "painel.middleware.DominioDoPainelMiddleware",  # app.appfiliado.com.br mostra só o painel
     "whitenoise.middleware.WhiteNoiseMiddleware",
     "django.contrib.sessions.middleware.SessionMiddleware",
     "django.middleware.common.CommonMiddleware",

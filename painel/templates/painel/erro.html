@@ -1,0 +1,9 @@
+{% extends "painel/base_simples.html" %}
+{% block titulo %}{{ titulo }}{% endblock %}
+{% block conteudo %}
+<section class="card">
+  <h1>{{ titulo }}</h1>
+  <p class="suave">{{ texto }}</p>
+  <p style="margin-top:20px"><a class="botao botao-principal" href="/">Ir para o painel</a></p>
+</section>
+{% endblock %}

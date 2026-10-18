@@ -66,13 +66,29 @@ class ContaAppfiliadoAdmin(admin.ModelAdmin):
     form = ContaAppfiliadoForm
     list_display = ("email", "nome", "chave", "modulos_agora", "criada_em")
     search_fields = ("email", "nome", "chave", "assinaturas__zouti_subscription_id")
-    readonly_fields = ("chave", "chave_enviada_em", "modulos_agora", "criada_em", "atualizada_em")
+    readonly_fields = (
+        "chave", "chave_enviada_em", "modulos_agora", "tem_senha_painel", "ultimo_login",
+        "shopee_app_id", "shopee_validado_em", "criada_em", "atualizada_em",
+    )
     fields = (
         "email", "nome", "chave", "chave_enviada_em", "modulos_agora",
-        "modulos_cortesia", "cortesia_ate", "criada_em", "atualizada_em",
+        "modulos_cortesia", "cortesia_ate",
+        "tem_senha_painel", "ultimo_login", "shopee_app_id", "shopee_validado_em",
+        "criada_em", "atualizada_em",
     )
     inlines = [AssinaturaInline]
-    actions = ["reenviar_chave"]
+    actions = ["reenviar_chave", "enviar_link_senha"]
+
+    @admin.display(description="Senha do painel criada?", boolean=True)
+    def tem_senha_painel(self, obj):
+        return obj.tem_senha
+
+    @admin.action(description="Enviar link pra criar/trocar a senha do painel")
+    def enviar_link_senha(self, request, queryset):
+        from painel.emails import enviar_email_recuperar_senha
+
+        enviados = sum(1 for conta in queryset if enviar_email_recuperar_senha(conta))
+        self.message_user(request, f"Link enviado para {enviados} conta(s).")
 
     @admin.display(description="Módulos liberados agora")
     def modulos_agora(self, obj):

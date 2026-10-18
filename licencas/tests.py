@@ -295,7 +295,8 @@ class TestMigracaoDasLicencasAntigas(TransactionTestCase):
 
         executor = MigrationExecutor(connection)
         executor.loader.build_graph()
-        executor.migrate([("licencas", "0002_zouti_contas_e_modulos")])
+        # Até a última migração, pra o modelo atual bater com as colunas do banco.
+        executor.migrate(executor.loader.graph.leaf_nodes())
 
         dono = ContaAppfiliado.objects.get(chave="AF-ANTIGA1")
         self.assertEqual(dono.email, "dono@exemplo.com")

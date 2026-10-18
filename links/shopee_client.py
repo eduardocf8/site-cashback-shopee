@@ -48,7 +48,12 @@ def executar_graphql(query: str) -> dict:
             "Configure SHOPEE_AFFILIATE_APP_ID e SHOPEE_AFFILIATE_SECRET no arquivo .env "
             "com as credenciais da sua conta de afiliado Shopee."
         )
+    return executar_graphql_com_credenciais(app_id, secret, query)
 
+
+def executar_graphql_com_credenciais(app_id: str, secret: str, query: str) -> dict:
+    """Igual executar_graphql, mas com as credenciais de outra conta de afiliado
+    (usado pelo painel do Appfiliado, com as credenciais de cada cliente)."""
     payload = json.dumps({"query": query}, ensure_ascii=False, separators=(",", ":"))
     timestamp = int(time.time())
     assinatura = _assinar(app_id, secret, timestamp, payload)

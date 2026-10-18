@@ -1,0 +1,97 @@
+"""O que aparece no menu do painel e o estado de cada módulo para uma conta:
+liberado, "Em breve" (ainda não construído no painel) ou bloqueado (o plano
+não inclui - mostra cadeado e o convite pra assinar)."""
+
+from django.urls import reverse
+
+from licencas.models import (
+    MODULO_INSTAGRAM,
+    MODULO_SITE,
+    MODULO_VIDEOS,
+    MODULO_WHATSAPP,
+)
+
+# Ícones de traço 24x24, mesmo estilo da proposta de design.
+ICONES = {
+    "inicio": "M3 11l9-7 9 7v9a1 1 0 0 1-1 1h-5v-6H9v6H4a1 1 0 0 1-1-1z",
+    "whatsapp": "M21 12a8 8 0 0 1-11.6 7.1L4 21l1.9-5.4A8 8 0 1 1 21 12z",
+    "site": "M12 3a9 9 0 1 0 0 18 9 9 0 0 0 0-18zM3 12h18M12 3c3 3 3 15 0 18M12 3c-3 3-3 15 0 18",
+    "videos": "M3 6h13v12H3zM16 10l5-3v10l-5-3",
+    "instagram": "M4 4h16v16H4zM12 8a4 4 0 1 0 0 8 4 4 0 0 0 0-8z",
+    "resultados": "M4 20V10M10 20V4M16 20v-7M2 20h20",
+    "configuracoes": "M4 6h9M17 6h3M4 12h3M11 12h9M4 18h11M19 18h1M15 4v4M9 10v4M17 16v4",
+    "cadeado": "M6 11h12v10H6zM8 11V8a4 4 0 0 1 8 0v3",
+    "check": "M5 12l4 4 10-10",
+}
+
+# slug -> configuração. "modulo": código da licença que libera (None = todos
+# têm). "pronto": já existe no painel. "so_em_breve": ainda não dá pra vender
+# pra ninguém (ex: Instagram, esperando a Meta).
+MODULOS_DO_MENU = [
+    {"slug": "inicio", "nome": "Início", "icone": "inicio", "modulo": None, "pronto": True},
+    {
+        "slug": "whatsapp", "nome": "Bot de WhatsApp", "icone": "whatsapp", "modulo": MODULO_WHATSAPP,
+        "pronto": False,
+        "texto_em_breve": "Você vai conectar seu WhatsApp aqui pelo QR Code e controlar o bot "
+                          "pelo painel, sem programa no computador. Enquanto isso, continue usando o "
+                          "app do Appfiliado no seu computador.",
+        "texto_bloqueado": "Envie ofertas com seu link de afiliado nos seus grupos e canais do WhatsApp, "
+                           "no automático.",
+    },
+    {
+        "slug": "site", "nome": "Meu site", "icone": "site", "modulo": MODULO_SITE, "pronto": False,
+        "texto_em_breve": "Você vai editar aqui o seu site com conversor de links e vitrine "
+                          "de produtos, no endereço seunome.appfiliado.com.br.",
+        "texto_bloqueado": "Tenha seu próprio site com conversor de links e vitrine de produtos, pronto "
+                           "pra usar como link na bio.",
+    },
+    {
+        "slug": "videos", "nome": "Gerador de vídeos", "icone": "videos", "modulo": MODULO_VIDEOS,
+        "pronto": False,
+        "texto_em_breve": "Cole o link de um produto e receba um vídeo curto pronto pra postar.",
+        "texto_bloqueado": "Cole o link de um produto e receba um vídeo curto pronto pra Reels, TikTok "
+                           "e Shopee Vídeo.",
+    },
+    {
+        "slug": "instagram", "nome": "Instagram", "icone": "instagram", "modulo": MODULO_INSTAGRAM,
+        "pronto": False, "so_em_breve": True,
+        "texto_em_breve": "Responda comentários e mande o link por mensagem direta, no automático.",
+    },
+    {
+        "slug": "resultados", "nome": "Resultados", "icone": "resultados", "modulo": None, "pronto": False,
+        "texto_em_breve": "Faturamento, comissões estimadas e validadas por dia, "
+                          "semana ou mês, e as suas metas da Shopee.",
+    },
+    {"slug": "configuracoes", "nome": "Configurações", "icone": "configuracoes", "modulo": None, "pronto": True},
+]
+
+POR_SLUG = {item["slug"]: item for item in MODULOS_DO_MENU}
+URL_DE_SLUG = {"inicio": "painel_inicio", "configuracoes": "painel_configuracoes"}
+
+
+def estado(item: dict, liberados: list[str]) -> str:
+    """"liberado", "em_breve" ou "bloqueado"."""
+    if item.get("so_em_breve"):
+        return "em_breve"
+    if item["modulo"] and item["modulo"] not in liberados:
+        return "bloqueado"
+    return "liberado" if item["pronto"] else "em_breve"
+
+
+def menu(liberados: list[str], ativo: str) -> list[dict]:
+    itens = []
+    for item in MODULOS_DO_MENU:
+        situacao = estado(item, liberados)
+        url_name = URL_DE_SLUG.get(item["slug"])
+        href = reverse(url_name) if url_name else reverse("painel_modulo", args=[item["slug"]])
+        selo = {"bloqueado": ("Desbloquear", "bloqueado"), "em_breve": ("Em breve", "breve")}.get(situacao)
+        itens.append({
+            **item,
+            "href": href,
+            "ativo": item["slug"] == ativo,
+            "estado": situacao,
+            "selo_texto": selo[0] if selo else "",
+            "selo_tipo": selo[1] if selo else "",
+            "icone_path": ICONES[item["icone"]],
+        })
+    return itens

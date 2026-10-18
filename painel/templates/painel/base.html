@@ -1,0 +1,46 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+{% include "painel/_cabeca.html" %}
+<title>{% block titulo %}Painel{% endblock %} · Appfiliado</title>
+</head>
+<body>
+<div class="app">
+  <aside class="menu">
+    <a class="marca" href="{% url 'painel_inicio' %}">
+      <span class="logo" aria-hidden="true">A</span>
+      <span><strong>Appfiliado</strong><small>Ferramentas pra afiliados</small></span>
+    </a>
+    <nav aria-label="Menu principal">
+      {% for item in menu %}
+        <a href="{{ item.href }}" class="{% if item.ativo %}ativo{% endif %}"{% if item.ativo %} aria-current="page"{% endif %}>
+          {% include "painel/_icone.html" with caminho=item.icone_path %}
+          <span class="nome">{{ item.nome }}</span>
+          {% if item.estado == "bloqueado" %}
+            <span class="cadeado-menu" title="Não incluso no seu plano"><span class="sr">Não incluso no seu plano</span>{% include "painel/_icone.html" with caminho=icones.cadeado %}</span>
+          {% elif item.selo_texto %}<span class="selo selo-{{ item.selo_tipo }}">{{ item.selo_texto }}</span>{% endif %}
+        </a>
+      {% endfor %}
+    </nav>
+    <div class="menu-rodape">
+      <div class="cartao-plano">
+        <strong>Seu plano</strong>
+        <span>{{ modulos_liberados|length }} módulo{{ modulos_liberados|length|pluralize }} liberado{{ modulos_liberados|length|pluralize }}</span>
+        <a href="{% url 'painel_plano' %}">Ver plano e assinatura</a>
+      </div>
+      <div class="conta-rodape">
+        <span title="{{ conta.email }}">{{ conta.email }}</span>
+        <a class="link-plano-movel" href="{% url 'painel_plano' %}">Plano</a>
+        <form method="post" action="{% url 'painel_sair' %}">{% csrf_token %}<button type="submit">Sair</button></form>
+      </div>
+    </div>
+  </aside>
+  <main class="conteudo">
+    {% if messages %}
+      <ul class="avisos">{% for m in messages %}<li class="aviso aviso-{{ m.tags }}">{{ m }}</li>{% endfor %}</ul>
+    {% endif %}
+    {% block conteudo %}{% endblock %}
+  </main>
+</div>
+</body>
+</html>

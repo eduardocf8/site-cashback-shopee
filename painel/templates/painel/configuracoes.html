@@ -1,0 +1,32 @@
+{% extends "painel/base.html" %}
+{% block titulo %}Configurações{% endblock %}
+{% block conteudo %}
+<header class="cabecalho"><div><h1>Configurações</h1><p>Sua conta da Shopee e sua senha.</p></div></header>
+
+<div class="duas-colunas">
+  <section class="card" aria-labelledby="titulo-shopee">
+    <h2 id="titulo-shopee">Conta de afiliado da Shopee</h2>
+    <p class="status-shopee" style="margin-bottom:8px">
+      <span class="ponto {% if conta.shopee_validado_em %}ok{% endif %}" aria-hidden="true"></span>
+      {% if conta.shopee_validado_em %}Conectada em {{ conta.shopee_validado_em|date:"d/m/Y H:i" }}{% else %}Não conectada{% endif %}
+    </p>
+    <p class="suave pequeno" style="margin-bottom:16px">O AppID e o Secret ficam no portal de afiliados da Shopee, em Open API. O Secret é guardado criptografado e nunca aparece de novo na tela.</p>
+    <form method="post" class="formulario">
+      {% csrf_token %}
+      <input type="hidden" name="formulario" value="shopee">
+      {% include "painel/_campos.html" with form=form_shopee %}
+      <div><button type="submit" class="botao botao-principal">Salvar e testar</button></div>
+    </form>
+  </section>
+
+  <section class="card" aria-labelledby="titulo-senha">
+    <h2 id="titulo-senha">Trocar senha</h2>
+    <form method="post" class="formulario">
+      {% csrf_token %}
+      <input type="hidden" name="formulario" value="senha">
+      {% include "painel/_campos.html" with form=form_senha %}
+      <div><button type="submit" class="botao botao-escuro">Trocar senha</button></div>
+    </form>
+  </section>
+</div>
+{% endblock %}

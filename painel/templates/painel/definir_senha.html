@@ -1,0 +1,19 @@
+{% extends "painel/base_simples.html" %}
+{% block titulo %}Definir senha{% endblock %}
+{% block conteudo %}
+<section class="card">
+  {% if link_invalido %}
+    <h1>Link vencido</h1>
+    <p class="suave">Esse link já foi usado ou passou do prazo. Peça um novo, é rapidinho.</p>
+    <p style="margin-top:20px"><a class="botao botao-principal" href="{% url 'painel_esqueci_senha' %}">Pedir novo link</a></p>
+  {% else %}
+    <h1>Crie sua senha</h1>
+    <p class="suave">Conta: {{ conta.email }}</p>
+    <form method="post" class="formulario" style="margin-top:20px">
+      {% csrf_token %}
+      {% include "painel/_campos.html" %}
+      <button type="submit" class="botao botao-principal">Salvar e entrar</button>
+    </form>
+  {% endif %}
+</section>
+{% endblock %}
