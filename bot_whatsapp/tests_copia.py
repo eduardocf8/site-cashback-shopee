@@ -51,6 +51,19 @@ class TestLeituraDaMensagem(TestCase):
         self.assertEqual(copia.links_shopee(texto), ["https://s.shopee.com.br/AbC", "https://shopee.com.br/p-i.1.2?x=1"])
         self.assertEqual(copia.links_shopee("sem link"), [])
 
+    def test_link_sem_https(self):
+        self.assertEqual(copia.links_shopee("Corre: s.shopee.com.br/AbC123."), ["https://s.shopee.com.br/AbC123"])
+        self.assertEqual(copia.links_shopee("shopee.com.br/produto-i.1.2"), ["https://shopee.com.br/produto-i.1.2"])
+
+    def test_mensagem_embrulhada(self):
+        temporaria = Message()
+        temporaria.ephemeralMessage.message.imageMessage.caption = "oferta s.shopee.com.br/x"
+        self.assertEqual(copia.texto_da_mensagem(temporaria), "oferta s.shopee.com.br/x")
+        self.assertTrue(copia.tem_foto(temporaria))
+        do_outro_aparelho = Message()
+        do_outro_aparelho.deviceSentMessage.message.extendedTextMessage.text = "texto https://shope.ee/a"
+        self.assertEqual(copia.texto_da_mensagem(do_outro_aparelho), "texto https://shope.ee/a")
+
     def test_texto_da_mensagem(self):
         self.assertEqual(copia.texto_da_mensagem(Message(conversation="oi")), "oi")
         legenda = Message()
@@ -201,6 +214,25 @@ class TestGerenciadorCopiando(TestCase):
         destino, foto = self.sessao.cliente.send_image.call_args.args
         self.assertEqual(foto, b"jpeg")
 
+    def test_mensagem_sem_link_da_shopee_fica_como_ignorada(self):
+        self.ger.uma_volta()
+        self.sessao.avisar("mensagem", mensagem_recebida(texto="olha https://amazon.com.br/x", msg_id="Z1"))
+        self.ger.uma_volta()
+        recebida = OfertaRecebida.objects.get()
+        self.assertEqual((recebida.estado, recebida.motivo), ("ignorada", "Sem link da Shopee na mensagem."))
+
+    def test_acompanha_os_canais_de_origem_ao_vivo(self):
+        ConfiguracaoOfertas.objects.update(origens=[{"jid": "555@g.us"}, {"jid": "88@newsletter"}])
+        self.sessao.conectada = True
+        self.sessao.cliente.newsletter_subscribe_live_updates.return_value = 300
+        self.ger.uma_volta()
+        self.assertEqual(self.sessao.cliente.newsletter_subscribe_live_updates.call_count, 1)
+        jid = self.sessao.cliente.newsletter_subscribe_live_updates.call_args.args[0]
+        self.assertEqual((jid.User, jid.Server), ("88", "newsletter"))
+        self.ger.proxima_atualizacao_das_origens = 0
+        self.ger.uma_volta()  # ainda vale: não pede de novo
+        self.assertEqual(self.sessao.cliente.newsletter_subscribe_live_updates.call_count, 1)
+
     def test_desligar_o_modo_copiar_para_de_ouvir(self):
         self.ger.uma_volta()
         ConfiguracaoOfertas.objects.update(modo="shopee")
@@ -211,7 +243,7 @@ class TestGerenciadorCopiando(TestCase):
 
 class TestFiltroDaSessaoDeVerdade(TestCase):
     """O filtro roda na thread da biblioteca para TODA mensagem: tem de ser rápido e só
-    deixar passar as das origens, de outras pessoas, com link da Shopee."""
+    deixar passar as das origens com link ou foto (inclusive as do próprio número)."""
 
     def test_filtro(self):
         with mock.patch.object(g, "endereco_do_banco", return_value=os.path.join(tempfile.mkdtemp(), "s.sqlite3")):
@@ -221,12 +253,12 @@ class TestFiltroDaSessaoDeVerdade(TestCase):
         tratar(sessao.cliente, mensagem_recebida())  # ainda sem origens
         sessao.origens = {"555@g.us"}
         tratar(sessao.cliente, mensagem_recebida(chat="999@g.us"))  # outro grupo
-        tratar(sessao.cliente, mensagem_recebida(minha=True))  # mandada pelo próprio bot
-        tratar(sessao.cliente, mensagem_recebida(texto="bom dia, grupo!"))  # sem link
+        tratar(sessao.cliente, mensagem_recebida(texto="bom dia, grupo!"))  # conversa, sem link
         self.assertTrue(fila.empty())
         tratar(sessao.cliente, mensagem_recebida())
-        tipo, conta_id, ev, origem = fila.get_nowait()
-        self.assertEqual((tipo, conta_id, origem), ("mensagem", 1, sessao))
+        tratar(sessao.cliente, mensagem_recebida(minha=True))  # postada pelo próprio número: vale
+        tratar(sessao.cliente, mensagem_recebida(texto="olha https://amazon.com.br/x"))  # vai como ignorada
+        self.assertEqual([fila.get_nowait()[0] for _ in range(3)], ["mensagem"] * 3)
 
 
 class TestTelaCopiando(BasePainel):

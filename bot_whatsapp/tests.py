@@ -33,6 +33,8 @@ class SessaoFalsa:
         self.fila, self.conta_id, self.jid_b64, self.novo = fila, conta_id, jid_b64, novo
         self.conectada = False
         self.paradas = 0
+        self.origens = set()
+        self.canais_ao_vivo = {}
         eu = SimpleNamespace(PushName="Bia", JID=JID(
             User="5511988887777", Server="s.whatsapp.net", Device=12, RawAgent=0, Integrator=0, IsEmpty=False,
         ))

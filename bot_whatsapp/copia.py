@@ -19,7 +19,13 @@ from ofertas.services import resolver_item_id_com_rede, resolver_item_id_sem_red
 from . import shopee_ofertas
 
 DOMINIOS_SHOPEE = ("shopee.com.br", "shopee.com", "s.shopee.com.br", "s.shopee", "shope.ee", "shp.ee", "shoope.top")
-PADRAO_LINK = re.compile(r"https?://[^\s]+")
+# Com ou sem "https://" (muita gente posta "s.shopee.com.br/abc" direto).
+PADRAO_LINK = re.compile(r"(?:https?://|\b(?:s\.shopee\.com\.br|shope\.ee|shp\.ee|(?:www\.)?shopee\.com\.br)/)[^\s]+", re.I)
+PADRAO_QUALQUER_LINK = re.compile(r"https?://[^\s]+|\b[\w-]+(?:\.[\w-]+)+/[^\s]*", re.I)
+EMBRULHOS = (
+    "deviceSentMessage", "ephemeralMessage", "viewOnceMessage", "viewOnceMessageV2",
+    "viewOnceMessageV2Extension", "documentWithCaptionMessage", "editedMessage",
+)
 
 
 def limpar_link(link: str) -> str:
@@ -37,13 +43,36 @@ def eh_link_shopee(link: str) -> bool:
     return any(dominio in (host or link.lower()) for dominio in DOMINIOS_SHOPEE)
 
 
+def _com_https(link: str) -> str:
+    return link if re.match(r"https?://", link, re.I) else "https://" + link
+
+
 def links_shopee(texto: str) -> list[str]:
-    return [link for link in (limpar_link(l) for l in PADRAO_LINK.findall(texto or "")) if link and eh_link_shopee(link)]
+    links = (_com_https(limpar_link(l)) for l in PADRAO_LINK.findall(texto or ""))
+    return [link for link in links if link and eh_link_shopee(link)]
+
+
+def tem_algum_link(texto: str) -> bool:
+    return bool(PADRAO_QUALQUER_LINK.search(texto or ""))
+
+
+def desembrulhar(mensagem):
+    """A mensagem de verdade, sem os "envelopes" do WhatsApp (mensagem temporária, de
+    visualização única, enviada de outro aparelho do mesmo número, editada...)."""
+    for _ in range(5):
+        for embrulho in EMBRULHOS:
+            if mensagem.HasField(embrulho) and getattr(mensagem, embrulho).HasField("message"):
+                mensagem = getattr(mensagem, embrulho).message
+                break
+        else:
+            return mensagem
+    return mensagem
 
 
 def texto_da_mensagem(mensagem) -> str:
     """Texto de uma mensagem do WhatsApp (proto waE2E.Message): texto simples, texto
-    com prévia ou legenda de foto/vídeo."""
+    com prévia ou legenda de foto/vídeo/documento."""
+    mensagem = desembrulhar(mensagem)
     if mensagem.conversation:
         return mensagem.conversation
     if mensagem.HasField("extendedTextMessage"):
@@ -52,11 +81,13 @@ def texto_da_mensagem(mensagem) -> str:
         return mensagem.imageMessage.caption
     if mensagem.HasField("videoMessage"):
         return mensagem.videoMessage.caption
+    if mensagem.HasField("documentMessage"):
+        return mensagem.documentMessage.caption
     return ""
 
 
 def tem_foto(mensagem) -> bool:
-    return mensagem.HasField("imageMessage")
+    return desembrulhar(mensagem).HasField("imageMessage")
 
 
 def identificar_produto(link: str) -> str:
