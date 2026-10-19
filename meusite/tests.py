@@ -131,6 +131,18 @@ class TestFormularios(TestCase):
         self.assertIn("palavra_chave", form.errors)
         self.assertIn("links_manuais", SiteForm(self.dados(vitrine="manual"), instance=self.site).errors)
 
+    def test_cor_pronta_ou_outra_e_estilo(self):
+        form = SiteForm(self.dados(cor="outra", cor_outra="#ffcc00", layout="claro"), instance=self.site)
+        self.assertTrue(form.is_valid(), form.errors)
+        site = form.save()
+        self.assertEqual((site.cor, site.layout), ("#FFCC00", "claro"))
+        self.assertEqual(SiteForm(instance=site)["cor"].value(), "outra")  # volta marcada a "outra cor"
+        self.assertIn("cor", SiteForm(self.dados(cor="outra", cor_outra="amarelo"), instance=self.site).errors)
+        self.assertIn("cor", SiteForm(self.dados(cor="#123456"), instance=self.site).errors)  # fora das prontas
+        form = SiteForm(self.dados(), instance=site)  # sem o campo do estilo: mantém
+        self.assertTrue(form.is_valid(), form.errors)
+        self.assertEqual(form.save().layout, "claro")
+
     def test_redes_aceitam_link_ou_arroba(self):
         form = SiteForm(self.dados(rede_instagram="@achadinhos", rede_tiktok="bia.ofertas", rede_whatsapp="(11) 99999-8888",
                                    rede_youtube="youtube.com/@bia", rede_x=""), instance=self.site)
@@ -240,6 +252,16 @@ class TestSitePublico(TestCase):
         self.assertIn('class="grade carrossel" id="lista-vitrine"', html)
         self.assertIn("em-carrossel", html)
 
+    def test_estilo_e_contraste_da_cor(self):
+        html = self.client.get("/s/achadinhos/").content.decode()
+        self.assertIn('<body class="tema-colorido">', html)
+        self.assertIn("--tinta: #FFFFFF", html)  # laranja: texto branco
+        SiteAfiliado.objects.filter(pk=self.site.pk).update(layout="claro", cor="#FFE066")
+        html = self.client.get("/s/achadinhos/").content.decode()
+        self.assertIn('<body class="tema-claro">', html)
+        self.assertIn("--sobre-cor: #1C2B23", html)  # amarelo claro: texto escuro por cima
+        self.assertIn("--tinta: #1C2B23", html)
+
     def test_textos_do_conversor(self):
         self.assertContains(self.client.get("/s/achadinhos/"), "Achou algo na Shopee?")  # padrão
         SiteAfiliado.objects.filter(pk=self.site.pk).update(
@@ -320,3 +342,15 @@ class TestSitePublico(TestCase):
         self.assertEqual(self.client.get("/", HTTP_HOST="naoexiste.appfiliado.com.br").status_code, 404)
         # reservado: não vira site
         self.assertNotIn("Grupo VIP", self.client.get("/", HTTP_HOST="www.appfiliado.com.br").content.decode())
+
+
+class TestCores(TestCase):
+    def test_contas(self):
+        from . import cores
+
+        self.assertEqual(cores.misturar("#FFFFFF", "#000000", 0.5), "#808080")
+        self.assertEqual(cores.tinta_sobre("#111111"), "#FFFFFF")
+        self.assertEqual(cores.tinta_sobre("#F2B705"), cores.TINTA_ESCURA)
+        self.assertLessEqual(cores.luminancia(cores.para_texto("#F2B705")), 0.3)  # preço legível no branco
+        self.assertEqual(cores.para_texto("#1F3A2E"), "#1F3A2E")
+        self.assertEqual(cores.tema("nada")["cor"], "#E8541E")

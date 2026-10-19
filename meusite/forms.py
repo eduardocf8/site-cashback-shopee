@@ -5,25 +5,31 @@ from django import forms
 
 from bot_whatsapp.models import ConfiguracaoOfertas
 
+from . import cores
 from .models import CORES, ENDERECOS_RESERVADOS, REDES, BotaoSite, SiteAfiliado
 
+OUTRA_COR = "outra"
 PADRAO_ENDERECO = re.compile(r"^[a-z0-9](?:[a-z0-9-]{1,38}[a-z0-9])$")
 
 
 class SiteForm(forms.ModelForm):
     categorias = forms.MultipleChoiceField(label="Categorias", required=False, widget=forms.CheckboxSelectMultiple)
     ordenacao = forms.ChoiceField(label="Ordem", choices=ConfiguracaoOfertas.ORDENACOES)
+    # Uma das cores prontas ou "outra" (aí vale a do seletor de cor ao lado).
+    cor = forms.ChoiceField(label="Cor do site", choices=CORES + [(OUTRA_COR, "Outra cor")], widget=forms.RadioSelect)
+    cor_outra = forms.CharField(label="Outra cor", required=False, max_length=7,
+                                widget=forms.TextInput(attrs={"type": "color"}))
 
     class Meta:
         model = SiteAfiliado
         fields = [
-            "endereco", "publicado", "nome", "frase", "cor", "mostrar_conversor", "conversor_titulo",
+            "endereco", "publicado", "nome", "frase", "cor", "layout", "mostrar_conversor", "conversor_titulo",
             "conversor_texto", "conversor_botao", "sub_id",
             "vitrine", "vitrine_formato", "busca_tipo", "palavra_chave", "loja", "categorias", "ordenacao", "links_manuais",
         ]
         labels = {
             "endereco": "Endereço", "publicado": "Site no ar", "nome": "Nome", "frase": "Frase curta",
-            "cor": "Cor do site", "mostrar_conversor": "Mostrar o conversor de links no site",
+            "cor": "Cor do site", "layout": "Estilo do site", "mostrar_conversor": "Mostrar o conversor de links no site",
             "sub_id": "Sub ID das vendas do site", "vitrine": "O que mostrar", "vitrine_formato": "Como mostrar as ofertas", "busca_tipo": "Buscar",
             "palavra_chave": "Palavra-chave", "loja": "Link da loja", "links_manuais": "Links dos produtos",
             "conversor_titulo": "Título", "conversor_texto": "Texto", "conversor_botao": "Texto do botão",
@@ -36,7 +42,7 @@ class SiteForm(forms.ModelForm):
             "conversor_botao": "Em branco, fica o texto padrão (aparece apagadinho no campo).",
         }
         widgets = {
-            "cor": forms.RadioSelect, "vitrine": forms.RadioSelect, "busca_tipo": forms.RadioSelect,
+            "layout": forms.RadioSelect, "vitrine": forms.RadioSelect, "busca_tipo": forms.RadioSelect,
             "vitrine_formato": forms.RadioSelect,
             "links_manuais": forms.Textarea(attrs={"rows": 5, "placeholder": "https://s.shopee.com.br/..."}),
             "endereco": forms.TextInput(attrs={"autocomplete": "off", "spellcheck": "false", "autocapitalize": "none"}),
@@ -52,7 +58,11 @@ class SiteForm(forms.ModelForm):
         self.fields["categorias"].choices = opcoes_categoria()
         self.fields["endereco"].required = True
         self.fields["vitrine_formato"].required = False
-        self.fields["cor"].choices = CORES
+        self.fields["layout"].required = False
+        cor_atual = self.instance.cor or SiteAfiliado._meta.get_field("cor").default
+        pronta = cor_atual.upper() in {c for c, _ in CORES}
+        self.initial["cor"] = cor_atual.upper() if pronta else OUTRA_COR
+        self.initial["cor_outra"] = cor_atual
         escolhas = list(SiteAfiliado.FONTES_VITRINE)
         if not tem_bot:  # sem o bot de WhatsApp, a vitrine "do bot" não teria o que mostrar
             escolhas = [e for e in escolhas if e[0] != SiteAfiliado.VITRINE_BOT]
@@ -87,6 +97,18 @@ class SiteForm(forms.ModelForm):
         if not re.match(r"^[\w.-]{1,60}$", usuario):
             raise forms.ValidationError("Use o @ do perfil ou o link.")
         return modelo.format(usuario)
+
+    def clean_cor(self):
+        cor = self.cleaned_data.get("cor")
+        if cor != OUTRA_COR:
+            return cor
+        outra = (self.data.get(self.add_prefix("cor_outra")) or "").strip()
+        if not cores.valida(outra):
+            raise forms.ValidationError("Escolha a outra cor no seletor.")
+        return outra.upper()
+
+    def clean_layout(self):
+        return self.cleaned_data.get("layout") or self.instance.layout or SiteAfiliado.LAYOUT_COLORIDO
 
     def clean_vitrine_formato(self):
         return self.cleaned_data.get("vitrine_formato") or self.instance.vitrine_formato or SiteAfiliado.FORMATO_LISTA

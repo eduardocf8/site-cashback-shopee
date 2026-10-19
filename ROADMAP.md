@@ -2982,6 +2982,11 @@ Meu site (app `meusite`), o "link na bio" de cada conta:
       do Render não guarda arquivos).
 - [x] Rodapé "Feito com Appfiliado", que some com o adicional "Meu site sem a marca
       Appfiliado" (novo módulo `site_sem_marca`).
+- [x] Dois estilos ("Fundo colorido" e "Fundo claro"), 15 cores prontas e "Outra
+      cor" livre; o texto troca para escuro quando a cor é clara (`meusite/cores.py`).
+      Vitrine em lista ou em carrossel.
+- [x] Foto ajustável ao enviar (arrastar e zoom, com o recorte feito no navegador) e
+      prévia do editor na largura real de um celular.
 
 ---
 
