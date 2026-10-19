@@ -112,7 +112,7 @@ class ConfiguracaoOfertasForm(forms.ModelForm):
             "ordenacao": "Ordem", "comissao_minima": "Comissão mínima (%)", "desconto_minimo": "Desconto mínimo (%)",
             "vendas_minimas": "Vendas mínimas", "cupom": "Cupom (opcional)", "sub_ids": "Sub IDs padrão (opcional)",
             "intervalo_minutos": "Uma oferta a cada (minutos)", "horario_inicio": "Das", "horario_fim": "Até",
-            "limite_diario": "Máximo de ofertas por dia (0 = sem limite)",
+            "limite_diario": "Máximo de ofertas por dia (em branco = sem limite)",
             "repetir_apos_dias": "Não repetir o mesmo produto no mesmo grupo por (dias)",
         }
         help_texts = {
@@ -143,6 +143,11 @@ class ConfiguracaoOfertasForm(forms.ModelForm):
         for campo in ("preco_minimo", "preco_maximo", "avaliacao_minima"):
             valor = getattr(self.instance, campo)
             self.initial[campo] = "" if valor is None else f"{valor}".replace(".", ",")
+        # Filtros e limite opcionais: em branco = não filtrar / sem limite (guarda 0).
+        for campo in self.OPCIONAIS_ZERO:
+            self.fields[campo].required = False
+            if not getattr(self.instance, campo):
+                self.initial[campo] = ""
         for campo, (minimo, maximo) in {
             "intervalo_minutos": (1, 240), "comissao_minima": (0, 100), "desconto_minimo": (0, 100),
             "limite_diario": (0, 1000), "repetir_apos_dias": (1, 90),
@@ -151,6 +156,20 @@ class ConfiguracaoOfertasForm(forms.ModelForm):
             self.fields[campo].max_value = maximo
             self.fields[campo].validators += [MinValueValidator(minimo), MaxValueValidator(maximo)]
             self.fields[campo].widget.attrs.update({"min": minimo, "max": maximo})
+
+    OPCIONAIS_ZERO = ("comissao_minima", "desconto_minimo", "vendas_minimas", "limite_diario")
+
+    def clean_comissao_minima(self):
+        return self.cleaned_data.get("comissao_minima") or 0
+
+    def clean_desconto_minimo(self):
+        return self.cleaned_data.get("desconto_minimo") or 0
+
+    def clean_vendas_minimas(self):
+        return self.cleaned_data.get("vendas_minimas") or 0
+
+    def clean_limite_diario(self):
+        return self.cleaned_data.get("limite_diario") or 0
 
     def _numero(self, campo, minimo=None, maximo=None):
         from painel.telas import ler_numero_br
@@ -161,6 +180,8 @@ class ConfiguracaoOfertasForm(forms.ModelForm):
         valor = ler_numero_br(texto)
         if valor is None or (minimo is not None and valor < minimo) or (maximo is not None and valor > maximo):
             raise forms.ValidationError("Número inválido.")
+        if not valor:
+            return None  # 0 = sem filtro; fica em branco na tela
         return Decimal(str(round(valor, 2)))
 
     def clean_preco_minimo(self):

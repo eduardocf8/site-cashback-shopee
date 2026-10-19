@@ -82,6 +82,8 @@ class TestShopeeOfertas(TestCase):
         for campo, valor in [("comissao", 9), ("desconto", 10), ("preco", 19.9), ("preco", 60), ("vendas", 50), ("avaliacao", 4.2)]:
             with self.subTest(campo=campo):
                 self.assertFalse(shopee_ofertas.passa_nos_filtros(produto(1, **{campo: valor}), config))
+        zerados = self.config(preco_minimo=Decimal("0"), preco_maximo=Decimal("0"), avaliacao_minima=Decimal("0"))
+        self.assertTrue(shopee_ofertas.passa_nos_filtros(produto(1), zerados))  # 0 = sem filtro
         categorias = self.config(tipo_busca="categoria", categorias=["pet"])
         self.assertTrue(shopee_ofertas.passa_nos_filtros(produto(1, nome="Ração para gato castrado"), categorias))
         self.assertFalse(shopee_ofertas.passa_nos_filtros(produto(1, nome="Fone de ouvido"), categorias))
@@ -232,6 +234,18 @@ class TestMotor(TestCase):
         self.assertIn("API fora do ar", self.config.ultimo_erro)
         self.assertEqual(self.config.proximo_envio_em, AGORA + timedelta(minutes=5))
 
+    def test_testar_busca_explica_por_que_nao_achou(self, _link):
+        self.config.pedido_teste_em = timezone.now()
+        self.config.save()
+        self.rodar({1: []})
+        self.assertIn("não devolveu nenhum produto", self.config.teste_erro)
+        self.config.pedido_teste_em = timezone.now()
+        self.config.desconto_minimo = 99
+        self.config.save()
+        self.rodar({1: [produto(1), produto(2)]})
+        self.assertIn("devolveu 2 produtos", self.config.teste_erro)
+        self.assertIn("2 barrados pelos filtros", self.config.teste_erro)
+
     def test_testar_busca_nao_envia_nem_mexe_na_posicao(self, _link):
         self.config.ativo = False
         self.config.pedido_teste_em = timezone.now()
@@ -291,6 +305,20 @@ class TestTelaDeOfertas(BasePainel):
         self.client.post("/whatsapp/ofertas/testar/")
         self.assertTrue(self.client.get("/whatsapp/ofertas/estado/").json()["testando"])
         self.assertContains(self.client.get("/whatsapp/ofertas/"), "Buscando na Shopee")
+
+    def test_filtros_em_branco_sao_opcionais(self):
+        html = self.client.get("/whatsapp/ofertas/").content.decode()
+        for campo in ("comissao_minima", "desconto_minimo", "vendas_minimas", "limite_diario"):
+            self.assertRegex(html, rf'name="{campo}"(?![^>]*value=)')  # sem 0 de padrão
+        resposta = self.client.post("/whatsapp/ofertas/", self.dados(
+            comissao_minima="", desconto_minimo="", vendas_minimas="", limite_diario="", preco_minimo="", avaliacao_minima="",
+            preco_maximo="0,00",
+        ))
+        self.assertRedirects(resposta, "/whatsapp/ofertas/", fetch_redirect_response=False)
+        config = ConfiguracaoOfertas.objects.get(conta=self.conta)
+        self.assertEqual((config.comissao_minima, config.desconto_minimo, config.vendas_minimas, config.limite_diario), (0, 0, 0, 0))
+        self.assertIsNone(config.preco_minimo)
+        self.assertIsNone(config.preco_maximo)  # 0,00 vira "sem filtro"
 
     def test_lista_tem_busca_canais_e_atualizar(self):
         html = self.client.get("/whatsapp/ofertas/").content.decode()
