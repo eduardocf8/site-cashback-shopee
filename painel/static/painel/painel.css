@@ -336,3 +336,42 @@ form.form-regra > .erros-form { grid-column: 1 / -1; }
 }
 .campo textarea:focus { outline: 2px solid var(--verde); outline-offset: 1px; background: #fff; }
 .link-botao { background: none; border: none; padding: 0; color: var(--verde); text-decoration: underline; cursor: pointer; font: inherit; }
+
+/* Bot de WhatsApp: abas e ofertas automáticas */
+.abas-zap { margin: -4px 0 16px; }
+.status-ofertas { display: flex; justify-content: space-between; align-items: flex-start; gap: 16px; flex-wrap: wrap; }
+.status-ofertas h2.status-zap { font-size: 18px; margin: 0 0 6px; }
+.status-ofertas-texto { display: flex; flex-direction: column; gap: 6px; min-width: 0; flex: 1; }
+.status-ofertas-botoes { display: flex; gap: 10px; flex-wrap: wrap; }
+.form-ofertas { gap: 16px; min-width: 0; }
+.form-ofertas fieldset.campo { border: none; padding: 0; margin: 0; min-width: 0; }
+.form-ofertas legend { font-weight: 700; font-size: 13px; padding: 0; margin-bottom: 6px; }
+.form-ofertas .card > .campo + .campo, .form-ofertas .card > .campo + fieldset, .form-ofertas .card > fieldset + .campo { margin-top: 14px; }
+.form-ofertas h2 { margin-bottom: 12px; }
+.campo select, .campo input[type="time"] { min-height: 44px; }
+.grade-campos { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px; margin-top: 10px; }
+@media (max-width: 600px) { .grade-campos { grid-template-columns: 1fr; } }
+.opcoes-chip { display: flex; flex-wrap: wrap; gap: 8px; }
+.chip-opcao { position: relative; display: inline-flex; }
+.chip-opcao input { position: absolute; opacity: 0; inset: 0; margin: 0; cursor: pointer; }
+.chip-opcao span { display: inline-flex; align-items: center; min-height: 36px; padding: 0 14px; border-radius: 999px; border: 1px solid var(--borda); background: var(--card); font-size: 14px; }
+.chip-opcao input:checked + span { background: var(--verde); border-color: var(--verde); color: #fff; }
+.chip-opcao input:focus-visible + span { outline: 2px solid var(--amarelo); outline-offset: 2px; }
+.lista-grupos { display: flex; flex-direction: column; gap: 2px; max-height: 320px; overflow-y: auto; border: 1px solid var(--borda); border-radius: 10px; padding: 6px 10px; }
+.lista-grupos label { display: flex; align-items: center; gap: 10px; padding: 7px 0; font-size: 14px; font-weight: 500; cursor: pointer; }
+.lista-grupos input[type="checkbox"] { width: 18px; height: 18px; min-height: 0; padding: 0; flex: none; accent-color: var(--verde); }
+.barra-salvar { position: sticky; bottom: 12px; display: flex; justify-content: flex-end; }
+.barra-salvar .botao { box-shadow: 0 6px 18px rgba(31, 58, 46, .18); }
+.coluna-lateral { display: flex; flex-direction: column; gap: 16px; min-width: 0; }
+.ofertas-teste { list-style: none; margin: 8px 0 0; padding: 0; display: flex; flex-direction: column; gap: 12px; }
+.ofertas-teste li { display: grid; grid-template-columns: 56px 1fr; gap: 10px; align-items: start; font-size: 14px; }
+.ofertas-teste img { width: 56px; height: 56px; object-fit: cover; border-radius: 8px; border: 1px solid var(--borda); }
+.ofertas-teste li > div { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.texto-oferta { white-space: pre-wrap; font: inherit; font-size: 13px; background: var(--campo); border: 1px solid var(--borda); border-radius: 8px; padding: 10px; margin: 6px 0 0; }
+[hidden] { display: none !important; }
+.ofertas-teste .sem-foto { width: 56px; height: 56px; border-radius: 8px; background: var(--trilho); }
+.lista-grupos-topo { display: grid; grid-template-columns: 1fr 180px; gap: 10px; padding: 4px 0; border-bottom: 1px solid var(--trilho); }
+.linha-grupo { display: grid; grid-template-columns: 1fr 180px; gap: 10px; align-items: center; }
+.linha-grupo input[type="text"] { width: 100%; height: 34px; min-height: 34px; padding: 0 10px; border-radius: 8px; border: 1px solid var(--borda); background: var(--campo); font: inherit; font-size: 13px; color: inherit; min-width: 0; }
+.linha-grupo input[type="text"]:focus { outline: 2px solid var(--verde); outline-offset: 1px; background: #fff; }
+@media (max-width: 600px) { .lista-grupos-topo, .linha-grupo { grid-template-columns: 1fr 120px; } }

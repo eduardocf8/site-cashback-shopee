@@ -32,6 +32,7 @@ logger = logging.getLogger(__name__)
 INTERVALO = 2  # segundos entre uma volta e outra
 ESPERA_PARA_REABRIR = 30  # se a sessão parar sozinha, tenta de novo depois disso
 DESISTE_DO_ENVIO = timedelta(minutes=10)  # mensagem presa na fila sem conexão
+ESPACO_ENTRE_ENVIOS = 3  # segundos entre duas mensagens do mesmo número
 
 
 def endereco_do_banco() -> str:
@@ -156,6 +157,7 @@ class Gerenciador:
         self.fila: queue.Queue = queue.Queue()
         self.sessoes: dict[int, Sessao] = {}
         self.reabrir_em: dict[int, float] = {}
+        self.ultimo_envio: dict[int, float] = {}
 
     # --- Ciclo -----------------------------------------------------------------
 
@@ -353,9 +355,17 @@ class Gerenciador:
     # --- Envio --------------------------------------------------------------------
 
     def enviar_pendentes(self):
+        """No máximo uma mensagem por número a cada ESPACO_ENTRE_ENVIOS segundos
+        (várias contas se revezam): uma oferta para 10 grupos não sai de rajada."""
         from neonize.utils.jid import build_jid
 
-        for envio in EnvioWhatsApp.objects.filter(estado=EnvioWhatsApp.PENDENTE).order_by("id")[:5]:
+        agora = time.monotonic()
+        ja_enviou_nesta_volta = set()
+        for envio in EnvioWhatsApp.objects.filter(estado=EnvioWhatsApp.PENDENTE).order_by("id")[:50]:
+            if envio.conta_id in ja_enviou_nesta_volta:
+                continue
+            if agora - self.ultimo_envio.get(envio.conta_id, 0) < ESPACO_ENTRE_ENVIOS:
+                continue
             sessao = self.sessoes.get(envio.conta_id)
             if not sessao or not sessao.conectada:
                 if timezone.now() - envio.criado_em > DESISTE_DO_ENVIO:
@@ -363,6 +373,8 @@ class Gerenciador:
                     envio.erro = "O WhatsApp estava desconectado."
                     envio.save(update_fields=["estado", "erro"])
                 continue
+            ja_enviou_nesta_volta.add(envio.conta_id)
+            self.ultimo_envio[envio.conta_id] = agora
             usuario, _, servidor = envio.destino.partition("@")
             destino = build_jid(usuario, servidor or "g.us")
             try:
@@ -410,4 +422,7 @@ def iniciar_em_segundo_plano():
     gerenciador = Gerenciador()
     thread = threading.Thread(target=gerenciador.rodar, name="whatsapp-gerenciador", daemon=True)
     thread.start()
+    from .ofertas import iniciar_em_segundo_plano as iniciar_motor_de_ofertas
+
+    iniciar_motor_de_ofertas()
     return gerenciador

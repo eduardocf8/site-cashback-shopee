@@ -5,9 +5,10 @@
 <header class="cabecalho">
   <div>
     <h1>Bot de WhatsApp</h1>
-    <p>Versão de teste: conecte seu número e mande uma mensagem de teste. O envio automático das ofertas vem na próxima etapa.</p>
+    <p>Conecte seu número pelo QR Code. As ofertas automáticas ficam na outra aba.</p>
   </div>
 </header>
+{% include "painel/_abas_whatsapp.html" with aba="conexao" %}
 
 <div class="duas-colunas" id="whatsapp"
      data-url="{% url 'painel_whatsapp_estado' %}" data-estado="{{ tela.estado }}"

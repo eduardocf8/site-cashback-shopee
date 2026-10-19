@@ -5,13 +5,17 @@ aqui só se registram pedidos (ver bot_whatsapp/servico.py)."""
 from django.contrib import messages
 from django.http import JsonResponse
 from django.shortcuts import redirect, render
+from django.urls import reverse
+from django.utils import timezone
 from django.views.decorators.http import require_POST
 
 from bot_whatsapp import servico
-from bot_whatsapp.models import ConexaoWhatsApp, EnvioWhatsApp, EventoWhatsApp
+from bot_whatsapp.models import ConexaoWhatsApp, ConfiguracaoOfertas, EnvioWhatsApp, EventoWhatsApp
+from bot_whatsapp.ofertas import ofertas_enviadas_hoje
 
 from . import modulos as mod
 from .autenticacao import conta_logada, conta_requerida
+from .forms import ConfiguracaoOfertasForm
 from .views import _contexto
 
 
@@ -34,7 +38,7 @@ def whatsapp(request):
         request, "whatsapp",
         conexao=conexao,
         tela=servico.estado_para_tela(conta),
-        envios=EnvioWhatsApp.objects.filter(conta=conta)[:8],
+        envios=EnvioWhatsApp.objects.filter(conta=conta, origem=EnvioWhatsApp.TESTE)[:8],
         eventos=EventoWhatsApp.objects.filter(conta=conta)[:15],
         ConexaoWhatsApp=ConexaoWhatsApp,
     ))
@@ -96,3 +100,97 @@ def whatsapp_enviar(request):
     else:
         messages.error(request, motivo)
     return redirect("painel_whatsapp")
+
+
+# --- Ofertas automáticas (busca na Shopee) ---------------------------------------------
+
+def _config_ofertas(conta) -> ConfiguracaoOfertas:
+    config, _ = ConfiguracaoOfertas.objects.get_or_create(conta=conta)
+    return config
+
+
+def _resumo_ofertas(conta, config) -> dict:
+    agora = timezone.now()
+    conexao = servico.conexao_da(conta)
+    return {
+        "enviadas_hoje": ofertas_enviadas_hoje(conta, agora),
+        "whatsapp_conectado": conexao.estado == ConexaoWhatsApp.CONECTADO,
+        "shopee_conectada": bool(conta.shopee_validado_em),
+        "proximo_envio": config.proximo_envio_em if config.ativo and not config.situacao else None,
+        "hoje_ymd": timezone.localtime(agora).strftime("%Y%m%d"),
+    }
+
+
+@conta_requerida
+def whatsapp_ofertas(request):
+    conta = conta_logada(request)
+    if not _liberado(conta):
+        return _bloqueado(request)
+    config = _config_ofertas(conta)
+    conexao = servico.conexao_da(conta)
+    form = ConfiguracaoOfertasForm(request.POST or None, instance=config, grupos_disponiveis=conexao.grupos)
+    if request.method == "POST":
+        if form.is_valid():
+            form.save()
+            messages.success(request, "Configurações das ofertas salvas.")
+            return redirect("painel_whatsapp_ofertas")
+        messages.error(request, "Confira os campos marcados.")
+    historico = EnvioWhatsApp.objects.filter(conta=conta, origem=EnvioWhatsApp.OFERTA)[:20]
+    return render(request, "painel/whatsapp_ofertas.html", _contexto(
+        request, "whatsapp",
+        form=form, config=config, historico=historico, conexao=conexao, **_resumo_ofertas(conta, config),
+    ))
+
+
+@require_POST
+@conta_requerida
+@_so_liberado
+def whatsapp_ofertas_ligar(request):
+    conta = conta_logada(request)
+    config = _config_ofertas(conta)
+    if not conta.shopee_validado_em:
+        messages.error(request, "Conecte sua conta da Shopee em Configurações antes de ligar.")
+    elif not config.grupos:
+        messages.error(request, "Escolha pelo menos um grupo e salve antes de ligar.")
+    else:
+        config.ativo = True
+        config.proximo_envio_em = timezone.now()
+        config.situacao = ""
+        config.save(update_fields=["ativo", "proximo_envio_em", "situacao", "atualizado_em"])
+        messages.success(request, "Ofertas automáticas ligadas. A primeira sai em instantes, se estiver no horário.")
+    return redirect("painel_whatsapp_ofertas")
+
+
+@require_POST
+@conta_requerida
+@_so_liberado
+def whatsapp_ofertas_pausar(request):
+    config = _config_ofertas(conta_logada(request))
+    config.ativo = False
+    config.save(update_fields=["ativo", "atualizado_em"])
+    messages.info(request, "Ofertas automáticas pausadas.")
+    return redirect("painel_whatsapp_ofertas")
+
+
+@require_POST
+@conta_requerida
+@_so_liberado
+def whatsapp_ofertas_testar(request):
+    config = _config_ofertas(conta_logada(request))
+    config.pedido_teste_em = timezone.now()
+    config.save(update_fields=["pedido_teste_em", "atualizado_em"])
+    return redirect(f"{reverse('painel_whatsapp_ofertas')}#teste")
+
+
+@conta_requerida
+def whatsapp_ofertas_estado(request):
+    conta = conta_logada(request)
+    if not _liberado(conta):
+        return JsonResponse({}, status=403)
+    config = _config_ofertas(conta)
+    return JsonResponse({
+        "testando": config.testando,
+        "ativo": config.ativo,
+        "situacao": config.situacao,
+        "ultimo_envio": config.ultimo_envio_em.isoformat() if config.ultimo_envio_em else "",
+    })
