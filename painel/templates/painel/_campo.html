@@ -1,0 +1,4 @@
+<label for="{{ campo.id_for_label }}">{{ campo.label }}</label>
+{{ campo }}
+{% if campo.help_text %}<span class="ajuda">{{ campo.help_text }}</span>{% endif %}
+{% for e in campo.errors %}<span class="erro">{{ e }}</span>{% endfor %}

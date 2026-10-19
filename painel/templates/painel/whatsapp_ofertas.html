@@ -1,0 +1,156 @@
+{% extends "painel/base.html" %}
+{% load static painel_extras %}
+{% block titulo %}Ofertas automáticas{% endblock %}
+{% block conteudo %}
+<header class="cabecalho">
+  <div>
+    <h1>Bot de WhatsApp</h1>
+    <p>Ofertas buscadas na Shopee e enviadas com o seu link de afiliado, no automático.</p>
+  </div>
+</header>
+{% include "painel/_abas_whatsapp.html" with aba="ofertas" %}
+
+<div id="ofertas" data-url="{% url 'painel_whatsapp_ofertas_estado' %}" data-testando="{{ config.testando|yesno:'1,0' }}"></div>
+
+<section class="card status-ofertas" aria-labelledby="titulo-status">
+  <div class="status-ofertas-texto">
+    <h2 id="titulo-status" class="status-zap">
+      {% if config.ativo %}<span class="ponto ok" aria-hidden="true"></span>Ligado{% else %}<span class="ponto" aria-hidden="true"></span>Pausado{% endif %}
+    </h2>
+    {% if not shopee_conectada %}
+      <p class="aviso aviso-warning pequeno">Conecte sua conta da Shopee em <a href="{% url 'painel_configuracoes' %}">Configurações</a> - é com ela que o bot busca as ofertas e gera o seu link.</p>
+    {% elif not whatsapp_conectado %}
+      <p class="aviso aviso-warning pequeno">Seu WhatsApp não está conectado. Conecte na aba <a href="{% url 'painel_whatsapp' %}">Conexão</a>.</p>
+    {% endif %}
+    {% if config.ativo %}
+      {% if config.situacao %}<p class="pequeno">{{ config.situacao }}</p>
+      {% elif proximo_envio %}<p class="pequeno">Próxima oferta {% if proximo_envio|date:"Ymd" == hoje_ymd %}hoje{% else %}{{ proximo_envio|date:"d/m" }}{% endif %} às {{ proximo_envio|date:"H:i" }}.</p>{% endif %}
+    {% endif %}
+    <p class="suave pequeno">Hoje: {{ enviadas_hoje }} oferta{{ enviadas_hoje|pluralize }}{% if config.limite_diario %} de {{ config.limite_diario }}{% endif %}.{% if config.ultimo_envio_em %} Última às {{ config.ultimo_envio_em|date:"H:i" }}{% if config.ultimo_envio_em|date:"Ymd" != hoje_ymd %} de {{ config.ultimo_envio_em|date:"d/m" }}{% endif %}.{% endif %}</p>
+    {% if config.ultimo_erro %}<p class="aviso aviso-warning pequeno">Último erro: {{ config.ultimo_erro }}</p>{% endif %}
+  </div>
+  <div class="status-ofertas-botoes">
+    <form method="post" action="{% url 'painel_whatsapp_ofertas_testar' %}">{% csrf_token %}<button type="submit" class="botao botao-claro">Testar busca</button></form>
+    {% if config.ativo %}
+      <form method="post" action="{% url 'painel_whatsapp_ofertas_pausar' %}">{% csrf_token %}<button type="submit" class="botao botao-escuro">Pausar</button></form>
+    {% else %}
+      <form method="post" action="{% url 'painel_whatsapp_ofertas_ligar' %}">{% csrf_token %}<button type="submit" class="botao botao-principal">Ligar ofertas</button></form>
+    {% endif %}
+  </div>
+</section>
+
+<div class="duas-colunas" style="margin-top:16px">
+  <form method="post" class="formulario form-ofertas" novalidate>
+    {% csrf_token %}
+    {% if form.non_field_errors %}<ul class="erros-form">{% for e in form.non_field_errors %}<li>{{ e }}</li>{% endfor %}</ul>{% endif %}
+
+    <section class="card" aria-labelledby="titulo-busca">
+      <h2 id="titulo-busca">O que buscar</h2>
+      <fieldset class="campo">
+        <legend>{{ form.tipo_busca.label }}</legend>
+        <div class="opcoes-chip" id="tipo-busca">{% for opcao in form.tipo_busca %}<label class="chip-opcao">{{ opcao.tag }}<span>{{ opcao.choice_label }}</span></label>{% endfor %}</div>
+      </fieldset>
+      <div class="campo" data-tipo="palavra_chave">{% include "painel/_campo.html" with campo=form.palavra_chave %}</div>
+      <div class="campo" data-tipo="loja">{% include "painel/_campo.html" with campo=form.loja %}</div>
+      <fieldset class="campo" data-tipo="categoria">
+        <legend>{{ form.categorias.label }}</legend>
+        <div class="opcoes-chip">{% for opcao in form.categorias %}<label class="chip-opcao">{{ opcao.tag }}<span>{{ opcao.choice_label }}</span></label>{% endfor %}</div>
+        <span class="ajuda">O bot confere o nome do produto com palavras de cada categoria.</span>
+        {% for e in form.categorias.errors %}<span class="erro">{{ e }}</span>{% endfor %}
+      </fieldset>
+      <div class="campo">{% include "painel/_campo.html" with campo=form.ordenacao %}</div>
+    </section>
+
+    <section class="card" aria-labelledby="titulo-filtros">
+      <h2 id="titulo-filtros">Filtros</h2>
+      <p class="suave pequeno">Deixe em branco ou 0 para não filtrar.</p>
+      <div class="grade-campos">
+        <div class="campo">{% include "painel/_campo.html" with campo=form.comissao_minima %}</div>
+        <div class="campo">{% include "painel/_campo.html" with campo=form.desconto_minimo %}</div>
+        <div class="campo">{% include "painel/_campo.html" with campo=form.preco_minimo %}</div>
+        <div class="campo">{% include "painel/_campo.html" with campo=form.preco_maximo %}</div>
+        <div class="campo">{% include "painel/_campo.html" with campo=form.vendas_minimas %}</div>
+        <div class="campo">{% include "painel/_campo.html" with campo=form.avaliacao_minima %}</div>
+      </div>
+    </section>
+
+    <section class="card" aria-labelledby="titulo-mensagem">
+      <h2 id="titulo-mensagem">Mensagem</h2>
+      <div class="campo">{% include "painel/_campo.html" with campo=form.cupom %}</div>
+      <div class="campo">{% include "painel/_campo.html" with campo=form.sub_ids %}</div>
+    </section>
+
+    <section class="card" aria-labelledby="titulo-quando">
+      <h2 id="titulo-quando">Onde e quando</h2>
+      <fieldset class="campo">
+        <legend>{{ form.grupos.label }}</legend>
+        {% if form.grupos.field.choices %}
+          <div class="lista-grupos">{% for opcao in form.grupos %}<label>{{ opcao.tag }}<span>{{ opcao.choice_label }}</span></label>{% endfor %}</div>
+        {% else %}
+          <p class="suave pequeno">Conecte o WhatsApp na aba <a href="{% url 'painel_whatsapp' %}">Conexão</a> para ver seus grupos.</p>
+        {% endif %}
+        {% for e in form.grupos.errors %}<span class="erro">{{ e }}</span>{% endfor %}
+      </fieldset>
+      <div class="grade-campos">
+        <div class="campo">{% include "painel/_campo.html" with campo=form.intervalo_minutos %}</div>
+        <div class="campo">{% include "painel/_campo.html" with campo=form.limite_diario %}</div>
+        <div class="campo">{% include "painel/_campo.html" with campo=form.horario_inicio %}</div>
+        <div class="campo">{% include "painel/_campo.html" with campo=form.horario_fim %}</div>
+      </div>
+      <fieldset class="campo">
+        <legend>{{ form.dias_semana.label }}</legend>
+        <div class="opcoes-chip">{% for opcao in form.dias_semana %}<label class="chip-opcao">{{ opcao.tag }}<span>{{ opcao.choice_label }}</span></label>{% endfor %}</div>
+        {% for e in form.dias_semana.errors %}<span class="erro">{{ e }}</span>{% endfor %}
+      </fieldset>
+      <div class="campo">{% include "painel/_campo.html" with campo=form.repetir_apos_dias %}</div>
+    </section>
+
+    <div class="barra-salvar"><button type="submit" class="botao botao-principal">Salvar</button></div>
+  </form>
+
+  <div class="coluna-lateral">
+    <section class="card" id="teste" aria-labelledby="titulo-teste">
+      <h2 id="titulo-teste">Teste da busca</h2>
+      {% if config.testando %}
+        <p class="suave pequeno">Buscando na Shopee…</p>
+      {% elif config.teste_erro %}
+        <p class="aviso aviso-warning pequeno">{{ config.teste_erro }}</p>
+      {% elif config.teste_em %}
+        {% if config.teste_resultado %}
+          <p class="suave pequeno">As próximas ofertas com os filtros salvos ({{ config.teste_em|date:"d/m H:i" }}):</p>
+          <ul class="ofertas-teste">
+            {% for o in config.teste_resultado %}
+              <li>
+                {% if o.imagem %}<img src="{{ o.imagem }}" alt="" loading="lazy" referrerpolicy="no-referrer">{% else %}<span class="sem-foto" aria-hidden="true"></span>{% endif %}
+                <div>
+                  <strong>{{ o.nome|truncatechars:80 }}</strong>
+                  <span class="suave pequeno">{{ o.preco|brl }} · comissão {{ o.comissao|floatformat:0 }}%{% if o.desconto %} · {{ o.desconto|floatformat:0 }}% off{% endif %}{% if o.vendas %} · {{ o.vendas|numero }} vendidos{% endif %}</span>
+                  <details><summary class="pequeno">Ver mensagem</summary><pre class="texto-oferta">{{ o.texto }}</pre></details>
+                </div>
+              </li>
+            {% endfor %}
+          </ul>
+        {% else %}
+          <p class="suave pequeno">Nenhuma oferta passou nos filtros. Tente afrouxar algum filtro.</p>
+        {% endif %}
+      {% else %}
+        <p class="suave pequeno">Salve as configurações e clique em <strong>Testar busca</strong> para ver as próximas ofertas antes de ligar.</p>
+      {% endif %}
+    </section>
+
+    <section class="card" aria-labelledby="titulo-historico-ofertas">
+      <h2 id="titulo-historico-ofertas">Últimas ofertas enviadas</h2>
+      {% if historico %}
+        <ul class="eventos-zap">
+          {% for e in historico %}
+            <li><span class="suave">{{ e.criado_em|date:"d/m H:i" }}</span><span>{{ e.produto|truncatechars:60 }} → {{ e.destino_nome }}: <strong class="envio-{{ e.estado }}">{{ e.get_estado_display }}</strong>{% if e.erro %} - {{ e.erro }}{% endif %}</span></li>
+          {% endfor %}
+        </ul>
+      {% else %}
+        <p class="suave pequeno">Nenhuma oferta enviada ainda.</p>
+      {% endif %}
+    </section>
+  </div>
+</div>
+<script src="{% static 'painel/ofertas.js' %}" defer></script>
+{% endblock %}

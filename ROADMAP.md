@@ -2844,8 +2844,30 @@ posta as ofertas, sem programa no computador e sem janela de navegador.
       desconectar, lista de grupos, mensagem de teste (texto ou foto com legenda) e
       histórico da conexão. Passo "Conectar seu WhatsApp" no Início.
 - [ ] Teste real: deixar conectado alguns dias e olhar o histórico.
-- [ ] Próximo: levar o bot de ofertas (busca na Shopee, texto, agendamento) para o
-      painel, enviando por esta conexão.
+- [x] Correções do teste real: QR inteiro (SVG com viewBox), mínimo de histórico ao
+      conectar + `GOMEMLIMIT` (o worker passava de 512 MB), "Desconectando…" que
+      atualiza sozinho, log de memória a cada 10 min.
+
+## Fase 70 — Ofertas automáticas pela API da Shopee (bot de ofertas, parte 1)
+
+- [x] `ConfiguracaoOfertas` por conta, com os filtros do app de Windows: busca geral,
+      palavra-chave, loja (link ou número) ou categorias (palavras no nome, mesma lista
+      do app); ordem (mais vendidos, maior comissão, maior desconto); comissão,
+      desconto, preço, vendas e avaliação mínimos; cupom; Sub IDs.
+- [x] Onde e quando: grupos escolhidos na lista, uma oferta a cada N minutos, horário
+      (pode passar da meia-noite), **dias da semana**, **limite por dia** e **não repetir
+      o mesmo produto no mesmo grupo por N dias** (padrão 7; no app era para sempre).
+- [x] Motor (`bot_whatsapp/ofertas.py`, thread no mesmo worker): busca paginada que
+      continua de onde parou (volta à página 1 depois de 3 h), link de afiliado com os
+      Sub IDs, texto pelo mesmo formatador do app e **foto do produto com o texto na
+      legenda** (sem depender da prévia do link). Sem produto novo: tenta de novo em 30
+      min; erro: em 5 min. O motivo de não estar enviando aparece no painel.
+- [x] Envio espaçado: no máximo 1 mensagem a cada 3 s por número; contas se revezam.
+- [x] Tela `/whatsapp/ofertas/` (aba ao lado de "Conexão"): ligar/pausar, "Testar
+      busca" (as próximas 5 ofertas, com a mensagem), últimas ofertas enviadas.
+- [ ] Parte 2: copiar ofertas de um ou mais grupos/canais.
+- [ ] Parte 3: revisão do texto com IA (chave única do Appfiliado), modo simulação,
+      envio para canais, e-mail diário com o relatório.
 
 ---
 

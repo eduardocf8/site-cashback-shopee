@@ -113,7 +113,9 @@ class TestGerenciador(TestCase):
         texto = EnvioWhatsApp.objects.create(conta=self.conta, destino="120363001@g.us", texto="Oi")
         foto = EnvioWhatsApp.objects.create(conta=self.conta, destino="120363001@g.us", texto="Oferta",
                                             imagem_url="https://exemplo.com/a.jpg")
-        self.ger.uma_volta()
+        with mock.patch.object(g, "ESPACO_ENTRE_ENVIOS", 0):
+            self.ger.uma_volta()  # uma mensagem por volta por número
+            self.ger.uma_volta()
         destino = sessao.cliente.send_message.call_args.args[0]
         self.assertEqual((destino.User, destino.Server), ("120363001", "g.us"))
         sessao.cliente.send_image.assert_called_once()
@@ -124,10 +126,22 @@ class TestGerenciador(TestCase):
 
         sessao.cliente.send_message.side_effect = RuntimeError("não é participante")
         falha = EnvioWhatsApp.objects.create(conta=self.conta, destino="120363001@g.us", texto="Oi")
-        self.ger.uma_volta()
+        with mock.patch.object(g, "ESPACO_ENTRE_ENVIOS", 0):
+            self.ger.uma_volta()
         falha.refresh_from_db()
         self.assertEqual(falha.estado, "erro")
         self.assertIn("não é participante", falha.erro)
+
+    def test_espaco_entre_mensagens_do_mesmo_numero(self):
+        sessao = self.conectar()
+        for _ in range(2):
+            EnvioWhatsApp.objects.create(conta=self.conta, destino="120363001@g.us", texto="Oi")
+        self.ger.uma_volta()
+        self.ger.uma_volta()  # menos de 3 s depois: a segunda espera
+        self.assertEqual(sessao.cliente.send_message.call_count, 1)
+        self.ger.ultimo_envio[self.conta.pk] -= g.ESPACO_ENTRE_ENVIOS
+        self.ger.uma_volta()
+        self.assertEqual(sessao.cliente.send_message.call_count, 2)
 
     def test_envio_desiste_se_ficar_muito_tempo_sem_conexao(self):
         envio = EnvioWhatsApp.objects.create(conta=self.conta, destino="1@g.us", texto="Oi")

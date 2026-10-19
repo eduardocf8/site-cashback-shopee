@@ -5,6 +5,8 @@ worker (bot_whatsapp/gerenciador.py, rodando junto com o sincronizar_painel). A
 sessão do WhatsApp em si (chaves de criptografia) fica nas tabelas whatsmeow_* que
 a biblioteca cria no mesmo banco."""
 
+from datetime import time
+
 from django.db import models
 
 from licencas.models import ContaAppfiliado
@@ -57,6 +59,8 @@ class ConexaoWhatsApp(models.Model):
 class EnvioWhatsApp(models.Model):
     PENDENTE, ENVIADO, ERRO = "pendente", "enviado", "erro"
     ESTADOS = [(PENDENTE, "Na fila"), (ENVIADO, "Enviado"), (ERRO, "Erro")]
+    TESTE, OFERTA = "teste", "oferta"
+    ORIGENS = [(TESTE, "Mensagem de teste"), (OFERTA, "Oferta automática")]
 
     conta = models.ForeignKey(ContaAppfiliado, on_delete=models.CASCADE, related_name="envios_whatsapp")
     destino = models.CharField(max_length=80, help_text='JID do grupo, ex: "120363...@g.us".')
@@ -67,6 +71,11 @@ class EnvioWhatsApp(models.Model):
     erro = models.TextField(blank=True)
     criado_em = models.DateTimeField(auto_now_add=True)
     enviado_em = models.DateTimeField(null=True, blank=True)
+    # Ofertas automáticas: qual produto foi para qual grupo (não repetir, limite diário).
+    origem = models.CharField(max_length=10, choices=ORIGENS, default=TESTE)
+    item_id = models.CharField(max_length=40, blank=True, db_index=True)
+    produto = models.CharField(max_length=300, blank=True)
+    link_afiliado = models.URLField(max_length=500, blank=True)
 
     class Meta:
         ordering = ["-id"]
@@ -93,3 +102,88 @@ class EventoWhatsApp(models.Model):
 
     def __str__(self):
         return f"{self.conta.email} - {self.tipo}"
+
+
+def _todos_os_dias():
+    return [0, 1, 2, 3, 4, 5, 6]
+
+
+class ConfiguracaoOfertas(models.Model):
+    """Ofertas automáticas buscadas na API da Shopee e enviadas nos grupos (mesmos
+    filtros do app de Windows). Quem executa é o motor em bot_whatsapp/ofertas.py."""
+
+    BUSCA_GERAL, BUSCA_PALAVRA, BUSCA_LOJA, BUSCA_CATEGORIA = "geral", "palavra_chave", "loja", "categoria"
+    TIPOS_BUSCA = [
+        (BUSCA_GERAL, "Ofertas em geral"),
+        (BUSCA_PALAVRA, "Palavra-chave"),
+        (BUSCA_LOJA, "Uma loja"),
+        (BUSCA_CATEGORIA, "Categorias"),
+    ]
+    ORDENACOES = [
+        ("mais_vendidos", "Mais vendidos"),
+        ("maior_comissao", "Maior comissão"),
+        ("maior_desconto", "Maior desconto"),
+    ]
+
+    conta = models.OneToOneField(ContaAppfiliado, on_delete=models.CASCADE, related_name="ofertas_config")
+    ativo = models.BooleanField(default=False)
+
+    tipo_busca = models.CharField(max_length=20, choices=TIPOS_BUSCA, default=BUSCA_GERAL)
+    palavra_chave = models.CharField(max_length=120, blank=True)
+    loja = models.CharField(max_length=300, blank=True, help_text="Link da loja na Shopee ou o número dela.")
+    categorias = models.JSONField(default=list, blank=True)
+    ordenacao = models.CharField(max_length=20, choices=ORDENACOES, default="mais_vendidos")
+
+    comissao_minima = models.PositiveSmallIntegerField(default=0)
+    desconto_minimo = models.PositiveSmallIntegerField(default=0)
+    preco_minimo = models.DecimalField(max_digits=10, decimal_places=2, null=True, blank=True)
+    preco_maximo = models.DecimalField(max_digits=10, decimal_places=2, null=True, blank=True)
+    vendas_minimas = models.PositiveIntegerField(default=0)
+    avaliacao_minima = models.DecimalField(max_digits=3, decimal_places=1, null=True, blank=True)
+
+    cupom = models.CharField(max_length=120, blank=True)
+    sub_ids = models.CharField(max_length=300, blank=True, help_text="Até 5, separados por vírgula. Só letras e números.")
+
+    grupos = models.JSONField(default=list, blank=True, help_text='[{"jid": "...@g.us", "nome": "..."}]')
+    intervalo_minutos = models.PositiveSmallIntegerField(default=5)
+    horario_inicio = models.TimeField(default=time(7, 0))
+    horario_fim = models.TimeField(default=time(23, 0))
+    dias_semana = models.JSONField(default=_todos_os_dias, blank=True, help_text="0 = segunda ... 6 = domingo")
+    limite_diario = models.PositiveSmallIntegerField(default=0, help_text="0 = sem limite.")
+    repetir_apos_dias = models.PositiveSmallIntegerField(default=7)
+
+    # Controle do motor.
+    proximo_envio_em = models.DateTimeField(null=True, blank=True)
+    ultimo_envio_em = models.DateTimeField(null=True, blank=True)
+    situacao = models.CharField(max_length=300, blank=True, help_text="Por que não está enviando agora.")
+    ultimo_erro = models.TextField(blank=True)
+    pagina_atual = models.PositiveIntegerField(default=1)
+    pagina_em = models.DateTimeField(null=True, blank=True)
+    # "Testar busca" (o painel pede, o worker responde).
+    pedido_teste_em = models.DateTimeField(null=True, blank=True)
+    teste_em = models.DateTimeField(null=True, blank=True)
+    teste_resultado = models.JSONField(default=list, blank=True)
+    teste_erro = models.TextField(blank=True)
+    atualizado_em = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        verbose_name = "configuração de ofertas automáticas"
+        verbose_name_plural = "configurações de ofertas automáticas"
+
+    def __str__(self):
+        return f"{self.conta.email} - {'ligado' if self.ativo else 'pausado'}"
+
+    @property
+    def testando(self) -> bool:
+        return bool(self.pedido_teste_em and (not self.teste_em or self.teste_em < self.pedido_teste_em))
+
+    def lista_sub_ids(self) -> list[str]:
+        return [s.strip() for s in self.sub_ids.split(",") if s.strip()][:5]
+
+    def chave_da_busca(self) -> str:
+        """Muda quando muda algo que altera a lista de produtos (aí a busca recomeça)."""
+        return "|".join(str(v) for v in (
+            self.tipo_busca, self.palavra_chave, self.loja, sorted(self.categorias or []), self.ordenacao,
+            self.comissao_minima, self.desconto_minimo, self.preco_minimo, self.preco_maximo,
+            self.vendas_minimas, self.avaliacao_minima,
+        ))
