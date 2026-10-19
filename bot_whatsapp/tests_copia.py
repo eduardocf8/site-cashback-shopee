@@ -132,6 +132,17 @@ class TestMotorCopiando(TestCase):
         self.assertEqual((recebida.estado, recebida.produto), ("enviada", "Fone TWS"))
         self.assertEqual(self.config.proximo_envio_em, AGORA)  # intervalo 0: a próxima pode sair já
 
+    def test_mensagem_que_outro_processo_ja_pegou_nao_e_repassada_de_novo(self, *_):
+        recebida = self.receber()
+        OfertaRecebida.objects.filter(pk=recebida.pk).update(processada_em=AGORA)  # o outro worker pegou
+        self.rodar()
+        self.assertEqual(EnvioWhatsApp.objects.count(), 0)
+        recebida.refresh_from_db()
+        self.assertEqual(recebida.estado, "pendente")
+        self.rodar(AGORA + timedelta(minutes=70))  # se o outro travou, vence como as demais
+        recebida.refresh_from_db()
+        self.assertEqual(recebida.estado, "ignorada")
+
     def test_sem_foto_na_mensagem_usa_a_do_produto(self, *_):
         self.receber()
         self.rodar()

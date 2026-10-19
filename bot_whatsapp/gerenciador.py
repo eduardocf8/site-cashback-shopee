@@ -38,6 +38,7 @@ INTERVALO = 2  # segundos entre uma volta e outra
 ESPERA_PARA_REABRIR = 30  # se a sessão parar sozinha, tenta de novo depois disso
 DESISTE_DO_ENVIO = timedelta(minutes=10)  # mensagem presa na fila sem conexão
 ESPACO_ENTRE_ENVIOS = 3  # segundos entre duas mensagens do mesmo número
+ENVIO_TRAVADO_APOS = timedelta(minutes=3)  # "pegou para enviar" e nunca terminou
 # Fotos das mensagens copiadas (modo copiar): arquivos temporários, apagados em 6 h.
 PASTA_DAS_FOTOS = Path(tempfile.gettempdir()) / "appfiliado-fotos"
 
@@ -491,7 +492,14 @@ class Gerenciador:
 
         agora = time.monotonic()
         ja_enviou_nesta_volta = set()
-        for envio in EnvioWhatsApp.objects.filter(estado=EnvioWhatsApp.PENDENTE).order_by("id")[:50]:
+        # "enviado_em" preenchido com a mensagem ainda na fila = alguém já pegou para enviar
+        # (ver o fim do laço). Se isso parou no meio (reinício do servidor), não manda de
+        # novo: melhor perder uma do que repetir.
+        EnvioWhatsApp.objects.filter(
+            estado=EnvioWhatsApp.PENDENTE, enviado_em__lt=timezone.now() - ENVIO_TRAVADO_APOS,
+        ).update(estado=EnvioWhatsApp.ERRO, erro="O envio foi interrompido (reinício do servidor). Não foi repetido, para não duplicar.")
+        for envio in EnvioWhatsApp.objects.filter(
+                estado=EnvioWhatsApp.PENDENTE, enviado_em__isnull=True).order_by("id")[:50]:
             if envio.conta_id in ja_enviou_nesta_volta:
                 continue
             if agora - self.ultimo_envio.get(envio.conta_id, 0) < ESPACO_ENTRE_ENVIOS:
@@ -502,6 +510,11 @@ class Gerenciador:
                     envio.estado = EnvioWhatsApp.ERRO
                     envio.erro = "O WhatsApp estava desconectado."
                     envio.save(update_fields=["estado", "erro"])
+                continue
+            # Dois workers (o antigo e o novo, durante um deploy) podem olhar a mesma mensagem:
+            # só quem conseguir marcar primeiro envia.
+            if not EnvioWhatsApp.objects.filter(
+                    pk=envio.pk, estado=EnvioWhatsApp.PENDENTE, enviado_em__isnull=True).update(enviado_em=timezone.now()):
                 continue
             ja_enviou_nesta_volta.add(envio.conta_id)
             self.ultimo_envio[envio.conta_id] = agora
@@ -525,6 +538,12 @@ class Gerenciador:
                 else:
                     sessao.cliente.send_message(destino, envio.texto)
             except Exception as erro:  # noqa: BLE001
+                if "not connected" in str(erro).lower() and timezone.now() - envio.criado_em <= DESISTE_DO_ENVIO:
+                    # A conexão caiu na hora (ex: este worker está sendo desligado num deploy):
+                    # nada foi enviado. Devolve à fila para o outro worker, ou a próxima volta, tentar.
+                    logger.warning("WhatsApp: sem conexão ao enviar a mensagem %s; volta para a fila", envio.pk)
+                    EnvioWhatsApp.objects.filter(pk=envio.pk, estado=EnvioWhatsApp.PENDENTE).update(enviado_em=None)
+                    continue
                 logger.exception("WhatsApp: erro ao enviar a mensagem %s", envio.pk)
                 envio.estado = EnvioWhatsApp.ERRO
                 envio.erro = str(erro)[:500]

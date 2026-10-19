@@ -198,11 +198,15 @@ class Motor:
 
         produto, grupos = self.proximo_produto(config, agora)
         if not produto:
+            if not self._reservar_a_vez(config, agora + ESPERA_SEM_PRODUTO):
+                return  # outro processo mexeu na vez enquanto este buscava (ele já enfileirou algo)
             config.situacao = "Nenhuma oferta nova com esses filtros agora. Tento de novo em 30 minutos."
-            config.proximo_envio_em = agora + ESPERA_SEM_PRODUTO
             config.save(update_fields=["situacao", "proximo_envio_em", "pagina_atual", "pagina_em", "atualizado_em"])
             return
 
+        proximo = agora + timedelta(minutes=max(1, config.intervalo_minutos))
+        if not self._reservar_a_vez(config, proximo):
+            return  # outro processo (ex: o worker antigo, num deploy) já pegou esta vez
         modelo, revisado = revisar_com_ia(config, montar_texto(produto, MARCADOR_DO_LINK, config.cupom), agora)
         enfileirar(
             config, grupos, modelo, produto["link"],
@@ -210,13 +214,29 @@ class Motor:
             produto=produto,
         )
         config.ultimo_envio_em = agora
-        config.proximo_envio_em = agora + timedelta(minutes=max(1, config.intervalo_minutos))
+        config.proximo_envio_em = proximo
         config.situacao = ""
         config.ultimo_erro = ""
         config.save(update_fields=[
             "ultimo_envio_em", "proximo_envio_em", "situacao", "ultimo_erro", "pagina_atual", "pagina_em",
             "atualizado_em", *CAMPOS_DA_IA,
         ])
+
+    @staticmethod
+    def _reservar_a_vez(config, proximo) -> bool:
+        """Só um processo leva esta vez de enviar. Durante um deploy o worker antigo e o
+        novo rodam juntos por um tempo e os dois enxergam "já passou da hora": sem isso,
+        os dois montariam a mesma oferta. Vale quem conseguir trocar o horário da próxima
+        vez (do valor que leu para o novo) primeiro."""
+        mesma_vez = ConfiguracaoOfertas.objects.filter(pk=config.pk)
+        if config.proximo_envio_em:
+            mesma_vez = mesma_vez.filter(proximo_envio_em=config.proximo_envio_em)
+        else:
+            mesma_vez = mesma_vez.filter(proximo_envio_em__isnull=True)
+        if not mesma_vez.update(proximo_envio_em=proximo):
+            return False
+        config.proximo_envio_em = proximo
+        return True
 
     def repassar_proxima(self, config, agora):
         """Modo copiar: repassa a próxima mensagem que chegou nos grupos/canais de origem."""
@@ -225,7 +245,10 @@ class Motor:
             estado=OfertaRecebida.IGNORADA, processada_em=agora,
             motivo="Chegou há mais de 1 hora (fora do horário, limite do dia ou fila cheia).",
         )
-        recebida = pendentes.order_by("id").first()
+        recebida = pendentes.filter(processada_em__isnull=True).order_by("id").first()
+        # Só um processo repassa esta mensagem (ver _reservar_a_vez): quem marcar primeiro.
+        if recebida and not pendentes.filter(pk=recebida.pk, processada_em__isnull=True).update(processada_em=agora):
+            return
         if not recebida:
             aguardando = "Esperando ofertas nos grupos e canais de origem."
             if config.situacao != aguardando:

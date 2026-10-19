@@ -151,6 +151,18 @@ class TestMotorComSimulacaoEIA(TestCase):
         self.assertEqual(ofertas.ofertas_enviadas_hoje(self.conta, AGORA), 0)
         self.assertEqual(len(ofertas.grupos_que_ainda_nao_receberam(self.config, "1", AGORA)), 2)
 
+    def test_dois_workers_na_mesma_hora_nao_duplicam_a_oferta(self, _):
+        """No deploy o worker antigo e o novo rodam juntos: os dois leem a conta antes de
+        qualquer um enfileirar, e os dois acham que já passou da hora."""
+        a = ConfiguracaoOfertas.objects.get(pk=self.config.pk)
+        b = ConfiguracaoOfertas.objects.get(pk=self.config.pk)
+        with mock.patch.object(shopee_ofertas, "buscar_produtos", return_value=([produto(1)], False)):
+            ofertas.Motor().enviar_proxima(a, AGORA)
+            ofertas.Motor().enviar_proxima(b, AGORA)
+        self.assertEqual(EnvioWhatsApp.objects.count(), 2)  # uma oferta, 2 grupos - e não 4
+        self.config.refresh_from_db()
+        self.assertEqual(self.config.proximo_envio_em, AGORA + timedelta(minutes=5))
+
     def test_oferta_enfileirada_leva_o_formato_escolhido(self, _):
         self.rodar([produto(1)])
         self.assertEqual({e.formato for e in EnvioWhatsApp.objects.all()}, {"foto"})  # padrão

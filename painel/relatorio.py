@@ -97,7 +97,11 @@ def enviar_pendentes(agora: datetime | None = None) -> list[str]:
     for preferencia in preferencias:
         if not pronto_para_enviar(preferencia, agora):
             continue
-        preferencia.ultimo_envio_dia = hoje  # uma tentativa por dia, mesmo se falhar
+        # Uma tentativa por dia, mesmo se falhar - e só um processo envia (num deploy o worker
+        # antigo e o novo rodam juntos): vale quem marcar o dia primeiro.
+        if not RelatorioEmail.objects.filter(pk=preferencia.pk).exclude(ultimo_envio_dia=hoje).update(ultimo_envio_dia=hoje):
+            continue
+        preferencia.ultimo_envio_dia = hoje
         try:
             enviar(preferencia.conta, hoje, preferencia.destinatarios())
             preferencia.ultimo_erro = ""
