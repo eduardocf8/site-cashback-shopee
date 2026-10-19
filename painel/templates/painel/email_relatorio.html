@@ -16,18 +16,29 @@
 
     <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="border-collapse:separate;">
       <tr>
-        <td style="width:50%;padding:12px;background:#F6F3EA;border-radius:10px;">
-          <div style="font-size:12px;color:#5C6A61;">Comissão estimada</div>
-          <div style="font-size:22px;font-weight:bold;">{{ dia_ontem.comissao_estimada|brl }}</div>
+        <td width="48%" style="width:48%;padding:12px;background:#F6F3EA;border-radius:10px;">
+          <div style="font-size:12px;color:#5C6A61;">Pedidos</div>
+          <div style="font-size:20px;font-weight:bold;white-space:nowrap;">{{ dia_ontem.pedidos|numero }}</div>
         </td>
-        <td width="10" style="width:10px;font-size:0;line-height:0;">&nbsp;</td>
-        <td style="width:50%;padding:12px;background:#F6F3EA;border-radius:10px;">
+        <td width="4%" style="width:4%;font-size:0;line-height:0;">&nbsp;</td>
+        <td width="48%" style="width:48%;padding:12px;background:#F6F3EA;border-radius:10px;">
           <div style="font-size:12px;color:#5C6A61;">Faturamento</div>
-          <div style="font-size:22px;font-weight:bold;">{{ dia_ontem.faturamento|brl }}</div>
+          <div style="font-size:20px;font-weight:bold;white-space:nowrap;">{{ dia_ontem.faturamento|brl }}</div>
+        </td>
+      </tr>
+      <tr><td colspan="3" style="height:10px;font-size:0;line-height:0;">&nbsp;</td></tr>
+      <tr>
+        <td width="48%" style="width:48%;padding:12px;background:#F6F3EA;border-radius:10px;">
+          <div style="font-size:12px;color:#5C6A61;">Comissão estimada</div>
+          <div style="font-size:20px;font-weight:bold;white-space:nowrap;">{{ dia_ontem.comissao_estimada|brl }}</div>
+        </td>
+        <td width="4%" style="width:4%;font-size:0;line-height:0;">&nbsp;</td>
+        <td width="48%" style="width:48%;padding:12px;background:#1F3A2E;border-radius:10px;">
+          <div style="font-size:12px;color:#B9C7BE;">Comissão validada</div>
+          <div style="font-size:20px;font-weight:bold;white-space:nowrap;color:#F2C230;">{{ dia_ontem.comissao_validada|brl }}</div>
         </td>
       </tr>
     </table>
-    <p style="margin:10px 0 0;font-size:14px;color:#1C2B23;">{{ dia_ontem.pedidos|numero }} pedido{{ dia_ontem.pedidos|pluralize }} &nbsp;·&nbsp; Comissão validada: <strong>{{ dia_ontem.comissao_validada|brl }}</strong></p>
 
     <h2 style="margin:26px 0 8px;font-size:16px;">{{ nome_mes }} até ontem</h2>
     <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="border-collapse:collapse;font-size:14px;">

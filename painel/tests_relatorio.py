@@ -53,7 +53,7 @@ class TestRelatorioDiario(TestCase):
         self.assertEqual(email.to, ["bia@exemplo.com", "socio@exemplo.com"])
         self.assertIn("18/10", email.subject)
         html = email.alternatives[0][0]
-        for trecho in ("R$ 120,30", "R$ 1.500,50", "12 pedidos", "R$ 2.000,50", "Site", "grupos", "faltam", "R$ 2.999,50",
+        for trecho in ("R$ 120,30", "R$ 1.500,50", ">Pedidos<", "nowrap;\">12<", "Comissão validada", "#1F3A2E;border-radius:10px;", "R$ 2.000,50", "Site", "grupos", "faltam", "R$ 2.999,50",
                        "Bot de WhatsApp", "Nenhuma oferta enviada ontem", "periodo=ontem"):
             self.assertIn(trecho, html)
         self.assertIn("R$ 120,30", email.body)  # versão em texto
