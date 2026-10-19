@@ -37,7 +37,7 @@
   </aside>
   <main class="conteudo">
     {% if messages %}
-      <ul class="avisos">{% for m in messages %}<li class="aviso aviso-{{ m.tags }}">{{ m }}</li>{% endfor %}</ul>
+      <ul class="avisos">{% for m in messages %}<li class="aviso aviso-{{ m.level_tag }}"{% if "some-ao-enviar" in m.extra_tags %} data-some-ao-enviar{% endif %}>{{ m }}</li>{% endfor %}</ul>
     {% endif %}
     {% block conteudo %}{% endblock %}
     {% include "painel/_aviso_shopee.html" %}

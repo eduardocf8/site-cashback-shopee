@@ -67,6 +67,30 @@
   var testando = raiz.dataset.testando === "1";
   var INTERVALO = 5000;
 
+  // O aviso verde de "ligadas" some quando a primeira oferta nova sair de verdade.
+  function ultimaQueSaiu(raizDoc) {
+    var maior = 0;
+    raizDoc.querySelectorAll("#cartao-enviadas [data-saiu]").forEach(function (li) {
+      maior = Math.max(maior, parseInt(li.dataset.saiu, 10) || 0);
+    });
+    return maior;
+  }
+  var saiuAteAgora = ultimaQueSaiu(document);
+  function esconderAvisoSeSaiu() {
+    var agora = ultimaQueSaiu(document);
+    if (agora <= saiuAteAgora) return;
+    saiuAteAgora = agora;
+    document.querySelectorAll("[data-some-ao-enviar]").forEach(function (aviso) {
+      aviso.style.transition = "opacity .4s";
+      aviso.style.opacity = "0";
+      setTimeout(function () {
+        var lista = aviso.parentNode;
+        aviso.remove();
+        if (lista && !lista.children.length) lista.remove();
+      }, 400);
+    });
+  }
+
   function trocarCartoes() {
     return fetch(window.location.pathname, { credentials: "same-origin" })
       .then(function (r) { return r.ok ? r.text() : null; })
@@ -79,6 +103,7 @@
         });
         var novaRaiz = nova.getElementById("ofertas");
         if (novaRaiz) versao = novaRaiz.dataset.versao;
+        esconderAvisoSeSaiu();
       });
   }
 

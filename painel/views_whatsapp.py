@@ -190,10 +190,12 @@ def whatsapp_ofertas_ligar(request):
         config.proximo_envio_em = timezone.now()
         config.situacao = ""
         config.save(update_fields=["ativo", "proximo_envio_em", "situacao", "atualizado_em"])
+        # Somem sozinhas quando a primeira oferta sair (ofertas.js).
         if config.simulacao:
-            messages.success(request, "Ligado em modo simulação: as ofertas aparecem aqui, mas nada vai para o WhatsApp.")
+            messages.success(request, "Ligado em modo simulação: as ofertas aparecem aqui, mas nada vai para o WhatsApp.",
+                             extra_tags="some-ao-enviar")
         else:
-            messages.success(request, "Ofertas automáticas ligadas. A primeira sai em instantes, se estiver no horário.")
+            messages.success(request, "Ofertas automáticas ligadas. A primeira sai em instantes.", extra_tags="some-ao-enviar")
     return redirect("painel_whatsapp_ofertas")
 
 

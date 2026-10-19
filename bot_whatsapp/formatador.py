@@ -44,7 +44,9 @@ def limpar_linhas(texto):
 
 
 def remover_links(texto):
-    return re.sub(r"https?://[^\s]+", "", texto or "").strip()
+    # Também os links da Shopee sem "https://" (o link de quem postou não pode sobrar).
+    texto = re.sub(r"https?://[^\s]+", "", texto or "")
+    return re.sub(r"\b(?:s\.shopee\.com\.br|shope\.ee|shp\.ee|(?:www\.)?shopee\.com\.br)/[^\s]*", "", texto, flags=re.I).strip()
 
 
 def extrair_precos(texto):

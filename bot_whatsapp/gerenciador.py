@@ -73,6 +73,13 @@ def _jid_texto(jid) -> str:
     return f"{jid.User}@{jid.Server}"
 
 
+def _jid_de_texto(texto: str):
+    from neonize.utils.jid import build_jid
+
+    usuario, _, servidor = texto.partition("@")
+    return build_jid(usuario, servidor)
+
+
 class Sessao:
     """Uma conexão de WhatsApp de uma conta, rodando na sua própria thread."""
 
@@ -96,6 +103,7 @@ class Sessao:
         # Modo copiar: grupos/canais cujas mensagens com link da Shopee interessam
         # (o gerenciador atualiza a cada 30 s a partir da configuração das ofertas).
         self.origens: set[str] = set()
+        self.canais_ao_vivo: dict[str, float] = {}  # canal -> até quando vale o "ao vivo"
         jid = JID.FromString(base64.b64decode(jid_b64)) if (jid_b64 and not novo) else None
         # Sem jid é sempre um aparelho novo: senão a biblioteca retomaria a primeira
         # sessão guardada no banco, que pode ser de outra conta.
@@ -140,13 +148,14 @@ class Sessao:
 
         @self.cliente.event(MessageEv)
         def _mensagem(_cliente, ev):
-            # Chega aqui toda mensagem de todos os chats: filtra rápido e só manda
-            # para a fila as dos grupos/canais de origem que têm link da Shopee.
-            if not self.origens or ev.Info.MessageSource.IsFromMe:
+            # Chega aqui toda mensagem de todos os chats: filtra rápido e só manda para
+            # a fila as dos grupos/canais de origem com link ou foto. As do próprio
+            # número também valem (muita gente posta a oferta do mesmo chip): não há
+            # risco de loop, porque origem e destino nunca são o mesmo grupo.
+            if not self.origens or _jid_texto(ev.Info.MessageSource.Chat) not in self.origens:
                 return
-            if _jid_texto(ev.Info.MessageSource.Chat) not in self.origens:
-                return
-            if copia.links_shopee(copia.texto_da_mensagem(ev.Message)):
+            texto = copia.texto_da_mensagem(ev.Message)
+            if copia.tem_algum_link(texto) or copia.tem_foto(ev.Message):
                 self.fila.put(("mensagem", conta_id, ev, self))
 
     def iniciar(self):
@@ -296,15 +305,21 @@ class Gerenciador:
         chat = _jid_texto(ev.Info.MessageSource.Chat)
         config = ConfiguracaoOfertas.objects.filter(conta_id=conexao.conta_id).only("origens").first()
         nome = next((o.get("nome", "") for o in (config.origens if config else []) if o.get("jid") == chat), "")
+        texto = copia.texto_da_mensagem(ev.Message)
+        com_link_da_shopee = bool(copia.links_shopee(texto))
+        defaults = {"origem": chat[:80], "origem_nome": nome[:200], "texto": texto}
+        if not com_link_da_shopee:
+            # Fica na lista (como ignorada) para a pessoa ver que o bot viu a mensagem.
+            defaults.update(estado=OfertaRecebida.IGNORADA, processada_em=timezone.now(),
+                            motivo="Sem link da Shopee na mensagem." if texto else "Foto sem texto (sem link da Shopee).")
         recebida, criada = OfertaRecebida.objects.get_or_create(
-            conta_id=conexao.conta_id, mensagem_id=f"{chat}/{ev.Info.ID}"[:120],
-            defaults={"origem": chat[:80], "origem_nome": nome[:200], "texto": copia.texto_da_mensagem(ev.Message)},
+            conta_id=conexao.conta_id, mensagem_id=f"{chat}/{ev.Info.ID}"[:120], defaults=defaults,
         )
-        if not criada or not copia.tem_foto(ev.Message):
+        if not criada or not com_link_da_shopee or not copia.tem_foto(ev.Message):
             return
         sessao = self.sessoes.get(conexao.conta_id)
         try:
-            dados = sessao.cliente.download_any(ev.Message)
+            dados = sessao.cliente.download_any(copia.desembrulhar(ev.Message))
             PASTA_DAS_FOTOS.mkdir(parents=True, exist_ok=True)
             caminho = PASTA_DAS_FOTOS / f"{conexao.conta_id}-{recebida.pk}.jpg"
             caminho.write_bytes(dados)
@@ -326,6 +341,23 @@ class Gerenciador:
         for conta_id, sessao in self.sessoes.items():
             config = configs.get(conta_id)
             sessao.origens = {o["jid"] for o in config.origens if o.get("jid")} if config else set()
+            self._acompanhar_canais(sessao)
+
+    def _acompanhar_canais(self, sessao):
+        """Canais só mandam as postagens novas para quem pediu "atualizações ao vivo",
+        e o pedido vale por um tempo: pede de novo antes de vencer."""
+        if not sessao.conectada:
+            return
+        agora = time.monotonic()
+        for jid in sessao.origens:
+            if not jid.endswith("@newsletter") or sessao.canais_ao_vivo.get(jid, 0) > agora:
+                continue
+            try:
+                duracao = sessao.cliente.newsletter_subscribe_live_updates(_jid_de_texto(jid))
+                sessao.canais_ao_vivo[jid] = agora + max(60, int(duracao or 300) - 60)
+            except Exception:  # noqa: BLE001 - tenta de novo daqui a 5 min
+                logger.exception("WhatsApp: não deu para acompanhar o canal %s", jid)
+                sessao.canais_ao_vivo[jid] = agora + 300
 
     def limpar_fotos_antigas(self):
         if time.monotonic() < self.proxima_limpeza_de_fotos:

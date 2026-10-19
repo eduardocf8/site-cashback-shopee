@@ -478,3 +478,4 @@ form.form-regra > .erros-form { grid-column: 1 / -1; }
 .envio-simulado { color: var(--amarelo-tinta); }
 .eventos-zap details { margin-top: 4px; }
 .botoes-linha { display: flex; gap: 10px; flex-wrap: wrap; }
+.aviso-ia { display: block; margin-top: 6px; }

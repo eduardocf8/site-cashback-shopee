@@ -8,13 +8,14 @@ original - a oferta nunca deixa de ir por causa da IA."""
 
 import logging
 import re
+import time
 
 import requests
 from django.conf import settings
 
 logger = logging.getLogger(__name__)
 
-TIMEOUT = 15  # segundos
+TIMEOUT = 12  # segundos por tentativa
 MAXIMO_POR_DIA = 300  # revisões por conta por dia (protege a cota da chave única)
 NOMES_DOS_TIPOS = {"leve": "leve", "contextual": "contextual", "criativa": "criativa"}
 
@@ -63,23 +64,77 @@ def _modelo() -> str:
     return getattr(settings, "APPFILIADO_GEMINI_MODELO", "") or getattr(settings, "GEMINI_MODEL", "gemini-3.1-flash-lite")
 
 
-def _chamar(prompt: str, temperatura: float) -> str:
-    url = f"{settings.GEMINI_API_URL}/models/{_modelo()}:generateContent"
-    resposta = requests.post(
-        url,
-        headers={"x-goog-api-key": chave(), "Content-Type": "application/json"},
-        json={
-            "contents": [{"role": "user", "parts": [{"text": prompt}]}],
-            "generationConfig": {"temperature": temperatura, "maxOutputTokens": 1200},
-        },
-        timeout=TIMEOUT,
-    )
-    dados = resposta.json() if resposta.content else {}
+# Quando o modelo principal está sobrecarregado (o Google responde 503 em picos de uso),
+# tenta de novo e depois estes, na ordem. Modelo que não existir para a chave é pulado.
+MODELOS_RESERVA = ("gemini-flash-lite-latest", "gemini-2.5-flash-lite")
+ESPERAS_ANTES_DE_TENTAR_DE_NOVO = (2,)  # segundos (uma nova tentativa no modelo principal)
+STATUS_PASSAGEIROS = {429, 500, 502, 503, 504}  # sobrecarga ou falha momentânea
+
+
+class ErroDaIA(Exception):
+    def __init__(self, mensagem: str, status: int = 0):
+        super().__init__(mensagem)
+        self.status = status
+
+    @property
+    def passageiro(self) -> bool:
+        return self.status in STATUS_PASSAGEIROS or self.status == 0
+
+    def para_o_painel(self) -> str:
+        if self.status == 503 or "high demand" in str(self).lower() or "overloaded" in str(self).lower():
+            return "O Gemini estava sobrecarregado (instabilidade do Google)"
+        if self.status == 429:
+            return "Limite de uso da chave do Gemini atingido"
+        if self.status in (400, 401, 403) and "key" in str(self).lower():
+            return "A chave do Gemini foi recusada"
+        if self.status == 0:
+            return "Sem resposta do Gemini (tempo esgotado ou rede)"
+        return f"Erro {self.status} do Gemini"
+
+
+def _chamar_modelo(modelo: str, prompt: str, temperatura: float) -> str:
+    url = f"{settings.GEMINI_API_URL}/models/{modelo}:generateContent"
+    try:
+        resposta = requests.post(
+            url,
+            headers={"x-goog-api-key": chave(), "Content-Type": "application/json"},
+            json={
+                "contents": [{"role": "user", "parts": [{"text": prompt}]}],
+                "generationConfig": {"temperature": temperatura, "maxOutputTokens": 1200},
+            },
+            timeout=TIMEOUT,
+        )
+    except requests.RequestException as erro:
+        raise ErroDaIA(str(erro)[:200]) from erro
+    try:
+        dados = resposta.json() if resposta.content else {}
+    except ValueError:
+        dados = {}
     if resposta.status_code >= 400 or "error" in dados:
         erro = (dados.get("error") or {}).get("message") or f"HTTP {resposta.status_code}"
-        raise RuntimeError(erro[:200])
+        raise ErroDaIA(erro[:200], resposta.status_code)
     partes = ((dados.get("candidates") or [{}])[0].get("content") or {}).get("parts") or []
-    return "\n".join(p.get("text", "") for p in partes).strip()
+    return "\n".join(p.get("text", "") for p in partes if not p.get("thought")).strip()
+
+
+def _chamar(prompt: str, temperatura: float, esperar=time.sleep) -> str:
+    """Modelo principal (com uma nova tentativa se for falha passageira) e, se ele
+    continuar sobrecarregado, os modelos reserva. Levanta o último ErroDaIA."""
+    principal = _modelo()
+    tentativas = [principal] * (1 + len(ESPERAS_ANTES_DE_TENTAR_DE_NOVO))
+    tentativas += [m for m in MODELOS_RESERVA if m != principal]
+    ultimo = None
+    for i, modelo in enumerate(tentativas):
+        if 0 < i <= len(ESPERAS_ANTES_DE_TENTAR_DE_NOVO):
+            esperar(ESPERAS_ANTES_DE_TENTAR_DE_NOVO[i - 1])
+        try:
+            return _chamar_modelo(modelo, prompt, temperatura)
+        except ErroDaIA as erro:
+            ultimo = erro
+            if modelo == principal and not erro.passageiro:
+                raise  # chave recusada, pedido inválido...: tentar de novo não resolve
+            logger.warning("IA: %s falhou (%s %s)", modelo, erro.status, erro)
+    raise ultimo
 
 
 def _links(texto: str) -> list[str]:
@@ -120,9 +175,12 @@ def revisar(texto: str, tipo: str, marcador: str = "") -> tuple[str, bool, str]:
     prompt = f"{REGRAS.format(marcador=marcador or '(sem marcador)')}\n{MODOS[tipo]}\nTexto da oferta:\n{texto}"
     try:
         revisado = _chamar(prompt, TEMPERATURAS[tipo]).strip().strip('"').strip()
-    except Exception as erro:  # noqa: BLE001 - rede, cota, resposta estranha
+    except ErroDaIA as erro:
         logger.warning("IA: falha ao revisar oferta: %s", erro)
-        return texto, False, f"A IA não respondeu ({str(erro)[:80]}) - foi o texto original."
+        return texto, False, f"{erro.para_o_painel()} - foi o texto original."
+    except Exception as erro:  # noqa: BLE001 - resposta estranha etc.
+        logger.warning("IA: falha ao revisar oferta: %s", erro)
+        return texto, False, "A IA não respondeu - foi o texto original."
     motivo = problema_na_resposta(texto, revisado, marcador)
     if motivo:
         return texto, False, f"{motivo} Foi o texto original, por segurança."
