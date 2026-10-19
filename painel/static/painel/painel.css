@@ -381,6 +381,12 @@ form.form-regra > .erros-form { grid-column: 1 / -1; }
 .lista-grupos input[type="checkbox"] { width: 18px; height: 18px; min-height: 0; padding: 0; flex: none; accent-color: var(--verde); }
 .barra-salvar { position: sticky; bottom: 12px; display: flex; justify-content: flex-end; }
 .barra-salvar .botao { box-shadow: 0 6px 18px rgba(31, 58, 46, .18); }
+/* No celular a barra do navegador e a área do gesto do iPhone cobrem a parte de baixo
+   da tela: o botão flutua mais alto e respeita a área segura. */
+@media (max-width: 700px) {
+  .barra-salvar { bottom: calc(28px + env(safe-area-inset-bottom, 0px)); padding-right: 4px; }
+  .barra-salvar .botao { min-height: 48px; padding: 0 26px; }
+}
 .coluna-lateral { display: flex; flex-direction: column; gap: 16px; min-width: 0; }
 .ofertas-teste { list-style: none; margin: 8px 0 0; padding: 0; display: flex; flex-direction: column; gap: 12px; }
 .ofertas-teste li { display: grid; grid-template-columns: 56px 1fr; gap: 10px; align-items: start; font-size: 14px; }
