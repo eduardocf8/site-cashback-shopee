@@ -42,7 +42,7 @@ MODULOS_DO_MENU = [
                            "no automático.",
     },
     {
-        "slug": "site", "nome": "Meu site", "icone": "site", "modulo": MODULO_SITE, "pronto": False,
+        "slug": "site", "nome": "Meu site", "icone": "site", "modulo": MODULO_SITE, "pronto": True,
         "texto_em_breve": "Você vai editar aqui o seu site com conversor de links e vitrine "
                           "de produtos, no endereço seunome.appfiliado.com.br.",
         "texto_bloqueado": "Tenha seu próprio site com conversor de links e vitrine de produtos, pronto "
@@ -69,6 +69,7 @@ URL_DE_SLUG = {
     "resultados": "painel_resultados",
     "metas": "painel_metas",
     "whatsapp": "painel_whatsapp",
+    "site": "painel_meu_site",
     "configuracoes": "painel_configuracoes",
 }
 

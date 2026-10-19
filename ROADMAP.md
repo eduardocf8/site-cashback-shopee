@@ -2952,6 +2952,37 @@ posta as ofertas, sem programa no computador e sem janela de navegador.
       atualização de hoje com a Shopee (ou às 11h, sem ela), para a conta e até 3 e-mails
       extras. Botão "Salvar e enviar um agora" para testar.
 
+## Fase 75 — Ajustes do bot e Meu site
+
+Ajustes do bot de ofertas:
+- [x] IA mais resistente (nova tentativa e modelos reserva quando o Gemini está
+      sobrecarregado), motivo de cada oferta que saiu sem IA no histórico.
+- [x] Modo copiar: aceita ofertas do próprio número, mensagens temporárias/editadas,
+      links sem "https://" e canais (atualizações ao vivo); o que chega sem link da
+      Shopee aparece como ignorado, com o motivo.
+- [x] Tela: aviso de "ligadas" some quando a primeira oferta sai; horários em 24 h;
+      status e "Das/Até" melhores no celular; "Salvar" mais alto no celular; "Ver
+      mensagem" sem vazar do quadro.
+
+Meu site (app `meusite`), o "link na bio" de cada conta:
+- [x] Endereço `seunome.appfiliado.com.br` (`APPFILIADO_SITES_DOMINIO` + DNS curinga) e,
+      sem ele, `app.appfiliado.com.br/s/seunome/`.
+- [x] Visual no estilo Linktree: fundo na cor do site, foto, nome, frase, botões
+      "pílula" (um em destaque) e ícones das redes (Instagram, TikTok, YouTube, X,
+      Facebook, WhatsApp, Telegram; aceita link ou @).
+- [x] Conversor de links (textos personalizáveis): o visitante cola um link da
+      Shopee e vai para a Shopee pelo link de afiliado da conta, com o Sub ID do
+      site (padrão "site"); até 20 por hora por visitante.
+- [x] Vitrine: as últimas ofertas que o bot enviou (as 100 mais recentes, sem
+      repetir), uma busca na Shopee (refeita a cada 3 h) ou produtos escolhidos;
+      filtro por categoria. Links de afiliado gerados pelo worker.
+- [x] Cliques por dia: visitas, botões, redes, produtos e conversor; o editor mostra
+      os últimos 30 dias e os produtos mais clicados.
+- [x] Editor no painel com prévia de celular ao vivo; foto guardada no banco (o disco
+      do Render não guarda arquivos).
+- [x] Rodapé "Feito com Appfiliado", que some com o adicional "Meu site sem a marca
+      Appfiliado" (novo módulo `site_sem_marca`).
+
 ---
 
 Pra continuar esse roadmap numa conversa nova, basta apontar esse arquivo

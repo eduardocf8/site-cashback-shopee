@@ -1,0 +1,165 @@
+"""O site que o visitante vê (seunome.appfiliado.com.br ou <painel>/s/seunome/)."""
+
+import logging
+
+from django.conf import settings
+from django.core.cache import cache
+from django.db.models import F
+from django.http import Http404, HttpResponse
+from django.shortcuts import redirect, render
+from django.utils import timezone
+from django.views.decorators.cache import cache_control
+from django.views.decorators.clickjacking import xframe_options_sameorigin
+
+from bot_whatsapp import copia, shopee_ofertas
+from licencas.models import MODULO_SITE, MODULO_SITE_SEM_MARCA
+
+from . import vitrine
+from .models import BotaoSite, CliqueSite, ProdutoSite, SiteAfiliado
+
+logger = logging.getLogger(__name__)
+
+CONVERSOES_POR_HORA = 20  # por visitante (IP), por site
+
+
+def _site(request, endereco=None) -> SiteAfiliado:
+    endereco = endereco or getattr(request, "site_endereco", "")
+    site = SiteAfiliado.objects.select_related("conta").filter(endereco=endereco).first()
+    previa = request.GET.get("previa") == "1" and _e_o_dono(request, site)
+    if not site or not (previa or (site.publicado and MODULO_SITE in site.conta.modulos_liberados())):
+        raise Http404("Site não encontrado.")
+    return site
+
+
+def _e_o_dono(request, site) -> bool:
+    from painel.autenticacao import conta_logada
+
+    conta = conta_logada(request)
+    return bool(site and conta and conta.pk == site.conta_id)
+
+
+def base_do_site(request, site) -> str:
+    """Início dos links dentro do site: "/" no subdomínio, "/s/seunome/" pelo painel."""
+    return "/" if getattr(request, "site_endereco", "") else f"/s/{site.endereco}/"
+
+
+def contar(site, tipo, alvo_id=0, alvo_nome=""):
+    hoje = timezone.localdate()
+    registro, _ = CliqueSite.objects.get_or_create(
+        site=site, dia=hoje, tipo=tipo, alvo_id=alvo_id, defaults={"alvo_nome": alvo_nome[:300]},
+    )
+    CliqueSite.objects.filter(pk=registro.pk).update(total=F("total") + 1)
+
+
+def produtos_da_vitrine(site):
+    if site.vitrine == SiteAfiliado.VITRINE_NENHUMA:
+        return ProdutoSite.objects.none()
+    return site.produtos.filter(fonte=site.vitrine)[: vitrine.LIMITE]
+
+
+@xframe_options_sameorigin  # a prévia do editor mostra o site num quadro, no próprio painel
+def pagina(request, endereco=None):
+    site = _site(request, endereco)
+    previa = request.GET.get("previa") == "1"
+    if not previa:
+        contar(site, CliqueSite.VISITA)
+    produtos = list(produtos_da_vitrine(site))
+    categorias = []
+    for p in produtos:
+        if p.categoria and p.categoria not in categorias:
+            categorias.append(p.categoria)
+    return render(request, "meusite/publico.html", {
+        "site": site,
+        "base": base_do_site(request, site),
+        "botoes": site.botoes.all(),
+        "redes": site.lista_de_redes(),
+        "produtos": produtos,
+        "categorias": [(c, vitrine.nome_curto_da_categoria(c)) for c in categorias],
+        "atualizado_em": max((p.posicao_em for p in produtos), default=None),
+        "com_marca": MODULO_SITE_SEM_MARCA not in site.conta.modulos_liberados(),
+        "erro": request.GET.get("erro", ""),
+        "previa": previa,
+        "hoje_ymd": timezone.localdate().strftime("%Y%m%d"),
+        "url_appfiliado": settings.APPFILIADO_URL_PLANOS,
+    })
+
+
+def ir_botao(request, botao_id, endereco=None):
+    site = _site(request, endereco)
+    botao = BotaoSite.objects.filter(site=site, pk=botao_id).first()
+    if not botao:
+        raise Http404
+    contar(site, CliqueSite.BOTAO, botao.pk, botao.texto)
+    return redirect(botao.url)
+
+
+def ir_rede(request, rede, endereco=None):
+    from .models import REDES
+
+    site = _site(request, endereco)
+    nomes = [r for r, _, _ in REDES]
+    url = (site.redes or {}).get(rede)
+    if rede not in nomes or not url:
+        raise Http404
+    contar(site, CliqueSite.REDE, nomes.index(rede) + 1, rede)
+    return redirect(url)
+
+
+def ir_produto(request, produto_id, endereco=None):
+    site = _site(request, endereco)
+    produto = ProdutoSite.objects.filter(site=site, pk=produto_id).first()
+    if not produto:
+        raise Http404
+    contar(site, CliqueSite.PRODUTO, produto.pk, produto.nome)
+    if not produto.link_afiliado:
+        try:
+            produto.link_afiliado = vitrine.link_do_site(site, produto.link_produto)[:500]
+            produto.save(update_fields=["link_afiliado"])
+        except Exception:  # noqa: BLE001 - na pior hipótese, vai para o produto sem o link
+            logger.exception("Meu site: link na hora do produto %s", produto.pk)
+            return redirect(produto.link_produto)
+    return redirect(produto.link_afiliado)
+
+
+def _ip(request) -> str:
+    return (request.META.get("HTTP_X_FORWARDED_FOR", "").split(",")[0].strip()
+            or request.META.get("REMOTE_ADDR", ""))
+
+
+def converter(request, endereco=None):
+    """O visitante colou um link da Shopee: vai para a Shopee pelo link do dono do site."""
+    site = _site(request, endereco)
+    base = base_do_site(request, site)
+    if not site.mostrar_conversor:
+        raise Http404
+    links = copia.links_shopee(request.GET.get("link", ""))
+    if not links:
+        return redirect(f"{base}?erro=link#conversor")
+    chave = f"meusite-conv:{site.pk}:{_ip(request)}"
+    if cache.get(chave, 0) >= CONVERSOES_POR_HORA:
+        return redirect(f"{base}?erro=limite#conversor")
+    cache.set(chave, cache.get(chave, 0) + 1, 3600)
+    contar(site, CliqueSite.CONVERSOR)
+    try:
+        # Do link limpo do produto (sem o rastreio de quem divulgou); sem ele, do original.
+        item_id = copia.identificar_produto(links[0])
+        produto = None
+        if item_id:
+            app_id, secret = vitrine._credenciais(site)
+            produto = shopee_ofertas.buscar_produto_por_item(app_id, secret, item_id)
+        return redirect(vitrine.link_do_site(site, (produto or {}).get("link") or links[0]))
+    except Exception:  # noqa: BLE001
+        logger.exception("Meu site: conversor do site %s", site.pk)
+        return redirect(f"{base}?erro=falhou#conversor")
+
+
+@cache_control(public=True, max_age=86400)
+def foto(request, endereco=None):
+    site = _site(request, endereco)
+    if not site.foto:
+        raise Http404
+    return HttpResponse(bytes(site.foto), content_type="image/jpeg")
+
+
+def nao_encontrado(request, exception=None):
+    return render(request, "meusite/nao_encontrado.html", status=404)

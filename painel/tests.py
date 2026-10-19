@@ -196,7 +196,8 @@ class TestPaginas(BasePainel):
         self.assertIn("Em breve", html)  # Instagram (ainda não está no painel)
 
     def test_modulo_fora_do_plano_mostra_convite(self):
-        self.assertContains(self.client.get("/m/site/"), "Não incluso no seu plano")
+        self.assertRedirects(self.client.get("/m/site/"), "/meu-site/", fetch_redirect_response=False)
+        self.assertContains(self.client.get("/meu-site/"), "Não incluso no seu plano")
 
     def test_modulo_ainda_nao_pronto_mostra_em_breve(self):
         self.assertContains(self.client.get("/m/instagram/"), "Em breve")
