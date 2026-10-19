@@ -22,9 +22,12 @@ REDES = [
     ("telegram", "Telegram", "https://t.me/{}"),
 ]
 
+# Cores prontas do editor (também dá para escolher qualquer outra).
 CORES = [
-    ("#E8541E", "Laranja"), ("#1F3A2E", "Verde"), ("#D6336C", "Rosa"),
-    ("#2F6FDE", "Azul"), ("#7048E8", "Roxo"), ("#111111", "Preto"),
+    ("#E8541E", "Laranja"), ("#D92D20", "Vermelho"), ("#D6336C", "Rosa"), ("#F783AC", "Rosa claro"),
+    ("#7048E8", "Roxo"), ("#B197FC", "Lilás"), ("#2F6FDE", "Azul"), ("#1E3A8A", "Azul-marinho"),
+    ("#0E9AA7", "Turquesa"), ("#2F9E44", "Verde"), ("#1F3A2E", "Verde-escuro"), ("#F2B705", "Amarelo"),
+    ("#8B5E3C", "Marrom"), ("#5F6B7A", "Cinza"), ("#111111", "Preto"),
 ]
 
 
@@ -49,7 +52,10 @@ class SiteAfiliado(models.Model):
     frase = models.CharField(max_length=140, blank=True)
     foto = models.BinaryField(null=True, blank=True)  # JPEG pequeno (o disco do servidor não guarda arquivos)
     foto_versao = models.PositiveIntegerField(default=0)
-    cor = models.CharField(max_length=7, choices=CORES, default="#E8541E")
+    cor = models.CharField(max_length=7, default="#E8541E", help_text="#RRGGBB (uma de CORES ou qualquer outra).")
+    LAYOUT_COLORIDO, LAYOUT_CLARO = "colorido", "claro"
+    LAYOUTS = [(LAYOUT_COLORIDO, "Fundo colorido"), (LAYOUT_CLARO, "Fundo claro")]
+    layout = models.CharField(max_length=10, choices=LAYOUTS, default=LAYOUT_COLORIDO)
     redes = models.JSONField(default=dict, blank=True, help_text="rede -> link (ver REDES).")
     mostrar_conversor = models.BooleanField(default=True)
     # Textos do conversor (em branco = o padrão).
@@ -103,6 +109,11 @@ class SiteAfiliado(models.Model):
     @property
     def botao_do_conversor(self) -> str:
         return self.conversor_botao or self.BOTAO_PADRAO
+
+    @property
+    def tema(self) -> dict:
+        from .cores import tema
+        return tema(self.cor)
 
     @property
     def vitrine_pedida(self) -> bool:

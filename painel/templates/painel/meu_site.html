@@ -36,8 +36,14 @@
       <div class="campo">{% include "painel/_campo.html" with campo=form.nome %}</div>
       <div class="campo" style="margin-top:12px">{% include "painel/_campo.html" with campo=form.frase %}</div>
       <fieldset class="campo" style="margin-top:12px">
+        <legend>{{ form.layout.label }}</legend>
+        <div class="opcoes-chip" id="layout-site">{% for opcao in form.layout %}<label class="chip-opcao">{{ opcao.tag }}<span>{{ opcao.choice_label }}</span></label>{% endfor %}</div>
+      </fieldset>
+      <fieldset class="campo" style="margin-top:14px">
         <legend>{{ form.cor.label }}</legend>
-        <div class="cores-site">{% for opcao in form.cor %}<label class="cor-site" title="{{ opcao.choice_label }}">{{ opcao.tag }}<span style="background:{{ opcao.data.value }}"></span></label>{% endfor %}</div>
+        <div class="cores-site">{% for opcao in form.cor %}{% if opcao.data.value == "outra" %}<label class="cor-site cor-outra" title="Outra cor">{{ opcao.tag }}<span style="background:{{ form.cor_outra.value|default:'#E8541E' }}"></span></label><input type="color" name="cor_outra" id="seletor-cor" value="{{ form.cor_outra.value|default:'#E8541E' }}" aria-label="Escolher outra cor">{% else %}<label class="cor-site" title="{{ opcao.choice_label }}">{{ opcao.tag }}<span style="background:{{ opcao.data.value }}"></span></label>{% endif %}{% endfor %}</div>
+        <p class="suave pequeno" style="margin:8px 0 0">O último círculo abre o seletor para escolher qualquer cor.</p>
+        {% for e in form.cor.errors %}<span class="erro">{{ e }}</span>{% endfor %}
       </fieldset>
       <fieldset class="campo" style="margin-top:22px">
         <legend>Redes sociais <span class="suave" style="font-weight:400">(ícones embaixo dos botões, opcional)</span></legend>
@@ -150,6 +156,16 @@
 </div>
 
 <form method="post" enctype="multipart/form-data" id="form-foto" hidden>{% csrf_token %}<input type="hidden" name="acao" value="foto"></form>
+<dialog id="ajustar-foto" class="janela-foto" aria-labelledby="titulo-ajustar-foto">
+  <h2 id="titulo-ajustar-foto">Ajustar foto</h2>
+  <p class="suave pequeno">Arraste para posicionar e use o controle para dar zoom.</p>
+  <canvas class="area-recorte" width="600" height="600" tabindex="-1" autofocus></canvas>
+  <label class="controle-zoom"><span aria-hidden="true">−</span><input type="range" min="1" max="4" step="0.01" value="1" aria-label="Zoom"><span aria-hidden="true">+</span></label>
+  <div class="botoes-janela">
+    <button type="button" class="botao botao-claro" data-fechar>Cancelar</button>
+    <button type="button" class="botao botao-principal" data-usar>Usar esta foto</button>
+  </div>
+</dialog>
 <form method="post" id="botao-novo" hidden>{% csrf_token %}</form>
 {% for b in botoes %}<form method="post" id="botao-{{ b.pk }}" hidden>{% csrf_token %}<input type="hidden" name="botao" value="{{ b.pk }}"></form>{% endfor %}
 <script src="{% static 'painel/meusite.js' %}" defer></script>
