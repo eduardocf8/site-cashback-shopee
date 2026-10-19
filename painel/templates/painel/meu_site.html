@@ -98,7 +98,7 @@
         <legend>{{ form.vitrine.label }}</legend>
         {% for opcao in form.vitrine %}<label class="marcar">{{ opcao.tag }}<span>{{ opcao.choice_label }}</span></label>{% endfor %}
       </fieldset>
-      <fieldset class="campo" id="formato-vitrine" style="margin-top:12px" data-sem-vitrine-esconde>
+      <fieldset class="campo" id="formato-vitrine" style="margin:12px 0 20px" data-sem-vitrine-esconde>
         <legend>{{ form.vitrine_formato.label }}</legend>
         <div class="opcoes-chip">{% for opcao in form.vitrine_formato %}<label class="chip-opcao">{{ opcao.tag }}<span>{{ opcao.choice_label }}</span></label>{% endfor %}</div>
       </fieldset>

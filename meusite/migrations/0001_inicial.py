@@ -77,8 +77,8 @@ class Migration(migrations.Migration):
                     "vitrine_formato",
                     models.CharField(
                         choices=[
-                            ("lista", "Lista (2 por linha)"),
-                            ("carrossel", "Carrossel (arrasta para o lado)"),
+                            ("lista", "Lista"),
+                            ("carrossel", "Carrossel"),
                         ],
                         default="lista",
                         max_length=10,

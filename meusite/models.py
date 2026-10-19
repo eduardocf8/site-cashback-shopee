@@ -60,7 +60,7 @@ class SiteAfiliado(models.Model):
 
     vitrine = models.CharField(max_length=10, choices=FONTES_VITRINE, default=VITRINE_BOT)
     FORMATO_LISTA, FORMATO_CARROSSEL = "lista", "carrossel"
-    FORMATOS_VITRINE = [(FORMATO_LISTA, "Lista (2 por linha)"), (FORMATO_CARROSSEL, "Carrossel (arrasta para o lado)")]
+    FORMATOS_VITRINE = [(FORMATO_LISTA, "Lista"), (FORMATO_CARROSSEL, "Carrossel")]
     vitrine_formato = models.CharField(max_length=10, choices=FORMATOS_VITRINE, default=FORMATO_LISTA)
     busca_tipo = models.CharField(max_length=20, choices=TIPOS_BUSCA, default=BUSCA_GERAL)
     palavra_chave = models.CharField(max_length=120, blank=True)
