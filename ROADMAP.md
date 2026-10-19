@@ -232,8 +232,11 @@ Itens novos/atualizados a partir dele - **ordem sugerida de implementação**:
        no Google Cloud: `https://cash-b.com/login/google/callback/`.
 5. [ ] **13.11 Converter sem cadastro** (grande, já existia) - **em espera, medindo
        antes de construir (Fase 62)**: com o login com Google (13.15) o pedido de
-       cadastro virou 1 clique, então parte do ganho pode já ter vindo. Decidir com 2-3
-       semanas de dados do "Funil de quem chega sem conta" (admin > Analytics). Se
+       cadastro virou 1 clique, então parte do ganho pode já ter vindo. Decisão
+       antecipada pelo dono para **24/10** (7 dias de dados limpos, 17/10 a 23/10) -
+       cada dia sem isso é comissão perdida. **Desenho técnico pronto:**
+       `docs/desenho-13.11-converter-sem-cadastro.md` (tela-ponte, clique anônimo com
+       cookie de 30 dias, vínculo no login, entrega em 4 PRs). Se
        fizer: considerar pedir só e-mail/Google ao gerar o link, porque o navegador
        interno do Instagram perde o cookie do clique anônimo. - a Méliuz prova que
        funciona: guardar o clique anônimo num cookie e ligar à conta quando a
