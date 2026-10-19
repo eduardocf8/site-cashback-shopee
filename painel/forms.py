@@ -85,6 +85,13 @@ class RegraSubIdForm(forms.Form):
 DIAS_DA_SEMANA = [(0, "Seg"), (1, "Ter"), (2, "Qua"), (3, "Qui"), (4, "Sex"), (5, "Sáb"), (6, "Dom")]
 
 
+ATTRS_HORA = {
+    "type": "text", "inputmode": "numeric", "maxlength": "5", "placeholder": "07:00",
+    "pattern": "([01]?[0-9]|2[0-3]):[0-5][0-9]", "title": "Hora no formato 24 h, ex: 07:00 ou 22:30",
+    "autocomplete": "off", "data-hora": "",
+}
+
+
 def _salvos_primeiro(nomes: dict, salvos) -> list[tuple[str, str]]:
     """Os grupos/canais já salvos no topo da lista (fica fácil ver e desmarcar), depois
     os outros; cada parte em ordem alfabética. Usa o que está salvo, não o que está
@@ -147,8 +154,10 @@ class ConfiguracaoOfertasForm(forms.ModelForm):
             "modo": forms.RadioSelect,
             "tipo_busca": forms.RadioSelect,
             "ia_tipo": forms.RadioSelect,
-            "horario_inicio": forms.TimeInput(attrs={"type": "time"}, format="%H:%M"),
-            "horario_fim": forms.TimeInput(attrs={"type": "time"}, format="%H:%M"),
+            # Texto "HH:MM" (sempre 24 h): o campo de hora do navegador mostra AM/PM em
+            # computadores configurados em inglês.
+            "horario_inicio": forms.TimeInput(attrs=ATTRS_HORA, format="%H:%M"),
+            "horario_fim": forms.TimeInput(attrs=ATTRS_HORA, format="%H:%M"),
         }
 
     def __init__(self, *args, grupos_disponiveis=None, **kwargs):

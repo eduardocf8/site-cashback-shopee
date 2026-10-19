@@ -247,6 +247,19 @@ class TestTelaDaParte3(BasePainel):
         self.client.post("/whatsapp/ofertas/", self.dados(ia_ativa="on"))
         self.assertFalse(ConfiguracaoOfertas.objects.get(conta=self.conta).ia_ativa)
 
+    def test_horarios_em_24h(self):
+        from datetime import time
+
+        html = self.client.get("/whatsapp/ofertas/").content.decode()
+        self.assertIn('name="horario_inicio"', html)
+        self.assertNotIn('type="time"', html)  # campo de texto: sem AM/PM do navegador
+        self.client.post("/whatsapp/ofertas/", self.dados(horario_inicio="7:30", horario_fim="22:45"))
+        config = ConfiguracaoOfertas.objects.get(conta=self.conta)
+        self.assertEqual((config.horario_inicio, config.horario_fim), (time(7, 30), time(22, 45)))
+        self.assertContains(self.client.get("/whatsapp/ofertas/"), 'value="07:30"')
+        resposta = self.client.post("/whatsapp/ofertas/", self.dados(horario_fim="25:00"))
+        self.assertEqual(resposta.status_code, 200)  # inválido: volta com erro
+
     def test_historico_mostra_simulado_ia_e_a_mensagem(self):
         EnvioWhatsApp.objects.create(
             conta=self.conta, destino="1@g.us", destino_nome="Ofertas VIP", origem="oferta", item_id="1",

@@ -342,7 +342,8 @@ form.form-regra > .erros-form { grid-column: 1 / -1; }
 .qr-caixa svg { display: block; width: 240px; height: 240px; }
 .passos-qr { margin: 0; padding-left: 18px; display: flex; flex-direction: column; gap: 8px; font-size: 14px; flex: 1; min-width: 200px; }
 .eventos-zap { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; }
-.eventos-zap li { display: grid; grid-template-columns: 82px 1fr; gap: 10px; padding: 8px 0; border-bottom: 1px solid var(--trilho); font-size: 13.5px; }
+.eventos-zap li { display: grid; grid-template-columns: 82px minmax(0, 1fr); gap: 10px; padding: 8px 0; border-bottom: 1px solid var(--trilho); font-size: 13.5px; }
+.eventos-zap li > span { min-width: 0; }
 .eventos-zap li:last-child { border-bottom: none; }
 .eventos-zap .evento-caiu span:last-child, .eventos-zap .evento-deslogou span:last-child,
 .eventos-zap .evento-falha span:last-child, .eventos-zap .evento-parou span:last-child { color: var(--perigo); }
@@ -362,6 +363,13 @@ form.form-regra > .erros-form { grid-column: 1 / -1; }
 .status-ofertas h2.status-zap { font-size: 18px; margin: 0 0 6px; }
 .status-ofertas-texto { display: flex; flex-direction: column; gap: 6px; min-width: 0; flex: 1; }
 .status-ofertas-botoes { display: flex; gap: 10px; flex-wrap: wrap; }
+/* Celular: o texto ocupa a linha toda e os botões vêm embaixo, lado a lado. */
+@media (max-width: 700px) {
+  .status-ofertas { flex-direction: column; align-items: stretch; }
+  .status-ofertas-botoes { flex-wrap: nowrap; }
+  .status-ofertas-botoes form { flex: 1; }
+  .status-ofertas-botoes .botao { width: 100%; }
+}
 .form-ofertas { gap: 16px; min-width: 0; }
 .form-ofertas fieldset.campo { border: none; padding: 0; margin: 0; min-width: 0; }
 .form-ofertas legend { font-weight: 700; font-size: 13px; padding: 0; margin-bottom: 6px; }
@@ -370,6 +378,9 @@ form.form-regra > .erros-form { grid-column: 1 / -1; }
 .campo select, .campo input[type="time"] { min-height: 44px; }
 .grade-campos { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px; margin-top: 10px; }
 @media (max-width: 600px) { .grade-campos { grid-template-columns: 1fr; } }
+/* "Das" e "Até" sempre lado a lado, também no celular. */
+.grade-horario { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px; }
+.grade-campos .grade-horario { grid-column: 1 / -1; }
 .opcoes-chip { display: flex; flex-wrap: wrap; gap: 8px; }
 .chip-opcao { position: relative; display: inline-flex; }
 .chip-opcao input { position: absolute; opacity: 0; inset: 0; margin: 0; cursor: pointer; }
@@ -392,7 +403,7 @@ form.form-regra > .erros-form { grid-column: 1 / -1; }
 .ofertas-teste li { display: grid; grid-template-columns: 56px 1fr; gap: 10px; align-items: start; font-size: 14px; }
 .ofertas-teste img { width: 56px; height: 56px; object-fit: cover; border-radius: 8px; border: 1px solid var(--borda); }
 .ofertas-teste li > div { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
-.texto-oferta { white-space: pre-wrap; font: inherit; font-size: 13px; background: var(--campo); border: 1px solid var(--borda); border-radius: 8px; padding: 10px; margin: 6px 0 0; }
+.texto-oferta { white-space: pre-wrap; overflow-wrap: anywhere; max-width: 100%; box-sizing: border-box; font: inherit; font-size: 13px; background: var(--campo); border: 1px solid var(--borda); border-radius: 8px; padding: 10px; margin: 6px 0 0; }
 [hidden] { display: none !important; }
 .ofertas-teste .sem-foto { width: 56px; height: 56px; border-radius: 8px; background: var(--trilho); }
 .lista-grupos-topo { display: grid; grid-template-columns: 1fr 180px; gap: 10px; padding: 4px 0; border-bottom: 1px solid var(--trilho); }

@@ -155,8 +155,10 @@
       <div class="grade-campos">
         <div class="campo">{% include "painel/_campo.html" with campo=form.intervalo_minutos %}</div>
         <div class="campo">{% include "painel/_campo.html" with campo=form.limite_diario %}</div>
-        <div class="campo">{% include "painel/_campo.html" with campo=form.horario_inicio %}</div>
-        <div class="campo">{% include "painel/_campo.html" with campo=form.horario_fim %}</div>
+        <div class="grade-horario">
+          <div class="campo">{% include "painel/_campo.html" with campo=form.horario_inicio %}</div>
+          <div class="campo">{% include "painel/_campo.html" with campo=form.horario_fim %}</div>
+        </div>
       </div>
       <fieldset class="campo">
         <legend>{{ form.dias_semana.label }}</legend>

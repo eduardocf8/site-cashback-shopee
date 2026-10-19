@@ -15,6 +15,18 @@
   document.querySelectorAll("#modo input, #tipo-busca input").forEach(function (el) {
     el.addEventListener("change", mostrar);
   });
+  // Horários em 24 h: põe os ":" sozinho (digitar "0730" vira "07:30").
+  document.querySelectorAll("input[data-hora]").forEach(function (campo) {
+    campo.addEventListener("input", function () {
+      var digitos = campo.value.replace(/\D/g, "").slice(0, 4);
+      campo.value = digitos.length > 2 ? digitos.slice(0, 2) + ":" + digitos.slice(2) : digitos;
+    });
+    campo.addEventListener("blur", function () {
+      var m = campo.value.match(/^(\d{1,2}):?(\d{0,2})$/);
+      if (m && campo.value) campo.value = ("0" + m[1]).slice(-2) + ":" + ((m[2] || "00") + "0").slice(0, 2);
+    });
+  });
+
   // Os tipos de revisão só aparecem com a IA ligada.
   var iaAtiva = document.querySelector('input[name="ia_ativa"]');
   var tiposIa = document.getElementById("tipos-ia");
