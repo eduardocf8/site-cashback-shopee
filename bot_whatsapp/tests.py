@@ -183,11 +183,18 @@ class TestGerenciador(TestCase):
         sessao.cliente.send_image.assert_not_called()  # só o cartão, sem foto separada
         self.assertEqual(sessao.cliente.send_message.call_count, 2)
         for chamada in sessao.cliente.send_message.call_args_list:
-            previa = chamada.args[1].extendedTextMessage
+            destino, mensagem = chamada.args
+            previa = mensagem.extendedTextMessage
             self.assertEqual((previa.matchedText, previa.title), ("https://s.shopee.com.br/abc", "Fone Bluetooth"))
             self.assertEqual((previa.thumbnailWidth, previa.thumbnailHeight), (1200, 630))  # larga: cartão grande
-            self.assertEqual((previa.thumbnailDirectPath, previa.mediaKey), ("/v/t/abc", b"k"))
             self.assertTrue(previa.JPEGThumbnail)
+            if destino.Server == "newsletter":
+                # canal não abre a imagem enviada à parte: só a miniatura (maior) dentro da mensagem
+                self.assertEqual((previa.thumbnailDirectPath, previa.mediaKey), ("", b""))
+                self.assertGreater(len(previa.JPEGThumbnail), 3000)
+            else:
+                self.assertEqual((previa.thumbnailDirectPath, previa.mediaKey), ("/v/t/abc", b"k"))
+        self.assertEqual(sessao.cliente.upload.call_count, 1)  # só o grupo sobe a imagem
         self.assertEqual(list(EnvioWhatsApp.objects.values_list("estado", flat=True)), ["enviado", "enviado"])
 
     def test_previa_grande_sem_foto_ou_com_upload_falhando_ainda_envia(self):
