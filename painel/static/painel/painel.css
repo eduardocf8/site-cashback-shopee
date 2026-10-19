@@ -536,6 +536,7 @@ form.form-regra > .erros-form { grid-column: 1 / -1; }
 .editar-botao, .novo-botao { margin-top: 6px; }
 .corpo-botao { display: flex; flex-direction: column; gap: 16px; margin-top: 14px; }
 .corpo-botao > .campo, .corpo-botao > .marcar { margin: 0; }
+summary { cursor: pointer; }  /* "Editar", "Ver mensagem" etc. abrem ao clicar */
 .novo-botao > summary { list-style: none; display: inline-flex; width: auto; }
 .novo-botao > summary::-webkit-details-marker { display: none; }
 .link-botao.perigo { color: var(--perigo); }
