@@ -1,0 +1,159 @@
+{% load painel_extras %}<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>{{ site.nome|default:site.endereco }}</title>
+<meta name="description" content="{{ site.frase|default:'Ofertas da Shopee com o meu link de afiliado.' }}">
+<meta property="og:title" content="{{ site.nome|default:site.endereco }}">
+<meta property="og:description" content="{{ site.frase }}">
+{% if site.foto %}<meta property="og:image" content="{{ base }}foto.jpg?v={{ site.foto_versao }}">{% endif %}
+<meta name="theme-color" content="{{ site.cor }}">
+{% if previa %}<base target="_blank">{% endif %}
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;700&display=swap" rel="stylesheet">
+<style>
+:root { --cor: {{ site.cor }}; --fundo: color-mix(in srgb, var(--cor) 78%, #1a1a1a); --cor-suave: color-mix(in srgb, var(--cor) 12%, white); --texto: #1C2B23; --suave: #6B6B6B; --borda: #EEE6DD; }
+* { box-sizing: border-box; }
+html, body { margin: 0; }
+body { font-family: "DM Sans", Arial, sans-serif; background: var(--fundo); color: #fff; -webkit-font-smoothing: antialiased; min-height: 100vh; }
+a { color: inherit; }
+.wrap { max-width: 520px; margin: 0 auto; padding: 40px 18px 40px; }
+.perfil { text-align: center; }
+.foto { width: 96px; height: 96px; border-radius: 50%; margin: 0 auto 14px; background: color-mix(in srgb, var(--cor) 60%, black); color: #fff; display: grid; place-items: center; font-size: 40px; font-weight: 700; overflow: hidden; }
+.foto img { width: 100%; height: 100%; object-fit: cover; }
+h1 { font-size: 22px; font-weight: 700; margin: 0; overflow-wrap: anywhere; }
+.frase { color: rgba(255,255,255,.82); font-size: 15px; margin: 8px 0 26px; overflow-wrap: anywhere; }
+.botoes { display: flex; flex-direction: column; gap: 14px; }
+.botao-link { display: flex; align-items: center; justify-content: center; min-height: 58px; padding: 12px 24px; border-radius: 999px; text-align: center; font-size: 16px; font-weight: 500; color: #1C2B23; background: rgba(255,255,255,.84); text-decoration: none; overflow-wrap: anywhere; transition: transform .12s, background .12s; }
+.botao-link:hover { background: rgba(255,255,255,.95); transform: scale(1.015); }
+.botao-link.destaque { background: #fff; font-weight: 700; box-shadow: 0 6px 18px rgba(0,0,0,.18); }
+.redes { display: flex; justify-content: center; gap: 22px; margin: 26px 0 6px; flex-wrap: wrap; }
+.redes a { color: #fff; display: grid; place-items: center; width: 40px; height: 40px; opacity: .95; }
+.redes a:hover { opacity: 1; transform: scale(1.08); }
+.redes svg { width: 30px; height: 30px; }
+.card { background: #fff; color: var(--texto); border-radius: 22px; padding: 18px; margin: 28px 0 20px; }
+.card h2 { font-size: 16.5px; margin: 0 0 4px; }
+.card p { margin: 0 0 12px; color: var(--suave); font-size: 13.5px; line-height: 1.45; }
+#conversor { text-align: center; }
+.conversor { display: flex; flex-direction: column; gap: 8px; }
+.conversor input { height: 48px; border: 1px solid var(--borda); border-radius: 12px; padding: 0 12px; font: inherit; font-size: 15px; background: #FCFAF7; min-width: 0; text-align: center; }
+.conversor input:focus { outline: 2px solid var(--cor); outline-offset: 1px; background: #fff; }
+.conversor button { height: 48px; border: 0; border-radius: 12px; background: var(--texto); color: #fff; font: inherit; font-weight: 700; font-size: 15px; cursor: pointer; }
+.erro { background: #FEF3F2; color: #B42318; border-radius: 10px; padding: 8px 10px; font-size: 13px; margin-bottom: 10px; }
+.topo-vitrine { display: flex; justify-content: space-between; align-items: baseline; gap: 8px; margin: 26px 0 10px; }
+.topo-vitrine h2 { font-size: 18px; margin: 0; }
+.topo-vitrine span { font-size: 12px; color: rgba(255,255,255,.75); }
+.chips { display: flex; gap: 6px; overflow-x: auto; margin: 0 -16px 12px; padding: 0 16px 4px; scrollbar-width: none; }
+.chip { white-space: nowrap; font: inherit; font-size: 13px; font-weight: 700; padding: 8px 14px; border-radius: 999px; background: rgba(255,255,255,.16); border: 0; cursor: pointer; color: #fff; }
+.chip.ativo { background: #fff; color: var(--texto); }
+.grade { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
+.produto { background: #fff; color: var(--texto); border-radius: 16px; overflow: hidden; text-decoration: none; display: flex; flex-direction: column; }
+.produto[hidden] { display: none; }
+.produto .img { aspect-ratio: 1; background: #F1ECE4; }
+.produto .img img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.produto .t { padding: 8px 10px 10px; display: flex; flex-direction: column; gap: 2px; }
+.produto .nome { font-size: 12.5px; line-height: 1.3; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; min-height: 33px; }
+.produto .de { font-size: 11px; color: var(--suave); text-decoration: line-through; margin-top: 4px; }
+.produto .por { font-size: 16px; font-weight: 700; color: var(--cor); }
+.produto .off { display: inline-block; font-size: 10.5px; font-weight: 700; background: var(--cor-suave); color: var(--cor); padding: 2px 6px; border-radius: 6px; margin-left: 4px; vertical-align: 2px; }
+/* Carrossel: uma fileira que arrasta para o lado (setas no computador). */
+.carrossel-moldura { position: relative; }
+.grade.carrossel { display: flex; overflow-x: auto; scroll-snap-type: x mandatory; scroll-padding-inline: 18px; gap: 12px; margin: 0 -18px; padding: 2px 18px 10px; scrollbar-width: none; }
+.grade.carrossel::-webkit-scrollbar { display: none; }
+.grade.carrossel .produto { flex: 0 0 46%; scroll-snap-align: start; }
+@media (min-width: 480px) { .grade.carrossel .produto { flex-basis: 40%; } }
+.seta { display: none; }
+@media (hover: hover) and (pointer: fine) {
+  .em-carrossel .seta { display: grid; place-items: center; position: absolute; top: 38%; z-index: 2; width: 38px; height: 38px; border-radius: 50%; border: 0; background: #fff; color: var(--texto); font-size: 24px; line-height: 1; cursor: pointer; box-shadow: 0 4px 12px rgba(0,0,0,.2); }
+  .em-carrossel .seta-esq { left: -8px; }
+  .em-carrossel .seta-dir { right: -8px; }
+}
+.vazio { color: rgba(255,255,255,.8); font-size: 14px; text-align: center; padding: 20px 0; }
+.rodape { text-align: center; font-size: 11.5px; color: rgba(255,255,255,.7); margin-top: 32px; line-height: 1.6; }
+.rodape a { color: #fff; font-weight: 700; }
+</style>
+</head>
+<body>
+<main class="wrap">
+  <header class="perfil">
+    <div class="foto">{% if site.foto %}<img src="{{ base }}foto.jpg?v={{ site.foto_versao }}" alt="">{% else %}{{ site.nome|default:site.endereco|slice:":1"|upper }}{% endif %}</div>
+    <h1>{{ site.nome|default:site.endereco }}</h1>
+    {% if site.frase %}<p class="frase">{{ site.frase }}</p>{% else %}<div style="height:18px"></div>{% endif %}
+  </header>
+
+  {% if botoes %}<nav class="botoes" aria-label="Links">{% for b in botoes %}<a class="botao-link{% if b.destaque %} destaque{% endif %}" href="{{ base }}b/{{ b.pk }}/" rel="nofollow noopener">{{ b.texto }}</a>{% endfor %}</nav>{% endif %}
+  {% if redes %}<nav class="redes" aria-label="Redes sociais">{% for r in redes %}<a href="{{ base }}r/{{ r.rede }}/" rel="nofollow noopener" title="{{ r.nome }}" aria-label="{{ r.nome }}">{% include "meusite/_icone_rede.html" with rede=r.rede %}</a>{% endfor %}</nav>{% endif %}
+
+  {% if site.mostrar_conversor %}
+  <section class="card" id="conversor">
+    <h2 data-conversor="titulo">{{ site.titulo_do_conversor }}</h2>
+    <p data-conversor="texto">{{ site.texto_do_conversor }}</p>
+    {% if erro == "link" %}<div class="erro">Esse não parece um link da Shopee. Copie o link do produto no app ou no site da Shopee.</div>
+    {% elif erro == "limite" %}<div class="erro">Muitos links em pouco tempo. Tente de novo daqui a pouco.</div>
+    {% elif erro == "falhou" %}<div class="erro">Não consegui gerar o link agora. Tente de novo em instantes.</div>{% endif %}
+    <form class="conversor" method="get" action="{{ base }}ir/" target="_top">
+      <input type="url" name="link" required placeholder="Cole aqui o link da Shopee" inputmode="url" autocomplete="off" aria-label="Link do produto na Shopee">
+      <button type="submit" data-conversor="botao">{{ site.botao_do_conversor }}</button>
+    </form>
+  </section>
+  {% endif %}
+
+  {% if site.vitrine != "nenhuma" %}
+  <section aria-labelledby="titulo-vitrine">
+    <div class="topo-vitrine"><h2 id="titulo-vitrine">Ofertas de hoje</h2>{% if atualizado_em %}<span>{% if atualizado_em|date:"Ymd" == hoje_ymd %}atualizado às {{ atualizado_em|date:"H:i" }}{% else %}atualizado em {{ atualizado_em|date:"d/m" }}{% endif %}</span>{% endif %}</div>
+    {% if categorias|length > 1 %}
+      <div class="chips" role="tablist">
+        <button type="button" class="chip ativo" data-categoria="">Todas</button>
+        {% for chave, nome in categorias %}<button type="button" class="chip" data-categoria="{{ chave }}">{{ nome }}</button>{% endfor %}
+      </div>
+    {% endif %}
+    {% if produtos %}
+      <div class="carrossel-moldura{% if site.vitrine_formato == 'carrossel' %} em-carrossel{% endif %}" id="moldura-vitrine">
+      <button type="button" class="seta seta-esq" aria-label="Ofertas anteriores">‹</button>
+      <div class="grade{% if site.vitrine_formato == 'carrossel' %} carrossel{% endif %}" id="lista-vitrine">
+        {% for p in produtos %}
+          <a class="produto" href="{{ base }}p/{{ p.pk }}/" rel="nofollow noopener" data-categoria="{{ p.categoria }}">
+            <div class="img">{% if p.imagem_url %}<img src="{{ p.imagem_url }}" alt="" loading="lazy" referrerpolicy="no-referrer">{% endif %}</div>
+            <div class="t">
+              <span class="nome">{{ p.nome }}</span>
+              {% if p.preco_original %}<span class="de">{{ p.preco_original|brl }}</span>{% endif %}
+              <span class="por">{{ p.preco|brl }}{% if p.desconto %}<span class="off">-{{ p.desconto }}%</span>{% endif %}</span>
+            </div>
+          </a>
+        {% endfor %}
+      </div>
+      <button type="button" class="seta seta-dir" aria-label="Próximas ofertas">›</button>
+      </div>
+    {% else %}
+      <p class="vazio">As ofertas aparecem aqui em breve.</p>
+    {% endif %}
+  </section>
+  {% endif %}
+
+  <footer class="rodape">
+    Links de afiliado da Shopee: quem divulga ganha uma comissão, sem custo extra para você.
+    {% if com_marca %}<br><a href="{{ url_appfiliado }}" target="_blank" rel="noopener">Feito com Appfiliado</a>{% endif %}
+  </footer>
+</main>
+<script>
+// Setas do carrossel.
+document.querySelectorAll(".seta").forEach(function (seta) {
+  seta.addEventListener("click", function () {
+    var lista = document.getElementById("lista-vitrine");
+    lista.scrollBy({ left: (seta.classList.contains("seta-dir") ? 1 : -1) * lista.clientWidth * 0.85, behavior: "smooth" });
+  });
+});
+// Filtro por categoria da vitrine.
+document.querySelectorAll(".chip[data-categoria]").forEach(function (chip) {
+  chip.addEventListener("click", function () {
+    document.querySelectorAll(".chip").forEach(function (c) { c.classList.toggle("ativo", c === chip); });
+    var cat = chip.dataset.categoria;
+    document.querySelectorAll(".produto").forEach(function (p) { p.hidden = cat && p.dataset.categoria !== cat; });
+    var lista = document.getElementById("lista-vitrine");
+    if (lista) lista.scrollLeft = 0;
+  });
+});
+</script>
+</body>
+</html>

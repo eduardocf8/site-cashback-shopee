@@ -12,12 +12,15 @@ MODULO_SITE = "site"
 MODULO_VITRINE = "vitrine"
 MODULO_VIDEOS = "videos"
 MODULO_INSTAGRAM = "instagram"
+# Adicional do Meu site: tira o "Feito com Appfiliado" do rodapé (plano premium).
+MODULO_SITE_SEM_MARCA = "site_sem_marca"
 MODULOS = [
     (MODULO_WHATSAPP, "Bot de WhatsApp"),
-    (MODULO_SITE, "Meu site (conversor)"),
+    (MODULO_SITE, "Meu site (conversor e vitrine)"),
     (MODULO_VITRINE, "Vitrine"),
     (MODULO_VIDEOS, "Gerador de vídeos"),
     (MODULO_INSTAGRAM, "Automação do Instagram"),
+    (MODULO_SITE_SEM_MARCA, "Meu site sem a marca Appfiliado"),
 ]
 CODIGOS_MODULOS = [codigo for codigo, _ in MODULOS]
 

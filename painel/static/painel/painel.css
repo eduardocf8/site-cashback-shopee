@@ -342,7 +342,8 @@ form.form-regra > .erros-form { grid-column: 1 / -1; }
 .qr-caixa svg { display: block; width: 240px; height: 240px; }
 .passos-qr { margin: 0; padding-left: 18px; display: flex; flex-direction: column; gap: 8px; font-size: 14px; flex: 1; min-width: 200px; }
 .eventos-zap { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; }
-.eventos-zap li { display: grid; grid-template-columns: 82px 1fr; gap: 10px; padding: 8px 0; border-bottom: 1px solid var(--trilho); font-size: 13.5px; }
+.eventos-zap li { display: grid; grid-template-columns: 82px minmax(0, 1fr); gap: 10px; padding: 8px 0; border-bottom: 1px solid var(--trilho); font-size: 13.5px; }
+.eventos-zap li > span { min-width: 0; }
 .eventos-zap li:last-child { border-bottom: none; }
 .eventos-zap .evento-caiu span:last-child, .eventos-zap .evento-deslogou span:last-child,
 .eventos-zap .evento-falha span:last-child, .eventos-zap .evento-parou span:last-child { color: var(--perigo); }
@@ -362,6 +363,13 @@ form.form-regra > .erros-form { grid-column: 1 / -1; }
 .status-ofertas h2.status-zap { font-size: 18px; margin: 0 0 6px; }
 .status-ofertas-texto { display: flex; flex-direction: column; gap: 6px; min-width: 0; flex: 1; }
 .status-ofertas-botoes { display: flex; gap: 10px; flex-wrap: wrap; }
+/* Celular: o texto ocupa a linha toda e os botões vêm embaixo, lado a lado. */
+@media (max-width: 700px) {
+  .status-ofertas { flex-direction: column; align-items: stretch; }
+  .status-ofertas-botoes { flex-wrap: nowrap; }
+  .status-ofertas-botoes form { flex: 1; }
+  .status-ofertas-botoes .botao { width: 100%; }
+}
 .form-ofertas { gap: 16px; min-width: 0; }
 .form-ofertas fieldset.campo { border: none; padding: 0; margin: 0; min-width: 0; }
 .form-ofertas legend { font-weight: 700; font-size: 13px; padding: 0; margin-bottom: 6px; }
@@ -370,6 +378,9 @@ form.form-regra > .erros-form { grid-column: 1 / -1; }
 .campo select, .campo input[type="time"] { min-height: 44px; }
 .grade-campos { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px; margin-top: 10px; }
 @media (max-width: 600px) { .grade-campos { grid-template-columns: 1fr; } }
+/* "Das" e "Até" sempre lado a lado, também no celular. */
+.grade-horario { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px; }
+.grade-campos .grade-horario { grid-column: 1 / -1; }
 .opcoes-chip { display: flex; flex-wrap: wrap; gap: 8px; }
 .chip-opcao { position: relative; display: inline-flex; }
 .chip-opcao input { position: absolute; opacity: 0; inset: 0; margin: 0; cursor: pointer; }
@@ -381,12 +392,18 @@ form.form-regra > .erros-form { grid-column: 1 / -1; }
 .lista-grupos input[type="checkbox"] { width: 18px; height: 18px; min-height: 0; padding: 0; flex: none; accent-color: var(--verde); }
 .barra-salvar { position: sticky; bottom: 12px; display: flex; justify-content: flex-end; }
 .barra-salvar .botao { box-shadow: 0 6px 18px rgba(31, 58, 46, .18); }
+/* No celular a barra do navegador e a área do gesto do iPhone cobrem a parte de baixo
+   da tela: o botão flutua mais alto e respeita a área segura. */
+@media (max-width: 700px) {
+  .barra-salvar { bottom: calc(28px + env(safe-area-inset-bottom, 0px)); padding-right: 4px; }
+  .barra-salvar .botao { min-height: 48px; padding: 0 26px; }
+}
 .coluna-lateral { display: flex; flex-direction: column; gap: 16px; min-width: 0; }
 .ofertas-teste { list-style: none; margin: 8px 0 0; padding: 0; display: flex; flex-direction: column; gap: 12px; }
 .ofertas-teste li { display: grid; grid-template-columns: 56px 1fr; gap: 10px; align-items: start; font-size: 14px; }
 .ofertas-teste img { width: 56px; height: 56px; object-fit: cover; border-radius: 8px; border: 1px solid var(--borda); }
 .ofertas-teste li > div { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
-.texto-oferta { white-space: pre-wrap; font: inherit; font-size: 13px; background: var(--campo); border: 1px solid var(--borda); border-radius: 8px; padding: 10px; margin: 6px 0 0; }
+.texto-oferta { white-space: pre-wrap; overflow-wrap: anywhere; max-width: 100%; box-sizing: border-box; font: inherit; font-size: 13px; background: var(--campo); border: 1px solid var(--borda); border-radius: 8px; padding: 10px; margin: 6px 0 0; }
 [hidden] { display: none !important; }
 .ofertas-teste .sem-foto { width: 56px; height: 56px; border-radius: 8px; background: var(--trilho); }
 .lista-grupos-topo { display: grid; grid-template-columns: 1fr 180px; gap: 10px; padding: 4px 0; border-bottom: 1px solid var(--trilho); }
@@ -479,3 +496,44 @@ form.form-regra > .erros-form { grid-column: 1 / -1; }
 .eventos-zap details { margin-top: 4px; }
 .botoes-linha { display: flex; gap: 10px; flex-wrap: wrap; }
 .aviso-ia { display: block; margin-top: 6px; }
+.ia-motivo { display: block; color: var(--amarelo-tinta); margin-top: 2px; }
+
+/* ---------- Meu site (editor) ---------- */
+.site-editor .card + .card { margin-top: 0; }
+#form-site { display: flex; flex-direction: column; gap: 16px; min-width: 0; }
+.endereco-site { display: flex; align-items: center; gap: 4px; flex-wrap: wrap; }
+.endereco-site input { flex: 1 1 180px; min-width: 0; min-height: 44px; border: 1px solid var(--borda); border-radius: 10px; padding: 0 12px; font: inherit; background: var(--campo); }
+.endereco-site input:focus { outline: 2px solid var(--verde); outline-offset: 1px; background: #fff; }
+.foto-editor { display: flex; align-items: center; gap: 14px; margin: 10px 0 14px; }
+.foto-site { width: 64px; height: 64px; border-radius: 50%; display: grid; place-items: center; color: #fff; font-weight: 700; font-size: 26px; overflow: hidden; flex: none; }
+.foto-site img { width: 100%; height: 100%; object-fit: cover; }
+.cores-site { display: flex; gap: 10px; flex-wrap: wrap; }
+.cor-site { position: relative; cursor: pointer; }
+.cor-site input { position: absolute; opacity: 0; inset: 0; margin: 0; cursor: pointer; }
+.cor-site span { display: block; width: 34px; height: 34px; border-radius: 50%; }
+.cor-site input:checked + span { outline: 3px solid var(--texto); outline-offset: 2px; }
+.cor-site input:focus-visible + span { outline: 3px solid var(--amarelo); outline-offset: 2px; }
+.lista-botoes { list-style: none; margin: 0 0 12px; padding: 0; display: flex; flex-direction: column; }
+.lista-botoes li { padding: 10px 0; border-bottom: 1px solid var(--trilho); }
+.lista-botoes li:last-child { border-bottom: none; }
+.botao-linha { display: flex; justify-content: space-between; align-items: center; gap: 10px; }
+.botao-info { min-width: 0; overflow-wrap: anywhere; font-size: 14px; }
+.botao-acoes { display: flex; gap: 6px; flex: none; }
+.icone-botao { width: 34px; height: 34px; border-radius: 8px; border: 1px solid var(--borda); background: #fff; font: inherit; font-weight: 700; cursor: pointer; }
+.icone-botao:disabled { opacity: .35; cursor: default; }
+.editar-botao, .novo-botao { margin-top: 6px; }
+.editar-botao[open], .novo-botao[open] { display: flex; flex-direction: column; gap: 10px; }
+.novo-botao > summary { list-style: none; display: inline-flex; width: auto; }
+.novo-botao > summary::-webkit-details-marker { display: none; }
+.link-botao.perigo { color: var(--perigo); }
+.previa-site { position: sticky; top: 16px; }
+.celular { margin: 6px auto 0; width: 300px; max-width: 100%; height: 600px; border: 10px solid var(--texto); border-radius: 34px; overflow: hidden; background: #FAF7F2; }
+.celular iframe { width: 100%; height: 100%; border: 0; display: block; }
+.numeros-site { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; margin-top: 8px; }
+.numeros-site div { background: var(--chip); border-radius: 10px; padding: 10px 12px; display: flex; flex-direction: column; }
+.numeros-site strong { font-size: 20px; }
+.numeros-site span { font-size: 12px; color: var(--suave); }
+.top-produtos { margin: 0; padding-left: 18px; font-size: 13px; display: flex; flex-direction: column; gap: 4px; }
+.top-produtos li span { overflow-wrap: anywhere; }
+.top-produtos li strong { float: right; margin-left: 8px; }
+@media (max-width: 900px) { .previa-site { position: static; } .celular { height: 540px; } }

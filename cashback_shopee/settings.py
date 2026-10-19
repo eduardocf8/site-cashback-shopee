@@ -97,6 +97,7 @@ INSTALLED_APPS = [
     "pinterest",
     "painel",
     "bot_whatsapp",
+    "meusite",
 ]
 
 AUTH_USER_MODEL = "accounts.User"
@@ -314,6 +315,12 @@ APPFILIADO_PAINEL_HOSTS = [
     h.strip().lower() for h in os.environ.get("APPFILIADO_PAINEL_HOSTS", "").split(",") if h.strip()
 ]
 APPFILIADO_PAINEL_URL = os.environ.get("APPFILIADO_PAINEL_URL", "https://app.appfiliado.com.br")
+# Meu site: cada conta ganha seunome.<APPFILIADO_SITES_DOMINIO> (precisa de um DNS
+# curinga *.appfiliado.com.br apontando para o Render). Sem ele, o site ainda abre em
+# <painel>/s/seunome/. Ver meusite/middleware.py.
+APPFILIADO_SITES_DOMINIO = os.environ.get("APPFILIADO_SITES_DOMINIO", "").strip().lower().lstrip(".")
+if APPFILIADO_SITES_DOMINIO:
+    ALLOWED_HOSTS.append("." + APPFILIADO_SITES_DOMINIO)
 # Página com os planos (botão "Desbloquear" dos módulos que a conta não tem).
 APPFILIADO_URL_PLANOS = os.environ.get("APPFILIADO_URL_PLANOS", "https://appfiliado.com.br")
 # Chave Fernet pra cifrar os segredos das contas (ex: Secret da Shopee) - ver painel/cripto.py.
@@ -333,6 +340,7 @@ MIDDLEWARE = [
     "django.middleware.security.SecurityMiddleware",
     "licencas.middleware.SoApiNoDominioAppfiliadoMiddleware",  # api.appfiliado.com.br só responde /licencas/
     "painel.middleware.DominioDoPainelMiddleware",  # app.appfiliado.com.br mostra só o painel
+    "meusite.middleware.SiteDoAfiliadoMiddleware",  # seunome.appfiliado.com.br mostra o site da conta
     "whitenoise.middleware.WhiteNoiseMiddleware",
     "django.contrib.sessions.middleware.SessionMiddleware",
     "django.middleware.common.CommonMiddleware",

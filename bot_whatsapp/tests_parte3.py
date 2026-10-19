@@ -170,6 +170,19 @@ class TestMotorComSimulacaoEIA(TestCase):
         self.assertEqual((self.config.ia_status, self.config.ia_revisoes_no_dia), ("Última oferta revisada pela IA (leve).", 1))
 
     @COM_CHAVE
+    def test_sem_revisao_guarda_o_motivo_em_cada_envio(self, _):
+        self.config.ia_ativa = True
+        self.config.save()
+        with mock.patch.object(ia, "revisar", return_value=("x", False, "A IA mexeu em algum preço. Foi o texto original, por segurança.")):
+            self.rodar([produto(1)])
+        self.assertEqual({e.ia_motivo for e in EnvioWhatsApp.objects.all()},
+                         {"A IA mexeu em algum preço. Foi o texto original, por segurança."})
+        # revisada: sem motivo
+        with mock.patch.object(ia, "revisar", return_value=("ok {{LINK_DE_AFILIADO}}", True, "Última oferta revisada pela IA (contextual).")):
+            self.rodar([produto(2)], agora=AGORA + timedelta(minutes=10))
+        self.assertEqual(EnvioWhatsApp.objects.filter(item_id="2").first().ia_motivo, "")
+
+    @COM_CHAVE
     def test_limite_de_revisoes_por_dia(self, _):
         self.config.ia_ativa = True
         self.config.ia_dia = timezone.localtime(AGORA).date()
@@ -234,6 +247,19 @@ class TestTelaDaParte3(BasePainel):
         self.client.post("/whatsapp/ofertas/", self.dados(ia_ativa="on"))
         self.assertFalse(ConfiguracaoOfertas.objects.get(conta=self.conta).ia_ativa)
 
+    def test_horarios_em_24h(self):
+        from datetime import time
+
+        html = self.client.get("/whatsapp/ofertas/").content.decode()
+        self.assertIn('name="horario_inicio"', html)
+        self.assertNotIn('type="time"', html)  # campo de texto: sem AM/PM do navegador
+        self.client.post("/whatsapp/ofertas/", self.dados(horario_inicio="7:30", horario_fim="22:45"))
+        config = ConfiguracaoOfertas.objects.get(conta=self.conta)
+        self.assertEqual((config.horario_inicio, config.horario_fim), (time(7, 30), time(22, 45)))
+        self.assertContains(self.client.get("/whatsapp/ofertas/"), 'value="07:30"')
+        resposta = self.client.post("/whatsapp/ofertas/", self.dados(horario_fim="25:00"))
+        self.assertEqual(resposta.status_code, 200)  # inválido: volta com erro
+
     def test_historico_mostra_simulado_ia_e_a_mensagem(self):
         EnvioWhatsApp.objects.create(
             conta=self.conta, destino="1@g.us", destino_nome="Ofertas VIP", origem="oferta", item_id="1",
@@ -243,3 +269,8 @@ class TestTelaDaParte3(BasePainel):
         self.assertIn("Simulado", html)
         self.assertIn('class="selo-ia"', html)
         self.assertIn("Texto completo da oferta", html)
+        EnvioWhatsApp.objects.create(
+            conta=self.conta, destino="1@g.us", origem="oferta", item_id="2", produto="Mop", estado="enviado",
+            ia_motivo="O Gemini estava sobrecarregado (instabilidade do Google) - foi o texto original.",
+        )
+        self.assertIn("Sem IA: O Gemini estava sobrecarregado", self.client.get("/whatsapp/ofertas/").content.decode())

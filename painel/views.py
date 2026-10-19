@@ -313,8 +313,10 @@ def metas_view(request):
 @conta_requerida
 def modulo(request, slug):
     item = mod.POR_SLUG.get(slug)
-    if not item or slug in mod.URL_DE_SLUG:
+    if not item:
         raise Http404
+    if slug in mod.URL_DE_SLUG:  # módulo com página própria (ex: /m/site/ -> /meu-site/)
+        return redirect(mod.URL_DE_SLUG[slug])
     conta = conta_logada(request)
     situacao = mod.estado(item, conta.modulos_liberados())
     item = {**item, "icone_path": mod.ICONES[item["icone"]]}
