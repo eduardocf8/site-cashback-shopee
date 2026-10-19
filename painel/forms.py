@@ -132,7 +132,7 @@ class ConfiguracaoOfertasForm(forms.ModelForm):
             "modo", "origens", "tipo_busca", "palavra_chave", "loja", "categorias", "ordenacao",
             "comissao_minima", "desconto_minimo", "preco_minimo", "preco_maximo", "vendas_minimas",
             "avaliacao_minima", "cupom", "sub_ids", "grupos", "intervalo_minutos", "horario_inicio",
-            "horario_fim", "dias_semana", "limite_diario", "repetir_apos_dias", "ia_ativa", "ia_tipo", "simulacao",
+            "horario_fim", "dias_semana", "limite_diario", "repetir_apos_dias", "formato_envio", "ia_ativa", "ia_tipo", "simulacao",
         ]
         labels = {
             "modo": "De onde vêm as ofertas", "tipo_busca": "Buscar", "palavra_chave": "Palavra-chave", "loja": "Link da loja",
@@ -154,6 +154,7 @@ class ConfiguracaoOfertasForm(forms.ModelForm):
             "modo": forms.RadioSelect,
             "tipo_busca": forms.RadioSelect,
             "ia_tipo": forms.RadioSelect,
+            "formato_envio": forms.RadioSelect,
             # Texto "HH:MM" (sempre 24 h): o campo de hora do navegador mostra AM/PM em
             # computadores configurados em inglês.
             "horario_inicio": forms.TimeInput(attrs=ATTRS_HORA, format="%H:%M"),
@@ -167,6 +168,7 @@ class ConfiguracaoOfertasForm(forms.ModelForm):
         super().__init__(*args, **kwargs)
         self.ia_disponivel = ia.disponivel()
         self.fields["ia_tipo"].required = False
+        self.fields["formato_envio"].required = False
         if not self.ia_disponivel:  # sem a chave do Appfiliado: opção desligada
             self.fields["ia_ativa"].disabled = True
             self.fields["ia_tipo"].disabled = True
@@ -204,6 +206,9 @@ class ConfiguracaoOfertasForm(forms.ModelForm):
             self.fields[campo].widget.attrs.update({"min": minimo, "max": maximo})
 
     OPCIONAIS_ZERO = ("comissao_minima", "desconto_minimo", "vendas_minimas", "limite_diario")
+
+    def clean_formato_envio(self):
+        return self.cleaned_data.get("formato_envio") or self.instance.formato_envio or ConfiguracaoOfertas.FORMATO_FOTO
 
     def clean_ia_tipo(self):
         return self.cleaned_data.get("ia_tipo") or self.instance.ia_tipo or ConfiguracaoOfertas.IA_CONTEXTUAL

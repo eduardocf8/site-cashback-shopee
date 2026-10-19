@@ -140,6 +140,7 @@ def enfileirar(config, grupos, modelo: str, link_origem: str, *, item_id: str, n
             texto=modelo.replace(MARCADOR_DO_LINK, link), imagem_url=(imagem_url or "")[:1000],
             imagem_arquivo=imagem_arquivo, origem=EnvioWhatsApp.OFERTA, item_id=item_id,
             produto=(nome or "")[:300], link_afiliado=link[:500], revisado_ia=revisado_ia, ia_motivo=ia_motivo,
+            formato=config.formato_envio,
             estado=EnvioWhatsApp.SIMULADO if config.simulacao else EnvioWhatsApp.PENDENTE,
         ))
     EnvioWhatsApp.objects.bulk_create(envios)

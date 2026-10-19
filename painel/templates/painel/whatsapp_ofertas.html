@@ -110,6 +110,11 @@
     <section class="card" aria-labelledby="titulo-mensagem">
       <h2 id="titulo-mensagem">Mensagem</h2>
       <div class="campo" data-modo="shopee">{% include "painel/_campo.html" with campo=form.cupom %}</div>
+      <fieldset class="campo formato-envio" id="formato-envio">
+        <legend>Como enviar a oferta</legend>
+        <label class="marcar"><input type="radio" name="formato_envio" value="foto"{% if form.formato_envio.value != "previa" %} checked{% endif %}><span><strong>Foto com o texto</strong><span class="ajuda">Nos grupos vai a foto do produto com o texto embaixo. Os canais do WhatsApp não aceitam foto com texto por aqui: neles vai o texto com uma prévia pequena do link.</span></span></label>
+        <label class="marcar"><input type="radio" name="formato_envio" value="previa"{% if form.formato_envio.value == "previa" %} checked{% endif %}><span><strong>Prévia grande do link</strong><span class="ajuda">Vai o texto com um cartão grande do link (foto do produto e título), tanto nos grupos quanto nos canais. Sem a foto separada.</span></span></label>
+      </fieldset>
       <div class="opcao-ia{% if not form.ia_disponivel %} indisponivel{% endif %}">
         <label class="marcar">{{ form.ia_ativa }}<span><strong>Revisar o texto com IA</strong><span class="ajuda">Corrige o português e frases que não combinam com o produto antes de enviar. Links, preços e cupons nunca mudam: se a IA mexer neles, vai o texto original.</span></span></label>
         {% if form.ia_disponivel %}

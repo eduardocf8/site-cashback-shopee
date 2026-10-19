@@ -102,6 +102,7 @@ def whatsapp_enviar(request):
         destino=request.POST.get("destino", ""),
         texto=request.POST.get("texto", "")[:4000],
         imagem_url=request.POST.get("imagem_url", "").strip()[:1000],
+        formato=_config_ofertas(conta_logada(request)).formato_envio,  # o teste sai como as ofertas
     )
     if envio:
         messages.success(request, f"Mensagem na fila para “{envio.destino_nome}”. Ela sai em alguns segundos.")

@@ -2985,6 +2985,10 @@ Meu site (app `meusite`), o "link na bio" de cada conta:
 - [x] Dois estilos ("Fundo colorido" e "Fundo claro"), 15 cores prontas e "Outra
       cor" livre; o texto troca para escuro quando a cor é clara (`meusite/cores.py`).
       Vitrine em lista ou em carrossel.
+- [x] Bot de WhatsApp: escolha "Como enviar a oferta" nas configurações: "Foto com o
+      texto" (grupo: foto + texto; canal: texto com prévia pequena) ou "Prévia grande
+      do link" (grupo e canal: cartão largo com a foto do produto, sem foto separada).
+      Foto com legenda em canal não é possível com a biblioteca atual.
 - [x] Foto ajustável ao enviar (arrastar e zoom, com o recorte feito no navegador) e
       prévia do editor na largura real de um celular.
 

@@ -551,3 +551,6 @@ summary { cursor: pointer; }  /* "Editar", "Ver mensagem" etc. abrem ao clicar *
 .top-produtos li span { overflow-wrap: anywhere; }
 .top-produtos li strong { float: right; margin-left: 8px; }
 @media (max-width: 900px) { .previa-site { position: static; } .celular { height: 540px; } }
+
+.formato-envio { margin: 14px 0 18px; display: flex; flex-direction: column; gap: 10px; }
+.formato-envio legend { margin-bottom: 4px; }
