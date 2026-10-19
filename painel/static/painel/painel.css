@@ -525,16 +525,26 @@ form.form-regra > .erros-form { grid-column: 1 / -1; }
 .cor-outra span { background-image: conic-gradient(from 0deg, #E8541E, #F2B705, #2F9E44, #0E9AA7, #2F6FDE, #7048E8, #D6336C, #E8541E) !important; display: grid !important; place-items: center; }
 .cor-outra span::after { content: ""; width: 16px; height: 16px; border-radius: 50%; background: var(--cor-escolhida, #fff); border: 2px solid #fff; }
 #seletor-cor { position: absolute; width: 1px; height: 1px; opacity: 0; pointer-events: none; }
-.lista-botoes { list-style: none; margin: 0 0 12px; padding: 0; display: flex; flex-direction: column; }
-.lista-botoes li { padding: 10px 0; border-bottom: 1px solid var(--trilho); }
-.lista-botoes li:last-child { border-bottom: none; }
-.botao-linha { display: flex; justify-content: space-between; align-items: center; gap: 10px; }
+.lista-botoes { list-style: none; margin: 0 0 14px; padding: 0; display: flex; flex-direction: column; gap: 12px; }
+/* Cada botão do site numa caixinha clara: dá para ver onde um termina e o outro começa. */
+.lista-botoes li { padding: 14px; border: 1px solid var(--borda); border-radius: 14px; background: #FBF8EE; }
+.botao-linha { display: flex; justify-content: space-between; align-items: center; gap: 12px; }
 .botao-info { min-width: 0; overflow-wrap: anywhere; font-size: 14px; }
-.botao-acoes { display: flex; gap: 6px; flex: none; }
-.icone-botao { width: 34px; height: 34px; border-radius: 8px; border: 1px solid var(--borda); background: #fff; font: inherit; font-weight: 700; cursor: pointer; }
-.icone-botao:disabled { opacity: .35; cursor: default; }
+.botao-acoes { display: flex; gap: 8px; flex: none; }
+.icone-botao { display: grid; place-items: center; width: 40px; height: 40px; padding: 0; border-radius: 10px; border: 1px solid var(--borda-forte); background: #fff; color: var(--texto); cursor: pointer; -webkit-appearance: none; appearance: none; }
+.icone-botao:hover { background: var(--amarelo-suave); }
+/* Sem essa direção (primeiro não sobe, último não desce): some, mas guarda o lugar. */
+.icone-botao:disabled { visibility: hidden; }
 .editar-botao, .novo-botao { margin-top: 6px; }
-.corpo-botao { display: flex; flex-direction: column; gap: 16px; margin-top: 14px; }
+.editar-botao > summary { display: inline-flex; align-items: center; gap: 8px; padding: 6px 0; font-weight: 700; list-style: none; }
+.editar-botao > summary::-webkit-details-marker { display: none; }
+.editar-botao > summary::before { content: ""; width: 7px; height: 7px; border-right: 2px solid currentColor; border-bottom: 2px solid currentColor; transform: rotate(-45deg); transition: transform .15s; }
+.editar-botao[open] > summary::before { transform: rotate(45deg); }
+.editar-botao[open] > summary { color: var(--verde); }
+/* O formulário aberto fica num painel branco dentro da caixinha do botão. */
+.corpo-botao { display: flex; flex-direction: column; gap: 16px; margin-top: 10px; padding: 16px; background: #fff; border: 1px solid var(--borda); border-radius: 12px; }
+.novo-botao[open] { padding: 14px; border: 1px solid var(--borda); border-radius: 14px; background: #FBF8EE; }
+.novo-botao[open] > summary { margin-bottom: 2px; }
 .corpo-botao > .campo, .corpo-botao > .marcar { margin: 0; }
 summary { cursor: pointer; }  /* "Editar", "Ver mensagem" etc. abrem ao clicar */
 .novo-botao > summary { list-style: none; display: inline-flex; width: auto; }

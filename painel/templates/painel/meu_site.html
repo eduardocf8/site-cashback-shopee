@@ -62,8 +62,8 @@
               <div class="botao-linha">
                 <div class="botao-info"><strong>{{ b.texto }}</strong>{% if b.destaque %} <span class="selo-ia">destaque</span>{% endif %}<br><span class="suave pequeno">{{ b.url|truncatechars:48 }} · {{ b.cliques_30 }} clique{{ b.cliques_30|pluralize }} em 30 dias</span></div>
                 <div class="botao-acoes">
-                  <button type="submit" form="botao-{{ b.pk }}" name="acao" value="botao_subir" class="icone-botao" title="Subir" {% if forloop.first %}disabled{% endif %}>↑</button>
-                  <button type="submit" form="botao-{{ b.pk }}" name="acao" value="botao_descer" class="icone-botao" title="Descer" {% if forloop.last %}disabled{% endif %}>↓</button>
+                  <button type="submit" form="botao-{{ b.pk }}" name="acao" value="botao_subir" class="icone-botao" title="Subir" aria-label="Subir este botão" {% if forloop.first %}disabled{% endif %}><svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true"><path d="M6 15l6-6 6 6" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
+                  <button type="submit" form="botao-{{ b.pk }}" name="acao" value="botao_descer" class="icone-botao" title="Descer" aria-label="Descer este botão" {% if forloop.last %}disabled{% endif %}><svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true"><path d="M6 9l6 6 6-6" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
                 </div>
               </div>
               <details class="editar-botao"><summary class="pequeno">Editar</summary><div class="corpo-botao">
