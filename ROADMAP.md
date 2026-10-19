@@ -2900,6 +2900,22 @@ posta as ofertas, sem programa no computador e sem janela de navegador.
 - [x] **Menu lateral fixo** no computador: fica parado ao rolar a página e aperta os
       espaços em telas baixas para tudo caber.
 
+## Fase 72 — Vendas na aba Resultados
+
+- [x] Cada produto vendido passa a ficar guardado (`VendaItem`): produto, foto, loja,
+      pedido, quantidade, valor, comissão, status e Sub ID. A sincronização troca a
+      janela da API (~3 meses) e o que é mais antigo fica guardado por **13 meses**.
+- [x] **Produtos mais vendidos** do período (5 primeiros, sem cancelados), com barra
+      comparando com o 1º.
+- [x] **Vendas do período**: 20 por página, busca pelo produto, filtro de Sub ID (com
+      os agrupamentos), status (pendentes, concluídos, cancelados) e ordem (mais
+      recentes ou maior comissão). No celular cada venda vira um cartão.
+- [x] **Exportar Excel**: todas as vendas do período com os filtros, mais loja,
+      pedido, status na Shopee e data de validação; aba "Produtos" com o ranking
+      completo.
+- [x] Corrigido: os botões de período da aba Resultados geravam link com "??" e o
+      período escolhido era ignorado.
+
 ---
 
 Pra continuar esse roadmap numa conversa nova, basta apontar esse arquivo

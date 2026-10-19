@@ -100,6 +100,45 @@ class MetaMensal(models.Model):
         return f"{self.conta.email} {self.mes:02d}/{self.ano}"
 
 
+class VendaItem(models.Model):
+    """Cada produto vendido (um item de um pedido de uma conversão), guardado a cada
+    sincronização. A API só alcança ~3 meses; guardando aqui o histórico fica com a
+    conta por DIAS_DE_HISTORICO_VENDAS (ver resultados.py)."""
+
+    PENDENTE, CONCLUIDO, CANCELADO = "pendente", "concluido", "cancelado"
+    SITUACOES = [(PENDENTE, "Pendente"), (CONCLUIDO, "Concluído"), (CANCELADO, "Cancelado")]
+
+    conta = models.ForeignKey(ContaAppfiliado, on_delete=models.CASCADE, related_name="vendas_itens")
+    conversao_id = models.CharField(max_length=40)
+    pedido_id = models.CharField(max_length=40)
+    posicao = models.PositiveSmallIntegerField(default=0)  # ordem do item no pedido
+    item_id = models.CharField(max_length=30, blank=True)
+    nome = models.CharField(max_length=300, blank=True)
+    imagem_url = models.CharField(max_length=500, blank=True)
+    loja = models.CharField(max_length=200, blank=True)
+    quantidade = models.PositiveIntegerField(default=1)
+    preco = models.DecimalField(max_digits=12, decimal_places=2, default=0)
+    valor = models.DecimalField(max_digits=12, decimal_places=2, default=0)  # preço x quantidade
+    comissao = models.DecimalField(max_digits=12, decimal_places=2, default=0)
+    status_shopee = models.CharField(max_length=20, blank=True)  # orderStatus como veio
+    situacao = models.CharField(max_length=10, choices=SITUACOES, default=PENDENTE)
+    sub_id = models.CharField(max_length=120, default="sem_subid")
+    comprado_em = models.DateTimeField()
+    concluido_em = models.DateTimeField(null=True, blank=True)
+
+    class Meta:
+        ordering = ["-comprado_em", "pedido_id", "posicao"]
+        constraints = [
+            models.UniqueConstraint(fields=["conta", "conversao_id", "pedido_id", "posicao"], name="venda_item_unico"),
+        ]
+        indexes = [models.Index(fields=["conta", "comprado_em"])]
+        verbose_name = "item vendido"
+        verbose_name_plural = "itens vendidos"
+
+    def __str__(self):
+        return f"{self.nome} ({self.pedido_id})"
+
+
 class RegraSubId(models.Model):
     """Junta vários Sub IDs num nome só nas telas (ex: todo Sub ID que começa com
     "grupo" aparece como "Grupos de WhatsApp"). As regras são conferidas na ordem em que foram

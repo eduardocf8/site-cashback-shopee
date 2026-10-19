@@ -1,6 +1,7 @@
 from django.conf import settings
 from django.contrib import messages
-from django.http import Http404, JsonResponse
+from django.core.paginator import Paginator
+from django.http import Http404, HttpResponse, JsonResponse
 from django.shortcuts import redirect, render
 from datetime import timedelta
 
@@ -16,7 +17,7 @@ from licencas.services import resposta_validacao
 
 from . import cripto
 from . import modulos as mod
-from . import periodos, resultados, telas
+from . import exportar, periodos, resultados, telas
 from .models import MetaMensal, RegraSubId
 from .autenticacao import (
     conta_logada,
@@ -193,7 +194,47 @@ def resultados_view(request):
             "sub_ids": resultados.por_sub_id(conta, periodo["inicio"], periodo["fim"]),
             "meta": telas.situacao_meta(conta, periodo["fim"].year, periodo["fim"].month, hoje) if mesmo_mes else None,
         })
+        contexto.update(_vendas_da_tela(conta, periodo, request.GET))
     return render(request, "painel/resultados.html", _contexto(request, "resultados", **contexto))
+
+
+def _vendas_da_tela(conta, periodo, parametros) -> dict:
+    """Produtos mais vendidos e a lista de vendas (20 por página) do período."""
+    filtradas = resultados.filtrar_vendas(conta, periodo["inicio"], periodo["fim"], parametros)
+    pagina = Paginator(filtradas["vendas"], resultados.VENDAS_POR_PAGINA).get_page(parametros.get("pagina"))
+    nome_do_grupo = filtradas["nome_do_grupo"]
+    for venda in pagina:
+        venda.grupo = nome_do_grupo(venda.sub_id)
+    return {
+        "ranking": resultados.ranking_produtos(resultados.vendas_do_periodo(conta, periodo["inicio"], periodo["fim"])),
+        "pagina_vendas": pagina,
+        "paginas_vendas": pagina.paginator.get_elided_page_range(pagina.number, on_each_side=1, on_ends=1),
+        "grupos_vendas": filtradas["grupos"],
+        "filtros_vendas": filtradas["filtros"],
+        "situacoes_vendas": resultados.FILTROS_SITUACAO,
+        "tem_vendas_guardadas": resultados.VendaItem.objects.filter(conta=conta).exists(),
+        # o formulário dos filtros das vendas mantém o período escolhido no topo
+        "parametros_periodo": [(c, parametros[c]) for c in ("periodo", "de", "ate", "agrupar", "metrica") if parametros.get(c)],
+    }
+
+
+@conta_requerida
+def exportar_vendas(request):
+    """Excel com todas as vendas do período (com os filtros da tela) e os produtos."""
+    conta = conta_logada(request)
+    if not conta.shopee_validado_em:
+        return redirect("painel_resultados")
+    periodo = telas.periodo_da_requisicao(request.GET, telas.hoje())
+    filtradas = resultados.filtrar_vendas(conta, periodo["inicio"], periodo["fim"], request.GET)
+    conteudo = exportar.planilha_de_vendas(
+        filtradas["vendas"], resultados.ranking_produtos(filtradas["vendas"], limite=None), filtradas["nome_do_grupo"],
+    )
+    nome = f"vendas-shopee-{periodo['inicio']:%Y-%m-%d}-a-{periodo['fim']:%Y-%m-%d}.xlsx"
+    resposta = HttpResponse(
+        conteudo, content_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+    )
+    resposta["Content-Disposition"] = f'attachment; filename="{nome}"'
+    return resposta
 
 
 @require_POST

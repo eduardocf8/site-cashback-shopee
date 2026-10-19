@@ -12,6 +12,7 @@ urlpatterns = [
     path("resultados/", views.resultados_view, name="painel_resultados"),
     path("resultados/atualizar/", views.atualizar_resultados, name="painel_atualizar_resultados"),
     path("resultados/estado/", views.estado_resultados, name="painel_estado_resultados"),
+    path("resultados/vendas.xlsx", views.exportar_vendas, name="painel_exportar_vendas"),
     path("metas/", views.metas_view, name="painel_metas"),
     path("configuracoes/", views.configuracoes, name="painel_configuracoes"),
     path("whatsapp/", views_whatsapp.whatsapp, name="painel_whatsapp"),
