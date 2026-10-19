@@ -1,7 +1,7 @@
 {% extends "painel/base.html" %}
 {% block titulo %}Configurações{% endblock %}
 {% block conteudo %}
-<header class="cabecalho"><div><h1>Configurações</h1><p>Sua conta da Shopee, agrupamentos de Sub IDs e sua senha.</p></div></header>
+<header class="cabecalho"><div><h1>Configurações</h1><p>Sua conta da Shopee, relatório por e-mail, agrupamentos de Sub IDs e sua senha.</p></div></header>
 
 <div class="duas-colunas">
   <section class="card" aria-labelledby="titulo-shopee">
@@ -29,6 +29,23 @@
     </form>
   </section>
 </div>
+
+<section class="card" id="relatorio" aria-labelledby="titulo-relatorio" style="margin-top:16px">
+  <h2 id="titulo-relatorio">Relatório diário por e-mail</h2>
+  <p class="suave pequeno" style="margin-bottom:14px">Todo dia de manhã: comissão, faturamento e pedidos de ontem e do mês, Sub IDs, produtos mais vendidos{% if "whatsapp" in modulos_liberados %} e as ofertas que o bot enviou{% endif %}. Vai para <strong>{{ conta.email }}</strong>.</p>
+  <form method="post" class="formulario">
+    {% csrf_token %}
+    <input type="hidden" name="formulario" value="relatorio">
+    <label class="marcar">{{ form_relatorio.ativo }}<span><strong>Receber o relatório diário por e-mail</strong></span></label>
+    <div class="campo">{% include "painel/_campo.html" with campo=form_relatorio.emails_extras %}</div>
+    {% if preferencia_relatorio.ultimo_erro %}<p class="aviso aviso-warning pequeno">O último envio falhou. Vamos tentar de novo amanhã.</p>
+    {% elif preferencia_relatorio.ultimo_envio_dia and preferencia_relatorio.ativo %}<p class="suave pequeno">Último enviado em {{ preferencia_relatorio.ultimo_envio_dia|date:"d/m" }}.</p>{% endif %}
+    <div class="botoes-linha">
+      <button type="submit" class="botao botao-principal">Salvar</button>
+      <button type="submit" name="acao" value="testar" class="botao botao-claro"{% if not conta.shopee_validado_em %} disabled title="Conecte sua conta da Shopee primeiro"{% endif %}>Salvar e enviar um agora</button>
+    </div>
+  </form>
+</section>
 
 <section class="card" id="sub-ids" aria-labelledby="titulo-sub-ids" style="margin-top:16px">
   <h2 id="titulo-sub-ids">Agrupar Sub IDs</h2>

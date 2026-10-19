@@ -121,7 +121,7 @@ def _resumo_ofertas(conta, config) -> dict:
     agora = timezone.now()
     conexao = servico.conexao_da(conta)
     return {
-        "enviadas_hoje": ofertas_enviadas_hoje(conta, agora),
+        "enviadas_hoje": ofertas_enviadas_hoje(conta, agora, config.simulacao),
         "whatsapp_conectado": conexao.estado == ConexaoWhatsApp.CONECTADO,
         "shopee_conectada": bool(conta.shopee_validado_em),
         "proximo_envio": config.proximo_envio_em if config.ativo and not config.situacao else None,
@@ -133,7 +133,7 @@ def _versao_da_tela(conta, config) -> str:
     """Resume o que aparece nos cartões ao vivo da tela de ofertas (status, recebidas e
     enviadas). Quando muda, a tela busca esses cartões de novo sem recarregar a página."""
     partes = [
-        config.ativo, config.modo, config.situacao, config.ultimo_erro, config.testando,
+        config.ativo, config.modo, config.simulacao, config.ia_status, config.situacao, config.ultimo_erro, config.testando,
         config.ultimo_envio_em, config.proximo_envio_em, config.limite_diario,
         servico.conexao_da(conta).estado, bool(conta.shopee_validado_em),
         timezone.localdate(),
@@ -190,7 +190,10 @@ def whatsapp_ofertas_ligar(request):
         config.proximo_envio_em = timezone.now()
         config.situacao = ""
         config.save(update_fields=["ativo", "proximo_envio_em", "situacao", "atualizado_em"])
-        messages.success(request, "Ofertas automáticas ligadas. A primeira sai em instantes, se estiver no horário.")
+        if config.simulacao:
+            messages.success(request, "Ligado em modo simulação: as ofertas aparecem aqui, mas nada vai para o WhatsApp.")
+        else:
+            messages.success(request, "Ofertas automáticas ligadas. A primeira sai em instantes, se estiver no horário.")
     return redirect("painel_whatsapp_ofertas")
 
 

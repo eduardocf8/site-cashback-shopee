@@ -16,7 +16,9 @@
   <div class="status-ofertas-texto">
     <h2 id="titulo-status" class="status-zap">
       {% if config.ativo %}<span class="ponto ok" aria-hidden="true"></span>Ligado{% else %}<span class="ponto" aria-hidden="true"></span>Pausado{% endif %}
+      {% if config.simulacao %}<span class="selo-simulacao">Simulação</span>{% endif %}
     </h2>
+    {% if config.simulacao %}<p class="aviso aviso-info pequeno">Modo simulação ligado: nada é enviado para o WhatsApp. Desligue em "Simulação", no fim da página, para enviar de verdade.</p>{% endif %}
     {% if not shopee_conectada %}
       <p class="aviso aviso-warning pequeno">Conecte sua conta da Shopee em <a href="{% url 'painel_configuracoes' %}">Configurações</a> - é com ela que o bot busca as ofertas e gera o seu link.</p>
     {% elif not whatsapp_conectado %}
@@ -26,7 +28,8 @@
       {% if config.situacao %}<p class="pequeno">{{ config.situacao }}</p>
       {% elif proximo_envio %}<p class="pequeno">Próxima oferta {% if proximo_envio|date:"Ymd" == hoje_ymd %}hoje{% else %}{{ proximo_envio|date:"d/m" }}{% endif %} às {{ proximo_envio|date:"H:i" }}.</p>{% endif %}
     {% endif %}
-    <p class="suave pequeno">Hoje: {{ enviadas_hoje }} oferta{{ enviadas_hoje|pluralize }}{% if config.limite_diario %} de {{ config.limite_diario }}{% endif %}.{% if config.ultimo_envio_em %} Última às {{ config.ultimo_envio_em|date:"H:i" }}{% if config.ultimo_envio_em|date:"Ymd" != hoje_ymd %} de {{ config.ultimo_envio_em|date:"d/m" }}{% endif %}.{% endif %}</p>
+    <p class="suave pequeno">Hoje: {{ enviadas_hoje }} oferta{{ enviadas_hoje|pluralize }}{% if config.simulacao %} simulada{{ enviadas_hoje|pluralize }}{% endif %}{% if config.limite_diario %} de {{ config.limite_diario }}{% endif %}.{% if config.ultimo_envio_em %} Última às {{ config.ultimo_envio_em|date:"H:i" }}{% if config.ultimo_envio_em|date:"Ymd" != hoje_ymd %} de {{ config.ultimo_envio_em|date:"d/m" }}{% endif %}.{% endif %}</p>
+    {% if config.ia_ativa and config.ia_status %}<p class="suave pequeno">IA: {{ config.ia_status }}</p>{% endif %}
     {% if config.ultimo_erro %}<p class="aviso aviso-warning pequeno">Último erro: {{ config.ultimo_erro }}</p>{% endif %}
   </div>
   <div class="status-ofertas-botoes">
@@ -60,7 +63,7 @@
             </div>
             <div class="lista-grupos" id="lista-origens">
               {% for linha in form.linhas_das_origens %}
-                <div class="linha-grupo linha-origem" data-nome="{{ linha.opcao.choice_label|lower }}">
+                <div class="linha-grupo linha-origem{% if linha.divisa %} linha-divisa{% endif %}" data-nome="{{ linha.opcao.choice_label|lower }}">
                   <label>{{ linha.opcao.tag }}<span>{{ linha.opcao.choice_label }}</span>{% if linha.canal %}<span class="selo-canal">Canal</span>{% endif %}</label>
                 </div>
               {% endfor %}
@@ -104,9 +107,20 @@
       </div>
     </section>
 
-    <section class="card" aria-labelledby="titulo-mensagem" data-modo="shopee">
+    <section class="card" aria-labelledby="titulo-mensagem">
       <h2 id="titulo-mensagem">Mensagem</h2>
-      <div class="campo">{% include "painel/_campo.html" with campo=form.cupom %}</div>
+      <div class="campo" data-modo="shopee">{% include "painel/_campo.html" with campo=form.cupom %}</div>
+      <div class="opcao-ia{% if not form.ia_disponivel %} indisponivel{% endif %}">
+        <label class="marcar">{{ form.ia_ativa }}<span><strong>Revisar o texto com IA</strong><span class="ajuda">Corrige o português e frases que não combinam com o produto antes de enviar. Links, preços e cupons nunca mudam: se a IA mexer neles, vai o texto original.</span></span></label>
+        {% if form.ia_disponivel %}
+          <fieldset class="campo tipos-ia" id="tipos-ia">
+            <legend>{{ form.ia_tipo.label|capfirst }}</legend>
+            {% for opcao in form.ia_tipo %}<label class="marcar">{{ opcao.tag }}<span>{{ opcao.choice_label }}</span></label>{% endfor %}
+          </fieldset>
+        {% else %}
+          <p class="suave pequeno">A revisão com IA ainda não está disponível. Em breve!</p>
+        {% endif %}
+      </div>
     </section>
 
     <section class="card" aria-labelledby="titulo-quando">
@@ -125,7 +139,7 @@
           <div class="lista-grupos" id="lista-grupos">
             <div class="lista-grupos-topo suave pequeno"><span>Grupo ou canal</span><span>Sub ID próprio (opcional)</span></div>
             {% for linha in form.linhas_dos_grupos %}
-              <div class="linha-grupo" data-nome="{{ linha.opcao.choice_label|lower }}">
+              <div class="linha-grupo{% if linha.divisa %} linha-divisa{% endif %}" data-nome="{{ linha.opcao.choice_label|lower }}">
                 <label>{{ linha.opcao.tag }}<span>{{ linha.opcao.choice_label }}</span>{% if linha.canal %}<span class="selo-canal">Canal</span>{% endif %}</label>
                 <input type="text" name="subid_{{ linha.opcao.data.value }}" value="{{ linha.sub_id }}" placeholder="padrão" maxlength="300" aria-label="Sub ID próprio de {{ linha.opcao.choice_label }}">
               </div>
@@ -150,6 +164,11 @@
         {% for e in form.dias_semana.errors %}<span class="erro">{{ e }}</span>{% endfor %}
       </fieldset>
       <div class="campo">{% include "painel/_campo.html" with campo=form.repetir_apos_dias %}</div>
+    </section>
+
+    <section class="card" aria-labelledby="titulo-simulacao">
+      <h2 id="titulo-simulacao">Simulação</h2>
+      <label class="marcar">{{ form.simulacao }}<span><strong>Modo simulação: não enviar nada</strong><span class="ajuda">O bot faz tudo (escolhe a oferta, gera o seu link, monta o texto), mas não envia. As ofertas aparecem em "Últimas ofertas enviadas" como <em>Simulado</em>, com a mensagem completa. Bom para testar antes de ligar de verdade.</span></span></label>
     </section>
 
     <div class="barra-salvar"><button type="submit" class="botao botao-principal">Salvar</button></div>
@@ -187,7 +206,7 @@
                 <div>
                   <strong>{{ o.nome|truncatechars:80 }}</strong>
                   <span class="suave pequeno">{{ o.preco|brl }} · comissão {{ o.comissao|floatformat:0 }}%{% if o.desconto %} · {{ o.desconto|floatformat:0 }}% off{% endif %}{% if o.vendas %} · {{ o.vendas|numero }} vendidos{% endif %}</span>
-                  <details><summary class="pequeno">Ver mensagem</summary><pre class="texto-oferta">{{ o.texto }}</pre></details>
+                  <details{% if o.revisado_ia %} open{% endif %}><summary class="pequeno">Ver mensagem{% if o.revisado_ia %} <span class="selo-ia">revisada pela IA</span>{% endif %}</summary><pre class="texto-oferta">{{ o.texto }}</pre></details>
                 </div>
               </li>
             {% endfor %}
@@ -207,7 +226,8 @@
       {% if historico %}
         <ul class="eventos-zap">
           {% for e in historico %}
-            <li><span class="suave">{{ e.criado_em|date:"d/m H:i" }}</span><span>{{ e.produto|truncatechars:60 }} → {{ e.destino_nome }}: <strong class="envio-{{ e.estado }}">{{ e.get_estado_display }}</strong>{% if e.erro %} - {{ e.erro }}{% endif %}</span></li>
+            <li><span class="suave">{{ e.criado_em|date:"d/m H:i" }}</span><span>{{ e.produto|truncatechars:60 }} → {{ e.destino_nome }}: <strong class="envio-{{ e.estado }}">{{ e.get_estado_display }}</strong>{% if e.revisado_ia %} <span class="selo-ia" title="Texto revisado pela IA">IA</span>{% endif %}{% if e.erro %} - {{ e.erro }}{% endif %}
+              {% if e.texto %}<details><summary class="pequeno">Ver mensagem</summary><pre class="texto-oferta">{{ e.texto }}</pre></details>{% endif %}</span></li>
           {% endfor %}
         </ul>
       {% else %}

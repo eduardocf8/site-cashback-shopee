@@ -182,3 +182,29 @@ class RegraSubId(models.Model):
         positivo = self.operador.replace("nao_", "")
         resultado = testes.get(positivo, False)
         return not resultado if self.operador.startswith("nao_") else resultado
+
+
+class RelatorioEmail(models.Model):
+    """Relatório diário por e-mail (resultados de ontem e do mês). Quem envia é o worker
+    (comando sincronizar_painel), de manhã, depois que os números de ontem chegam."""
+
+    conta = models.OneToOneField(ContaAppfiliado, on_delete=models.CASCADE, related_name="relatorio_email")
+    ativo = models.BooleanField("receber o relatório diário por e-mail", default=False)
+    emails_extras = models.CharField(
+        "enviar também para (opcional)", max_length=300, blank=True,
+        help_text="Até 3 e-mails, separados por vírgula.",
+    )
+    ultimo_envio_dia = models.DateField(null=True, blank=True)
+    ultimo_erro = models.TextField(blank=True)
+    atualizado_em = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        verbose_name = "relatório por e-mail"
+        verbose_name_plural = "relatórios por e-mail"
+
+    def __str__(self):
+        return f"{self.conta.email} - {'ligado' if self.ativo else 'desligado'}"
+
+    def destinatarios(self) -> list[str]:
+        extras = [e.strip() for e in (self.emails_extras or "").split(",") if e.strip()]
+        return list(dict.fromkeys([self.conta.email, *extras]))

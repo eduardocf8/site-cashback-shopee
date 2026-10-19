@@ -19,7 +19,7 @@ from django.utils import timezone
 
 from painel import cripto
 
-from . import copia, shopee_ofertas
+from . import copia, ia, shopee_ofertas
 from .formatador import formatar_texto_oferta
 from .models import ConexaoWhatsApp, ConfiguracaoOfertas, EnvioWhatsApp, OfertaRecebida
 
@@ -53,23 +53,27 @@ def dentro_do_horario(config, quando) -> bool:
     return agora >= inicio or agora < fim
 
 
-def ofertas_enviadas_hoje(conta, agora) -> int:
+def _que_contam(envios, simulacao: bool):
+    """Envios que contam para o limite do dia e para não repetir. As simulações só
+    contam enquanto a simulação está ligada - ao desligar, nada fica bloqueado por elas."""
+    envios = envios.exclude(estado=EnvioWhatsApp.ERRO)
+    return envios if simulacao else envios.exclude(estado=EnvioWhatsApp.SIMULADO)
+
+
+def ofertas_enviadas_hoje(conta, agora, simulacao: bool = False) -> int:
     """Quantos produtos diferentes já saíram hoje (o mesmo produto em vários grupos
     conta uma vez)."""
     inicio_do_dia = timezone.localtime(agora).replace(hour=0, minute=0, second=0, microsecond=0)
-    return (
-        EnvioWhatsApp.objects.filter(conta=conta, origem=EnvioWhatsApp.OFERTA, criado_em__gte=inicio_do_dia)
-        .exclude(estado=EnvioWhatsApp.ERRO).values("item_id").distinct().count()
-    )
+    envios = EnvioWhatsApp.objects.filter(conta=conta, origem=EnvioWhatsApp.OFERTA, criado_em__gte=inicio_do_dia)
+    return _que_contam(envios, simulacao).values("item_id").distinct().count()
 
 
 def grupos_que_ainda_nao_receberam(config, item_id: str, agora) -> list[dict]:
     desde = agora - timedelta(days=max(1, config.repetir_apos_dias))
-    ja_receberam = set(
-        EnvioWhatsApp.objects.filter(
-            conta=config.conta, origem=EnvioWhatsApp.OFERTA, item_id=item_id, criado_em__gte=desde,
-        ).exclude(estado=EnvioWhatsApp.ERRO).values_list("destino", flat=True)
+    envios = EnvioWhatsApp.objects.filter(
+        conta=config.conta, origem=EnvioWhatsApp.OFERTA, item_id=item_id, criado_em__gte=desde,
     )
+    ja_receberam = set(_que_contam(envios, config.simulacao).values_list("destino", flat=True))
     return [g for g in config.grupos if g.get("jid") and g["jid"] not in ja_receberam]
 
 
@@ -78,13 +82,16 @@ def motivo_para_esperar(config, conexao, agora) -> str:
     app_id, secret = credenciais(config.conta)
     if not config.conta.shopee_validado_em or not app_id or not secret:
         return "Conecte sua conta da Shopee em Configurações."
-    if not conexao or conexao.estado != ConexaoWhatsApp.CONECTADO:
+    precisa_do_whatsapp = not config.simulacao or config.modo == ConfiguracaoOfertas.MODO_COPIAR
+    if precisa_do_whatsapp and (not conexao or conexao.estado != ConexaoWhatsApp.CONECTADO):
+        # na simulação buscando na Shopee nada vai para o WhatsApp; copiando, ele precisa
+        # estar conectado para receber as mensagens das origens
         return "Esperando o WhatsApp conectar."
     if not config.grupos:
         return "Escolha pelo menos um grupo."
     if not dentro_do_horario(config, timezone.localtime(agora)):
         return "Fora do horário de envio."
-    if config.limite_diario and ofertas_enviadas_hoje(config.conta, agora) >= config.limite_diario:
+    if config.limite_diario and ofertas_enviadas_hoje(config.conta, agora, config.simulacao) >= config.limite_diario:
         return "Limite de ofertas de hoje atingido."
     return ""
 
@@ -93,10 +100,30 @@ def montar_texto(produto: dict, link: str, cupom: str = "") -> str:
     return formatar_texto_oferta(shopee_ofertas.texto_base(produto, cupom), link)
 
 
+CAMPOS_DA_IA = ["ia_dia", "ia_revisoes_no_dia", "ia_status"]
+
+
+def revisar_com_ia(config, modelo: str, agora) -> tuple[str, bool]:
+    """O texto revisado pela IA (se ligada e dentro do limite do dia) ou o original.
+    Atualiza o status e a contagem na config (quem chama salva CAMPOS_DA_IA)."""
+    if not config.ia_ativa:
+        return modelo, False
+    hoje = timezone.localtime(agora).date()
+    if config.ia_dia != hoje:
+        config.ia_dia, config.ia_revisoes_no_dia = hoje, 0
+    if config.ia_revisoes_no_dia >= ia.MAXIMO_POR_DIA:
+        config.ia_status = f"Limite de {ia.MAXIMO_POR_DIA} revisões com IA de hoje atingido - foi o texto original."
+        return modelo, False
+    texto, revisado, config.ia_status = ia.revisar(modelo, config.ia_tipo, MARCADOR_DO_LINK)
+    config.ia_revisoes_no_dia += 1
+    return texto, revisado
+
+
 def enfileirar(config, grupos, modelo: str, link_origem: str, *, item_id: str, nome: str,
-               imagem_url: str = "", imagem_arquivo: str = ""):
+               imagem_url: str = "", imagem_arquivo: str = "", revisado_ia: bool = False):
     """Põe a oferta na fila de cada grupo. O texto é o mesmo para todos; só o link
-    muda quando um grupo tem Sub ID próprio (um link por combinação de Sub IDs)."""
+    muda quando um grupo tem Sub ID próprio (um link por combinação de Sub IDs). Com a
+    simulação ligada, fica registrada como "Simulado" e não vai para o WhatsApp."""
     app_id, secret = credenciais(config.conta)
     links: dict[tuple, str] = {}
     envios = []
@@ -109,7 +136,8 @@ def enfileirar(config, grupos, modelo: str, link_origem: str, *, item_id: str, n
             conta=config.conta, destino=grupo["jid"], destino_nome=grupo.get("nome", ""),
             texto=modelo.replace(MARCADOR_DO_LINK, link), imagem_url=(imagem_url or "")[:1000],
             imagem_arquivo=imagem_arquivo, origem=EnvioWhatsApp.OFERTA, item_id=item_id,
-            produto=(nome or "")[:300], link_afiliado=link[:500],
+            produto=(nome or "")[:300], link_afiliado=link[:500], revisado_ia=revisado_ia,
+            estado=EnvioWhatsApp.SIMULADO if config.simulacao else EnvioWhatsApp.PENDENTE,
         ))
     EnvioWhatsApp.objects.bulk_create(envios)
 
@@ -166,9 +194,10 @@ class Motor:
             config.save(update_fields=["situacao", "proximo_envio_em", "pagina_atual", "pagina_em", "atualizado_em"])
             return
 
+        modelo, revisado = revisar_com_ia(config, montar_texto(produto, MARCADOR_DO_LINK, config.cupom), agora)
         enfileirar(
-            config, grupos, montar_texto(produto, MARCADOR_DO_LINK, config.cupom), produto["link"],
-            item_id=produto["item_id"], nome=produto["nome"], imagem_url=produto["imagem"],
+            config, grupos, modelo, produto["link"],
+            item_id=produto["item_id"], nome=produto["nome"], imagem_url=produto["imagem"], revisado_ia=revisado,
         )
         config.ultimo_envio_em = agora
         config.proximo_envio_em = agora + timedelta(minutes=max(1, config.intervalo_minutos))
@@ -176,7 +205,7 @@ class Motor:
         config.ultimo_erro = ""
         config.save(update_fields=[
             "ultimo_envio_em", "proximo_envio_em", "situacao", "ultimo_erro", "pagina_atual", "pagina_em",
-            "atualizado_em",
+            "atualizado_em", *CAMPOS_DA_IA,
         ])
 
     def repassar_proxima(self, config, agora):
@@ -206,11 +235,12 @@ class Motor:
                 self._fechar(recebida, OfertaRecebida.IGNORADA, agora,
                              f"Já foi para todos os grupos nos últimos {config.repetir_apos_dias} dias.")
                 return
+            modelo, revisado = revisar_com_ia(config, formatar_texto_oferta(oferta["texto_base"], MARCADOR_DO_LINK), agora)
             enfileirar(
-                config, grupos, formatar_texto_oferta(oferta["texto_base"], MARCADOR_DO_LINK), oferta["link_origem"],
+                config, grupos, modelo, oferta["link_origem"],
                 item_id=chave, nome=nome,
                 imagem_url="" if recebida.imagem_arquivo else produto.get("imagem", ""),
-                imagem_arquivo=recebida.imagem_arquivo,
+                imagem_arquivo=recebida.imagem_arquivo, revisado_ia=revisado,
             )
         except Exception as erro:  # noqa: BLE001 - uma mensagem ruim não trava a fila
             logger.exception("Ofertas: erro ao repassar a mensagem %s", recebida.pk)
@@ -219,12 +249,15 @@ class Motor:
             config.save(update_fields=["ultimo_erro", "atualizado_em"])
             return
 
-        self._fechar(recebida, OfertaRecebida.ENVIADA, agora, "")
+        self._fechar(recebida, OfertaRecebida.ENVIADA, agora,
+                     "Simulação: não foi enviada de verdade." if config.simulacao else "")
         config.ultimo_envio_em = agora
         config.proximo_envio_em = agora + timedelta(minutes=config.intervalo_minutos)
         config.situacao = ""
         config.ultimo_erro = ""
-        config.save(update_fields=["ultimo_envio_em", "proximo_envio_em", "situacao", "ultimo_erro", "atualizado_em"])
+        config.save(update_fields=[
+            "ultimo_envio_em", "proximo_envio_em", "situacao", "ultimo_erro", "atualizado_em", *CAMPOS_DA_IA,
+        ])
 
     @staticmethod
     def _fechar(recebida, estado, agora, motivo):
@@ -273,7 +306,7 @@ class Motor:
                 logger.exception("Ofertas: erro no teste da conta %s", config.conta_id)
                 config.teste_erro = str(erro)[:500]
             config.teste_em = timezone.now()
-            config.save(update_fields=["teste_resultado", "teste_erro", "teste_em", "atualizado_em"])
+            config.save(update_fields=["teste_resultado", "teste_erro", "teste_em", "atualizado_em", *CAMPOS_DA_IA])
 
     def testar(self, config, agora) -> list[dict]:
         """As próximas ofertas que sairiam com os filtros atuais (sem mexer na posição
@@ -294,10 +327,14 @@ class Motor:
                 if config.grupos and not grupos_que_ainda_nao_receberam(config, produto["item_id"], agora):
                     ja_enviados += 1
                     continue
+                texto, revisado = montar_texto(produto, MARCADOR_DO_LINK, config.cupom), False
+                if not achadas:  # a IA revisa só a primeira, para mostrar como fica
+                    texto, revisado = revisar_com_ia(config, texto, agora)
                 achadas.append({
                     "nome": produto["nome"], "preco": produto["preco"], "comissao": produto["comissao"],
                     "desconto": produto["desconto"], "vendas": produto["vendas"], "avaliacao": produto["avaliacao"],
-                    "imagem": produto["imagem"], "texto": montar_texto(produto, LINK_DE_EXEMPLO, config.cupom),
+                    "imagem": produto["imagem"], "texto": texto.replace(MARCADOR_DO_LINK, LINK_DE_EXEMPLO),
+                    "revisado_ia": revisado,
                 })
                 if len(achadas) >= OFERTAS_NO_TESTE:
                     return achadas

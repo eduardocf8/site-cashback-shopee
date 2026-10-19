@@ -15,6 +15,14 @@
   document.querySelectorAll("#modo input, #tipo-busca input").forEach(function (el) {
     el.addEventListener("change", mostrar);
   });
+  // Os tipos de revisão só aparecem com a IA ligada.
+  var iaAtiva = document.querySelector('input[name="ia_ativa"]');
+  var tiposIa = document.getElementById("tipos-ia");
+  if (iaAtiva && tiposIa) {
+    var mostrarTipos = function () { tiposIa.hidden = !iaAtiva.checked; };
+    iaAtiva.addEventListener("change", mostrarTipos);
+    mostrarTipos();
+  }
   mostrar();
 
   // Busca nas listas de grupos e canais (destinos e origens): filtra pelo nome sem
