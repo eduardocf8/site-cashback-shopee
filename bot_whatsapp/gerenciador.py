@@ -604,40 +604,37 @@ def mensagem_com_previa(envio, foto: bytes | None = None):
     return Message(extendedTextMessage=previa)
 
 
-LARGURA_DO_CARTAO, ALTURA_DO_CARTAO = 1200, 630  # proporção de 1,91:1: o WhatsApp mostra o cartão grande
+LADO_MAXIMO_DA_PREVIA = 800  # px: a foto vai inteira, na proporção dela (o WhatsApp mostra o cartão grande)
 
 
-def cartao_da_previa(dados: bytes) -> bytes | None:
-    """Imagem larga para a prévia grande: o produto inteiro no centro, sobre um fundo
-    feito da própria foto (desfocada e escurecida). Foto quadrada vira prévia pequena
-    no WhatsApp; larga, vira o cartão grande. None se não der."""
+def imagem_da_previa(dados: bytes) -> tuple[bytes, int, int] | None:
+    """A foto do produto em JPEG, até 800 px no lado maior e sem cortar - como o
+    WhatsApp Web faz ao colar um link. (bytes, largura, altura) ou None se não der."""
     try:
-        from PIL import Image, ImageFilter
+        from PIL import Image
 
-        produto = Image.open(io.BytesIO(dados)).convert("RGB")
-        fundo = produto.copy()
-        fundo = fundo.resize((LARGURA_DO_CARTAO, round(LARGURA_DO_CARTAO * fundo.height / fundo.width)), Image.LANCZOS)
-        topo = max(0, (fundo.height - ALTURA_DO_CARTAO) // 2)
-        fundo = fundo.crop((0, topo, LARGURA_DO_CARTAO, topo + ALTURA_DO_CARTAO)) if fundo.height >= ALTURA_DO_CARTAO \
-            else fundo.resize((LARGURA_DO_CARTAO, ALTURA_DO_CARTAO), Image.LANCZOS)
-        fundo = fundo.filter(ImageFilter.GaussianBlur(28))
-        fundo = Image.blend(fundo, Image.new("RGB", fundo.size, (255, 255, 255)), 0.35)
-        produto.thumbnail((LARGURA_DO_CARTAO - 80, ALTURA_DO_CARTAO - 40), Image.LANCZOS)
-        fundo.paste(produto, ((LARGURA_DO_CARTAO - produto.width) // 2, (ALTURA_DO_CARTAO - produto.height) // 2))
+        imagem = Image.open(io.BytesIO(dados))
+        if imagem.mode in ("RGBA", "LA", "P"):  # fundo transparente vira branco
+            imagem = imagem.convert("RGBA")
+            fundo = Image.new("RGB", imagem.size, (255, 255, 255))
+            fundo.paste(imagem, mask=imagem.split()[-1])
+            imagem = fundo
+        imagem = imagem.convert("RGB")
+        imagem.thumbnail((LADO_MAXIMO_DA_PREVIA, LADO_MAXIMO_DA_PREVIA), Image.LANCZOS)
         saida = io.BytesIO()
-        fundo.save(saida, format="JPEG", quality=85, optimize=True)
-        return saida.getvalue()
+        imagem.save(saida, format="JPEG", quality=85, optimize=True)
+        return saida.getvalue(), imagem.width, imagem.height
     except Exception:  # noqa: BLE001
-        logger.warning("WhatsApp: não consegui montar o cartão da prévia")
+        logger.warning("WhatsApp: não consegui preparar a imagem da prévia")
         return None
 
 
 def mensagem_com_previa_grande(cliente, envio, foto: bytes | None = None, canal: bool = False):
-    """Texto com prévia grande do link: o cartão (foto do produto em formato largo) vai
-    como miniatura de alta qualidade, como faz o WhatsApp ao colar um link. Canal não
-    abre essa imagem enviada (a mídia dele não é criptografada como a do grupo): lá vai só
-    a miniatura dentro da própria mensagem, maior que a de sempre. Se faltar foto ou algo
-    falhar, cai na prévia pequena - a oferta sai de qualquer jeito."""
+    """Texto com prévia grande do link: a foto do produto (inteira, na proporção dela) vai
+    como miniatura de alta qualidade, como faz o WhatsApp ao colar um link. Grupo e canal
+    guardam essa imagem de jeitos diferentes (a do grupo é criptografada, a do canal não);
+    se o envio da imagem falhar, vai a miniatura dentro da própria mensagem. Se faltar a
+    foto, cai na prévia pequena - a oferta sai de qualquer jeito."""
     from neonize.proto.waE2E.WAWebProtobufsE2E_pb2 import ExtendedTextMessage, Message
     from neonize.utils.enum import MediaType
 
@@ -654,26 +651,28 @@ def mensagem_com_previa_grande(cliente, envio, foto: bytes | None = None, canal:
             dados = resposta.content
         except Exception:  # noqa: BLE001
             logger.warning("WhatsApp: não consegui baixar a foto para a prévia grande: %s", envio.imagem_url[:200])
-    cartao = cartao_da_previa(dados) if dados else None
-    if not cartao:
+    pronta = imagem_da_previa(dados) if dados else None
+    if not pronta:
         return mensagem_com_previa(envio, foto)
+    imagem, largura, altura = pronta
     previa = ExtendedTextMessage(
         text=envio.texto, matchedText=link, title=(envio.produto or "Oferta na Shopee")[:150],
         previewType=ExtendedTextMessage.PreviewType.NONE,
-        JPEGThumbnail=(miniatura(dados=cartao, lado=600, qualidade=80) if canal else miniatura(dados=cartao)) or b"",
-        thumbnailWidth=LARGURA_DO_CARTAO, thumbnailHeight=ALTURA_DO_CARTAO,
+        JPEGThumbnail=miniatura(dados=imagem) or b"", thumbnailWidth=largura, thumbnailHeight=altura,
     )
-    if canal:
-        return Message(extendedTextMessage=previa)
     try:
-        envio_da_imagem = cliente.upload(cartao, MediaType.MediaLinkThumbnail)
-        previa.MergeFrom(ExtendedTextMessage(
-            thumbnailDirectPath=envio_da_imagem.DirectPath, thumbnailSHA256=envio_da_imagem.FileSHA256,
-            thumbnailEncSHA256=envio_da_imagem.FileEncSHA256, mediaKey=envio_da_imagem.MediaKey,
-            mediaKeyTimestamp=int(time.time()),
-        ))
+        if canal:
+            enviada = cliente.upload_newsletter(imagem, MediaType.MediaLinkThumbnail)
+            previa.MergeFrom(ExtendedTextMessage(thumbnailDirectPath=enviada.DirectPath, thumbnailSHA256=enviada.FileSHA256))
+        else:
+            enviada = cliente.upload(imagem, MediaType.MediaLinkThumbnail)
+            previa.MergeFrom(ExtendedTextMessage(
+                thumbnailDirectPath=enviada.DirectPath, thumbnailSHA256=enviada.FileSHA256,
+                thumbnailEncSHA256=enviada.FileEncSHA256, mediaKey=enviada.MediaKey, mediaKeyTimestamp=int(time.time()),
+            ))
     except Exception:  # noqa: BLE001
         logger.warning("WhatsApp: não consegui enviar a imagem da prévia grande; vai a miniatura")
+        previa.JPEGThumbnail = miniatura(dados=imagem, lado=600, qualidade=80) or previa.JPEGThumbnail
     return Message(extendedTextMessage=previa)
 
 

@@ -2987,7 +2987,7 @@ Meu site (app `meusite`), o "link na bio" de cada conta:
       Vitrine em lista ou em carrossel.
 - [x] Bot de WhatsApp: escolha "Como enviar a oferta" nas configurações: "Foto com o
       texto" (grupo: foto + texto; canal: texto com prévia pequena) ou "Prévia grande
-      do link" (grupo e canal: cartão largo com a foto do produto, sem foto separada).
+      do link" (grupo e canal: cartão grande com a foto inteira do produto, sem foto separada).
       Foto com legenda em canal não é possível com a biblioteca atual.
 - [x] Foto ajustável ao enviar (arrastar e zoom, com o recorte feito no navegador) e
       prévia do editor na largura real de um celular.
