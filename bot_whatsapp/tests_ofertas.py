@@ -270,7 +270,7 @@ class TestTelaDeOfertas(BasePainel):
 
     def dados(self, **extra):
         base = {
-            "tipo_busca": "palavra_chave", "palavra_chave": "fone", "loja": "", "ordenacao": "mais_vendidos",
+            "modo": "shopee", "tipo_busca": "palavra_chave", "palavra_chave": "fone", "loja": "", "ordenacao": "mais_vendidos",
             "comissao_minima": "10", "desconto_minimo": "0", "preco_minimo": "19,90", "preco_maximo": "",
             "vendas_minimas": "0", "avaliacao_minima": "4,5", "cupom": "", "sub_ids": "grupos, zap",
             "grupos": ["2@g.us"], "subid_1@g.us": "vip", "subid_2@g.us": "", "intervalo_minutos": "10", "horario_inicio": "08:00", "horario_fim": "22:00",
@@ -305,6 +305,20 @@ class TestTelaDeOfertas(BasePainel):
         self.client.post("/whatsapp/ofertas/testar/")
         self.assertTrue(self.client.get("/whatsapp/ofertas/estado/").json()["testando"])
         self.assertContains(self.client.get("/whatsapp/ofertas/"), "Buscando na Shopee")
+
+    def test_a_tela_sabe_quando_uma_oferta_sai(self):
+        html = self.client.get("/whatsapp/ofertas/").content.decode()
+        self.assertEqual(html.count("data-ao-vivo"), 2)  # status e últimas enviadas (modo busca)
+        antes = self.client.get("/whatsapp/ofertas/estado/").json()["versao"]
+        self.assertIn(f'data-versao="{antes}"', html)
+        self.assertEqual(self.client.get("/whatsapp/ofertas/estado/").json()["versao"], antes)  # nada mudou
+
+        envio = EnvioWhatsApp.objects.create(conta=self.conta, destino="1@g.us", origem="oferta", item_id="1", produto="Fone")
+        na_fila = self.client.get("/whatsapp/ofertas/estado/").json()["versao"]
+        self.assertNotEqual(na_fila, antes)
+        envio.estado = "enviado"
+        envio.save()
+        self.assertNotEqual(self.client.get("/whatsapp/ofertas/estado/").json()["versao"], na_fila)
 
     def test_mudar_o_intervalo_recalcula_a_proxima_oferta(self):
         self.client.post("/whatsapp/ofertas/", self.dados(intervalo_minutos="10"))

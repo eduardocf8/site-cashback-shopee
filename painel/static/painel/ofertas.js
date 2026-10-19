@@ -1,32 +1,37 @@
-// Tela das ofertas automáticas: mostra só o campo do tipo de busca escolhido, busca
-// na lista de grupos e,
-// durante o "Testar busca", confere a cada 3 s e recarrega quando terminar.
+// Tela das ofertas automáticas: mostra só os campos do modo e do tipo de busca
+// escolhidos, busca nas listas de grupos e mantém os cartões de status e de ofertas
+// atualizados sozinhos.
 (function () {
-  var tipos = document.querySelectorAll("#tipo-busca input");
   function mostrar() {
+    var modo = (document.querySelector("#modo input:checked") || {}).value;
+    document.querySelectorAll("[data-modo]").forEach(function (el) {
+      el.hidden = el.dataset.modo !== modo;
+    });
     var escolhido = (document.querySelector("#tipo-busca input:checked") || {}).value;
     document.querySelectorAll("[data-tipo]").forEach(function (el) {
       el.hidden = el.dataset.tipo !== escolhido;
     });
   }
-  tipos.forEach(function (el) { el.addEventListener("change", mostrar); });
+  document.querySelectorAll("#modo input, #tipo-busca input").forEach(function (el) {
+    el.addEventListener("change", mostrar);
+  });
   mostrar();
 
-  // Busca na lista de grupos e canais: filtra pelo nome (sem ligar para acento e
-  // maiúscula). Os marcados continuam marcados mesmo escondidos pela busca.
-  var busca = document.getElementById("busca-grupos");
-  var lista = document.getElementById("lista-grupos");
-  var contador = document.getElementById("contador-grupos");
-  var nenhum = document.getElementById("nenhum-grupo");
+  // Busca nas listas de grupos e canais (destinos e origens): filtra pelo nome sem
+  // ligar para acento e maiúscula. Os marcados continuam marcados mesmo escondidos.
   function normalizar(texto) {
     return (texto || "").toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").trim();
   }
-  function contar() {
-    if (!lista || !contador) return;
-    var marcados = lista.querySelectorAll('input[type="checkbox"]:checked').length;
-    contador.textContent = marcados ? marcados + " selecionado" + (marcados > 1 ? "s" : "") : "";
-  }
-  if (busca && lista) {
+  document.querySelectorAll("input[data-lista]").forEach(function (busca) {
+    var lista = document.getElementById(busca.dataset.lista);
+    if (!lista) return;
+    var contador = busca.parentNode.querySelector(".contador");
+    var nenhum = lista.querySelector(".nenhum-grupo");
+    function contar() {
+      if (!contador) return;
+      var marcados = lista.querySelectorAll('input[type="checkbox"]:checked').length;
+      contador.textContent = marcados ? marcados + " selecionado" + (marcados > 1 ? "s" : "") : "";
+    }
     busca.addEventListener("input", function () {
       var termo = normalizar(busca.value);
       var visiveis = 0;
@@ -42,20 +47,45 @@
     });
     lista.addEventListener("change", contar);
     contar();
+  });
+
+  // Tela ao vivo: a cada 5 s pergunta ao servidor se algo mudou (oferta enviada,
+  // recebida, status). Se mudou, busca a página de novo e troca só os cartões marcados
+  // com data-ao-vivo - o formulário fica como está, sem perder o que a pessoa digitou.
+  // Durante o "Testar busca", recarrega a página quando o teste termina.
+  var raiz = document.getElementById("ofertas");
+  if (!raiz || !window.fetch || !window.DOMParser) return;
+  var versao = raiz.dataset.versao;
+  var testando = raiz.dataset.testando === "1";
+  var INTERVALO = 5000;
+
+  function trocarCartoes() {
+    return fetch(window.location.pathname, { credentials: "same-origin" })
+      .then(function (r) { return r.ok ? r.text() : null; })
+      .then(function (html) {
+        if (!html) return;
+        var nova = new DOMParser().parseFromString(html, "text/html");
+        document.querySelectorAll("[data-ao-vivo]").forEach(function (cartao) {
+          var novo = nova.getElementById(cartao.id);
+          if (novo) cartao.replaceWith(document.importNode(novo, true));
+        });
+        var novaRaiz = nova.getElementById("ofertas");
+        if (novaRaiz) versao = novaRaiz.dataset.versao;
+      });
   }
 
-  var raiz = document.getElementById("ofertas");
-  if (!raiz || raiz.dataset.testando !== "1" || !window.fetch) return;
-  var tentativas = 0;
   function conferir() {
-    tentativas += 1;
+    if (document.hidden) { setTimeout(conferir, INTERVALO); return; }
     fetch(raiz.dataset.url, { headers: { Accept: "application/json" }, credentials: "same-origin" })
       .then(function (r) { return r.ok ? r.json() : null; })
       .then(function (d) {
-        if (d && !d.testando) { window.location.hash = "teste"; window.location.reload(); return; }
-        if (tentativas < 100) setTimeout(conferir, 3000);
+        if (!d) return;
+        if (testando && !d.testando) { window.location.hash = "teste"; window.location.reload(); return "parar"; }
+        testando = !!d.testando;
+        if (d.versao && d.versao !== versao) return trocarCartoes();
       })
-      .catch(function () { if (tentativas < 100) setTimeout(conferir, 3000); });
+      .catch(function () {})
+      .then(function (fim) { if (fim !== "parar") setTimeout(conferir, INTERVALO); });
   }
-  setTimeout(conferir, 3000);
+  setTimeout(conferir, INTERVALO);
 })();

@@ -76,6 +76,8 @@ class EnvioWhatsApp(models.Model):
     item_id = models.CharField(max_length=40, blank=True, db_index=True)
     produto = models.CharField(max_length=300, blank=True)
     link_afiliado = models.URLField(max_length=500, blank=True)
+    # Foto baixada da mensagem copiada (arquivo temporário no worker).
+    imagem_arquivo = models.CharField(max_length=300, blank=True)
 
     class Meta:
         ordering = ["-id"]
@@ -125,8 +127,14 @@ class ConfiguracaoOfertas(models.Model):
         ("maior_desconto", "Maior desconto"),
     ]
 
+    MODO_SHOPEE, MODO_COPIAR = "shopee", "copiar"
+    MODOS = [(MODO_SHOPEE, "Buscar na Shopee"), (MODO_COPIAR, "Copiar de grupos e canais")]
+
     conta = models.OneToOneField(ContaAppfiliado, on_delete=models.CASCADE, related_name="ofertas_config")
     ativo = models.BooleanField(default=False)
+    modo = models.CharField(max_length=10, choices=MODOS, default=MODO_SHOPEE)
+    # Modo copiar: grupos/canais de onde vêm as ofertas ([{"jid": ..., "nome": ...}]).
+    origens = models.JSONField(default=list, blank=True)
 
     tipo_busca = models.CharField(max_length=20, choices=TIPOS_BUSCA, default=BUSCA_GERAL)
     palavra_chave = models.CharField(max_length=120, blank=True)
@@ -193,3 +201,34 @@ class ConfiguracaoOfertas(models.Model):
             self.comissao_minima, self.desconto_minimo, self.preco_minimo, self.preco_maximo,
             self.vendas_minimas, self.avaliacao_minima,
         ))
+
+
+class OfertaRecebida(models.Model):
+    """Mensagem com link da Shopee que chegou num grupo/canal de origem (modo copiar).
+    O worker guarda aqui e o motor das ofertas repassa, respeitando horário,
+    intervalo, limite e "não repetir"."""
+
+    PENDENTE, ENVIADA, IGNORADA, ERRO = "pendente", "enviada", "ignorada", "erro"
+    ESTADOS = [(PENDENTE, "Na fila"), (ENVIADA, "Repassada"), (IGNORADA, "Ignorada"), (ERRO, "Erro")]
+
+    conta = models.ForeignKey(ContaAppfiliado, on_delete=models.CASCADE, related_name="ofertas_recebidas")
+    mensagem_id = models.CharField(max_length=120)
+    origem = models.CharField(max_length=80)
+    origem_nome = models.CharField(max_length=200, blank=True)
+    texto = models.TextField()
+    imagem_arquivo = models.CharField(max_length=300, blank=True)
+    estado = models.CharField(max_length=10, choices=ESTADOS, default=PENDENTE)
+    motivo = models.CharField(max_length=300, blank=True)
+    produto = models.CharField(max_length=300, blank=True)
+    item_id = models.CharField(max_length=40, blank=True)
+    recebida_em = models.DateTimeField(auto_now_add=True)
+    processada_em = models.DateTimeField(null=True, blank=True)
+
+    class Meta:
+        ordering = ["-id"]
+        constraints = [models.UniqueConstraint(fields=["conta", "mensagem_id"], name="oferta_recebida_unica")]
+        verbose_name = "oferta recebida (copiar de grupos)"
+        verbose_name_plural = "ofertas recebidas (copiar de grupos)"
+
+    def __str__(self):
+        return f"{self.conta.email} <- {self.origem_nome or self.origem} ({self.estado})"

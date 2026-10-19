@@ -92,6 +92,8 @@ class ConfiguracaoOfertasForm(forms.ModelForm):
     categorias = forms.MultipleChoiceField(label="Categorias", required=False, widget=forms.CheckboxSelectMultiple)
     grupos = forms.MultipleChoiceField(label="Grupos e canais que recebem as ofertas", required=False,
                                        widget=forms.CheckboxSelectMultiple)
+    origens = forms.MultipleChoiceField(label="Copiar as ofertas destes grupos e canais", required=False,
+                                        widget=forms.CheckboxSelectMultiple)
     dias_semana = forms.TypedMultipleChoiceField(
         label="Dias", choices=DIAS_DA_SEMANA, coerce=int, required=False, widget=forms.CheckboxSelectMultiple,
     )
@@ -102,13 +104,13 @@ class ConfiguracaoOfertasForm(forms.ModelForm):
     class Meta:
         model = ConfiguracaoOfertas
         fields = [
-            "tipo_busca", "palavra_chave", "loja", "categorias", "ordenacao",
+            "modo", "origens", "tipo_busca", "palavra_chave", "loja", "categorias", "ordenacao",
             "comissao_minima", "desconto_minimo", "preco_minimo", "preco_maximo", "vendas_minimas",
             "avaliacao_minima", "cupom", "sub_ids", "grupos", "intervalo_minutos", "horario_inicio",
             "horario_fim", "dias_semana", "limite_diario", "repetir_apos_dias",
         ]
         labels = {
-            "tipo_busca": "Buscar", "palavra_chave": "Palavra-chave", "loja": "Link da loja",
+            "modo": "De onde vêm as ofertas", "tipo_busca": "Buscar", "palavra_chave": "Palavra-chave", "loja": "Link da loja",
             "ordenacao": "Ordem", "comissao_minima": "Comissão mínima (%)", "desconto_minimo": "Desconto mínimo (%)",
             "vendas_minimas": "Vendas mínimas", "cupom": "Cupom (opcional)", "sub_ids": "Sub IDs padrão (opcional)",
             "intervalo_minutos": "Uma oferta a cada (minutos)", "horario_inicio": "Das", "horario_fim": "Até",
@@ -121,8 +123,10 @@ class ConfiguracaoOfertasForm(forms.ModelForm):
                        "grupos). Até 5, separados por vírgula, só letras e números. Ex: grupos, whatsapp",
             "cupom": "Aparece em todas as ofertas como “Cupom: …”.",
             "limite_diario": "", "repetir_apos_dias": "", "dias_semana": "",
+            "intervalo_minutos": "Copiando de grupos: 0 = repassa assim que chegar.",
         }
         widgets = {
+            "modo": forms.RadioSelect,
             "tipo_busca": forms.RadioSelect,
             "horario_inicio": forms.TimeInput(attrs={"type": "time"}, format="%H:%M"),
             "horario_fim": forms.TimeInput(attrs={"type": "time"}, format="%H:%M"),
@@ -133,13 +137,21 @@ class ConfiguracaoOfertasForm(forms.ModelForm):
 
         super().__init__(*args, **kwargs)
         self.fields["categorias"].choices = opcoes_categoria()
-        # Grupos do WhatsApp conectado + os já escolhidos (caso tenham sumido da lista).
-        disponiveis = {g["jid"]: g.get("nome", g["jid"]) for g in (grupos_disponiveis or []) if g.get("jid")}
+        # Destinos: grupos e canais onde o número posta (+ os já escolhidos, caso tenham
+        # sumido da lista). Origens: qualquer grupo ou canal que o número participa/segue.
+        todos = [g for g in (grupos_disponiveis or []) if g.get("jid")]
+        disponiveis = {g["jid"]: g.get("nome", g["jid"]) for g in todos if g.get("pode_postar", True)}
         for g in self.instance.grupos or []:
             disponiveis.setdefault(g.get("jid"), g.get("nome", ""))
         self.nomes_dos_grupos = disponiveis
         self.fields["grupos"].choices = sorted(disponiveis.items(), key=lambda item: item[1].lower())
         self.initial["grupos"] = [g.get("jid") for g in self.instance.grupos or []]
+        origens = {g["jid"]: g.get("nome", g["jid"]) for g in todos}
+        for g in self.instance.origens or []:
+            origens.setdefault(g.get("jid"), g.get("nome", ""))
+        self.nomes_das_origens = origens
+        self.fields["origens"].choices = sorted(origens.items(), key=lambda item: item[1].lower())
+        self.initial["origens"] = [g.get("jid") for g in self.instance.origens or []]
         for campo in ("preco_minimo", "preco_maximo", "avaliacao_minima"):
             valor = getattr(self.instance, campo)
             self.initial[campo] = "" if valor is None else f"{valor}".replace(".", ",")
@@ -149,7 +161,7 @@ class ConfiguracaoOfertasForm(forms.ModelForm):
             if not getattr(self.instance, campo):
                 self.initial[campo] = ""
         for campo, (minimo, maximo) in {
-            "intervalo_minutos": (1, 240), "comissao_minima": (0, 100), "desconto_minimo": (0, 100),
+            "intervalo_minutos": (0, 240), "comissao_minima": (0, 100), "desconto_minimo": (0, 100),
             "limite_diario": (0, 1000), "repetir_apos_dias": (1, 90),
         }.items():
             self.fields[campo].min_value = minimo
@@ -223,17 +235,34 @@ class ConfiguracaoOfertasForm(forms.ModelForm):
     def clean_grupos(self):
         return [{"jid": jid, "nome": self.nomes_dos_grupos.get(jid, "")} for jid in self.cleaned_data.get("grupos", [])]
 
+    def clean_origens(self):
+        return [{"jid": jid, "nome": self.nomes_das_origens.get(jid, "")} for jid in self.cleaned_data.get("origens", [])]
+
+    @property
+    def linhas_das_origens(self) -> list[dict]:
+        return [{"opcao": opcao, "canal": str(opcao.data["value"]).endswith("@newsletter")} for opcao in self["origens"]]
+
     def clean(self):
         from bot_whatsapp.shopee_ofertas import extrair_id_da_loja
 
         dados = super().clean()
-        tipo = dados.get("tipo_busca")
-        if tipo == "palavra_chave" and not (dados.get("palavra_chave") or "").strip():
-            self.add_error("palavra_chave", "Informe a palavra-chave.")
-        if tipo == "loja" and not extrair_id_da_loja(dados.get("loja", "")):
-            self.add_error("loja", "Não achei a loja nesse link. Cole o link da página da loja na Shopee.")
-        if tipo == "categoria" and not dados.get("categorias"):
-            self.add_error("categorias", "Escolha pelo menos uma categoria.")
+        if dados.get("modo") == ConfiguracaoOfertas.MODO_COPIAR:
+            if not dados.get("origens"):
+                self.add_error("origens", "Escolha pelo menos um grupo ou canal para copiar.")
+            repetidos = {o["jid"] for o in dados.get("origens") or []} & {g["jid"] for g in dados.get("grupos") or []}
+            if repetidos:
+                nomes = ", ".join(sorted(self.nomes_das_origens.get(j, j) for j in repetidos))
+                self.add_error("origens", f"Um grupo não pode ser origem e destino ao mesmo tempo: {nomes}.")
+        else:
+            tipo = dados.get("tipo_busca")
+            if tipo == "palavra_chave" and not (dados.get("palavra_chave") or "").strip():
+                self.add_error("palavra_chave", "Informe a palavra-chave.")
+            if tipo == "loja" and not extrair_id_da_loja(dados.get("loja", "")):
+                self.add_error("loja", "Não achei a loja nesse link. Cole o link da página da loja na Shopee.")
+            if tipo == "categoria" and not dados.get("categorias"):
+                self.add_error("categorias", "Escolha pelo menos uma categoria.")
+            if dados.get("intervalo_minutos") == 0:
+                self.add_error("intervalo_minutos", "Na busca da Shopee o intervalo mínimo é 1 minuto.")
         minimo, maximo = dados.get("preco_minimo"), dados.get("preco_maximo")
         if minimo is not None and maximo is not None and minimo > maximo:
             self.add_error("preco_maximo", "O preço máximo é menor que o mínimo.")

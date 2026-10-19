@@ -1,6 +1,6 @@
 from django.contrib import admin
 
-from .models import ConexaoWhatsApp, EnvioWhatsApp, EventoWhatsApp
+from .models import ConexaoWhatsApp, EnvioWhatsApp, EventoWhatsApp, OfertaRecebida
 
 
 @admin.register(ConexaoWhatsApp)
@@ -24,3 +24,10 @@ class EventoWhatsAppAdmin(admin.ModelAdmin):
     list_display = ("conta", "tipo", "detalhe", "criado_em")
     list_filter = ("tipo",)
     search_fields = ("conta__email",)
+
+
+@admin.register(OfertaRecebida)
+class OfertaRecebidaAdmin(admin.ModelAdmin):
+    list_display = ("conta", "origem_nome", "produto", "estado", "recebida_em")
+    list_filter = ("estado",)
+    search_fields = ("conta__email", "origem_nome", "produto")

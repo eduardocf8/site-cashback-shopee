@@ -2,6 +2,7 @@
 os grupos e mandar uma mensagem de teste). Quem fala com o WhatsApp é o worker -
 aqui só se registram pedidos (ver bot_whatsapp/servico.py)."""
 
+import hashlib
 from datetime import timedelta
 
 from django.contrib import messages
@@ -12,7 +13,7 @@ from django.utils import timezone
 from django.views.decorators.http import require_POST
 
 from bot_whatsapp import servico
-from bot_whatsapp.models import ConexaoWhatsApp, ConfiguracaoOfertas, EnvioWhatsApp, EventoWhatsApp
+from bot_whatsapp.models import ConexaoWhatsApp, ConfiguracaoOfertas, EnvioWhatsApp, EventoWhatsApp, OfertaRecebida
 from bot_whatsapp.ofertas import ofertas_enviadas_hoje
 
 from . import modulos as mod
@@ -41,6 +42,7 @@ def whatsapp(request):
         conexao=conexao,
         tela=servico.estado_para_tela(conta),
         envios=EnvioWhatsApp.objects.filter(conta=conta, origem=EnvioWhatsApp.TESTE)[:8],
+        destinos=servico.destinos_possiveis(conexao),
         eventos=EventoWhatsApp.objects.filter(conta=conta)[:15],
         ConexaoWhatsApp=ConexaoWhatsApp,
     ))
@@ -127,6 +129,20 @@ def _resumo_ofertas(conta, config) -> dict:
     }
 
 
+def _versao_da_tela(conta, config) -> str:
+    """Resume o que aparece nos cartões ao vivo da tela de ofertas (status, recebidas e
+    enviadas). Quando muda, a tela busca esses cartões de novo sem recarregar a página."""
+    partes = [
+        config.ativo, config.modo, config.situacao, config.ultimo_erro, config.testando,
+        config.ultimo_envio_em, config.proximo_envio_em, config.limite_diario,
+        servico.conexao_da(conta).estado, bool(conta.shopee_validado_em),
+        timezone.localdate(),
+    ]
+    partes += EnvioWhatsApp.objects.filter(conta=conta, origem=EnvioWhatsApp.OFERTA).values_list("pk", "estado")[:20]
+    partes += OfertaRecebida.objects.filter(conta=conta).values_list("pk", "estado")[:15]
+    return hashlib.sha1(repr(partes).encode()).hexdigest()[:16]
+
+
 @conta_requerida
 def whatsapp_ofertas(request):
     conta = conta_logada(request)
@@ -148,9 +164,12 @@ def whatsapp_ofertas(request):
             return redirect("painel_whatsapp_ofertas")
         messages.error(request, "Confira os campos marcados.")
     historico = EnvioWhatsApp.objects.filter(conta=conta, origem=EnvioWhatsApp.OFERTA)[:20]
+    recebidas = OfertaRecebida.objects.filter(conta=conta)[:15]
     return render(request, "painel/whatsapp_ofertas.html", _contexto(
         request, "whatsapp",
-        form=form, config=config, historico=historico, conexao=conexao, **_resumo_ofertas(conta, config),
+        form=form, config=config, historico=historico, recebidas=recebidas, conexao=conexao,
+        versao=_versao_da_tela(conta, config),
+        **_resumo_ofertas(conta, config),
     ))
 
 
@@ -164,6 +183,8 @@ def whatsapp_ofertas_ligar(request):
         messages.error(request, "Conecte sua conta da Shopee em Configurações antes de ligar.")
     elif not config.grupos:
         messages.error(request, "Escolha pelo menos um grupo e salve antes de ligar.")
+    elif config.modo == ConfiguracaoOfertas.MODO_COPIAR and not config.origens:
+        messages.error(request, "Escolha de quais grupos ou canais copiar e salve antes de ligar.")
     else:
         config.ativo = True
         config.proximo_envio_em = timezone.now()
@@ -205,4 +226,5 @@ def whatsapp_ofertas_estado(request):
         "ativo": config.ativo,
         "situacao": config.situacao,
         "ultimo_envio": config.ultimo_envio_em.isoformat() if config.ultimo_envio_em else "",
+        "versao": _versao_da_tela(conta, config),
     })

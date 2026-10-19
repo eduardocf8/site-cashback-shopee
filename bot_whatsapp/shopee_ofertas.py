@@ -76,6 +76,19 @@ def buscar_produtos(app_id: str, secret: str, config, pagina: int) -> tuple[list
         argumentos.append(f"shopId:{int(loja)}")
     argumentos.append(f"sortType:{SORT_TYPE.get(config.ordenacao, 2)}")
 
+    relatorio = _consultar_produtos(app_id, secret, argumentos)
+    nos = [no for no in relatorio.get("nodes") or [] if isinstance(no, dict)]
+    produtos = [p for p in (normalizar_produto(no) for no in nos) if p["nome"] and p["link"] and p["item_id"]]
+    info = relatorio.get("pageInfo") or {}
+    tem_proxima = bool(info.get("hasNextPage")) if "hasNextPage" in info else len(nos) >= POR_PAGINA
+    if config.ordenacao == "maior_desconto":
+        produtos.sort(key=lambda p: p["desconto"], reverse=True)
+    return produtos, tem_proxima
+
+
+def _consultar_produtos(app_id: str, secret: str, argumentos: list[str]) -> dict:
+    """productOfferV2 com os campos de CAMPOS_PRODUTO; tira e tenta de novo se a API
+    disser que não conhece algum campo."""
     campos = list(CAMPOS_PRODUTO)
     while True:
         query = (
@@ -84,21 +97,24 @@ def buscar_produtos(app_id: str, secret: str, config, pagina: int) -> tuple[list
         )
         try:
             dados = executar_graphql_com_credenciais(app_id, secret, query)
-            break
+            return dados.get("productOfferV2") or {}
         except ShopeeAPIError as erro:
             invalido = _campo_invalido(str(erro))
             if not invalido or invalido not in campos:
                 raise
             campos.remove(invalido)
 
-    relatorio = dados.get("productOfferV2") or {}
-    nos = [no for no in relatorio.get("nodes") or [] if isinstance(no, dict)]
-    produtos = [p for p in (normalizar_produto(no) for no in nos) if p["nome"] and p["link"] and p["item_id"]]
-    info = relatorio.get("pageInfo") or {}
-    tem_proxima = bool(info.get("hasNextPage")) if "hasNextPage" in info else len(nos) >= POR_PAGINA
-    if config.ordenacao == "maior_desconto":
-        produtos.sort(key=lambda p: p["desconto"], reverse=True)
-    return produtos, tem_proxima
+
+def buscar_produto_por_item(app_id: str, secret: str, item_id: int | str) -> dict | None:
+    """Um produto pelo número dele (itemId). None se a Shopee não devolver (ex: sem
+    comissão de afiliado no momento)."""
+    relatorio = _consultar_produtos(app_id, secret, ["listType:0", f"itemId:{int(item_id)}", "page:1", "limit:1"])
+    for no in relatorio.get("nodes") or []:
+        if isinstance(no, dict):
+            produto = normalizar_produto(no)
+            if produto["link"]:
+                return produto
+    return None
 
 
 def passa_nos_filtros(produto: dict, config) -> bool:

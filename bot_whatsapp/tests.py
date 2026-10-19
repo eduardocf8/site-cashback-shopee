@@ -105,11 +105,13 @@ class TestGerenciador(TestCase):
         self.assertEqual(conexao.estado, "conectado")
         self.assertEqual((conexao.numero, conexao.nome, conexao.qr_codigo), ("5511988887777", "Bia", ""))
         self.assertEqual(JID.FromString(base64.b64decode(conexao.jid)).Device, 12)
-        # grupos primeiro, depois só os canais onde pode postar (dono ou admin)
+        # grupos primeiro, depois os canais; só posta onde é dono ou admin
         self.assertEqual([gr["nome"] for gr in conexao.grupos],
-                         ["achadinhos", "Ofertas VIP", "Canal da Bia", "Canal da equipe"])
+                         ["achadinhos", "Ofertas VIP", "Canal da Bia", "Canal da equipe", "Canal que sigo"])
         self.assertEqual(conexao.grupos[1]["jid"], "120363001@g.us")
-        self.assertEqual(conexao.grupos[2], {"jid": "111@newsletter", "nome": "Canal da Bia", "participantes": 5400, "tipo": "canal"})
+        self.assertEqual(conexao.grupos[2], {"jid": "111@newsletter", "nome": "Canal da Bia", "participantes": 5400,
+                                             "tipo": "canal", "pode_postar": True})
+        self.assertFalse(conexao.grupos[4]["pode_postar"])
         self.assertFalse(conexao.pedido_grupos)
         self.assertEqual(self.eventos(), ["qr", "conectou"])
 
