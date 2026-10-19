@@ -538,6 +538,12 @@ class Gerenciador:
                 else:
                     sessao.cliente.send_message(destino, envio.texto)
             except Exception as erro:  # noqa: BLE001
+                if "not connected" in str(erro).lower() and timezone.now() - envio.criado_em <= DESISTE_DO_ENVIO:
+                    # A conexão caiu na hora (ex: este worker está sendo desligado num deploy):
+                    # nada foi enviado. Devolve à fila para o outro worker, ou a próxima volta, tentar.
+                    logger.warning("WhatsApp: sem conexão ao enviar a mensagem %s; volta para a fila", envio.pk)
+                    EnvioWhatsApp.objects.filter(pk=envio.pk, estado=EnvioWhatsApp.PENDENTE).update(enviado_em=None)
+                    continue
                 logger.exception("WhatsApp: erro ao enviar a mensagem %s", envio.pk)
                 envio.estado = EnvioWhatsApp.ERRO
                 envio.erro = str(erro)[:500]

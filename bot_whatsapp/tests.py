@@ -179,6 +179,27 @@ class TestGerenciador(TestCase):
         self.assertEqual(pegou.estado, "erro")
         self.assertIn("interrompido", pegou.erro)
 
+    def test_sem_conexao_na_hora_volta_para_a_fila_em_vez_de_dar_erro(self):
+        sessao = self.conectar()
+        envio = EnvioWhatsApp.objects.create(conta=self.conta, destino="120363001@g.us", texto="Oi")
+        sessao.cliente.send_message.side_effect = RuntimeError("failed to send message node: websocket not connected")
+        self.ger.uma_volta()
+        envio.refresh_from_db()
+        self.assertEqual((envio.estado, envio.enviado_em), ("pendente", None))  # o outro worker ainda pode enviar
+        sessao.cliente.send_message.side_effect = None
+        self.ger.ultimo_envio[self.conta.pk] -= g.ESPACO_ENTRE_ENVIOS
+        self.ger.uma_volta()
+        envio.refresh_from_db()
+        self.assertEqual(envio.estado, "enviado")
+        # preso há mais de 10 minutos: desiste, como antes
+        velho = EnvioWhatsApp.objects.create(conta=self.conta, destino="120363001@g.us", texto="Velha")
+        EnvioWhatsApp.objects.filter(pk=velho.pk).update(criado_em=timezone.now() - timedelta(minutes=11))
+        sessao.cliente.send_message.side_effect = RuntimeError("websocket not connected")
+        self.ger.ultimo_envio[self.conta.pk] -= g.ESPACO_ENTRE_ENVIOS
+        self.ger.uma_volta()
+        velho.refresh_from_db()
+        self.assertEqual(velho.estado, "erro")
+
     def test_envio_normal_marca_quem_enviou(self):
         sessao = self.conectar()
         envio = EnvioWhatsApp.objects.create(conta=self.conta, destino="120363001@g.us", texto="Oi")
