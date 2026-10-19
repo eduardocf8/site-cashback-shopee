@@ -232,6 +232,14 @@ class TestSitePublico(TestCase):
             self.assertIn(trecho, html)
         self.assertEqual(CliqueSite.objects.get(tipo="visita").total, 1)
 
+    def test_formato_da_vitrine(self):
+        html = self.client.get("/s/achadinhos/").content.decode()
+        self.assertIn('class="grade" id="lista-vitrine"', html)  # lista (padrão)
+        SiteAfiliado.objects.filter(pk=self.site.pk).update(vitrine_formato="carrossel")
+        html = self.client.get("/s/achadinhos/").content.decode()
+        self.assertIn('class="grade carrossel" id="lista-vitrine"', html)
+        self.assertIn("em-carrossel", html)
+
     def test_textos_do_conversor(self):
         self.assertContains(self.client.get("/s/achadinhos/"), "Achou algo na Shopee?")  # padrão
         SiteAfiliado.objects.filter(pk=self.site.pk).update(

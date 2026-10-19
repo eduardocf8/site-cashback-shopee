@@ -4,6 +4,7 @@
   function mostrar() {
     var fonte = (document.querySelector("#fonte-vitrine input:checked") || {}).value;
     document.querySelectorAll("[data-vitrine]").forEach(function (el) { el.hidden = el.dataset.vitrine !== fonte; });
+    document.querySelectorAll("[data-sem-vitrine-esconde]").forEach(function (el) { el.hidden = fonte === "nenhuma"; });
     var tipo = (document.querySelector("#tipo-busca input:checked") || {}).value;
     document.querySelectorAll("[data-tipo]").forEach(function (el) { el.hidden = el.dataset.tipo !== tipo; });
   }
@@ -35,6 +36,17 @@
   }
   ligar("nome", function (d, campo) { var h = d.querySelector("h1"); if (h) h.textContent = campo.value || "Seu nome"; });
   ligar("frase", function (d, campo) { var p = d.querySelector(".frase"); if (p) p.textContent = campo.value; });
+  // Formato da vitrine (lista ou carrossel) muda na prévia na hora.
+  document.querySelectorAll('[name="vitrine_formato"]').forEach(function (radio) {
+    radio.addEventListener("change", function () {
+      var d = doc();
+      var lista = d && d.getElementById("lista-vitrine");
+      if (!lista) return;
+      var carrossel = radio.value === "carrossel";
+      lista.classList.toggle("carrossel", carrossel);
+      d.getElementById("moldura-vitrine").classList.toggle("em-carrossel", carrossel);
+    });
+  });
   // Textos do conversor: em branco volta o padrão (o placeholder do campo).
   ["titulo", "texto", "botao"].forEach(function (parte) {
     ligar("conversor_" + parte, function (d, campo) {

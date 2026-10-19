@@ -19,12 +19,12 @@ class SiteForm(forms.ModelForm):
         fields = [
             "endereco", "publicado", "nome", "frase", "cor", "mostrar_conversor", "conversor_titulo",
             "conversor_texto", "conversor_botao", "sub_id",
-            "vitrine", "busca_tipo", "palavra_chave", "loja", "categorias", "ordenacao", "links_manuais",
+            "vitrine", "vitrine_formato", "busca_tipo", "palavra_chave", "loja", "categorias", "ordenacao", "links_manuais",
         ]
         labels = {
             "endereco": "Endereço", "publicado": "Site no ar", "nome": "Nome", "frase": "Frase curta",
             "cor": "Cor do site", "mostrar_conversor": "Mostrar o conversor de links no site",
-            "sub_id": "Sub ID das vendas do site", "vitrine": "O que mostrar", "busca_tipo": "Buscar",
+            "sub_id": "Sub ID das vendas do site", "vitrine": "O que mostrar", "vitrine_formato": "Como mostrar as ofertas", "busca_tipo": "Buscar",
             "palavra_chave": "Palavra-chave", "loja": "Link da loja", "links_manuais": "Links dos produtos",
             "conversor_titulo": "Título", "conversor_texto": "Texto", "conversor_botao": "Texto do botão",
         }
@@ -37,6 +37,7 @@ class SiteForm(forms.ModelForm):
         }
         widgets = {
             "cor": forms.RadioSelect, "vitrine": forms.RadioSelect, "busca_tipo": forms.RadioSelect,
+            "vitrine_formato": forms.RadioSelect,
             "links_manuais": forms.Textarea(attrs={"rows": 5, "placeholder": "https://s.shopee.com.br/..."}),
             "endereco": forms.TextInput(attrs={"autocomplete": "off", "spellcheck": "false", "autocapitalize": "none"}),
             "conversor_titulo": forms.TextInput(attrs={"placeholder": SiteAfiliado.TITULO_PADRAO}),
@@ -50,6 +51,7 @@ class SiteForm(forms.ModelForm):
         super().__init__(*args, **kwargs)
         self.fields["categorias"].choices = opcoes_categoria()
         self.fields["endereco"].required = True
+        self.fields["vitrine_formato"].required = False
         self.fields["cor"].choices = CORES
         escolhas = list(SiteAfiliado.FONTES_VITRINE)
         if not tem_bot:  # sem o bot de WhatsApp, a vitrine "do bot" não teria o que mostrar
@@ -85,6 +87,9 @@ class SiteForm(forms.ModelForm):
         if not re.match(r"^[\w.-]{1,60}$", usuario):
             raise forms.ValidationError("Use o @ do perfil ou o link.")
         return modelo.format(usuario)
+
+    def clean_vitrine_formato(self):
+        return self.cleaned_data.get("vitrine_formato") or self.instance.vitrine_formato or SiteAfiliado.FORMATO_LISTA
 
     def clean_endereco(self):
         endereco = (self.cleaned_data.get("endereco") or "").strip().lower()

@@ -98,6 +98,10 @@
         <legend>{{ form.vitrine.label }}</legend>
         {% for opcao in form.vitrine %}<label class="marcar">{{ opcao.tag }}<span>{{ opcao.choice_label }}</span></label>{% endfor %}
       </fieldset>
+      <fieldset class="campo" id="formato-vitrine" style="margin-top:12px" data-sem-vitrine-esconde>
+        <legend>{{ form.vitrine_formato.label }}</legend>
+        <div class="opcoes-chip">{% for opcao in form.vitrine_formato %}<label class="chip-opcao">{{ opcao.tag }}<span>{{ opcao.choice_label }}</span></label>{% endfor %}</div>
+      </fieldset>
       <p class="suave pequeno" data-vitrine="bot">Cada oferta que o bot envia entra no topo da vitrine (o mesmo produto não repete). Ficam as 100 mais recentes; as mais antigas saem.</p>
       <div data-vitrine="busca" class="bloco-modo">
         <fieldset class="campo"><legend>{{ form.busca_tipo.label }}</legend>
