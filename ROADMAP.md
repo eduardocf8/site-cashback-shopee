@@ -2989,6 +2989,9 @@ Meu site (app `meusite`), o "link na bio" de cada conta:
       texto" (grupo: foto + texto; canal: texto com prévia pequena) ou "Prévia grande
       do link" (grupo e canal: cartão grande com a foto inteira do produto, sem foto separada).
       Foto com legenda em canal não é possível com a biblioteca atual.
+- [x] Bot de WhatsApp: sem oferta duplicada quando dois workers rodam juntos (o antigo
+      e o novo, durante um deploy): o motor, o repasse do modo copiar, o envio ao
+      WhatsApp e o e-mail diário "reservam" a vez no banco antes de agir.
 - [x] Foto ajustável ao enviar (arrastar e zoom, com o recorte feito no navegador) e
       prévia do editor na largura real de um celular.
 

@@ -164,6 +164,30 @@ class TestGerenciador(TestCase):
         self.ger.uma_volta()
         self.assertEqual(sessao.cliente.send_message.call_count, 2)
 
+    def test_mensagem_que_outro_worker_ja_pegou_nao_e_enviada_de_novo(self):
+        sessao = self.conectar()
+        pegou = EnvioWhatsApp.objects.create(conta=self.conta, destino="120363001@g.us", texto="Oi")
+        EnvioWhatsApp.objects.filter(pk=pegou.pk).update(enviado_em=timezone.now())  # o outro worker marcou agora
+        self.ger.uma_volta()
+        sessao.cliente.send_message.assert_not_called()
+        pegou.refresh_from_db()
+        self.assertEqual(pegou.estado, "pendente")  # ainda dentro do prazo do outro
+        EnvioWhatsApp.objects.filter(pk=pegou.pk).update(enviado_em=timezone.now() - timedelta(minutes=5))
+        self.ger.uma_volta()  # o outro travou de vez: não repete (melhor perder uma do que duplicar)
+        sessao.cliente.send_message.assert_not_called()
+        pegou.refresh_from_db()
+        self.assertEqual(pegou.estado, "erro")
+        self.assertIn("interrompido", pegou.erro)
+
+    def test_envio_normal_marca_quem_enviou(self):
+        sessao = self.conectar()
+        envio = EnvioWhatsApp.objects.create(conta=self.conta, destino="120363001@g.us", texto="Oi")
+        self.ger.uma_volta()
+        self.assertEqual(sessao.cliente.send_message.call_count, 1)
+        envio.refresh_from_db()
+        self.assertEqual(envio.estado, "enviado")
+        self.assertIsNotNone(envio.enviado_em)
+
     def test_previa_grande_em_grupo_e_canal(self):
         sessao = self.conectar()
         sessao.cliente.upload.return_value = mock.Mock(
