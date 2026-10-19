@@ -39,8 +39,15 @@ CAMPOS_CONVERSOES = [
     "utmContent",
     "netCommission",
     "totalCommission",
-    "orders{orderId orderStatus items{itemPrice qty itemTotalCommission completeTime}}",
 ]
+# Campos de cada item vendido (lista de vendas e ranking de produtos). Se a API de
+# alguma conta não tiver um deles, ele sai e a consulta tenta de novo.
+CAMPOS_ITENS = ["itemId", "itemName", "shopName", "imageUrl", "itemPrice", "qty", "itemTotalCommission", "completeTime"]
+ITENS_OBRIGATORIOS = {"itemPrice", "qty", "itemTotalCommission", "completeTime"}
+
+
+def _bloco_pedidos(itens) -> str:
+    return f"orders{{orderId orderStatus items{{{' '.join(itens)}}}}}"
 MAXIMO_PAGINAS = 50
 
 
@@ -49,24 +56,27 @@ def _campo_invalido(mensagem: str) -> str:
     return achado.group(1) if achado else ""
 
 
-def _consultar_pagina(app_id, secret, inicio_ts, fim_ts, scroll_id, campos):
-    campos_atuais = list(campos)
+def _consultar_pagina(app_id, secret, inicio_ts, fim_ts, scroll_id, campos, itens):
+    campos_atuais, itens_atuais = list(campos), list(itens)
     while True:
         parametros = (
             f"purchaseTimeStart:{inicio_ts},purchaseTimeEnd:{fim_ts},limit:500,"
             f"scrollId:{json.dumps(scroll_id, ensure_ascii=False)}"
         )
         query = (
-            f"query{{conversionReport({parametros}){{nodes{{{' '.join(campos_atuais)}}}"
+            f"query{{conversionReport({parametros}){{nodes{{{' '.join(campos_atuais)} {_bloco_pedidos(itens_atuais)}}}"
             "pageInfo{scrollId hasNextPage}}}"
         )
         try:
-            return executar_graphql_com_credenciais(app_id, secret, query), campos_atuais
+            return executar_graphql_com_credenciais(app_id, secret, query), campos_atuais, itens_atuais
         except ShopeeAPIError as erro:
             invalido = _campo_invalido(str(erro))
-            if not invalido or invalido not in campos_atuais:
+            if invalido in campos_atuais:
+                campos_atuais.remove(invalido)
+            elif invalido in itens_atuais and invalido not in ITENS_OBRIGATORIOS:
+                itens_atuais.remove(invalido)
+            else:
                 raise
-            campos_atuais.remove(invalido)
 
 
 def buscar_conversoes(app_id: str, secret: str, inicio_ts: int, fim_ts: int) -> list[dict]:
@@ -74,12 +84,12 @@ def buscar_conversoes(app_id: str, secret: str, inicio_ts: int, fim_ts: int) -> 
     todas = []
     scroll_id = ""
     vistos = set()
-    campos = CAMPOS_CONVERSOES
+    campos, itens = CAMPOS_CONVERSOES, CAMPOS_ITENS
     for _ in range(MAXIMO_PAGINAS):
         if scroll_id in vistos:
             break
         vistos.add(scroll_id)
-        dados, campos = _consultar_pagina(app_id, secret, inicio_ts, fim_ts, scroll_id, campos)
+        dados, campos, itens = _consultar_pagina(app_id, secret, inicio_ts, fim_ts, scroll_id, campos, itens)
         relatorio = dados.get("conversionReport") or {}
         nodes = relatorio.get("nodes") or []
         if isinstance(nodes, list):

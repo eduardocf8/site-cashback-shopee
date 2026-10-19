@@ -24,7 +24,7 @@ from django.db.models import Sum
 from django.utils import timezone
 
 from . import cripto
-from .models import RegraSubId, ResultadoDiario, ResultadoSubIdDiario, SincronizacaoResultados
+from .models import RegraSubId, ResultadoDiario, ResultadoSubIdDiario, SincronizacaoResultados, VendaItem
 from .periodos import agrupar
 from .shopee import buscar_conversoes
 
@@ -43,6 +43,9 @@ JANELA_API_DIAS = 89
 # ficam como estavam na última vez em que dava para calcular direito.
 DIAS_RECALCULO_VALIDADA = 60
 INTERVALO_SINCRONIZACAO_AUTOMATICA = timedelta(hours=3)
+# Itens vendidos ficam guardados por 13 meses (dá para comparar com o mesmo mês do ano anterior).
+DIAS_DE_HISTORICO_VENDAS = 395
+STATUS_CANCELADOS = STATUS_PEDIDO_INVALIDOS | {"INVALID"}
 
 
 # --- Números e Sub IDs (mesmas regras do app) ----------------------------------------
@@ -180,6 +183,53 @@ def calcular_por_dia(conversoes: list[dict]) -> tuple[dict, dict]:
     return por_dia, por_sub_id
 
 
+def _momento(ts):
+    return datetime.fromtimestamp(ts, tz=dt_timezone.utc) if ts is not None else None
+
+
+def _texto(valor, tamanho: int) -> str:
+    return str(valor or "").strip()[:tamanho]
+
+
+def itens_vendidos(conta, conversoes: list[dict]) -> list[VendaItem]:
+    """Um VendaItem por produto de cada pedido (ainda não salvos)."""
+    itens = []
+    for conversao in conversoes:
+        if not isinstance(conversao, dict):
+            continue
+        compra = _momento(_inteiro(conversao.get("purchaseTime")))
+        if not compra:
+            continue
+        rotulo = sub_id(conversao)
+        conversao_id = _texto(conversao.get("conversionId"), 40)
+        pedidos = conversao.get("orders")
+        for pedido in pedidos if isinstance(pedidos, list) else []:
+            if not isinstance(pedido, dict):
+                continue
+            status = str(pedido.get("orderStatus") or "").strip().upper()
+            if status == "COMPLETED":
+                situacao = VendaItem.CONCLUIDO
+            elif status in STATUS_CANCELADOS:
+                situacao = VendaItem.CANCELADO
+            else:
+                situacao = VendaItem.PENDENTE
+            produtos = [i for i in pedido.get("items") or [] if isinstance(i, dict)]
+            for posicao, item in enumerate(produtos):
+                quantidade = int(para_numero(item.get("qty")) or 1)
+                preco = para_numero(item.get("itemPrice"))
+                itens.append(VendaItem(
+                    conta=conta, conversao_id=conversao_id, pedido_id=_texto(pedido.get("orderId"), 40),
+                    posicao=posicao, item_id=_texto(item.get("itemId"), 30),
+                    nome=_texto(item.get("itemName"), 300), imagem_url=_texto(item.get("imageUrl"), 500),
+                    loja=_texto(item.get("shopName"), 200), quantidade=max(quantidade, 1),
+                    preco=_dinheiro(preco), valor=_dinheiro(preco * max(quantidade, 1)),
+                    comissao=_dinheiro(para_numero(item.get("itemTotalCommission"))),
+                    status_shopee=status[:20], situacao=situacao, sub_id=rotulo, comprado_em=compra,
+                    concluido_em=_momento(_inteiro(item.get("completeTime"))) if situacao == VendaItem.CONCLUIDO else None,
+                ))
+    return itens
+
+
 def _dinheiro(valor: float) -> Decimal:
     return Decimal(str(round(valor or 0.0, 2)))
 
@@ -226,6 +276,12 @@ def sincronizar_conta(conta, agora: datetime | None = None) -> dict:
             for (dia, sub_id), valores in por_sub_id.items()
             if primeiro_dia_completo <= dia <= hoje
         ])
+
+        # Itens vendidos: a janela inteira é trocada pelo que a API devolveu agora (status
+        # e comissão mudam); o que é mais velho que a janela fica como estava.
+        VendaItem.objects.filter(conta=conta, comprado_em__gte=inicio_janela).delete()
+        VendaItem.objects.bulk_create(itens_vendidos(conta, conversoes), batch_size=1000, ignore_conflicts=True)
+        VendaItem.objects.filter(conta=conta, comprado_em__lt=agora - timedelta(days=DIAS_DE_HISTORICO_VENDAS)).delete()
 
         estado, _ = SincronizacaoResultados.objects.get_or_create(conta=conta)
         if not estado.cobertura_inicio or primeiro_dia_completo < estado.cobertura_inicio:
@@ -354,3 +410,78 @@ def resumo_das_regras(conta, hoje: date) -> list[dict]:
         {"regra": regra, "quantidade": len(pegos[regra.pk]), "exemplos": sorted(pegos[regra.pk])[:2]}
         for regra in regras
     ]
+
+
+# --- Vendas (itens vendidos) -------------------------------------------------------------
+
+VENDAS_POR_PAGINA = 20
+VENDAS_POR_PAGINA_CELULAR = 10  # no celular cada venda vira um cartão mais alto
+COOKIE_TELA = "appf_tela"  # "celular" ou "computador", marcado pelo vendas.js
+ORDENS_VENDAS = {"recentes": ("-comprado_em", "pedido_id", "posicao"), "comissao": ("-comissao", "-comprado_em")}
+FILTROS_SITUACAO = [("", "Todos"), (VendaItem.PENDENTE, "Pendentes"), (VendaItem.CONCLUIDO, "Concluídos"),
+                    (VendaItem.CANCELADO, "Cancelados")]
+
+
+def _limites(inicio: date, fim: date):
+    fuso = timezone.get_current_timezone()
+    return (datetime.combine(inicio, datetime.min.time(), tzinfo=fuso),
+            datetime.combine(fim + timedelta(days=1), datetime.min.time(), tzinfo=fuso))
+
+
+def vendas_do_periodo(conta, inicio: date, fim: date):
+    de, ate = _limites(inicio, fim)
+    return VendaItem.objects.filter(conta=conta, comprado_em__gte=de, comprado_em__lt=ate)
+
+
+def grupos_das_vendas(conta, vendas) -> dict[str, list[str]]:
+    """{nome mostrado: [Sub IDs guardados]} das vendas, com os agrupamentos da conta."""
+    regras = list(RegraSubId.objects.filter(conta=conta))
+    grupos: dict[str, list[str]] = {}
+    for bruto in vendas.order_by().values_list("sub_id", flat=True).distinct():
+        grupos.setdefault(nome_do_grupo(bruto, regras), []).append(bruto)
+    return dict(sorted(grupos.items(), key=lambda par: par[0].lower()))
+
+
+def filtrar_vendas(conta, inicio: date, fim: date, parametros) -> dict:
+    """Vendas do período com os filtros da tela (busca, Sub ID/grupo, situação e ordem)."""
+    vendas = vendas_do_periodo(conta, inicio, fim)
+    grupos = grupos_das_vendas(conta, vendas)
+    busca = str(parametros.get("busca") or "").strip()[:100]
+    grupo = str(parametros.get("sub") or "")
+    situacao = str(parametros.get("situacao") or "")
+    ordem = parametros.get("ordem") if parametros.get("ordem") in ORDENS_VENDAS else "recentes"
+    if busca:
+        vendas = vendas.filter(nome__icontains=busca)
+    if grupo in grupos:
+        vendas = vendas.filter(sub_id__in=grupos[grupo])
+    else:
+        grupo = ""
+    if situacao in dict(FILTROS_SITUACAO) and situacao:
+        vendas = vendas.filter(situacao=situacao)
+    else:
+        situacao = ""
+    regras = list(RegraSubId.objects.filter(conta=conta))
+    return {
+        "vendas": vendas.order_by(*ORDENS_VENDAS[ordem]),
+        "grupos": list(grupos),
+        "filtros": {"busca": busca, "sub": grupo, "situacao": situacao, "ordem": ordem},
+        "nome_do_grupo": lambda bruto: nome_do_grupo(bruto, regras),
+    }
+
+
+def ranking_produtos(vendas, limite: int | None = 5) -> list[dict]:
+    """Produtos mais vendidos (sem os cancelados): unidades, faturamento e comissão."""
+    from django.db.models import Count, Max
+
+    linhas = (
+        vendas.exclude(situacao=VendaItem.CANCELADO).order_by()
+        .values("item_id")
+        .annotate(unidades=Sum("quantidade"), faturamento=Sum("valor"), comissao=Sum("comissao"),
+                  nome=Max("nome"), imagem_url=Max("imagem_url"), loja=Max("loja"), pedidos=Count("id"))
+        .order_by("-unidades", "-comissao")
+    )
+    linhas = list(linhas[:limite] if limite else linhas)
+    maior = max((l["unidades"] for l in linhas), default=0) or 1
+    for linha in linhas:
+        linha["barra"] = round(100 * linha["unidades"] / maior)
+    return linhas

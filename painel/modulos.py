@@ -25,6 +25,7 @@ ICONES = {
     "mais": "M12 5v14M5 12h14",
     "metas": "M12 3a9 9 0 1 0 0 18 9 9 0 0 0 0-18zM12 7a5 5 0 1 0 0 10 5 5 0 0 0 0-10zM12 11a1 1 0 1 0 0 2 1 1 0 0 0 0-2z",
     "atualizar": "M20 11a8 8 0 1 0-2.3 5.7M20 4v7h-7",
+    "baixar": "M12 4v11M7 10l5 5 5-5M5 20h14",
 }
 
 # slug -> configuração. "modulo": código da licença que libera (None = todos
