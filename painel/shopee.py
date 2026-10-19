@@ -79,9 +79,9 @@ def _consultar_pagina(app_id, secret, inicio_ts, fim_ts, scroll_id, campos, iten
                 raise
 
 
-def buscar_conversoes(app_id: str, secret: str, inicio_ts: int, fim_ts: int) -> list[dict]:
-    """Todas as conversões com data de compra entre inicio_ts e fim_ts (paginando)."""
-    todas = []
+def paginas_de_conversoes(app_id: str, secret: str, inicio_ts: int, fim_ts: int):
+    """As conversões com data de compra entre inicio_ts e fim_ts, uma página (até 500)
+    por vez - quem chama processa e descarta cada página, sem guardar tudo na memória."""
     scroll_id = ""
     vistos = set()
     campos, itens = CAMPOS_CONVERSOES, CAMPOS_ITENS
@@ -92,11 +92,15 @@ def buscar_conversoes(app_id: str, secret: str, inicio_ts: int, fim_ts: int) -> 
         dados, campos, itens = _consultar_pagina(app_id, secret, inicio_ts, fim_ts, scroll_id, campos, itens)
         relatorio = dados.get("conversionReport") or {}
         nodes = relatorio.get("nodes") or []
-        if isinstance(nodes, list):
-            todas.extend(nodes)
+        if isinstance(nodes, list) and nodes:
+            yield nodes
         pagina = relatorio.get("pageInfo") or {}
         proximo = str(pagina.get("scrollId") or "").strip()
         if not pagina.get("hasNextPage") or not proximo:
             break
         scroll_id = proximo
-    return todas
+
+
+def buscar_conversoes(app_id: str, secret: str, inicio_ts: int, fim_ts: int) -> list[dict]:
+    """Todas as conversões do período numa lista só."""
+    return [conversao for pagina in paginas_de_conversoes(app_id, secret, inicio_ts, fim_ts) for conversao in pagina]

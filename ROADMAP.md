@@ -2916,6 +2916,21 @@ posta as ofertas, sem programa no computador e sem janela de navegador.
 - [x] Corrigido: os botões de período da aba Resultados geravam link com "??" e o
       período escolhido era ignorado.
 
+## Fase 73 — Sincronização mais leve
+
+- [x] As vendas da Shopee são processadas e salvas **página por página** (500 por vez),
+      sem segurar tudo na memória: numa conta com 20 mil vendas o pico caiu de ~44 MB
+      para ~3 MB.
+- [x] **Busca rápida** (a cada 3 h e "Atualizar agora"): só as compras dos últimos 30
+      dias. **Completa** (~3 meses, o máximo da API): 1x por dia, entre 3h e 6h, para
+      pegar validações atrasadas (compra de mais de 30 dias concluída só agora).
+- [x] A comissão validada de cada dia sai dos itens guardados no banco (pela data de
+      validação), então a busca rápida não perde o que foi validado de compras antigas.
+- [x] Se a Shopee falhar no meio, nada do que estava guardado se perde (transação).
+- [x] Log de cada sincronização: rápida/completa, memória antes e depois e, na
+      completa, quantas validações vieram mais de 30 dias depois da compra (para saber
+      se a completa diária ainda é necessária).
+
 ---
 
 Pra continuar esse roadmap numa conversa nova, basta apontar esse arquivo

@@ -30,7 +30,7 @@ class TestGuardarVendas(TestCase):
         )
 
     def sincronizar(self, conversoes, agora=None):
-        with mock.patch("painel.resultados.buscar_conversoes", return_value=conversoes):
+        with mock.patch("painel.resultados.paginas_de_conversoes", return_value=[conversoes]):
             resultados.sincronizar_conta(self.conta, agora=agora or self.AGORA)
 
     def test_guarda_cada_item_com_status_sub_id_e_loja(self):
@@ -194,3 +194,95 @@ class TestPaginasNoCelular(TestTelaDeVendas):
         celular = self.client.get("/resultados/", {"periodo": "30dias"})
         self.assertEqual((len(celular.context["pagina_vendas"].object_list), celular.context["pagina_vendas"].paginator.num_pages), (10, 3))
         self.assertContains(celular, 'data-tela="celular"')
+
+
+class TestSincronizacaoRapidaECompleta(TestCase):
+    AGORA = datetime(2026, 10, 18, 15, 0, tzinfo=SP)
+
+    def setUp(self):
+        self.conta = ContaAppfiliado.objects.create(
+            email="bia@exemplo.com", shopee_app_id="123", shopee_secret_cifrado=cripto.cifrar("segredo"),
+            shopee_validado_em=timezone.now(),
+        )
+
+    def sincronizar(self, paginas, agora=None, **opcoes):
+        with mock.patch("painel.resultados.paginas_de_conversoes", return_value=iter(paginas)) as buscar:
+            resumo = resultados.sincronizar_conta(self.conta, agora=agora or self.AGORA, **opcoes)
+        return buscar, resumo
+
+    def janela_em_dias(self, buscar, agora=None):
+        inicio_ts, fim_ts = buscar.call_args.args[2:]
+        return round((fim_ts - inicio_ts) / 86400)
+
+    def test_primeira_completa_depois_rapidas_e_completa_de_madrugada(self):
+        buscar, resumo = self.sincronizar([])
+        self.assertEqual((self.janela_em_dias(buscar), resumo["completa"]), (89, True))
+        buscar, resumo = self.sincronizar([], agora=self.AGORA + timedelta(hours=3))
+        self.assertEqual((self.janela_em_dias(buscar), resumo["completa"]), (30, False))
+        madrugada = datetime(2026, 10, 19, 4, 0, tzinfo=SP)  # 13 h depois da completa
+        buscar, resumo = self.sincronizar([], agora=madrugada)
+        self.assertEqual((self.janela_em_dias(buscar), resumo["completa"]), (89, True))
+        _, resumo = self.sincronizar([], agora=madrugada + timedelta(hours=3))  # 7h: rápida
+        self.assertFalse(resumo["completa"])
+        _, resumo = self.sincronizar([], agora=madrugada + timedelta(hours=31))  # passou de 30 h
+        self.assertTrue(resumo["completa"])
+
+    def test_rapida_mexe_so_nos_30_dias_e_guarda_o_resto(self):
+        compra_antiga = ts(2026, 9, 1)  # 47 dias antes: fora da rápida
+        self.sincronizar([[
+            conversao(compra_antiga, [pedido("p1", "PENDING", [item("Antigo", "100", 1, "10")])], conversion_id="c1"),
+            conversao(ts(2026, 10, 10), [pedido("p2", "PENDING", [item("Novo", "50", 1, "5")])], conversion_id="c2"),
+        ]])
+        # rápida: a Shopee só devolve o que é dos últimos 30 dias
+        self.sincronizar([[
+            conversao(ts(2026, 10, 10), [pedido("p2", "COMPLETED", [item("Novo", "50", 1, "5", ts(2026, 10, 17))])], conversion_id="c2"),
+        ]], agora=self.AGORA + timedelta(hours=3))
+        self.assertEqual(VendaItem.objects.get(nome="Antigo").situacao, "pendente")  # guardado como estava
+        self.assertEqual(VendaItem.objects.get(nome="Novo").situacao, "concluido")
+        from .models import ResultadoDiario
+        from datetime import date
+        self.assertEqual(ResultadoDiario.objects.get(conta=self.conta, dia=date(2026, 9, 1)).faturamento, Decimal("100.00"))
+        self.assertEqual(ResultadoDiario.objects.get(conta=self.conta, dia=date(2026, 10, 17)).comissao_validada, Decimal("5.00"))
+
+    def test_validada_soma_os_itens_guardados_mesmo_de_compra_antiga(self):
+        from datetime import date
+
+        from .models import ResultadoDiario
+
+        # compra de 40 dias atrás validada ontem: só a completa vê, e fica guardada
+        self.sincronizar([[
+            conversao(ts(2026, 9, 8), [pedido("p1", "COMPLETED", [item("Fone", "100", 1, "12", ts(2026, 10, 17))])]),
+        ]])
+        self.assertEqual(ResultadoDiario.objects.get(conta=self.conta, dia=date(2026, 10, 17)).comissao_validada, Decimal("12.00"))
+        self.sincronizar([], agora=self.AGORA + timedelta(hours=3))  # rápida não vê a compra antiga
+        self.assertEqual(ResultadoDiario.objects.get(conta=self.conta, dia=date(2026, 10, 17)).comissao_validada, Decimal("12.00"))
+
+    def test_processa_pagina_por_pagina(self):
+        _, resumo = self.sincronizar([
+            [conversao(ts(2026, 10, 10), [pedido("p1", "PENDING", [item("A", "10")])], conversion_id="c1")],
+            [conversao(ts(2026, 10, 11), [pedido("p2", "PENDING", [item("B", "20")])], conversion_id="c2")],
+        ])
+        self.assertEqual(resumo["conversoes"], 2)
+        self.assertEqual(VendaItem.objects.count(), 2)
+
+    def test_falha_no_meio_nao_apaga_o_que_estava_guardado(self):
+        self.sincronizar([[conversao(ts(2026, 10, 10), [pedido("p1", "PENDING", [item("A", "10")])])]])
+
+        def paginas_que_falham(*_):
+            yield [conversao(ts(2026, 10, 12), [pedido("p9", "PENDING", [item("B", "10")])], conversion_id="c9")]
+            raise ShopeeAPIError("caiu")
+
+        with mock.patch("painel.resultados.paginas_de_conversoes", side_effect=paginas_que_falham):
+            with self.assertRaises(ShopeeAPIError):
+                resultados.sincronizar_conta(self.conta, agora=self.AGORA + timedelta(hours=3))
+        self.assertEqual(list(VendaItem.objects.values_list("nome", flat=True)), ["A"])
+
+    def test_log_mostra_tipo_memoria_e_validacoes_atrasadas(self):
+        with mock.patch("painel.resultados.paginas_de_conversoes", return_value=iter([[
+            conversao(ts(2026, 9, 1), [pedido("p1", "COMPLETED", [item("A", "10", 1, "1", ts(2026, 10, 15))])], conversion_id="c1"),
+            conversao(ts(2026, 10, 1), [pedido("p2", "COMPLETED", [item("B", "10", 1, "1", ts(2026, 10, 10))])], conversion_id="c2"),
+        ]])), mock.patch("painel.resultados.timezone.now", return_value=self.AGORA):
+            texto = resultados.processar(self.conta)
+        self.assertIn("(completa)", texto)
+        self.assertIn("memória", texto)
+        self.assertIn("validadas mais de 30 dias depois da compra: 1 de 2", texto)
