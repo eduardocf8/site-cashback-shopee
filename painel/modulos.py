@@ -7,7 +7,6 @@ from django.urls import reverse
 from licencas.models import (
     MODULO_INSTAGRAM,
     MODULO_SITE,
-    MODULO_VIDEOS,
     MODULO_WHATSAPP,
 )
 
@@ -16,7 +15,6 @@ ICONES = {
     "inicio": "M3 11l9-7 9 7v9a1 1 0 0 1-1 1h-5v-6H9v6H4a1 1 0 0 1-1-1z",
     "whatsapp": "M21 12a8 8 0 0 1-11.6 7.1L4 21l1.9-5.4A8 8 0 1 1 21 12z",
     "site": "M12 3a9 9 0 1 0 0 18 9 9 0 0 0 0-18zM3 12h18M12 3c3 3 3 15 0 18M12 3c-3 3-3 15 0 18",
-    "videos": "M3 6h13v12H3zM16 10l5-3v10l-5-3",
     "instagram": "M4 4h16v16H4zM12 8a4 4 0 1 0 0 8 4 4 0 0 0 0-8z",
     "resultados": "M4 20V10M10 20V4M16 20v-7M2 20h20",
     "configuracoes": "M4 6h9M17 6h3M4 12h3M11 12h9M4 18h11M19 18h1M15 4v4M9 10v4M17 16v4",
@@ -47,13 +45,6 @@ MODULOS_DO_MENU = [
                           "de produtos, no endereço seunome.appfiliado.com.br.",
         "texto_bloqueado": "Tenha seu próprio site com conversor de links e vitrine de produtos, pronto "
                            "para usar como link na bio.",
-    },
-    {
-        "slug": "videos", "nome": "Gerador de vídeos", "icone": "videos", "modulo": MODULO_VIDEOS,
-        "pronto": False,
-        "texto_em_breve": "Cole o link de um produto e receba um vídeo curto pronto para postar.",
-        "texto_bloqueado": "Cole o link de um produto e receba um vídeo curto pronto para Reels, TikTok "
-                           "e Shopee Vídeo.",
     },
     {
         "slug": "instagram", "nome": "Instagram", "icone": "instagram", "modulo": MODULO_INSTAGRAM,
