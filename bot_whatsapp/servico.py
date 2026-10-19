@@ -18,6 +18,11 @@ def conexao_da(conta) -> ConexaoWhatsApp:
     return conexao
 
 
+def destinos_possiveis(conexao) -> list[dict]:
+    """Grupos e canais onde o número pode postar (canal só como dono/admin)."""
+    return [g for g in conexao.grupos if g.get("pode_postar", True)]
+
+
 def registrar_evento(conta_id: int, tipo: str, detalhe: str = "") -> None:
     EventoWhatsApp.objects.create(conta_id=conta_id, tipo=tipo, detalhe=detalhe[:300])
 
@@ -62,7 +67,7 @@ def enfileirar_envio(conta, destino: str, texto: str, imagem_url: str = "") -> t
     conexao = conexao_da(conta)
     if conexao.estado != ConexaoWhatsApp.CONECTADO:
         return None, "Conecte o WhatsApp antes de enviar."
-    grupo = next((g for g in conexao.grupos if g.get("jid") == destino), None)
+    grupo = next((g for g in destinos_possiveis(conexao) if g.get("jid") == destino), None)
     if not grupo:
         return None, "Escolha um dos seus grupos."
     if not texto.strip() and not imagem_url:

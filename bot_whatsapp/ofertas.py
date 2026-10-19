@@ -19,13 +19,14 @@ from django.utils import timezone
 
 from painel import cripto
 
-from . import shopee_ofertas
+from . import copia, shopee_ofertas
 from .formatador import formatar_texto_oferta
-from .models import ConexaoWhatsApp, ConfiguracaoOfertas, EnvioWhatsApp
+from .models import ConexaoWhatsApp, ConfiguracaoOfertas, EnvioWhatsApp, OfertaRecebida
 
 logger = logging.getLogger(__name__)
 
-INTERVALO_MOTOR = 15  # segundos entre uma conferência e outra
+INTERVALO_MOTOR = 5  # segundos entre uma conferência e outra
+VALIDADE_DA_RECEBIDA = timedelta(hours=1)  # modo copiar: oferta mais velha que isso não sai
 PAGINAS_POR_VEZ = 5  # páginas de 50 produtos procuradas de uma vez atrás de um produto novo
 RECOMECAR_BUSCA_APOS = timedelta(hours=3)
 ESPERA_SEM_PRODUTO = timedelta(minutes=30)
@@ -92,6 +93,27 @@ def montar_texto(produto: dict, link: str, cupom: str = "") -> str:
     return formatar_texto_oferta(shopee_ofertas.texto_base(produto, cupom), link)
 
 
+def enfileirar(config, grupos, modelo: str, link_origem: str, *, item_id: str, nome: str,
+               imagem_url: str = "", imagem_arquivo: str = ""):
+    """Põe a oferta na fila de cada grupo. O texto é o mesmo para todos; só o link
+    muda quando um grupo tem Sub ID próprio (um link por combinação de Sub IDs)."""
+    app_id, secret = credenciais(config.conta)
+    links: dict[tuple, str] = {}
+    envios = []
+    for grupo in grupos:
+        sub_ids = tuple(config.lista_sub_ids(grupo["jid"]))
+        if sub_ids not in links:
+            links[sub_ids] = shopee_ofertas.gerar_link_afiliado(app_id, secret, link_origem, list(sub_ids))
+        link = links[sub_ids]
+        envios.append(EnvioWhatsApp(
+            conta=config.conta, destino=grupo["jid"], destino_nome=grupo.get("nome", ""),
+            texto=modelo.replace(MARCADOR_DO_LINK, link), imagem_url=(imagem_url or "")[:1000],
+            imagem_arquivo=imagem_arquivo, origem=EnvioWhatsApp.OFERTA, item_id=item_id,
+            produto=(nome or "")[:300], link_afiliado=link[:500],
+        ))
+    EnvioWhatsApp.objects.bulk_create(envios)
+
+
 class Motor:
     def __init__(self):
         # conta_id -> {"chave": chave da busca, "produtos": [...], "em": monotonic}
@@ -133,6 +155,10 @@ class Motor:
                 config.save(update_fields=["situacao", "atualizado_em"])
             return
 
+        if config.modo == ConfiguracaoOfertas.MODO_COPIAR:
+            self.repassar_proxima(config, agora)
+            return
+
         produto, grupos = self.proximo_produto(config, agora)
         if not produto:
             config.situacao = "Nenhuma oferta nova com esses filtros agora. Tento de novo em 30 minutos."
@@ -140,24 +166,10 @@ class Motor:
             config.save(update_fields=["situacao", "proximo_envio_em", "pagina_atual", "pagina_em", "atualizado_em"])
             return
 
-        app_id, secret = credenciais(config.conta)
-        # Mesmo texto para todos os grupos; só o link muda quando cada grupo tem o seu
-        # Sub ID (um link por combinação de Sub IDs).
-        modelo = montar_texto(produto, MARCADOR_DO_LINK, config.cupom)
-        links: dict[tuple, str] = {}
-        envios = []
-        for grupo in grupos:
-            sub_ids = tuple(config.lista_sub_ids(grupo["jid"]))
-            if sub_ids not in links:
-                links[sub_ids] = shopee_ofertas.gerar_link_afiliado(app_id, secret, produto["link"], list(sub_ids))
-            link = links[sub_ids]
-            envios.append(EnvioWhatsApp(
-                conta=config.conta, destino=grupo["jid"], destino_nome=grupo.get("nome", ""),
-                texto=modelo.replace(MARCADOR_DO_LINK, link), imagem_url=produto["imagem"][:1000],
-                origem=EnvioWhatsApp.OFERTA, item_id=produto["item_id"], produto=produto["nome"][:300],
-                link_afiliado=link[:500],
-            ))
-        EnvioWhatsApp.objects.bulk_create(envios)
+        enfileirar(
+            config, grupos, montar_texto(produto, MARCADOR_DO_LINK, config.cupom), produto["link"],
+            item_id=produto["item_id"], nome=produto["nome"], imagem_url=produto["imagem"],
+        )
         config.ultimo_envio_em = agora
         config.proximo_envio_em = agora + timedelta(minutes=max(1, config.intervalo_minutos))
         config.situacao = ""
@@ -166,6 +178,58 @@ class Motor:
             "ultimo_envio_em", "proximo_envio_em", "situacao", "ultimo_erro", "pagina_atual", "pagina_em",
             "atualizado_em",
         ])
+
+    def repassar_proxima(self, config, agora):
+        """Modo copiar: repassa a próxima mensagem que chegou nos grupos/canais de origem."""
+        pendentes = OfertaRecebida.objects.filter(conta=config.conta, estado=OfertaRecebida.PENDENTE)
+        pendentes.filter(recebida_em__lt=agora - VALIDADE_DA_RECEBIDA).update(
+            estado=OfertaRecebida.IGNORADA, processada_em=agora,
+            motivo="Chegou há mais de 1 hora (fora do horário, limite do dia ou fila cheia).",
+        )
+        recebida = pendentes.order_by("id").first()
+        if not recebida:
+            aguardando = "Esperando ofertas nos grupos e canais de origem."
+            if config.situacao != aguardando:
+                config.situacao = aguardando
+                config.save(update_fields=["situacao", "atualizado_em"])
+            return
+
+        app_id, secret = credenciais(config.conta)
+        try:
+            oferta = copia.preparar(app_id, secret, recebida.texto)
+            chave = copia.chave_do_produto(oferta["item_id"], oferta["link_origem"])
+            produto = oferta["produto"] or {}
+            nome = produto.get("nome") or recebida.texto.strip().splitlines()[0][:300]
+            recebida.item_id, recebida.produto = chave, nome[:300]
+            grupos = grupos_que_ainda_nao_receberam(config, chave, agora)
+            if not grupos:
+                self._fechar(recebida, OfertaRecebida.IGNORADA, agora,
+                             f"Já foi para todos os grupos nos últimos {config.repetir_apos_dias} dias.")
+                return
+            enfileirar(
+                config, grupos, formatar_texto_oferta(oferta["texto_base"], MARCADOR_DO_LINK), oferta["link_origem"],
+                item_id=chave, nome=nome,
+                imagem_url="" if recebida.imagem_arquivo else produto.get("imagem", ""),
+                imagem_arquivo=recebida.imagem_arquivo,
+            )
+        except Exception as erro:  # noqa: BLE001 - uma mensagem ruim não trava a fila
+            logger.exception("Ofertas: erro ao repassar a mensagem %s", recebida.pk)
+            self._fechar(recebida, OfertaRecebida.ERRO, agora, str(erro))
+            config.ultimo_erro = f"Não deu para repassar uma oferta: {str(erro)[:300]}"
+            config.save(update_fields=["ultimo_erro", "atualizado_em"])
+            return
+
+        self._fechar(recebida, OfertaRecebida.ENVIADA, agora, "")
+        config.ultimo_envio_em = agora
+        config.proximo_envio_em = agora + timedelta(minutes=config.intervalo_minutos)
+        config.situacao = ""
+        config.ultimo_erro = ""
+        config.save(update_fields=["ultimo_envio_em", "proximo_envio_em", "situacao", "ultimo_erro", "atualizado_em"])
+
+    @staticmethod
+    def _fechar(recebida, estado, agora, motivo):
+        recebida.estado, recebida.motivo, recebida.processada_em = estado, motivo[:300], agora
+        recebida.save(update_fields=["estado", "motivo", "processada_em", "item_id", "produto"])
 
     def proximo_produto(self, config, agora) -> tuple[dict | None, list[dict]]:
         """O próximo produto que passa nos filtros e ainda não foi para algum dos

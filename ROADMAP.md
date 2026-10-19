@@ -2874,9 +2874,31 @@ posta as ofertas, sem programa no computador e sem janela de navegador.
 - [x] Envio espaçado: no máximo 1 mensagem a cada 3 s por número; contas se revezam.
 - [x] Tela `/whatsapp/ofertas/` (aba ao lado de "Conexão"): ligar/pausar, "Testar
       busca" (as próximas 5 ofertas, com a mensagem), últimas ofertas enviadas.
-- [ ] Parte 2: copiar ofertas de um ou mais grupos/canais.
+- [x] Parte 2: copiar ofertas de um ou mais grupos/canais (Fase 71).
 - [ ] Parte 3: revisão do texto com IA (chave única do Appfiliado), modo simulação,
       envio para canais, e-mail diário com o relatório.
+
+## Fase 71 — Copiar ofertas de grupos e canais (bot de ofertas, parte 2)
+
+- [x] "De onde vêm as ofertas": **Buscar na Shopee** (parte 1) ou **Copiar de grupos e
+      canais**. No modo cópia a pessoa marca **quantos grupos e canais de origem quiser**
+      (no app de Windows era só 1), com busca na lista. Origem e destino não podem ser o
+      mesmo grupo.
+- [x] O worker ouve as mensagens das origens (`MessageEv`): só as que têm link da Shopee
+      e não foram enviadas pelo próprio número. Cada uma vira uma `OfertaRecebida`
+      (sem duplicar), com a foto baixada para uma pasta temporária (apagada após 6 h).
+- [x] Motor (`repassar_proxima`): pega a recebida mais antiga, descobre o produto pelo
+      link curto (`copia.py`), gera o link de afiliado **da conta** (com os Sub IDs,
+      inclusive por grupo), tira o link de quem postou e manda com a foto da mensagem
+      (ou a do produto). Respeita intervalo (0 = repassa assim que chega), horário,
+      dias, limite diário e "não repetir por N dias". Recebida com mais de 1 h vence.
+- [x] Cartão "Ofertas recebidas" com o que chegou e o que aconteceu (na fila,
+      repassada, ignorada e o motivo, erro).
+- [x] **Tela ao vivo**: a cada 5 s a tela pergunta se algo mudou (oferta enviada ou
+      recebida, status) e troca só os cartões de status, recebidas e enviadas, sem
+      recarregar a página nem perder o que estava sendo digitado no formulário.
+- [x] **Menu lateral fixo** no computador: fica parado ao rolar a página e aperta os
+      espaços em telas baixas para tudo caber.
 
 ---
 

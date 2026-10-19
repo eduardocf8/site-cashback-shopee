@@ -5,14 +5,14 @@
 <header class="cabecalho">
   <div>
     <h1>Bot de WhatsApp</h1>
-    <p>Ofertas buscadas na Shopee e enviadas com o seu link de afiliado, no automático.</p>
+    <p>Ofertas da Shopee enviadas com o seu link de afiliado, no automático: buscadas pela API ou copiadas de outros grupos e canais.</p>
   </div>
 </header>
 {% include "painel/_abas_whatsapp.html" with aba="ofertas" %}
 
-<div id="ofertas" data-url="{% url 'painel_whatsapp_ofertas_estado' %}" data-testando="{{ config.testando|yesno:'1,0' }}"></div>
+<div id="ofertas" data-url="{% url 'painel_whatsapp_ofertas_estado' %}" data-testando="{{ config.testando|yesno:'1,0' }}" data-versao="{{ versao }}"></div>
 
-<section class="card status-ofertas" aria-labelledby="titulo-status">
+<section class="card status-ofertas" id="cartao-status" data-ao-vivo aria-labelledby="titulo-status">
   <div class="status-ofertas-texto">
     <h2 id="titulo-status" class="status-zap">
       {% if config.ativo %}<span class="ponto ok" aria-hidden="true"></span>Ligado{% else %}<span class="ponto" aria-hidden="true"></span>Pausado{% endif %}
@@ -30,7 +30,7 @@
     {% if config.ultimo_erro %}<p class="aviso aviso-warning pequeno">Último erro: {{ config.ultimo_erro }}</p>{% endif %}
   </div>
   <div class="status-ofertas-botoes">
-    <form method="post" action="{% url 'painel_whatsapp_ofertas_testar' %}">{% csrf_token %}<button type="submit" class="botao botao-claro">Testar busca</button></form>
+    {% if config.modo == "shopee" %}<form method="post" action="{% url 'painel_whatsapp_ofertas_testar' %}">{% csrf_token %}<button type="submit" class="botao botao-claro">Testar busca</button></form>{% endif %}
     {% if config.ativo %}
       <form method="post" action="{% url 'painel_whatsapp_ofertas_pausar' %}">{% csrf_token %}<button type="submit" class="botao botao-escuro">Pausar</button></form>
     {% else %}
@@ -45,7 +45,36 @@
     {% if form.non_field_errors %}<ul class="erros-form">{% for e in form.non_field_errors %}<li>{{ e }}</li>{% endfor %}</ul>{% endif %}
 
     <section class="card" aria-labelledby="titulo-busca">
-      <h2 id="titulo-busca">O que buscar</h2>
+      <h2 id="titulo-busca">De onde vêm as ofertas</h2>
+      <fieldset class="campo">
+        <div class="opcoes-chip" id="modo">{% for opcao in form.modo %}<label class="chip-opcao">{{ opcao.tag }}<span>{{ opcao.choice_label }}</span></label>{% endfor %}</div>
+      </fieldset>
+
+      <div data-modo="copiar" class="bloco-modo">
+        <fieldset class="campo">
+          <legend>{{ form.origens.label }}</legend>
+          {% if form.origens.field.choices %}
+            <div class="busca-grupos">
+              <input type="search" data-lista="lista-origens" placeholder="Buscar grupo ou canal" aria-label="Buscar grupo ou canal de origem" autocomplete="off">
+              <span class="suave pequeno contador" aria-live="polite"></span>
+            </div>
+            <div class="lista-grupos" id="lista-origens">
+              {% for linha in form.linhas_das_origens %}
+                <div class="linha-grupo linha-origem" data-nome="{{ linha.opcao.choice_label|lower }}">
+                  <label>{{ linha.opcao.tag }}<span>{{ linha.opcao.choice_label }}</span>{% if linha.canal %}<span class="selo-canal">Canal</span>{% endif %}</label>
+                </div>
+              {% endfor %}
+              <p class="suave pequeno nenhum-grupo" hidden>Nenhum grupo ou canal com esse nome.</p>
+            </div>
+            <span class="ajuda">Toda mensagem com link da Shopee que chegar nesses grupos e canais é repassada para os seus destinos com o <strong>seu</strong> link de afiliado. Pode marcar quantos quiser.</span>
+          {% else %}
+            <p class="suave pequeno">Conecte o WhatsApp na aba <a href="{% url 'painel_whatsapp' %}">Conexão</a> para ver seus grupos e canais.</p>
+          {% endif %}
+          {% for e in form.origens.errors %}<span class="erro">{{ e }}</span>{% endfor %}
+        </fieldset>
+      </div>
+
+      <div data-modo="shopee" class="bloco-modo">
       <fieldset class="campo">
         <legend>{{ form.tipo_busca.label }}</legend>
         <div class="opcoes-chip" id="tipo-busca">{% for opcao in form.tipo_busca %}<label class="chip-opcao">{{ opcao.tag }}<span>{{ opcao.choice_label }}</span></label>{% endfor %}</div>
@@ -59,9 +88,10 @@
         {% for e in form.categorias.errors %}<span class="erro">{{ e }}</span>{% endfor %}
       </fieldset>
       <div class="campo">{% include "painel/_campo.html" with campo=form.ordenacao %}</div>
+      </div>
     </section>
 
-    <section class="card" aria-labelledby="titulo-filtros">
+    <section class="card" aria-labelledby="titulo-filtros" data-modo="shopee">
       <h2 id="titulo-filtros">Filtros</h2>
       <p class="suave pequeno">Todos opcionais: deixe em branco para não filtrar.</p>
       <div class="grade-campos">
@@ -74,7 +104,7 @@
       </div>
     </section>
 
-    <section class="card" aria-labelledby="titulo-mensagem">
+    <section class="card" aria-labelledby="titulo-mensagem" data-modo="shopee">
       <h2 id="titulo-mensagem">Mensagem</h2>
       <div class="campo">{% include "painel/_campo.html" with campo=form.cupom %}</div>
     </section>
@@ -89,8 +119,8 @@
         <legend>{{ form.grupos.label }}</legend>
         {% if form.grupos.field.choices %}
           <div class="busca-grupos">
-            <input type="search" id="busca-grupos" placeholder="Buscar grupo ou canal" aria-label="Buscar grupo ou canal" autocomplete="off">
-            <span class="suave pequeno" id="contador-grupos" aria-live="polite"></span>
+            <input type="search" id="busca-grupos" data-lista="lista-grupos" placeholder="Buscar grupo ou canal" aria-label="Buscar grupo ou canal" autocomplete="off">
+            <span class="suave pequeno contador" aria-live="polite"></span>
           </div>
           <div class="lista-grupos" id="lista-grupos">
             <div class="lista-grupos-topo suave pequeno"><span>Grupo ou canal</span><span>Sub ID próprio (opcional)</span></div>
@@ -100,9 +130,9 @@
                 <input type="text" name="subid_{{ linha.opcao.data.value }}" value="{{ linha.sub_id }}" placeholder="padrão" maxlength="300" aria-label="Sub ID próprio de {{ linha.opcao.choice_label }}">
               </div>
             {% endfor %}
-            <p class="suave pequeno nenhum-grupo" id="nenhum-grupo" hidden>Nenhum grupo ou canal com esse nome.</p>
+            <p class="suave pequeno nenhum-grupo" hidden>Nenhum grupo ou canal com esse nome.</p>
           </div>
-          <span class="ajuda">Deixe o Sub ID próprio vazio para usar o padrão. Ex: 4 grupos com o padrão e 1 com “vip”. Aparecem só os canais em que você é dono ou administrador; neles a oferta vai como texto com a prévia do link.</span>
+          <span class="ajuda">Deixe o Sub ID próprio vazio para usar o padrão. Ex: 4 grupos com o padrão e 1 com “vip”. Como destino aparecem só os canais em que você é dono ou administrador; neles a oferta vai como texto com a prévia do link.</span>
         {% else %}
           <p class="suave pequeno">Conecte o WhatsApp na aba <a href="{% url 'painel_whatsapp' %}">Conexão</a> para ver seus grupos.</p>
         {% endif %}
@@ -126,6 +156,21 @@
   </form>
 
   <div class="coluna-lateral">
+    {% if config.modo == "copiar" %}
+    <section class="card" id="cartao-recebidas" data-ao-vivo aria-labelledby="titulo-recebidas">
+      <h2 id="titulo-recebidas">Ofertas recebidas</h2>
+      {% if recebidas %}
+        <ul class="eventos-zap">
+          {% for r in recebidas %}
+            <li class="recebida-{{ r.estado }}"><span class="suave">{{ r.recebida_em|date:"d/m H:i" }}</span>
+              <span>{{ r.produto|default:r.texto|truncatechars:70 }}<br><span class="suave pequeno">de {{ r.origem_nome|default:"grupo de origem" }} · <strong class="estado-recebida">{{ r.get_estado_display }}</strong>{% if r.motivo %} - {{ r.motivo }}{% endif %}</span></span></li>
+          {% endfor %}
+        </ul>
+      {% else %}
+        <p class="suave pequeno">As mensagens com link da Shopee que chegarem nos grupos e canais de origem aparecem aqui (com o ofertas ligado).</p>
+      {% endif %}
+    </section>
+    {% else %}
     <section class="card" id="teste" aria-labelledby="titulo-teste">
       <h2 id="titulo-teste">Teste da busca</h2>
       {% if config.testando %}
@@ -155,7 +200,9 @@
       {% endif %}
     </section>
 
-    <section class="card" aria-labelledby="titulo-historico-ofertas">
+    {% endif %}
+
+    <section class="card" id="cartao-enviadas" data-ao-vivo aria-labelledby="titulo-historico-ofertas">
       <h2 id="titulo-historico-ofertas">Últimas ofertas enviadas</h2>
       {% if historico %}
         <ul class="eventos-zap">

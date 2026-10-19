@@ -18,15 +18,18 @@ import os
 import queue
 import re
 import sys
+import tempfile
 import threading
 import time
 from datetime import timedelta
+from pathlib import Path
 
 from django.conf import settings
 from django.db import close_old_connections
 from django.utils import timezone
 
-from .models import ConexaoWhatsApp, EnvioWhatsApp
+from . import copia
+from .models import ConexaoWhatsApp, ConfiguracaoOfertas, EnvioWhatsApp, OfertaRecebida
 from .servico import registrar_evento
 
 logger = logging.getLogger(__name__)
@@ -35,6 +38,8 @@ INTERVALO = 2  # segundos entre uma volta e outra
 ESPERA_PARA_REABRIR = 30  # se a sessão parar sozinha, tenta de novo depois disso
 DESISTE_DO_ENVIO = timedelta(minutes=10)  # mensagem presa na fila sem conexão
 ESPACO_ENTRE_ENVIOS = 3  # segundos entre duas mensagens do mesmo número
+# Fotos das mensagens copiadas (modo copiar): arquivos temporários, apagados em 6 h.
+PASTA_DAS_FOTOS = Path(tempfile.gettempdir()) / "appfiliado-fotos"
 
 
 def endereco_do_banco() -> str:
@@ -80,6 +85,7 @@ class Sessao:
             KeepAliveRestoredEv,
             KeepAliveTimeoutEv,
             LoggedOutEv,
+            MessageEv,
         )
         from neonize.proto.Neonize_pb2 import JID
 
@@ -87,6 +93,9 @@ class Sessao:
         self.fila = fila
         self.conectada = False
         self.thread = None
+        # Modo copiar: grupos/canais cujas mensagens com link da Shopee interessam
+        # (o gerenciador atualiza a cada 30 s a partir da configuração das ofertas).
+        self.origens: set[str] = set()
         jid = JID.FromString(base64.b64decode(jid_b64)) if (jid_b64 and not novo) else None
         # Sem jid é sempre um aparelho novo: senão a biblioteca retomaria a primeira
         # sessão guardada no banco, que pode ser de outra conta.
@@ -129,6 +138,17 @@ class Sessao:
         def _estabilizou(_cliente, _ev):
             self.fila.put(("estabilizou", conta_id, "", self))
 
+        @self.cliente.event(MessageEv)
+        def _mensagem(_cliente, ev):
+            # Chega aqui toda mensagem de todos os chats: filtra rápido e só manda
+            # para a fila as dos grupos/canais de origem que têm link da Shopee.
+            if not self.origens or ev.Info.MessageSource.IsFromMe:
+                return
+            if _jid_texto(ev.Info.MessageSource.Chat) not in self.origens:
+                return
+            if copia.links_shopee(copia.texto_da_mensagem(ev.Message)):
+                self.fila.put(("mensagem", conta_id, ev, self))
+
     def iniciar(self):
         self.thread = threading.Thread(target=self._rodar, name=f"whatsapp-{self.conta_id}", daemon=True)
         self.thread.start()
@@ -160,6 +180,8 @@ class Gerenciador:
         self.sessoes: dict[int, Sessao] = {}
         self.reabrir_em: dict[int, float] = {}
         self.ultimo_envio: dict[int, float] = {}
+        self.proxima_atualizacao_das_origens = 0.0
+        self.proxima_limpeza_de_fotos = 0.0
 
     # --- Ciclo -----------------------------------------------------------------
 
@@ -178,7 +200,9 @@ class Gerenciador:
         self.tratar_avisos()
         self.atender_pedidos()
         self.reabrir_sessoes_paradas()
+        self.atualizar_origens()
         self.enviar_pendentes()
+        self.limpar_fotos_antigas()
 
     def retomar(self):
         """Ao ligar o worker (ex: depois de um deploy), reabre as sessões que
@@ -199,6 +223,7 @@ class Gerenciador:
             antiga.parar()
         sessao = Sessao(self.fila, conta_id, jid_b64, novo)
         self.sessoes[conta_id] = sessao
+        self.proxima_atualizacao_das_origens = 0.0
         self.reabrir_em.pop(conta_id, None)
         sessao.iniciar()
         return sessao
@@ -264,6 +289,55 @@ class Gerenciador:
 
     def _aviso_instavel(self, conexao, _detalhe):
         registrar_evento(conexao.conta_id, "instavel", "O WhatsApp parou de responder por alguns segundos.")
+
+    def _aviso_mensagem(self, conexao, ev):
+        """Guarda a oferta que chegou numa origem (o motor das ofertas repassa) e
+        baixa a foto dela, se tiver."""
+        chat = _jid_texto(ev.Info.MessageSource.Chat)
+        config = ConfiguracaoOfertas.objects.filter(conta_id=conexao.conta_id).only("origens").first()
+        nome = next((o.get("nome", "") for o in (config.origens if config else []) if o.get("jid") == chat), "")
+        recebida, criada = OfertaRecebida.objects.get_or_create(
+            conta_id=conexao.conta_id, mensagem_id=f"{chat}/{ev.Info.ID}"[:120],
+            defaults={"origem": chat[:80], "origem_nome": nome[:200], "texto": copia.texto_da_mensagem(ev.Message)},
+        )
+        if not criada or not copia.tem_foto(ev.Message):
+            return
+        sessao = self.sessoes.get(conexao.conta_id)
+        try:
+            dados = sessao.cliente.download_any(ev.Message)
+            PASTA_DAS_FOTOS.mkdir(parents=True, exist_ok=True)
+            caminho = PASTA_DAS_FOTOS / f"{conexao.conta_id}-{recebida.pk}.jpg"
+            caminho.write_bytes(dados)
+            recebida.imagem_arquivo = str(caminho)
+            recebida.save(update_fields=["imagem_arquivo"])
+        except Exception:  # noqa: BLE001 - sem a foto, o motor usa a foto do produto na API
+            logger.exception("WhatsApp: não consegui baixar a foto da mensagem %s", recebida.pk)
+
+    def atualizar_origens(self):
+        """Quais grupos/canais cada sessão deve ouvir (modo copiar ligado)."""
+        if time.monotonic() < self.proxima_atualizacao_das_origens:
+            return
+        self.proxima_atualizacao_das_origens = time.monotonic() + 30
+        configs = {
+            c.conta_id: c for c in ConfiguracaoOfertas.objects.filter(
+                conta_id__in=list(self.sessoes), ativo=True, modo=ConfiguracaoOfertas.MODO_COPIAR,
+            )
+        }
+        for conta_id, sessao in self.sessoes.items():
+            config = configs.get(conta_id)
+            sessao.origens = {o["jid"] for o in config.origens if o.get("jid")} if config else set()
+
+    def limpar_fotos_antigas(self):
+        if time.monotonic() < self.proxima_limpeza_de_fotos:
+            return
+        self.proxima_limpeza_de_fotos = time.monotonic() + 600
+        limite = time.time() - 6 * 3600
+        for arquivo in PASTA_DAS_FOTOS.glob("*.jpg") if PASTA_DAS_FOTOS.exists() else []:
+            try:
+                if arquivo.stat().st_mtime < limite:
+                    arquivo.unlink()
+            except OSError:
+                pass
 
     def _aviso_estabilizou(self, conexao, _detalhe):
         registrar_evento(conexao.conta_id, "estabilizou", "O WhatsApp voltou a responder.")
@@ -338,16 +412,16 @@ class Gerenciador:
             }
             for grupo in grupos
         ]
-        destinos += self._canais_onde_pode_postar(sessao, conexao.conta_id)
+        destinos += self._canais(sessao, conexao.conta_id)
         conexao.grupos = sorted(destinos, key=lambda d: (d["tipo"] != "grupo", d["nome"].lower()))
         conexao.grupos_em = timezone.now()
         conexao.pedido_grupos = False
         conexao.save(update_fields=["grupos", "grupos_em", "pedido_grupos", "atualizado_em"])
 
     @staticmethod
-    def _canais_onde_pode_postar(sessao, conta_id) -> list[dict]:
-        """Canais em que o número é dono ou administrador (só esses aceitam postagem).
-        Se a lista de canais falhar, os grupos continuam valendo."""
+    def _canais(sessao, conta_id) -> list[dict]:
+        """Canais que o número segue; pode_postar = é dono ou administrador (só esses
+        aceitam postagem). Se a lista de canais falhar, os grupos continuam valendo."""
         try:
             canais = sessao.cliente.get_subscribed_newletters()  # (sic) nome da biblioteca
         except Exception:  # noqa: BLE001
@@ -356,13 +430,13 @@ class Gerenciador:
         destinos = []
         for canal in canais:
             papel = canal.ViewerMeta.DESCRIPTOR.fields_by_name["Role"].enum_type.values_by_number.get(canal.ViewerMeta.Role)
-            if not papel or papel.name not in ("OWNER", "ADMIN"):
-                continue
             destinos.append({
                 "jid": _jid_texto(canal.ID),
                 "nome": canal.ThreadMeta.Name.Text or "(canal sem nome)",
                 "participantes": int(canal.ThreadMeta.SubscriberCount or 0),
                 "tipo": "canal",
+                # Seguidor não posta: o canal serve só de origem (modo copiar).
+                "pode_postar": bool(papel and papel.name in ("OWNER", "ADMIN")),
             })
         return destinos
 
@@ -402,10 +476,13 @@ class Gerenciador:
             usuario, _, servidor = envio.destino.partition("@")
             destino = build_jid(usuario, servidor or "g.us")
             try:
+                foto = ler_foto(envio.imagem_arquivo)
                 if servidor == "newsletter":
                     # Canal: foto com legenda pede um envio especial que a biblioteca não
                     # tem; vai texto com prévia do link (título + foto pequena), como no app.
-                    sessao.cliente.send_message(destino, mensagem_com_previa(envio))
+                    sessao.cliente.send_message(destino, mensagem_com_previa(envio, foto))
+                elif foto:
+                    sessao.cliente.send_image(destino, foto, caption=envio.texto or None)
                 elif envio.imagem_url:
                     sessao.cliente.send_image(destino, envio.imagem_url, caption=envio.texto or None)
                 else:
@@ -439,27 +516,40 @@ def garantir_limite_de_memoria(argv: list[str]) -> None:
 URL_NO_TEXTO = re.compile(r"https?://\S+")
 
 
-def miniatura(url: str) -> bytes | None:
-    """Foto pequena (até 300 px, JPEG) para a prévia do link; None se não der."""
-    if not url:
+def ler_foto(caminho: str) -> bytes | None:
+    if not caminho:
         return None
     try:
-        import requests
+        with open(caminho, "rb") as arquivo:
+            return arquivo.read()
+    except OSError:
+        return None  # o worker reiniciou e o arquivo temporário sumiu
+
+
+def miniatura(url: str = "", dados: bytes | None = None) -> bytes | None:
+    """Foto pequena (até 300 px, JPEG) para a prévia do link; None se não der."""
+    if not url and not dados:
+        return None
+    try:
         from PIL import Image
 
-        resposta = requests.get(url, timeout=10)
-        resposta.raise_for_status()
-        imagem = Image.open(io.BytesIO(resposta.content)).convert("RGB")
+        if dados is None:
+            import requests
+
+            resposta = requests.get(url, timeout=10)
+            resposta.raise_for_status()
+            dados = resposta.content
+        imagem = Image.open(io.BytesIO(dados)).convert("RGB")
         imagem.thumbnail((300, 300))
         saida = io.BytesIO()
         imagem.save(saida, format="JPEG", quality=70)
         return saida.getvalue()
     except Exception:  # noqa: BLE001
-        logger.warning("WhatsApp: não consegui baixar a foto para a prévia: %s", url[:200])
+        logger.warning("WhatsApp: não consegui preparar a foto para a prévia: %s", (url or "arquivo")[:200])
         return None
 
 
-def mensagem_com_previa(envio):
+def mensagem_com_previa(envio, foto: bytes | None = None):
     """Texto com a prévia do link montada aqui (título e foto do produto), sem
     depender de o WhatsApp abrir a página da Shopee."""
     from neonize.proto.waE2E.WAWebProtobufsE2E_pb2 import ExtendedTextMessage, Message
@@ -471,9 +561,9 @@ def mensagem_com_previa(envio):
         text=envio.texto, matchedText=link, title=(envio.produto or "Oferta na Shopee")[:150],
         previewType=ExtendedTextMessage.PreviewType.NONE,
     )
-    foto = miniatura(envio.imagem_url)
-    if foto:
-        previa.JPEGThumbnail = foto
+    pequena = miniatura(dados=foto) if foto else miniatura(envio.imagem_url)
+    if pequena:
+        previa.JPEGThumbnail = pequena
     return Message(extendedTextMessage=previa)
 
 
