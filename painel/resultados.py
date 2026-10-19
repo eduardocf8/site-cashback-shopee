@@ -20,13 +20,14 @@ from datetime import timezone as dt_timezone
 from decimal import Decimal
 
 from django.db import transaction
-from django.db.models import Sum
+from django.db.models import F, Sum
 from django.utils import timezone
 
 from . import cripto
 from .models import RegraSubId, ResultadoDiario, ResultadoSubIdDiario, SincronizacaoResultados, VendaItem
+from .memoria import memoria_em_uso_mb
 from .periodos import agrupar
-from .shopee import buscar_conversoes
+from .shopee import paginas_de_conversoes
 
 logger = logging.getLogger(__name__)
 
@@ -37,6 +38,13 @@ CAMPOS_COMISSAO_ESTIMADA = (
 )
 # A API só deixa consultar ~3 meses para trás (erro 11001 depois disso).
 JANELA_API_DIAS = 89
+# As buscas normais (a cada 3 h e "Atualizar agora") só pegam as compras dos últimos 30
+# dias; a completa (JANELA_API_DIAS) roda 1x por dia, de madrugada.
+JANELA_RAPIDA_DIAS = 30
+HORA_DA_COMPLETA = (3, 6)  # entre 3h e 6h (horário de Brasília)
+# Quantos dias antes de uma validação a compra pode ter sido feita, para a validada do
+# dia poder sair dos itens guardados.
+MARGEM_DA_VALIDADA_DIAS = 30
 # Pedidos mudam de status (pendente -> concluído/cancelado) por semanas; a comissão
 # validada de um dia só fica completa quando as compras que validam nele estão dentro
 # da janela - por isso ela é recalculada só nos últimos 60 dias, e os dias mais antigos
@@ -138,15 +146,18 @@ def _inteiro(valor):
 
 # --- Cálculo ------------------------------------------------------------------------
 
-def calcular_por_dia(conversoes: list[dict]) -> tuple[dict, dict]:
-    """(por_dia, por_sub_id) a partir das conversões cruas da API.
-
-    por_dia[dia] = {"pedidos": set, "faturamento", "comissao_estimada", "comissao_validada"}
-    por_sub_id[(dia, sub_id)] = {"vendas", "comissao_estimada"}"""
+def novos_acumuladores() -> tuple[dict, dict]:
     por_dia = defaultdict(lambda: {"pedidos": set(), "faturamento": 0.0,
                                    "comissao_estimada": 0.0, "comissao_validada": 0.0})
     por_sub_id = defaultdict(lambda: {"vendas": 0, "comissao_estimada": 0.0})
+    return por_dia, por_sub_id
 
+
+def acumular(por_dia: dict, por_sub_id: dict, conversoes: list[dict]) -> None:
+    """Soma uma página de conversões cruas da API nos totais por dia e por Sub ID.
+
+    por_dia[dia] = {"pedidos": set, "faturamento", "comissao_estimada", "comissao_validada"}
+    por_sub_id[(dia, sub_id)] = {"vendas", "comissao_estimada"}"""
     for conversao in conversoes:
         if not isinstance(conversao, dict):
             continue
@@ -180,6 +191,12 @@ def calcular_por_dia(conversoes: list[dict]) -> tuple[dict, dict]:
                         por_dia[_dia_local(validacao)]["comissao_validada"] += para_numero(
                             item.get("itemTotalCommission")
                         )
+
+
+def calcular_por_dia(conversoes: list[dict]) -> tuple[dict, dict]:
+    """(por_dia, por_sub_id) a partir das conversões cruas da API (ver acumular)."""
+    por_dia, por_sub_id = novos_acumuladores()
+    acumular(por_dia, por_sub_id, conversoes)
     return por_dia, por_sub_id
 
 
@@ -234,36 +251,92 @@ def _dinheiro(valor: float) -> Decimal:
     return Decimal(str(round(valor or 0.0, 2)))
 
 
-def sincronizar_conta(conta, agora: datetime | None = None) -> dict:
-    """Busca os últimos ~3 meses na Shopee e atualiza os totais guardados.
+def precisa_da_completa(estado, agora: datetime) -> bool:
+    """A completa (~3 meses) roda uma vez por dia, de madrugada (ou se faz mais de 30 h
+    que não roda, ou se nunca rodou). As outras buscam só os últimos JANELA_RAPIDA_DIAS."""
+    if not estado or not estado.completa_em:
+        return True
+    passou = agora - estado.completa_em
+    hora = timezone.localtime(agora).hour
+    return passou > timedelta(hours=30) or (HORA_DA_COMPLETA[0] <= hora < HORA_DA_COMPLETA[1] and passou > timedelta(hours=12))
 
-    - faturamento, pedidos, comissão estimada e Sub IDs: recalculados em todos os dias
-      da janela (o primeiro dia fica de fora, porque a janela começa no meio dele);
-    - comissão validada: só nos últimos DIAS_RECALCULO_VALIDADA dias."""
+
+def validada_pelas_vendas(conta, dias: list[date]) -> dict[date, Decimal]:
+    """Comissão validada de cada dia somando os itens guardados (pela data de validação)."""
+    if not dias:
+        return {}
+    de, ate = _limites(min(dias), max(dias))
+    somas = defaultdict(Decimal)
+    concluidos = VendaItem.objects.filter(
+        conta=conta, situacao=VendaItem.CONCLUIDO, concluido_em__gte=de, concluido_em__lt=ate,
+    ).values_list("concluido_em", "comissao")
+    for momento, comissao in concluidos.iterator(chunk_size=2000):
+        somas[timezone.localtime(momento).date()] += comissao
+    return {dia: somas.get(dia, Decimal("0")) for dia in dias}
+
+
+def sincronizar_conta(conta, agora: datetime | None = None, completa: bool | None = None) -> dict:
+    """Busca as vendas na Shopee e atualiza os totais guardados, uma página por vez (a
+    memória não cresce com o tamanho da conta).
+
+    - rápida (normal): só as compras dos últimos JANELA_RAPIDA_DIAS dias - o que é mais
+      antigo quase não muda (só pedido que ainda estava no prazo de cancelamento);
+    - completa (1x por dia, de madrugada): os ~3 meses que a API alcança, para pegar as
+      validações atrasadas (pedido de mais de 30 dias que só agora foi concluído).
+    Faturamento, pedidos, comissão estimada e Sub IDs: recalculados nos dias da janela.
+    Comissão validada (pela data em que a Shopee validou): somada dos itens guardados nos
+    últimos DIAS_RECALCULO_VALIDADA dias. O que fica fora da janela continua guardado."""
     agora = agora or timezone.now()
     secret = cripto.decifrar(conta.shopee_secret_cifrado)
     if not conta.shopee_app_id or not secret:
         raise ValueError("Conta sem credenciais da Shopee.")
+    estado, _ = SincronizacaoResultados.objects.get_or_create(conta=conta)
+    if completa is None:
+        completa = precisa_da_completa(estado, agora)
 
-    inicio_janela = agora - timedelta(days=JANELA_API_DIAS)
-    conversoes = buscar_conversoes(conta.shopee_app_id, secret, int(inicio_janela.timestamp()), int(agora.timestamp()))
-    por_dia, por_sub_id = calcular_por_dia(conversoes)
-
+    inicio_janela = agora - timedelta(days=JANELA_API_DIAS if completa else JANELA_RAPIDA_DIAS)
     hoje = timezone.localtime(agora).date()
     primeiro_dia_completo = timezone.localtime(inicio_janela).date() + timedelta(days=1)
     inicio_validada = hoje - timedelta(days=DIAS_RECALCULO_VALIDADA - 1)
     dias_compra = [primeiro_dia_completo + timedelta(days=i) for i in range((hoje - primeiro_dia_completo).days + 1)]
+    por_dia, por_sub_id = novos_acumuladores()
+    conversoes = 0
 
+    # Tudo numa transação: se a Shopee falhar no meio, nada do que estava guardado se perde.
     with transaction.atomic():
-        existentes = {r.dia: r for r in ResultadoDiario.objects.filter(conta=conta, dia__gte=primeiro_dia_completo)}
-        for dia in dias_compra:
+        VendaItem.objects.filter(conta=conta, comprado_em__gte=inicio_janela).delete()
+        for pagina in paginas_de_conversoes(conta.shopee_app_id, secret, int(inicio_janela.timestamp()), int(agora.timestamp())):
+            conversoes += len(pagina)
+            acumular(por_dia, por_sub_id, pagina)
+            VendaItem.objects.bulk_create(itens_vendidos(conta, pagina), batch_size=1000, ignore_conflicts=True)
+
+        if completa and (not estado.vendas_desde or inicio_janela < estado.vendas_desde):
+            estado.vendas_desde = inicio_janela
+        # A validada de um dia sai dos itens guardados quando eles cobrem as compras que
+        # podem validar nesse dia (MARGEM_DA_VALIDADA para trás); antes disso, da API.
+        cobertos_desde = (
+            timezone.localtime(estado.vendas_desde).date() + timedelta(days=MARGEM_DA_VALIDADA_DIAS)
+            if estado.vendas_desde else None
+        )
+        dias_validada = [
+            inicio_validada + timedelta(days=i) for i in range((hoje - inicio_validada).days + 1)
+            if cobertos_desde and inicio_validada + timedelta(days=i) >= cobertos_desde
+        ]
+        validada_guardada = validada_pelas_vendas(conta, dias_validada)
+
+        existentes = {r.dia: r for r in ResultadoDiario.objects.filter(conta=conta, dia__gte=min(primeiro_dia_completo, inicio_validada))}
+        for dia in sorted(set(dias_compra) | set(dias_validada)):
             dados = por_dia.get(dia)
             registro = existentes.get(dia) or ResultadoDiario(conta=conta, dia=dia)
-            registro.pedidos = len(dados["pedidos"]) if dados else 0
-            registro.faturamento = _dinheiro(dados["faturamento"] if dados else 0)
-            registro.comissao_estimada = _dinheiro(dados["comissao_estimada"] if dados else 0)
-            # dias antigos só entram na primeira vez (incompletos, mas melhor que zero)
-            if dia >= inicio_validada or registro._state.adding:
+            if dia >= primeiro_dia_completo:
+                registro.pedidos = len(dados["pedidos"]) if dados else 0
+                registro.faturamento = _dinheiro(dados["faturamento"] if dados else 0)
+                registro.comissao_estimada = _dinheiro(dados["comissao_estimada"] if dados else 0)
+            if dia in validada_guardada:
+                registro.comissao_validada = validada_guardada[dia]
+            elif completa and (dia >= inicio_validada or registro._state.adding):
+                # sem itens guardados que cubram o dia: o que a API devolveu agora
+                # (dias antigos só entram na primeira vez - incompletos, mas melhor que zero)
                 registro.comissao_validada = _dinheiro(dados["comissao_validada"] if dados else 0)
             registro.save()
 
@@ -276,19 +349,27 @@ def sincronizar_conta(conta, agora: datetime | None = None) -> dict:
             for (dia, sub_id), valores in por_sub_id.items()
             if primeiro_dia_completo <= dia <= hoje
         ])
-
-        # Itens vendidos: a janela inteira é trocada pelo que a API devolveu agora (status
-        # e comissão mudam); o que é mais velho que a janela fica como estava.
-        VendaItem.objects.filter(conta=conta, comprado_em__gte=inicio_janela).delete()
-        VendaItem.objects.bulk_create(itens_vendidos(conta, conversoes), batch_size=1000, ignore_conflicts=True)
         VendaItem.objects.filter(conta=conta, comprado_em__lt=agora - timedelta(days=DIAS_DE_HISTORICO_VENDAS)).delete()
 
-        estado, _ = SincronizacaoResultados.objects.get_or_create(conta=conta)
-        if not estado.cobertura_inicio or primeiro_dia_completo < estado.cobertura_inicio:
-            estado.cobertura_inicio = primeiro_dia_completo
-            estado.save(update_fields=["cobertura_inicio"])
+        if completa:
+            estado.completa_em = agora
+            if not estado.cobertura_inicio or primeiro_dia_completo < estado.cobertura_inicio:
+                estado.cobertura_inicio = primeiro_dia_completo
+        estado.save(update_fields=["completa_em", "cobertura_inicio", "vendas_desde"])
 
-    return {"conversoes": len(conversoes), "dias": len(dias_compra)}
+    resumo = {"conversoes": conversoes, "dias": len(dias_compra), "completa": completa}
+    if completa:
+        resumo["validadas_tarde"] = validacoes_depois_de(conta, agora, JANELA_RAPIDA_DIAS)
+    return resumo
+
+
+def validacoes_depois_de(conta, agora: datetime, dias: int) -> tuple[int, int]:
+    """(itens validados mais de `dias` dias depois da compra, total de validados) nos
+    últimos ~3 meses - mostra no log se a busca completa diária ainda é necessária."""
+    concluidos = VendaItem.objects.filter(
+        conta=conta, situacao=VendaItem.CONCLUIDO, concluido_em__gte=agora - timedelta(days=JANELA_API_DIAS),
+    )
+    return concluidos.filter(concluido_em__gt=F("comprado_em") + timedelta(days=dias)).count(), concluidos.count()
 
 
 # --- Fila de sincronização ------------------------------------------------------------
@@ -323,6 +404,7 @@ def processar(conta) -> str:
     estado, _ = SincronizacaoResultados.objects.get_or_create(conta=conta)
     estado.iniciada_em = timezone.now()
     estado.save(update_fields=["iniciada_em"])
+    memoria_antes = memoria_em_uso_mb()
     try:
         resumo = sincronizar_conta(conta)
     except Exception as erro:
@@ -334,7 +416,14 @@ def processar(conta) -> str:
     estado.erro = ""
     estado.concluida_em = timezone.now()
     estado.save(update_fields=["erro", "concluida_em"])
-    return f"{conta.email}: {resumo['conversoes']} conversões, {resumo['dias']} dias"
+    texto = (
+        f"{conta.email}: {resumo['conversoes']} conversões, {resumo['dias']} dias"
+        f" ({'completa' if resumo['completa'] else 'rápida'}) - memória {memoria_antes} -> {memoria_em_uso_mb()} MB"
+    )
+    if resumo.get("validadas_tarde"):
+        tarde, total = resumo["validadas_tarde"]
+        texto += f" - validadas mais de {JANELA_RAPIDA_DIAS} dias depois da compra: {tarde} de {total}"
+    return texto
 
 
 # --- Consultas das telas ----------------------------------------------------------------

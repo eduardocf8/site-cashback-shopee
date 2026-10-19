@@ -2,25 +2,14 @@ import os
 import sys
 import time
 
-MINUTOS_ENTRE_LOGS_DE_MEMORIA = 10
-
-
-def memoria_em_uso_mb() -> int:
-    """Memória do processo (RSS) em MB, lida do Linux; 0 se não der."""
-    try:
-        with open("/proc/self/status") as status:
-            for linha in status:
-                if linha.startswith("VmRSS:"):
-                    return int(linha.split()[1]) // 1024
-    except OSError:
-        pass
-    return 0
-
 from django.conf import settings
 from django.core.management.base import BaseCommand
 from django.db import close_old_connections
 
+from painel.memoria import memoria_em_uso_mb
 from painel.resultados import contas_pendentes, processar
+
+MINUTOS_ENTRE_LOGS_DE_MEMORIA = 10
 
 
 class Command(BaseCommand):

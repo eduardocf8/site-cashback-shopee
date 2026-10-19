@@ -57,6 +57,12 @@ class SincronizacaoResultados(models.Model):
         null=True, blank=True,
         help_text="Dia mais antigo com dados guardados (a API da Shopee só alcança ~3 meses para trás).",
     )
+    completa_em = models.DateTimeField(
+        null=True, blank=True, help_text="Última busca completa (~3 meses); as outras pegam só 30 dias.",
+    )
+    vendas_desde = models.DateTimeField(
+        null=True, blank=True, help_text="Desde quando há itens vendidos guardados (VendaItem).",
+    )
 
     class Meta:
         verbose_name = "sincronização de resultados"

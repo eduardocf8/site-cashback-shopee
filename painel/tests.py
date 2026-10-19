@@ -311,7 +311,7 @@ class TestSincronizacao(TestCase):
         )
 
     def sincronizar(self, conversoes):
-        with mock.patch("painel.resultados.buscar_conversoes", return_value=conversoes) as buscar:
+        with mock.patch("painel.resultados.paginas_de_conversoes", return_value=[conversoes]) as buscar:
             resumo = resultados.sincronizar_conta(self.conta, agora=self.AGORA)
         return buscar, resumo
 
@@ -372,7 +372,7 @@ class TestSincronizacao(TestCase):
         self.assertEqual(resultados.contas_pendentes(), [pediu, self.conta])
 
     def test_processar_guarda_o_erro_e_o_comando_roda_a_fila(self):
-        with mock.patch("painel.resultados.buscar_conversoes", side_effect=ShopeeAPIError("Credenciais inválidas")):
+        with mock.patch("painel.resultados.paginas_de_conversoes", side_effect=ShopeeAPIError("Credenciais inválidas")):
             saida = StringIO()
             call_command("sincronizar_painel", stdout=saida)
         self.assertIn("erro", saida.getvalue())
@@ -380,7 +380,7 @@ class TestSincronizacao(TestCase):
         self.assertIn("Credenciais inválidas", estado.erro)
         self.assertFalse(estado.em_andamento)
 
-        with mock.patch("painel.resultados.buscar_conversoes", return_value=[]):
+        with mock.patch("painel.resultados.paginas_de_conversoes", return_value=[]):
             resultados.pedir_atualizacao(self.conta)
             call_command("sincronizar_painel", stdout=StringIO())
         estado.refresh_from_db()
