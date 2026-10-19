@@ -534,7 +534,9 @@ form.form-regra > .erros-form { grid-column: 1 / -1; }
 .icone-botao { width: 34px; height: 34px; border-radius: 8px; border: 1px solid var(--borda); background: #fff; font: inherit; font-weight: 700; cursor: pointer; }
 .icone-botao:disabled { opacity: .35; cursor: default; }
 .editar-botao, .novo-botao { margin-top: 6px; }
-.editar-botao[open], .novo-botao[open] { display: flex; flex-direction: column; gap: 10px; }
+.corpo-botao { display: flex; flex-direction: column; gap: 16px; margin-top: 14px; }
+.corpo-botao > .campo, .corpo-botao > .marcar { margin: 0; }
+summary { cursor: pointer; }  /* "Editar", "Ver mensagem" etc. abrem ao clicar */
 .novo-botao > summary { list-style: none; display: inline-flex; width: auto; }
 .novo-botao > summary::-webkit-details-marker { display: none; }
 .link-botao.perigo { color: var(--perigo); }
@@ -549,3 +551,6 @@ form.form-regra > .erros-form { grid-column: 1 / -1; }
 .top-produtos li span { overflow-wrap: anywhere; }
 .top-produtos li strong { float: right; margin-left: 8px; }
 @media (max-width: 900px) { .previa-site { position: static; } .celular { height: 540px; } }
+
+.formato-envio { margin: 14px 0 18px; display: flex; flex-direction: column; gap: 10px; }
+.formato-envio legend { margin-bottom: 4px; }

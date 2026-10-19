@@ -151,6 +151,18 @@ class TestMotorComSimulacaoEIA(TestCase):
         self.assertEqual(ofertas.ofertas_enviadas_hoje(self.conta, AGORA), 0)
         self.assertEqual(len(ofertas.grupos_que_ainda_nao_receberam(self.config, "1", AGORA)), 2)
 
+    def test_oferta_enfileirada_leva_o_formato_escolhido(self, _):
+        self.rodar([produto(1)])
+        self.assertEqual({e.formato for e in EnvioWhatsApp.objects.all()}, {"foto"})  # padrão
+        EnvioWhatsApp.objects.all().delete()
+        self.config.formato_envio = "previa"
+        self.config.save()
+        self.config.proximo_envio_em = None
+        self.config.repetir_apos_dias = 0
+        self.config.save()
+        self.rodar([produto(2)])
+        self.assertEqual({e.formato for e in EnvioWhatsApp.objects.all()}, {"previa"})
+
     @COM_CHAVE
     def test_ia_revisa_o_texto_antes_de_enfileirar(self, _):
         self.config.ia_ativa = True
@@ -239,6 +251,22 @@ class TestTelaDaParte3(BasePainel):
         self.assertIn('class="selo-simulacao"', html)
         self.client.post("/whatsapp/ofertas/ligar/")
         self.assertIn("modo simulação", self.client.get("/whatsapp/ofertas/").content.decode())
+
+    def test_formato_do_envio_salva_e_vale_para_ofertas_e_teste(self):
+        html = self.client.get("/whatsapp/ofertas/").content.decode()
+        self.assertIn("Como enviar a oferta", html)
+        self.assertIn("Prévia grande do link", html)
+        self.client.post("/whatsapp/ofertas/", self.dados())  # sem o campo: fica "foto"
+        config = ConfiguracaoOfertas.objects.get(conta=self.conta)
+        self.assertEqual(config.formato_envio, "foto")
+        self.client.post("/whatsapp/ofertas/", self.dados(formato_envio="previa"))
+        config.refresh_from_db()
+        self.assertEqual(config.formato_envio, "previa")
+        self.client.post("/whatsapp/ofertas/", self.dados())  # não escolheu de novo: mantém
+        config.refresh_from_db()
+        self.assertEqual(config.formato_envio, "previa")
+        self.client.post("/whatsapp/enviar/", {"destino": "1@g.us", "texto": "Oi https://s.shopee.com.br/x"})
+        self.assertEqual(EnvioWhatsApp.objects.get().formato, "previa")  # o teste sai como as ofertas
 
     @override_settings(APPFILIADO_GEMINI_API_KEY="", GEMINI_API_KEY="")
     def test_sem_chave_a_ia_aparece_indisponivel_e_nao_liga(self):

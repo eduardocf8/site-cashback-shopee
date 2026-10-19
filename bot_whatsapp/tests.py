@@ -1,4 +1,5 @@
 import base64
+import io
 from datetime import timedelta
 from types import SimpleNamespace
 from unittest import mock
@@ -6,6 +7,7 @@ from unittest import mock
 from django.test import TestCase
 from django.utils import timezone
 from neonize.proto.Neonize_pb2 import JID, GroupInfo, GroupName, NewsletterMetadata
+from PIL import Image
 
 from licencas.models import ContaAppfiliado
 from painel.tests import BasePainel
@@ -161,6 +163,58 @@ class TestGerenciador(TestCase):
         self.ger.ultimo_envio[self.conta.pk] -= g.ESPACO_ENTRE_ENVIOS
         self.ger.uma_volta()
         self.assertEqual(sessao.cliente.send_message.call_count, 2)
+
+    def test_previa_grande_em_grupo_e_canal(self):
+        sessao = self.conectar()
+        sessao.cliente.upload.return_value = mock.Mock(
+            DirectPath="/v/t/abc", FileSHA256=b"s", FileEncSHA256=b"e", MediaKey=b"k",
+        )
+        for destino in ("120363001@g.us", "111@newsletter"):
+            EnvioWhatsApp.objects.create(
+                conta=self.conta, destino=destino, texto="Oferta boa\nhttps://s.shopee.com.br/abc", formato="previa",
+                imagem_url="https://cf.shopee.com.br/file/1", produto="Fone Bluetooth", link_afiliado="https://s.shopee.com.br/abc",
+            )
+        quadrada = io.BytesIO()
+        Image.new("RGB", (500, 500), "#c33").save(quadrada, "JPEG")
+        resposta = mock.Mock(content=quadrada.getvalue())
+        with mock.patch.object(g, "ESPACO_ENTRE_ENVIOS", 0), mock.patch("requests.get", return_value=resposta):
+            self.ger.uma_volta()
+            self.ger.uma_volta()
+        sessao.cliente.send_image.assert_not_called()  # só o cartão, sem foto separada
+        self.assertEqual(sessao.cliente.send_message.call_count, 2)
+        for chamada in sessao.cliente.send_message.call_args_list:
+            previa = chamada.args[1].extendedTextMessage
+            self.assertEqual((previa.matchedText, previa.title), ("https://s.shopee.com.br/abc", "Fone Bluetooth"))
+            self.assertEqual((previa.thumbnailWidth, previa.thumbnailHeight), (1200, 630))  # larga: cartão grande
+            self.assertEqual((previa.thumbnailDirectPath, previa.mediaKey), ("/v/t/abc", b"k"))
+            self.assertTrue(previa.JPEGThumbnail)
+        self.assertEqual(list(EnvioWhatsApp.objects.values_list("estado", flat=True)), ["enviado", "enviado"])
+
+    def test_previa_grande_sem_foto_ou_com_upload_falhando_ainda_envia(self):
+        sessao = self.conectar()
+        EnvioWhatsApp.objects.create(
+            conta=self.conta, destino="120363001@g.us", texto="Oferta\nhttps://s.shopee.com.br/abc", formato="previa",
+            produto="Fone", link_afiliado="https://s.shopee.com.br/abc",  # sem foto
+        )
+        self.ger.uma_volta()
+        previa = sessao.cliente.send_message.call_args.args[1].extendedTextMessage
+        self.assertEqual(previa.matchedText, "https://s.shopee.com.br/abc")  # prévia pequena, sem imagem
+        self.assertEqual(previa.thumbnailWidth, 0)
+
+        sessao.cliente.upload.side_effect = RuntimeError("sem rede")
+        quadrada = io.BytesIO()
+        Image.new("RGB", (300, 300), "#33c").save(quadrada, "JPEG")
+        envio = EnvioWhatsApp.objects.create(
+            conta=self.conta, destino="120363001@g.us", texto="Oferta 2\nhttps://s.shopee.com.br/xyz", formato="previa",
+            produto="Tênis", link_afiliado="https://s.shopee.com.br/xyz", imagem_url="https://cf.shopee.com.br/file/2",
+        )
+        self.ger.ultimo_envio[self.conta.pk] -= g.ESPACO_ENTRE_ENVIOS
+        with mock.patch("requests.get", return_value=mock.Mock(content=quadrada.getvalue())):
+            self.ger.uma_volta()
+        previa = sessao.cliente.send_message.call_args.args[1].extendedTextMessage
+        self.assertEqual((previa.thumbnailWidth, previa.thumbnailDirectPath), (1200, ""))  # só a miniatura
+        envio.refresh_from_db()
+        self.assertEqual(envio.estado, "enviado")
 
     def test_canal_recebe_texto_com_previa_do_link(self):
         sessao = self.conectar()

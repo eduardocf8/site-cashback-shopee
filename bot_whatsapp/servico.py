@@ -62,7 +62,7 @@ def worker_sem_resposta(conexao: ConexaoWhatsApp) -> bool:
     )
 
 
-def enfileirar_envio(conta, destino: str, texto: str, imagem_url: str = "") -> tuple[EnvioWhatsApp | None, str]:
+def enfileirar_envio(conta, destino: str, texto: str, imagem_url: str = "", formato: str = "foto") -> tuple[EnvioWhatsApp | None, str]:
     """(envio, "") ou (None, motivo)."""
     conexao = conexao_da(conta)
     if conexao.estado != ConexaoWhatsApp.CONECTADO:
@@ -76,6 +76,7 @@ def enfileirar_envio(conta, destino: str, texto: str, imagem_url: str = "") -> t
         return None, "Já tem mensagens na fila. Espere elas saírem."
     envio = EnvioWhatsApp.objects.create(
         conta=conta, destino=destino, destino_nome=grupo.get("nome", ""), texto=texto.strip(), imagem_url=imagem_url,
+        formato=formato,
     )
     return envio, ""
 

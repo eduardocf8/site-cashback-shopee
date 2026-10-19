@@ -81,6 +81,8 @@ class EnvioWhatsApp(models.Model):
     # Foto baixada da mensagem copiada (arquivo temporário no worker).
     imagem_arquivo = models.CharField(max_length=300, blank=True)
     revisado_ia = models.BooleanField(default=False)
+    # "foto" (foto com o texto; no canal, prévia pequena) ou "previa" (cartão grande do link).
+    formato = models.CharField(max_length=10, default="foto")
     ia_motivo = models.CharField(max_length=300, blank=True, help_text="Por que a IA não revisou (com a IA ligada).")
 
     class Meta:
@@ -177,6 +179,13 @@ class ConfiguracaoOfertas(models.Model):
         (IA_CONTEXTUAL, "Contextual: corrige frases que não combinam com o produto"),
         (IA_CRIATIVA, "Criativa: deixa a chamada mais atraente"),
     ]
+    # Como a oferta vai para o WhatsApp.
+    FORMATO_FOTO, FORMATO_PREVIA = "foto", "previa"
+    FORMATOS_ENVIO = [
+        (FORMATO_FOTO, "Foto com o texto"),
+        (FORMATO_PREVIA, "Prévia grande do link"),
+    ]
+    formato_envio = models.CharField("como enviar", max_length=10, choices=FORMATOS_ENVIO, default=FORMATO_FOTO)
     ia_ativa = models.BooleanField("revisar o texto com IA", default=False)
     ia_tipo = models.CharField("tipo de revisão", max_length=12, choices=TIPOS_IA, default=IA_CONTEXTUAL)
     ia_status = models.CharField(max_length=300, blank=True, help_text="O que a IA fez na última oferta.")

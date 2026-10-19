@@ -509,7 +509,10 @@ class Gerenciador:
             destino = build_jid(usuario, servidor or "g.us")
             try:
                 foto = ler_foto(envio.imagem_arquivo)
-                if servidor == "newsletter":
+                if envio.formato == "previa":
+                    # Cartão grande do link (grupo e canal); sem foto separada.
+                    sessao.cliente.send_message(destino, mensagem_com_previa_grande(sessao.cliente, envio, foto))
+                elif servidor == "newsletter":
                     # Canal: foto com legenda pede um envio especial que a biblioteca não
                     # tem; vai texto com prévia do link (título + foto pequena), como no app.
                     sessao.cliente.send_message(destino, mensagem_com_previa(envio, foto))
@@ -596,6 +599,75 @@ def mensagem_com_previa(envio, foto: bytes | None = None):
     pequena = miniatura(dados=foto) if foto else miniatura(envio.imagem_url)
     if pequena:
         previa.JPEGThumbnail = pequena
+    return Message(extendedTextMessage=previa)
+
+
+LARGURA_DO_CARTAO, ALTURA_DO_CARTAO = 1200, 630  # proporção de 1,91:1: o WhatsApp mostra o cartão grande
+
+
+def cartao_da_previa(dados: bytes) -> bytes | None:
+    """Imagem larga para a prévia grande: o produto inteiro no centro, sobre um fundo
+    feito da própria foto (desfocada e escurecida). Foto quadrada vira prévia pequena
+    no WhatsApp; larga, vira o cartão grande. None se não der."""
+    try:
+        from PIL import Image, ImageFilter
+
+        produto = Image.open(io.BytesIO(dados)).convert("RGB")
+        fundo = produto.copy()
+        fundo = fundo.resize((LARGURA_DO_CARTAO, round(LARGURA_DO_CARTAO * fundo.height / fundo.width)), Image.LANCZOS)
+        topo = max(0, (fundo.height - ALTURA_DO_CARTAO) // 2)
+        fundo = fundo.crop((0, topo, LARGURA_DO_CARTAO, topo + ALTURA_DO_CARTAO)) if fundo.height >= ALTURA_DO_CARTAO \
+            else fundo.resize((LARGURA_DO_CARTAO, ALTURA_DO_CARTAO), Image.LANCZOS)
+        fundo = fundo.filter(ImageFilter.GaussianBlur(28))
+        fundo = Image.blend(fundo, Image.new("RGB", fundo.size, (255, 255, 255)), 0.35)
+        produto.thumbnail((LARGURA_DO_CARTAO - 80, ALTURA_DO_CARTAO - 40), Image.LANCZOS)
+        fundo.paste(produto, ((LARGURA_DO_CARTAO - produto.width) // 2, (ALTURA_DO_CARTAO - produto.height) // 2))
+        saida = io.BytesIO()
+        fundo.save(saida, format="JPEG", quality=85, optimize=True)
+        return saida.getvalue()
+    except Exception:  # noqa: BLE001
+        logger.warning("WhatsApp: não consegui montar o cartão da prévia")
+        return None
+
+
+def mensagem_com_previa_grande(cliente, envio, foto: bytes | None = None):
+    """Texto com prévia grande do link: o cartão (foto do produto em formato largo) vai
+    como miniatura de alta qualidade, como faz o WhatsApp ao colar um link. Se faltar
+    foto ou algo falhar, cai na prévia pequena de sempre - a oferta sai de qualquer jeito."""
+    from neonize.proto.waE2E.WAWebProtobufsE2E_pb2 import ExtendedTextMessage, Message
+    from neonize.utils.enum import MediaType
+
+    link = envio.link_afiliado or next(iter(URL_NO_TEXTO.findall(envio.texto)), "")
+    if not link:
+        return Message(conversation=envio.texto)
+    dados = foto
+    if not dados and envio.imagem_url:
+        try:
+            import requests
+
+            resposta = requests.get(envio.imagem_url, timeout=10)
+            resposta.raise_for_status()
+            dados = resposta.content
+        except Exception:  # noqa: BLE001
+            logger.warning("WhatsApp: não consegui baixar a foto para a prévia grande: %s", envio.imagem_url[:200])
+    cartao = cartao_da_previa(dados) if dados else None
+    if not cartao:
+        return mensagem_com_previa(envio, foto)
+    previa = ExtendedTextMessage(
+        text=envio.texto, matchedText=link, title=(envio.produto or "Oferta na Shopee")[:150],
+        previewType=ExtendedTextMessage.PreviewType.NONE,
+        JPEGThumbnail=miniatura(dados=cartao) or b"",
+        thumbnailWidth=LARGURA_DO_CARTAO, thumbnailHeight=ALTURA_DO_CARTAO,
+    )
+    try:
+        envio_da_imagem = cliente.upload(cartao, MediaType.MediaLinkThumbnail)
+        previa.MergeFrom(ExtendedTextMessage(
+            thumbnailDirectPath=envio_da_imagem.DirectPath, thumbnailSHA256=envio_da_imagem.FileSHA256,
+            thumbnailEncSHA256=envio_da_imagem.FileEncSHA256, mediaKey=envio_da_imagem.MediaKey,
+            mediaKeyTimestamp=int(time.time()),
+        ))
+    except Exception:  # noqa: BLE001
+        logger.warning("WhatsApp: não consegui enviar a imagem da prévia grande; vai a miniatura")
     return Message(extendedTextMessage=previa)
 
 
