@@ -2,6 +2,8 @@
 os grupos e mandar uma mensagem de teste). Quem fala com o WhatsApp é o worker -
 aqui só se registram pedidos (ver bot_whatsapp/servico.py)."""
 
+from datetime import timedelta
+
 from django.contrib import messages
 from django.http import JsonResponse
 from django.shortcuts import redirect, render
@@ -135,7 +137,13 @@ def whatsapp_ofertas(request):
     form = ConfiguracaoOfertasForm(request.POST or None, instance=config, grupos_disponiveis=conexao.grupos)
     if request.method == "POST":
         if form.is_valid():
-            form.save()
+            config = form.save()
+            if "intervalo_minutos" in form.changed_data and config.ativo and config.ultimo_envio_em:
+                # O intervalo novo já vale para a próxima oferta: conta a partir da última.
+                config.proximo_envio_em = max(
+                    timezone.now(), config.ultimo_envio_em + timedelta(minutes=config.intervalo_minutos),
+                )
+                config.save(update_fields=["proximo_envio_em", "atualizado_em"])
             messages.success(request, "Configurações das ofertas salvas.")
             return redirect("painel_whatsapp_ofertas")
         messages.error(request, "Confira os campos marcados.")
