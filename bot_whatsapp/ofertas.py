@@ -121,6 +121,8 @@ def revisar_com_ia(config, modelo: str, agora) -> tuple[str, bool]:
 
 def enfileirar(config, grupos, modelo: str, link_origem: str, *, item_id: str, nome: str,
                imagem_url: str = "", imagem_arquivo: str = "", revisado_ia: bool = False):
+    # Com a IA ligada e o texto original indo, guarda o motivo em cada envio.
+    ia_motivo = config.ia_status[:300] if (config.ia_ativa and not revisado_ia) else ""
     """Põe a oferta na fila de cada grupo. O texto é o mesmo para todos; só o link
     muda quando um grupo tem Sub ID próprio (um link por combinação de Sub IDs). Com a
     simulação ligada, fica registrada como "Simulado" e não vai para o WhatsApp."""
@@ -136,7 +138,7 @@ def enfileirar(config, grupos, modelo: str, link_origem: str, *, item_id: str, n
             conta=config.conta, destino=grupo["jid"], destino_nome=grupo.get("nome", ""),
             texto=modelo.replace(MARCADOR_DO_LINK, link), imagem_url=(imagem_url or "")[:1000],
             imagem_arquivo=imagem_arquivo, origem=EnvioWhatsApp.OFERTA, item_id=item_id,
-            produto=(nome or "")[:300], link_afiliado=link[:500], revisado_ia=revisado_ia,
+            produto=(nome or "")[:300], link_afiliado=link[:500], revisado_ia=revisado_ia, ia_motivo=ia_motivo,
             estado=EnvioWhatsApp.SIMULADO if config.simulacao else EnvioWhatsApp.PENDENTE,
         ))
     EnvioWhatsApp.objects.bulk_create(envios)

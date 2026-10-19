@@ -228,6 +228,7 @@
         <ul class="eventos-zap">
           {% for e in historico %}
             <li{% if e.estado == "enviado" or e.estado == "simulado" %} data-saiu="{{ e.pk }}"{% endif %}><span class="suave">{{ e.criado_em|date:"d/m H:i" }}</span><span>{{ e.produto|truncatechars:60 }} → {{ e.destino_nome }}: <strong class="envio-{{ e.estado }}">{{ e.get_estado_display }}</strong>{% if e.revisado_ia %} <span class="selo-ia" title="Texto revisado pela IA">IA</span>{% endif %}{% if e.erro %} - {{ e.erro }}{% endif %}
+              {% if e.ia_motivo %}<span class="ia-motivo pequeno">Sem IA: {{ e.ia_motivo }}</span>{% endif %}
               {% if e.texto %}<details><summary class="pequeno">Ver mensagem</summary><pre class="texto-oferta">{{ e.texto }}</pre></details>{% endif %}</span></li>
           {% endfor %}
         </ul>

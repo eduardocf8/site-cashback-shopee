@@ -81,6 +81,7 @@ class EnvioWhatsApp(models.Model):
     # Foto baixada da mensagem copiada (arquivo temporário no worker).
     imagem_arquivo = models.CharField(max_length=300, blank=True)
     revisado_ia = models.BooleanField(default=False)
+    ia_motivo = models.CharField(max_length=300, blank=True, help_text="Por que a IA não revisou (com a IA ligada).")
 
     class Meta:
         ordering = ["-id"]
