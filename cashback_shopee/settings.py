@@ -188,6 +188,11 @@ CASHBACK_MULTIPLICADOR_INDICACAO = float(os.environ.get("CASHBACK_MULTIPLICADOR_
 GEMINI_API_KEY = os.environ.get("GEMINI_API_KEY", "")
 GEMINI_API_URL = os.environ.get("GEMINI_API_URL", "https://generativelanguage.googleapis.com/v1beta")
 GEMINI_MODEL = os.environ.get("GEMINI_MODEL", "gemini-3.1-flash-lite")
+# Appfiliado: revisão do texto das ofertas do Bot de WhatsApp (bot_whatsapp/ia.py). Uma
+# chave só, do Appfiliado (quem usa o painel não cria nada). Sem APPFILIADO_GEMINI_API_KEY,
+# usa a GEMINI_API_KEY; sem nenhuma, a opção aparece como indisponível.
+APPFILIADO_GEMINI_API_KEY = os.environ.get("APPFILIADO_GEMINI_API_KEY", "")
+APPFILIADO_GEMINI_MODELO = os.environ.get("APPFILIADO_GEMINI_MODELO", "")
 
 # Credenciais da API da Asaas para pagar os saques via PIX (ficam no arquivo .env, nunca no código)
 # Login com Google (accounts/google_oauth.py). Sem os dois, o botão "Continuar com

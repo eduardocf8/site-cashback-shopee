@@ -2875,8 +2875,8 @@ posta as ofertas, sem programa no computador e sem janela de navegador.
 - [x] Tela `/whatsapp/ofertas/` (aba ao lado de "Conexão"): ligar/pausar, "Testar
       busca" (as próximas 5 ofertas, com a mensagem), últimas ofertas enviadas.
 - [x] Parte 2: copiar ofertas de um ou mais grupos/canais (Fase 71).
-- [ ] Parte 3: revisão do texto com IA (chave única do Appfiliado), modo simulação,
-      envio para canais, e-mail diário com o relatório.
+- [x] Parte 3: revisão do texto com IA (chave única do Appfiliado), modo simulação,
+      e-mail diário com o relatório (Fase 74).
 
 ## Fase 71 — Copiar ofertas de grupos e canais (bot de ofertas, parte 2)
 
@@ -2930,6 +2930,27 @@ posta as ofertas, sem programa no computador e sem janela de navegador.
 - [x] Log de cada sincronização: rápida/completa, memória antes e depois e, na
       completa, quantas validações vieram mais de 30 dias depois da compra (para saber
       se a completa diária ainda é necessária).
+
+## Fase 74 — Bot de ofertas, parte 3: IA, simulação e relatório por e-mail
+
+- [x] **Revisão do texto com IA** (Gemini, `bot_whatsapp/ia.py`): chave única do
+      Appfiliado (`APPFILIADO_GEMINI_API_KEY`, ou a `GEMINI_API_KEY`), quem usa só liga a
+      opção. Tipos leve/contextual/criativa (prompts do app de Windows). Se a IA mexer em
+      link, preço ou cupom, aumentar demais o texto ou falhar, vai o texto original. Uma
+      revisão por oferta (não por grupo); até 300 por conta por dia. O "Testar busca"
+      mostra a primeira oferta já revisada. Sem chave, a opção aparece indisponível.
+- [x] **Modo simulação**: faz tudo (produto, link, texto, IA), mas não envia; aparece em
+      "Últimas ofertas enviadas" como "Simulado", com a mensagem. Enquanto ligado, as
+      simulações contam para o limite e para não repetir; ao desligar, não bloqueiam nada.
+      Buscando na Shopee, simula até sem o WhatsApp conectado.
+- [x] Histórico com "Ver mensagem" (texto completo) e selo "IA" nas revisadas.
+- [x] **Grupos e canais salvos no topo** das listas de destino e de origem, com uma
+      linha separando dos outros.
+- [x] **Relatório diário por e-mail** (`painel/relatorio.py`), ligado em Configurações:
+      ontem e o mês (faturamento, pedidos, estimada, validada), meta, Sub IDs com os
+      agrupamentos, 3 mais vendidos e as ofertas do bot. Vai a partir das 8h, depois da
+      atualização de hoje com a Shopee (ou às 11h, sem ela), para a conta e até 3 e-mails
+      extras. Botão "Salvar e enviar um agora" para testar.
 
 ---
 

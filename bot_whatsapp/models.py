@@ -57,8 +57,10 @@ class ConexaoWhatsApp(models.Model):
 
 
 class EnvioWhatsApp(models.Model):
-    PENDENTE, ENVIADO, ERRO = "pendente", "enviado", "erro"
-    ESTADOS = [(PENDENTE, "Na fila"), (ENVIADO, "Enviado"), (ERRO, "Erro")]
+    PENDENTE, ENVIADO, ERRO, SIMULADO = "pendente", "enviado", "erro", "simulado"
+    # Simulado: o bot fez tudo (escolheu o produto, gerou o link, montou o texto), mas o
+    # modo simulação estava ligado - não vai para o WhatsApp.
+    ESTADOS = [(PENDENTE, "Na fila"), (ENVIADO, "Enviado"), (ERRO, "Erro"), (SIMULADO, "Simulado")]
     TESTE, OFERTA = "teste", "oferta"
     ORIGENS = [(TESTE, "Mensagem de teste"), (OFERTA, "Oferta automática")]
 
@@ -78,6 +80,7 @@ class EnvioWhatsApp(models.Model):
     link_afiliado = models.URLField(max_length=500, blank=True)
     # Foto baixada da mensagem copiada (arquivo temporário no worker).
     imagem_arquivo = models.CharField(max_length=300, blank=True)
+    revisado_ia = models.BooleanField(default=False)
 
     class Meta:
         ordering = ["-id"]
@@ -163,6 +166,21 @@ class ConfiguracaoOfertas(models.Model):
     dias_semana = models.JSONField(default=_todos_os_dias, blank=True, help_text="0 = segunda ... 6 = domingo")
     limite_diario = models.PositiveSmallIntegerField(default=0, help_text="0 = sem limite.")
     repetir_apos_dias = models.PositiveSmallIntegerField(default=7)
+
+    # Simulação: faz tudo, menos enviar (as ofertas aparecem na tela como "Simulado").
+    simulacao = models.BooleanField("modo simulação", default=False)
+    # Revisão do texto com IA (Gemini, chave única do Appfiliado - ver bot_whatsapp/ia.py).
+    IA_LEVE, IA_CONTEXTUAL, IA_CRIATIVA = "leve", "contextual", "criativa"
+    TIPOS_IA = [
+        (IA_LEVE, "Leve: só português"),
+        (IA_CONTEXTUAL, "Contextual: corrige frases que não combinam com o produto"),
+        (IA_CRIATIVA, "Criativa: deixa a chamada mais atraente"),
+    ]
+    ia_ativa = models.BooleanField("revisar o texto com IA", default=False)
+    ia_tipo = models.CharField("tipo de revisão", max_length=12, choices=TIPOS_IA, default=IA_CONTEXTUAL)
+    ia_status = models.CharField(max_length=300, blank=True, help_text="O que a IA fez na última oferta.")
+    ia_dia = models.DateField(null=True, blank=True)
+    ia_revisoes_no_dia = models.PositiveIntegerField(default=0)
 
     # Controle do motor.
     proximo_envio_em = models.DateTimeField(null=True, blank=True)

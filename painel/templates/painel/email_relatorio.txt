@@ -1,0 +1,26 @@
+{% load painel_extras %}{% autoescape off %}Appfiliado — seus resultados de ontem ({{ ontem|date:"d/m/Y" }})
+
+Comissão estimada: {{ dia_ontem.comissao_estimada|brl }}
+Faturamento: {{ dia_ontem.faturamento|brl }}
+Pedidos: {{ dia_ontem.pedidos|numero }}
+Comissão validada: {{ dia_ontem.comissao_validada|brl }}
+
+{{ nome_mes }} até ontem
+Faturamento: {{ mes.faturamento|brl }}
+Comissão estimada: {{ mes.comissao_estimada|brl }}
+Comissão validada: {{ mes.comissao_validada|brl }}
+Pedidos: {{ mes.pedidos|numero }}
+{% if meta %}{% if meta_proxima %}Meta: faltam {{ meta_proxima.falta|brl }} para a faixa {{ meta_proxima.nome }}.{% else %}Meta: todas as faixas do mês batidas!{% endif %}
+{% endif %}{% if sub_ids %}
+Ontem por Sub ID
+{% for s in sub_ids %}- {{ s.sub_id }}: {{ s.vendas|numero }} venda{{ s.vendas|pluralize }}, {{ s.comissao|brl }}
+{% endfor %}{% endif %}{% if produtos %}
+Mais vendidos ontem
+{% for p in produtos %}{{ forloop.counter }}. {{ p.nome|default:"Produto" }} - {{ p.unidades|numero }} un., {{ p.comissao|brl }}
+{% endfor %}{% endif %}{% if bot %}
+Bot de WhatsApp: {% if bot.ofertas %}{{ bot.ofertas }} oferta{{ bot.ofertas|pluralize }} enviada{{ bot.ofertas|pluralize }} ontem.{% else %}nenhuma oferta enviada ontem.{% endif %}
+{% endif %}
+Ver no painel: {{ url_resultados }}
+
+Para desligar este e-mail: {{ url_configuracoes }}
+{% endautoescape %}

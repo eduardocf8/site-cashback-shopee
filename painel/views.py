@@ -1,3 +1,5 @@
+import logging
+
 from django.conf import settings
 from django.contrib import messages
 from django.core.paginator import Paginator
@@ -17,8 +19,8 @@ from licencas.services import resposta_validacao
 
 from . import cripto
 from . import modulos as mod
-from . import exportar, periodos, resultados, telas
-from .models import MetaMensal, RegraSubId
+from . import exportar, periodos, relatorio, resultados, telas
+from .models import MetaMensal, RegraSubId, RelatorioEmail
 from .autenticacao import (
     conta_logada,
     conta_requerida,
@@ -30,7 +32,9 @@ from .autenticacao import (
     token_senha,
 )
 from .emails import enviar_email_recuperar_senha
-from .forms import EntrarForm, EsqueciSenhaForm, NovaSenhaForm, RegraSubIdForm, ShopeeForm, TrocarSenhaForm
+from .forms import (
+    EntrarForm, EsqueciSenhaForm, NovaSenhaForm, RegraSubIdForm, RelatorioEmailForm, ShopeeForm, TrocarSenhaForm,
+)
 from .shopee import testar_credenciais
 
 NOMES_MODULOS = dict(MODULOS)
@@ -38,6 +42,8 @@ MAXIMO_REGRAS_SUB_ID = 20
 DIAS_SEMANA = ["segunda-feira", "terça-feira", "quarta-feira", "quinta-feira", "sexta-feira", "sábado", "domingo"]
 MESES = ["janeiro", "fevereiro", "março", "abril", "maio", "junho", "julho", "agosto",
          "setembro", "outubro", "novembro", "dezembro"]
+
+logger = logging.getLogger(__name__)
 
 
 def _contexto(request, ativo: str, **extra) -> dict:
@@ -342,8 +348,30 @@ def configuracoes(request):
     form_shopee = ShopeeForm(initial={"app_id": conta.shopee_app_id})
     form_senha = TrocarSenhaForm(conta=conta)
     form_regra = RegraSubIdForm()
+    preferencia, _ = RelatorioEmail.objects.get_or_create(conta=conta)
+    form_relatorio = RelatorioEmailForm(instance=preferencia)
 
-    if request.method == "POST" and request.POST.get("formulario") == "shopee":
+    if request.method == "POST" and request.POST.get("formulario") == "relatorio":
+        form_relatorio = RelatorioEmailForm(request.POST, instance=preferencia)
+        if form_relatorio.is_valid():
+            preferencia = form_relatorio.save()
+            if request.POST.get("acao") == "testar":
+                if not conta.shopee_validado_em:
+                    messages.error(request, "Conecte sua conta da Shopee para receber o relatório.")
+                else:
+                    try:
+                        relatorio.enviar(conta, telas.hoje(), preferencia.destinatarios())
+                        messages.success(request, f"Relatório de teste enviado para {', '.join(preferencia.destinatarios())}.")
+                    except Exception:  # noqa: BLE001
+                        logger.exception("Painel: falha no relatório de teste da conta %s", conta.pk)
+                        messages.error(request, "Não consegui enviar o e-mail agora. Tente de novo em alguns minutos.")
+            elif preferencia.ativo:
+                messages.success(request, "Pronto! O relatório chega todo dia de manhã, com os números de ontem.")
+            else:
+                messages.info(request, "Relatório diário desligado.")
+            return redirect(f"{request.path}#relatorio")
+
+    elif request.method == "POST" and request.POST.get("formulario") == "shopee":
         form_shopee = ShopeeForm(request.POST)
         if form_shopee.is_valid():
             app_id = form_shopee.cleaned_data["app_id"].strip()
@@ -389,6 +417,7 @@ def configuracoes(request):
 
     return render(request, "painel/configuracoes.html", _contexto(
         request, "configuracoes", form_shopee=form_shopee, form_senha=form_senha, form_regra=form_regra,
+        form_relatorio=form_relatorio, preferencia_relatorio=preferencia,
         regras=resultados.resumo_das_regras(conta, telas.hoje()),
     ))
 

@@ -1,6 +1,6 @@
 from django.contrib import admin
 
-from .models import MetaMensal, RegraSubId, SincronizacaoResultados, VendaItem
+from .models import MetaMensal, RegraSubId, RelatorioEmail, SincronizacaoResultados, VendaItem
 
 
 @admin.register(SincronizacaoResultados)
@@ -41,3 +41,10 @@ class VendaItemAdmin(admin.ModelAdmin):
     search_fields = ("conta__email", "nome", "pedido_id")
     list_select_related = ("conta",)
     readonly_fields = [f.name for f in VendaItem._meta.fields]
+
+
+@admin.register(RelatorioEmail)
+class RelatorioEmailAdmin(admin.ModelAdmin):
+    list_display = ("conta", "ativo", "ultimo_envio_dia", "ultimo_erro")
+    list_filter = ("ativo",)
+    search_fields = ("conta__email",)

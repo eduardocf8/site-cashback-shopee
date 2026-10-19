@@ -1,0 +1,74 @@
+{% load painel_extras %}<!doctype html>
+<html lang="pt-BR"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width"><title>Seus resultados</title></head>
+<body style="margin:0;padding:0;background:#F6F3EA;font-family:Arial,Helvetica,sans-serif;color:#1C2B23;">
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:#F6F3EA;padding:24px 12px;">
+<tr><td align="center">
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="max-width:600px;">
+  <tr><td style="background:#1F3A2E;border-radius:14px 14px 0 0;padding:20px 24px;">
+    <table role="presentation" cellpadding="0" cellspacing="0"><tr>
+      <td style="width:36px;height:36px;background:#F2C230;border-radius:10px;text-align:center;font-weight:bold;font-size:22px;color:#1F3A2E;line-height:36px;">a</td>
+      <td style="padding-left:10px;color:#F6F3EA;"><div style="font-size:17px;font-weight:bold;">Appfiliado</div><div style="font-size:12px;color:#B9C7BE;">Para afiliados Shopee</div></td>
+    </tr></table>
+  </td></tr>
+  <tr><td style="background:#FFFFFF;padding:24px;border:1px solid #E5DFCD;border-top:none;">
+    <h1 style="margin:0 0 4px;font-size:20px;">Seus resultados de ontem</h1>
+    <p style="margin:0 0 18px;color:#5C6A61;font-size:14px;">{{ ontem|date:"l, d/m/Y" }}</p>
+
+    <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="border-collapse:separate;">
+      <tr>
+        <td style="width:50%;padding:12px;background:#F6F3EA;border-radius:10px;">
+          <div style="font-size:12px;color:#5C6A61;">Comissão estimada</div>
+          <div style="font-size:22px;font-weight:bold;">{{ dia_ontem.comissao_estimada|brl }}</div>
+        </td>
+        <td width="10" style="width:10px;font-size:0;line-height:0;">&nbsp;</td>
+        <td style="width:50%;padding:12px;background:#F6F3EA;border-radius:10px;">
+          <div style="font-size:12px;color:#5C6A61;">Faturamento</div>
+          <div style="font-size:22px;font-weight:bold;">{{ dia_ontem.faturamento|brl }}</div>
+        </td>
+      </tr>
+    </table>
+    <p style="margin:10px 0 0;font-size:14px;color:#1C2B23;">{{ dia_ontem.pedidos|numero }} pedido{{ dia_ontem.pedidos|pluralize }} &nbsp;·&nbsp; Comissão validada: <strong>{{ dia_ontem.comissao_validada|brl }}</strong></p>
+
+    <h2 style="margin:26px 0 8px;font-size:16px;">{{ nome_mes }} até ontem</h2>
+    <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="border-collapse:collapse;font-size:14px;">
+      <tr><td style="padding:6px 0;color:#5C6A61;">Faturamento</td><td align="right" style="padding:6px 0;font-weight:bold;">{{ mes.faturamento|brl }}</td></tr>
+      <tr><td style="padding:6px 0;color:#5C6A61;border-top:1px solid #EDE8D9;">Comissão estimada</td><td align="right" style="padding:6px 0;font-weight:bold;border-top:1px solid #EDE8D9;">{{ mes.comissao_estimada|brl }}</td></tr>
+      <tr><td style="padding:6px 0;color:#5C6A61;border-top:1px solid #EDE8D9;">Comissão validada</td><td align="right" style="padding:6px 0;font-weight:bold;border-top:1px solid #EDE8D9;">{{ mes.comissao_validada|brl }}</td></tr>
+      <tr><td style="padding:6px 0;color:#5C6A61;border-top:1px solid #EDE8D9;">Pedidos</td><td align="right" style="padding:6px 0;font-weight:bold;border-top:1px solid #EDE8D9;">{{ mes.pedidos|numero }}</td></tr>
+    </table>
+    {% if meta %}
+      <p style="margin:12px 0 0;padding:10px 12px;background:#FBF1CF;border-radius:10px;font-size:14px;color:#7A5B00;">
+        {% if meta_proxima %}Meta: faltam <strong>{{ meta_proxima.falta|brl }}</strong> de faturamento para a faixa {{ meta_proxima.nome }}.{% else %}Meta: todas as faixas do mês batidas! 🎉{% endif %}
+      </p>
+    {% endif %}
+
+    {% if sub_ids %}
+      <h2 style="margin:26px 0 8px;font-size:16px;">Ontem por Sub ID</h2>
+      <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="border-collapse:collapse;font-size:14px;">
+        <tr><td style="padding:6px 0;color:#5C6A61;font-size:12px;">Sub ID</td><td align="right" style="padding:6px 0;color:#5C6A61;font-size:12px;">Vendas</td><td align="right" style="padding:6px 0;color:#5C6A61;font-size:12px;">Comissão</td></tr>
+        {% for s in sub_ids %}<tr><td style="padding:6px 0;border-top:1px solid #EDE8D9;">{{ s.sub_id }}</td><td align="right" style="padding:6px 0;border-top:1px solid #EDE8D9;">{{ s.vendas|numero }}</td><td align="right" style="padding:6px 0;border-top:1px solid #EDE8D9;font-weight:bold;">{{ s.comissao|brl }}</td></tr>{% endfor %}
+      </table>
+    {% endif %}
+
+    {% if produtos %}
+      <h2 style="margin:26px 0 8px;font-size:16px;">Mais vendidos ontem</h2>
+      <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="border-collapse:collapse;font-size:14px;">
+        {% for p in produtos %}<tr><td style="padding:6px 8px 6px 0;border-top:1px solid #EDE8D9;color:#5C6A61;width:18px;">{{ forloop.counter }}</td><td style="padding:6px 0;border-top:1px solid #EDE8D9;">{{ p.nome|default:"Produto"|truncatechars:70 }}</td><td align="right" style="padding:6px 0 6px 8px;border-top:1px solid #EDE8D9;white-space:nowrap;">{{ p.unidades|numero }} un. · <strong>{{ p.comissao|brl }}</strong></td></tr>{% endfor %}
+      </table>
+    {% endif %}
+
+    {% if bot %}
+      <h2 style="margin:26px 0 8px;font-size:16px;">Bot de WhatsApp</h2>
+      <p style="margin:0;font-size:14px;">{% if bot.ofertas %}Ontem saíram <strong>{{ bot.ofertas }} oferta{{ bot.ofertas|pluralize }}</strong> ({{ bot.mensagens }} mensage{{ bot.mensagens|pluralize:"m,ns" }} nos grupos e canais).{% else %}Nenhuma oferta enviada ontem.{% endif %}</p>
+    {% endif %}
+
+    <p style="margin:28px 0 0;"><a href="{{ url_resultados }}" style="display:inline-block;background:#F2C230;color:#1C2B23;text-decoration:none;font-weight:bold;padding:12px 20px;border-radius:10px;">Ver no painel</a></p>
+    <p style="margin:18px 0 0;font-size:12px;color:#5C6A61;">A Shopee ainda pode ajustar os números de ontem ao longo do dia. A comissão estimada pode mudar até ser validada.</p>
+  </td></tr>
+  <tr><td style="padding:16px 8px;font-size:12px;color:#5C6A61;text-align:center;">
+    Você recebe este e-mail porque ligou o relatório diário no Appfiliado. <a href="{{ url_configuracoes }}" style="color:#1F3A2E;">Desligar ou mudar os e-mails</a>.<br>
+    Appfiliado: ferramentas feitas só para afiliados da Shopee. Somos independentes, sem vínculo oficial com a Shopee.
+  </td></tr>
+</table>
+</td></tr></table>
+</body></html>

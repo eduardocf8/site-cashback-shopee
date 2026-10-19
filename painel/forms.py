@@ -85,6 +85,24 @@ class RegraSubIdForm(forms.Form):
 DIAS_DA_SEMANA = [(0, "Seg"), (1, "Ter"), (2, "Qua"), (3, "Qui"), (4, "Sex"), (5, "Sáb"), (6, "Dom")]
 
 
+def _salvos_primeiro(nomes: dict, salvos) -> list[tuple[str, str]]:
+    """Os grupos/canais já salvos no topo da lista (fica fácil ver e desmarcar), depois
+    os outros; cada parte em ordem alfabética. Usa o que está salvo, não o que está
+    marcado na tela, para a lista não pular enquanto a pessoa marca."""
+    marcados = {g.get("jid") for g in salvos or []}
+    return sorted(nomes.items(), key=lambda item: (item[0] not in marcados, item[1].lower()))
+
+
+def _marcar_divisa(linhas: list[dict], salvos) -> list[dict]:
+    """Marca a primeira linha depois dos salvos (a tela põe uma linha separando)."""
+    marcados = {g.get("jid") for g in salvos or []}
+    for i, linha in enumerate(linhas):
+        linha["divisa"] = bool(marcados) and i > 0 and linha["opcao"].data["value"] not in marcados and (
+            linhas[i - 1]["opcao"].data["value"] in marcados
+        )
+    return linhas
+
+
 class ConfiguracaoOfertasForm(forms.ModelForm):
     """Ofertas automáticas (bot_whatsapp.ConfiguracaoOfertas). Preços e avaliação
     entram como texto para aceitar "39,90"."""
@@ -107,7 +125,7 @@ class ConfiguracaoOfertasForm(forms.ModelForm):
             "modo", "origens", "tipo_busca", "palavra_chave", "loja", "categorias", "ordenacao",
             "comissao_minima", "desconto_minimo", "preco_minimo", "preco_maximo", "vendas_minimas",
             "avaliacao_minima", "cupom", "sub_ids", "grupos", "intervalo_minutos", "horario_inicio",
-            "horario_fim", "dias_semana", "limite_diario", "repetir_apos_dias",
+            "horario_fim", "dias_semana", "limite_diario", "repetir_apos_dias", "ia_ativa", "ia_tipo", "simulacao",
         ]
         labels = {
             "modo": "De onde vêm as ofertas", "tipo_busca": "Buscar", "palavra_chave": "Palavra-chave", "loja": "Link da loja",
@@ -128,14 +146,21 @@ class ConfiguracaoOfertasForm(forms.ModelForm):
         widgets = {
             "modo": forms.RadioSelect,
             "tipo_busca": forms.RadioSelect,
+            "ia_tipo": forms.RadioSelect,
             "horario_inicio": forms.TimeInput(attrs={"type": "time"}, format="%H:%M"),
             "horario_fim": forms.TimeInput(attrs={"type": "time"}, format="%H:%M"),
         }
 
     def __init__(self, *args, grupos_disponiveis=None, **kwargs):
+        from bot_whatsapp import ia
         from bot_whatsapp.categorias import opcoes_categoria
 
         super().__init__(*args, **kwargs)
+        self.ia_disponivel = ia.disponivel()
+        self.fields["ia_tipo"].required = False
+        if not self.ia_disponivel:  # sem a chave do Appfiliado: opção desligada
+            self.fields["ia_ativa"].disabled = True
+            self.fields["ia_tipo"].disabled = True
         self.fields["categorias"].choices = opcoes_categoria()
         # Destinos: grupos e canais onde o número posta (+ os já escolhidos, caso tenham
         # sumido da lista). Origens: qualquer grupo ou canal que o número participa/segue.
@@ -144,13 +169,13 @@ class ConfiguracaoOfertasForm(forms.ModelForm):
         for g in self.instance.grupos or []:
             disponiveis.setdefault(g.get("jid"), g.get("nome", ""))
         self.nomes_dos_grupos = disponiveis
-        self.fields["grupos"].choices = sorted(disponiveis.items(), key=lambda item: item[1].lower())
+        self.fields["grupos"].choices = _salvos_primeiro(disponiveis, self.instance.grupos)
         self.initial["grupos"] = [g.get("jid") for g in self.instance.grupos or []]
         origens = {g["jid"]: g.get("nome", g["jid"]) for g in todos}
         for g in self.instance.origens or []:
             origens.setdefault(g.get("jid"), g.get("nome", ""))
         self.nomes_das_origens = origens
-        self.fields["origens"].choices = sorted(origens.items(), key=lambda item: item[1].lower())
+        self.fields["origens"].choices = _salvos_primeiro(origens, self.instance.origens)
         self.initial["origens"] = [g.get("jid") for g in self.instance.origens or []]
         for campo in ("preco_minimo", "preco_maximo", "avaliacao_minima"):
             valor = getattr(self.instance, campo)
@@ -170,6 +195,9 @@ class ConfiguracaoOfertasForm(forms.ModelForm):
             self.fields[campo].widget.attrs.update({"min": minimo, "max": maximo})
 
     OPCIONAIS_ZERO = ("comissao_minima", "desconto_minimo", "vendas_minimas", "limite_diario")
+
+    def clean_ia_tipo(self):
+        return self.cleaned_data.get("ia_tipo") or self.instance.ia_tipo or ConfiguracaoOfertas.IA_CONTEXTUAL
 
     def clean_comissao_minima(self):
         return self.cleaned_data.get("comissao_minima") or 0
@@ -223,14 +251,14 @@ class ConfiguracaoOfertasForm(forms.ModelForm):
     @property
     def linhas_dos_grupos(self) -> list[dict]:
         """Cada grupo da lista com o campo de Sub ID próprio dele."""
-        return [
+        return _marcar_divisa([
             {
                 "opcao": opcao,
                 "sub_id": self._sub_id_digitado(opcao.data["value"]),
                 "canal": str(opcao.data["value"]).endswith("@newsletter"),
             }
             for opcao in self["grupos"]
-        ]
+        ], self.instance.grupos)
 
     def clean_grupos(self):
         return [{"jid": jid, "nome": self.nomes_dos_grupos.get(jid, "")} for jid in self.cleaned_data.get("grupos", [])]
@@ -240,7 +268,10 @@ class ConfiguracaoOfertasForm(forms.ModelForm):
 
     @property
     def linhas_das_origens(self) -> list[dict]:
-        return [{"opcao": opcao, "canal": str(opcao.data["value"]).endswith("@newsletter")} for opcao in self["origens"]]
+        return _marcar_divisa(
+            [{"opcao": opcao, "canal": str(opcao.data["value"]).endswith("@newsletter")} for opcao in self["origens"]],
+            self.instance.origens,
+        )
 
     def clean(self):
         from bot_whatsapp.shopee_ofertas import extrair_id_da_loja
@@ -287,3 +318,27 @@ class ConfiguracaoOfertasForm(forms.ModelForm):
             else:
                 por_grupo.pop(jid, None)
         self.instance.sub_ids_por_grupo = por_grupo
+
+
+class RelatorioEmailForm(forms.ModelForm):
+    class Meta:
+        from .models import RelatorioEmail
+
+        model = RelatorioEmail
+        fields = ["ativo", "emails_extras"]
+        widgets = {"emails_extras": forms.TextInput(attrs={"placeholder": "socio@exemplo.com, outro@exemplo.com"})}
+
+    def clean_emails_extras(self):
+        from django.core.validators import validate_email
+
+        from .relatorio import MAXIMO_EXTRAS
+
+        emails = [e.strip().lower() for e in self.cleaned_data.get("emails_extras", "").replace(";", ",").split(",") if e.strip()]
+        if len(emails) > MAXIMO_EXTRAS:
+            raise forms.ValidationError(f"Dá para colocar até {MAXIMO_EXTRAS} e-mails extras.")
+        for email in emails:
+            try:
+                validate_email(email)
+            except forms.ValidationError:
+                raise forms.ValidationError(f"E-mail inválido: {email}")
+        return ", ".join(dict.fromkeys(emails))
