@@ -404,5 +404,5 @@ form.form-regra > .erros-form { grid-column: 1 / -1; }
 .recebida-enviada .estado-recebida { color: var(--bom-tinta); }
 .recebida-erro .estado-recebida { color: var(--perigo); }
 
-/* Campos do modo escolhido: respiro depois dos botões de modo. */
-.bloco-modo { margin-top: 14px; }
+/* Campos do modo escolhido: respiro depois dos botões de modo e entre os campos. */
+.bloco-modo { margin-top: 22px; display: flex; flex-direction: column; gap: 18px; }
