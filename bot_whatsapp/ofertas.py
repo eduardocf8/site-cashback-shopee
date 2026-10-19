@@ -335,6 +335,8 @@ class Motor:
                     "desconto": produto["desconto"], "vendas": produto["vendas"], "avaliacao": produto["avaliacao"],
                     "imagem": produto["imagem"], "texto": texto.replace(MARCADOR_DO_LINK, LINK_DE_EXEMPLO),
                     "revisado_ia": revisado,
+                    # o que a IA fez com a primeira (aparece embaixo dela no "Teste da busca")
+                    "ia_status": config.ia_status if (config.ia_ativa and not achadas) else "",
                 })
                 if len(achadas) >= OFERTAS_NO_TESTE:
                     return achadas

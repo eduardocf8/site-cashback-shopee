@@ -73,11 +73,38 @@ class TestRevisorIA(TestCase):
                 self.assertIn("original", status)
 
     @COM_CHAVE
-    def test_erro_na_ia_manda_o_original(self):
-        with mock.patch.object(ia, "_chamar", side_effect=RuntimeError("cota esgotada")):
+    def test_erro_na_ia_manda_o_original_com_motivo_claro(self):
+        sobrecarga = ia.ErroDaIA("This model is currently experiencing high demand.", 503)
+        with mock.patch.object(ia, "_chamar", side_effect=sobrecarga):
             texto, ok, status = ia.revisar(TEXTO, "leve", ofertas.MARCADOR_DO_LINK)
         self.assertEqual((texto, ok), (TEXTO, False))
-        self.assertIn("cota esgotada", status)
+        self.assertEqual(status, "O Gemini estava sobrecarregado (instabilidade do Google) - foi o texto original.")
+        with mock.patch.object(ia, "_chamar", side_effect=ia.ErroDaIA("quota", 429)):
+            self.assertIn("Limite de uso", ia.revisar(TEXTO, "leve", ofertas.MARCADOR_DO_LINK)[2])
+
+    @COM_CHAVE
+    def test_sobrecarregado_tenta_de_novo_e_depois_o_modelo_reserva(self):
+        chamados = []
+
+        def chamar_modelo(modelo, prompt, temperatura):
+            chamados.append(modelo)
+            if modelo != "gemini-2.5-flash-lite":
+                raise ia.ErroDaIA("high demand" if modelo == "gemini-3.1-flash-lite" else "not found",
+                                  503 if modelo == "gemini-3.1-flash-lite" else 404)
+            return "ok"
+
+        esperas = []
+        with mock.patch.object(ia, "_chamar_modelo", side_effect=chamar_modelo):
+            self.assertEqual(ia._chamar("p", 0.1, esperar=esperas.append), "ok")
+        self.assertEqual(chamados, ["gemini-3.1-flash-lite", "gemini-3.1-flash-lite", "gemini-flash-lite-latest", "gemini-2.5-flash-lite"])
+        self.assertEqual(esperas, [2])
+
+    @COM_CHAVE
+    def test_chave_recusada_nao_insiste(self):
+        with mock.patch.object(ia, "_chamar_modelo", side_effect=ia.ErroDaIA("API key not valid", 400)) as chamar:
+            with self.assertRaises(ia.ErroDaIA):
+                ia._chamar("p", 0.1, esperar=lambda _: None)
+        self.assertEqual(chamar.call_count, 1)
 
     @override_settings(APPFILIADO_GEMINI_API_KEY="", GEMINI_API_KEY="")
     def test_sem_chave_fica_indisponivel(self):
@@ -153,6 +180,19 @@ class TestMotorComSimulacaoEIA(TestCase):
         chamada.assert_not_called()
         self.assertFalse(EnvioWhatsApp.objects.first().revisado_ia)
         self.assertIn("Limite", self.config.ia_status)
+
+    @COM_CHAVE
+    def test_teste_da_busca_mostra_o_motivo_na_primeira(self, _):
+        self.config.ia_ativa = True
+        self.config.pedido_teste_em = timezone.now()
+        self.config.save()
+        with mock.patch.object(ia, "revisar", return_value=(TEXTO, False, "O Gemini estava sobrecarregado - foi o texto original.")), \
+                mock.patch.object(shopee_ofertas, "buscar_produtos", return_value=([produto(1), produto(2)], False)):
+            self.motor.atender_testes(AGORA)
+        self.config.refresh_from_db()
+        primeira, segunda = self.config.teste_resultado[:2]
+        self.assertEqual((primeira["revisado_ia"], primeira["ia_status"]), (False, "O Gemini estava sobrecarregado - foi o texto original."))
+        self.assertEqual(segunda["ia_status"], "")
 
     def test_ia_desligada_nao_chama(self, _):
         with mock.patch.object(ia, "revisar") as chamada:

@@ -207,6 +207,7 @@
                   <strong>{{ o.nome|truncatechars:80 }}</strong>
                   <span class="suave pequeno">{{ o.preco|brl }} · comissão {{ o.comissao|floatformat:0 }}%{% if o.desconto %} · {{ o.desconto|floatformat:0 }}% off{% endif %}{% if o.vendas %} · {{ o.vendas|numero }} vendidos{% endif %}</span>
                   <details{% if o.revisado_ia %} open{% endif %}><summary class="pequeno">Ver mensagem{% if o.revisado_ia %} <span class="selo-ia">revisada pela IA</span>{% endif %}</summary><pre class="texto-oferta">{{ o.texto }}</pre></details>
+                  {% if o.ia_status and not o.revisado_ia %}<span class="aviso aviso-warning pequeno aviso-ia">IA: {{ o.ia_status }}</span>{% endif %}
                 </div>
               </li>
             {% endfor %}
