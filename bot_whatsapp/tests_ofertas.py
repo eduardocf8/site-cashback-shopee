@@ -306,6 +306,20 @@ class TestTelaDeOfertas(BasePainel):
         self.assertTrue(self.client.get("/whatsapp/ofertas/estado/").json()["testando"])
         self.assertContains(self.client.get("/whatsapp/ofertas/"), "Buscando na Shopee")
 
+    def test_mudar_o_intervalo_recalcula_a_proxima_oferta(self):
+        self.client.post("/whatsapp/ofertas/", self.dados(intervalo_minutos="10"))
+        ultima = timezone.now() - timedelta(minutes=1)
+        ConfiguracaoOfertas.objects.filter(conta=self.conta).update(
+            ativo=True, ultimo_envio_em=ultima, proximo_envio_em=ultima + timedelta(minutes=10),
+        )
+        self.client.post("/whatsapp/ofertas/", self.dados(intervalo_minutos="3"))
+        config = ConfiguracaoOfertas.objects.get(conta=self.conta)
+        self.assertEqual(config.proximo_envio_em, ultima + timedelta(minutes=3))
+
+        self.client.post("/whatsapp/ofertas/", self.dados(intervalo_minutos="1"))  # já passou: sai agora
+        config.refresh_from_db()
+        self.assertLessEqual(abs((config.proximo_envio_em - timezone.now()).total_seconds()), 5)
+
     def test_filtros_em_branco_sao_opcionais(self):
         html = self.client.get("/whatsapp/ofertas/").content.decode()
         for campo in ("comissao_minima", "desconto_minimo", "vendas_minimas", "limite_diario"):
