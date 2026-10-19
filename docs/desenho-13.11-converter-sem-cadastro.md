@@ -45,7 +45,9 @@ De cima para baixo, no celular:
 5. Uma linha cinza: "✓ Grátis  ✓ Saque via Pix" (o "Mesmo preço na Shopee" saiu, a pedido
    do dono, pra caber numa linha só).
 6. Divisória "ou" e botão discreto com borda **"Ir pra Shopee sem cadastro"**, com a nota
-   "Ainda dá pra receber o cashback: crie sua conta neste aparelho em até 30 dias."
+   "Ainda dá pra receber o cashback: crie sua conta neste navegador em até 30 dias."
+   ("navegador", não "aparelho": o cookie é por navegador, e no celular o navegador
+   interno do Instagram é diferente do Safari/Chrome.)
 
 ## Como funciona (fluxo)
 
