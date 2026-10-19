@@ -1,4 +1,5 @@
-// Tela das ofertas automáticas: mostra só o campo do tipo de busca escolhido e,
+// Tela das ofertas automáticas: mostra só o campo do tipo de busca escolhido, busca
+// na lista de grupos e,
 // durante o "Testar busca", confere a cada 3 s e recarrega quando terminar.
 (function () {
   var tipos = document.querySelectorAll("#tipo-busca input");
@@ -10,6 +11,38 @@
   }
   tipos.forEach(function (el) { el.addEventListener("change", mostrar); });
   mostrar();
+
+  // Busca na lista de grupos e canais: filtra pelo nome (sem ligar para acento e
+  // maiúscula). Os marcados continuam marcados mesmo escondidos pela busca.
+  var busca = document.getElementById("busca-grupos");
+  var lista = document.getElementById("lista-grupos");
+  var contador = document.getElementById("contador-grupos");
+  var nenhum = document.getElementById("nenhum-grupo");
+  function normalizar(texto) {
+    return (texto || "").toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").trim();
+  }
+  function contar() {
+    if (!lista || !contador) return;
+    var marcados = lista.querySelectorAll('input[type="checkbox"]:checked').length;
+    contador.textContent = marcados ? marcados + " selecionado" + (marcados > 1 ? "s" : "") : "";
+  }
+  if (busca && lista) {
+    busca.addEventListener("input", function () {
+      var termo = normalizar(busca.value);
+      var visiveis = 0;
+      lista.querySelectorAll(".linha-grupo").forEach(function (linha) {
+        var mostra = !termo || normalizar(linha.dataset.nome).indexOf(termo) !== -1;
+        linha.hidden = !mostra;
+        if (mostra) visiveis += 1;
+      });
+      if (nenhum) nenhum.hidden = visiveis > 0;
+    });
+    busca.addEventListener("keydown", function (e) {
+      if (e.key === "Enter") e.preventDefault(); // Enter na busca não envia o formulário
+    });
+    lista.addEventListener("change", contar);
+    contar();
+  }
 
   var raiz = document.getElementById("ofertas");
   if (!raiz || raiz.dataset.testando !== "1" || !window.fetch) return;

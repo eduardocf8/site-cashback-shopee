@@ -80,21 +80,29 @@
     </section>
 
     <section class="card" aria-labelledby="titulo-quando">
-      <h2 id="titulo-quando">Onde e quando</h2>
+      <div class="card-topo">
+        <h2 id="titulo-quando">Onde e quando</h2>
+        <button type="submit" form="form-atualizar-grupos" class="link-botao pequeno">Atualizar lista de grupos e canais</button>
+      </div>
       <div class="campo">{% include "painel/_campo.html" with campo=form.sub_ids %}</div>
       <fieldset class="campo">
         <legend>{{ form.grupos.label }}</legend>
         {% if form.grupos.field.choices %}
-          <div class="lista-grupos">
-            <div class="lista-grupos-topo suave pequeno"><span>Grupo</span><span>Sub ID próprio (opcional)</span></div>
+          <div class="busca-grupos">
+            <input type="search" id="busca-grupos" placeholder="Buscar grupo ou canal" aria-label="Buscar grupo ou canal" autocomplete="off">
+            <span class="suave pequeno" id="contador-grupos" aria-live="polite"></span>
+          </div>
+          <div class="lista-grupos" id="lista-grupos">
+            <div class="lista-grupos-topo suave pequeno"><span>Grupo ou canal</span><span>Sub ID próprio (opcional)</span></div>
             {% for linha in form.linhas_dos_grupos %}
-              <div class="linha-grupo">
-                <label>{{ linha.opcao.tag }}<span>{{ linha.opcao.choice_label }}</span></label>
+              <div class="linha-grupo" data-nome="{{ linha.opcao.choice_label|lower }}">
+                <label>{{ linha.opcao.tag }}<span>{{ linha.opcao.choice_label }}</span>{% if linha.canal %}<span class="selo-canal">Canal</span>{% endif %}</label>
                 <input type="text" name="subid_{{ linha.opcao.data.value }}" value="{{ linha.sub_id }}" placeholder="padrão" maxlength="300" aria-label="Sub ID próprio de {{ linha.opcao.choice_label }}">
               </div>
             {% endfor %}
+            <p class="suave pequeno nenhum-grupo" id="nenhum-grupo" hidden>Nenhum grupo ou canal com esse nome.</p>
           </div>
-          <span class="ajuda">Deixe o Sub ID próprio vazio para o grupo usar o padrão. Ex: 4 grupos com o padrão e 1 com “vip”.</span>
+          <span class="ajuda">Deixe o Sub ID próprio vazio para usar o padrão. Ex: 4 grupos com o padrão e 1 com “vip”. Aparecem só os canais em que você é dono ou administrador; neles a oferta vai como texto com a prévia do link.</span>
         {% else %}
           <p class="suave pequeno">Conecte o WhatsApp na aba <a href="{% url 'painel_whatsapp' %}">Conexão</a> para ver seus grupos.</p>
         {% endif %}
@@ -161,5 +169,6 @@
     </section>
   </div>
 </div>
+<form method="post" action="{% url 'painel_whatsapp_grupos' %}" id="form-atualizar-grupos" hidden>{% csrf_token %}<input type="hidden" name="voltar" value="{% url 'painel_whatsapp_ofertas' %}"></form>
 <script src="{% static 'painel/ofertas.js' %}" defer></script>
 {% endblock %}

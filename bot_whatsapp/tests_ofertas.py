@@ -250,7 +250,9 @@ class TestTelaDeOfertas(BasePainel):
         self.entrar()
         self.conta.shopee_validado_em = timezone.now()
         self.conta.save()
-        ConexaoWhatsApp.objects.create(conta=self.conta, estado="conectado", grupos=GRUPOS)
+        ConexaoWhatsApp.objects.create(conta=self.conta, estado="conectado", grupos=GRUPOS + [
+            {"jid": "77@newsletter", "nome": "Canal da Bia", "tipo": "canal"},
+        ])
 
     def dados(self, **extra):
         base = {
@@ -289,6 +291,19 @@ class TestTelaDeOfertas(BasePainel):
         self.client.post("/whatsapp/ofertas/testar/")
         self.assertTrue(self.client.get("/whatsapp/ofertas/estado/").json()["testando"])
         self.assertContains(self.client.get("/whatsapp/ofertas/"), "Buscando na Shopee")
+
+    def test_lista_tem_busca_canais_e_atualizar(self):
+        html = self.client.get("/whatsapp/ofertas/").content.decode()
+        self.assertIn('id="busca-grupos"', html)
+        self.assertIn('class="selo-canal">Canal</span>', html)
+        resposta = self.client.post("/whatsapp/grupos/", {"voltar": "/whatsapp/ofertas/"})
+        self.assertRedirects(resposta, "/whatsapp/ofertas/", fetch_redirect_response=False)
+        self.assertTrue(ConexaoWhatsApp.objects.get(conta=self.conta).pedido_grupos)
+        resposta = self.client.post("/whatsapp/grupos/", {"voltar": "https://golpe.com/"})
+        self.assertRedirects(resposta, "/whatsapp/", fetch_redirect_response=False)
+
+        self.client.post("/whatsapp/ofertas/", self.dados(grupos=["77@newsletter"]))
+        self.assertEqual(ConfiguracaoOfertas.objects.get(conta=self.conta).grupos, [{"jid": "77@newsletter", "nome": "Canal da Bia"}])
 
     def test_erros_do_formulario(self):
         resposta = self.client.post("/whatsapp/ofertas/", self.dados(

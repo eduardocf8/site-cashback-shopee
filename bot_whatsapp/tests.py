@@ -5,7 +5,7 @@ from unittest import mock
 
 from django.test import TestCase
 from django.utils import timezone
-from neonize.proto.Neonize_pb2 import JID, GroupInfo, GroupName
+from neonize.proto.Neonize_pb2 import JID, GroupInfo, GroupName, NewsletterMetadata
 
 from licencas.models import ContaAppfiliado
 from painel.tests import BasePainel
@@ -13,6 +13,15 @@ from painel.tests import BasePainel
 from . import gerenciador as g
 from . import servico
 from .models import ConexaoWhatsApp, EnvioWhatsApp, EventoWhatsApp
+
+
+def canal(numero, nome, papel, seguidores):
+    meta = NewsletterMetadata()
+    meta.ID.CopyFrom(JID(User=numero, Server="newsletter", Device=0, RawAgent=0, Integrator=0, IsEmpty=False))
+    meta.ThreadMeta.Name.Text = nome
+    meta.ThreadMeta.SubscriberCount = seguidores
+    meta.ViewerMeta.Role = meta.ViewerMeta.DESCRIPTOR.fields_by_name["Role"].enum_type.values_by_name[papel].number
+    return meta
 
 
 class SessaoFalsa:
@@ -33,6 +42,9 @@ class SessaoFalsa:
             GroupInfo(JID=JID(User="120363001", Server="g.us"), GroupName=GroupName(Name="Ofertas VIP")),
             GroupInfo(JID=JID(User="120363002", Server="g.us"), GroupName=GroupName(Name="achadinhos")),
         ]
+        self.cliente.get_subscribed_newletters.return_value = [canal("111", "Canal da Bia", "OWNER", 5400),
+                                                              canal("222", "Canal que sigo", "SUBSCRIBER", 90000),
+                                                              canal("333", "Canal da equipe", "ADMIN", 300)]
         SessaoFalsa.criadas.append(self)
 
     def iniciar(self):
@@ -93,8 +105,11 @@ class TestGerenciador(TestCase):
         self.assertEqual(conexao.estado, "conectado")
         self.assertEqual((conexao.numero, conexao.nome, conexao.qr_codigo), ("5511988887777", "Bia", ""))
         self.assertEqual(JID.FromString(base64.b64decode(conexao.jid)).Device, 12)
-        self.assertEqual([gr["nome"] for gr in conexao.grupos], ["achadinhos", "Ofertas VIP"])
+        # grupos primeiro, depois só os canais onde pode postar (dono ou admin)
+        self.assertEqual([gr["nome"] for gr in conexao.grupos],
+                         ["achadinhos", "Ofertas VIP", "Canal da Bia", "Canal da equipe"])
         self.assertEqual(conexao.grupos[1]["jid"], "120363001@g.us")
+        self.assertEqual(conexao.grupos[2], {"jid": "111@newsletter", "nome": "Canal da Bia", "participantes": 5400, "tipo": "canal"})
         self.assertFalse(conexao.pedido_grupos)
         self.assertEqual(self.eventos(), ["qr", "conectou"])
 
@@ -142,6 +157,28 @@ class TestGerenciador(TestCase):
         self.ger.ultimo_envio[self.conta.pk] -= g.ESPACO_ENTRE_ENVIOS
         self.ger.uma_volta()
         self.assertEqual(sessao.cliente.send_message.call_count, 2)
+
+    def test_canal_recebe_texto_com_previa_do_link(self):
+        sessao = self.conectar()
+        envio = EnvioWhatsApp.objects.create(
+            conta=self.conta, destino="111@newsletter", texto="Oferta boa\n🛒 Compre aqui:\nhttps://s.shopee.com.br/abc",
+            imagem_url="https://cf.shopee.com.br/file/1", produto="Fone Bluetooth", link_afiliado="https://s.shopee.com.br/abc",
+        )
+        with mock.patch.object(g, "miniatura", return_value=b"jpeg") as foto:
+            self.ger.uma_volta()
+        foto.assert_called_once_with("https://cf.shopee.com.br/file/1")
+        sessao.cliente.send_image.assert_not_called()
+        destino, mensagem = sessao.cliente.send_message.call_args.args
+        self.assertEqual((destino.User, destino.Server), ("111", "newsletter"))
+        previa = mensagem.extendedTextMessage
+        self.assertEqual((previa.matchedText, previa.title, previa.JPEGThumbnail), ("https://s.shopee.com.br/abc", "Fone Bluetooth", b"jpeg"))
+        self.assertIn("Oferta boa", previa.text)
+        envio.refresh_from_db()
+        self.assertEqual(envio.estado, "enviado")
+
+    def test_previa_sem_link_vira_texto_simples(self):
+        envio = EnvioWhatsApp(texto="Só um aviso", destino="1@newsletter")
+        self.assertEqual(g.mensagem_com_previa(envio).conversation, "Só um aviso")
 
     def test_envio_desiste_se_ficar_muito_tempo_sem_conexao(self):
         envio = EnvioWhatsApp.objects.create(conta=self.conta, destino="1@g.us", texto="Oi")

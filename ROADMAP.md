@@ -2865,6 +2865,12 @@ posta as ofertas, sem programa no computador e sem janela de navegador.
 - [x] **Sub ID por grupo, flexível**: "Sub IDs padrão" para todos + um "Sub ID próprio"
       opcional ao lado de cada grupo (ex: 4 grupos com o padrão e 1 com "vip"). Gera um
       link por combinação de Sub IDs; o texto é o mesmo, só o link muda.
+- [x] **Canais como destino**: a lista traz os canais em que o número é dono ou
+      administrador (só esses aceitam postagem). Nos canais a oferta vai como texto com a
+      prévia do link montada no servidor (título + foto de até 300 px), porque foto com
+      legenda em canal exige um "media handle" que a biblioteca não envia.
+- [x] **Busca na lista de grupos e canais** (sem acento/maiúscula), contador de
+      selecionados e "Atualizar lista de grupos e canais" na própria tela.
 - [x] Envio espaçado: no máximo 1 mensagem a cada 3 s por número; contas se revezam.
 - [x] Tela `/whatsapp/ofertas/` (aba ao lado de "Conexão"): ligar/pausar, "Testar
       busca" (as próximas 5 ofertas, com a mensagem), últimas ofertas enviadas.
