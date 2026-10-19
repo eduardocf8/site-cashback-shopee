@@ -194,14 +194,16 @@ def resultados_view(request):
             "sub_ids": resultados.por_sub_id(conta, periodo["inicio"], periodo["fim"]),
             "meta": telas.situacao_meta(conta, periodo["fim"].year, periodo["fim"].month, hoje) if mesmo_mes else None,
         })
-        contexto.update(_vendas_da_tela(conta, periodo, request.GET))
+        celular = request.COOKIES.get(resultados.COOKIE_TELA) == "celular"
+        contexto.update(_vendas_da_tela(conta, periodo, request.GET, celular))
     return render(request, "painel/resultados.html", _contexto(request, "resultados", **contexto))
 
 
-def _vendas_da_tela(conta, periodo, parametros) -> dict:
-    """Produtos mais vendidos e a lista de vendas (20 por página) do período."""
+def _vendas_da_tela(conta, periodo, parametros, celular=False) -> dict:
+    """Produtos mais vendidos e a lista de vendas do período (20 por página; 10 no celular)."""
     filtradas = resultados.filtrar_vendas(conta, periodo["inicio"], periodo["fim"], parametros)
-    pagina = Paginator(filtradas["vendas"], resultados.VENDAS_POR_PAGINA).get_page(parametros.get("pagina"))
+    por_pagina = resultados.VENDAS_POR_PAGINA_CELULAR if celular else resultados.VENDAS_POR_PAGINA
+    pagina = Paginator(filtradas["vendas"], por_pagina).get_page(parametros.get("pagina"))
     nome_do_grupo = filtradas["nome_do_grupo"]
     for venda in pagina:
         venda.grupo = nome_do_grupo(venda.sub_id)
@@ -210,6 +212,7 @@ def _vendas_da_tela(conta, periodo, parametros) -> dict:
         "pagina_vendas": pagina,
         "paginas_vendas": pagina.paginator.get_elided_page_range(pagina.number, on_each_side=1, on_ends=1),
         "grupos_vendas": filtradas["grupos"],
+        "tela_vendas": "celular" if celular else "computador",
         "filtros_vendas": filtradas["filtros"],
         "situacoes_vendas": resultados.FILTROS_SITUACAO,
         "tem_vendas_guardadas": resultados.VendaItem.objects.filter(conta=conta).exists(),

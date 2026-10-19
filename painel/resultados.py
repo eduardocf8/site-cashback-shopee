@@ -415,6 +415,8 @@ def resumo_das_regras(conta, hoje: date) -> list[dict]:
 # --- Vendas (itens vendidos) -------------------------------------------------------------
 
 VENDAS_POR_PAGINA = 20
+VENDAS_POR_PAGINA_CELULAR = 10  # no celular cada venda vira um cartão mais alto
+COOKIE_TELA = "appf_tela"  # "celular" ou "computador", marcado pelo vendas.js
 ORDENS_VENDAS = {"recentes": ("-comprado_em", "pedido_id", "posicao"), "comissao": ("-comissao", "-comprado_em")}
 FILTROS_SITUACAO = [("", "Todos"), (VendaItem.PENDENTE, "Pendentes"), (VendaItem.CONCLUIDO, "Concluídos"),
                     (VendaItem.CANCELADO, "Cancelados")]

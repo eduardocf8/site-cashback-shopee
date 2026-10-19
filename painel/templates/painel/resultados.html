@@ -104,7 +104,7 @@
   {% endif %}
 </section>
 
-<section class="card" id="vendas" aria-labelledby="titulo-vendas">
+<section class="card" id="vendas" aria-labelledby="titulo-vendas" data-tela="{{ tela_vendas }}">
   <div class="card-topo">
     <h2 id="titulo-vendas">Vendas do período</h2>
     {% if pagina_vendas.paginator.count %}<a class="botao botao-claro botao-pequeno" href="{% url 'painel_exportar_vendas' %}{% querystring pagina=None %}" download>{% include "painel/_icone.html" with caminho=icones.baixar %}Exportar Excel</a>{% endif %}

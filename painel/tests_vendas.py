@@ -181,3 +181,16 @@ class TestLinksDosFiltros(TestTelaDeVendas):
         self.assertIn('href="?periodo=hoje"', html)
         self.assertIn('href="?periodo=mes&amp;pagina=2#vendas"', html)
         self.assertIn('href="/resultados/vendas.xlsx?periodo=mes"', html)
+
+
+class TestPaginasNoCelular(TestTelaDeVendas):
+    def test_celular_mostra_10_por_pagina(self):
+        for i in range(25):
+            self.venda(f"Fone {i}")
+        computador = self.client.get("/resultados/", {"periodo": "30dias"})
+        self.assertEqual(len(computador.context["pagina_vendas"].object_list), 20)
+        self.assertContains(computador, 'data-tela="computador"')
+        self.client.cookies["appf_tela"] = "celular"
+        celular = self.client.get("/resultados/", {"periodo": "30dias"})
+        self.assertEqual((len(celular.context["pagina_vendas"].object_list), celular.context["pagina_vendas"].paginator.num_pages), (10, 3))
+        self.assertContains(celular, 'data-tela="celular"')
