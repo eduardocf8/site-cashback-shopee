@@ -42,15 +42,41 @@
 
     <h2 style="margin:26px 0 8px;font-size:16px;">{{ nome_mes }} até ontem</h2>
     <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="border-collapse:collapse;font-size:14px;">
-      <tr><td style="padding:6px 0;color:#5C6A61;">Faturamento</td><td align="right" style="padding:6px 0;font-weight:bold;">{{ mes.faturamento|brl }}</td></tr>
-      <tr><td style="padding:6px 0;color:#5C6A61;border-top:1px solid #EDE8D9;">Comissão estimada</td><td align="right" style="padding:6px 0;font-weight:bold;border-top:1px solid #EDE8D9;">{{ mes.comissao_estimada|brl }}</td></tr>
-      <tr><td style="padding:6px 0;color:#5C6A61;border-top:1px solid #EDE8D9;">Comissão validada</td><td align="right" style="padding:6px 0;font-weight:bold;border-top:1px solid #EDE8D9;">{{ mes.comissao_validada|brl }}</td></tr>
-      <tr><td style="padding:6px 0;color:#5C6A61;border-top:1px solid #EDE8D9;">Pedidos</td><td align="right" style="padding:6px 0;font-weight:bold;border-top:1px solid #EDE8D9;">{{ mes.pedidos|numero }}</td></tr>
+      <tr><td style="padding:7px 10px;color:#5C6A61;">Pedidos</td><td align="right" style="padding:7px 10px;font-weight:bold;">{{ mes.pedidos|numero }}</td></tr>
+      <tr><td style="padding:7px 10px;color:#5C6A61;border-top:1px solid #EDE8D9;">Faturamento</td><td align="right" style="padding:7px 10px;font-weight:bold;border-top:1px solid #EDE8D9;">{{ mes.faturamento|brl }}</td></tr>
+      <tr><td style="padding:7px 10px;color:#5C6A61;border-top:1px solid #EDE8D9;">Comissão estimada</td><td align="right" style="padding:7px 10px;font-weight:bold;border-top:1px solid #EDE8D9;">{{ mes.comissao_estimada|brl }}</td></tr>
+      <tr><td style="padding:10px;background:#1F3A2E;color:#B9C7BE;border-radius:10px 0 0 10px;">Comissão validada</td><td align="right" style="padding:10px;background:#1F3A2E;color:#F2C230;font-weight:bold;font-size:16px;border-radius:0 10px 10px 0;white-space:nowrap;">{{ mes.comissao_validada|brl }}</td></tr>
     </table>
+
     {% if meta %}
-      <p style="margin:12px 0 0;padding:10px 12px;background:#FBF1CF;border-radius:10px;font-size:14px;color:#7A5B00;">
-        {% if meta_proxima %}Meta: faltam <strong>{{ meta_proxima.falta|brl }}</strong> de faturamento para a faixa {{ meta_proxima.nome }}.{% else %}Meta: todas as faixas do mês batidas! 🎉{% endif %}
-      </p>
+      <h2 style="margin:26px 0 8px;font-size:16px;">Meta de {{ nome_mes }}</h2>
+      <p style="margin:0 0 8px;font-size:14px;"><strong style="font-size:18px;">{{ meta.faturamento|brl }}</strong> <span style="color:#5C6A61;">faturados até ontem</span></p>
+      <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="border-collapse:collapse;">
+        <tr>
+          {% if meta.porcentagem_barra %}<td width="{{ meta.porcentagem_barra }}%" style="height:10px;background:#F2C230;border-radius:999px 0 0 999px;font-size:0;line-height:0;{% if meta.porcentagem_barra >= 100 %}border-radius:999px;{% endif %}">&nbsp;</td>{% endif %}
+          {% if meta.porcentagem_barra < 100 %}<td style="height:10px;background:#EDE8D9;border-radius:{% if meta.porcentagem_barra %}0 999px 999px 0{% else %}999px{% endif %};font-size:0;line-height:0;">&nbsp;</td>{% endif %}
+        </tr>
+      </table>
+      <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="border-collapse:collapse;font-size:14px;margin-top:12px;">
+        <tr><td style="padding:6px 0;color:#5C6A61;font-size:12px;">Faixa</td><td align="right" style="padding:6px 0;color:#5C6A61;font-size:12px;">Faturamento</td><td align="right" style="padding:6px 0;color:#5C6A61;font-size:12px;">Bônus</td><td align="right" style="padding:6px 0;color:#5C6A61;font-size:12px;"></td></tr>
+        {% for f in meta.faixas_tela %}
+          <tr>
+            <td style="padding:7px 0;border-top:1px solid #EDE8D9;font-weight:bold;">{{ f.nome }}</td>
+            <td align="right" style="padding:7px 0;border-top:1px solid #EDE8D9;white-space:nowrap;">{{ f.faturamento|brl0 }}</td>
+            <td align="right" style="padding:7px 0;border-top:1px solid #EDE8D9;white-space:nowrap;">{% if f.bonus %}{{ f.bonus|brl0 }}{% else %}-{% endif %}</td>
+            <td align="right" style="padding:7px 0 7px 10px;border-top:1px solid #EDE8D9;white-space:nowrap;">{% if f.batida %}<span style="color:#1F6B3E;font-weight:bold;">✓ Batida</span>{% else %}<span style="color:#5C6A61;">faltam {{ f.falta|brl0 }}</span>{% endif %}</td>
+          </tr>
+        {% endfor %}
+      </table>
+      <div style="margin-top:12px;padding:12px 14px;background:#FBF1CF;border-radius:10px;font-size:14px;color:#5C4400;line-height:1.5;">
+        {% if meta.proxima %}
+          Faltam <strong>{{ meta.falta|brl }}</strong> para a faixa <strong>{{ meta.nome_proxima }}</strong>{% if meta.proxima.bonus %} (bônus de {{ meta.proxima.bonus|brl0 }}){% endif %}: dá <strong>{{ meta.por_dia|brl }} por dia</strong> nos {{ meta.dias_restantes }} dia{{ meta.dias_restantes|pluralize }} que faltam.<br>
+          No ritmo atual, o mês fecha em <strong>{{ meta.projecao|brl0 }}</strong>{% if meta.nome_faixa_projetada %}, na faixa {{ meta.nome_faixa_projetada }}{% else %}, abaixo da primeira faixa{% endif %}.
+        {% else %}
+          <strong>Todas as faixas do mês batidas! 🎉</strong>
+        {% endif %}
+        {% if meta.bonus_garantido %}<br>Bônus garantido até agora: <strong>{{ meta.bonus_garantido|brl }}</strong>.{% endif %}
+      </div>
     {% endif %}
 
     {% if sub_ids %}

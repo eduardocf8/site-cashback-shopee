@@ -40,7 +40,6 @@ def montar(conta, hoje: date) -> dict:
     ontem = hoje - timedelta(days=1)
     inicio_mes = ontem.replace(day=1)
     meta = telas.situacao_meta(conta, ontem.year, ontem.month, ontem + timedelta(days=1))
-    proxima = next((f for f in meta.get("faixas_tela", []) if not f["batida"]), None)
     return {
         "conta": conta,
         "ontem": ontem,
@@ -48,7 +47,6 @@ def montar(conta, hoje: date) -> dict:
         "dia_ontem": resultados.totais(conta, ontem, ontem),
         "mes": resultados.totais(conta, inicio_mes, ontem),
         "meta": meta if meta.get("faixas_tela") else None,
-        "meta_proxima": proxima,
         "sub_ids": resultados.por_sub_id(conta, ontem, ontem, limite=8),
         "produtos": resultados.ranking_produtos(resultados.vendas_do_periodo(conta, ontem, ontem), limite=3),
         "bot": _ofertas_do_bot(conta, ontem),
