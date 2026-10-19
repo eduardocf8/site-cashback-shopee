@@ -143,6 +143,10 @@ class ConfiguracaoOfertas(models.Model):
 
     cupom = models.CharField(max_length=120, blank=True)
     sub_ids = models.CharField(max_length=300, blank=True, help_text="Até 5, separados por vírgula. Só letras e números.")
+    # Sub ID próprio de cada grupo ({jid: "a, b"}); grupo sem um próprio usa o
+    # sub_ids (padrão). Guarda também os de grupos desmarcados, para não perder o
+    # que foi digitado.
+    sub_ids_por_grupo = models.JSONField(default=dict, blank=True)
 
     grupos = models.JSONField(default=list, blank=True, help_text='[{"jid": "...@g.us", "nome": "..."}]')
     intervalo_minutos = models.PositiveSmallIntegerField(default=5)
@@ -177,8 +181,10 @@ class ConfiguracaoOfertas(models.Model):
     def testando(self) -> bool:
         return bool(self.pedido_teste_em and (not self.teste_em or self.teste_em < self.pedido_teste_em))
 
-    def lista_sub_ids(self) -> list[str]:
-        return [s.strip() for s in self.sub_ids.split(",") if s.strip()][:5]
+    def lista_sub_ids(self, jid: str = "") -> list[str]:
+        """Sub IDs do link desse grupo: os próprios dele, se tiver; senão, o padrão."""
+        texto = (self.sub_ids_por_grupo or {}).get(jid, "") or self.sub_ids
+        return [s.strip() for s in str(texto or "").split(",") if s.strip()][:5]
 
     def chave_da_busca(self) -> str:
         """Muda quando muda algo que altera a lista de produtos (aí a busca recomeça)."""

@@ -110,14 +110,15 @@ class ConfiguracaoOfertasForm(forms.ModelForm):
         labels = {
             "tipo_busca": "Buscar", "palavra_chave": "Palavra-chave", "loja": "Link da loja",
             "ordenacao": "Ordem", "comissao_minima": "Comissão mínima (%)", "desconto_minimo": "Desconto mínimo (%)",
-            "vendas_minimas": "Vendas mínimas", "cupom": "Cupom (opcional)", "sub_ids": "Sub IDs (opcional)",
+            "vendas_minimas": "Vendas mínimas", "cupom": "Cupom (opcional)", "sub_ids": "Sub IDs padrão (opcional)",
             "intervalo_minutos": "Uma oferta a cada (minutos)", "horario_inicio": "Das", "horario_fim": "Até",
             "limite_diario": "Máximo de ofertas por dia (0 = sem limite)",
             "repetir_apos_dias": "Não repetir o mesmo produto no mesmo grupo por (dias)",
         }
         help_texts = {
             "loja": "Cole o link da loja na Shopee (ou de um produto dela).",
-            "sub_ids": "Até 5, separados por vírgula. Só letras e números. Ex: grupos, whatsapp",
+            "sub_ids": "Valem para todos os grupos que não têm um Sub ID próprio (logo abaixo, na lista de "
+                       "grupos). Até 5, separados por vírgula, só letras e números. Ex: grupos, whatsapp",
             "cupom": "Aparece em todas as ofertas como “Cupom: …”.",
             "limite_diario": "", "repetir_apos_dias": "", "dias_semana": "",
         }
@@ -181,6 +182,19 @@ class ConfiguracaoOfertasForm(forms.ModelForm):
             raise forms.ValidationError(str(erro))
         return ", ".join(sub_ids)
 
+    def _sub_id_digitado(self, jid: str) -> str:
+        if self.is_bound:
+            return str(self.data.get(f"subid_{jid}", "")).strip()
+        return (self.instance.sub_ids_por_grupo or {}).get(jid, "")
+
+    @property
+    def linhas_dos_grupos(self) -> list[dict]:
+        """Cada grupo da lista com o campo de Sub ID próprio dele."""
+        return [
+            {"opcao": opcao, "sub_id": self._sub_id_digitado(opcao.data["value"])}
+            for opcao in self["grupos"]
+        ]
+
     def clean_grupos(self):
         return [{"jid": jid, "nome": self.nomes_dos_grupos.get(jid, "")} for jid in self.cleaned_data.get("grupos", [])]
 
@@ -200,4 +214,22 @@ class ConfiguracaoOfertasForm(forms.ModelForm):
             self.add_error("preco_maximo", "O preço máximo é menor que o mínimo.")
         if not dados.get("dias_semana"):
             self.add_error("dias_semana", "Escolha pelo menos um dia.")
+        self._limpar_sub_ids_por_grupo(dados)
         return dados
+
+    def _limpar_sub_ids_por_grupo(self, dados):
+        from bot_whatsapp.shopee_ofertas import SubIdInvalido, validar_sub_ids
+
+        por_grupo = dict(self.instance.sub_ids_por_grupo or {})
+        for jid, nome in self.nomes_dos_grupos.items():
+            sub_ids = [s.strip() for s in self._sub_id_digitado(jid).split(",") if s.strip()]
+            try:
+                validar_sub_ids(sub_ids)
+            except SubIdInvalido as erro:
+                self.add_error("grupos", f"Sub ID de “{nome}”: {erro}")
+                continue
+            if sub_ids:
+                por_grupo[jid] = ", ".join(sub_ids)
+            else:
+                por_grupo.pop(jid, None)
+        self.instance.sub_ids_por_grupo = por_grupo

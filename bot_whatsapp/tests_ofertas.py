@@ -103,7 +103,11 @@ class TestShopeeOfertas(TestCase):
         self.assertIn("🛒 Compre aqui:\nhttps://s.shopee.com.br/abc", texto)
 
 
-@mock.patch.object(shopee_ofertas, "gerar_link_afiliado", side_effect=lambda a, s, url, subs: f"https://s.shopee.com.br/{url[-1]}")
+def link_falso(app_id, secret, url, sub_ids):
+    return f"https://s.shopee.com.br/{url[-1]}" + (f"-{'-'.join(sub_ids)}" if sub_ids else "")
+
+
+@mock.patch.object(shopee_ofertas, "gerar_link_afiliado", side_effect=link_falso)
 class TestMotor(TestCase):
     def setUp(self):
         self.conta = ContaAppfiliado.objects.create(
@@ -132,14 +136,27 @@ class TestMotor(TestCase):
         self.rodar({1: [produto(1), produto(2)]})
         self.assertEqual(self.envios(), [("1", "1@g.us"), ("1", "2@g.us")])
         envio = EnvioWhatsApp.objects.first()
-        self.assertEqual((envio.origem, envio.imagem_url, envio.link_afiliado), ("oferta", "https://cf.shopee.com.br/file/1", "https://s.shopee.com.br/1"))
-        self.assertIn("https://s.shopee.com.br/1", envio.texto)
+        self.assertEqual((envio.origem, envio.imagem_url, envio.link_afiliado), ("oferta", "https://cf.shopee.com.br/file/1", "https://s.shopee.com.br/1-grupos"))
+        self.assertIn("https://s.shopee.com.br/1-grupos", envio.texto)
         self.assertEqual(self.config.proximo_envio_em, AGORA + timedelta(minutes=5))
 
         self.rodar({1: [produto(1), produto(2)]}, AGORA + timedelta(minutes=2))  # antes do intervalo
         self.assertEqual(len(self.envios()), 2)
         self.rodar({1: [produto(1), produto(2)]}, AGORA + timedelta(minutes=5))
         self.assertEqual(self.envios()[2:], [("2", "1@g.us"), ("2", "2@g.us")])
+
+    def test_sub_id_proprio_de_um_grupo_e_padrao_nos_outros(self, gerar_link):
+        tres = GRUPOS + [{"jid": "3@g.us", "nome": "VIP"}]
+        ConfiguracaoOfertas.objects.update(grupos=tres, sub_ids_por_grupo={"3@g.us": "vip", "9@g.us": "desmarcado"})
+        self.rodar({1: [produto(1)]})
+        links = dict(EnvioWhatsApp.objects.values_list("destino", "link_afiliado"))
+        self.assertEqual(links, {
+            "1@g.us": "https://s.shopee.com.br/1-grupos", "2@g.us": "https://s.shopee.com.br/1-grupos",
+            "3@g.us": "https://s.shopee.com.br/1-vip",
+        })
+        self.assertEqual(gerar_link.call_count, 2)  # um link por combinação de Sub IDs
+        textos = {t.replace("1-grupos", "X").replace("1-vip", "X") for t in EnvioWhatsApp.objects.values_list("texto", flat=True)}
+        self.assertEqual(len(textos), 1)  # mesmo texto em todos, só o link muda
 
     def test_nao_repete_no_mesmo_grupo_por_n_dias(self, _link):
         EnvioWhatsApp.objects.create(conta=self.conta, destino="1@g.us", origem="oferta", item_id="1", estado="enviado")
@@ -240,7 +257,7 @@ class TestTelaDeOfertas(BasePainel):
             "tipo_busca": "palavra_chave", "palavra_chave": "fone", "loja": "", "ordenacao": "mais_vendidos",
             "comissao_minima": "10", "desconto_minimo": "0", "preco_minimo": "19,90", "preco_maximo": "",
             "vendas_minimas": "0", "avaliacao_minima": "4,5", "cupom": "", "sub_ids": "grupos, zap",
-            "grupos": ["2@g.us"], "intervalo_minutos": "10", "horario_inicio": "08:00", "horario_fim": "22:00",
+            "grupos": ["2@g.us"], "subid_1@g.us": "vip", "subid_2@g.us": "", "intervalo_minutos": "10", "horario_inicio": "08:00", "horario_fim": "22:00",
             "dias_semana": ["0", "1", "2", "3", "4"], "limite_diario": "40", "repetir_apos_dias": "7",
         }
         base.update(extra)
@@ -257,6 +274,10 @@ class TestTelaDeOfertas(BasePainel):
         self.assertEqual(config.grupos, [{"jid": "2@g.us", "nome": "Achadinhos"}])
         self.assertEqual((config.preco_minimo, config.avaliacao_minima, config.sub_ids), (Decimal("19.90"), Decimal("4.5"), "grupos, zap"))
         self.assertEqual(config.dias_semana, [0, 1, 2, 3, 4])
+        self.assertEqual(config.sub_ids_por_grupo, {"1@g.us": "vip"})  # grupo desmarcado mantém o que foi digitado
+        self.assertEqual(config.lista_sub_ids("1@g.us"), ["vip"])
+        self.assertEqual(config.lista_sub_ids("2@g.us"), ["grupos", "zap"])
+        self.assertContains(self.client.get("/whatsapp/ofertas/"), 'name="subid_1@g.us" value="vip"')
 
         self.client.post("/whatsapp/ofertas/ligar/")
         config.refresh_from_db()
@@ -272,9 +293,11 @@ class TestTelaDeOfertas(BasePainel):
     def test_erros_do_formulario(self):
         resposta = self.client.post("/whatsapp/ofertas/", self.dados(
             palavra_chave="", sub_ids="com-hifen", preco_minimo="50", preco_maximo="10", dias_semana=[],
+            **{"subid_2@g.us": "tem espaço"},
         ))
         html = resposta.content.decode()
-        for erro in ["Informe a palavra-chave.", "só pode ter letras e números", "menor que o mínimo", "pelo menos um dia"]:
+        for erro in ["Informe a palavra-chave.", "só pode ter letras e números", "menor que o mínimo", "pelo menos um dia",
+                     "Sub ID de “Achadinhos”"]:
             self.assertIn(erro, html)
         self.assertFalse(ConfiguracaoOfertas.objects.filter(conta=self.conta).exclude(palavra_chave="").exists())
 

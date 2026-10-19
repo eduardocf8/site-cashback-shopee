@@ -2862,6 +2862,9 @@ posta as ofertas, sem programa no computador e sem janela de navegador.
       Sub IDs, texto pelo mesmo formatador do app e **foto do produto com o texto na
       legenda** (sem depender da prévia do link). Sem produto novo: tenta de novo em 30
       min; erro: em 5 min. O motivo de não estar enviando aparece no painel.
+- [x] **Sub ID por grupo, flexível**: "Sub IDs padrão" para todos + um "Sub ID próprio"
+      opcional ao lado de cada grupo (ex: 4 grupos com o padrão e 1 com "vip"). Gera um
+      link por combinação de Sub IDs; o texto é o mesmo, só o link muda.
 - [x] Envio espaçado: no máximo 1 mensagem a cada 3 s por número; contas se revezam.
 - [x] Tela `/whatsapp/ofertas/` (aba ao lado de "Conexão"): ligar/pausar, "Testar
       busca" (as próximas 5 ofertas, com a mensagem), últimas ofertas enviadas.

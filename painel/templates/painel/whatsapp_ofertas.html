@@ -77,15 +77,24 @@
     <section class="card" aria-labelledby="titulo-mensagem">
       <h2 id="titulo-mensagem">Mensagem</h2>
       <div class="campo">{% include "painel/_campo.html" with campo=form.cupom %}</div>
-      <div class="campo">{% include "painel/_campo.html" with campo=form.sub_ids %}</div>
     </section>
 
     <section class="card" aria-labelledby="titulo-quando">
       <h2 id="titulo-quando">Onde e quando</h2>
+      <div class="campo">{% include "painel/_campo.html" with campo=form.sub_ids %}</div>
       <fieldset class="campo">
         <legend>{{ form.grupos.label }}</legend>
         {% if form.grupos.field.choices %}
-          <div class="lista-grupos">{% for opcao in form.grupos %}<label>{{ opcao.tag }}<span>{{ opcao.choice_label }}</span></label>{% endfor %}</div>
+          <div class="lista-grupos">
+            <div class="lista-grupos-topo suave pequeno"><span>Grupo</span><span>Sub ID próprio (opcional)</span></div>
+            {% for linha in form.linhas_dos_grupos %}
+              <div class="linha-grupo">
+                <label>{{ linha.opcao.tag }}<span>{{ linha.opcao.choice_label }}</span></label>
+                <input type="text" name="subid_{{ linha.opcao.data.value }}" value="{{ linha.sub_id }}" placeholder="padrão" maxlength="300" aria-label="Sub ID próprio de {{ linha.opcao.choice_label }}">
+              </div>
+            {% endfor %}
+          </div>
+          <span class="ajuda">Deixe o Sub ID próprio vazio para o grupo usar o padrão. Ex: 4 grupos com o padrão e 1 com “vip”.</span>
         {% else %}
           <p class="suave pequeno">Conecte o WhatsApp na aba <a href="{% url 'painel_whatsapp' %}">Conexão</a> para ver seus grupos.</p>
         {% endif %}

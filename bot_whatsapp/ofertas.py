@@ -33,6 +33,7 @@ ESPERA_APOS_ERRO = timedelta(minutes=5)
 VALIDADE_DO_CACHE = 60 * 60  # segundos
 OFERTAS_NO_TESTE = 5
 LINK_DE_EXEMPLO = "https://s.shopee.com.br/seu-link"
+MARCADOR_DO_LINK = "{{LINK_DE_AFILIADO}}"
 
 
 def credenciais(conta) -> tuple[str, str]:
@@ -140,16 +141,23 @@ class Motor:
             return
 
         app_id, secret = credenciais(config.conta)
-        link = shopee_ofertas.gerar_link_afiliado(app_id, secret, produto["link"], config.lista_sub_ids())
-        texto = montar_texto(produto, link, config.cupom)
-        EnvioWhatsApp.objects.bulk_create([
-            EnvioWhatsApp(
+        # Mesmo texto para todos os grupos; só o link muda quando cada grupo tem o seu
+        # Sub ID (um link por combinação de Sub IDs).
+        modelo = montar_texto(produto, MARCADOR_DO_LINK, config.cupom)
+        links: dict[tuple, str] = {}
+        envios = []
+        for grupo in grupos:
+            sub_ids = tuple(config.lista_sub_ids(grupo["jid"]))
+            if sub_ids not in links:
+                links[sub_ids] = shopee_ofertas.gerar_link_afiliado(app_id, secret, produto["link"], list(sub_ids))
+            link = links[sub_ids]
+            envios.append(EnvioWhatsApp(
                 conta=config.conta, destino=grupo["jid"], destino_nome=grupo.get("nome", ""),
-                texto=texto, imagem_url=produto["imagem"][:1000], origem=EnvioWhatsApp.OFERTA,
-                item_id=produto["item_id"], produto=produto["nome"][:300], link_afiliado=link[:500],
-            )
-            for grupo in grupos
-        ])
+                texto=modelo.replace(MARCADOR_DO_LINK, link), imagem_url=produto["imagem"][:1000],
+                origem=EnvioWhatsApp.OFERTA, item_id=produto["item_id"], produto=produto["nome"][:300],
+                link_afiliado=link[:500],
+            ))
+        EnvioWhatsApp.objects.bulk_create(envios)
         config.ultimo_envio_em = agora
         config.proximo_envio_em = agora + timedelta(minutes=max(1, config.intervalo_minutos))
         config.situacao = ""
