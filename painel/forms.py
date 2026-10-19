@@ -90,7 +90,7 @@ class ConfiguracaoOfertasForm(forms.ModelForm):
     entram como texto para aceitar "39,90"."""
 
     categorias = forms.MultipleChoiceField(label="Categorias", required=False, widget=forms.CheckboxSelectMultiple)
-    grupos = forms.MultipleChoiceField(label="Grupos que recebem as ofertas", required=False,
+    grupos = forms.MultipleChoiceField(label="Grupos e canais que recebem as ofertas", required=False,
                                        widget=forms.CheckboxSelectMultiple)
     dias_semana = forms.TypedMultipleChoiceField(
         label="Dias", choices=DIAS_DA_SEMANA, coerce=int, required=False, widget=forms.CheckboxSelectMultiple,
@@ -191,7 +191,11 @@ class ConfiguracaoOfertasForm(forms.ModelForm):
     def linhas_dos_grupos(self) -> list[dict]:
         """Cada grupo da lista com o campo de Sub ID próprio dele."""
         return [
-            {"opcao": opcao, "sub_id": self._sub_id_digitado(opcao.data["value"])}
+            {
+                "opcao": opcao,
+                "sub_id": self._sub_id_digitado(opcao.data["value"]),
+                "canal": str(opcao.data["value"]).endswith("@newsletter"),
+            }
             for opcao in self["grupos"]
         ]
 

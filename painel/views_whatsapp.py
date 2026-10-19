@@ -82,6 +82,10 @@ def whatsapp_desconectar(request):
 @_so_liberado
 def whatsapp_grupos(request):
     servico.pedir_grupos(conta_logada(request))
+    voltar = request.POST.get("voltar", "")
+    if voltar == reverse("painel_whatsapp_ofertas"):
+        messages.info(request, "Buscando seus grupos e canais… Recarregue a página em alguns segundos.")
+        return redirect(voltar)
     return redirect("painel_whatsapp")
 
 

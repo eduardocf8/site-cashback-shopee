@@ -12,9 +12,11 @@ Os avisos da biblioteca chegam em threads dela; eles só vão para uma fila, e q
 mexe no banco é sempre a thread do gerenciador."""
 
 import base64
+import io
 import logging
 import os
 import queue
+import re
 import sys
 import threading
 import time
@@ -327,20 +329,42 @@ class Gerenciador:
             conexao.pedido_grupos = False
             conexao.save(update_fields=["erro", "pedido_grupos", "atualizado_em"])
             return
-        conexao.grupos = sorted(
-            (
-                {
-                    "jid": _jid_texto(grupo.JID),
-                    "nome": grupo.GroupName.Name or "(grupo sem nome)",
-                    "participantes": len(getattr(grupo, "Participants", []) or []),
-                }
-                for grupo in grupos
-            ),
-            key=lambda g: g["nome"].lower(),
-        )
+        destinos = [
+            {
+                "jid": _jid_texto(grupo.JID),
+                "nome": grupo.GroupName.Name or "(grupo sem nome)",
+                "participantes": len(getattr(grupo, "Participants", []) or []),
+                "tipo": "grupo",
+            }
+            for grupo in grupos
+        ]
+        destinos += self._canais_onde_pode_postar(sessao, conexao.conta_id)
+        conexao.grupos = sorted(destinos, key=lambda d: (d["tipo"] != "grupo", d["nome"].lower()))
         conexao.grupos_em = timezone.now()
         conexao.pedido_grupos = False
         conexao.save(update_fields=["grupos", "grupos_em", "pedido_grupos", "atualizado_em"])
+
+    @staticmethod
+    def _canais_onde_pode_postar(sessao, conta_id) -> list[dict]:
+        """Canais em que o número é dono ou administrador (só esses aceitam postagem).
+        Se a lista de canais falhar, os grupos continuam valendo."""
+        try:
+            canais = sessao.cliente.get_subscribed_newletters()  # (sic) nome da biblioteca
+        except Exception:  # noqa: BLE001
+            logger.exception("WhatsApp: erro ao listar canais da conta %s", conta_id)
+            return []
+        destinos = []
+        for canal in canais:
+            papel = canal.ViewerMeta.DESCRIPTOR.fields_by_name["Role"].enum_type.values_by_number.get(canal.ViewerMeta.Role)
+            if not papel or papel.name not in ("OWNER", "ADMIN"):
+                continue
+            destinos.append({
+                "jid": _jid_texto(canal.ID),
+                "nome": canal.ThreadMeta.Name.Text or "(canal sem nome)",
+                "participantes": int(canal.ThreadMeta.SubscriberCount or 0),
+                "tipo": "canal",
+            })
+        return destinos
 
     def reabrir_sessoes_paradas(self):
         agora = time.monotonic()
@@ -378,7 +402,11 @@ class Gerenciador:
             usuario, _, servidor = envio.destino.partition("@")
             destino = build_jid(usuario, servidor or "g.us")
             try:
-                if envio.imagem_url:
+                if servidor == "newsletter":
+                    # Canal: foto com legenda pede um envio especial que a biblioteca não
+                    # tem; vai texto com prévia do link (título + foto pequena), como no app.
+                    sessao.cliente.send_message(destino, mensagem_com_previa(envio))
+                elif envio.imagem_url:
                     sessao.cliente.send_image(destino, envio.imagem_url, caption=envio.texto or None)
                 else:
                     sessao.cliente.send_message(destino, envio.texto)
@@ -406,6 +434,47 @@ def garantir_limite_de_memoria(argv: list[str]) -> None:
     if os.environ.get("GOMEMLIMIT"):
         return
     os.execve(sys.executable, [sys.executable, *argv], {**os.environ, "GOMEMLIMIT": LIMITE_DE_MEMORIA_GO})
+
+
+URL_NO_TEXTO = re.compile(r"https?://\S+")
+
+
+def miniatura(url: str) -> bytes | None:
+    """Foto pequena (até 300 px, JPEG) para a prévia do link; None se não der."""
+    if not url:
+        return None
+    try:
+        import requests
+        from PIL import Image
+
+        resposta = requests.get(url, timeout=10)
+        resposta.raise_for_status()
+        imagem = Image.open(io.BytesIO(resposta.content)).convert("RGB")
+        imagem.thumbnail((300, 300))
+        saida = io.BytesIO()
+        imagem.save(saida, format="JPEG", quality=70)
+        return saida.getvalue()
+    except Exception:  # noqa: BLE001
+        logger.warning("WhatsApp: não consegui baixar a foto para a prévia: %s", url[:200])
+        return None
+
+
+def mensagem_com_previa(envio):
+    """Texto com a prévia do link montada aqui (título e foto do produto), sem
+    depender de o WhatsApp abrir a página da Shopee."""
+    from neonize.proto.waE2E.WAWebProtobufsE2E_pb2 import ExtendedTextMessage, Message
+
+    link = envio.link_afiliado or next(iter(URL_NO_TEXTO.findall(envio.texto)), "")
+    if not link:
+        return Message(conversation=envio.texto)
+    previa = ExtendedTextMessage(
+        text=envio.texto, matchedText=link, title=(envio.produto or "Oferta na Shopee")[:150],
+        previewType=ExtendedTextMessage.PreviewType.NONE,
+    )
+    foto = miniatura(envio.imagem_url)
+    if foto:
+        previa.JPEGThumbnail = foto
+    return Message(extendedTextMessage=previa)
 
 
 def iniciar_em_segundo_plano():
