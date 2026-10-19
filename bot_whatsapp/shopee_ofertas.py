@@ -108,11 +108,12 @@ def passa_nos_filtros(produto: dict, config) -> bool:
         return False
     if config.vendas_minimas and produto["vendas"] < config.vendas_minimas:
         return False
-    if config.preco_minimo is not None and produto["preco"] < float(config.preco_minimo):
+    # Vazio ou 0 = sem filtro (preço máximo 0 barrava todos os produtos).
+    if config.preco_minimo and produto["preco"] < float(config.preco_minimo):
         return False
-    if config.preco_maximo is not None and produto["preco"] > float(config.preco_maximo):
+    if config.preco_maximo and produto["preco"] > float(config.preco_maximo):
         return False
-    if config.avaliacao_minima is not None and produto["avaliacao"] < float(config.avaliacao_minima):
+    if config.avaliacao_minima and produto["avaliacao"] < float(config.avaliacao_minima):
         return False
     if config.tipo_busca == config.BUSCA_CATEGORIA:
         return produto_pertence_as_categorias(produto["nome"], config.categorias)

@@ -218,13 +218,17 @@ class Motor:
         if not app_id or not secret:
             raise ValueError("Conecte sua conta da Shopee em Configurações.")
         achadas = []
+        recebidos = barrados_pelos_filtros = ja_enviados = 0
         pagina = 1
         for _ in range(3):
             produtos, tem_proxima = shopee_ofertas.buscar_produtos(app_id, secret, config, pagina)
+            recebidos += len(produtos)
             for produto in produtos:
                 if not shopee_ofertas.passa_nos_filtros(produto, config):
+                    barrados_pelos_filtros += 1
                     continue
                 if config.grupos and not grupos_que_ainda_nao_receberam(config, produto["item_id"], agora):
+                    ja_enviados += 1
                     continue
                 achadas.append({
                     "nome": produto["nome"], "preco": produto["preco"], "comissao": produto["comissao"],
@@ -236,6 +240,15 @@ class Motor:
             if not tem_proxima:
                 break
             pagina += 1
+        if not achadas:
+            # O motivo aparece no painel no lugar da lista.
+            if not recebidos:
+                raise ValueError("A Shopee não devolveu nenhum produto para essa busca. Confira a palavra-chave ou a loja.")
+            raise ValueError(
+                f"A Shopee devolveu {recebidos} produtos, mas nenhum serve agora: {barrados_pelos_filtros} "
+                f"barrados pelos filtros e {ja_enviados} já enviados para os grupos nos últimos "
+                f"{config.repetir_apos_dias} dias. Tente afrouxar algum filtro."
+            )
         return achadas
 
 
