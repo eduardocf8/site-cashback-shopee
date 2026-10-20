@@ -43,6 +43,26 @@ def empresa_da_conta(conta):
     return EmpresaNotas.objects.filter(conta=conta).order_by("criada_em").first()
 
 
+def atualizar_cadastro(empresa) -> str:
+    """Confere na Receita se a empresa continua MEI/Simples (ex: passou do limite do MEI e
+    virou ME) e atualiza o cadastro. Devolve um aviso para a tela, ou "" se nada mudou.
+    Se a Receita estiver fora do ar, segue com o que já está salvo."""
+    try:
+        dados = receita.consultar(empresa.cnpj)
+    except receita.ErroReceita as erro:
+        logger.info("Notas: não deu para conferir o regime de %s na Receita (%s).", empresa.cnpj, erro)
+        return ""
+    if dados["regime"] not in ("mei", "simples"):
+        raise ErroNotas("Pela Receita Federal, a empresa não está mais no MEI nem no Simples Nacional. "
+                        "Por enquanto o emissor atende só esses dois regimes.")
+    if dados["regime"] == empresa.regime:
+        return ""
+    antes = empresa.get_regime_display()
+    empresa.regime = dados["regime"]
+    empresa.save(update_fields=["regime", "atualizada_em"])
+    return f"O regime da empresa mudou na Receita: de {antes} para {empresa.get_regime_display()}. Já atualizamos o cadastro."
+
+
 def cadastrar_empresa(conta, cnpj_digitado: str) -> EmpresaNotas:
     try:
         dados = receita.consultar(cnpj_digitado)
@@ -231,6 +251,19 @@ def processar(nota: NotaFiscal, cert=None, cliente=None) -> NotaFiscal:
             campos = ajustados
             _guardar_campos(nota.ambiente, campos)
             resposta = cliente.emitir(_montar_assinada(nota, cert, campos))
+        if not resposta.ok and any(m["codigo"] == "E0160" for m in resposta.mensagens):
+            # Regime errado para o governo (ex: virou ME e a base pública ainda dizia MEI):
+            # tenta com o outro regime; se passar, o cadastro fica com ele.
+            empresa = nota.empresa
+            antes = empresa.regime
+            empresa.regime = "simples" if antes == "mei" else "mei"
+            nova = cliente.emitir(_montar_assinada(nota, cert, campos))
+            if nova.ok:
+                logger.info("Notas: regime de %s corrigido de %s para %s (E0160).", empresa.cnpj, antes, empresa.regime)
+                empresa.save(update_fields=["regime", "atualizada_em"])
+                resposta = nova
+            else:
+                empresa.regime = antes
         if resposta.ok and resposta.campo("chaveAcesso"):
             _autorizar(nota, resposta.campo("chaveAcesso"), resposta.xml_nfse(), resposta.mensagens)
         elif any(m["codigo"] == "E0014" for m in resposta.mensagens):

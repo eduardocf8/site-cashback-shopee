@@ -299,6 +299,10 @@ class TestServicos(TestCase):
 @override_settings(APPFILIADO_PAINEL_HOSTS=[HOST], ALLOWED_HOSTS=[HOST, "testserver"], APPFILIADO_PAINEL_URL=f"https://{HOST}")
 class TestTelas(TestCase):
     def setUp(self):
+        # A tela confere o regime na Receita antes de emitir: aqui, sem internet.
+        receita_falsa = mock.patch.object(receita, "consultar", return_value={"regime": "mei"})
+        receita_falsa.start()
+        self.addCleanup(receita_falsa.stop)
         cache.clear()
         self.conta = criar_conta()
         self.client = Client(HTTP_HOST=HOST)
@@ -805,3 +809,46 @@ class TestIBSCBS(TestCase):
         self.assertEqual(nota.situacao, "autorizada")
         self.assertIn("<IBSCBS>", falso.emitidas[1].decode())
         self.assertEqual(servicos.campos_novos("1"), {"IBSCBS"})
+
+
+class TestRegime(TestCase):
+    def setUp(self):
+        cache.clear()
+        self.addCleanup(cache.clear)
+        self.empresa = criar_empresa(criar_conta())
+        certificado.guardar(self.empresa, gerar_pfx(), "senha-do-pfx")
+
+    def receita(self, regime):
+        return {**DADOS_RECEITA_LOJA, "cnpj": CNPJ, "regime": regime}
+
+    def test_atualiza_o_regime_pela_receita(self):
+        with mock.patch.object(receita, "consultar", return_value=self.receita("simples")):
+            aviso = servicos.atualizar_cadastro(self.empresa)
+        self.assertIn("de MEI para Simples", aviso)
+        self.assertEqual(EmpresaNotas.objects.get(pk=self.empresa.pk).regime, "simples")
+        with mock.patch.object(receita, "consultar", return_value=self.receita("simples")):
+            self.assertEqual(servicos.atualizar_cadastro(self.empresa), "")
+        with mock.patch.object(receita, "consultar", return_value=self.receita("")):
+            with self.assertRaisesMessage(servicos.ErroNotas, "não está mais no MEI"):
+                servicos.atualizar_cadastro(self.empresa)
+        with mock.patch.object(receita, "consultar", side_effect=receita.ReceitaFora("fora")):
+            self.assertEqual(servicos.atualizar_cadastro(self.empresa), "")  # não trava a emissão
+
+    def test_recusa_e0160_troca_o_regime_e_reenvia(self):
+        nota = servicos.emitir_nota_shopee(self.empresa, "10,00")
+        e0160 = Resposta(400, {"erros": [{"Codigo": "E0160", "Descricao": "Opção do Simples não confere."}]})
+        falso = ClienteEmSequencia([e0160, autorizada()])
+        with mock.patch.object(servicos, "ClienteSefin", falso):
+            servicos.processar(nota)
+        self.assertEqual(nota.situacao, "autorizada")
+        self.assertIn("<opSimpNac>2</opSimpNac>", falso.emitidas[0].decode())
+        self.assertIn("<opSimpNac>3</opSimpNac>", falso.emitidas[1].decode())
+        self.assertEqual(EmpresaNotas.objects.get(pk=self.empresa.pk).regime, "simples")
+
+    def test_e0160_que_nao_resolve_mantem_o_regime(self):
+        nota = servicos.emitir_nota_shopee(self.empresa, "10,00")
+        e0160 = Resposta(400, {"erros": [{"Codigo": "E0160", "Descricao": "Opção do Simples não confere."}]})
+        with mock.patch.object(servicos, "ClienteSefin", ClienteEmSequencia([e0160, e0160])):
+            servicos.processar(nota)
+        self.assertEqual(nota.situacao, "recusada")
+        self.assertEqual(EmpresaNotas.objects.get(pk=self.empresa.pk).regime, "mei")

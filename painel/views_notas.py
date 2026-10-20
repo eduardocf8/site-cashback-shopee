@@ -109,10 +109,12 @@ def notas(request):
                 lote = servicos.importar_relatorio(empresa, arquivo.read(), arquivo.name, _ambiente(request))
                 return redirect("painel_notas_lote", pk=lote.pk)
             elif acao == "shopee":
+                _avisar_regime(request, empresa)
                 nota = servicos.emitir_nota_shopee(empresa, request.POST.get("valor", ""), _ambiente(request))
                 messages.success(request, f"Nota da Shopee de {_brl(nota.valor)} na fila. Ela sai em alguns minutos.")
                 return redirect("painel_notas")
             elif acao == "testar":
+                _avisar_regime(request, empresa)
                 nota = servicos.emitir_teste(empresa)
                 if nota.situacao == NotaFiscal.AUTORIZADA:
                     messages.success(request, "Deu certo! O governo gerou a nota de teste.")
@@ -131,6 +133,13 @@ def notas(request):
         contexto["lotes"] = empresa.lotes.all()[:12]
         contexto["teste_ok"] = empresa.notas.filter(tipo=NotaFiscal.TIPO_TESTE, situacao=NotaFiscal.AUTORIZADA).exists()
     return render(request, "painel/notas.html", _contexto(request, "notas", **contexto))
+
+
+def _avisar_regime(request, empresa):
+    """Confere o regime (MEI/Simples) na Receita antes de emitir; avisa se mudou."""
+    aviso = servicos.atualizar_cadastro(empresa)
+    if aviso:
+        messages.info(request, aviso)
 
 
 def _ambiente(request) -> str:
@@ -165,6 +174,7 @@ def lote(request, pk):
         acao = request.POST.get("acao")
         try:
             if acao == "confirmar":
+                _avisar_regime(request, lote.empresa)
                 quantas = servicos.confirmar_lote(lote)
                 messages.success(request, f"{quantas} notas na fila. Pode fechar esta página: elas saem sozinhas.")
             elif acao == "descartar":
