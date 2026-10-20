@@ -616,3 +616,9 @@ summary { cursor: pointer; }  /* "Editar", "Ver mensagem" etc. abrem ao clicar *
 .notas-emails { margin-top: 18px; padding-top: 14px; border-top: 1px solid var(--borda); }
 .notas-emails-titulo { margin: 0 0 8px; }
 .notas-emails + form { margin-top: 14px; }
+@media (max-width: 600px) {
+  /* No celular, cada parte do andamento dos e-mails numa linha. */
+  .notas-emails-parte { display: block; }
+  .notas-emails-parte + .notas-emails-parte, .notas-emails-sep + .notas-emails-parte { margin-top: 2px; }
+  .notas-emails-sep { display: none; }
+}

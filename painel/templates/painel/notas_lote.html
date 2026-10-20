@@ -39,7 +39,7 @@
       <div class="notas-emails">
         <p class="notas-emails-titulo"><strong>E-mails para os vendedores:</strong> <span data-campo="email_enviados">{{ email.enviados }}</span> de <span data-campo="email_alvo">{{ email.alvo }}</span> enviados (<span data-campo="email_progresso">{{ email.progresso }}</span>%)</p>
         <div class="notas-progresso" role="progressbar" aria-label="Envio dos e-mails" aria-valuenow="{{ email.progresso }}" aria-valuemin="0" aria-valuemax="100"><span data-campo="barra_email" style="width:{{ email.progresso }}%"></span></div>
-        <p class="pequeno" aria-live="polite"><span data-campo="email_fase">{{ email.fase }}</span>{% if email.sem_email %} · {{ email.sem_email }} sem e-mail no relatório{% endif %}{% if email.falharam %} · <span class="notas-erro-email">{{ email.falharam }} falharam (veja na lista e use "Reenviar e-mail")</span>{% endif %}</p>
+        <p class="pequeno notas-emails-partes" aria-live="polite"><span class="notas-emails-parte" data-campo="email_fase">{{ email.fase }}</span>{% if email.sem_email %}<span class="notas-emails-sep" aria-hidden="true"> · </span><span class="notas-emails-parte">{{ email.sem_email }} sem e-mail no relatório</span>{% endif %}{% if email.falharam %}<span class="notas-emails-sep" aria-hidden="true"> · </span><span class="notas-emails-parte notas-erro-email">{{ email.falharam }} falharam (veja na lista e use "Reenviar e-mail")</span>{% endif %}</p>
       </div>
     {% endif %}
     {% if resumo.por.recusada.qtd or resumo.por.erro.qtd %}
