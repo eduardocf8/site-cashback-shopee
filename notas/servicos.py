@@ -125,24 +125,25 @@ def _garantir_numero(nota):
     nota.save(update_fields=["serie", "numero", "dps_id"])
 
 
-# Leiaute de cada ambiente. Começa assim (produção ainda no 1.01, testes já no novo) e
-# troca sozinho se o governo recusar pelo leiaute (ver processar). O cache guarda a troca.
-LEIAUTE_PADRAO = {AMBIENTE_PRODUCAO: dps.LEIAUTE_ATUAL, AMBIENTE_TESTE: dps.LEIAUTE_NOVO}
+# Campos novos da reforma que cada ambiente aceita (ver dps.CAMPOS_NOVOS). Começa assim e
+# se ajusta sozinho quando o governo recusa pelo esquema (ver processar); o cache guarda.
+CAMPOS_PADRAO = {AMBIENTE_PRODUCAO: frozenset(), AMBIENTE_TESTE: frozenset({"finNFSe"})}
 
 
-def leiaute(ambiente: str) -> str:
+def campos_novos(ambiente: str) -> frozenset:
     from django.core.cache import cache
 
-    return cache.get(f"notas:leiaute:{ambiente}") or LEIAUTE_PADRAO[ambiente]
+    guardado = cache.get(f"notas:campos:{ambiente}")
+    return frozenset(guardado) if guardado is not None else CAMPOS_PADRAO[ambiente]
 
 
-def _guardar_leiaute(ambiente: str, valor: str):
+def _guardar_campos(ambiente: str, campos):
     from django.core.cache import cache
 
-    cache.set(f"notas:leiaute:{ambiente}", valor, 60 * 60 * 24 * 30)
+    cache.set(f"notas:campos:{ambiente}", sorted(campos), 60 * 60 * 24 * 30)
 
 
-def _montar_assinada(nota, cert, versao=None) -> bytes:
+def _montar_assinada(nota, cert, campos=None) -> bytes:
     e = nota.empresa
     agora = timezone.now().astimezone(FUSO)
     # Um minuto para trás: o governo recusa emissão "no futuro" se o relógio dele atrasar.
@@ -161,8 +162,7 @@ def _montar_assinada(nota, cert, versao=None) -> bytes:
         valor=nota.valor,
     )
     dps.validar(raiz)  # sempre confere no esquema oficial 1.01 antes
-    if (versao or leiaute(nota.ambiente)) == dps.LEIAUTE_NOVO:
-        dps.para_leiaute_novo(raiz)
+    dps.com_campos_novos(raiz, campos_novos(nota.ambiente) if campos is None else campos)
     dps.assinar(raiz, cert.chave, cert.certificado)
     return dps.para_bytes(raiz)
 
@@ -203,13 +203,16 @@ def processar(nota: NotaFiscal, cert=None, cliente=None) -> NotaFiscal:
                 _autorizar(nota, chave, consulta.xml_nfse() if consulta.ok else "")
                 nota.save()
                 return nota
-        resposta = cliente.emitir(_montar_assinada(nota, cert))
-        outro = dps.leiaute_errado(resposta.mensagens) if not resposta.ok else ""
-        if outro and outro != leiaute(nota.ambiente):
-            # O governo mudou (ou está num) outro leiaute: troca e reenvia na hora.
-            logger.info("Notas: ambiente %s passou a usar o leiaute %s.", nota.ambiente, outro)
-            _guardar_leiaute(nota.ambiente, outro)
-            resposta = cliente.emitir(_montar_assinada(nota, cert, outro))
+        campos = campos_novos(nota.ambiente)
+        resposta = cliente.emitir(_montar_assinada(nota, cert, campos))
+        for _ in range(len(dps.CAMPOS_NOVOS)):  # o governo mudou o esquema: ajusta e reenvia na hora
+            ajustados = dps.ajuste_de_campos(resposta.mensagens, campos) if not resposta.ok else None
+            if ajustados is None:
+                break
+            logger.info("Notas: ambiente %s agora com os campos novos %s.", nota.ambiente, sorted(ajustados))
+            campos = ajustados
+            _guardar_campos(nota.ambiente, campos)
+            resposta = cliente.emitir(_montar_assinada(nota, cert, campos))
         if resposta.ok and resposta.campo("chaveAcesso"):
             _autorizar(nota, resposta.campo("chaveAcesso"), resposta.xml_nfse(), resposta.mensagens)
         elif any(m["codigo"] == "E0014" for m in resposta.mensagens):

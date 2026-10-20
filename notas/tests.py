@@ -654,54 +654,74 @@ class ClienteEmSequencia(ClienteFalso):
         return self.respostas.pop(0)
 
 
-class TestLeiautes(TestCase):
+ERRO_INDDEST_REAL = ("Falha no esquema XML do DF-e. The element 'infDPS' in namespace 'http://www.sped.fazenda.gov.br/nfse' "
+                     "has invalid child element 'indDest' in namespace 'http://www.sped.fazenda.gov.br/nfse'. List of possible "
+                     "elements expected: 'interm, serv' in namespace 'http://www.sped.fazenda.gov.br/nfse'.")
+
+
+def recusa_de_esquema(texto):
+    return Resposta(400, {"erros": [{"Codigo": "E1235", "Descricao": texto}]})
+
+
+class TestCamposNovos(TestCase):
     def setUp(self):
         cache.clear()
         self.addCleanup(cache.clear)
         self.empresa = criar_empresa(criar_conta())
         certificado.guardar(self.empresa, gerar_pfx(), "senha-do-pfx")
 
-    def test_leiaute_novo_insere_os_campos_no_lugar_certo_e_assina(self):
+    def test_campos_novos_no_lugar_certo_e_assinatura_confere(self):
         cert = certificado.abrir(gerar_pfx(), "senha-do-pfx")
         raiz = dps_exemplo()
         dps.validar(raiz)
-        dps.para_leiaute_novo(raiz)
+        dps.com_campos_novos(raiz, {"finNFSe", "indDest"})
         dps.assinar(raiz, cert.chave, cert.certificado)
         nomes = [etree_local(e) for e in raiz[0]]
         self.assertEqual(nomes[nomes.index("tpEmit") + 1], "finNFSe")
         self.assertEqual(nomes[nomes.index("finNFSe") + 1], "cLocEmi")
         self.assertEqual(nomes[nomes.index("toma") + 1], "indDest")
         texto = dps.para_bytes(raiz).decode()
-        self.assertIn("<finNFSe>0</finNFSe>", texto)
-        self.assertIn("<indDest>0</indDest>", texto)
         inf = re.search(r"<infDPS.*?</infDPS>", texto, re.S).group(0).replace("<infDPS", f'<infDPS xmlns="{dps.NS}"', 1)
         digest = base64.b64encode(hashlib.sha256(ET.canonicalize(inf).encode()).digest()).decode()
         self.assertIn(f"<DigestValue>{digest}</DigestValue>", texto)
 
-    def test_le_o_erro_de_leiaute_do_governo(self):
-        self.assertEqual(dps.leiaute_errado([{"codigo": "E1235", "descricao": ERRO_LEIAUTE_REAL}]), "rtc")
-        contrario = "The element 'infDPS' has invalid child element 'finNFSe'. List of possible elements expected: 'chNFSeRej, cLocEmi'."
-        self.assertEqual(dps.leiaute_errado([{"codigo": "E1235", "descricao": contrario}]), "atual")
-        self.assertEqual(dps.leiaute_errado([{"codigo": "E0041", "descricao": "Município errado"}]), "")
+    def test_le_as_recusas_reais_do_governo(self):
+        erro = lambda t: [{"codigo": "E1235", "descricao": t}]  # noqa: E731
+        self.assertEqual(dps.ajuste_de_campos(erro(ERRO_LEIAUTE_REAL), frozenset()), {"finNFSe"})
+        self.assertEqual(dps.ajuste_de_campos(erro(ERRO_INDDEST_REAL), {"finNFSe", "indDest"}), {"finNFSe"})
+        self.assertIsNone(dps.ajuste_de_campos(erro(ERRO_LEIAUTE_REAL), {"finNFSe"}))  # nada a mudar
+        self.assertIsNone(dps.ajuste_de_campos([{"codigo": "E0041", "descricao": "Município errado"}], frozenset()))
 
-    def test_ambiente_de_testes_ja_vai_no_leiaute_novo_e_producao_no_atual(self):
+    def test_ambiente_de_testes_com_finNFSe_e_producao_sem_nada(self):
         falso = ClienteFalso(emitir=autorizada())
         with mock.patch.object(servicos, "ClienteSefin", falso):
             servicos.emitir_teste(self.empresa)
             nota = servicos.emitir_nota_shopee(self.empresa, "10,00")
             servicos.processar(nota)
-        self.assertIn("<finNFSe>0</finNFSe>", falso.emitidas[0].decode())
-        self.assertNotIn("finNFSe", falso.emitidas[1].decode())
+        teste, producao = (x.decode() for x in falso.emitidas)
+        self.assertIn("<finNFSe>0</finNFSe>", teste)
+        self.assertNotIn("indDest", teste)
+        self.assertNotIn("finNFSe", producao)
 
-    def test_troca_sozinho_quando_producao_mudar_de_leiaute(self):
+    def test_se_ajusta_sozinho_ate_passar(self):
+        # O que aconteceu hoje: o governo pede finNFSe, e depois recusa o indDest.
+        cache.set("notas:campos:2", ["indDest"])
+        falso = ClienteEmSequencia([recusa_de_esquema(ERRO_LEIAUTE_REAL), recusa_de_esquema(ERRO_INDDEST_REAL), autorizada()])
+        with mock.patch.object(servicos, "ClienteSefin", falso):
+            nota = servicos.emitir_teste(self.empresa)
+        self.assertEqual(nota.situacao, "autorizada")
+        ultima = falso.emitidas[-1].decode()
+        self.assertIn("<finNFSe>0</finNFSe>", ultima)
+        self.assertNotIn("indDest", ultima)
+        self.assertEqual(servicos.campos_novos("2"), {"finNFSe"})  # as próximas já saem certas
+
+    def test_producao_ganha_o_campo_quando_o_governo_mudar(self):
         nota = servicos.emitir_nota_shopee(self.empresa, "10,00")
-        falso = ClienteEmSequencia([Resposta(400, {"erros": [{"Codigo": "E1235", "Descricao": ERRO_LEIAUTE_REAL}]}), autorizada()])
+        falso = ClienteEmSequencia([recusa_de_esquema(ERRO_LEIAUTE_REAL), autorizada()])
         with mock.patch.object(servicos, "ClienteSefin", falso):
             servicos.processar(nota)
         self.assertEqual(nota.situacao, "autorizada")
-        self.assertNotIn("finNFSe", falso.emitidas[0].decode())
-        self.assertIn("<finNFSe>0</finNFSe>", falso.emitidas[1].decode())
-        self.assertEqual(servicos.leiaute("1"), "rtc")  # as próximas já vão no novo
+        self.assertEqual(servicos.campos_novos("1"), {"finNFSe"})
 
 
 def etree_local(elemento) -> str:
