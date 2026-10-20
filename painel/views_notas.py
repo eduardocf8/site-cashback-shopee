@@ -38,6 +38,15 @@ class CertificadoForm(forms.Form):
                             widget=forms.PasswordInput(attrs={"autocomplete": "new-password"}))
 
 
+HORARIOS_EMAIL = [("", "Logo depois que as notas saírem")] + [(str(h), f"Às {h:02d}:00") for h in range(6, 23)]
+
+
+class HorarioEmailForm(forms.Form):
+    horario = forms.ChoiceField(label="Quando mandar os e-mails", choices=HORARIOS_EMAIL, required=False,
+                                help_text="Horário de Brasília. Com um horário, os e-mails de cada lote saem na "
+                                          "próxima vez que der essa hora depois de você mandar emitir.")
+
+
 class ServicoForm(forms.Form):
     codigo_tributacao = forms.CharField(label="Código de tributação nacional", max_length=8,
                                         help_text="6 números, como aparece na sua nota (ex: 17.06.01 → 170601).")
@@ -62,6 +71,8 @@ def notas(request):
     empresa = servicos.empresa_da_conta(conta)
     if empresa:
         servicos.aplicar_servico_padrao(empresa)  # empresas cadastradas antes do padrão existir
+    form_horario = HorarioEmailForm(initial={"horario": "" if getattr(empresa, "email_horario", None) is None
+                                             else str(empresa.email_horario)})
     form_cert, form_servico = CertificadoForm(), ServicoForm(initial={
         "codigo_tributacao": getattr(empresa, "codigo_tributacao", ""),
         "codigo_municipal": getattr(empresa, "codigo_municipal", ""),
@@ -105,6 +116,18 @@ def notas(request):
                                             d["descricao_servico"], d["inscricao_municipal"], d["codigo_nbs"])
                     messages.success(request, "Serviço salvo.")
                     return redirect("painel_notas")
+            elif acao == "horario_email":
+                form_horario = HorarioEmailForm(request.POST)
+                if form_horario.is_valid():
+                    valor = form_horario.cleaned_data["horario"]
+                    hora = int(valor) if valor else None
+                    reagendados = servicos.salvar_horario_dos_emails(empresa, hora)
+                    texto = f"Os e-mails vão sair às {hora:02d}:00." if hora is not None else \
+                        "Os e-mails vão sair logo depois que as notas saírem."
+                    if reagendados:
+                        texto += f" {reagendados} e-mail{'s' if reagendados > 1 else ''} que ainda não tinha{'m' if reagendados > 1 else ''} saído segue{'m' if reagendados > 1 else ''} o novo horário."
+                    messages.success(request, texto)
+                    return redirect("painel_notas")
             elif acao == "importar":
                 arquivo = request.FILES.get("relatorio")
                 if not arquivo:
@@ -131,7 +154,7 @@ def notas(request):
             if acao != "certificado":
                 return redirect("painel_notas")
 
-    contexto = {"empresa": empresa, "form_cert": form_cert, "form_servico": form_servico}
+    contexto = {"empresa": empresa, "form_cert": form_cert, "form_servico": form_servico, "form_horario": form_horario}
     if empresa:
         contexto["falta"] = servicos.pronta_para_emitir(empresa)
         contexto["ultimas"] = empresa.notas.filter(lote__isnull=True)[:10]
@@ -222,7 +245,7 @@ def lote(request, pk):
 
 def _acompanhar(lote, email) -> bool:
     """A tela continua se atualizando enquanto saem notas ou e-mails."""
-    return lote.estado == LoteNotas.EMITINDO or bool(email and email["pendentes"])
+    return lote.estado == LoteNotas.EMITINDO or bool(email and email["saindo"])
 
 
 CLASSE_DA_SITUACAO = {NotaFiscal.AUTORIZADA: "selo-concluido", NotaFiscal.RECUSADA: "selo-cancelado",
@@ -297,8 +320,8 @@ def reenviar(request, pk):
 def reenviar_email(request, pk):
     nota = get_object_or_404(NotaFiscal, pk=pk, empresa__conta=conta_logada(request))
     if nota.situacao == NotaFiscal.AUTORIZADA and nota.tomador_email and nota.ambiente == AMBIENTE_PRODUCAO:
-        nota.email_situacao = NotaFiscal.EMAIL_PENDENTE
-        nota.save(update_fields=["email_situacao", "atualizada_em"])
+        nota.email_situacao, nota.email_enviar_em = NotaFiscal.EMAIL_PENDENTE, None  # reenvio pedido: sai já
+        nota.save(update_fields=["email_situacao", "email_enviar_em", "atualizada_em"])
         messages.info(request, "O e-mail vai sair de novo em alguns minutos.")
     return _volta(request, nota)
 

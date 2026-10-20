@@ -15,7 +15,7 @@ POR_PAGINA = 50
 CAMPOS_PRODUTO = [
     "itemId", "shopId", "productName", "price", "priceMin", "priceMax", "priceDiscountRate",
     "commissionRate", "sellerCommissionRate", "ratingStar", "imageUrl", "productLink", "offerLink",
-    "sales", "shopName",
+    "sales", "shopName", "productCatIds",
 ]
 # sortType da productOfferV2: 1 relevância (só com palavra-chave), 2 mais vendidos,
 # 5 maior comissão. Não existe "maior desconto": busca por mais vendidos e reordena.
@@ -46,6 +46,13 @@ def _percentual(valor) -> float:
     return numero * 100 if 0 < numero < 1 else numero
 
 
+def _primeira_categoria(ids) -> int:
+    try:
+        return int((ids or [0])[0] or 0)
+    except (TypeError, ValueError):
+        return 0
+
+
 def normalizar_produto(no: dict) -> dict:
     preco = para_numero(no.get("priceMin")) or para_numero(no.get("price"))
     return {
@@ -60,6 +67,8 @@ def normalizar_produto(no: dict) -> dict:
         "vendas": int(para_numero(no.get("sales"))),
         "avaliacao": para_numero(no.get("ratingStar")),
         "loja": str(no.get("shopName") or "").strip(),
+        # Categorias do produto na Shopee (a primeira é a principal, nível 1). 0 = não veio.
+        "categoria_id": _primeira_categoria(no.get("productCatIds")),
     }
 
 

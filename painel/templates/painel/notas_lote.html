@@ -5,7 +5,7 @@
 {% block conteudo %}
 <header class="cabecalho">
   <div>
-    <a class="notas-voltar" href="{% url 'painel_notas' %}">← Notas fiscais</a>
+    <a class="notas-voltar" href="{% url 'painel_notas' %}">← Emissão NFS-e</a>
     <h1>Vendas de {{ lote.mes_referencia|date:"F/Y" }}{% if lote.ambiente == "2" %} <span class="selo-venda selo-pendente">Ambiente de testes</span>{% endif %}</h1>
     <p>{{ lote.nome_arquivo }} · importado em {{ lote.criado_em|date:"d/m/Y H:i" }}</p>
   </div>
@@ -57,11 +57,11 @@
         <h2>E-mails</h2>
         <p>Para os vendedores, com o PDF e o XML</p>
       </div>
-      {% if lote.estado == "emitindo" %}<span class="selo-venda selo-neutro">Aguardando</span>{% elif email.pendentes %}<span class="selo-venda selo-pendente">Enviando</span>{% else %}<span class="selo-venda selo-concluido">Concluído</span>{% endif %}
+      {% if email.situacao == "agendado" %}<span class="selo-venda selo-neutro">Agendado</span>{% elif email.situacao == "aguardando" %}<span class="selo-venda selo-neutro">Aguardando</span>{% elif email.situacao == "enviando" %}<span class="selo-venda selo-pendente">Enviando</span>{% else %}<span class="selo-venda selo-concluido">Concluído</span>{% endif %}
     </header>
     <p class="notas-etapa-numero"><strong data-campo="email_enviados">{{ email.enviados }}</strong> <span>de <span data-campo="email_alvo">{{ email.alvo }}</span> enviados</span></p>
     <div class="notas-progresso" role="progressbar" aria-label="Envio dos e-mails" aria-valuenow="{{ email.progresso }}" aria-valuemin="0" aria-valuemax="100"><span data-campo="barra_email" style="width:{{ email.progresso }}%"></span></div>
-    <p class="notas-etapa-fase" aria-live="polite"><span data-campo="email_fase">{{ email.fase }}</span></p>
+    <p class="notas-etapa-fase" aria-live="polite"><span data-campo="email_fase">{{ email.fase }}</span>{% if email.situacao == "agendado" or email.situacao == "aguardando" %} <a href="{% url 'painel_notas' %}#emails">Mudar horário</a>{% endif %}</p>
     <ul class="notas-chips">
       <li class="notas-chip notas-chip-espera{% if not email.pendentes %} vazio{% endif %}"><strong data-campo="email_pendentes">{{ email.pendentes }}</strong> a enviar</li>
       <li class="notas-chip{% if not email.sem_email %} vazio{% endif %}"><strong data-campo="email_sem">{{ email.sem_email }}</strong> sem e-mail no relatório</li>

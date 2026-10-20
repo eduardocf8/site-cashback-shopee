@@ -24,20 +24,23 @@ class SiteForm(forms.ModelForm):
         model = SiteAfiliado
         fields = [
             "endereco", "publicado", "nome", "frase", "cor", "layout", "mostrar_conversor", "conversor_titulo",
-            "conversor_texto", "conversor_botao", "sub_id",
+            "conversor_texto", "conversor_botao", "sub_id", "sub_id_vitrine",
             "vitrine", "vitrine_formato", "busca_tipo", "palavra_chave", "loja", "categorias", "ordenacao", "links_manuais",
         ]
         labels = {
             "endereco": "Endereço", "publicado": "Site no ar", "nome": "Nome", "frase": "Frase curta",
             "cor": "Cor do site", "layout": "Estilo do site", "mostrar_conversor": "Mostrar o conversor de links no site",
-            "sub_id": "Sub ID das vendas do site", "vitrine": "O que mostrar", "vitrine_formato": "Como mostrar as ofertas", "busca_tipo": "Buscar",
+            "sub_id": "Sub ID das vendas pelo conversor", "sub_id_vitrine": "Sub ID das vendas pela vitrine", "vitrine": "O que mostrar", "vitrine_formato": "Como mostrar as ofertas", "busca_tipo": "Buscar",
             "palavra_chave": "Palavra-chave", "loja": "Link da loja", "links_manuais": "Links dos produtos",
             "conversor_titulo": "Título", "conversor_texto": "Texto", "conversor_botao": "Texto do botão",
         }
         help_texts = {
             "endereco": "Só letras minúsculas, números e hífen (3 a 40). É o link da sua bio.",
-            "sub_id": "Assim as vendas do site aparecem separadas em Resultados. Só letras e números.",
-            "links_manuais": "Um link da Shopee por linha, na ordem em que devem aparecer (até 60).",
+            "sub_id": "Assim as vendas do conversor aparecem separadas em Resultados. Só letras e números.",
+            "sub_id_vitrine": "Para ver em Resultados as vendas da vitrine separadas das vendas do conversor. "
+                              "Em branco, usa o mesmo Sub ID do conversor.",
+            "links_manuais": "Cole o link de cada produto da Shopee, um por linha, na ordem em que devem aparecer "
+                             "(até 60). Depois de salvar, dá para corrigir a categoria de cada um na lista de produtos.",
             "frase": "Aparece embaixo do nome. Ex: As melhores ofertas da Shopee todo dia.",
             "conversor_botao": "Em branco, fica o texto padrão (aparece apagadinho no campo).",
         }
@@ -59,6 +62,11 @@ class SiteForm(forms.ModelForm):
         self.fields["endereco"].required = True
         self.fields["vitrine_formato"].required = False
         self.fields["layout"].required = False
+        sub_id = self.instance.sub_id or "site"
+        self.fields["sub_id_vitrine"].widget.attrs["placeholder"] = f"igual ao do conversor ({sub_id})"
+        for nome in self.CAMPOS_COM_EMOJI:
+            if nome in self.fields:
+                self.fields[nome].widget.attrs["data-emoji"] = ""
         cor_atual = self.instance.cor or SiteAfiliado._meta.get_field("cor").default
         pronta = cor_atual.upper() in {c for c, _ in CORES}
         self.initial["cor"] = cor_atual.upper() if pronta else OUTRA_COR
@@ -74,6 +82,8 @@ class SiteForm(forms.ModelForm):
                 initial=(self.instance.redes or {}).get(rede, ""),
                 widget=forms.TextInput(attrs={"placeholder": exemplos.get(rede, "@seuperfil ou link"), "autocomplete": "off"}),
             )
+
+    CAMPOS_COM_EMOJI = ("nome", "frase", "conversor_titulo", "conversor_texto", "conversor_botao")
 
     def campos_das_redes(self):
         return [self[f"rede_{rede}"] for rede, _, _ in REDES]
@@ -123,10 +133,16 @@ class SiteForm(forms.ModelForm):
             raise forms.ValidationError("Esse endereço já está em uso. Escolha outro.")
         return endereco
 
+    def clean_sub_id_vitrine(self):
+        return self._sub_id_valido("sub_id_vitrine")
+
     def clean_sub_id(self):
+        return self._sub_id_valido("sub_id")
+
+    def _sub_id_valido(self, campo):
         from bot_whatsapp.shopee_ofertas import SubIdInvalido, validar_sub_ids
 
-        sub_id = (self.cleaned_data.get("sub_id") or "").strip()
+        sub_id = (self.cleaned_data.get(campo) or "").strip()
         try:
             validar_sub_ids([sub_id] if sub_id else [])
         except SubIdInvalido as erro:

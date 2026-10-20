@@ -19,7 +19,7 @@ MINUTOS_ENTRE_LOGS_DE_MEMORIA = 10
 class Command(BaseCommand):
     help = (
         "Busca na Shopee os resultados das contas do painel do Appfiliado (pedidos de "
-        "\"Atualizar agora\" primeiro, depois quem está há mais de 3h sem atualizar). "
+        "\"Atualizar 30 dias\" primeiro, depois quem está há mais de 3h sem atualizar). "
         "Com --loop fica rodando (Background Worker do Render) e também mantém as conexões "
         "do Bot de WhatsApp (bot_whatsapp/gerenciador.py)."
     )

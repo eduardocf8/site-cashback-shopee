@@ -38,7 +38,7 @@ CAMPOS_COMISSAO_ESTIMADA = (
 )
 # A API só deixa consultar ~3 meses para trás (erro 11001 depois disso).
 JANELA_API_DIAS = 89
-# As buscas normais (a cada 3 h e "Atualizar agora") só pegam as compras dos últimos 30
+# As buscas normais (a cada 3 h e "Atualizar 30 dias") só pegam as compras dos últimos 30
 # dias; a completa (JANELA_API_DIAS) roda 1x por dia, de madrugada.
 JANELA_RAPIDA_DIAS = 30
 HORA_DA_COMPLETA = (3, 6)  # entre 3h e 6h (horário de Brasília)
@@ -275,14 +275,16 @@ def validada_pelas_vendas(conta, dias: list[date]) -> dict[date, Decimal]:
     return {dia: somas.get(dia, Decimal("0")) for dia in dias}
 
 
-def sincronizar_conta(conta, agora: datetime | None = None, completa: bool | None = None) -> dict:
+def sincronizar_conta(conta, agora: datetime | None = None, completa: bool | None = None, curta: bool = False) -> dict:
     """Busca as vendas na Shopee e atualiza os totais guardados, uma página por vez (a
     memória não cresce com o tamanho da conta).
 
     - rápida (normal): só as compras dos últimos JANELA_RAPIDA_DIAS dias - o que é mais
       antigo quase não muda (só pedido que ainda estava no prazo de cancelamento);
     - completa (1x por dia, de madrugada): os ~3 meses que a API alcança, para pegar as
-      validações atrasadas (pedido de mais de 30 dias que só agora foi concluído).
+      validações atrasadas (pedido de mais de 30 dias que só agora foi concluído);
+    - curta (botão "Atualizar dia anterior e atual" e conferência do relatório diário): só
+      ontem e hoje.
     Faturamento, pedidos, comissão estimada e Sub IDs: recalculados nos dias da janela.
     Comissão validada (pela data em que a Shopee validou): somada dos itens guardados nos
     últimos DIAS_RECALCULO_VALIDADA dias. O que fica fora da janela continua guardado."""
@@ -291,10 +293,17 @@ def sincronizar_conta(conta, agora: datetime | None = None, completa: bool | Non
     if not conta.shopee_app_id or not secret:
         raise ValueError("Conta sem credenciais da Shopee.")
     estado, _ = SincronizacaoResultados.objects.get_or_create(conta=conta)
-    if completa is None:
+    if curta:
+        completa = False
+    elif completa is None:
         completa = precisa_da_completa(estado, agora)
 
-    inicio_janela = agora - timedelta(days=JANELA_API_DIAS if completa else JANELA_RAPIDA_DIAS)
+    if curta:
+        # Um segundo antes da meia-noite de ontem: o primeiro dia inteiro da janela é ontem.
+        meia_noite_de_ontem = timezone.localtime(agora).replace(hour=0, minute=0, second=0, microsecond=0) - timedelta(days=1)
+        inicio_janela = meia_noite_de_ontem - timedelta(seconds=1)
+    else:
+        inicio_janela = agora - timedelta(days=JANELA_API_DIAS if completa else JANELA_RAPIDA_DIAS)
     hoje = timezone.localtime(agora).date()
     primeiro_dia_completo = timezone.localtime(inicio_janela).date() + timedelta(days=1)
     inicio_validada = hoje - timedelta(days=DIAS_RECALCULO_VALIDADA - 1)
@@ -357,7 +366,7 @@ def sincronizar_conta(conta, agora: datetime | None = None, completa: bool | Non
                 estado.cobertura_inicio = primeiro_dia_completo
         estado.save(update_fields=["completa_em", "cobertura_inicio", "vendas_desde"])
 
-    resumo = {"conversoes": conversoes, "dias": len(dias_compra), "completa": completa}
+    resumo = {"conversoes": conversoes, "dias": len(dias_compra), "completa": completa, "curta": curta}
     if completa:
         resumo["validadas_tarde"] = validacoes_depois_de(conta, agora, JANELA_RAPIDA_DIAS)
     return resumo
@@ -374,10 +383,12 @@ def validacoes_depois_de(conta, agora: datetime, dias: int) -> tuple[int, int]:
 
 # --- Fila de sincronização ------------------------------------------------------------
 
-def pedir_atualizacao(conta):
+def pedir_atualizacao(conta, curta: bool = False):
     estado, _ = SincronizacaoResultados.objects.get_or_create(conta=conta)
+    # Um pedido de 30 dias que ainda não foi atendido não vira curto (o curto já vem junto).
+    estado.pedido_curto = curta and (estado.pedido_curto or not estado.aguardando)
     estado.pedido_em = timezone.now()
-    estado.save(update_fields=["pedido_em"])
+    estado.save(update_fields=["pedido_em", "pedido_curto"])
     return estado
 
 
@@ -400,13 +411,17 @@ def contas_pendentes(agora: datetime | None = None):
     return [c for _, c in sorted(pedidas, key=lambda par: par[0])] + vencidas
 
 
-def processar(conta) -> str:
+def processar(conta, curta: bool | None = None) -> str:
+    """curta=None: curta só se a pessoa pediu o dia anterior e o atual."""
     estado, _ = SincronizacaoResultados.objects.get_or_create(conta=conta)
+    if curta is None:
+        curta = estado.aguardando and estado.pedido_curto
     estado.iniciada_em = timezone.now()
-    estado.save(update_fields=["iniciada_em"])
+    estado.pedido_curto = False
+    estado.save(update_fields=["iniciada_em", "pedido_curto"])
     memoria_antes = memoria_em_uso_mb()
     try:
-        resumo = sincronizar_conta(conta)
+        resumo = sincronizar_conta(conta, curta=curta)
     except Exception as erro:
         logger.exception("Painel: falha ao sincronizar resultados da conta %s", conta.pk)
         estado.erro = str(erro)[:500]
@@ -418,7 +433,7 @@ def processar(conta) -> str:
     estado.save(update_fields=["erro", "concluida_em"])
     texto = (
         f"{conta.email}: {resumo['conversoes']} conversões, {resumo['dias']} dias"
-        f" ({'completa' if resumo['completa'] else 'rápida'}) - memória {memoria_antes} -> {memoria_em_uso_mb()} MB"
+        f" ({'completa' if resumo['completa'] else 'ontem e hoje' if resumo.get('curta') else 'rápida'}) - memória {memoria_antes} -> {memoria_em_uso_mb()} MB"
     )
     if resumo.get("validadas_tarde"):
         tarde, total = resumo["validadas_tarde"]
@@ -453,12 +468,10 @@ def serie(conta, inicio: date, fim: date, modo: str = "dia") -> list[dict]:
 
 
 def nome_do_grupo(sub_id_bruto: str, regras) -> str:
-    if sub_id_bruto == SEM_SUB_ID:
-        return NOME_SEM_SUB_ID
     for regra in regras:
         if regra.casa(sub_id_bruto):
             return regra.nome
-    return sub_id_bruto
+    return NOME_SEM_SUB_ID if sub_id_bruto == SEM_SUB_ID else sub_id_bruto
 
 
 def por_sub_id(conta, inicio: date, fim: date, limite: int = 8) -> list[dict]:
@@ -490,11 +503,9 @@ def resumo_das_regras(conta, hoje: date) -> list[dict]:
         .values_list("sub_id", flat=True).distinct()
     )
     for bruto in brutos:
-        if bruto == SEM_SUB_ID:
-            continue
         regra = next((r for r in regras if r.casa(bruto)), None)
         if regra:
-            pegos[regra.pk].append(bruto)
+            pegos[regra.pk].append(NOME_SEM_SUB_ID if bruto == SEM_SUB_ID else bruto)
     return [
         {"regra": regra, "quantidade": len(pegos[regra.pk]), "exemplos": sorted(pegos[regra.pk])[:2]}
         for regra in regras

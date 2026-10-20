@@ -24,6 +24,7 @@ a { color: inherit; }
 .foto img { width: 100%; height: 100%; object-fit: cover; }
 h1 { font-size: 22px; font-weight: 700; margin: 0; overflow-wrap: anywhere; }
 .frase { color: var(--tinta-suave); font-size: 15px; margin: 8px 0 26px; overflow-wrap: anywhere; }
+[hidden] { display: none !important; }
 .botoes { display: flex; flex-direction: column; gap: 14px; }
 .botao-link { display: flex; align-items: center; justify-content: center; min-height: 58px; padding: 12px 24px; border-radius: 999px; text-align: center; font-size: 16px; font-weight: 500; color: #1C2B23; background: rgba(255,255,255,.84); text-decoration: none; overflow-wrap: anywhere; transition: transform .12s, background .12s; }
 .botao-link:hover { background: rgba(255,255,255,.95); transform: scale(1.015); }
@@ -98,14 +99,16 @@ h1 { font-size: 22px; font-weight: 700; margin: 0; overflow-wrap: anywhere; }
   <header class="perfil">
     <div class="foto">{% if site.foto %}<img src="{{ base }}foto.jpg?v={{ site.foto_versao }}" alt="">{% else %}{{ site.nome|default:site.endereco|slice:":1"|upper }}{% endif %}</div>
     <h1>{{ site.nome|default:site.endereco }}</h1>
-    {% if site.frase %}<p class="frase">{{ site.frase }}</p>{% else %}<div style="height:18px"></div>{% endif %}
+    {% if site.frase or previa %}<p class="frase">{{ site.frase }}</p>{% else %}<div style="height:18px"></div>{% endif %}
   </header>
 
-  {% if botoes %}<nav class="botoes" aria-label="Links">{% for b in botoes %}<a class="botao-link{% if b.destaque %} destaque{% endif %}" href="{{ base }}b/{{ b.pk }}/" rel="nofollow noopener">{{ b.texto }}</a>{% endfor %}</nav>{% endif %}
-  {% if redes %}<nav class="redes" aria-label="Redes sociais">{% for r in redes %}<a href="{{ base }}r/{{ r.rede }}/" rel="nofollow noopener" title="{{ r.nome }}" aria-label="{{ r.nome }}">{% include "meusite/_icone_rede.html" with rede=r.rede %}</a>{% endfor %}</nav>{% endif %}
+  {% if botoes or previa %}<nav class="botoes" aria-label="Links"{% if not botoes %} hidden{% endif %}>{% for b in botoes %}<a class="botao-link{% if b.destaque %} destaque{% endif %}" href="{{ base }}b/{{ b.pk }}/" rel="nofollow noopener" data-botao="{{ b.pk }}">{{ b.texto }}</a>{% endfor %}{% if previa %}<a class="botao-link" href="#" data-botao="novo" hidden></a>{% endif %}</nav>{% endif %}
+  {% if previa %}
+  <nav class="redes" aria-label="Redes sociais" data-redes{% if not redes %} hidden{% endif %}>{% for r in todas_redes %}<a href="{{ base }}r/{{ r.rede }}/" rel="nofollow noopener" title="{{ r.nome }}" aria-label="{{ r.nome }}" data-rede="{{ r.rede }}"{% if not r.ativa %} hidden{% endif %}>{% include "meusite/_icone_rede.html" with rede=r.rede %}</a>{% endfor %}</nav>
+  {% elif redes %}<nav class="redes" aria-label="Redes sociais">{% for r in redes %}<a href="{{ base }}r/{{ r.rede }}/" rel="nofollow noopener" title="{{ r.nome }}" aria-label="{{ r.nome }}">{% include "meusite/_icone_rede.html" with rede=r.rede %}</a>{% endfor %}</nav>{% endif %}
 
-  {% if site.mostrar_conversor %}
-  <section class="card" id="conversor">
+  {% if site.mostrar_conversor or previa %}
+  <section class="card" id="conversor"{% if not site.mostrar_conversor %} hidden{% endif %}>
     <h2 data-conversor="titulo">{{ site.titulo_do_conversor }}</h2>
     <p data-conversor="texto">{{ site.texto_do_conversor }}</p>
     {% if erro == "link" %}<div class="erro">Esse não parece um link da Shopee. Copie o link do produto no app ou no site da Shopee.</div>
@@ -118,8 +121,8 @@ h1 { font-size: 22px; font-weight: 700; margin: 0; overflow-wrap: anywhere; }
   </section>
   {% endif %}
 
-  {% if site.vitrine != "nenhuma" %}
-  <section aria-labelledby="titulo-vitrine">
+  {% if site.vitrine != "nenhuma" or previa %}
+  <section aria-labelledby="titulo-vitrine" id="secao-vitrine"{% if site.vitrine == "nenhuma" %} hidden{% endif %}>
     <div class="topo-vitrine"><h2 id="titulo-vitrine">Ofertas de hoje</h2>{% if atualizado_em %}<span>{% if atualizado_em|date:"Ymd" == hoje_ymd %}atualizado às {{ atualizado_em|date:"H:i" }}{% else %}atualizado em {{ atualizado_em|date:"d/m" }}{% endif %}</span>{% endif %}</div>
     {% if categorias|length > 1 %}
       <div class="chips" role="tablist">

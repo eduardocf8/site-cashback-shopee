@@ -48,6 +48,9 @@ class EmpresaNotas(models.Model):
     # Quando o governo recusa o certificado, a fila para de mandar as notas dessa empresa
     # (senão todas seriam recusadas uma a uma) até a pessoa trocar o certificado ou retomar.
     emissao_pausada = models.CharField(max_length=300, blank=True)
+    # Hora (0-23, horário de Brasília) para mandar os e-mails das notas aos vendedores.
+    # Vazio = logo depois que as notas saem.
+    email_horario = models.PositiveSmallIntegerField(null=True, blank=True)
 
     criada_em = models.DateTimeField(auto_now_add=True)
     atualizada_em = models.DateTimeField(auto_now=True)
@@ -187,6 +190,7 @@ class NotaFiscal(models.Model):
     autorizada_em = models.DateTimeField(null=True, blank=True)
 
     email_situacao = models.CharField(max_length=10, choices=EMAILS, default=EMAIL_NAO)
+    email_enviar_em = models.DateTimeField(null=True, blank=True)  # agendado (vazio = logo que der)
     email_enviado_em = models.DateTimeField(null=True, blank=True)
     email_erro = models.CharField(max_length=300, blank=True)
 

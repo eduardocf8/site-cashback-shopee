@@ -63,6 +63,7 @@ class SiteAfiliado(models.Model):
     conversor_texto = models.CharField(max_length=300, blank=True)
     conversor_botao = models.CharField(max_length=50, blank=True)
     sub_id = models.CharField(max_length=50, default="site", blank=True)
+    sub_id_vitrine = models.CharField(max_length=50, blank=True)  # vazio = o mesmo do conversor (sub_id)
 
     vitrine = models.CharField(max_length=10, choices=FONTES_VITRINE, default=VITRINE_BOT)
     FORMATO_LISTA, FORMATO_CARROSSEL = "lista", "carrossel"
@@ -163,6 +164,24 @@ class ProdutoSite(models.Model):
 
     def __str__(self):
         return self.nome
+
+
+class CategoriaProdutoSite(models.Model):
+    """Categoria escolhida pela pessoa para um produto da vitrine. A categoria automática sai do
+    nome do produto (palavras-chave) e às vezes erra: a escolhida vale para o produto (pelo
+    item_id da Shopee) em qualquer vitrine do site e continua valendo depois das atualizações."""
+
+    site = models.ForeignKey(SiteAfiliado, on_delete=models.CASCADE, related_name="categorias_escolhidas")
+    item_id = models.CharField(max_length=30)
+    categoria = models.CharField(max_length=30, blank=True)  # vazio = sem categoria (só em "Todas")
+
+    class Meta:
+        constraints = [models.UniqueConstraint(fields=["site", "item_id"], name="categoria_produto_site_unica")]
+        verbose_name = "categoria escolhida"
+        verbose_name_plural = "categorias escolhidas"
+
+    def __str__(self):
+        return f"{self.item_id} -> {self.categoria or '(sem categoria)'}"
 
 
 class CliqueSite(models.Model):

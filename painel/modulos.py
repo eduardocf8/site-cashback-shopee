@@ -30,6 +30,7 @@ ICONES = {
     "carrosseis": "M7 5h10v14H7zM3 7v10M21 7v10",
     "notas": "M6 3h9l4 4v14H6zM14 3v5h5M9 12h7M9 16h7",
     "email": "M3 6h18v12H3zM3 7l9 6 9-6",
+    "seta_cima": "M6 15l6-6 6 6",
 }
 
 # slug -> configuração. "modulo": código da licença que libera (None = todos
@@ -60,7 +61,7 @@ MODULOS_DO_MENU = [
                            "Instagram, com textos feitos por IA e o seu link de afiliado.",
     },
     {
-        "slug": "notas", "nome": "Notas fiscais", "icone": "notas", "modulo": MODULO_NOTAS, "pronto": True,
+        "slug": "notas", "nome": "Emissão NFS-e", "icone": "notas", "modulo": MODULO_NOTAS, "pronto": True,
         "teste": True,
         "texto_bloqueado": "Emita no automático a nota da Shopee e as notas de cada vendedor que pagou "
                            "comissão extra, e mande cada uma por e-mail para o vendedor.",

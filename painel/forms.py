@@ -63,7 +63,8 @@ class ShopeeForm(forms.Form):
 
 class RegraSubIdForm(forms.Form):
     operador = forms.ChoiceField(label="Se o Sub ID", choices=[])
-    texto = forms.CharField(label="Texto", max_length=120, widget=forms.TextInput(attrs={"placeholder": "ex: grupo"}))
+    texto = forms.CharField(label="Texto", max_length=120, required=False,
+                            widget=forms.TextInput(attrs={"placeholder": "ex: grupo"}))
     nome = forms.CharField(label="Mostrar como", max_length=60, widget=forms.TextInput(attrs={"placeholder": "ex: Grupos de WhatsApp"}))
 
     def __init__(self, *args, **kwargs):
@@ -72,14 +73,20 @@ class RegraSubIdForm(forms.Form):
         super().__init__(*args, **kwargs)
         self.fields["operador"].choices = RegraSubId.OPERADORES
 
-    def clean_texto(self):
-        texto = self.cleaned_data["texto"].strip()
-        if not texto:
-            raise forms.ValidationError("Informe o texto.")
-        return texto
-
     def clean_nome(self):
         return self.cleaned_data["nome"].strip()
+
+    def clean(self):
+        from .models import RegraSubId
+
+        dados = super().clean()
+        if dados.get("operador") == RegraSubId.SEM:
+            dados["texto"] = ""  # "está vazio" não usa texto
+        elif not (dados.get("texto") or "").strip():
+            self.add_error("texto", "Informe o texto.")
+        else:
+            dados["texto"] = dados["texto"].strip()
+        return dados
 
 
 DIAS_DA_SEMANA = [(0, "Seg"), (1, "Ter"), (2, "Qua"), (3, "Qui"), (4, "Sex"), (5, "Sáb"), (6, "Dom")]
@@ -339,8 +346,17 @@ class RelatorioEmailForm(forms.ModelForm):
         from .models import RelatorioEmail
 
         model = RelatorioEmail
-        fields = ["ativo", "emails_extras"]
+        fields = ["ativo", "hora", "emails_extras"]
         widgets = {"emails_extras": forms.TextInput(attrs={"placeholder": "socio@exemplo.com, outro@exemplo.com"})}
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.fields["hora"].required = False
+
+    def clean_hora(self):
+        # Sem o campo (página aberta antes dele existir), fica o horário que já estava.
+        hora = self.cleaned_data.get("hora")
+        return self.instance.hora if hora in (None, "") else hora
 
     def clean_emails_extras(self):
         from django.core.validators import validate_email

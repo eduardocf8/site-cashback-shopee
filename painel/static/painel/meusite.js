@@ -118,6 +118,7 @@
   }
   ligar("nome", function (d, campo) { var h = d.querySelector("h1"); if (h) h.textContent = campo.value || "Seu nome"; });
   ligar("frase", function (d, campo) { var p = d.querySelector(".frase"); if (p) p.textContent = campo.value; });
+  ligar("nome", function (d, campo) { var f = d.querySelector(".foto"); if (f && !f.querySelector("img")) f.textContent = (Array.from(campo.value.trim())[0] || "?").toUpperCase(); });
   // Formato da vitrine (lista ou carrossel) muda na prévia na hora.
   document.querySelectorAll('[name="vitrine_formato"]').forEach(function (radio) {
     radio.addEventListener("change", function () {
@@ -189,6 +190,68 @@
       if (d && d.body) d.body.className = "tema-" + radio.value;
     });
   });
+
+  // Botões: o que a pessoa digita (antes de salvar) já aparece na prévia.
+  function navBotoes(d) {
+    var nav = d.querySelector("nav.botoes");
+    if (nav) nav.hidden = !nav.querySelector("[data-botao]:not([hidden])");
+  }
+  document.querySelectorAll("[data-botao-texto]").forEach(function (campo) {
+    campo.addEventListener("input", function () {
+      var d = doc(), link = d && d.querySelector('[data-botao="' + campo.dataset.botaoTexto + '"]');
+      if (!link) return;
+      link.textContent = campo.value;
+      if (campo.dataset.botaoTexto === "novo") link.hidden = !campo.value.trim();
+      navBotoes(d);
+    });
+  });
+  document.querySelectorAll("[data-botao-destaque]").forEach(function (caixa) {
+    caixa.addEventListener("change", function () {
+      var d = doc(), link = d && d.querySelector('[data-botao="' + caixa.dataset.botaoDestaque + '"]');
+      if (link) link.classList.toggle("destaque", caixa.checked);
+    });
+  });
+  // Redes sociais: o ícone aparece assim que o campo tem alguma coisa e some quando esvazia.
+  document.querySelectorAll('input[name^="rede_"]').forEach(function (campo) {
+    campo.addEventListener("input", function () {
+      var d = doc(), rede = campo.name.slice(5), icone = d && d.querySelector('[data-rede="' + rede + '"]');
+      if (!icone) return;
+      icone.hidden = !campo.value.trim();
+      var nav = d.querySelector("[data-redes]");
+      if (nav) nav.hidden = !nav.querySelector("[data-rede]:not([hidden])");
+    });
+  });
+  // Conversor ligado/desligado e vitrine sim/não.
+  ligar("mostrar_conversor", function (d, campo) { var c = d.getElementById("conversor"); if (c) c.hidden = !campo.checked; });
+  document.querySelectorAll('#fonte-vitrine input').forEach(function (radio) {
+    radio.addEventListener("change", function () {
+      var d = doc(), secao = d && d.getElementById("secao-vitrine");
+      if (secao && radio.checked) secao.hidden = radio.value === "nenhuma";
+    });
+  });
+
+  // Categoria de cada produto da vitrine: salva na hora e recarrega a prévia.
+  var listaProdutos = document.querySelector("[data-url-categoria]");
+  if (listaProdutos) {
+    var csrf = (document.querySelector('#form-site [name="csrfmiddlewaretoken"]') || {}).value;
+    listaProdutos.querySelectorAll(".categoria-produto").forEach(function (select) {
+      select.addEventListener("change", function () {
+        var url = listaProdutos.dataset.urlCategoria.replace("/0/", "/" + select.dataset.produto + "/");
+        var corpo = new FormData();
+        corpo.append("categoria", select.value);
+        select.disabled = true;
+        fetch(url, { method: "POST", body: corpo, headers: { "X-CSRFToken": csrf }, credentials: "same-origin" })
+          .then(function (r) { if (!r.ok) throw new Error(); return r.json(); })
+          .then(function () {
+            select.classList.add("salvo");
+            setTimeout(function () { select.classList.remove("salvo"); }, 1200);
+            if (previa && previa.contentWindow) previa.contentWindow.location.reload();
+          })
+          .catch(function () { alert("Não consegui salvar a categoria agora. Tente de novo."); })
+          .finally(function () { select.disabled = false; });
+      });
+    });
+  }
 
   // A prévia mostra o site na largura de um celular (390px) e reduz para caber na moldura.
   var celular = previa && previa.parentNode;

@@ -55,8 +55,12 @@ def _contexto(request, ativo: str, **extra) -> dict:
         "modulos_liberados": liberados,
         "url_planos": settings.APPFILIADO_URL_PLANOS,
         "icones": mod.ICONES,
+        "aviso_relatorio": relatorio.aviso_da_tela(conta) if conta and ativo in TELAS_COM_AVISO_DO_RELATORIO else None,
         **extra,
     }
+
+
+TELAS_COM_AVISO_DO_RELATORIO = {"inicio", "resultados", "configuracoes"}
 
 
 def _hoje_por_extenso() -> str:
@@ -252,10 +256,13 @@ def atualizar_resultados(request):
     conta = conta_logada(request)
     if conta.shopee_validado_em:
         estado = telas.estado_sincronizacao(conta)
+        curta = request.POST.get("periodo") == "curto"
         recente = estado and estado.pedido_em and timezone.now() - estado.pedido_em < timedelta(minutes=2)
-        if not recente:
-            resultados.pedir_atualizacao(conta)
-        messages.info(request, "Pedimos os números novos à Shopee. Em até 1 minuto eles aparecem aqui.")
+        # Pedido recente igual (ou um de 30 dias, que já cobre o curto): não pede de novo.
+        if not recente or (not curta and estado.pedido_curto and estado.aguardando):
+            resultados.pedir_atualizacao(conta, curta=curta)
+        messages.info(request, ("Pedimos os números de ontem e de hoje à Shopee." if curta else
+                                "Pedimos os números dos últimos 30 dias à Shopee.") + " Em até 1 minuto eles aparecem aqui.")
     return redirect(destino_seguro(request, request.POST.get("voltar", "")))
 
 
@@ -361,14 +368,13 @@ def configuracoes(request):
                 if not conta.shopee_validado_em:
                     messages.error(request, "Conecte sua conta da Shopee para receber o relatório.")
                 else:
-                    try:
-                        relatorio.enviar(conta, telas.hoje(), preferencia.destinatarios())
-                        messages.success(request, f"Relatório de teste enviado para {', '.join(preferencia.destinatarios())}.")
-                    except Exception:  # noqa: BLE001
-                        logger.exception("Painel: falha no relatório de teste da conta %s", conta.pk)
-                        messages.error(request, "Não consegui enviar o e-mail agora. Tente de novo em alguns minutos.")
+                    # Quem manda é o worker: antes ele busca os números de ontem na Shopee (se ainda
+                    # não saíram, vai um aviso no lugar do relatório).
+                    RelatorioEmail.objects.filter(pk=preferencia.pk).update(envio_agora_pedido_em=timezone.now())
+                    messages.success(request, "Buscando os números de ontem na Shopee. O relatório chega em "
+                                              f"{', '.join(preferencia.destinatarios())} em alguns minutos.")
             elif preferencia.ativo:
-                messages.success(request, "Pronto! O relatório chega todo dia de manhã, com os números de ontem.")
+                messages.success(request, f"Pronto! O relatório chega todo dia às {preferencia.hora:02d}:00, com os números de ontem.")
             else:
                 messages.info(request, "Relatório diário desligado.")
             return redirect(f"{request.path}#relatorio")

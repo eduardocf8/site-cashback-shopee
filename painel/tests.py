@@ -389,6 +389,28 @@ class TestSincronizacao(TestCase):
         self.assertFalse(estado.aguardando)
 
 
+    def test_atualizar_so_ontem_e_hoje(self):
+        with mock.patch("painel.resultados.paginas_de_conversoes", return_value=[[]]) as buscar:
+            resumo = resultados.sincronizar_conta(self.conta, agora=self.AGORA, curta=True)
+        inicio = buscar.call_args[0][2]
+        self.assertEqual(datetime.fromtimestamp(inicio, SP), datetime(2026, 10, 16, 23, 59, 59, tzinfo=SP))
+        self.assertEqual((resumo["dias"], resumo["completa"]), (2, False))  # 17 e 18/10
+        # O pedido curto vem do botão; um pedido de 30 dias ainda na fila não vira curto.
+        estado = resultados.pedir_atualizacao(self.conta, curta=True)
+        self.assertTrue(estado.pedido_curto)
+        estado = resultados.pedir_atualizacao(self.conta)
+        self.assertFalse(estado.pedido_curto)
+        self.assertFalse(resultados.pedir_atualizacao(self.conta, curta=True).pedido_curto)
+        with mock.patch.object(resultados, "sincronizar_conta", return_value={"conversoes": 0, "dias": 30, "completa": False}) as sinc:
+            resultados.processar(self.conta)
+        self.assertEqual(sinc.call_args.kwargs["curta"], False)
+        resultados.pedir_atualizacao(self.conta, curta=True)
+        with mock.patch.object(resultados, "sincronizar_conta", return_value={"conversoes": 0, "dias": 2, "completa": False, "curta": True}) as sinc:
+            self.assertIn("ontem e hoje", resultados.processar(self.conta))
+        self.assertEqual(sinc.call_args.kwargs["curta"], True)
+        self.assertFalse(SincronizacaoResultados.objects.get(conta=self.conta).pedido_curto)
+
+
 class TestAgruparSubIds(TestCase):
     def setUp(self):
         self.conta = ContaAppfiliado.objects.create(email="bia@exemplo.com")
@@ -431,6 +453,23 @@ class TestAgruparSubIds(TestCase):
         self.regra("termina", "zzz")
         resumo = resultados.resumo_das_regras(self.conta, hoje)
         self.assertEqual([(r["quantidade"], r["exemplos"]) for r in resumo], [(2, ["grupoA", "grupoB"]), (0, [])])
+
+
+    def test_nome_para_vendas_sem_sub_id(self):
+        dia = date(2026, 10, 10)
+        for sub, vendas in [("sem_subid", 4), ("story", 1)]:
+            ResultadoSubIdDiario.objects.create(conta=self.conta, dia=dia, sub_id=sub, vendas=vendas)
+        self.regra("nao_comeca", "grupo", "Outros")  # não pega as vendas sem Sub ID
+        self.regra("sem", "", "Orgânico")
+        nomes = [l["sub_id"] for l in resultados.por_sub_id(self.conta, dia, dia)]
+        self.assertEqual(sorted(nomes), ["Orgânico", "Outros"])
+        self.assertEqual(resultados.resumo_das_regras(self.conta, dia)[1]["quantidade"], 1)
+        self.assertTrue(RegraSubId(operador="sem").casa("sem_subid"))
+        self.assertFalse(RegraSubId(operador="sem").casa("story"))
+        from .forms import RegraSubIdForm
+        form = RegraSubIdForm({"operador": "sem", "texto": "", "nome": "Orgânico"})
+        self.assertTrue(form.is_valid(), form.errors)
+        self.assertFalse(RegraSubIdForm({"operador": "comeca", "texto": " ", "nome": "X"}).is_valid())
 
 
 class TestBuscaNaShopee(TestCase):
@@ -607,6 +646,20 @@ class TestTelasDeResultados(BasePainel):
         self.client.post("/resultados/atualizar/", {"voltar": "https://golpe.com/"})
         self.assertEqual(SincronizacaoResultados.objects.get(conta=self.conta).pedido_em, primeiro)
         self.assertContains(self.client.get("/resultados/"), "Atualizando com a Shopee")
+        self.assertFalse(SincronizacaoResultados.objects.get(conta=self.conta).pedido_curto)
+
+    def test_botoes_de_atualizar(self, _):
+        self.conectar_shopee()
+        html = self.client.get("/resultados/").content.decode()
+        self.assertIn("Atualizar dia anterior e atual", html)
+        self.assertIn("Atualizar 30 dias", html)
+        self.assertNotIn("Atualizar agora", html)
+        resposta = self.client.post("/resultados/atualizar/", {"voltar": "/resultados/", "periodo": "curto"}, follow=True)
+        self.assertContains(resposta, "números de ontem e de hoje")
+        self.assertTrue(SincronizacaoResultados.objects.get(conta=self.conta).pedido_curto)
+        # Logo depois, pedir 30 dias vale (cobre o curto).
+        self.client.post("/resultados/atualizar/", {"voltar": "/resultados/", "periodo": "30"})
+        self.assertFalse(SincronizacaoResultados.objects.get(conta=self.conta).pedido_curto)
 
     def test_pagina_se_atualiza_sozinha_quando_a_busca_termina(self, _):
         self.conectar_shopee()

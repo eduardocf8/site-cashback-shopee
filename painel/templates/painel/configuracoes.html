@@ -32,32 +32,38 @@
 
 <section class="card" id="relatorio" aria-labelledby="titulo-relatorio" style="margin-top:16px">
   <h2 id="titulo-relatorio">Relatório diário por e-mail</h2>
-  <p class="suave pequeno" style="margin-bottom:14px">Todo dia de manhã: comissão, faturamento e pedidos de ontem e do mês, Sub IDs, produtos mais vendidos{% if "whatsapp" in modulos_liberados %} e as ofertas que o bot enviou{% endif %}. Vai para <strong>{{ conta.email }}</strong>.</p>
+  <p class="suave pequeno" style="margin-bottom:14px">Todo dia, no horário que você escolher: comissão, faturamento e pedidos de ontem e do mês, Sub IDs, produtos mais vendidos{% if "whatsapp" in modulos_liberados %} e as ofertas que o bot enviou{% endif %}. Vai para <strong>{{ conta.email }}</strong>.</p>
   <form method="post" class="formulario">
     {% csrf_token %}
     <input type="hidden" name="formulario" value="relatorio">
     <label class="marcar">{{ form_relatorio.ativo }}<span><strong>Receber o relatório diário por e-mail</strong></span></label>
+    <div class="campo">{% include "painel/_campo.html" with campo=form_relatorio.hora %}</div>
     <div class="campo">{% include "painel/_campo.html" with campo=form_relatorio.emails_extras %}</div>
     {% if preferencia_relatorio.ultimo_erro %}<p class="aviso aviso-warning pequeno">O último envio falhou. Vamos tentar de novo amanhã.</p>
     {% elif preferencia_relatorio.ultimo_envio_dia and preferencia_relatorio.ativo %}<p class="suave pequeno">Último enviado em {{ preferencia_relatorio.ultimo_envio_dia|date:"d/m" }}.</p>{% endif %}
     <div class="botoes-linha">
       <button type="submit" class="botao botao-principal">Salvar</button>
-      <button type="submit" name="acao" value="testar" class="botao botao-claro"{% if not conta.shopee_validado_em %} disabled title="Conecte sua conta da Shopee primeiro"{% endif %}>Salvar e enviar um agora</button>
+      <button type="submit" name="acao" value="testar" class="botao botao-claro"{% if not conta.shopee_validado_em %} disabled title="Conecte sua conta da Shopee primeiro"{% endif %}>Enviar e-mail agora</button>
     </div>
   </form>
 </section>
 
 <section class="card" id="sub-ids" aria-labelledby="titulo-sub-ids" style="margin-top:16px">
   <h2 id="titulo-sub-ids">Agrupar Sub IDs</h2>
-  <p class="suave pequeno" style="margin-bottom:16px">Junte vários Sub IDs num nome só nos seus resultados. Ex: todo Sub ID que <strong>começa com</strong> "grupo" aparece como "Grupos de WhatsApp". Sem diferença entre maiúsculas e minúsculas. Se um Sub ID se encaixar em mais de um agrupamento, vale o primeiro da lista.</p>
+  <p class="suave pequeno" style="margin-bottom:16px">Junte vários Sub IDs num nome só nos seus resultados. Ex: todo Sub ID que <strong>começa com</strong> "grupo" aparece como "Grupos de WhatsApp". Sem diferença entre maiúsculas e minúsculas. Se um Sub ID se encaixar em mais de um agrupamento, vale o primeiro da lista. Para dar um nome às vendas que vieram sem Sub ID, escolha <strong>está vazio</strong>.</p>
 
   {% if regras %}
     <ol class="regras">
       {% for item in regras %}
         <li>
           <div class="regra-texto">
-            <span>Se o Sub ID <strong>{{ item.regra.get_operador_display }}</strong> “{{ item.regra.texto }}”, mostrar como <strong>{{ item.regra.nome }}</strong></span>
-            <span class="suave pequeno">{% if item.quantidade %}Junta {{ item.quantidade }} Sub ID{{ item.quantidade|pluralize }} dos últimos 90 dias (ex: {{ item.exemplos|join:", " }}){% else %}Nenhum Sub ID dos últimos 90 dias entra aqui{% endif %}</span>
+            {% if item.regra.operador == "sem" %}
+              <span>Vendas <strong>sem Sub ID</strong>: mostrar como <strong>{{ item.regra.nome }}</strong></span>
+              <span class="suave pequeno">{% if item.quantidade %}Teve venda sem Sub ID nos últimos 90 dias{% else %}Nenhuma venda sem Sub ID nos últimos 90 dias{% endif %}</span>
+            {% else %}
+              <span>Se o Sub ID <strong>{{ item.regra.get_operador_display }}</strong> “{{ item.regra.texto }}”, mostrar como <strong>{{ item.regra.nome }}</strong></span>
+              <span class="suave pequeno">{% if item.quantidade %}Junta {{ item.quantidade }} Sub ID{{ item.quantidade|pluralize }} dos últimos 90 dias (ex: {{ item.exemplos|join:", " }}){% else %}Nenhum Sub ID dos últimos 90 dias entra aqui{% endif %}</span>
+            {% endif %}
           </div>
           <form method="post">
             {% csrf_token %}
@@ -76,5 +82,17 @@
     {% include "painel/_campos.html" with form=form_regra %}
     <div><button type="submit" class="botao botao-escuro">{% include "painel/_icone.html" with caminho=icones.mais %}Adicionar agrupamento</button></div>
   </form>
+  <script>
+    // "está vazio" (vendas sem Sub ID) não usa o campo de texto.
+    (function () {
+      var operador = document.querySelector('.form-regra [name="operador"]');
+      var texto = document.querySelector('.form-regra [name="texto"]');
+      if (!operador || !texto) return;
+      var campo = texto.closest('.campo') || texto.parentElement;
+      function aplicar() { var vazio = operador.value === 'sem'; campo.style.visibility = vazio ? 'hidden' : ''; if (vazio) texto.value = ''; }
+      operador.addEventListener('change', aplicar);
+      aplicar();
+    })();
+  </script>
 </section>
 {% endblock %}

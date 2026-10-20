@@ -45,11 +45,13 @@ class ResultadoSubIdDiario(models.Model):
 
 class SincronizacaoResultados(models.Model):
     """Quando os resultados da conta foram buscados na Shopee pela última vez, e se
-    a pessoa pediu uma atualização (botão "Atualizar agora") - quem atende é o
+    a pessoa pediu uma atualização (botão "Atualizar 30 dias") - quem atende é o
     comando sincronizar_painel, rodando em segundo plano."""
 
     conta = models.OneToOneField(ContaAppfiliado, on_delete=models.CASCADE, related_name="sincronizacao_resultados")
     pedido_em = models.DateTimeField(null=True, blank=True)
+    # O pedido é só do dia anterior e do atual (botão "Atualizar dia anterior e atual"): mais rápido.
+    pedido_curto = models.BooleanField(default=False)
     iniciada_em = models.DateTimeField(null=True, blank=True)
     concluida_em = models.DateTimeField(null=True, blank=True)
     erro = models.TextField(blank=True)
@@ -153,15 +155,17 @@ class RegraSubId(models.Model):
     COMECA, NAO_COMECA = "comeca", "nao_comeca"
     CONTEM, NAO_CONTEM = "contem", "nao_contem"
     TERMINA, NAO_TERMINA = "termina", "nao_termina"
+    SEM = "sem"  # vendas sem Sub ID (o texto não é usado)
     OPERADORES = [
         (COMECA, "começa com"), (NAO_COMECA, "não começa com"),
         (CONTEM, "contém"), (NAO_CONTEM, "não contém"),
         (TERMINA, "termina com"), (NAO_TERMINA, "não termina com"),
+        (SEM, "está vazio (sem Sub ID)"),
     ]
 
     conta = models.ForeignKey(ContaAppfiliado, on_delete=models.CASCADE, related_name="regras_sub_id")
     operador = models.CharField(max_length=12, choices=OPERADORES)
-    texto = models.CharField(max_length=120)
+    texto = models.CharField(max_length=120, blank=True)
     nome = models.CharField("nome do grupo", max_length=60)
     criada_em = models.DateTimeField(auto_now_add=True)
 
@@ -174,7 +178,11 @@ class RegraSubId(models.Model):
         return f'{self.get_operador_display()} "{self.texto}" -> {self.nome}'
 
     def casa(self, sub_id: str) -> bool:
-        """Sem diferenciar maiúsculas de minúsculas."""
+        """Sem diferenciar maiúsculas de minúsculas. Vendas sem Sub ID só casam com a regra "está vazio"."""
+        from .resultados import SEM_SUB_ID
+
+        if self.operador == self.SEM or sub_id == SEM_SUB_ID:
+            return self.operador == self.SEM and sub_id == SEM_SUB_ID
         valor, texto = sub_id.lower(), self.texto.lower()
         testes = {
             self.COMECA: valor.startswith(texto), self.CONTEM: texto in valor, self.TERMINA: valor.endswith(texto),
@@ -186,7 +194,7 @@ class RegraSubId(models.Model):
 
 class RelatorioEmail(models.Model):
     """Relatório diário por e-mail (resultados de ontem e do mês). Quem envia é o worker
-    (comando sincronizar_painel), de manhã, depois que os números de ontem chegam."""
+    (comando sincronizar_painel), no horário escolhido, depois que os números de ontem chegam."""
 
     conta = models.OneToOneField(ContaAppfiliado, on_delete=models.CASCADE, related_name="relatorio_email")
     ativo = models.BooleanField("receber o relatório diário por e-mail", default=False)
@@ -194,7 +202,17 @@ class RelatorioEmail(models.Model):
         "enviar também para (opcional)", max_length=300, blank=True,
         help_text="Até 3 e-mails, separados por vírgula.",
     )
+    hora = models.PositiveSmallIntegerField(
+        "horário do envio", default=8, choices=[(h, f"{h:02d}:00") for h in range(7, 23)],
+        help_text="Horário de Brasília. A Shopee costuma liberar os números de ontem entre 7h e 8h: se na hora "
+                  "eles ainda não tiverem saído, você recebe um aviso e o relatório vai assim que saírem.",
+    )
     ultimo_envio_dia = models.DateField(null=True, blank=True)
+    # Os números de ontem ainda não tinham saído na Shopee: o aviso já foi neste dia e o worker
+    # tenta de novo a partir de proxima_tentativa_em.
+    aviso_dia = models.DateField(null=True, blank=True)
+    proxima_tentativa_em = models.DateTimeField(null=True, blank=True)
+    envio_agora_pedido_em = models.DateTimeField(null=True, blank=True)  # "Enviar e-mail agora"
     ultimo_erro = models.TextField(blank=True)
     atualizado_em = models.DateTimeField(auto_now=True)
 

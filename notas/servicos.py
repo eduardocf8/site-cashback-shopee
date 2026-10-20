@@ -479,6 +479,25 @@ def importar_relatorio(empresa, dados: bytes, nome_arquivo: str, ambiente=AMBIEN
     return lote
 
 
+def proximo_envio_de_email(empresa, a_partir=None):
+    """Quando os e-mails podem sair, conforme o horário escolhido pela empresa: a próxima vez que
+    der aquela hora (horário de Brasília) a partir de agora. None = logo que der."""
+    if empresa.email_horario is None:
+        return None
+    local = (a_partir or timezone.now()).astimezone(FUSO)
+    horario = local.replace(hour=empresa.email_horario, minute=0, second=0, microsecond=0)
+    return horario if horario >= local else horario + timedelta(days=1)
+
+
+def salvar_horario_dos_emails(empresa, hora) -> int:
+    """Guarda o horário (None = logo depois das notas) e reagenda os e-mails que ainda não saíram.
+    Devolve quantos e-mails foram reagendados."""
+    empresa.email_horario = hora
+    empresa.save(update_fields=["email_horario", "atualizada_em"])
+    return NotaFiscal.objects.filter(empresa=empresa, email_situacao=NotaFiscal.EMAIL_PENDENTE).update(
+        email_enviar_em=proximo_envio_de_email(empresa))
+
+
 def confirmar_lote(lote) -> int:
     falta = pronta_para_emitir(lote.empresa)
     if falta:
@@ -492,7 +511,8 @@ def confirmar_lote(lote) -> int:
         # Competência = dia em que a pessoa mandou emitir (não pode ser depois da emissão).
         com_email = notas.exclude(tomador_email="").update(
             situacao=NotaFiscal.FILA, competencia=hoje,
-            email_situacao=NotaFiscal.EMAIL_PENDENTE if envia_email else NotaFiscal.EMAIL_NAO)
+            email_situacao=NotaFiscal.EMAIL_PENDENTE if envia_email else NotaFiscal.EMAIL_NAO,
+            email_enviar_em=proximo_envio_de_email(lote.empresa) if envia_email else None)
         sem_email = notas.update(situacao=NotaFiscal.FILA, competencia=hoje,
                                  email_situacao=NotaFiscal.EMAIL_SEM if envia_email else NotaFiscal.EMAIL_NAO)
         lote.estado, lote.competencia, lote.confirmado_em = LoteNotas.EMITINDO, hoje, timezone.now()
@@ -530,14 +550,36 @@ def andamento_emails(lote) -> dict | None:
     qtd = dict(autorizadas.values_list("email_situacao").annotate(qtd=Count("id")))
     enviados, falharam = qtd.get(NotaFiscal.EMAIL_ENVIADO, 0), qtd.get(NotaFiscal.EMAIL_FALHOU, 0)
     # Sem o XML da nota não há o que mandar (fica de fora para a barra não esperar para sempre).
-    pendentes = autorizadas.filter(email_situacao=NotaFiscal.EMAIL_PENDENTE).exclude(xml_nfse="").count()
+    a_enviar = autorizadas.filter(email_situacao=NotaFiscal.EMAIL_PENDENTE).exclude(xml_nfse="")
+    pendentes = a_enviar.count()
     alvo = enviados + falharam + pendentes
+    agora = timezone.now()
+    agendado = a_enviar.filter(email_enviar_em__gt=agora).order_by("email_enviar_em").values_list(
+        "email_enviar_em", flat=True).first()
+    if agendado is None and lote.estado == LoteNotas.EMITINDO:
+        agendado = proximo_envio_de_email(lote.empresa, lote.confirmado_em)
+        agendado = agendado if agendado and agendado > agora else None
+    # E-mails que já podem sair agora (os agendados para mais tarde não contam).
+    saindo = pendentes - a_enviar.filter(email_enviar_em__gt=agora).count()
+    quando = _quando(agendado) if agendado else ""
     if lote.estado == LoteNotas.EMITINDO:
-        fase = "Os e-mails saem assim que todas as notas terminarem de sair."
-    elif pendentes:
-        fase = "Enviando os e-mails…"
+        fase = f"Os e-mails estão agendados para {quando}." if quando else \
+            "Os e-mails saem assim que todas as notas terminarem de sair."
+        situacao = "agendado" if quando else "aguardando"
+    elif saindo:
+        fase, situacao = "Enviando os e-mails…", "enviando"
+    elif pendentes and quando:
+        fase, situacao = f"Agendados para {quando}.", "agendado"
     else:
-        fase = "Concluído."
+        fase, situacao = "Concluído.", "concluido"
     return {"enviados": enviados, "falharam": falharam, "sem_email": qtd.get(NotaFiscal.EMAIL_SEM, 0),
-            "pendentes": pendentes, "alvo": alvo, "progresso": round(100 * (enviados + falharam) / alvo) if alvo else 0,
-            "fase": fase}
+            "pendentes": pendentes, "saindo": saindo, "alvo": alvo,
+            "progresso": round(100 * (enviados + falharam) / alvo) if alvo else 0, "fase": fase, "situacao": situacao}
+
+
+def _quando(momento) -> str:
+    local = momento.astimezone(FUSO)
+    hoje = timezone.now().astimezone(FUSO).date()
+    dia = "hoje" if local.date() == hoje else ("amanhã" if local.date() == hoje + timedelta(days=1)
+                                               else local.strftime("%d/%m"))
+    return f"{dia} às {local:%H:%M}"

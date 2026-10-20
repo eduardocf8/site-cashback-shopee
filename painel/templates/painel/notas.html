@@ -1,9 +1,9 @@
 {% extends "painel/base.html" %}
 {% load painel_extras %}
-{% block titulo %}Notas fiscais{% endblock %}
+{% block titulo %}Emissão NFS-e{% endblock %}
 {% block cabeca %}{% load static %}<script src="{% static 'painel/notas.js' %}" defer></script>{% endblock %}
 {% block conteudo %}
-<header class="cabecalho"><div><h1>Notas fiscais</h1><p>A nota da Shopee e as notas de cada vendedor que pagou comissão extra, emitidas direto no Emissor Nacional do governo.</p></div></header>
+<header class="cabecalho"><div><h1>Emissão NFS-e</h1><p>A nota da Shopee e as notas de cada vendedor que pagou comissão extra, emitidas direto no Emissor Nacional do governo.</p></div></header>
 
 <p class="aviso aviso-info notas-aviso">Versão de teste: comece pelo ambiente de testes do governo (sem valor fiscal) e, quando estiver tudo certo, emita de verdade.</p>
 
@@ -21,7 +21,7 @@
   </section>
 {% else %}
   {% if falta or not teste_ok %}
-  <section class="card notas-cartao" aria-labelledby="titulo-passos">
+  <section class="card notas-cartao notas-sem-margem" aria-labelledby="titulo-passos">
     <h2 id="titulo-passos">Para começar a emitir</h2>
     <ul class="passos">
       <li><span class="marcador feito">{% include "painel/_icone.html" with caminho=icones.check %}</span><span class="titulo feito-texto">Cadastrar a empresa</span><span class="estado estado-liberado">Feito</span></li>
@@ -32,7 +32,7 @@
   </section>
   {% endif %}
 
-  <div class="duas-colunas">
+  <div class="duas-colunas notas-emitir">
     <section class="card notas-cartao" id="mes" aria-labelledby="titulo-mes">
       <h2 id="titulo-mes">Notas dos vendedores (comissão extra)</h2>
       <p class="suave pequeno">Na Central do Afiliado da Shopee: <strong>Relatórios › Relatório mensal</strong>, escolha o mês de conclusão e clique em <strong>Exportar</strong>. Envie o arquivo aqui do jeito que baixou (sem abrir no Excel). Sai uma nota por loja, e você confere tudo antes de emitir.</p>
@@ -59,7 +59,7 @@
   </div>
 
   {% if lotes %}
-    <section class="card notas-cartao" aria-labelledby="titulo-lotes">
+    <section class="card notas-cartao notas-sem-margem" aria-labelledby="titulo-lotes">
       <h2 id="titulo-lotes">Relatórios importados</h2>
       <ul class="notas-lotes">
         {% for l in lotes %}
@@ -124,6 +124,17 @@
           <input type="hidden" name="acao" value="servico">
           {% include "painel/_campos.html" with form=form_servico %}
           <div><button type="submit" class="botao botao-escuro">Salvar serviço</button></div>
+        </form>
+      </section>
+
+      <section class="card notas-cartao" id="emails" aria-labelledby="titulo-emails">
+        <h2 id="titulo-emails">E-mails para os vendedores</h2>
+        <p class="suave pequeno">Cada vendedor com e-mail no relatório recebe a nota com o PDF e o XML. Escolha se os e-mails saem logo depois das notas ou num horário do dia.</p>
+        <form method="post" class="formulario">
+          {% csrf_token %}
+          <input type="hidden" name="acao" value="horario_email">
+          {% include "painel/_campos.html" with form=form_horario %}
+          <div><button type="submit" class="botao botao-escuro">Salvar horário</button></div>
         </form>
       </section>
     </div>

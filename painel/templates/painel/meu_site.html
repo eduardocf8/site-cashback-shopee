@@ -67,9 +67,9 @@
                 </div>
               </div>
               <details class="editar-botao"><summary class="pequeno">Editar</summary><div class="corpo-botao">
-                <div class="campo"><label>Texto do botão</label><input name="texto" value="{{ b.texto }}" maxlength="80" form="botao-{{ b.pk }}"></div>
+                <div class="campo"><label>Texto do botão</label><input name="texto" value="{{ b.texto }}" maxlength="80" form="botao-{{ b.pk }}" data-botao-texto="{{ b.pk }}" data-emoji></div>
                 <div class="campo"><label>Link</label><input name="url" value="{{ b.url }}" maxlength="500" form="botao-{{ b.pk }}"></div>
-                <label class="marcar pequeno"><input type="checkbox" name="destaque" form="botao-{{ b.pk }}" {% if b.destaque %}checked{% endif %}><span>Em destaque (na cor do site)</span></label>
+                <label class="marcar pequeno"><input type="checkbox" name="destaque" form="botao-{{ b.pk }}" data-botao-destaque="{{ b.pk }}" {% if b.destaque %}checked{% endif %}><span>Em destaque (na cor do site)</span></label>
                 <div class="botoes-linha"><button type="submit" form="botao-{{ b.pk }}" name="acao" value="botao_editar" class="botao botao-escuro botao-pequeno">Salvar botão</button>
                   <button type="submit" form="botao-{{ b.pk }}" name="acao" value="botao_apagar" class="link-botao pequeno perigo">Apagar</button></div>
               </div></details>
@@ -81,9 +81,9 @@
       {% endif %}
       {% if botoes|length < maximo_botoes %}
         <details class="novo-botao"{% if not botoes %} open{% endif %}><summary class="botao botao-claro botao-pequeno">+ Adicionar botão</summary><div class="corpo-botao">
-          <div class="campo"><label for="novo-texto">Texto do botão</label><input id="novo-texto" name="texto" maxlength="80" placeholder="💬 Entrar no grupo de ofertas" form="botao-novo"></div>
+          <div class="campo"><label for="novo-texto">Texto do botão</label><input id="novo-texto" name="texto" maxlength="80" placeholder="💬 Entrar no grupo de ofertas" form="botao-novo" data-botao-texto="novo" data-emoji></div>
           <div class="campo"><label for="novo-url">Link</label><input id="novo-url" name="url" maxlength="500" placeholder="https://chat.whatsapp.com/..." form="botao-novo"></div>
-          <label class="marcar pequeno"><input type="checkbox" name="destaque" form="botao-novo"><span>Em destaque (na cor do site)</span></label>
+          <label class="marcar pequeno"><input type="checkbox" name="destaque" form="botao-novo" data-botao-destaque="novo"><span>Em destaque (na cor do site)</span></label>
           <div><button type="submit" form="botao-novo" name="acao" value="botao_novo" class="botao botao-escuro botao-pequeno">Adicionar</button></div>
         </div></details>
       {% endif %}
@@ -123,21 +123,36 @@
       <div data-vitrine="manual" class="bloco-modo">
         <div class="campo">{% include "painel/_campo.html" with campo=form.links_manuais %}</div>
       </div>
+      <div class="campo" style="margin-top:12px" data-sem-vitrine-esconde>{% include "painel/_campo.html" with campo=form.sub_id_vitrine %}</div>
       <p class="pequeno" style="margin-top:10px" data-vitrine-status>
         {% if site.vitrine == "nenhuma" %}{% elif site.vitrine_pedida %}<span class="suave">Montando a vitrine com a Shopee…</span>
         {% else %}<strong>{{ total_produtos }}</strong> produto{{ total_produtos|pluralize }} na vitrine agora{% if site.vitrine_atualizada_em and site.vitrine != "bot" %} · atualizada em {{ site.vitrine_atualizada_em|date:"d/m H:i" }}{% endif %}.{% endif %}
       </p>
       {% if site.vitrine_erro %}<p class="aviso aviso-warning pequeno">{{ site.vitrine_erro }}</p>{% endif %}
+      {% if produtos_vitrine and site.vitrine != "nenhuma" %}
+        <details class="produtos-vitrine" data-sem-vitrine-esconde>
+          <summary class="pequeno"><strong>Ver os produtos e corrigir as categorias</strong> ({{ produtos_vitrine|length }})</summary>
+          <p class="suave pequeno">A categoria vem da Shopee (a que o vendedor escolheu no cadastro) e às vezes está errada. Troque aqui: vale na hora, e continua valendo quando a vitrine se atualizar.</p>
+          <ul class="lista-produtos-vitrine" data-url-categoria="{% url 'painel_meu_site_categoria' 0 %}">
+            {% for p in produtos_vitrine %}
+              <li>
+                {% if p.imagem_url %}<img src="{{ p.imagem_url }}" alt="" loading="lazy" referrerpolicy="no-referrer">{% else %}<span class="sem-foto" aria-hidden="true"></span>{% endif %}
+                <span class="nome-produto pequeno">{{ p.nome|truncatechars:70 }}</span>
+                <select class="categoria-produto" data-produto="{{ p.pk }}" aria-label="Categoria de {{ p.nome|truncatechars:40 }}">
+                  <option value=""{% if not p.categoria %} selected{% endif %}>Sem categoria</option>
+                  {% for chave, nome in opcoes_categoria %}<option value="{{ chave }}"{% if p.categoria == chave %} selected{% endif %}>{{ nome }}</option>{% endfor %}
+                </select>
+              </li>
+            {% endfor %}
+          </ul>
+        </details>
+      {% endif %}
     </section>
 
     <div class="barra-salvar"><button type="submit" class="botao botao-principal">Salvar</button></div>
   </form>
 
   <div class="coluna-lateral">
-    <section class="card previa-site" aria-labelledby="titulo-previa">
-      <div class="card-topo"><h2 id="titulo-previa">Prévia</h2><span class="suave pequeno">{% if site.publicado %}No ar{% else %}Fora do ar{% endif %}</span></div>
-      <div class="celular"><iframe id="previa" src="{{ url_previa }}" title="Prévia do seu site"></iframe></div>
-    </section>
     <section class="card" aria-labelledby="titulo-cliques">
       <h2 id="titulo-cliques">Cliques nos últimos {{ cliques.dias }} dias</h2>
       <div class="numeros-site">
@@ -151,6 +166,10 @@
         <ol class="top-produtos">{% for p in cliques.top_produtos %}<li><span>{{ p.alvo_nome|truncatechars:50 }}</span><strong>{{ p.soma }}</strong></li>{% endfor %}</ol>
       {% endif %}
       {% if not sem_marca %}<p class="suave pequeno" style="margin-top:12px">O rodapé do site mostra "Feito com Appfiliado". Para tirar, contrate o adicional <strong>Meu site sem a marca</strong> em <a href="{% url 'painel_plano' %}">Seu plano</a>.</p>{% endif %}
+    </section>
+    <section class="card previa-site" aria-labelledby="titulo-previa">
+      <div class="card-topo"><h2 id="titulo-previa">Prévia</h2><span class="suave pequeno">{% if site.publicado %}No ar{% else %}Fora do ar{% endif %}</span></div>
+      <div class="celular"><iframe id="previa" src="{{ url_previa }}" title="Prévia do seu site"></iframe></div>
     </section>
   </div>
 </div>
@@ -168,5 +187,6 @@
 </dialog>
 <form method="post" id="botao-novo" hidden>{% csrf_token %}</form>
 {% for b in botoes %}<form method="post" id="botao-{{ b.pk }}" hidden>{% csrf_token %}<input type="hidden" name="botao" value="{{ b.pk }}"></form>{% endfor %}
+<script src="{% static 'painel/emojis.js' %}" defer></script>
 <script src="{% static 'painel/meusite.js' %}" defer></script>
 {% endblock %}

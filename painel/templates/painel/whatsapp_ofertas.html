@@ -1,6 +1,6 @@
 {% extends "painel/base.html" %}
 {% load static painel_extras %}
-{% block titulo %}Ofertas automáticas{% endblock %}
+{% block titulo %}Automação · Bot de WhatsApp{% endblock %}
 {% block conteudo %}
 <header class="cabecalho">
   <div>
@@ -198,7 +198,11 @@
     </section>
     {% else %}
     <section class="card" id="teste" aria-labelledby="titulo-teste">
-      <h2 id="titulo-teste">Teste da busca</h2>
+      <div class="card-topo-recolher">
+        <h2 id="titulo-teste">Teste da busca</h2>
+        <button type="button" class="botao-recolher" data-recolher="teste-da-busca" aria-controls="teste-corpo" aria-expanded="true" title="Minimizar">{% include "painel/_icone.html" with caminho=icones.seta_cima %}<span class="sr">Minimizar ou expandir o teste da busca</span></button>
+      </div>
+      <div id="teste-corpo">
       {% if config.testando %}
         <p class="suave pequeno">Buscando na Shopee…</p>
       {% elif config.teste_erro %}
@@ -225,6 +229,7 @@
       {% else %}
         <p class="suave pequeno">Salve as configurações e clique em <strong>Testar busca</strong> para ver as próximas ofertas antes de ligar.</p>
       {% endif %}
+      </div>
     </section>
 
     {% endif %}
@@ -247,4 +252,5 @@
 </div>
 <form method="post" action="{% url 'painel_whatsapp_grupos' %}" id="form-atualizar-grupos" hidden>{% csrf_token %}<input type="hidden" name="voltar" value="{% url 'painel_whatsapp_ofertas' %}"></form>
 <script src="{% static 'painel/ofertas.js' %}" defer></script>
+<script src="{% static 'painel/recolher.js' %}" defer></script>
 {% endblock %}
