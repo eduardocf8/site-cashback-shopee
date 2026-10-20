@@ -1231,3 +1231,75 @@ class TestPrioridadeDaEmissao(TestCase):
         with mock.patch.object(fila, "emitir", return_value=0), mock.patch.object(fila, "tem_fila", return_value=False), \
                 mock.patch.object(fila, "enviar_emails", return_value=3) as emails:
             self.assertIn("Notas fiscais: 3 e-mail(s) enviado(s).", fila.uma_volta())
+
+
+@override_settings(APPFILIADO_PAINEL_HOSTS=[HOST], ALLOWED_HOSTS=[HOST, "testserver"], APPFILIADO_PAINEL_URL=f"https://{HOST}")
+class TestHorarioDosEmails(TestCase):
+    def setUp(self):
+        cache.clear()
+        self.conta = criar_conta()
+        self.empresa = criar_empresa(self.conta)
+        certificado.guardar(self.empresa, gerar_pfx(), "senha-do-pfx")
+
+    def _agora(self, dia, hora, minuto=0):
+        return dt.datetime(2026, 11, dia, hora, minuto, tzinfo=FUSO)
+
+    def test_proxima_vez_que_der_a_hora(self):
+        self.assertIsNone(servicos.proximo_envio_de_email(self.empresa))  # padrão: logo depois das notas
+        self.empresa.email_horario = 9
+        self.assertEqual(servicos.proximo_envio_de_email(self.empresa, self._agora(3, 8, 30)), self._agora(3, 9))
+        self.assertEqual(servicos.proximo_envio_de_email(self.empresa, self._agora(3, 9)), self._agora(3, 9))
+        self.assertEqual(servicos.proximo_envio_de_email(self.empresa, self._agora(3, 22, 10)), self._agora(4, 9))
+
+    def test_lote_agendado_espera_a_hora_e_reenvio_manual_sai_ja(self):
+        from django.utils import timezone
+
+        from . import fila
+
+        servicos.salvar_horario_dos_emails(self.empresa, 9)
+        lote = servicos.importar_relatorio(self.empresa, relatorio_csv(), "r.csv", "1")
+        with mock.patch.object(timezone, "now", return_value=self._agora(3, 22)):
+            servicos.confirmar_lote(lote)
+            with mock.patch.object(fila, "ClienteSefin", ClienteFalso(emitir=autorizada())):
+                fila.emitir()
+            fila.fechar_lotes()
+            lote.refresh_from_db()
+            email = servicos.andamento_emails(lote)
+            self.assertEqual((email["situacao"], email["fase"], email["saindo"]),
+                             ("agendado", "Agendados para amanhã às 09:00.", 0))
+            with mock.patch("notas.danfse.pdf", return_value=b"%PDF"):
+                self.assertEqual(fila.enviar_emails(), 0)  # ainda não deu a hora
+        with mock.patch.object(timezone, "now", return_value=self._agora(4, 9, 1)), \
+                mock.patch("notas.danfse.pdf", return_value=b"%PDF"):
+            self.assertEqual(fila.enviar_emails(), 2)
+        # Pedir para reenviar um e-mail manda na hora, sem esperar o horário.
+        client = Client(HTTP_HOST=HOST)
+        client.post("/entrar/", {"email": "bia@exemplo.com", "senha": SENHA})
+        nota = lote.notas.filter(email_situacao="enviado").first()
+        client.post(f"/notas/{nota.pk}/reenviar-email/")
+        nota.refresh_from_db()
+        self.assertEqual((nota.email_situacao, nota.email_enviar_em), ("pendente", None))
+
+    def test_trocar_o_horario_reagenda_os_que_faltam(self):
+        servicos.salvar_horario_dos_emails(self.empresa, 9)
+        lote = servicos.importar_relatorio(self.empresa, relatorio_csv(), "r.csv", "1")
+        servicos.confirmar_lote(lote)
+        self.assertFalse(lote.notas.filter(email_situacao="pendente", email_enviar_em__isnull=True).exists())
+        self.assertEqual(servicos.salvar_horario_dos_emails(self.empresa, None), 2)
+        self.assertFalse(lote.notas.filter(email_enviar_em__isnull=False).exists())
+
+    def test_tela_de_configuracao(self):
+        client = Client(HTTP_HOST=HOST)
+        client.post("/entrar/", {"email": "bia@exemplo.com", "senha": SENHA})
+        with mock.patch.object(receita, "consultar", return_value={"regime": "mei"}):
+            pagina = client.get("/notas/")
+            self.assertContains(pagina, "E-mails para os vendedores")
+            self.assertContains(pagina, "Logo depois que as notas saírem")
+            resposta = client.post("/notas/", {"acao": "horario_email", "horario": "8"}, follow=True)
+        self.assertContains(resposta, "Os e-mails vão sair às 08:00.")
+        self.empresa.refresh_from_db()
+        self.assertEqual(self.empresa.email_horario, 8)
+        with mock.patch.object(receita, "consultar", return_value={"regime": "mei"}):
+            client.post("/notas/", {"acao": "horario_email", "horario": ""})
+        self.empresa.refresh_from_db()
+        self.assertIsNone(self.empresa.email_horario)

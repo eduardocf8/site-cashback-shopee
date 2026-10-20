@@ -226,8 +226,13 @@ tr:last-child td { border-bottom: none; }
 /* ---------- Celular ---------- */
 @media (max-width: 900px) {
   .app { flex-direction: column; }
-  .menu { width: 100%; max-width: 100vw; padding: 16px; gap: 14px; position: static; height: auto; overflow: visible; }
-  .menu nav { flex-direction: row; overflow-x: auto; gap: 6px; padding-bottom: 4px; }
+  /* O menu "se desmancha" em três faixas (logo, módulos, conta) para a faixa dos módulos
+     ficar presa no topo ao rolar; logo e conta rolam junto com a página. */
+  .menu { display: contents; }
+  .menu > .marca, .menu > nav, .menu > .menu-rodape { background: var(--verde); color: var(--menu-texto); }
+  .menu > .marca { padding: 16px 24px 7px; }
+  .menu nav { flex-direction: row; overflow-x: auto; gap: 6px; padding: 7px 16px 8px; position: sticky; top: 0; z-index: 30; }
+  .menu > .menu-rodape { padding: 6px 16px 16px; }
   .menu nav a { flex: none; }
   .menu-rodape { margin-top: 0; }
   .cartao-plano { display: none; }

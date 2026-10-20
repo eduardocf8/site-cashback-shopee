@@ -188,7 +188,9 @@ def enviar_emails(limite: int = EMAILS_POR_VOLTA, limite_segundos: float = 40) -
         limite = min(limite, max(0, settings.NOTAS_EMAILS_POR_DIA - ja))
         if not limite:
             return 0  # teto do dia atingido: o resto sai amanhã
+    agora = timezone.now()
     pendentes = list(NotaFiscal.objects.filter(situacao=NotaFiscal.AUTORIZADA, email_situacao=NotaFiscal.EMAIL_PENDENTE)
+                     .filter(Q(email_enviar_em__isnull=True) | Q(email_enviar_em__lte=agora))  # agendados esperam a hora
                      .select_related("empresa", "empresa__conta", "lote").order_by("autorizada_em")[:limite])
     if not pendentes:
         return 0
