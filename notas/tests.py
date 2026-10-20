@@ -299,6 +299,10 @@ class TestServicos(TestCase):
 @override_settings(APPFILIADO_PAINEL_HOSTS=[HOST], ALLOWED_HOSTS=[HOST, "testserver"], APPFILIADO_PAINEL_URL=f"https://{HOST}")
 class TestTelas(TestCase):
     def setUp(self):
+        # A tela confere o regime na Receita antes de emitir: aqui, sem internet.
+        receita_falsa = mock.patch.object(receita, "consultar", return_value={"regime": "mei"})
+        receita_falsa.start()
+        self.addCleanup(receita_falsa.stop)
         cache.clear()
         self.conta = criar_conta()
         self.client = Client(HTTP_HOST=HOST)
@@ -700,19 +704,19 @@ class TestCamposNovos(TestCase):
             servicos.processar(nota)
         teste, producao = (x.decode() for x in falso.emitidas)
         self.assertIn("<finNFSe>0</finNFSe>", teste)
-        self.assertNotIn("indDest", teste)
+        self.assertNotIn("</toma><indDest>", teste)  # na raiz, o ambiente de testes recusa
         self.assertNotIn("finNFSe", producao)
 
     def test_se_ajusta_sozinho_ate_passar(self):
         # O que aconteceu hoje: o governo pede finNFSe, e depois recusa o indDest.
-        cache.set("notas:campos:2", ["indDest"])
+        cache.set("notas:campos2:2", ["indDest"])
         falso = ClienteEmSequencia([recusa_de_esquema(ERRO_LEIAUTE_REAL), recusa_de_esquema(ERRO_INDDEST_REAL), autorizada()])
         with mock.patch.object(servicos, "ClienteSefin", falso):
             nota = servicos.emitir_teste(self.empresa)
         self.assertEqual(nota.situacao, "autorizada")
         ultima = falso.emitidas[-1].decode()
         self.assertIn("<finNFSe>0</finNFSe>", ultima)
-        self.assertNotIn("indDest", ultima)
+        self.assertNotIn("</toma><indDest>", ultima)
         self.assertEqual(servicos.campos_novos("2"), {"finNFSe"})  # as próximas já saem certas
 
     def test_producao_ganha_o_campo_quando_o_governo_mudar(self):
@@ -805,3 +809,78 @@ class TestIBSCBS(TestCase):
         self.assertEqual(nota.situacao, "autorizada")
         self.assertIn("<IBSCBS>", falso.emitidas[1].decode())
         self.assertEqual(servicos.campos_novos("1"), {"IBSCBS"})
+
+
+class TestRegime(TestCase):
+    def setUp(self):
+        cache.clear()
+        self.addCleanup(cache.clear)
+        self.empresa = criar_empresa(criar_conta())
+        certificado.guardar(self.empresa, gerar_pfx(), "senha-do-pfx")
+
+    def receita(self, regime):
+        return {**DADOS_RECEITA_LOJA, "cnpj": CNPJ, "regime": regime}
+
+    def test_atualiza_o_regime_pela_receita(self):
+        with mock.patch.object(receita, "consultar", return_value=self.receita("simples")):
+            aviso = servicos.atualizar_cadastro(self.empresa)
+        self.assertIn("de MEI para Simples", aviso)
+        self.assertEqual(EmpresaNotas.objects.get(pk=self.empresa.pk).regime, "simples")
+        with mock.patch.object(receita, "consultar", return_value=self.receita("simples")):
+            self.assertEqual(servicos.atualizar_cadastro(self.empresa), "")
+        with mock.patch.object(receita, "consultar", return_value=self.receita("")):
+            with self.assertRaisesMessage(servicos.ErroNotas, "não está mais no MEI"):
+                servicos.atualizar_cadastro(self.empresa)
+        with mock.patch.object(receita, "consultar", side_effect=receita.ReceitaFora("fora")):
+            self.assertEqual(servicos.atualizar_cadastro(self.empresa), "")  # não trava a emissão
+
+    def test_recusa_e0160_troca_o_regime_e_reenvia(self):
+        nota = servicos.emitir_nota_shopee(self.empresa, "10,00")
+        e0160 = Resposta(400, {"erros": [{"Codigo": "E0160", "Descricao": "Opção do Simples não confere."}]})
+        falso = ClienteEmSequencia([e0160, autorizada()])
+        with mock.patch.object(servicos, "ClienteSefin", falso):
+            servicos.processar(nota)
+        self.assertEqual(nota.situacao, "autorizada")
+        self.assertIn("<opSimpNac>2</opSimpNac>", falso.emitidas[0].decode())
+        self.assertIn("<opSimpNac>3</opSimpNac>", falso.emitidas[1].decode())
+        self.assertEqual(EmpresaNotas.objects.get(pk=self.empresa.pk).regime, "simples")
+
+    def test_e0160_que_nao_resolve_mantem_o_regime(self):
+        nota = servicos.emitir_nota_shopee(self.empresa, "10,00")
+        e0160 = Resposta(400, {"erros": [{"Codigo": "E0160", "Descricao": "Opção do Simples não confere."}]})
+        with mock.patch.object(servicos, "ClienteSefin", ClienteEmSequencia([e0160, e0160])):
+            servicos.processar(nota)
+        self.assertEqual(nota.situacao, "recusada")
+        self.assertEqual(EmpresaNotas.objects.get(pk=self.empresa.pk).regime, "mei")
+
+
+class TestCamposPorGrupo(TestCase):
+    def erro(self, texto):
+        return [{"codigo": "E1235", "descricao": texto}]
+
+    def test_campo_pedido_dentro_do_ibscbs_vai_para_dentro(self):
+        pedido = ("The element 'IBSCBS' in namespace 'http://www.sped.fazenda.gov.br/nfse' has invalid child element 'valores' "
+                  "in namespace 'http://www.sped.fazenda.gov.br/nfse'. List of possible elements expected: 'tpOper, gRefNFSe, "
+                  "tpEnteGov, indDest' in namespace 'http://www.sped.fazenda.gov.br/nfse'.")
+        self.assertEqual(dps.ajuste_de_campos(self.erro(pedido), {"finNFSe", "IBSCBS"}), {"finNFSe", "IBSCBS", "IBSCBS.indDest"})
+        sobra = ("The element 'IBSCBS' in namespace 'x' has invalid child element 'indDest' in namespace 'x'. "
+                 "List of possible elements expected: 'dest, imovel, valores' in namespace 'x'.")
+        self.assertEqual(dps.ajuste_de_campos(self.erro(sobra), {"IBSCBS", "IBSCBS.indDest"}), {"IBSCBS"})
+        subgrupo = ("The element 'trib' in namespace 'x' has invalid child element 'CST' in namespace 'x'. "
+                    "List of possible elements expected: 'gIBSCBS' in namespace 'x'.")
+        self.assertEqual(dps.ajuste_de_campos(self.erro(subgrupo), {"IBSCBS"}), {"IBSCBS", "IBSCBS.gIBSCBS"})
+        # o erro real de hoje: indDest na raiz é recusado -> sai da raiz (e não mexe no de dentro)
+        self.assertEqual(dps.ajuste_de_campos(self.erro(ERRO_INDDEST_REAL), {"indDest", "IBSCBS", "IBSCBS.indDest"}),
+                         {"IBSCBS", "IBSCBS.indDest"})
+
+    def test_monta_o_ibscbs_no_formato_de_dezembro(self):
+        raiz = dps_exemplo()
+        dps.com_campos_novos(raiz, {"IBSCBS", "IBSCBS.finNFSe", "IBSCBS.indFinal", "IBSCBS.indDest", "IBSCBS.gIBSCBS"})
+        self.assertIn("<IBSCBS><finNFSe>0</finNFSe><indFinal>0</indFinal><cIndOp>100301</cIndOp><indDest>0</indDest>"
+                      "<valores><trib><gIBSCBS><CST>000</CST><cClassTrib>000001</cClassTrib></gIBSCBS></trib></valores>"
+                      "</IBSCBS>", dps.para_bytes(raiz).decode())
+
+    def test_ambiente_de_testes_comeca_com_indDest_dentro_do_ibscbs(self):
+        cache.clear()
+        self.addCleanup(cache.clear)
+        self.assertEqual(servicos.campos_novos("2"), {"finNFSe", "IBSCBS", "IBSCBS.indDest"})

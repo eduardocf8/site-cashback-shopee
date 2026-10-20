@@ -185,11 +185,22 @@ def montar(*, ambiente: str, emitida_em: datetime, serie: str, numero: int, comp
     return raiz
 
 
-# Campos novos da reforma tributária (NT 009). Os ambientes do governo vão ganhando esses
-# campos aos poucos (em out/2026 o de testes já pede "finNFSe", mas ainda não aceita
-# "indDest"; a produção não aceita nenhum). Cada ambiente usa um conjunto, ajustado sozinho
-# pelas recusas de esquema (E1235) - ver ajuste_de_campos.
-CAMPOS_NOVOS = ("finNFSe", "indDest", "IBSCBS", "regApIBSCBSSN", "indFinal")
+# Campos novos da reforma tributária. Os ambientes do governo vão ganhando esses campos aos
+# poucos e não exatamente como na nota técnica: em out/2026 o de testes pede "finNFSe" na
+# raiz (NT 009), mas o grupo IBSCBS ainda parece o do esquema de dez/2025 (indDest e
+# CST/cClassTrib em lugares diferentes). Cada campo é identificado pelo grupo onde fica:
+#   raiz:   "finNFSe", "indDest", "IBSCBS"
+#   IBSCBS: "IBSCBS.finNFSe", "IBSCBS.indFinal", "IBSCBS.indDest", "IBSCBS.gIBSCBS" (CST e
+#           cClassTrib dentro de gIBSCBS, como no esquema de dez/2025)
+#   regTrib: "regApIBSCBSSN" (só ME/EPP do Simples)
+# O conjunto de cada ambiente se ajusta sozinho pelas recusas (ver ajuste_de_campos).
+CAMPOS_POR_GRUPO = {
+    "infDPS": {"finNFSe": "finNFSe", "indDest": "indDest", "IBSCBS": "IBSCBS"},
+    "IBSCBS": {"finNFSe": "IBSCBS.finNFSe", "indFinal": "IBSCBS.indFinal", "indDest": "IBSCBS.indDest"},
+    "trib": {"gIBSCBS": "IBSCBS.gIBSCBS"},
+    "regTrib": {"regApIBSCBSSN": "regApIBSCBSSN"},
+}
+CAMPOS_NOVOS = tuple(sorted({c for grupo in CAMPOS_POR_GRUPO.values() for c in grupo.values()}))
 
 # IBS/CBS (reforma): exigido pelo governo a partir da competência 01/10/2026 no ambiente de
 # testes (regra E0855); para MEI e Simples a obrigação em produção é a partir de 2027.
@@ -201,9 +212,9 @@ REGRA_IBSCBS_OBRIGATORIO = "E0855"
 
 
 def com_campos_novos(raiz: etree._Element, campos) -> etree._Element:
-    """Põe na DPS (já validada no leiaute 1.01) os campos novos pedidos: "finNFSe"
-    (0 = nota regular) depois de tpEmit/cMotivoEmisTI e "indDest" (0 = o destinatário é o
-    próprio tomador) depois de "toma"."""
+    """Põe na DPS (já validada no leiaute 1.01) os campos novos pedidos (ver CAMPOS_POR_GRUPO).
+    finNFSe = 0 (nota regular), indDest = 0 (destinatário é o próprio tomador),
+    indFinal = 0 (não é consumo pessoal: o tomador é empresa)."""
     inf = raiz[0]
     if "finNFSe" in campos:
         ancora = inf.find(f"{{{NS}}}cMotivoEmisTI")
@@ -226,20 +237,28 @@ def com_campos_novos(raiz: etree._Element, campos) -> etree._Element:
             (ancora if ancora is not None else reg.find(f"{{{NS}}}opSimpNac")).addnext(ap)
     if "IBSCBS" in campos:
         grupo = etree.SubElement(inf, f"{{{NS}}}IBSCBS")
-        if "indFinal" in campos:  # opcional; só se o governo pedir (0 = não é consumo pessoal)
+        if "IBSCBS.finNFSe" in campos:
+            _texto(grupo, "finNFSe", 0)
+        if "IBSCBS.indFinal" in campos:
             _texto(grupo, "indFinal", 0)
         _texto(grupo, "cIndOp", IBSCBS_INDICADOR)
+        if "IBSCBS.indDest" in campos:
+            _texto(grupo, "indDest", 0)
         trib = _grupo(_grupo(grupo, "valores"), "trib")
+        if "IBSCBS.gIBSCBS" in campos:
+            trib = _grupo(trib, "gIBSCBS")
         _texto(trib, "CST", IBSCBS_CST)
         _texto(trib, "cClassTrib", IBSCBS_CLASSIFICACAO)
     return raiz
 
 
 def ajuste_de_campos(mensagens: list[dict], campos) -> frozenset | None:
-    """Se o governo recusou pelo esquema por causa de um campo novo, devolve o conjunto
-    corrigido (tira o que veio "invalid", põe o que veio em "expected"); senão, None.
-    Ex: E1235 "...invalid child element 'cLocEmi'... expected: 'cMotivoEmisTI, finNFSe'" -> põe finNFSe.
-        E1235 "...invalid child element 'indDest'... expected: 'interm, serv'" -> tira indDest."""
+    """Se o governo recusou por causa de um campo novo, devolve o conjunto corrigido; senão, None.
+    Lê em qual grupo foi o problema ("The element 'X'"), tira o campo que veio "invalid"
+    e põe os conhecidos que vieram em "expected". Exemplos reais (ambiente de testes, out/2026):
+      infDPS, invalid 'cLocEmi', expected 'cMotivoEmisTI, finNFSe' -> põe finNFSe na raiz
+      infDPS, invalid 'indDest', expected 'interm, serv'          -> tira indDest da raiz
+      E0855 (IBS/CBS obrigatório)                                  -> põe o grupo IBSCBS"""
     atual = set(campos)
     for m in mensagens:
         if m.get("codigo") == REGRA_IBSCBS_OBRIGATORIO:
@@ -248,12 +267,14 @@ def ajuste_de_campos(mensagens: list[dict], campos) -> frozenset | None:
         if m.get("codigo") != "E1235":
             continue
         texto = m.get("descricao", "")
+        pai = re.search(r"The element '(\w+)'", texto)
         invalido = re.search(r"invalid child element '(\w+)'", texto)
         esperados = re.search(r"expected:\s*'([^']*)'", texto)
-        if invalido and invalido.group(1) in CAMPOS_NOVOS:
-            atual.discard(invalido.group(1))
+        conhecidos = CAMPOS_POR_GRUPO.get(pai.group(1) if pai else "infDPS", {})
+        if invalido and invalido.group(1) in conhecidos:
+            atual.discard(conhecidos[invalido.group(1)])
         elif esperados:
-            atual |= {c.strip() for c in esperados.group(1).split(",")} & set(CAMPOS_NOVOS)
+            atual |= {conhecidos[c.strip()] for c in esperados.group(1).split(",") if c.strip() in conhecidos}
     novo = frozenset(atual)
     return novo if novo != frozenset(campos) else None
 
