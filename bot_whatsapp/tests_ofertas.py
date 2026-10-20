@@ -279,6 +279,18 @@ class TestTelaDeOfertas(BasePainel):
         base.update(extra)
         return base
 
+    def test_ultimas_ofertas_mostra_10_e_teste_da_busca_minimiza(self):
+        for i in range(15):
+            EnvioWhatsApp.objects.create(conta=self.conta, destino="1@g.us", destino_nome="Grupo", origem="oferta",
+                                         item_id=str(i), produto=f"Produto número {i:02d}", estado="enviado")
+        html = self.client.get("/whatsapp/ofertas/").content.decode()
+        self.assertEqual(html.count("Produto número"), 10)
+        self.assertIn("Produto número 14", html)  # as mais novas
+        self.assertNotIn("Produto número 04", html)
+        self.assertIn('data-recolher="teste-da-busca"', html)
+        self.assertIn('aria-controls="teste-corpo"', html)
+        self.assertIn("painel/recolher", html)
+
     def test_salvar_ligar_pausar_e_testar(self):
         html = self.client.get("/whatsapp/ofertas/").content.decode()
         self.assertIn("Ofertas automáticas", html)
@@ -382,3 +394,4 @@ class TestTelaDeOfertas(BasePainel):
         self.assertContains(self.client.get("/whatsapp/ofertas/"), "Não incluso no seu plano")
         self.client.post("/whatsapp/ofertas/ligar/")
         self.assertFalse(ConfiguracaoOfertas.objects.filter(ativo=True).exists())
+

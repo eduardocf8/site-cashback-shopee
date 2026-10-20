@@ -45,11 +45,13 @@ class ResultadoSubIdDiario(models.Model):
 
 class SincronizacaoResultados(models.Model):
     """Quando os resultados da conta foram buscados na Shopee pela última vez, e se
-    a pessoa pediu uma atualização (botão "Atualizar agora") - quem atende é o
+    a pessoa pediu uma atualização (botão "Atualizar 30 dias") - quem atende é o
     comando sincronizar_painel, rodando em segundo plano."""
 
     conta = models.OneToOneField(ContaAppfiliado, on_delete=models.CASCADE, related_name="sincronizacao_resultados")
     pedido_em = models.DateTimeField(null=True, blank=True)
+    # O pedido é só do dia anterior e do atual (botão "Atualizar dia anterior e atual"): mais rápido.
+    pedido_curto = models.BooleanField(default=False)
     iniciada_em = models.DateTimeField(null=True, blank=True)
     concluida_em = models.DateTimeField(null=True, blank=True)
     erro = models.TextField(blank=True)

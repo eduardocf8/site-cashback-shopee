@@ -256,10 +256,13 @@ def atualizar_resultados(request):
     conta = conta_logada(request)
     if conta.shopee_validado_em:
         estado = telas.estado_sincronizacao(conta)
+        curta = request.POST.get("periodo") == "curto"
         recente = estado and estado.pedido_em and timezone.now() - estado.pedido_em < timedelta(minutes=2)
-        if not recente:
-            resultados.pedir_atualizacao(conta)
-        messages.info(request, "Pedimos os números novos à Shopee. Em até 1 minuto eles aparecem aqui.")
+        # Pedido recente igual (ou um de 30 dias, que já cobre o curto): não pede de novo.
+        if not recente or (not curta and estado.pedido_curto and estado.aguardando):
+            resultados.pedir_atualizacao(conta, curta=curta)
+        messages.info(request, ("Pedimos os números de ontem e de hoje à Shopee." if curta else
+                                "Pedimos os números dos últimos 30 dias à Shopee.") + " Em até 1 minuto eles aparecem aqui.")
     return redirect(destino_seguro(request, request.POST.get("voltar", "")))
 
 

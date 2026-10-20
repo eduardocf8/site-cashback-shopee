@@ -99,7 +99,7 @@ def atualizar_e_conferir(conta, hoje: date, agora: datetime) -> bool | None:
     estado = SincronizacaoResultados.objects.filter(conta=conta).first()
     recente = estado and estado.concluida_em and not estado.erro and agora - estado.concluida_em < ATUALIZACAO_RECENTE
     if not recente:
-        resultados.processar(conta)
+        resultados.processar(conta, curta=True)  # só ontem e hoje: é o que o relatório precisa conferir
         estado = SincronizacaoResultados.objects.filter(conta=conta).first()
         if not estado or estado.erro:
             return None

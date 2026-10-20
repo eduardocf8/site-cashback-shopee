@@ -80,7 +80,7 @@ class TestRelatorioDiario(TestCase):
         self.assertEqual(self.preferencia.ultimo_envio_dia, HOJE)
 
     def test_shopee_fora_do_ar_tenta_de_novo_sem_avisar(self):
-        def falhou(conta):
+        def falhou(conta, curta=None):
             SincronizacaoResultados.objects.filter(conta=conta).update(erro="fora", concluida_em=as_(8, 10))
         self.processar.side_effect = falhou
         self.assertIn("Shopee não respondeu", relatorio.enviar_pendentes(as_(8, 10))[0])

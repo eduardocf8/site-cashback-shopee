@@ -220,6 +220,9 @@ form.formulario { display: flex; flex-direction: column; gap: 14px; }
 .botao-escuro:hover { background: var(--verde-2); color: var(--menu-texto); }
 .botao-claro { background: #fff; color: var(--texto); border: 1px solid var(--borda); }
 .botao-claro:hover { background: var(--chip); color: var(--texto); }
+/* Mesmo estilo do claro, num tom creme (para diferenciar dois botões lado a lado). */
+.botao-tom { background: var(--chip); color: var(--texto); border: 1px solid var(--borda-forte); }
+.botao-tom:hover { background: #E6E0CE; color: var(--texto); }
 .botao-pequeno { min-height: 36px; padding: 0 14px; font-size: 13px; }
 
 /* ---------- Tabelas ---------- */
@@ -265,7 +268,7 @@ tr:last-child td { border-bottom: none; }
 
 /* ---------- Fase 2: resultados e metas ---------- */
 .sincronizacao { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
-.sincronizacao form { margin: 0; }
+.sincronizacao form { margin: 0; display: flex; flex-wrap: wrap; gap: 8px; }
 .card-topo { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; flex-wrap: wrap; margin-bottom: 12px; }
 .card-topo h2 { margin: 0; }
 .bom { color: var(--bom-tinta); }
@@ -670,3 +673,15 @@ summary { cursor: pointer; }  /* "Editar", "Ver mensagem" etc. abrem ao clicar *
   .notas-etapa-numero strong { font-size: 28px; }
 }
 #relatorio select[name="hora"] { max-width: 260px; }
+
+/* Cartão que minimiza/expande (botão de seta no canto, painel/recolher.js). */
+.card-topo-recolher { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin-bottom: 12px; }
+.card .card-topo-recolher h2 { margin: 0; }
+.recolhido .card-topo-recolher { margin-bottom: 0; }
+.botao-recolher {
+  flex: none; width: 32px; height: 32px; display: grid; place-items: center; cursor: pointer;
+  background: #fff; color: var(--texto); border: 1px solid var(--borda); border-radius: 8px;
+}
+.botao-recolher:hover { background: var(--chip); }
+.botao-recolher svg.icone { transition: transform .2s ease; }
+.recolhido .botao-recolher svg.icone { transform: rotate(180deg); }
