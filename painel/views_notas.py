@@ -8,7 +8,7 @@ import zipfile
 from django import forms
 from django.contrib import messages
 from django.core.paginator import Paginator
-from django.http import HttpResponse
+from django.http import HttpResponse, JsonResponse
 from django.shortcuts import get_object_or_404, redirect, render
 from django.views.decorators.debug import sensitive_post_parameters
 from django.views.decorators.http import require_POST
@@ -135,6 +135,7 @@ def notas(request):
     if empresa:
         contexto["falta"] = servicos.pronta_para_emitir(empresa)
         contexto["ultimas"] = empresa.notas.filter(lote__isnull=True)[:10]
+        contexto["avulsas_na_fila"] = any(n.situacao in (NotaFiscal.FILA, NotaFiscal.ENVIANDO) for n in contexto["ultimas"])
         contexto["lotes"] = empresa.lotes.all()[:12]
         contexto["teste_ok"] = empresa.notas.filter(tipo=NotaFiscal.TIPO_TESTE, situacao=NotaFiscal.AUTORIZADA).exists()
     return render(request, "painel/notas.html", _contexto(request, "notas", **contexto))
@@ -216,6 +217,37 @@ def lote(request, pk):
         pagina=pagina, filtro=filtro, busca=busca, falta=servicos.pronta_para_emitir(lote.empresa),
         atualizar=lote.estado == LoteNotas.EMITINDO,
     ))
+
+
+CLASSE_DA_SITUACAO = {NotaFiscal.AUTORIZADA: "selo-concluido", NotaFiscal.RECUSADA: "selo-cancelado",
+                      NotaFiscal.ERRO: "selo-cancelado"}
+
+
+@conta_requerida
+def andamento(request):
+    """Situação atual das notas pedidas (ids=1,2,3) e, com lote=<id>, o resumo do lote.
+    A tela pergunta isso a cada poucos segundos para a barra e a lista andarem sozinhas."""
+    conta = conta_logada(request)
+    ids = [int(i) for i in request.GET.get("ids", "").split(",") if i.isdigit()][:200]
+    notas = {}
+    for n in NotaFiscal.objects.filter(empresa__conta=conta, pk__in=ids):
+        rotulo = n.get_situacao_display() + (f" nº {n.numero_nfse}" if n.numero_nfse else "")
+        notas[n.pk] = {"situacao": n.situacao, "rotulo": rotulo,
+                       "classe": CLASSE_DA_SITUACAO.get(n.situacao, "selo-pendente")}
+    resposta = {"notas": notas}
+    if request.GET.get("lote", "").isdigit():
+        lote = LoteNotas.objects.filter(pk=int(request.GET["lote"]), empresa__conta=conta).first()
+        if lote:
+            r = servicos.resumo(lote.notas.all())
+            resposta["lote"] = {
+                "estado": lote.estado, "total": r["total"], "progresso": r["progresso"],
+                "autorizadas": r["por"][NotaFiscal.AUTORIZADA]["qtd"],
+                "feitas": sum(r["por"][s]["qtd"] for s in (NotaFiscal.AUTORIZADA, NotaFiscal.RECUSADA, NotaFiscal.CANCELADA)),
+                "problemas": r["por"][NotaFiscal.RECUSADA]["qtd"] + r["por"][NotaFiscal.ERRO]["qtd"],
+                "fila": r["por"][NotaFiscal.FILA]["qtd"] + r["por"][NotaFiscal.ENVIANDO]["qtd"],
+                "emails": r["emails"].get(NotaFiscal.EMAIL_ENVIADO, 0),
+            }
+    return JsonResponse(resposta)
 
 
 @conta_requerida

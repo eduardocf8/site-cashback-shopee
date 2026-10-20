@@ -1,6 +1,7 @@
 {% extends "painel/base.html" %}
 {% load painel_extras %}
 {% block titulo %}Notas fiscais{% endblock %}
+{% block cabeca %}{% load static %}<script src="{% static 'painel/notas.js' %}" defer></script>{% endblock %}
 {% block conteudo %}
 <header class="cabecalho"><div><h1>Notas fiscais</h1><p>A nota da Shopee e as notas de cada vendedor que pagou comissão extra, emitidas direto no Emissor Nacional do governo.</p></div></header>
 
@@ -140,8 +141,9 @@
   </div>
 
   {% if ultimas %}
-    <section class="card notas-cartao" aria-labelledby="titulo-ultimas">
+    <section class="card notas-cartao" aria-labelledby="titulo-ultimas"{% if avulsas_na_fila %} data-acompanhar="{% url 'painel_notas_andamento' %}"{% endif %}>
       <h2 id="titulo-ultimas">Histórico de emissão de notas avulsas</h2>
+      {% if avulsas_na_fila %}<p class="suave pequeno">Nota na fila: ela sai em instantes e esta lista se atualiza sozinha.</p>{% endif %}
       {% include "painel/_notas_tabela.html" with notas=ultimas voltar="" %}
     </section>
   {% endif %}

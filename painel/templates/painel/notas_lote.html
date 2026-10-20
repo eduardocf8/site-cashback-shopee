@@ -1,7 +1,7 @@
 {% extends "painel/base.html" %}
 {% load painel_extras %}
 {% block titulo %}Notas de {{ lote.mes_referencia|date:"F/Y" }}{% endblock %}
-{% block cabeca %}{% if atualizar %}<meta http-equiv="refresh" content="20">{% endif %}{% endblock %}
+{% block cabeca %}{% load static %}<script src="{% static 'painel/notas.js' %}" defer></script>{% endblock %}
 {% block conteudo %}
 <header class="cabecalho">
   <div>
@@ -13,16 +13,16 @@
 </header>
 
 {% include "painel/_notas_pausa.html" with voltar=request.path %}
-<section class="card notas-cartao notas-resumo" aria-label="Resumo">
+<section class="card notas-cartao notas-resumo" aria-label="Resumo"{% if atualizar %} data-acompanhar="{% url 'painel_notas_andamento' %}" data-lote="{{ lote.pk }}"{% endif %}>
   <div class="notas-numeros">
     <div><span>Notas</span><strong>{{ resumo.total }}</strong></div>
     <div><span>Valor total</span><strong>{{ resumo.valor|brl }}</strong></div>
     {% if lote.estado == "previa" %}
       <div><span>Fora da prévia</span><strong>{{ lote.ignoradas|length }}</strong></div>
     {% else %}
-      <div><span>Autorizadas</span><strong>{{ resumo.por.autorizada.qtd }}</strong></div>
-      <div><span>Com problema</span><strong>{{ resumo.por.recusada.qtd|add:resumo.por.erro.qtd }}</strong></div>
-      {% if lote.ambiente == "1" %}<div><span>E-mails enviados</span><strong>{{ resumo.emails.enviado|default:0 }}</strong></div>{% endif %}
+      <div><span>Autorizadas</span><strong data-campo="autorizadas">{{ resumo.por.autorizada.qtd }}</strong></div>
+      <div><span>Com problema</span><strong data-campo="problemas">{{ resumo.por.recusada.qtd|add:resumo.por.erro.qtd }}</strong></div>
+      {% if lote.ambiente == "1" %}<div><span>E-mails enviados</span><strong data-campo="emails">{{ resumo.emails.enviado|default:0 }}</strong></div>{% endif %}
     {% endif %}
   </div>
 
@@ -34,8 +34,8 @@
       <form method="post">{% csrf_token %}<input type="hidden" name="acao" value="descartar"><button type="submit" class="botao botao-claro">Descartar</button></form>
     </div>
   {% else %}
-    <div class="notas-progresso" role="progressbar" aria-valuenow="{{ resumo.progresso }}" aria-valuemin="0" aria-valuemax="100"><span style="width:{{ resumo.progresso }}%"></span></div>
-    <p class="pequeno">{% if lote.estado == "emitindo" %}Emitindo: {{ resumo.progresso }}% · {{ resumo.por.fila.qtd|add:resumo.por.enviando.qtd }} na fila. Esta página atualiza sozinha.{% else %}Concluído.{% endif %}</p>
+    <div class="notas-progresso" role="progressbar" aria-label="Andamento da emissão" aria-valuenow="{{ resumo.progresso }}" aria-valuemin="0" aria-valuemax="100"><span data-campo="barra" style="width:{{ resumo.progresso }}%"></span></div>
+    <p class="pequeno" aria-live="polite">{% if lote.estado == "emitindo" %}Emitindo: <strong data-campo="feitas">{{ resumo.por.autorizada.qtd|add:resumo.por.recusada.qtd }}</strong> de {{ resumo.total }} (<span data-campo="progresso">{{ resumo.progresso }}</span>%) · <span data-campo="fila">{{ resumo.por.fila.qtd|add:resumo.por.enviando.qtd }}</span> na fila. Pode fechar a página: as notas continuam saindo.{% else %}Concluído.{% endif %}</p>
     {% if resumo.por.recusada.qtd or resumo.por.erro.qtd %}
       <form method="post">{% csrf_token %}<input type="hidden" name="acao" value="reenviar_problemas"><button type="submit" class="botao botao-claro botao-pequeno">Tentar de novo as que deram problema</button></form>
     {% endif %}

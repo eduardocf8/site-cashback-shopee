@@ -4,13 +4,13 @@
     <thead><tr><th scope="col">Para</th><th scope="col" class="n">Valor</th><th scope="col">Situação</th>{% if com_email %}<th scope="col">E-mail</th>{% endif %}<th scope="col"><span class="sr">Ações</span></th></tr></thead>
     <tbody>
       {% for n in notas %}
-        <tr>
+        <tr data-nota="{{ n.pk }}" data-situacao="{{ n.situacao }}">
           <td><span class="produto-nome"><strong>{{ n.tomador_nome }}</strong></span>{% if n.ambiente == "2" and not sem_selo %} <span class="selo-venda selo-pendente">Teste</span>{% endif %}
             <span class="suave pequeno notas-sub">{% if n.loja_nome %}{{ n.loja_nome }} · {% endif %}{{ n.tomador_documento }}{% if not n.lote_id %} · criada em {{ n.criada_em|date:"d/m/Y \à\s H:i" }}{% endif %}</span>
             {% if n.enviada_em %}<span class="suave pequeno notas-sub">{% if n.autorizada_em %}Autorizada em {{ n.autorizada_em|date:"d/m/Y \à\s H:i:s" }}{% else %}Último envio em {{ n.enviada_em|date:"d/m/Y \à\s H:i:s" }}{% endif %}{% if n.tentativas > 1 %} · {{ n.tentativas }} tentativas{% endif %}</span>{% endif %}
             {% if n.mensagens and n.situacao != "autorizada" %}<ul class="notas-motivos">{% for m in n.mensagens %}<li>{% if m.codigo %}<strong>{{ m.codigo }}</strong> {% endif %}{{ m.descricao }}</li>{% endfor %}</ul>{% endif %}</td>
           <td class="n" data-rotulo="Valor">{{ n.valor|brl }}</td>
-          <td data-rotulo="Situação"><span class="selo-venda {% if n.situacao == 'autorizada' %}selo-concluido{% elif n.situacao == 'recusada' or n.situacao == 'erro' %}selo-cancelado{% else %}selo-pendente{% endif %}">{{ n.get_situacao_display }}{% if n.numero_nfse %} nº {{ n.numero_nfse }}{% endif %}</span></td>
+          <td data-rotulo="Situação"><span class="notas-situacao selo-venda {% if n.situacao == 'autorizada' %}selo-concluido{% elif n.situacao == 'recusada' or n.situacao == 'erro' %}selo-cancelado{% else %}selo-pendente{% endif %}">{{ n.get_situacao_display }}{% if n.numero_nfse %} nº {{ n.numero_nfse }}{% endif %}</span></td>
           {% if com_email %}<td data-rotulo="E-mail" class="pequeno">{% if n.email_situacao == "falhou" %}<span class="notas-erro-email" title="{{ n.email_erro }}">Falhou</span>{% else %}{{ n.get_email_situacao_display }}{% endif %}</td>{% endif %}
           <td class="notas-acoes">
             {% if n.xml_nfse %}<a class="botao botao-claro botao-pequeno" href="{% url 'painel_nota_pdf' n.pk %}" target="_blank" rel="noopener">PDF</a><a class="botao botao-claro botao-pequeno" href="{% url 'painel_nota_xml' n.pk %}">XML</a>{% endif %}
