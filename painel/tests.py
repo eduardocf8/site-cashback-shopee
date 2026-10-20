@@ -690,3 +690,18 @@ class TestTelasDeResultados(BasePainel):
     def test_mes_fora_das_opcoes_cai_no_mes_atual(self, _):
         self.client.post("/metas/?mes=2030-01", {"percentual_1": "100", "faturamento_1": "1000"})
         self.assertTrue(MetaMensal.objects.filter(ano=2026, mes=10).exists())
+
+
+class TestSemanaComecaNoDomingo(TestCase):
+    def test_esta_semana_semana_passada_e_agrupar(self):
+        from . import periodos
+
+        terca = date(2026, 10, 20)
+        self.assertEqual(periodos.inicio_da_semana(terca), date(2026, 10, 18))  # domingo
+        self.assertEqual(periodos.inicio_da_semana(date(2026, 10, 18)), date(2026, 10, 18))  # domingo é o 1º dia
+        self.assertEqual(periodos.inicio_da_semana(date(2026, 10, 17)), date(2026, 10, 11))  # sábado é o último
+        self.assertEqual(periodos.intervalo_do_preset("semana", terca), (date(2026, 10, 18), terca))
+        self.assertEqual(periodos.intervalo_do_preset("semana_passada", terca), (date(2026, 10, 11), date(2026, 10, 17)))
+        linhas = [{"dia": date(2026, 10, d), "pedidos": 1} for d in (17, 18, 19)]
+        grupos = periodos.agrupar(linhas, "semana")
+        self.assertEqual([(g["inicio"], g["pedidos"]) for g in grupos], [(date(2026, 10, 17), 1), (date(2026, 10, 18), 2)])
