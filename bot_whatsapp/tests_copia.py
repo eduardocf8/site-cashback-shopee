@@ -216,14 +216,22 @@ class TestGerenciadorCopiando(TestCase):
             self.assertEqual(arquivo.read(), b"jpeg-da-mensagem")
 
     def test_envia_a_foto_da_mensagem(self):
+        import io
+
+        from PIL import Image
+
         caminho = os.path.join(self.pasta, "foto.jpg")
-        with open(caminho, "wb") as arquivo:
-            arquivo.write(b"jpeg")
+        Image.new("RGB", (10, 10), "#c33").save(caminho, "JPEG")
+        with open(caminho, "rb") as arquivo:
+            jpeg = arquivo.read()
         self.sessao.conectada = True
         EnvioWhatsApp.objects.create(conta=self.conta, destino="1@g.us", texto="Oferta", imagem_arquivo=caminho)
-        self.ger.uma_volta()
+        with mock.patch.object(g, "PASTA_DAS_FOTOS", g.Path(self.pasta)):
+            self.ger.uma_volta()
         destino, foto = self.sessao.cliente.send_image.call_args.args
-        self.assertEqual(foto, b"jpeg")
+        self.assertEqual(foto, jpeg)
+        # Arquivo fora da pasta das fotos do bot nunca é lido.
+        self.assertIsNone(g.ler_foto("/etc/hostname"))
 
     def test_mensagem_sem_link_da_shopee_fica_como_ignorada(self):
         self.ger.uma_volta()

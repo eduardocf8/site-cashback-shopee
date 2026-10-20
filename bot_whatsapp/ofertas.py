@@ -73,7 +73,10 @@ def ofertas_enviadas_hoje(conta, agora, simulacao: bool = False) -> int:
 def regras_do_plano(config) -> dict:
     """Limites do plano da conta (licencas/planos.py), guardados na config durante a volta."""
     if not hasattr(config, "_regras_do_plano"):
-        config._regras_do_plano = planos.bot(config.conta)
+        from licencas.models import MODULO_WHATSAPP
+
+        liberados = config.conta.modulos_liberados()
+        config._regras_do_plano = {**planos.bot(liberados), "liberado": MODULO_WHATSAPP in liberados}
     return config._regras_do_plano
 
 
@@ -112,6 +115,9 @@ def intervalo_do_plano(config) -> int:
 
 def motivo_para_esperar(config, conexao, agora) -> str:
     """"" = pode enviar agora; senão, o motivo (aparece no painel)."""
+    if not regras_do_plano(config)["liberado"]:
+        # Assinatura cancelada, reembolsada ou vencida: o bot para (o plano Standard não é de graça).
+        return "O Bot de WhatsApp não está no seu plano. Renove a assinatura para as ofertas voltarem."
     app_id, secret = credenciais(config.conta)
     if not config.conta.shopee_validado_em or not app_id or not secret:
         return "Conecte sua conta da Shopee em Configurações."

@@ -1,6 +1,7 @@
 import hashlib
 import hmac
 import json
+import time
 from datetime import date, timedelta
 from unittest import mock
 
@@ -60,7 +61,7 @@ class BaseZouti(TestCase):
                 "/licencas/webhook/zouti/",
                 data=corpo,
                 content_type="application/json",
-                HTTP_X_ZOUTI_SIGNATURE=f"t=1717000000000,v1={assinatura}",
+                HTTP_X_ZOUTI_SIGNATURE=f"t={int(time.time() * 1000)},v1={assinatura}",
                 HTTP_X_ZOUTI_EVENT_ID=evento_id or f"evt_{self._evento}",
                 HTTP_X_ZOUTI_EVENT_TYPE=tipo_evento,
                 HTTP_X_ZOUTI_OBJECT_NAME=objeto,
@@ -75,22 +76,33 @@ class BaseZouti(TestCase):
 
 
 class TestAssinaturaDoWebhook(TestCase):
+    def setUp(self):
+        self.t = str(int(time.time() * 1000))
+
     def test_hmac_do_corpo_bruto(self):
         corpo = b'{"a": 1}'
         v1 = hmac.new(SEGREDO.encode(), corpo, hashlib.sha256).hexdigest()
-        self.assertTrue(assinatura_webhook_valida(corpo, f"t=123,v1={v1}", SEGREDO))
+        self.assertTrue(assinatura_webhook_valida(corpo, f"t={self.t},v1={v1}", SEGREDO))
+        self.assertTrue(assinatura_webhook_valida(corpo, f"v1={v1}", SEGREDO))
 
     def test_hmac_com_timestamp_tambem_aceito(self):
         corpo = b'{"a": 1}'
-        v1 = hmac.new(SEGREDO.encode(), b"123." + corpo, hashlib.sha256).hexdigest()
-        self.assertTrue(assinatura_webhook_valida(corpo, f"t=123,v1={v1}", SEGREDO))
+        v1 = hmac.new(SEGREDO.encode(), self.t.encode() + b"." + corpo, hashlib.sha256).hexdigest()
+        self.assertTrue(assinatura_webhook_valida(corpo, f"t={self.t},v1={v1}", SEGREDO))
 
     def test_recusa_assinatura_errada_ou_sem_segredo(self):
         corpo = b'{"a": 1}'
         v1 = hmac.new(b"outro", corpo, hashlib.sha256).hexdigest()
-        self.assertFalse(assinatura_webhook_valida(corpo, f"t=123,v1={v1}", SEGREDO))
+        self.assertFalse(assinatura_webhook_valida(corpo, f"t={self.t},v1={v1}", SEGREDO))
         self.assertFalse(assinatura_webhook_valida(corpo, "", SEGREDO))
-        self.assertFalse(assinatura_webhook_valida(corpo, f"t=123,v1={v1}", ""))
+        self.assertFalse(assinatura_webhook_valida(corpo, f"t={self.t},v1={v1}", ""))
+
+    def test_recusa_aviso_velho_repetido(self):
+        corpo = b'{"a": 1}'
+        v1 = hmac.new(SEGREDO.encode(), corpo, hashlib.sha256).hexdigest()
+        velho = str(int((time.time() - 6 * 24 * 3600) * 1000))
+        self.assertFalse(assinatura_webhook_valida(corpo, f"t={velho},v1={v1}", SEGREDO))
+        self.assertFalse(assinatura_webhook_valida(corpo, f"t=abc,v1={v1}", SEGREDO))
 
 
 class TestWebhookZouti(BaseZouti):
@@ -173,8 +185,12 @@ class TestCicloDaAssinatura(BaseZouti):
         # Um evento de status qualquer depois do estorno não devolve o acesso...
         self.enviar("SUBSCRIPTION_ACTIVATED", _assinatura_payload(atualizada="2026-10-03T10:00:00.000Z"))
         self.assertEqual(Assinatura.objects.get().status, Assinatura.STATUS_REEMBOLSADA)
-        # ...só uma renovação paga.
-        self.enviar("SUBSCRIPTION_RENEWED", _assinatura_payload(atualizada="2026-11-01T10:00:00.000Z"))
+        # ...nem uma renovação antiga repetida (aviso capturado e reenviado, ou sem data)...
+        self.enviar("SUBSCRIPTION_RENEWED", _assinatura_payload(atualizada="2026-09-15T10:00:00.000Z"))
+        self.enviar("SUBSCRIPTION_RENEWED", _assinatura_payload(atualizada=None))
+        self.assertEqual(Assinatura.objects.get().status, Assinatura.STATUS_REEMBOLSADA)
+        # ...só uma renovação paga depois do estorno.
+        self.enviar("SUBSCRIPTION_RENEWED", _assinatura_payload(atualizada="2099-11-01T10:00:00.000Z"))
         self.assertEqual(Assinatura.objects.get().status, Assinatura.STATUS_ATIVA)
 
     def test_estorno_parcial_nao_bloqueia(self):

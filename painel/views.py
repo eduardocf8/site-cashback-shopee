@@ -2,14 +2,17 @@ import logging
 
 from django.conf import settings
 from django.contrib import messages
+from django.contrib.auth.hashers import make_password
 from django.core.paginator import Paginator
 from django.http import Http404, HttpResponse, JsonResponse
 from django.shortcuts import redirect, render
 from datetime import timedelta
 
+from django.core.cache import cache
 from django.utils import timezone
 from django.utils.encoding import force_str
 from django.utils.http import urlsafe_base64_decode
+from django.views.decorators.debug import sensitive_post_parameters
 from django.views.decorators.http import require_POST
 
 from accounts.ratelimit import _incrementar_contador, _obter_ip
@@ -81,14 +84,16 @@ def entrar(request):
             form.add_error(None, "Muitas tentativas. Espere 15 minutos ou use \"Esqueci minha senha\".")
         else:
             conta = ContaAppfiliado.objects.filter(email__iexact=email).first()
-            if conta and conta.confere_senha(form.cleaned_data["senha"]):
+            if conta and conta.tem_senha and conta.confere_senha(form.cleaned_data["senha"]):
                 fazer_login(request, conta)
                 return redirect(destino_seguro(request, request.GET.get("proximo", "")))
+            if not (conta and conta.tem_senha):
+                make_password(form.cleaned_data["senha"])  # mesmo tempo de resposta: não revela se a conta existe
             registrar_falha_login(ip, email)
-            if conta and not conta.tem_senha:
-                form.add_error(None, "Você ainda não criou sua senha. Use \"Criar ou recuperar senha\" abaixo.")
-            else:
-                form.add_error(None, "E-mail ou senha incorretos.")
+            # Mesma mensagem com ou sem conta (e com ou sem senha criada): não dá para
+            # descobrir quem é cliente testando e-mails.
+            form.add_error(None, "E-mail ou senha incorretos. Se ainda não criou sua senha, use "
+                                 "\"Criar ou recuperar senha\" abaixo.")
     return render(request, "painel/entrar.html", {"form": form})
 
 
@@ -358,6 +363,7 @@ def plano(request):
     ))
 
 
+@sensitive_post_parameters("secret", "senha_atual", "nova_senha", "nova_senha2", "senha", "senha1", "senha2")
 @conta_requerida
 def configuracoes(request):
     conta = conta_logada(request)
@@ -372,7 +378,10 @@ def configuracoes(request):
         if form_relatorio.is_valid():
             preferencia = form_relatorio.save()
             if request.POST.get("acao") == "testar":
-                if not conta.shopee_validado_em:
+                if not cache.add(f"relatorio:teste:{conta.pk}", 1, 10 * 60):
+                    # Sem isso, dava para mandar e-mail sem parar para os endereços extras.
+                    messages.error(request, "Você já pediu um relatório de teste há pouco. Espere 10 minutos.")
+                elif not conta.shopee_validado_em:
                     messages.error(request, "Conecte sua conta da Shopee para receber o relatório.")
                 else:
                     # Quem manda é o worker: antes ele busca os números de ontem na Shopee (se ainda

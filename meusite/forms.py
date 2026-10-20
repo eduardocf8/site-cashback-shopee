@@ -6,7 +6,7 @@ from django import forms
 from bot_whatsapp.models import ConfiguracaoOfertas
 
 from . import cores
-from .models import CORES, ENDERECOS_RESERVADOS, REDES, BotaoSite, SiteAfiliado
+from .models import CORES, ENDERECOS_RESERVADOS, PEDACOS_RESERVADOS, REDES, BotaoSite, SiteAfiliado
 
 OUTRA_COR = "outra"
 PADRAO_ENDERECO = re.compile(r"^[a-z0-9](?:[a-z0-9-]{1,38}[a-z0-9])$")
@@ -129,7 +129,7 @@ class SiteForm(forms.ModelForm):
         endereco = (self.cleaned_data.get("endereco") or "").strip().lower()
         if not PADRAO_ENDERECO.match(endereco) or "--" in endereco:
             raise forms.ValidationError("Use de 3 a 40 letras minúsculas, números ou hífen (sem acento nem espaço).")
-        if endereco in ENDERECOS_RESERVADOS:
+        if endereco in ENDERECOS_RESERVADOS or any(p in endereco for p in PEDACOS_RESERVADOS):
             raise forms.ValidationError("Esse endereço é reservado. Escolha outro.")
         if SiteAfiliado.objects.filter(endereco=endereco).exclude(pk=self.instance.pk).exists():
             raise forms.ValidationError("Esse endereço já está em uso. Escolha outro.")
@@ -212,7 +212,10 @@ class FotoForm(forms.Form):
         arquivo = self.cleaned_data["foto"]
         if arquivo.size > self.MAXIMO_MB * 1024 * 1024:
             raise forms.ValidationError(f"A foto pode ter até {self.MAXIMO_MB} MB.")
-        imagem = ImageOps.exif_transpose(Image.open(arquivo)).convert("RGB")
+        aberta = Image.open(arquivo)
+        if aberta.size[0] * aberta.size[1] > 30_000_000:  # "bomba" de pixels: estoura a memória ao abrir
+            raise forms.ValidationError("Essa foto é grande demais. Use uma de até 30 megapixels.")
+        imagem = ImageOps.exif_transpose(aberta).convert("RGB")
         imagem = ImageOps.fit(imagem, (self.TAMANHO, self.TAMANHO), Image.LANCZOS)
         saida = io.BytesIO()
         imagem.save(saida, "JPEG", quality=85, optimize=True)

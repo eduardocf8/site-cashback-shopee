@@ -5,6 +5,17 @@ from django.http import HttpResponse
 
 
 def _obter_ip(request) -> str:
+    """O IP de quem acessou. Atrás do proxy do Render, o REMOTE_ADDR é o do proxy (igual para
+    todo mundo): o IP real é o que o proxy acrescentou no fim do X-Forwarded-For. Os valores
+    do começo da lista o próprio visitante pode inventar, por isso conta da direita."""
+    from django.conf import settings
+
+    proxies = getattr(settings, "NUMERO_DE_PROXIES", 0)
+    encaminhado = request.META.get("HTTP_X_FORWARDED_FOR", "")
+    if proxies and encaminhado:
+        ips = [ip.strip() for ip in encaminhado.split(",") if ip.strip()]
+        if len(ips) >= proxies:
+            return ips[-proxies]
     return request.META.get("REMOTE_ADDR", "desconhecido")
 
 

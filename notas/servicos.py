@@ -67,6 +67,11 @@ def uso_do_plano(empresa, hoje=None) -> dict:
             "progresso": 0 if not limite else min(100, round(usadas * 100 / limite))}
 
 
+def _travar_plano(empresa):
+    """Trava a empresa até o fim da transação: a conta do plano e a nota nova entram juntas."""
+    EmpresaNotas.objects.select_for_update().filter(pk=empresa.pk).first()
+
+
 def conferir_plano(empresa, quantas: int, ambiente: str):
     """Barra antes de mandar notas de verdade além do que o plano ainda tem no mês.
     Tudo ou nada: nunca emite só uma parte do lote."""
@@ -420,6 +425,7 @@ def processar(nota: NotaFiscal, cert=None, cliente=None) -> NotaFiscal:
         nota.mensagens = [{"codigo": "", "descricao": str(erro)}]
     except Exception:  # noqa: BLE001 - uma nota com problema não pode derrubar o lote
         logger.exception("Notas: erro inesperado ao processar a nota %s", nota.pk)
+        nota.erro_inesperado = True  # a fila não para a volta inteira por causa desta
         nota.situacao = NotaFiscal.ERRO
         nota.mensagens = [{"codigo": "", "descricao": "Erro inesperado do nosso lado. Já estamos olhando."}]
     nota.save()
@@ -496,9 +502,14 @@ def emitir_teste(empresa) -> NotaFiscal:
     falta = pronta_para_emitir(empresa)
     if falta:
         raise ErroNotas("Antes do teste, falta: " + " e ".join(falta) + ".")
+    from django.core.cache import cache
+
+    if not cache.add(f"notas:teste:{empresa.pk}", 1, 60):
+        raise ErroNotas("Você acabou de fazer uma nota de teste. Espere um minuto para fazer outra.")
     hoje = timezone.localdate()
+    # Já nasce "enviando": o worker não pega a mesma nota enquanto ela é enviada aqui.
     nota = criar_nota(empresa, ambiente=AMBIENTE_TESTE, tipo=NotaFiscal.TIPO_TESTE, competencia=hoje,
-                      tomador=SHOPEE, valor=VALOR_TESTE)
+                      tomador=SHOPEE, valor=VALOR_TESTE, situacao=NotaFiscal.ENVIANDO)
     return processar(nota)
 
 
@@ -512,9 +523,11 @@ def emitir_nota_shopee(empresa, valor_digitado: str, ambiente=AMBIENTE_PRODUCAO)
     valor = ler_valor(valor_digitado)
     if valor is None or valor <= 0 or valor > VALOR_MAXIMO:
         raise ErroNotas("Digite o valor da comissão da Shopee (ex: 11.712,09).")
-    conferir_plano(empresa, 1, ambiente)
-    return criar_nota(empresa, ambiente=ambiente, tipo=NotaFiscal.TIPO_SHOPEE, competencia=timezone.localdate(),
-                      tomador=SHOPEE, valor=valor)
+    with transaction.atomic():
+        _travar_plano(empresa)
+        conferir_plano(empresa, 1, ambiente)
+        return criar_nota(empresa, ambiente=ambiente, tipo=NotaFiscal.TIPO_SHOPEE, competencia=timezone.localdate(),
+                          tomador=SHOPEE, valor=valor)
 
 
 # ---------- Relatório Mensal da Shopee (uma nota por loja) ----------
@@ -610,12 +623,13 @@ def confirmar_lote(lote) -> int:
     falta = pronta_para_emitir(lote.empresa)
     if falta:
         raise ErroNotas("Antes de emitir, falta: " + " e ".join(falta) + ".")
-    if lote.estado != LoteNotas.PREVIA:
-        return 0
-    conferir_plano(lote.empresa, lote.notas.filter(situacao=NotaFiscal.PREVIA).count(), lote.ambiente)
     hoje = timezone.localdate()
     envia_email = lote.ambiente == AMBIENTE_PRODUCAO
     with transaction.atomic():
+        _travar_plano(lote.empresa)  # dois "Emitir" ao mesmo tempo não passam juntos do plano
+        if LoteNotas.objects.filter(pk=lote.pk).values_list("estado", flat=True).first() != LoteNotas.PREVIA:
+            return 0
+        conferir_plano(lote.empresa, lote.notas.filter(situacao=NotaFiscal.PREVIA).count(), lote.ambiente)
         notas = lote.notas.filter(situacao=NotaFiscal.PREVIA)
         # Competência = dia em que a pessoa mandou emitir (não pode ser depois da emissão).
         com_email = notas.exclude(tomador_email="").update(
@@ -632,13 +646,33 @@ def confirmar_lote(lote) -> int:
 def reenviar_problemas(lote) -> int:
     """Põe de volta na fila as notas do lote que deram problema. As recusadas voltam a ocupar o
     plano; as sem resposta já ocupavam."""
-    problemas = lote.notas.filter(situacao__in=[NotaFiscal.RECUSADA, NotaFiscal.ERRO])
-    conferir_plano(lote.empresa, problemas.filter(situacao=NotaFiscal.RECUSADA).count(), lote.ambiente)
-    quantas = problemas.update(situacao=NotaFiscal.FILA)
+    with transaction.atomic():
+        _travar_plano(lote.empresa)
+        recusadas = lote.notas.filter(situacao=NotaFiscal.RECUSADA)
+        conferir_plano(lote.empresa, recusadas.count(), lote.ambiente)
+        # A recusada volta com a competência de hoje: conta no plano deste mês (senão notas
+        # recusadas de meses antigos seriam um jeito de emitir sem limite).
+        quantas = recusadas.update(situacao=NotaFiscal.FILA, competencia=timezone.localdate())
+        quantas += lote.notas.filter(situacao=NotaFiscal.ERRO).update(situacao=NotaFiscal.FILA)
     if quantas and lote.estado == LoteNotas.CONCLUIDO:
         lote.estado = LoteNotas.EMITINDO
         lote.save(update_fields=["estado"])
     return quantas
+
+
+def reenviar_nota(nota) -> None:
+    """Tentar de novo uma nota que deu problema: volta para a fila (o worker envia - nunca aqui,
+    na hora, para não correr junto com ele). ErroNotas se o plano do mês não tem vaga."""
+    with transaction.atomic():
+        _travar_plano(nota.empresa)
+        nota = NotaFiscal.objects.select_for_update().get(pk=nota.pk)
+        if nota.situacao == NotaFiscal.RECUSADA:
+            conferir_plano(nota.empresa, 1, nota.ambiente)
+            nota.competencia = timezone.localdate()
+        elif nota.situacao != NotaFiscal.ERRO:
+            return
+        nota.situacao = NotaFiscal.FILA
+        nota.save(update_fields=["situacao", "competencia", "atualizada_em"])
 
 
 def descartar_lote(lote):

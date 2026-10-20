@@ -32,7 +32,7 @@ EMAILS_POR_VOLTA = 600
 def _pegar(nota_id: int) -> bool:
     """Marca a nota como "enviando" se ninguém pegou antes (evita envio em dobro)."""
     return bool(NotaFiscal.objects.filter(pk=nota_id, situacao__in=[NotaFiscal.FILA, NotaFiscal.ERRO])
-                .update(situacao=NotaFiscal.ENVIANDO))
+                .update(situacao=NotaFiscal.ENVIANDO, atualizada_em=timezone.now()))
 
 
 def _a_enviar():
@@ -44,7 +44,9 @@ def _a_enviar():
         Q(situacao=NotaFiscal.FILA)
         | Q(situacao=NotaFiscal.ERRO, tentativas__lt=TENTATIVAS_MAXIMAS, atualizada_em__lt=agora - ESPERA_ENTRE_TENTATIVAS))
         .exclude(empresa__emissao_pausada__gt="")
-        .order_by("criada_em").values_list("pk", "empresa_id"))
+        # Notas de verdade antes das de teste: um lote grande no ambiente de testes não
+        # atrasa a emissão real de ninguém.
+        .order_by("ambiente", "criada_em").values_list("pk", "empresa_id"))
 
 
 def _acesso_negado(nota) -> bool:
@@ -134,7 +136,8 @@ def _trabalhar_notas(rodada: _Rodada):
             continue
         servicos.processar(nota, cert=conexao[0], cliente=conexao[1])
         rodada.contar()
-        if nota.situacao == NotaFiscal.ERRO:
+        if nota.situacao == NotaFiscal.ERRO and not getattr(nota, "erro_inesperado", False):
+            # (um erro só desta nota, do nosso lado, não para a volta das outras empresas)
             rodada.parar = True  # governo fora do ar ou instável: para a volta e tenta daqui a pouco
         elif _acesso_negado(nota):
             _pausar(nota.empresa, nota.mensagens[0]["descricao"])

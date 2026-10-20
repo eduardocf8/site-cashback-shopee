@@ -6,6 +6,8 @@ from django.http import HttpResponseForbidden, JsonResponse
 from django.views.decorators.csrf import csrf_exempt
 from django.views.decorators.http import require_POST
 
+from accounts.ratelimit import _incrementar_contador
+
 from .models import ContaAppfiliado, EventoWebhookZouti
 from .services import assinatura_webhook_valida, processar_evento, resposta_validacao
 
@@ -42,8 +44,12 @@ def webhook_zouti(request):
     )
 
     if not assinatura_ok:
+        # Qualquer um na internet pode chamar este endereço: do pedido recusado guarda só o
+        # começo, e no máximo 50 por hora (senão dava para encher o banco de dados).
         evento.erro = "Assinatura inválida ou segredo do webhook não configurado."
-        evento.save()
+        evento.corpo_bruto = evento.corpo_bruto[:2000]
+        if _incrementar_contador("zouti:assinatura_invalida", 3600) <= 50:
+            evento.save()
         logger.warning("Licencas: webhook da Zouti com assinatura inválida, recusado.")
         return HttpResponseForbidden("Assinatura inválida.")
 

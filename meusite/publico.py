@@ -1,6 +1,7 @@
 """O site que o visitante vê (seunome.appfiliado.com.br ou <painel>/s/seunome/)."""
 
 import logging
+import threading
 
 from django.conf import settings
 from django.core.cache import cache
@@ -14,6 +15,7 @@ from django.views.decorators.clickjacking import xframe_options_sameorigin
 from bot_whatsapp import copia, shopee_ofertas
 from licencas import planos
 from licencas.models import MODULO_SITE
+from ofertas.services import resolver_item_id_sem_rede
 
 from . import vitrine
 from .models import REDES, BotaoSite, CliqueSite, ProdutoSite, SiteAfiliado
@@ -94,7 +96,10 @@ def pagina(request, endereco=None):
 
 def ir_botao(request, botao_id, endereco=None):
     site = _site(request, endereco)
-    botao = BotaoSite.objects.filter(site=site, pk=botao_id).first()
+    # Só os botões que aparecem no site (os primeiros do plano): um botão escondido depois de o
+    # plano diminuir não continua funcionando pelo endereço direto.
+    visiveis = list(site.botoes.values_list("pk", flat=True)[: planos.site(site.conta)["botoes"]])
+    botao = BotaoSite.objects.filter(site=site, pk=botao_id, pk__in=visiveis).first()
     if not botao:
         raise Http404
     contar(site, CliqueSite.BOTAO, botao.pk, botao.texto)
@@ -130,8 +135,26 @@ def ir_produto(request, produto_id, endereco=None):
 
 
 def _ip(request) -> str:
-    return (request.META.get("HTTP_X_FORWARDED_FOR", "").split(",")[0].strip()
-            or request.META.get("REMOTE_ADDR", ""))
+    from accounts.ratelimit import _obter_ip
+
+    return _obter_ip(request)  # o IP real (o começo do X-Forwarded-For o visitante inventa)
+
+
+# No máximo 2 visitantes por vez abrindo link curto na Shopee (pode levar alguns segundos):
+# o servidor tem poucos atendimentos ao mesmo tempo e eles não podem ficar todos presos nisso.
+_ABRINDO_LINK = threading.BoundedSemaphore(2)
+
+
+def _identificar_sem_travar(link: str) -> str:
+    rapido = resolver_item_id_sem_rede(link)
+    if rapido:
+        return str(rapido)
+    if not _ABRINDO_LINK.acquire(blocking=False):
+        return ""  # ocupado: vai com o link como veio (o link de afiliado sai do mesmo jeito)
+    try:
+        return copia.identificar_produto(link)
+    finally:
+        _ABRINDO_LINK.release()
 
 
 def converter(request, endereco=None):
@@ -150,7 +173,7 @@ def converter(request, endereco=None):
     contar(site, CliqueSite.CONVERSOR)
     try:
         # Do link limpo do produto (sem o rastreio de quem divulgou); sem ele, do original.
-        item_id = copia.identificar_produto(links[0])
+        item_id = _identificar_sem_travar(links[0])
         produto = None
         if item_id:
             app_id, secret = vitrine._credenciais(site)

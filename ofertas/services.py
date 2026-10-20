@@ -5,7 +5,7 @@ import time
 import unicodedata
 from decimal import Decimal, InvalidOperation
 from pathlib import Path
-from urllib.parse import unquote
+from urllib.parse import unquote, urljoin, urlsplit
 
 import requests
 from django.conf import settings
@@ -112,6 +112,57 @@ def resolver_item_id_sem_rede(url: str) -> int | None:
     return None
 
 
+# Endereços que o servidor aceita abrir para achar o produto (o próprio domínio ou um
+# subdomínio dele - "s.shopee.com.br" sim, "shopee.com.br.golpe.com" não).
+DOMINIOS_DA_SHOPEE = ("shopee.com.br", "shopee.com", "shp.ee", "shope.ee", "shoope.top")
+MAXIMO_REDIRECIONAMENTOS = 6
+MAXIMO_BYTES_DA_PAGINA = 1_000_000
+
+
+def eh_host_da_shopee(url: str) -> bool:
+    """O link é mesmo da Shopee? Confere o host de verdade (sem usuário/senha no endereço,
+    só http/https, domínio igual ou subdomínio de um da lista)."""
+    try:
+        partes = urlsplit(str(url or "").strip())
+        host = (partes.hostname or "").rstrip(".").lower()
+    except ValueError:
+        return False
+    if partes.scheme.lower() not in ("http", "https") or partes.username is not None or "@" in partes.netloc:
+        return False
+    return any(host == d or host.endswith("." + d) for d in DOMINIOS_DA_SHOPEE)
+
+
+def _abrir_pagina_da_shopee(url: str, timeout: float, cabecalhos: dict) -> tuple[str, str, int, int]:
+    """Segue os redirecionamentos um por um, só enquanto continuam na Shopee, com tempo
+    total e tamanho da página limitados. Devolve (URL final, texto, status, saltos).
+    Um redirecionamento para fora da Shopee não é aberto: a URL dele vira a final (o
+    item_id às vezes já está nela)."""
+    limite = time.monotonic() + timeout
+    atual, saltos = url, 0
+    sessao = requests.Session()  # guarda os cookies entre um redirecionamento e outro, como o navegador
+    while True:
+        restante = limite - time.monotonic()
+        if restante <= 0:
+            raise requests.Timeout("tempo total esgotado")
+        with sessao.get(atual, allow_redirects=False, timeout=min(restante, timeout), headers=cabecalhos,
+                        stream=True) as resposta:
+            destino = resposta.headers.get("Location") if resposta.is_redirect else None
+            if destino and saltos < MAXIMO_REDIRECIONAMENTOS:
+                proxima = urljoin(atual, destino)
+                if not eh_host_da_shopee(proxima):
+                    return proxima, "", resposta.status_code, saltos + 1
+                atual, saltos = proxima, saltos + 1
+                continue
+            pedacos, total = [], 0
+            for pedaco in resposta.iter_content(chunk_size=16384):
+                pedacos.append(pedaco)
+                total += len(pedaco)
+                if total >= MAXIMO_BYTES_DA_PAGINA or time.monotonic() > limite:
+                    break
+            texto = b"".join(pedacos)[:MAXIMO_BYTES_DA_PAGINA].decode(resposta.encoding or "utf-8", errors="replace")
+            return atual, texto, resposta.status_code, saltos
+
+
 def _texto_da_pagina_normalizado(html: str) -> str:
     """O link curto (s.shopee.com.br, br.shp.ee) responde 200 sem redirecionamento HTTP:
     é uma página que redireciona via JavaScript, com o endereço do produto embutido -
@@ -159,19 +210,23 @@ def _resolver_item_id(url: str, timeout: int = 10) -> int:
         "Sec-Fetch-Mode": "navigate",
         "Sec-Fetch-Dest": "document",
     }
+    if not eh_host_da_shopee(url):
+        # Só abre endereço da própria Shopee: o link vem de visitante, de mensagem de grupo
+        # de terceiros ou do afiliado - nunca deixa o servidor buscar outro endereço (SSRF).
+        raise LinkProdutoInvalidoError(f"O link {url} não é da Shopee.")
     try:
-        resposta = requests.get(url, allow_redirects=True, timeout=timeout, headers=cabecalhos)
+        url_final, texto, status, saltos = _abrir_pagina_da_shopee(url, timeout, cabecalhos)
     except requests.RequestException as erro:
         raise LinkProdutoInvalidoError(f"Não consegui abrir o link {url}: {erro}") from erro
 
-    match = PADRAO_ITEM_ID_NA_URL.search(resposta.url) or PADRAO_ITEM_ID_NA_URL.search(
-        _texto_da_pagina_normalizado(resposta.text)
+    match = PADRAO_ITEM_ID_NA_URL.search(url_final) or PADRAO_ITEM_ID_NA_URL.search(
+        _texto_da_pagina_normalizado(texto)
     )
     if not match:
         raise LinkProdutoInvalidoError(
             f"Não consegui identificar o produto a partir do link {url} "
-            f"(redirecionou pra {resposta.url} [status={resposta.status_code}, "
-            f"{len(resposta.history)} redirecionamento(s) seguido(s)], mas não achei "
+            f"(redirecionou pra {url_final} [status={status}, "
+            f"{saltos} redirecionamento(s) seguido(s)], mas não achei "
             "nenhum padrão de link de produto da Shopee (-i.<loja>.<item> ou "
             "/product/<loja>/<item>) nem na URL final nem no conteúdo da página - talvez "
             "esse link precise ser aberto no navegador/app pra chegar na página do produto)."

@@ -62,6 +62,18 @@ def worker_sem_resposta(conexao: ConexaoWhatsApp) -> bool:
     )
 
 
+def _link_de_imagem_valido(url: str) -> bool:
+    """Só https, sem usuário/senha no endereço (o worker ainda confere, ao baixar, se o
+    endereço é público - ver rede.py)."""
+    from urllib.parse import urlsplit
+
+    try:
+        partes = urlsplit(url)
+    except ValueError:
+        return False
+    return partes.scheme == "https" and bool(partes.hostname) and partes.username is None and "@" not in partes.netloc
+
+
 def enfileirar_envio(conta, destino: str, texto: str, imagem_url: str = "", formato: str = "foto") -> tuple[EnvioWhatsApp | None, str]:
     """(envio, "") ou (None, motivo)."""
     conexao = conexao_da(conta)
@@ -72,6 +84,8 @@ def enfileirar_envio(conta, destino: str, texto: str, imagem_url: str = "", form
         return None, "Escolha um dos seus grupos."
     if not texto.strip() and not imagem_url:
         return None, "Escreva a mensagem."
+    if imagem_url and not _link_de_imagem_valido(imagem_url):
+        return None, "O link da imagem precisa começar com https:// e ser um endereço público."
     if EnvioWhatsApp.objects.filter(conta=conta, estado=EnvioWhatsApp.PENDENTE).count() >= MAXIMO_NA_FILA:
         return None, "Já tem mensagens na fila. Espere elas saírem."
     envio = EnvioWhatsApp.objects.create(

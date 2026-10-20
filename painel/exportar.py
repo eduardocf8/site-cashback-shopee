@@ -40,10 +40,24 @@ def _aba(planilha, titulo, colunas, linhas):
         aba.append(valores)
 
 
+COMECO_DE_FORMULA = ("=", "+", "-", "@", "\t", "\r")
+
+
+def texto_sem_formula(valor):
+    """Para CSV: texto que começa com =, +, -, @ vira fórmula ao abrir no Excel (nome de loja ou
+    produto é escolhido pelo vendedor: "=HYPERLINK(...)" rodaria). Põe um ' na frente."""
+    if isinstance(valor, str) and valor.startswith(COMECO_DE_FORMULA):
+        return "'" + valor
+    return valor
+
+
 def _celula(aba, valor):
     from openpyxl.cell import WriteOnlyCell
 
-    return WriteOnlyCell(aba, value=valor)
+    celula = WriteOnlyCell(aba, value=valor)
+    if isinstance(valor, str):
+        celula.data_type = "s"  # no Excel o texto fica como texto, nunca como fórmula (sem precisar do ')
+    return celula
 
 
 def planilha_de_vendas(vendas, produtos, nome_do_grupo) -> bytes:

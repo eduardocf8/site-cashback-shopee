@@ -143,7 +143,11 @@ def _chamar(prompt: str, temperatura: float, esperar=time.sleep, **opcoes) -> st
 
 
 def _links(texto: str) -> list[str]:
-    return [link.rstrip(").,;!?") for link in re.findall(r"https?://[^\s]+", texto or "")]
+    """Tudo que vira link no WhatsApp (com ou sem http, ex: "bit.ly/x"): a IA não pode
+    tirar, trocar nem pôr nenhum."""
+    from .formatador import PADRAO_LINK_QUALQUER
+
+    return [link.rstrip(").,;!?").lower() for link in PADRAO_LINK_QUALQUER.findall(texto or "")]
 
 
 def _precos(texto: str) -> list[str]:

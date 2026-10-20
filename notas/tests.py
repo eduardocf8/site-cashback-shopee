@@ -262,6 +262,7 @@ def autorizada():
 
 class TestServicos(TestCase):
     def setUp(self):
+        cache.clear()  # o limite de 1 nota de teste por minuto fica no cache
         self.empresa = criar_empresa(criar_conta())
         certificado.guardar(self.empresa, gerar_pfx(), "senha-do-pfx")
 

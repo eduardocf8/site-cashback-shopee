@@ -94,7 +94,11 @@ def normalizar(cert: Certificado, senha: str) -> bytes:
 def guardar(empresa, dados: bytes, senha: str) -> Certificado:
     """Confere o certificado (é dessa empresa? está na validade?) e salva cifrado."""
     cert = abrir(dados, senha)
-    dados = normalizar(cert, senha)
+    try:
+        dados = normalizar(cert, senha)
+    except ValueError:  # ex: certificado sem senha
+        raise ErroCertificado("Não consegui guardar esse certificado com a senha informada. "
+                              "Use o arquivo .pfx com a senha que a certificadora passou.")
     if cert.cnpj[:8] != empresa.cnpj[:8]:
         raise ErroCertificado(f"Esse certificado é do CNPJ {cert.cnpj}, não do {empresa.cnpj_formatado}.")
     if cert.vencido:

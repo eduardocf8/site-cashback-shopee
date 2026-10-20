@@ -15,5 +15,10 @@ def pdf(xml_nfse: str, cancelada: bool = False) -> bytes:
 
 
 def nome_arquivo(nota, extensao: str) -> str:
+    """Só letras, números, ponto e hífen: o documento de vendedor estrangeiro (NIF) vem do
+    relatório como texto livre e iria para o nome do arquivo e do ZIP ("../", aspas)."""
+    import re
+
     numero = nota.numero_nfse or nota.numero or nota.pk
-    return f"NFSe-{numero}-{nota.tomador_documento}.{extensao}"
+    documento = re.sub(r"[^\w.-]", "_", str(nota.tomador_documento or ""), flags=re.ASCII).strip("._") or "sem-documento"
+    return f"NFSe-{numero}-{documento[:40]}.{extensao}"

@@ -11,6 +11,7 @@ comissão, "E-mail de contato") e a antiga, sem as colunas de estrangeiro."""
 
 import csv
 import io
+import zipfile
 import re
 import unicodedata
 from dataclasses import dataclass, field
@@ -20,6 +21,10 @@ from decimal import Decimal, InvalidOperation
 from .receita import cnpj_valido
 
 TAMANHO_MAXIMO = 25 * 1024 * 1024
+# Muito acima de qualquer relatório real (um afiliado grande tem ~1.000 lojas por mês).
+MAXIMO_LINHAS = 20_000
+MAXIMO_COLUNAS = 80
+MAXIMO_DESCOMPACTADO = 150 * 1024 * 1024  # planilha .xlsx é um zip
 MESES = {
     "jan": 1, "feb": 2, "fev": 2, "mar": 3, "apr": 4, "abr": 4, "may": 5, "mai": 5, "jun": 6, "jul": 7,
     "aug": 8, "ago": 8, "sep": 9, "set": 9, "oct": 10, "out": 10, "nov": 11, "dec": 12, "dez": 12,
@@ -111,10 +116,27 @@ def _linhas_brutas(dados: bytes, nome_arquivo: str) -> list[list]:
         from openpyxl import load_workbook
 
         try:
+            with zipfile.ZipFile(io.BytesIO(dados)) as zip_:
+                descompactado = sum(info.file_size for info in zip_.infolist())
+        except zipfile.BadZipFile:
+            raise ErroRelatorio("Não consegui abrir essa planilha. Envie o arquivo do jeito que baixou da Shopee.")
+        if descompactado > MAXIMO_DESCOMPACTADO:
+            raise ErroRelatorio("Essa planilha é grande demais. Envie o relatório de um mês só, do jeito que baixou da Shopee.")
+        try:
             planilha = load_workbook(io.BytesIO(dados), read_only=True, data_only=True).worksheets[0]
+            # O tamanho que a planilha "diz" ter não vale: um arquivo de 2 KB pode declarar
+            # 1 milhão de linhas x 16 mil colunas e esgotar a memória do servidor.
+            planilha.reset_dimensions()
+            linhas = []
+            for linha in planilha.iter_rows(max_col=MAXIMO_COLUNAS, values_only=True):
+                if len(linhas) >= MAXIMO_LINHAS:
+                    raise ErroRelatorio(f"O relatório tem mais de {MAXIMO_LINHAS:,} linhas.".replace(",", "."))
+                linhas.append(["" if c is None else c for c in linha])
+        except ErroRelatorio:
+            raise
         except Exception:  # noqa: BLE001 - arquivo corrompido ou não é planilha
             raise ErroRelatorio("Não consegui abrir essa planilha. Envie o arquivo do jeito que baixou da Shopee.")
-        return [["" if c is None else c for c in linha] for linha in planilha.iter_rows(values_only=True)]
+        return linhas
     for codificacao in ("utf-8-sig", "cp1252"):
         try:
             texto = dados.decode(codificacao)
@@ -127,7 +149,12 @@ def _linhas_brutas(dados: bytes, nome_arquivo: str) -> list[list]:
         dialeto = csv.Sniffer().sniff(texto[:4096], delimiters=",;\t")
     except csv.Error:
         dialeto = csv.excel
-    return list(csv.reader(io.StringIO(texto), dialeto))
+    linhas = []
+    for linha in csv.reader(io.StringIO(texto), dialeto):
+        if len(linhas) >= MAXIMO_LINHAS:
+            raise ErroRelatorio(f"O relatório tem mais de {MAXIMO_LINHAS:,} linhas.".replace(",", "."))
+        linhas.append(linha[:MAXIMO_COLUNAS])
+    return linhas
 
 
 def ler(dados: bytes, nome_arquivo: str = "") -> list[Linha]:
