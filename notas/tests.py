@@ -726,3 +726,82 @@ class TestCamposNovos(TestCase):
 
 def etree_local(elemento) -> str:
     return elemento.tag.split("}")[1]
+
+
+ERRO_IBSCBS_REAL = "É obrigatório declarar informações de IBS/CBS quando a data de competência for igual ou posterior a 01/10/2026."
+DADOS_RECEITA_LOJA = {
+    "cnpj": "11222333000181", "razao_social": "LOJA UM LTDA", "municipio_ibge": "3550308", "municipio_nome": "Sao Paulo",
+    "uf": "SP", "regime": "simples", "ativa": True,
+    "endereco": {"municipio_ibge": "3550308", "cep": "01310100", "logradouro": "AVENIDA PAULISTA", "numero": "1000",
+                 "complemento": "", "bairro": "BELA VISTA"},
+}
+
+
+class TestIBSCBS(TestCase):
+    def setUp(self):
+        cache.clear()
+        self.addCleanup(cache.clear)
+        self.empresa = criar_empresa(criar_conta())
+        certificado.guardar(self.empresa, gerar_pfx(), "senha-do-pfx")
+
+    def test_grupo_ibscbs_e_recusa_e0855(self):
+        raiz = dps_exemplo()
+        dps.com_campos_novos(raiz, {"finNFSe", "IBSCBS"})
+        xml = dps.para_bytes(raiz).decode()
+        self.assertIn("<IBSCBS><cIndOp>100301</cIndOp><valores><trib><CST>000</CST>"
+                      "<cClassTrib>000001</cClassTrib></trib></valores></IBSCBS></infDPS>", xml)
+        self.assertNotIn("regApIBSCBSSN", xml)  # MEI não informa
+        simples = dps_exemplo(regime="simples")
+        dps.com_campos_novos(simples, {"IBSCBS"})
+        self.assertIn("<regApTribSN>1</regApTribSN><regApIBSCBSSN>1</regApIBSCBSSN>", dps.para_bytes(simples).decode())
+        self.assertEqual(dps.ajuste_de_campos([{"codigo": "E0855", "descricao": ERRO_IBSCBS_REAL}], {"finNFSe"}),
+                         {"finNFSe", "IBSCBS"})
+
+    def test_nota_de_teste_para_a_shopee_vai_com_ibscbs_e_endereco(self):
+        falso = ClienteFalso(emitir=autorizada())
+        with mock.patch.object(servicos, "ClienteSefin", falso):
+            servicos.emitir_teste(self.empresa)
+        xml = falso.emitidas[0].decode()
+        self.assertIn("<cIndOp>100301</cIndOp>", xml)
+        self.assertIn("<endNac><cMun>3550308</cMun><CEP>04538132</CEP></endNac>", xml)
+
+    def test_vendedor_ganha_o_endereco_da_receita_uma_vez_so(self):
+        lote = servicos.importar_relatorio(self.empresa, relatorio_csv(), "r.csv", "2")
+        servicos.confirmar_lote(lote)
+        nota = lote.notas.get(loja_id="1001")
+        falso = ClienteFalso(emitir=autorizada())
+        with mock.patch.object(receita, "consultar", return_value=DADOS_RECEITA_LOJA) as consulta, \
+                mock.patch.object(servicos, "ClienteSefin", falso):
+            servicos.processar(nota)
+            outra = servicos.criar_nota(self.empresa, ambiente="2", tipo="vendedor", competencia=nota.competencia,
+                                        tomador=dps.Tomador("cnpj", "11222333000181", "LOJA UM LTDA"), valor=2)
+            servicos.processar(outra)
+        self.assertEqual(consulta.call_count, 1)  # a segunda nota usa o endereço guardado
+        xml = falso.emitidas[0].decode()
+        self.assertIn("<end><endNac><cMun>3550308</cMun><CEP>01310100</CEP></endNac><xLgr>AVENIDA PAULISTA</xLgr>"
+                      "<nro>1000</nro><xBairro>BELA VISTA</xBairro></end>", xml)
+
+    def test_sem_endereco_na_receita_e_receita_fora_do_ar(self):
+        lote = servicos.importar_relatorio(self.empresa, relatorio_csv(), "r.csv", "2")
+        servicos.confirmar_lote(lote)
+        nota = lote.notas.get(loja_id="1001")
+        incompleto = {**DADOS_RECEITA_LOJA, "endereco": {"municipio_ibge": "", "cep": "", "logradouro": ""}}
+        with mock.patch.object(receita, "consultar", return_value=incompleto), \
+                mock.patch.object(servicos, "ClienteSefin", ClienteFalso(emitir=autorizada())):
+            servicos.processar(nota)
+        self.assertEqual(nota.situacao, "recusada")
+        self.assertIn("endereço completo", nota.mensagens[0]["descricao"])
+        outra = lote.notas.get(loja_id="1002")
+        with mock.patch.object(receita, "consultar", side_effect=receita.ReceitaFora("fora")), \
+                mock.patch.object(servicos, "ClienteSefin", ClienteFalso(emitir=autorizada())):
+            servicos.processar(outra)
+        self.assertEqual(outra.situacao, "erro")  # tenta de novo sozinho depois
+
+    def test_producao_aprende_o_ibscbs_quando_o_governo_exigir(self):
+        nota = servicos.emitir_nota_shopee(self.empresa, "10,00")
+        falso = ClienteEmSequencia([Resposta(400, {"erros": [{"Codigo": "E0855", "Descricao": ERRO_IBSCBS_REAL}]}), autorizada()])
+        with mock.patch.object(servicos, "ClienteSefin", falso):
+            servicos.processar(nota)
+        self.assertEqual(nota.situacao, "autorizada")
+        self.assertIn("<IBSCBS>", falso.emitidas[1].decode())
+        self.assertEqual(servicos.campos_novos("1"), {"IBSCBS"})

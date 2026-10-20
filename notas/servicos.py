@@ -127,7 +127,7 @@ def _garantir_numero(nota):
 
 # Campos novos da reforma que cada ambiente aceita (ver dps.CAMPOS_NOVOS). Começa assim e
 # se ajusta sozinho quando o governo recusa pelo esquema (ver processar); o cache guarda.
-CAMPOS_PADRAO = {AMBIENTE_PRODUCAO: frozenset(), AMBIENTE_TESTE: frozenset({"finNFSe"})}
+CAMPOS_PADRAO = {AMBIENTE_PRODUCAO: frozenset(), AMBIENTE_TESTE: frozenset({"finNFSe", "IBSCBS"})}
 
 
 def campos_novos(ambiente: str) -> frozenset:
@@ -143,7 +143,26 @@ def _guardar_campos(ambiente: str, campos):
     cache.set(f"notas:campos:{ambiente}", sorted(campos), 60 * 60 * 24 * 30)
 
 
+def _tomador(nota, campos) -> dps.Tomador:
+    if nota.tomador_documento == SHOPEE_CNPJ:
+        return SHOPEE
+    tomador = dps.Tomador(nota.tomador_tipo, nota.tomador_documento, nota.tomador_nome, nota.tomador_email,
+                          nota.tomador_pais)
+    if "IBSCBS" in campos and nota.tomador_tipo == "cnpj":
+        # Com IBS/CBS, o endereço do tomador no Brasil é obrigatório (regra E0239). O relatório
+        # da Shopee só traz o endereço em texto corrido: vem da Receita, pelo CNPJ.
+        end = receita.endereco(nota.tomador_documento)
+        if not (len(end.get("municipio_ibge", "")) == 7 and len(end.get("cep", "")) == 8 and end.get("logradouro")):
+            raise dps.ErroDPS("A Receita Federal não tem o endereço completo deste CNPJ, que a nota agora exige.")
+        tomador.municipio_ibge, tomador.cep, tomador.logradouro = end["municipio_ibge"], end["cep"], end["logradouro"]
+        tomador.numero = end.get("numero") or "S/N"
+        tomador.complemento = end.get("complemento", "")
+        tomador.bairro = end.get("bairro") or "-"
+    return tomador
+
+
 def _montar_assinada(nota, cert, campos=None) -> bytes:
+    campos = campos_novos(nota.ambiente) if campos is None else campos
     e = nota.empresa
     agora = timezone.now().astimezone(FUSO)
     # Um minuto para trás: o governo recusa emissão "no futuro" se o relógio dele atrasar.
@@ -156,13 +175,12 @@ def _montar_assinada(nota, cert, campos=None) -> bytes:
         emitida_em=emitida_em,
         serie=nota.serie, numero=nota.numero, competencia=nota.competencia,
         prestador=dps.Prestador(e.cnpj, e.municipio_ibge, e.regime, e.inscricao_municipal),
-        tomador=SHOPEE if nota.tomador_documento == SHOPEE_CNPJ else dps.Tomador(
-            nota.tomador_tipo, nota.tomador_documento, nota.tomador_nome, nota.tomador_email, nota.tomador_pais),
+        tomador=_tomador(nota, campos),
         servico=dps.Servico(e.codigo_tributacao, e.descricao_servico, e.codigo_municipal),
         valor=nota.valor,
     )
     dps.validar(raiz)  # sempre confere no esquema oficial 1.01 antes
-    dps.com_campos_novos(raiz, campos_novos(nota.ambiente) if campos is None else campos)
+    dps.com_campos_novos(raiz, campos)
     dps.assinar(raiz, cert.chave, cert.certificado)
     return dps.para_bytes(raiz)
 
@@ -228,7 +246,10 @@ def processar(nota: NotaFiscal, cert=None, cliente=None) -> NotaFiscal:
         else:
             nota.situacao = NotaFiscal.RECUSADA
             nota.mensagens = resposta.mensagens
-    except (certificado.ErroCertificado, dps.ErroDPS) as erro:
+    except receita.ReceitaFora as erro:  # consulta do endereço fora do ar: tenta de novo depois
+        nota.situacao = NotaFiscal.ERRO
+        nota.mensagens = [{"codigo": "", "descricao": str(erro)}]
+    except (certificado.ErroCertificado, dps.ErroDPS, receita.ErroReceita) as erro:
         nota.situacao = NotaFiscal.RECUSADA
         nota.mensagens = [{"codigo": "", "descricao": str(erro)}]
     except ErroSefin as erro:
