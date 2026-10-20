@@ -613,3 +613,6 @@ summary { cursor: pointer; }  /* "Editar", "Ver mensagem" etc. abrem ao clicar *
 .notas-pausa { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 10px; margin-bottom: 16px; }
 .notas-pausa p { margin: 0; flex: 1 1 320px; }
 .notas-progresso span { transition: width .6s ease; }
+.notas-emails { margin-top: 18px; padding-top: 14px; border-top: 1px solid var(--borda); }
+.notas-emails-titulo { margin: 0 0 8px; }
+.notas-emails + form { margin-top: 14px; }

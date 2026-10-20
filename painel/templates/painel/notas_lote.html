@@ -13,7 +13,7 @@
 </header>
 
 {% include "painel/_notas_pausa.html" with voltar=request.path %}
-<section class="card notas-cartao notas-resumo" aria-label="Resumo"{% if atualizar %} data-acompanhar="{% url 'painel_notas_andamento' %}" data-lote="{{ lote.pk }}"{% endif %}>
+<section class="card notas-cartao notas-resumo" aria-label="Resumo"{% if atualizar %} data-acompanhar="{% url 'painel_notas_andamento' %}" data-lote="{{ lote.pk }}" data-estado="{{ lote.estado }}"{% endif %}>
   <div class="notas-numeros">
     <div><span>Notas</span><strong>{{ resumo.total }}</strong></div>
     <div><span>Valor total</span><strong>{{ resumo.valor|brl }}</strong></div>
@@ -22,7 +22,6 @@
     {% else %}
       <div><span>Autorizadas</span><strong data-campo="autorizadas">{{ resumo.por.autorizada.qtd }}</strong></div>
       <div><span>Com problema</span><strong data-campo="problemas">{{ resumo.por.recusada.qtd|add:resumo.por.erro.qtd }}</strong></div>
-      {% if lote.ambiente == "1" %}<div><span>E-mails enviados</span><strong data-campo="emails">{{ resumo.emails.enviado|default:0 }}</strong></div>{% endif %}
     {% endif %}
   </div>
 
@@ -35,7 +34,14 @@
     </div>
   {% else %}
     <div class="notas-progresso" role="progressbar" aria-label="Andamento da emissão" aria-valuenow="{{ resumo.progresso }}" aria-valuemin="0" aria-valuemax="100"><span data-campo="barra" style="width:{{ resumo.progresso }}%"></span></div>
-    <p class="pequeno" aria-live="polite">{% if lote.estado == "emitindo" %}Emitindo: <strong data-campo="feitas">{{ resumo.por.autorizada.qtd|add:resumo.por.recusada.qtd }}</strong> de {{ resumo.total }} (<span data-campo="progresso">{{ resumo.progresso }}</span>%) · <span data-campo="fila">{{ resumo.por.fila.qtd|add:resumo.por.enviando.qtd }}</span> na fila. Pode fechar a página: as notas continuam saindo.{% else %}Concluído.{% endif %}</p>
+    <p class="pequeno" aria-live="polite">{% if lote.estado == "emitindo" %}Emitindo: <strong data-campo="feitas">{{ resumo.por.autorizada.qtd|add:resumo.por.recusada.qtd }}</strong> de {{ resumo.total }} (<span data-campo="progresso">{{ resumo.progresso }}</span>%) · <span data-campo="fila">{{ resumo.por.fila.qtd|add:resumo.por.enviando.qtd }}</span> na fila. Pode fechar a página: as notas continuam saindo.{% else %}Emissão concluída.{% endif %}</p>
+    {% if email %}
+      <div class="notas-emails">
+        <p class="notas-emails-titulo"><strong>E-mails para os vendedores:</strong> <span data-campo="email_enviados">{{ email.enviados }}</span> de <span data-campo="email_alvo">{{ email.alvo }}</span> enviados (<span data-campo="email_progresso">{{ email.progresso }}</span>%)</p>
+        <div class="notas-progresso" role="progressbar" aria-label="Envio dos e-mails" aria-valuenow="{{ email.progresso }}" aria-valuemin="0" aria-valuemax="100"><span data-campo="barra_email" style="width:{{ email.progresso }}%"></span></div>
+        <p class="pequeno" aria-live="polite"><span data-campo="email_fase">{{ email.fase }}</span>{% if email.sem_email %} · {{ email.sem_email }} sem e-mail no relatório{% endif %}{% if email.falharam %} · <span class="notas-erro-email">{{ email.falharam }} falharam (veja na lista e use "Reenviar e-mail")</span>{% endif %}</p>
+      </div>
+    {% endif %}
     {% if resumo.por.recusada.qtd or resumo.por.erro.qtd %}
       <form method="post">{% csrf_token %}<input type="hidden" name="acao" value="reenviar_problemas"><button type="submit" class="botao botao-claro botao-pequeno">Tentar de novo as que deram problema</button></form>
     {% endif %}

@@ -1,8 +1,8 @@
 /* Notas fiscais: acompanha a emissão sem recarregar a página.
  * Um bloco com data-acompanhar="<url>" (e, no lote, data-lote="<id>") pergunta ao servidor a
  * cada poucos segundos a situação das notas da lista e o resumo do lote: a barra enche, os
- * números sobem e o selo de cada nota muda na hora. Quando o lote termina (ou uma nota avulsa
- * sai da fila), a página recarrega uma vez para mostrar PDF, XML e mensagens. */
+ * números sobem e o selo de cada nota muda na hora; depois, a barra dos e-mails. Quando as notas
+ * terminam (ou uma nota avulsa sai da fila), a página recarrega para mostrar PDF, XML e mensagens. */
 (function () {
   const bloco = document.querySelector('[data-acompanhar]');
   if (!bloco) return;
@@ -15,7 +15,7 @@
 
   function campo(nome, valor) {
     document.querySelectorAll(`[data-campo="${nome}"]`).forEach((el) => {
-      if (nome === 'barra') {
+      if (nome.startsWith('barra')) {
         el.style.width = valor + '%';
         el.parentElement.setAttribute('aria-valuenow', valor);
       } else if (el.textContent !== String(valor)) {
@@ -48,8 +48,13 @@
     if (dados.lote) {
       const l = dados.lote;
       campo('barra', l.progresso); campo('progresso', l.progresso); campo('feitas', l.feitas);
-      campo('autorizadas', l.autorizadas); campo('problemas', l.problemas); campo('fila', l.fila); campo('emails', l.emails);
-      if (l.estado !== 'emitindo') { parado = true; window.location.reload(); }
+      campo('autorizadas', l.autorizadas); campo('problemas', l.problemas); campo('fila', l.fila);
+      if (l.email) {
+        campo('barra_email', l.email.progresso); campo('email_progresso', l.email.progresso);
+        campo('email_enviados', l.email.enviados); campo('email_alvo', l.email.alvo); campo('email_fase', l.email.fase);
+      }
+      // Recarrega uma vez quando as notas terminam (PDF, XML e mensagens) e outra quando os e-mails acabam.
+      if (l.estado !== bloco.dataset.estado || !l.acompanhar) { parado = true; window.location.reload(); }
     }
     if (mudouAvulsa) { parado = true; window.location.reload(); }
   }

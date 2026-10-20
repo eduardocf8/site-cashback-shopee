@@ -1012,6 +1012,28 @@ class TestAndamento(TestCase):
         self.assertContains(inicio, "se atualiza sozinha")
 
 
+    def test_barra_dos_emails_continua_depois_das_notas(self):
+        from .models import LoteNotas
+
+        lote = servicos.importar_relatorio(self.empresa, relatorio_csv(), "r.csv", "1")
+        servicos.confirmar_lote(lote)
+        lote.notas.update(situacao="autorizada", xml_nfse=xml_nfse())
+        LoteNotas.objects.filter(pk=lote.pk).update(estado="concluido")
+        pagina = self.client.get(f"/notas/lote/{lote.pk}/")
+        self.assertContains(pagina, "E-mails para os vendedores:")
+        self.assertContains(pagina, 'data-acompanhar="/notas/andamento/"')  # notas prontas, e-mails ainda saindo
+        self.assertContains(pagina, "1 sem e-mail no relatório")
+        dados = self.client.get(f"/notas/andamento/?ids=&lote={lote.pk}").json()["lote"]
+        self.assertEqual((dados["email"]["alvo"], dados["email"]["enviados"], dados["email"]["fase"], dados["acompanhar"]),
+                         (2, 0, "Enviando os e-mails…", True))
+        lote.notas.filter(email_situacao="pendente").update(email_situacao="enviado")
+        dados = self.client.get(f"/notas/andamento/?ids=&lote={lote.pk}").json()["lote"]
+        self.assertEqual((dados["email"]["enviados"], dados["email"]["progresso"], dados["acompanhar"]), (2, 100, False))
+        self.assertNotContains(self.client.get(f"/notas/lote/{lote.pk}/"), "data-acompanhar")
+        # No ambiente de testes não sai e-mail: não há barra.
+        self.assertNotContains(self.client.get(f"/notas/lote/{self.lote.pk}/"), "E-mails para os vendedores")
+
+
 @unittest.skipUnless(connection.vendor == "postgresql", "envio simultâneo só roda com PostgreSQL")
 @override_settings(NOTAS_ENVIOS_SIMULTANEOS=6, NOTAS_EMAILS_SIMULTANEOS=4)
 class TestEnvioSimultaneo(TransactionTestCase):

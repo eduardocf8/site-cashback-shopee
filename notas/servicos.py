@@ -517,3 +517,27 @@ def resumo(notas) -> dict:
     feitas = por[NotaFiscal.AUTORIZADA]["qtd"] + por[NotaFiscal.RECUSADA]["qtd"] + por[NotaFiscal.CANCELADA]["qtd"]
     return {"por": por, "total": total, "valor": sum((v["valor"] for v in por.values()), Decimal("0")),
             "emails": emails, "progresso": round(100 * feitas / total) if total else 0}
+
+
+def andamento_emails(lote) -> dict | None:
+    """Envio dos e-mails do lote para os vendedores (só produção): quantos já foram, quantos
+    faltam e em que fase está. None quando não há e-mail a mandar (testes ou prévia)."""
+    from django.db.models import Count
+
+    if lote.ambiente != AMBIENTE_PRODUCAO or lote.estado == LoteNotas.PREVIA:
+        return None
+    autorizadas = lote.notas.filter(situacao=NotaFiscal.AUTORIZADA)
+    qtd = dict(autorizadas.values_list("email_situacao").annotate(qtd=Count("id")))
+    enviados, falharam = qtd.get(NotaFiscal.EMAIL_ENVIADO, 0), qtd.get(NotaFiscal.EMAIL_FALHOU, 0)
+    # Sem o XML da nota não há o que mandar (fica de fora para a barra não esperar para sempre).
+    pendentes = autorizadas.filter(email_situacao=NotaFiscal.EMAIL_PENDENTE).exclude(xml_nfse="").count()
+    alvo = enviados + falharam + pendentes
+    if lote.estado == LoteNotas.EMITINDO:
+        fase = "Os e-mails saem assim que todas as notas terminarem de sair."
+    elif pendentes:
+        fase = "Enviando os e-mails…"
+    else:
+        fase = "Concluído."
+    return {"enviados": enviados, "falharam": falharam, "sem_email": qtd.get(NotaFiscal.EMAIL_SEM, 0),
+            "pendentes": pendentes, "alvo": alvo, "progresso": round(100 * (enviados + falharam) / alvo) if alvo else 0,
+            "fase": fase}
