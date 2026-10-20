@@ -53,7 +53,7 @@
     <section class="card" aria-labelledby="titulo-busca">
       <h2 id="titulo-busca">De onde vêm as ofertas</h2>
       <fieldset class="campo">
-        <div class="opcoes-chip" id="modo">{% for opcao in form.modo %}{% if opcao.data.value == "copiar" and not regras.copiar %}<label class="chip-opcao chip-premium"><input type="radio" name="{{ opcao.data.name }}" value="copiar"{% if opcao.data.selected %} checked{% else %} disabled{% endif %}><span>{{ opcao.choice_label }} <small class="selo-premium">Premium</small></span></label>{% else %}<label class="chip-opcao">{{ opcao.tag }}<span>{{ opcao.choice_label }}</span></label>{% endif %}{% endfor %}</div>
+        <div class="opcoes-chip" id="modo">{% for opcao in form.modo %}{% if opcao.data.value == "copiar" and not regras.copiar %}<label class="chip-opcao chip-premium" title="Disponível no plano Premium"><input type="radio" name="{{ opcao.data.name }}" value="copiar"{% if opcao.data.selected %} checked{% else %} disabled{% endif %}><span>{{ opcao.choice_label }} <small class="selo-premium">Premium</small></span></label>{% else %}<label class="chip-opcao">{{ opcao.tag }}<span>{{ opcao.choice_label }}</span></label>{% endif %}{% endfor %}</div>
         {% for e in form.modo.errors %}<span class="erro">{{ e }}</span>{% endfor %}
       </fieldset>
 
