@@ -1097,6 +1097,29 @@ class TestEnderecoDoRelatorio(TestCase):
         self.assertIsNone(endereco.do_relatorio("Rua X, 1, - Centro, Santa Rita do Sapucaí - Minas Gerais, 37540000",
                                                 conferir_cep=True))
 
+    def test_teste_com_cep_recusado_tenta_o_cep_da_receita_e_nao_repete_o_mesmo(self):
+        nota = self._nota("2", texto="Rua A, 10, - Centro, Araçariguama - São Paulo, 18147350")
+        e0240 = Resposta(400, {"erros": [{"Codigo": "E0240", "Descricao": "O CEP informado não existe."}]})
+        falso = ClienteEmSequencia([e0240, autorizada()])
+        outro = {**DADOS_RECEITA_LOJA, "endereco": {"municipio_ibge": "3502754", "cep": "18147000",
+                                                    "logradouro": "RUA A", "numero": "10", "bairro": "CENTRO"}}
+        with mock.patch.object(endereco, "_consultar_cep", return_value={"municipio_ibge": "3502754"}), \
+                mock.patch.object(receita, "consultar", return_value=outro), mock.patch.object(servicos, "ClienteSefin", falso):
+            servicos.processar(nota)
+        self.assertEqual(nota.situacao, "autorizada")
+        self.assertEqual(len(falso.emitidas), 2)  # o relatório com o município do CEP daria o mesmo: pulou
+        self.assertIn("<CEP>18147000</CEP>", falso.emitidas[1].decode())
+        # Nada diferente para tentar: fica com a recusa do governo, sem reenviar à toa.
+        from .models import CadastroCNPJ
+        CadastroCNPJ.objects.all().delete()
+        nota2 = self._nota("2", texto="Rua A, 10, - Centro, Araçariguama - São Paulo, 18147350")
+        falso2 = ClienteEmSequencia([e0240])
+        mesmo = {**outro, "endereco": {**outro["endereco"], "cep": "18147350"}}
+        with mock.patch.object(endereco, "_consultar_cep", return_value={"municipio_ibge": "3502754"}), \
+                mock.patch.object(receita, "consultar", return_value=mesmo), mock.patch.object(servicos, "ClienteSefin", falso2):
+            servicos.processar(nota2)
+        self.assertEqual((nota2.situacao, nota2.mensagens[0]["codigo"], len(falso2.emitidas)), ("recusada", "E0240", 1))
+
     def test_teste_com_cep_recusado_confere_o_cep_e_usa_a_receita(self):
         nota = self._nota("2", texto="Rua X, 1, - Centro, Santa Rita do Sapucaí - Minas Gerais, 37540000")
         e0240 = Resposta(400, {"erros": [{"Codigo": "E0240", "Descricao": "O CEP informado não existe."}]})
@@ -1160,6 +1183,7 @@ class TestEnderecoDoRelatorio(TestCase):
         dps.com_campos_novos(raiz, {"IBSCBS"})
         xml = dps.para_bytes(raiz).decode()
         self.assertIn("<CST>410</CST><cClassTrib>410004</cClassTrib>", xml)
+        self.assertNotIn("cIndOp", xml)  # sem tributação, cIndOp não pode ir (E0859)
 
     def test_importar_de_novo_completa_o_endereco_das_notas_ja_criadas(self):
         linha = ("Sep 2026", "Casa Prática", "2001", "R$0,39", "52213651000163", "", "", "VICTOR CORREA SILVA",

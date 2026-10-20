@@ -253,13 +253,14 @@ def com_campos_novos(raiz: etree._Element, campos) -> etree._Element:
             _texto(grupo, "finNFSe", 0)
         if "IBSCBS.indFinal" in campos:
             _texto(grupo, "indFinal", 0)
-        _texto(grupo, "cIndOp", IBSCBS_INDICADOR)
+        exterior = inf.find(f"{{{NS}}}toma/{{{NS}}}NIF") is not None
+        if not exterior:  # exportação não tem tributação de IBS/CBS: cIndOp não vai (regra E0859)
+            _texto(grupo, "cIndOp", IBSCBS_INDICADOR)
         if "IBSCBS.indDest" in campos:
             _texto(grupo, "indDest", 0)
         trib = _grupo(_grupo(grupo, "valores"), "trib")
         if "IBSCBS.gIBSCBS" in campos:
             trib = _grupo(trib, "gIBSCBS")
-        exterior = inf.find(f"{{{NS}}}toma/{{{NS}}}NIF") is not None
         _texto(trib, "CST", IBSCBS_CST_EXPORTACAO if exterior else IBSCBS_CST)
         _texto(trib, "cClassTrib", IBSCBS_CLASSIFICACAO_EXPORTACAO if exterior else IBSCBS_CLASSIFICACAO)
     return raiz
