@@ -68,6 +68,22 @@ class EmpresaNotas(models.Model):
         return f"{c[:2]}.{c[2:5]}.{c[5:8]}/{c[8:12]}-{c[12:]}" if len(c) == 14 else c
 
 
+class CadastroCNPJ(models.Model):
+    """Dados públicos de um CNPJ (Receita), guardados para não consultar de novo a cada nota.
+    Serve para o endereço do vendedor, que o relatório da Shopee traz só em texto corrido."""
+
+    cnpj = models.CharField(max_length=14, primary_key=True)
+    dados = models.JSONField(default=dict)
+    consultado_em = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        verbose_name = "cadastro de CNPJ"
+        verbose_name_plural = "cadastros de CNPJ"
+
+    def __str__(self):
+        return f"{self.cnpj} {self.dados.get('razao_social', '')}"
+
+
 class LoteNotas(models.Model):
     """Um Relatório Mensal da Shopee importado: vira uma nota por linha (por loja)."""
 

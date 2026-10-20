@@ -189,7 +189,15 @@ def montar(*, ambiente: str, emitida_em: datetime, serie: str, numero: int, comp
 # campos aos poucos (em out/2026 o de testes já pede "finNFSe", mas ainda não aceita
 # "indDest"; a produção não aceita nenhum). Cada ambiente usa um conjunto, ajustado sozinho
 # pelas recusas de esquema (E1235) - ver ajuste_de_campos.
-CAMPOS_NOVOS = ("finNFSe", "indDest")
+CAMPOS_NOVOS = ("finNFSe", "indDest", "IBSCBS", "regApIBSCBSSN", "indFinal")
+
+# IBS/CBS (reforma): exigido pelo governo a partir da competência 01/10/2026 no ambiente de
+# testes (regra E0855); para MEI e Simples a obrigação em produção é a partir de 2027.
+# Serviço de divulgação para empresa: tributação integral (CST 000 / cClassTrib 000001) e
+# "demais serviços, operação onerosa" (cIndOp 100301: local = domicílio do tomador).
+# O valor do imposto não vai na nota de MEI/Simples (é pago no DAS).
+IBSCBS_CST, IBSCBS_CLASSIFICACAO, IBSCBS_INDICADOR = "000", "000001", "100301"
+REGRA_IBSCBS_OBRIGATORIO = "E0855"
 
 
 def com_campos_novos(raiz: etree._Element, campos) -> etree._Element:
@@ -209,6 +217,21 @@ def com_campos_novos(raiz: etree._Element, campos) -> etree._Element:
         dest = etree.Element(f"{{{NS}}}indDest")
         dest.text = "0"
         (toma if toma is not None else inf.find(f"{{{NS}}}prest")).addnext(dest)
+    if "regApIBSCBSSN" in campos or "IBSCBS" in campos:
+        reg = inf.find(f"{{{NS}}}prest/{{{NS}}}regTrib")
+        if reg.findtext(f"{{{NS}}}opSimpNac") == "3":  # só ME/EPP do Simples; MEI não informa
+            ap = etree.Element(f"{{{NS}}}regApIBSCBSSN")
+            ap.text = "1"  # IBS e CBS apurados pelo Simples Nacional
+            ancora = reg.find(f"{{{NS}}}regApTribSN")
+            (ancora if ancora is not None else reg.find(f"{{{NS}}}opSimpNac")).addnext(ap)
+    if "IBSCBS" in campos:
+        grupo = etree.SubElement(inf, f"{{{NS}}}IBSCBS")
+        if "indFinal" in campos:  # opcional; só se o governo pedir (0 = não é consumo pessoal)
+            _texto(grupo, "indFinal", 0)
+        _texto(grupo, "cIndOp", IBSCBS_INDICADOR)
+        trib = _grupo(_grupo(grupo, "valores"), "trib")
+        _texto(trib, "CST", IBSCBS_CST)
+        _texto(trib, "cClassTrib", IBSCBS_CLASSIFICACAO)
     return raiz
 
 
@@ -219,6 +242,9 @@ def ajuste_de_campos(mensagens: list[dict], campos) -> frozenset | None:
         E1235 "...invalid child element 'indDest'... expected: 'interm, serv'" -> tira indDest."""
     atual = set(campos)
     for m in mensagens:
+        if m.get("codigo") == REGRA_IBSCBS_OBRIGATORIO:
+            atual.add("IBSCBS")
+            continue
         if m.get("codigo") != "E1235":
             continue
         texto = m.get("descricao", "")
