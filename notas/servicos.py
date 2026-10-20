@@ -14,7 +14,7 @@ from django.db import transaction
 from django.utils import timezone
 from lxml import etree
 
-from . import certificado, dps, receita
+from . import certificado, dps, endereco, receita
 from .models import AMBIENTE_PRODUCAO, AMBIENTE_TESTE, EmpresaNotas, LoteNotas, NotaFiscal
 from .sefin import ClienteSefin, ErroSefin
 
@@ -174,25 +174,53 @@ def _guardar_campos(ambiente: str, campos):
     cache.set(f"notas:campos2:{ambiente}", sorted(campos), 60 * 60 * 24 * 30)
 
 
-def _tomador(nota, campos) -> dps.Tomador:
+def _tomador(nota, campos, com_endereco=True, conferir_cep=False) -> dps.Tomador:
     if nota.tomador_documento == SHOPEE_CNPJ:
         return SHOPEE
     tomador = dps.Tomador(nota.tomador_tipo, nota.tomador_documento, nota.tomador_nome, nota.tomador_email,
                           nota.tomador_pais)
-    if "IBSCBS" in campos and nota.tomador_tipo == "cnpj":
-        # Com IBS/CBS, o endereço do tomador no Brasil é obrigatório (regra E0239). O relatório
-        # da Shopee só traz o endereço em texto corrido: vem da Receita, pelo CNPJ.
-        end = receita.endereco(nota.tomador_documento)
-        if not (len(end.get("municipio_ibge", "")) == 7 and len(end.get("cep", "")) == 8 and end.get("logradouro")):
-            raise dps.ErroDPS("A Receita Federal não tem o endereço completo deste CNPJ, que a nota agora exige.")
-        tomador.municipio_ibge, tomador.cep, tomador.logradouro = end["municipio_ibge"], end["cep"], end["logradouro"]
-        tomador.numero = end.get("numero") or "S/N"
-        tomador.complemento = end.get("complemento", "")
-        tomador.bairro = end.get("bairro") or "-"
+    if com_endereco and nota.tomador_tipo in ("cnpj", "cpf"):
+        end = _endereco_do_tomador(nota, exigido="IBSCBS" in campos, conferir_cep=conferir_cep)
+        if end:
+            tomador.municipio_ibge, tomador.cep, tomador.logradouro = end["municipio_ibge"], end["cep"], end["logradouro"]
+            tomador.numero = end.get("numero") or "S/N"
+            tomador.complemento = end.get("complemento", "")
+            tomador.bairro = end.get("bairro") or "-"
     return tomador
 
 
-def _montar_assinada(nota, cert, campos=None) -> bytes:
+def _endereco_do_tomador(nota, exigido: bool, conferir_cep=False) -> dict | None:
+    """Endereço do vendedor: o do relatório da Shopee (município pela lista do IBGE). Se não der e a
+    nota exigir endereço (com IBS/CBS, regra E0239), tenta o cadastro da Receita.
+    Sem exigência, um endereço que não deu certo só fica de fora da nota."""
+    try:
+        end = endereco.do_relatorio(nota.tomador_endereco, conferir_cep) if nota.tomador_endereco else None
+        if end is None and exigido and nota.tomador_tipo == "cnpj":
+            da_receita = receita.endereco(nota.tomador_documento)
+            dados_cep = endereco.cep(da_receita.get("cep", "")) if endereco.completo(da_receita) else {}
+            if dados_cep:  # o CEP da Receita às vezes é antigo e o governo recusa (E0240)
+                end = {**da_receita, "municipio_ibge": dados_cep["municipio_ibge"]}
+    except receita.ReceitaFora:
+        if exigido:
+            raise
+        return None
+    if end is None and exigido:
+        raise dps.ErroDPS("Não achei um endereço válido deste vendedor (nem no relatório da Shopee, nem na "
+                          "Receita Federal), e a nota agora exige o endereço.")
+    return end
+
+
+# Recusas por causa do endereço do tomador (CEP que não existe ou não é do município etc.).
+REGRAS_ENDERECO_TOMADOR = {"E0239", "E0240"}
+
+
+def _recusa_de_endereco(mensagens) -> bool:
+    return any(m.get("codigo") in REGRAS_ENDERECO_TOMADOR
+               or ("endereço" in (m.get("descricao") or "").lower() and "tomador" in (m.get("descricao") or "").lower())
+               for m in mensagens)
+
+
+def _montar_assinada(nota, cert, campos=None, com_endereco=True, conferir_cep=False) -> bytes:
     campos = campos_novos(nota.ambiente) if campos is None else campos
     e = nota.empresa
     agora = timezone.now().astimezone(FUSO)
@@ -206,7 +234,7 @@ def _montar_assinada(nota, cert, campos=None) -> bytes:
         emitida_em=emitida_em,
         serie=nota.serie, numero=nota.numero, competencia=nota.competencia,
         prestador=dps.Prestador(e.cnpj, e.municipio_ibge, e.regime, e.inscricao_municipal),
-        tomador=_tomador(nota, campos),
+        tomador=_tomador(nota, campos, com_endereco, conferir_cep),
         servico=dps.Servico(e.codigo_tributacao, e.descricao_servico, e.codigo_municipal,
                             e.codigo_nbs if "IBSCBS" in campos else ""),
         valor=nota.valor,
@@ -277,6 +305,15 @@ def processar(nota: NotaFiscal, cert=None, cliente=None) -> NotaFiscal:
                 resposta = nova
             else:
                 empresa.regime = antes
+        if not resposta.ok and nota.tomador_endereco and _recusa_de_endereco(resposta.mensagens):
+            if "IBSCBS" in campos:
+                # Endereço obrigatório: confere o CEP do relatório (se não existir, usa o da Receita).
+                nova = cliente.emitir(_montar_assinada(nota, cert, campos, conferir_cep=True))
+            else:
+                # Sem IBS/CBS o endereço do vendedor é opcional: se o governo implicou com ele, vai sem.
+                nova = cliente.emitir(_montar_assinada(nota, cert, campos, com_endereco=False))
+            if nova.ok:
+                resposta = nova
         if resposta.ok and resposta.campo("chaveAcesso"):
             _autorizar(nota, resposta.campo("chaveAcesso"), resposta.xml_nfse(), resposta.mensagens)
         elif any(m["codigo"] == "E0014" for m in resposta.mensagens):
@@ -364,7 +401,7 @@ def importar_relatorio(empresa, dados: bytes, nome_arquivo: str, ambiente=AMBIEN
     with transaction.atomic():
         lote = LoteNotas.objects.create(empresa=empresa, ambiente=ambiente, mes_referencia=mes, competencia=hoje,
                                         nome_arquivo=(nome_arquivo or "")[:200])
-        ignoradas, notas, vistas = [], [], set()
+        ignoradas, notas, vistas, sem_endereco = [], [], set(), []
         for l in linhas:
             motivo = ""
             if l.problemas:
@@ -373,6 +410,8 @@ def importar_relatorio(empresa, dados: bytes, nome_arquivo: str, ambiente=AMBIEN
                 motivo = "loja do exterior sem o país no relatório"
             elif l.loja_id in ja:
                 motivo = "já tem nota deste mês"
+                if l.endereco:
+                    sem_endereco.append((l.loja_id, l.endereco))
             elif l.loja_id in vistas:
                 motivo = "linha repetida no arquivo"
             elif l.valor > VALOR_MAXIMO:
@@ -387,8 +426,16 @@ def importar_relatorio(empresa, dados: bytes, nome_arquivo: str, ambiente=AMBIEN
                 situacao=NotaFiscal.PREVIA, loja_id=l.loja_id, loja_nome=l.loja_nome,
                 tomador_tipo=l.tipo_documento, tomador_documento=l.documento, tomador_nome=l.nome,
                 tomador_email=l.email[:254], tomador_pais=l.pais if l.estrangeira else "", valor=l.valor,
+                tomador_endereco=l.endereco,
             ))
         NotaFiscal.objects.bulk_create(notas, batch_size=500)
+        # Notas criadas antes de o endereço ser guardado: importar o relatório de novo completa
+        # o endereço delas, para o "Tentar de novo" funcionar.
+        for loja_id, texto in sem_endereco:
+            NotaFiscal.objects.filter(
+                empresa=empresa, ambiente=ambiente, tipo=NotaFiscal.TIPO_VENDEDOR, lote__mes_referencia=mes,
+                loja_id=loja_id, tomador_endereco="").exclude(situacao=NotaFiscal.AUTORIZADA).update(
+                tomador_endereco=texto)
         lote.ignoradas = ignoradas
         lote.save(update_fields=["ignoradas"])
     return lote

@@ -61,6 +61,7 @@ class Linha:
     nome: str
     email: str
     pais: str
+    endereco: str = ""
     problemas: list = field(default_factory=list)
 
     @property
@@ -167,6 +168,7 @@ def ler(dados: bytes, nome_arquivo: str = "") -> list[Linha]:
             loja_nome=valor(bruta, "loja_nome")[:200], valor=ler_valor(valor(bruta, "valor")),
             tipo_documento=tipo, documento=documento, nome=" ".join(valor(bruta, "nome").split())[:300],
             email=valor(bruta, "email").lower()[:254], pais=valor(bruta, "pais").upper()[:2],
+            endereco=" ".join(valor(bruta, "endereco").split())[:300],
         )
         if linha.mes is None:
             linha.problemas.append("mês de conclusão ilegível")

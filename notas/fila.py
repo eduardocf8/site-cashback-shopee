@@ -229,7 +229,9 @@ def uma_volta(limite_segundos: float = 45) -> list[str]:
     notas = emitir(limite_segundos)
     if notas:
         linhas.append(f"Notas fiscais: {notas} processada(s).")
-    emails = enviar_emails()
+    # Enquanto houver notas na fila, a volta é toda da emissão (a barra não para); os e-mails
+    # saem logo que a fila esvaziar.
+    emails = 0 if tem_fila() else enviar_emails()
     if emails:
         linhas.append(f"Notas fiscais: {emails} e-mail(s) enviado(s).")
     fechar_lotes()
