@@ -225,20 +225,46 @@ class TestEditor(BasePainel):
                                        link_produto="https://shopee.com.br/p-i.1.77", posicao_em=timezone.now())
         html = self.client.get("/meu-site/").content.decode()
         self.assertIn("corrigir as categorias", html)
-        self.assertEqual(self.client.post(f"/meu-site/produto/{p.pk}/categoria/", {"categoria": "beleza"}).json()["categoria"], "beleza")
+        self.assertIn('<option value="100636">Casa e Decoração</option>', html)  # as categorias da Shopee
+        self.assertEqual(self.client.post(f"/meu-site/produto/{p.pk}/categoria/", {"categoria": "100630"}).json()["categoria"], "100630")
         p.refresh_from_db()
-        self.assertEqual(p.categoria, "beleza")
+        self.assertEqual(p.categoria, "100630")  # Beleza
         # A escolha vale nas próximas atualizações da vitrine.
-        vitrine.registrar_do_bot(self.conta, produto("77", nome="Fone de ouvido"))
+        vitrine.registrar_do_bot(self.conta, produto("77", nome="Fone de ouvido", categoria_id=100535))
         p.refresh_from_db()
-        self.assertEqual(p.categoria, "beleza")
-        self.assertEqual(CategoriaProdutoSite.objects.get(site=site).categoria, "beleza")
+        self.assertEqual(p.categoria, "100630")
+        self.assertEqual(CategoriaProdutoSite.objects.get(site=site).categoria, "100630")
         self.assertEqual(self.client.post(f"/meu-site/produto/{p.pk}/categoria/", {"categoria": "inventada"}).json()["categoria"], "")
         outra = ContaAppfiliado.objects.create(email="outra@exemplo.com")
         outro_site = SiteAfiliado.objects.create(conta=outra, endereco="outra")
         q = ProdutoSite.objects.create(site=outro_site, fonte="bot", item_id="9", nome="X", link_produto="https://shopee.com.br/x",
                                        posicao_em=timezone.now())
-        self.assertEqual(self.client.post(f"/meu-site/produto/{q.pk}/categoria/", {"categoria": "beleza"}).status_code, 404)
+        self.assertEqual(self.client.post(f"/meu-site/produto/{q.pk}/categoria/", {"categoria": "100630"}).status_code, 404)
+
+    def test_categoria_vem_da_shopee_e_os_antigos_sao_atualizados(self):
+        self.assertEqual(vitrine.categoria_do_produto({"nome": "Batom", "categoria_id": 100636}), "100636")
+        self.assertEqual(vitrine.categoria_do_produto({"nome": "Batom matte vermelho"}), "100630")  # sem categoria: pelo nome
+        self.assertEqual(vitrine.categoria_do_produto({"nome": "Coisa sem pista nenhuma"}), "")
+        self.assertEqual(vitrine.nome_curto_da_categoria("100535"), "Áudio")
+        self.assertEqual(vitrine.nome_curto_da_categoria("eletronicos"), "Eletrônicos")  # guardado antes da troca
+        self.client.get("/meu-site/")
+        site = SiteAfiliado.objects.get(conta=self.conta)
+        self.conta.shopee_app_id = "1"
+        self.conta.shopee_secret_cifrado = cripto.cifrar("s")
+        self.conta.save()
+        antigo = ProdutoSite.objects.create(site=site, fonte="bot", item_id="5", nome="Fone", categoria="eletronicos",
+                                            link_produto="https://shopee.com.br/p-i.1.5", posicao_em=timezone.now())
+        corrigido = ProdutoSite.objects.create(site=site, fonte="bot", item_id="6", nome="Fone 2", categoria="eletronicos",
+                                               link_produto="https://shopee.com.br/p-i.1.6", posicao_em=timezone.now())
+        CategoriaProdutoSite.objects.create(site=site, item_id="6", categoria="")
+        with mock.patch.object(shopee_ofertas, "buscar_produto_por_item", return_value=produto("5", categoria_id=100535)) as buscar:
+            self.assertEqual(vitrine.atualizar_categorias_antigas(), 1)
+        buscar.assert_called_once()  # o corrigido pela pessoa não é buscado
+        antigo.refresh_from_db()
+        corrigido.refresh_from_db()
+        self.assertEqual((antigo.categoria, corrigido.categoria), ("100535", "eletronicos"))
+        self.assertEqual(shopee_ofertas.normalizar_produto({"itemId": 1, "productCatIds": [100630, 101, 102]})["categoria_id"], 100630)
+        self.assertEqual(shopee_ofertas.normalizar_produto({"itemId": 1})["categoria_id"], 0)
 
     def test_sub_id_separado_para_a_vitrine(self):
         self.client.get("/meu-site/")

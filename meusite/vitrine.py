@@ -6,9 +6,11 @@
 - "manual": os links que a pessoa colou, na ordem dela.
 Quem fala com a Shopee é o worker (comando sincronizar_painel); o site só lê o banco."""
 
+import json
 import logging
 from datetime import timedelta
 from decimal import Decimal
+from pathlib import Path
 
 from django.db import transaction
 from django.utils import timezone
@@ -28,15 +30,42 @@ LINKS_POR_VOLTA = 30  # links de afiliado gerados por volta do worker
 MAXIMO_MANUAIS = 60
 
 
+# Categorias da vitrine: as principais da Shopee Brasil (nível 1, os mesmos nomes do app),
+# guardadas pelo número (ex: "100630" = Beleza). Lista em meusite/data/categorias_shopee.json.
+with open(Path(__file__).resolve().parent / "data" / "categorias_shopee.json", encoding="utf-8") as _arquivo:
+    CATEGORIAS = {str(item["id"]): item["nome"] for item in json.load(_arquivo)}
+
+# Quando a Shopee não manda a categoria: o nicho adivinhado pelo nome do produto (as listas
+# de palavras do bot) vira a categoria da Shopee mais próxima.
+NICHO_PARA_CATEGORIA = {
+    "moda": "100017", "beleza": "100630", "casa": "100636", "eletronicos": "100013", "eletrodomesticos": "100010",
+    "bebes": "100632", "brinquedos": "100639", "esporte": "100637", "automotivo": "100640", "pet": "100631",
+    "papelaria": "100638", "saude": "100001", "joias": "100009", "ferramentas": "100636",
+}
+
+
+def opcoes_de_categoria() -> list[tuple[str, str]]:
+    """(número, nome) das categorias, em ordem alfabética."""
+    return sorted(CATEGORIAS.items(), key=lambda par: par[1])
+
+
 def nome_curto_da_categoria(chave: str) -> str:
+    if chave in CATEGORIAS:
+        return CATEGORIAS[chave]
+    # Produto guardado antes da troca (nicho pelo nome), até o worker atualizar.
     label = CATEGORIAS_SHOPEE.get(chave, {}).get("label", "")
     return label.split(" (")[0].split(" e ")[0].strip()
 
 
-def categoria_do_produto(nome: str) -> str:
-    for chave in CATEGORIAS_SHOPEE:
-        if produto_pertence_as_categorias(nome, [chave]):
-            return chave
+def categoria_do_produto(produto: dict) -> str:
+    """A categoria que a Shopee manda; sem ela, a adivinhada pelo nome."""
+    oficial = str(produto.get("categoria_id") or "")
+    if oficial in CATEGORIAS:
+        return oficial
+    nome = produto.get("nome") or ""
+    for nicho in CATEGORIAS_SHOPEE:
+        if produto_pertence_as_categorias(nome, [nicho]):
+            return NICHO_PARA_CATEGORIA.get(nicho, "")
     return ""
 
 
@@ -49,7 +78,7 @@ def _dados(produto: dict) -> dict:
     return {
         "nome": (produto.get("nome") or "")[:300], "imagem_url": (produto.get("imagem") or "")[:500],
         "preco": preco, "preco_original": original, "desconto": max(0, min(desconto, 99)),
-        "categoria": categoria_do_produto(produto.get("nome") or ""),
+        "categoria": categoria_do_produto(produto),
         "link_produto": (produto.get("link") or "")[:500],
     }
 
@@ -184,12 +213,39 @@ def uma_volta(agora=None) -> list[str]:
         site.vitrine_atualizada_em = agora
         site.save(update_fields=["vitrine_erro", "vitrine_atualizada_em", "atualizado_em"])
     gerar_links_pendentes()
+    atualizar_categorias_antigas()
     return logs
+
+
+CATEGORIAS_POR_VOLTA = 20
+
+
+def atualizar_categorias_antigas(limite: int = CATEGORIAS_POR_VOLTA) -> int:
+    """Produtos guardados quando a categoria saía só do nome: busca a categoria da Shopee de
+    cada um (aos poucos, algumas por volta do worker). Os que a pessoa corrigiu não mudam."""
+    antigos = (ProdutoSite.objects.exclude(categoria="").exclude(categoria__in=list(CATEGORIAS))
+               .filter(site__conta__shopee_validado_em__isnull=False).select_related("site__conta")[:limite])
+    feitos = 0
+    for produto in antigos:
+        site = produto.site
+        if CategoriaProdutoSite.objects.filter(site=site, item_id=produto.item_id).exists():
+            continue
+        try:
+            app_id, secret = _credenciais(site)
+            achado = shopee_ofertas.buscar_produto_por_item(app_id, secret, produto.item_id)
+        except Exception as erro:  # noqa: BLE001 - fica com a categoria mais próxima (sem tentar de novo a cada volta)
+            logger.warning("Meu site: categoria do produto %s na Shopee: %s", produto.pk, erro)
+            achado = None
+        oficial = str((achado or {}).get("categoria_id") or "")
+        nova = oficial if oficial in CATEGORIAS else NICHO_PARA_CATEGORIA.get(produto.categoria, "")
+        ProdutoSite.objects.filter(pk=produto.pk).update(categoria=nova)
+        feitos += 1
+    return feitos
 
 
 def escolher_categoria(site, produto: ProdutoSite, categoria: str) -> str:
     """Guarda a categoria escolhida para o produto (vale também nas próximas atualizações)."""
-    categoria = categoria if categoria in CATEGORIAS_SHOPEE else ""
+    categoria = categoria if categoria in CATEGORIAS else ""
     CategoriaProdutoSite.objects.update_or_create(site=site, item_id=produto.item_id, defaults={"categoria": categoria})
     ProdutoSite.objects.filter(site=site, item_id=produto.item_id).update(categoria=categoria)
     return categoria

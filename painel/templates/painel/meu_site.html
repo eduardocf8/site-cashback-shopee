@@ -132,7 +132,7 @@
       {% if produtos_vitrine and site.vitrine != "nenhuma" %}
         <details class="produtos-vitrine" data-sem-vitrine-esconde>
           <summary class="pequeno"><strong>Ver os produtos e corrigir as categorias</strong> ({{ produtos_vitrine|length }})</summary>
-          <p class="suave pequeno">A categoria é escolhida pelo nome do produto e às vezes erra. Troque aqui: vale na hora, e continua valendo quando a vitrine se atualizar.</p>
+          <p class="suave pequeno">A categoria vem da Shopee (a que o vendedor escolheu no cadastro) e às vezes está errada. Troque aqui: vale na hora, e continua valendo quando a vitrine se atualizar.</p>
           <ul class="lista-produtos-vitrine" data-url-categoria="{% url 'painel_meu_site_categoria' 0 %}">
             {% for p in produtos_vitrine %}
               <li>

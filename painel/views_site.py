@@ -14,7 +14,6 @@ from django.views.decorators.http import require_POST
 
 from licencas.models import MODULO_SITE_SEM_MARCA, MODULO_WHATSAPP
 from meusite.forms import BotaoForm, FotoForm, SiteForm
-from bot_whatsapp.categorias import opcoes_categoria
 from meusite import vitrine
 from meusite.models import ENDERECOS_RESERVADOS, BotaoSite, CliqueSite, ProdutoSite, SiteAfiliado
 
@@ -117,7 +116,7 @@ def meu_site(request):
         url_publica=url_publica(site), url_previa=f"/s/{site.endereco}/?previa=1",
         cliques=cliques, total_produtos=produtos.count(), tem_bot=tem_bot,
         produtos_vitrine=list(produtos[:vitrine.LIMITE]),
-        opcoes_categoria=[(chave, vitrine.nome_curto_da_categoria(chave)) for chave, _ in opcoes_categoria()],
+        opcoes_categoria=vitrine.opcoes_de_categoria(),
         sem_marca=MODULO_SITE_SEM_MARCA in conta.modulos_liberados(),
         dominio_sites=settings.APPFILIADO_SITES_DOMINIO,
         prefixo_sem_dominio=settings.APPFILIADO_PAINEL_URL.split("://")[-1].rstrip("/") + "/s/",
