@@ -8,6 +8,7 @@ from django.db import close_old_connections
 
 from painel.memoria import memoria_em_uso_mb
 from meusite.vitrine import uma_volta as atualizar_vitrines
+from notas.fila import tem_fila as notas_na_fila
 from notas.fila import uma_volta as emitir_notas
 from painel.relatorio import enviar_pendentes as enviar_relatorios
 from painel.resultados import contas_pendentes, processar
@@ -57,4 +58,5 @@ class Command(BaseCommand):
                 self.stderr.write(f"Falha ao conferir a fila: {erro}")
             if not loop:
                 break
-            time.sleep(max(5, intervalo))
+            # Com notas fiscais na fila, volta logo (a barra de emissão anda sem pausas longas).
+            time.sleep(5 if notas_na_fila() else max(5, intervalo))

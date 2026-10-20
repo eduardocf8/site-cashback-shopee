@@ -39,6 +39,7 @@ urlpatterns = [
     path("notas/<int:pk>/xml/", views_notas.xml, name="painel_nota_xml"),
     path("notas/<int:pk>/pdf/", views_notas.pdf, name="painel_nota_pdf"),
     path("notas/<int:pk>/reenviar-email/", views_notas.reenviar_email, name="painel_nota_reenviar_email"),
+    path("notas/andamento/", views_notas.andamento, name="painel_notas_andamento"),
     path("notas/lote/<int:pk>/", views_notas.lote, name="painel_notas_lote"),
     path("notas/lote/<int:pk>/zip/", views_notas.lote_zip, name="painel_notas_lote_zip"),
     # O site da conta pelo próprio painel (prévia no editor e endereço reserva sem o DNS curinga).

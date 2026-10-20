@@ -5,6 +5,9 @@ import datetime as dt
 import gzip
 import hashlib
 import re
+import threading
+import time
+import unittest
 import xml.etree.ElementTree as ET
 from decimal import Decimal
 from unittest import mock
@@ -16,8 +19,9 @@ from cryptography.hazmat.primitives.asymmetric import ec, padding, rsa
 from cryptography.hazmat.primitives.serialization import pkcs12
 from cryptography.x509.oid import NameOID
 from django.core.cache import cache
+from django.db import connection
 from django.core.files.uploadedfile import SimpleUploadedFile
-from django.test import Client, TestCase, override_settings
+from django.test import Client, TestCase, TransactionTestCase, override_settings
 
 from licencas.models import ContaAppfiliado
 from painel import modulos as mod
@@ -938,3 +942,93 @@ class TestNBSeCertificado(TestCase):
 def painel_cripto():
     from painel import cripto
     return cripto
+
+
+@override_settings(APPFILIADO_PAINEL_HOSTS=[HOST], ALLOWED_HOSTS=[HOST, "testserver"], APPFILIADO_PAINEL_URL=f"https://{HOST}")
+class TestAndamento(TestCase):
+    def setUp(self):
+        cache.clear()
+        self.conta = criar_conta()
+        self.empresa = criar_empresa(self.conta)
+        certificado.guardar(self.empresa, gerar_pfx(), "senha-do-pfx")
+        self.client = Client(HTTP_HOST=HOST)
+        self.client.post("/entrar/", {"email": "bia@exemplo.com", "senha": SENHA})
+        self.lote = servicos.importar_relatorio(self.empresa, relatorio_csv(), "r.csv", "2")
+        servicos.confirmar_lote(self.lote)
+
+    def test_resumo_do_lote_e_situacao_de_cada_nota(self):
+        primeira = self.lote.notas.order_by("pk").first()
+        NotaFiscal.objects.filter(pk=primeira.pk).update(situacao="autorizada", numero_nfse="7")
+        ids = ",".join(str(n.pk) for n in self.lote.notas.all())
+        dados = self.client.get(f"/notas/andamento/?ids={ids}&lote={self.lote.pk}").json()
+        self.assertEqual(dados["notas"][str(primeira.pk)], {"situacao": "autorizada", "rotulo": "Autorizada nº 7",
+                                                            "classe": "selo-concluido"})
+        self.assertEqual((dados["lote"]["autorizadas"], dados["lote"]["feitas"], dados["lote"]["fila"], dados["lote"]["progresso"]),
+                         (1, 1, 2, 33))
+
+    def test_outra_conta_nao_ve_nada(self):
+        outra = criar_conta(email="outra@exemplo.com")
+        cliente = Client(HTTP_HOST=HOST)
+        cliente.post("/entrar/", {"email": outra.email, "senha": SENHA})
+        ids = ",".join(str(n.pk) for n in self.lote.notas.all())
+        dados = cliente.get(f"/notas/andamento/?ids={ids}&lote={self.lote.pk}").json()
+        self.assertEqual(dados, {"notas": {}})
+
+    def test_paginas_ligam_o_acompanhamento_so_quando_precisa(self):
+        pagina = self.client.get(f"/notas/lote/{self.lote.pk}/")
+        self.assertContains(pagina, 'data-acompanhar="/notas/andamento/"')
+        self.assertContains(pagina, 'data-campo="barra"')
+        self.assertContains(pagina, "painel/notas")
+        with mock.patch.object(receita, "consultar", return_value={"regime": "mei"}):
+            self.assertNotContains(self.client.get("/notas/"), "data-acompanhar")
+            servicos.emitir_nota_shopee(self.empresa, "10,00")
+            inicio = self.client.get("/notas/")
+        self.assertContains(inicio, "data-acompanhar")
+        self.assertContains(inicio, "se atualiza sozinha")
+
+
+@unittest.skipUnless(connection.vendor == "postgresql", "envio simultâneo só roda com PostgreSQL")
+@override_settings(NOTAS_ENVIOS_SIMULTANEOS=6, NOTAS_EMAILS_SIMULTANEOS=4)
+class TestEnvioSimultaneo(TransactionTestCase):
+    """Várias threads na mesma fila: cada nota sai uma vez só e nenhum número de DPS se repete."""
+
+    def test_cada_nota_uma_vez_e_numeros_unicos(self):
+        from . import fila
+
+        empresa = criar_empresa(criar_conta())
+        t = dps.Tomador("cnpj", "35635824000112", "LOJA", "loja@ex.com")
+        for _ in range(60):
+            servicos.criar_nota(empresa, ambiente=AMBIENTE_TESTE, tipo="vendedor", competencia=dt.date(2026, 9, 30),
+                                tomador=t, valor=1)
+        vezes, trava, threads = {}, threading.Lock(), set()
+
+        def processar_falso(nota, cert=None, cliente=None):
+            with trava:
+                vezes[nota.pk] = vezes.get(nota.pk, 0) + 1
+                threads.add(threading.get_ident())
+            servicos._garantir_numero(nota)
+            time.sleep(0.02)
+            servicos._autorizar(nota, "chave", xml_nfse())
+            nota.email_situacao = NotaFiscal.EMAIL_PENDENTE
+            nota.save()
+
+        enviados = []
+
+        class EmailFalso:
+            def send(self):
+                time.sleep(0.01)
+                with trava:
+                    enviados.append(1)
+
+        with mock.patch.object(servicos, "processar", processar_falso), \
+                mock.patch.object(certificado, "da_empresa", return_value=object()), \
+                mock.patch.object(fila, "ClienteSefin"), \
+                mock.patch("notas.email.montar", return_value=EmailFalso()):
+            self.assertEqual(fila.emitir(limite_segundos=30), 60)
+            self.assertEqual(fila.enviar_emails(limite_segundos=30), 60)
+        self.assertEqual(set(vezes.values()), {1})
+        self.assertGreater(len(threads), 1)
+        numeros = list(NotaFiscal.objects.values_list("numero", flat=True))
+        self.assertEqual(sorted(numeros), list(range(1, 61)))
+        self.assertEqual(len(enviados), 60)
+        self.assertFalse(NotaFiscal.objects.exclude(email_situacao=NotaFiscal.EMAIL_ENVIADO).exists())

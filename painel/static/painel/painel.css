@@ -612,3 +612,4 @@ summary { cursor: pointer; }  /* "Editar", "Ver mensagem" etc. abrem ao clicar *
 }
 .notas-pausa { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 10px; margin-bottom: 16px; }
 .notas-pausa p { margin: 0; flex: 1 1 320px; }
+.notas-progresso span { transition: width .6s ease; }

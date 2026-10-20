@@ -482,6 +482,10 @@ NOTAS_EMAIL_BACKEND = _BACKENDS_DE_EMAIL.get(NOTAS_EMAIL_PROVEDOR, EMAIL_BACKEND
 NOTAS_EMAIL_REMETENTE = os.environ.get("NOTAS_EMAIL_REMETENTE", "") or None  # None = APPFILIADO_EMAIL_REMETENTE
 # Teto de e-mails de notas por dia (0 = sem teto). Útil no plano grátis do Brevo (300/dia).
 NOTAS_EMAILS_POR_DIA = int(os.environ.get("NOTAS_EMAILS_POR_DIA", "0") or 0)
+# Quantas notas vão ao governo ao mesmo tempo, e quantos e-mails saem ao mesmo tempo.
+# (O Amazon SES aceita 14 e-mails por segundo na conta liberada.)
+NOTAS_ENVIOS_SIMULTANEOS = int(os.environ.get("NOTAS_ENVIOS_SIMULTANEOS", "6") or 6)
+NOTAS_EMAILS_SIMULTANEOS = int(os.environ.get("NOTAS_EMAILS_SIMULTANEOS", "4") or 4)
 EMAIL_TIMEOUT = int(os.environ.get("EMAIL_TIMEOUT", "10"))
 DEFAULT_FROM_EMAIL = os.environ.get("DEFAULT_FROM_EMAIL", "cash-b <contato@cash-b.com>")
 
