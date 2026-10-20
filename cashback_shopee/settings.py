@@ -98,6 +98,7 @@ INSTALLED_APPS = [
     "painel",
     "bot_whatsapp",
     "meusite",
+    "carrosseis",
 ]
 
 AUTH_USER_MODEL = "accounts.User"

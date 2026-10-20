@@ -1,6 +1,6 @@
 from django.urls import include, path
 
-from . import views, views_site, views_whatsapp
+from . import views, views_carrosseis, views_site, views_whatsapp
 
 urlpatterns = [
     path("", views.inicio, name="painel_inicio"),
@@ -27,6 +27,13 @@ urlpatterns = [
     path("whatsapp/ofertas/testar/", views_whatsapp.whatsapp_ofertas_testar, name="painel_whatsapp_ofertas_testar"),
     path("whatsapp/ofertas/estado/", views_whatsapp.whatsapp_ofertas_estado, name="painel_whatsapp_ofertas_estado"),
     path("meu-site/", views_site.meu_site, name="painel_meu_site"),
+    path("carrosseis/", views_carrosseis.carrosseis, name="painel_carrosseis"),
+    path("carrosseis/padrao/", views_carrosseis.padrao, name="painel_carrossel_padrao"),
+    path("carrosseis/<int:pk>/", views_carrosseis.carrossel, name="painel_carrossel"),
+    path("carrosseis/<int:pk>/salvar/", views_carrosseis.salvar, name="painel_carrossel_salvar"),
+    path("carrosseis/<int:pk>/reescrever/", views_carrosseis.reescrever, name="painel_carrossel_reescrever"),
+    path("carrosseis/<int:pk>/foto/", views_carrosseis.foto, name="painel_carrossel_foto"),
+    path("carrosseis/<int:pk>/apagar/", views_carrosseis.apagar, name="painel_carrossel_apagar"),
     # O site da conta pelo próprio painel (prévia no editor e endereço reserva sem o DNS curinga).
     path("s/<slug:endereco>/", include("meusite.urls_publico")),
     path("m/<slug:slug>/", views.modulo, name="painel_modulo"),

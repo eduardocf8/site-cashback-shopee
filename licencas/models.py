@@ -14,6 +14,10 @@ MODULO_VIDEOS = "videos"
 MODULO_INSTAGRAM = "instagram"
 # Adicional do Meu site: tira o "Feito com Appfiliado" do rodapé (plano premium).
 MODULO_SITE_SEM_MARCA = "site_sem_marca"
+# Gerador de carrosséis para o Instagram. O premium libera o gerador inteiro e mais os
+# modelos, a edição avançada e a IA reescrevendo slides (não precisa do básico junto).
+MODULO_CARROSSEIS = "carrosseis"
+MODULO_CARROSSEIS_PREMIUM = "carrosseis_premium"
 MODULOS = [
     (MODULO_WHATSAPP, "Bot de WhatsApp"),
     (MODULO_SITE, "Meu site (conversor e vitrine)"),
@@ -21,6 +25,8 @@ MODULOS = [
     (MODULO_VIDEOS, "Gerador de vídeos"),
     (MODULO_INSTAGRAM, "Automação do Instagram"),
     (MODULO_SITE_SEM_MARCA, "Meu site sem a marca Appfiliado"),
+    (MODULO_CARROSSEIS, "Gerador de carrosséis"),
+    (MODULO_CARROSSEIS_PREMIUM, "Gerador de carrosséis (premium)"),
 ]
 CODIGOS_MODULOS = [codigo for codigo, _ in MODULOS]
 

@@ -5,6 +5,8 @@ não inclui - mostra cadeado e o convite para assinar)."""
 from django.urls import reverse
 
 from licencas.models import (
+    MODULO_CARROSSEIS,
+    MODULO_CARROSSEIS_PREMIUM,
     MODULO_INSTAGRAM,
     MODULO_SITE,
     MODULO_WHATSAPP,
@@ -24,6 +26,7 @@ ICONES = {
     "metas": "M12 3a9 9 0 1 0 0 18 9 9 0 0 0 0-18zM12 7a5 5 0 1 0 0 10 5 5 0 0 0 0-10zM12 11a1 1 0 1 0 0 2 1 1 0 0 0 0-2z",
     "atualizar": "M20 11a8 8 0 1 0-2.3 5.7M20 4v7h-7",
     "baixar": "M12 4v11M7 10l5 5 5-5M5 20h14",
+    "carrosseis": "M7 5h10v14H7zM3 7v10M21 7v10",
 }
 
 # slug -> configuração. "modulo": código da licença que libera (None = todos
@@ -47,6 +50,13 @@ MODULOS_DO_MENU = [
                            "para usar como link na bio.",
     },
     {
+        "slug": "carrosseis", "nome": "Carrosséis", "icone": "carrosseis", "modulo": MODULO_CARROSSEIS,
+        # o premium libera o gerador inteiro, sem precisar do básico junto
+        "modulos_que_liberam": [MODULO_CARROSSEIS, MODULO_CARROSSEIS_PREMIUM], "pronto": True,
+        "texto_bloqueado": "Cole o link de um produto da Shopee e receba um carrossel pronto para o "
+                           "Instagram, com textos feitos por IA e o seu link de afiliado.",
+    },
+    {
         "slug": "instagram", "nome": "Instagram", "icone": "instagram", "modulo": MODULO_INSTAGRAM,
         "pronto": False, "so_em_breve": True,
         "texto_em_breve": "Responda comentários e mande o link por mensagem direta, no automático.",
@@ -61,6 +71,7 @@ URL_DE_SLUG = {
     "metas": "painel_metas",
     "whatsapp": "painel_whatsapp",
     "site": "painel_meu_site",
+    "carrosseis": "painel_carrosseis",
     "configuracoes": "painel_configuracoes",
 }
 
@@ -69,7 +80,7 @@ def estado(item: dict, liberados: list[str]) -> str:
     """"liberado", "em_breve" ou "bloqueado"."""
     if item.get("so_em_breve"):
         return "em_breve"
-    if item["modulo"] and item["modulo"] not in liberados:
+    if item["modulo"] and not set(item.get("modulos_que_liberam") or [item["modulo"]]) & set(liberados):
         return "bloqueado"
     return "liberado" if item["pronto"] else "em_breve"
 

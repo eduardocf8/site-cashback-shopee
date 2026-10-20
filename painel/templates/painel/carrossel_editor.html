@@ -1,0 +1,89 @@
+{% extends "painel/base.html" %}
+{% load static %}
+{% block titulo %}Editar carrossel{% endblock %}
+{% block cabeca %}<link rel="stylesheet" href="{% static 'painel/carrossel/carrossel.css' %}">{% endblock %}
+{% block conteudo %}
+<div class="ec-topo">
+  <div>
+    <a class="voltar" href="{% url 'painel_carrosseis' %}">← Carrosséis</a>
+    <h1>{{ c.produto.nome|truncatechars:90 }}</h1>
+  </div>
+  <div class="ec-acoes">
+    <span class="ec-status" id="statusSalvo" role="status" aria-live="polite">Carregando…</span>
+    <button class="ec-btn" id="copiarLink" type="button">Copiar link de afiliado</button>
+    <form method="post" action="{% url 'painel_carrossel_apagar' c.pk %}" onsubmit="return confirm('Apagar este carrossel?')">{% csrf_token %}<button class="ec-btn" type="submit">Apagar</button></form>
+  </div>
+</div>
+
+<div class="editor-carrossel">
+  <section class="ec-palco" aria-label="Prévia">
+    <div class="ec-previa"><canvas id="grande" width="1080" height="1350" role="img" aria-label="Prévia do slide"></canvas></div>
+    <div class="ec-nav"><button class="ec-btn" id="ant" type="button" aria-label="Slide anterior">‹</button><span id="pos">1 / 1</span><button class="ec-btn" id="prox" type="button" aria-label="Próximo slide">›</button></div>
+    <div class="ec-tira" id="tira"></div>
+    <div class="ec-acoes">
+      <button class="ec-btn" id="esq" type="button">◀ Mover</button>
+      <button class="ec-btn" id="dir" type="button">Mover ▶</button>
+      <button class="ec-btn" id="remover" type="button">Remover</button>
+      <span class="trava" data-premium><button class="ec-btn" id="duplicar" type="button">Duplicar</button><span class="selo-premium">PREMIUM</span></span>
+      <span class="trava" data-premium><select id="novo" style="width:auto" aria-label="Adicionar slide"><option value="">+ Adicionar slide…</option></select><span class="selo-premium">PREMIUM</span></span>
+    </div>
+    <div class="ec-acoes"><button class="ec-btn pri" id="baixar" type="button">Baixar este slide</button><button class="ec-btn pri" id="baixarTodos" type="button">Baixar todos (ZIP)</button></div>
+  </section>
+
+  <aside class="ec-painel">
+    <div class="ec-abas" role="tablist">
+      <button class="on" type="button" data-aba="texto" role="tab" aria-selected="true">Texto</button>
+      <button type="button" data-aba="visual" role="tab" aria-selected="false">Visual</button>
+      <button type="button" data-aba="infos" role="tab" aria-selected="false">Infos</button>
+      <button type="button" data-aba="legenda" role="tab" aria-selected="false">Legenda</button>
+    </div>
+    <div class="aba on" id="aba-texto" role="tabpanel">
+      <div class="trava" data-premium id="blocoFoto"></div>
+      <div id="campos"></div>
+      <div class="ec-acoes" style="justify-content:flex-start">
+        <button class="ec-btn" id="original" type="button">Voltar ao original</button>
+        <span class="trava" data-premium><button class="ec-btn" id="outra" type="button">✨ Outra versão</button><span class="selo-premium">PREMIUM</span></span>
+      </div>
+      <div id="problemas" class="problemas ok" aria-live="polite">Tudo certo com este slide.</div>
+    </div>
+    <div class="aba" id="aba-visual" role="tabpanel">
+      <label class="ed-campo">Modelo<select id="modelo"></select></label>
+      <div class="grupo-campo"><h3>Cor</h3><div class="temas" id="temas"></div></div>
+      <div class="trava" data-premium><h3>Fonte dos títulos <span class="selo-premium">PREMIUM</span></h3>
+        <select id="fonte" aria-label="Fonte dos títulos"><option value="modelo">A do modelo</option><option value="moderna">Moderna (DM Sans)</option><option value="geometrica">Geométrica (Sora)</option><option value="impacto">Impacto (Bebas)</option><option value="elegante">Elegante (Playfair)</option><option value="serifa">Serifa fina (Instrument)</option></select></div>
+      <div class="grupo-campo"><h3>Produto recortado (sem fundo)</h3><p class="dica">Em breve: o fundo da foto sai sozinho nos modelos ★. Por enquanto a foto entra num cartão branco.</p></div>
+      <div class="trava" data-premium><h3>Foto do produto <span class="selo-premium">PREMIUM</span></h3>
+        <div class="ec-acoes" style="justify-content:flex-start"><label class="ec-btn" for="foto">Escolher outra foto…</label><button class="ec-btn" id="removerFoto" type="button" hidden>Voltar para a da Shopee</button></div>
+        <input class="arquivo" type="file" id="foto" accept="image/jpeg,image/png,image/webp">
+        <p class="dica">JPG, PNG ou WebP de até 8 MB. Ela entra num cartão branco no lugar da foto da Shopee.</p></div>
+    </div>
+    <div class="aba" id="aba-infos" role="tabpanel">
+      <div class="info">O preço vem da Shopee e não pode ser editado, para ninguém anunciar valor errado sem querer. Ele é o preço da hora em que o carrossel foi gerado.</div>
+      <label class="ed-campo">Seu @ no Instagram<input type="text" id="arroba" maxlength="31" placeholder="@seuperfil" autocomplete="off"></label>
+      <div class="trava" data-premium><h3>Mostrar no carrossel <span class="selo-premium">PREMIUM</span></h3>
+        <div class="ec-linha">Nota e vendas<input type="checkbox" class="sw" role="switch" id="mostraNota" checked></div>
+        <div class="ec-linha">Preço antigo e desconto<input type="checkbox" class="sw" role="switch" id="mostraDe" checked></div>
+        <div class="ec-linha">"Arrasta" no rodapé<input type="checkbox" class="sw" role="switch" id="mostraArrasta" checked></div></div>
+      <div class="trava" data-premium><div class="ec-acoes" style="justify-content:flex-start"><button class="ec-btn" id="salvarPadrao" type="button">Salvar como meu padrão</button><span class="selo-premium">PREMIUM</span></div>
+        <p class="dica">Modelo, cor, fonte, @ e o que mostrar já vêm prontos nos próximos carrosséis.</p></div>
+    </div>
+    <div class="aba" id="aba-legenda" role="tabpanel">
+      <label class="ed-campo">Legenda do post<textarea id="legenda" rows="9" maxlength="2200"></textarea></label>
+      <label class="ed-campo">Hashtags<input type="text" id="hashtags" maxlength="300"></label>
+      <button class="ec-btn" id="copiar" type="button">Copiar legenda</button>
+      <p class="dica">Coloque o seu link de afiliado no link da bio (a legenda do Instagram não tem link clicável). O ZIP já leva o link junto.</p>
+    </div>
+  </aside>
+</div>
+<div id="toast" role="status" aria-live="polite"></div>
+<canvas id="aux" width="1080" height="1350" hidden></canvas>
+<canvas id="audit" width="1080" height="1350" hidden></canvas>
+{{ dados|json_script:"dados-carrossel" }}
+<script src="{% static 'painel/carrossel/vendor/jszip.min.js' %}" defer></script>
+<script src="{% static 'painel/carrossel/carrossel.js' %}" defer></script>
+<script src="{% static 'painel/carrossel/modelos.js' %}" defer></script>
+<script src="{% static 'painel/carrossel/arte.js' %}" defer></script>
+<script src="{% static 'painel/carrossel/premium.js' %}" defer></script>
+<script src="{% static 'painel/carrossel/carrossel-auditoria.js' %}" defer></script>
+<script src="{% static 'painel/carrossel/editor.js' %}" defer></script>
+{% endblock %}
