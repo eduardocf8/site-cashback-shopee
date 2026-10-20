@@ -28,7 +28,13 @@
 {% endif %}
 
 {% if shopee_conectada %}
-  {% include "painel/_kpis.html" with valores=mes legenda=nome_mes %}
+  <section class="kpis-do-mes" aria-labelledby="titulo-kpis-mes">
+    <div class="kpis-topo">
+      <h2 id="titulo-kpis-mes"><span class="selo-mes">Mês atual</span> {{ nome_mes }}</h2>
+      <span class="suave pequeno">Do dia 1º até hoje · <a href="{% url 'painel_resultados' %}">ver outros períodos</a></span>
+    </div>
+    {% include "painel/_kpis.html" with valores=mes legenda=nome_mes %}
+  </section>
 
   <div class="duas-colunas">
     <section class="card">

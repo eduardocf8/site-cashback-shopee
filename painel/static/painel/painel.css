@@ -279,6 +279,11 @@ tr:last-child td { border-bottom: none; }
 .bom { color: var(--bom-tinta); }
 
 .kpis { display: grid; gap: 16px; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); }
+/* Início: os números do topo são do mês atual - o título diz isso. */
+.kpis-do-mes { display: flex; flex-direction: column; gap: 10px; }
+.kpis-topo { display: flex; align-items: baseline; justify-content: space-between; flex-wrap: wrap; gap: 4px 12px; }
+.kpis-topo h2 { margin: 0; font-size: 18px; display: flex; align-items: center; gap: 8px; }
+.selo-mes { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: .04em; padding: 3px 9px; border-radius: 999px; background: var(--verde); color: var(--menu-texto); }
 .kpi { display: flex; flex-direction: column; gap: 4px; }
 .kpi-titulo { color: var(--suave); font-size: 13px; }
 .kpi-valor { font-size: 26px; letter-spacing: -0.02em; line-height: 1.2; }
@@ -606,6 +611,12 @@ summary { cursor: pointer; }  /* "Editar", "Ver mensagem" etc. abrem ao clicar *
 .notas-cartao h2 { margin: 0; }
 .notas-cartao p { margin: 0; }
 .notas-coluna { display: flex; flex-direction: column; }
+/* Notas dos vendedores e Nota da Shopee: mesma altura, botão no pé do cartão, e o mesmo
+   espaço entre os cartões (do lado e embaixo). */
+.notas-emitir { align-items: stretch; gap: 20px; }
+.notas-emitir > .notas-cartao, .notas-sem-margem { margin-bottom: 0; }
+.notas-emitir .formulario { flex: 1; }
+.notas-emitir .formulario > div:last-child { margin-top: auto; }
 .notas-cnpj { max-width: 360px; }
 .notas-dados { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 12px 20px; margin: 0; }
 .notas-dados dt { font-size: 12px; color: var(--suave); }

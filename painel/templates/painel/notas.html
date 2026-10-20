@@ -21,7 +21,7 @@
   </section>
 {% else %}
   {% if falta or not teste_ok %}
-  <section class="card notas-cartao" aria-labelledby="titulo-passos">
+  <section class="card notas-cartao notas-sem-margem" aria-labelledby="titulo-passos">
     <h2 id="titulo-passos">Para começar a emitir</h2>
     <ul class="passos">
       <li><span class="marcador feito">{% include "painel/_icone.html" with caminho=icones.check %}</span><span class="titulo feito-texto">Cadastrar a empresa</span><span class="estado estado-liberado">Feito</span></li>
@@ -32,7 +32,7 @@
   </section>
   {% endif %}
 
-  <div class="duas-colunas">
+  <div class="duas-colunas notas-emitir">
     <section class="card notas-cartao" id="mes" aria-labelledby="titulo-mes">
       <h2 id="titulo-mes">Notas dos vendedores (comissão extra)</h2>
       <p class="suave pequeno">Na Central do Afiliado da Shopee: <strong>Relatórios › Relatório mensal</strong>, escolha o mês de conclusão e clique em <strong>Exportar</strong>. Envie o arquivo aqui do jeito que baixou (sem abrir no Excel). Sai uma nota por loja, e você confere tudo antes de emitir.</p>
@@ -59,7 +59,7 @@
   </div>
 
   {% if lotes %}
-    <section class="card notas-cartao" aria-labelledby="titulo-lotes">
+    <section class="card notas-cartao notas-sem-margem" aria-labelledby="titulo-lotes">
       <h2 id="titulo-lotes">Relatórios importados</h2>
       <ul class="notas-lotes">
         {% for l in lotes %}
