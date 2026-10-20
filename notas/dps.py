@@ -341,5 +341,38 @@ def validar(raiz: etree._Element, arquivo: str = f"DPS_v{VERSAO}.xsd"):
         raise ErroDPS(f"A nota ficou fora do padrão oficial ({erros}).")
 
 
+# ---------- Eventos ----------
+
+EVENTO_CANCELAMENTO = "101101"
+MOTIVOS_CANCELAMENTO = {"1", "2", "9"}  # erro na emissão, serviço não prestado, outros
+
+
+def pedido_cancelamento(*, ambiente: str, quando: datetime, cnpj: str, chave: str, motivo: str,
+                        justificativa: str) -> etree._Element:
+    """Pedido de registro do evento de cancelamento (pedRegEvento / e101101), ainda sem assinatura."""
+    justificativa = _limpa(justificativa, 255)
+    if motivo not in MOTIVOS_CANCELAMENTO:
+        raise ErroDPS("Escolha o motivo do cancelamento.")
+    if len(justificativa) < 15:
+        raise ErroDPS("Explique o motivo do cancelamento com pelo menos 15 letras.")
+    if not re.fullmatch(r"\d{50}", chave or ""):
+        raise ErroDPS("Essa nota não tem a chave de acesso do governo.")
+    if quando.tzinfo is None:
+        raise ErroDPS("Data do evento sem fuso horário.")
+    raiz = etree.Element(f"{{{NS}}}pedRegEvento", nsmap={None: NS}, versao=VERSAO)
+    inf = _grupo(raiz, "infPedReg")
+    inf.set("Id", f"PRE{chave}{EVENTO_CANCELAMENTO}")
+    _texto(inf, "tpAmb", ambiente)
+    _texto(inf, "verAplic", VERSAO_APLICATIVO)
+    _texto(inf, "dhEvento", quando.replace(microsecond=0).isoformat())
+    _texto(inf, "CNPJAutor", cnpj)
+    _texto(inf, "chNFSe", chave)
+    evento = _grupo(inf, f"e{EVENTO_CANCELAMENTO}")
+    _texto(evento, "xDesc", "Cancelamento de NFS-e")
+    _texto(evento, "cMotivo", motivo)
+    _texto(evento, "xMotivo", justificativa)
+    return raiz
+
+
 def para_bytes(raiz: etree._Element) -> bytes:
     return etree.tostring(raiz, xml_declaration=True, encoding="UTF-8")

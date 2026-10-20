@@ -189,6 +189,14 @@ class NotaFiscal(models.Model):
     enviada_em = models.DateTimeField(null=True, blank=True)
     autorizada_em = models.DateTimeField(null=True, blank=True)
 
+    # Cancelamento (evento 101101 no emissor nacional, pedido pela própria empresa).
+    MOTIVOS_CANCELAMENTO = [("1", "Erro na emissão"), ("2", "Serviço não prestado"), ("9", "Outro motivo")]
+    cancelada_em = models.DateTimeField(null=True, blank=True)
+    cancelamento_motivo = models.CharField(max_length=1, choices=MOTIVOS_CANCELAMENTO, blank=True)
+    cancelamento_justificativa = models.CharField(max_length=255, blank=True)
+    xml_cancelamento = models.TextField(blank=True)  # o evento registrado, como o governo devolveu
+    cancelamento_email_em = models.DateTimeField(null=True, blank=True)  # aviso ao vendedor
+
     email_situacao = models.CharField(max_length=10, choices=EMAILS, default=EMAIL_NAO)
     email_enviar_em = models.DateTimeField(null=True, blank=True)  # agendado (vazio = logo que der)
     email_enviado_em = models.DateTimeField(null=True, blank=True)

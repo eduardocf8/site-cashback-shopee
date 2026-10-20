@@ -426,6 +426,71 @@ def processar(nota: NotaFiscal, cert=None, cliente=None) -> NotaFiscal:
     return nota
 
 
+# ---------- Cancelamento ----------
+
+def _registrar_cancelamento(nota, motivo, justificativa, xml_evento):
+    nota.situacao, nota.cancelada_em = NotaFiscal.CANCELADA, timezone.now()
+    nota.cancelamento_motivo, nota.cancelamento_justificativa = motivo, justificativa
+    nota.xml_cancelamento = xml_evento or ""
+    nota.email_situacao = NotaFiscal.EMAIL_NAO if nota.email_situacao == NotaFiscal.EMAIL_PENDENTE else nota.email_situacao
+    nota.save()
+
+
+def _avisar_vendedor_do_cancelamento(nota):
+    """Manda o aviso ao vendedor (só nota de verdade, para vendedor com e-mail). Falha no e-mail
+    não desfaz o cancelamento: a pessoa vê o aviso e pode avisar por fora."""
+    from . import email as email_notas
+
+    if nota.ambiente != AMBIENTE_PRODUCAO or nota.tipo != NotaFiscal.TIPO_VENDEDOR or not nota.tomador_email:
+        return None
+    try:
+        email_notas.montar_cancelamento(nota, connection=email_notas.conexao()).send()
+    except Exception:  # noqa: BLE001
+        logger.exception("Notas: aviso de cancelamento da nota %s", nota.pk)
+        return False
+    nota.cancelamento_email_em = timezone.now()
+    nota.save(update_fields=["cancelamento_email_em", "atualizada_em"])
+    return True
+
+
+def cancelar(nota: NotaFiscal, motivo: str, justificativa: str, cert=None, cliente=None):
+    """Cancela a nota no emissor nacional (evento 101101, assinado com o certificado da empresa).
+    Devolve se o vendedor foi avisado por e-mail (None = não se aplica). ErroNotas se não deu."""
+    justificativa = " ".join((justificativa or "").split())[:255]
+    if nota.situacao != NotaFiscal.AUTORIZADA or not nota.chave:
+        raise ErroNotas("Só dá para cancelar uma nota autorizada.")
+    try:
+        cert = cert or certificado.da_empresa(nota.empresa)
+        quando = timezone.now().astimezone(FUSO) - timedelta(minutes=1)  # o governo recusa evento "no futuro"
+        raiz = dps.pedido_cancelamento(ambiente=nota.ambiente, quando=quando, cnpj=nota.empresa.cnpj,
+                                       chave=nota.chave, motivo=motivo, justificativa=justificativa)
+        dps.validar(raiz, f"pedRegEvento_v{dps.VERSAO}.xsd")
+        dps.assinar(raiz, cert.chave, cert.certificado)
+    except (dps.ErroDPS, certificado.ErroCertificado) as erro:
+        raise ErroNotas(str(erro))
+    cliente = cliente or ClienteSefin(nota.ambiente, cert)
+    try:
+        resposta = cliente.registrar_evento(nota.chave, dps.para_bytes(raiz))
+    except ErroSefin:
+        resposta = None
+    if resposta is None or not resposta.ok:
+        # Sem resposta, ou recusado porque já estava cancelada (pedido anterior que perdeu a
+        # resposta): confere se o cancelamento já está registrado no governo.
+        try:
+            registrado = cliente.consultar_evento(nota.chave, dps.EVENTO_CANCELAMENTO)
+        except ErroSefin:
+            registrado = None
+        if registrado is not None and registrado.ok and registrado.xml_evento():
+            resposta = registrado
+    if resposta is None:
+        raise ErroNotas("O emissor nacional não respondeu. A nota não foi cancelada: tente de novo em alguns minutos.")
+    if not resposta.ok:
+        detalhes = "; ".join(f"{m['codigo']} {m['descricao']}".strip() for m in resposta.mensagens)
+        raise ErroNotas(f"O governo não aceitou o cancelamento: {detalhes or 'sem detalhes'}.")
+    _registrar_cancelamento(nota, motivo, justificativa, resposta.xml_evento())
+    return _avisar_vendedor_do_cancelamento(nota)
+
+
 def emitir_teste(empresa) -> NotaFiscal:
     """Uma nota de R$ 1,00 para a Shopee no ambiente de testes do governo (sem valor fiscal)."""
     falta = pronta_para_emitir(empresa)

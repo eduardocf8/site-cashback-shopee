@@ -250,7 +250,7 @@ def _acompanhar(lote, email) -> bool:
 
 
 CLASSE_DA_SITUACAO = {NotaFiscal.AUTORIZADA: "selo-concluido", NotaFiscal.RECUSADA: "selo-cancelado",
-                      NotaFiscal.ERRO: "selo-cancelado"}
+                      NotaFiscal.ERRO: "selo-cancelado", NotaFiscal.CANCELADA: "selo-cancelado"}
 
 
 @conta_requerida
@@ -322,6 +322,37 @@ def reenviar(request, pk):
     return _volta(request, nota)
 
 
+@conta_requerida
+def cancelar(request, pk):
+    """Cancelar uma nota autorizada: a pessoa escolhe o motivo e escreve a justificativa; o
+    pedido vai assinado com o certificado da empresa. Só a conta dona da nota chega aqui."""
+    conta = conta_logada(request)
+    bloqueio = _bloqueio(request, conta)
+    if bloqueio:
+        return bloqueio
+    nota = get_object_or_404(NotaFiscal, pk=pk, empresa__conta=conta)
+    voltar = request.POST.get("voltar") or request.GET.get("voltar", "")
+    motivo, justificativa = request.POST.get("motivo", ""), request.POST.get("justificativa", "")
+    if request.method == "POST" and nota.situacao == NotaFiscal.AUTORIZADA:
+        try:
+            avisado = servicos.cancelar(nota, motivo, justificativa)
+        except servicos.ErroNotas as erro:
+            messages.error(request, str(erro))
+        else:
+            texto = f"Nota nº {nota.numero_nfse} cancelada no emissor nacional."
+            if avisado:
+                texto += " O vendedor recebeu um e-mail avisando."
+            elif avisado is False:
+                texto += " Não consegui mandar o e-mail de aviso ao vendedor: avise por fora, por favor."
+            messages.success(request, texto)
+            return _volta(request, nota)
+    return render(request, "painel/notas_cancelar.html", _contexto(
+        request, "notas", nota=nota, motivos=NotaFiscal.MOTIVOS_CANCELAMENTO, motivo=motivo,
+        justificativa=justificativa, voltar=voltar,
+        avisa_vendedor=nota.ambiente == AMBIENTE_PRODUCAO and nota.tipo == NotaFiscal.TIPO_VENDEDOR and bool(nota.tomador_email),
+    ))
+
+
 @require_POST
 @conta_requerida
 def reenviar_email(request, pk):
@@ -338,7 +369,8 @@ def pdf(request, pk):
     nota = get_object_or_404(NotaFiscal, pk=pk, empresa__conta=conta_logada(request))
     if not nota.xml_nfse:
         return HttpResponse(status=404)
-    resposta = HttpResponse(danfse.pdf(nota.xml_nfse), content_type="application/pdf")
+    resposta = HttpResponse(danfse.pdf(nota.xml_nfse, cancelada=nota.situacao == NotaFiscal.CANCELADA),
+                            content_type="application/pdf")
     resposta["Content-Disposition"] = f'inline; filename="{danfse.nome_arquivo(nota, "pdf")}"'
     return resposta
 
