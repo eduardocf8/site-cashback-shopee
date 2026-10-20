@@ -704,19 +704,19 @@ class TestCamposNovos(TestCase):
             servicos.processar(nota)
         teste, producao = (x.decode() for x in falso.emitidas)
         self.assertIn("<finNFSe>0</finNFSe>", teste)
-        self.assertNotIn("indDest", teste)
+        self.assertNotIn("</toma><indDest>", teste)  # na raiz, o ambiente de testes recusa
         self.assertNotIn("finNFSe", producao)
 
     def test_se_ajusta_sozinho_ate_passar(self):
         # O que aconteceu hoje: o governo pede finNFSe, e depois recusa o indDest.
-        cache.set("notas:campos:2", ["indDest"])
+        cache.set("notas:campos2:2", ["indDest"])
         falso = ClienteEmSequencia([recusa_de_esquema(ERRO_LEIAUTE_REAL), recusa_de_esquema(ERRO_INDDEST_REAL), autorizada()])
         with mock.patch.object(servicos, "ClienteSefin", falso):
             nota = servicos.emitir_teste(self.empresa)
         self.assertEqual(nota.situacao, "autorizada")
         ultima = falso.emitidas[-1].decode()
         self.assertIn("<finNFSe>0</finNFSe>", ultima)
-        self.assertNotIn("indDest", ultima)
+        self.assertNotIn("</toma><indDest>", ultima)
         self.assertEqual(servicos.campos_novos("2"), {"finNFSe"})  # as próximas já saem certas
 
     def test_producao_ganha_o_campo_quando_o_governo_mudar(self):
@@ -852,3 +852,35 @@ class TestRegime(TestCase):
             servicos.processar(nota)
         self.assertEqual(nota.situacao, "recusada")
         self.assertEqual(EmpresaNotas.objects.get(pk=self.empresa.pk).regime, "mei")
+
+
+class TestCamposPorGrupo(TestCase):
+    def erro(self, texto):
+        return [{"codigo": "E1235", "descricao": texto}]
+
+    def test_campo_pedido_dentro_do_ibscbs_vai_para_dentro(self):
+        pedido = ("The element 'IBSCBS' in namespace 'http://www.sped.fazenda.gov.br/nfse' has invalid child element 'valores' "
+                  "in namespace 'http://www.sped.fazenda.gov.br/nfse'. List of possible elements expected: 'tpOper, gRefNFSe, "
+                  "tpEnteGov, indDest' in namespace 'http://www.sped.fazenda.gov.br/nfse'.")
+        self.assertEqual(dps.ajuste_de_campos(self.erro(pedido), {"finNFSe", "IBSCBS"}), {"finNFSe", "IBSCBS", "IBSCBS.indDest"})
+        sobra = ("The element 'IBSCBS' in namespace 'x' has invalid child element 'indDest' in namespace 'x'. "
+                 "List of possible elements expected: 'dest, imovel, valores' in namespace 'x'.")
+        self.assertEqual(dps.ajuste_de_campos(self.erro(sobra), {"IBSCBS", "IBSCBS.indDest"}), {"IBSCBS"})
+        subgrupo = ("The element 'trib' in namespace 'x' has invalid child element 'CST' in namespace 'x'. "
+                    "List of possible elements expected: 'gIBSCBS' in namespace 'x'.")
+        self.assertEqual(dps.ajuste_de_campos(self.erro(subgrupo), {"IBSCBS"}), {"IBSCBS", "IBSCBS.gIBSCBS"})
+        # o erro real de hoje: indDest na raiz é recusado -> sai da raiz (e não mexe no de dentro)
+        self.assertEqual(dps.ajuste_de_campos(self.erro(ERRO_INDDEST_REAL), {"indDest", "IBSCBS", "IBSCBS.indDest"}),
+                         {"IBSCBS", "IBSCBS.indDest"})
+
+    def test_monta_o_ibscbs_no_formato_de_dezembro(self):
+        raiz = dps_exemplo()
+        dps.com_campos_novos(raiz, {"IBSCBS", "IBSCBS.finNFSe", "IBSCBS.indFinal", "IBSCBS.indDest", "IBSCBS.gIBSCBS"})
+        self.assertIn("<IBSCBS><finNFSe>0</finNFSe><indFinal>0</indFinal><cIndOp>100301</cIndOp><indDest>0</indDest>"
+                      "<valores><trib><gIBSCBS><CST>000</CST><cClassTrib>000001</cClassTrib></gIBSCBS></trib></valores>"
+                      "</IBSCBS>", dps.para_bytes(raiz).decode())
+
+    def test_ambiente_de_testes_comeca_com_indDest_dentro_do_ibscbs(self):
+        cache.clear()
+        self.addCleanup(cache.clear)
+        self.assertEqual(servicos.campos_novos("2"), {"finNFSe", "IBSCBS", "IBSCBS.indDest"})

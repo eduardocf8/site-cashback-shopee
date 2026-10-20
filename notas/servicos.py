@@ -147,20 +147,20 @@ def _garantir_numero(nota):
 
 # Campos novos da reforma que cada ambiente aceita (ver dps.CAMPOS_NOVOS). Começa assim e
 # se ajusta sozinho quando o governo recusa pelo esquema (ver processar); o cache guarda.
-CAMPOS_PADRAO = {AMBIENTE_PRODUCAO: frozenset(), AMBIENTE_TESTE: frozenset({"finNFSe", "IBSCBS"})}
+CAMPOS_PADRAO = {AMBIENTE_PRODUCAO: frozenset(), AMBIENTE_TESTE: frozenset({"finNFSe", "IBSCBS", "IBSCBS.indDest"})}
 
 
 def campos_novos(ambiente: str) -> frozenset:
     from django.core.cache import cache
 
-    guardado = cache.get(f"notas:campos:{ambiente}")
+    guardado = cache.get(f"notas:campos2:{ambiente}")
     return frozenset(guardado) if guardado is not None else CAMPOS_PADRAO[ambiente]
 
 
 def _guardar_campos(ambiente: str, campos):
     from django.core.cache import cache
 
-    cache.set(f"notas:campos:{ambiente}", sorted(campos), 60 * 60 * 24 * 30)
+    cache.set(f"notas:campos2:{ambiente}", sorted(campos), 60 * 60 * 24 * 30)
 
 
 def _tomador(nota, campos) -> dps.Tomador:
@@ -243,11 +243,12 @@ def processar(nota: NotaFiscal, cert=None, cliente=None) -> NotaFiscal:
                 return nota
         campos = campos_novos(nota.ambiente)
         resposta = cliente.emitir(_montar_assinada(nota, cert, campos))
-        for _ in range(len(dps.CAMPOS_NOVOS)):  # o governo mudou o esquema: ajusta e reenvia na hora
+        for _ in range(8):  # o governo mudou o esquema: ajusta e reenvia na hora
             ajustados = dps.ajuste_de_campos(resposta.mensagens, campos) if not resposta.ok else None
             if ajustados is None:
                 break
-            logger.info("Notas: ambiente %s agora com os campos novos %s.", nota.ambiente, sorted(ajustados))
+            logger.warning("Notas: ambiente %s recusou %s; tentando com os campos novos %s.", nota.ambiente,
+                           [f"{m['codigo']} {m['descricao'][:300]}" for m in resposta.mensagens], sorted(ajustados))
             campos = ajustados
             _guardar_campos(nota.ambiente, campos)
             resposta = cliente.emitir(_montar_assinada(nota, cert, campos))
