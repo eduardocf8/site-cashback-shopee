@@ -4,7 +4,7 @@ Sai pelo remetente do Appfiliado, com "responder para" o e-mail do afiliado: se 
 vendedor responder, a resposta vai direto para quem emitiu a nota."""
 
 from django.conf import settings
-from django.core.mail import EmailMessage
+from django.core.mail import EmailMessage, get_connection
 
 from . import danfse
 
@@ -16,7 +16,15 @@ def _brl(valor) -> str:
     return "R$ " + f"{valor:,.2f}".replace(",", "X").replace(".", ",").replace("X", ".")
 
 
-def montar(nota) -> EmailMessage:
+def conexao():
+    """O serviço de e-mail das notas (NOTAS_EMAIL_PROVEDOR). Se for o mesmo do resto do
+    site, usa a conexão padrão do Django."""
+    if settings.NOTAS_EMAIL_PROVEDOR != settings.EMAIL_PROVEDOR:
+        return get_connection(settings.NOTAS_EMAIL_BACKEND)
+    return get_connection()
+
+
+def montar(nota, connection=None) -> EmailMessage:
     empresa = nota.empresa
     referencia = ""
     if nota.lote_id:
@@ -39,9 +47,10 @@ def montar(nota) -> EmailMessage:
     mensagem = EmailMessage(
         subject=f"Nota fiscal de serviço nº {nota.numero_nfse or nota.numero} - {empresa.razao_social}",
         body=corpo,
-        from_email=settings.APPFILIADO_EMAIL_REMETENTE,
+        from_email=settings.NOTAS_EMAIL_REMETENTE or settings.APPFILIADO_EMAIL_REMETENTE,
         to=[nota.tomador_email],
         reply_to=[empresa.conta.email],
+        connection=connection,
     )
     mensagem.attach(danfse.nome_arquivo(nota, "pdf"), danfse.pdf(nota.xml_nfse), "application/pdf")
     mensagem.attach(danfse.nome_arquivo(nota, "xml"), nota.xml_nfse.encode("utf-8"), "application/xml")

@@ -8,8 +8,11 @@ import logging
 import time
 from datetime import timedelta
 
+from django.conf import settings
 from django.db.models import Q
 from django.utils import timezone
+
+from cashback_shopee.ses_email_backend import LimiteDeEnvio
 
 from . import certificado, email, servicos
 from .models import LoteNotas, NotaFiscal
@@ -84,10 +87,25 @@ def emitir(limite_segundos: float = 45) -> int:
     return feitas
 
 
+def _limite_do_servico(erro) -> bool:
+    """O serviço de e-mail pediu para esperar (cota por segundo/dia ou créditos)?"""
+    if isinstance(erro, LimiteDeEnvio):
+        return True
+    resposta = getattr(erro, "response", None)
+    return getattr(resposta, "status_code", None) in (402, 429)
+
+
 def enviar_emails(limite: int = EMAILS_POR_VOLTA) -> int:
     enviados = 0
+    if settings.NOTAS_EMAILS_POR_DIA:
+        hoje = timezone.localtime().replace(hour=0, minute=0, second=0, microsecond=0)
+        ja = NotaFiscal.objects.filter(email_enviado_em__gte=hoje).count()
+        limite = min(limite, max(0, settings.NOTAS_EMAILS_POR_DIA - ja))
+        if not limite:
+            return 0  # teto do dia atingido: o resto sai amanhã
     pendentes = (NotaFiscal.objects.filter(situacao=NotaFiscal.AUTORIZADA, email_situacao=NotaFiscal.EMAIL_PENDENTE)
                  .select_related("empresa", "empresa__conta", "lote").order_by("autorizada_em")[:limite])
+    conexao = email.conexao() if pendentes else None
     for nota in pendentes:
         if not nota.tomador_email:
             nota.email_situacao = NotaFiscal.EMAIL_SEM
@@ -95,10 +113,13 @@ def enviar_emails(limite: int = EMAILS_POR_VOLTA) -> int:
             continue  # ainda sem o XML da nota: tenta de novo depois
         else:
             try:
-                email.montar(nota).send()
+                email.montar(nota, connection=conexao).send()
                 nota.email_situacao, nota.email_enviado_em, nota.email_erro = NotaFiscal.EMAIL_ENVIADO, timezone.now(), ""
                 enviados += 1
             except Exception as erro:  # noqa: BLE001 - um e-mail com problema não para os outros
+                if _limite_do_servico(erro):
+                    logger.info("Notas: serviço de e-mail pediu para esperar (%s). Continua depois.", erro)
+                    break  # fica "a enviar" e sai na próxima volta
                 logger.warning("Notas: e-mail da nota %s falhou: %s", nota.pk, erro)
                 nota.email_situacao, nota.email_erro = NotaFiscal.EMAIL_FALHOU, str(erro)[:300]
         nota.save(update_fields=["email_situacao", "email_enviado_em", "email_erro", "atualizada_em"])
