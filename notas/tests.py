@@ -27,7 +27,7 @@ from django.utils import timezone
 from licencas.models import ContaAppfiliado
 from painel import modulos as mod
 
-from . import certificado, dps, endereco, receita, servicos
+from . import certificado, danfse, dps, endereco, receita, servicos
 from .models import AMBIENTE_TESTE, EmpresaNotas, NotaFiscal
 from .sefin import ErroSefin, Resposta
 
@@ -1381,8 +1381,9 @@ class TestPlanoDeNotas(TestCase):
             servicos.emitir_nota_shopee(self.empresa, "10,00")
 
     def test_telas_mostram_o_uso_e_travam_o_lote(self):
-        mock.patch.object(receita, "consultar", return_value={"regime": "mei"}).start()
-        self.addCleanup(mock.patch.stopall)
+        receita_falsa = mock.patch.object(receita, "consultar", return_value={"regime": "mei"})
+        receita_falsa.start()
+        self.addCleanup(receita_falsa.stop)  # stopall desligaria também o CEP falso do módulo
         client = Client(HTTP_HOST=HOST)
         client.post("/entrar/", {"email": "bia@exemplo.com", "senha": SENHA})
         self.notas(98)
@@ -1403,3 +1404,162 @@ class TestPlanoDeNotas(TestCase):
         html = client.get(f"/notas/lote/{lote.pk}/").content.decode()
         self.assertIn("restam 902 de 1000 notas", html)
         self.assertIn("sobram 899", html)
+
+
+class ClienteEvento:
+    """A API do governo para eventos, nos testes de cancelamento."""
+
+    def __init__(self, resposta=None, erro=None, registrado=None):
+        self.resposta, self.erro, self.registrado = resposta, erro, registrado
+        self.pedidos = []
+
+    def __call__(self, ambiente, cert):
+        return self
+
+    def registrar_evento(self, chave, pedido):
+        self.pedidos.append((chave, pedido))
+        if self.erro:
+            raise self.erro
+        return self.resposta
+
+    def consultar_evento(self, chave, tipo, sequencia=1):
+        return self.registrado or Resposta(404, {})
+
+
+def evento_registrado():
+    xml = '<evento xmlns="http://www.sped.fazenda.gov.br/nfse" versao="1.01"><infEvento Id="EVT1"/></evento>'
+    return Resposta(201, {"eventoXmlGZipB64": base64.b64encode(gzip.compress(xml.encode())).decode()})
+
+
+CHAVE = "3550308" + "1" * 43
+
+
+@override_settings(APPFILIADO_PAINEL_HOSTS=[HOST], ALLOWED_HOSTS=[HOST, "testserver"], APPFILIADO_PAINEL_URL=f"https://{HOST}",
+                   EMAIL_BACKEND="django.core.mail.backends.locmem.EmailBackend")
+class TestCancelamento(TestCase):
+    def setUp(self):
+        from django.core import mail
+
+        self.mail = mail
+        pdf_falso = mock.patch.object(danfse, "pdf", return_value=b"%PDF-1.4 falso")
+        self.pdf = pdf_falso.start()
+        self.addCleanup(pdf_falso.stop)
+        self.conta = criar_conta()
+        self.empresa = criar_empresa(self.conta)
+        certificado.guardar(self.empresa, gerar_pfx(), "senha-do-pfx")
+        self.nota = NotaFiscal.objects.create(
+            empresa=self.empresa, ambiente="1", tipo="vendedor", situacao="autorizada", competencia=timezone.localdate(),
+            tomador_documento="11222333000181", tomador_nome="LOJA DO JOÃO LTDA", tomador_email="joao@loja.com",
+            valor=Decimal("120.50"), chave=CHAVE, numero_nfse="42", xml_nfse=xml_nfse(), email_situacao="enviado",
+            autorizada_em=timezone.now(),
+        )
+
+    def cancelar(self, cliente, motivo="1", justificativa="Valor da comissão saiu errado no relatório"):
+        with mock.patch.object(servicos, "ClienteSefin", cliente):
+            return servicos.cancelar(self.nota, motivo, justificativa)
+
+    def test_pedido_assinado_no_padrao_oficial_e_vendedor_avisado(self):
+        cliente = ClienteEvento(resposta=evento_registrado())
+        self.assertTrue(self.cancelar(cliente))
+        chave, pedido = cliente.pedidos[0]
+        self.assertEqual(chave, CHAVE)
+        raiz = ET.fromstring(pedido)
+        ns = {"n": "http://www.sped.fazenda.gov.br/nfse"}
+        self.assertEqual(raiz.find("n:infPedReg", ns).get("Id"), f"PRE{CHAVE}101101")
+        self.assertEqual(raiz.findtext("n:infPedReg/n:CNPJAutor", namespaces=ns), CNPJ)
+        self.assertEqual(raiz.findtext("n:infPedReg/n:tpAmb", namespaces=ns), "1")
+        self.assertEqual(raiz.findtext("n:infPedReg/n:e101101/n:cMotivo", namespaces=ns), "1")
+        self.assertIn("<Signature", pedido.decode())
+        from lxml import etree
+        dps.validar(etree.fromstring(pedido), "pedRegEvento_v1.01.xsd")  # já assinado, ainda no esquema
+
+        self.nota.refresh_from_db()
+        self.assertEqual((self.nota.situacao, self.nota.cancelamento_motivo), ("cancelada", "1"))
+        self.assertIn("infEvento", self.nota.xml_cancelamento)
+        self.assertIsNotNone(self.nota.cancelamento_email_em)
+        aviso = self.mail.outbox[-1]
+        self.assertEqual(aviso.to, ["joao@loja.com"])
+        self.assertEqual(aviso.reply_to, ["bia@exemplo.com"])
+        self.assertIn("cancelada", aviso.subject)
+        self.assertIn("Valor da comissão saiu errado", aviso.body)
+        self.assertEqual(aviso.attachments[0][2], "application/pdf")
+        self.assertTrue(self.pdf.call_args.kwargs["cancelada"])  # PDF com a marca CANCELADA
+        self.assertEqual(servicos.uso_do_plano(self.empresa)["usadas"], 0)  # liberou a vaga
+
+    def test_governo_recusa_e_a_nota_continua_valendo(self):
+        recusa = Resposta(400, {"erros": [{"codigo": "E1235", "descricao": "Prazo para cancelamento expirado"}]})
+        with self.assertRaisesMessage(servicos.ErroNotas, "E1235 Prazo para cancelamento expirado"):
+            self.cancelar(ClienteEvento(resposta=recusa))
+        self.nota.refresh_from_db()
+        self.assertEqual(self.nota.situacao, "autorizada")
+        self.assertEqual(self.mail.outbox, [])
+
+    def test_sem_resposta_confere_se_ja_cancelou(self):
+        self.assertTrue(self.cancelar(ClienteEvento(erro=ErroSefin("caiu"), registrado=evento_registrado())))
+        self.nota.refresh_from_db()
+        self.assertEqual(self.nota.situacao, "cancelada")
+
+        self.nota.situacao = "autorizada"
+        self.nota.save()
+        with self.assertRaisesMessage(servicos.ErroNotas, "não respondeu"):
+            self.cancelar(ClienteEvento(erro=ErroSefin("caiu")))
+        self.nota.refresh_from_db()
+        self.assertEqual(self.nota.situacao, "autorizada")
+
+    def test_validacoes_antes_de_mandar(self):
+        cliente = ClienteEvento(resposta=evento_registrado())
+        with self.assertRaisesMessage(servicos.ErroNotas, "pelo menos 15 letras"):
+            self.cancelar(cliente, justificativa="erro")
+        with self.assertRaisesMessage(servicos.ErroNotas, "motivo"):
+            self.cancelar(cliente, motivo="5")
+        self.assertEqual(cliente.pedidos, [])
+        self.nota.situacao = "recusada"
+        self.nota.save()
+        with self.assertRaisesMessage(servicos.ErroNotas, "autorizada"):
+            self.cancelar(cliente)
+
+    def test_nota_de_teste_cancela_sem_mandar_email(self):
+        self.nota.ambiente = "2"
+        self.nota.save()
+        self.assertIsNone(self.cancelar(ClienteEvento(resposta=evento_registrado())))
+        self.assertEqual(self.mail.outbox, [])
+
+    def test_tela_so_para_a_dona_da_nota(self):
+        receita_falsa = mock.patch.object(receita, "consultar", return_value={"regime": "mei"})
+        receita_falsa.start()
+        self.addCleanup(receita_falsa.stop)  # stopall desligaria também o CEP falso do módulo
+        outra = criar_conta(email="outra@exemplo.com")
+        intrusa = Client(HTTP_HOST=HOST)
+        intrusa.post("/entrar/", {"email": outra.email, "senha": SENHA})
+        self.assertEqual(intrusa.get(f"/notas/{self.nota.pk}/cancelar/").status_code, 404)
+        self.assertEqual(intrusa.post(f"/notas/{self.nota.pk}/cancelar/", {"motivo": "1", "justificativa": "x" * 20}).status_code, 404)
+
+        dona = Client(HTTP_HOST=HOST)
+        dona.post("/entrar/", {"email": "bia@exemplo.com", "senha": SENHA})
+        self.assertContains(dona.get("/notas/"), f'/notas/{self.nota.pk}/cancelar/')  # botão na lista
+        html = dona.get(f"/notas/{self.nota.pk}/cancelar/").content.decode()
+        self.assertIn("Cancelar nota nº 42", html)
+        self.assertIn("joao@loja.com", html)
+        with mock.patch.object(servicos, "ClienteSefin", ClienteEvento(resposta=evento_registrado())):
+            resposta = dona.post(f"/notas/{self.nota.pk}/cancelar/",
+                                 {"motivo": "2", "justificativa": "Serviço da campanha não foi feito"}, follow=True)
+        self.assertContains(resposta, "Nota nº 42 cancelada no emissor nacional. O vendedor recebeu um e-mail avisando.")
+        self.assertContains(resposta, "Serviço não prestado - Serviço da campanha não foi feito")
+        self.pdf.reset_mock()
+        dona.get(f"/notas/{self.nota.pk}/pdf/")
+        self.assertTrue(self.pdf.call_args.kwargs["cancelada"])
+
+    def test_admin_nao_apaga_nota_emitida(self):
+        from django.contrib.auth import get_user_model
+
+        chefe = get_user_model().objects.create_superuser(username="chefe", email="c@x.com", password="uma-senha-boa-123")
+        admin_cliente = Client()
+        admin_cliente.force_login(chefe)
+        self.assertEqual(admin_cliente.post(f"/admin/notas/notafiscal/{self.nota.pk}/delete/", {"post": "yes"}).status_code, 403)
+        self.assertNotContains(admin_cliente.get("/admin/notas/notafiscal/"), "delete_selected")
+        self.assertEqual(admin_cliente.post(f"/admin/notas/empresanotas/{self.empresa.pk}/delete/", {"post": "yes"}).status_code, 403)
+        self.assertTrue(NotaFiscal.objects.filter(pk=self.nota.pk).exists())
+        previa = NotaFiscal.objects.create(empresa=self.empresa, ambiente="1", tipo="vendedor", situacao="previa",
+                                           competencia=timezone.localdate(), tomador_documento="1", tomador_nome="X", valor=1)
+        admin_cliente.post(f"/admin/notas/notafiscal/{previa.pk}/delete/", {"post": "yes"})
+        self.assertFalse(NotaFiscal.objects.filter(pk=previa.pk).exists())  # prévia pode

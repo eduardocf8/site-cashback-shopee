@@ -76,6 +76,10 @@ class Resposta:
         bruto = self.campo("nfseXmlGZipB64", padrao="")
         return gzip.decompress(base64.b64decode(bruto)).decode("utf-8") if bruto else ""
 
+    def xml_evento(self) -> str:
+        bruto = self.campo("eventoXmlGZipB64", padrao="")
+        return gzip.decompress(base64.b64decode(bruto)).decode("utf-8") if bruto else ""
+
 
 def compactar(xml: bytes) -> str:
     return base64.b64encode(gzip.compress(xml)).decode("ascii")
@@ -147,3 +151,12 @@ class ClienteSefin:
 
     def consultar_nfse(self, chave: str) -> Resposta:
         return self._pedir("GET", f"/nfse/{chave}")
+
+    def registrar_evento(self, chave: str, pedido_assinado: bytes) -> Resposta:
+        """POST /nfse/{chave}/eventos: registra um evento da nota (ex: cancelamento)."""
+        return self._pedir("POST", f"/nfse/{chave}/eventos",
+                           json={"pedidoRegistroEventoXmlGZipB64": compactar(pedido_assinado)})
+
+    def consultar_evento(self, chave: str, tipo: str, sequencia: int = 1) -> Resposta:
+        """GET /nfse/{chave}/eventos/{tipo}/{sequência}: o evento já registrado, se houver."""
+        return self._pedir("GET", f"/nfse/{chave}/eventos/{tipo}/{sequencia}")

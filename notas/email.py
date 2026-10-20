@@ -55,3 +55,31 @@ def montar(nota, connection=None) -> EmailMessage:
     mensagem.attach(danfse.nome_arquivo(nota, "pdf"), danfse.pdf(nota.xml_nfse), "application/pdf")
     mensagem.attach(danfse.nome_arquivo(nota, "xml"), nota.xml_nfse.encode("utf-8"), "application/xml")
     return mensagem
+
+
+def montar_cancelamento(nota, connection=None) -> EmailMessage:
+    """Aviso ao vendedor de que a nota foi cancelada no emissor nacional (com o PDF marcado)."""
+    empresa = nota.empresa
+    motivo = nota.get_cancelamento_motivo_display() or "Outro motivo"
+    corpo = (
+        f"Olá, {nota.tomador_nome}!\n\n"
+        f"A nota fiscal de serviço (NFS-e) nº {nota.numero_nfse or '-'} emitida por {empresa.razao_social} "
+        f"(CNPJ {empresa.cnpj_formatado}) para a sua loja foi cancelada no Emissor Nacional.\n\n"
+        f"Valor da nota: {_brl(nota.valor)}\n"
+        f"Chave de acesso: {nota.chave}\n"
+        f"Motivo: {motivo} - {nota.cancelamento_justificativa}\n\n"
+        "A nota cancelada não tem mais valor fiscal. O PDF com a marca de cancelada está em anexo, e a "
+        "situação também aparece em https://www.nfse.gov.br/consultapublica com a chave de acesso.\n\n"
+        "Dúvidas? É só responder este e-mail.\n\n"
+        f"Enviado pelo Appfiliado em nome de {empresa.razao_social}.\n"
+    )
+    mensagem = EmailMessage(
+        subject=f"Nota fiscal de serviço nº {nota.numero_nfse or nota.numero} cancelada - {empresa.razao_social}",
+        body=corpo,
+        from_email=settings.NOTAS_EMAIL_REMETENTE or settings.APPFILIADO_EMAIL_REMETENTE,
+        to=[nota.tomador_email],
+        reply_to=[empresa.conta.email],
+        connection=connection,
+    )
+    mensagem.attach(danfse.nome_arquivo(nota, "pdf"), danfse.pdf(nota.xml_nfse, cancelada=True), "application/pdf")
+    return mensagem

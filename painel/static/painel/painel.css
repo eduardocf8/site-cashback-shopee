@@ -218,6 +218,7 @@ form.formulario { display: flex; flex-direction: column; gap: 14px; }
 .botao-principal { background: var(--amarelo); color: var(--texto); }
 .botao-principal:hover { background: var(--amarelo-hover); color: var(--texto); }
 .botao-escuro { background: var(--verde); color: var(--menu-texto); }
+.botao-perigo { background: var(--perigo); color: #fff; }
 .botao-escuro:hover { background: var(--verde-2); color: var(--menu-texto); }
 .botao-claro { background: #fff; color: var(--texto); border: 1px solid var(--borda); }
 .botao-claro:hover { background: var(--chip); color: var(--texto); }
@@ -638,7 +639,11 @@ summary { cursor: pointer; }  /* "Editar", "Ver mensagem" etc. abrem ao clicar *
 .notas-trocar[open] summary { margin-bottom: 12px; }
 .notas-seguranca { border-top: 1px solid var(--trilho); padding-top: 12px; }
 .notas-motivos { margin: 6px 0 0; padding-left: 18px; font-size: 12.5px; color: var(--perigo); }
-.notas-acoes { white-space: nowrap; text-align: right; }
+.notas-acoes { white-space: nowrap; }
+/* Colunas fixas: PDF e XML sempre no mesmo lugar em todas as linhas; o resto vem depois. */
+.notas-acoes-grade { display: grid; grid-template-columns: 64px 64px auto; gap: 6px; align-items: center; justify-content: start; }
+.notas-acoes-grade > .botao { width: 100%; justify-content: center; text-align: center; margin: 0 !important; }
+.notas-acoes-extra { display: inline-flex; align-items: center; gap: 10px; }
 .notas-acoes form { display: inline; }
 .notas-acoes .botao + form, .notas-acoes .botao + .botao { margin-left: 6px; }
 .notas-secao { font-size: 18px; margin: 28px 0 12px; }
@@ -658,6 +663,10 @@ summary { cursor: pointer; }  /* "Editar", "Ver mensagem" etc. abrem ao clicar *
 .notas-progresso { height: 8px; border-radius: 999px; background: var(--trilho); overflow: hidden; }
 .notas-progresso span { display: block; height: 100%; background: var(--bom); border-radius: 999px; }
 .notas-progresso-cheio span { background: var(--amarelo); }
+.notas-cancelar .formulario { margin-top: 18px; }
+.notas-cancelar fieldset.campo { border: none; padding: 0; margin: 0; min-width: 0; display: flex; flex-direction: column; gap: 8px; }
+.notas-cancelar fieldset.campo legend { font-weight: 700; font-size: 13px; margin-bottom: 6px; padding: 0; }
+.notas-cancelar-avisos { margin: 0; padding-left: 18px; display: flex; flex-direction: column; gap: 4px; }
 .notas-plano { display: flex; flex-direction: column; gap: 8px; }
 .notas-plano p { margin: 0; }
 .notas-sub { display: block; margin-top: 2px; overflow-wrap: anywhere; }

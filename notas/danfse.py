@@ -6,10 +6,11 @@ import logging
 logger = logging.getLogger(__name__)
 
 
-def pdf(xml_nfse: str) -> bytes:
-    from brazilfiscalreport.danfse import Danfse
+def pdf(xml_nfse: str, cancelada: bool = False) -> bytes:
+    """O PDF da nota; cancelada=True põe a marca d'água "CANCELADA" do leiaute nacional."""
+    from brazilfiscalreport.danfse import Danfse, DanfseConfig
 
-    documento = Danfse(xml_nfse)
+    documento = Danfse(xml_nfse, config=DanfseConfig(watermark_cancelled=cancelada))
     return bytes(documento.output())
 
 

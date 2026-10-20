@@ -37,6 +37,7 @@ urlpatterns = [
     path("carrosseis/<int:pk>/apagar/", views_carrosseis.apagar, name="painel_carrossel_apagar"),
     path("notas/", views_notas.notas, name="painel_notas"),
     path("notas/<int:pk>/reenviar/", views_notas.reenviar, name="painel_nota_reenviar"),
+    path("notas/<int:pk>/cancelar/", views_notas.cancelar, name="painel_nota_cancelar"),
     path("notas/<int:pk>/xml/", views_notas.xml, name="painel_nota_xml"),
     path("notas/<int:pk>/pdf/", views_notas.pdf, name="painel_nota_pdf"),
     path("notas/<int:pk>/reenviar-email/", views_notas.reenviar_email, name="painel_nota_reenviar_email"),
