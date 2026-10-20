@@ -174,13 +174,17 @@ def _guardar_campos(ambiente: str, campos):
     cache.set(f"notas:campos2:{ambiente}", sorted(campos), 60 * 60 * 24 * 30)
 
 
-def _tomador(nota, campos, com_endereco=True, conferir_cep=False) -> dps.Tomador:
+_PADRAO = object()  # endereço do tomador: o de sempre (ver _endereco_do_tomador)
+
+
+def _tomador(nota, campos, end=_PADRAO) -> dps.Tomador:
     if nota.tomador_documento == SHOPEE_CNPJ:
         return SHOPEE
     tomador = dps.Tomador(nota.tomador_tipo, nota.tomador_documento, nota.tomador_nome, nota.tomador_email,
                           nota.tomador_pais)
-    if com_endereco and nota.tomador_tipo in ("cnpj", "cpf"):
-        end = _endereco_do_tomador(nota, exigido="IBSCBS" in campos, conferir_cep=conferir_cep)
+    if nota.tomador_tipo in ("cnpj", "cpf"):
+        if end is _PADRAO:
+            end = _endereco_do_tomador(nota, exigido="IBSCBS" in campos)
         if end:
             tomador.municipio_ibge, tomador.cep, tomador.logradouro = end["municipio_ibge"], end["cep"], end["logradouro"]
             tomador.numero = end.get("numero") or "S/N"
@@ -189,17 +193,14 @@ def _tomador(nota, campos, com_endereco=True, conferir_cep=False) -> dps.Tomador
     return tomador
 
 
-def _endereco_do_tomador(nota, exigido: bool, conferir_cep=False) -> dict | None:
+def _endereco_do_tomador(nota, exigido: bool) -> dict | None:
     """Endereço do vendedor: o do relatório da Shopee (município pela lista do IBGE). Se não der e a
     nota exigir endereço (com IBS/CBS, regra E0239), tenta o cadastro da Receita.
     Sem exigência, um endereço que não deu certo só fica de fora da nota."""
     try:
-        end = endereco.do_relatorio(nota.tomador_endereco, conferir_cep) if nota.tomador_endereco else None
-        if end is None and exigido and nota.tomador_tipo == "cnpj":
-            da_receita = receita.endereco(nota.tomador_documento)
-            dados_cep = endereco.cep(da_receita.get("cep", "")) if endereco.completo(da_receita) else {}
-            if dados_cep:  # o CEP da Receita às vezes é antigo e o governo recusa (E0240)
-                end = {**da_receita, "municipio_ibge": dados_cep["municipio_ibge"]}
+        end = endereco.do_relatorio(nota.tomador_endereco) if nota.tomador_endereco else None
+        if end is None and exigido:
+            end = _endereco_da_receita(nota)
     except receita.ReceitaFora:
         if exigido:
             raise
@@ -208,6 +209,29 @@ def _endereco_do_tomador(nota, exigido: bool, conferir_cep=False) -> dict | None
         raise dps.ErroDPS("Não achei um endereço válido deste vendedor (nem no relatório da Shopee, nem na "
                           "Receita Federal), e a nota agora exige o endereço.")
     return end
+
+
+def _endereco_da_receita(nota) -> dict | None:
+    if nota.tomador_tipo != "cnpj":
+        return None
+    da_receita = receita.endereco(nota.tomador_documento)
+    dados_cep = endereco.cep(da_receita.get("cep", "")) if endereco.completo(da_receita) else {}
+    # O CEP da Receita às vezes é antigo e não existe mais (o governo recusaria com E0240).
+    return {**da_receita, "municipio_ibge": dados_cep["municipio_ibge"]} if dados_cep else None
+
+
+def _outros_enderecos(nota):
+    """Outras versões do endereço do vendedor, para tentar quando o governo recusa o CEP com o
+    endereço obrigatório: o do relatório com o município tirado do CEP, depois o da Receita."""
+    fontes = [lambda: endereco.do_relatorio(nota.tomador_endereco, conferir_cep=True) if nota.tomador_endereco else None,
+              lambda: _endereco_da_receita(nota)]
+    for fonte in fontes:
+        try:
+            end = fonte()
+        except receita.ErroReceita:  # inclui ReceitaFora: fica com a recusa que já tem
+            end = None
+        if end:
+            yield end
 
 
 # Recusas por causa do endereço do tomador (CEP que não existe ou não é do município etc.).
@@ -220,7 +244,7 @@ def _recusa_de_endereco(mensagens) -> bool:
                for m in mensagens)
 
 
-def _montar_assinada(nota, cert, campos=None, com_endereco=True, conferir_cep=False) -> bytes:
+def _montar_assinada(nota, cert, campos=None, end=_PADRAO) -> bytes:
     campos = campos_novos(nota.ambiente) if campos is None else campos
     e = nota.empresa
     agora = timezone.now().astimezone(FUSO)
@@ -234,7 +258,7 @@ def _montar_assinada(nota, cert, campos=None, com_endereco=True, conferir_cep=Fa
         emitida_em=emitida_em,
         serie=nota.serie, numero=nota.numero, competencia=nota.competencia,
         prestador=dps.Prestador(e.cnpj, e.municipio_ibge, e.regime, e.inscricao_municipal),
-        tomador=_tomador(nota, campos, com_endereco, conferir_cep),
+        tomador=_tomador(nota, campos, end),
         servico=dps.Servico(e.codigo_tributacao, e.descricao_servico, e.codigo_municipal,
                             e.codigo_nbs if "IBSCBS" in campos else ""),
         valor=nota.valor,
@@ -260,6 +284,27 @@ def _autorizar(nota, chave: str, xml: str, mensagens=None):
     nota.numero_nfse = _numero_da_nfse(xml)[:20] if xml else ""
     nota.mensagens = mensagens or []
     nota.autorizada_em = timezone.now()
+
+
+def _reenviar_com_outro_endereco(nota, cert, cliente, campos, resposta):
+    """O governo recusou o endereço do vendedor (ex: E0240, CEP que a base dele não conhece).
+    Sem IBS/CBS o endereço é opcional: vai sem. Com IBS/CBS ele é obrigatório: tenta as outras
+    versões do endereço que sejam diferentes da recusada."""
+    if "IBSCBS" not in campos:
+        if not nota.tomador_endereco:
+            return resposta  # não foi endereço nenhum: nada a tirar
+        nova = cliente.emitir(_montar_assinada(nota, cert, campos, end=None))
+        return nova if nova.ok else resposta
+    enviado = _endereco_do_tomador(nota, exigido=True)
+    tentados = {(enviado["cep"], enviado["municipio_ibge"])}
+    for outro in _outros_enderecos(nota):
+        if (outro["cep"], outro["municipio_ibge"]) in tentados:
+            continue
+        tentados.add((outro["cep"], outro["municipio_ibge"]))
+        nova = cliente.emitir(_montar_assinada(nota, cert, campos, end=outro))
+        if nova.ok or not _recusa_de_endereco(nova.mensagens):
+            return nova
+    return resposta
 
 
 def processar(nota: NotaFiscal, cert=None, cliente=None) -> NotaFiscal:
@@ -305,15 +350,8 @@ def processar(nota: NotaFiscal, cert=None, cliente=None) -> NotaFiscal:
                 resposta = nova
             else:
                 empresa.regime = antes
-        if not resposta.ok and nota.tomador_endereco and _recusa_de_endereco(resposta.mensagens):
-            if "IBSCBS" in campos:
-                # Endereço obrigatório: confere o CEP do relatório (se não existir, usa o da Receita).
-                nova = cliente.emitir(_montar_assinada(nota, cert, campos, conferir_cep=True))
-            else:
-                # Sem IBS/CBS o endereço do vendedor é opcional: se o governo implicou com ele, vai sem.
-                nova = cliente.emitir(_montar_assinada(nota, cert, campos, com_endereco=False))
-            if nova.ok:
-                resposta = nova
+        if not resposta.ok and _recusa_de_endereco(resposta.mensagens) and nota.tomador_tipo in ("cnpj", "cpf"):
+            resposta = _reenviar_com_outro_endereco(nota, cert, cliente, campos, resposta)
         if resposta.ok and resposta.campo("chaveAcesso"):
             _autorizar(nota, resposta.campo("chaveAcesso"), resposta.xml_nfse(), resposta.mensagens)
         elif any(m["codigo"] == "E0014" for m in resposta.mensagens):
