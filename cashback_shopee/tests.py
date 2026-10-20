@@ -538,3 +538,39 @@ class BannerConsentimentoCookiesTests(TestCase):
 
         self.assertNotContains(resposta, "cashbGerenciarCookies")
         self.assertNotContains(resposta, "fbevents.js")
+
+
+class AdminPorProdutoTests(TestCase):
+    """A página inicial do admin agrupa as tabelas por produto > assunto > tabela."""
+
+    def setUp(self):
+        self.admin = get_user_model().objects.create_superuser(
+            username="chefe", email="chefe@exemplo.com", password="uma-senha-boa-123")
+        self.client.force_login(self.admin)
+
+    def test_produtos_na_ordem_e_nenhuma_tabela_fica_de_fora(self):
+        from django.contrib import admin
+
+        html = self.client.get("/admin/").content.decode()
+        posicoes = [html.index(p) for p in ("🛒 Site Cash-B", "📱 Appfiliado", "📸 Automação Instagram", "⚙️ Sistema")]
+        self.assertEqual(posicoes, sorted(posicoes))
+        self.assertLess(html.index("Pedidos e saques"), html.index("Contas e assinaturas"))
+        self.assertLess(html.index("Contas e assinaturas"), html.index("Emissão NFS-e"))
+        self.assertNotIn(">Outros<", html)  # toda tabela registrada tem lugar em GRUPOS
+        for modelo in admin.site._registry:
+            url = reverse(f"admin:{modelo._meta.app_label}_{modelo._meta.model_name}_changelist")
+            self.assertIn(f'href="{url}"', html, modelo._meta.label)
+        self.assertIn(reverse("admin:pedidos_analytics"), html)
+        self.assertIn(reverse("admin:accounts_comunicacao"), html)
+
+    def test_tabela_nova_sem_lugar_vai_para_outros(self):
+        from . import admin_grupos
+
+        with patch.object(admin_grupos, "GRUPOS", admin_grupos.GRUPOS[1:]):
+            html = self.client.get("/admin/").content.decode()
+        self.assertIn(">Outros<", html)
+        self.assertIn(reverse("admin:pedidos_pedido_changelist"), html)
+
+    def test_pagina_de_um_app_e_tabela_continuam_iguais(self):
+        self.assertContains(self.client.get("/admin/notas/"), "Notas fiscais")
+        self.assertEqual(self.client.get(reverse("admin:notas_notafiscal_changelist")).status_code, 200)

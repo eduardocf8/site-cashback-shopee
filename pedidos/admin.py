@@ -10,6 +10,7 @@ from django.urls import path
 from django.utils import timezone
 
 from accounts.funil import obter_cadastros_por_dia, obter_funil
+from cashback_shopee import admin_grupos
 
 from .analytics import (
     INDICADORES_SERIE_DIARIA,
@@ -293,10 +294,9 @@ class PedidoAdmin(admin.ModelAdmin):
         return TemplateResponse(request, "admin/saldo_por_usuario.html", contexto)
 
 
-# Mostra um link pra tela de analytics no topo da página inicial do admin. Precisa ser um
-# nome de template DIFERENTE de "admin/index.html" - senão o {% extends %} dentro dele
-# resolveria pra ele mesmo (mesmo caminho) e entraria em recursão infinita.
-admin.site.index_template = "admin/index_customizado.html"
+# Página inicial e menu do admin por produto > assunto > tabela. Os botões de analytics e de
+# comunicação por e-mail ficam embaixo de "Site Cash-B" (ver cashback_shopee/admin_grupos.py).
+admin_grupos.instalar(admin.site)
 
 
 class SituacaoReclamacaoFilter(admin.SimpleListFilter):
