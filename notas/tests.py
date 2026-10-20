@@ -884,3 +884,57 @@ class TestCamposPorGrupo(TestCase):
         cache.clear()
         self.addCleanup(cache.clear)
         self.assertEqual(servicos.campos_novos("2"), {"finNFSe", "IBSCBS", "IBSCBS.indDest"})
+
+
+class TestNBSeCertificado(TestCase):
+    def setUp(self):
+        cache.clear()
+        self.addCleanup(cache.clear)
+        self.empresa = criar_empresa(criar_conta(), codigo_tributacao="", descricao_servico="")
+        certificado.guardar(self.empresa, gerar_pfx(), "senha-do-pfx")
+
+    def test_nbs_padrao_e_so_vai_com_ibscbs(self):
+        servicos.aplicar_servico_padrao(self.empresa)
+        self.assertEqual(self.empresa.codigo_nbs, "114061100")
+        falso = ClienteFalso(emitir=autorizada())
+        with mock.patch.object(servicos, "ClienteSefin", falso):
+            servicos.emitir_teste(self.empresa)  # ambiente de testes: com IBS/CBS
+            nota = servicos.emitir_nota_shopee(self.empresa, "10,00")  # produção: sem IBS/CBS por enquanto
+            servicos.processar(nota)
+        teste, producao = (x.decode() for x in falso.emitidas)
+        self.assertIn("<xDescServ>Divulgação e venda de produtos</xDescServ><cNBS>114061100</cNBS>", teste)
+        self.assertNotIn("cNBS", producao)
+
+    def test_nbs_editavel_e_validado(self):
+        servicos.salvar_servico(self.empresa, "170601", "", "Divulgação e venda de produtos", "", "1.1406.19.00")
+        self.assertEqual(EmpresaNotas.objects.get(pk=self.empresa.pk).codigo_nbs, "114061900")
+        with self.assertRaisesMessage(servicos.ErroNotas, "NBS"):
+            servicos.salvar_servico(self.empresa, "170601", "", "Divulgação e venda de produtos", "", "1.1406")
+
+    def test_cnbs_troca_de_lado_quando_o_governo_recusa(self):
+        erro = [{"codigo": "E1235", "descricao": "The element 'cServ' in namespace 'x' has invalid child element 'cNBS' "
+                 "in namespace 'x'. List of possible elements expected: 'cIntContrib' in namespace 'x'."}]
+        self.assertEqual(dps.ajuste_de_campos(erro, {"IBSCBS"}), {"IBSCBS", "cServ.cNBS_antes"})
+        self.assertEqual(dps.ajuste_de_campos(erro, {"IBSCBS", "cServ.cNBS_antes"}), {"IBSCBS"})
+        raiz = dps.montar(ambiente="2", emitida_em=dt.datetime(2026, 10, 20, 9, 0, tzinfo=FUSO), serie="1", numero=7,
+                          competencia=dt.date(2026, 10, 20), prestador=dps.Prestador(CNPJ, "3550308", "mei"),
+                          tomador=dps.Tomador("cnpj", "35635824000112", "SHPS"),
+                          servico=dps.Servico("170601", "Divulgação", nbs="114061100"), valor="1")
+        dps.validar(raiz)  # cNBS depois da descrição passa no esquema oficial 1.01
+        dps.com_campos_novos(raiz, {"cServ.cNBS_antes"})
+        self.assertIn("<cTribNac>170601</cTribNac><cNBS>114061100</cNBS><xDescServ>", dps.para_bytes(raiz).decode())
+
+    def test_certificado_e_guardado_em_der(self):
+        import warnings
+
+        guardado = base64.b64decode(painel_cripto().decifrar(EmpresaNotas.objects.get(pk=self.empresa.pk).certificado_cifrado))
+        with warnings.catch_warnings(record=True) as avisos:
+            warnings.simplefilter("always")
+            pkcs12.load_key_and_certificates(guardado, b"senha-do-pfx")
+        self.assertFalse([a for a in avisos if "BER" in str(a.message)])
+        self.assertEqual(certificado.da_empresa(self.empresa).cnpj, CNPJ)
+
+
+def painel_cripto():
+    from painel import cripto
+    return cripto

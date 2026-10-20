@@ -65,6 +65,7 @@ class Servico:
     codigo_tributacao: str  # cTribNac, 6 dígitos
     descricao: str
     codigo_municipal: str = ""
+    nbs: str = ""  # 9 dígitos; só vai junto com o IBS/CBS
 
 
 def id_dps(municipio_ibge: str, cnpj: str, serie: str, numero: int) -> str:
@@ -165,6 +166,8 @@ def montar(*, ambiente: str, emitida_em: datetime, serie: str, numero: int, comp
     if servico.codigo_municipal:
         _texto(cserv, "cTribMun", servico.codigo_municipal)
     _texto(cserv, "xDescServ", _limpa(servico.descricao, 2000))
+    if servico.nbs:
+        _texto(cserv, "cNBS", servico.nbs)  # depois da descrição no leiaute 1.01 (antes, na NT 009)
     if tomador.tipo == "nif":
         # Comércio exterior (regra E0330), com os mesmos valores das notas para o exterior já
         # autorizadas em produção: modo 2 (consumo no Brasil), sem vínculo, real (986),
@@ -198,6 +201,8 @@ CAMPOS_POR_GRUPO = {
     "infDPS": {"finNFSe": "finNFSe", "indDest": "indDest", "IBSCBS": "IBSCBS"},
     "IBSCBS": {"finNFSe": "IBSCBS.finNFSe", "indFinal": "IBSCBS.indFinal", "indDest": "IBSCBS.indDest"},
     "trib": {"gIBSCBS": "IBSCBS.gIBSCBS"},
+    # Posição do cNBS: depois de xDescServ (1.01 e esquema de dez/2025) ou antes (NT 009).
+    "cServ": {"cNBS": "cServ.cNBS_antes"},
     "regTrib": {"regApIBSCBSSN": "regApIBSCBSSN"},
 }
 CAMPOS_NOVOS = tuple(sorted({c for grupo in CAMPOS_POR_GRUPO.values() for c in grupo.values()}))
@@ -235,6 +240,10 @@ def com_campos_novos(raiz: etree._Element, campos) -> etree._Element:
             ap.text = "1"  # IBS e CBS apurados pelo Simples Nacional
             ancora = reg.find(f"{{{NS}}}regApTribSN")
             (ancora if ancora is not None else reg.find(f"{{{NS}}}opSimpNac")).addnext(ap)
+    if "cServ.cNBS_antes" in campos:
+        nbs = inf.find(f"{{{NS}}}serv/{{{NS}}}cServ/{{{NS}}}cNBS")
+        if nbs is not None:
+            nbs.getparent().find(f"{{{NS}}}xDescServ").addprevious(nbs)
     if "IBSCBS" in campos:
         grupo = etree.SubElement(inf, f"{{{NS}}}IBSCBS")
         if "IBSCBS.finNFSe" in campos:
@@ -271,7 +280,9 @@ def ajuste_de_campos(mensagens: list[dict], campos) -> frozenset | None:
         invalido = re.search(r"invalid child element '(\w+)'", texto)
         esperados = re.search(r"expected:\s*'([^']*)'", texto)
         conhecidos = CAMPOS_POR_GRUPO.get(pai.group(1) if pai else "infDPS", {})
-        if invalido and invalido.group(1) in conhecidos:
+        if pai and pai.group(1) == "cServ" and invalido and invalido.group(1) == "cNBS":
+            atual ^= {"cServ.cNBS_antes"}  # o cNBS está do lado errado da descrição: troca de lado
+        elif invalido and invalido.group(1) in conhecidos:
             atual.discard(conhecidos[invalido.group(1)])
         elif esperados:
             atual |= {conhecidos[c.strip()] for c in esperados.group(1).split(",") if c.strip() in conhecidos}

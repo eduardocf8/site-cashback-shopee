@@ -43,6 +43,10 @@ class ServicoForm(forms.Form):
                                         help_text="6 números, como aparece na sua nota (ex: 17.06.01 → 170601).")
     codigo_municipal = forms.CharField(label="Código do município (se a prefeitura pedir)", max_length=20,
                                        required=False)
+    codigo_nbs = forms.CharField(label="Código NBS", max_length=14, required=False,
+                                 help_text="Vai junto com o IBS/CBS da reforma. Para 17.06: 1.1406.11.00 (campanhas "
+                                           "publicitárias), 1.1406.12.00 (marketing direto) ou 1.1406.19.00 (outros "
+                                           "serviços de propaganda).")
     inscricao_municipal = forms.CharField(label="Inscrição municipal (se tiver)", max_length=20, required=False)
     descricao_servico = forms.CharField(label="Descrição do serviço", max_length=2000,
                                         widget=forms.Textarea(attrs={"rows": 3}))
@@ -62,6 +66,7 @@ def notas(request):
         "codigo_tributacao": getattr(empresa, "codigo_tributacao", ""),
         "codigo_municipal": getattr(empresa, "codigo_municipal", ""),
         "inscricao_municipal": getattr(empresa, "inscricao_municipal", ""),
+        "codigo_nbs": _nbs_formatado(getattr(empresa, "codigo_nbs", "")),
         "descricao_servico": getattr(empresa, "descricao_servico", ""),
     })
 
@@ -97,7 +102,7 @@ def notas(request):
                 if form_servico.is_valid():
                     d = form_servico.cleaned_data
                     servicos.salvar_servico(empresa, d["codigo_tributacao"], d["codigo_municipal"],
-                                            d["descricao_servico"], d["inscricao_municipal"])
+                                            d["descricao_servico"], d["inscricao_municipal"], d["codigo_nbs"])
                     messages.success(request, "Serviço salvo.")
                     return redirect("painel_notas")
             elif acao == "importar":
@@ -133,6 +138,10 @@ def notas(request):
         contexto["lotes"] = empresa.lotes.all()[:12]
         contexto["teste_ok"] = empresa.notas.filter(tipo=NotaFiscal.TIPO_TESTE, situacao=NotaFiscal.AUTORIZADA).exists()
     return render(request, "painel/notas.html", _contexto(request, "notas", **contexto))
+
+
+def _nbs_formatado(nbs: str) -> str:
+    return f"{nbs[0]}.{nbs[1:5]}.{nbs[5:7]}.{nbs[7:]}" if len(nbs or "") == 9 else (nbs or "")
 
 
 def _avisar_regime(request, empresa):

@@ -32,6 +32,9 @@ VALOR_TESTE = Decimal("1.00")
 # publicidade, inclusive promoção de vendas). A pessoa pode trocar na tela.
 SERVICO_PADRAO_CODIGO = "170601"
 SERVICO_PADRAO_DESCRICAO = "Divulgação e venda de produtos"
+# NBS que a tabela oficial (Anexo VIII da reforma) liga ao 17.06 com cIndOp 100301/cClassTrib
+# 000001: 1.1406.11.00 "Serviços de campanhas publicitárias".
+SERVICO_PADRAO_NBS = "114061100"
 VALOR_MAXIMO = Decimal("999999.99")
 
 
@@ -84,13 +87,16 @@ def cadastrar_empresa(conta, cnpj_digitado: str) -> EmpresaNotas:
 
 def aplicar_servico_padrao(empresa):
     """Preenche o serviço padrão se a empresa ainda não tem um (nunca troca o que a pessoa salvou)."""
+    if not empresa.codigo_nbs and empresa.codigo_tributacao in ("", SERVICO_PADRAO_CODIGO):
+        empresa.codigo_nbs = SERVICO_PADRAO_NBS
+        empresa.save(update_fields=["codigo_nbs", "atualizada_em"])
     if empresa.codigo_tributacao or empresa.descricao_servico:
         return
     empresa.codigo_tributacao, empresa.descricao_servico = SERVICO_PADRAO_CODIGO, SERVICO_PADRAO_DESCRICAO
     empresa.save(update_fields=["codigo_tributacao", "descricao_servico", "atualizada_em"])
 
 
-def salvar_servico(empresa, codigo: str, codigo_municipal: str, descricao: str, inscricao_municipal: str):
+def salvar_servico(empresa, codigo: str, codigo_municipal: str, descricao: str, inscricao_municipal: str, nbs: str = None):
     codigo = re.sub(r"\D", "", codigo or "")
     if len(codigo) != 6:
         raise ErroNotas("O código de tributação nacional tem 6 números (ex: 170601).")
@@ -101,8 +107,13 @@ def salvar_servico(empresa, codigo: str, codigo_municipal: str, descricao: str, 
     empresa.codigo_municipal = re.sub(r"\s", "", codigo_municipal or "")[:20]
     empresa.descricao_servico = descricao[:2000]
     empresa.inscricao_municipal = re.sub(r"\D", "", inscricao_municipal or "")[:20]
+    if nbs is not None:
+        nbs = re.sub(r"\D", "", nbs)
+        if nbs and len(nbs) != 9:
+            raise ErroNotas("O código NBS tem 9 números (ex: 1.1406.11.00).")
+        empresa.codigo_nbs = nbs
     empresa.save(update_fields=["codigo_tributacao", "codigo_municipal", "descricao_servico",
-                                "inscricao_municipal", "atualizada_em"])
+                                "inscricao_municipal", "codigo_nbs", "atualizada_em"])
 
 
 def pronta_para_emitir(empresa) -> list[str]:
@@ -196,7 +207,8 @@ def _montar_assinada(nota, cert, campos=None) -> bytes:
         serie=nota.serie, numero=nota.numero, competencia=nota.competencia,
         prestador=dps.Prestador(e.cnpj, e.municipio_ibge, e.regime, e.inscricao_municipal),
         tomador=_tomador(nota, campos),
-        servico=dps.Servico(e.codigo_tributacao, e.descricao_servico, e.codigo_municipal),
+        servico=dps.Servico(e.codigo_tributacao, e.descricao_servico, e.codigo_municipal,
+                            e.codigo_nbs if "IBSCBS" in campos else ""),
         valor=nota.valor,
     )
     dps.validar(raiz)  # sempre confere no esquema oficial 1.01 antes
