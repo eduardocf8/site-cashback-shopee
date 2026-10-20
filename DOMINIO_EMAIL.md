@@ -74,3 +74,31 @@ detalhe de configuração de segurança no repositório).
   remetentes/autenticação, e a variável `BREVO_API_KEY` no Render.
 - **Recebimento (redirecionamento pro Gmail)**: Cloudflare → Email
   Routing.
+
+## Amazon SES (e-mails das notas fiscais, 2026-10-20)
+
+O emissor de notas manda um e-mail por vendedor (com PDF e XML), milhares por mês por
+afiliado. No Brevo isso fica caro rápido; o Amazon SES custa por volta de US$ 0,10 a cada
+mil e-mails (mais uns centavos por GB de anexo). O envio é por HTTPS
+(`cashback_shopee/ses_email_backend.py`, sem boto3) e o serviço é escolhido por variável:
+
+| Variável (no Render, no web **e** no worker) | Para quê |
+|---|---|
+| `NOTAS_EMAIL_PROVEDOR=ses` | Só os e-mails das notas pelo SES (o resto continua no Brevo) |
+| `EMAIL_PROVEDOR=ses` | Todo o resto também pelo SES (opcional; precisa do domínio do remetente verificado) |
+| `AWS_SES_REGIAO` | Região do SES (padrão `sa-east-1`, São Paulo) |
+| `AWS_SES_ACCESS_KEY_ID` / `AWS_SES_SECRET_ACCESS_KEY` | Chave de um usuário IAM só com `ses:SendEmail` e `ses:SendRawEmail` |
+| `AWS_SES_CONFIGURATION_SET` | Opcional (métricas, bounces) |
+| `NOTAS_EMAIL_REMETENTE` | Ex: `Appfiliado Notas <notas@appfiliado.com.br>` (domínio verificado no SES) |
+| `NOTAS_EMAILS_POR_DIA` | Teto diário opcional (0 = sem teto); útil no plano grátis do Brevo |
+
+Passos no console da AWS (região São Paulo):
+1. SES › Identities › Create identity › Domain: o domínio do remetente, com Easy DKIM.
+   Os 3 registros CNAME que a AWS mostra vão no DNS do domínio (proxy desligado no Cloudflare).
+2. SES › Account dashboard › Request production access (até lá a conta fica no "sandbox" e
+   só manda para e-mails verificados). Tipo: Transactional.
+3. IAM › Users: um usuário só para o site, com uma política que permita `ses:SendEmail` e
+   `ses:SendRawEmail`; criar a access key e colocar no Render (nunca no código nem em chat).
+
+Se o SES pedir para ir mais devagar (cota por segundo ou por dia), a fila não marca nada
+como falho: o e-mail fica "A enviar" e sai na volta seguinte do worker.

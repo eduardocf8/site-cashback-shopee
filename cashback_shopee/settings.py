@@ -458,11 +458,30 @@ STORAGES = {
 # console) - útil em desenvolvimento local.
 
 BREVO_API_KEY = os.environ.get("BREVO_API_KEY", "")
-EMAIL_BACKEND = (
-    "cashback_shopee.brevo_email_backend.BrevoAPIEmailBackend"
-    if BREVO_API_KEY
-    else "django.core.mail.backends.console.EmailBackend"
-)
+
+# Amazon SES (cashback_shopee/ses_email_backend.py): bem mais barato em volume que o Brevo.
+# Usado para os e-mails das notas fiscais (um por vendedor, milhares por mês) e, se quiser,
+# para todo o resto. A região padrão é São Paulo.
+AWS_SES_REGIAO = os.environ.get("AWS_SES_REGIAO", "sa-east-1")
+AWS_SES_ACCESS_KEY_ID = os.environ.get("AWS_SES_ACCESS_KEY_ID", "")
+AWS_SES_SECRET_ACCESS_KEY = os.environ.get("AWS_SES_SECRET_ACCESS_KEY", "")
+AWS_SES_CONFIGURATION_SET = os.environ.get("AWS_SES_CONFIGURATION_SET", "")
+
+_BACKENDS_DE_EMAIL = {
+    "brevo": "cashback_shopee.brevo_email_backend.BrevoAPIEmailBackend",
+    "ses": "cashback_shopee.ses_email_backend.SESEmailBackend",
+    "console": "django.core.mail.backends.console.EmailBackend",
+}
+# EMAIL_PROVEDOR: "brevo", "ses" ou "console". Sem nada, usa o Brevo se tiver a chave (como sempre foi).
+EMAIL_PROVEDOR = os.environ.get("EMAIL_PROVEDOR", "").strip().lower() or ("brevo" if BREVO_API_KEY else "console")
+EMAIL_BACKEND = _BACKENDS_DE_EMAIL.get(EMAIL_PROVEDOR, _BACKENDS_DE_EMAIL["console"])
+# Os e-mails das notas fiscais podem ir por outro serviço (ex: só eles pelo SES).
+NOTAS_EMAIL_PROVEDOR = os.environ.get("NOTAS_EMAIL_PROVEDOR", "").strip().lower() or EMAIL_PROVEDOR
+NOTAS_EMAIL_BACKEND = _BACKENDS_DE_EMAIL.get(NOTAS_EMAIL_PROVEDOR, EMAIL_BACKEND)
+# Remetente das notas (precisa ser de um domínio verificado no serviço escolhido).
+NOTAS_EMAIL_REMETENTE = os.environ.get("NOTAS_EMAIL_REMETENTE", "") or None  # None = APPFILIADO_EMAIL_REMETENTE
+# Teto de e-mails de notas por dia (0 = sem teto). Útil no plano grátis do Brevo (300/dia).
+NOTAS_EMAILS_POR_DIA = int(os.environ.get("NOTAS_EMAILS_POR_DIA", "0") or 0)
 EMAIL_TIMEOUT = int(os.environ.get("EMAIL_TIMEOUT", "10"))
 DEFAULT_FROM_EMAIL = os.environ.get("DEFAULT_FROM_EMAIL", "cash-b <contato@cash-b.com>")
 

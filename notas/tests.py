@@ -1,4 +1,5 @@
 import base64
+import json
 import io
 import datetime as dt
 import gzip
@@ -568,3 +569,63 @@ class TestFilaProtecoes(TestCase):
         self.empresa.refresh_from_db()
         self.assertEqual(self.empresa.emissao_pausada, "venceu")
         self.assertEqual(NotaFiscal.objects.filter(situacao="fila").count(), 3)
+
+
+class TestEmailServico(TestCase):
+    def setUp(self):
+        self.empresa = criar_empresa(criar_conta())
+        certificado.guardar(self.empresa, gerar_pfx(), "senha-do-pfx")
+        lote = servicos.importar_relatorio(self.empresa, relatorio_csv(), "r.csv", "1")
+        servicos.confirmar_lote(lote)
+        from . import fila
+        with mock.patch.object(fila, "ClienteSefin", ClienteFalso(emitir=autorizada())):
+            fila.emitir()
+
+    def test_teto_por_dia(self):
+        from . import fila
+        with self.settings(NOTAS_EMAILS_POR_DIA=1), mock.patch("notas.danfse.pdf", return_value=b"%PDF"):
+            self.assertEqual(fila.enviar_emails(), 1)
+            self.assertEqual(fila.enviar_emails(), 0)  # o outro fica para amanhã
+        self.assertEqual(NotaFiscal.objects.filter(email_situacao="pendente").count(), 1)
+
+    def test_limite_do_servico_nao_marca_como_falho(self):
+        from cashback_shopee.ses_email_backend import LimiteDeEnvio
+
+        from . import fila
+        with mock.patch("notas.danfse.pdf", return_value=b"%PDF"), \
+                mock.patch("django.core.mail.EmailMessage.send", side_effect=LimiteDeEnvio("devagar")):
+            self.assertEqual(fila.enviar_emails(), 0)
+        self.assertEqual(NotaFiscal.objects.filter(email_situacao="pendente").count(), 2)
+        self.assertFalse(NotaFiscal.objects.filter(email_situacao="falhou").exists())
+
+    def test_ses_monta_o_pedido_assinado(self):
+        from cashback_shopee import ses_email_backend as ses
+        from . import email
+        nota = NotaFiscal.objects.filter(email_situacao="pendente").first()
+        with self.settings(AWS_SES_ACCESS_KEY_ID="AKIDEXAMPLE", AWS_SES_SECRET_ACCESS_KEY="segredo", AWS_SES_REGIAO="sa-east-1",
+                           AWS_SES_CONFIGURATION_SET="notas"), mock.patch("notas.danfse.pdf", return_value=b"%PDF"):
+            backend = ses.SESEmailBackend()
+            with mock.patch.object(backend.sessao, "post", return_value=mock.Mock(status_code=200)) as post:
+                self.assertEqual(backend.send_messages([email.montar(nota)]), 1)
+            url, kwargs = post.call_args[0][0], post.call_args[1]
+            self.assertEqual(url, "https://email.sa-east-1.amazonaws.com/v2/email/outbound-emails")
+            self.assertTrue(kwargs["headers"]["Authorization"].startswith("AWS4-HMAC-SHA256 Credential=AKIDEXAMPLE/"))
+            pedido = json.loads(kwargs["data"])
+            self.assertEqual(pedido["Destination"]["ToAddresses"], [nota.tomador_email])
+            self.assertEqual(pedido["ConfigurationSetName"], "notas")
+            bruto = base64.b64decode(pedido["Content"]["Raw"]["Data"]).decode()
+            self.assertIn("application/pdf", bruto)
+            self.assertIn("Reply-To: bia@exemplo.com", bruto)
+            with mock.patch.object(backend.sessao, "post", return_value=mock.Mock(status_code=429, text="Throttling")):
+                with self.assertRaises(ses.LimiteDeEnvio):
+                    backend.send_messages([email.montar(nota)])
+
+    def test_assinatura_v4_igual_ao_exemplo_da_aws(self):
+        from cashback_shopee.ses_email_backend import assinar_v4
+        cab = assinar_v4("GET", "https://iam.amazonaws.com/?Action=ListUsers&Version=2010-05-08",
+                         {"content-type": "application/x-www-form-urlencoded; charset=utf-8"}, b"",
+                         regiao="us-east-1", servico="iam", access_key="AKIDEXAMPLE",
+                         secret_key="wJalrXUtnFEMI/K7MDENG+bPxRfiCYEXAMPLEKEY",
+                         agora=dt.datetime(2015, 8, 30, 12, 36, tzinfo=dt.timezone.utc))
+        self.assertTrue(cab["Authorization"].endswith(
+            "Signature=5d672d79c15b13162d9279b0855cfba6789a8edb4c82c400e06b5924a6f2b5d7"))
