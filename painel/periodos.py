@@ -47,15 +47,20 @@ def intervalo_do_preset(chave: str, hoje: date) -> tuple[date, date]:
     if chave == "30dias":
         return hoje - timedelta(days=29), hoje
     if chave == "semana":
-        return hoje - timedelta(days=hoje.weekday()), hoje
+        return inicio_da_semana(hoje), hoje
     if chave == "semana_passada":
-        fim = hoje - timedelta(days=hoje.weekday() + 1)
+        fim = inicio_da_semana(hoje) - timedelta(days=1)  # o sábado da semana passada
         return fim - timedelta(days=6), fim
     if chave == "mes_passado":
         fim = primeiro_dia_do_mes(hoje) - timedelta(days=1)
         return primeiro_dia_do_mes(fim), fim
     # "mes" e qualquer chave desconhecida
     return primeiro_dia_do_mes(hoje), hoje
+
+
+def inicio_da_semana(dia: date) -> date:
+    """Domingo da semana do dia (no Brasil a semana começa no domingo, como no calendário)."""
+    return dia - timedelta(days=(dia.weekday() + 1) % 7)
 
 
 def agrupamento_sugerido(inicio: date, fim: date) -> str:
@@ -80,7 +85,7 @@ def agrupar(linhas_diarias, modo: str):
     for linha in linhas_diarias:
         dia = linha["dia"]
         if modo == "semana":
-            chave = dia - timedelta(days=dia.weekday())
+            chave = inicio_da_semana(dia)
         elif modo == "mes":
             chave = primeiro_dia_do_mes(dia)
         else:
