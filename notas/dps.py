@@ -185,40 +185,51 @@ def montar(*, ambiente: str, emitida_em: datetime, serie: str, numero: int, comp
     return raiz
 
 
-LEIAUTE_ATUAL = "atual"
-LEIAUTE_NOVO = "rtc"  # Reforma Tributária (NT 009, leiaute 1.04): já em uso no ambiente de testes
+# Campos novos da reforma tributária (NT 009). Os ambientes do governo vão ganhando esses
+# campos aos poucos (em out/2026 o de testes já pede "finNFSe", mas ainda não aceita
+# "indDest"; a produção não aceita nenhum). Cada ambiente usa um conjunto, ajustado sozinho
+# pelas recusas de esquema (E1235) - ver ajuste_de_campos.
+CAMPOS_NOVOS = ("finNFSe", "indDest")
 
 
-def para_leiaute_novo(raiz: etree._Element) -> etree._Element:
-    """Converte a DPS (já validada no leiaute 1.01) para o leiaute novo da reforma (NT 009):
-    entram "finNFSe" (0 = nota regular) depois de tpEmit/cMotivoEmisTI e "indDest"
-    (0 = o destinatário é o próprio tomador) depois de "toma". O resto não muda para MEI/Simples."""
+def com_campos_novos(raiz: etree._Element, campos) -> etree._Element:
+    """Põe na DPS (já validada no leiaute 1.01) os campos novos pedidos: "finNFSe"
+    (0 = nota regular) depois de tpEmit/cMotivoEmisTI e "indDest" (0 = o destinatário é o
+    próprio tomador) depois de "toma"."""
     inf = raiz[0]
-    ancora = inf.find(f"{{{NS}}}cMotivoEmisTI")
-    if ancora is None:
-        ancora = inf.find(f"{{{NS}}}tpEmit")
-    fin = etree.Element(f"{{{NS}}}finNFSe")
-    fin.text = "0"
-    ancora.addnext(fin)
-    toma = inf.find(f"{{{NS}}}toma")
-    dest = etree.Element(f"{{{NS}}}indDest")
-    dest.text = "0"
-    (toma if toma is not None else inf.find(f"{{{NS}}}prest")).addnext(dest)
+    if "finNFSe" in campos:
+        ancora = inf.find(f"{{{NS}}}cMotivoEmisTI")
+        if ancora is None:
+            ancora = inf.find(f"{{{NS}}}tpEmit")
+        fin = etree.Element(f"{{{NS}}}finNFSe")
+        fin.text = "0"
+        ancora.addnext(fin)
+    if "indDest" in campos:
+        toma = inf.find(f"{{{NS}}}toma")
+        dest = etree.Element(f"{{{NS}}}indDest")
+        dest.text = "0"
+        (toma if toma is not None else inf.find(f"{{{NS}}}prest")).addnext(dest)
     return raiz
 
 
-def leiaute_errado(mensagens: list[dict]) -> str:
-    """Se o governo recusou por causa do leiaute, diz qual mandar ("atual"/"rtc"); senão, "".
-    Ex. ambiente de testes hoje: E1235 "...has invalid child element 'cLocEmi'... expected: ... finNFSe"."""
+def ajuste_de_campos(mensagens: list[dict], campos) -> frozenset | None:
+    """Se o governo recusou pelo esquema por causa de um campo novo, devolve o conjunto
+    corrigido (tira o que veio "invalid", põe o que veio em "expected"); senão, None.
+    Ex: E1235 "...invalid child element 'cLocEmi'... expected: 'cMotivoEmisTI, finNFSe'" -> põe finNFSe.
+        E1235 "...invalid child element 'indDest'... expected: 'interm, serv'" -> tira indDest."""
+    atual = set(campos)
     for m in mensagens:
-        texto = m.get("descricao", "")
         if m.get("codigo") != "E1235":
             continue
-        if "invalid child element 'finNFSe'" in texto or "invalid child element 'indDest'" in texto:
-            return LEIAUTE_ATUAL
-        if "finNFSe" in texto or "indDest" in texto:
-            return LEIAUTE_NOVO
-    return ""
+        texto = m.get("descricao", "")
+        invalido = re.search(r"invalid child element '(\w+)'", texto)
+        esperados = re.search(r"expected:\s*'([^']*)'", texto)
+        if invalido and invalido.group(1) in CAMPOS_NOVOS:
+            atual.discard(invalido.group(1))
+        elif esperados:
+            atual |= {c.strip() for c in esperados.group(1).split(",")} & set(CAMPOS_NOVOS)
+    novo = frozenset(atual)
+    return novo if novo != frozenset(campos) else None
 
 
 def c14n(elemento: etree._Element) -> bytes:
