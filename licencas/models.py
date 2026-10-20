@@ -19,17 +19,35 @@ MODULO_SITE_SEM_MARCA = "site_sem_marca"
 MODULO_CARROSSEIS = "carrosseis"
 MODULO_CARROSSEIS_PREMIUM = "carrosseis_premium"
 MODULO_NOTAS = "notas"
+# Planos premium e faixas de notas. Cada um já inclui o módulo básico (ver INCLUI): quem compra
+# só o premium tem o módulo inteiro (e o app de Windows continua vendo "whatsapp").
+MODULO_WHATSAPP_PREMIUM = "whatsapp_premium"
+MODULO_NOTAS_1000 = "notas_1000"
+MODULO_NOTAS_5000 = "notas_5000"
+MODULO_NOTAS_ILIMITADO = "notas_ilimitado"
 MODULOS = [
     (MODULO_WHATSAPP, "Bot de WhatsApp"),
     (MODULO_SITE, "Meu site (conversor e vitrine)"),
     (MODULO_VITRINE, "Vitrine"),
     (MODULO_VIDEOS, "Gerador de vídeos"),
     (MODULO_INSTAGRAM, "Automação do Instagram"),
-    (MODULO_SITE_SEM_MARCA, "Meu site sem a marca Appfiliado"),
+    (MODULO_SITE_SEM_MARCA, "Meu site premium (sem a marca Appfiliado)"),
     (MODULO_CARROSSEIS, "Gerador de carrosséis"),
     (MODULO_CARROSSEIS_PREMIUM, "Gerador de carrosséis (premium)"),
-    (MODULO_NOTAS, "Emissão NFS-e"),
+    (MODULO_NOTAS, "Emissão NFS-e (até 100 notas/mês)"),
+    (MODULO_WHATSAPP_PREMIUM, "Bot de WhatsApp (premium)"),
+    (MODULO_NOTAS_1000, "Emissão NFS-e (até 1.000 notas/mês)"),
+    (MODULO_NOTAS_5000, "Emissão NFS-e (até 5.000 notas/mês)"),
+    (MODULO_NOTAS_ILIMITADO, "Emissão NFS-e (notas ilimitadas)"),
 ]
+# Módulo que já vem junto com outro (o plano maior inclui o básico).
+INCLUI = {
+    MODULO_WHATSAPP_PREMIUM: [MODULO_WHATSAPP],
+    MODULO_CARROSSEIS_PREMIUM: [MODULO_CARROSSEIS],
+    MODULO_NOTAS_1000: [MODULO_NOTAS],
+    MODULO_NOTAS_5000: [MODULO_NOTAS],
+    MODULO_NOTAS_ILIMITADO: [MODULO_NOTAS],
+}
 CODIGOS_MODULOS = [codigo for codigo, _ in MODULOS]
 
 
@@ -127,6 +145,8 @@ class ContaAppfiliado(models.Model):
         for assinatura in self.assinaturas.all():
             if assinatura.da_acesso(hoje):
                 liberados.update(assinatura.modulos(mapa))
+        for codigo in list(liberados):
+            liberados.update(INCLUI.get(codigo, []))
         return [codigo for codigo in CODIGOS_MODULOS if codigo in liberados]
 
 

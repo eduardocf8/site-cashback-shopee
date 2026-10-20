@@ -161,6 +161,7 @@ def notas(request):
         contexto["avulsas_na_fila"] = any(n.situacao in (NotaFiscal.FILA, NotaFiscal.ENVIANDO) for n in contexto["ultimas"])
         contexto["lotes"] = empresa.lotes.all()[:12]
         contexto["teste_ok"] = empresa.notas.filter(tipo=NotaFiscal.TIPO_TESTE, situacao=NotaFiscal.AUTORIZADA).exists()
+        contexto["plano"] = servicos.uso_do_plano(empresa)
     return render(request, "painel/notas.html", _contexto(request, "notas", **contexto))
 
 
@@ -215,11 +216,7 @@ def lote(request, pk):
                 messages.info(request, "Prévia descartada. Nenhuma nota foi emitida.")
                 return redirect("painel_notas")
             elif acao == "reenviar_problemas":
-                quantas = lote.notas.filter(situacao__in=[NotaFiscal.RECUSADA, NotaFiscal.ERRO]).update(
-                    situacao=NotaFiscal.FILA)
-                if quantas and lote.estado == LoteNotas.CONCLUIDO:
-                    lote.estado = LoteNotas.EMITINDO
-                    lote.save(update_fields=["estado"])
+                quantas = servicos.reenviar_problemas(lote)
                 messages.info(request, f"{quantas} nota(s) de volta para a fila.")
         except servicos.ErroNotas as erro:
             messages.error(request, str(erro))
@@ -236,10 +233,14 @@ def lote(request, pk):
                              | Q(tomador_documento__icontains=busca.replace(".", "").replace("/", "").replace("-", "")))
     pagina = Paginator(notas, 50).get_page(request.GET.get("pagina"))
     email = servicos.andamento_emails(lote)
+    plano = servicos.uso_do_plano(lote.empresa)
+    resumo = servicos.resumo(lote.notas.all())
+    if lote.estado == LoteNotas.PREVIA and lote.ambiente == AMBIENTE_PRODUCAO and plano["restam"] is not None:
+        plano["sobram"] = plano["restam"] - resumo["total"]  # negativo: o lote passa do plano
     return render(request, "painel/notas_lote.html", _contexto(
-        request, "notas", lote=lote, empresa=lote.empresa, resumo=servicos.resumo(lote.notas.all()),
+        request, "notas", lote=lote, empresa=lote.empresa, resumo=resumo,
         pagina=pagina, filtro=filtro, busca=busca, falta=servicos.pronta_para_emitir(lote.empresa),
-        email=email, atualizar=_acompanhar(lote, email),
+        email=email, atualizar=_acompanhar(lote, email), plano=plano,
     ))
 
 
@@ -311,6 +312,12 @@ def lote_zip(request, pk):
 def reenviar(request, pk):
     nota = get_object_or_404(NotaFiscal, pk=pk, empresa__conta=conta_logada(request))
     if nota.situacao in (NotaFiscal.RECUSADA, NotaFiscal.ERRO):
+        try:
+            if nota.situacao == NotaFiscal.RECUSADA:
+                servicos.conferir_plano(nota.empresa, 1, nota.ambiente)
+        except servicos.ErroNotas as erro:
+            messages.error(request, str(erro))
+            return _volta(request, nota)
         servicos.processar(nota)
     return _volta(request, nota)
 

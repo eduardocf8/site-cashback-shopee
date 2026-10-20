@@ -22,10 +22,10 @@
       <button class="botao botao-principal" type="submit" {% if restantes.geracoes <= 0 %}disabled{% endif %}>Gerar carrossel</button>
     </form>
     <p class="suave">
-      {% if restantes.geracoes <= 0 %}Você usou os {{ restantes.limite }} carrosséis de hoje. Amanhã libera de novo.
+      {% if restantes.geracoes <= 0 %}Você usou os {{ restantes.limite }} carrosséis de hoje. Amanhã libera de novo.{% if not premium %} No <a href="{{ url_planos }}" target="_blank" rel="noopener">plano Premium</a> são 10 por dia.{% endif %}
       {% else %}Restam {{ restantes.geracoes }} de {{ restantes.limite }} carrosséis hoje.{% endif %}
       O link de afiliado sai com o Sub ID <strong>instagram</strong>, para você ver as vendas do Instagram em Resultados.
-      {% if not premium %}<br>Quer mais modelos, cores livres e a IA reescrevendo slides? Isso está no <a href="{{ url_planos }}" target="_blank" rel="noopener">plano Premium</a>.{% endif %}
+      {% if not premium %}<br>Quer 10 carrosséis por dia, mais modelos, cores livres e a IA reescrevendo slides? Isso está no <a href="{{ url_planos }}" target="_blank" rel="noopener">plano Premium</a>.{% endif %}
     </p>
   {% endif %}
 </section>

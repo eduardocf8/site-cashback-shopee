@@ -14,7 +14,8 @@ from django.views.decorators.http import require_POST
 
 from bot_whatsapp import servico
 from bot_whatsapp.models import ConexaoWhatsApp, ConfiguracaoOfertas, EnvioWhatsApp, EventoWhatsApp, OfertaRecebida
-from bot_whatsapp.ofertas import ofertas_enviadas_hoje
+from bot_whatsapp.ofertas import intervalo_do_plano, ofertas_enviadas_hoje
+from licencas import planos
 
 from . import modulos as mod
 from .autenticacao import conta_logada, conta_requerida
@@ -153,14 +154,15 @@ def whatsapp_ofertas(request):
         return _bloqueado(request)
     config = _config_ofertas(conta)
     conexao = servico.conexao_da(conta)
-    form = ConfiguracaoOfertasForm(request.POST or None, instance=config, grupos_disponiveis=conexao.grupos)
+    regras = planos.bot(conta)
+    form = ConfiguracaoOfertasForm(request.POST or None, instance=config, grupos_disponiveis=conexao.grupos, regras=regras)
     if request.method == "POST":
         if form.is_valid():
             config = form.save()
             if "intervalo_minutos" in form.changed_data and config.ativo and config.ultimo_envio_em:
                 # O intervalo novo já vale para a próxima oferta: conta a partir da última.
                 config.proximo_envio_em = max(
-                    timezone.now(), config.ultimo_envio_em + timedelta(minutes=config.intervalo_minutos),
+                    timezone.now(), config.ultimo_envio_em + timedelta(minutes=intervalo_do_plano(config)),
                 )
                 config.save(update_fields=["proximo_envio_em", "atualizado_em"])
             messages.success(request, "Configurações das ofertas salvas.")
@@ -170,7 +172,8 @@ def whatsapp_ofertas(request):
     recebidas = OfertaRecebida.objects.filter(conta=conta)[:15]
     return render(request, "painel/whatsapp_ofertas.html", _contexto(
         request, "whatsapp",
-        form=form, config=config, historico=historico, recebidas=recebidas, conexao=conexao,
+        form=form, config=config, historico=historico, recebidas=recebidas, conexao=conexao, regras=regras,
+        grupos_fora_do_plano=max(0, len(config.grupos or []) - regras["grupos"]),
         versao=_versao_da_tela(conta, config),
         **_resumo_ofertas(conta, config),
     ))

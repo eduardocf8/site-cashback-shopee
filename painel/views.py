@@ -14,7 +14,7 @@ from django.views.decorators.http import require_POST
 
 from accounts.ratelimit import _incrementar_contador, _obter_ip
 from bot_whatsapp.models import ConexaoWhatsApp
-from licencas.models import MODULO_WHATSAPP, MODULOS, ContaAppfiliado
+from licencas.models import INCLUI, MODULO_WHATSAPP, MODULOS, ContaAppfiliado
 from licencas.services import resposta_validacao
 
 from . import cripto
@@ -340,7 +340,9 @@ def plano(request):
     conta = conta_logada(request)
     liberados = conta.modulos_liberados()
     hoje = timezone.localdate()
-    cortesia = conta.cortesia_vigente(hoje)
+    cortesia = set(conta.cortesia_vigente(hoje))
+    for codigo in list(cortesia):
+        cortesia.update(INCLUI.get(codigo, []))  # o básico que vem junto com o premium da cortesia
     linhas_modulos = []
     for codigo, nome in MODULOS:
         if codigo in liberados:

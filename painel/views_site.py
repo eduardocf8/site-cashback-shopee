@@ -12,7 +12,8 @@ from django.shortcuts import get_object_or_404, redirect, render
 from django.utils import timezone
 from django.views.decorators.http import require_POST
 
-from licencas.models import MODULO_SITE_SEM_MARCA, MODULO_WHATSAPP
+from licencas import planos
+from licencas.models import MODULO_WHATSAPP
 from meusite.forms import BotaoForm, FotoForm, SiteForm
 from meusite import vitrine
 from meusite.models import ENDERECOS_RESERVADOS, BotaoSite, CliqueSite, ProdutoSite, SiteAfiliado
@@ -21,7 +22,6 @@ from . import modulos as mod
 from .autenticacao import conta_logada, conta_requerida
 from .views import _contexto
 
-MAXIMO_BOTOES = 12
 CAMPOS_DA_VITRINE = {"vitrine", "busca_tipo", "palavra_chave", "loja", "categorias", "ordenacao", "links_manuais"}
 
 
@@ -86,10 +86,11 @@ def meu_site(request):
             site.pedido_vitrine_em = timezone.now()
         site.save()
 
-    form = SiteForm(instance=site, tem_bot=tem_bot)
+    regras = planos.site(conta)
+    form = SiteForm(instance=site, tem_bot=tem_bot, regras=regras)
     acao = request.POST.get("acao", "") if request.method == "POST" else ""
     if acao == "salvar":
-        form = SiteForm(request.POST, instance=site, tem_bot=tem_bot)
+        form = SiteForm(request.POST, instance=site, tem_bot=tem_bot, regras=regras)
         if form.is_valid():
             site = form.save(commit=False)
             if CAMPOS_DA_VITRINE & set(form.changed_data) and site.vitrine not in (
@@ -103,7 +104,7 @@ def meu_site(request):
             return redirect("painel_meu_site")
         messages.error(request, "Confira os campos marcados.")
     elif acao:
-        return _acao(request, site, acao)
+        return _acao(request, site, acao, regras)
 
     botoes = list(site.botoes.all())
     cliques = resumo_dos_cliques(site)
@@ -112,18 +113,18 @@ def meu_site(request):
     produtos = site.produtos.filter(fonte=site.vitrine)
     return render(request, "painel/meu_site.html", _contexto(
         request, "site",
-        site=site, form=form, form_botao=BotaoForm(), botoes=botoes, maximo_botoes=MAXIMO_BOTOES,
+        site=site, form=form, form_botao=BotaoForm(), botoes=botoes, maximo_botoes=regras["botoes"], regras=regras,
         url_publica=url_publica(site), url_previa=f"/s/{site.endereco}/?previa=1",
         cliques=cliques, total_produtos=produtos.count(), tem_bot=tem_bot,
         produtos_vitrine=list(produtos[:vitrine.LIMITE]),
         opcoes_categoria=vitrine.opcoes_de_categoria(),
-        sem_marca=MODULO_SITE_SEM_MARCA in conta.modulos_liberados(),
+        sem_marca=regras["premium"],
         dominio_sites=settings.APPFILIADO_SITES_DOMINIO,
         prefixo_sem_dominio=settings.APPFILIADO_PAINEL_URL.split("://")[-1].rstrip("/") + "/s/",
     ))
 
 
-def _acao(request, site, acao):
+def _acao(request, site, acao, regras):
     voltar = redirect("painel_meu_site")
     if acao == "foto":
         form = FotoForm(request.POST, request.FILES)
@@ -142,8 +143,9 @@ def _acao(request, site, acao):
         return voltar
     if acao == "botao_novo":
         form = BotaoForm(request.POST)
-        if site.botoes.count() >= MAXIMO_BOTOES:
-            messages.error(request, f"Dá para ter até {MAXIMO_BOTOES} botões.")
+        if site.botoes.count() >= regras["botoes"]:
+            extra = "" if regras["premium"] else f" No plano Premium são até {planos.SITE[True]['botoes']}."
+            messages.error(request, f"No seu plano dá para ter até {regras['botoes']} botões.{extra}")
         elif form.is_valid():
             botao = form.save(commit=False)
             botao.site = site

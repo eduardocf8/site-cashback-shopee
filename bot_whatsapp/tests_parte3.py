@@ -117,7 +117,7 @@ class TestRevisorIA(TestCase):
 class TestMotorComSimulacaoEIA(TestCase):
     def setUp(self):
         self.conta = ContaAppfiliado.objects.create(
-            email="bia@exemplo.com", modulos_cortesia="whatsapp", shopee_app_id="123",
+            email="bia@exemplo.com", modulos_cortesia="whatsapp_premium", shopee_app_id="123",
             shopee_secret_cifrado=cripto.cifrar("s"), shopee_validado_em=timezone.now(),
         )
         self.conexao = ConexaoWhatsApp.objects.create(conta=self.conta, estado="conectado", grupos=GRUPOS)
@@ -242,6 +242,7 @@ class TestTelaDaParte3(BasePainel):
         super().setUp()
         self.entrar()
         self.conta.shopee_validado_em = timezone.now()
+        self.conta.modulos_cortesia = "whatsapp_premium"  # os limites do Standard têm testes próprios
         self.conta.save()
         ConexaoWhatsApp.objects.create(conta=self.conta, estado="conectado", grupos=GRUPOS)
 

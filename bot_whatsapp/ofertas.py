@@ -15,8 +15,10 @@ import time
 from datetime import timedelta
 
 from django.db import close_old_connections
+from django.db.models import Count
 from django.utils import timezone
 
+from licencas import planos
 from painel import cripto
 
 from . import copia, ia, shopee_ofertas
@@ -68,13 +70,44 @@ def ofertas_enviadas_hoje(conta, agora, simulacao: bool = False) -> int:
     return _que_contam(envios, simulacao).values("item_id").distinct().count()
 
 
-def grupos_que_ainda_nao_receberam(config, item_id: str, agora) -> list[dict]:
+def regras_do_plano(config) -> dict:
+    """Limites do plano da conta (licencas/planos.py), guardados na config durante a volta."""
+    if not hasattr(config, "_regras_do_plano"):
+        config._regras_do_plano = planos.bot(config.conta)
+    return config._regras_do_plano
+
+
+def grupos_do_plano(config) -> list[dict]:
+    """Os grupos escolhidos, até o máximo do plano (se o plano diminuiu, valem os primeiros)."""
+    return [g for g in config.grupos if g.get("jid")][: regras_do_plano(config)["grupos"]]
+
+
+def grupos_no_limite_de_hoje(config, agora) -> set:
+    """Grupos que já receberam hoje o máximo de ofertas por grupo do plano."""
+    inicio_do_dia = timezone.localtime(agora).replace(hour=0, minute=0, second=0, microsecond=0)
+    envios = _que_contam(EnvioWhatsApp.objects.filter(
+        conta=config.conta, origem=EnvioWhatsApp.OFERTA, criado_em__gte=inicio_do_dia,
+    ), config.simulacao)
+    limite = regras_do_plano(config)["ofertas_por_grupo_dia"]
+    return {destino for destino, total in envios.values_list("destino").annotate(total=Count("id")) if total >= limite}
+
+
+def grupos_que_ainda_nao_receberam(config, item_id: str, agora, limite_do_dia: bool = True) -> list[dict]:
     desde = agora - timedelta(days=max(1, config.repetir_apos_dias))
     envios = EnvioWhatsApp.objects.filter(
         conta=config.conta, origem=EnvioWhatsApp.OFERTA, item_id=item_id, criado_em__gte=desde,
     )
     ja_receberam = set(_que_contam(envios, config.simulacao).values_list("destino", flat=True))
-    return [g for g in config.grupos if g.get("jid") and g["jid"] not in ja_receberam]
+    cheios = grupos_no_limite_de_hoje(config, agora) if limite_do_dia else set()
+    return [g for g in grupos_do_plano(config) if g["jid"] not in ja_receberam and g["jid"] not in cheios]
+
+
+def intervalo_do_plano(config) -> int:
+    """Minutos até a próxima oferta: o escolhido, mas nunca menos que o mínimo do plano
+    (copiando de outros grupos, 0 = repassa assim que chegar)."""
+    if config.modo == ConfiguracaoOfertas.MODO_COPIAR:
+        return config.intervalo_minutos
+    return max(1, config.intervalo_minutos, regras_do_plano(config)["intervalo_minimo"])
 
 
 def motivo_para_esperar(config, conexao, agora) -> str:
@@ -89,6 +122,12 @@ def motivo_para_esperar(config, conexao, agora) -> str:
         return "Esperando o WhatsApp conectar."
     if not config.grupos:
         return "Escolha pelo menos um grupo."
+    regras = regras_do_plano(config)
+    if config.modo == ConfiguracaoOfertas.MODO_COPIAR and not regras["copiar"]:
+        return "Copiar ofertas de outros grupos é do plano Premium. Troque para a busca na Shopee ou faça o upgrade."
+    escolhidos = {g["jid"] for g in grupos_do_plano(config)}
+    if escolhidos and escolhidos <= grupos_no_limite_de_hoje(config, agora):
+        return f"Todos os grupos já receberam as {regras['ofertas_por_grupo_dia']} ofertas de hoje (limite do plano por grupo)."
     if not dentro_do_horario(config, timezone.localtime(agora)):
         return "Fora do horário de envio."
     if config.limite_diario and ofertas_enviadas_hoje(config.conta, agora, config.simulacao) >= config.limite_diario:
@@ -106,7 +145,7 @@ CAMPOS_DA_IA = ["ia_dia", "ia_revisoes_no_dia", "ia_status"]
 def revisar_com_ia(config, modelo: str, agora) -> tuple[str, bool]:
     """O texto revisado pela IA (se ligada e dentro do limite do dia) ou o original.
     Atualiza o status e a contagem na config (quem chama salva CAMPOS_DA_IA)."""
-    if not config.ia_ativa:
+    if not config.ia_ativa or not regras_do_plano(config)["ia"]:  # a revisão com IA é do Premium
         return modelo, False
     hoje = timezone.localtime(agora).date()
     if config.ia_dia != hoje:
@@ -122,11 +161,11 @@ def revisar_com_ia(config, modelo: str, agora) -> tuple[str, bool]:
 def enfileirar(config, grupos, modelo: str, link_origem: str, *, item_id: str, nome: str,
                imagem_url: str = "", imagem_arquivo: str = "", revisado_ia: bool = False,
                produto: dict | None = None):
-    # Com a IA ligada e o texto original indo, guarda o motivo em cada envio.
-    ia_motivo = config.ia_status[:300] if (config.ia_ativa and not revisado_ia) else ""
     """Põe a oferta na fila de cada grupo. O texto é o mesmo para todos; só o link
     muda quando um grupo tem Sub ID próprio (um link por combinação de Sub IDs). Com a
     simulação ligada, fica registrada como "Simulado" e não vai para o WhatsApp."""
+    # Com a IA ligada e o texto original indo, guarda o motivo em cada envio.
+    ia_motivo = config.ia_status[:300] if (config.ia_ativa and regras_do_plano(config)["ia"] and not revisado_ia) else ""
     app_id, secret = credenciais(config.conta)
     links: dict[tuple, str] = {}
     envios = []
@@ -204,7 +243,7 @@ class Motor:
             config.save(update_fields=["situacao", "proximo_envio_em", "pagina_atual", "pagina_em", "atualizado_em"])
             return
 
-        proximo = agora + timedelta(minutes=max(1, config.intervalo_minutos))
+        proximo = agora + timedelta(minutes=intervalo_do_plano(config))
         if not self._reservar_a_vez(config, proximo):
             return  # outro processo (ex: o worker antigo, num deploy) já pegou esta vez
         modelo, revisado = revisar_com_ia(config, montar_texto(produto, MARCADOR_DO_LINK, config.cupom), agora)
@@ -285,7 +324,7 @@ class Motor:
         self._fechar(recebida, OfertaRecebida.ENVIADA, agora,
                      "Simulação: não foi enviada de verdade." if config.simulacao else "")
         config.ultimo_envio_em = agora
-        config.proximo_envio_em = agora + timedelta(minutes=config.intervalo_minutos)
+        config.proximo_envio_em = agora + timedelta(minutes=intervalo_do_plano(config))
         config.situacao = ""
         config.ultimo_erro = ""
         config.save(update_fields=[
@@ -357,7 +396,7 @@ class Motor:
                 if not shopee_ofertas.passa_nos_filtros(produto, config):
                     barrados_pelos_filtros += 1
                     continue
-                if config.grupos and not grupos_que_ainda_nao_receberam(config, produto["item_id"], agora):
+                if config.grupos and not grupos_que_ainda_nao_receberam(config, produto["item_id"], agora, limite_do_dia=False):
                     ja_enviados += 1
                     continue
                 texto, revisado = montar_texto(produto, MARCADOR_DO_LINK, config.cupom), False
@@ -369,7 +408,7 @@ class Motor:
                     "imagem": produto["imagem"], "texto": texto.replace(MARCADOR_DO_LINK, LINK_DE_EXEMPLO),
                     "revisado_ia": revisado,
                     # o que a IA fez com a primeira (aparece embaixo dela no "Teste da busca")
-                    "ia_status": config.ia_status if (config.ia_ativa and not achadas) else "",
+                    "ia_status": config.ia_status if (config.ia_ativa and regras_do_plano(config)["ia"] and not achadas) else "",
                 })
                 if len(achadas) >= OFERTAS_NO_TESTE:
                     return achadas

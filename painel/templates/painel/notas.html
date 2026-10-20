@@ -32,6 +32,16 @@
   </section>
   {% endif %}
 
+  <section class="card notas-cartao notas-plano notas-sem-margem" aria-label="Uso do plano">
+    {% if plano.limite is None %}
+      <p><strong>{{ plano.usadas }}</strong> nota{{ plano.usadas|pluralize }} de verdade em {{ plano.mes }} · <span class="suave">seu plano não tem limite de notas.</span></p>
+    {% else %}
+      <p><strong>{{ plano.usadas }} de {{ plano.limite }}</strong> notas do seu plano usadas em {{ plano.mes }} · <span class="suave">restam {{ plano.restam }}. As de teste não contam.</span></p>
+      <div class="notas-progresso{% if plano.progresso >= 90 %} notas-progresso-cheio{% endif %}" role="progressbar" aria-label="Notas usadas no mês" aria-valuenow="{{ plano.progresso }}" aria-valuemin="0" aria-valuemax="100"><span style="width:{{ plano.progresso }}%"></span></div>
+      <p class="suave pequeno">Precisa de mais? Há planos de 1.000, 5.000 e notas ilimitadas: <a href="{{ url_planos }}" target="_blank" rel="noopener">ver planos</a>.</p>
+    {% endif %}
+  </section>
+
   <div class="duas-colunas notas-emitir">
     <section class="card notas-cartao" id="mes" aria-labelledby="titulo-mes">
       <h2 id="titulo-mes">Notas dos vendedores (comissão extra)</h2>

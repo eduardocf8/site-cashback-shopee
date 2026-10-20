@@ -50,6 +50,15 @@
     function contar() {
       if (!contador) return;
       var marcados = lista.querySelectorAll('input[type="checkbox"]:checked').length;
+      var maximo = parseInt(busca.dataset.maximo, 10);
+      if (maximo) {
+        // Limite do plano: com o máximo marcado, os outros ficam travados até desmarcar algum.
+        contador.textContent = marcados + " de " + maximo + " selecionados";
+        lista.querySelectorAll('input[type="checkbox"]').forEach(function (caixa) {
+          caixa.disabled = !caixa.checked && marcados >= maximo;
+        });
+        return;
+      }
       contador.textContent = marcados ? marcados + " selecionado" + (marcados > 1 ? "s" : "") : "";
     }
     busca.addEventListener("input", function () {

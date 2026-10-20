@@ -18,6 +18,7 @@ from django.utils import timezone
 from bot_whatsapp import copia, shopee_ofertas
 from bot_whatsapp.categorias import CATEGORIAS_SHOPEE, produto_pertence_as_categorias
 from bot_whatsapp.models import ConfiguracaoOfertas
+from licencas import planos
 from painel import cripto
 
 from .models import CategoriaProdutoSite, ProdutoSite, SiteAfiliado
@@ -204,6 +205,8 @@ def uma_volta(agora=None) -> list[str]:
         try:
             if site.vitrine == SiteAfiliado.VITRINE_BUSCA:
                 atualizar_busca(site, agora)
+            elif not planos.site_premium(site.conta):
+                raise ValueError("A vitrine com os produtos que você escolher é do plano Premium.")
             else:
                 atualizar_manuais(site, agora)
             logs.append(f"Meu site: vitrine de {site.endereco} atualizada")

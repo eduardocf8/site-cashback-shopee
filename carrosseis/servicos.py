@@ -8,6 +8,7 @@ from django.utils import timezone
 
 from bot_whatsapp import copia, shopee_ofertas
 from bot_whatsapp.ofertas import credenciais
+from licencas import planos
 from licencas.models import MODULO_CARROSSEIS_PREMIUM
 from links.shopee_client import ShopeeAPIError
 
@@ -16,8 +17,8 @@ from . import roteiro as R
 from .models import Carrossel, PadraoCarrossel, UsoCarrossel
 
 SUB_ID = "instagram"
-GERACOES_POR_DIA = {"padrao": 10, "premium": 30}
-REESCRITAS_POR_DIA = 40
+# Limites por dia de cada plano: licencas/planos.py (Standard 3 gerações; Premium 10 e as reescritas).
+REESCRITAS_POR_DIA = planos.CARROSSEIS[True]["reescritas"]
 MODELOS = {
     R.PADRAO: ["destaque", "editorial", "promo", "neon", "polaroid", "bento"],
     R.PREMIUM: ["vitrine", "anotado", "etiqueta", "ficha"],
@@ -49,7 +50,7 @@ def uso_de_hoje(conta) -> UsoCarrossel:
 
 def restantes(conta) -> dict:
     uso = uso_de_hoje(conta)
-    limite = GERACOES_POR_DIA["premium" if eh_premium(conta) else "padrao"]
+    limite = planos.carrosseis(conta)["geracoes"]
     return {"geracoes": max(0, limite - uso.geracoes), "limite": limite,
             "reescritas": max(0, REESCRITAS_POR_DIA - uso.reescritas)}
 
@@ -113,10 +114,12 @@ def opcoes_iniciais(conta) -> dict:
 def criar(conta, texto_link: str) -> Carrossel:
     """Busca o produto (sem gastar o limite se o link não servir), conta o uso e gera."""
     premium = eh_premium(conta)
+    limite = planos.carrosseis(conta)["geracoes"]
     if restantes(conta)["geracoes"] <= 0:
-        raise ErroGerador("Você chegou ao limite de hoje. Amanhã libera de novo.")
+        extra = "" if premium else f" No plano Premium são {planos.CARROSSEIS[True]['geracoes']} por dia."
+        raise ErroGerador(f"Você já gerou os {limite} carrosséis de hoje. Amanhã libera de novo.{extra}")
     produto = produto_do_link(conta, texto_link)
-    _consumir(conta, "geracoes", GERACOES_POR_DIA["premium" if premium else "padrao"])
+    _consumir(conta, "geracoes", limite)
     roteiros, _ = ia.gerar(produto)
     originais = {f: {str(s["_id"]): s for s in roteiros[f]} for f in (R.PADRAO, R.PREMIUM)}
     return Carrossel.objects.create(

@@ -9,6 +9,9 @@
   </div>
 </header>
 {% include "painel/_abas_whatsapp.html" with aba="ofertas" %}
+{% if not regras.premium %}
+<p class="aviso aviso-info pequeno plano-bot">No seu plano: até {{ regras.grupos }} grupos e canais, {{ regras.ofertas_por_grupo_dia }} ofertas por dia em cada um e uma oferta a cada {{ regras.intervalo_minimo }} minutos, no mínimo. No <a href="{{ url_planos }}" target="_blank" rel="noopener">plano Premium</a>: até 20 grupos, 100 ofertas por dia em cada, intervalo a partir de 3 minutos, copiar ofertas de outros grupos e canais e revisão do texto com IA.</p>
+{% endif %}
 
 <div id="ofertas" data-url="{% url 'painel_whatsapp_ofertas_estado' %}" data-testando="{{ config.testando|yesno:'1,0' }}" data-versao="{{ versao }}"></div>
 
@@ -50,7 +53,8 @@
     <section class="card" aria-labelledby="titulo-busca">
       <h2 id="titulo-busca">De onde vêm as ofertas</h2>
       <fieldset class="campo">
-        <div class="opcoes-chip" id="modo">{% for opcao in form.modo %}<label class="chip-opcao">{{ opcao.tag }}<span>{{ opcao.choice_label }}</span></label>{% endfor %}</div>
+        <div class="opcoes-chip" id="modo">{% for opcao in form.modo %}{% if opcao.data.value == "copiar" and not regras.copiar %}<label class="chip-opcao chip-premium"><input type="radio" name="{{ opcao.data.name }}" value="copiar"{% if opcao.data.selected %} checked{% else %} disabled{% endif %}><span>{{ opcao.choice_label }} <small class="selo-premium">Premium</small></span></label>{% else %}<label class="chip-opcao">{{ opcao.tag }}<span>{{ opcao.choice_label }}</span></label>{% endif %}{% endfor %}</div>
+        {% for e in form.modo.errors %}<span class="erro">{{ e }}</span>{% endfor %}
       </fieldset>
 
       <div data-modo="copiar" class="bloco-modo">
@@ -115,9 +119,11 @@
         <label class="marcar"><input type="radio" name="formato_envio" value="foto"{% if form.formato_envio.value != "previa" %} checked{% endif %}><span><strong>Foto com o texto</strong><span class="ajuda">Nos grupos vai a foto do produto com o texto embaixo. Os canais do WhatsApp não aceitam foto com texto por aqui: neles vai o texto com uma prévia pequena do link.</span></span></label>
         <label class="marcar"><input type="radio" name="formato_envio" value="previa"{% if form.formato_envio.value == "previa" %} checked{% endif %}><span><strong>Prévia grande do link</strong><span class="ajuda">Vai o texto com um cartão grande do link (a foto do produto inteira e o título), tanto nos grupos quanto nos canais. Sem a foto separada.</span></span></label>
       </fieldset>
-      <div class="opcao-ia{% if not form.ia_disponivel %} indisponivel{% endif %}">
+      <div class="opcao-ia{% if not form.ia_disponivel or not regras.ia %} indisponivel{% endif %}">
         <label class="marcar">{{ form.ia_ativa }}<span><strong>Revisar o texto com IA</strong><span class="ajuda">Corrige o português e frases que não combinam com o produto antes de enviar. Links, preços e cupons nunca mudam: se a IA mexer neles, vai o texto original.</span></span></label>
-        {% if form.ia_disponivel %}
+        {% if not regras.ia %}
+          <p class="suave pequeno">A revisão com IA é do <a href="{{ url_planos }}" target="_blank" rel="noopener">plano Premium</a>.</p>
+        {% elif form.ia_disponivel %}
           <fieldset class="campo tipos-ia" id="tipos-ia">
             <legend>{{ form.ia_tipo.label|capfirst }}</legend>
             {% for opcao in form.ia_tipo %}<label class="marcar">{{ opcao.tag }}<span>{{ opcao.choice_label }}</span></label>{% endfor %}
@@ -138,7 +144,7 @@
         <legend>{{ form.grupos.label }}</legend>
         {% if form.grupos.field.choices %}
           <div class="busca-grupos">
-            <input type="search" id="busca-grupos" data-lista="lista-grupos" placeholder="Buscar grupo ou canal" aria-label="Buscar grupo ou canal" autocomplete="off">
+            <input type="search" id="busca-grupos" data-lista="lista-grupos" data-maximo="{{ regras.grupos }}" placeholder="Buscar grupo ou canal" aria-label="Buscar grupo ou canal" autocomplete="off">
             <span class="suave pequeno contador" aria-live="polite"></span>
           </div>
           <div class="lista-grupos" id="lista-grupos">
@@ -151,10 +157,11 @@
             {% endfor %}
             <p class="suave pequeno nenhum-grupo" hidden>Nenhum grupo ou canal com esse nome.</p>
           </div>
-          <span class="ajuda">Deixe o Sub ID próprio vazio para usar o padrão. Ex: 4 grupos com o padrão e 1 com “vip”. Como destino aparecem só os canais em que você é dono ou administrador; neles a oferta vai como texto com a prévia do link.</span>
+          <span class="ajuda">{% if regras.premium %}Até {{ regras.grupos }} grupos e canais.{% else %}No seu plano, até {{ regras.grupos }} grupos e canais.{% endif %} Deixe o Sub ID próprio vazio para usar o padrão. Ex: 4 grupos com o padrão e 1 com “vip”. Como destino aparecem só os canais em que você é dono ou administrador; neles a oferta vai como texto com a prévia do link.</span>
         {% else %}
           <p class="suave pequeno">Conecte o WhatsApp na aba <a href="{% url 'painel_whatsapp' %}">Conexão</a> para ver seus grupos.</p>
         {% endif %}
+        {% if grupos_fora_do_plano %}<p class="aviso aviso-warning pequeno">Seu plano envia para até {{ regras.grupos }} grupos e canais: os {{ grupos_fora_do_plano }} último{{ grupos_fora_do_plano|pluralize }} da lista não recebe{{ grupos_fora_do_plano|pluralize:"m" }} ofertas. Desmarque alguns e salve, ou passe para o <a href="{{ url_planos }}" target="_blank" rel="noopener">plano Premium</a>.</p>{% endif %}
         {% for e in form.grupos.errors %}<span class="erro">{{ e }}</span>{% endfor %}
       </fieldset>
       <div class="grade-campos">
