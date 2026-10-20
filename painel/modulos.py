@@ -8,6 +8,7 @@ from licencas.models import (
     MODULO_CARROSSEIS,
     MODULO_CARROSSEIS_PREMIUM,
     MODULO_INSTAGRAM,
+    MODULO_NOTAS,
     MODULO_SITE,
     MODULO_WHATSAPP,
 )
@@ -27,6 +28,7 @@ ICONES = {
     "atualizar": "M20 11a8 8 0 1 0-2.3 5.7M20 4v7h-7",
     "baixar": "M12 4v11M7 10l5 5 5-5M5 20h14",
     "carrosseis": "M7 5h10v14H7zM3 7v10M21 7v10",
+    "notas": "M6 3h9l4 4v14H6zM14 3v5h5M9 12h7M9 16h7",
 }
 
 # slug -> configuração. "modulo": código da licença que libera (None = todos
@@ -57,6 +59,12 @@ MODULOS_DO_MENU = [
                            "Instagram, com textos feitos por IA e o seu link de afiliado.",
     },
     {
+        "slug": "notas", "nome": "Notas fiscais", "icone": "notas", "modulo": MODULO_NOTAS, "pronto": True,
+        "teste": True,
+        "texto_bloqueado": "Emita no automático a nota da Shopee e as notas de cada vendedor que pagou "
+                           "comissão extra, e mande cada uma por e-mail para o vendedor.",
+    },
+    {
         "slug": "instagram", "nome": "Instagram", "icone": "instagram", "modulo": MODULO_INSTAGRAM,
         "pronto": False, "so_em_breve": True,
         "texto_em_breve": "Responda comentários e mande o link por mensagem direta, no automático.",
@@ -72,6 +80,7 @@ URL_DE_SLUG = {
     "whatsapp": "painel_whatsapp",
     "site": "painel_meu_site",
     "carrosseis": "painel_carrosseis",
+    "notas": "painel_notas",
     "configuracoes": "painel_configuracoes",
 }
 

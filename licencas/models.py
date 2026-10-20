@@ -18,6 +18,7 @@ MODULO_SITE_SEM_MARCA = "site_sem_marca"
 # modelos, a edição avançada e a IA reescrevendo slides (não precisa do básico junto).
 MODULO_CARROSSEIS = "carrosseis"
 MODULO_CARROSSEIS_PREMIUM = "carrosseis_premium"
+MODULO_NOTAS = "notas"
 MODULOS = [
     (MODULO_WHATSAPP, "Bot de WhatsApp"),
     (MODULO_SITE, "Meu site (conversor e vitrine)"),
@@ -27,6 +28,7 @@ MODULOS = [
     (MODULO_SITE_SEM_MARCA, "Meu site sem a marca Appfiliado"),
     (MODULO_CARROSSEIS, "Gerador de carrosséis"),
     (MODULO_CARROSSEIS_PREMIUM, "Gerador de carrosséis (premium)"),
+    (MODULO_NOTAS, "Emissor de notas fiscais"),
 ]
 CODIGOS_MODULOS = [codigo for codigo, _ in MODULOS]
 

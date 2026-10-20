@@ -8,6 +8,7 @@ from django.db import close_old_connections
 
 from painel.memoria import memoria_em_uso_mb
 from meusite.vitrine import uma_volta as atualizar_vitrines
+from notas.fila import uma_volta as emitir_notas
 from painel.relatorio import enviar_pendentes as enviar_relatorios
 from painel.resultados import contas_pendentes, processar
 
@@ -47,6 +48,8 @@ class Command(BaseCommand):
                 for linha in enviar_relatorios():  # relatório diário por e-mail (de manhã)
                     self.stdout.write(linha)
                 for linha in atualizar_vitrines():  # Meu site: busca/links da vitrine
+                    self.stdout.write(linha)
+                for linha in emitir_notas():  # Notas fiscais: fila de emissão e e-mails
                     self.stdout.write(linha)
             except Exception as erro:  # banco fora do ar etc.: tenta de novo na próxima volta
                 if not loop:

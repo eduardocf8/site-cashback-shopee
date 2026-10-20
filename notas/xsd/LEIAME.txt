@@ -1,0 +1,9 @@
+Esquemas oficiais da NFS-e de Padrão Nacional, versão 1.01 (pacote de 09/02/2026),
+baixados de https://www.gov.br/nfse/pt-br/biblioteca/documentacao-tecnica/documentacao-atual
+(arquivo nfse-esquemas_xsd-v1-01-20260209.zip). Servem para validar cada DPS antes do envio.
+Quando o governo publicar uma versão nova, troque a pasta e ajuste VERSAO em notas/dps.py.
+
+Única alteração nossa: em tiposSimples_v1.01.xsd, o padrão de TSSerieDPS veio como
+"^0{0,4}\d{1,5}$". Em XSD o padrão já é ancorado e "^"/"$" são caracteres comuns, então
+nenhum validador padrão (libxml2/lxml) aceitaria série nenhuma. Tiramos os dois sinais:
+"0{0,4}\d{1,5}" (o validador do governo trata como âncoras, então o efeito é o mesmo).

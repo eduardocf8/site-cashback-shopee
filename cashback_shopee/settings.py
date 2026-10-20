@@ -99,6 +99,7 @@ INSTALLED_APPS = [
     "bot_whatsapp",
     "meusite",
     "carrosseis",
+    "notas",
 ]
 
 AUTH_USER_MODEL = "accounts.User"
