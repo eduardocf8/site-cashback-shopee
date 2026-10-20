@@ -28,6 +28,10 @@ SHOPEE_NOME = "SHPS TECNOLOGIA E SERVICOS LTDA."
 SHOPEE = dps.Tomador("cnpj", SHOPEE_CNPJ, SHOPEE_NOME, municipio_ibge="3550308", cep="04538132",
                      logradouro="BRIG FARIA LIMA", numero="3732", complemento="ANDAR 22 E 23", bairro="ITAIM BIBI")
 VALOR_TESTE = Decimal("1.00")
+# Serviço que já vem preenchido (o das notas de afiliado de hoje: 17.06.01, propaganda e
+# publicidade, inclusive promoção de vendas). A pessoa pode trocar na tela.
+SERVICO_PADRAO_CODIGO = "170601"
+SERVICO_PADRAO_DESCRICAO = "Divulgação e venda de produtos"
 VALOR_MAXIMO = Decimal("999999.99")
 
 
@@ -54,7 +58,16 @@ def cadastrar_empresa(conta, cnpj_digitado: str) -> EmpresaNotas:
         conta=conta, cnpj=dados["cnpj"],
         defaults={k: dados[k] for k in ("razao_social", "municipio_ibge", "municipio_nome", "uf", "regime")},
     )
+    aplicar_servico_padrao(empresa)
     return empresa
+
+
+def aplicar_servico_padrao(empresa):
+    """Preenche o serviço padrão se a empresa ainda não tem um (nunca troca o que a pessoa salvou)."""
+    if empresa.codigo_tributacao or empresa.descricao_servico:
+        return
+    empresa.codigo_tributacao, empresa.descricao_servico = SERVICO_PADRAO_CODIGO, SERVICO_PADRAO_DESCRICAO
+    empresa.save(update_fields=["codigo_tributacao", "descricao_servico", "atualizada_em"])
 
 
 def salvar_servico(empresa, codigo: str, codigo_municipal: str, descricao: str, inscricao_municipal: str):
@@ -112,7 +125,24 @@ def _garantir_numero(nota):
     nota.save(update_fields=["serie", "numero", "dps_id"])
 
 
-def _montar_assinada(nota, cert) -> bytes:
+# Leiaute de cada ambiente. Começa assim (produção ainda no 1.01, testes já no novo) e
+# troca sozinho se o governo recusar pelo leiaute (ver processar). O cache guarda a troca.
+LEIAUTE_PADRAO = {AMBIENTE_PRODUCAO: dps.LEIAUTE_ATUAL, AMBIENTE_TESTE: dps.LEIAUTE_NOVO}
+
+
+def leiaute(ambiente: str) -> str:
+    from django.core.cache import cache
+
+    return cache.get(f"notas:leiaute:{ambiente}") or LEIAUTE_PADRAO[ambiente]
+
+
+def _guardar_leiaute(ambiente: str, valor: str):
+    from django.core.cache import cache
+
+    cache.set(f"notas:leiaute:{ambiente}", valor, 60 * 60 * 24 * 30)
+
+
+def _montar_assinada(nota, cert, versao=None) -> bytes:
     e = nota.empresa
     agora = timezone.now().astimezone(FUSO)
     # Um minuto para trás: o governo recusa emissão "no futuro" se o relógio dele atrasar.
@@ -130,7 +160,9 @@ def _montar_assinada(nota, cert) -> bytes:
         servico=dps.Servico(e.codigo_tributacao, e.descricao_servico, e.codigo_municipal),
         valor=nota.valor,
     )
-    dps.validar(raiz)
+    dps.validar(raiz)  # sempre confere no esquema oficial 1.01 antes
+    if (versao or leiaute(nota.ambiente)) == dps.LEIAUTE_NOVO:
+        dps.para_leiaute_novo(raiz)
     dps.assinar(raiz, cert.chave, cert.certificado)
     return dps.para_bytes(raiz)
 
@@ -172,6 +204,12 @@ def processar(nota: NotaFiscal, cert=None, cliente=None) -> NotaFiscal:
                 nota.save()
                 return nota
         resposta = cliente.emitir(_montar_assinada(nota, cert))
+        outro = dps.leiaute_errado(resposta.mensagens) if not resposta.ok else ""
+        if outro and outro != leiaute(nota.ambiente):
+            # O governo mudou (ou está num) outro leiaute: troca e reenvia na hora.
+            logger.info("Notas: ambiente %s passou a usar o leiaute %s.", nota.ambiente, outro)
+            _guardar_leiaute(nota.ambiente, outro)
+            resposta = cliente.emitir(_montar_assinada(nota, cert, outro))
         if resposta.ok and resposta.campo("chaveAcesso"):
             _autorizar(nota, resposta.campo("chaveAcesso"), resposta.xml_nfse(), resposta.mensagens)
         elif any(m["codigo"] == "E0014" for m in resposta.mensagens):
