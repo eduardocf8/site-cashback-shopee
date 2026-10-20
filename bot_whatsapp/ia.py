@@ -92,17 +92,22 @@ class ErroDaIA(Exception):
         return f"Erro {self.status} do Gemini"
 
 
-def _chamar_modelo(modelo: str, prompt: str, temperatura: float) -> str:
+def _chamar_modelo(modelo: str, prompt: str, temperatura: float, max_tokens: int = 1200, json_saida: bool = False,
+                   timeout: int = TIMEOUT) -> str:
+    """json_saida pede a resposta em JSON (usado pelo gerador de carrosséis)."""
     url = f"{settings.GEMINI_API_URL}/models/{modelo}:generateContent"
+    config = {"temperature": temperatura, "maxOutputTokens": max_tokens}
+    if json_saida:
+        config["responseMimeType"] = "application/json"
     try:
         resposta = requests.post(
             url,
             headers={"x-goog-api-key": chave(), "Content-Type": "application/json"},
             json={
                 "contents": [{"role": "user", "parts": [{"text": prompt}]}],
-                "generationConfig": {"temperature": temperatura, "maxOutputTokens": 1200},
+                "generationConfig": config,
             },
-            timeout=TIMEOUT,
+            timeout=timeout,
         )
     except requests.RequestException as erro:
         raise ErroDaIA(str(erro)[:200]) from erro
@@ -117,7 +122,7 @@ def _chamar_modelo(modelo: str, prompt: str, temperatura: float) -> str:
     return "\n".join(p.get("text", "") for p in partes if not p.get("thought")).strip()
 
 
-def _chamar(prompt: str, temperatura: float, esperar=time.sleep) -> str:
+def _chamar(prompt: str, temperatura: float, esperar=time.sleep, **opcoes) -> str:
     """Modelo principal (com uma nova tentativa se for falha passageira) e, se ele
     continuar sobrecarregado, os modelos reserva. Levanta o último ErroDaIA."""
     principal = _modelo()
@@ -128,7 +133,7 @@ def _chamar(prompt: str, temperatura: float, esperar=time.sleep) -> str:
         if 0 < i <= len(ESPERAS_ANTES_DE_TENTAR_DE_NOVO):
             esperar(ESPERAS_ANTES_DE_TENTAR_DE_NOVO[i - 1])
         try:
-            return _chamar_modelo(modelo, prompt, temperatura)
+            return _chamar_modelo(modelo, prompt, temperatura, **opcoes)
         except ErroDaIA as erro:
             ultimo = erro
             if modelo == principal and not erro.passageiro:

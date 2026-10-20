@@ -1,0 +1,5 @@
+<fieldset class="notas-ambiente">
+  <legend>Onde emitir</legend>
+  <label class="marcar"><input type="radio" name="ambiente" value="2" checked><span><strong>Ambiente de testes do governo</strong><span class="ajuda">Sem valor fiscal e sem e-mail para ninguém. Bom para conferir antes.</span></span></label>
+  <label class="marcar"><input type="radio" name="ambiente" value="1"><span><strong>De verdade</strong><span class="ajuda">Notas válidas{% if com_email %}, enviadas por e-mail para cada vendedor{% endif %}.</span></span></label>
+</fieldset>

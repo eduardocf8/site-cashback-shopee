@@ -1,0 +1,149 @@
+{% extends "painel/base.html" %}
+{% load painel_extras %}
+{% block titulo %}Notas fiscais{% endblock %}
+{% block conteudo %}
+<header class="cabecalho"><div><h1>Notas fiscais</h1><p>A nota da Shopee e as notas de cada vendedor que pagou comissão extra, emitidas direto no Emissor Nacional do governo.</p></div></header>
+
+<p class="aviso aviso-info notas-aviso">Versão de teste: comece pelo ambiente de testes do governo (sem valor fiscal) e, quando estiver tudo certo, emita de verdade.</p>
+
+{% include "painel/_notas_pausa.html" %}
+{% if not empresa %}
+  <section class="card notas-cartao" aria-labelledby="titulo-empresa">
+    <h2 id="titulo-empresa">Sua empresa</h2>
+    <p class="suave pequeno">Digite o CNPJ que emite as notas. O resto (razão social, cidade, MEI ou Simples) a gente puxa da Receita Federal.</p>
+    <form method="post" class="formulario notas-cnpj">
+      {% csrf_token %}
+      <input type="hidden" name="acao" value="empresa">
+      <div class="campo"><label for="id_cnpj">CNPJ</label><input type="text" id="id_cnpj" name="cnpj" inputmode="numeric" autocomplete="off" placeholder="00.000.000/0000-00" required maxlength="18"></div>
+      <div><button type="submit" class="botao botao-principal">Buscar e cadastrar</button></div>
+    </form>
+  </section>
+{% else %}
+  {% if falta or not teste_ok %}
+  <section class="card notas-cartao" aria-labelledby="titulo-passos">
+    <h2 id="titulo-passos">Para começar a emitir</h2>
+    <ul class="passos">
+      <li><span class="marcador feito">{% include "painel/_icone.html" with caminho=icones.check %}</span><span class="titulo feito-texto">Cadastrar a empresa</span><span class="estado estado-liberado">Feito</span></li>
+      <li><span class="marcador {% if empresa.tem_certificado %}feito{% endif %}">{% include "painel/_icone.html" with caminho=icones.check %}</span><span class="titulo {% if empresa.tem_certificado %}feito-texto{% endif %}">Enviar o certificado digital A1</span>{% if empresa.tem_certificado %}<span class="estado estado-liberado">Feito</span>{% else %}<a class="botao botao-escuro botao-pequeno" href="#certificado">Enviar</a>{% endif %}</li>
+      <li><span class="marcador {% if empresa.codigo_tributacao %}feito{% endif %}">{% include "painel/_icone.html" with caminho=icones.check %}</span><span class="titulo {% if empresa.codigo_tributacao %}feito-texto{% endif %}">Informar o serviço das notas</span>{% if empresa.codigo_tributacao %}<span class="estado estado-liberado">Feito</span>{% else %}<a class="botao botao-escuro botao-pequeno" href="#servico">Informar</a>{% endif %}</li>
+      <li><span class="marcador {% if teste_ok %}feito{% endif %}">{% include "painel/_icone.html" with caminho=icones.check %}</span><span class="titulo {% if teste_ok %}feito-texto{% endif %}">Fazer uma nota de teste</span>{% if teste_ok %}<span class="estado estado-liberado">Feito</span>{% elif not falta %}<a class="botao botao-escuro botao-pequeno" href="#teste">Testar</a>{% endif %}</li>
+    </ul>
+  </section>
+  {% endif %}
+
+  <div class="duas-colunas">
+    <section class="card notas-cartao" id="mes" aria-labelledby="titulo-mes">
+      <h2 id="titulo-mes">Notas dos vendedores (comissão extra)</h2>
+      <p class="suave pequeno">Na Central do Afiliado da Shopee: <strong>Relatórios › Relatório mensal</strong>, escolha o mês de conclusão e clique em <strong>Exportar</strong>. Envie o arquivo aqui do jeito que baixou (sem abrir no Excel). Sai uma nota por loja, e você confere tudo antes de emitir.</p>
+      <form method="post" enctype="multipart/form-data" class="formulario">
+        {% csrf_token %}
+        <input type="hidden" name="acao" value="importar">
+        <div class="campo"><label for="id_relatorio">Relatório mensal (.csv ou .xlsx)</label><input type="file" id="id_relatorio" name="relatorio" accept=".csv,.xlsx" required></div>
+        {% include "painel/_notas_ambiente.html" with com_email=True %}
+        <div><button type="submit" class="botao botao-principal"{% if falta %} disabled title="Termine os passos de cima primeiro"{% endif %}>Ver a prévia</button></div>
+      </form>
+    </section>
+
+    <section class="card notas-cartao" id="shopee" aria-labelledby="titulo-shopee">
+      <h2 id="titulo-shopee">Nota da Shopee</h2>
+      <p class="suave pequeno">Uma por mês, com o valor bruto da comissão paga pela Shopee na fatura. Depois de autorizada, baixe o PDF e envie na Central do Afiliado até o dia 5.</p>
+      <form method="post" class="formulario">
+        {% csrf_token %}
+        <input type="hidden" name="acao" value="shopee">
+        <div class="campo"><label for="id_valor">Valor da comissão da Shopee</label><input type="text" id="id_valor" name="valor" inputmode="decimal" placeholder="Ex: 11.712,09" required autocomplete="off"></div>
+        {% include "painel/_notas_ambiente.html" %}
+        <div><button type="submit" class="botao botao-escuro"{% if falta %} disabled{% endif %}>Emitir nota da Shopee</button></div>
+      </form>
+    </section>
+  </div>
+
+  {% if lotes %}
+    <section class="card notas-cartao" aria-labelledby="titulo-lotes">
+      <h2 id="titulo-lotes">Relatórios importados</h2>
+      <ul class="notas-lotes">
+        {% for l in lotes %}
+          <li><a href="{% url 'painel_notas_lote' l.pk %}"><strong>Vendas de {{ l.mes_referencia|date:"F/Y" }}</strong><span class="suave pequeno">{{ l.criado_em|date:"d/m H:i" }} · {{ l.nome_arquivo|default:"arquivo" }}</span></a>
+            {% if l.ambiente == "2" %}<span class="selo-venda selo-pendente">Teste</span>{% endif %}
+            <span class="estado {% if l.estado == 'concluido' %}estado-liberado{% elif l.estado == 'emitindo' %}estado-bloqueado{% else %}estado-em_breve{% endif %}">{{ l.get_estado_display }}</span></li>
+        {% endfor %}
+      </ul>
+    </section>
+  {% endif %}
+
+  <h2 class="notas-secao">Configuração</h2>
+  <div class="duas-colunas">
+    <div class="notas-coluna">
+      <section class="card notas-cartao" aria-labelledby="titulo-empresa">
+        <h2 id="titulo-empresa">Empresa</h2>
+        <dl class="notas-dados">
+          <div><dt>Razão social</dt><dd>{{ empresa.razao_social }}</dd></div>
+          <div><dt>CNPJ</dt><dd>{{ empresa.cnpj_formatado }}</dd></div>
+          <div><dt>Cidade</dt><dd>{{ empresa.municipio_nome }}{% if empresa.uf %} / {{ empresa.uf }}{% endif %}</dd></div>
+          <div><dt>Regime</dt><dd>{{ empresa.get_regime_display }}</dd></div>
+        </dl>
+      </section>
+
+      <section class="card notas-cartao" id="certificado" aria-labelledby="titulo-certificado">
+        <h2 id="titulo-certificado">Certificado digital A1</h2>
+        {% if empresa.tem_certificado %}
+          <p class="status-shopee"><span class="ponto ok" aria-hidden="true"></span>Guardado · vale até {{ empresa.certificado_validade|date:"d/m/Y" }}</p>
+          <p class="suave pequeno">{{ empresa.certificado_titular }}</p>
+          <div class="botoes-linha">
+            <details class="notas-trocar"><summary class="botao botao-claro botao-pequeno">Trocar certificado</summary>
+              <form method="post" enctype="multipart/form-data" class="formulario">
+                {% csrf_token %}
+                <input type="hidden" name="acao" value="certificado">
+                {% include "painel/_campos.html" with form=form_cert %}
+                <div><button type="submit" class="botao botao-escuro">Enviar o novo</button></div>
+              </form>
+            </details>
+            <form method="post" onsubmit="return confirm('Apagar o certificado do Appfiliado? Você não vai conseguir emitir até enviar de novo.')">
+              {% csrf_token %}
+              <input type="hidden" name="acao" value="remover_certificado">
+              <button type="submit" class="botao botao-claro botao-pequeno">Apagar</button>
+            </form>
+          </div>
+        {% else %}
+          <p class="suave pequeno">É o arquivo .pfx (ou .p12) do e-CNPJ da empresa, com a senha dele. O governo exige esse certificado para emitir notas por sistema, inclusive para MEI.</p>
+          <form method="post" enctype="multipart/form-data" class="formulario">
+            {% csrf_token %}
+            <input type="hidden" name="acao" value="certificado">
+            {% include "painel/_campos.html" with form=form_cert %}
+            <div><button type="submit" class="botao botao-principal">Guardar certificado</button></div>
+          </form>
+        {% endif %}
+        <p class="suave pequeno notas-seguranca">O certificado e a senha ficam guardados criptografados e só são usados para assinar as suas notas. Você pode apagar quando quiser.</p>
+      </section>
+
+      <section class="card notas-cartao" id="servico" aria-labelledby="titulo-servico">
+        <h2 id="titulo-servico">Serviço das notas</h2>
+        <p class="suave pequeno">Use os mesmos dados das notas que você já emite hoje.</p>
+        <form method="post" class="formulario">
+          {% csrf_token %}
+          <input type="hidden" name="acao" value="servico">
+          {% include "painel/_campos.html" with form=form_servico %}
+          <div><button type="submit" class="botao botao-escuro">Salvar serviço</button></div>
+        </form>
+      </section>
+    </div>
+
+    <section class="card notas-cartao" id="teste" aria-labelledby="titulo-teste">
+      <h2 id="titulo-teste">Nota de teste</h2>
+      <p class="suave pequeno">Manda uma nota de R$ 1,00 para a Shopee no ambiente de testes do governo. Ela não tem valor fiscal e não aparece para ninguém: serve só para conferir se está tudo certo com o certificado e o serviço.</p>
+      {% if falta %}<p class="aviso aviso-warning pequeno">Antes, falta: {{ falta|join:" e " }}.</p>{% endif %}
+      <form method="post" class="notas-testar" onsubmit="this.querySelector('button').disabled=true;this.querySelector('button').textContent='Enviando… (até 1 minuto)'">
+        {% csrf_token %}
+        <input type="hidden" name="acao" value="testar">
+        <button type="submit" class="botao botao-principal"{% if falta %} disabled{% endif %}>Emitir nota de teste</button>
+      </form>
+    </section>
+  </div>
+
+  {% if ultimas %}
+    <section class="card notas-cartao" aria-labelledby="titulo-ultimas">
+      <h2 id="titulo-ultimas">Notas avulsas (Shopee e testes)</h2>
+      {% include "painel/_notas_tabela.html" with notas=ultimas voltar="" %}
+    </section>
+  {% endif %}
+{% endif %}
+{% endblock %}

@@ -1,0 +1,84 @@
+{% extends "painel/base.html" %}
+{% load painel_extras %}
+{% block titulo %}Notas de {{ lote.mes_referencia|date:"F/Y" }}{% endblock %}
+{% block cabeca %}{% if atualizar %}<meta http-equiv="refresh" content="20">{% endif %}{% endblock %}
+{% block conteudo %}
+<header class="cabecalho">
+  <div>
+    <a class="notas-voltar" href="{% url 'painel_notas' %}">← Notas fiscais</a>
+    <h1>Vendas de {{ lote.mes_referencia|date:"F/Y" }}{% if lote.ambiente == "2" %} <span class="selo-venda selo-pendente">Ambiente de testes</span>{% endif %}</h1>
+    <p>{{ lote.nome_arquivo }} · importado em {{ lote.criado_em|date:"d/m/Y H:i" }}</p>
+  </div>
+  {% if resumo.por.autorizada.qtd %}<a class="botao botao-claro" href="{% url 'painel_notas_lote_zip' lote.pk %}">{% include "painel/_icone.html" with caminho=icones.baixar %}Baixar XMLs + resumo (ZIP)</a>{% endif %}
+</header>
+
+{% include "painel/_notas_pausa.html" with voltar=request.path %}
+<section class="card notas-cartao notas-resumo" aria-label="Resumo">
+  <div class="notas-numeros">
+    <div><span>Notas</span><strong>{{ resumo.total }}</strong></div>
+    <div><span>Valor total</span><strong>{{ resumo.valor|brl }}</strong></div>
+    {% if lote.estado == "previa" %}
+      <div><span>Fora da prévia</span><strong>{{ lote.ignoradas|length }}</strong></div>
+    {% else %}
+      <div><span>Autorizadas</span><strong>{{ resumo.por.autorizada.qtd }}</strong></div>
+      <div><span>Com problema</span><strong>{{ resumo.por.recusada.qtd|add:resumo.por.erro.qtd }}</strong></div>
+      {% if lote.ambiente == "1" %}<div><span>E-mails enviados</span><strong>{{ resumo.emails.enviado|default:0 }}</strong></div>{% endif %}
+    {% endif %}
+  </div>
+
+  {% if lote.estado == "previa" %}
+    <p class="pequeno">Confira a lista. Nada foi enviado ainda. Ao confirmar, as notas vão para a fila e saem sozinhas, uma a uma (pode fechar a página){% if lote.ambiente == "1" %}, e cada vendedor com e-mail recebe a nota com o PDF e o XML{% endif %}.</p>
+    {% if falta %}<p class="aviso aviso-warning pequeno">Antes de emitir, falta: {{ falta|join:" e " }}.</p>{% endif %}
+    <div class="botoes-linha">
+      <form method="post" onsubmit="return confirm('Emitir {{ resumo.total }} notas{% if lote.ambiente == "1" %} de verdade{% else %} no ambiente de testes{% endif %}?')">{% csrf_token %}<input type="hidden" name="acao" value="confirmar"><button type="submit" class="botao botao-principal"{% if falta or not resumo.total %} disabled{% endif %}>Emitir {{ resumo.total }} nota{{ resumo.total|pluralize }}{% if lote.ambiente == "2" %} de teste{% endif %}</button></form>
+      <form method="post">{% csrf_token %}<input type="hidden" name="acao" value="descartar"><button type="submit" class="botao botao-claro">Descartar</button></form>
+    </div>
+  {% else %}
+    <div class="notas-progresso" role="progressbar" aria-valuenow="{{ resumo.progresso }}" aria-valuemin="0" aria-valuemax="100"><span style="width:{{ resumo.progresso }}%"></span></div>
+    <p class="pequeno">{% if lote.estado == "emitindo" %}Emitindo: {{ resumo.progresso }}% · {{ resumo.por.fila.qtd|add:resumo.por.enviando.qtd }} na fila. Esta página atualiza sozinha.{% else %}Concluído.{% endif %}</p>
+    {% if resumo.por.recusada.qtd or resumo.por.erro.qtd %}
+      <form method="post">{% csrf_token %}<input type="hidden" name="acao" value="reenviar_problemas"><button type="submit" class="botao botao-claro botao-pequeno">Tentar de novo as que deram problema</button></form>
+    {% endif %}
+  {% endif %}
+</section>
+
+{% if lote.ignoradas %}
+  <details class="card notas-cartao notas-ignoradas">
+    <summary><strong>{{ lote.ignoradas|length }} linha{{ lote.ignoradas|length|pluralize }} do relatório não vira{{ lote.ignoradas|length|pluralize:"m" }} nota</strong> <span class="suave pequeno">(ver quais e por quê)</span></summary>
+    <div class="tabela-rolagem"><table class="tabela-vendas">
+      <thead><tr><th scope="col">Linha</th><th scope="col">Loja</th><th scope="col" class="n">Valor</th><th scope="col">Motivo</th></tr></thead>
+      <tbody>{% for i in lote.ignoradas %}<tr><td>{{ i.linha }}</td><td><strong>{{ i.nome }}</strong><span class="suave pequeno notas-sub">{{ i.loja }}</span></td><td class="n" data-rotulo="Valor">{% if i.valor %}R$ {{ i.valor }}{% endif %}</td><td data-rotulo="Motivo">{{ i.motivo }}</td></tr>{% endfor %}</tbody>
+    </table></div>
+  </details>
+{% endif %}
+
+<section class="card notas-cartao" aria-labelledby="titulo-notas">
+  <h2 id="titulo-notas">Notas</h2>
+  <form method="get" class="filtros-vendas">
+    <input type="search" name="busca" value="{{ busca }}" placeholder="Buscar loja, razão social ou CNPJ" aria-label="Buscar">
+    <select name="ver" aria-label="Mostrar" onchange="this.form.submit()">
+      <option value="todas"{% if filtro == "todas" %} selected{% endif %}>Todas</option>
+      <option value="autorizadas"{% if filtro == "autorizadas" %} selected{% endif %}>Autorizadas</option>
+      <option value="problemas"{% if filtro == "problemas" %} selected{% endif %}>Com problema</option>
+      <option value="fila"{% if filtro == "fila" %} selected{% endif %}>Na fila / prévia</option>
+    </select>
+    <button type="submit" class="botao botao-claro botao-pequeno">Filtrar</button>
+  </form>
+  {% if pagina.object_list %}
+    {% if lote.ambiente == "1" %}{% include "painel/_notas_tabela.html" with notas=pagina.object_list com_email=True voltar="lote" sem_selo=True %}
+    {% else %}{% include "painel/_notas_tabela.html" with notas=pagina.object_list voltar="lote" sem_selo=True %}{% endif %}
+  {% else %}
+    <p class="suave">Nenhuma nota aqui.</p>
+  {% endif %}
+  {% if pagina.paginator.num_pages > 1 %}
+    <nav class="paginacao" aria-label="Páginas">
+      <span>{{ pagina.start_index }}–{{ pagina.end_index }} de {{ pagina.paginator.count }}</span>
+      <div>
+        {% if pagina.has_previous %}<a href="?ver={{ filtro }}&busca={{ busca|urlencode }}&pagina={{ pagina.previous_page_number }}">‹</a>{% endif %}
+        <span class="atual">{{ pagina.number }}</span>
+        {% if pagina.has_next %}<a href="?ver={{ filtro }}&busca={{ busca|urlencode }}&pagina={{ pagina.next_page_number }}">›</a>{% endif %}
+      </div>
+    </nav>
+  {% endif %}
+</section>
+{% endblock %}
