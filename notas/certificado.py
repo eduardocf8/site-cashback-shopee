@@ -5,6 +5,7 @@ memória na hora de assinar e enviar uma nota."""
 
 import base64
 import re
+import warnings
 from dataclasses import dataclass
 from datetime import datetime
 
@@ -62,7 +63,11 @@ def abrir(dados: bytes, senha: str) -> Certificado:
     if len(dados) > TAMANHO_MAXIMO:
         raise ErroCertificado("Esse arquivo é grande demais para ser um certificado A1.")
     try:
-        chave, cert, cadeia = pkcs12.load_key_and_certificates(dados, (senha or "").encode("utf-8"))
+        with warnings.catch_warnings():
+            # Arquivos exportados por alguns programas vêm em BER: a biblioteca lê, mas avisa que
+            # um dia vai parar de ler. Por isso guardar() regrava sempre em DER (ver normalizar).
+            warnings.simplefilter("ignore", UserWarning)
+            chave, cert, cadeia = pkcs12.load_key_and_certificates(dados, (senha or "").encode("utf-8"))
     except ValueError:
         raise ErroCertificado("Não consegui abrir o certificado: confira a senha e se o arquivo é o .pfx/.p12.")
     if chave is None or cert is None:
@@ -78,9 +83,18 @@ def abrir(dados: bytes, senha: str) -> Certificado:
                        titular=titular[:200], validade=cert.not_valid_after_utc)
 
 
+def normalizar(cert: Certificado, senha: str) -> bytes:
+    """O mesmo certificado regravado no formato padrão (DER), com a mesma senha."""
+    from cryptography.hazmat.primitives.serialization import BestAvailableEncryption
+
+    return pkcs12.serialize_key_and_certificates(
+        cert.cnpj.encode(), cert.chave, cert.certificado, cert.cadeia or None, BestAvailableEncryption(senha.encode("utf-8")))
+
+
 def guardar(empresa, dados: bytes, senha: str) -> Certificado:
     """Confere o certificado (é dessa empresa? está na validade?) e salva cifrado."""
     cert = abrir(dados, senha)
+    dados = normalizar(cert, senha)
     if cert.cnpj[:8] != empresa.cnpj[:8]:
         raise ErroCertificado(f"Esse certificado é do CNPJ {cert.cnpj}, não do {empresa.cnpj_formatado}.")
     if cert.vencido:
@@ -101,10 +115,22 @@ def da_empresa(empresa) -> Certificado:
     dados_b64, senha = cripto.decifrar(empresa.certificado_cifrado), cripto.decifrar(empresa.senha_cifrada)
     if not dados_b64:
         raise ErroCertificado("Não consegui abrir o certificado guardado. Envie de novo, por favor.")
-    cert = abrir(base64.b64decode(dados_b64), senha)
+    bruto = base64.b64decode(dados_b64)
+    cert = abrir(bruto, senha)
+    if senha and _avisou_ber(bruto, senha):
+        # Guardado antes da normalização (formato BER): regrava em DER uma vez só.
+        empresa.certificado_cifrado = cripto.cifrar(base64.b64encode(normalizar(cert, senha)).decode("ascii"))
+        empresa.save(update_fields=["certificado_cifrado", "atualizada_em"])
     if cert.vencido:
         raise ErroCertificado("O certificado da empresa venceu. Envie o novo para continuar emitindo.")
     return cert
+
+
+def _avisou_ber(dados: bytes, senha: str) -> bool:
+    with warnings.catch_warnings(record=True) as avisos:
+        warnings.simplefilter("always")
+        pkcs12.load_key_and_certificates(dados, senha.encode("utf-8"))
+    return any("BER" in str(a.message) for a in avisos)
 
 
 def apagar(empresa):

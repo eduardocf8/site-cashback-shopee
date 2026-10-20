@@ -32,6 +32,8 @@ class EmpresaNotas(models.Model):
     codigo_tributacao = models.CharField(max_length=6, blank=True)
     codigo_municipal = models.CharField(max_length=20, blank=True)
     descricao_servico = models.TextField(blank=True)
+    # NBS (Nomenclatura Brasileira de Serviços), 9 dígitos: exigido junto com o IBS/CBS.
+    codigo_nbs = models.CharField(max_length=9, blank=True)
 
     # Certificado A1 (.pfx) e a senha, cifrados (painel/cripto.py). Nunca saem do servidor.
     certificado_cifrado = models.TextField(blank=True)
