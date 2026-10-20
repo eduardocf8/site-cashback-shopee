@@ -136,7 +136,15 @@ class TestDPS(TestCase):
     def test_tomador_estrangeiro_e_cpf(self):
         raiz = dps_exemplo(tomador=dps.Tomador("nif", "202602050G", "SHOPEE CHOICE II PRIVATE LIMITED", pais="SG"))
         dps.validar(raiz)
-        self.assertIn("<NIF>202602050G</NIF>", dps.para_bytes(raiz).decode())
+        xml = dps.para_bytes(raiz).decode()
+        self.assertIn("<NIF>202602050G</NIF>", xml)
+        # Igual à nota para o exterior autorizada em produção (Manda Notas, out/2026).
+        self.assertIn("<endExt><cPais>SG</cPais><cEndPost>-</cEndPost><xCidade>-</xCidade><xEstProvReg>-</xEstProvReg>"
+                      "</endExt><xLgr>-</xLgr><nro>-</nro><xBairro>-</xBairro></end>", xml)
+        self.assertIn("<comExt><mdPrestacao>2</mdPrestacao><vincPrest>0</vincPrest><tpMoeda>986</tpMoeda>"
+                      "<vServMoeda>12.50</vServMoeda><mecAFComexP>01</mecAFComexP><mecAFComexT>01</mecAFComexT>"
+                      "<movTempBens>1</movTempBens><mdic>0</mdic></comExt>", xml)
+        self.assertNotIn("comExt", dps.para_bytes(dps_exemplo()).decode())
         with self.assertRaises(dps.ErroDPS):
             dps_exemplo(tomador=dps.Tomador("nif", "X1", "SEM PAIS"))
         dps.validar(dps_exemplo(tomador=dps.Tomador("cpf", "12345678909", "Maria")))
@@ -160,10 +168,11 @@ class TestDPS(TestCase):
         inf = re.search(r"<infDPS.*?</infDPS>", texto, re.S).group(0).replace("<infDPS", f'<infDPS xmlns="{dps.NS}"', 1)
         info = re.search(r"<SignedInfo>.*?</SignedInfo>", texto, re.S).group(0).replace(
             "<SignedInfo>", f'<SignedInfo xmlns="{dps.DS}">', 1)
-        digest = base64.b64encode(hashlib.sha1(ET.canonicalize(inf).encode()).digest()).decode()
+        digest = base64.b64encode(hashlib.sha256(ET.canonicalize(inf).encode()).digest()).decode()
         self.assertIn(f"<DigestValue>{digest}</DigestValue>", texto)
         valor = base64.b64decode(re.search(r"<SignatureValue>(.*?)</SignatureValue>", texto).group(1))
-        cert.certificado.public_key().verify(valor, ET.canonicalize(info).encode(), padding.PKCS1v15(), hashes.SHA1())
+        cert.certificado.public_key().verify(valor, ET.canonicalize(info).encode(), padding.PKCS1v15(), hashes.SHA256())
+        self.assertIn("xmldsig-more#rsa-sha256", texto)
         self.assertNotIn("X509SubjectName", texto)  # o manual pede só o X509Certificate
 
 

@@ -1,8 +1,9 @@
 """Monta, assina e confere a DPS (Declaração de Prestação de Serviço): o XML que vira a
 NFS-e quando é aceito pela API do governo. Leiaute 1.01 da NFS-e de Padrão Nacional.
 
-Assinatura conforme o manual (item 7.3.3): XMLDSig "enveloped", canonicalização C14N
-inclusiva, RSA-SHA1, só com o certificado em X509Data."""
+Assinatura XMLDSig "enveloped", canonicalização C14N inclusiva e só o certificado em
+X509Data (manual, item 7.3.3). O manual fala em RSA-SHA1, mas o emissor nacional aceita
+RSA-SHA256, que é o que as notas autorizadas em produção hoje usam: vai SHA-256."""
 
 import base64
 import copy
@@ -22,6 +23,8 @@ VERSAO = "1.01"
 NS = "http://www.sped.fazenda.gov.br/nfse"
 DS = "http://www.w3.org/2000/09/xmldsig#"
 C14N = "http://www.w3.org/TR/2001/REC-xml-c14n-20010315"
+RSA_SHA256 = "http://www.w3.org/2001/04/xmldsig-more#rsa-sha256"
+SHA256 = "http://www.w3.org/2001/04/xmlenc#sha256"
 VERSAO_APLICATIVO = "Appfiliado-1.0"
 PASTA_XSD = Path(__file__).resolve().parent / "xsd" / VERSAO
 
@@ -162,6 +165,14 @@ def montar(*, ambiente: str, emitida_em: datetime, serie: str, numero: int, comp
     if servico.codigo_municipal:
         _texto(cserv, "cTribMun", servico.codigo_municipal)
     _texto(cserv, "xDescServ", _limpa(servico.descricao, 2000))
+    if tomador.tipo == "nif":
+        # Comércio exterior (regra E0330), com os mesmos valores das notas para o exterior já
+        # autorizadas em produção: modo 2 (consumo no Brasil), sem vínculo, real (986),
+        # sem mecanismo de apoio (01/01), sem movimentação de bens (1), sem envio ao MDIC (0).
+        com = _grupo(serv, "comExt")
+        for tag, conteudo in (("mdPrestacao", 2), ("vincPrest", 0), ("tpMoeda", 986), ("vServMoeda", _valor(valor)),
+                              ("mecAFComexP", "01"), ("mecAFComexT", "01"), ("movTempBens", 1), ("mdic", 0)):
+            _texto(com, tag, conteudo)
 
     valores = _grupo(inf, "valores")
     _texto(_grupo(valores, "vServPrest"), "vServ", _valor(valor))
@@ -186,20 +197,20 @@ def assinar(raiz: etree._Element, chave, certificado) -> etree._Element:
     """Assina o infDPS (ou o elemento com Id do evento) e põe a <Signature> no fim da raiz."""
     alvo = raiz[0]
     ident = alvo.get("Id")
-    digest = base64.b64encode(hashlib.sha1(c14n(alvo)).digest()).decode()
+    digest = base64.b64encode(hashlib.sha256(c14n(alvo)).digest()).decode()
 
     assinatura = etree.SubElement(raiz, f"{{{DS}}}Signature", nsmap={None: DS})
     info = etree.SubElement(assinatura, f"{{{DS}}}SignedInfo")
     etree.SubElement(info, f"{{{DS}}}CanonicalizationMethod", Algorithm=C14N)
-    etree.SubElement(info, f"{{{DS}}}SignatureMethod", Algorithm=DS + "rsa-sha1")
+    etree.SubElement(info, f"{{{DS}}}SignatureMethod", Algorithm=RSA_SHA256)
     ref = etree.SubElement(info, f"{{{DS}}}Reference", URI=f"#{ident}")
     transformacoes = etree.SubElement(ref, f"{{{DS}}}Transforms")
     etree.SubElement(transformacoes, f"{{{DS}}}Transform", Algorithm=DS + "enveloped-signature")
     etree.SubElement(transformacoes, f"{{{DS}}}Transform", Algorithm=C14N)
-    etree.SubElement(ref, f"{{{DS}}}DigestMethod", Algorithm=DS + "sha1")
+    etree.SubElement(ref, f"{{{DS}}}DigestMethod", Algorithm=SHA256)
     etree.SubElement(ref, f"{{{DS}}}DigestValue").text = digest
 
-    valor = chave.sign(c14n(info), padding.PKCS1v15(), hashes.SHA1())
+    valor = chave.sign(c14n(info), padding.PKCS1v15(), hashes.SHA256())
     etree.SubElement(assinatura, f"{{{DS}}}SignatureValue").text = base64.b64encode(valor).decode()
     der = certificado.public_bytes(serialization.Encoding.DER)
     x509 = etree.SubElement(etree.SubElement(assinatura, f"{{{DS}}}KeyInfo"), f"{{{DS}}}X509Data")
