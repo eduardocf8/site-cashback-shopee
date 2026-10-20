@@ -21,6 +21,8 @@
       } else if (el.textContent !== String(valor)) {
         el.textContent = valor;
       }
+      const chip = el.closest('.notas-chip');
+      if (chip) chip.classList.toggle('vazio', String(valor) === '0');
     });
   }
 
@@ -52,6 +54,7 @@
       if (l.email) {
         campo('barra_email', l.email.progresso); campo('email_progresso', l.email.progresso);
         campo('email_enviados', l.email.enviados); campo('email_alvo', l.email.alvo); campo('email_fase', l.email.fase);
+        campo('email_pendentes', l.email.pendentes); campo('email_sem', l.email.sem_email); campo('email_falharam', l.email.falharam);
       }
       // Recarrega uma vez quando as notas terminam (PDF, XML e mensagens) e outra quando os e-mails acabam.
       if (l.estado !== bloco.dataset.estado || !l.acompanhar) { parado = true; window.location.reload(); }
