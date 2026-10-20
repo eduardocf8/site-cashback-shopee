@@ -56,6 +56,8 @@ def notas(request):
     if bloqueio:
         return bloqueio
     empresa = servicos.empresa_da_conta(conta)
+    if empresa:
+        servicos.aplicar_servico_padrao(empresa)  # empresas cadastradas antes do padrão existir
     form_cert, form_servico = CertificadoForm(), ServicoForm(initial={
         "codigo_tributacao": getattr(empresa, "codigo_tributacao", ""),
         "codigo_municipal": getattr(empresa, "codigo_municipal", ""),

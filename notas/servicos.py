@@ -28,6 +28,10 @@ SHOPEE_NOME = "SHPS TECNOLOGIA E SERVICOS LTDA."
 SHOPEE = dps.Tomador("cnpj", SHOPEE_CNPJ, SHOPEE_NOME, municipio_ibge="3550308", cep="04538132",
                      logradouro="BRIG FARIA LIMA", numero="3732", complemento="ANDAR 22 E 23", bairro="ITAIM BIBI")
 VALOR_TESTE = Decimal("1.00")
+# Serviço que já vem preenchido (o das notas de afiliado de hoje: 17.06.01, propaganda e
+# publicidade, inclusive promoção de vendas). A pessoa pode trocar na tela.
+SERVICO_PADRAO_CODIGO = "170601"
+SERVICO_PADRAO_DESCRICAO = "Divulgação e venda de produtos"
 VALOR_MAXIMO = Decimal("999999.99")
 
 
@@ -54,7 +58,16 @@ def cadastrar_empresa(conta, cnpj_digitado: str) -> EmpresaNotas:
         conta=conta, cnpj=dados["cnpj"],
         defaults={k: dados[k] for k in ("razao_social", "municipio_ibge", "municipio_nome", "uf", "regime")},
     )
+    aplicar_servico_padrao(empresa)
     return empresa
+
+
+def aplicar_servico_padrao(empresa):
+    """Preenche o serviço padrão se a empresa ainda não tem um (nunca troca o que a pessoa salvou)."""
+    if empresa.codigo_tributacao or empresa.descricao_servico:
+        return
+    empresa.codigo_tributacao, empresa.descricao_servico = SERVICO_PADRAO_CODIGO, SERVICO_PADRAO_DESCRICAO
+    empresa.save(update_fields=["codigo_tributacao", "descricao_servico", "atualizada_em"])
 
 
 def salvar_servico(empresa, codigo: str, codigo_municipal: str, descricao: str, inscricao_municipal: str):

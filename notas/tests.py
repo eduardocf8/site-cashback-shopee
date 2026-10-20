@@ -319,6 +319,12 @@ class TestTelas(TestCase):
             self.client.post("/notas/", {"acao": "empresa", "cnpj": "12.345.678/0001-95"})
         empresa = EmpresaNotas.objects.get(conta=self.conta)
         self.assertEqual((empresa.razao_social, empresa.regime), ("LOJA TESTE LTDA", "mei"))
+        # O serviço já vem com o padrão, e o que a pessoa salva não é trocado depois.
+        self.assertEqual((empresa.codigo_tributacao, empresa.descricao_servico), ("170601", "Divulgação e venda de produtos"))
+        servicos.salvar_servico(empresa, "100801", "", "Agenciamento de publicidade", "")
+        servicos.aplicar_servico_padrao(empresa)
+        empresa.refresh_from_db()
+        self.assertEqual(empresa.codigo_tributacao, "100801")
         self.assertContains(self.client.get("/notas/"), "Enviar o certificado digital A1")
 
     def test_recusa_lucro_presumido(self):
