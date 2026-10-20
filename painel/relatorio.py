@@ -1,6 +1,7 @@
 """Relatório diário por e-mail: resultados de ontem e do mês, Sub IDs, produtos mais
-vendidos e, para quem tem o Bot de WhatsApp, as ofertas enviadas. Vai de manhã (a
-Shopee libera os números de ontem ao longo da madrugada), uma vez por dia por conta."""
+vendidos e, para quem tem o Bot de WhatsApp, as ofertas enviadas. Vai uma vez por dia
+por conta, no horário que a pessoa escolheu (a Shopee libera os números de ontem ao longo da
+madrugada: de manhã, o e-mail espera a primeira atualização do dia)."""
 
 import logging
 from datetime import date, datetime, timedelta
@@ -18,8 +19,8 @@ from .models import RelatorioEmail
 
 logger = logging.getLogger(__name__)
 
-HORA_DO_ENVIO = 8  # a partir das 8h (horário de Brasília)...
-HORA_LIMITE_PARA_ESPERAR = 11  # ...se até 11h não teve atualização nova, vai assim mesmo
+HORA_MAIS_CEDO = 6  # o horário de envio é escolhido pela pessoa (RelatorioEmail.hora), das 6h às 22h
+HORA_LIMITE_PARA_ESPERAR = 11  # antes disso, espera a atualização do dia; a partir daí vai assim mesmo
 MAXIMO_EXTRAS = 3
 
 
@@ -69,12 +70,12 @@ def enviar(conta, hoje: date, destinatarios: list[str]) -> None:
 
 
 def pronto_para_enviar(preferencia, agora: datetime) -> bool:
-    """De manhã, depois de uma atualização com a Shopee feita hoje (os números de ontem
-    já chegaram) - ou às 11h, mesmo sem ela."""
+    """A partir do horário escolhido, depois de uma atualização com a Shopee feita hoje (os
+    números de ontem já chegaram) - ou às 11h (ou no horário escolhido, se for depois), mesmo sem ela."""
     local = timezone.localtime(agora)
-    if not preferencia.ativo or preferencia.ultimo_envio_dia == local.date() or local.hour < HORA_DO_ENVIO:
+    if not preferencia.ativo or preferencia.ultimo_envio_dia == local.date() or local.hour < preferencia.hora:
         return False
-    if local.hour >= HORA_LIMITE_PARA_ESPERAR:
+    if local.hour >= max(HORA_LIMITE_PARA_ESPERAR, preferencia.hora):
         return True
     estado = getattr(preferencia.conta, "sincronizacao_resultados", None)
     if not estado or not estado.concluida_em or estado.erro:
@@ -86,7 +87,7 @@ def pronto_para_enviar(preferencia, agora: datetime) -> bool:
 def enviar_pendentes(agora: datetime | None = None) -> list[str]:
     """Chamado pelo worker a cada volta. Devolve uma linha de log por envio."""
     agora = agora or timezone.now()
-    if timezone.localtime(agora).hour < HORA_DO_ENVIO:
+    if timezone.localtime(agora).hour < HORA_MAIS_CEDO:
         return []
     logs = []
     hoje = timezone.localtime(agora).date()

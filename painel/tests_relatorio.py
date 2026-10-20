@@ -45,6 +45,22 @@ class TestRelatorioDiario(TestCase):
         self.assertFalse(relatorio.pronto_para_enviar(self.preferencia, as_(9)))  # ainda sem os números de ontem
         self.assertTrue(relatorio.pronto_para_enviar(self.preferencia, as_(11)))  # 11h: vai assim mesmo
 
+    def test_horario_escolhido(self):
+        self.preferencia.hora = 18
+        self.assertFalse(relatorio.pronto_para_enviar(self.preferencia, as_(17, 59)))
+        self.assertTrue(relatorio.pronto_para_enviar(self.preferencia, as_(18)))
+        self.preferencia.save()
+        self.assertEqual(relatorio.enviar_pendentes(as_(10)), [])  # ainda não deu 18h
+        self.assertEqual(len(relatorio.enviar_pendentes(as_(18, 2))), 1)
+        # Bem cedo: espera a atualização do dia (os números de ontem), como no horário padrão.
+        self.preferencia.hora = 6
+        self.estado.concluida_em = as_(23, dia=HOJE - timedelta(days=1))
+        self.estado.save()
+        self.preferencia = RelatorioEmail.objects.select_related("conta__sincronizacao_resultados").get()
+        self.preferencia.hora, self.preferencia.ultimo_envio_dia = 6, None
+        self.assertFalse(relatorio.pronto_para_enviar(self.preferencia, as_(6, 30)))
+        self.assertTrue(relatorio.pronto_para_enviar(self.preferencia, as_(11)))
+
     def test_envia_uma_vez_por_dia_com_os_numeros(self):
         logs = relatorio.enviar_pendentes(as_(8, 10))
         self.assertEqual(len(logs), 1)
@@ -92,6 +108,11 @@ class TestTelaDoRelatorio(BasePainel):
         self.assertRedirects(resposta, "/configuracoes/#relatorio", fetch_redirect_response=False)
         preferencia = RelatorioEmail.objects.get(conta=self.conta)
         self.assertEqual((preferencia.ativo, preferencia.emails_extras), (True, "socio@exemplo.com, outro@exemplo.com"))
+        self.assertEqual(preferencia.hora, 8)  # sem escolher: o padrão
+        self.assertIn('name="hora"', self.client.get("/configuracoes/").content.decode())
+        resposta = self.client.post("/configuracoes/", {"formulario": "relatorio", "ativo": "on", "hora": "19"}, follow=True)
+        self.assertContains(resposta, "todo dia às 19:00")
+        self.assertEqual(RelatorioEmail.objects.get(conta=self.conta).hora, 19)
 
         self.client.post("/configuracoes/", {"formulario": "relatorio", "ativo": "on", "acao": "testar"})
         self.assertEqual(len(mail.outbox), 1)

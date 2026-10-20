@@ -368,7 +368,7 @@ def configuracoes(request):
                         logger.exception("Painel: falha no relatório de teste da conta %s", conta.pk)
                         messages.error(request, "Não consegui enviar o e-mail agora. Tente de novo em alguns minutos.")
             elif preferencia.ativo:
-                messages.success(request, "Pronto! O relatório chega todo dia de manhã, com os números de ontem.")
+                messages.success(request, f"Pronto! O relatório chega todo dia às {preferencia.hora:02d}:00, com os números de ontem.")
             else:
                 messages.info(request, "Relatório diário desligado.")
             return redirect(f"{request.path}#relatorio")

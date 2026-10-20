@@ -649,3 +649,4 @@ summary { cursor: pointer; }  /* "Editar", "Ver mensagem" etc. abrem ao clicar *
   .notas-etapa-topo { flex-wrap: wrap; }
   .notas-etapa-numero strong { font-size: 28px; }
 }
+#relatorio select[name="hora"] { max-width: 260px; }

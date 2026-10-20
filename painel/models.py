@@ -186,13 +186,18 @@ class RegraSubId(models.Model):
 
 class RelatorioEmail(models.Model):
     """Relatório diário por e-mail (resultados de ontem e do mês). Quem envia é o worker
-    (comando sincronizar_painel), de manhã, depois que os números de ontem chegam."""
+    (comando sincronizar_painel), no horário escolhido, depois que os números de ontem chegam."""
 
     conta = models.OneToOneField(ContaAppfiliado, on_delete=models.CASCADE, related_name="relatorio_email")
     ativo = models.BooleanField("receber o relatório diário por e-mail", default=False)
     emails_extras = models.CharField(
         "enviar também para (opcional)", max_length=300, blank=True,
         help_text="Até 3 e-mails, separados por vírgula.",
+    )
+    hora = models.PositiveSmallIntegerField(
+        "horário do envio", default=8, choices=[(h, f"{h:02d}:00") for h in range(6, 23)],
+        help_text="Horário de Brasília. Antes das 11h, o e-mail espera a primeira atualização do dia com a "
+                  "Shopee (os números de ontem chegam de madrugada).",
     )
     ultimo_envio_dia = models.DateField(null=True, blank=True)
     ultimo_erro = models.TextField(blank=True)

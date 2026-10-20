@@ -32,11 +32,12 @@
 
 <section class="card" id="relatorio" aria-labelledby="titulo-relatorio" style="margin-top:16px">
   <h2 id="titulo-relatorio">Relatório diário por e-mail</h2>
-  <p class="suave pequeno" style="margin-bottom:14px">Todo dia de manhã: comissão, faturamento e pedidos de ontem e do mês, Sub IDs, produtos mais vendidos{% if "whatsapp" in modulos_liberados %} e as ofertas que o bot enviou{% endif %}. Vai para <strong>{{ conta.email }}</strong>.</p>
+  <p class="suave pequeno" style="margin-bottom:14px">Todo dia, no horário que você escolher: comissão, faturamento e pedidos de ontem e do mês, Sub IDs, produtos mais vendidos{% if "whatsapp" in modulos_liberados %} e as ofertas que o bot enviou{% endif %}. Vai para <strong>{{ conta.email }}</strong>.</p>
   <form method="post" class="formulario">
     {% csrf_token %}
     <input type="hidden" name="formulario" value="relatorio">
     <label class="marcar">{{ form_relatorio.ativo }}<span><strong>Receber o relatório diário por e-mail</strong></span></label>
+    <div class="campo">{% include "painel/_campo.html" with campo=form_relatorio.hora %}</div>
     <div class="campo">{% include "painel/_campo.html" with campo=form_relatorio.emails_extras %}</div>
     {% if preferencia_relatorio.ultimo_erro %}<p class="aviso aviso-warning pequeno">O último envio falhou. Vamos tentar de novo amanhã.</p>
     {% elif preferencia_relatorio.ultimo_envio_dia and preferencia_relatorio.ativo %}<p class="suave pequeno">Último enviado em {{ preferencia_relatorio.ultimo_envio_dia|date:"d/m" }}.</p>{% endif %}

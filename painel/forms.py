@@ -339,8 +339,17 @@ class RelatorioEmailForm(forms.ModelForm):
         from .models import RelatorioEmail
 
         model = RelatorioEmail
-        fields = ["ativo", "emails_extras"]
+        fields = ["ativo", "hora", "emails_extras"]
         widgets = {"emails_extras": forms.TextInput(attrs={"placeholder": "socio@exemplo.com, outro@exemplo.com"})}
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.fields["hora"].required = False
+
+    def clean_hora(self):
+        # Sem o campo (página aberta antes dele existir), fica o horário que já estava.
+        hora = self.cleaned_data.get("hora")
+        return self.instance.hora if hora in (None, "") else hora
 
     def clean_emails_extras(self):
         from django.core.validators import validate_email
