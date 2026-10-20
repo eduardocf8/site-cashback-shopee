@@ -131,7 +131,7 @@ def montar(*, ambiente: str, emitida_em: datetime, serie: str, numero: int, comp
         _texto(toma, "NIF", _limpa(tomador.documento, 40))
     else:
         raise ErroDPS("Tipo de documento do tomador desconhecido.")
-    _texto(toma, "xNome", _limpa(tomador.nome, 300))
+    _texto(toma, "xNome", _limpa(tomador.nome, 150))  # 150 é o limite do leiaute novo
     if tomador.tipo == "nif":
         # Vendedor do exterior: a API exige o endereço no exterior (regra E0242). O relatório
         # da Shopee não traz o endereço separado em campos, então vai só o país, com "-" no
@@ -183,6 +183,42 @@ def montar(*, ambiente: str, emitida_em: datetime, serie: str, numero: int, comp
     tot = _grupo(trib, "totTrib")
     _texto(tot, "indTotTrib", 0)  # não informa o valor aproximado dos tributos (MEI: regra E0710)
     return raiz
+
+
+LEIAUTE_ATUAL = "atual"
+LEIAUTE_NOVO = "rtc"  # Reforma Tributária (NT 009, leiaute 1.04): já em uso no ambiente de testes
+
+
+def para_leiaute_novo(raiz: etree._Element) -> etree._Element:
+    """Converte a DPS (já validada no leiaute 1.01) para o leiaute novo da reforma (NT 009):
+    entram "finNFSe" (0 = nota regular) depois de tpEmit/cMotivoEmisTI e "indDest"
+    (0 = o destinatário é o próprio tomador) depois de "toma". O resto não muda para MEI/Simples."""
+    inf = raiz[0]
+    ancora = inf.find(f"{{{NS}}}cMotivoEmisTI")
+    if ancora is None:
+        ancora = inf.find(f"{{{NS}}}tpEmit")
+    fin = etree.Element(f"{{{NS}}}finNFSe")
+    fin.text = "0"
+    ancora.addnext(fin)
+    toma = inf.find(f"{{{NS}}}toma")
+    dest = etree.Element(f"{{{NS}}}indDest")
+    dest.text = "0"
+    (toma if toma is not None else inf.find(f"{{{NS}}}prest")).addnext(dest)
+    return raiz
+
+
+def leiaute_errado(mensagens: list[dict]) -> str:
+    """Se o governo recusou por causa do leiaute, diz qual mandar ("atual"/"rtc"); senão, "".
+    Ex. ambiente de testes hoje: E1235 "...has invalid child element 'cLocEmi'... expected: ... finNFSe"."""
+    for m in mensagens:
+        texto = m.get("descricao", "")
+        if m.get("codigo") != "E1235":
+            continue
+        if "invalid child element 'finNFSe'" in texto or "invalid child element 'indDest'" in texto:
+            return LEIAUTE_ATUAL
+        if "finNFSe" in texto or "indDest" in texto:
+            return LEIAUTE_NOVO
+    return ""
 
 
 def c14n(elemento: etree._Element) -> bytes:

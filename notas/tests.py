@@ -635,3 +635,74 @@ class TestEmailServico(TestCase):
                          agora=dt.datetime(2015, 8, 30, 12, 36, tzinfo=dt.timezone.utc))
         self.assertTrue(cab["Authorization"].endswith(
             "Signature=5d672d79c15b13162d9279b0855cfba6789a8edb4c82c400e06b5924a6f2b5d7"))
+
+
+ERRO_LEIAUTE_REAL = ("Falha no esquema XML do DF-e. The element 'infDPS' in namespace 'http://www.sped.fazenda.gov.br/nfse' "
+                     "has invalid child element 'cLocEmi' in namespace 'http://www.sped.fazenda.gov.br/nfse'. List of possible "
+                     "elements expected: 'cMotivoEmisTI, finNFSe' in namespace 'http://www.sped.fazenda.gov.br/nfse'.")
+
+
+class ClienteEmSequencia(ClienteFalso):
+    """Responde cada envio com a próxima resposta da lista."""
+
+    def __init__(self, respostas):
+        super().__init__()
+        self.respostas = list(respostas)
+
+    def emitir(self, dps_assinada):
+        self.emitidas.append(dps_assinada)
+        return self.respostas.pop(0)
+
+
+class TestLeiautes(TestCase):
+    def setUp(self):
+        cache.clear()
+        self.addCleanup(cache.clear)
+        self.empresa = criar_empresa(criar_conta())
+        certificado.guardar(self.empresa, gerar_pfx(), "senha-do-pfx")
+
+    def test_leiaute_novo_insere_os_campos_no_lugar_certo_e_assina(self):
+        cert = certificado.abrir(gerar_pfx(), "senha-do-pfx")
+        raiz = dps_exemplo()
+        dps.validar(raiz)
+        dps.para_leiaute_novo(raiz)
+        dps.assinar(raiz, cert.chave, cert.certificado)
+        nomes = [etree_local(e) for e in raiz[0]]
+        self.assertEqual(nomes[nomes.index("tpEmit") + 1], "finNFSe")
+        self.assertEqual(nomes[nomes.index("finNFSe") + 1], "cLocEmi")
+        self.assertEqual(nomes[nomes.index("toma") + 1], "indDest")
+        texto = dps.para_bytes(raiz).decode()
+        self.assertIn("<finNFSe>0</finNFSe>", texto)
+        self.assertIn("<indDest>0</indDest>", texto)
+        inf = re.search(r"<infDPS.*?</infDPS>", texto, re.S).group(0).replace("<infDPS", f'<infDPS xmlns="{dps.NS}"', 1)
+        digest = base64.b64encode(hashlib.sha256(ET.canonicalize(inf).encode()).digest()).decode()
+        self.assertIn(f"<DigestValue>{digest}</DigestValue>", texto)
+
+    def test_le_o_erro_de_leiaute_do_governo(self):
+        self.assertEqual(dps.leiaute_errado([{"codigo": "E1235", "descricao": ERRO_LEIAUTE_REAL}]), "rtc")
+        contrario = "The element 'infDPS' has invalid child element 'finNFSe'. List of possible elements expected: 'chNFSeRej, cLocEmi'."
+        self.assertEqual(dps.leiaute_errado([{"codigo": "E1235", "descricao": contrario}]), "atual")
+        self.assertEqual(dps.leiaute_errado([{"codigo": "E0041", "descricao": "Município errado"}]), "")
+
+    def test_ambiente_de_testes_ja_vai_no_leiaute_novo_e_producao_no_atual(self):
+        falso = ClienteFalso(emitir=autorizada())
+        with mock.patch.object(servicos, "ClienteSefin", falso):
+            servicos.emitir_teste(self.empresa)
+            nota = servicos.emitir_nota_shopee(self.empresa, "10,00")
+            servicos.processar(nota)
+        self.assertIn("<finNFSe>0</finNFSe>", falso.emitidas[0].decode())
+        self.assertNotIn("finNFSe", falso.emitidas[1].decode())
+
+    def test_troca_sozinho_quando_producao_mudar_de_leiaute(self):
+        nota = servicos.emitir_nota_shopee(self.empresa, "10,00")
+        falso = ClienteEmSequencia([Resposta(400, {"erros": [{"Codigo": "E1235", "Descricao": ERRO_LEIAUTE_REAL}]}), autorizada()])
+        with mock.patch.object(servicos, "ClienteSefin", falso):
+            servicos.processar(nota)
+        self.assertEqual(nota.situacao, "autorizada")
+        self.assertNotIn("finNFSe", falso.emitidas[0].decode())
+        self.assertIn("<finNFSe>0</finNFSe>", falso.emitidas[1].decode())
+        self.assertEqual(servicos.leiaute("1"), "rtc")  # as próximas já vão no novo
+
+
+def etree_local(elemento) -> str:
+    return elemento.tag.split("}")[1]
