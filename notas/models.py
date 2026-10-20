@@ -86,6 +86,22 @@ class CadastroCNPJ(models.Model):
         return f"{self.cnpj} {self.dados.get('razao_social', '')}"
 
 
+class CEPConsultado(models.Model):
+    """CEP já consultado (município pelo código do IBGE), para não consultar de novo a cada nota.
+    dados vazio = o CEP não existe."""
+
+    cep = models.CharField(max_length=8, primary_key=True)
+    dados = models.JSONField(default=dict)
+    consultado_em = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        verbose_name = "CEP consultado"
+        verbose_name_plural = "CEPs consultados"
+
+    def __str__(self):
+        return self.cep
+
+
 class LoteNotas(models.Model):
     """Um Relatório Mensal da Shopee importado: vira uma nota por linha (por loja)."""
 
@@ -152,6 +168,7 @@ class NotaFiscal(models.Model):
     tomador_nome = models.CharField(max_length=300)
     tomador_email = models.CharField(max_length=254, blank=True)
     tomador_pais = models.CharField(max_length=2, blank=True)  # ISO, só para estrangeiro
+    tomador_endereco = models.CharField(max_length=300, blank=True)  # como veio no relatório da Shopee
     valor = models.DecimalField(max_digits=15, decimal_places=2)
 
     # Série e número só são definidos na primeira tentativa de envio (sem buracos na

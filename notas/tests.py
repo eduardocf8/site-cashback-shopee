@@ -26,7 +26,7 @@ from django.test import Client, TestCase, TransactionTestCase, override_settings
 from licencas.models import ContaAppfiliado
 from painel import modulos as mod
 
-from . import certificado, dps, receita, servicos
+from . import certificado, dps, endereco, receita, servicos
 from .models import AMBIENTE_TESTE, EmpresaNotas, NotaFiscal
 from .sefin import ErroSefin, Resposta
 
@@ -35,6 +35,31 @@ SENHA = "uma-senha-boa-123"
 CNPJ = "12345678000195"
 FUSO = ZoneInfo("America/Sao_Paulo")
 _CHAVE = rsa.generate_private_key(public_exponent=65537, key_size=2048)  # uma só, para os testes serem rápidos
+
+
+CEPS_FALSOS = {
+    "08555300": {"municipio_ibge": "3539806", "uf": "SP", "cidade": "Poá", "bairro": "Jardim América",
+                 "logradouro": "Rua Quintino Bocaiúva"},
+    "37538050": {"municipio_ibge": "3159605", "uf": "MG", "cidade": "Santa Rita do Sapucaí", "bairro": "Família Andrade",
+                 "logradouro": "Rua Eliza Ribeiro da Costa"},
+    "37540000": {},  # CEP antigo, que não existe mais (o governo recusa com E0240)
+}
+
+
+def cep_falso(cep):
+    return CEPS_FALSOS.get(cep, {"municipio_ibge": "3550308", "uf": "SP", "cidade": "São Paulo", "bairro": "Centro",
+                                 "logradouro": "Rua Qualquer"})
+
+
+def setUpModule():
+    # Nenhum teste consulta CEP de verdade.
+    global _cep_sem_internet
+    _cep_sem_internet = mock.patch.object(endereco, "_consultar_cep", side_effect=cep_falso)
+    _cep_sem_internet.start()
+
+
+def tearDownModule():
+    _cep_sem_internet.stop()
 
 
 def gerar_pfx(cnpj=CNPJ, senha="senha-do-pfx", vence=None, com_san=True, chave=None) -> bytes:
@@ -798,7 +823,7 @@ class TestIBSCBS(TestCase):
                 mock.patch.object(servicos, "ClienteSefin", ClienteFalso(emitir=autorizada())):
             servicos.processar(nota)
         self.assertEqual(nota.situacao, "recusada")
-        self.assertIn("endereço completo", nota.mensagens[0]["descricao"])
+        self.assertIn("endereço válido", nota.mensagens[0]["descricao"])
         outra = lote.notas.get(loja_id="1002")
         with mock.patch.object(receita, "consultar", side_effect=receita.ReceitaFora("fora")), \
                 mock.patch.object(servicos, "ClienteSefin", ClienteFalso(emitir=autorizada())):
@@ -1032,3 +1057,131 @@ class TestEnvioSimultaneo(TransactionTestCase):
         self.assertEqual(sorted(numeros), list(range(1, 61)))
         self.assertEqual(len(enviados), 60)
         self.assertFalse(NotaFiscal.objects.exclude(email_situacao=NotaFiscal.EMAIL_ENVIADO).exists())
+
+
+ENDERECO_POA = "Rua Quintino Bocaiúva, 457,  - Jardim América, Poá - São Paulo, 08555300"
+
+
+class TestEnderecoDoRelatorio(TestCase):
+    def setUp(self):
+        cache.clear()
+        self.addCleanup(cache.clear)
+        self.empresa = criar_empresa(criar_conta())
+        certificado.guardar(self.empresa, gerar_pfx(), "senha-do-pfx")
+
+    def test_le_os_formatos_reais(self):
+        ler = endereco.ler_do_relatorio
+        self.assertEqual(ler(ENDERECO_POA), {"logradouro": "Rua Quintino Bocaiúva", "numero": "457", "complemento": "",
+                                             "bairro": "Jardim América", "cidade": "Poá", "uf": "SP", "cep": "08555300"})
+        rural = ler("A Rural, SN, Fabrica Talisma - Área Rural de Tabatinga, Tabatinga - São Paulo, 14918899")
+        self.assertEqual((rural["logradouro"], rural["numero"], rural["complemento"], rural["bairro"], rural["uf"]),
+                         ("A Rural", "SN", "Fabrica Talisma", "Área Rural de Tabatinga", "SP"))
+        casa = ler("Rio do Ouro, 217, Casa 1 - Quinta dos Açorianos, Barra Velha - Santa Catarina, 88390000")
+        self.assertEqual((casa["complemento"], casa["bairro"], casa["cidade"], casa["uf"]),
+                         ("Casa 1", "Quinta dos Açorianos", "Barra Velha", "SC"))
+        self.assertIsNone(ler("佛山市南海区大沥镇城南二路钟边铁村新区2337号自编1809之三(住所申报)"))
+        self.assertIsNone(ler("Rua A, 1 - Centro, São Paulo - SP"))  # sem CEP
+        self.assertIsNone(ler(""))
+
+    def test_municipio_pela_lista_do_ibge_e_cep_so_quando_preciso(self):
+        with mock.patch.object(endereco, "_consultar_cep") as consulta:
+            end = endereco.do_relatorio(ENDERECO_POA)
+        consulta.assert_not_called()  # a cidade está na lista: nenhuma consulta
+        self.assertEqual((end["municipio_ibge"], end["cep"], end["numero"]), ("3539806", "08555300", "457"))
+        self.assertEqual(endereco.municipio("SANTA BARBARA D OESTE", "sp"), endereco.municipio("Santa Bárbara d'Oeste", "SP"))
+        self.assertEqual(endereco.municipio("Santa Rita do Sapucaí", "MG"), "3159605")
+        # Cidade fora da lista: vai pelo CEP; CEP que não existe deixa o endereço de fora.
+        self.assertEqual(endereco.do_relatorio("Rua X, 1, - Centro, Cidade Nova Inventada - Minas Gerais, 37538050")
+                         ["municipio_ibge"], "3159605")
+        self.assertIsNone(endereco.do_relatorio("Rua X, 1, - Centro, Cidade Nova Inventada - Minas Gerais, 37540000"))
+        self.assertIsNone(endereco.do_relatorio("Rua X, 1, - Centro, Santa Rita do Sapucaí - Minas Gerais, 37540000",
+                                                conferir_cep=True))
+
+    def test_teste_com_cep_recusado_confere_o_cep_e_usa_a_receita(self):
+        nota = self._nota("2", texto="Rua X, 1, - Centro, Santa Rita do Sapucaí - Minas Gerais, 37540000")
+        e0240 = Resposta(400, {"erros": [{"Codigo": "E0240", "Descricao": "O CEP informado não existe."}]})
+        falso = ClienteEmSequencia([e0240, autorizada()])
+        novo = {**DADOS_RECEITA_LOJA, "endereco": {"municipio_ibge": "3159605", "cep": "37538050",
+                                                   "logradouro": "ELISA RIBEIRO COSTA", "numero": "148", "bairro": "X"}}
+        with mock.patch.object(receita, "consultar", return_value=novo), mock.patch.object(servicos, "ClienteSefin", falso):
+            servicos.processar(nota)
+        self.assertEqual(nota.situacao, "autorizada")
+        self.assertIn("<CEP>37540000</CEP>", falso.emitidas[0].decode())
+        self.assertIn("<CEP>37538050</CEP>", falso.emitidas[1].decode())
+
+    def _nota(self, ambiente, texto=ENDERECO_POA, **kw):
+        return servicos.criar_nota(self.empresa, ambiente=ambiente, tipo="vendedor", competencia=dt.date(2026, 10, 1),
+                                   tomador=dps.Tomador("cnpj", "52213651000163", "VICTOR CORREA SILVA"), valor=1,
+                                   tomador_endereco=texto, **kw)
+
+    def test_teste_com_ibscbs_usa_o_endereco_do_relatorio_e_nao_a_receita(self):
+        nota = self._nota("2")
+        falso = ClienteFalso(emitir=autorizada())
+        with mock.patch.object(receita, "consultar") as consulta, mock.patch.object(servicos, "ClienteSefin", falso):
+            servicos.processar(nota)
+        self.assertEqual(nota.situacao, "autorizada")
+        consulta.assert_not_called()
+        self.assertIn("<end><endNac><cMun>3539806</cMun><CEP>08555300</CEP></endNac><xLgr>Rua Quintino Bocaiúva</xLgr>"
+                      "<nro>457</nro><xBairro>Jardim América</xBairro></end>", falso.emitidas[0].decode())
+
+    def test_cep_antigo_da_receita_nao_vai_para_a_nota(self):
+        nota = self._nota("2", texto="")
+        antigo = {**DADOS_RECEITA_LOJA, "endereco": {"municipio_ibge": "3159605", "cep": "37540000",
+                                                     "logradouro": "ELISA RIBEIRO COSTA", "numero": "148", "bairro": "X"}}
+        with mock.patch.object(receita, "consultar", return_value=antigo), \
+                mock.patch.object(servicos, "ClienteSefin", ClienteFalso(emitir=autorizada())):
+            servicos.processar(nota)
+        self.assertEqual(nota.situacao, "recusada")
+        self.assertIn("endereço válido", nota.mensagens[0]["descricao"])
+
+    def test_producao_manda_o_endereco_e_se_o_governo_recusar_vai_sem(self):
+        nota = self._nota("1")
+        e0240 = Resposta(400, {"erros": [{"Codigo": "E0240", "Descricao": "O CEP informado para o endereço nacional do "
+                                                                           "tomador do serviço não existe."}]})
+        falso = ClienteEmSequencia([e0240, autorizada()])
+        with mock.patch.object(servicos, "ClienteSefin", falso):
+            servicos.processar(nota)
+        self.assertEqual(nota.situacao, "autorizada")
+        self.assertIn("<CEP>08555300</CEP>", falso.emitidas[0].decode())
+        self.assertNotIn("<end>", falso.emitidas[1].decode())
+        self.assertNotIn("<IBSCBS>", falso.emitidas[0].decode())
+
+    def test_producao_sem_conseguir_consultar_o_cep_vai_sem_endereco(self):
+        nota = self._nota("1", texto="Rua X, 1, - Centro, Cidade Nova Inventada - Minas Gerais, 37538050")
+        falso = ClienteFalso(emitir=autorizada())
+        with mock.patch.object(endereco, "_consultar_cep", side_effect=receita.ReceitaFora("fora")), \
+                mock.patch.object(servicos, "ClienteSefin", falso):
+            servicos.processar(nota)
+        self.assertEqual(nota.situacao, "autorizada")
+        self.assertNotIn("<end>", falso.emitidas[0].decode())
+
+    def test_estrangeiro_vai_como_exportacao(self):
+        raiz = dps_exemplo(tomador=dps.Tomador("nif", "92440605MACAK63G3K", "LOJA CHINESA", "a@b.cn", "CN"))
+        dps.com_campos_novos(raiz, {"IBSCBS"})
+        xml = dps.para_bytes(raiz).decode()
+        self.assertIn("<CST>410</CST><cClassTrib>410004</cClassTrib>", xml)
+
+    def test_importar_de_novo_completa_o_endereco_das_notas_ja_criadas(self):
+        linha = ("Sep 2026", "Casa Prática", "2001", "R$0,39", "52213651000163", "", "", "VICTOR CORREA SILVA",
+                 ENDERECO_POA, "BR", "", "v@ex.com")
+        lote = servicos.importar_relatorio(self.empresa, relatorio_csv([linha]), "r.csv", "2")
+        servicos.confirmar_lote(lote)
+        nota = lote.notas.get()
+        self.assertEqual(nota.tomador_endereco, " ".join(ENDERECO_POA.split()))
+        NotaFiscal.objects.filter(pk=nota.pk).update(tomador_endereco="", situacao=NotaFiscal.RECUSADA)  # nota antiga
+        servicos.importar_relatorio(self.empresa, relatorio_csv([linha]), "r.csv", "2")
+        nota.refresh_from_db()
+        self.assertEqual(nota.tomador_endereco, " ".join(ENDERECO_POA.split()))
+
+
+class TestPrioridadeDaEmissao(TestCase):
+    def test_emails_esperam_a_fila_esvaziar(self):
+        from . import fila
+
+        with mock.patch.object(fila, "emitir", return_value=0), mock.patch.object(fila, "tem_fila", return_value=True), \
+                mock.patch.object(fila, "enviar_emails") as emails:
+            fila.uma_volta()
+        emails.assert_not_called()
+        with mock.patch.object(fila, "emitir", return_value=0), mock.patch.object(fila, "tem_fila", return_value=False), \
+                mock.patch.object(fila, "enviar_emails", return_value=3) as emails:
+            self.assertIn("Notas fiscais: 3 e-mail(s) enviado(s).", fila.uma_volta())

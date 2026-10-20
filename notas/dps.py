@@ -213,6 +213,9 @@ CAMPOS_NOVOS = tuple(sorted({c for grupo in CAMPOS_POR_GRUPO.values() for c in g
 # "demais serviços, operação onerosa" (cIndOp 100301: local = domicílio do tomador).
 # O valor do imposto não vai na nota de MEI/Simples (é pago no DAS).
 IBSCBS_CST, IBSCBS_CLASSIFICACAO, IBSCBS_INDICADOR = "000", "000001", "100301"
+# Tomador no exterior: exportação de serviço, imune de IBS/CBS (LC 214/2025, art. 8º):
+# CST 410 / cClassTrib 410004 ("Exportações de bens e serviços").
+IBSCBS_CST_EXPORTACAO, IBSCBS_CLASSIFICACAO_EXPORTACAO = "410", "410004"
 REGRA_IBSCBS_OBRIGATORIO = "E0855"
 
 
@@ -256,8 +259,9 @@ def com_campos_novos(raiz: etree._Element, campos) -> etree._Element:
         trib = _grupo(_grupo(grupo, "valores"), "trib")
         if "IBSCBS.gIBSCBS" in campos:
             trib = _grupo(trib, "gIBSCBS")
-        _texto(trib, "CST", IBSCBS_CST)
-        _texto(trib, "cClassTrib", IBSCBS_CLASSIFICACAO)
+        exterior = inf.find(f"{{{NS}}}toma/{{{NS}}}NIF") is not None
+        _texto(trib, "CST", IBSCBS_CST_EXPORTACAO if exterior else IBSCBS_CST)
+        _texto(trib, "cClassTrib", IBSCBS_CLASSIFICACAO_EXPORTACAO if exterior else IBSCBS_CLASSIFICACAO)
     return raiz
 
 
