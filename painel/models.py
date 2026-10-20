@@ -195,11 +195,16 @@ class RelatorioEmail(models.Model):
         help_text="Até 3 e-mails, separados por vírgula.",
     )
     hora = models.PositiveSmallIntegerField(
-        "horário do envio", default=8, choices=[(h, f"{h:02d}:00") for h in range(6, 23)],
-        help_text="Horário de Brasília. Antes das 11h, o e-mail espera a primeira atualização do dia com a "
-                  "Shopee (os números de ontem chegam de madrugada).",
+        "horário do envio", default=8, choices=[(h, f"{h:02d}:00") for h in range(7, 23)],
+        help_text="Horário de Brasília. A Shopee costuma liberar os números de ontem entre 7h e 8h: se na hora "
+                  "eles ainda não tiverem saído, você recebe um aviso e o relatório vai assim que saírem.",
     )
     ultimo_envio_dia = models.DateField(null=True, blank=True)
+    # Os números de ontem ainda não tinham saído na Shopee: o aviso já foi neste dia e o worker
+    # tenta de novo a partir de proxima_tentativa_em.
+    aviso_dia = models.DateField(null=True, blank=True)
+    proxima_tentativa_em = models.DateTimeField(null=True, blank=True)
+    envio_agora_pedido_em = models.DateTimeField(null=True, blank=True)  # "Enviar e-mail agora"
     ultimo_erro = models.TextField(blank=True)
     atualizado_em = models.DateTimeField(auto_now=True)
 

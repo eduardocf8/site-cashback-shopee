@@ -1,0 +1,34 @@
+<!doctype html>
+<html lang="pt-BR"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width"><title>Relatório diário</title></head>
+<body style="margin:0;padding:0;background:#F6F3EA;font-family:Arial,Helvetica,sans-serif;color:#1C2B23;">
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:#F6F3EA;padding:24px 12px;">
+<tr><td align="center">
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="max-width:600px;">
+  <tr><td style="background:#1F3A2E;border-radius:14px 14px 0 0;padding:20px 24px;">
+    <table role="presentation" cellpadding="0" cellspacing="0"><tr>
+      <td style="width:36px;height:36px;background:#F2C230;border-radius:10px;text-align:center;font-weight:bold;font-size:22px;color:#1F3A2E;line-height:36px;">a</td>
+      <td style="padding-left:10px;color:#F6F3EA;"><div style="font-size:17px;font-weight:bold;">Appfiliado</div><div style="font-size:12px;color:#B9C7BE;">Para afiliados Shopee</div></td>
+    </tr></table>
+  </td></tr>
+  <tr><td style="background:#FFFFFF;padding:24px;border:1px solid #E5DFCD;border-top:none;">
+    {% if motivo == "nao_saiu" %}
+      <h1 style="margin:0 0 10px;font-size:20px;">Seus números de ontem ainda não saíram</h1>
+      <p style="margin:0 0 12px;font-size:15px;line-height:1.5;">Às {{ hora|time:"H:i" }} fomos buscar na Shopee os seus resultados de ontem ({{ ontem|date:"d/m" }}), mas eles ainda não apareceram por lá. A Shopee costuma liberar os números do dia anterior entre 7h e 8h, às vezes mais tarde.</p>
+      {% if automatico %}
+        <p style="margin:0 0 12px;font-size:15px;line-height:1.5;"><strong>Vamos continuar conferindo a cada 30 minutos e mandamos o relatório assim que os números saírem.</strong> Se não saírem até as {{ hora_de_desistir }}h (ou se ontem não teve nenhuma venda), o relatório de hoje não vai.</p>
+      {% else %}
+        <p style="margin:0 0 12px;font-size:15px;line-height:1.5;">Tente de novo daqui a pouco pelo botão "Enviar e-mail agora".</p>
+      {% endif %}
+    {% else %}
+      <h1 style="margin:0 0 10px;font-size:20px;">Não consegui buscar seus resultados</h1>
+      <p style="margin:0 0 12px;font-size:15px;line-height:1.5;">Às {{ hora|time:"H:i" }} a Shopee não respondeu quando fomos buscar os seus resultados de ontem ({{ ontem|date:"d/m" }}). Tente de novo daqui a alguns minutos pelo botão "Enviar e-mail agora".</p>
+    {% endif %}
+    <p style="margin:22px 0 0;"><a href="{{ url_resultados }}" style="display:inline-block;background:#F2C230;color:#1C2B23;text-decoration:none;font-weight:bold;padding:12px 20px;border-radius:10px;">Abrir o painel</a></p>
+  </td></tr>
+  <tr><td style="padding:16px 8px;font-size:12px;color:#5C6A61;text-align:center;">
+    Você recebe este e-mail porque ligou o relatório diário no Appfiliado. <a href="{{ url_configuracoes }}" style="color:#1F3A2E;">Desligar ou mudar os e-mails</a>.<br>
+    Appfiliado: ferramentas feitas só para afiliados da Shopee. Somos independentes, sem vínculo oficial com a Shopee.
+  </td></tr>
+</table>
+</td></tr></table>
+</body></html>

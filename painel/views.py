@@ -55,8 +55,12 @@ def _contexto(request, ativo: str, **extra) -> dict:
         "modulos_liberados": liberados,
         "url_planos": settings.APPFILIADO_URL_PLANOS,
         "icones": mod.ICONES,
+        "aviso_relatorio": relatorio.aviso_da_tela(conta) if conta and ativo in TELAS_COM_AVISO_DO_RELATORIO else None,
         **extra,
     }
+
+
+TELAS_COM_AVISO_DO_RELATORIO = {"inicio", "resultados", "configuracoes"}
 
 
 def _hoje_por_extenso() -> str:
@@ -361,12 +365,11 @@ def configuracoes(request):
                 if not conta.shopee_validado_em:
                     messages.error(request, "Conecte sua conta da Shopee para receber o relatório.")
                 else:
-                    try:
-                        relatorio.enviar(conta, telas.hoje(), preferencia.destinatarios())
-                        messages.success(request, f"Relatório de teste enviado para {', '.join(preferencia.destinatarios())}.")
-                    except Exception:  # noqa: BLE001
-                        logger.exception("Painel: falha no relatório de teste da conta %s", conta.pk)
-                        messages.error(request, "Não consegui enviar o e-mail agora. Tente de novo em alguns minutos.")
+                    # Quem manda é o worker: antes ele busca os números de ontem na Shopee (se ainda
+                    # não saíram, vai um aviso no lugar do relatório).
+                    RelatorioEmail.objects.filter(pk=preferencia.pk).update(envio_agora_pedido_em=timezone.now())
+                    messages.success(request, "Buscando os números de ontem na Shopee. O relatório chega em "
+                                              f"{', '.join(preferencia.destinatarios())} em alguns minutos.")
             elif preferencia.ativo:
                 messages.success(request, f"Pronto! O relatório chega todo dia às {preferencia.hora:02d}:00, com os números de ontem.")
             else:

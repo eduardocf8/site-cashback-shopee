@@ -43,7 +43,7 @@
     {% elif preferencia_relatorio.ultimo_envio_dia and preferencia_relatorio.ativo %}<p class="suave pequeno">Último enviado em {{ preferencia_relatorio.ultimo_envio_dia|date:"d/m" }}.</p>{% endif %}
     <div class="botoes-linha">
       <button type="submit" class="botao botao-principal">Salvar</button>
-      <button type="submit" name="acao" value="testar" class="botao botao-claro"{% if not conta.shopee_validado_em %} disabled title="Conecte sua conta da Shopee primeiro"{% endif %}>Salvar e enviar um agora</button>
+      <button type="submit" name="acao" value="testar" class="botao botao-claro"{% if not conta.shopee_validado_em %} disabled title="Conecte sua conta da Shopee primeiro"{% endif %}>Enviar e-mail agora</button>
     </div>
   </form>
 </section>

@@ -38,8 +38,12 @@
   </aside>
   <main class="conteudo">
     {% if messages %}
-      <ul class="avisos">{% for m in messages %}<li class="aviso aviso-{{ m.level_tag }}"{% if "some-ao-enviar" in m.extra_tags %} data-some-ao-enviar{% endif %}>{{ m }}</li>{% endfor %}</ul>
+      {# Avisos de "salvo" etc.: flutuam no topo da tela e somem sozinhos (painel/avisos.js). #}
+      <ul class="avisos avisos-flutuantes" role="status" aria-live="polite">{% for m in messages %}{% if "some-ao-enviar" not in m.extra_tags %}<li class="aviso aviso-{{ m.level_tag }}"><span>{{ m }}</span><button type="button" class="aviso-fechar" aria-label="Fechar aviso">×</button></li>{% endif %}{% endfor %}</ul>
+      {# Avisos que ficam na página até a coisa acontecer (ex: "a primeira oferta sai em instantes"). #}
+      <ul class="avisos">{% for m in messages %}{% if "some-ao-enviar" in m.extra_tags %}<li class="aviso aviso-{{ m.level_tag }}" data-some-ao-enviar>{{ m }}</li>{% endif %}{% endfor %}</ul>
     {% endif %}
+    {% if aviso_relatorio %}<p class="aviso aviso-warning">Seus números de ontem ({{ aviso_relatorio.ontem|date:"d/m" }}) ainda não saíram na Shopee, por isso o relatório por e-mail ainda não foi.{% if aviso_relatorio.automatico %} Estamos conferindo a cada 30 minutos: ele vai assim que os números saírem.{% endif %}</p>{% endif %}
     {% block conteudo %}{% endblock %}
     {% include "painel/_aviso_shopee.html" %}
   </main>

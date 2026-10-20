@@ -1,5 +1,6 @@
 from datetime import date, datetime, timedelta
 from decimal import Decimal
+from unittest import mock
 
 from django.core import mail
 from django.test import TestCase
@@ -7,7 +8,7 @@ from django.utils import timezone
 
 from licencas.models import ContaAppfiliado
 
-from . import relatorio
+from . import relatorio, resultados
 from .models import MetaMensal, RegraSubId, RelatorioEmail, ResultadoDiario, ResultadoSubIdDiario, SincronizacaoResultados
 from .tests import SP, BasePainel
 
@@ -34,32 +35,66 @@ class TestRelatorioDiario(TestCase):
         RegraSubId.objects.create(conta=self.conta, operador="comeca", texto="user", nome="Site")
         MetaMensal.objects.create(conta=self.conta, ano=2026, mes=10, faixas=[{"percentual": 100, "faturamento": 5000, "bonus": 100}])
         self.estado = SincronizacaoResultados.objects.create(conta=self.conta, concluida_em=as_(7, 30))
+        # Na hora do envio o app busca as vendas na Shopee: aqui, sem internet.
+        atualizar = mock.patch.object(resultados, "processar", return_value="ok")
+        self.processar = atualizar.start()
+        self.addCleanup(atualizar.stop)
 
     def test_horario_do_envio(self):
         self.assertFalse(relatorio.pronto_para_enviar(self.preferencia, as_(7, 59)))  # antes das 8h
-        self.assertTrue(relatorio.pronto_para_enviar(self.preferencia, as_(8, 5)))  # atualizou hoje às 7h30
-        self.estado.concluida_em = as_(23, dia=HOJE - timedelta(days=1))
-        self.estado.save()
-        self.preferencia.conta.refresh_from_db()
-        self.preferencia = RelatorioEmail.objects.select_related("conta__sincronizacao_resultados").get()
-        self.assertFalse(relatorio.pronto_para_enviar(self.preferencia, as_(9)))  # ainda sem os números de ontem
-        self.assertTrue(relatorio.pronto_para_enviar(self.preferencia, as_(11)))  # 11h: vai assim mesmo
-
-    def test_horario_escolhido(self):
+        self.assertTrue(relatorio.pronto_para_enviar(self.preferencia, as_(8, 5)))
         self.preferencia.hora = 18
         self.assertFalse(relatorio.pronto_para_enviar(self.preferencia, as_(17, 59)))
         self.assertTrue(relatorio.pronto_para_enviar(self.preferencia, as_(18)))
         self.preferencia.save()
         self.assertEqual(relatorio.enviar_pendentes(as_(10)), [])  # ainda não deu 18h
         self.assertEqual(len(relatorio.enviar_pendentes(as_(18, 2))), 1)
-        # Bem cedo: espera a atualização do dia (os números de ontem), como no horário padrão.
-        self.preferencia.hora = 6
-        self.estado.concluida_em = as_(23, dia=HOJE - timedelta(days=1))
-        self.estado.save()
-        self.preferencia = RelatorioEmail.objects.select_related("conta__sincronizacao_resultados").get()
-        self.preferencia.hora, self.preferencia.ultimo_envio_dia = 6, None
-        self.assertFalse(relatorio.pronto_para_enviar(self.preferencia, as_(6, 30)))
-        self.assertTrue(relatorio.pronto_para_enviar(self.preferencia, as_(11)))
+
+    def test_numeros_de_ontem_ainda_nao_sairam(self):
+        ResultadoDiario.objects.filter(dia=HOJE - timedelta(days=1)).update(pedidos=0)  # a Shopee ainda não liberou
+        logs = relatorio.enviar_pendentes(as_(8, 10))
+        self.processar.assert_called_once()  # foi buscar na Shopee na hora
+        self.assertIn("aviso enviado", logs[0])
+        self.assertEqual(len(mail.outbox), 1)
+        self.assertIn("ainda não saíram", mail.outbox[0].subject)
+        self.assertIn("a cada 30 minutos", mail.outbox[0].body)
+        self.preferencia.refresh_from_db()
+        self.assertEqual((self.preferencia.aviso_dia, self.preferencia.ultimo_envio_dia), (HOJE, None))
+        self.assertEqual(relatorio.aviso_da_tela(self.conta) is not None, False)  # o aviso da tela é do dia de hoje (real)
+        self.assertEqual(relatorio.enviar_pendentes(as_(8, 30)), [])  # espera 30 minutos para tentar de novo
+        self.assertEqual(len(relatorio.enviar_pendentes(as_(8, 41))), 1)  # ainda não saiu: sem outro aviso
+        self.assertEqual(len(mail.outbox), 1)
+        ResultadoDiario.objects.filter(dia=HOJE - timedelta(days=1)).update(pedidos=12)  # saiu
+        self.assertIn("enviado", relatorio.enviar_pendentes(as_(9, 12))[0])
+        self.assertEqual(len(mail.outbox), 2)
+        self.assertIn("seus resultados de 18/10", mail.outbox[1].subject)
+        self.preferencia.refresh_from_db()
+        self.assertEqual(self.preferencia.ultimo_envio_dia, HOJE)
+
+    def test_sem_numeros_o_dia_todo_desiste_as_23h(self):
+        ResultadoDiario.objects.filter(dia=HOJE - timedelta(days=1)).update(pedidos=0)
+        relatorio.enviar_pendentes(as_(8, 10))
+        self.assertIn("não saíram hoje", relatorio.enviar_pendentes(as_(23, 5))[0])
+        self.assertEqual(len(mail.outbox), 1)  # só o aviso
+        self.preferencia.refresh_from_db()
+        self.assertEqual(self.preferencia.ultimo_envio_dia, HOJE)
+
+    def test_shopee_fora_do_ar_tenta_de_novo_sem_avisar(self):
+        def falhou(conta):
+            SincronizacaoResultados.objects.filter(conta=conta).update(erro="fora", concluida_em=as_(8, 10))
+        self.processar.side_effect = falhou
+        self.assertIn("Shopee não respondeu", relatorio.enviar_pendentes(as_(8, 10))[0])
+        self.assertEqual(len(mail.outbox), 0)
+        self.processar.side_effect = None
+        SincronizacaoResultados.objects.filter(conta=self.conta).update(erro="")
+        self.assertEqual(len(relatorio.enviar_pendentes(as_(8, 45))), 1)
+        self.assertEqual(len(mail.outbox), 1)
+
+    def test_atualizacao_recente_nao_e_refeita(self):
+        SincronizacaoResultados.objects.filter(conta=self.conta).update(concluida_em=as_(8, 5))
+        relatorio.enviar_pendentes(as_(8, 10))
+        self.processar.assert_not_called()
+        self.assertEqual(len(mail.outbox), 1)
 
     def test_envia_uma_vez_por_dia_com_os_numeros(self):
         logs = relatorio.enviar_pendentes(as_(8, 10))
@@ -114,10 +149,28 @@ class TestTelaDoRelatorio(BasePainel):
         self.assertContains(resposta, "todo dia às 19:00")
         self.assertEqual(RelatorioEmail.objects.get(conta=self.conta).hora, 19)
 
-        self.client.post("/configuracoes/", {"formulario": "relatorio", "ativo": "on", "acao": "testar"})
+        resposta = self.client.post("/configuracoes/", {"formulario": "relatorio", "ativo": "on", "acao": "testar"}, follow=True)
+        self.assertContains(resposta, "Buscando os números de ontem na Shopee")
+        self.assertEqual(len(mail.outbox), 0)  # quem manda é o worker, depois de buscar na Shopee
+        self.assertIsNotNone(RelatorioEmail.objects.get(conta=self.conta).envio_agora_pedido_em)
+        with mock.patch.object(resultados, "processar", return_value="ok"), \
+                mock.patch.object(relatorio, "numeros_de_ontem_sairam", return_value=True):
+            relatorio.enviar_pendentes()
+            self.assertEqual(relatorio.enviar_pendentes(), [])  # o pedido é atendido uma vez só
         self.assertEqual(len(mail.outbox), 1)
         self.assertEqual(mail.outbox[0].to, ["bia@exemplo.com"])
         self.assertIsNone(RelatorioEmail.objects.get(conta=self.conta).ultimo_envio_dia)  # teste não conta como o do dia
+
+    def test_enviar_agora_sem_os_numeros_avisa_e_mostra_no_painel(self):
+        RelatorioEmail.objects.create(conta=self.conta, ativo=True, envio_agora_pedido_em=timezone.now())
+        SincronizacaoResultados.objects.create(conta=self.conta, concluida_em=timezone.now() - timedelta(hours=1))
+        with mock.patch.object(resultados, "processar", return_value="ok"):
+            relatorio.enviar_pendentes()
+        self.assertEqual(len(mail.outbox), 1)
+        self.assertIn("ainda não saíram", mail.outbox[0].subject)
+        self.assertIn("Enviar e-mail agora", mail.outbox[0].body)
+        self.assertContains(self.client.get("/"), "ainda não saíram na Shopee")
+        self.assertContains(self.client.get("/resultados/"), "ainda não saíram na Shopee")
 
     def test_emails_extras_invalidos(self):
         resposta = self.client.post("/configuracoes/", {

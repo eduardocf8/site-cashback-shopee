@@ -139,6 +139,26 @@ svg.icone { width: 18px; height: 18px; flex: none; fill: none; stroke: currentCo
 .aviso-success { background: var(--bom-suave); color: var(--bom-tinta); }
 .aviso-error { background: var(--perigo-suave); color: var(--perigo); }
 .aviso-info, .aviso-warning { background: var(--amarelo-suave); color: var(--amarelo-tinta); }
+.avisos:empty { display: none; }
+/* Flutuam no topo da tela, por cima de tudo, e acompanham a rolagem. */
+.avisos-flutuantes {
+  position: fixed; top: 16px; left: 50%; transform: translateX(-50%); z-index: 100;
+  width: min(560px, calc(100% - 32px)); pointer-events: none;
+}
+.avisos-flutuantes .aviso {
+  pointer-events: auto; display: flex; align-items: flex-start; gap: 10px;
+  border: 1px solid rgba(29, 42, 35, .08); box-shadow: 0 12px 32px -12px rgba(31, 58, 46, .45);
+  animation: aviso-entra .25s ease; transition: opacity .3s ease, transform .3s ease;
+}
+.avisos-flutuantes .aviso > span { flex: 1; min-width: 0; }
+.avisos-flutuantes .aviso.saindo { opacity: 0; transform: translateY(-10px); }
+.aviso-fechar { background: none; border: 0; padding: 0 2px; font: inherit; font-size: 20px; line-height: 1.1; color: inherit; opacity: .65; cursor: pointer; }
+.aviso-fechar:hover { opacity: 1; }
+@keyframes aviso-entra { from { opacity: 0; transform: translateY(-10px); } }
+@media (min-width: 901px) {
+  /* No computador, centralizado na área do conteúdo (ao lado do menu). */
+  .avisos-flutuantes { left: calc(50% + 142px); width: min(560px, calc(100% - 284px - 48px)); }
+}
 
 /* ---------- Passos (Início) ---------- */
 .passos { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; }
