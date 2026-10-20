@@ -613,3 +613,34 @@ summary { cursor: pointer; }  /* "Editar", "Ver mensagem" etc. abrem ao clicar *
 .notas-pausa { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 10px; margin-bottom: 16px; }
 .notas-pausa p { margin: 0; flex: 1 1 320px; }
 .notas-progresso span { transition: width .6s ease; }
+/* Andamento do lote: um cartão para as notas e outro para os e-mails. */
+.notas-andamento { display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: 16px; margin-bottom: 16px; }
+.notas-etapa { display: flex; flex-direction: column; gap: 12px; padding: 20px 22px; }
+.notas-etapa-topo { display: flex; align-items: center; gap: 12px; }
+.notas-etapa-icone { width: 40px; height: 40px; border-radius: 12px; background: var(--chip); color: var(--verde); display: grid; place-items: center; flex: none; }
+.notas-etapa-icone svg.icone { width: 20px; height: 20px; }
+.notas-etapa-nome { flex: 1; min-width: 0; }
+.notas-etapa-nome h2 { margin: 0; font-size: 16px; }
+.notas-etapa-nome p { margin: 0; font-size: 13px; color: var(--suave); }
+.notas-etapa-numero { margin: 4px 0 0; display: flex; align-items: baseline; gap: 8px; flex-wrap: wrap; }
+.notas-etapa-numero strong { font-size: 32px; line-height: 1.1; letter-spacing: -0.02em; }
+.notas-etapa-numero span { color: var(--suave); }
+.notas-etapa .notas-progresso { height: 10px; }
+.notas-etapa-fase { margin: -4px 0 0; font-size: 13px; color: var(--suave); }
+.notas-chips { list-style: none; margin: 0; padding: 0; display: flex; flex-wrap: wrap; gap: 8px; }
+.notas-chip { display: inline-flex; align-items: center; gap: 6px; padding: 5px 11px; border-radius: 999px; background: var(--chip); color: var(--texto); font-size: 13px; }
+.notas-chip svg.icone { width: 14px; height: 14px; }
+.notas-chip-bom { background: var(--bom-suave); color: var(--bom-tinta); }
+.notas-chip-ruim { background: var(--perigo-suave); color: var(--perigo); }
+.notas-chip-espera { background: var(--amarelo-suave); color: var(--amarelo-tinta); }
+.notas-chip.vazio { background: transparent; color: var(--suave); box-shadow: inset 0 0 0 1px var(--borda); }
+.notas-etapa-acao { margin-top: 2px; }
+.notas-etapa-acao .botao { display: inline-flex; align-items: center; gap: 6px; }
+.notas-etapa-dica { margin: 0; font-size: 13px; color: var(--perigo); }
+.selo-neutro { background: var(--chip); color: var(--suave); }
+@media (max-width: 600px) {
+  .notas-andamento { grid-template-columns: 1fr; }
+  .notas-etapa { padding: 18px; }
+  .notas-etapa-topo { flex-wrap: wrap; }
+  .notas-etapa-numero strong { font-size: 28px; }
+}

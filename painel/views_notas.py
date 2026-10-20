@@ -212,11 +212,17 @@ def lote(request, pk):
         notas = notas.filter(Q(tomador_nome__icontains=busca) | Q(loja_nome__icontains=busca)
                              | Q(tomador_documento__icontains=busca.replace(".", "").replace("/", "").replace("-", "")))
     pagina = Paginator(notas, 50).get_page(request.GET.get("pagina"))
+    email = servicos.andamento_emails(lote)
     return render(request, "painel/notas_lote.html", _contexto(
         request, "notas", lote=lote, empresa=lote.empresa, resumo=servicos.resumo(lote.notas.all()),
         pagina=pagina, filtro=filtro, busca=busca, falta=servicos.pronta_para_emitir(lote.empresa),
-        atualizar=lote.estado == LoteNotas.EMITINDO,
+        email=email, atualizar=_acompanhar(lote, email),
     ))
+
+
+def _acompanhar(lote, email) -> bool:
+    """A tela continua se atualizando enquanto saem notas ou e-mails."""
+    return lote.estado == LoteNotas.EMITINDO or bool(email and email["pendentes"])
 
 
 CLASSE_DA_SITUACAO = {NotaFiscal.AUTORIZADA: "selo-concluido", NotaFiscal.RECUSADA: "selo-cancelado",
@@ -247,6 +253,9 @@ def andamento(request):
                 "fila": r["por"][NotaFiscal.FILA]["qtd"] + r["por"][NotaFiscal.ENVIANDO]["qtd"],
                 "emails": r["emails"].get(NotaFiscal.EMAIL_ENVIADO, 0),
             }
+            email = servicos.andamento_emails(lote)
+            resposta["lote"]["email"] = email
+            resposta["lote"]["acompanhar"] = _acompanhar(lote, email)
     return JsonResponse(resposta)
 
 
