@@ -54,10 +54,12 @@ class SiteForm(forms.ModelForm):
             "conversor_botao": forms.TextInput(attrs={"placeholder": SiteAfiliado.BOTAO_PADRAO}),
         }
 
-    def __init__(self, *args, tem_bot=True, **kwargs):
+    def __init__(self, *args, tem_bot=True, regras=None, **kwargs):
         from bot_whatsapp.categorias import opcoes_categoria
+        from licencas import planos
 
         super().__init__(*args, **kwargs)
+        self.regras = regras or {**planos.SITE[True], "premium": True}  # o que o plano da conta libera
         self.fields["categorias"].choices = opcoes_categoria()
         self.fields["endereco"].required = True
         self.fields["vitrine_formato"].required = False
@@ -171,7 +173,9 @@ class SiteForm(forms.ModelForm):
                 self.add_error("loja", "Não achei a loja nesse link. Cole o link da página da loja na Shopee.")
             if tipo == SiteAfiliado.BUSCA_CATEGORIA and not dados.get("categorias"):
                 self.add_error("categorias", "Escolha pelo menos uma categoria.")
-        if dados.get("vitrine") == SiteAfiliado.VITRINE_MANUAL and not (dados.get("links_manuais") or "").strip():
+        if dados.get("vitrine") == SiteAfiliado.VITRINE_MANUAL and not self.regras["produtos_escolhidos"]:
+            self.add_error("vitrine", "A vitrine com os produtos que você escolher é do plano Premium.")
+        elif dados.get("vitrine") == SiteAfiliado.VITRINE_MANUAL and not (dados.get("links_manuais") or "").strip():
             self.add_error("links_manuais", "Cole pelo menos um link de produto.")
         return dados
 

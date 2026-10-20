@@ -14,7 +14,7 @@ from django.views.decorators.http import require_POST
 
 from accounts.ratelimit import _incrementar_contador, _obter_ip
 from bot_whatsapp.models import ConexaoWhatsApp
-from licencas.models import MODULO_WHATSAPP, MODULOS, ContaAppfiliado
+from licencas.models import INCLUI, MODULO_WHATSAPP, MODULOS, ContaAppfiliado
 from licencas.services import resposta_validacao
 
 from . import cripto
@@ -136,7 +136,11 @@ def inicio(request):
     conta = conta_logada(request)
     liberados = conta.modulos_liberados()
     hoje = telas.hoje()
-    inicio_mes = hoje.replace(day=1)
+    # No dia 1º o mês novo ainda não tem números (a Shopee libera o dia só no dia seguinte):
+    # a página mostra o mês que acabou de fechar. A partir do dia 2, o mês atual.
+    mes_fechado = hoje.day == 1
+    fim_mes = hoje - timedelta(days=1) if mes_fechado else hoje
+    inicio_mes = fim_mes.replace(day=1)
 
     cartoes_modulos = [
         {**item, "estado": mod.estado(item, liberados), "icone_path": mod.ICONES[item["icone"]],
@@ -163,10 +167,11 @@ def inicio(request):
         "primeiro_nome": (conta.nome or "").split(" ")[0],
         "shopee_conectada": bool(conta.shopee_validado_em),
         "sincronizacao": telas.estado_sincronizacao(conta),
-        "nome_mes": telas.nome_mes(hoje.year, hoje.month),
+        "nome_mes": telas.nome_mes(fim_mes.year, fim_mes.month),
+        "mes_fechado": mes_fechado,
     }
     if conta.shopee_validado_em:
-        mes = resultados.totais(conta, inicio_mes, hoje)
+        mes = resultados.totais(conta, inicio_mes, fim_mes)
         do_dia = resultados.totais(conta, hoje, hoje)
         ontem = hoje - timedelta(days=1)
         contexto.update({
@@ -174,7 +179,7 @@ def inicio(request):
             "do_dia": do_dia,
             "ontem": ontem,
             "do_ontem": resultados.totais(conta, ontem, ontem),
-            "meta": telas.situacao_meta(conta, hoje.year, hoje.month, hoje),
+            "meta": telas.situacao_meta(conta, fim_mes.year, fim_mes.month, hoje),
         })
     return render(request, "painel/inicio.html", _contexto(request, "inicio", **contexto))
 
@@ -335,7 +340,9 @@ def plano(request):
     conta = conta_logada(request)
     liberados = conta.modulos_liberados()
     hoje = timezone.localdate()
-    cortesia = conta.cortesia_vigente(hoje)
+    cortesia = set(conta.cortesia_vigente(hoje))
+    for codigo in list(cortesia):
+        cortesia.update(INCLUI.get(codigo, []))  # o básico que vem junto com o premium da cortesia
     linhas_modulos = []
     for codigo, nome in MODULOS:
         if codigo in liberados:

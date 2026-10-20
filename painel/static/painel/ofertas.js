@@ -50,6 +50,21 @@
     function contar() {
       if (!contador) return;
       var marcados = lista.querySelectorAll('input[type="checkbox"]:checked').length;
+      var maximo = parseInt(busca.dataset.maximo, 10);
+      if (maximo) {
+        // Limite do plano: com o máximo marcado, os outros ficam travados até desmarcar algum.
+        var cheio = marcados >= maximo;
+        contador.textContent = marcados + " de " + maximo + " selecionados" + (cheio ? " · limite do plano" : "");
+        lista.querySelectorAll('input[type="checkbox"]').forEach(function (caixa) {
+          caixa.disabled = !caixa.checked && cheio;
+          var linha = caixa.closest(".linha-grupo");
+          if (linha) {
+            linha.classList.toggle("travada", caixa.disabled);
+            linha.title = caixa.disabled ? "Seu plano permite até " + maximo + " grupos e canais. Desmarque um para escolher outro." : "";
+          }
+        });
+        return;
+      }
       contador.textContent = marcados ? marcados + " selecionado" + (marcados > 1 ? "s" : "") : "";
     }
     busca.addEventListener("input", function () {

@@ -282,7 +282,7 @@ tr:last-child td { border-bottom: none; }
 /* Início: os números do topo são do mês atual - o título diz isso. */
 .kpis-do-mes { display: flex; flex-direction: column; gap: 10px; }
 .kpis-topo { display: flex; align-items: baseline; justify-content: space-between; flex-wrap: wrap; gap: 4px 12px; }
-.kpis-topo h2 { margin: 0; font-size: 18px; display: flex; align-items: center; gap: 8px; }
+.kpis-topo h2 { margin: 0; font-size: 18px; display: flex; align-items: center; flex-wrap: wrap; gap: 8px; }
 .selo-mes { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: .04em; padding: 3px 9px; border-radius: 999px; background: var(--verde); color: var(--menu-texto); }
 .kpi { display: flex; flex-direction: column; gap: 4px; }
 .kpi-titulo { color: var(--suave); font-size: 13px; }
@@ -425,6 +425,17 @@ form.form-regra > .erros-form { grid-column: 1 / -1; }
 .chip-opcao span { display: inline-flex; align-items: center; min-height: 36px; padding: 0 14px; border-radius: 999px; border: 1px solid var(--borda); background: var(--card); font-size: 14px; }
 .chip-opcao input:checked + span { background: var(--verde); border-color: var(--verde); color: #fff; }
 .chip-opcao input:focus-visible + span { outline: 2px solid var(--amarelo); outline-offset: 2px; }
+.chip-opcao input:disabled { cursor: not-allowed; }
+.chip-opcao input:disabled + span { opacity: .6; }
+.opcao-premium input:disabled + span { opacity: .6; }
+.opcao-premium input:disabled { cursor: not-allowed; }
+.marcar.opcao-premium > span { flex-direction: row; align-items: center; flex-wrap: wrap; }
+.marcar.opcao-premium .selo-premium { margin-left: 0; }
+.botao:disabled { opacity: .5; cursor: not-allowed; }
+.chip-opcao .selo-premium, .opcao-premium .selo-premium { margin-left: 6px; padding: 1px 7px; border-radius: 999px; background: var(--amarelo); color: #3a2a00; font-size: 11px; font-weight: 700; }
+.linha-grupo.travada label, .linha-grupo.travada input[type="text"] { opacity: .45; }
+.linha-grupo.travada label, .linha-grupo.travada input { cursor: not-allowed; }
+.plano-bot { margin: 0 0 -4px; }
 .lista-grupos { display: flex; flex-direction: column; gap: 2px; max-height: 320px; overflow-y: auto; border: 1px solid var(--borda); border-radius: 10px; padding: 6px 10px; }
 .lista-grupos label { display: flex; align-items: center; gap: 10px; padding: 7px 0; font-size: 14px; font-weight: 500; cursor: pointer; }
 .lista-grupos input[type="checkbox"] { width: 18px; height: 18px; min-height: 0; padding: 0; flex: none; accent-color: var(--verde); }
@@ -646,6 +657,9 @@ summary { cursor: pointer; }  /* "Editar", "Ver mensagem" etc. abrem ao clicar *
 .notas-numeros strong { font-size: 22px; letter-spacing: -0.01em; }
 .notas-progresso { height: 8px; border-radius: 999px; background: var(--trilho); overflow: hidden; }
 .notas-progresso span { display: block; height: 100%; background: var(--bom); border-radius: 999px; }
+.notas-progresso-cheio span { background: var(--amarelo); }
+.notas-plano { display: flex; flex-direction: column; gap: 8px; }
+.notas-plano p { margin: 0; }
 .notas-sub { display: block; margin-top: 2px; overflow-wrap: anywhere; }
 .notas-ignoradas summary { cursor: pointer; }
 .notas-ignoradas[open] summary { margin-bottom: 8px; }
@@ -736,3 +750,4 @@ summary { cursor: pointer; }  /* "Editar", "Ver mensagem" etc. abrem ao clicar *
   .lista-produtos-vitrine li { grid-template-columns: 40px minmax(0, 1fr); }
   .lista-produtos-vitrine select { grid-column: 1 / -1; }
 }
+.selo-mes-fechado { background: var(--chip); color: var(--texto); }

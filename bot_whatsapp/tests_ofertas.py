@@ -113,7 +113,7 @@ def link_falso(app_id, secret, url, sub_ids):
 class TestMotor(TestCase):
     def setUp(self):
         self.conta = ContaAppfiliado.objects.create(
-            email="bia@exemplo.com", modulos_cortesia="whatsapp", shopee_app_id="123",
+            email="bia@exemplo.com", modulos_cortesia="whatsapp_premium", shopee_app_id="123",
             shopee_secret_cifrado=cripto.cifrar("s"), shopee_validado_em=timezone.now(),
         )
         ConexaoWhatsApp.objects.create(conta=self.conta, estado="conectado", grupos=GRUPOS)
@@ -263,6 +263,7 @@ class TestTelaDeOfertas(BasePainel):
         super().setUp()
         self.entrar()
         self.conta.shopee_validado_em = timezone.now()
+        self.conta.modulos_cortesia = "whatsapp_premium"  # os limites do Standard têm testes próprios
         self.conta.save()
         ConexaoWhatsApp.objects.create(conta=self.conta, estado="conectado", grupos=GRUPOS + [
             {"jid": "77@newsletter", "nome": "Canal da Bia", "tipo": "canal"},
@@ -340,15 +341,15 @@ class TestTelaDeOfertas(BasePainel):
 
     def test_mudar_o_intervalo_recalcula_a_proxima_oferta(self):
         self.client.post("/whatsapp/ofertas/", self.dados(intervalo_minutos="10"))
-        ultima = timezone.now() - timedelta(minutes=1)
+        ultima = timezone.now() - timedelta(minutes=4)
         ConfiguracaoOfertas.objects.filter(conta=self.conta).update(
             ativo=True, ultimo_envio_em=ultima, proximo_envio_em=ultima + timedelta(minutes=10),
         )
-        self.client.post("/whatsapp/ofertas/", self.dados(intervalo_minutos="3"))
+        self.client.post("/whatsapp/ofertas/", self.dados(intervalo_minutos="5"))
         config = ConfiguracaoOfertas.objects.get(conta=self.conta)
-        self.assertEqual(config.proximo_envio_em, ultima + timedelta(minutes=3))
+        self.assertEqual(config.proximo_envio_em, ultima + timedelta(minutes=5))
 
-        self.client.post("/whatsapp/ofertas/", self.dados(intervalo_minutos="1"))  # já passou: sai agora
+        self.client.post("/whatsapp/ofertas/", self.dados(intervalo_minutos="3"))  # já passou: sai agora
         config.refresh_from_db()
         self.assertLessEqual(abs((config.proximo_envio_em - timezone.now()).total_seconds()), 5)
 
@@ -401,3 +402,127 @@ class TestTelaDeOfertas(BasePainel):
         self.client.post("/whatsapp/ofertas/ligar/")
         self.assertFalse(ConfiguracaoOfertas.objects.filter(ativo=True).exists())
 
+
+
+CINCO_GRUPOS = [{"jid": f"{i}@g.us", "nome": f"Grupo {i}"} for i in range(1, 6)]
+
+
+@mock.patch.object(shopee_ofertas, "gerar_link_afiliado", side_effect=link_falso)
+class TestMotorNoPlanoStandard(TestCase):
+    """Standard: até 3 grupos, 30 ofertas por grupo por dia, intervalo de 15 min no mínimo,
+    sem copiar ofertas e sem IA."""
+
+    def setUp(self):
+        self.conta = ContaAppfiliado.objects.create(
+            email="bia@exemplo.com", modulos_cortesia="whatsapp", shopee_app_id="123",
+            shopee_secret_cifrado=cripto.cifrar("s"), shopee_validado_em=timezone.now(),
+        )
+        ConexaoWhatsApp.objects.create(conta=self.conta, estado="conectado", grupos=CINCO_GRUPOS)
+        self.config = ConfiguracaoOfertas.objects.create(
+            conta=self.conta, ativo=True, grupos=CINCO_GRUPOS, intervalo_minutos=5, sub_ids="grupos",
+        )
+        self.motor = ofertas.Motor()
+
+    def rodar(self, produtos, agora=AGORA):
+        with mock.patch.object(shopee_ofertas, "buscar_produtos", return_value=(list(produtos), False)):
+            self.motor.uma_volta(agora)
+        self.config.refresh_from_db()
+
+    def enviados_hoje(self, destino, quantos):
+        for i in range(quantos):
+            envio = EnvioWhatsApp.objects.create(conta=self.conta, destino=destino, origem="oferta",
+                                                 item_id=f"velho{i}", estado="enviado")
+            EnvioWhatsApp.objects.filter(pk=envio.pk).update(criado_em=AGORA - timedelta(hours=1))
+
+    def test_so_os_3_primeiros_grupos_e_intervalo_minimo(self, _link):
+        self.rodar([produto(1)])
+        destinos = list(EnvioWhatsApp.objects.order_by("id").values_list("destino", flat=True))
+        self.assertEqual(destinos, ["1@g.us", "2@g.us", "3@g.us"])
+        self.assertEqual(self.config.proximo_envio_em, AGORA + timedelta(minutes=15))  # pediu 5, o plano é 15
+
+    def test_premium_vai_para_os_5_grupos_e_respeita_o_intervalo_escolhido(self, _link):
+        self.conta.modulos_cortesia = "whatsapp_premium"
+        self.conta.save()
+        self.rodar([produto(1)])
+        self.assertEqual(EnvioWhatsApp.objects.count(), 5)
+        self.assertEqual(self.config.proximo_envio_em, AGORA + timedelta(minutes=5))
+
+    def test_limite_de_ofertas_por_grupo_no_dia(self, _link):
+        self.enviados_hoje("1@g.us", 30)
+        self.rodar([produto(1)])
+        novos = set(EnvioWhatsApp.objects.filter(item_id="1").values_list("destino", flat=True))
+        self.assertEqual(novos, {"2@g.us", "3@g.us"})  # o grupo 1 já recebeu as 30 de hoje
+
+        self.enviados_hoje("2@g.us", 30)
+        self.enviados_hoje("3@g.us", 30)
+        self.config.proximo_envio_em = None
+        self.config.save()
+        self.rodar([produto(2)])
+        self.assertFalse(EnvioWhatsApp.objects.filter(item_id="2").exists())
+        self.assertIn("30 ofertas de hoje", self.config.situacao)
+
+    def test_copiar_ofertas_e_do_premium(self, _link):
+        self.config.modo = ConfiguracaoOfertas.MODO_COPIAR
+        self.config.origens = [{"jid": "9@g.us", "nome": "Origem"}]
+        self.config.save()
+        self.rodar([])
+        self.assertIn("plano Premium", self.config.situacao)
+
+    def test_ia_nao_revisa_no_standard(self, _link):
+        self.config.ia_ativa = True
+        with mock.patch.object(ofertas.ia, "revisar") as revisar:
+            texto, revisado = ofertas.revisar_com_ia(self.config, "texto original", AGORA)
+        revisar.assert_not_called()
+        self.assertEqual((texto, revisado), ("texto original", False))
+
+
+class TestTelaNoPlanoStandard(BasePainel):
+    def setUp(self):
+        super().setUp()
+        self.entrar()
+        self.conta.shopee_validado_em = timezone.now()
+        self.conta.save()  # BasePainel: só "whatsapp" (Standard)
+        ConexaoWhatsApp.objects.create(conta=self.conta, estado="conectado", grupos=CINCO_GRUPOS)
+
+    def dados(self, **extra):
+        base = {
+            "modo": "shopee", "tipo_busca": "geral", "ordenacao": "mais_vendidos", "grupos": ["1@g.us"],
+            "intervalo_minutos": "15", "horario_inicio": "08:00", "horario_fim": "22:00",
+            "dias_semana": ["0", "1", "2", "3", "4"], "repetir_apos_dias": "7",
+        }
+        base.update(extra)
+        return base
+
+    def test_tela_mostra_o_que_o_plano_libera(self):
+        html = self.client.get("/whatsapp/ofertas/").content.decode()
+        self.assertIn("No seu plano: até 3 grupos e canais, 30 ofertas por dia em cada um", html)
+        self.assertIn('data-maximo="3"', html)
+        self.assertRegex(html, r'value="copiar" disabled><span>Copiar de grupos e canais <small class="selo-premium">Premium')
+        self.assertIn("A revisão com IA é do", html)
+
+        self.conta.modulos_cortesia = "whatsapp_premium"
+        self.conta.save()
+        html = self.client.get("/whatsapp/ofertas/").content.decode()
+        self.assertNotIn("No seu plano:", html)
+        self.assertIn('data-maximo="20"', html)
+        self.assertNotIn('class="selo-premium"', html)
+
+    def test_validacoes_do_plano(self):
+        resposta = self.client.post("/whatsapp/ofertas/", self.dados(
+            grupos=["1@g.us", "2@g.us", "3@g.us", "4@g.us"], intervalo_minutos="5"))
+        html = resposta.content.decode()
+        self.assertIn("até 3 grupos e canais.", html)
+        self.assertIn("o intervalo mínimo é de 15 minutos", html)
+
+        resposta = self.client.post("/whatsapp/ofertas/", self.dados(modo="copiar", origens=["5@g.us"], intervalo_minutos="0"))
+        self.assertContains(resposta, "Copiar ofertas de outros grupos e canais é do plano Premium.")
+        self.assertFalse(ConfiguracaoOfertas.objects.filter(conta=self.conta, modo="copiar").exists())
+
+        resposta = self.client.post("/whatsapp/ofertas/", self.dados(grupos=["1@g.us", "2@g.us", "3@g.us"], ia_ativa="on"))
+        self.assertRedirects(resposta, "/whatsapp/ofertas/", fetch_redirect_response=False)
+        config = ConfiguracaoOfertas.objects.get(conta=self.conta)
+        self.assertEqual((len(config.grupos), config.intervalo_minutos, config.ia_ativa), (3, 15, False))
+
+    def test_grupos_salvos_alem_do_plano_aparecem_avisados(self):
+        ConfiguracaoOfertas.objects.create(conta=self.conta, grupos=CINCO_GRUPOS)
+        self.assertContains(self.client.get("/whatsapp/ofertas/"), "os 2 últimos da lista não recebem ofertas")

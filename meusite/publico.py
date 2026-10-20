@@ -12,7 +12,8 @@ from django.views.decorators.cache import cache_control
 from django.views.decorators.clickjacking import xframe_options_sameorigin
 
 from bot_whatsapp import copia, shopee_ofertas
-from licencas.models import MODULO_SITE, MODULO_SITE_SEM_MARCA
+from licencas import planos
+from licencas.models import MODULO_SITE
 
 from . import vitrine
 from .models import REDES, BotaoSite, CliqueSite, ProdutoSite, SiteAfiliado
@@ -54,6 +55,8 @@ def contar(site, tipo, alvo_id=0, alvo_nome=""):
 def produtos_da_vitrine(site):
     if site.vitrine == SiteAfiliado.VITRINE_NENHUMA:
         return ProdutoSite.objects.none()
+    if site.vitrine == SiteAfiliado.VITRINE_MANUAL and not planos.site_premium(site.conta):
+        return ProdutoSite.objects.none()  # produtos escolhidos são do Premium (ex: o plano mudou)
     return site.produtos.filter(fonte=site.vitrine)[: vitrine.LIMITE]
 
 
@@ -64,6 +67,7 @@ def pagina(request, endereco=None):
     if not previa:
         contar(site, CliqueSite.VISITA)
     produtos = list(produtos_da_vitrine(site))
+    regras = planos.site(site.conta)
     categorias = []
     for p in produtos:
         if p.categoria and p.categoria not in categorias:
@@ -71,12 +75,12 @@ def pagina(request, endereco=None):
     return render(request, "meusite/publico.html", {
         "site": site,
         "base": base_do_site(request, site),
-        "botoes": site.botoes.all(),
+        "botoes": site.botoes.all()[: regras["botoes"]],  # se o plano diminuiu, aparecem os primeiros
         "redes": site.lista_de_redes(),
         "produtos": produtos,
         "categorias": [(c, vitrine.nome_curto_da_categoria(c)) for c in categorias],
         "atualizado_em": max((p.posicao_em for p in produtos), default=None),
-        "com_marca": MODULO_SITE_SEM_MARCA not in site.conta.modulos_liberados(),
+        "com_marca": not regras["premium"],
         "erro": request.GET.get("erro", ""),
         "previa": previa,
         # Na prévia do editor vão todos os ícones (escondidos os não preenchidos): o editor mostra

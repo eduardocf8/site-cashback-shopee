@@ -93,8 +93,8 @@ class TestVitrineDoWorker(TestCase):
         self.assertEqual(list(site.produtos.values_list("item_id", flat=True)), ["3"])
 
     def test_manual_na_ordem_e_avisa_o_que_nao_achou(self):
-        conta, site = conta_com_site(vitrine=SiteAfiliado.VITRINE_MANUAL, pedido_vitrine_em=timezone.now(),
-                                     links_manuais="https://shopee.com.br/a-i.1.11\nhttps://shopee.com.br/b-i.1.22\nhttps://amazon.com/x")
+        conta, site = conta_com_site(modulos="site,site_sem_marca,whatsapp", vitrine=SiteAfiliado.VITRINE_MANUAL,
+                                     pedido_vitrine_em=timezone.now(), links_manuais="https://shopee.com.br/a-i.1.11\nhttps://shopee.com.br/b-i.1.22\nhttps://amazon.com/x")
         achados = {"11": produto(11), "22": produto(22)}
         with mock.patch("bot_whatsapp.copia.identificar_produto", side_effect=lambda l: l.rsplit(".", 1)[-1] if "shopee" in l else ""), \
                 mock.patch.object(shopee_ofertas, "buscar_produto_por_item", side_effect=lambda a, s, i: achados.get(i)), \
@@ -440,3 +440,74 @@ class TestCores(TestCase):
         self.assertLessEqual(cores.luminancia(cores.para_texto("#F2B705")), 0.3)  # preço legível no branco
         self.assertEqual(cores.para_texto("#1F3A2E"), "#1F3A2E")
         self.assertEqual(cores.tema("nada")["cor"], "#E8541E")
+
+
+class TestLimitesDoPlano(BasePainel):
+    """Standard: até 3 botões e vitrine do bot ou da busca. Premium (site_sem_marca): até 10
+    botões, vitrine com os produtos escolhidos e sem a marca."""
+
+    def setUp(self):
+        super().setUp()
+        self.conta.modulos_cortesia = "site,whatsapp"
+        self.conta.shopee_validado_em = timezone.now()
+        self.conta.save()
+        self.entrar()
+        self.client.get("/meu-site/")
+        self.site = SiteAfiliado.objects.get(conta=self.conta)
+
+    def novo_botao(self, texto):
+        return self.client.post("/meu-site/", {"acao": "botao_novo", "texto": texto, "url": f"https://x.com/{texto}"}, follow=True)
+
+    def test_botoes_por_plano(self):
+        for i in range(3):
+            self.novo_botao(f"b{i}")
+        resposta = self.novo_botao("quarto")
+        self.assertContains(resposta, "No seu plano dá para ter até 3 botões. No plano Premium são até 10.")
+        self.assertEqual(self.site.botoes.count(), 3)
+        self.assertContains(resposta, "3 de 3")
+
+        self.conta.modulos_cortesia = "site,site_sem_marca"
+        self.conta.save()
+        for i in range(3, 12):
+            self.novo_botao(f"b{i}")
+        self.assertEqual(self.site.botoes.count(), 10)
+
+        # Voltou para o Standard: o site mostra só os 3 primeiros e o editor avisa.
+        self.conta.modulos_cortesia = "site"
+        self.conta.save()
+        self.site.publicado = True
+        self.site.save()
+        html = self.client.get("/s/biasouza/").content.decode()
+        self.assertIn(">b2</a>", html)
+        self.assertNotIn(">b3</a>", html)
+        self.assertContains(self.client.get("/meu-site/"), "os de baixo ficam escondidos")
+
+    def test_produtos_escolhidos_so_no_premium(self):
+        html = self.client.get("/meu-site/").content.decode()
+        self.assertRegex(html, r'value="manual" disabled><span>Produtos que eu escolher <small class="selo-premium">Premium')
+        dados = {"acao": "salvar", "endereco": "biasouza", "nome": "Bia", "cor": "#2F6FDE", "sub_id": "site",
+                 "vitrine": "manual", "links_manuais": "https://shopee.com.br/a-i.1.11", "ordenacao": "mais_vendidos",
+                 "busca_tipo": "geral"}
+        resposta = self.client.post("/meu-site/", dados)
+        self.assertContains(resposta, "A vitrine com os produtos que você escolher é do plano Premium.")
+        self.site.refresh_from_db()
+        self.assertNotEqual(self.site.vitrine, "manual")
+
+        self.conta.modulos_cortesia = "site,site_sem_marca"
+        self.conta.save()
+        self.assertNotContains(self.client.get("/meu-site/"), 'class="selo-premium"')
+        resposta = self.client.post("/meu-site/", dados)
+        self.assertRedirects(resposta, "/meu-site/", fetch_redirect_response=False)
+        self.site.refresh_from_db()
+        self.assertEqual(self.site.vitrine, "manual")
+
+    def test_vitrine_manual_sem_premium_fica_vazia_e_o_worker_avisa(self):
+        self.site.vitrine, self.site.publicado = SiteAfiliado.VITRINE_MANUAL, True
+        self.site.links_manuais, self.site.pedido_vitrine_em = "https://shopee.com.br/a-i.1.11", timezone.now()
+        self.site.save()
+        ProdutoSite.objects.create(site=self.site, fonte="manual", item_id="11", nome="Produto escolhido",
+                                   link_produto="https://shopee.com.br/a-i.1.11", posicao_em=timezone.now())
+        vitrine.uma_volta()
+        self.site.refresh_from_db()
+        self.assertIn("plano Premium", self.site.vitrine_erro)
+        self.assertNotContains(self.client.get("/s/biasouza/"), "Produto escolhido")

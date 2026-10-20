@@ -55,6 +55,7 @@
 
     <section class="card" id="botoes" aria-labelledby="titulo-botoes">
       <div class="card-topo"><h2 id="titulo-botoes">Botões</h2><span class="suave pequeno">{{ botoes|length }} de {{ maximo_botoes }}</span></div>
+      {% if botoes|length > maximo_botoes %}<p class="aviso aviso-warning pequeno">Seu plano mostra até {{ maximo_botoes }} botões no site: os de baixo ficam escondidos. Apague alguns ou passe para o <a href="{{ url_planos }}" target="_blank" rel="noopener">plano Premium</a>.</p>{% endif %}
       {% if botoes %}
         <ul class="lista-botoes">
           {% for b in botoes %}
@@ -79,6 +80,9 @@
       {% else %}
         <p class="suave pequeno">Coloque aqui o link do seu grupo de ofertas, canal, Instagram, cupons...</p>
       {% endif %}
+      {% if botoes|length >= maximo_botoes and not regras.premium %}
+        <p class="suave pequeno">No seu plano são até {{ maximo_botoes }} botões. No <a href="{{ url_planos }}" target="_blank" rel="noopener">plano Premium</a> são até 10.</p>
+      {% endif %}
       {% if botoes|length < maximo_botoes %}
         <details class="novo-botao"{% if not botoes %} open{% endif %}><summary class="botao botao-claro botao-pequeno">+ Adicionar botão</summary><div class="corpo-botao">
           <div class="campo"><label for="novo-texto">Texto do botão</label><input id="novo-texto" name="texto" maxlength="80" placeholder="💬 Entrar no grupo de ofertas" form="botao-novo" data-botao-texto="novo" data-emoji></div>
@@ -102,7 +106,9 @@
       <h2 id="titulo-vitrine">Vitrine de ofertas</h2>
       <fieldset class="campo" id="fonte-vitrine">
         <legend>{{ form.vitrine.label }}</legend>
-        {% for opcao in form.vitrine %}<label class="marcar">{{ opcao.tag }}<span>{{ opcao.choice_label }}</span></label>{% endfor %}
+        {% for opcao in form.vitrine %}{% if opcao.data.value == "manual" and not regras.produtos_escolhidos %}<label class="marcar opcao-premium"><input type="radio" name="{{ opcao.data.name }}" value="manual"{% if opcao.data.selected %} checked{% else %} disabled{% endif %}><span>{{ opcao.choice_label }} <small class="selo-premium">Premium</small></span></label>{% else %}<label class="marcar">{{ opcao.tag }}<span>{{ opcao.choice_label }}</span></label>{% endif %}{% endfor %}
+        {% for e in form.vitrine.errors %}<span class="erro">{{ e }}</span>{% endfor %}
+        {% if not regras.produtos_escolhidos %}<span class="ajuda">Escolher os produtos um a um é do <a href="{{ url_planos }}" target="_blank" rel="noopener">plano Premium</a>.</span>{% endif %}
       </fieldset>
       <fieldset class="campo" id="formato-vitrine" style="margin:12px 0 20px" data-sem-vitrine-esconde>
         <legend>{{ form.vitrine_formato.label }}</legend>
@@ -165,7 +171,7 @@
         <h3 class="pequeno" style="margin:14px 0 6px">Produtos mais clicados</h3>
         <ol class="top-produtos">{% for p in cliques.top_produtos %}<li><span>{{ p.alvo_nome|truncatechars:50 }}</span><strong>{{ p.soma }}</strong></li>{% endfor %}</ol>
       {% endif %}
-      {% if not sem_marca %}<p class="suave pequeno" style="margin-top:12px">O rodapé do site mostra "Feito com Appfiliado". Para tirar, contrate o adicional <strong>Meu site sem a marca</strong> em <a href="{% url 'painel_plano' %}">Seu plano</a>.</p>{% endif %}
+      {% if not sem_marca %}<p class="suave pequeno" style="margin-top:12px">O rodapé do site mostra "Feito com Appfiliado". No <a href="{{ url_planos }}" target="_blank" rel="noopener">plano Premium</a> do Meu site ele sai, e você ganha até 10 botões e a vitrine com os produtos que escolher.</p>{% endif %}
     </section>
     <section class="card previa-site" aria-labelledby="titulo-previa">
       <div class="card-topo"><h2 id="titulo-previa">Prévia</h2><span class="suave pequeno">{% if site.publicado %}No ar{% else %}Fora do ar{% endif %}</span></div>

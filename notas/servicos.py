@@ -42,6 +42,48 @@ class ErroNotas(ValueError):
     pass
 
 
+# ---------- Plano: notas de verdade por mês ----------
+
+# Notas que ocupam o plano: as que foram para a fila, saíram ou podem ter saído. Prévias,
+# recusadas e canceladas não contam (a recusada volta a contar se for reenviada).
+SITUACOES_QUE_CONTAM = [NotaFiscal.FILA, NotaFiscal.ENVIANDO, NotaFiscal.AUTORIZADA, NotaFiscal.ERRO]
+MESES = ["janeiro", "fevereiro", "março", "abril", "maio", "junho", "julho", "agosto", "setembro", "outubro",
+         "novembro", "dezembro"]
+
+
+def uso_do_plano(empresa, hoje=None) -> dict:
+    """Notas de verdade (ambiente de produção) com competência no mês atual e o limite do plano.
+    As do ambiente de testes não contam."""
+    from licencas import planos
+
+    hoje = hoje or timezone.localdate()
+    usadas = NotaFiscal.objects.filter(
+        empresa=empresa, ambiente=AMBIENTE_PRODUCAO, situacao__in=SITUACOES_QUE_CONTAM,
+        competencia__year=hoje.year, competencia__month=hoje.month,
+    ).count()
+    limite = planos.notas_por_mes(empresa.conta)
+    restam = None if limite is None else max(0, limite - usadas)
+    return {"limite": limite, "usadas": usadas, "restam": restam, "mes": MESES[hoje.month - 1],
+            "progresso": 0 if not limite else min(100, round(usadas * 100 / limite))}
+
+
+def conferir_plano(empresa, quantas: int, ambiente: str):
+    """Barra antes de mandar notas de verdade além do que o plano ainda tem no mês.
+    Tudo ou nada: nunca emite só uma parte do lote."""
+    if ambiente != AMBIENTE_PRODUCAO or quantas <= 0:
+        return
+    uso = uso_do_plano(empresa)
+    if uso["restam"] is None or quantas <= uso["restam"]:
+        return
+    if quantas == 1:
+        pedido = "Esta nota passaria do limite."
+    else:
+        pedido = f"Para enviar estas {quantas} notas, faltam {quantas - uso['restam']}."
+    raise ErroNotas(
+        f"Seu plano emite até {uso['limite']} notas por mês e restam {uso['restam']} em {uso['mes']}. {pedido} "
+        "Nenhuma nota foi enviada. Passe para um plano maior em Seu plano para emitir todas.")
+
+
 def empresa_da_conta(conta):
     return EmpresaNotas.objects.filter(conta=conta).order_by("criada_em").first()
 
@@ -405,6 +447,7 @@ def emitir_nota_shopee(empresa, valor_digitado: str, ambiente=AMBIENTE_PRODUCAO)
     valor = ler_valor(valor_digitado)
     if valor is None or valor <= 0 or valor > VALOR_MAXIMO:
         raise ErroNotas("Digite o valor da comissão da Shopee (ex: 11.712,09).")
+    conferir_plano(empresa, 1, ambiente)
     return criar_nota(empresa, ambiente=ambiente, tipo=NotaFiscal.TIPO_SHOPEE, competencia=timezone.localdate(),
                       tomador=SHOPEE, valor=valor)
 
@@ -504,6 +547,7 @@ def confirmar_lote(lote) -> int:
         raise ErroNotas("Antes de emitir, falta: " + " e ".join(falta) + ".")
     if lote.estado != LoteNotas.PREVIA:
         return 0
+    conferir_plano(lote.empresa, lote.notas.filter(situacao=NotaFiscal.PREVIA).count(), lote.ambiente)
     hoje = timezone.localdate()
     envia_email = lote.ambiente == AMBIENTE_PRODUCAO
     with transaction.atomic():
@@ -518,6 +562,18 @@ def confirmar_lote(lote) -> int:
         lote.estado, lote.competencia, lote.confirmado_em = LoteNotas.EMITINDO, hoje, timezone.now()
         lote.save(update_fields=["estado", "competencia", "confirmado_em"])
     return com_email + sem_email
+
+
+def reenviar_problemas(lote) -> int:
+    """Põe de volta na fila as notas do lote que deram problema. As recusadas voltam a ocupar o
+    plano; as sem resposta já ocupavam."""
+    problemas = lote.notas.filter(situacao__in=[NotaFiscal.RECUSADA, NotaFiscal.ERRO])
+    conferir_plano(lote.empresa, problemas.filter(situacao=NotaFiscal.RECUSADA).count(), lote.ambiente)
+    quantas = problemas.update(situacao=NotaFiscal.FILA)
+    if quantas and lote.estado == LoteNotas.CONCLUIDO:
+        lote.estado = LoteNotas.EMITINDO
+        lote.save(update_fields=["estado"])
+    return quantas
 
 
 def descartar_lote(lote):

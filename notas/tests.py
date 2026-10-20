@@ -22,6 +22,7 @@ from django.core.cache import cache
 from django.db import connection
 from django.core.files.uploadedfile import SimpleUploadedFile
 from django.test import Client, TestCase, TransactionTestCase, override_settings
+from django.utils import timezone
 
 from licencas.models import ContaAppfiliado
 from painel import modulos as mod
@@ -1303,3 +1304,102 @@ class TestHorarioDosEmails(TestCase):
             client.post("/notas/", {"acao": "horario_email", "horario": ""})
         self.empresa.refresh_from_db()
         self.assertIsNone(self.empresa.email_horario)
+
+
+@override_settings(APPFILIADO_PAINEL_HOSTS=[HOST], ALLOWED_HOSTS=[HOST, "testserver"], APPFILIADO_PAINEL_URL=f"https://{HOST}")
+class TestPlanoDeNotas(TestCase):
+    """Planos por notas de verdade no mês (100 / 1.000 / 5.000 / ilimitado). Lote que passa do
+    que resta é barrado inteiro, sem emitir uma parte."""
+
+    def setUp(self):
+        self.conta = criar_conta()  # "notas": até 100 por mês
+        self.empresa = criar_empresa(self.conta)
+        certificado.guardar(self.empresa, gerar_pfx(), "senha-do-pfx")
+
+    def notas(self, quantas, situacao="autorizada", ambiente="1", competencia=None):
+        NotaFiscal.objects.bulk_create([NotaFiscal(
+            empresa=self.empresa, ambiente=ambiente, tipo="vendedor", situacao=situacao,
+            competencia=competencia or timezone.localdate(), tomador_documento="11222333000181",
+            tomador_nome="Loja", valor=Decimal("10.00"),
+        ) for _ in range(quantas)])
+
+    def importar(self, ambiente="1"):
+        return servicos.importar_relatorio(self.empresa, relatorio_csv(), "MonthlyReport.csv", ambiente)
+
+    def test_conta_so_as_notas_de_verdade_do_mes(self):
+        self.notas(5)
+        self.notas(2, situacao="fila")
+        self.notas(1, situacao="erro")
+        self.notas(4, situacao="recusada")  # não viraram nota
+        self.notas(3, situacao="previa")
+        self.notas(6, ambiente="2")  # ambiente de testes
+        self.notas(7, competencia=timezone.localdate() - dt.timedelta(days=40))  # outro mês
+        uso = servicos.uso_do_plano(self.empresa)
+        self.assertEqual((uso["limite"], uso["usadas"], uso["restam"]), (100, 8, 92))
+
+    def test_lote_que_passa_do_plano_e_barrado_inteiro(self):
+        self.notas(98)
+        lote = self.importar()  # 3 notas
+        with self.assertRaisesMessage(servicos.ErroNotas, "restam 2 em"):
+            servicos.confirmar_lote(lote)
+        self.assertEqual(set(lote.notas.values_list("situacao", flat=True)), {"previa"})  # nada saiu
+        lote.refresh_from_db()
+        self.assertEqual(lote.estado, "previa")
+
+        self.assertEqual(servicos.confirmar_lote(self.importar(ambiente="2")), 3)  # teste não conta
+
+        self.conta.modulos_cortesia = "notas_1000"
+        self.conta.save()
+        self.assertEqual(servicos.confirmar_lote(lote), 3)
+        self.assertEqual(servicos.uso_do_plano(self.empresa)["usadas"], 101)
+
+    def test_nota_da_shopee_e_reenvio_respeitam_o_plano(self):
+        self.notas(100)
+        with self.assertRaisesMessage(servicos.ErroNotas, "Esta nota passaria do limite."):
+            servicos.emitir_nota_shopee(self.empresa, "1.234,56")
+        servicos.emitir_nota_shopee(self.empresa, "1,00", ambiente="2")  # no ambiente de testes pode
+
+        primeira = NotaFiscal.objects.filter(situacao="autorizada").first()
+        NotaFiscal.objects.filter(pk=primeira.pk).update(situacao="recusada")  # 99 contam
+        lote = self.importar()
+        lote.notas.update(situacao="recusada")
+        lote.estado = "concluido"
+        lote.save()
+        with self.assertRaises(servicos.ErroNotas):
+            servicos.reenviar_problemas(lote)  # 3 recusadas voltariam a contar: passa de 100
+        self.assertEqual(lote.notas.filter(situacao="fila").count(), 0)
+
+        self.conta.modulos_cortesia = "notas_ilimitado"
+        self.conta.save()
+        self.assertEqual(servicos.reenviar_problemas(lote), 3)
+        self.assertIsNone(servicos.uso_do_plano(self.empresa)["limite"])
+
+    def test_sem_o_modulo_nao_emite(self):
+        self.conta.modulos_cortesia = ""
+        self.conta.save()
+        with self.assertRaises(servicos.ErroNotas):
+            servicos.emitir_nota_shopee(self.empresa, "10,00")
+
+    def test_telas_mostram_o_uso_e_travam_o_lote(self):
+        mock.patch.object(receita, "consultar", return_value={"regime": "mei"}).start()
+        self.addCleanup(mock.patch.stopall)
+        client = Client(HTTP_HOST=HOST)
+        client.post("/entrar/", {"email": "bia@exemplo.com", "senha": SENHA})
+        self.notas(98)
+        html = client.get("/notas/").content.decode()
+        self.assertIn("98 de 100</strong> notas do seu plano usadas", html)
+        self.assertIn("restam 2", html)
+
+        lote = self.importar()
+        html = client.get(f"/notas/lote/{lote.pk}/").content.decode()
+        self.assertIn("Este lote tem 3 notas e no seu plano restam 2", html)
+        self.assertRegex(html, r'class="botao botao-principal" disabled>Emitir 3 notas')
+        resposta = client.post(f"/notas/lote/{lote.pk}/", {"acao": "confirmar"}, follow=True)
+        self.assertContains(resposta, "Nenhuma nota foi enviada")
+        self.assertFalse(lote.notas.exclude(situacao="previa").exists())
+
+        self.conta.modulos_cortesia = "notas_1000"
+        self.conta.save()
+        html = client.get(f"/notas/lote/{lote.pk}/").content.decode()
+        self.assertIn("restam 902 de 1000 notas", html)
+        self.assertIn("sobram 899", html)

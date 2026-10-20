@@ -147,9 +147,15 @@ class TestServicos(TestCase):
             carrossel = servicos.criar(self.conta, "https://s.shopee.com.br/xyz")
             self.assertEqual(carrossel.produto["link"], "https://s.shopee.com.br/af")
             self.assertEqual(UsoCarrossel.objects.get(conta=self.conta).geracoes, 1)
-            UsoCarrossel.objects.filter(conta=self.conta).update(geracoes=servicos.GERACOES_POR_DIA["premium"])
-            with self.assertRaisesMessage(servicos.ErroGerador, "limite"):
+            limite = servicos.restantes(self.conta)["limite"]
+            UsoCarrossel.objects.filter(conta=self.conta).update(geracoes=limite)
+            with self.assertRaisesMessage(servicos.ErroGerador, f"Você já gerou os {limite} carrosséis de hoje"):
                 servicos.criar(self.conta, "https://s.shopee.com.br/xyz")
+
+    def test_limite_por_plano(self):
+        from licencas import planos
+        self.assertEqual(planos.carrosseis(["carrosseis"])["geracoes"], 3)
+        self.assertEqual(planos.carrosseis(["carrosseis", "carrosseis_premium"])["geracoes"], 10)
 
     def test_link_ruim_nao_gasta_o_limite(self):
         with self.assertRaises(servicos.ErroGerador):

@@ -22,8 +22,15 @@
   </div>
   <p class="pequeno">Confira a lista. Nada foi enviado ainda. Ao confirmar, as notas vão para a fila e saem sozinhas, uma a uma (pode fechar a página){% if lote.ambiente == "1" %}, e cada vendedor com e-mail recebe a nota com o PDF e o XML{% endif %}.</p>
   {% if falta %}<p class="aviso aviso-warning pequeno">Antes de emitir, falta: {{ falta|join:" e " }}.</p>{% endif %}
+  {% if lote.ambiente == "1" and plano.limite is not None %}
+    {% if plano.sobram < 0 %}
+      <p class="aviso aviso-warning pequeno">Este lote tem {{ resumo.total }} notas e no seu plano restam {{ plano.restam }} em {{ plano.mes }} (até {{ plano.limite }} por mês). Para não emitir o lote pela metade, nenhuma nota é enviada. <a href="{{ url_planos }}" target="_blank" rel="noopener">Passe para um plano maior</a> e emita todas de uma vez.</p>
+    {% else %}
+      <p class="suave pequeno">No seu plano restam {{ plano.restam }} de {{ plano.limite }} notas em {{ plano.mes }}. Depois deste lote, sobra{{ plano.sobram|pluralize:"m" }} {{ plano.sobram }}.</p>
+    {% endif %}
+  {% endif %}
   <div class="botoes-linha">
-    <form method="post" onsubmit="return confirm('Emitir {{ resumo.total }} notas{% if lote.ambiente == "1" %} de verdade{% else %} no ambiente de testes{% endif %}?')">{% csrf_token %}<input type="hidden" name="acao" value="confirmar"><button type="submit" class="botao botao-principal"{% if falta or not resumo.total %} disabled{% endif %}>Emitir {{ resumo.total }} nota{{ resumo.total|pluralize }}{% if lote.ambiente == "2" %} de teste{% endif %}</button></form>
+    <form method="post" onsubmit="return confirm('Emitir {{ resumo.total }} notas{% if lote.ambiente == "1" %} de verdade{% else %} no ambiente de testes{% endif %}?')">{% csrf_token %}<input type="hidden" name="acao" value="confirmar"><button type="submit" class="botao botao-principal"{% if falta or not resumo.total or plano.sobram < 0 %} disabled{% endif %}>Emitir {{ resumo.total }} nota{{ resumo.total|pluralize }}{% if lote.ambiente == "2" %} de teste{% endif %}</button></form>
     <form method="post">{% csrf_token %}<input type="hidden" name="acao" value="descartar"><button type="submit" class="botao botao-claro">Descartar</button></form>
   </div>
 </section>

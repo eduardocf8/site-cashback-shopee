@@ -30,8 +30,13 @@
 {% if shopee_conectada %}
   <section class="kpis-do-mes" aria-labelledby="titulo-kpis-mes">
     <div class="kpis-topo">
-      <h2 id="titulo-kpis-mes"><span class="selo-mes">Mês atual</span> {{ nome_mes }}</h2>
-      <span class="suave pequeno">Do dia 1º até hoje · <a href="{% url 'painel_resultados' %}">ver outros períodos</a></span>
+      {% if mes_fechado %}
+        <h2 id="titulo-kpis-mes"><span class="selo-mes selo-mes-fechado">Mês passado</span> {{ nome_mes }} <span class="suave pequeno">(fechado)</span></h2>
+        <span class="suave pequeno">O mês todo. O mês novo aparece aqui amanhã, quando a Shopee liberar os números de hoje · <a href="{% url 'painel_resultados' %}">ver outros períodos</a></span>
+      {% else %}
+        <h2 id="titulo-kpis-mes"><span class="selo-mes">Mês atual</span> {{ nome_mes }}</h2>
+        <span class="suave pequeno">Do dia 1º até hoje · <a href="{% url 'painel_resultados' %}">ver outros períodos</a></span>
+      {% endif %}
     </div>
     {% include "painel/_kpis.html" with valores=mes legenda="pedidos validados + pendentes" %}
   </section>
@@ -39,10 +44,10 @@
   <div class="duas-colunas">
     <section class="card">
       {% if meta.metas %}
-        <div class="card-topo"><h2>Meta do mês</h2><a class="pequeno" href="{% url 'painel_metas' %}">Ver metas</a></div>
+        <div class="card-topo"><h2>{% if mes_fechado %}Meta de {{ nome_mes }}{% else %}Meta do mês{% endif %}</h2><a class="pequeno" href="{% url 'painel_metas' %}">Ver metas</a></div>
         {% include "painel/_meta_resumo.html" %}
       {% else %}
-        <h2>Meta do mês</h2>
+        <h2>{% if mes_fechado %}Meta de {{ nome_mes }}{% else %}Meta do mês{% endif %}</h2>
         <p class="suave pequeno" style="margin-bottom:14px">Se a Shopee te deu metas com bônus este mês, cadastre aqui e acompanhe quanto falta para cada faixa.</p>
         <a class="botao botao-claro botao-pequeno" href="{% url 'painel_metas' %}">{% include "painel/_icone.html" with caminho=icones.mais %}Cadastrar metas</a>
       {% endif %}

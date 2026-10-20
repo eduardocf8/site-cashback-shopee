@@ -168,15 +168,17 @@ class ConfiguracaoOfertasForm(forms.ModelForm):
             "horario_fim": forms.TimeInput(attrs=ATTRS_HORA, format="%H:%M"),
         }
 
-    def __init__(self, *args, grupos_disponiveis=None, **kwargs):
+    def __init__(self, *args, grupos_disponiveis=None, regras=None, **kwargs):
         from bot_whatsapp import ia
         from bot_whatsapp.categorias import opcoes_categoria
+        from licencas import planos
 
         super().__init__(*args, **kwargs)
+        self.regras = regras or {**planos.BOT[True], "premium": True}  # o que o plano da conta libera
         self.ia_disponivel = ia.disponivel()
         self.fields["ia_tipo"].required = False
         self.fields["formato_envio"].required = False
-        if not self.ia_disponivel:  # sem a chave do Appfiliado: opção desligada
+        if not self.ia_disponivel or not self.regras["ia"]:  # sem a chave do Appfiliado ou fora do plano
             self.fields["ia_ativa"].disabled = True
             self.fields["ia_tipo"].disabled = True
         self.fields["categorias"].choices = opcoes_categoria()
@@ -211,6 +213,13 @@ class ConfiguracaoOfertasForm(forms.ModelForm):
             self.fields[campo].max_value = maximo
             self.fields[campo].validators += [MinValueValidator(minimo), MaxValueValidator(maximo)]
             self.fields[campo].widget.attrs.update({"min": minimo, "max": maximo})
+        if self.regras["copiar"]:
+            self.fields["intervalo_minutos"].help_text = (
+                f"Na busca da Shopee, mínimo de {self.regras['intervalo_minimo']} minutos. "
+                "Copiando de grupos: 0 = repassa assim que chegar.")
+        else:
+            self.fields["intervalo_minutos"].help_text = f"No seu plano, mínimo de {self.regras['intervalo_minimo']} minutos."
+            self.fields["intervalo_minutos"].widget.attrs["min"] = self.regras["intervalo_minimo"]
 
     OPCIONAIS_ZERO = ("comissao_minima", "desconto_minimo", "vendas_minimas", "limite_diario")
 
@@ -298,6 +307,16 @@ class ConfiguracaoOfertasForm(forms.ModelForm):
         from bot_whatsapp.shopee_ofertas import extrair_id_da_loja
 
         dados = super().clean()
+        regras = self.regras
+        if dados.get("modo") == ConfiguracaoOfertas.MODO_COPIAR and not regras["copiar"]:
+            self.add_error("modo", "Copiar ofertas de outros grupos e canais é do plano Premium.")
+        if len(dados.get("grupos") or []) > regras["grupos"]:
+            self.add_error("grupos", f"No seu plano dá para escolher até {regras['grupos']} grupos e canais.")
+        if not regras["ia"]:
+            dados["ia_ativa"] = False  # a revisão com IA é do Premium
+        if (dados.get("modo") != ConfiguracaoOfertas.MODO_COPIAR and dados.get("intervalo_minutos")
+                and dados["intervalo_minutos"] < regras["intervalo_minimo"]):
+            self.add_error("intervalo_minutos", f"No seu plano o intervalo mínimo é de {regras['intervalo_minimo']} minutos.")
         if dados.get("modo") == ConfiguracaoOfertas.MODO_COPIAR:
             if not dados.get("origens"):
                 self.add_error("origens", "Escolha pelo menos um grupo ou canal para copiar.")
