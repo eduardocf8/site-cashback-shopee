@@ -565,6 +565,20 @@ class TestTelasDeResultados(BasePainel):
         self.assertIn("Comissão validada hoje", html)
         self.assertIn("R$ 42,75", html)
 
+    def test_no_dia_1_o_inicio_mostra_o_mes_que_fechou(self, _):
+        self.conectar_shopee()
+        with mock.patch("painel.telas.hoje", return_value=date(2026, 11, 1)):
+            html = self.client.get("/").content.decode()
+        self.assertIn("Mês passado", html)
+        self.assertIn("Outubro/2026", html)
+        self.assertIn("R$ 3.800,50", html)  # outubro inteiro
+        self.assertIn("O mês novo aparece aqui amanhã", html)
+        with mock.patch("painel.telas.hoje", return_value=date(2026, 11, 2)):
+            html = self.client.get("/").content.decode()
+        self.assertIn("Mês atual", html)
+        self.assertIn("Novembro/2026", html)
+        self.assertNotIn("Mês passado", html)
+
     def test_resultados_avisam_quando_o_periodo_inclui_hoje(self, _):
         self.conectar_shopee()
         aviso = "De hoje só aparece a comissão validada"
