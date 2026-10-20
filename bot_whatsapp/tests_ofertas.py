@@ -279,6 +279,12 @@ class TestTelaDeOfertas(BasePainel):
         base.update(extra)
         return base
 
+    def test_aba_conexao_sem_ultimos_envios(self):
+        html = self.client.get("/whatsapp/").content.decode()
+        self.assertNotIn("Últimos envios", html)
+        self.assertIn(">Automação</a>", html)
+        self.assertLess(html.index('id="titulo-teste"'), html.index('id="titulo-historico"'))  # teste logo abaixo da conexão
+
     def test_ultimas_ofertas_mostra_10_e_teste_da_busca_minimiza(self):
         for i in range(15):
             EnvioWhatsApp.objects.create(conta=self.conta, destino="1@g.us", destino_nome="Grupo", origem="oferta",
@@ -293,7 +299,7 @@ class TestTelaDeOfertas(BasePainel):
 
     def test_salvar_ligar_pausar_e_testar(self):
         html = self.client.get("/whatsapp/ofertas/").content.decode()
-        self.assertIn("Ofertas automáticas", html)
+        self.assertIn(">Automação</a>", html)
         self.assertIn("Achadinhos", html)
 
         resposta = self.client.post("/whatsapp/ofertas/", self.dados())

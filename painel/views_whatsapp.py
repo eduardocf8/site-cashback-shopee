@@ -41,7 +41,6 @@ def whatsapp(request):
         request, "whatsapp",
         conexao=conexao,
         tela=servico.estado_para_tela(conta),
-        envios=EnvioWhatsApp.objects.filter(conta=conta, origem=EnvioWhatsApp.TESTE)[:8],
         destinos=servico.destinos_possiveis(conexao),
         eventos=EventoWhatsApp.objects.filter(conta=conta)[:15],
         ConexaoWhatsApp=ConexaoWhatsApp,

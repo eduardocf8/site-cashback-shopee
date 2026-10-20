@@ -15,7 +15,7 @@ from bot_whatsapp import copia, shopee_ofertas
 from licencas.models import MODULO_SITE, MODULO_SITE_SEM_MARCA
 
 from . import vitrine
-from .models import BotaoSite, CliqueSite, ProdutoSite, SiteAfiliado
+from .models import REDES, BotaoSite, CliqueSite, ProdutoSite, SiteAfiliado
 
 logger = logging.getLogger(__name__)
 
@@ -79,6 +79,10 @@ def pagina(request, endereco=None):
         "com_marca": MODULO_SITE_SEM_MARCA not in site.conta.modulos_liberados(),
         "erro": request.GET.get("erro", ""),
         "previa": previa,
+        # Na prévia do editor vão todos os ícones (escondidos os não preenchidos): o editor mostra
+        # e esconde enquanto a pessoa digita, sem salvar.
+        "todas_redes": [{"rede": rede, "nome": nome, "ativa": bool((site.redes or {}).get(rede))}
+                        for rede, nome, _ in REDES] if previa else [],
         "hoje_ymd": timezone.localdate().strftime("%Y%m%d"),
         "url_appfiliado": settings.APPFILIADO_URL_PLANOS,
     })
@@ -113,7 +117,7 @@ def ir_produto(request, produto_id, endereco=None):
     contar(site, CliqueSite.PRODUTO, produto.pk, produto.nome)
     if not produto.link_afiliado:
         try:
-            produto.link_afiliado = vitrine.link_do_site(site, produto.link_produto)[:500]
+            produto.link_afiliado = vitrine.link_do_site(site, produto.link_produto, vitrine=True)[:500]
             produto.save(update_fields=["link_afiliado"])
         except Exception:  # noqa: BLE001 - na pior hipótese, vai para o produto sem o link
             logger.exception("Meu site: link na hora do produto %s", produto.pk)

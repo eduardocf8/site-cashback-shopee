@@ -455,6 +455,23 @@ class TestAgruparSubIds(TestCase):
         self.assertEqual([(r["quantidade"], r["exemplos"]) for r in resumo], [(2, ["grupoA", "grupoB"]), (0, [])])
 
 
+    def test_nome_para_vendas_sem_sub_id(self):
+        dia = date(2026, 10, 10)
+        for sub, vendas in [("sem_subid", 4), ("story", 1)]:
+            ResultadoSubIdDiario.objects.create(conta=self.conta, dia=dia, sub_id=sub, vendas=vendas)
+        self.regra("nao_comeca", "grupo", "Outros")  # não pega as vendas sem Sub ID
+        self.regra("sem", "", "Orgânico")
+        nomes = [l["sub_id"] for l in resultados.por_sub_id(self.conta, dia, dia)]
+        self.assertEqual(sorted(nomes), ["Orgânico", "Outros"])
+        self.assertEqual(resultados.resumo_das_regras(self.conta, dia)[1]["quantidade"], 1)
+        self.assertTrue(RegraSubId(operador="sem").casa("sem_subid"))
+        self.assertFalse(RegraSubId(operador="sem").casa("story"))
+        from .forms import RegraSubIdForm
+        form = RegraSubIdForm({"operador": "sem", "texto": "", "nome": "Orgânico"})
+        self.assertTrue(form.is_valid(), form.errors)
+        self.assertFalse(RegraSubIdForm({"operador": "comeca", "texto": " ", "nome": "X"}).is_valid())
+
+
 class TestBuscaNaShopee(TestCase):
     def test_pagina_e_tira_campo_que_a_api_nao_conhece(self):
         respostas = [

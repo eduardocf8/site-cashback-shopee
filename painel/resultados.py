@@ -468,12 +468,10 @@ def serie(conta, inicio: date, fim: date, modo: str = "dia") -> list[dict]:
 
 
 def nome_do_grupo(sub_id_bruto: str, regras) -> str:
-    if sub_id_bruto == SEM_SUB_ID:
-        return NOME_SEM_SUB_ID
     for regra in regras:
         if regra.casa(sub_id_bruto):
             return regra.nome
-    return sub_id_bruto
+    return NOME_SEM_SUB_ID if sub_id_bruto == SEM_SUB_ID else sub_id_bruto
 
 
 def por_sub_id(conta, inicio: date, fim: date, limite: int = 8) -> list[dict]:
@@ -505,11 +503,9 @@ def resumo_das_regras(conta, hoje: date) -> list[dict]:
         .values_list("sub_id", flat=True).distinct()
     )
     for bruto in brutos:
-        if bruto == SEM_SUB_ID:
-            continue
         regra = next((r for r in regras if r.casa(bruto)), None)
         if regra:
-            pegos[regra.pk].append(bruto)
+            pegos[regra.pk].append(NOME_SEM_SUB_ID if bruto == SEM_SUB_ID else bruto)
     return [
         {"regra": regra, "quantidade": len(pegos[regra.pk]), "exemplos": sorted(pegos[regra.pk])[:2]}
         for regra in regras

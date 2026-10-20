@@ -18,7 +18,7 @@ from bot_whatsapp.categorias import CATEGORIAS_SHOPEE, produto_pertence_as_categ
 from bot_whatsapp.models import ConfiguracaoOfertas
 from painel import cripto
 
-from .models import ProdutoSite, SiteAfiliado
+from .models import CategoriaProdutoSite, ProdutoSite, SiteAfiliado
 
 logger = logging.getLogger(__name__)
 
@@ -60,6 +60,9 @@ def _guardar(site, fonte: str, produto: dict, quando) -> ProdutoSite | None:
         return None
     existente = ProdutoSite.objects.filter(site=site, fonte=fonte, item_id=item_id).first()
     dados = _dados(produto)
+    escolhida = CategoriaProdutoSite.objects.filter(site=site, item_id=item_id).values_list("categoria", flat=True).first()
+    if escolhida is not None:  # a pessoa corrigiu a categoria deste produto
+        dados["categoria"] = escolhida
     if existente:
         for campo, valor in dados.items():
             setattr(existente, campo, valor)
@@ -136,9 +139,11 @@ def atualizar_manuais(site, agora):
         raise ValueError(f"Não achei {len(problemas)} produto(s) na Shopee: {', '.join(problemas[:3])}")
 
 
-def link_do_site(site, link_produto: str) -> str:
+def link_do_site(site, link_produto: str, vitrine: bool = False) -> str:
+    """Link de afiliado do site. A vitrine pode ter um Sub ID próprio (vazio = o do conversor)."""
     app_id, secret = _credenciais(site)
-    sub_ids = [site.sub_id] if site.sub_id else []
+    sub_id = (site.sub_id_vitrine or site.sub_id) if vitrine else site.sub_id
+    sub_ids = [sub_id] if sub_id else []
     return shopee_ofertas.gerar_link_afiliado(app_id, secret, link_produto, sub_ids)
 
 
@@ -147,7 +152,7 @@ def gerar_links_pendentes():
                  .select_related("site__conta")[:LINKS_POR_VOLTA])
     for produto in pendentes:
         try:
-            produto.link_afiliado = link_do_site(produto.site, produto.link_produto)[:500]
+            produto.link_afiliado = link_do_site(produto.site, produto.link_produto, vitrine=True)[:500]
             produto.save(update_fields=["link_afiliado"])
         except Exception:  # noqa: BLE001 - o clique gera na hora
             logger.exception("Meu site: link do produto %s", produto.pk)
@@ -180,3 +185,11 @@ def uma_volta(agora=None) -> list[str]:
         site.save(update_fields=["vitrine_erro", "vitrine_atualizada_em", "atualizado_em"])
     gerar_links_pendentes()
     return logs
+
+
+def escolher_categoria(site, produto: ProdutoSite, categoria: str) -> str:
+    """Guarda a categoria escolhida para o produto (vale também nas próximas atualizações)."""
+    categoria = categoria if categoria in CATEGORIAS_SHOPEE else ""
+    CategoriaProdutoSite.objects.update_or_create(site=site, item_id=produto.item_id, defaults={"categoria": categoria})
+    ProdutoSite.objects.filter(site=site, item_id=produto.item_id).update(categoria=categoria)
+    return categoria

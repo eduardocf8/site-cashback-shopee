@@ -50,15 +50,20 @@
 
 <section class="card" id="sub-ids" aria-labelledby="titulo-sub-ids" style="margin-top:16px">
   <h2 id="titulo-sub-ids">Agrupar Sub IDs</h2>
-  <p class="suave pequeno" style="margin-bottom:16px">Junte vários Sub IDs num nome só nos seus resultados. Ex: todo Sub ID que <strong>começa com</strong> "grupo" aparece como "Grupos de WhatsApp". Sem diferença entre maiúsculas e minúsculas. Se um Sub ID se encaixar em mais de um agrupamento, vale o primeiro da lista.</p>
+  <p class="suave pequeno" style="margin-bottom:16px">Junte vários Sub IDs num nome só nos seus resultados. Ex: todo Sub ID que <strong>começa com</strong> "grupo" aparece como "Grupos de WhatsApp". Sem diferença entre maiúsculas e minúsculas. Se um Sub ID se encaixar em mais de um agrupamento, vale o primeiro da lista. Para dar um nome às vendas que vieram sem Sub ID, escolha <strong>está vazio</strong>.</p>
 
   {% if regras %}
     <ol class="regras">
       {% for item in regras %}
         <li>
           <div class="regra-texto">
-            <span>Se o Sub ID <strong>{{ item.regra.get_operador_display }}</strong> “{{ item.regra.texto }}”, mostrar como <strong>{{ item.regra.nome }}</strong></span>
-            <span class="suave pequeno">{% if item.quantidade %}Junta {{ item.quantidade }} Sub ID{{ item.quantidade|pluralize }} dos últimos 90 dias (ex: {{ item.exemplos|join:", " }}){% else %}Nenhum Sub ID dos últimos 90 dias entra aqui{% endif %}</span>
+            {% if item.regra.operador == "sem" %}
+              <span>Vendas <strong>sem Sub ID</strong>: mostrar como <strong>{{ item.regra.nome }}</strong></span>
+              <span class="suave pequeno">{% if item.quantidade %}Teve venda sem Sub ID nos últimos 90 dias{% else %}Nenhuma venda sem Sub ID nos últimos 90 dias{% endif %}</span>
+            {% else %}
+              <span>Se o Sub ID <strong>{{ item.regra.get_operador_display }}</strong> “{{ item.regra.texto }}”, mostrar como <strong>{{ item.regra.nome }}</strong></span>
+              <span class="suave pequeno">{% if item.quantidade %}Junta {{ item.quantidade }} Sub ID{{ item.quantidade|pluralize }} dos últimos 90 dias (ex: {{ item.exemplos|join:", " }}){% else %}Nenhum Sub ID dos últimos 90 dias entra aqui{% endif %}</span>
+            {% endif %}
           </div>
           <form method="post">
             {% csrf_token %}
@@ -77,5 +82,17 @@
     {% include "painel/_campos.html" with form=form_regra %}
     <div><button type="submit" class="botao botao-escuro">{% include "painel/_icone.html" with caminho=icones.mais %}Adicionar agrupamento</button></div>
   </form>
+  <script>
+    // "está vazio" (vendas sem Sub ID) não usa o campo de texto.
+    (function () {
+      var operador = document.querySelector('.form-regra [name="operador"]');
+      var texto = document.querySelector('.form-regra [name="texto"]');
+      if (!operador || !texto) return;
+      var campo = texto.closest('.campo') || texto.parentElement;
+      function aplicar() { var vazio = operador.value === 'sem'; campo.style.visibility = vazio ? 'hidden' : ''; if (vazio) texto.value = ''; }
+      operador.addEventListener('change', aplicar);
+      aplicar();
+    })();
+  </script>
 </section>
 {% endblock %}

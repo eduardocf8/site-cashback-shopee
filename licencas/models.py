@@ -28,7 +28,7 @@ MODULOS = [
     (MODULO_SITE_SEM_MARCA, "Meu site sem a marca Appfiliado"),
     (MODULO_CARROSSEIS, "Gerador de carrosséis"),
     (MODULO_CARROSSEIS_PREMIUM, "Gerador de carrosséis (premium)"),
-    (MODULO_NOTAS, "Emissor de notas fiscais"),
+    (MODULO_NOTAS, "Emissão NFS-e"),
 ]
 CODIGOS_MODULOS = [codigo for codigo, _ in MODULOS]
 

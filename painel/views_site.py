@@ -7,13 +7,16 @@ from datetime import timedelta
 from django.conf import settings
 from django.contrib import messages
 from django.db.models import Sum
-from django.shortcuts import redirect, render
+from django.http import JsonResponse
+from django.shortcuts import get_object_or_404, redirect, render
 from django.utils import timezone
 from django.views.decorators.http import require_POST
 
 from licencas.models import MODULO_SITE_SEM_MARCA, MODULO_WHATSAPP
 from meusite.forms import BotaoForm, FotoForm, SiteForm
-from meusite.models import ENDERECOS_RESERVADOS, BotaoSite, CliqueSite, SiteAfiliado
+from bot_whatsapp.categorias import opcoes_categoria
+from meusite import vitrine
+from meusite.models import ENDERECOS_RESERVADOS, BotaoSite, CliqueSite, ProdutoSite, SiteAfiliado
 
 from . import modulos as mod
 from .autenticacao import conta_logada, conta_requerida
@@ -94,6 +97,9 @@ def meu_site(request):
                     SiteAfiliado.VITRINE_BOT, SiteAfiliado.VITRINE_NENHUMA):
                 site.pedido_vitrine_em = timezone.now()  # o worker refaz a vitrine em instantes
             site.save()
+            if {"sub_id", "sub_id_vitrine"} & set(form.changed_data):
+                # Sub ID novo: os links prontos dos produtos saem e são gerados de novo (o clique gera na hora).
+                site.produtos.update(link_afiliado="")
             messages.success(request, "Site salvo.")
             return redirect("painel_meu_site")
         messages.error(request, "Confira os campos marcados.")
@@ -110,6 +116,8 @@ def meu_site(request):
         site=site, form=form, form_botao=BotaoForm(), botoes=botoes, maximo_botoes=MAXIMO_BOTOES,
         url_publica=url_publica(site), url_previa=f"/s/{site.endereco}/?previa=1",
         cliques=cliques, total_produtos=produtos.count(), tem_bot=tem_bot,
+        produtos_vitrine=list(produtos[:vitrine.LIMITE]),
+        opcoes_categoria=[(chave, vitrine.nome_curto_da_categoria(chave)) for chave, _ in opcoes_categoria()],
         sem_marca=MODULO_SITE_SEM_MARCA in conta.modulos_liberados(),
         dominio_sites=settings.APPFILIADO_SITES_DOMINIO,
         prefixo_sem_dominio=settings.APPFILIADO_PAINEL_URL.split("://")[-1].rstrip("/") + "/s/",
@@ -168,3 +176,13 @@ def _acao(request, site, acao):
             for ordem, b in enumerate(lista, start=1):
                 BotaoSite.objects.filter(pk=b.pk).update(ordem=ordem)
     return redirect("/meu-site/#botoes")
+
+
+@conta_requerida
+@require_POST
+def categoria_produto(request, pk):
+    """Troca a categoria de um produto da vitrine (a lista do editor chama aqui sem recarregar)."""
+    site = get_object_or_404(SiteAfiliado, conta=conta_logada(request))
+    produto = get_object_or_404(ProdutoSite, site=site, pk=pk)
+    categoria = vitrine.escolher_categoria(site, produto, request.POST.get("categoria", ""))
+    return JsonResponse({"ok": True, "categoria": categoria})

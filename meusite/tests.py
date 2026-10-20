@@ -16,7 +16,7 @@ from painel.tests import HOST, BasePainel
 
 from . import vitrine
 from .forms import BotaoForm, SiteForm
-from .models import BotaoSite, CliqueSite, ProdutoSite, SiteAfiliado
+from .models import BotaoSite, CategoriaProdutoSite, CliqueSite, ProdutoSite, SiteAfiliado
 
 
 def produto(item_id, **extra):
@@ -195,6 +195,66 @@ class TestEditor(BasePainel):
         site.refresh_from_db()
         self.assertEqual((site.endereco, site.cor, site.mostrar_conversor, site.vitrine), ("achadinhosdabia", "#2F6FDE", False, "busca"))
         self.assertTrue(site.vitrine_pedida)  # o worker monta a vitrine
+
+    def test_previa_ao_vivo_e_emojis(self):
+        self.client.get("/meu-site/")
+        site = SiteAfiliado.objects.get(conta=self.conta)
+        site.redes = {"instagram": "https://instagram.com/bia"}
+        site.mostrar_conversor = False
+        site.save()
+        BotaoSite.objects.create(site=site, texto="Grupo", url="https://chat.whatsapp.com/x")
+        html = self.client.get("/meu-site/").content.decode()
+        self.assertIn('data-botao-texto="novo"', html)
+        self.assertIn("painel/emojis", html)
+        self.assertIn("data-emoji", html)
+        self.assertLess(html.index('id="titulo-cliques"'), html.index('id="titulo-previa"'))  # prévia embaixo, presa na tela
+        previa = self.client.get(f"/s/{site.endereco}/?previa=1").content.decode()
+        self.assertIn('data-botao="novo" hidden', previa)
+        self.assertIn('data-rede="instagram"', previa)
+        self.assertIn('data-rede="tiktok"', previa)  # na prévia vão todos, escondidos os vazios
+        self.assertIn('id="conversor" hidden', previa)
+        publico = self.client.get(f"/s/{site.endereco}/").content.decode()
+        self.assertNotIn('data-rede="tiktok"', publico)
+
+    def test_corrigir_categoria_do_produto(self):
+        self.client.get("/meu-site/")
+        site = SiteAfiliado.objects.get(conta=self.conta)
+        site.vitrine = "bot"
+        site.save()
+        p = ProdutoSite.objects.create(site=site, fonte="bot", item_id="77", nome="Fone de ouvido", categoria="eletronicos",
+                                       link_produto="https://shopee.com.br/p-i.1.77", posicao_em=timezone.now())
+        html = self.client.get("/meu-site/").content.decode()
+        self.assertIn("corrigir as categorias", html)
+        self.assertEqual(self.client.post(f"/meu-site/produto/{p.pk}/categoria/", {"categoria": "beleza"}).json()["categoria"], "beleza")
+        p.refresh_from_db()
+        self.assertEqual(p.categoria, "beleza")
+        # A escolha vale nas próximas atualizações da vitrine.
+        vitrine.registrar_do_bot(self.conta, produto("77", nome="Fone de ouvido"))
+        p.refresh_from_db()
+        self.assertEqual(p.categoria, "beleza")
+        self.assertEqual(CategoriaProdutoSite.objects.get(site=site).categoria, "beleza")
+        self.assertEqual(self.client.post(f"/meu-site/produto/{p.pk}/categoria/", {"categoria": "inventada"}).json()["categoria"], "")
+        outra = ContaAppfiliado.objects.create(email="outra@exemplo.com")
+        outro_site = SiteAfiliado.objects.create(conta=outra, endereco="outra")
+        q = ProdutoSite.objects.create(site=outro_site, fonte="bot", item_id="9", nome="X", link_produto="https://shopee.com.br/x",
+                                       posicao_em=timezone.now())
+        self.assertEqual(self.client.post(f"/meu-site/produto/{q.pk}/categoria/", {"categoria": "beleza"}).status_code, 404)
+
+    def test_sub_id_separado_para_a_vitrine(self):
+        self.client.get("/meu-site/")
+        site = SiteAfiliado.objects.get(conta=self.conta)
+        self.conta.shopee_app_id = "1"
+        self.conta.shopee_secret_cifrado = cripto.cifrar("s")
+        self.conta.save()
+        with mock.patch.object(shopee_ofertas, "gerar_link_afiliado", return_value="https://s.shopee.com.br/x") as gerar:
+            vitrine.link_do_site(site, "https://shopee.com.br/p", vitrine=True)
+            self.assertEqual(gerar.call_args[0][3], ["site"])  # em branco: o mesmo do conversor
+            site.sub_id_vitrine = "vitrine"
+            vitrine.link_do_site(site, "https://shopee.com.br/p", vitrine=True)
+            self.assertEqual(gerar.call_args[0][3], ["vitrine"])
+            vitrine.link_do_site(site, "https://shopee.com.br/p")
+            self.assertEqual(gerar.call_args[0][3], ["site"])  # conversor
+        self.assertIn('name="sub_id_vitrine"', self.client.get("/meu-site/").content.decode())
 
     def test_botoes(self):
         self.client.get("/meu-site/")

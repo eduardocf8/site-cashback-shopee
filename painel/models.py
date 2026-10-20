@@ -155,15 +155,17 @@ class RegraSubId(models.Model):
     COMECA, NAO_COMECA = "comeca", "nao_comeca"
     CONTEM, NAO_CONTEM = "contem", "nao_contem"
     TERMINA, NAO_TERMINA = "termina", "nao_termina"
+    SEM = "sem"  # vendas sem Sub ID (o texto não é usado)
     OPERADORES = [
         (COMECA, "começa com"), (NAO_COMECA, "não começa com"),
         (CONTEM, "contém"), (NAO_CONTEM, "não contém"),
         (TERMINA, "termina com"), (NAO_TERMINA, "não termina com"),
+        (SEM, "está vazio (sem Sub ID)"),
     ]
 
     conta = models.ForeignKey(ContaAppfiliado, on_delete=models.CASCADE, related_name="regras_sub_id")
     operador = models.CharField(max_length=12, choices=OPERADORES)
-    texto = models.CharField(max_length=120)
+    texto = models.CharField(max_length=120, blank=True)
     nome = models.CharField("nome do grupo", max_length=60)
     criada_em = models.DateTimeField(auto_now_add=True)
 
@@ -176,7 +178,11 @@ class RegraSubId(models.Model):
         return f'{self.get_operador_display()} "{self.texto}" -> {self.nome}'
 
     def casa(self, sub_id: str) -> bool:
-        """Sem diferenciar maiúsculas de minúsculas."""
+        """Sem diferenciar maiúsculas de minúsculas. Vendas sem Sub ID só casam com a regra "está vazio"."""
+        from .resultados import SEM_SUB_ID
+
+        if self.operador == self.SEM or sub_id == SEM_SUB_ID:
+            return self.operador == self.SEM and sub_id == SEM_SUB_ID
         valor, texto = sub_id.lower(), self.texto.lower()
         testes = {
             self.COMECA: valor.startswith(texto), self.CONTEM: texto in valor, self.TERMINA: valor.endswith(texto),

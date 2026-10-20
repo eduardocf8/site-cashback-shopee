@@ -63,7 +63,8 @@ class ShopeeForm(forms.Form):
 
 class RegraSubIdForm(forms.Form):
     operador = forms.ChoiceField(label="Se o Sub ID", choices=[])
-    texto = forms.CharField(label="Texto", max_length=120, widget=forms.TextInput(attrs={"placeholder": "ex: grupo"}))
+    texto = forms.CharField(label="Texto", max_length=120, required=False,
+                            widget=forms.TextInput(attrs={"placeholder": "ex: grupo"}))
     nome = forms.CharField(label="Mostrar como", max_length=60, widget=forms.TextInput(attrs={"placeholder": "ex: Grupos de WhatsApp"}))
 
     def __init__(self, *args, **kwargs):
@@ -72,14 +73,20 @@ class RegraSubIdForm(forms.Form):
         super().__init__(*args, **kwargs)
         self.fields["operador"].choices = RegraSubId.OPERADORES
 
-    def clean_texto(self):
-        texto = self.cleaned_data["texto"].strip()
-        if not texto:
-            raise forms.ValidationError("Informe o texto.")
-        return texto
-
     def clean_nome(self):
         return self.cleaned_data["nome"].strip()
+
+    def clean(self):
+        from .models import RegraSubId
+
+        dados = super().clean()
+        if dados.get("operador") == RegraSubId.SEM:
+            dados["texto"] = ""  # "está vazio" não usa texto
+        elif not (dados.get("texto") or "").strip():
+            self.add_error("texto", "Informe o texto.")
+        else:
+            dados["texto"] = dados["texto"].strip()
+        return dados
 
 
 DIAS_DA_SEMANA = [(0, "Seg"), (1, "Ter"), (2, "Qua"), (3, "Qui"), (4, "Sex"), (5, "Sáb"), (6, "Dom")]
