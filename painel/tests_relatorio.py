@@ -106,7 +106,7 @@ class TestRelatorioDiario(TestCase):
         html = email.alternatives[0][0]
         for trecho in ("R$ 120,30", "R$ 1.500,50", ">Pedidos<", "nowrap;\">12<", "Comissão validada", "#1F3A2E;border-radius:10px;", "R$ 2.000,50", "Site", "grupos", "faltam", "R$ 2.999,50",
                        "Bot de WhatsApp", "Nenhuma oferta enviada ontem", "periodo=ontem", "Meta de Outubro/2026", "por dia"):
-            self.assertIn(trecho, html)
+            self.assertIn(trecho.replace("R$ ", "R$\u00a0"), html)  # no HTML, "R$ 1,00" não quebra a linha
         self.assertIn("R$ 120,30", email.body)  # versão em texto
 
         self.assertEqual(relatorio.enviar_pendentes(as_(9)), [])  # já foi hoje
