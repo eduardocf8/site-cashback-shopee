@@ -278,8 +278,8 @@ class Motor:
         a_cada = max(3, campanha.link_campanha_a_cada or 10)
         if ofertas_enviadas_hoje(config.conta, agora, config.simulacao) % a_cada:
             return
-        texto = campanhas.texto_da_pagina(config.campanha_hoje["nome"], campanha.texto_pagina, campanha.cupom,
-                                         MARCADOR_DO_LINK)
+        texto = campanhas.texto_da_pagina(config.campanha_hoje["nome"], campanha.titulo_pagina, campanha.texto_pagina,
+                                         campanha.cupom, MARCADOR_DO_LINK)
         try:
             enfileirar(config, grupos_do_plano(config), texto, campanha.link_campanha, item_id="",
                        nome=f"Página da campanha: {config.campanha_hoje['nome']}", origem=EnvioWhatsApp.CAMPANHA,

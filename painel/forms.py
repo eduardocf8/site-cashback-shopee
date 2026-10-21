@@ -403,7 +403,7 @@ class CampanhaBotForm(forms.ModelForm):
         fields = [
             "datas_ligadas", "intervalo_minutos", "limite_diario", "horario_inicio", "horario_fim",
             "palavra_chave", "comissao_minima", "desconto_minimo",
-            "mensagem_ativa", "frase_abertura", "cupom", "pagina_ativa", "texto_pagina", "link_campanha",
+            "mensagem_ativa", "frase_abertura", "cupom", "pagina_ativa", "titulo_pagina", "texto_pagina", "link_campanha",
             "link_campanha_a_cada",
         ]
         labels = {
@@ -412,13 +412,14 @@ class CampanhaBotForm(forms.ModelForm):
             "comissao_minima": "Comissão mínima (%)", "desconto_minimo": "Desconto mínimo (%)",
             "frase_abertura": "Frase de abertura", "cupom": "Cupom da campanha",
             "link_campanha": "Link da página da campanha na Shopee", "link_campanha_a_cada": "Enviar a cada",
-            "texto_pagina": "Texto da mensagem",
+            "titulo_pagina": "Título", "texto_pagina": "Texto antes do link",
         }
         help_texts = {
             "palavra_chave": "Ex: fone bluetooth. Em branco, o bot busca como na Automação.",
             "frase_abertura": "Vai no começo de cada oferta. Ex: 🔥 11.11 na Shopee",
             "cupom": "Aparece nas ofertas como “Cupom: …”, no lugar do cupom da Automação. Vai também na mensagem da página.",
-            "texto_pagina": "Vai antes do link. Em branco, vai “🛍️ 11.11: todas as ofertas num lugar só”.",
+            "titulo_pagina": "Opcional. Vai no começo da mensagem. Ex: 🔥 11.11 CHEGOU!",
+            "texto_pagina": "Em branco, vai “🛍️ 11.11: todas as ofertas num lugar só”.",
             "link_campanha": "Cole o link da página da campanha. O bot troca pelo seu link de afiliado.",
         }
         widgets = {
@@ -427,6 +428,7 @@ class CampanhaBotForm(forms.ModelForm):
             "frase_abertura": forms.TextInput(attrs={"placeholder": "🔥 11.11 na Shopee", "data-emoji": ""}),
             "cupom": forms.TextInput(attrs={"placeholder": "Ex: SHOPEE1111", "data-emoji": ""}),
             "link_campanha": forms.URLInput(attrs={"placeholder": "https://shopee.com.br/m/11-11"}),
+            "titulo_pagina": forms.TextInput(attrs={"placeholder": "🔥 11.11 CHEGOU!", "data-emoji": ""}),
             "texto_pagina": forms.TextInput(attrs={"placeholder": "🛍️ Todas as ofertas do 11.11 aqui", "data-emoji": ""}),
         }
 

@@ -81,10 +81,11 @@ class TestTela(BasePainel):
         resposta = self.client.post("/whatsapp/campanhas/", base)
         self.assertContains(resposta, "Cole o link da página da campanha para enviar a mensagem.")
         resposta = self.client.post("/whatsapp/campanhas/", {**base, "link_campanha": "https://shopee.com.br/m/11-11",
-                                                            "texto_pagina": "Tudo do 11.11 aqui", "cupom": "C1"}, follow=True)
+                                                            "titulo_pagina": "🔥 CHEGOU!", "texto_pagina": "Tudo do 11.11 aqui",
+                                                            "cupom": "C1"}, follow=True)
         self.assertContains(resposta, "Mensagem da página da campanha")
         self.assertContains(resposta, "a cada 5 ofertas")
-        self.assertContains(resposta, "Tudo do 11.11 aqui\nhttps://s.shopee.com.br/sua-pagina\n\n🎟️ Cupom: C1")
+        self.assertContains(resposta, "🔥 CHEGOU!\n\nTudo do 11.11 aqui\nhttps://s.shopee.com.br/sua-pagina\n\n🎟️ Cupom: C1")
         self.assertTrue(CampanhaBot.objects.get(conta=self.conta).pagina_ativa)
 
     def test_mensagem_desligada_guarda_o_texto_e_a_previa_fica_normal(self, _):

@@ -112,6 +112,7 @@
       <label class="marcar">{{ form.pagina_ativa }}<span><strong>Enviar a página da campanha</strong><span class="ajuda">Quem clica cai na página do evento com o seu link: compras de qualquer produto de lá contam para você.</span></span></label>
       <div class="bloco-mensagem" data-ligado-por="id_pagina_ativa">
         <div class="campo">{% include "painel/_campo.html" with campo=form.link_campanha %}</div>
+        <div class="campo">{% include "painel/_campo.html" with campo=form.titulo_pagina %}</div>
         <div class="campo">{% include "painel/_campo.html" with campo=form.texto_pagina %}</div>
         <div class="campo campo-curto">
           <label for="{{ form.link_campanha_a_cada.id_for_label }}">{{ form.link_campanha_a_cada.label }}</label>

@@ -263,6 +263,7 @@ class CampanhaBot(models.Model):
     cupom = models.CharField(max_length=120, blank=True)
     # Página da campanha: uma mensagem à parte, só com o link da página, a cada N ofertas.
     pagina_ativa = models.BooleanField("enviar a página da campanha", default=False)
+    titulo_pagina = models.CharField(max_length=120, blank=True)
     texto_pagina = models.CharField(max_length=200, blank=True)
     link_campanha = models.URLField(max_length=500, blank=True)
     link_campanha_a_cada = models.PositiveSmallIntegerField(default=10)

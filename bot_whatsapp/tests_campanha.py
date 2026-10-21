@@ -112,11 +112,11 @@ class TestMotorNaCampanha(TestCase):
         # só o link da página (sem produto), com o texto padrão e o cupom
         self.assertEqual(pagina.texto, "🛍️ 11.11: todas as ofertas num lugar só\nhttps://s.shopee.com.br/1\n\n🎟️ Cupom: C1111")
         self.assertEqual(pagina.imagem_url, "")
-        CampanhaBot.objects.filter(pk=self.campanha.pk).update(texto_pagina="Corre que tá acabando!")
+        CampanhaBot.objects.filter(pk=self.campanha.pk).update(titulo_pagina="🔥 CHEGOU!", texto_pagina="Corre que tá acabando!")
         for i in range(3, 6):
             self.rodar(ONZE_ONZE + timedelta(minutes=10 * i))
         textos = EnvioWhatsApp.objects.filter(origem="campanha").values_list("texto", flat=True)
-        self.assertTrue(any(t.startswith("Corre que tá acabando!\nhttps://") for t in textos))
+        self.assertTrue(any(t.startswith("🔥 CHEGOU!\n\nCorre que tá acabando!\nhttps://") for t in textos))
         # a página não conta como oferta: o limite e o "a cada 3" seguem certos
         self.assertEqual(ofertas.ofertas_enviadas_hoje(self.conta, ONZE_ONZE + timedelta(minutes=50)), 6)
 

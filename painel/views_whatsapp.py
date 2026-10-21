@@ -266,7 +266,8 @@ def _previa(campanha, config) -> str:
 
 def _previa_da_pagina(campanha, proxima) -> str:
     nome = proxima["nome"] if proxima else "11.11"
-    return campanhas.texto_da_pagina(nome, campanha.texto_pagina, campanha.cupom, "https://s.shopee.com.br/sua-pagina")
+    return campanhas.texto_da_pagina(nome, campanha.titulo_pagina, campanha.texto_pagina, campanha.cupom,
+                                     "https://s.shopee.com.br/sua-pagina")
 
 
 def _adicionar_data(request, campanha, hoje) -> None:
