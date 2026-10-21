@@ -375,12 +375,14 @@ def selecionar_top_ofertas_sem_duplicar(quantidade: int) -> list[Oferta]:
     """As ofertas mais vendidas (Oferta.Meta.ordering = -vendas), sem repetir produto.
 
     A Shopee pode anunciar o mesmo produto genérico (ex: "Percarbonato de sódio") em
-    lojas diferentes, cada uma com seu próprio item_id - sincronizar_ofertas só remove
+    lojas diferentes, cada uma com seu próprio item_id - a sincronização do catálogo só remove
     duplicado por item_id, então sem essa checagem o mesmo produto pode aparecer mais
     de uma vez no mesmo story/post."""
     selecionadas = []
     nomes_vistos = set()
-    for oferta in Oferta.objects.all():
+    # Só os mais vendidos (a lista é ordenada por -vendas): com dezenas de milhares de
+    # produtos, percorrer o catálogo todo a cada visita à home carregaria tudo na memória.
+    for oferta in Oferta.objects.all()[: max(quantidade * 50, 500)]:
         nome_normalizado = normalizar_nome_produto(oferta.nome)
         if nome_normalizado in nomes_vistos:
             continue
