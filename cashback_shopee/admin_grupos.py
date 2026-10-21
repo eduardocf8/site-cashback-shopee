@@ -30,6 +30,8 @@ GRUPOS = [
             ("links.click", "Cliques"),
             ("ofertas.nomecurtocache", "Cache de nomes curtos"),
             ("ofertas.cashbackmaximocache", "Cache de cashback máximo"),
+            ("ofertas.sincronizacaocatalogo", "Sincronização do catálogo"),
+            ("ofertas.buscacatalogo", "Buscas do catálogo (categorias)"),
         ]),
         ("Instagram do site", [
             ("instagram_bot.registropublicacao", "Publicações"),

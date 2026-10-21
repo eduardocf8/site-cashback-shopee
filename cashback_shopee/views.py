@@ -17,7 +17,7 @@ from instagram_bot.lembrete_token import verificar_validade_token
 from instagram_bot.services import executar_publicacoes_do_dia, publicar_story_oferta_do_momento
 from links.services import resolver_item_id_alvo_pendentes
 from links.shopee_client import ShopeeAPIError, ShopeeConfigError
-from ofertas.services import encurtar_nomes_pendentes, sincronizar_ofertas
+from ofertas.services import encurtar_nomes_pendentes
 from accounts.verificacao_pix import verificar_pendentes
 from pedidos.services import liberar_saldo, sincronizar
 from pedidos.reclamacoes import atualizar_reclamacoes
@@ -134,10 +134,8 @@ def executar_tarefas_agendadas(request):
     except (ShopeeConfigError, ShopeeAPIError) as erro:
         resultado["sincronizacao_erro"] = str(erro)
 
-    try:
-        resultado["ofertas_sincronizadas"] = sincronizar_ofertas()
-    except (ShopeeConfigError, ShopeeAPIError) as erro:
-        resultado["ofertas_erro"] = str(erro)
+    # O catálogo de ofertas não sincroniza mais aqui: roda aos poucos numa thread do
+    # worker (ofertas/catalogo.py), que não tem o limite de 120s do site.
 
     # Depois da sincronização: procura de novo os pedidos que as pessoas reclamaram.
     resultado["reclamacoes"] = atualizar_reclamacoes()

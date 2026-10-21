@@ -97,8 +97,10 @@ def gerar_link_curto(origin_url: str, sub_ids: list[str]) -> str:
     return dados["generateShortLink"]["shortLink"]
 
 
-def buscar_ofertas_produtos(pagina: int, limite: int = 50) -> dict:
-    """Consulta a query productOfferV2 (listType ALL) para montar a página de ofertas.
+def buscar_ofertas_produtos(pagina: int, limite: int = 50, categoria: int | None = None) -> dict:
+    """Consulta a query productOfferV2 para montar a página de ofertas: o feed geral
+    (listType ALL) ou, com `categoria`, os produtos de uma categoria (productCatId) - cada
+    categoria traz uma lista própria (ver ofertas/catalogo.py).
 
     Usa commissionRate (= shopeeCommissionRate + sellerCommissionRate), não só
     shopeeCommissionRate. sellerCommissionRate é um bônus de campanha do vendedor,
@@ -110,7 +112,8 @@ def buscar_ofertas_produtos(pagina: int, limite: int = 50) -> dict:
     query = (
         "query{"
         "productOfferV2("
-        f"listType:0,page:{pagina},limit:{limite}"
+        + (f"productCatId:{int(categoria)}," if categoria else "listType:0,")
+        + f"page:{pagina},limit:{limite}"
         "){"
         "nodes{"
         "itemId commissionRate sales priceMax priceMin productCatIds ratingStar "
