@@ -346,7 +346,8 @@ def sincronizar_ofertas(limite_por_pagina: int = 50, max_paginas: int = 70) -> d
     oferecendo hoje, sem status a preservar entre sincronizações (diferente de Pedido/Saque).
 
     max_paginas=70 (x50 = até 3.500 produtos) dá margem sobre o teto real observado pra essa
-    conta (2.800 produtos em 56 páginas, medido com explorar_limite_catalogo em 2026-09-04) -
+    conta (56 páginas, medido com explorar_limite_catalogo em 2026-09-04; em 10/2026 essas 56
+    páginas tinham só 1.572 produtos diferentes, porque o feed repete itens) -
     a Shopee pode liberar mais ofertas com o tempo, e o loop já para sozinho em hasNextPage=False
     bem antes de chegar nesse teto, então não custa nada deixar folga.
     """

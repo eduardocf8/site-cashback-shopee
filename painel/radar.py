@@ -15,8 +15,9 @@ from bot_whatsapp.models import ConfiguracaoOfertas
 ORDENS = [("mais_vendidos", "Mais vendidos"), ("maior_comissao", "Maior comissão"), ("maior_desconto", "Maior desconto")]
 VALIDADE_DO_CACHE = 15 * 60
 SUB_ID = "radar"
-# Cada busca da API tem o seu próprio fim (o "hasNextPage" da Shopee diz quando acabou; no
-# feed geral, sem palavra-chave, foram 2.800 produtos). Este teto é só de segurança.
+# Cada busca da API tem o seu próprio fim (o "hasNextPage" da Shopee diz quando acabou):
+# medido em 10/2026, o feed geral para em 56 páginas (1.572 produtos diferentes, porque ele
+# repete itens) e cada palavra-chave em 40. Este teto é só de segurança.
 MAXIMO_PAGINAS = 200
 
 

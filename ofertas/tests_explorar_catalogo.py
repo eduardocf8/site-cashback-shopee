@@ -14,6 +14,9 @@ def falsa_api(query):
     pagina = int(query.split("page:")[1].split(",")[0])
     if "keyword" in query:
         faixa = range(500, 550)
+    elif "productCatId" in query:
+        categoria = int(query.split("productCatId:")[1].split(",")[0].split(")")[0])
+        faixa = range(categoria * 1000, categoria * 1000 + 30)
     elif "sortType:5" in query:
         faixa = range(60, 181)
     else:
@@ -53,3 +56,10 @@ class TestExplorarCatalogo(SimpleTestCase):
     def test_teto_de_seguranca(self, api, _):
         saida = self.rodar("--max-paginas", "2")
         self.assertIn("parou no teto de 2 páginas com hasNextPage=True", saida)
+
+    def test_categorias(self, api, _):
+        with mock.patch("ofertas.services.carregar_categorias_nivel1", return_value={1: "Beleza", 2: "Áudio"}):
+            saida = self.rodar("--categorias")
+        self.assertIn("categoria 1 (Beleza): 30 produtos", saida)
+        self.assertIn("Somando as 3 buscas: 180 produtos únicos, contra 120 do feed geral sozinho (+60)", saida)
+        self.assertTrue(any("productCatId:2" in c.args[0] for c in api.call_args_list))

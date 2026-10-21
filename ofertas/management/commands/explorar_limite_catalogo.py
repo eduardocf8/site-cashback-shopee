@@ -39,6 +39,11 @@ class Command(BaseCommand):
             help="Roda o feed geral, as ordens 2, 3, 4 e 5 e uma busca por palavra-chave para cada "
                  "palavra de --palavras, e mostra quantos produtos únicos somam.",
         )
+        parser.add_argument(
+            "--categorias", action="store_true",
+            help="Roda uma busca por categoria (productCatId) para cada uma das categorias principais da "
+                 "Shopee que a cash-b usa e mostra quantos produtos únicos somam, comparando com o feed geral.",
+        )
         parser.add_argument("--palavras", default=",".join(PALAVRAS_DO_PACOTE),
                             help="Palavras do --pacote, separadas por vírgula.")
         parser.add_argument("--pausa", type=float, default=PAUSA_ENTRE_PAGINAS_SEGUNDOS,
@@ -47,7 +52,12 @@ class Command(BaseCommand):
     def handle(self, *args, **options):
         self.limite, self.max_paginas, self.pausa = options["limite"], options["max_paginas"], options["pausa"]
         try:
-            if options["pacote"]:
+            if options["categorias"]:
+                from ofertas.services import carregar_categorias_nivel1
+
+                self.rodar_buscas([{}] + [{"categoria": c, "nome_categoria": n}
+                                          for c, n in sorted(carregar_categorias_nivel1().items(), key=lambda i: i[1])])
+            elif options["pacote"]:
                 self.pacote([p.strip() for p in options["palavras"].split(",") if p.strip()])
             else:
                 busca = {"ordem": options["ordem"], "palavra": options["palavra"].strip(),
@@ -63,7 +73,7 @@ class Command(BaseCommand):
         if busca.get("palavra"):
             partes.append(f"palavra '{busca['palavra']}'")
         if busca.get("categoria"):
-            partes.append(f"categoria {busca['categoria']}")
+            partes.append(f"categoria {busca['categoria']}" + (f" ({busca['nome_categoria']})" if busca.get("nome_categoria") else ""))
         if busca.get("loja"):
             partes.append(f"loja {busca['loja']}")
         if not partes:
@@ -96,7 +106,10 @@ class Command(BaseCommand):
         self.stdout.write(self.style.SUCCESS(f"\n{self.nome(busca)}: {len(ids)} produtos ({fim})."))
 
     def pacote(self, palavras: list[str]):
-        buscas = [{}] + [{"ordem": o} for o in (2, 3, 4, 5)] + [{"palavra": p} for p in palavras]
+        self.rodar_buscas([{}] + [{"ordem": o} for o in (2, 3, 4, 5)] + [{"palavra": p} for p in palavras])
+
+    def rodar_buscas(self, buscas: list[dict]):
+        """A primeira busca é a base de comparação (o feed geral)."""
         self.stdout.write(f"Medindo {len(buscas)} buscas (até {self.max_paginas} páginas de {self.limite} cada)...\n")
         todos = set()
         geral = set()
