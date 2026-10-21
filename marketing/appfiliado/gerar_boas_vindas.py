@@ -30,7 +30,9 @@ PASSOS = [
 MODULOS = [
     ("Bot de WhatsApp", "Abra a aba <strong>Conexão</strong>, leia o QR Code com o WhatsApp do número que vai mandar as ofertas e conecte. "
      "Depois, em <strong>Automação</strong>, escolha de onde vêm as ofertas, os grupos de destino e o intervalo, e ligue as ofertas. "
-     "Dica: comece com a opção de <em>simulação</em>, que faz tudo sem enviar nada."),
+     "Dica: comece com a opção de <em>simulação</em>, que faz tudo sem enviar nada. "
+     "Em <strong>Campanhas</strong>, marque as datas da Shopee (11.11, Black Friday...) e o bot muda sozinho o ritmo, o texto e o cupom naquele dia. "
+     "Em <strong>Alerta de preço</strong>, escolha produtos para acompanhar e receba o aviso quando baixarem."),
     ("Meu site", "Escolha o endereço, o nome e a cor, adicione os botões e confira a prévia ao lado. "
      "Quando estiver bom, marque o site como publicado e coloque o link na bio."),
     ("Carrosséis", "Cole o link de um produto da Shopee e gere o carrossel. Ajuste os textos no editor e baixe as imagens para postar."),
