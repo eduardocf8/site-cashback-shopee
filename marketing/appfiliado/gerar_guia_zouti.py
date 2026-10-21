@@ -12,7 +12,7 @@ PASTA = Path(__file__).resolve().parent
 E = html.escape
 
 PRECOS = {  # (Standard, Premium)
-    "bot": (39.90, 69.90), "site": (22.90, 35.90), "carrosseis": (19.90, 35.90),
+    "bot": (49.90, 89.90), "site": (22.90, 35.90), "carrosseis": (19.90, 35.90),
 }
 NOMES = {"bot": "Bot de WhatsApp", "site": "Meu site", "carrosseis": "Carrosséis"}
 CODIGOS = {
@@ -21,8 +21,8 @@ CODIGOS = {
     ("carrosseis", 0): "carrosseis", ("carrosseis", 1): "carrosseis_premium",
 }
 LINHA = {
-    ("bot", 0): "até 3 grupos, 30 ofertas por dia em cada",
-    ("bot", 1): "até 20 grupos, 100 ofertas por dia em cada, copiar ofertas e IA",
+    ("bot", 0): "até 3 grupos, 30 ofertas por dia em cada, modo campanha e alerta de preço (10 produtos)",
+    ("bot", 1): "até 20 grupos, 100 ofertas por dia em cada, copiar ofertas, IA e alerta de preço (50 produtos)",
     ("site", 0): "até 3 botões, conversor e vitrine de ofertas",
     ("site", 1): "até 10 botões, produtos que você escolher e sem a nossa marca",
     ("carrosseis", 0): "3 por dia, com roteiro por IA",
@@ -32,12 +32,15 @@ DESCRICOES = {
     ("bot", 0): ("Ofertas da Shopee enviadas no automático para os seus grupos, sempre com o seu link de afiliado.",
                  ["Até 3 grupos e canais", "Até 30 ofertas por dia em cada grupo, com intervalo a partir de 15 minutos",
                   "Busca por palavra-chave, loja ou categoria, com filtros de comissão, desconto, preço e avaliação",
-                  "Horário e dias de envio, Sub ID por grupo e modo simulação para testar antes"],
+                  "Horário e dias de envio, Sub ID por grupo e modo simulação para testar antes",
+                  "Modo campanha: no 11.11, na Black Friday e nas outras datas, o bot muda sozinho o ritmo, o texto e o cupom",
+                  "Alerta de preço: acompanha até 10 produtos e avisa por e-mail e nos grupos quando baixarem (conferência a cada 1 hora ou mais)"],
                  "Precisa de: um número de WhatsApp (conecta pelo QR Code) e a conta de afiliado da Shopee."),
     ("bot", 1): ("Tudo do Standard, com mais alcance e mais automação.",
                  ["Até 20 grupos e canais", "Até 100 ofertas por dia em cada grupo, com intervalo a partir de 3 minutos",
                   "Copia as ofertas de outros grupos e canais e troca pelo seu link de afiliado",
-                  "Revisão do texto com IA (corrige o português sem mexer em link, preço ou cupom)"],
+                  "Revisão do texto com IA (corrige o português sem mexer em link, preço ou cupom)",
+                  "Alerta de preço com até 50 produtos, conferidos a cada 15 minutos"],
                  "Precisa de: um número de WhatsApp (conecta pelo QR Code) e a conta de afiliado da Shopee."),
     ("site", 0): ("Seu link na bio (seunome.appfiliado.com.br) com vitrine de ofertas e conversor de links.",
                   ["Até 3 botões, ícones das redes sociais, cores e estilo à sua escolha",
