@@ -16,7 +16,7 @@ LOGO = ('<svg viewBox="3 8.25 36 36" width="40" height="40"><g fill="none" strok
 
 PASSOS = [
     ("Confira o seu e-mail",
-     "Logo depois da compra você recebe um e-mail do <strong>Appfiliado</strong> com a sua chave de acesso e um link para criar a senha. "
+     "Logo depois da compra você recebe um e-mail do <strong>Appfiliado</strong> com um link para criar a senha. "
      "Se não chegar em alguns minutos, olhe a caixa de <strong>spam</strong> ou a aba Promoções."),
     ("Crie a senha e entre",
      "Clique no link do e-mail, crie a sua senha e entre em <strong>app.appfiliado.com.br</strong>. "

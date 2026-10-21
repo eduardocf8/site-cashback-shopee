@@ -124,7 +124,9 @@ class TestWebhookZouti(BaseZouti):
         self.assertEqual(conta.nome, "Cliente Exemplo")
         self.assertIsNotNone(conta.chave_enviada_em)
         self.assertEqual(len(mail.outbox), 1)
-        self.assertIn(conta.chave, mail.outbox[0].body)
+        self.assertEqual(mail.outbox[0].subject, "Bem-vindo ao Appfiliado — crie sua senha")
+        self.assertIn("/senha/definir/", mail.outbox[0].body)  # link para criar a senha do painel
+        self.assertNotIn("aplicativo", mail.outbox[0].body)  # o Appfiliado agora é só no navegador
         self.assertEqual(conta.assinaturas.get().status, Assinatura.STATUS_ATIVA)
 
     def test_evento_repetido_nao_e_reprocessado(self):

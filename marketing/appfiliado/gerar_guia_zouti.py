@@ -188,7 +188,7 @@ da coluna "Códigos". Premium já inclui o básico.</p></div></div>
 <div class="passo"><div class="num">7</div><div><p><strong>Testar antes de vender:</strong></p><ul>
 <li>Botão "Testar Webhook" na Zouti → no admin, em <strong>Eventos de webhook da Zouti</strong>, o aviso aparece com "assinatura válida".
 Se aparecer inválida, mande um print.</li>
-<li>Compra de teste com outro e-mail: a conta nova aparece, o e-mail com a chave e o link de senha chega, e o módulo fica liberado.</li>
+<li>Compra de teste com outro e-mail: a conta nova aparece, o e-mail de boas-vindas com o link de senha chega, e o módulo fica liberado.</li>
 <li>Reembolse a compra de teste: o acesso dessa conta é cortado.</li></ul></div></div>
 <div class="passo"><div class="num">8</div><div><p><strong>Mande os links de checkout</strong> de cada produto para colocar os botões na landing page.</p></div></div>
 <div class="aviso">Mudanças em Produtos da Zouti no admin valem na hora para quem já assinou, sem deploy.</div>
