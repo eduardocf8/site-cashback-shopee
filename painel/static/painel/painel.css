@@ -779,4 +779,4 @@ summary { cursor: pointer; }  /* "Editar", "Ver mensagem" etc. abrem ao clicar *
 .passos-conversor { margin: 0 0 12px; padding-left: 20px; display: flex; flex-direction: column; gap: 8px; }
 .conversor #resultado { min-height: 90px; }
 .conversor #resultado[readonly] { background: var(--card); cursor: text; }
-.convite-bot { margin: 12px 0 0; }
+.card .convite-bot { margin: 16px 0 0; }
