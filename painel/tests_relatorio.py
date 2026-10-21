@@ -108,6 +108,7 @@ class TestRelatorioDiario(TestCase):
                        "Bot de WhatsApp", "Nenhuma oferta enviada ontem", "periodo=ontem", "Meta de Outubro/2026", "por dia"):
             self.assertIn(trecho.replace("R$ ", "R$\u00a0"), html)  # no HTML, "R$ 1,00" não quebra a linha
         self.assertIn("R$ 120,30", email.body)  # versão em texto
+        self.assertIn('src="https://app.appfiliado.com.br/static/painel/email-logo.png"', html)  # o logo de verdade, em PNG
 
         self.assertEqual(relatorio.enviar_pendentes(as_(9)), [])  # já foi hoje
         self.assertEqual(len(mail.outbox), 1)

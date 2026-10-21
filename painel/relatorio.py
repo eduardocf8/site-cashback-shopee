@@ -36,6 +36,13 @@ def _ofertas_do_bot(conta, dia: date) -> dict | None:
     return {"ofertas": envios.values("item_id").distinct().count(), "mensagens": envios.count()}
 
 
+def url_do_logo() -> str:
+    """O logo em PNG no domínio do painel (o Gmail não mostra SVG). Sem o código de versão
+    no nome: o WhiteNoise serve o arquivo com o nome original também, e um e-mail antigo
+    continua achando a imagem depois de um deploy."""
+    return settings.APPFILIADO_PAINEL_URL.rstrip("/") + "/static/painel/email-logo.png"
+
+
 def montar(conta, hoje: date) -> dict:
     """Os números do e-mail (também usados no teste)."""
     ontem = hoje - timedelta(days=1)
@@ -53,6 +60,7 @@ def montar(conta, hoje: date) -> dict:
         "bot": _ofertas_do_bot(conta, ontem),
         "url_resultados": url_do_painel("painel_resultados") + "?periodo=ontem",
         "url_configuracoes": url_do_painel("painel_configuracoes") + "#relatorio",
+        "url_logo": url_do_logo(),
     }
 
 
@@ -113,7 +121,7 @@ def enviar_aviso(conta, hoje: date, destinatarios: list[str], agora: datetime, m
     ontem = hoje - timedelta(days=1)
     dados = {"ontem": ontem, "hora": timezone.localtime(agora), "motivo": motivo, "automatico": automatico,
              "hora_de_desistir": HORA_DE_DESISTIR, "url_resultados": url_do_painel("painel_resultados"),
-             "url_configuracoes": url_do_painel("painel_configuracoes") + "#relatorio"}
+             "url_configuracoes": url_do_painel("painel_configuracoes") + "#relatorio", "url_logo": url_do_logo()}
     assunto = (f"Appfiliado — seus números de {ontem:%d/%m} ainda não saíram na Shopee" if motivo == "nao_saiu"
                else "Appfiliado — não consegui buscar seus resultados na Shopee")
     texto = render_to_string("painel/email_relatorio_aviso.txt", dados)
