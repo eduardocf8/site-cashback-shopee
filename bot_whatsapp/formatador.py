@@ -47,7 +47,7 @@ def limpar_linhas(texto):
 # "www.", ou domínio com caminho ("bit.ly/x", "chat.whatsapp.com/x") ou de terminação conhecida.
 PADRAO_LINK_QUALQUER = re.compile(
     r"(?:https?://|www\.)[^\s]+"
-    r"|\b[\w-]+(?:\.[\w-]+)+/[^\s]*"
+    r"|\b[\w-]+(?:\.[\w-]+)*\.[a-z]{2,}/[^\s]*"  # o domínio termina em letras: "4.8/5" e "1.200/mês" não são link
     r"|\b[\w-]+(?:\.[\w-]+)*\.(?:com|net|org|br|ly|me|io|co|gg|top|site|link|shop|store|app|xyz|online|info|ee|to|gl)\b",
     re.I,
 )

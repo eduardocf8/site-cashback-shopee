@@ -1,6 +1,6 @@
 from django.urls import include, path
 
-from . import views, views_carrosseis, views_notas, views_site, views_whatsapp
+from . import views, views_carrosseis, views_conversor, views_notas, views_site, views_whatsapp
 
 urlpatterns = [
     path("", views.inicio, name="painel_inicio"),
@@ -14,6 +14,8 @@ urlpatterns = [
     path("resultados/estado/", views.estado_resultados, name="painel_estado_resultados"),
     path("resultados/vendas.xlsx", views.exportar_vendas, name="painel_exportar_vendas"),
     path("metas/", views.metas_view, name="painel_metas"),
+    path("conversor/", views_conversor.conversor_view, name="painel_conversor"),
+    path("conversor/enviar/", views_conversor.conversor_enviar, name="painel_conversor_enviar"),
     path("configuracoes/", views.configuracoes, name="painel_configuracoes"),
     path("whatsapp/", views_whatsapp.whatsapp, name="painel_whatsapp"),
     path("whatsapp/estado/", views_whatsapp.whatsapp_estado, name="painel_whatsapp_estado"),

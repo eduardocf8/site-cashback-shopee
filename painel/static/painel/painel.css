@@ -760,3 +760,23 @@ summary { cursor: pointer; }  /* "Editar", "Ver mensagem" etc. abrem ao clicar *
   .lista-produtos-vitrine select { grid-column: 1 / -1; }
 }
 .selo-mes-fechado { background: var(--chip); color: var(--texto); }
+
+/* Conversor de links */
+.conversor { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); }
+@media (max-width: 900px) { .conversor { grid-template-columns: 1fr; } }
+.conversor .formulario > * + * { margin-top: 14px; }
+.conversor textarea { min-height: 220px; font-family: inherit; line-height: 1.45; }
+.conversor fieldset.campo { border: 0; padding: 0; margin-left: 0; margin-right: 0; }
+.conversor fieldset legend { font-weight: 700; font-size: 13px; padding: 0; margin-bottom: 6px; }
+.conversor .aviso { margin: 10px 0; }
+.conversor .quebra { word-break: break-all; }
+.acoes-conversor { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 12px; }
+.acoes-conversor .icone { width: 18px; height: 18px; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+.enviar-conversor { margin-top: 18px; padding-top: 16px; border-top: 1px solid var(--borda); }
+.enviar-conversor h3 { font-size: 14px; margin: 0 0 8px; }
+.linha-enviar { display: flex; gap: 8px; flex-wrap: wrap; }
+.linha-enviar select { flex: 1 1 200px; min-width: 0; min-height: 44px; padding: 0 12px; border-radius: 10px; border: 1px solid var(--borda); background: var(--campo); font: inherit; color: inherit; }
+.passos-conversor { margin: 0 0 12px; padding-left: 20px; display: flex; flex-direction: column; gap: 8px; }
+.conversor #resultado { min-height: 90px; }
+.conversor #resultado[readonly] { background: var(--card); cursor: text; }
+.convite-bot { margin: 12px 0 0; }

@@ -31,6 +31,8 @@ ICONES = {
     "notas": "M6 3h9l4 4v14H6zM14 3v5h5M9 12h7M9 16h7",
     "email": "M3 6h18v12H3zM3 7l9 6 9-6",
     "seta_cima": "M6 15l6-6 6 6",
+    "conversor": "M10 14a4 4 0 0 0 5.7 0l3-3a4 4 0 0 0-5.7-5.7l-1 1M14 10a4 4 0 0 0-5.7 0l-3 3a4 4 0 0 0 5.7 5.7l1-1",
+    "copiar": "M8 8h11v11H8zM5 16V5h11",
 }
 
 # slug -> configuração. "modulo": código da licença que libera (None = todos
@@ -40,6 +42,7 @@ MODULOS_DO_MENU = [
     {"slug": "inicio", "nome": "Início", "icone": "inicio", "modulo": None, "pronto": True},
     {"slug": "resultados", "nome": "Resultados", "icone": "resultados", "modulo": None, "pronto": True},
     {"slug": "metas", "nome": "Metas", "icone": "metas", "modulo": None, "pronto": True},
+    {"slug": "conversor", "nome": "Conversor de links", "icone": "conversor", "modulo": None, "pronto": True},
     {
         "slug": "whatsapp", "nome": "Bot de WhatsApp", "icone": "whatsapp", "modulo": MODULO_WHATSAPP,
         "pronto": True, "teste": True,
@@ -79,6 +82,7 @@ URL_DE_SLUG = {
     "inicio": "painel_inicio",
     "resultados": "painel_resultados",
     "metas": "painel_metas",
+    "conversor": "painel_conversor",
     "whatsapp": "painel_whatsapp",
     "site": "painel_meu_site",
     "carrosseis": "painel_carrosseis",
