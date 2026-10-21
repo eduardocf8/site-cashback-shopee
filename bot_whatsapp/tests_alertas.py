@@ -72,8 +72,7 @@ class TestMotorDeAlertas(TestCase):
     def setUp(self):
         self.conta = criar_conta()
         ConexaoWhatsApp.objects.create(conta=self.conta, estado="conectado", grupos=GRUPOS)
-        self.alerta = AlertaPreco.objects.create(conta=self.conta, ativo=True, intervalo_minutos=15, queda_minima=10,
-                                                 grupos=[GRUPOS[0]])
+        self.alerta = AlertaPreco.objects.create(conta=self.conta, ativo=True, intervalo_minutos=15, queda_minima=10)
         self.motor = alertas.Motor()
         alertas.adicionar(self.conta, produto(1, preco=100.0, nome="Fone"))
         alertas.adicionar(self.conta, produto(2, preco=50.0, nome="Mouse"))
@@ -111,13 +110,19 @@ class TestMotorDeAlertas(TestCase):
     def test_posta_nos_grupos_com_o_modelo(self, _link):
         AlertaPreco.objects.filter(pk=self.alerta.pk).update(enviar_grupos=True, avisar_email=False,
                                                              modelo_mensagem="Baixou! {produto} por {preco_agora}\n{link}")
-        ConfiguracaoOfertas.objects.create(conta=self.conta, sub_ids="grupos")
+        ConfiguracaoOfertas.objects.create(conta=self.conta, sub_ids="grupos", grupos=[GRUPOS[0]])  # os grupos da Automação
         self.rodar({"1": 80.0, "2": 50.0})
         envio = EnvioWhatsApp.objects.get()
         self.assertEqual((envio.origem, envio.destino, envio.estado), ("alerta", "1@g.us", "pendente"))
         self.assertEqual(envio.texto, "Baixou! Fone por R$ 80,00\nhttps://s.shopee.com.br/1-grupos")
         self.assertTrue(AlertaDisparado.objects.get().postado_grupos)
         self.assertEqual(len(mail.outbox), 0)
+
+    def test_sem_grupos_na_automacao_avisa_o_motivo(self, _link):
+        AlertaPreco.objects.filter(pk=self.alerta.pk).update(enviar_grupos=True)
+        self.rodar({"1": 80.0, "2": 50.0})
+        self.assertFalse(EnvioWhatsApp.objects.exists())
+        self.assertIn("escolha os grupos na aba Automação", self.alerta.ultimo_erro)
 
     def test_sem_whatsapp_conectado_avisa_o_motivo(self, _link):
         AlertaPreco.objects.filter(pk=self.alerta.pk).update(enviar_grupos=True)

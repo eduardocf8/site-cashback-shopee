@@ -23,7 +23,7 @@ from django.utils import timezone
 
 from licencas import planos
 
-from . import copia, servico, shopee_ofertas
+from . import copia, shopee_ofertas
 from .models import (
     AlertaDisparado, AlertaPreco, ConexaoWhatsApp, ConfiguracaoOfertas, EnvioWhatsApp, ProdutoAcompanhado,
 )
@@ -250,23 +250,22 @@ def enviar_email(conta, disparados: list[AlertaDisparado]) -> None:
     mensagem.send()
 
 
-def grupos_do_alerta(alerta, conexao) -> list[dict]:
-    """Os grupos escolhidos que ainda existem no WhatsApp, até o máximo do plano."""
-    possiveis = {g["jid"]: g for g in servico.destinos_possiveis(conexao)} if conexao else {}
-    escolhidos = [possiveis[g["jid"]] for g in alerta.grupos or [] if g.get("jid") in possiveis]
-    return escolhidos[: regras(alerta.conta)["grupos"]]
-
-
 def postar_nos_grupos(alerta: AlertaPreco, disparados: list[AlertaDisparado]) -> None:
     from .ofertas import MARCADOR_DO_LINK, enfileirar
 
+    from .ofertas import grupos_do_plano
+
     conta = alerta.conta
     conexao = ConexaoWhatsApp.objects.filter(conta=conta).first()
-    grupos = grupos_do_alerta(alerta, conexao)
-    if not grupos or not conexao or conexao.estado != ConexaoWhatsApp.CONECTADO:
-        alerta.ultimo_erro = "Não postei nos grupos: conecte o WhatsApp e escolha os grupos do alerta."
+    # Os mesmos grupos da Automação (até o máximo do plano), com os Sub IDs de cada um.
+    config, _ = ConfiguracaoOfertas.objects.get_or_create(conta=conta)
+    grupos = grupos_do_plano(config)
+    if not conexao or conexao.estado != ConexaoWhatsApp.CONECTADO:
+        alerta.ultimo_erro = "Não postei nos grupos: conecte o WhatsApp na aba Conexão."
         return
-    config, _ = ConfiguracaoOfertas.objects.get_or_create(conta=conta)  # Sub IDs dos grupos e simulação
+    if not grupos:
+        alerta.ultimo_erro = "Não postei nos grupos: escolha os grupos na aba Automação."
+        return
     for d in disparados:
         texto = montar_mensagem(alerta.modelo_mensagem, d.nome, d.preco_antes, d.preco_agora, d.queda, MARCADOR_DO_LINK)
         try:

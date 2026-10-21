@@ -6,7 +6,9 @@ from unittest import mock
 from django.utils import timezone
 
 from bot_whatsapp import alertas, shopee_ofertas
-from bot_whatsapp.models import AlertaDisparado, AlertaPreco, ConexaoWhatsApp, EnvioWhatsApp, ProdutoAcompanhado
+from bot_whatsapp.models import (
+    AlertaDisparado, AlertaPreco, ConexaoWhatsApp, ConfiguracaoOfertas, EnvioWhatsApp, ProdutoAcompanhado,
+)
 from bot_whatsapp.tests_ofertas import GRUPOS, produto
 
 from .cripto import cifrar
@@ -66,18 +68,34 @@ class TestTelaDoAlerta(BasePainel):
         self.assertContains(resposta, "Seu plano acompanha até 10 produtos")
 
     def test_salvar_configuracao(self):
-        ConexaoWhatsApp.objects.create(conta=self.conta, estado="conectado", grupos=GRUPOS)
         base = {"acao": "salvar", "intervalo_minutos": "60", "queda_minima": "15", "avisar_email": "on",
                 "modelo_mensagem": "{produto} {link}"}
         resposta = self.client.post("/whatsapp/alertas/", {**base, "intervalo_minutos": "15"})
         self.assertContains(resposta, "Faça uma escolha válida")  # 15 min é do Premium
-        resposta = self.client.post("/whatsapp/alertas/", {**base, "enviar_grupos": "on"})
-        self.assertContains(resposta, "Escolha pelo menos um grupo")
-        resposta = self.client.post("/whatsapp/alertas/", {**base, "enviar_grupos": "on", "grupos": ["1@g.us"]}, follow=True)
+        resposta = self.client.post("/whatsapp/alertas/", {**base, "enviar_grupos": "on"}, follow=True)
         self.assertContains(resposta, "Alerta de preço salvo")
         alerta = AlertaPreco.objects.get(conta=self.conta)
-        self.assertEqual((alerta.queda_minima, alerta.enviar_grupos, alerta.grupos),
-                         (15, True, [{"jid": "1@g.us", "nome": "Ofertas VIP"}]))
+        self.assertEqual((alerta.queda_minima, alerta.enviar_grupos), (15, True))
+        self.assertContains(resposta, "nenhum está escolhido ainda")  # os grupos vêm da Automação
+        ConfiguracaoOfertas.objects.filter(conta=self.conta).update(grupos=GRUPOS)
+        self.assertContains(self.client.get("/whatsapp/alertas/"), "Vai para os mesmos grupos das ofertas: <strong>Ofertas VIP, Achadinhos</strong>")
+
+    def test_dez_produtos_por_pagina(self):
+        self.conta.modulos_cortesia = "whatsapp_premium"
+        self.conta.save()
+        for i in range(23):
+            alertas.adicionar(self.conta, produto(i, nome=f"Produto número {i}"))
+        resposta = self.client.get("/whatsapp/alertas/")
+        self.assertContains(resposta, "23 de 50")
+        self.assertContains(resposta, "Mostrando 1–10 de 23")
+        self.assertContains(resposta, "Produto número 22")  # os mais novos primeiro
+        self.assertNotContains(resposta, "Produto número 12<")
+        resposta = self.client.get("/whatsapp/alertas/?pagina=3")
+        self.assertContains(resposta, "Mostrando 21–23 de 23")
+        self.assertContains(resposta, 'aria-label="Página anterior"')
+        p = ProdutoAcompanhado.objects.get(item_id="0")
+        resposta = self.client.post("/whatsapp/alertas/", {"acao": "remover", "produto": p.pk, "pagina": "3"})
+        self.assertEqual(resposta["Location"], "/whatsapp/alertas/?pagina=3#produtos")  # volta para a mesma página
 
     def test_premium_pode_15_minutos(self):
         self.conta.modulos_cortesia = "whatsapp_premium"

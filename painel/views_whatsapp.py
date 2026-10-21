@@ -9,6 +9,7 @@ from urllib.parse import quote
 
 from django.contrib import messages
 from django.core.cache import cache
+from django.core.paginator import Paginator
 from django.http import JsonResponse
 from django.shortcuts import redirect, render
 from django.urls import reverse
@@ -20,7 +21,7 @@ from bot_whatsapp.models import (
     AlertaDisparado, AlertaPreco, CampanhaBot, ConexaoWhatsApp, ConfiguracaoOfertas, EnvioWhatsApp, EventoWhatsApp, OfertaRecebida,
     ProdutoAcompanhado,
 )
-from bot_whatsapp.ofertas import intervalo_do_plano, montar_texto, ofertas_enviadas_hoje
+from bot_whatsapp.ofertas import grupos_do_plano, intervalo_do_plano, montar_texto, ofertas_enviadas_hoje
 from licencas import planos
 
 from . import modulos as mod
@@ -369,6 +370,8 @@ def whatsapp_campanhas(request):
 
 # --- Alerta de preço ----------------------------------------------------------------
 
+PRODUTOS_POR_PAGINA = 10
+
 def _alerta(conta) -> AlertaPreco:
     alerta, _ = AlertaPreco.objects.get_or_create(conta=conta)
     return alerta
@@ -397,7 +400,8 @@ def _acao_do_alerta(request, conta, alerta, regras_da_conta):
     elif acao == "remover":
         ProdutoAcompanhado.objects.filter(conta=conta, pk=request.POST.get("produto")).delete()
         messages.info(request, "Produto removido do alerta.")
-        voltar += "#produtos"
+        pagina = request.POST.get("pagina", "")
+        voltar += f"?pagina={pagina}#produtos" if pagina.isdigit() and pagina != "1" else "#produtos"
     elif acao in ("adicionar_links", "adicionar_item"):
         busca = request.POST.get("q", "").strip()[:120]
         voltar += f"?q={quote(busca)}#vitrine" if acao == "adicionar_item" and busca else "#produtos"
@@ -440,8 +444,7 @@ def whatsapp_alertas(request):
     regras_da_conta = alertas.regras(conta)
     conexao = servico.conexao_da(conta)
     salvar = request.method == "POST" and request.POST.get("acao", "salvar") == "salvar"
-    form = AlertaPrecoForm(request.POST if salvar else None, instance=alerta,
-                           grupos_disponiveis=conexao.grupos, regras=regras_da_conta)
+    form = AlertaPrecoForm(request.POST if salvar else None, instance=alerta, regras=regras_da_conta)
     if request.method == "POST":
         if not salvar:
             return redirect(_acao_do_alerta(request, conta, alerta, regras_da_conta))
@@ -462,8 +465,10 @@ def whatsapp_alertas(request):
             except Exception:  # noqa: BLE001
                 logger.warning("Alerta de preço: busca na vitrine falhou", exc_info=True)
                 resultados, erro_busca = [], "A Shopee não respondeu agora. Tente de novo em instantes."
-    produtos = list(ProdutoAcompanhado.objects.filter(conta=conta))
-    acompanhados = {p.item_id for p in produtos}
+    todos = ProdutoAcompanhado.objects.filter(conta=conta)
+    total = todos.count()
+    pagina = Paginator(todos, PRODUTOS_POR_PAGINA).get_page(request.GET.get("pagina"))
+    acompanhados = set(todos.values_list("item_id", flat=True))
     do_bot = []
     for envio in EnvioWhatsApp.objects.filter(conta=conta, origem=EnvioWhatsApp.OFERTA).exclude(item_id="").exclude(
             item_id__startswith="link:").order_by("-id")[:200]:
@@ -478,8 +483,10 @@ def whatsapp_alertas(request):
                                       "https://s.shopee.com.br/seu-link")
     return render(request, "painel/whatsapp_alertas.html", _contexto(
         request, "whatsapp",
-        alerta=alerta, form=form, regras=regras_da_conta, produtos=produtos,
-        limite=regras_da_conta["alerta_produtos"], cheio=len(produtos) >= regras_da_conta["alerta_produtos"],
+        alerta=alerta, form=form, regras=regras_da_conta, pagina=pagina, total=total,
+        paginas=pagina.paginator.get_elided_page_range(pagina.number, on_each_side=1, on_ends=1),
+        limite=regras_da_conta["alerta_produtos"], cheio=total >= regras_da_conta["alerta_produtos"],
+        grupos_da_automacao=grupos_do_plano(_config_ofertas(conta)),
         busca=busca, resultados=[{**r, "acompanhado": r["item_id"] in acompanhados} for r in resultados or []],
         erro_busca=erro_busca, do_bot=do_bot, disparados=disparados, exemplo=exemplo,
         intervalo=alertas.intervalo_efetivo(alerta, regras_da_conta),

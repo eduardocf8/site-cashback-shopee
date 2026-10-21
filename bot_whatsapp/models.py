@@ -329,8 +329,8 @@ class AlertaPreco(models.Model):
     intervalo_minutos = models.PositiveSmallIntegerField("conferir a cada", choices=INTERVALOS, default=60)
     queda_minima = models.PositiveSmallIntegerField("queda mínima (%)", default=10)
     avisar_email = models.BooleanField("avisar por e-mail", default=True)
+    # Os grupos são os mesmos da Automação do bot (ConfiguracaoOfertas.grupos).
     enviar_grupos = models.BooleanField("postar nos grupos", default=False)
-    grupos = models.JSONField(default=list, blank=True, help_text='[{"jid": "...@g.us", "nome": "..."}]')
     modelo_mensagem = models.TextField("mensagem", default=MODELO_ALERTA_PADRAO, blank=True)
     # Controle do motor
     proxima_conferencia_em = models.DateTimeField(null=True, blank=True)
