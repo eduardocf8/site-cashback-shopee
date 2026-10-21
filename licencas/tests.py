@@ -347,3 +347,18 @@ class TestMigracaoDasLicencasAntigas(TransactionTestCase):
         self.assertEqual(dono.modulos_liberados(), ["whatsapp"])
         self.assertIsNotNone(dono.chave_enviada_em)
         self.assertEqual(ContaAppfiliado.objects.get(chave="AF-ANTIGA2").modulos_liberados(), [])
+
+
+class TestFaixasDosPlanos(TestCase):
+    def test_faixas_de_notas_e_premium_incluem_o_basico(self):
+        from licencas import planos
+
+        for codigo, limite in (("notas", 100), ("notas_500", 500), ("notas_2000", 2000), ("notas_5000", 5000),
+                               ("notas_10000", 10000), ("notas_ilimitado", None), ("", 0)):
+            conta = ContaAppfiliado.objects.create(email=f"{codigo or 'nada'}@x.com", modulos_cortesia=codigo)
+            self.assertEqual(planos.notas_por_mes(conta), limite, codigo)
+        # Vale o maior plano que a conta tiver, e o premium já traz o básico.
+        conta = ContaAppfiliado.objects.create(email="m@x.com", modulos_cortesia="notas_500,notas_5000,site_sem_marca")
+        self.assertEqual(planos.notas_por_mes(conta), 5000)
+        self.assertIn("site", conta.modulos_liberados())
+        self.assertIn("notas", conta.modulos_liberados())
