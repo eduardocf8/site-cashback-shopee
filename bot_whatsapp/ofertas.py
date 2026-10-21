@@ -21,9 +21,9 @@ from django.utils import timezone
 from licencas import planos
 from painel import cripto
 
-from . import copia, ia, shopee_ofertas
+from . import campanhas, copia, ia, shopee_ofertas
 from .formatador import formatar_texto_oferta
-from .models import ConexaoWhatsApp, ConfiguracaoOfertas, EnvioWhatsApp, OfertaRecebida
+from .models import CampanhaBot, ConexaoWhatsApp, ConfiguracaoOfertas, EnvioWhatsApp, OfertaRecebida
 
 logger = logging.getLogger(__name__)
 
@@ -141,6 +141,37 @@ def motivo_para_esperar(config, conexao, agora) -> str:
     return ""
 
 
+def aplicar_campanha(config, campanha, agora) -> dict | None:
+    """Dia de campanha (bot_whatsapp/campanhas.py): troca, só na memória, os valores da
+    Automação pelos da campanha. A config nunca é salva com eles: o motor só salva campos
+    de controle (próxima vez, página da busca, status), sempre com update_fields.
+    Devolve a data da campanha de hoje (ou None) e guarda em config.campanha_hoje."""
+    hoje = campanhas.campanha_do_dia(campanha, timezone.localtime(agora).date())
+    config.campanha_hoje, config.campanha = hoje, campanha if hoje else None
+    if not hoje:
+        return None
+    if campanha.intervalo_minutos:
+        config.intervalo_minutos = campanha.intervalo_minutos
+    if campanha.limite_diario:
+        config.limite_diario = campanha.limite_diario
+    config.horario_inicio, config.horario_fim = campanha.horario_inicio, campanha.horario_fim
+    config.dias_semana = list(range(7))  # a data vale mesmo num dia da semana desligado na Automação
+    if campanha.palavra_chave.strip():
+        config.tipo_busca, config.palavra_chave = ConfiguracaoOfertas.BUSCA_PALAVRA, campanha.palavra_chave.strip()
+    if campanha.comissao_minima is not None:
+        config.comissao_minima = campanha.comissao_minima
+    if campanha.desconto_minimo is not None:
+        config.desconto_minimo = campanha.desconto_minimo
+    if campanha.mensagem_ativa and campanha.cupom.strip():
+        config.cupom = campanha.cupom.strip()
+    return hoje
+
+
+def frase_da_campanha(config) -> str:
+    campanha = getattr(config, "campanha", None)
+    return campanha.frase_abertura if campanha and campanha.mensagem_ativa else ""
+
+
 def montar_texto(produto: dict, link: str, cupom: str = "") -> str:
     return formatar_texto_oferta(shopee_ofertas.texto_base(produto, cupom), link)
 
@@ -166,7 +197,7 @@ def revisar_com_ia(config, modelo: str, agora) -> tuple[str, bool]:
 
 def enfileirar(config, grupos, modelo: str, link_origem: str, *, item_id: str, nome: str,
                imagem_url: str = "", imagem_arquivo: str = "", revisado_ia: bool = False,
-               produto: dict | None = None):
+               produto: dict | None = None, origem: str = EnvioWhatsApp.OFERTA, formato: str = ""):
     """Põe a oferta na fila de cada grupo. O texto é o mesmo para todos; só o link
     muda quando um grupo tem Sub ID próprio (um link por combinação de Sub IDs). Com a
     simulação ligada, fica registrada como "Simulado" e não vai para o WhatsApp."""
@@ -183,13 +214,13 @@ def enfileirar(config, grupos, modelo: str, link_origem: str, *, item_id: str, n
         envios.append(EnvioWhatsApp(
             conta=config.conta, destino=grupo["jid"], destino_nome=grupo.get("nome", ""),
             texto=modelo.replace(MARCADOR_DO_LINK, link), imagem_url=(imagem_url or "")[:1000],
-            imagem_arquivo=imagem_arquivo, origem=EnvioWhatsApp.OFERTA, item_id=item_id,
+            imagem_arquivo=imagem_arquivo, origem=origem, item_id=item_id,
             produto=(nome or "")[:300], link_afiliado=link[:500], revisado_ia=revisado_ia, ia_motivo=ia_motivo,
-            formato=config.formato_envio,
+            formato=formato or config.formato_envio,
             estado=EnvioWhatsApp.SIMULADO if config.simulacao else EnvioWhatsApp.PENDENTE,
         ))
     EnvioWhatsApp.objects.bulk_create(envios)
-    if not config.simulacao:
+    if not config.simulacao and origem == EnvioWhatsApp.OFERTA:
         # Meu site com a vitrine "últimas ofertas do bot": a oferta entra no topo.
         from meusite.vitrine import registrar_do_bot
 
@@ -213,9 +244,12 @@ class Motor:
     def uma_volta(self, agora=None):
         agora = agora or timezone.now()
         self.atender_testes(agora)
-        configs = ConfiguracaoOfertas.objects.filter(ativo=True).select_related("conta")
+        configs = list(ConfiguracaoOfertas.objects.filter(ativo=True).select_related("conta"))
+        modos_campanha = {c.conta_id: c for c in CampanhaBot.objects.filter(
+            ativo=True, conta_id__in=[config.conta_id for config in configs])}
         for config in configs:
-            if config.proximo_envio_em and config.proximo_envio_em > agora:
+            aplicar_campanha(config, modos_campanha.get(config.conta_id), agora)
+            if config.proximo_envio_em and config.proximo_envio_em > agora and not self._campanha_antecipa(config, agora):
                 continue
             try:
                 self.enviar_proxima(config, agora)
@@ -225,6 +259,33 @@ class Motor:
                 config.situacao = "Deu erro ao buscar a próxima oferta - tentando de novo em 5 minutos."
                 config.proximo_envio_em = agora + ESPERA_APOS_ERRO
                 config.save(update_fields=["ultimo_erro", "situacao", "proximo_envio_em", "atualizado_em"])
+
+    @staticmethod
+    def _campanha_antecipa(config, agora) -> bool:
+        """No dia da campanha, o intervalo dela vale na hora: a próxima vez (marcada com o
+        intervalo de antes) não precisa ser esperada se o da campanha já passou. Só depois de
+        um envio normal: depois de um erro ou de "nenhuma oferta nova" (situação preenchida),
+        a espera marcada vale, senão o motor buscaria na Shopee a cada volta."""
+        return bool(config.campanha_hoje and config.ultimo_envio_em and not config.situacao
+                    and config.ultimo_envio_em + timedelta(minutes=intervalo_do_plano(config)) <= agora)
+
+    def talvez_enviar_pagina_da_campanha(self, config, agora):
+        """A cada N ofertas do dia de campanha, manda a página da campanha (com o link de
+        afiliado de cada grupo). Um erro aqui não atrapalha as ofertas."""
+        campanha = getattr(config, "campanha", None)
+        if not (campanha and campanha.mensagem_ativa and campanha.link_campanha):
+            return
+        a_cada = max(3, campanha.link_campanha_a_cada or 10)
+        if ofertas_enviadas_hoje(config.conta, agora, config.simulacao) % a_cada:
+            return
+        texto = campanhas.texto_da_pagina(config.campanha_hoje["nome"], campanha.frase_abertura, campanha.cupom,
+                                         MARCADOR_DO_LINK)
+        try:
+            enfileirar(config, grupos_do_plano(config), texto, campanha.link_campanha, item_id="",
+                       nome=f"Página da campanha: {config.campanha_hoje['nome']}", origem=EnvioWhatsApp.CAMPANHA,
+                       formato=ConfiguracaoOfertas.FORMATO_PREVIA)
+        except Exception:  # noqa: BLE001
+            logger.warning("Ofertas: não deu para mandar a página da campanha da conta %s", config.conta_id, exc_info=True)
 
     # --- Envio -------------------------------------------------------------------
 
@@ -253,11 +314,13 @@ class Motor:
         if not self._reservar_a_vez(config, proximo):
             return  # outro processo (ex: o worker antigo, num deploy) já pegou esta vez
         modelo, revisado = revisar_com_ia(config, montar_texto(produto, MARCADOR_DO_LINK, config.cupom), agora)
+        modelo = campanhas.com_abertura(modelo, frase_da_campanha(config))  # depois da IA: a frase não muda
         enfileirar(
             config, grupos, modelo, produto["link"],
             item_id=produto["item_id"], nome=produto["nome"], imagem_url=produto["imagem"], revisado_ia=revisado,
             produto=produto,
         )
+        self.talvez_enviar_pagina_da_campanha(config, agora)
         config.ultimo_envio_em = agora
         config.proximo_envio_em = proximo
         config.situacao = ""
@@ -314,6 +377,7 @@ class Motor:
                              f"Já foi para todos os grupos nos últimos {config.repetir_apos_dias} dias.")
                 return
             modelo, revisado = revisar_com_ia(config, formatar_texto_oferta(oferta["texto_base"], MARCADOR_DO_LINK), agora)
+            modelo = campanhas.com_abertura(modelo, frase_da_campanha(config))
             enfileirar(
                 config, grupos, modelo, oferta["link_origem"],
                 item_id=chave, nome=nome,
@@ -329,6 +393,7 @@ class Motor:
 
         self._fechar(recebida, OfertaRecebida.ENVIADA, agora,
                      "Simulação: não foi enviada de verdade." if config.simulacao else "")
+        self.talvez_enviar_pagina_da_campanha(config, agora)
         config.ultimo_envio_em = agora
         config.proximo_envio_em = agora + timedelta(minutes=intervalo_do_plano(config))
         config.situacao = ""
@@ -348,9 +413,10 @@ class Motor:
         cache = self.cache.get(config.conta_id)
         if (not cache or cache["chave"] != config.chave_da_busca()
                 or time.monotonic() - cache["em"] > VALIDADE_DO_CACHE):
+            busca_mudou = bool(cache) and cache["chave"] != config.chave_da_busca()  # ex: começou ou acabou a campanha
             cache = {"chave": config.chave_da_busca(), "produtos": [], "em": time.monotonic()}
             self.cache[config.conta_id] = cache
-            if not config.pagina_em or agora - config.pagina_em > RECOMECAR_BUSCA_APOS:
+            if busca_mudou or not config.pagina_em or agora - config.pagina_em > RECOMECAR_BUSCA_APOS:
                 config.pagina_atual = 1
 
         app_id, secret = credenciais(config.conta)

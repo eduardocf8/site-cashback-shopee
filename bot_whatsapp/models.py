@@ -61,8 +61,10 @@ class EnvioWhatsApp(models.Model):
     # Simulado: o bot fez tudo (escolheu o produto, gerou o link, montou o texto), mas o
     # modo simulação estava ligado - não vai para o WhatsApp.
     ESTADOS = [(PENDENTE, "Na fila"), (ENVIADO, "Enviado"), (ERRO, "Erro"), (SIMULADO, "Simulado")]
-    TESTE, OFERTA = "teste", "oferta"
-    ORIGENS = [(TESTE, "Mensagem de teste"), (OFERTA, "Oferta automática")]
+    TESTE, OFERTA, CAMPANHA = "teste", "oferta", "campanha"
+    # CAMPANHA: a página da campanha da Shopee, mandada a cada N ofertas no modo campanha
+    # (não conta no limite de ofertas por dia nem no "não repetir").
+    ORIGENS = [(TESTE, "Mensagem de teste"), (OFERTA, "Oferta automática"), (CAMPANHA, "Página da campanha")]
 
     conta = models.ForeignKey(ContaAppfiliado, on_delete=models.CASCADE, related_name="envios_whatsapp")
     destino = models.CharField(max_length=80, help_text='JID do grupo, ex: "120363...@g.us".')

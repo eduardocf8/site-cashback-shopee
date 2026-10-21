@@ -127,6 +127,7 @@ def _resumo_ofertas(conta, config) -> dict:
         "shopee_conectada": bool(conta.shopee_validado_em),
         "proximo_envio": config.proximo_envio_em if config.ativo and not config.situacao else None,
         "hoje_ymd": timezone.localtime(agora).strftime("%Y%m%d"),
+        "campanha_hoje": campanhas.campanha_do_dia(CampanhaBot.objects.filter(conta=conta).first(), timezone.localdate()),
     }
 
 
@@ -142,7 +143,8 @@ def _versao_da_tela(conta, config) -> str:
         servico.conexao_da(conta).estado, bool(conta.shopee_validado_em),
         timezone.localdate(),
     ]
-    partes += EnvioWhatsApp.objects.filter(conta=conta, origem=EnvioWhatsApp.OFERTA).values_list("pk", "estado")[:ULTIMAS_OFERTAS]
+    partes += EnvioWhatsApp.objects.filter(
+        conta=conta, origem__in=[EnvioWhatsApp.OFERTA, EnvioWhatsApp.CAMPANHA]).values_list("pk", "estado")[:ULTIMAS_OFERTAS]
     partes += OfertaRecebida.objects.filter(conta=conta).values_list("pk", "estado")[:15]
     return hashlib.sha1(repr(partes).encode()).hexdigest()[:16]
 
@@ -168,7 +170,8 @@ def whatsapp_ofertas(request):
             messages.success(request, "Configurações das ofertas salvas.")
             return redirect("painel_whatsapp_ofertas")
         messages.error(request, "Confira os campos marcados.")
-    historico = EnvioWhatsApp.objects.filter(conta=conta, origem=EnvioWhatsApp.OFERTA)[:ULTIMAS_OFERTAS]
+    historico = EnvioWhatsApp.objects.filter(
+        conta=conta, origem__in=[EnvioWhatsApp.OFERTA, EnvioWhatsApp.CAMPANHA])[:ULTIMAS_OFERTAS]
     recebidas = OfertaRecebida.objects.filter(conta=conta)[:15]
     return render(request, "painel/whatsapp_ofertas.html", _contexto(
         request, "whatsapp",

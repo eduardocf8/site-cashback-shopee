@@ -130,3 +130,13 @@ class TestTela(BasePainel):
         self.conta.modulos_cortesia = ""
         self.conta.save()
         self.assertContains(self.client.get("/whatsapp/campanhas/"), "Não incluso no seu plano")
+
+
+class TestAutomacaoNoDia(BasePainel):
+    def test_aba_automacao_avisa_que_a_campanha_esta_valendo(self):
+        CampanhaBot.objects.create(conta=self.conta, ativo=True, datas_ligadas=["11.11"])
+        self.entrar()
+        with mock.patch("django.utils.timezone.localdate", return_value=date(2026, 11, 11)):
+            self.assertContains(self.client.get("/whatsapp/ofertas/"), "Hoje é 11.11: o bot está usando a configuração")
+        with mock.patch("django.utils.timezone.localdate", return_value=date(2026, 11, 12)):
+            self.assertNotContains(self.client.get("/whatsapp/ofertas/"), "Hoje é 11.11")

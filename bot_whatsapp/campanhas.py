@@ -112,3 +112,12 @@ def aviso_da_inicio(conta, hoje: date) -> dict | None:
         texto = f"Faltam {proxima['faltam']} dias para o {nome}. Confira o cupom e a frase da campanha no bot." if proxima["faltam"] > 1 else (
             f"O {nome} é amanhã. Confira o cupom e a frase da campanha no bot.")
     return {"texto": texto, "tipo": "success" if ligado and proxima["faltam"] == 0 else "warning" if not ligado else "info"}
+
+
+def texto_da_pagina(nome: str, frase: str, cupom: str, link: str) -> str:
+    """A mensagem com a página da campanha na Shopee (mandada a cada N ofertas)."""
+    partes = [frase.strip()] if (frase or "").strip() else []
+    partes.append(f"🛍️ {nome}: todas as ofertas num lugar só\n{link}")
+    if (cupom or "").strip():
+        partes.append(f"🎟️ Cupom: {cupom.strip()}")
+    return "\n\n".join(partes)
