@@ -8,7 +8,6 @@ from django.http import Http404, HttpResponse, JsonResponse
 from django.shortcuts import redirect, render
 from datetime import timedelta
 
-from django.core.cache import cache
 from django.utils import timezone
 from django.utils.encoding import force_str
 from django.utils.http import urlsafe_base64_decode
@@ -378,10 +377,7 @@ def configuracoes(request):
         if form_relatorio.is_valid():
             preferencia = form_relatorio.save()
             if request.POST.get("acao") == "testar":
-                if not cache.add(f"relatorio:teste:{conta.pk}", 1, 10 * 60):
-                    # Sem isso, dava para mandar e-mail sem parar para os endereços extras.
-                    messages.error(request, "Você já pediu um relatório de teste há pouco. Espere 10 minutos.")
-                elif not conta.shopee_validado_em:
+                if not conta.shopee_validado_em:
                     messages.error(request, "Conecte sua conta da Shopee para receber o relatório.")
                 else:
                     # Quem manda é o worker: antes ele busca os números de ontem na Shopee (se ainda

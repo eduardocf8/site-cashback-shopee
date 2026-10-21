@@ -141,10 +141,12 @@ def _enviar_agora_pedidos(agora: datetime, hoje: date) -> list[str]:
             saiu = atualizar_e_conferir(conta, hoje, agora)
             if saiu:
                 enviar(conta, hoje, preferencia.destinatarios())
+                RelatorioEmail.objects.filter(pk=preferencia.pk).update(ultimo_erro="")  # deu certo: some o aviso de falha
                 logs.append(f"Relatório por e-mail (pedido agora) enviado: {conta.email}")
             else:
                 enviar_aviso(conta, hoje, preferencia.destinatarios(), agora,
                              "nao_saiu" if saiu is False else "shopee_fora", automatico=False)
+                RelatorioEmail.objects.filter(pk=preferencia.pk).update(ultimo_erro="")
                 if saiu is False:
                     RelatorioEmail.objects.filter(pk=preferencia.pk).update(aviso_dia=hoje)
                 logs.append(f"Relatório por e-mail (pedido agora): aviso enviado para {conta.email}")
