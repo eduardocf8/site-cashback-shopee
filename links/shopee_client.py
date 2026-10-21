@@ -124,6 +124,26 @@ def buscar_ofertas_produtos(pagina: int, limite: int = 50) -> dict:
     return dados["productOfferV2"]
 
 
+def listar_ids_de_ofertas(pagina: int, limite: int = 50, *, ordem: int | None = None, palavra: str = "",
+                          categoria: int | None = None, loja: int | None = None) -> dict:
+    """Uma página da productOfferV2 só com os itemId - para medir quantos produtos cada
+    busca traz (ver ofertas/management/commands/explorar_limite_catalogo.py). Sem palavra-
+    chave, categoria ou loja, é o mesmo feed geral (listType ALL) da sincronização."""
+    argumentos = [f"page:{int(pagina)}", f"limit:{int(limite)}"]
+    if palavra:
+        argumentos.append(f"keyword:{json.dumps(palavra, ensure_ascii=False)}")
+    elif categoria:
+        argumentos.append(f"productCatId:{int(categoria)}")
+    elif loja:
+        argumentos.append(f"shopId:{int(loja)}")
+    else:
+        argumentos.append("listType:0")
+    if ordem:
+        argumentos.append(f"sortType:{int(ordem)}")
+    query = f"query{{productOfferV2({','.join(argumentos)}){{nodes{{itemId}}pageInfo{{page limit hasNextPage}}}}}}"
+    return executar_graphql(query)["productOfferV2"]
+
+
 def buscar_oferta_por_item_id(item_id: int) -> dict | None:
     """Busca os dados de UM produto específico (mesmos campos de buscar_ofertas_produtos)
     - usado pra postar uma oferta escolhida na mão a partir de um link, fora da
