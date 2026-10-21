@@ -61,10 +61,12 @@ class EnvioWhatsApp(models.Model):
     # Simulado: o bot fez tudo (escolheu o produto, gerou o link, montou o texto), mas o
     # modo simulação estava ligado - não vai para o WhatsApp.
     ESTADOS = [(PENDENTE, "Na fila"), (ENVIADO, "Enviado"), (ERRO, "Erro"), (SIMULADO, "Simulado")]
-    TESTE, OFERTA, CAMPANHA = "teste", "oferta", "campanha"
+    TESTE, OFERTA, CAMPANHA, ALERTA = "teste", "oferta", "campanha", "alerta"
     # CAMPANHA: a página da campanha da Shopee, mandada a cada N ofertas no modo campanha
     # (não conta no limite de ofertas por dia nem no "não repetir").
-    ORIGENS = [(TESTE, "Mensagem de teste"), (OFERTA, "Oferta automática"), (CAMPANHA, "Página da campanha")]
+    # ALERTA: produto acompanhado que baixou de preço (alerta de preço), postado nos grupos.
+    ORIGENS = [(TESTE, "Mensagem de teste"), (OFERTA, "Oferta automática"), (CAMPANHA, "Página da campanha"),
+               (ALERTA, "Alerta de preço")]
 
     conta = models.ForeignKey(ContaAppfiliado, on_delete=models.CASCADE, related_name="envios_whatsapp")
     destino = models.CharField(max_length=80, help_text='JID do grupo, ex: "120363...@g.us".')
@@ -306,3 +308,100 @@ class OfertaRecebida(models.Model):
 
     def __str__(self):
         return f"{self.conta.email} <- {self.origem_nome or self.origem} ({self.estado})"
+
+
+MODELO_ALERTA_PADRAO = (
+    "📉 BAIXOU DE PREÇO!\n\n"
+    "{produto}\n\n"
+    "De {preco_antes} por {preco_agora} ({queda} mais barato)\n\n"
+    "🛒 Compre aqui:\n{link}"
+)
+
+
+class AlertaPreco(models.Model):
+    """Alerta de preço (aba do Bot de WhatsApp): a configuração da conta. Os produtos
+    ficam em ProdutoAcompanhado; quem confere os preços é bot_whatsapp/alertas.py."""
+
+    INTERVALOS = [(15, "15 minutos"), (30, "30 minutos"), (60, "1 hora"), (180, "3 horas"), (360, "6 horas")]
+
+    conta = models.OneToOneField(ContaAppfiliado, on_delete=models.CASCADE, related_name="alerta_preco")
+    ativo = models.BooleanField("alerta ligado", default=False)
+    intervalo_minutos = models.PositiveSmallIntegerField("conferir a cada", choices=INTERVALOS, default=60)
+    queda_minima = models.PositiveSmallIntegerField("queda mínima (%)", default=10)
+    avisar_email = models.BooleanField("avisar por e-mail", default=True)
+    enviar_grupos = models.BooleanField("postar nos grupos", default=False)
+    grupos = models.JSONField(default=list, blank=True, help_text='[{"jid": "...@g.us", "nome": "..."}]')
+    modelo_mensagem = models.TextField("mensagem", default=MODELO_ALERTA_PADRAO, blank=True)
+    # Controle do motor
+    proxima_conferencia_em = models.DateTimeField(null=True, blank=True)
+    ultima_conferencia_em = models.DateTimeField(null=True, blank=True)
+    pedido_conferir_em = models.DateTimeField(null=True, blank=True)
+    ultimo_erro = models.CharField(max_length=500, blank=True)
+    atualizado_em = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        verbose_name = "alerta de preço"
+        verbose_name_plural = "alertas de preço"
+
+    def __str__(self):
+        return f"{self.conta.email} - {'ligado' if self.ativo else 'pausado'}"
+
+
+class ProdutoAcompanhado(models.Model):
+    """Produto que a conta acompanha no alerta de preço. "referencia" é o preço contra o
+    qual se mede a queda: sobe junto quando o preço sobe e vira o preço novo a cada alerta
+    (assim o próximo alerta precisa de uma queda nova)."""
+
+    conta = models.ForeignKey(ContaAppfiliado, on_delete=models.CASCADE, related_name="produtos_acompanhados")
+    item_id = models.CharField(max_length=40)
+    nome = models.CharField(max_length=300, blank=True)
+    imagem = models.URLField(max_length=1000, blank=True)
+    link = models.URLField(max_length=1000, blank=True, help_text="Link do produto na Shopee (sem afiliado).")
+    preco_inicial = models.DecimalField(max_digits=10, decimal_places=2, null=True, blank=True)
+    preco_atual = models.DecimalField(max_digits=10, decimal_places=2, null=True, blank=True)
+    menor_preco = models.DecimalField(max_digits=10, decimal_places=2, null=True, blank=True)
+    referencia = models.DecimalField(max_digits=10, decimal_places=2, null=True, blank=True)
+    historico = models.JSONField(default=list, blank=True, help_text='[["2026-10-21T10:00", 49.9], ...] (só mudanças)')
+    indisponivel = models.BooleanField(default=False, help_text="A Shopee parou de devolver o produto (sem estoque ou sem comissão).")
+    adicionado_em = models.DateTimeField(auto_now_add=True)
+    conferido_em = models.DateTimeField(null=True, blank=True)
+    ultimo_alerta_em = models.DateTimeField(null=True, blank=True)
+
+    class Meta:
+        ordering = ["-adicionado_em"]
+        constraints = [models.UniqueConstraint(fields=["conta", "item_id"], name="produto_acompanhado_unico")]
+        verbose_name = "produto acompanhado"
+        verbose_name_plural = "produtos acompanhados"
+
+    def __str__(self):
+        return f"{self.conta.email} - {self.nome[:60]}"
+
+    @property
+    def variacao(self):
+        """% do preço atual em relação ao de quando foi adicionado (negativo = mais barato)."""
+        if not self.preco_inicial or self.preco_atual is None:
+            return None
+        return round(float((self.preco_atual - self.preco_inicial) / self.preco_inicial * 100), 1)
+
+
+class AlertaDisparado(models.Model):
+    """Cada queda de preço que gerou alerta (aparece no painel; o e-mail e a postagem
+    nos grupos ficam marcados aqui)."""
+
+    conta = models.ForeignKey(ContaAppfiliado, on_delete=models.CASCADE, related_name="alertas_disparados")
+    produto = models.ForeignKey(ProdutoAcompanhado, on_delete=models.SET_NULL, null=True, blank=True, related_name="alertas")
+    nome = models.CharField(max_length=300, blank=True)
+    imagem = models.URLField(max_length=1000, blank=True)
+    link_afiliado = models.URLField(max_length=500, blank=True)
+    preco_antes = models.DecimalField(max_digits=10, decimal_places=2)
+    preco_agora = models.DecimalField(max_digits=10, decimal_places=2)
+    queda = models.DecimalField(max_digits=5, decimal_places=1, help_text="Em %.")
+    enviado_email = models.BooleanField(default=False)
+    postado_grupos = models.BooleanField(default=False)
+    visto = models.BooleanField(default=False)
+    criado_em = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ["-criado_em"]
+        verbose_name = "alerta disparado"
+        verbose_name_plural = "alertas disparados"

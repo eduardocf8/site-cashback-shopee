@@ -4,7 +4,7 @@ from django import forms
 from django.contrib.auth.password_validation import validate_password
 from django.core.validators import MaxValueValidator, MinValueValidator
 
-from bot_whatsapp.models import CampanhaBot, ConfiguracaoOfertas
+from bot_whatsapp.models import AlertaPreco, CampanhaBot, ConfiguracaoOfertas
 
 
 class EntrarForm(forms.Form):
@@ -474,4 +474,52 @@ class CampanhaBotForm(forms.ModelForm):
             dados["horario_fim"] = self.instance.horario_fim
         if dados["horario_inicio"] >= dados["horario_fim"]:
             self.add_error("horario_fim", "O horário final precisa ser depois do inicial.")
+        return dados
+
+
+class AlertaPrecoForm(forms.ModelForm):
+    """Alerta de preço: de quanto em quanto tempo conferir, a queda mínima e onde avisar."""
+
+    grupos = forms.MultipleChoiceField(label="Grupos e canais", required=False, widget=forms.CheckboxSelectMultiple)
+
+    class Meta:
+        model = AlertaPreco
+        fields = ["intervalo_minutos", "queda_minima", "avisar_email", "enviar_grupos", "grupos", "modelo_mensagem"]
+        labels = {"intervalo_minutos": "Conferir os preços a cada", "queda_minima": "Avisar quando cair pelo menos (%)",
+                  "modelo_mensagem": "Mensagem"}
+        widgets = {"modelo_mensagem": forms.Textarea(attrs={"rows": 9, "data-emoji": ""})}
+
+    def __init__(self, *args, grupos_disponiveis=(), regras=None, **kwargs):
+        from licencas import planos
+
+        super().__init__(*args, **kwargs)
+        self.regras = regras or {**planos.BOT[True], "premium": True}
+        minimo = self.regras["alerta_intervalo_minimo"]
+        self.fields["intervalo_minutos"].choices = [(v, n) for v, n in AlertaPreco.INTERVALOS if v >= minimo]
+        self.fields["intervalo_minutos"].widget = forms.Select(choices=self.fields["intervalo_minutos"].choices)
+        self.fields["queda_minima"].validators += [MinValueValidator(1), MaxValueValidator(90)]
+        self.fields["queda_minima"].widget.attrs.update({"min": 1, "max": 90})
+        disponiveis = {g["jid"]: g.get("nome", g["jid"]) for g in grupos_disponiveis if g.get("jid") and g.get("pode_postar", True)}
+        for g in self.instance.grupos or []:
+            disponiveis.setdefault(g.get("jid"), g.get("nome", ""))
+        self.nomes_dos_grupos = disponiveis
+        self.fields["grupos"].choices = list(disponiveis.items())
+        self.initial["grupos"] = [g.get("jid") for g in self.instance.grupos or []]
+
+    def clean_intervalo_minutos(self):
+        valor = self.cleaned_data["intervalo_minutos"]
+        if valor < self.regras["alerta_intervalo_minimo"]:
+            raise forms.ValidationError("Esse intervalo não está no seu plano.")
+        return valor
+
+    def clean_grupos(self):
+        jids = self.cleaned_data.get("grupos") or []
+        if len(jids) > self.regras["grupos"]:
+            raise forms.ValidationError(f"No seu plano dá para escolher até {self.regras['grupos']} grupos e canais.")
+        return [{"jid": j, "nome": self.nomes_dos_grupos.get(j, "")} for j in jids]
+
+    def clean(self):
+        dados = super().clean()
+        if dados.get("enviar_grupos") and not dados.get("grupos") and "grupos" not in self.errors:
+            self.add_error("grupos", "Escolha pelo menos um grupo para postar os alertas.")
         return dados

@@ -3,24 +3,32 @@ os grupos e mandar uma mensagem de teste). Quem fala com o WhatsApp é o worker 
 aqui só se registram pedidos (ver bot_whatsapp/servico.py)."""
 
 import hashlib
+import logging
 from datetime import date, timedelta
+from urllib.parse import quote
 
 from django.contrib import messages
+from django.core.cache import cache
 from django.http import JsonResponse
 from django.shortcuts import redirect, render
 from django.urls import reverse
 from django.utils import timezone
 from django.views.decorators.http import require_POST
 
-from bot_whatsapp import campanhas, servico
-from bot_whatsapp.models import CampanhaBot, ConexaoWhatsApp, ConfiguracaoOfertas, EnvioWhatsApp, EventoWhatsApp, OfertaRecebida
+from bot_whatsapp import alertas, campanhas, servico
+from bot_whatsapp.models import (
+    AlertaDisparado, AlertaPreco, CampanhaBot, ConexaoWhatsApp, ConfiguracaoOfertas, EnvioWhatsApp, EventoWhatsApp, OfertaRecebida,
+    ProdutoAcompanhado,
+)
 from bot_whatsapp.ofertas import intervalo_do_plano, montar_texto, ofertas_enviadas_hoje
 from licencas import planos
 
 from . import modulos as mod
 from .autenticacao import conta_logada, conta_requerida
-from .forms import CampanhaBotForm, ConfiguracaoOfertasForm
+from .forms import AlertaPrecoForm, CampanhaBotForm, ConfiguracaoOfertasForm
 from .views import _contexto
+
+logger = logging.getLogger(__name__)
 
 
 def _liberado(conta) -> bool:
@@ -356,4 +364,125 @@ def whatsapp_campanhas(request):
         quando=campanhas.quando(proxima["faltam"]) if proxima else "",
         previa=_previa(campanha, config),
         previa_pagina=_previa_da_pagina(campanha, hoje_campanha or proxima),
+    ))
+
+
+# --- Alerta de preço ----------------------------------------------------------------
+
+def _alerta(conta) -> AlertaPreco:
+    alerta, _ = AlertaPreco.objects.get_or_create(conta=conta)
+    return alerta
+
+
+def _acao_do_alerta(request, conta, alerta, regras_da_conta):
+    """As ações da tela (menos salvar): devolve para onde voltar."""
+    acao = request.POST.get("acao")
+    voltar = reverse("painel_whatsapp_alertas")
+    if acao in ("ligar", "pausar"):
+        if acao == "ligar" and not conta.shopee_validado_em:
+            messages.error(request, "Conecte sua conta da Shopee em Configurações antes de ligar.")
+            return voltar
+        alerta.ativo = acao == "ligar"
+        alerta.proxima_conferencia_em = timezone.now() if alerta.ativo else alerta.proxima_conferencia_em
+        alerta.save(update_fields=["ativo", "proxima_conferencia_em", "atualizado_em"])
+        messages.success(request, "Alerta de preço ligado. A primeira conferência sai em instantes." if alerta.ativo
+                         else "Alerta de preço pausado.")
+    elif acao == "conferir":
+        if alerta.ultima_conferencia_em and timezone.now() - alerta.ultima_conferencia_em < alertas.CONFERIR_AGORA_A_CADA:
+            messages.info(request, "Os preços acabaram de ser conferidos. Tente de novo em alguns minutos.")
+        else:
+            alerta.pedido_conferir_em = timezone.now()
+            alerta.save(update_fields=["pedido_conferir_em", "atualizado_em"])
+            messages.success(request, "Conferindo os preços agora. Recarregue a página em um minuto.")
+    elif acao == "remover":
+        ProdutoAcompanhado.objects.filter(conta=conta, pk=request.POST.get("produto")).delete()
+        messages.info(request, "Produto removido do alerta.")
+        voltar += "#produtos"
+    elif acao in ("adicionar_links", "adicionar_item"):
+        busca = request.POST.get("q", "").strip()[:120]
+        voltar += f"?q={quote(busca)}#vitrine" if acao == "adicionar_item" and busca else "#produtos"
+        if not conta.shopee_configurada:
+            messages.error(request, "Conecte sua conta da Shopee em Configurações para adicionar produtos.")
+            return voltar
+        try:
+            if acao == "adicionar_item":
+                produto, novo = alertas.adicionar_item(conta, request.POST.get("item_id", "")[:40])
+                if novo:
+                    messages.success(request, f"“{produto.nome[:60]}” entrou no alerta.")
+                else:
+                    messages.info(request, "Esse produto já está no alerta.")
+            else:
+                r = alertas.adicionar_links(conta, request.POST.get("links", "")[:5000])
+                partes = []
+                if r["adicionados"]:
+                    partes.append(f"{len(r['adicionados'])} produto{'s' if len(r['adicionados']) > 1 else ''} adicionado{'s' if len(r['adicionados']) > 1 else ''}")
+                if r["ja_tinha"]:
+                    partes.append(f"{len(r['ja_tinha'])} já estava{'m' if len(r['ja_tinha']) > 1 else ''} no alerta")
+                if partes:
+                    messages.success(request, ". ".join(partes).capitalize() + ".")
+                if r["erros"]:
+                    messages.error(request, f"Não achei {len(r['erros'])} produto{'s' if len(r['erros']) > 1 else ''} na Shopee: "
+                                            "confira se o link abre o produto e se ele tem comissão de afiliado.")
+        except alertas.LimiteDoPlano as erro:
+            messages.error(request, str(erro))
+        except Exception:  # noqa: BLE001
+            logger.exception("Alerta de preço: erro ao adicionar")
+            messages.error(request, "A Shopee não respondeu agora. Tente de novo em instantes.")
+    return voltar
+
+
+@conta_requerida
+def whatsapp_alertas(request):
+    conta = conta_logada(request)
+    if not _liberado(conta):
+        return _bloqueado(request)
+    alerta = _alerta(conta)
+    regras_da_conta = alertas.regras(conta)
+    conexao = servico.conexao_da(conta)
+    salvar = request.method == "POST" and request.POST.get("acao", "salvar") == "salvar"
+    form = AlertaPrecoForm(request.POST if salvar else None, instance=alerta,
+                           grupos_disponiveis=conexao.grupos, regras=regras_da_conta)
+    if request.method == "POST":
+        if not salvar:
+            return redirect(_acao_do_alerta(request, conta, alerta, regras_da_conta))
+        if form.is_valid():
+            form.save()
+            messages.success(request, "Alerta de preço salvo.")
+            return redirect("painel_whatsapp_alertas")
+        messages.error(request, "Confira os campos marcados.")
+
+    busca, resultados, erro_busca = request.GET.get("q", "").strip()[:120], [], ""
+    if busca and conta.shopee_configurada:
+        chave = f"alerta-busca:{conta.pk}:{hashlib.sha1(busca.lower().encode()).hexdigest()[:16]}"
+        resultados = cache.get(chave)
+        if resultados is None:
+            try:
+                resultados = alertas.buscar_na_vitrine(conta, busca)
+                cache.set(chave, resultados, 600)
+            except Exception:  # noqa: BLE001
+                logger.warning("Alerta de preço: busca na vitrine falhou", exc_info=True)
+                resultados, erro_busca = [], "A Shopee não respondeu agora. Tente de novo em instantes."
+    produtos = list(ProdutoAcompanhado.objects.filter(conta=conta))
+    acompanhados = {p.item_id for p in produtos}
+    do_bot = []
+    for envio in EnvioWhatsApp.objects.filter(conta=conta, origem=EnvioWhatsApp.OFERTA).exclude(item_id="").exclude(
+            item_id__startswith="link:").order_by("-id")[:200]:
+        if envio.item_id not in {d["item_id"] for d in do_bot}:
+            do_bot.append({"item_id": envio.item_id, "nome": envio.produto, "imagem": envio.imagem_url,
+                           "acompanhado": envio.item_id in acompanhados})
+        if len(do_bot) >= 8:
+            break
+    disparados = list(AlertaDisparado.objects.filter(conta=conta)[:20])
+    AlertaDisparado.objects.filter(conta=conta, visto=False).update(visto=True)  # quem abriu a tela já viu
+    exemplo = alertas.montar_mensagem(alerta.modelo_mensagem, EXEMPLO_DE_PRODUTO["nome"], 129.9, 99.9, 23.1,
+                                      "https://s.shopee.com.br/seu-link")
+    return render(request, "painel/whatsapp_alertas.html", _contexto(
+        request, "whatsapp",
+        alerta=alerta, form=form, regras=regras_da_conta, produtos=produtos,
+        limite=regras_da_conta["alerta_produtos"], cheio=len(produtos) >= regras_da_conta["alerta_produtos"],
+        busca=busca, resultados=[{**r, "acompanhado": r["item_id"] in acompanhados} for r in resultados or []],
+        erro_busca=erro_busca, do_bot=do_bot, disparados=disparados, exemplo=exemplo,
+        intervalo=alertas.intervalo_efetivo(alerta, regras_da_conta),
+        whatsapp_conectado=conexao.estado == ConexaoWhatsApp.CONECTADO,
+        shopee_conectada=bool(conta.shopee_validado_em),
     ))

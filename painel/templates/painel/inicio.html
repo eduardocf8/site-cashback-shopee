@@ -10,6 +10,9 @@
   {% if shopee_conectada %}{% include "painel/_sincronizacao.html" %}{% endif %}
 </header>
 
+{% if alertas_novos %}
+  <p class="aviso aviso-success aviso-campanha">📉 {% if alertas_novos == 1 %}Um produto que você acompanha baixou de preço.{% else %}{{ alertas_novos }} alertas de preço novos.{% endif %} <a href="{% url 'painel_whatsapp_alertas' %}">Ver alertas</a></p>
+{% endif %}
 {% if aviso_campanha %}
   <p class="aviso aviso-{{ aviso_campanha.tipo }} aviso-campanha">{{ aviso_campanha.texto }} <a href="{% url 'painel_whatsapp_campanhas' %}">Ver modo campanha</a></p>
 {% endif %}

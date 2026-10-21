@@ -16,7 +16,7 @@ from django.views.decorators.http import require_POST
 
 from accounts.ratelimit import _incrementar_contador, _obter_ip
 from bot_whatsapp import campanhas
-from bot_whatsapp.models import ConexaoWhatsApp
+from bot_whatsapp.models import AlertaDisparado, ConexaoWhatsApp
 from licencas.models import INCLUI, MODULO_WHATSAPP, MODULOS, ContaAppfiliado
 from licencas.services import resposta_validacao
 
@@ -175,6 +175,8 @@ def inicio(request):
         "nome_mes": telas.nome_mes(fim_mes.year, fim_mes.month),
         "mes_fechado": mes_fechado,
         "aviso_campanha": campanhas.aviso_da_inicio(conta, hoje) if MODULO_WHATSAPP in liberados else None,
+        "alertas_novos": (AlertaDisparado.objects.filter(conta=conta, visto=False).count()
+                          if MODULO_WHATSAPP in liberados else 0),
     }
     if conta.shopee_validado_em:
         mes = resultados.totais(conta, inicio_mes, fim_mes)

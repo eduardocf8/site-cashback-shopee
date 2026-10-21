@@ -807,3 +807,35 @@ span.marcar-data { cursor: default; }
 .bloco-mensagem.desligado { opacity: .45; }
 .repetir-ano { margin-top: 10px; }
 .form-campanha .card > p + .marcar { margin-top: 12px; }
+
+/* Bot de WhatsApp: alerta de preço */
+.card-topo { display: flex; justify-content: space-between; align-items: baseline; gap: 12px; }
+.adicionar-links { margin-top: 12px; display: flex; flex-direction: column; gap: 10px; }
+.adicionar-links textarea { min-height: 64px; }
+.lista-acompanhados, .lista-do-bot, .lista-disparados { list-style: none; margin: 14px 0 0; padding: 0; }
+.lista-acompanhados li { display: flex; gap: 12px; align-items: center; padding: 12px 0; border-top: 1px solid var(--borda); }
+.lista-acompanhados img, .lista-acompanhados .sem-foto { width: 56px; height: 56px; border-radius: 8px; object-fit: cover; flex: none; background: var(--campo); }
+.acompanhado-info { display: flex; flex-direction: column; gap: 3px; min-width: 0; flex: 1; }
+.acompanhado-nome { color: inherit; font-weight: 600; text-decoration: none; overflow-wrap: anywhere; }
+.acompanhado-nome:hover { text-decoration: underline; }
+.preco-atual { font-size: 15px; }
+.variacao { display: inline-block; margin-left: 6px; padding: 1px 8px; border-radius: 999px; font-size: 12px; font-weight: 700; }
+.variacao.desceu { background: var(--bom-suave); color: var(--bom-tinta); }
+.variacao.subiu { background: var(--perigo-suave); color: var(--perigo); }
+.selo-indisponivel, .selo-acompanhando { display: inline-block; margin-left: 6px; padding: 1px 8px; border-radius: 999px; font-size: 12px; font-weight: 700; background: var(--chip); color: var(--suave); }
+.selo-acompanhando { margin-left: 0; background: var(--bom-suave); color: var(--bom-tinta); }
+.busca-vitrine { display: flex; gap: 8px; margin-top: 4px; }
+.busca-vitrine input { flex: 1; min-width: 0; min-height: 44px; padding: 0 14px; border-radius: 10px; border: 1px solid var(--borda); background: var(--campo); font: inherit; color: inherit; }
+.grade-vitrine { list-style: none; margin: 14px 0 0; padding: 0; display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 12px; }
+.grade-vitrine li { display: flex; flex-direction: column; gap: 6px; padding: 10px; border: 1px solid var(--borda); border-radius: 12px; }
+.grade-vitrine img { width: 100%; aspect-ratio: 1; object-fit: cover; border-radius: 8px; background: var(--campo); }
+.vitrine-nome { font-size: 13px; line-height: 1.35; flex: 1; }
+.grade-vitrine .botao { width: 100%; }
+.subtitulo-alerta { font-size: 14px; margin: 18px 0 0; }
+.lista-do-bot li { display: flex; align-items: center; gap: 10px; padding: 8px 0; border-top: 1px solid var(--borda); font-size: 14px; }
+.lista-do-bot li > span:first-of-type { flex: 1; min-width: 0; }
+.lista-do-bot img, .lista-do-bot .sem-foto { width: 36px; height: 36px; border-radius: 6px; object-fit: cover; flex: none; background: var(--campo); }
+.lista-disparados li { display: flex; flex-direction: column; gap: 2px; padding: 10px 0; border-top: 1px solid var(--borda); font-size: 14px; }
+.lista-disparados li:first-child, .lista-acompanhados li:first-child, .lista-do-bot li:first-child { border-top: 0; }
+.coluna-alertas { display: flex; flex-direction: column; gap: 16px; min-width: 0; }
+.botao-pequeno { min-height: 34px; padding: 0 12px; font-size: 13px; }
