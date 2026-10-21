@@ -129,6 +129,7 @@ class VendaItem(models.Model):
     valor = models.DecimalField(max_digits=12, decimal_places=2, default=0)  # preço x quantidade
     comissao = models.DecimalField(max_digits=12, decimal_places=2, default=0)
     status_shopee = models.CharField(max_length=20, blank=True)  # orderStatus como veio
+    motivo_shopee = models.CharField(max_length=300, blank=True)  # por que foi cancelado, quando a Shopee diz
     situacao = models.CharField(max_length=10, choices=SITUACOES, default=PENDENTE)
     sub_id = models.CharField(max_length=120, default="sem_subid")
     comprado_em = models.DateTimeField()
