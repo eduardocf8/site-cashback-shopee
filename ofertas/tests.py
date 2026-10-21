@@ -22,7 +22,6 @@ from .services import (
     resolver_item_id_com_rede,
     resolver_item_id_sem_rede,
     selecionar_carrossel_home,
-    sincronizar_ofertas,
 )
 
 CREDENCIAIS_TESTE = {
@@ -242,44 +241,35 @@ class CashbackMaximoAnunciadoTests(TestCase):
 
         self.assertEqual(maximo, Decimal("2.4"))
 
-    @patch("ofertas.services.buscar_ofertas_produtos")
-    def test_sincronizacao_calcula_o_maximo_real_do_catalogo(self, mock_buscar):
-        mock_buscar.return_value = self._pagina(
-            [
-                self._node(1, "0.03", "100.00"),  # 3% de R$100 = R$3
-                self._node(2, "0.08", "100.00"),  # 8% de R$100 = R$8
-            ]
-        )
+    def _sincronizar(self, nodes):
+        from django.utils import timezone
 
-        sincronizar_ofertas()
-        maximo = obter_cashback_maximo_anunciado()
+        from ofertas.catalogo import atualizar_cashback_maximo, guardar_pagina
 
-        self.assertEqual(maximo, Decimal("8.0"))
+        guardar_pagina(nodes, timezone.now())
+        atualizar_cashback_maximo()
 
-    @patch("ofertas.services.buscar_ofertas_produtos")
-    def test_oferta_sem_preco_nao_entra_na_conta_do_maximo(self, mock_buscar):
-        mock_buscar.return_value = self._pagina(
-            [
-                self._node(1, "0.20", "0"),  # sem preço sincronizado - fica de fora
-                self._node(2, "0.08", "50.00"),
-            ]
-        )
+    def test_sincronizacao_calcula_o_maximo_real_do_catalogo(self):
+        self._sincronizar([
+            self._node(1, "0.03", "100.00"),  # 3% de R$100 = R$3
+            self._node(2, "0.08", "100.00"),  # 8% de R$100 = R$8
+        ])
 
-        sincronizar_ofertas()
-        maximo = obter_cashback_maximo_anunciado()
+        self.assertEqual(obter_cashback_maximo_anunciado(), Decimal("8.0"))
 
-        self.assertEqual(maximo, Decimal("8.0"))
+    def test_oferta_sem_preco_nao_entra_na_conta_do_maximo(self):
+        self._sincronizar([
+            self._node(1, "0.20", "0"),  # sem preço sincronizado - fica de fora
+            self._node(2, "0.08", "50.00"),
+        ])
 
-    @patch("ofertas.services.buscar_ofertas_produtos")
-    def test_resincronizar_atualiza_o_maximo_anterior(self, mock_buscar):
-        mock_buscar.return_value = self._pagina([self._node(1, "0.05", "100.00")])
-        sincronizar_ofertas()
+        self.assertEqual(obter_cashback_maximo_anunciado(), Decimal("8.0"))
 
-        mock_buscar.return_value = self._pagina([self._node(2, "0.09", "100.00")])
-        sincronizar_ofertas()
+    def test_resincronizar_atualiza_o_maximo_anterior(self):
+        self._sincronizar([self._node(1, "0.05", "100.00")])
+        self._sincronizar([self._node(1, "0.09", "100.00")])  # o mesmo produto, comissão nova
 
-        maximo = obter_cashback_maximo_anunciado()
-        self.assertEqual(maximo, Decimal("9.0"))
+        self.assertEqual(obter_cashback_maximo_anunciado(), Decimal("9.0"))
 
 
 class BuscarOfertaPorLinkTests(TestCase):

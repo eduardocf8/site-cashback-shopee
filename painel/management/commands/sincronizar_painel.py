@@ -39,6 +39,9 @@ class Command(BaseCommand):
             from bot_whatsapp.alertas import iniciar_em_segundo_plano as iniciar_alerta_de_preco
 
             iniciar_alerta_de_preco()  # confere os preços dos produtos acompanhados (thread própria)
+            from ofertas.catalogo import iniciar_em_segundo_plano as iniciar_catalogo
+
+            iniciar_catalogo()  # catálogo de ofertas da cash-b, aos poucos (thread própria)
         proximo_log_de_memoria = 0.0
         while True:
             if loop and time.monotonic() >= proximo_log_de_memoria:

@@ -26,7 +26,7 @@
       <div class="grade-radar">
         <div class="campo"><label for="preco_min">Preço de</label><input id="preco_min" name="preco_min" inputmode="decimal" placeholder="R$" value="{{ filtros.preco_min|default_if_none:'' }}"></div>
         <div class="campo"><label for="preco_max">até</label><input id="preco_max" name="preco_max" inputmode="decimal" placeholder="R$" value="{{ filtros.preco_max|default_if_none:'' }}"></div>
-        <div class="campo"><label for="comissao_min">Comissão mín. (%)</label><input id="comissao_min" name="comissao_min" inputmode="numeric" value="{{ filtros.comissao_min|default_if_none:'' }}"></div>
+        <div class="campo"><label for="comissao_min">Comissão de ref. mín. (%)</label><input id="comissao_min" name="comissao_min" inputmode="numeric" value="{{ filtros.comissao_min|default_if_none:'' }}"></div>
         <div class="campo"><label for="desconto_min">Desconto mín. (%)</label><input id="desconto_min" name="desconto_min" inputmode="numeric" value="{{ filtros.desconto_min|default_if_none:'' }}"></div>
         <div class="campo"><label for="avaliacao_min">Avaliação mín.</label><input id="avaliacao_min" name="avaliacao_min" inputmode="decimal" placeholder="0 a 5" value="{{ filtros.avaliacao_min|default_if_none:'' }}"></div>
       </div>
@@ -51,7 +51,7 @@
         <a class="nome-radar" href="{{ p.link }}" target="_blank" rel="noopener">{{ p.nome|truncatechars:80 }}</a>
         <div class="numeros-radar">
           <strong class="preco-radar">{{ p.preco|brl }}</strong>
-          <span class="ganho-radar">Comissão {{ p.comissao|floatformat:"-1" }}% · <strong>~{{ p.ganho|brl }}</strong></span>
+          <span class="ganho-radar" title="Comissão de referência: o percentual que a Shopee informa para este produto. A sua comissão real aparece em Resultados.">Comissão de referência {{ p.comissao|floatformat:"-1" }}% · <strong>~{{ p.ganho|brl }}</strong></span>
           <span class="suave pequeno">{% if p.vendas %}{{ p.vendas|numero }} vendidos{% endif %}{% if p.avaliacao %} · ⭐ {{ p.avaliacao|floatformat:1 }}{% endif %}{% if p.loja %} · {{ p.loja|truncatechars:24 }}{% endif %}</span>
         </div>
         <div class="acoes-radar">

@@ -9,10 +9,9 @@ from urllib.parse import unquote, urljoin, urlsplit
 
 import requests
 from django.conf import settings
-from django.db import transaction
 from django.db.models import Sum
 
-from links.shopee_client import buscar_oferta_por_item_id, buscar_ofertas_produtos
+from links.shopee_client import buscar_oferta_por_item_id
 
 from . import gemini_client
 from .gemini_client import GeminiAPIError, GeminiConfigError
@@ -275,7 +274,7 @@ def buscar_oferta_por_item(item_id: int) -> Oferta:
     return _montar_oferta(node, carregar_categorias_nivel1())
 
 
-def _aplicar_nomes_curtos(ofertas: list[Oferta]) -> None:
+def _aplicar_nomes_curtos(ofertas: list[Oferta], limite_lotes: int | None = None) -> None:
     """Preenche oferta.nome_curto pra cada oferta. Reaproveita o NomeCurtoCache (que
     sobrevive entre sincronizações, diferente de Oferta - ver models.py) pra só chamar o
     Gemini nos itens novos ou com nome mudado desde a última vez. nome_curto nunca fica
@@ -294,11 +293,12 @@ def _aplicar_nomes_curtos(ofertas: list[Oferta]) -> None:
             pendentes.append(oferta)
 
     lotes = [pendentes[i : i + TAMANHO_LOTE_GEMINI] for i in range(0, len(pendentes), TAMANHO_LOTE_GEMINI)]
-    lotes_a_processar = lotes[:LIMITE_LOTES_POR_EXECUCAO]
+    limite_lotes = limite_lotes or LIMITE_LOTES_POR_EXECUCAO
+    lotes_a_processar = lotes[:limite_lotes]
     if len(lotes) > len(lotes_a_processar):
         logger.info(
-            "[ofertas] %s produto(s) sem nome_curto ficam pra próxima sincronização (limite de %s lote(s) por execução)",
-            sum(len(lote) for lote in lotes[LIMITE_LOTES_POR_EXECUCAO:]), LIMITE_LOTES_POR_EXECUCAO,
+            "[ofertas] %s produto(s) sem nome_curto ficam pra próxima vez (limite de %s lote(s) por execução)",
+            sum(len(lote) for lote in lotes[limite_lotes:]), limite_lotes,
         )
 
     cache_pra_salvar = []
@@ -328,52 +328,28 @@ def _aplicar_nomes_curtos(ofertas: list[Oferta]) -> None:
         )
 
 
-def encurtar_nomes_pendentes() -> dict:
+def encurtar_nomes_pendentes(limite_lotes: int = LIMITE_LOTES_POR_EXECUCAO) -> dict:
     """Melhora, aos poucos, o nome_curto das ofertas que ainda estão iguais ao nome
-    original (ou seja, ainda não passaram pelo Gemini com sucesso). Chamado por uma
-    tarefa agendada própria (ver cashback_shopee/views.py e tarefas-diarias.yml),
-    separada da sincronização com a Shopee, pra ter os 120s de orçamento só pra si."""
-    ofertas = list(Oferta.objects.all())
-    _aplicar_nomes_curtos(ofertas)
-    Oferta.objects.bulk_update(ofertas, ["nome_curto"], batch_size=200)
-    return {"total_ofertas": len(ofertas)}
+    original, das mais vendidas para as menos (são elas que aparecem primeiro no site).
+    Quem já passou pelo Gemini com esse mesmo nome (NomeCurtoCache) não entra de novo.
+    Chamado pela thread do catálogo no worker (ofertas/catalogo.py) e pela tarefa
+    agendada do site (cashback_shopee/views.py), que tem os 120s só para si."""
+    from django.db.models import Exists, F, OuterRef
+
+    ja_tem = NomeCurtoCache.objects.filter(item_id=OuterRef("item_id"), nome_original=OuterRef("nome"))
+    pendentes = list(
+        Oferta.objects.filter(nome_curto=F("nome")).exclude(Exists(ja_tem))
+        .order_by("-vendas")[: limite_lotes * TAMANHO_LOTE_GEMINI]
+    )
+    if pendentes:
+        _aplicar_nomes_curtos(pendentes, limite_lotes=limite_lotes)
+        Oferta.objects.bulk_update(pendentes, ["nome_curto"], batch_size=200)
+    return {"pendentes_nesta_vez": len(pendentes)}
 
 
-def sincronizar_ofertas(limite_por_pagina: int = 50, max_paginas: int = 70) -> dict:
-    """Busca as ofertas de produtos (productOfferV2, listType ALL) e substitui a lista atual.
-
-    Full-replace (não incremental): uma "oferta" é só uma foto do que a Shopee está
-    oferecendo hoje, sem status a preservar entre sincronizações (diferente de Pedido/Saque).
-
-    max_paginas=70 (x50 = até 3.500 produtos) dá margem sobre o teto real observado pra essa
-    conta (56 páginas, medido com explorar_limite_catalogo em 2026-09-04; em 10/2026 essas 56
-    páginas tinham só 1.572 produtos diferentes, porque o feed repete itens) -
-    a Shopee pode liberar mais ofertas com o tempo, e o loop já para sozinho em hasNextPage=False
-    bem antes de chegar nesse teto, então não custa nada deixar folga.
-    """
-    categorias_nivel1 = carregar_categorias_nivel1()
-
-    ofertas_novas = []
-    pagina = 1
-    while pagina <= max_paginas:
-        resultado = buscar_ofertas_produtos(pagina, limite_por_pagina)
-        for node in resultado["nodes"]:
-            ofertas_novas.append(_montar_oferta(node, categorias_nivel1))
-        if not resultado["pageInfo"].get("hasNextPage"):
-            break
-        pagina += 1
-
-    # Dedup por item_id (a Shopee pode repetir um item entre páginas se o feed
-    # for atualizado no meio da sincronização).
-    por_item_id = {oferta.item_id: oferta for oferta in ofertas_novas}
-
-    with transaction.atomic():
-        Oferta.objects.all().delete()
-        Oferta.objects.bulk_create(por_item_id.values(), batch_size=200)
-
-    _atualizar_cashback_maximo(por_item_id.values())
-
-    return {"total": len(por_item_id), "paginas_percorridas": pagina}
+# A sincronização do catálogo (guardar e atualizar, por categoria, no worker) fica em
+# ofertas/catalogo.py. A antiga sincronizar_ofertas() apagava e recriava tudo a cada dia,
+# só com o feed geral (~1.560 produtos), dentro da requisição do site.
 
 
 def obter_cashback_maximo_anunciado() -> Decimal:
@@ -385,18 +361,6 @@ def obter_cashback_maximo_anunciado() -> Decimal:
     if cache and cache.percentual_maximo:
         return cache.percentual_maximo
     return Decimal(str(settings.CASHBACK_MAXIMO_ANUNCIADO))
-
-
-def _atualizar_cashback_maximo(ofertas) -> None:
-    """Recalcula o maior % de cashback anunciado na home a partir das ofertas
-    recém-sincronizadas. Chamado uma vez por sincronização, não por request - ver
-    CashbackMaximoCache."""
-    percentuais = [
-        oferta.percentual_cashback for oferta in ofertas if oferta.preco_min and oferta.percentual_comissao
-    ]
-    if not percentuais:
-        return
-    CashbackMaximoCache.atualizar(max(percentuais))
 
 
 def normalizar_nome_produto(nome: str) -> str:
@@ -411,12 +375,14 @@ def selecionar_top_ofertas_sem_duplicar(quantidade: int) -> list[Oferta]:
     """As ofertas mais vendidas (Oferta.Meta.ordering = -vendas), sem repetir produto.
 
     A Shopee pode anunciar o mesmo produto genérico (ex: "Percarbonato de sódio") em
-    lojas diferentes, cada uma com seu próprio item_id - sincronizar_ofertas só remove
+    lojas diferentes, cada uma com seu próprio item_id - a sincronização do catálogo só remove
     duplicado por item_id, então sem essa checagem o mesmo produto pode aparecer mais
     de uma vez no mesmo story/post."""
     selecionadas = []
     nomes_vistos = set()
-    for oferta in Oferta.objects.all():
+    # Só os mais vendidos (a lista é ordenada por -vendas): com dezenas de milhares de
+    # produtos, percorrer o catálogo todo a cada visita à home carregaria tudo na memória.
+    for oferta in Oferta.objects.all()[: max(quantidade * 50, 500)]:
         nome_normalizado = normalizar_nome_produto(oferta.nome)
         if nome_normalizado in nomes_vistos:
             continue

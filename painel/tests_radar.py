@@ -42,6 +42,7 @@ class TestTelaDoRadar(BasePainel):
     def test_mostra_os_produtos_com_comissao_estimada(self, buscar):
         resposta = self.client.get("/radar/")
         self.assertContains(resposta, "Fone Bluetooth")
+        self.assertContains(resposta, "Comissão de referência 10%")
         self.assertContains(resposta, "~R$ 10,00")  # 10% de R$ 100,00
         self.assertContains(resposta, "+4% extra")
         self.assertContains(resposta, "Próxima ›")
