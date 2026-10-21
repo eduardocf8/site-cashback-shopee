@@ -231,6 +231,44 @@ class ConfiguracaoOfertas(models.Model):
         ))
 
 
+def _ligadas_padrao():
+    from .campanhas import LIGADAS_PADRAO
+
+    return list(LIGADAS_PADRAO)
+
+
+class CampanhaBot(models.Model):
+    """Modo campanha (ver bot_whatsapp/campanhas.py): nas datas ligadas, o bot usa estes
+    valores no lugar dos da automação normal. Campo vazio = usa o da automação."""
+
+    conta = models.OneToOneField(ContaAppfiliado, on_delete=models.CASCADE, related_name="campanha_bot")
+    ativo = models.BooleanField("modo campanha ligado", default=False)
+    datas_ligadas = models.JSONField(default=_ligadas_padrao, blank=True, help_text='Chaves: "11.11", "black_friday"...')
+    datas_proprias = models.JSONField(default=list, blank=True, help_text='[{"data": "2026-11-25", "nome": "..."}]')
+    # Ritmo
+    intervalo_minutos = models.PositiveSmallIntegerField(null=True, blank=True)
+    limite_diario = models.PositiveSmallIntegerField(null=True, blank=True)
+    horario_inicio = models.TimeField(default=time(0, 0))
+    horario_fim = models.TimeField(default=time(23, 59))
+    # Busca e filtros
+    palavra_chave = models.CharField(max_length=120, blank=True)
+    comissao_minima = models.PositiveSmallIntegerField(null=True, blank=True)
+    desconto_minimo = models.PositiveSmallIntegerField(null=True, blank=True)
+    # Mensagem
+    frase_abertura = models.CharField(max_length=120, blank=True)
+    cupom = models.CharField(max_length=120, blank=True)
+    link_campanha = models.URLField(max_length=500, blank=True)
+    link_campanha_a_cada = models.PositiveSmallIntegerField(default=10)
+    atualizado_em = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        verbose_name = "modo campanha do bot"
+        verbose_name_plural = "modo campanha do bot"
+
+    def __str__(self):
+        return f"{self.conta.email} - {'ligado' if self.ativo else 'desligado'}"
+
+
 class OfertaRecebida(models.Model):
     """Mensagem com link da Shopee que chegou num grupo/canal de origem (modo copiar).
     O worker guarda aqui e o motor das ofertas repassa, respeitando horário,

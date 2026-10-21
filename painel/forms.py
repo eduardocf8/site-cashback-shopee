@@ -4,7 +4,7 @@ from django import forms
 from django.contrib.auth.password_validation import validate_password
 from django.core.validators import MaxValueValidator, MinValueValidator
 
-from bot_whatsapp.models import ConfiguracaoOfertas
+from bot_whatsapp.models import CampanhaBot, ConfiguracaoOfertas
 
 
 class EntrarForm(forms.Form):
@@ -391,3 +391,79 @@ class RelatorioEmailForm(forms.ModelForm):
             except forms.ValidationError:
                 raise forms.ValidationError(f"E-mail inválido: {email}")
         return ", ".join(dict.fromkeys(emails))
+
+
+class CampanhaBotForm(forms.ModelForm):
+    """Modo campanha do bot. Em branco = usa o valor da Automação."""
+
+    datas_ligadas = forms.MultipleChoiceField(label="Datas", required=False, widget=forms.CheckboxSelectMultiple)
+
+    class Meta:
+        model = CampanhaBot
+        fields = [
+            "datas_ligadas", "intervalo_minutos", "limite_diario", "horario_inicio", "horario_fim",
+            "palavra_chave", "comissao_minima", "desconto_minimo",
+            "frase_abertura", "cupom", "link_campanha", "link_campanha_a_cada",
+        ]
+        labels = {
+            "intervalo_minutos": "Uma oferta a cada (minutos)", "limite_diario": "Máximo de ofertas no dia",
+            "horario_inicio": "Das", "horario_fim": "Até", "palavra_chave": "Palavra-chave da campanha",
+            "comissao_minima": "Comissão mínima (%)", "desconto_minimo": "Desconto mínimo (%)",
+            "frase_abertura": "Frase de abertura", "cupom": "Cupom da campanha",
+            "link_campanha": "Link da página da campanha na Shopee", "link_campanha_a_cada": "Enviar a página a cada",
+        }
+        help_texts = {
+            "palavra_chave": "Ex: fone bluetooth. Em branco, o bot busca como na Automação.",
+            "frase_abertura": "Vai no começo de cada oferta. Ex: 🔥 11.11 na Shopee",
+            "cupom": "Aparece nas ofertas como “Cupom: …”, no lugar do cupom da Automação.",
+            "link_campanha": "Cole o link da página da campanha. O bot troca pelo seu link de afiliado.",
+        }
+        widgets = {
+            "horario_inicio": forms.TimeInput(attrs={**ATTRS_HORA, "placeholder": "00:00"}, format="%H:%M"),
+            "horario_fim": forms.TimeInput(attrs={**ATTRS_HORA, "placeholder": "23:59"}, format="%H:%M"),
+            "frase_abertura": forms.TextInput(attrs={"placeholder": "🔥 11.11 na Shopee"}),
+            "cupom": forms.TextInput(attrs={"placeholder": "Ex: SHOPEE1111"}),
+            "link_campanha": forms.URLInput(attrs={"placeholder": "https://shopee.com.br/m/11-11"}),
+        }
+
+    def __init__(self, *args, datas=(), regras=None, **kwargs):
+        from licencas import planos
+
+        super().__init__(*args, **kwargs)
+        self.regras = regras or {**planos.BOT[True], "premium": True}
+        self.fields["datas_ligadas"].choices = [(d["chave"], d["nome"]) for d in datas if not d["propria"]]
+        self.initial["datas_ligadas"] = list(self.instance.datas_ligadas or [])
+        minimo = self.regras["intervalo_minimo"]
+        self.fields["intervalo_minutos"].help_text = f"No seu plano, mínimo de {minimo} minutos. Em branco = o da Automação."
+        self.fields["limite_diario"].help_text = "Em branco = o da Automação."
+        for campo, (menor, maior) in {"intervalo_minutos": (minimo, 240), "limite_diario": (1, 1000),
+                                      "comissao_minima": (0, 100), "desconto_minimo": (0, 100),
+                                      "link_campanha_a_cada": (3, 100)}.items():
+            self.fields[campo].validators += [MinValueValidator(menor), MaxValueValidator(maior)]
+            self.fields[campo].widget.attrs.update({"min": menor, "max": maior})
+        for campo in ("comissao_minima", "desconto_minimo"):
+            self.fields[campo].widget.attrs["placeholder"] = "Como na Automação"
+
+    def clean_datas_ligadas(self):
+        # Guarda também as chaves que não aparecem na lista agora (datas fora dos próximos 12 meses).
+        visiveis = {c for c, _ in self.fields["datas_ligadas"].choices}
+        fora = [c for c in self.instance.datas_ligadas or [] if c not in visiveis]
+        return fora + list(self.cleaned_data.get("datas_ligadas") or [])
+
+    def clean_link_campanha(self):
+        from ofertas.services import eh_host_da_shopee
+
+        link = (self.cleaned_data.get("link_campanha") or "").strip()
+        if link and not eh_host_da_shopee(link):
+            raise forms.ValidationError("Cole um link da Shopee (shopee.com.br).")
+        return link
+
+    def clean(self):
+        dados = super().clean()
+        if dados.get("horario_inicio") is None:
+            dados["horario_inicio"] = self.instance.horario_inicio
+        if dados.get("horario_fim") is None:
+            dados["horario_fim"] = self.instance.horario_fim
+        if dados["horario_inicio"] >= dados["horario_fim"]:
+            self.add_error("horario_fim", "O horário final precisa ser depois do inicial.")
+        return dados

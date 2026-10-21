@@ -1,0 +1,133 @@
+{% extends "painel/base.html" %}
+{% load static painel_extras %}
+{% block titulo %}Campanhas · Bot de WhatsApp{% endblock %}
+{% block conteudo %}
+<header class="cabecalho">
+  <div>
+    <h1>Bot de WhatsApp</h1>
+    <p>Ofertas da Shopee enviadas com o seu link de afiliado, no automático: buscadas pela API ou copiadas de outros grupos e canais.</p>
+  </div>
+</header>
+{% include "painel/_abas_whatsapp.html" with aba="campanhas" %}
+
+<section class="card status-ofertas" aria-labelledby="titulo-status-campanha">
+  <div class="status-ofertas-texto">
+    <h2 id="titulo-status-campanha" class="status-zap">
+      {% if hoje_campanha %}<span class="ponto atencao" aria-hidden="true"></span>Hoje é {{ hoje_campanha.nome }}: modo campanha ativo
+      {% elif campanha.ativo %}<span class="ponto ok" aria-hidden="true"></span>Modo campanha ligado
+      {% else %}<span class="ponto" aria-hidden="true"></span>Modo campanha desligado{% endif %}
+    </h2>
+    {% if hoje_campanha %}
+      <p class="pequeno">Até as {{ campanha.horario_fim|time:"H:i" }}, o bot usa a configuração abaixo. Amanhã ele volta para a da Automação sozinho.</p>
+    {% elif proxima %}
+      <p class="pequeno">Próxima campanha: <strong>{{ proxima.nome }}</strong>, {{ proxima.data|date:"l, d/m"|lower }} ({{ quando }}).</p>
+    {% elif campanha.ativo %}
+      <p class="pequeno">Nenhuma data ligada nos próximos 12 meses. Ligue as datas logo abaixo.</p>
+    {% else %}
+      <p class="pequeno">Nas datas ligadas, o bot usa a configuração abaixo do começo ao fim do dia. A Automação continua como está.</p>
+    {% endif %}
+    {% if campanha.ativo and not config.ativo %}
+      <p class="aviso aviso-warning pequeno">Suas ofertas estão pausadas. A campanha só vale com o bot ligado: ligue em <a href="{% url 'painel_whatsapp_ofertas' %}">Automação</a>.</p>
+    {% endif %}
+  </div>
+  <div class="status-ofertas-botoes">
+    <form method="post">{% csrf_token %}
+      {% if campanha.ativo %}<button type="submit" name="acao" value="desligar" class="botao botao-escuro">Desligar</button>
+      {% else %}<button type="submit" name="acao" value="ligar" class="botao botao-principal">Ligar modo campanha</button>{% endif %}
+    </form>
+  </div>
+</section>
+
+<div class="duas-colunas" style="margin-top:16px">
+  <div>
+  <form method="post" class="formulario form-ofertas form-campanha" novalidate id="form-campanha">
+    {% csrf_token %}
+    <input type="hidden" name="acao" value="salvar">
+    {% if form.non_field_errors %}<ul class="erros-form">{% for e in form.non_field_errors %}<li>{{ e }}</li>{% endfor %}</ul>{% endif %}
+
+    <section class="card" id="datas" aria-labelledby="titulo-datas">
+      <h2 id="titulo-datas">Datas</h2>
+      <p class="suave pequeno">As datas da Shopee dos próximos 12 meses. Ligue as que você quer e salve.</p>
+      <ul class="lista-datas">
+        {% for d in datas %}
+          <li class="{% if d.ligada %}ligada{% endif %}">
+            {% if d.propria %}
+              <span class="marcar-data"><span class="data-dia">{{ d.data|date:"d/m" }}</span><span class="data-nome">{{ d.nome }} <span class="selo-propria">Sua data</span></span></span>
+              <button type="submit" form="form-remover-{{ forloop.counter }}" class="link-botao pequeno">Remover</button>
+            {% else %}
+              <label class="marcar-data"><input type="checkbox" name="datas_ligadas" value="{{ d.chave }}"{% if d.ligada %} checked{% endif %}><span class="data-dia">{{ d.data|date:"d/m" }}</span><span class="data-nome">{{ d.nome }}</span></label>
+            {% endif %}
+            <span class="suave pequeno">{{ d.data|date:"D"|lower }} · {% if d.faltam == 0 %}hoje{% elif d.faltam == 1 %}amanhã{% else %}em {{ d.faltam }} dias{% endif %}</span>
+          </li>
+        {% endfor %}
+      </ul>
+      <details class="adicionar-data">
+        <summary>+ Adicionar uma data sua</summary>
+        <div class="linha-data">
+          <div class="campo"><label for="nome-data">Nome</label><input id="nome-data" name="nome" form="form-adicionar" maxlength="60" placeholder="Ex: Aniversário da loja"></div>
+          <div class="campo"><label for="dia-data">Dia</label><input id="dia-data" type="date" name="data" form="form-adicionar"></div>
+          <button type="submit" form="form-adicionar" class="botao botao-claro">Adicionar</button>
+        </div>
+      </details>
+    </section>
+
+    <section class="card" aria-labelledby="titulo-ritmo">
+      <h2 id="titulo-ritmo">Ritmo nesses dias</h2>
+      <p class="suave pequeno">Em branco, vale o que está na Automação. O limite do seu plano continua valendo{% if not regras.premium %}: até {{ regras.ofertas_por_grupo_dia }} ofertas por dia em cada grupo{% endif %}.</p>
+      <div class="grade-campos">
+        <div class="campo">{% include "painel/_campo.html" with campo=form.intervalo_minutos %}</div>
+        <div class="campo">{% include "painel/_campo.html" with campo=form.limite_diario %}</div>
+        <div class="grade-horario">
+          <div class="campo">{% include "painel/_campo.html" with campo=form.horario_inicio %}</div>
+          <div class="campo">{% include "painel/_campo.html" with campo=form.horario_fim %}</div>
+        </div>
+      </div>
+      <p class="suave pequeno">Muitas ofertas da campanha começam à meia-noite, por isso o horário já vem das 00:00 às 23:59.</p>
+    </section>
+
+    <section class="card" aria-labelledby="titulo-filtros-campanha">
+      <h2 id="titulo-filtros-campanha">Busca e filtros</h2>
+      <p class="suave pequeno">Só para as ofertas buscadas na Shopee. Em branco, vale o da Automação.</p>
+      <div class="campo">{% include "painel/_campo.html" with campo=form.palavra_chave %}</div>
+      <div class="grade-campos">
+        <div class="campo">{% include "painel/_campo.html" with campo=form.desconto_minimo %}</div>
+        <div class="campo">{% include "painel/_campo.html" with campo=form.comissao_minima %}</div>
+      </div>
+    </section>
+
+    <section class="card" aria-labelledby="titulo-mensagem-campanha">
+      <h2 id="titulo-mensagem-campanha">Mensagem</h2>
+      <div class="campo">{% include "painel/_campo.html" with campo=form.frase_abertura %}</div>
+      <div class="campo">{% include "painel/_campo.html" with campo=form.cupom %}</div>
+      <div class="campo">{% include "painel/_campo.html" with campo=form.link_campanha %}</div>
+      <div class="campo campo-curto">
+        <label for="{{ form.link_campanha_a_cada.id_for_label }}">{{ form.link_campanha_a_cada.label }}</label>
+        <span class="com-sufixo">{{ form.link_campanha_a_cada }}<span>ofertas</span></span>
+        {% for e in form.link_campanha_a_cada.errors %}<span class="erro">{{ e }}</span>{% endfor %}
+      </div>
+    </section>
+
+    <div class="barra-salvar"><button type="submit" class="botao botao-principal">Salvar</button></div>
+  </form>
+  </div>
+
+  <div class="coluna-lateral">
+    <section class="card" aria-labelledby="titulo-como">
+      <h2 id="titulo-como">Como funciona</h2>
+      <ol class="passos-conversor">
+        <li>Ligue o modo campanha e as datas que você quer.</li>
+        <li>No dia, à meia-noite, o bot passa a usar esta configuração sozinho. No dia seguinte, volta para a da Automação.</li>
+        <li>Mudou algo e salvou? Já vale para as próximas ofertas, até no meio da campanha.</li>
+      </ol>
+      <p class="suave pequeno">O bot não liga sozinho: a campanha só vale com as ofertas ligadas na Automação.</p>
+    </section>
+    <section class="card" aria-labelledby="titulo-previa">
+      <h2 id="titulo-previa">Prévia da mensagem</h2>
+      <p class="suave pequeno">Um produto de exemplo, com a frase e o cupom da campanha.</p>
+      <pre class="texto-oferta">{{ previa }}</pre>
+    </section>
+  </div>
+</div>
+<form method="post" id="form-adicionar" hidden>{% csrf_token %}<input type="hidden" name="acao" value="adicionar_data"></form>
+{% for d in datas %}{% if d.propria %}<form method="post" id="form-remover-{{ forloop.counter }}" hidden>{% csrf_token %}<input type="hidden" name="acao" value="remover_data"><input type="hidden" name="data" value="{{ d.data|date:'Y-m-d' }}"></form>{% endif %}{% endfor %}
+{% endblock %}

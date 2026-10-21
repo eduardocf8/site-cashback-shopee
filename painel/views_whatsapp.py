@@ -3,7 +3,7 @@ os grupos e mandar uma mensagem de teste). Quem fala com o WhatsApp é o worker 
 aqui só se registram pedidos (ver bot_whatsapp/servico.py)."""
 
 import hashlib
-from datetime import timedelta
+from datetime import date, timedelta
 
 from django.contrib import messages
 from django.http import JsonResponse
@@ -12,14 +12,14 @@ from django.urls import reverse
 from django.utils import timezone
 from django.views.decorators.http import require_POST
 
-from bot_whatsapp import servico
-from bot_whatsapp.models import ConexaoWhatsApp, ConfiguracaoOfertas, EnvioWhatsApp, EventoWhatsApp, OfertaRecebida
-from bot_whatsapp.ofertas import intervalo_do_plano, ofertas_enviadas_hoje
+from bot_whatsapp import campanhas, servico
+from bot_whatsapp.models import CampanhaBot, ConexaoWhatsApp, ConfiguracaoOfertas, EnvioWhatsApp, EventoWhatsApp, OfertaRecebida
+from bot_whatsapp.ofertas import intervalo_do_plano, montar_texto, ofertas_enviadas_hoje
 from licencas import planos
 
 from . import modulos as mod
 from .autenticacao import conta_logada, conta_requerida
-from .forms import ConfiguracaoOfertasForm
+from .forms import CampanhaBotForm, ConfiguracaoOfertasForm
 from .views import _contexto
 
 
@@ -239,3 +239,84 @@ def whatsapp_ofertas_estado(request):
         "ultimo_envio": config.ultimo_envio_em.isoformat() if config.ultimo_envio_em else "",
         "versao": _versao_da_tela(conta, config),
     })
+
+
+# --- Modo campanha ------------------------------------------------------------------
+
+MAXIMO_DATAS_PROPRIAS = 20
+EXEMPLO_DE_PRODUTO = {"nome": "Fone Bluetooth com cancelamento de ruído", "vendas": "10mil", "desconto": 62,
+                      "avaliacao": 4.8, "preco": 49.9}
+
+
+def _campanha(conta) -> CampanhaBot:
+    campanha, _ = CampanhaBot.objects.get_or_create(conta=conta)
+    return campanha
+
+
+def _previa(campanha, config) -> str:
+    texto = montar_texto(EXEMPLO_DE_PRODUTO, "https://s.shopee.com.br/seu-link",
+                         campanha.cupom or config.cupom)
+    return campanhas.com_abertura(texto, campanha.frase_abertura)
+
+
+def _adicionar_data(request, campanha, hoje) -> None:
+    nome = " ".join(request.POST.get("nome", "").split())[:60]
+    try:
+        dia = date.fromisoformat(request.POST.get("data", ""))
+    except ValueError:
+        messages.error(request, "Escolha o dia da data.")
+        return
+    if not nome:
+        messages.error(request, "Dê um nome para a data. Ex: Aniversário da loja.")
+    elif dia < hoje or dia > hoje + timedelta(days=365):
+        messages.error(request, "Escolha um dia entre hoje e os próximos 12 meses.")
+    elif len(campanha.datas_proprias or []) >= MAXIMO_DATAS_PROPRIAS:
+        messages.error(request, f"Dá para ter até {MAXIMO_DATAS_PROPRIAS} datas próprias.")
+    else:
+        proprias = [p for p in campanha.datas_proprias or [] if p.get("data") != dia.isoformat()]
+        campanha.datas_proprias = sorted(proprias + [{"data": dia.isoformat(), "nome": nome}], key=lambda p: p["data"])
+        campanha.save(update_fields=["datas_proprias", "atualizado_em"])
+        messages.success(request, f"“{nome}” incluída em {dia:%d/%m}.")
+
+
+@conta_requerida
+def whatsapp_campanhas(request):
+    conta = conta_logada(request)
+    if not _liberado(conta):
+        return _bloqueado(request)
+    campanha = _campanha(conta)
+    config = _config_ofertas(conta)
+    hoje = timezone.localdate()
+    regras = planos.bot(conta)
+    datas = campanhas.proximas_datas(campanha, hoje)
+    acao = request.POST.get("acao", "salvar")
+    form = CampanhaBotForm(request.POST if request.method == "POST" and acao == "salvar" else None, instance=campanha, datas=datas, regras=regras)
+    if request.method == "POST":
+        if acao in ("ligar", "desligar"):
+            campanha.ativo = acao == "ligar"
+            campanha.save(update_fields=["ativo", "atualizado_em"])
+            messages.success(request, "Modo campanha ligado." if campanha.ativo else "Modo campanha desligado.")
+            return redirect("painel_whatsapp_campanhas")
+        if acao == "adicionar_data":
+            _adicionar_data(request, campanha, hoje)
+            return redirect(f"{reverse('painel_whatsapp_campanhas')}#datas")
+        if acao == "remover_data":
+            campanha.datas_proprias = [p for p in campanha.datas_proprias or [] if p.get("data") != request.POST.get("data")]
+            campanha.save(update_fields=["datas_proprias", "atualizado_em"])
+            messages.info(request, "Data removida.")
+            return redirect(f"{reverse('painel_whatsapp_campanhas')}#datas")
+        if form.is_valid():
+            form.save()
+            messages.success(request, "Modo campanha salvo. Vale na hora para as próximas ofertas da campanha.")
+            return redirect("painel_whatsapp_campanhas")
+        messages.error(request, "Confira os campos marcados.")
+    hoje_campanha = campanhas.campanha_do_dia(campanha, hoje)
+    proxima = campanhas.proxima_ligada(campanha, hoje)
+    return render(request, "painel/whatsapp_campanhas.html", _contexto(
+        request, "whatsapp",
+        campanha=campanha, config=config, form=form, regras=regras,
+        datas=campanhas.proximas_datas(campanha, hoje),
+        hoje_campanha=hoje_campanha, proxima=proxima,
+        quando=campanhas.quando(proxima["faltam"]) if proxima else "",
+        previa=_previa(campanha, config),
+    ))

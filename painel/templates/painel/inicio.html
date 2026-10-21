@@ -10,6 +10,10 @@
   {% if shopee_conectada %}{% include "painel/_sincronizacao.html" %}{% endif %}
 </header>
 
+{% if aviso_campanha %}
+  <p class="aviso aviso-{{ aviso_campanha.tipo }} aviso-campanha">{{ aviso_campanha.texto }} <a href="{% url 'painel_whatsapp_campanhas' %}">Ver modo campanha</a></p>
+{% endif %}
+
 {% if passos_pendentes %}
   <section class="card" aria-labelledby="titulo-passos">
     <h2 id="titulo-passos">Primeiros passos</h2>

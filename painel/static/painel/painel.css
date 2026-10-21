@@ -780,3 +780,26 @@ summary { cursor: pointer; }  /* "Editar", "Ver mensagem" etc. abrem ao clicar *
 .conversor #resultado { min-height: 90px; }
 .conversor #resultado[readonly] { background: var(--card); cursor: text; }
 .card .convite-bot { margin: 16px 0 0; }
+
+/* Bot de WhatsApp: modo campanha */
+.lista-datas { list-style: none; margin: 12px 0 0; padding: 0; border: 1px solid var(--borda); border-radius: 12px; overflow: hidden; }
+.lista-datas li { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 10px 14px; }
+.lista-datas li + li { border-top: 1px solid var(--borda); }
+.lista-datas li.ligada { background: var(--bom-suave); }
+.marcar-data { display: flex; align-items: center; gap: 12px; min-width: 0; cursor: pointer; }
+span.marcar-data { cursor: default; }
+.marcar-data input { width: 18px; height: 18px; margin: 0; accent-color: var(--verde); flex: none; }
+.data-dia { font-weight: 700; font-variant-numeric: tabular-nums; min-width: 42px; }
+.data-nome { font-weight: 500; }
+.selo-propria { white-space: nowrap; margin-left: 6px; padding: 1px 7px; border-radius: 999px; background: var(--amarelo-suave); color: var(--amarelo-tinta); font-size: 11px; font-weight: 700; }
+.lista-datas .suave { white-space: nowrap; }
+.adicionar-data { margin-top: 12px; }
+.adicionar-data summary { cursor: pointer; font-weight: 700; color: var(--verde); font-size: 14px; }
+.linha-data { display: flex; gap: 10px; align-items: flex-end; flex-wrap: wrap; margin-top: 10px; }
+.linha-data .campo { flex: 1 1 160px; }
+.linha-data input { min-height: 44px; }
+.campo-curto { max-width: 260px; }
+.com-sufixo { display: flex; align-items: center; gap: 8px; }
+.com-sufixo input { width: 90px; }
+@media (max-width: 600px) { .lista-datas li { flex-wrap: wrap; } .lista-datas li > .suave { padding-left: 30px; } }
+.aviso-campanha { margin: 0 0 16px; } .aviso-campanha a { color: inherit; font-weight: 700; }

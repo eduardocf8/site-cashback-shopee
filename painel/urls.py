@@ -27,6 +27,7 @@ urlpatterns = [
     path("whatsapp/ofertas/ligar/", views_whatsapp.whatsapp_ofertas_ligar, name="painel_whatsapp_ofertas_ligar"),
     path("whatsapp/ofertas/pausar/", views_whatsapp.whatsapp_ofertas_pausar, name="painel_whatsapp_ofertas_pausar"),
     path("whatsapp/ofertas/testar/", views_whatsapp.whatsapp_ofertas_testar, name="painel_whatsapp_ofertas_testar"),
+    path("whatsapp/campanhas/", views_whatsapp.whatsapp_campanhas, name="painel_whatsapp_campanhas"),
     path("whatsapp/ofertas/estado/", views_whatsapp.whatsapp_ofertas_estado, name="painel_whatsapp_ofertas_estado"),
     path("meu-site/", views_site.meu_site, name="painel_meu_site"),
     path("meu-site/produto/<int:pk>/categoria/", views_site.categoria_produto, name="painel_meu_site_categoria"),
