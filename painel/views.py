@@ -8,7 +8,6 @@ from django.http import Http404, HttpResponse, JsonResponse
 from django.shortcuts import redirect, render
 from datetime import timedelta
 
-from django.core.cache import cache
 from django.utils import timezone
 from django.utils.encoding import force_str
 from django.utils.http import urlsafe_base64_decode
@@ -16,7 +15,8 @@ from django.views.decorators.debug import sensitive_post_parameters
 from django.views.decorators.http import require_POST
 
 from accounts.ratelimit import _incrementar_contador, _obter_ip
-from bot_whatsapp.models import ConexaoWhatsApp
+from bot_whatsapp import campanhas
+from bot_whatsapp.models import AlertaDisparado, ConexaoWhatsApp
 from licencas.models import INCLUI, MODULO_WHATSAPP, MODULOS, ContaAppfiliado
 from licencas.services import resposta_validacao
 
@@ -174,6 +174,9 @@ def inicio(request):
         "sincronizacao": telas.estado_sincronizacao(conta),
         "nome_mes": telas.nome_mes(fim_mes.year, fim_mes.month),
         "mes_fechado": mes_fechado,
+        "aviso_campanha": campanhas.aviso_da_inicio(conta, hoje) if MODULO_WHATSAPP in liberados else None,
+        "alertas_novos": (AlertaDisparado.objects.filter(conta=conta, visto=False).count()
+                          if MODULO_WHATSAPP in liberados else 0),
     }
     if conta.shopee_validado_em:
         mes = resultados.totais(conta, inicio_mes, fim_mes)
@@ -378,10 +381,7 @@ def configuracoes(request):
         if form_relatorio.is_valid():
             preferencia = form_relatorio.save()
             if request.POST.get("acao") == "testar":
-                if not cache.add(f"relatorio:teste:{conta.pk}", 1, 10 * 60):
-                    # Sem isso, dava para mandar e-mail sem parar para os endereços extras.
-                    messages.error(request, "Você já pediu um relatório de teste há pouco. Espere 10 minutos.")
-                elif not conta.shopee_validado_em:
+                if not conta.shopee_validado_em:
                     messages.error(request, "Conecte sua conta da Shopee para receber o relatório.")
                 else:
                     # Quem manda é o worker: antes ele busca os números de ontem na Shopee (se ainda

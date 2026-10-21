@@ -1,0 +1,7 @@
+{% load painel_extras %}{% if alertas|length == 1 %}Um produto baixou de preço{% else %}{{ alertas|length }} produtos baixaram de preço{% endif %} no seu alerta de preço do Appfiliado:
+{% for a in alertas %}
+- {{ a.nome|truncatechars:90 }}
+  De {{ a.preco_antes|brl }} por {{ a.preco_agora|brl }} (-{{ a.queda|floatformat:"-1" }}%)
+  {{ a.link_afiliado }}
+{% endfor %}
+Ver no painel: {{ url_alertas }}

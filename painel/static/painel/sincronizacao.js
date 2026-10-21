@@ -18,6 +18,7 @@
       .then(function (resposta) { return resposta.ok ? resposta.json() : null; })
       .then(function (dados) {
         if (dados && dados.atualizando === false) {
+          try { sessionStorage.setItem("appfiliado:atualizado", "1"); } catch (e) { /* segue sem o aviso */ }
           window.location.reload();
         } else if (tentativas < maximo) {
           setTimeout(conferir, 5000);

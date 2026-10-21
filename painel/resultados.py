@@ -241,10 +241,26 @@ def itens_vendidos(conta, conversoes: list[dict]) -> list[VendaItem]:
                     loja=_texto(item.get("shopName"), 200), quantidade=max(quantidade, 1),
                     preco=_dinheiro(preco), valor=_dinheiro(preco * max(quantidade, 1)),
                     comissao=_dinheiro(para_numero(item.get("itemTotalCommission"))),
-                    status_shopee=status[:20], situacao=situacao, sub_id=rotulo, comprado_em=compra,
+                    status_shopee=status[:20], motivo_shopee=_motivo(item, situacao), situacao=situacao,
+                    sub_id=rotulo, comprado_em=compra,
                     concluido_em=_momento(_inteiro(item.get("completeTime"))) if situacao == VendaItem.CONCLUIDO else None,
                 ))
     return itens
+
+
+def _motivo(item: dict, situacao: str) -> str:
+    """O que a Shopee diz sobre o item (observação, situação detalhada e suspeita de fraude).
+    Só vale a pena para o pedido cancelado; nos outros fica vazio."""
+    if situacao != VendaItem.CANCELADO:
+        return ""
+    partes = []
+    for texto in (item.get("displayItemStatus"), item.get("itemNotes")):
+        texto = " ".join(str(texto or "").split())
+        if texto and texto.lower() not in {p.lower() for p in partes}:
+            partes.append(texto)
+    if str(item.get("fraudStatus") or "").strip().upper() == "FRAUD":
+        partes.append("Pedido marcado como fraude pela Shopee")
+    return " - ".join(partes)[:300]
 
 
 def _dinheiro(valor: float) -> Decimal:

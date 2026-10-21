@@ -42,7 +42,9 @@ CAMPOS_CONVERSOES = [
 ]
 # Campos de cada item vendido (lista de vendas e ranking de produtos). Se a API de
 # alguma conta não tiver um deles, ele sai e a consulta tenta de novo.
-CAMPOS_ITENS = ["itemId", "itemName", "shopName", "imageUrl", "itemPrice", "qty", "itemTotalCommission", "completeTime"]
+# itemNotes, displayItemStatus e fraudStatus explicam, quando a Shopee informa, por que um pedido foi cancelado.
+CAMPOS_ITENS = ["itemId", "itemName", "shopName", "imageUrl", "itemPrice", "qty", "itemTotalCommission", "completeTime",
+                "itemNotes", "displayItemStatus", "fraudStatus"]
 ITENS_OBRIGATORIOS = {"itemPrice", "qty", "itemTotalCommission", "completeTime"}
 
 

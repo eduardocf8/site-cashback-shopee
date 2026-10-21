@@ -1,12 +1,15 @@
 {% load painel_extras %}<!doctype html>
-<html lang="pt-BR"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width"><title>Seus resultados</title></head>
+<html lang="pt-BR"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="color-scheme" content="light only"><meta name="supported-color-schemes" content="light only">
+<title>Seus resultados</title>
+<style>:root { color-scheme: light only; supported-color-schemes: light only; }</style></head>
 <body style="margin:0;padding:0;background:#F6F3EA;font-family:Arial,Helvetica,sans-serif;color:#1C2B23;">
-<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:#F6F3EA;padding:24px 12px;">
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="width:100%;background:#F6F3EA;padding:24px 12px;">
 <tr><td align="center">
-<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="max-width:600px;">
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="width:100%;max-width:600px;">
   <tr><td style="background:#1F3A2E;border-radius:14px 14px 0 0;padding:20px 24px;">
     <table role="presentation" cellpadding="0" cellspacing="0"><tr>
-      <td style="width:36px;height:36px;background:#F2C230;border-radius:10px;text-align:center;font-weight:bold;font-size:22px;color:#1F3A2E;line-height:36px;">a</td>
+      <td width="36" height="36" valign="middle" style="width:36px;height:36px;"><img src="{{ url_logo }}" width="36" height="36" alt="Appfiliado" style="display:block;width:36px;height:36px;border:0;outline:none;"></td>
       <td style="padding-left:10px;color:#F6F3EA;"><div style="font-size:17px;font-weight:bold;">Appfiliado</div><div style="font-size:12px;color:#B9C7BE;">Para afiliados Shopee</div></td>
     </tr></table>
   </td></tr>
@@ -14,83 +17,97 @@
     <h1 style="margin:0 0 4px;font-size:20px;">Seus resultados de ontem</h1>
     <p style="margin:0 0 18px;color:#5C6A61;font-size:14px;">{{ ontem|date:"l, d/m/Y" }}</p>
 
-    <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="border-collapse:separate;">
+    <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="width:100%;border-collapse:separate;">
       <tr>
         <td width="48%" style="width:48%;padding:12px;background:#F6F3EA;border-radius:10px;">
           <div style="font-size:12px;color:#5C6A61;">Pedidos</div>
-          <div style="font-size:20px;font-weight:bold;white-space:nowrap;">{{ dia_ontem.pedidos|numero }}</div>
+          <div style="font-size:18px;font-weight:bold;white-space:nowrap;">{{ dia_ontem.pedidos|numero }}</div>
         </td>
         <td width="4%" style="width:4%;font-size:0;line-height:0;">&nbsp;</td>
         <td width="48%" style="width:48%;padding:12px;background:#F6F3EA;border-radius:10px;">
           <div style="font-size:12px;color:#5C6A61;">Faturamento</div>
-          <div style="font-size:20px;font-weight:bold;white-space:nowrap;">{{ dia_ontem.faturamento|brl }}</div>
+          <div style="font-size:18px;font-weight:bold;white-space:nowrap;">{{ dia_ontem.faturamento|brl|sem_quebra }}</div>
         </td>
       </tr>
       <tr><td colspan="3" style="height:10px;font-size:0;line-height:0;">&nbsp;</td></tr>
       <tr>
         <td width="48%" style="width:48%;padding:12px;background:#F6F3EA;border-radius:10px;">
           <div style="font-size:12px;color:#5C6A61;">Comissão estimada</div>
-          <div style="font-size:20px;font-weight:bold;white-space:nowrap;">{{ dia_ontem.comissao_estimada|brl }}</div>
+          <div style="font-size:18px;font-weight:bold;white-space:nowrap;">{{ dia_ontem.comissao_estimada|brl|sem_quebra }}</div>
         </td>
         <td width="4%" style="width:4%;font-size:0;line-height:0;">&nbsp;</td>
         <td width="48%" style="width:48%;padding:12px;background:#1F3A2E;border-radius:10px;">
           <div style="font-size:12px;color:#B9C7BE;">Comissão validada</div>
-          <div style="font-size:20px;font-weight:bold;white-space:nowrap;color:#F2C230;">{{ dia_ontem.comissao_validada|brl }}</div>
+          <div style="font-size:18px;font-weight:bold;white-space:nowrap;color:#F2C230;">{{ dia_ontem.comissao_validada|brl|sem_quebra }}</div>
         </td>
       </tr>
     </table>
 
     <h2 style="margin:26px 0 8px;font-size:16px;">{{ nome_mes }} até ontem</h2>
-    <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="border-collapse:collapse;font-size:14px;">
+    <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="width:100%;border-collapse:collapse;font-size:14px;">
       <tr><td style="padding:7px 10px;color:#5C6A61;">Pedidos</td><td align="right" style="padding:7px 10px;font-weight:bold;">{{ mes.pedidos|numero }}</td></tr>
-      <tr><td style="padding:7px 10px;color:#5C6A61;border-top:1px solid #EDE8D9;">Faturamento</td><td align="right" style="padding:7px 10px;font-weight:bold;border-top:1px solid #EDE8D9;">{{ mes.faturamento|brl }}</td></tr>
-      <tr><td style="padding:7px 10px;color:#5C6A61;border-top:1px solid #EDE8D9;">Comissão estimada</td><td align="right" style="padding:7px 10px;font-weight:bold;border-top:1px solid #EDE8D9;">{{ mes.comissao_estimada|brl }}</td></tr>
-      <tr><td style="padding:10px;background:#1F3A2E;color:#B9C7BE;border-radius:10px 0 0 10px;">Comissão validada</td><td align="right" style="padding:10px;background:#1F3A2E;color:#F2C230;font-weight:bold;font-size:16px;border-radius:0 10px 10px 0;white-space:nowrap;">{{ mes.comissao_validada|brl }}</td></tr>
+      <tr><td style="padding:7px 10px;color:#5C6A61;border-top:1px solid #EDE8D9;">Faturamento</td><td align="right" style="padding:7px 10px;font-weight:bold;border-top:1px solid #EDE8D9;">{{ mes.faturamento|brl|sem_quebra }}</td></tr>
+      <tr><td style="padding:7px 10px;color:#5C6A61;border-top:1px solid #EDE8D9;">Comissão estimada</td><td align="right" style="padding:7px 10px;font-weight:bold;border-top:1px solid #EDE8D9;">{{ mes.comissao_estimada|brl|sem_quebra }}</td></tr>
+      <tr><td style="padding:10px;background:#1F3A2E;color:#B9C7BE;border-radius:10px 0 0 10px;">Comissão validada</td><td align="right" style="padding:10px;background:#1F3A2E;color:#F2C230;font-weight:bold;font-size:16px;border-radius:0 10px 10px 0;white-space:nowrap;">{{ mes.comissao_validada|brl|sem_quebra }}</td></tr>
     </table>
 
     {% if meta %}
       <h2 style="margin:26px 0 8px;font-size:16px;">Meta de {{ nome_mes }}</h2>
-      <p style="margin:0 0 8px;font-size:14px;"><strong style="font-size:18px;">{{ meta.faturamento|brl }}</strong> <span style="color:#5C6A61;">faturados até ontem</span></p>
-      <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="border-collapse:collapse;">
+      <p style="margin:0 0 8px;font-size:14px;"><strong style="font-size:18px;">{{ meta.faturamento|brl|sem_quebra }}</strong> <span style="color:#5C6A61;">faturados até ontem</span></p>
+      <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="width:100%;border-collapse:collapse;">
         <tr>
           {% if meta.porcentagem_barra %}<td width="{{ meta.porcentagem_barra }}%" style="height:10px;background:#F2C230;border-radius:999px 0 0 999px;font-size:0;line-height:0;{% if meta.porcentagem_barra >= 100 %}border-radius:999px;{% endif %}">&nbsp;</td>{% endif %}
           {% if meta.porcentagem_barra < 100 %}<td style="height:10px;background:#EDE8D9;border-radius:{% if meta.porcentagem_barra %}0 999px 999px 0{% else %}999px{% endif %};font-size:0;line-height:0;">&nbsp;</td>{% endif %}
         </tr>
       </table>
-      <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="border-collapse:collapse;font-size:14px;margin-top:12px;">
+      <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="width:100%;border-collapse:collapse;font-size:14px;margin-top:12px;">
         <tr><td style="padding:6px 0;color:#5C6A61;font-size:12px;">Faixa</td><td align="right" style="padding:6px 0;color:#5C6A61;font-size:12px;">Faturamento</td><td align="right" style="padding:6px 0;color:#5C6A61;font-size:12px;">Bônus</td><td align="right" style="padding:6px 0;color:#5C6A61;font-size:12px;"></td></tr>
         {% for f in meta.faixas_tela %}
           <tr>
             <td style="padding:7px 0;border-top:1px solid #EDE8D9;font-weight:bold;">{{ f.nome }}</td>
-            <td align="right" style="padding:7px 0;border-top:1px solid #EDE8D9;white-space:nowrap;">{{ f.faturamento|brl0 }}</td>
-            <td align="right" style="padding:7px 0;border-top:1px solid #EDE8D9;white-space:nowrap;">{% if f.bonus %}{{ f.bonus|brl0 }}{% else %}-{% endif %}</td>
-            <td align="right" style="padding:7px 0 7px 10px;border-top:1px solid #EDE8D9;white-space:nowrap;">{% if f.batida %}<span style="color:#1F6B3E;font-weight:bold;">✓ Batida</span>{% else %}<span style="color:#5C6A61;">faltam {{ f.falta|brl0 }}</span>{% endif %}</td>
+            <td align="right" style="padding:7px 0;border-top:1px solid #EDE8D9;white-space:nowrap;">{{ f.faturamento|brl0|sem_quebra }}</td>
+            <td align="right" style="padding:7px 0;border-top:1px solid #EDE8D9;white-space:nowrap;">{% if f.bonus %}{{ f.bonus|brl0|sem_quebra }}{% else %}-{% endif %}</td>
+            <td align="right" style="padding:7px 0 7px 10px;border-top:1px solid #EDE8D9;white-space:nowrap;">{% if f.batida %}<span style="color:#1F6B3E;font-weight:bold;">✓ Batida</span>{% else %}<span style="color:#5C6A61;">faltam {{ f.falta|brl0|sem_quebra }}</span>{% endif %}</td>
           </tr>
         {% endfor %}
       </table>
       <div style="margin-top:12px;padding:12px 14px;background:#FBF1CF;border-radius:10px;font-size:14px;color:#5C4400;line-height:1.5;">
         {% if meta.proxima %}
-          Faltam <strong>{{ meta.falta|brl }}</strong> para a faixa <strong>{{ meta.nome_proxima }}</strong>{% if meta.proxima.bonus %} (bônus de {{ meta.proxima.bonus|brl0 }}){% endif %}: dá <strong>{{ meta.por_dia|brl }} por dia</strong> nos {{ meta.dias_restantes }} dia{{ meta.dias_restantes|pluralize }} que faltam.<br>
-          No ritmo atual, o mês fecha em <strong>{{ meta.projecao|brl0 }}</strong>{% if meta.nome_faixa_projetada %}, na faixa {{ meta.nome_faixa_projetada }}{% else %}, abaixo da primeira faixa{% endif %}.
+          Faltam <strong>{{ meta.falta|brl|sem_quebra }}</strong> para a faixa <strong>{{ meta.nome_proxima }}</strong>{% if meta.proxima.bonus %} (bônus de {{ meta.proxima.bonus|brl0|sem_quebra }}){% endif %}: dá <strong>{{ meta.por_dia|brl|sem_quebra }} por dia</strong> nos {{ meta.dias_restantes }} dia{{ meta.dias_restantes|pluralize }} que faltam.<br>
+          No ritmo atual, o mês fecha em <strong>{{ meta.projecao|brl0|sem_quebra }}</strong>{% if meta.nome_faixa_projetada %}, na faixa {{ meta.nome_faixa_projetada }}{% else %}, abaixo da primeira faixa{% endif %}.
         {% else %}
           <strong>Todas as faixas do mês batidas! 🎉</strong>
         {% endif %}
-        {% if meta.bonus_garantido %}<br>Bônus garantido até agora: <strong>{{ meta.bonus_garantido|brl }}</strong>.{% endif %}
+        {% if meta.bonus_garantido %}<br>Bônus garantido até agora: <strong>{{ meta.bonus_garantido|brl|sem_quebra }}</strong>.{% endif %}
       </div>
     {% endif %}
 
     {% if sub_ids %}
       <h2 style="margin:26px 0 8px;font-size:16px;">Ontem por Sub ID</h2>
-      <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="border-collapse:collapse;font-size:14px;">
-        <tr><td style="padding:6px 0;color:#5C6A61;font-size:12px;">Sub ID</td><td align="right" style="padding:6px 0;color:#5C6A61;font-size:12px;">Vendas</td><td align="right" style="padding:6px 0;color:#5C6A61;font-size:12px;">Comissão</td></tr>
-        {% for s in sub_ids %}<tr><td style="padding:6px 0;border-top:1px solid #EDE8D9;">{{ s.sub_id }}</td><td align="right" style="padding:6px 0;border-top:1px solid #EDE8D9;">{{ s.vendas|numero }}</td><td align="right" style="padding:6px 0;border-top:1px solid #EDE8D9;font-weight:bold;">{{ s.comissao|brl }}</td></tr>{% endfor %}
+      <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="width:100%;border-collapse:collapse;font-size:14px;">
+        <tr>
+          <td width="50%" style="width:50%;padding:6px 0;color:#5C6A61;font-size:12px;">Sub ID</td>
+          <td width="18%" align="right" style="width:18%;padding:6px 0 6px 8px;color:#5C6A61;font-size:12px;">Vendas</td>
+          <td width="32%" align="right" style="width:32%;padding:6px 0 6px 12px;color:#5C6A61;font-size:12px;">Comissão</td>
+        </tr>
+        {% for s in sub_ids %}<tr>
+          <td style="padding:8px 0;border-top:1px solid #EDE8D9;word-break:break-word;">{{ s.sub_id|default:"(sem Sub ID)" }}</td>
+          <td align="right" style="padding:8px 0 8px 8px;border-top:1px solid #EDE8D9;">{{ s.vendas|numero }}</td>
+          <td align="right" style="padding:8px 0 8px 12px;border-top:1px solid #EDE8D9;font-weight:bold;white-space:nowrap;">{{ s.comissao|brl|sem_quebra }}</td>
+        </tr>{% endfor %}
       </table>
     {% endif %}
 
     {% if produtos %}
       <h2 style="margin:26px 0 8px;font-size:16px;">Mais vendidos ontem</h2>
-      <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="border-collapse:collapse;font-size:14px;">
-        {% for p in produtos %}<tr><td style="padding:6px 8px 6px 0;border-top:1px solid #EDE8D9;color:#5C6A61;width:18px;">{{ forloop.counter }}</td><td style="padding:6px 0;border-top:1px solid #EDE8D9;">{{ p.nome|default:"Produto"|truncatechars:70 }}</td><td align="right" style="padding:6px 0 6px 8px;border-top:1px solid #EDE8D9;white-space:nowrap;">{{ p.unidades|numero }} un. · <strong>{{ p.comissao|brl }}</strong></td></tr>{% endfor %}
+      <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="width:100%;border-collapse:collapse;font-size:14px;">
+        {% for p in produtos %}<tr>
+          <td width="22" valign="top" style="width:22px;padding:10px 0;border-top:1px solid #EDE8D9;color:#5C6A61;font-weight:bold;">{{ forloop.counter }}</td>
+          <td style="padding:10px 0;border-top:1px solid #EDE8D9;line-height:1.4;">
+            {{ p.nome|default:"Produto"|truncatechars:70 }}
+            <div style="margin-top:3px;font-size:13px;color:#5C6A61;">{{ p.unidades|numero }} un. · comissão <strong style="color:#1C2B23;">{{ p.comissao|brl|sem_quebra }}</strong></div>
+          </td>
+        </tr>{% endfor %}
       </table>
     {% endif %}
 

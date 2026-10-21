@@ -17,8 +17,10 @@ CARROSSEIS = {
 
 # Bot de WhatsApp.
 BOT = {
-    False: {"grupos": 3, "ofertas_por_grupo_dia": 30, "intervalo_minimo": 15, "copiar": False, "ia": False},
-    True: {"grupos": 20, "ofertas_por_grupo_dia": 100, "intervalo_minimo": 3, "copiar": True, "ia": True},
+    False: {"grupos": 3, "ofertas_por_grupo_dia": 30, "intervalo_minimo": 15, "copiar": False, "ia": False,
+            "alerta_produtos": 10, "alerta_intervalo_minimo": 60},
+    True: {"grupos": 20, "ofertas_por_grupo_dia": 100, "intervalo_minimo": 3, "copiar": True, "ia": True,
+           "alerta_produtos": 50, "alerta_intervalo_minimo": 15},
 }
 
 # Meu site.

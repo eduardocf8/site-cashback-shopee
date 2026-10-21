@@ -54,6 +54,10 @@ GRUPOS = [
             ("bot_whatsapp.enviowhatsapp", "Envios"),
             ("bot_whatsapp.ofertarecebida", "Ofertas recebidas (copiar de grupos)"),
             ("bot_whatsapp.eventowhatsapp", "Eventos"),
+            ("bot_whatsapp.campanhabot", "Modo campanha"),
+            ("bot_whatsapp.alertapreco", "Alertas de preço"),
+            ("bot_whatsapp.produtoacompanhado", "Produtos acompanhados (alerta de preço)"),
+            ("bot_whatsapp.alertadisparado", "Alertas disparados"),
         ]),
         ("Meu site", [
             ("meusite.siteafiliado", "Sites dos afiliados"),

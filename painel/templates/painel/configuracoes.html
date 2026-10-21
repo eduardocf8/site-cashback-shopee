@@ -39,7 +39,7 @@
     <label class="marcar">{{ form_relatorio.ativo }}<span><strong>Receber o relatório diário por e-mail</strong></span></label>
     <div class="campo">{% include "painel/_campo.html" with campo=form_relatorio.hora %}</div>
     <div class="campo">{% include "painel/_campo.html" with campo=form_relatorio.emails_extras %}</div>
-    {% if preferencia_relatorio.ultimo_erro %}<p class="aviso aviso-warning pequeno">O último envio falhou. Vamos tentar de novo amanhã.</p>
+    {% if preferencia_relatorio.ultimo_erro %}<p class="aviso aviso-warning pequeno">O último envio falhou. Você pode tentar de novo agora com "Enviar e-mail agora".</p>
     {% elif preferencia_relatorio.ultimo_envio_dia and preferencia_relatorio.ativo %}<p class="suave pequeno">Último enviado em {{ preferencia_relatorio.ultimo_envio_dia|date:"d/m" }}.</p>{% endif %}
     <div class="botoes-linha">
       <button type="submit" class="botao botao-principal">Salvar</button>

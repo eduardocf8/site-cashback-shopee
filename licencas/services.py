@@ -279,19 +279,16 @@ def enviar_email_chave(conta_pk: int) -> bool:
 
     corpo = (
         f"Olá{', ' + conta.nome if conta.nome else ''}!\n\n"
-        "Sua assinatura do Appfiliado foi confirmada. Essa é a sua chave de licença - "
-        "cole ela na tela de ativação do aplicativo:\n\n"
-        f"{conta.chave}\n\n"
-        "Ela vale para todos os serviços que você assinar com este e-mail: se contratar "
-        "outro depois, é só continuar usando a mesma chave.\n\n"
-        "Guarde esse e-mail: se precisar reinstalar o app ou trocar de computador, "
-        "é só usar a chave de novo.\n\n"
+        "Sua assinatura do Appfiliado foi confirmada. Bem-vindo!\n\n"
+        "O Appfiliado funciona no navegador, sem instalar nada: você entra com o seu e-mail "
+        "e a sua senha. Tudo o que você assinar com este e-mail fica no mesmo painel.\n\n"
         f"{_trecho_painel(conta)}"
+        "Qualquer dúvida, é só responder este e-mail.\n\n"
         "Equipe Appfiliado\nFerramentas para afiliados Shopee"
     )
     try:
         EmailMessage(
-            subject="Appfiliado — sua chave de licença",
+            subject="Bem-vindo ao Appfiliado — crie sua senha",
             body=corpo,
             to=[conta.email],
             from_email=settings.APPFILIADO_EMAIL_REMETENTE,

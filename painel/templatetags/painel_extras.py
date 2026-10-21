@@ -37,3 +37,10 @@ def porcento(valor):
         return f"{float(valor) * 100:.0f}%"
     except (TypeError, ValueError):
         return "0%"
+
+
+@register.filter
+def sem_quebra(texto):
+    """Troca os espaços por espaço que não quebra ("R$ 1.234,50" não se parte em duas
+    linhas no e-mail do celular)."""
+    return str(texto).replace(" ", " ")

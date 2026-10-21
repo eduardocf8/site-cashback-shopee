@@ -21,6 +21,7 @@
       {% if config.ativo %}<span class="ponto ok" aria-hidden="true"></span>Ligado{% else %}<span class="ponto" aria-hidden="true"></span>Pausado{% endif %}
       {% if config.simulacao %}<span class="selo-simulacao">Simulação</span>{% endif %}
     </h2>
+    {% if campanha_hoje %}<p class="aviso aviso-success pequeno">Hoje é {{ campanha_hoje.nome }}: o bot está usando a configuração da aba <a href="{% url 'painel_whatsapp_campanhas' %}">Campanhas</a>. Amanhã volta para esta.</p>{% endif %}
     {% if config.simulacao %}<p class="aviso aviso-info pequeno">Modo simulação ligado: nada é enviado para o WhatsApp. Desligue em "Simulação", no fim da página, para enviar de verdade.</p>{% endif %}
     {% if not shopee_conectada %}
       <p class="aviso aviso-warning pequeno">Conecte sua conta da Shopee em <a href="{% url 'painel_configuracoes' %}">Configurações</a> - é com ela que o bot busca as ofertas e gera o seu link.</p>

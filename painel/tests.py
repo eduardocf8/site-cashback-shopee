@@ -224,7 +224,7 @@ class TestEmailDaChave(TestCase):
 
         conta = ContaAppfiliado.objects.create(email="nova@exemplo.com")
         enviar_email_chave(conta.pk)
-        self.assertIn(conta.chave, mail.outbox[0].body)
+        self.assertNotIn(conta.chave, mail.outbox[0].body)  # sem app, a chave não é mais mostrada
         self.assertIn(f"https://{HOST}/senha/definir/", mail.outbox[0].body)
 
 

@@ -52,6 +52,20 @@ class TestGuardarVendas(TestCase):
         self.assertEqual(itens["Mop"].situacao, "cancelado")
         self.assertEqual((itens["Garrafa"].situacao, itens["Garrafa"].sub_id), ("pendente", "sem_subid"))
 
+    def test_guarda_o_motivo_so_do_pedido_cancelado(self):
+        com_motivo = dict(item("Mop", "60", 1, "5"), displayItemStatus="Cancelled by buyer",
+                          itemNotes="Pagamento não aprovado", fraudStatus="FRAUD")
+        so_status = dict(item("Fone", "50", 1, "2"), displayItemStatus="Cancelled", itemNotes="Cancelled")
+        completo = dict(item("Capa", "10", 1, "1"), displayItemStatus="Completed", itemNotes="obs qualquer")
+        self.sincronizar([conversao(ts(2026, 10, 10), [
+            pedido("p1", "CANCELLED", [com_motivo, so_status]), pedido("p2", "COMPLETED", [completo]),
+        ], conversion_id="c1")])
+        itens = {v.nome: v for v in VendaItem.objects.filter(conta=self.conta)}
+        self.assertEqual(itens["Mop"].motivo_shopee,
+                         "Cancelled by buyer - Pagamento não aprovado - Pedido marcado como fraude pela Shopee")
+        self.assertEqual(itens["Fone"].motivo_shopee, "Cancelled")  # texto repetido não duplica
+        self.assertEqual(itens["Capa"].motivo_shopee, "")
+
     def test_ressincronizar_troca_a_janela_e_guarda_o_historico_por_13_meses(self):
         antigo = VendaItem.objects.create(  # fora da janela da API: fica
             conta=self.conta, conversao_id="v", pedido_id="velho", nome="Antigo",
@@ -147,7 +161,7 @@ class TestTelaDeVendas(BasePainel):
 
     def test_exportar_excel_com_loja_e_pedido(self):
         self.venda("Fone", loja="Loja do Fone", sub_id="sem_subid")
-        self.venda("Mop", situacao="cancelado")
+        self.venda("Mop", situacao="cancelado", motivo_shopee="Cancelado pelo comprador - Pagamento não aprovado")
         resposta = self.client.get("/resultados/vendas.xlsx", {"periodo": "30dias"})
         self.assertEqual(resposta.status_code, 200)
         self.assertIn("attachment;", resposta["Content-Disposition"])
@@ -161,6 +175,9 @@ class TestTelaDeVendas(BasePainel):
         self.assertEqual(linhas["Fone"][cabecalho.index("Loja")], "Loja do Fone")
         self.assertEqual(linhas["Fone"][cabecalho.index("Grupo")], "Sem Sub ID")
         self.assertEqual(linhas["Mop"][cabecalho.index("Status")], "Cancelado")
+        motivo = cabecalho.index("Motivo do cancelamento (Shopee)")
+        self.assertEqual(linhas["Mop"][motivo], "Cancelado pelo comprador - Pagamento não aprovado")
+        self.assertIn(linhas["Fone"][motivo], (None, ""))  # só o cancelado traz motivo
         produtos = list(planilha["Produtos"].values)
         self.assertEqual([p[0] for p in produtos[1:]], ["Fone"])  # cancelado fora do ranking
 

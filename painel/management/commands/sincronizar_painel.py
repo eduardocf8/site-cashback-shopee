@@ -35,6 +35,10 @@ class Command(BaseCommand):
             garantir_limite_de_memoria(sys.argv)  # pode reiniciar o processo uma vez
             if iniciar_em_segundo_plano():
                 self.stdout.write(f"Bot de WhatsApp ligado neste worker (GOMEMLIMIT={os.environ['GOMEMLIMIT']}).")
+        if loop:
+            from bot_whatsapp.alertas import iniciar_em_segundo_plano as iniciar_alerta_de_preco
+
+            iniciar_alerta_de_preco()  # confere os preços dos produtos acompanhados (thread própria)
         proximo_log_de_memoria = 0.0
         while True:
             if loop and time.monotonic() >= proximo_log_de_memoria:
