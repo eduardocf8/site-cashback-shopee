@@ -63,6 +63,8 @@ def normalizar_produto(no: dict) -> dict:
         "imagem": str(no.get("imageUrl") or "").strip(),
         "preco": preco,
         "comissao": _percentual(no.get("commissionRate") or no.get("sellerCommissionRate")),
+        # A parte da comissão que o vendedor paga a mais (comissão extra / XTRA). 0 = não tem.
+        "comissao_extra": _percentual(no.get("sellerCommissionRate")),
         "desconto": _percentual(no.get("priceDiscountRate")),
         "vendas": int(para_numero(no.get("sales"))),
         "avaliacao": para_numero(no.get("ratingStar")),
