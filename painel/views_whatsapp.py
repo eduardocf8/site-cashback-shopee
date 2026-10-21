@@ -257,10 +257,16 @@ def _campanha(conta) -> CampanhaBot:
 
 
 def _previa(campanha, config) -> str:
+    """Uma oferta de exemplo como sai no dia da campanha."""
     if not campanha.mensagem_ativa:
         return montar_texto(EXEMPLO_DE_PRODUTO, "https://s.shopee.com.br/seu-link", config.cupom)
     texto = montar_texto(EXEMPLO_DE_PRODUTO, "https://s.shopee.com.br/seu-link", campanha.cupom or config.cupom)
     return campanhas.com_abertura(texto, campanha.frase_abertura)
+
+
+def _previa_da_pagina(campanha, proxima) -> str:
+    nome = proxima["nome"] if proxima else "11.11"
+    return campanhas.texto_da_pagina(nome, campanha.texto_pagina, campanha.cupom, "https://s.shopee.com.br/sua-pagina")
 
 
 def _adicionar_data(request, campanha, hoje) -> None:
@@ -348,4 +354,5 @@ def whatsapp_campanhas(request):
         hoje_campanha=hoje_campanha, proxima=proxima,
         quando=campanhas.quando(proxima["faltam"]) if proxima else "",
         previa=_previa(campanha, config),
+        previa_pagina=_previa_da_pagina(campanha, hoje_campanha or proxima),
     ))

@@ -257,10 +257,13 @@ class CampanhaBot(models.Model):
     palavra_chave = models.CharField(max_length=120, blank=True)
     comissao_minima = models.PositiveSmallIntegerField(null=True, blank=True)
     desconto_minimo = models.PositiveSmallIntegerField(null=True, blank=True)
-    # Mensagem (com ela desligada, as ofertas saem com o texto e o cupom da Automação)
-    mensagem_ativa = models.BooleanField("usar a mensagem da campanha", default=True)
+    # Texto das ofertas: vai em todas as ofertas do dia (desligado, saem como na Automação).
+    mensagem_ativa = models.BooleanField("mudar o texto das ofertas", default=True)
     frase_abertura = models.CharField(max_length=120, blank=True)
     cupom = models.CharField(max_length=120, blank=True)
+    # Página da campanha: uma mensagem à parte, só com o link da página, a cada N ofertas.
+    pagina_ativa = models.BooleanField("enviar a página da campanha", default=False)
+    texto_pagina = models.CharField(max_length=200, blank=True)
     link_campanha = models.URLField(max_length=500, blank=True)
     link_campanha_a_cada = models.PositiveSmallIntegerField(default=10)
     atualizado_em = models.DateTimeField(auto_now=True)

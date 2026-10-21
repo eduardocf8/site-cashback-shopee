@@ -96,13 +96,23 @@
       </div>
     </section>
 
-    <section class="card" aria-labelledby="titulo-mensagem-campanha">
-      <h2 id="titulo-mensagem-campanha">Mensagem</h2>
-      <label class="marcar">{{ form.mensagem_ativa }}<span><strong>Usar a mensagem da campanha</strong><span class="ajuda">Soma ao texto normal da oferta: a frase vai no começo, o cupom entra no lugar do da Automação e a página da campanha vai de vez em quando. Desligado, as ofertas saem como na Automação.</span></span></label>
-      <div class="bloco-mensagem" id="bloco-mensagem">
+    <section class="card" aria-labelledby="titulo-texto-ofertas">
+      <h2 id="titulo-texto-ofertas">Texto das ofertas</h2>
+      <p class="suave pequeno">Vai em <strong>todas as ofertas</strong> do dia, junto com o produto e o link dele.</p>
+      <label class="marcar">{{ form.mensagem_ativa }}<span><strong>Mudar o texto das ofertas</strong><span class="ajuda">Desligado, as ofertas saem com o texto e o cupom da Automação.</span></span></label>
+      <div class="bloco-mensagem" data-ligado-por="id_mensagem_ativa">
         <div class="campo">{% include "painel/_campo.html" with campo=form.frase_abertura %}</div>
         <div class="campo">{% include "painel/_campo.html" with campo=form.cupom %}</div>
+      </div>
+    </section>
+
+    <section class="card" aria-labelledby="titulo-pagina-campanha">
+      <h2 id="titulo-pagina-campanha">Mensagem da página da campanha</h2>
+      <p class="suave pequeno">Uma <strong>mensagem à parte</strong>, sem produto: só o link da página da campanha na Shopee, enviada de tantas em tantas ofertas.</p>
+      <label class="marcar">{{ form.pagina_ativa }}<span><strong>Enviar a página da campanha</strong><span class="ajuda">Quem clica cai na página do evento com o seu link: compras de qualquer produto de lá contam para você.</span></span></label>
+      <div class="bloco-mensagem" data-ligado-por="id_pagina_ativa">
         <div class="campo">{% include "painel/_campo.html" with campo=form.link_campanha %}</div>
+        <div class="campo">{% include "painel/_campo.html" with campo=form.texto_pagina %}</div>
         <div class="campo campo-curto">
           <label for="{{ form.link_campanha_a_cada.id_for_label }}">{{ form.link_campanha_a_cada.label }}</label>
           <span class="com-sufixo">{{ form.link_campanha_a_cada }}<span>ofertas</span></span>
@@ -126,9 +136,18 @@
       <p class="suave pequeno">O bot não liga sozinho: a campanha só vale com as ofertas ligadas na Automação.</p>
     </section>
     <section class="card" aria-labelledby="titulo-previa">
-      <h2 id="titulo-previa">Prévia da mensagem</h2>
-      <p class="suave pequeno">{% if campanha.mensagem_ativa %}Um produto de exemplo, com a frase e o cupom da campanha.{% else %}A mensagem da campanha está desligada: as ofertas saem como na Automação.{% endif %}</p>
+      <h2 id="titulo-previa">Prévia de uma oferta</h2>
+      <p class="suave pequeno">{% if campanha.mensagem_ativa %}Um produto de exemplo, com a frase e o cupom da campanha.{% else %}O texto das ofertas não muda: elas saem como na Automação.{% endif %}</p>
       <pre class="texto-oferta">{{ previa }}</pre>
+    </section>
+    <section class="card" aria-labelledby="titulo-previa-pagina">
+      <h2 id="titulo-previa-pagina">Prévia da mensagem da página</h2>
+      {% if campanha.pagina_ativa %}
+        <p class="suave pequeno">Sai sozinha, a cada {{ campanha.link_campanha_a_cada }} ofertas, com a prévia grande do link.</p>
+        <pre class="texto-oferta">{{ previa_pagina }}</pre>
+      {% else %}
+        <p class="suave pequeno">Desligada: no dia da campanha vão só as ofertas.</p>
+      {% endif %}
     </section>
   </div>
 </div>

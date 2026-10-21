@@ -75,6 +75,18 @@ class TestTela(BasePainel):
         self.assertContains(resposta, "Cupom: SHOPEE1111")
         self.assertContains(resposta, "Próxima campanha: <strong>11.11</strong>")
 
+    def test_pagina_da_campanha_precisa_do_link_e_tem_previa_propria(self, _):
+        base = {"acao": "salvar", "horario_inicio": "00:00", "horario_fim": "23:59", "link_campanha_a_cada": "5",
+                "pagina_ativa": "on"}
+        resposta = self.client.post("/whatsapp/campanhas/", base)
+        self.assertContains(resposta, "Cole o link da página da campanha para enviar a mensagem.")
+        resposta = self.client.post("/whatsapp/campanhas/", {**base, "link_campanha": "https://shopee.com.br/m/11-11",
+                                                            "texto_pagina": "Tudo do 11.11 aqui", "cupom": "C1"}, follow=True)
+        self.assertContains(resposta, "Mensagem da página da campanha")
+        self.assertContains(resposta, "a cada 5 ofertas")
+        self.assertContains(resposta, "Tudo do 11.11 aqui\nhttps://s.shopee.com.br/sua-pagina\n\n🎟️ Cupom: C1")
+        self.assertTrue(CampanhaBot.objects.get(conta=self.conta).pagina_ativa)
+
     def test_mensagem_desligada_guarda_o_texto_e_a_previa_fica_normal(self, _):
         resposta = self.client.post("/whatsapp/campanhas/", {
             "acao": "salvar", "horario_inicio": "00:00", "horario_fim": "23:59", "frase_abertura": "🔥 11.11!",

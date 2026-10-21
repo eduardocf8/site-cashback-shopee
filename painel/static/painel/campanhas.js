@@ -1,17 +1,18 @@
-// Modo campanha: com "Usar a mensagem da campanha" desligado, os campos da mensagem
-// ficam apagados (o que está neles continua guardado para a próxima vez).
+// Modo campanha: cada interruptor ("Mudar o texto das ofertas", "Enviar a página da
+// campanha") apaga os campos do seu bloco quando desligado (o que está neles fica guardado).
 (function () {
-  var chave = document.getElementById("id_mensagem_ativa");
-  var bloco = document.getElementById("bloco-mensagem");
-  if (!chave || !bloco) return;
-  function atualizar() {
-    bloco.classList.toggle("desligado", !chave.checked);
-    // Só leitura, não "disabled": campo desativado não vai junto ao salvar e o texto se perderia.
-    bloco.querySelectorAll("input").forEach(function (el) { el.readOnly = !chave.checked; });
-    bloco.querySelectorAll("button").forEach(function (el) { el.disabled = !chave.checked; });
-  }
-  chave.addEventListener("change", atualizar);
-  atualizar();
+  document.querySelectorAll("[data-ligado-por]").forEach(function (bloco) {
+    var chave = document.getElementById(bloco.getAttribute("data-ligado-por"));
+    if (!chave) return;
+    function atualizar() {
+      bloco.classList.toggle("desligado", !chave.checked);
+      // Só leitura, não "disabled": campo desativado não vai junto ao salvar e o texto se perderia.
+      bloco.querySelectorAll("input").forEach(function (el) { el.readOnly = !chave.checked; });
+      bloco.querySelectorAll("button").forEach(function (el) { el.disabled = !chave.checked; });
+    }
+    chave.addEventListener("change", atualizar);
+    atualizar();
+  });
 })();
 
 // Marcar ou desmarcar uma data salva na hora (sem precisar do "Salvar" do fim da página).

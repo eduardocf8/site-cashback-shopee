@@ -114,10 +114,14 @@ def aviso_da_inicio(conta, hoje: date) -> dict | None:
     return {"texto": texto, "tipo": "success" if ligado and proxima["faltam"] == 0 else "warning" if not ligado else "info"}
 
 
-def texto_da_pagina(nome: str, frase: str, cupom: str, link: str) -> str:
-    """A mensagem com a página da campanha na Shopee (mandada a cada N ofertas)."""
-    partes = [frase.strip()] if (frase or "").strip() else []
-    partes.append(f"🛍️ {nome}: todas as ofertas num lugar só\n{link}")
+def texto_da_pagina(nome: str, texto: str, cupom: str, link: str) -> str:
+    """A mensagem à parte com a página da campanha na Shopee (mandada a cada N ofertas):
+    o texto da pessoa (ou um padrão), o link e, se tiver, o cupom da campanha."""
+    partes = [f"{(texto or '').strip() or texto_padrao_da_pagina(nome)}\n{link}"]
     if (cupom or "").strip():
         partes.append(f"🎟️ Cupom: {cupom.strip()}")
     return "\n\n".join(partes)
+
+
+def texto_padrao_da_pagina(nome: str) -> str:
+    return f"🛍️ {nome}: todas as ofertas num lugar só"

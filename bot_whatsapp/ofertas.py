@@ -273,12 +273,12 @@ class Motor:
         """A cada N ofertas do dia de campanha, manda a página da campanha (com o link de
         afiliado de cada grupo). Um erro aqui não atrapalha as ofertas."""
         campanha = getattr(config, "campanha", None)
-        if not (campanha and campanha.mensagem_ativa and campanha.link_campanha):
+        if not (campanha and campanha.pagina_ativa and campanha.link_campanha):
             return
         a_cada = max(3, campanha.link_campanha_a_cada or 10)
         if ofertas_enviadas_hoje(config.conta, agora, config.simulacao) % a_cada:
             return
-        texto = campanhas.texto_da_pagina(config.campanha_hoje["nome"], campanha.frase_abertura, campanha.cupom,
+        texto = campanhas.texto_da_pagina(config.campanha_hoje["nome"], campanha.texto_pagina, campanha.cupom,
                                          MARCADOR_DO_LINK)
         try:
             enfileirar(config, grupos_do_plano(config), texto, campanha.link_campanha, item_id="",

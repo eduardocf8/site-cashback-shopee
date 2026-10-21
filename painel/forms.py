@@ -403,19 +403,22 @@ class CampanhaBotForm(forms.ModelForm):
         fields = [
             "datas_ligadas", "intervalo_minutos", "limite_diario", "horario_inicio", "horario_fim",
             "palavra_chave", "comissao_minima", "desconto_minimo",
-            "mensagem_ativa", "frase_abertura", "cupom", "link_campanha", "link_campanha_a_cada",
+            "mensagem_ativa", "frase_abertura", "cupom", "pagina_ativa", "texto_pagina", "link_campanha",
+            "link_campanha_a_cada",
         ]
         labels = {
             "intervalo_minutos": "Uma oferta a cada (minutos)", "limite_diario": "Máximo de ofertas no dia",
             "horario_inicio": "Das", "horario_fim": "Até", "palavra_chave": "Palavra-chave da campanha",
             "comissao_minima": "Comissão mínima (%)", "desconto_minimo": "Desconto mínimo (%)",
             "frase_abertura": "Frase de abertura", "cupom": "Cupom da campanha",
-            "link_campanha": "Link da página da campanha na Shopee", "link_campanha_a_cada": "Enviar a página a cada",
+            "link_campanha": "Link da página da campanha na Shopee", "link_campanha_a_cada": "Enviar a cada",
+            "texto_pagina": "Texto da mensagem",
         }
         help_texts = {
             "palavra_chave": "Ex: fone bluetooth. Em branco, o bot busca como na Automação.",
             "frase_abertura": "Vai no começo de cada oferta. Ex: 🔥 11.11 na Shopee",
-            "cupom": "Aparece nas ofertas como “Cupom: …”, no lugar do cupom da Automação.",
+            "cupom": "Aparece nas ofertas como “Cupom: …”, no lugar do cupom da Automação. Vai também na mensagem da página.",
+            "texto_pagina": "Vai antes do link. Em branco, vai “🛍️ 11.11: todas as ofertas num lugar só”.",
             "link_campanha": "Cole o link da página da campanha. O bot troca pelo seu link de afiliado.",
         }
         widgets = {
@@ -424,6 +427,7 @@ class CampanhaBotForm(forms.ModelForm):
             "frase_abertura": forms.TextInput(attrs={"placeholder": "🔥 11.11 na Shopee", "data-emoji": ""}),
             "cupom": forms.TextInput(attrs={"placeholder": "Ex: SHOPEE1111", "data-emoji": ""}),
             "link_campanha": forms.URLInput(attrs={"placeholder": "https://shopee.com.br/m/11-11"}),
+            "texto_pagina": forms.TextInput(attrs={"placeholder": "🛍️ Todas as ofertas do 11.11 aqui", "data-emoji": ""}),
         }
 
     def __init__(self, *args, datas=(), regras=None, **kwargs):
@@ -460,6 +464,8 @@ class CampanhaBotForm(forms.ModelForm):
 
     def clean(self):
         dados = super().clean()
+        if dados.get("pagina_ativa") and not dados.get("link_campanha") and "link_campanha" not in self.errors:
+            self.add_error("link_campanha", "Cole o link da página da campanha para enviar a mensagem.")
         if dados.get("horario_inicio") is None:
             dados["horario_inicio"] = self.instance.horario_inicio
         if dados.get("horario_fim") is None:

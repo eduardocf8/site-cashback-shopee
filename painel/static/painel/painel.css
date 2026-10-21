@@ -806,3 +806,4 @@ span.marcar-data { cursor: default; }
 .bloco-mensagem { display: flex; flex-direction: column; gap: 14px; margin-top: 14px; }
 .bloco-mensagem.desligado { opacity: .45; }
 .repetir-ano { margin-top: 10px; }
+.form-campanha .card > p + .marcar { margin-top: 12px; }

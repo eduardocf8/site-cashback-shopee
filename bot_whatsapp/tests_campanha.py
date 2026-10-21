@@ -34,14 +34,14 @@ class TestMotorNaCampanha(TestCase):
         )
         self.campanha = CampanhaBot.objects.create(
             conta=self.conta, ativo=True, datas_ligadas=["11.11"], intervalo_minutos=10, desconto_minimo=30,
-            frase_abertura="🔥 11.11!", cupom="C1111", link_campanha="https://shopee.com.br/m/11-11",
+            frase_abertura="🔥 11.11!", cupom="C1111", pagina_ativa=True, link_campanha="https://shopee.com.br/m/11-11",
             link_campanha_a_cada=3,
         )
         self.motor = ofertas.Motor()
         self.paginas = []
 
     def rodar(self, agora, produtos=None):
-        produtos = produtos or [produto(i, desconto=40) for i in range(1, 6)]
+        produtos = produtos or [produto(i, desconto=40) for i in range(1, 11)]
 
         def busca(app_id, secret, config, pagina):
             self.paginas.append((pagina, config.palavra_chave))
@@ -82,15 +82,24 @@ class TestMotorNaCampanha(TestCase):
             self.rodar(ONZE_ONZE)
             self.assertFalse(self.ofertas().exists(), mudanca)  # quarta e meia-noite: fora da Automação
 
-    def test_mensagem_desligada_mantem_ritmo_e_filtros(self, _link):
+    def test_texto_das_ofertas_desligado_mantem_ritmo_filtros_e_a_pagina(self, _link):
         CampanhaBot.objects.filter(pk=self.campanha.pk).update(mensagem_ativa=False)
-        self.rodar(ONZE_ONZE, [produto(1, desconto=20), produto(2, desconto=40)])
+        for i in range(3):
+            self.rodar(ONZE_ONZE + timedelta(minutes=10 * i), [produto(1, desconto=20)] + [
+                produto(n, desconto=40) for n in range(2, 6)])
         envio = self.ofertas().first()
-        self.assertEqual(envio.item_id, "2")
+        self.assertEqual(envio.item_id, "2")  # o filtro da campanha vale
         self.assertNotIn("11.11", envio.texto)
         self.assertIn("Cupom: NORMAL", envio.texto)
-        self.rodar(ONZE_ONZE + timedelta(minutes=30))
-        self.assertFalse(EnvioWhatsApp.objects.filter(origem="campanha").exists())  # sem a página da campanha
+        self.assertTrue(EnvioWhatsApp.objects.filter(origem="campanha").exists())  # a página é à parte
+
+    def test_pagina_desligada_nao_vai(self, _link):
+        CampanhaBot.objects.filter(pk=self.campanha.pk).update(pagina_ativa=False)
+        for i in range(3):
+            self.rodar(ONZE_ONZE + timedelta(minutes=10 * i))
+        self.assertEqual(self.ofertas().values("item_id").distinct().count(), 3)
+        self.assertFalse(EnvioWhatsApp.objects.filter(origem="campanha").exists())
+        self.assertTrue(self.ofertas().first().texto.startswith("🔥 11.11!"))  # o texto das ofertas continua
 
     def test_pagina_da_campanha_a_cada_n_ofertas(self, _link):
         for i in range(3):
@@ -100,10 +109,16 @@ class TestMotorNaCampanha(TestCase):
         self.assertEqual(sorted(paginas.values_list("destino", flat=True)), ["1@g.us", "2@g.us"])
         pagina = paginas.first()
         self.assertEqual(pagina.formato, "previa")
-        self.assertEqual(pagina.texto, "🔥 11.11!\n\n🛍️ 11.11: todas as ofertas num lugar só\n"
-                                       "https://s.shopee.com.br/1\n\n🎟️ Cupom: C1111")
+        # só o link da página (sem produto), com o texto padrão e o cupom
+        self.assertEqual(pagina.texto, "🛍️ 11.11: todas as ofertas num lugar só\nhttps://s.shopee.com.br/1\n\n🎟️ Cupom: C1111")
+        self.assertEqual(pagina.imagem_url, "")
+        CampanhaBot.objects.filter(pk=self.campanha.pk).update(texto_pagina="Corre que tá acabando!")
+        for i in range(3, 6):
+            self.rodar(ONZE_ONZE + timedelta(minutes=10 * i))
+        textos = EnvioWhatsApp.objects.filter(origem="campanha").values_list("texto", flat=True)
+        self.assertTrue(any(t.startswith("Corre que tá acabando!\nhttps://") for t in textos))
         # a página não conta como oferta: o limite e o "a cada 3" seguem certos
-        self.assertEqual(ofertas.ofertas_enviadas_hoje(self.conta, ONZE_ONZE + timedelta(minutes=20)), 3)
+        self.assertEqual(ofertas.ofertas_enviadas_hoje(self.conta, ONZE_ONZE + timedelta(minutes=50)), 6)
 
     def test_intervalo_da_campanha_vale_na_hora(self, _link):
         # Última oferta às 22h50 do dia 10, com a próxima marcada para 23h50 (intervalo de 1 hora).
