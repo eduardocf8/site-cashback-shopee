@@ -282,6 +282,23 @@ def _adicionar_data(request, campanha, hoje) -> None:
         messages.success(request, f"“{nome}” incluída em {dia:%d/%m}.")
 
 
+def _marcar_data(request, campanha, hoje):
+    """Liga ou desliga uma data da Shopee na hora (a tela chama ao marcar a caixa)."""
+    chave = request.POST.get("chave", "")
+    datas = {d["chave"]: d["nome"] for d in campanhas.datas_do_ano(hoje.year)}
+    if chave not in datas:
+        return JsonResponse({"erro": "Data desconhecida."}, status=400)
+    ligada = request.POST.get("ligada") == "1"
+    atuais = [c for c in campanha.datas_ligadas or [] if c != chave]
+    campanha.datas_ligadas = atuais + [chave] if ligada else atuais
+    campanha.save(update_fields=["datas_ligadas", "atualizado_em"])
+    proxima = campanhas.proxima_ligada(campanha, hoje)
+    return JsonResponse({
+        "texto": f"{datas[chave]} {'ligada' if ligada else 'desligada'} no modo campanha.",
+        "proxima": f"{proxima['nome']}, {proxima['data']:%d/%m} ({campanhas.quando(proxima['faltam'])})" if proxima else "",
+    })
+
+
 @conta_requerida
 def whatsapp_campanhas(request):
     conta = conta_logada(request)
@@ -304,6 +321,8 @@ def whatsapp_campanhas(request):
             campanha.save(update_fields=["ativo", "atualizado_em"])
             messages.success(request, "Modo campanha ligado." if campanha.ativo else "Modo campanha desligado.")
             return redirect("painel_whatsapp_campanhas")
+        if acao == "marcar_data":
+            return _marcar_data(request, campanha, hoje)
         if acao == "adicionar_data":
             _adicionar_data(request, campanha, hoje)
             return redirect(f"{reverse('painel_whatsapp_campanhas')}#datas")

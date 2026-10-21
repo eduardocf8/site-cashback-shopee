@@ -20,7 +20,7 @@
     {% if hoje_campanha %}
       <p class="pequeno">Até as {{ campanha.horario_fim|time:"H:i" }}, o bot usa a configuração abaixo. Amanhã ele volta para a da Automação sozinho.</p>
     {% elif proxima %}
-      <p class="pequeno">Próxima campanha: <strong>{{ proxima.nome }}</strong>, {{ proxima.data|date:"l, d/m"|lower }} ({{ quando }}).</p>
+      <p class="pequeno" id="proxima-campanha">Próxima campanha: <strong>{{ proxima.nome }}</strong>, {{ proxima.data|date:"l, d/m"|lower }} ({{ quando }}).</p>
     {% elif campanha.ativo %}
       <p class="pequeno">Nenhuma data ligada nos próximos 12 meses. Ligue as datas logo abaixo.</p>
     {% else %}
@@ -47,8 +47,8 @@
 
     <section class="card" id="datas" aria-labelledby="titulo-datas">
       <h2 id="titulo-datas">Datas</h2>
-      <p class="suave pequeno">As datas da Shopee dos próximos 12 meses. Ligue as que você quer e salve: elas valem todo ano, e a lista anda sozinha conforme as datas passam.</p>
-      <ul class="lista-datas">
+      <p class="suave pequeno">Marque as datas em que o bot deve usar o modo campanha. A marcação fica salva na hora e vale todo ano. Nas datas sem marcação, o bot segue a Automação normal.</p>
+      <ul class="lista-datas" data-url="{% url 'painel_whatsapp_campanhas' %}">
         {% for d in datas %}
           <li class="{% if d.ligada %}ligada{% endif %}">
             {% if d.propria %}
@@ -119,7 +119,7 @@
     <section class="card" aria-labelledby="titulo-como">
       <h2 id="titulo-como">Como funciona</h2>
       <ol class="passos-conversor">
-        <li>Ligue o modo campanha e as datas que você quer.</li>
+        <li>Ligue o modo campanha e marque as datas em que ele deve valer.</li>
         <li>No dia, à meia-noite, o bot passa a usar esta configuração sozinho. No dia seguinte, volta para a da Automação.</li>
         <li>Mudou algo e salvou? Já vale para as próximas ofertas, até no meio da campanha.</li>
       </ol>

@@ -93,6 +93,15 @@ class TestTela(BasePainel):
         self.assertContains(resposta, "Cole um link da Shopee")
         self.assertContains(resposta, "maior ou igual a 15")
 
+    def test_marcar_data_salva_na_hora(self, _):
+        resposta = self.client.post("/whatsapp/campanhas/", {"acao": "marcar_data", "chave": "3.3", "ligada": "1"})
+        self.assertEqual(resposta.json()["texto"], "3.3 ligada no modo campanha.")
+        self.client.post("/whatsapp/campanhas/", {"acao": "marcar_data", "chave": "11.11", "ligada": "0"})
+        ligadas = CampanhaBot.objects.get(conta=self.conta).datas_ligadas
+        self.assertIn("3.3", ligadas)
+        self.assertNotIn("11.11", ligadas)
+        self.assertEqual(self.client.post("/whatsapp/campanhas/", {"acao": "marcar_data", "chave": "x"}).status_code, 400)
+
     def test_datas_proprias(self, _):
         self.client.post("/whatsapp/campanhas/", {"acao": "adicionar_data", "nome": "Aniversário", "data": "2026-10-24", "anual": "1"})
         self.client.post("/whatsapp/campanhas/", {"acao": "adicionar_data", "nome": "Velha", "data": "2026-10-01"})
