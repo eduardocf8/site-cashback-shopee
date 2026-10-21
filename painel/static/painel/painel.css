@@ -803,3 +803,6 @@ span.marcar-data { cursor: default; }
 .com-sufixo input { width: 90px; }
 @media (max-width: 600px) { .lista-datas li { flex-wrap: wrap; } .lista-datas li > .suave { padding-left: 30px; } }
 .aviso-campanha { margin: 0 0 16px; } .aviso-campanha a { color: inherit; font-weight: 700; }
+.bloco-mensagem { display: flex; flex-direction: column; gap: 14px; margin-top: 14px; }
+.bloco-mensagem.desligado { opacity: .45; }
+.repetir-ano { margin-top: 10px; }

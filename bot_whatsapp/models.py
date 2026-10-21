@@ -244,7 +244,8 @@ class CampanhaBot(models.Model):
     conta = models.OneToOneField(ContaAppfiliado, on_delete=models.CASCADE, related_name="campanha_bot")
     ativo = models.BooleanField("modo campanha ligado", default=False)
     datas_ligadas = models.JSONField(default=_ligadas_padrao, blank=True, help_text='Chaves: "11.11", "black_friday"...')
-    datas_proprias = models.JSONField(default=list, blank=True, help_text='[{"data": "2026-11-25", "nome": "..."}]')
+    datas_proprias = models.JSONField(default=list, blank=True,
+                                      help_text='[{"data": "2026-11-25", "nome": "...", "anual": true}]')
     # Ritmo
     intervalo_minutos = models.PositiveSmallIntegerField(null=True, blank=True)
     limite_diario = models.PositiveSmallIntegerField(null=True, blank=True)
@@ -254,7 +255,8 @@ class CampanhaBot(models.Model):
     palavra_chave = models.CharField(max_length=120, blank=True)
     comissao_minima = models.PositiveSmallIntegerField(null=True, blank=True)
     desconto_minimo = models.PositiveSmallIntegerField(null=True, blank=True)
-    # Mensagem
+    # Mensagem (com ela desligada, as ofertas saem com o texto e o cupom da Automação)
+    mensagem_ativa = models.BooleanField("usar a mensagem da campanha", default=True)
     frase_abertura = models.CharField(max_length=120, blank=True)
     cupom = models.CharField(max_length=120, blank=True)
     link_campanha = models.URLField(max_length=500, blank=True)

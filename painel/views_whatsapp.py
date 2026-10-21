@@ -254,8 +254,9 @@ def _campanha(conta) -> CampanhaBot:
 
 
 def _previa(campanha, config) -> str:
-    texto = montar_texto(EXEMPLO_DE_PRODUTO, "https://s.shopee.com.br/seu-link",
-                         campanha.cupom or config.cupom)
+    if not campanha.mensagem_ativa:
+        return montar_texto(EXEMPLO_DE_PRODUTO, "https://s.shopee.com.br/seu-link", config.cupom)
+    texto = montar_texto(EXEMPLO_DE_PRODUTO, "https://s.shopee.com.br/seu-link", campanha.cupom or config.cupom)
     return campanhas.com_abertura(texto, campanha.frase_abertura)
 
 
@@ -273,8 +274,10 @@ def _adicionar_data(request, campanha, hoje) -> None:
     elif len(campanha.datas_proprias or []) >= MAXIMO_DATAS_PROPRIAS:
         messages.error(request, f"Dá para ter até {MAXIMO_DATAS_PROPRIAS} datas próprias.")
     else:
+        anual = request.POST.get("anual") == "1"
         proprias = [p for p in campanha.datas_proprias or [] if p.get("data") != dia.isoformat()]
-        campanha.datas_proprias = sorted(proprias + [{"data": dia.isoformat(), "nome": nome}], key=lambda p: p["data"])
+        proprias.append({"data": dia.isoformat(), "nome": nome, "anual": anual})
+        campanha.datas_proprias = sorted(proprias, key=lambda p: p["data"])
         campanha.save(update_fields=["datas_proprias", "atualizado_em"])
         messages.success(request, f"“{nome}” incluída em {dia:%d/%m}.")
 
@@ -287,6 +290,10 @@ def whatsapp_campanhas(request):
     campanha = _campanha(conta)
     config = _config_ofertas(conta)
     hoje = timezone.localdate()
+    vigentes = campanhas.sem_datas_passadas(campanha.datas_proprias, hoje)
+    if vigentes != (campanha.datas_proprias or []):  # as que já passaram somem sozinhas
+        campanha.datas_proprias = vigentes
+        campanha.save(update_fields=["datas_proprias", "atualizado_em"])
     regras = planos.bot(conta)
     datas = campanhas.proximas_datas(campanha, hoje)
     acao = request.POST.get("acao", "salvar")

@@ -38,16 +38,38 @@ def proximas_datas(campanha, hoje: date, meses: int = 12) -> list[dict]:
             if hoje <= d["data"] <= fim:
                 datas.append({**d, "ligada": d["chave"] in ligadas, "propria": False})
     for p in campanha.datas_proprias or []:
-        try:
-            dia = date.fromisoformat(p.get("data", ""))
-        except ValueError:
-            continue
-        if dia >= hoje:
-            datas.append({"chave": f"propria:{dia.isoformat()}", "nome": p.get("nome") or "Data própria", "data": dia,
-                          "ligada": True, "propria": True})
+        dia = proxima_vez(p, hoje)
+        if dia and dia <= fim:
+            datas.append({"chave": f"propria:{p['data']}", "nome": p.get("nome") or "Data própria", "data": dia,
+                          "ligada": True, "propria": True, "anual": bool(p.get("anual")), "original": p["data"]})
     for d in datas:
         d["faltam"] = (d["data"] - hoje).days
     return sorted(datas, key=lambda d: (d["data"], d["nome"]))
+
+
+def proxima_vez(propria: dict, hoje: date) -> date | None:
+    """O dia de uma data própria a partir de hoje: a data certa, ou, se ela se repete todo
+    ano, o próximo aniversário dela (29/02 cai em 28/02 nos anos comuns)."""
+    try:
+        dia = date.fromisoformat(propria.get("data", ""))
+    except (TypeError, ValueError):
+        return None
+    if not propria.get("anual"):
+        return dia if dia >= hoje else None
+    for ano in (hoje.year, hoje.year + 1):
+        try:
+            candidato = dia.replace(year=ano)
+        except ValueError:
+            candidato = date(ano, 2, 28)
+        if candidato >= hoje:
+            return candidato
+    return None
+
+
+def sem_datas_passadas(proprias: list, hoje: date) -> list:
+    """Tira as datas próprias que já passaram e não se repetem (as da Shopee nem são
+    guardadas: a lista é sempre calculada para os próximos 12 meses)."""
+    return [p for p in proprias or [] if proxima_vez(p, hoje)]
 
 
 def campanha_do_dia(campanha, dia: date) -> dict | None:

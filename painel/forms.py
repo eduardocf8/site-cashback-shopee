@@ -403,7 +403,7 @@ class CampanhaBotForm(forms.ModelForm):
         fields = [
             "datas_ligadas", "intervalo_minutos", "limite_diario", "horario_inicio", "horario_fim",
             "palavra_chave", "comissao_minima", "desconto_minimo",
-            "frase_abertura", "cupom", "link_campanha", "link_campanha_a_cada",
+            "mensagem_ativa", "frase_abertura", "cupom", "link_campanha", "link_campanha_a_cada",
         ]
         labels = {
             "intervalo_minutos": "Uma oferta a cada (minutos)", "limite_diario": "Máximo de ofertas no dia",
@@ -421,8 +421,8 @@ class CampanhaBotForm(forms.ModelForm):
         widgets = {
             "horario_inicio": forms.TimeInput(attrs={**ATTRS_HORA, "placeholder": "00:00"}, format="%H:%M"),
             "horario_fim": forms.TimeInput(attrs={**ATTRS_HORA, "placeholder": "23:59"}, format="%H:%M"),
-            "frase_abertura": forms.TextInput(attrs={"placeholder": "🔥 11.11 na Shopee"}),
-            "cupom": forms.TextInput(attrs={"placeholder": "Ex: SHOPEE1111"}),
+            "frase_abertura": forms.TextInput(attrs={"placeholder": "🔥 11.11 na Shopee", "data-emoji": ""}),
+            "cupom": forms.TextInput(attrs={"placeholder": "Ex: SHOPEE1111", "data-emoji": ""}),
             "link_campanha": forms.URLInput(attrs={"placeholder": "https://shopee.com.br/m/11-11"}),
         }
 
