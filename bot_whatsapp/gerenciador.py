@@ -28,7 +28,7 @@ from django.conf import settings
 from django.db import close_old_connections
 from django.utils import timezone
 
-from . import copia
+from . import copia, rede
 from .models import ConexaoWhatsApp, ConfiguracaoOfertas, EnvioWhatsApp, OfertaRecebida
 from .servico import registrar_evento
 
@@ -41,6 +41,13 @@ ESPACO_ENTRE_ENVIOS = 3  # segundos entre duas mensagens do mesmo número
 ENVIO_TRAVADO_APOS = timedelta(minutes=3)  # "pegou para enviar" e nunca terminou
 # Fotos das mensagens copiadas (modo copiar): arquivos temporários, apagados em 6 h.
 PASTA_DAS_FOTOS = Path(tempfile.gettempdir()) / "appfiliado-fotos"
+
+
+def _dentro_da_pasta_das_fotos(caminho: str) -> bool:
+    try:
+        return Path(caminho).resolve().is_relative_to(PASTA_DAS_FOTOS.resolve())
+    except (OSError, ValueError):
+        return False
 
 
 def endereco_do_banco() -> str:
@@ -320,6 +327,11 @@ class Gerenciador:
             return
         sessao = self.sessoes.get(conexao.conta_id)
         try:
+            # Foto de grupo de terceiros: tamanho declarado limitado antes de baixar.
+            tamanho = copia.desembrulhar(ev.Message).imageMessage.fileLength
+            if tamanho and tamanho > rede.MAXIMO_BYTES:
+                logger.warning("WhatsApp: foto grande demais na mensagem %s (%s bytes)", recebida.pk, tamanho)
+                return
             dados = sessao.cliente.download_any(copia.desembrulhar(ev.Message))
             PASTA_DAS_FOTOS.mkdir(parents=True, exist_ok=True)
             caminho = PASTA_DAS_FOTOS / f"{conexao.conta_id}-{recebida.pk}.jpg"
@@ -521,7 +533,9 @@ class Gerenciador:
             usuario, _, servidor = envio.destino.partition("@")
             destino = build_jid(usuario, servidor or "g.us")
             try:
-                foto = ler_foto(envio.imagem_arquivo)
+                # A foto vai sempre como bytes baixados aqui (com os limites de rede.py): um
+                # texto solto nunca chega à biblioteca, que abriria arquivo local ou URL interna.
+                foto = ler_foto(envio.imagem_arquivo) or (rede.baixar(envio.imagem_url) if envio.imagem_url else None)
                 if envio.formato == "previa":
                     # Cartão grande do link (grupo e canal); sem foto separada.
                     sessao.cliente.send_message(
@@ -531,10 +545,8 @@ class Gerenciador:
                     # Canal: foto com legenda pede um envio especial que a biblioteca não
                     # tem; vai texto com prévia do link (título + foto pequena), como no app.
                     sessao.cliente.send_message(destino, mensagem_com_previa(envio, foto))
-                elif foto:
+                elif foto and _imagem_aceitavel(foto):
                     sessao.cliente.send_image(destino, foto, caption=envio.texto or None)
-                elif envio.imagem_url:
-                    sessao.cliente.send_image(destino, envio.imagem_url, caption=envio.texto or None)
                 else:
                     sessao.cliente.send_message(destino, envio.texto)
             except Exception as erro:  # noqa: BLE001
@@ -572,8 +584,19 @@ def garantir_limite_de_memoria(argv: list[str]) -> None:
 URL_NO_TEXTO = re.compile(r"https?://\S+")
 
 
+def _imagem_aceitavel(dados: bytes) -> bool:
+    """A foto abre e não é uma "bomba" de pixels (a biblioteca do WhatsApp a decodifica)."""
+    try:
+        rede.abrir_imagem(dados)
+        return True
+    except Exception:  # noqa: BLE001
+        logger.warning("WhatsApp: foto recusada (não abre ou é grande demais)")
+        return False
+
+
 def ler_foto(caminho: str) -> bytes | None:
-    if not caminho:
+    """Só lê arquivo da pasta de fotos baixadas pelo próprio bot."""
+    if not caminho or not _dentro_da_pasta_das_fotos(caminho):
         return None
     try:
         with open(caminho, "rb") as arquivo:
@@ -590,12 +613,10 @@ def miniatura(url: str = "", dados: bytes | None = None, lado: int = 300, qualid
         from PIL import Image
 
         if dados is None:
-            import requests
-
-            resposta = requests.get(url, timeout=10)
-            resposta.raise_for_status()
-            dados = resposta.content
-        imagem = Image.open(io.BytesIO(dados)).convert("RGB")
+            dados = rede.baixar(url)
+            if not dados:
+                return None
+        imagem = rede.abrir_imagem(dados).convert("RGB")
         imagem.thumbnail((lado, lado))
         saida = io.BytesIO()
         imagem.save(saida, format="JPEG", quality=qualidade)
@@ -632,7 +653,7 @@ def imagem_da_previa(dados: bytes) -> tuple[bytes, int, int] | None:
     try:
         from PIL import Image
 
-        imagem = Image.open(io.BytesIO(dados))
+        imagem = rede.abrir_imagem(dados)
         if imagem.mode in ("RGBA", "LA", "P"):  # fundo transparente vira branco
             imagem = imagem.convert("RGBA")
             fundo = Image.new("RGB", imagem.size, (255, 255, 255))
@@ -662,13 +683,8 @@ def mensagem_com_previa_grande(cliente, envio, foto: bytes | None = None, canal:
         return Message(conversation=envio.texto)
     dados = foto
     if not dados and envio.imagem_url:
-        try:
-            import requests
-
-            resposta = requests.get(envio.imagem_url, timeout=10)
-            resposta.raise_for_status()
-            dados = resposta.content
-        except Exception:  # noqa: BLE001
+        dados = rede.baixar(envio.imagem_url)
+        if not dados:
             logger.warning("WhatsApp: não consegui baixar a foto para a prévia grande: %s", envio.imagem_url[:200])
     pronta = imagem_da_previa(dados) if dados else None
     if not pronta:

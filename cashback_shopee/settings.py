@@ -69,9 +69,9 @@ if not DEBUG:
     SECURE_SSL_REDIRECT = True
     SESSION_COOKIE_SECURE = True
     CSRF_COOKIE_SECURE = True
-    # Começa com 1 hora (valor conservador); pode aumentar depois de confirmar que o
-    # HTTPS está estável, seguindo a documentação do Django antes de mudar.
-    SECURE_HSTS_SECONDS = 3600
+    # 1 ano: o navegador nunca mais tenta abrir os domínios sem HTTPS (que já é obrigatório
+    # há tempo). Sem includeSubDomains: cada subdomínio do Meu site decide pelo próprio host.
+    SECURE_HSTS_SECONDS = 31536000
 
 
 # Application definition
@@ -120,6 +120,12 @@ AUTHENTICATION_BACKENDS = [
 # bloquear a conta de outra pessoa de propósito só errando a senha dela várias vezes
 # de um IP diferente (negação de serviço via bloqueio).
 AXES_LOCKOUT_PARAMETERS = [["username", "ip_address"]]
+# Quantos proxies acrescentam o IP no X-Forwarded-For antes do Django (no Render, 1). Com 0,
+# usa o REMOTE_ADDR (desenvolvimento). Vale para os limites por IP e para o django-axes.
+NUMERO_DE_PROXIES = int(os.environ.get("NUMERO_DE_PROXIES", "1" if os.environ.get("RENDER") else "0"))
+if NUMERO_DE_PROXIES:
+    AXES_IPWARE_PROXY_COUNT = NUMERO_DE_PROXIES
+    AXES_IPWARE_META_PRECEDENCE_ORDER = ["HTTP_X_FORWARDED_FOR", "REMOTE_ADDR"]
 AXES_FAILURE_LIMIT = 5
 AXES_COOLOFF_TIME = 1  # horas até o bloqueio expirar sozinho
 AXES_RESET_ON_SUCCESS = True
@@ -301,6 +307,12 @@ AUTOMACAO_INSTAGRAM_INTERVALO_SEGUNDOS = int(os.environ.get("AUTOMACAO_INSTAGRAM
 # aviso - sem ele preenchido, todo webhook é recusado. Ver
 # licencas/services.py::assinatura_webhook_valida.
 ZOUTI_WEBHOOK_SECRET = os.environ.get("ZOUTI_WEBHOOK_SECRET", "")
+
+# Imagem enviada por usuário ou vinda de grupo de terceiros: acima de 60 megapixels o Pillow
+# recusa ao abrir (o padrão dele só avisa até ~179 MP, e uma foto de 20 KB "descompacta" em GB).
+from PIL import Image as _Image  # noqa: E402
+
+_Image.MAX_IMAGE_PIXELS = 30_000_000
 
 # Domínios que só servem a API do Appfiliado (ex: api.appfiliado.com.br). Em qualquer
 # um deles, só /licencas/ responde - o resto do site da cash-b dá 404, pra não aparecer

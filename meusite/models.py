@@ -9,7 +9,12 @@ from licencas.models import ContaAppfiliado
 ENDERECOS_RESERVADOS = {
     "app", "api", "www", "admin", "painel", "mail", "email", "smtp", "ftp", "blog", "ajuda", "suporte",
     "status", "static", "media", "cdn", "loja", "shopee", "appfiliado", "site", "sites", "teste", "dev",
+    "login", "entrar", "conta", "contas", "senha", "pagamento", "pagamentos", "pagar", "checkout", "pix",
+    "boleto", "fatura", "cobranca", "seguranca", "verificacao", "suporte-appfiliado", "atendimento",
+    "oficial", "zouti", "cashb", "cash-b", "webmail", "ns1", "ns2", "mx",
 }
+# Endereços com esses pedaços parecem página oficial (golpe de "login" com o nosso domínio).
+PEDACOS_RESERVADOS = ("appfiliado", "shopee", "login", "senha", "pagamento", "checkout", "oficial", "suporte")
 
 # Redes sociais (ícones embaixo dos botões): campo -> (nome, como montar o link a partir do @).
 REDES = [

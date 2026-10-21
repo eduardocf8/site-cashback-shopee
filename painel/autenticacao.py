@@ -81,12 +81,21 @@ def destino_seguro(request, proximo: str) -> str:
 
 # --- Proteção contra tentativa e erro no login --------------------------------------
 
-def _chaves_falha(ip: str, email: str) -> list[str]:
-    return [f"painel_login_falha:ip:{ip}", f"painel_login_falha:email:{email.lower()}"]
+def _chaves_falha(ip: str, email: str) -> dict[str, int]:
+    """Contadores de senha errada e o limite de cada um. O do par (IP, e-mail) é o
+    principal; o do e-mail sozinho tem um limite bem maior, para que outra pessoa não
+    consiga travar a sua conta errando a senha de propósito, mas tentativa espalhada em
+    muitos IPs contra um e-mail ainda para."""
+    email = email.lower()
+    return {
+        f"painel_login_falha:par:{ip}:{email}": LIMITE_FALHAS_LOGIN,
+        f"painel_login_falha:ip:{ip}": LIMITE_FALHAS_LOGIN * 4,
+        f"painel_login_falha:email:{email}": LIMITE_FALHAS_LOGIN * 6,
+    }
 
 
 def login_bloqueado(ip: str, email: str) -> bool:
-    return any((cache.get(chave) or 0) >= LIMITE_FALHAS_LOGIN for chave in _chaves_falha(ip, email))
+    return any((cache.get(chave) or 0) >= limite for chave, limite in _chaves_falha(ip, email).items())
 
 
 def registrar_falha_login(ip: str, email: str):

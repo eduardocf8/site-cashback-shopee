@@ -43,10 +43,20 @@ def limpar_linhas(texto):
     return "\n".join(filtradas).strip()
 
 
+# Qualquer coisa que o WhatsApp transforma em link: com http(s):// (maiúsculo ou não), com
+# "www.", ou domínio com caminho ("bit.ly/x", "chat.whatsapp.com/x") ou de terminação conhecida.
+PADRAO_LINK_QUALQUER = re.compile(
+    r"(?:https?://|www\.)[^\s]+"
+    r"|\b[\w-]+(?:\.[\w-]+)+/[^\s]*"
+    r"|\b[\w-]+(?:\.[\w-]+)*\.(?:com|net|org|br|ly|me|io|co|gg|top|site|link|shop|store|app|xyz|online|info|ee|to|gl)\b",
+    re.I,
+)
+
+
 def remover_links(texto):
-    # Também os links da Shopee sem "https://" (o link de quem postou não pode sobrar).
-    texto = re.sub(r"https?://[^\s]+", "", texto or "")
-    return re.sub(r"\b(?:s\.shopee\.com\.br|shope\.ee|shp\.ee|(?:www\.)?shopee\.com\.br)/[^\s]*", "", texto, flags=re.I).strip()
+    # A oferta copiada de um grupo de terceiros não pode levar nenhum link de quem postou
+    # (golpe, concorrente, link de afiliado de outra pessoa): sai tudo, e o bot põe o seu.
+    return re.sub(r"[ \t]{2,}", " ", PADRAO_LINK_QUALQUER.sub("", texto or "")).strip()
 
 
 def extrair_precos(texto):

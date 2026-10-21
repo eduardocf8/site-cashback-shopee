@@ -16,7 +16,7 @@ from licencas import planos
 from licencas.models import MODULO_WHATSAPP
 from meusite.forms import BotaoForm, FotoForm, SiteForm
 from meusite import vitrine
-from meusite.models import ENDERECOS_RESERVADOS, BotaoSite, CliqueSite, ProdutoSite, SiteAfiliado
+from meusite.models import ENDERECOS_RESERVADOS, PEDACOS_RESERVADOS, BotaoSite, CliqueSite, ProdutoSite, SiteAfiliado
 
 from . import modulos as mod
 from .autenticacao import conta_logada, conta_requerida
@@ -33,7 +33,10 @@ def endereco_sugerido(conta) -> str:
     """Do nome (ou do e-mail): "Bia Souza" -> "biasouza", sem repetir o de outra conta."""
     base = conta.nome or conta.email.split("@")[0]
     base = unicodedata.normalize("NFKD", base).encode("ascii", "ignore").decode().lower()
-    base = re.sub(r"[^a-z0-9]+", "", base)[:30] or "meusite"
+    base = re.sub(r"[^a-z0-9]+", "", base)
+    for pedaco in PEDACOS_RESERVADOS:
+        base = base.replace(pedaco, "")
+    base = base[:30] or "meusite"
     if len(base) < 3:
         base = f"{base}site"
     sugestao, n = base, 2

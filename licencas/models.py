@@ -22,8 +22,10 @@ MODULO_NOTAS = "notas"
 # Planos premium e faixas de notas. Cada um já inclui o módulo básico (ver INCLUI): quem compra
 # só o premium tem o módulo inteiro (e o app de Windows continua vendo "whatsapp").
 MODULO_WHATSAPP_PREMIUM = "whatsapp_premium"
-MODULO_NOTAS_1000 = "notas_1000"
+MODULO_NOTAS_500 = "notas_500"
+MODULO_NOTAS_2000 = "notas_2000"
 MODULO_NOTAS_5000 = "notas_5000"
+MODULO_NOTAS_10000 = "notas_10000"
 MODULO_NOTAS_ILIMITADO = "notas_ilimitado"
 MODULOS = [
     (MODULO_WHATSAPP, "Bot de WhatsApp"),
@@ -36,16 +38,21 @@ MODULOS = [
     (MODULO_CARROSSEIS_PREMIUM, "Gerador de carrosséis (premium)"),
     (MODULO_NOTAS, "Emissão NFS-e (até 100 notas/mês)"),
     (MODULO_WHATSAPP_PREMIUM, "Bot de WhatsApp (premium)"),
-    (MODULO_NOTAS_1000, "Emissão NFS-e (até 1.000 notas/mês)"),
+    (MODULO_NOTAS_500, "Emissão NFS-e (até 500 notas/mês)"),
+    (MODULO_NOTAS_2000, "Emissão NFS-e (até 2.000 notas/mês)"),
     (MODULO_NOTAS_5000, "Emissão NFS-e (até 5.000 notas/mês)"),
+    (MODULO_NOTAS_10000, "Emissão NFS-e (até 10.000 notas/mês)"),
     (MODULO_NOTAS_ILIMITADO, "Emissão NFS-e (notas ilimitadas)"),
 ]
 # Módulo que já vem junto com outro (o plano maior inclui o básico).
 INCLUI = {
     MODULO_WHATSAPP_PREMIUM: [MODULO_WHATSAPP],
     MODULO_CARROSSEIS_PREMIUM: [MODULO_CARROSSEIS],
-    MODULO_NOTAS_1000: [MODULO_NOTAS],
+    MODULO_SITE_SEM_MARCA: [MODULO_SITE],
+    MODULO_NOTAS_500: [MODULO_NOTAS],
+    MODULO_NOTAS_2000: [MODULO_NOTAS],
     MODULO_NOTAS_5000: [MODULO_NOTAS],
+    MODULO_NOTAS_10000: [MODULO_NOTAS],
     MODULO_NOTAS_ILIMITADO: [MODULO_NOTAS],
 }
 CODIGOS_MODULOS = [codigo for codigo, _ in MODULOS]

@@ -4,7 +4,8 @@ Os códigos vêm de ContaAppfiliado.modulos_liberados(); um plano maior já incl
 (licencas.models.INCLUI). Mudar um número aqui vale para todo mundo na hora."""
 
 from .models import (
-    MODULO_CARROSSEIS_PREMIUM, MODULO_NOTAS, MODULO_NOTAS_1000, MODULO_NOTAS_5000, MODULO_NOTAS_ILIMITADO,
+    MODULO_CARROSSEIS_PREMIUM, MODULO_NOTAS, MODULO_NOTAS_500, MODULO_NOTAS_2000, MODULO_NOTAS_5000,
+    MODULO_NOTAS_10000, MODULO_NOTAS_ILIMITADO,
     MODULO_SITE_SEM_MARCA, MODULO_WHATSAPP_PREMIUM,
 )
 
@@ -27,7 +28,10 @@ SITE = {
 }
 
 # Emissão NFS-e: notas de verdade por mês (None = sem limite). Vale o maior plano que a conta tiver.
-NOTAS_POR_MES = [(MODULO_NOTAS_ILIMITADO, None), (MODULO_NOTAS_5000, 5000), (MODULO_NOTAS_1000, 1000), (MODULO_NOTAS, 100)]
+NOTAS_POR_MES = [
+    (MODULO_NOTAS_ILIMITADO, None), (MODULO_NOTAS_10000, 10000), (MODULO_NOTAS_5000, 5000),
+    (MODULO_NOTAS_2000, 2000), (MODULO_NOTAS_500, 500), (MODULO_NOTAS, 100),
+]
 
 
 def _liberados(conta_ou_lista) -> list[str]:

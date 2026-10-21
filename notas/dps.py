@@ -74,9 +74,14 @@ def id_dps(municipio_ibge: str, cnpj: str, serie: str, numero: int) -> str:
     return f"DPS{municipio_ibge}2{cnpj.zfill(14)}{str(serie).zfill(5)}{int(numero):015d}"
 
 
+# Caracteres de controle que o XML não aceita (vindos de relatório ou texto digitado):
+# sem tirar, a montagem da nota quebra.
+_CONTROLE = re.compile(r"[\x00-\x08\x0b\x0c\x0e-\x1f\x7f\ufffe\uffff]")
+
+
 def _texto(pai, tag, valor):
     el = etree.SubElement(pai, f"{{{NS}}}{tag}")
-    el.text = str(valor)
+    el.text = _CONTROLE.sub("", str(valor))
     return el
 
 
@@ -89,7 +94,7 @@ def _valor(v) -> str:
 
 
 def _limpa(texto: str, maximo: int) -> str:
-    return " ".join(str(texto or "").split())[:maximo]
+    return " ".join(_CONTROLE.sub("", str(texto or "")).split())[:maximo]
 
 
 def montar(*, ambiente: str, emitida_em: datetime, serie: str, numero: int, competencia: date,

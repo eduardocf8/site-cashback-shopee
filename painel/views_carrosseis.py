@@ -134,7 +134,10 @@ class FotoForm(forms.Form):
         arquivo = self.cleaned_data["foto"]
         if arquivo.size > FOTO_MAXIMO_MB * 1024 * 1024:
             raise forms.ValidationError(f"A foto pode ter até {FOTO_MAXIMO_MB} MB.")
-        imagem = ImageOps.exif_transpose(Image.open(arquivo)).convert("RGB")
+        aberta = Image.open(arquivo)
+        if aberta.size[0] * aberta.size[1] > 30_000_000:  # "bomba" de pixels: estoura a memória ao abrir
+            raise forms.ValidationError("Essa foto é grande demais. Use uma de até 30 megapixels.")
+        imagem = ImageOps.exif_transpose(aberta).convert("RGB")
         imagem.thumbnail((FOTO_LADO, FOTO_LADO), Image.LANCZOS)
         saida = io.BytesIO()
         imagem.save(saida, "JPEG", quality=86, optimize=True)

@@ -134,9 +134,14 @@ class TestGerenciador(TestCase):
         texto = EnvioWhatsApp.objects.create(conta=self.conta, destino="120363001@g.us", texto="Oi")
         foto = EnvioWhatsApp.objects.create(conta=self.conta, destino="120363001@g.us", texto="Oferta",
                                             imagem_url="https://exemplo.com/a.jpg")
-        with mock.patch.object(g, "ESPACO_ENTRE_ENVIOS", 0):
+        jpeg = io.BytesIO()
+        Image.new("RGB", (20, 20), "#c33").save(jpeg, "JPEG")
+        with mock.patch.object(g, "ESPACO_ENTRE_ENVIOS", 0), \
+                mock.patch.object(g.rede, "baixar", return_value=jpeg.getvalue()) as baixar:
             self.ger.uma_volta()  # uma mensagem por volta por número
             self.ger.uma_volta()
+        baixar.assert_called_once_with("https://exemplo.com/a.jpg")
+        self.assertEqual(sessao.cliente.send_image.call_args.args[1], jpeg.getvalue())  # bytes, nunca o texto do link
         destino = sessao.cliente.send_message.call_args.args[0]
         self.assertEqual((destino.User, destino.Server), ("120363001", "g.us"))
         sessao.cliente.send_image.assert_called_once()
@@ -222,8 +227,8 @@ class TestGerenciador(TestCase):
             )
         quadrada = io.BytesIO()
         Image.new("RGB", (1000, 1000), "#c33").save(quadrada, "JPEG")
-        resposta = mock.Mock(content=quadrada.getvalue())
-        with mock.patch.object(g, "ESPACO_ENTRE_ENVIOS", 0), mock.patch("requests.get", return_value=resposta):
+        with mock.patch.object(g, "ESPACO_ENTRE_ENVIOS", 0), \
+                mock.patch.object(g.rede, "baixar", return_value=quadrada.getvalue()):
             self.ger.uma_volta()
             self.ger.uma_volta()
         sessao.cliente.send_image.assert_not_called()  # só o cartão, sem foto separada
@@ -264,14 +269,14 @@ class TestGerenciador(TestCase):
 
         sessao.cliente.upload.side_effect = RuntimeError("sem rede")
         sessao.cliente.upload_newsletter.side_effect = RuntimeError("sem rede")
-        resposta = mock.Mock(content=self._jpeg(300, 300))
+        foto_baixada = self._jpeg(300, 300)
         for destino in ("120363001@g.us", "111@newsletter"):
             envio = EnvioWhatsApp.objects.create(
                 conta=self.conta, destino=destino, texto="Oferta 2\nhttps://s.shopee.com.br/xyz", formato="previa",
                 produto="Tênis", link_afiliado="https://s.shopee.com.br/xyz", imagem_url="https://cf.shopee.com.br/file/2",
             )
             self.ger.ultimo_envio[self.conta.pk] -= g.ESPACO_ENTRE_ENVIOS
-            with mock.patch("requests.get", return_value=resposta):
+            with mock.patch.object(g.rede, "baixar", return_value=foto_baixada):
                 self.ger.uma_volta()
             previa = sessao.cliente.send_message.call_args.args[1].extendedTextMessage
             self.assertEqual((previa.thumbnailWidth, previa.thumbnailDirectPath), (300, ""))  # só a miniatura

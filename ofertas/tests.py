@@ -1,6 +1,6 @@
 from datetime import timedelta
 from decimal import Decimal
-from unittest.mock import Mock, patch
+from unittest.mock import MagicMock, Mock, patch
 
 from django.contrib.auth import get_user_model
 from django.test import TestCase, override_settings
@@ -364,21 +364,41 @@ class ResolverItemIdComRedeTests(TestCase):
     chamada fora do ciclo de requisição de um usuário (ver
     links/services.py::resolver_item_id_alvo_pendentes, ROADMAP.md Fase 41/42)."""
 
-    @patch("ofertas.services.requests.get")
+    @staticmethod
+    def resposta(texto="", status=200, location=None):
+        """Resposta falsa do requests (com stream e sem seguir redirecionamento sozinho)."""
+        r = MagicMock()
+        r.__enter__.return_value = r
+        r.status_code, r.encoding = status, "utf-8"
+        r.is_redirect = location is not None
+        r.headers = {"Location": location} if location else {}
+        r.iter_content.return_value = [texto.encode()]
+        return r
+
+    @patch("ofertas.services.requests.Session.get")
     def test_resolve_seguindo_o_redirecionamento(self, mock_get):
-        mock_get.return_value = Mock(
-            url="https://shopee.com.br/produto-i.1.999", text="", status_code=200, history=[1],
-        )
+        mock_get.side_effect = [self.resposta(status=302, location="https://shopee.com.br/produto-i.1.999"),
+                                self.resposta("<html></html>")]
 
         self.assertEqual(resolver_item_id_com_rede("https://s.shopee.com.br/abc123"), 999)
+        self.assertFalse(mock_get.call_args.kwargs["allow_redirects"])  # um por um, conferindo cada destino
 
-    @patch("ofertas.services.requests.get")
+    @patch("ofertas.services.requests.Session.get")
     def test_link_nao_identificado_retorna_none_em_vez_de_levantar_erro(self, mock_get):
-        mock_get.return_value = Mock(
-            url="https://s.shopee.com.br/abc123", text="", status_code=200, history=[],
-        )
+        mock_get.return_value = self.resposta("")
 
         self.assertIsNone(resolver_item_id_com_rede("https://s.shopee.com.br/abc123"))
+
+    @patch("ofertas.services.requests.Session.get")
+    def test_nunca_abre_endereco_fora_da_shopee(self, mock_get):
+        for url in ("https://shopee.com.br@169.254.169.254/latest", "http://shopee.com.br@127.0.0.1:8765/x",
+                    "https://shopee.com.br.golpe.com/x", "https://s.shopee.golpe.com/x", "ftp://shopee.com.br/x"):
+            self.assertIsNone(resolver_item_id_com_rede(url), url)
+        mock_get.assert_not_called()
+        # Redirecionamento para fora da Shopee não é seguido.
+        mock_get.return_value = self.resposta(status=302, location="http://127.0.0.1:8000/interno")
+        self.assertIsNone(resolver_item_id_com_rede("https://s.shopee.com.br/abc"))
+        self.assertEqual(mock_get.call_count, 1)
 
     # Trechos reais (encurtados) da página que a Shopee devolve pra um link curto: 200
     # sem redirecionamento HTTP, com o destino embutido no HTML só de forma escapada.
@@ -391,13 +411,13 @@ class ResolverItemIdComRedeTests(TestCase):
         '%2F1356856417%2F22893790071%3Fd_id%3D09b43\\u0026path=shopee%2FTRANSFER_PAGE">'
     )
 
-    @patch("ofertas.services.requests.get")
+    @patch("ofertas.services.requests.Session.get")
     def test_link_curto_com_destino_escapado_no_html(self, mock_get):
         for url, pagina in (
             ("https://s.shopee.com.br/8V9juuKQqX", self.PAGINA_S_SHOPEE),
             ("https://br.shp.ee/SPbtUzbT", self.PAGINA_SHP_EE),
         ):
-            mock_get.return_value = Mock(url=url, text=pagina, status_code=200, history=[])
+            mock_get.return_value = self.resposta(pagina)
 
             self.assertEqual(resolver_item_id_com_rede(url), 22893790071)
 

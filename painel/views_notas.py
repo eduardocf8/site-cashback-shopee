@@ -7,9 +7,11 @@ import zipfile
 
 from django import forms
 from django.contrib import messages
+from django.core.cache import cache
 from django.core.paginator import Paginator
 from django.http import HttpResponse, JsonResponse
 from django.shortcuts import get_object_or_404, redirect, render
+from django.utils import timezone
 from django.views.decorators.debug import sensitive_post_parameters
 from django.views.decorators.http import require_POST
 
@@ -18,7 +20,8 @@ from notas.models import AMBIENTE_PRODUCAO, AMBIENTE_TESTE, LoteNotas, NotaFisca
 from notas.relatorio import TAMANHO_MAXIMO as RELATORIO_MAXIMO
 
 from . import modulos as mod
-from .autenticacao import conta_logada, conta_requerida
+from .autenticacao import conta_logada, conta_requerida, destino_seguro
+from .exportar import texto_sem_formula
 from .views import _contexto
 
 
@@ -103,7 +106,8 @@ def notas(request):
                 empresa.emissao_pausada = ""
                 empresa.save(update_fields=["emissao_pausada", "atualizada_em"])
                 messages.info(request, "Emissão retomada.")
-                return redirect(request.POST.get("voltar") or "painel_notas")
+                voltar = request.POST.get("voltar", "")
+                return redirect(destino_seguro(request, voltar) if voltar else "painel_notas")
             elif acao == "remover_certificado":
                 certificado.apagar(empresa)
                 messages.info(request, "Certificado apagado do Appfiliado.")
@@ -296,9 +300,10 @@ def lote_zip(request, pk):
                        "Chave de acesso", "E-mail", "Situação do e-mail"])
     with zipfile.ZipFile(memoria, "w", zipfile.ZIP_DEFLATED) as arquivo:
         for nota in lote.notas.all().order_by("pk").iterator():
-            planilha.writerow([nota.loja_nome, nota.loja_id, nota.tomador_nome, nota.tomador_documento,
-                               str(nota.valor).replace(".", ","), nota.get_situacao_display(), nota.numero_nfse,
-                               nota.chave, nota.tomador_email, nota.get_email_situacao_display()])
+            planilha.writerow([texto_sem_formula(v) for v in (
+                nota.loja_nome, nota.loja_id, nota.tomador_nome, nota.tomador_documento,
+                str(nota.valor).replace(".", ","), nota.get_situacao_display(), nota.numero_nfse,
+                nota.chave, nota.tomador_email, nota.get_email_situacao_display())])
             if nota.xml_nfse:
                 arquivo.writestr(f"xml/{danfse.nome_arquivo(nota, 'xml')}", nota.xml_nfse)
         arquivo.writestr("resumo.csv", "\ufeff" + resumo.getvalue())
@@ -310,15 +315,17 @@ def lote_zip(request, pk):
 @require_POST
 @conta_requerida
 def reenviar(request, pk):
-    nota = get_object_or_404(NotaFiscal, pk=pk, empresa__conta=conta_logada(request))
+    conta = conta_logada(request)
+    bloqueio = _bloqueio(request, conta)
+    if bloqueio:
+        return bloqueio
+    nota = get_object_or_404(NotaFiscal, pk=pk, empresa__conta=conta)
     if nota.situacao in (NotaFiscal.RECUSADA, NotaFiscal.ERRO):
         try:
-            if nota.situacao == NotaFiscal.RECUSADA:
-                servicos.conferir_plano(nota.empresa, 1, nota.ambiente)
+            servicos.reenviar_nota(nota)
+            messages.info(request, "Nota de volta para a fila. Ela sai em alguns instantes.")
         except servicos.ErroNotas as erro:
             messages.error(request, str(erro))
-            return _volta(request, nota)
-        servicos.processar(nota)
     return _volta(request, nota)
 
 
@@ -356,11 +363,27 @@ def cancelar(request, pk):
 @require_POST
 @conta_requerida
 def reenviar_email(request, pk):
-    nota = get_object_or_404(NotaFiscal, pk=pk, empresa__conta=conta_logada(request))
-    if nota.situacao == NotaFiscal.AUTORIZADA and nota.tomador_email and nota.ambiente == AMBIENTE_PRODUCAO:
-        nota.email_situacao, nota.email_enviar_em = NotaFiscal.EMAIL_PENDENTE, None  # reenvio pedido: sai já
-        nota.save(update_fields=["email_situacao", "email_enviar_em", "atualizada_em"])
-        messages.info(request, "O e-mail vai sair de novo em alguns minutos.")
+    conta = conta_logada(request)
+    bloqueio = _bloqueio(request, conta)
+    if bloqueio:
+        return bloqueio
+    nota = get_object_or_404(NotaFiscal, pk=pk, empresa__conta=conta)
+    if not (nota.situacao == NotaFiscal.AUTORIZADA and nota.tomador_email and nota.ambiente == AMBIENTE_PRODUCAO):
+        return _volta(request, nota)
+    hoje = timezone.localdate().isoformat()
+    # O mesmo e-mail no máximo uma vez a cada 30 minutos, e até 50 reenvios por dia por empresa:
+    # o reenvio não pode virar um jeito de bombardear o vendedor nem queimar o envio de todos.
+    if not cache.add(f"notas:reenvio:{nota.pk}", 1, 30 * 60):
+        messages.error(request, "Esse e-mail foi reenviado há pouco. Espere meia hora para mandar de novo.")
+        return _volta(request, nota)
+    chave_dia = f"notas:reenvios:{nota.empresa_id}:{hoje}"
+    cache.add(chave_dia, 0, 24 * 60 * 60)
+    if cache.incr(chave_dia) > 50:
+        messages.error(request, "Limite de 50 reenvios de e-mail por dia atingido. Tente amanhã.")
+        return _volta(request, nota)
+    nota.email_situacao, nota.email_enviar_em = NotaFiscal.EMAIL_PENDENTE, None  # reenvio pedido: sai já
+    nota.save(update_fields=["email_situacao", "email_enviar_em", "atualizada_em"])
+    messages.info(request, "O e-mail vai sair de novo em alguns minutos.")
     return _volta(request, nota)
 
 

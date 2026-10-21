@@ -73,6 +73,11 @@ def produto_do_link(conta, texto: str) -> dict:
     links = copia.links_shopee(texto)
     if not links:
         raise ErroGerador("Cole um link de produto da Shopee (shopee.com.br ou s.shopee.com.br).")
+    from accounts.ratelimit import _incrementar_contador
+
+    # O limite do dia só conta carrossel gerado; abrir o link (até 10 s) tem limite próprio.
+    if _incrementar_contador(f"carrosseis:link:{conta.pk}", 3600) > 40:
+        raise ErroGerador("Muitas tentativas em pouco tempo. Espere alguns minutos e tente de novo.")
     link = links[0]
     item_id = copia.identificar_produto(link)
     if not item_id:

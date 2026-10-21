@@ -12,13 +12,11 @@ chegou num grupo/canal de origem na mesma oferta com o link de afiliado da conta
 
 import hashlib
 import re
-from urllib.parse import urlparse
 
-from ofertas.services import resolver_item_id_com_rede, resolver_item_id_sem_rede
+from ofertas.services import eh_host_da_shopee, resolver_item_id_com_rede, resolver_item_id_sem_rede
 
 from . import shopee_ofertas
 
-DOMINIOS_SHOPEE = ("shopee.com.br", "shopee.com", "s.shopee.com.br", "s.shopee", "shope.ee", "shp.ee", "shoope.top")
 # Com ou sem "https://" (muita gente posta "s.shopee.com.br/abc" direto).
 PADRAO_LINK = re.compile(r"(?:https?://|\b(?:s\.shopee\.com\.br|shope\.ee|shp\.ee|(?:www\.)?shopee\.com\.br)/)[^\s]+", re.I)
 PADRAO_QUALQUER_LINK = re.compile(r"https?://[^\s]+|\b[\w-]+(?:\.[\w-]+)+/[^\s]*", re.I)
@@ -36,11 +34,9 @@ def limpar_link(link: str) -> str:
 
 
 def eh_link_shopee(link: str) -> bool:
-    try:
-        host = urlparse(link.lower()).netloc
-    except ValueError:
-        host = ""
-    return any(dominio in (host or link.lower()) for dominio in DOMINIOS_SHOPEE)
+    """O host de verdade é da Shopee (não vale "shopee.com.br@outro-site" nem
+    "shopee.com.br.golpe.com")."""
+    return eh_host_da_shopee(_com_https(str(link or "").strip()))
 
 
 def _com_https(link: str) -> str:

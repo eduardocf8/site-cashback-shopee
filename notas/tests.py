@@ -262,6 +262,7 @@ def autorizada():
 
 class TestServicos(TestCase):
     def setUp(self):
+        cache.clear()  # o limite de 1 nota de teste por minuto fica no cache
         self.empresa = criar_empresa(criar_conta())
         certificado.guardar(self.empresa, gerar_pfx(), "senha-do-pfx")
 
@@ -1348,7 +1349,7 @@ class TestPlanoDeNotas(TestCase):
 
         self.assertEqual(servicos.confirmar_lote(self.importar(ambiente="2")), 3)  # teste não conta
 
-        self.conta.modulos_cortesia = "notas_1000"
+        self.conta.modulos_cortesia = "notas_2000"
         self.conta.save()
         self.assertEqual(servicos.confirmar_lote(lote), 3)
         self.assertEqual(servicos.uso_do_plano(self.empresa)["usadas"], 101)
@@ -1399,11 +1400,11 @@ class TestPlanoDeNotas(TestCase):
         self.assertContains(resposta, "Nenhuma nota foi enviada")
         self.assertFalse(lote.notas.exclude(situacao="previa").exists())
 
-        self.conta.modulos_cortesia = "notas_1000"
+        self.conta.modulos_cortesia = "notas_2000"
         self.conta.save()
         html = client.get(f"/notas/lote/{lote.pk}/").content.decode()
-        self.assertIn("restam 902 de 1000 notas", html)
-        self.assertIn("sobram 899", html)
+        self.assertIn("restam 1902 de 2000 notas", html)
+        self.assertIn("sobram 1899", html)
 
 
 class ClienteEvento:

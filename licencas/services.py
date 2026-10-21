@@ -1,7 +1,8 @@
 import hashlib
 import hmac
 import logging
-from datetime import date, datetime
+import time
+from datetime import date, datetime, timedelta
 
 from django.conf import settings
 from django.core.mail import EmailMessage
@@ -14,6 +15,23 @@ logger = logging.getLogger(__name__)
 
 
 # --- Assinatura do webhook -------------------------------------------------------------
+
+# A Zouti reenvia um aviso por até 4 dias: carimbo mais velho que isso é repetição.
+CARIMBO_MAXIMO = timedelta(days=5)
+
+
+def _carimbo_aceitavel(t: str) -> bool:
+    """O "t=" do cabeçalho (ms ou s desde 1970). Sem ele, aceita (a assinatura já confere);
+    com ele, recusa aviso velho demais ou "do futuro"."""
+    if not t:
+        return True
+    if not t.isdigit():
+        return False
+    valor = int(t)
+    segundos = valor / 1000 if valor > 10**11 else valor
+    diferenca = time.time() - segundos
+    return -600 <= diferenca <= CARIMBO_MAXIMO.total_seconds()
+
 
 def assinatura_webhook_valida(corpo: bytes, cabecalho: str, segredo: str) -> bool:
     """Confere o cabeçalho x-zouti-signature ("t=<ms>,v1=<hex>").
@@ -32,6 +50,8 @@ def assinatura_webhook_valida(corpo: bytes, cabecalho: str, segredo: str) -> boo
             partes[chave] = valor
     recebida = partes.get("v1", "")
     if not recebida:
+        return False
+    if not _carimbo_aceitavel(partes.get("t", "")):
         return False
     chave = segredo.encode()
     candidatas = [hmac.new(chave, corpo, hashlib.sha256).hexdigest()]
@@ -119,8 +139,12 @@ def _aplicar_evento_assinatura(tipo_evento: str, payload: dict) -> str:
 
     # Estorno e chargeback só são desfeitos por uma renovação paga de verdade - nunca
     # por um evento de status qualquer que chegue depois.
+    # E a renovação tem de ser mais nova que o estorno: um aviso antigo reenviado (ou
+    # capturado e repetido por alguém) não devolve o acesso.
     bloqueio_forte = assinatura.status in (Assinatura.STATUS_REEMBOLSADA, Assinatura.STATUS_CHARGEBACK)
-    if bloqueio_forte and tipo_evento != "SUBSCRIPTION_RENEWED":
+    renovacao_nova = (tipo_evento == "SUBSCRIPTION_RENEWED" and atualizado_em is not None
+                      and (assinatura.zouti_atualizada_em is None or atualizado_em > assinatura.zouti_atualizada_em))
+    if bloqueio_forte and not renovacao_nova:
         novo_status, motivo = assinatura.status, assinatura.motivo
 
     plano = payload.get("plan") or {}
@@ -174,10 +198,13 @@ def _aplicar_estorno_ou_chargeback(tipo_evento: str, payload: dict) -> str:
     novo_status = Assinatura.STATUS_REEMBOLSADA if estorno else Assinatura.STATUS_CHARGEBACK
     motivo = "Compra reembolsada." if estorno else "Chargeback registrado nesta compra."
     ids = []
+    agora = timezone.now()
     for assinatura in assinaturas:
         assinatura.status = novo_status
         assinatura.motivo = motivo
         assinatura.acesso_ate = None
+        # Marca a hora do estorno: só uma renovação depois dela libera de novo.
+        assinatura.zouti_atualizada_em = max(assinatura.zouti_atualizada_em or agora, agora)
         assinatura.save()
         ids.append(assinatura.zouti_subscription_id)
     return f"{tipo_evento}: {', '.join(ids)} agora '{novo_status}'."
