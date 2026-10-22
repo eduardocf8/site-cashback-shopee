@@ -49,14 +49,46 @@ PERGUNTAS = [
     ("Posso pagar por ano?", "Pode. No checkout você escolhe mensal ou anual, e no anual você paga 10 meses e usa 12."),
     ("Posso cancelar quando quiser?", "Pode. O cancelamento é feito pela Zouti, a plataforma de pagamento. O acesso segue até o fim do período já pago."),
     ("E se eu não gostar?", "Você tem 7 dias, a partir da compra, para pedir o reembolso integral pela Zouti."),
-    ("O que preciso para emitir notas fiscais?", "Uma empresa MEI ou do Simples Nacional e o certificado digital A1 (e-CNPJ). O Appfiliado importa o relatório mensal da Shopee e emite uma nota por loja no Emissor Nacional do governo."),
+    ("O que preciso para emitir notas fiscais?", "A emissão é só para afiliados pessoa jurídica: é preciso uma empresa MEI ou do Simples Nacional e o certificado digital A1 (e-CNPJ). O Appfiliado importa o relatório mensal da Shopee e emite uma nota por loja no Emissor Nacional do governo."),
     ("O Appfiliado garante vendas ou comissão?", "Não. O Appfiliado automatiza e organiza a sua divulgação, mas as vendas e as comissões dependem do seu trabalho e das regras da Shopee."),
+]
+
+
+PERGUNTAS_NOTAS = [
+    ("Posso usar se sou afiliado pessoa física?", "Não. A emissão de notas é só para afiliados pessoa jurídica: é preciso ter uma empresa MEI ou do Simples Nacional (ME/EPP) com CNPJ e o certificado digital A1 dela. A nota sai sempre no CNPJ da empresa."),
+    ("Para que serve essa nota?", "Quando a Shopee paga ao afiliado a comissão extra de um vendedor, o afiliado presta um serviço a esse vendedor e emite a nota fiscal dele. O Appfiliado monta e emite essas notas a partir do relatório mensal da Shopee."),
+    ("O que é o certificado A1 e onde consigo?", "É o certificado digital da empresa (e-CNPJ) em formato de arquivo, com extensão .pfx ou .p12, e uma senha. Você compra em uma certificadora. O certificado em cartão ou token (A3) não serve, porque não dá para exportar o arquivo."),
+    ("Como as notas são contadas no plano?", "Conta cada nota emitida de verdade no mês. As notas de teste não contam, e a nota cancelada libera a vaga no mesmo mês. Escolha a faixa pela quantidade de notas que você costuma emitir."),
+    ("Posso testar antes de emitir de verdade?", "Pode. O Appfiliado tem o ambiente de testes do governo, igual ao de verdade mas sem valor fiscal. Comece por ele e, quando estiver tudo certo, passe para a emissão real."),
+    ("E se uma nota sair errada?", "Dá para cancelar pelo painel do Appfiliado, que faz o cancelamento no Emissor Nacional."),
+    ("O vendedor recebe a nota?", "Recebe. O Appfiliado manda um e-mail para cada vendedor, com o PDF e o XML da nota, no horário que você escolher."),
+    ("O Appfiliado cuida dos impostos?", "Não. O Appfiliado emite as notas, mas a orientação tributária e contábil da sua empresa é com o seu contador. Em caso de dúvida sobre código de serviço ou tributação, fale com ele antes de emitir."),
 ]
 
 
 def _cartao(modulo, nivel):
     return {"nivel": planos.NIVEIS[nivel], "preco": planos.brl(planos.PRECOS[modulo][nivel]), "itens": RESUMOS[modulo]["itens"][nivel],
             "link": planos.LINKS[f"{modulo}{nivel}"]}
+
+
+def _comum(request):
+    return {
+        "painel_url": settings.APPFILIADO_PAINEL_URL,
+        "whatsapp": "".join(ch for ch in settings.APPFILIADO_WHATSAPP_SUPORTE if ch.isdigit()),
+        "email_suporte": settings.APPFILIADO_EMAIL_SUPORTE,
+        "endereco": f"https://{request.get_host()}",
+        "icones": ICONES,
+    }
+
+
+def _faixas_de_notas():
+    return [{"nome": nome, "preco": planos.brl(preco), "link": link}
+            for (nome, preco), link in zip(planos.NOTAS, planos.LINKS_NOTAS.values())]
+
+
+@require_GET
+def notas(request):
+    return render(request, "landing/notas.html", {**_comum(request), "notas": _faixas_de_notas(), "perguntas": PERGUNTAS_NOTAS})
 
 
 @require_GET
@@ -66,19 +98,14 @@ def pagina(request):
         "modulos": [{"codigo": m, "nome": planos.NOMES[m], "icone": ICONES[RESUMOS[m]["icone"]], "frase": RESUMOS[m]["frase"],
                      "a_partir": planos.brl(planos.PRECOS[m][0]), "planos": [_cartao(m, 0), _cartao(m, 1)]} for m in planos.MODULOS],
         "inclusos": [{"icone": ICONES[i], "nome": n, "frase": f} for i, n, f in INCLUSOS],
-        "notas": [{"nome": nome, "preco": planos.brl(preco), "link": link}
-                  for (nome, preco), link in zip(planos.NOTAS, planos.LINKS_NOTAS.values())],
+        "notas": _faixas_de_notas(),
         "montador": {"combos": combos, "modulos": [{"codigo": m, "nome": planos.NOMES[m]} for m in planos.MODULOS]},
         "combo_standard": {"preco": planos.brl(combos["bot0+site0+carrosseis0"]["preco"]), "separado": planos.brl(combos["bot0+site0+carrosseis0"]["separado"]),
                            "link": combos["bot0+site0+carrosseis0"]["link"]},
         "combo_premium": {"preco": planos.brl(combos["bot1+site1+carrosseis1"]["preco"]), "separado": planos.brl(combos["bot1+site1+carrosseis1"]["separado"]),
                           "link": combos["bot1+site1+carrosseis1"]["link"]},
         "perguntas": PERGUNTAS,
-        "painel_url": settings.APPFILIADO_PAINEL_URL,
-        "whatsapp": "".join(ch for ch in settings.APPFILIADO_WHATSAPP_SUPORTE if ch.isdigit()),
-        "email_suporte": settings.APPFILIADO_EMAIL_SUPORTE,
-        "endereco": f"https://{request.get_host()}",
-        "icones": ICONES,
+        **_comum(request),
     }
     return render(request, "landing/index.html", contexto)
 
@@ -91,7 +118,8 @@ def robots(request):
 @require_GET
 def sitemap(request):
     xml = ('<?xml version="1.0" encoding="UTF-8"?><urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">'
-           f"<url><loc>https://{request.get_host()}/</loc></url></urlset>")
+           f"<url><loc>https://{request.get_host()}/</loc></url>"
+           f"<url><loc>https://{request.get_host()}/emissao-de-notas/</loc></url></urlset>")
     return HttpResponse(xml, content_type="application/xml")
 
 

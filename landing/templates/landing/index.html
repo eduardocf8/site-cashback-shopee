@@ -1,43 +1,5 @@
-{% load static %}<!doctype html>
-<html lang="pt-BR">
-<head>
-<meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Appfiliado — a solução completa para afiliados da Shopee</title>
-<meta name="description" content="A solução completa para afiliados da Shopee: encontre ofertas, divulgue no WhatsApp, no link na bio e no Instagram, acompanhe os resultados e emita notas fiscais. Num painel só.">
-<link rel="canonical" href="{{ endereco }}/">
-<meta property="og:type" content="website">
-<meta property="og:locale" content="pt_BR">
-<meta property="og:site_name" content="Appfiliado">
-<meta property="og:title" content="Appfiliado — a solução completa para afiliados da Shopee">
-<meta property="og:description" content="Tudo o que o afiliado da Shopee precisa num painel só: ofertas, WhatsApp, link na bio, carrosséis, resultados e notas fiscais.">
-<meta property="og:url" content="{{ endereco }}/">
-<meta property="og:image" content="{{ endereco }}{% static 'landing/og.png' %}">
-<meta name="twitter:card" content="summary_large_image">
-<meta name="theme-color" content="#1F3A2E">
-<link rel="icon" type="image/svg+xml" href="{% static 'painel/favicon.svg' %}">
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=DM+Sans:opsz,wght@9..40,400;9..40,500;9..40,700;9..40,800&display=swap">
-<link rel="stylesheet" href="{% static 'landing/landing.css' %}">
-<script src="https://cdn1.zouti.com.br/scripts/params/persistence.min.js"></script>
-<script src="{% static 'landing/landing.js' %}" defer></script>
-</head>
-<body>
-{% spaceless %}
-<svg width="0" height="0" style="position:absolute" aria-hidden="true"><symbol id="logo" viewBox="3 8.25 36 36"><g fill="none" stroke="currentColor" stroke-width="5" stroke-linecap="round"><circle cx="21" cy="26" r="9.5"/><path d="M30.5 16.5V36"/></g><circle cx="21" cy="26" r="3.6" fill="currentColor"/></symbol></svg>
-{% endspaceless %}
-
-<header class="topo">
-  <div class="miolo topo-linha">
-    <a class="marca" href="#inicio" aria-label="Appfiliado"><span class="logo"><svg width="40" height="40"><use href="#logo"/></svg></span><strong>Appfiliado</strong></a>
-    <nav class="topo-menu" aria-label="Seções">
-      <a href="#modulos">Módulos</a><a href="#planos">Planos</a><a href="#combo">Monte seu combo</a><a href="#perguntas">Perguntas</a>
-    </nav>
-    <div class="topo-acoes"><a class="entrar" href="{{ painel_url }}">Entrar</a><a class="botao" href="#planos">Ver planos</a></div>
-  </div>
-</header>
-
+{% extends "landing/base.html" %}
+{% block conteudo %}
 <main id="inicio">
 <section class="heroi">
   <div class="miolo heroi-grade">
@@ -90,7 +52,7 @@
       <article class="modulo">
         <svg viewBox="0 0 24 24" aria-hidden="true"><path d="{{ icones.notas }}"/></svg>
         <h3>Emissão NFS-e</h3>
-        <p>As notas fiscais dos vendedores que pagaram comissão extra, direto do relatório mensal da Shopee.</p>
+        <p>As notas fiscais dos vendedores que pagaram comissão extra, direto do relatório mensal da Shopee. Para afiliados pessoa jurídica.</p>
         <span class="a-partir">a partir de <b>{{ notas.0.preco }}</b>/mês</span>
       </article>
     </div>
@@ -171,12 +133,8 @@
   <div class="miolo">
     <p class="chapeu">Emissão NFS-e</p>
     <h2>Notas fiscais dos vendedores, sem digitar nada.</h2>
-    <p class="secao-texto">Envie o relatório mensal da Shopee e o Appfiliado emite uma nota por loja no Emissor Nacional do governo, com envio por e-mail para cada vendedor. Precisa de empresa MEI ou Simples Nacional e do certificado digital A1 (e-CNPJ). Os preços abaixo são por mês.</p>
-    <div class="grade-notas">
-      {% for n in notas %}
-        <a class="faixa-nota" href="{{ n.link }}"><span>{{ n.nome }}</span><b>{{ n.preco }}</b><em>Assinar</em></a>
-      {% endfor %}
-    </div>
+    <p class="secao-texto">Envie o relatório mensal da Shopee e o Appfiliado emite uma nota por loja no Emissor Nacional do governo, com envio por e-mail para cada vendedor. <strong>Exclusivo para afiliados pessoa jurídica</strong> (MEI ou Simples Nacional, com certificado digital A1). A partir de {{ notas.0.preco }} por mês.</p>
+    <p style="margin-top:24px"><a class="botao" href="{% url 'landing_notas' %}">Ver como funciona e os planos de notas</a></p>
   </div>
 </section>
 
@@ -197,13 +155,4 @@
   </div>
 </section>
 </main>
-
-<footer class="rodape">
-  <div class="miolo">
-    <a class="marca" href="#inicio" aria-label="Appfiliado"><span class="logo"><svg width="40" height="40"><use href="#logo"/></svg></span><strong>Appfiliado</strong></a>
-    <p>Ferramentas para afiliados da Shopee. <a href="{{ painel_url }}">Entrar no painel</a></p>
-    <p class="aviso">O Appfiliado é uma ferramenta independente e não tem vínculo com a Shopee. Shopee é marca de seus respectivos donos. Não garantimos vendas nem comissões.</p>
-  </div>
-</footer>
-</body>
-</html>
+{% endblock %}

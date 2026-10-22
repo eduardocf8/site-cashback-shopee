@@ -45,7 +45,7 @@ class TestPagina(TestCase):
             self.assertContains(resposta, "Tudo o que o afiliado da Shopee precisa em um só lugar")
             self.assertContains(resposta, "https://cdn1.zouti.com.br/scripts/params/persistence.min.js")
             self.assertContains(resposta, planos.LINKS["bot1"])
-            self.assertContains(resposta, planos.LINKS_NOTAS["ilimitada"])
+            self.assertContains(resposta, "/emissao-de-notas/")  # a landing resume e leva à página das notas
             self.assertContains(resposta, "R$ 49,90")
 
     def test_outros_enderecos_do_dominio_continuam_como_antes(self):
@@ -57,6 +57,16 @@ class TestPagina(TestCase):
         self.assertContains(self.abrir(caminho="/sitemap.xml"), "https://appfiliado.com.br/")
         self.assertEqual(self.abrir(caminho="/dashboard/").status_code, 404)  # nada da cash-b nesse domínio
         self.assertEqual(self.abrir(caminho="/admin/").status_code, 404)
+
+    def test_pagina_de_notas_com_planos_e_aviso_de_pessoa_juridica(self):
+        resposta = self.abrir(caminho="/emissao-de-notas/")
+        self.assertContains(resposta, "Serviço exclusivo para afiliados pessoa jurídica")
+        self.assertContains(resposta, "persistence.min.js")
+        for link in planos.LINKS_NOTAS.values():
+            self.assertContains(resposta, link)
+        self.assertContains(resposta, "R$ 229,90")
+        self.assertContains(self.abrir(caminho="/sitemap.xml"), "/emissao-de-notas/")
+        self.assertContains(self.abrir(), "Para afiliados pessoa jurídica")  # a landing também avisa
 
     def test_contato_so_aparece_quando_configurado(self):
         self.assertNotContains(self.abrir(), "wa.me")
