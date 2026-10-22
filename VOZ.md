@@ -36,14 +36,14 @@ o dono da marca aponta o que soa diferente do jeito dele de falar.
   via Pix", "chave Pix"). Nomes de constante e de campo no código
   (`chave_pix`, `TIPO_PIX`) não mudam - a regra é de escrita, não de código.
 - **"Pra" e "pro" só quando forem contração de "para" + artigo.**
-  "Para a" vira "pra" e "para o" vira "pro" (ex: "pra Shopee", "pro
+  "Para a" vira "pra", "para o" vira "pro" (ex: "pra Shopee", "pro
   vendedor", "pra primeira compra"). Em texto novo, escrever sempre assim,
-  nunca "para a" / "para o" por extenso.
+  nunca "para a" / "para o" / "para os" / "para as" por extenso.
   - Sem artigo por trás, escrever "para" por extenso: "para você", "para
     quem comprou", "para começar", "para sempre", "para um", "para esse".
     "Pra você" e "pra começar" estão errados porque não existe "para a você"
     nem "para a começar" por trás.
-  - "Para os" / "para as" não foram mexidos: continuam por extenso.
+  - O mesmo vale no plural: "para os" vira "pros" e "para as" vira "pras".
   - Exceção: texto de terceiros (mensagens de erro do governo, categorias
     da Shopee) não muda.
 - **Sem vírgula antes do complemento em título.** "Ofertas automáticas da

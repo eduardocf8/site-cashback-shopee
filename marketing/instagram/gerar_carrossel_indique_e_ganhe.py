@@ -95,7 +95,7 @@ SLIDES = [
     """, False, seta=False),
 ]
 
-LEGENDA = """Indique e ganhe: o cashback vem em dobro para os dois lados. 💜
+LEGENDA = """Indique e ganhe: o cashback vem em dobro pros dois lados. 💜
 
 Como funciona: você compartilha seu link, a pessoa cria a conta e compra. A primeira compra dela vem com o dobro do cashback — e, assim que a Shopee valida esse pedido, a sua próxima compra também vem dobrada.
 

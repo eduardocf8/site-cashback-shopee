@@ -351,7 +351,7 @@ def whatsapp_campanhas(request):
             return redirect(f"{reverse('painel_whatsapp_campanhas')}#datas")
         if form.is_valid():
             form.save()
-            messages.success(request, "Modo campanha salvo. Vale na hora para as próximas ofertas da campanha.")
+            messages.success(request, "Modo campanha salvo. Vale na hora pras próximas ofertas da campanha.")
             return redirect("painel_whatsapp_campanhas")
         messages.error(request, "Confira os campos marcados.")
     hoje_campanha = campanhas.campanha_do_dia(campanha, hoje)

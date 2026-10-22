@@ -62,7 +62,7 @@
       <span class="notas-etapa-icone">{% include "painel/_icone.html" with caminho=icones.email %}</span>
       <div class="notas-etapa-nome">
         <h2>E-mails</h2>
-        <p>Para os vendedores, com o PDF e o XML</p>
+        <p>Pros vendedores, com o PDF e o XML</p>
       </div>
       {% if email.situacao == "agendado" %}<span class="selo-venda selo-neutro">Agendado</span>{% elif email.situacao == "aguardando" %}<span class="selo-venda selo-neutro">Aguardando</span>{% elif email.situacao == "enviando" %}<span class="selo-venda selo-pendente">Enviando</span>{% else %}<span class="selo-venda selo-concluido">Concluído</span>{% endif %}
     </header>
@@ -74,7 +74,7 @@
       <li class="notas-chip{% if not email.sem_email %} vazio{% endif %}"><strong data-campo="email_sem">{{ email.sem_email }}</strong> sem e-mail no relatório</li>
       <li class="notas-chip notas-chip-ruim{% if not email.falharam %} vazio{% endif %}"><strong data-campo="email_falharam">{{ email.falharam }}</strong> falharam</li>
     </ul>
-    {% if email.falharam %}<p class="notas-etapa-dica">Para as que falharam, use "Reenviar e-mail" na lista abaixo.</p>{% endif %}
+    {% if email.falharam %}<p class="notas-etapa-dica">Pras que falharam, use "Reenviar e-mail" na lista abaixo.</p>{% endif %}
   </article>
   {% endif %}
 </section>

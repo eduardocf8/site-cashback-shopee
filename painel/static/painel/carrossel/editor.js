@@ -291,7 +291,7 @@
   ['mostraNota', 'mostraDe', 'mostraArrasta'].forEach((k) => $(k).onchange = (e) => { est[k] = e.target.checked; mudou(); });
   $('arroba').oninput = (e) => { let v = e.target.value.trim().replace(/\s+/g, ''); if (v && !v.startsWith('@')) v = '@' + v; est.arroba = v; mudou(); };
   $('salvarPadrao').onclick = async () => { try { await postar(D.urls.padrao, { opcoes: { modelo: est.modelo, tema: est.tema, cor: est.cor, fonte: est.fonte, arroba: est.arroba, mostraNota: est.mostraNota, mostraDe: est.mostraDe, mostraArrasta: est.mostraArrasta } });
-    toast('Padrão salvo para os próximos carrosséis'); } catch (e) { toast(e.message); } };
+    toast('Padrão salvo pros próximos carrosséis'); } catch (e) { toast(e.message); } };
   $('legenda').oninput = (e) => { est.legenda = e.target.value; agendarSalvar(); }; $('hashtags').oninput = (e) => { est.hashtags = e.target.value; agendarSalvar(); };
   { const lg = $('legenda'), lab = lg.parentNode; lab.appendChild(comEmoji(lg)); }
   $('copiar').onclick = async () => { const txt = est.legenda + '\n\n' + est.hashtags; try { await navigator.clipboard.writeText(txt); toast('Legenda copiada'); } catch (e) { $('legenda').select(); toast('Selecione e copie a legenda'); } };

@@ -117,7 +117,7 @@ def motivo_para_esperar(config, conexao, agora) -> str:
     """"" = pode enviar agora; senão, o motivo (aparece no painel)."""
     if not regras_do_plano(config)["liberado"]:
         # Assinatura cancelada, reembolsada ou vencida: o bot para (o plano Standard não é de graça).
-        return "O Bot de WhatsApp não está no seu plano. Renove a assinatura para as ofertas voltarem."
+        return "O Bot de WhatsApp não está no seu plano. Renove a assinatura pras ofertas voltarem."
     app_id, secret = credenciais(config.conta)
     if not config.conta.shopee_validado_em or not app_id or not secret:
         return "Conecte sua conta da Shopee em Configurações."
