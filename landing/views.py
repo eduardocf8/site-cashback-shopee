@@ -43,7 +43,7 @@ INCLUSOS = [
 ]
 PERGUNTAS = [
     ("Preciso ter conta de afiliado da Shopee?", "Sim. O Appfiliado usa a sua conta de afiliado para gerar os links, e a comissão das vendas cai direto na sua conta da Shopee. Você conecta a conta uma vez, no painel."),
-    ("Como recebo o acesso depois de pagar?", "Logo após a confirmação do pagamento você recebe um e-mail com a chave de acesso. É só entrar no painel (app.appfiliado.com.br) e conectar a sua conta da Shopee."),
+    ("Como recebo o acesso depois de pagar?", "Logo após a confirmação do pagamento você recebe um e-mail com o link para criar a sua senha. É só criar a senha, entrar no painel (app.appfiliado.com.br) e conectar a sua conta da Shopee."),
     ("Qual é a diferença entre Standard e Premium?", "O Premium libera mais volume e mais recursos em cada módulo (mais grupos e ofertas por dia no bot, mais botões no site, mais carrosséis por dia). As listas completas estão nos cartões de cada plano."),
     ("Preciso de um número de WhatsApp só para o bot?", "Você conecta pelo QR Code o número que quiser. Muita gente prefere um número separado do pessoal, só para divulgar as ofertas nos grupos."),
     ("Posso pagar por ano?", "Pode. No checkout você escolhe mensal ou anual, e o plano anual tem 17% de desconto."),
