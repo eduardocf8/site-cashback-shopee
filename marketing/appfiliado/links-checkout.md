@@ -10,7 +10,7 @@ Nome do produto (igual ao do guia) → link. Usado na landing do appfiliado.com.
 - Gerador de carrosséis Standard: https://pay.zouti.com.br/checkout?poi=prod_offer_3letx6aafxi39lmk0pwqow
 - Gerador de carrosséis Premium: https://pay.zouti.com.br/checkout?poi=prod_offer_x5nzlufsqtqaalk7jwh737
 
-## Emissão NFS-e
+## Emissor NFS-e
 - até 100 notas: https://pay.zouti.com.br/checkout?poi=prod_offer_qw00waurucori6nmj9bm03
 - até 500 notas: https://pay.zouti.com.br/checkout?poi=prod_offer_bpkrexnbwksfmla48ph8pt
 - até 2.000 notas: https://pay.zouti.com.br/checkout?poi=prod_offer_30z5hdrchz6v5bl8ylntd4

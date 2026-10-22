@@ -82,9 +82,9 @@ def produtos() -> list[dict]:
                       "codigos": CODIGOS[(modulo, nivel)], "arte": ARTES_AVULSO[(modulo, nivel)],
                       "frase": frase, "itens": itens, "precisa": precisa})
     for (faixa, preco, codigo), arte in zip(NOTAS, ARTES_NOTAS):
-        nome = "Emissão NFS-e ilimitada" if faixa is None else f"Emissão NFS-e até {faixa} notas"
+        nome = "Emissor NFS-e ilimitada" if faixa is None else f"Emissor NFS-e até {faixa} notas"
         destaque = "Notas ilimitadas por mês" if faixa is None else f"Até {faixa} notas por mês"
-        lista.append({"grupo": "Emissão NFS-e", "nome": nome, "mensal": preco, "codigos": codigo, "arte": arte,
+        lista.append({"grupo": "Emissor NFS-e", "nome": nome, "mensal": preco, "codigos": codigo, "arte": arte,
                       "frase": "As notas fiscais dos vendedores que pagaram comissão extra, direto do Relatório Mensal da Shopee.",
                       "itens": [destaque, "Envie o relatório e sai uma nota por loja, sem digitar nada, e mais a nota da Shopee",
                                 "Cada vendedor recebe a nota por e-mail, com PDF e XML, no horário que você escolher",
@@ -187,7 +187,7 @@ com o segredo e salve (o worker não precisa).</p></div></div>
 <strong>Produtos da Zouti</strong> → Adicionar), para cada produto: cole o <code>prod_...</code>, dê o nome e marque os módulos
 da coluna "Códigos". Premium já inclui o básico.</p></div></div>
 <div class="passo"><div class="num">6</div><div><p><strong>Sua conta:</strong> em Contas do Appfiliado, marque nos módulos de cortesia o que você usa
-(principalmente "Emissão NFS-e (notas ilimitadas)").</p></div></div>
+(principalmente "Emissor NFS-e (notas ilimitadas)").</p></div></div>
 <div class="passo"><div class="num">7</div><div><p><strong>Testar antes de vender:</strong></p><ul>
 <li>Botão "Testar Webhook" na Zouti → no admin, em <strong>Eventos de webhook da Zouti</strong>, o aviso aparece com "assinatura válida".
 Se aparecer inválida, mande um print.</li>

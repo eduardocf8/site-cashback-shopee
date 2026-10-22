@@ -29,7 +29,7 @@ SITE = {
     True: {"botoes": 10, "produtos_escolhidos": True},
 }
 
-# Emissão NFS-e: notas de verdade por mês (None = sem limite). Vale o maior plano que a conta tiver.
+# Emissor NFS-e: notas de verdade por mês (None = sem limite). Vale o maior plano que a conta tiver.
 NOTAS_POR_MES = [
     (MODULO_NOTAS_ILIMITADO, None), (MODULO_NOTAS_10000, 10000), (MODULO_NOTAS_5000, 5000),
     (MODULO_NOTAS_2000, 2000), (MODULO_NOTAS_500, 500), (MODULO_NOTAS, 100),

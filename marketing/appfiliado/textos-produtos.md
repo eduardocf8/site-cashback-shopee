@@ -75,7 +75,7 @@ Tudo do Standard, com mais volume e mais liberdade de criação.
 
 ---
 
-## Emissão NFS-e (texto comum às 6 faixas)
+## Emissor NFS-e (texto comum às 6 faixas)
 
 As notas fiscais dos vendedores que pagaram comissão extra, direto do Relatório Mensal da Shopee.
 
