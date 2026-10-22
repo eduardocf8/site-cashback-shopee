@@ -145,17 +145,3 @@ window.landingPronta = true;
   document.addEventListener("click", function (e) { if (!topo.contains(e.target)) definir(false); });
   window.addEventListener("resize", function () { if (window.innerWidth > 960) definir(false); });
 })();
-
-// "Por dentro": as telas do painel trocam pelas abas (sem JavaScript, todas aparecem uma embaixo da outra).
-(function () {
-  document.querySelectorAll("[data-prints]").forEach(function (raiz) {
-    var abas = raiz.querySelectorAll(".prints-aba"), paineis = raiz.querySelectorAll(".prints-painel");
-    if (!abas.length) return;
-    raiz.classList.add("js");
-    function mostrar(i) {
-      abas.forEach(function (a) { var on = +a.dataset.i === i; a.classList.toggle("ativa", on); a.setAttribute("aria-selected", on ? "true" : "false"); });
-      paineis.forEach(function (p) { p.classList.toggle("ativo", +p.dataset.i === i); });
-    }
-    abas.forEach(function (a) { a.addEventListener("click", function () { mostrar(+a.dataset.i); }); });
-  });
-})();

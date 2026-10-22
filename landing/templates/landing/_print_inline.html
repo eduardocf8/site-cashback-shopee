@@ -1,0 +1,12 @@
+{% load static %}
+<div class="prints">
+  {% for p in prints %}
+    <figure class="prints-painel">
+      <div class="prints-janela">
+        <div class="prints-barra" aria-hidden="true"><i></i><i></i><i></i><span>app.appfiliado.com.br</span></div>
+        <img src="{% static p.arquivo %}" width="{{ p.largura }}" height="{{ p.altura }}" alt="{{ p.alt }}" loading="lazy" decoding="async">
+      </div>
+      <figcaption>{{ p.legenda }}<span class="so-movel-nota"> Deslize pro lado pra ver tudo.</span></figcaption>
+    </figure>
+  {% endfor %}
+</div>

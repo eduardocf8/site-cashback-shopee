@@ -444,8 +444,9 @@ APRESENTACAO = {
 def _apresentar(modulo, pagina):
     ap = APRESENTACAO[modulo]
     fundo = ""
-    for g, layout, curto in zip(pagina["grupos"], ap["layouts"], ap["curtos"]):
+    for n, (g, layout, curto) in enumerate(zip(pagina["grupos"], ap["layouts"], ap["curtos"])):
         g["layout"], g["curto"] = layout, curto
+        g["prints"] = prints_de(modulo, n)
         if layout == "premium":
             g["fundo"] = "verde"
         else:  # alterna branco e creme, para duas seções vizinhas nunca terem a mesma cor
@@ -455,32 +456,32 @@ def _apresentar(modulo, pagina):
             item["chips"] = ap.get("chips", {}).get(item["nome"], [])
             item["cores"] = ap.get("cores", {}).get(item["nome"], [])
     pagina["numeros"] = ap["numeros"]()
+    pagina["print_do_topo"] = next((pr for g in pagina["grupos"] for pr in g["prints"]), None)
     return pagina
 
 
 PAGINAS = {m: (lambda m=m, f=f: _apresentar(m, f())) for m, f in {"bot": bot, "site": site, "carrosseis": carrosseis,
                                                                   "radar": radar, "conversor": conversor, "resultados": resultados}.items()}
 
-# Prints do painel (landing/static/landing/prints/): arquivo, nome da aba, legenda e texto alternativo.
-# As imagens são telas reais do painel com dados de exemplo (conta fictícia).
+# Prints do painel (landing/static/landing/prints/), mostrados dentro da seção que explica cada recurso:
+# {ferramenta: {número da seção: [(arquivo, legenda, texto alternativo)]}}. São telas reais do painel com dados de exemplo.
 PRINTS = {
-    "bot": [("bot-ofertas", "Ofertas", "Escolha de onde vêm as ofertas, os filtros e o histórico do que foi enviado.", "Tela de ofertas automáticas do Bot de WhatsApp"),
-            ("bot-campanhas", "Modo campanha", "Marque as datas da Shopee e o bot muda de ritmo e de texto sozinho.", "Tela do modo campanha do Bot de WhatsApp"),
-            ("bot-alerta", "Alerta de preço", "Produtos acompanhados, últimos alertas e a mensagem que vai pros grupos.", "Tela do alerta de preço do Bot de WhatsApp"),
-            ("bot-conexao", "Conexão", "Conectado como mais um aparelho, com o histórico da conexão.", "Tela de conexão do Bot de WhatsApp")],
-    "site": [("site-editor", "Editor", "Endereço, perfil e cores, com a prévia do site ao vivo.", "Editor do Meu site com prévia no celular"),
-             ("site-botoes", "Botões e conversor", "Seus botões, o conversor de links e a prévia ao lado.", "Botões e conversor de links do Meu site")],
-    "carrosseis": [("carrossel-editor", "Editor", "O carrossel pronto, com os textos de cada slide pra ajustar.", "Editor de carrosséis com o primeiro slide pronto")],
-    "radar": [("radar", "Filtros", "Busca por palavra-chave, categoria, preço, comissão e desconto.", "Tela de filtros do Radar de ofertas"),
-              ("radar-produtos", "Produtos", "Cada produto com foto, desconto, comissão e atalhos pra divulgar.", "Produtos do Radar de ofertas com comissão e desconto")],
-    "conversor": [("conversor", "Conversor", "Do texto original ao texto pronto, com o seu link no lugar dos links da Shopee.", "Tela do Conversor de links com o texto convertido")],
-    "resultados": [("resultados", "Resultados", "Faturamento, comissão e pedidos do período, com gráfico e meta.", "Tela de resultados do mês"),
-                   ("resultados-produtos", "Mais vendidos", "O ranking de produtos e a lista de vendas com filtros e Excel.", "Produtos mais vendidos e vendas do período"),
-                   ("resultados-vendas", "Vendas", "Cada venda com status, comissão e Sub ID, com filtros e exportação pro Excel.", "Lista de vendas do período"),
-                   ("metas", "Metas", "Quanto falta pra cada faixa de bônus e a projeção do mês.", "Tela de metas da Shopee"),
-                   ("inicio", "Início", "A primeira tela do painel, com o mês, o dia anterior e a meta.", "Tela inicial do painel do Appfiliado")],
-    "notas": [("notas-lote", "Lote de notas", "Notas autorizadas e e-mails indo pros vendedores, com o andamento de cada etapa.", "Lote de notas fiscais do Emissor NFS-e"),
-              ("notas", "Primeiros passos", "Cadastro da empresa, certificado e o uso do seu plano no mês.", "Tela inicial do Emissor NFS-e")],
+    "bot": {0: [("bot-conexao", "Conectado como mais um aparelho, com o histórico da conexão.", "Tela de conexão do Bot de WhatsApp")],
+            1: [("bot-ofertas", "De onde vêm as ofertas, os filtros e o histórico do que foi enviado.", "Tela de ofertas automáticas do Bot de WhatsApp")],
+            4: [("bot-campanhas", "Marque as datas da Shopee e o bot muda de ritmo e de texto sozinho.", "Tela do modo campanha do Bot de WhatsApp")],
+            5: [("bot-alerta", "Produtos acompanhados, últimos alertas e a mensagem que vai pros grupos.", "Tela do alerta de preço do Bot de WhatsApp")]},
+    "site": {0: [("site-editor", "Endereço, perfil e cores, com a prévia do site ao vivo.", "Editor do Meu site com prévia no celular")],
+             2: [("site-botoes", "Seus botões, o conversor de links e a prévia ao lado.", "Botões e conversor de links do Meu site")]},
+    "carrosseis": {5: [("carrossel-editor", "O carrossel pronto, com os textos de cada slide pra ajustar.", "Editor de carrosséis com o primeiro slide pronto")]},
+    "radar": {1: [("radar", "Busca por palavra-chave, categoria, preço, comissão e desconto.", "Tela de filtros do Radar de ofertas")],
+              2: [("radar-produtos", "Cada produto com foto, desconto, comissão e atalhos pra divulgar.", "Produtos do Radar de ofertas com comissão e desconto")]},
+    "conversor": {0: [("conversor", "Do texto original ao texto pronto, com o seu link no lugar dos links da Shopee.", "Tela do Conversor de links com o texto convertido")]},
+    "resultados": {1: [("resultados", "Faturamento, comissão e pedidos do período, com gráfico e meta do mês.", "Tela de resultados do mês"),
+                       ("resultados-produtos", "O ranking de produtos e a lista de vendas, com filtros e Excel.", "Produtos mais vendidos e vendas do período")],
+                   3: [("metas", "Quanto falta pra cada faixa de bônus e a projeção do mês.", "Tela de metas da Shopee")],
+                   4: [("inicio", "A primeira tela do painel, com o mês, o dia anterior e a meta.", "Tela inicial do painel do Appfiliado")]},
+    "notas": {0: [("notas-lote", "Notas autorizadas e e-mails indo pros vendedores, com o andamento de cada etapa.", "Lote de notas fiscais do Emissor NFS-e")],
+              1: [("notas", "Cadastro da empresa, certificado e o uso do seu plano no mês.", "Tela inicial do Emissor NFS-e")]},
 }
 
 
@@ -489,25 +490,10 @@ ALTURAS = {"inicio": 780, "resultados": 900, "resultados-produtos": 900, "result
            "carrossel-editor": 960, "notas-lote": 860, "notas": 860}
 
 
-def _print(a, aba, leg, alt):
-    return {"arquivo": f"landing/prints/{a}.webp", "aba": aba, "legenda": leg, "alt": alt, "largura": 1280, "altura": ALTURAS[a]}
+def _print(a, leg, alt):
+    return {"arquivo": f"landing/prints/{a}.webp", "legenda": leg, "alt": alt, "largura": 1280, "altura": ALTURAS[a]}
 
 
-def prints_de(modulo):
-    return [_print(*p) for p in PRINTS[modulo]]
-
-
-
-# Telas da home ("Veja por dentro"): uma de cada ferramenta.
-PRINTS_HOME = [("inicio", "Início", "A primeira tela do painel: o mês, o dia anterior e a meta.", "Tela inicial do painel do Appfiliado"),
-               ("resultados", "Resultados e metas", "Faturamento, comissão e pedidos por período, com gráfico e meta do mês.", "Tela de resultados do mês"),
-               ("radar-produtos", "Radar de ofertas", "Mais de 30 mil produtos pra filtrar por comissão, desconto e categoria.", "Produtos do Radar de ofertas"),
-               ("conversor", "Conversor de links", "Cole o texto e receba tudo com o seu link de afiliado.", "Tela do Conversor de links"),
-               ("bot-ofertas", "Bot de WhatsApp", "Ofertas automáticas nos seus grupos, com os filtros que você escolher.", "Tela do Bot de WhatsApp"),
-               ("site-editor", "Meu site", "O seu link na bio, com prévia ao vivo no celular.", "Editor do Meu site"),
-               ("carrossel-editor", "Carrosséis", "Cole um link da Shopee e edite o carrossel pronto pro Instagram.", "Editor de carrosséis"),
-               ("notas-lote", "Emissor NFS-e", "Um lote de notas fiscais com o andamento de cada etapa.", "Lote do Emissor NFS-e")]
-
-
-def prints_da_home():
-    return [_print(*p) for p in PRINTS_HOME]
+def prints_de(modulo, secao):
+    """As telas do painel que ilustram a seção `secao` (0, 1, ...) da página da ferramenta."""
+    return [_print(*p) for p in PRINTS.get(modulo, {}).get(secao, [])]

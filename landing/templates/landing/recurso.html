@@ -19,7 +19,7 @@
     </div>
     {% if r.incluso %}
     <div class="heroi-arte heroi-print">
-      <div class="prints-janela"><div class="prints-barra" aria-hidden="true"><i></i><i></i><i></i><span>app.appfiliado.com.br</span></div>{% with p=prints.0 %}<img src="{% static p.arquivo %}" width="{{ p.largura }}" height="{{ p.altura }}" alt="{{ p.alt }}" decoding="async">{% endwith %}</div>
+      <div class="prints-janela"><div class="prints-barra" aria-hidden="true"><i></i><i></i><i></i><span>app.appfiliado.com.br</span></div>{% with p=r.print_do_topo %}<img src="{% static p.arquivo %}" width="{{ p.largura }}" height="{{ p.altura }}" alt="{{ p.alt }}" decoding="async">{% endwith %}</div>
     </div>
     {% else %}
     <div class="heroi-arte" aria-hidden="true">
@@ -43,22 +43,11 @@
 
 <nav class="subnav" aria-label="Neste módulo" id="recursos">
   <div class="miolo subnav-linha">
-    {% if prints %}<a href="#por-dentro" data-alvo="por-dentro">Por dentro</a>{% endif %}
     {% for g in r.grupos %}<a href="#g{{ forloop.counter }}" data-alvo="g{{ forloop.counter }}">{{ g.curto }}</a>{% endfor %}
     {% if not r.incluso %}<a href="#comparar" data-alvo="comparar">Standard × Premium</a>{% endif %}
     <a href="#planos" data-alvo="planos">{% if r.incluso %}Planos{% else %}Planos{% endif %}</a>
   </div>
 </nav>
-
-{% if prints %}
-<section id="por-dentro" class="bloco fundo-verde bloco-prints">
-  <div class="miolo">
-    <p class="chapeu chapeu-claro">Por dentro</p>
-    <h2>Veja como fica no painel.</h2>
-    {% include "landing/_prints.html" %}
-  </div>
-</section>
-{% endif %}
 
 {% for g in r.grupos %}
 <section id="g{{ forloop.counter }}" class="bloco bloco-{{ g.layout }}{% if g.fundo %} fundo-{{ g.fundo }}{% endif %}">
@@ -149,6 +138,7 @@
         {% endfor %}
       </div>
     {% endif %}
+    {% if g.prints %}{% with prints=g.prints %}{% include "landing/_print_inline.html" %}{% endwith %}{% endif %}
   </div>
 </section>
 {% endfor %}

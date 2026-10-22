@@ -110,7 +110,7 @@ def _faixas_de_notas():
 @require_GET
 def notas(request):
     return render(request, "landing/notas.html", {**_comum(request), "notas": _faixas_de_notas(), "perguntas": PERGUNTAS_NOTAS,
-                                                   "prints": conteudo.prints_de("notas")})
+                                                   "prints": conteudo.prints_de("notas", 1) + conteudo.prints_de("notas", 0)})
 
 
 @require_GET
@@ -126,7 +126,6 @@ def pagina(request):
         "combo_premium": {"preco": planos.brl(combos["bot1+site1+carrosseis1"]["preco"]), "separado": planos.brl(combos["bot1+site1+carrosseis1"]["separado"]),
                           "link": combos["bot1+site1+carrosseis1"]["link"]},
         "perguntas": PERGUNTAS,
-        "prints": conteudo.prints_da_home(),
         **_comum(request),
     }
     return render(request, "landing/index.html", contexto)
@@ -155,6 +154,6 @@ def recursos(request, modulo):
     pagina = conteudo.PAGINAS[modulo]()
     outros = [{"nome": planos.NOMES[m], "url": PAGINA_DO_MODULO[m]} for m in planos.MODULOS if m != modulo]
     outros += [{"nome": nome, "url": url} for chave, nome, url in INCLUIDOS_COM_PAGINA if chave != modulo]
-    contexto = {**_comum(request), "r": pagina, "outros": outros, "prints": conteudo.prints_de(modulo),
+    contexto = {**_comum(request), "r": pagina, "outros": outros,
                 "m": None if pagina.get("incluso") else _modulo(modulo), "notas": _faixas_de_notas()}
     return render(request, "landing/recurso.html", contexto)

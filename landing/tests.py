@@ -110,13 +110,14 @@ class TestPagina(TestCase):
             self.assertIn(caminho, mapa)
             self.assertContains(home, f'href="{caminho}"')  # a faixa "Em todos os planos" e o mock do hero levam até elas
 
-    def test_telas_do_painel_aparecem_na_home_e_nas_paginas(self):
-        self.assertContains(self.abrir(), "Veja como é o Appfiliado por dentro")
-        self.assertContains(self.abrir(), "bot-ofertas")
-        for caminho in ("/bot-de-whatsapp/", "/meu-site/", "/gerador-de-carrosseis/", "/emissao-de-notas/"):
+    def test_telas_do_painel_ilustram_cada_ferramenta(self):
+        for caminho, arquivo in (("/bot-de-whatsapp/", "bot-ofertas"), ("/meu-site/", "site-editor"), ("/gerador-de-carrosseis/", "carrossel-editor"),
+                                 ("/emissao-de-notas/", "notas-lote"), ("/radar-de-ofertas/", "radar-produtos"),
+                                 ("/conversor-de-links/", "conversor"), ("/resultados-e-metas/", "metas")):
             pagina = self.abrir(caminho=caminho)
-            self.assertContains(pagina, 'id="por-dentro"')
-            self.assertContains(pagina, "Telas reais do painel")
+            self.assertContains(pagina, f"/prints/{arquivo}")
+            self.assertContains(pagina, "prints-janela")
+            self.assertNotContains(pagina, 'id="por-dentro"')  # as telas ficam dentro de cada seção, sem uma aba à parte
 
     def test_contato_so_aparece_quando_configurado(self):
         self.assertNotContains(self.abrir(), "wa.me")
