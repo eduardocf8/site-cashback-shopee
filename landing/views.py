@@ -3,6 +3,7 @@ from django.http import HttpResponse, HttpResponseNotFound
 from django.shortcuts import render
 from django.views.decorators.http import require_GET
 
+from licencas import planos as planos_do_app
 from painel.modulos import ICONES
 
 from . import planos
@@ -32,12 +33,12 @@ RESUMOS = {
     "carrosseis": {
         "icone": "carrosseis", "frase": "Cole um link da Shopee e receba um carrossel pronto para o Instagram.",
         "itens": (
-            ["3 carrosséis por dia", "6 modelos de carrossel", "5 temas de cor", "Edita, reordena e remove slides"],
-            ["10 carrosséis por dia", "10 modelos, 4 deles com o produto recortado", "Cores livres", "Fontes livres", "Foto própria do produto",
-             "IA reescrevendo os slides"],
+            ["3 carrosséis por dia", "6 modelos de carrossel", "5 temas de cor e 1 fonte"],
+            ["10 carrosséis por dia", "6 modelos Standard + 4 Premium", "Cores e fontes livres", "Foto própria e remoção de fundo",
+             f"Reescrita de slides por IA (até {planos_do_app.CARROSSEIS[True]['reescritas']} por dia)"],
         ),
-        "comuns": ["Roteiro dos slides escrito por IA", "Legenda e hashtags escritas por IA", "Editor para ajustar os textos",
-                   "Download das imagens", "Seu link de afiliado com Sub ID do Instagram"],
+        "comuns": ["Roteiro, legendas e hashtags escritas por IA", "Ajuste manual dos textos gerados", "Edita, reordena e remove slides",
+                   "Download de imagens", "SubID próprio"],
     },
 }
 INCLUSOS = [
