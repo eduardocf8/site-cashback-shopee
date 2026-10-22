@@ -456,3 +456,9 @@ a.incluso:hover strong { text-decoration-color: var(--verde); }
   .heroi-print .prints-janela img, .heroi-print .prints-barra { min-width: 0; }
   .heroi-print .prints-janela { overflow-x: hidden; }
 }
+/* Celular: a seção em passos fica centralizada (título, texto e etapas). */
+@media (max-width: 640px) {
+  .bloco-passos .miolo { text-align: center; }
+  .bloco-passos h2, .bloco-passos .secao-texto { margin-inline: auto; }
+  .bloco-passos .linha-passos .n { margin-inline: auto; }
+}
