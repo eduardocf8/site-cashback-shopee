@@ -194,3 +194,9 @@ p { margin: 0; }
 .checklist li::before { content: ""; position: absolute; left: 18px; top: 18px; width: 22px; height: 22px; border-radius: 50%; background: var(--amarelo) url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%231F3A2E' stroke-width='3.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M6 12l4 4 8-9'/%3E%3C/svg%3E") center/14px no-repeat; }
 @media (max-width: 960px) { .passos-4 { grid-template-columns: repeat(2, 1fr); } .grade-incluso { grid-template-columns: repeat(2, 1fr); } }
 @media (max-width: 640px) { .passos-4, .grade-incluso { grid-template-columns: 1fr; } }
+
+/* entrada suave ao rolar (landing.js); sem JS ou com "reduzir movimento", tudo aparece direto */
+.js .revelar { opacity: 0; transform: translateY(26px); transition: opacity .65s ease, transform .65s ease; transition-delay: var(--atraso, 0s); }
+.js .revelar.visivel { opacity: 1; transform: none; }
+.js.sem-animacao .revelar { opacity: 1; transform: none; transition: none; }
+@media (prefers-reduced-motion: reduce) { .js .revelar { opacity: 1; transform: none; transition: none; } }
