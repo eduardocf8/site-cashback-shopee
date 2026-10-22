@@ -120,7 +120,7 @@ p { margin: 0; }
 .combos-prontos p { color: #CFDBD2; }
 .combos-prontos .preco, .combos-prontos .preco span { color: var(--creme); }
 .combos-prontos .preco s { color: var(--claro); margin-right: 6px; }
-.combos-prontos .botao { justify-self: start; }
+.combos-prontos .botao { justify-self: center; min-width: 280px; margin-top: 8px; }
 
 /* notas */
 .grade-notas { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; margin-top: 36px; }
@@ -337,3 +337,6 @@ p { margin: 0; }
 @media (max-width: 640px) { .bloco, #comparar, #planos, #perguntas { border-radius: 24px 24px 0 0; margin-top: -24px; padding: 64px 0 56px; } .faixa-recursos > div { border-left: 0; border-top: 1px solid var(--borda); } .faixa-recursos > div:first-child { border-top: 0; } }
 
 .bloco.fundo-verde .chapeu { color: var(--amarelo); }
+
+/* botão do montador de combo: mais largo, centralizado no cartão e um pouco mais abaixo */
+.montador-resumo [data-assinar] { display: flex; width: min(100%, 340px); margin: 28px auto 6px; }
