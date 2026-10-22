@@ -100,6 +100,7 @@ INSTALLED_APPS = [
     "meusite",
     "carrosseis",
     "notas",
+    "landing",
 ]
 
 AUTH_USER_MODEL = "accounts.User"
@@ -335,6 +336,13 @@ APPFILIADO_PAINEL_URL = os.environ.get("APPFILIADO_PAINEL_URL", "https://app.app
 APPFILIADO_SITES_DOMINIO = os.environ.get("APPFILIADO_SITES_DOMINIO", "").strip().lower().lstrip(".")
 if APPFILIADO_SITES_DOMINIO:
     ALLOWED_HOSTS.append("." + APPFILIADO_SITES_DOMINIO)
+# Página de vendas (landing/): o domínio puro e o www. Sem variável, vale o domínio dos sites
+# (APPFILIADO_SITES_DOMINIO); precisam estar no Render como domínio personalizado.
+APPFILIADO_LANDING_HOSTS = [h.strip().lower() for h in os.environ.get("APPFILIADO_LANDING_HOSTS", "").split(",") if h.strip()] or (
+    [APPFILIADO_SITES_DOMINIO, "www." + APPFILIADO_SITES_DOMINIO] if APPFILIADO_SITES_DOMINIO else [])
+# Contato que aparece na página de vendas (só aparece o que estiver preenchido).
+APPFILIADO_WHATSAPP_SUPORTE = os.environ.get("APPFILIADO_WHATSAPP_SUPORTE", "")
+APPFILIADO_EMAIL_SUPORTE = os.environ.get("APPFILIADO_EMAIL_SUPORTE", "")
 # Página com os planos (botão "Desbloquear" dos módulos que a conta não tem).
 APPFILIADO_URL_PLANOS = os.environ.get("APPFILIADO_URL_PLANOS", "https://appfiliado.com.br")
 # Chave Fernet pra cifrar os segredos das contas (ex: Secret da Shopee) - ver painel/cripto.py.
@@ -354,6 +362,7 @@ MIDDLEWARE = [
     "django.middleware.security.SecurityMiddleware",
     "licencas.middleware.SoApiNoDominioAppfiliadoMiddleware",  # api.appfiliado.com.br só responde /licencas/
     "painel.middleware.DominioDoPainelMiddleware",  # app.appfiliado.com.br mostra só o painel
+    "landing.middleware.LandingDoAppfiliadoMiddleware",  # appfiliado.com.br mostra só a página de vendas
     "meusite.middleware.SiteDoAfiliadoMiddleware",  # seunome.appfiliado.com.br mostra o site da conta
     "whitenoise.middleware.WhiteNoiseMiddleware",
     "django.contrib.sessions.middleware.SessionMiddleware",

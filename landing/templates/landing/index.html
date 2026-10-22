@@ -1,0 +1,158 @@
+{% extends "landing/base.html" %}
+{% block conteudo %}
+<main id="inicio">
+<section class="heroi">
+  <div class="miolo heroi-grade">
+    <div>
+      <p class="chapeu">Para afiliados da Shopee</p>
+      <h1>Tudo o que o afiliado da Shopee precisa em um só lugar.</h1>
+      <p class="heroi-texto">Encontre as melhores ofertas, divulgue no WhatsApp no automático, crie seu próprio site com conversor de links e vitrine, acompanhe seus resultados e metas e emita suas notas fiscais de afiliado.</p>
+      <div class="heroi-botoes"><a class="botao botao-grande" href="#planos">Ver planos e preços</a><a class="botao botao-grande botao-vazado" href="#modulos">Conhecer os módulos</a></div>
+      <p class="heroi-nota">Pagamento pela Zouti. 7 dias de garantia.</p>
+    </div>
+    <div class="heroi-arte" aria-hidden="true">
+      <div class="painel-amostra">
+        <span class="painel-titulo">Seu painel Appfiliado</span>
+        <ul>
+          <li><svg viewBox="0 0 24 24"><path d="{{ icones.radar }}"/></svg>Radar de ofertas</li>
+          <li><svg viewBox="0 0 24 24"><path d="{{ icones.conversor }}"/></svg>Conversor de links</li>
+          <li><svg viewBox="0 0 24 24"><path d="{{ icones.whatsapp }}"/></svg>Bot de WhatsApp</li>
+          <li><svg viewBox="0 0 24 24"><path d="{{ icones.site }}"/></svg>Meu site</li>
+          <li><svg viewBox="0 0 24 24"><path d="{{ icones.carrosseis }}"/></svg>Gerador de carrosséis</li>
+          <li><svg viewBox="0 0 24 24"><path d="{{ icones.resultados }}"/></svg>Resultados e metas</li>
+          <li class="largo"><svg viewBox="0 0 24 24"><path d="{{ icones.notas }}"/></svg>Emissão de notas fiscais</li>
+        </ul>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section class="faixa" aria-label="Em todos os planos">
+  <div class="miolo faixa-linha">
+    {% for i in inclusos %}
+      <div class="incluso"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="{{ i.icone }}"/></svg><div><strong>{{ i.nome }}</strong><span>{{ i.frase }}</span></div></div>
+    {% endfor %}
+  </div>
+</section>
+
+<section id="modulos" class="secao">
+  <div class="miolo">
+    <p class="chapeu">Módulos</p>
+    <h2>Do achar a oferta ao emitir a nota, tudo no mesmo lugar.</h2>
+    <p class="secao-texto">Use só o que precisa hoje e some módulos quando crescer. Ao juntar dois ou mais, o preço cai.</p>
+    <div class="grade-modulos">
+      {% for m in modulos %}
+        <article class="modulo">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="{{ m.icone }}"/></svg>
+          <h3>{{ m.nome }}</h3>
+          <p>{{ m.frase }}</p>
+          <span class="a-partir">a partir de <b>{{ m.a_partir }}</b>/mês</span>
+        </article>
+      {% endfor %}
+      <article class="modulo">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="{{ icones.notas }}"/></svg>
+        <h3>Emissão NFS-e</h3>
+        <p>As notas fiscais dos vendedores que pagaram comissão extra, direto do relatório mensal da Shopee. Para afiliados pessoa jurídica.</p>
+        <span class="a-partir">a partir de <b>{{ notas.0.preco }}</b>/mês</span>
+      </article>
+    </div>
+  </div>
+</section>
+
+<section id="como" class="secao secao-creme">
+  <div class="miolo">
+    <p class="chapeu">Como funciona</p>
+    <h2>Do pagamento ao primeiro envio em três passos.</h2>
+    <ol class="passos">
+      <li><span>1</span><h3>Escolha e pague</h3><p>Monte o seu plano abaixo e pague pelo checkout seguro da Zouti.</p></li>
+      <li><span>2</span><h3>Receba o acesso</h3><p>Assim que o pagamento é confirmado, a chave de acesso chega no seu e-mail.</p></li>
+      <li><span>3</span><h3>Conecte e divulgue</h3><p>Entre no painel, conecte a sua conta da Shopee e, se tiver o bot, o seu WhatsApp pelo QR Code.</p></li>
+    </ol>
+  </div>
+</section>
+
+<section id="planos" class="secao">
+  <div class="miolo">
+    <p class="chapeu">Planos</p>
+    <h2>Standard para começar, Premium para crescer.</h2>
+    <p class="secao-texto">Preços por mês. Plano anual com 17% de desconto disponível no checkout.</p>
+    {% for m in modulos %}
+      <div class="bloco-plano">
+        <div class="bloco-titulo"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="{{ m.icone }}"/></svg><h3>{{ m.nome }}</h3></div>
+        <div class="par-planos">
+          {% for p in m.planos %}
+            <article class="plano{% if p.nivel == 'Premium' %} plano-destaque{% endif %}">
+              <h4>{{ p.nivel }}</h4>
+              <p class="preco"><b>{{ p.preco }}</b><span>/mês</span></p>
+              <ul>{% for item in p.itens %}<li>{{ item }}</li>{% endfor %}</ul>
+              <a class="botao{% if p.nivel != 'Premium' %} botao-vazado-escuro{% endif %}" href="{{ p.link }}">Assinar {{ m.nome }} {{ p.nivel }}</a>
+            </article>
+          {% endfor %}
+        </div>
+      </div>
+    {% endfor %}
+  </div>
+</section>
+
+<section id="combo" class="secao secao-verde">
+  <div class="miolo">
+    <p class="chapeu chapeu-claro">Combos</p>
+    <h2>Monte o seu combo e pague menos.</h2>
+    <p class="secao-texto">Dois módulos juntos saem 10% mais baratos. Os três, 20%.</p>
+    <div class="montador" data-montador>
+      <div class="montador-escolhas">
+        {% for m in modulos %}
+          <fieldset class="escolha" data-modulo="{{ m.codigo }}">
+            <legend>{{ m.nome }}</legend>
+            <label><input type="radio" name="{{ m.codigo }}" value="" checked><span>Não quero</span></label>
+            <label><input type="radio" name="{{ m.codigo }}" value="0"><span>Standard</span></label>
+            <label><input type="radio" name="{{ m.codigo }}" value="1"><span>Premium</span></label>
+          </fieldset>
+        {% endfor %}
+      </div>
+      <div class="montador-resumo" aria-live="polite">
+        <p class="montador-vazio" data-vazio>Escolha ao menos um módulo para ver o preço.</p>
+        <div data-resultado hidden>
+          <span class="montador-nome" data-nome></span>
+          <p class="montador-preco"><b data-preco></b><span>/mês</span></p>
+          <p class="montador-economia" data-economia></p>
+          <a class="botao botao-grande" href="#planos" data-assinar>Assinar</a>
+        </div>
+      </div>
+    </div>
+    {{ montador|json_script:"dados-montador" }}
+    <noscript><p class="secao-texto">Ative o JavaScript para montar o combo, ou escolha um dos combos prontos abaixo.</p></noscript>
+    <div class="combos-prontos">
+      <article><h3>Combo Standard</h3><p>Bot + Meu site + Gerador de carrosséis, todos no Standard.</p><p class="preco"><s>{{ combo_standard.separado }}</s> <b>{{ combo_standard.preco }}</b><span>/mês</span></p><a class="botao" href="{{ combo_standard.link }}">Assinar o Combo Standard</a></article>
+      <article><h3>Combo Premium</h3><p>Bot + Meu site + Gerador de carrosséis, todos no Premium.</p><p class="preco"><s>{{ combo_premium.separado }}</s> <b>{{ combo_premium.preco }}</b><span>/mês</span></p><a class="botao" href="{{ combo_premium.link }}">Assinar o Combo Premium</a></article>
+    </div>
+  </div>
+</section>
+
+<section id="notas" class="secao">
+  <div class="miolo">
+    <p class="chapeu">Emissão NFS-e</p>
+    <h2>Notas fiscais dos vendedores, sem digitar nada.</h2>
+    <p class="secao-texto">Envie o relatório mensal da Shopee e o Appfiliado emite uma nota por loja no Emissor Nacional do governo, com envio por e-mail para cada vendedor. <strong>Exclusivo para afiliados pessoa jurídica</strong> (MEI ou Simples Nacional, com certificado digital A1). A partir de {{ notas.0.preco }} por mês.</p>
+    <p style="margin-top:24px"><a class="botao" href="{% url 'landing_notas' %}">Ver como funciona e os planos de notas</a></p>
+  </div>
+</section>
+
+<section id="perguntas" class="secao secao-creme">
+  <div class="miolo miolo-estreito">
+    <p class="chapeu">Perguntas frequentes</p>
+    <h2>Ficou com dúvida?</h2>
+    <div class="faq">
+      {% for pergunta, resposta in perguntas %}<details><summary>{{ pergunta }}</summary><p>{{ resposta }}</p></details>{% endfor %}
+    </div>
+    {% if whatsapp or email_suporte %}
+      <div class="contato">
+        <p>Não achou a resposta? Fale com a gente.</p>
+        {% if whatsapp %}<a class="botao" href="https://wa.me/{{ whatsapp }}?text=Ol%C3%A1!%20Tenho%20uma%20d%C3%BAvida%20sobre%20o%20Appfiliado." rel="noopener">Chamar no WhatsApp</a>{% endif %}
+        {% if email_suporte %}<a class="botao botao-vazado-escuro" href="mailto:{{ email_suporte }}">{{ email_suporte }}</a>{% endif %}
+      </div>
+    {% endif %}
+  </div>
+</section>
+</main>
+{% endblock %}
