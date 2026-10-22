@@ -32,12 +32,12 @@ RESUMOS = {
     "carrosseis": {
         "icone": "carrosseis", "frase": "Cole um link da Shopee e receba um carrossel pronto para o Instagram.",
         "itens": (
-            ["3 carrosséis por dia", "6 modelos e 5 temas de cor", "Edita, reordena e remove slides"],
-            ["10 carrosséis por dia", "Modelos premium, com o produto recortado", "Cores e fontes livres", "Foto própria do produto",
+            ["3 carrosséis por dia", "6 modelos de carrossel", "5 temas de cor", "Edita, reordena e remove slides"],
+            ["10 carrosséis por dia", "10 modelos, 4 deles com o produto recortado", "Cores livres", "Fontes livres", "Foto própria do produto",
              "IA reescrevendo os slides"],
         ),
-        "comuns": ["Roteiro, legenda e hashtags escritos por IA", "Editor para ajustar os textos e baixar as imagens",
-                   "Seu link de afiliado com Sub ID do Instagram"],
+        "comuns": ["Roteiro dos slides escrito por IA", "Legenda e hashtags escritas por IA", "Editor para ajustar os textos",
+                   "Download das imagens", "Seu link de afiliado com Sub ID do Instagram"],
     },
 }
 INCLUSOS = [

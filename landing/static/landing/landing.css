@@ -205,7 +205,7 @@ p { margin: 0; }
 .plano li.extra::before { background-color: var(--verde); background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23F6F3EA' stroke-width='3.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M6 12l4 4 8-9'/%3E%3C/svg%3E"); }
 .plano-comuns { margin-top: 20px; background: var(--creme); border: 1px solid var(--borda); border-radius: var(--raio); padding: 22px 26px; }
 .plano-comuns h4 { font-size: 15px; letter-spacing: .08em; text-transform: uppercase; color: var(--suave); margin-bottom: 12px; }
-.plano-comuns ul { list-style: none; padding: 0; margin: 0; display: grid; grid-template-columns: repeat(auto-fit, minmax(230px, 1fr)); gap: 10px 28px; }
+.plano-comuns ul { list-style: none; padding: 0; margin: 0; display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 10px 28px; }
 .plano-comuns li { position: relative; padding-left: 26px; font-size: 15px; }
 .plano-comuns li::before { content: ""; position: absolute; left: 0; top: 5px; width: 16px; height: 16px; border-radius: 50%; background: var(--amarelo) url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%231F3A2E' stroke-width='3.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M6 12l4 4 8-9'/%3E%3C/svg%3E") center/11px no-repeat; }
 @media (max-width: 640px) { .plano-comuns ul { grid-template-columns: 1fr; } }
