@@ -23,6 +23,9 @@ class Carrossel(models.Model):
     # Foto enviada pela pessoa no lugar da da Shopee (premium). JPEG pequeno: o disco do
     # servidor não guarda arquivos (mesmo jeito da foto do Meu site).
     foto_propria = models.BinaryField(null=True, blank=True)
+    # O produto sem fundo (PNG com transparência), feito no navegador a partir da foto em uso
+    # (premium). Troca de foto apaga o recorte, que era dela.
+    recorte = models.BinaryField(null=True, blank=True)
     legenda = models.TextField(blank=True)
     hashtags = models.CharField(max_length=300, blank=True)
     criado_em = models.DateTimeField(auto_now_add=True)

@@ -42,6 +42,7 @@ urlpatterns = [
     path("carrosseis/<int:pk>/salvar/", views_carrosseis.salvar, name="painel_carrossel_salvar"),
     path("carrosseis/<int:pk>/reescrever/", views_carrosseis.reescrever, name="painel_carrossel_reescrever"),
     path("carrosseis/<int:pk>/foto/", views_carrosseis.foto, name="painel_carrossel_foto"),
+    path("carrosseis/<int:pk>/recorte/", views_carrosseis.recorte, name="painel_carrossel_recorte"),
     path("carrosseis/<int:pk>/apagar/", views_carrosseis.apagar, name="painel_carrossel_apagar"),
     path("notas/", views_notas.notas, name="painel_notas"),
     path("notas/<int:pk>/reenviar/", views_notas.reenviar, name="painel_nota_reenviar"),
