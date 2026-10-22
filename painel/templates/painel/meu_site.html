@@ -138,7 +138,7 @@
       {% if produtos_vitrine and site.vitrine != "nenhuma" %}
         <details class="produtos-vitrine" data-sem-vitrine-esconde>
           <summary class="pequeno"><strong>Ver os produtos e corrigir as categorias</strong> ({{ produtos_vitrine|length }})</summary>
-          <p class="suave pequeno">A categoria vem da Shopee (a que o vendedor escolheu no cadastro) e às vezes está errada. Troque aqui: vale na hora, e continua valendo quando a vitrine se atualizar.</p>
+          <p class="suave pequeno">A categoria vem da Shopee (a que o vendedor escolheu no cadastro) e às vezes está errada. Troque aqui: vale na hora e continua valendo quando a vitrine se atualizar.</p>
           <ul class="lista-produtos-vitrine" data-url-categoria="{% url 'painel_meu_site_categoria' 0 %}">
             {% for p in produtos_vitrine %}
               <li>
@@ -171,7 +171,7 @@
         <h3 class="pequeno" style="margin:14px 0 6px">Produtos mais clicados</h3>
         <ol class="top-produtos">{% for p in cliques.top_produtos %}<li><span>{{ p.alvo_nome|truncatechars:50 }}</span><strong>{{ p.soma }}</strong></li>{% endfor %}</ol>
       {% endif %}
-      {% if not sem_marca %}<p class="suave pequeno" style="margin-top:12px">O rodapé do site mostra "Feito com Appfiliado". No <a href="{{ url_planos }}" target="_blank" rel="noopener">plano Premium</a> do Meu site ele sai, e você ganha até 10 botões e a vitrine com os produtos que escolher.</p>{% endif %}
+      {% if not sem_marca %}<p class="suave pequeno" style="margin-top:12px">O rodapé do site mostra "Feito com Appfiliado". No <a href="{{ url_planos }}" target="_blank" rel="noopener">plano Premium</a> do Meu site ele sai e você ganha até 10 botões e a vitrine com os produtos que escolher.</p>{% endif %}
     </section>
     <section class="card previa-site" aria-labelledby="titulo-previa">
       <div class="card-topo"><h2 id="titulo-previa">Prévia</h2><span class="suave pequeno">{% if site.publicado %}No ar{% else %}Fora do ar{% endif %}</span></div>

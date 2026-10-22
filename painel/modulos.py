@@ -51,13 +51,13 @@ MODULOS_DO_MENU = [
     {
         "slug": "whatsapp", "nome": "Bot de WhatsApp", "icone": "whatsapp", "modulo": MODULO_WHATSAPP,
         "pronto": True,
-        "texto_bloqueado": "Envie ofertas com seu link de afiliado nos seus grupos e canais do WhatsApp, "
+        "texto_bloqueado": "Envie ofertas com seu link de afiliado nos seus grupos e canais do WhatsApp "
                            "no automático.",
     },
     {
         "slug": "site", "nome": "Meu site", "icone": "site", "modulo": MODULO_SITE, "pronto": True,
         "texto_em_breve": "Você vai editar aqui o seu site com conversor de links e vitrine "
-                          "de produtos, no endereço seunome.appfiliado.com.br.",
+                          "de produtos no endereço seunome.appfiliado.com.br.",
         "texto_bloqueado": "Tenha seu próprio site com conversor de links e vitrine de produtos, pronto "
                            "para usar como link na bio.",
     },
@@ -66,17 +66,17 @@ MODULOS_DO_MENU = [
         # o premium libera o gerador inteiro, sem precisar do básico junto
         "modulos_que_liberam": [MODULO_CARROSSEIS, MODULO_CARROSSEIS_PREMIUM], "pronto": True,
         "texto_bloqueado": "Cole o link de um produto da Shopee e receba um carrossel pronto pro "
-                           "Instagram, com textos feitos por IA e o seu link de afiliado.",
+                           "Instagram com textos feitos por IA e o seu link de afiliado.",
     },
     {
         "slug": "notas", "nome": "Emissor NFS-e", "icone": "notas", "modulo": MODULO_NOTAS, "pronto": True,
         "texto_bloqueado": "Emita no automático a nota da Shopee e as notas de cada vendedor que pagou "
-                           "comissão extra, e mande cada uma por e-mail pro vendedor.",
+                           "comissão extra e mande cada uma por e-mail pro vendedor.",
     },
     {
         "slug": "instagram", "nome": "Instagram", "icone": "instagram", "modulo": MODULO_INSTAGRAM,
         "pronto": False, "so_em_breve": True,
-        "texto_em_breve": "Responda comentários e mande o link por mensagem direta, no automático.",
+        "texto_em_breve": "Responda comentários e mande o link por mensagem direta no automático.",
     },
     {"slug": "configuracoes", "nome": "Configurações", "icone": "configuracoes", "modulo": None, "pronto": True},
 ]
