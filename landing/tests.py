@@ -52,6 +52,11 @@ class TestPagina(TestCase):
         self.assertEqual(self.abrir("admin.appfiliado.com.br").status_code, 404)  # reservado
         self.assertEqual(self.abrir("a.b.appfiliado.com.br").status_code, 404)
 
+    def test_health_check_do_render_responde_no_dominio_da_landing(self):
+        # O Render confere /healthz/ com o domínio personalizado no Host; sem isso o deploy não termina.
+        for host in ("appfiliado.com.br", "www.appfiliado.com.br"):
+            self.assertEqual(self.abrir(host, "/healthz/").status_code, 200)
+
     def test_robots_e_sitemap_so_da_landing(self):
         self.assertContains(self.abrir(caminho="/robots.txt"), "Sitemap: https://appfiliado.com.br/sitemap.xml")
         self.assertContains(self.abrir(caminho="/sitemap.xml"), "https://appfiliado.com.br/")
