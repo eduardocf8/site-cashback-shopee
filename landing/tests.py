@@ -42,7 +42,7 @@ class TestPagina(TestCase):
     def test_a_raiz_e_o_www_mostram_a_pagina_de_vendas(self):
         for host in ("appfiliado.com.br", "www.appfiliado.com.br"):
             resposta = self.abrir(host)
-            self.assertContains(resposta, "Tudo o que o afiliado da Shopee precisa, num painel só")
+            self.assertContains(resposta, "Tudo o que o afiliado da Shopee precisa em um só lugar")
             self.assertContains(resposta, "https://cdn1.zouti.com.br/scripts/params/persistence.min.js")
             self.assertContains(resposta, planos.LINKS["bot1"])
             self.assertContains(resposta, planos.LINKS_NOTAS["ilimitada"])
@@ -72,4 +72,4 @@ class TestPagina(TestCase):
 class TestSemDominioConfigurado(TestCase):
     def test_sem_hosts_da_landing_o_site_da_cashb_segue_normal(self):
         self.assertEqual(self.client.get("/").status_code, 200)
-        self.assertNotContains(self.client.get("/"), "Tudo o que o afiliado da Shopee precisa, num painel só")
+        self.assertNotContains(self.client.get("/"), "Tudo o que o afiliado da Shopee precisa em um só lugar")
