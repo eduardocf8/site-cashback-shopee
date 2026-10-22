@@ -73,6 +73,29 @@ class TestPagina(TestCase):
         self.assertContains(self.abrir(caminho="/sitemap.xml"), "/emissao-de-notas/")
         self.assertContains(self.abrir(), "Para afiliados pessoa jurídica")  # a landing também avisa
 
+    def test_paginas_de_recursos_de_cada_modulo(self):
+        from licencas import planos as plano
+        s, p = plano.BOT[False], plano.BOT[True]
+        bot = self.abrir(caminho="/bot-de-whatsapp/")
+        self.assertContains(bot, "Ofertas da Shopee nos seus grupos de WhatsApp")
+        self.assertContains(bot, planos.LINKS["bot0"])
+        self.assertContains(bot, planos.LINKS["bot1"])
+        for numero in (s["grupos"], s["ofertas_por_grupo_dia"], p["grupos"], p["ofertas_por_grupo_dia"]):  # os limites vêm do plano
+            self.assertContains(bot, f"até {numero}")
+        site = self.abrir(caminho="/meu-site/")
+        self.assertContains(site, "seunome.appfiliado.com.br")
+        self.assertContains(site, planos.LINKS["site1"])
+        car = self.abrir(caminho="/gerador-de-carrosseis/")
+        self.assertContains(car, "carrossel pronto para o Instagram")
+        self.assertContains(car, planos.LINKS["carrosseis0"])
+        for pagina in (bot, site, car):
+            self.assertContains(pagina, "persistence.min.js")
+            self.assertContains(pagina, "Todos os recursos")
+        mapa = self.abrir(caminho="/sitemap.xml").content.decode()
+        for caminho in ("/bot-de-whatsapp/", "/meu-site/", "/gerador-de-carrosseis/"):
+            self.assertIn(caminho, mapa)
+        self.assertContains(self.abrir(), "/bot-de-whatsapp/")  # a landing leva às páginas
+
     def test_contato_so_aparece_quando_configurado(self):
         self.assertNotContains(self.abrir(), "wa.me")
         with override_settings(APPFILIADO_WHATSAPP_SUPORTE="+55 (11) 91234-5678", APPFILIADO_EMAIL_SUPORTE="ajuda@appfiliado.com.br"):

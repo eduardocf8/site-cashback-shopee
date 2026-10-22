@@ -1,0 +1,184 @@
+{% extends "landing/base.html" %}
+{% block titulo %}{{ r.titulo }}{% endblock %}
+{% block descricao %}{{ r.descricao }}{% endblock %}
+{% block caminho %}/{{ r.slug }}/{% endblock %}
+{% block caminho_og %}/{{ r.slug }}/{% endblock %}
+{% block og_titulo %}{{ r.titulo }}{% endblock %}
+{% block og_descricao %}{{ r.descricao }}{% endblock %}
+{% block conteudo %}
+<main id="inicio">
+<section class="heroi">
+  <div class="miolo heroi-grade">
+    <div>
+      <p class="chapeu">{{ r.nome }} · Todos os recursos</p>
+      <h1>{{ r.h1 }}</h1>
+      <p class="heroi-texto">{{ r.texto }}</p>
+      <div class="heroi-botoes"><a class="botao botao-grande" href="#planos">Ver planos e preços</a><a class="botao botao-grande botao-vazado" href="#recursos">Ver todos os recursos</a></div>
+      <p class="heroi-nota">Pagamento pela Zouti. 7 dias de garantia.</p>
+    </div>
+    <div class="heroi-arte" aria-hidden="true">
+      <div class="painel-amostra">
+        <span class="painel-titulo">{{ r.nome }}: Standard × Premium</span>
+        <table class="resumo">
+          <thead><tr><th></th><th>Standard</th><th>Premium</th></tr></thead>
+          <tbody>{% for rotulo, a, b in r.resumo %}<tr><th scope="row">{{ rotulo }}</th><td>{{ a }}</td><td>{{ b }}</td></tr>{% endfor %}</tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section class="numeros" aria-label="O {{ r.nome }} em números">
+  <div class="miolo numeros-linha">
+    {% for valor, rotulo in r.numeros %}<div class="numero"><b>{{ valor }}</b><span>{{ rotulo }}</span></div>{% endfor %}
+  </div>
+</section>
+
+<nav class="subnav" aria-label="Neste módulo" id="recursos">
+  <div class="miolo subnav-linha">
+    {% for g in r.grupos %}<a href="#g{{ forloop.counter }}" data-alvo="g{{ forloop.counter }}">{{ g.curto }}</a>{% endfor %}
+    <a href="#comparar" data-alvo="comparar">Standard × Premium</a>
+    <a href="#planos" data-alvo="planos">Planos</a>
+  </div>
+</nav>
+
+{% for g in r.grupos %}
+<section id="g{{ forloop.counter }}" class="bloco bloco-{{ g.layout }}{% if g.fundo %} fundo-{{ g.fundo }}{% endif %}">
+  <div class="miolo">
+    {% if g.layout == "passos" %}
+      <p class="chapeu">{{ g.curto }}</p>
+      <h2>{{ g.titulo }}</h2>
+      {% if g.intro %}<p class="secao-texto">{{ g.intro }}</p>{% endif %}
+      <ol class="linha-passos">
+        {% for item in g.itens %}
+          <li><span class="n">{{ forloop.counter }}</span><h3>{{ item.nome }}{% if item.plano %} <span class="selo-recurso">{{ item.plano }}</span>{% endif %}</h3><p>{{ item.texto }}</p></li>
+        {% endfor %}
+      </ol>
+
+    {% elif g.layout == "split" %}
+      <div class="split">
+        <div class="split-titulo">
+          <p class="chapeu">{{ g.curto }}</p>
+          <h2>{{ g.titulo }}</h2>
+          {% if g.intro %}<p class="secao-texto">{{ g.intro }}</p>{% endif %}
+        </div>
+        <div class="split-itens">
+          {% for item in g.itens %}
+            <div class="linha-recurso{% if item.plano %} premium{% endif %}">
+              <h3>{{ item.nome }}{% if item.plano %} <span class="selo-recurso">{{ item.plano }}</span>{% endif %}</h3>
+              {% if item.texto and not item.chips and not item.cores %}<p>{{ item.texto }}</p>{% endif %}
+              {% if item.chips %}<ul class="chips-recurso">{% for c in item.chips %}<li>{{ c }}</li>{% endfor %}</ul>{% endif %}
+              {% if item.cores %}<ul class="amostras">{% for c in item.cores %}<li style="background:{{ c }}"></li>{% endfor %}</ul><p>{{ item.texto }}</p>{% endif %}
+            </div>
+          {% endfor %}
+        </div>
+      </div>
+
+    {% elif g.layout == "destaque" %}
+      <p class="chapeu">{{ g.curto }}</p>
+      <h2>{{ g.titulo }}</h2>
+      {% if g.intro %}<p class="secao-texto">{{ g.intro }}</p>{% endif %}
+      <div class="destaque">
+        {% for item in g.itens %}
+          <article class="{% if forloop.first %}destaque-principal{% else %}destaque-lateral{% endif %}{% if item.plano %} premium{% endif %}">
+            <h3>{{ item.nome }}{% if item.plano %} <span class="selo-recurso">{{ item.plano }}</span>{% endif %}</h3>
+            <p>{{ item.texto }}</p>
+          </article>
+        {% endfor %}
+      </div>
+
+    {% elif g.layout == "lista" %}
+      <p class="chapeu">{{ g.curto }}</p>
+      <h2>{{ g.titulo }}</h2>
+      {% if g.intro %}<p class="secao-texto">{{ g.intro }}</p>{% endif %}
+      <ul class="lista-recursos">
+        {% for item in g.itens %}
+          <li><b>{{ item.nome }}{% if item.plano %} <span class="selo-recurso">{{ item.plano }}</span>{% endif %}</b> <span>{{ item.texto }}</span></li>
+        {% endfor %}
+      </ul>
+
+    {% elif g.layout == "premium" %}
+      <p class="chapeu chapeu-claro">Exclusivo do Premium</p>
+      <h2>{{ g.titulo }}</h2>
+      {% if g.intro %}<p class="secao-texto">{{ g.intro }}</p>{% endif %}
+      <div class="cartoes-premium">
+        {% for item in g.itens %}
+          <article><span class="selo-recurso selo-claro">{{ item.plano|default:"Premium" }}</span><h3>{{ item.nome }}</h3><p>{{ item.texto }}</p></article>
+        {% endfor %}
+      </div>
+
+    {% elif g.layout == "faixa" %}
+      <p class="chapeu">{{ g.curto }}</p>
+      <h2>{{ g.titulo }}</h2>
+      {% if g.intro %}<p class="secao-texto">{{ g.intro }}</p>{% endif %}
+      <div class="faixa-recursos">
+        {% for item in g.itens %}
+          <div><span class="marca-check" aria-hidden="true"></span><h3>{{ item.nome }}{% if item.plano %} <span class="selo-recurso">{{ item.plano }}</span>{% endif %}</h3><p>{{ item.texto }}</p></div>
+        {% endfor %}
+      </div>
+
+    {% else %}
+      <p class="chapeu">{{ g.curto }}</p>
+      <h2>{{ g.titulo }}</h2>
+      {% if g.intro %}<p class="secao-texto">{{ g.intro }}</p>{% endif %}
+      <div class="grade-recursos">
+        {% for item in g.itens %}
+          <article class="recurso{% if item.plano %} recurso-premium{% endif %}">
+            <h3>{{ item.nome }}{% if item.plano %} <span class="selo-recurso">{{ item.plano }}</span>{% endif %}</h3>
+            {% if item.chips %}<ul class="chips-recurso">{% for c in item.chips %}<li>{{ c }}</li>{% endfor %}</ul>{% else %}<p>{{ item.texto }}</p>{% endif %}
+            {% if item.cores %}<ul class="amostras">{% for c in item.cores %}<li style="background:{{ c }}"></li>{% endfor %}</ul>{% endif %}
+          </article>
+        {% endfor %}
+      </div>
+    {% endif %}
+  </div>
+</section>
+{% endfor %}
+
+<section id="comparar" class="secao secao-verde">
+  <div class="miolo">
+    <p class="chapeu chapeu-claro">Standard × Premium</p>
+    <h2>O que muda de um plano para o outro.</h2>
+    <div class="tabela-rolagem">
+      <table class="tabela-planos">
+        <thead><tr><th scope="col">Recurso</th><th scope="col">Standard</th><th scope="col">Premium</th></tr></thead>
+        <tbody>
+          {% for rotulo, a, b in r.tabela %}
+            <tr><th scope="row">{{ rotulo }}</th>
+              <td>{% if a is True %}<span class="sim" aria-label="Incluso">✓</span>{% elif a is False %}<span class="nao" aria-label="Não incluso">—</span>{% else %}{{ a }}{% endif %}</td>
+              <td>{% if b is True %}<span class="sim" aria-label="Incluso">✓</span>{% elif b is False %}<span class="nao" aria-label="Não incluso">—</span>{% else %}{{ b }}{% endif %}</td></tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+</section>
+
+<section id="planos" class="secao">
+  <div class="miolo">
+    <p class="chapeu">Planos</p>
+    <h2>Escolha o seu plano.</h2>
+    <p class="secao-texto">Preços por mês. Plano anual com 17% de desconto disponível no checkout. Quer juntar com outros módulos? <a href="{% url 'landing' %}#combo" style="color:var(--verde);font-weight:700">Monte o seu combo</a> e pague menos.</p>
+    {% include "landing/_bloco_plano.html" %}
+  </div>
+</section>
+
+<section id="perguntas" class="secao secao-creme">
+  <div class="miolo miolo-estreito">
+    <p class="chapeu">Perguntas frequentes</p>
+    <h2>Dúvidas sobre o {{ r.nome }}.</h2>
+    <div class="faq">
+      {% for pergunta, resposta in r.perguntas %}<details><summary>{{ pergunta }}</summary><p>{{ resposta }}</p></details>{% endfor %}
+    </div>
+    {% if whatsapp or email_suporte %}
+      <div class="contato">
+        <p>Não achou a resposta? Fale com a gente.</p>
+        {% if whatsapp %}<a class="botao" href="https://wa.me/{{ whatsapp }}?text=Ol%C3%A1!%20Tenho%20uma%20d%C3%BAvida%20sobre%20o%20{{ r.nome|urlencode }}%20do%20Appfiliado." rel="noopener">Chamar no WhatsApp</a>{% endif %}
+        {% if email_suporte %}<a class="botao botao-vazado-escuro" href="mailto:{{ email_suporte }}">{{ email_suporte }}</a>{% endif %}
+      </div>
+    {% endif %}
+    <p class="outros-modulos">Conheça também: {% for o in outros %}<a href="{% url o.url %}">{{ o.nome }}</a>, {% endfor %}<a href="{% url 'landing_notas' %}">Emissor NFS-e</a>.</p>
+  </div>
+</section>
+</main>
+{% endblock %}

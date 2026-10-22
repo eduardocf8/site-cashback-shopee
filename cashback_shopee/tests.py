@@ -555,7 +555,7 @@ class AdminPorProdutoTests(TestCase):
         posicoes = [html.index(p) for p in ("🛒 Site Cash-B", "📱 Appfiliado", "📸 Automação Instagram", "⚙️ Sistema")]
         self.assertEqual(posicoes, sorted(posicoes))
         self.assertLess(html.index("Pedidos e saques"), html.index("Contas e assinaturas"))
-        self.assertLess(html.index("Contas e assinaturas"), html.index("Emissão NFS-e"))
+        self.assertLess(html.index("Contas e assinaturas"), html.index("Emissor NFS-e"))
         self.assertNotIn(">Outros<", html)  # toda tabela registrada tem lugar em GRUPOS
         for modelo in admin.site._registry:
             url = reverse(f"admin:{modelo._meta.app_label}_{modelo._meta.model_name}_changelist")

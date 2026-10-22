@@ -292,6 +292,62 @@ class TestTelas(TestCase):
         self.client.post(f"/carrosseis/{self.carrossel.pk}/foto/", {"remover": "1"})
         self.assertEqual(self.client.get(f"/carrosseis/{self.carrossel.pk}/foto/").status_code, 404)
 
+    def _png(self, tamanho=(600, 800), alfa=True, formato="PNG"):
+        import io
+
+        from PIL import Image
+        arquivo = io.BytesIO()
+        Image.new("RGBA" if alfa else "RGB", tamanho, (200, 30, 30, 120) if alfa else "red").save(arquivo, formato)
+        return arquivo.getvalue()
+
+    def test_recorte_so_no_premium_e_so_png_com_transparencia(self):
+        import io
+
+        from django.core.files.uploadedfile import SimpleUploadedFile
+        from PIL import Image
+        url = f"/carrosseis/{self.carrossel.pk}/recorte/"
+        resposta = self.client.post(url, {"recorte": SimpleUploadedFile("r.png", self._png(), content_type="image/png")})
+        self.assertEqual(resposta.status_code, 200)
+        imagem = self.client.get(resposta.json()["url"])
+        self.assertEqual(imagem["Content-Type"], "image/png")
+        aberta = Image.open(io.BytesIO(imagem.content))
+        self.assertEqual((aberta.size, aberta.mode), ((600, 800), "RGBA"))
+        # sem transparência (JPEG ou PNG opaco) não serve como recorte
+        for nome, bytes_, tipo in (("r.png", self._png(alfa=False), "image/png"), ("r.jpg", self._png(alfa=False, formato="JPEG"), "image/jpeg")):
+            erro = self.client.post(url, {"recorte": SimpleUploadedFile(nome, bytes_, content_type=tipo)})
+            self.assertEqual(erro.status_code, 400, nome)
+        # grande demais é reduzida para 1400 px
+        self.client.post(url, {"recorte": SimpleUploadedFile("g.png", self._png((2400, 1800)), content_type="image/png")})
+        grande = Image.open(io.BytesIO(self.client.get(url).content))
+        self.assertEqual(grande.size, (1400, 1050))
+        self.client.post(url, {"remover": "1"})
+        self.assertEqual(self.client.get(url).status_code, 404)
+        # Standard não grava
+        self.conta.modulos_cortesia = "carrosseis"
+        self.conta.save()
+        bloqueado = self.client.post(url, {"recorte": SimpleUploadedFile("r.png", self._png(), content_type="image/png")})
+        self.assertEqual(bloqueado.status_code, 403)
+
+    def test_trocar_a_foto_apaga_o_recorte(self):
+        import io
+
+        from django.core.files.uploadedfile import SimpleUploadedFile
+        from PIL import Image
+        url = f"/carrosseis/{self.carrossel.pk}/recorte/"
+        self.client.post(url, {"recorte": SimpleUploadedFile("r.png", self._png(), content_type="image/png")})
+        self.assertEqual(self.client.get(url).status_code, 200)
+        arquivo = io.BytesIO()
+        Image.new("RGB", (300, 300), "blue").save(arquivo, "PNG")
+        self.client.post(f"/carrosseis/{self.carrossel.pk}/foto/", {"foto": SimpleUploadedFile("f.png", arquivo.getvalue(), content_type="image/png")})
+        self.assertEqual(self.client.get(url).status_code, 404)  # o recorte era da foto anterior
+
+    def test_editor_recebe_o_endereco_do_recorte(self):
+        from django.core.files.uploadedfile import SimpleUploadedFile
+        pagina = self.client.get(f"/carrosseis/{self.carrossel.pk}/").content.decode()
+        self.assertIn('"recorte": ""', pagina.replace('"recorte":""', '"recorte": ""'))
+        self.client.post(f"/carrosseis/{self.carrossel.pk}/recorte/", {"recorte": SimpleUploadedFile("r.png", self._png(), content_type="image/png")})
+        self.assertIn(f"/carrosseis/{self.carrossel.pk}/recorte/?v=", self.client.get(f"/carrosseis/{self.carrossel.pk}/").content.decode())
+
     def test_apagar(self):
         self.client.post(f"/carrosseis/{self.carrossel.pk}/apagar/")
         self.assertFalse(Carrossel.objects.filter(pk=self.carrossel.pk).exists())

@@ -183,7 +183,7 @@ def whatsapp_ofertas(request):
     recebidas = OfertaRecebida.objects.filter(conta=conta)[:15]
     return render(request, "painel/whatsapp_ofertas.html", _contexto(
         request, "whatsapp",
-        form=form, config=config, historico=historico, recebidas=recebidas, conexao=conexao, regras=regras,
+        form=form, config=config, historico=historico, recebidas=recebidas, conexao=conexao, regras=regras, regras_premium=planos.BOT[True],
         grupos_fora_do_plano=max(0, len(config.grupos or []) - regras["grupos"]),
         versao=_versao_da_tela(conta, config),
         **_resumo_ofertas(conta, config),

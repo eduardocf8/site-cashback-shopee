@@ -66,7 +66,7 @@ GRUPOS = [
             ("meusite.produtosite", "Produtos da vitrine"),
             ("meusite.cliquesite", "Cliques no site"),
         ]),
-        ("Emissão NFS-e", [
+        ("Emissor NFS-e", [
             ("notas.empresanotas", "Empresas"),
             ("notas.notafiscal", "Notas fiscais"),
         ]),

@@ -5,7 +5,7 @@
 {% block conteudo %}
 <header class="cabecalho">
   <div>
-    <a class="notas-voltar" href="{% url 'painel_notas' %}">← Emissão NFS-e</a>
+    <a class="notas-voltar" href="{% url 'painel_notas' %}">← Emissor NFS-e</a>
     <h1>Vendas de {{ lote.mes_referencia|date:"F/Y" }}{% if lote.ambiente == "2" %} <span class="selo-venda selo-pendente">Ambiente de testes</span>{% endif %}</h1>
     <p>{{ lote.nome_arquivo }} · importado em {{ lote.criado_em|date:"d/m/Y H:i" }}</p>
   </div>

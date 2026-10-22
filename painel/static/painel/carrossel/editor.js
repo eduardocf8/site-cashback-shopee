@@ -39,6 +39,7 @@
     c.fillStyle = '#9A9384'; c.font = '600 44px "DM Sans", sans-serif'; c.textAlign = 'center'; c.fillText('Foto indisponível', 400, 410); return k; }
   const fotoShopee = (await carregar(D.produto.imagem, true)) || semFoto();
   let fotoPropria = await carregar(D.fotoPropria, false);
+  let recorte = await carregar(D.recorte, false); // o produto sem fundo (PNG recortado nas bordas), se já foi feito
   await Promise.all(['400 40px "DM Sans"', '500 40px "DM Sans"', '700 40px "DM Sans"', '800 40px "DM Sans"', '400 40px "Bebas Neue"', '900 40px "Playfair Display"', 'italic 800 40px "Playfair Display"', '700 40px "JetBrains Mono"',
     '400 40px "Instrument Serif"', '700 40px "Sora"', '800 40px "Sora"', '500 40px "Manrope"', '800 40px "Manrope"'].map((x) => document.fonts.load(x).catch(() => null)));
 
@@ -53,7 +54,7 @@
 
   function dados() {
     const p = D.produto, d = { nome: p.nome, por: p.preco, de: p.de || 0, desconto: p.desconto || 0, nota: p.nota || 0, vendas: p.vendas || 0,
-      arroba: est.arroba || '', img: fotoPropria || fotoShopee, recorte: null, det: null };
+      arroba: est.arroba || '', img: fotoPropria || fotoShopee, recorte: (plano === 'premium' && est.usarRecorte !== false) ? recorte : null, det: null };
     if (!est.mostraNota) Object.assign(d, { nota: 0, vendas: 0 });
     if (!est.mostraDe) Object.assign(d, { de: 0, desconto: 0 });
     d.semArrasta = !est.mostraArrasta; return d;
@@ -210,6 +211,8 @@
     $('fonte').value = est.fonte;
     $('mostraNota').checked = est.mostraNota; $('mostraDe').checked = est.mostraDe; $('mostraArrasta').checked = est.mostraArrasta; $('arroba').value = est.arroba;
     $('removerFoto').hidden = !fotoPropria;
+    $('removerRecorte').hidden = !recorte; $('linhaRecorte').hidden = !recorte; $('usarRecorte').checked = est.usarRecorte !== false;
+    $('tirarFundo').textContent = recorte ? 'Refazer o recorte' : 'Remover o fundo da foto';
     const nv = $('novo'); nv.innerHTML = '<option value="">+ Adicionar slide…</option>'; NOVOS[est.familia].forEach((k) => { const o = document.createElement('option'); o.value = k; o.textContent = NOMES_TIPO[k]; nv.appendChild(o); });
   }
   function montarTudo(soSelecao) {
@@ -245,10 +248,46 @@
   $('fonte').onchange = (e) => { est.fonte = e.target.value; mudou(); };
   $('foto').onchange = async (e) => { const f = e.target.files[0]; e.target.value = ''; if (!f) return; const fd = new FormData(); fd.append('foto', f); toast('Enviando a foto…');
     try { const r = await fetch(D.urls.foto, { method: 'POST', body: fd, headers: { 'X-CSRFToken': CSRF }, credentials: 'same-origin' }); const j = await r.json().catch(() => ({})); if (!r.ok) throw new Error(j.erro || 'Não consegui enviar a foto.');
-      fotoPropria = await carregar(j.url, false); montarVisual(); redesenhar(); toast('Foto trocada'); } catch (err) { toast(err.message); } };
+      fotoPropria = await carregar(j.url, false); recorte = null; montarVisual(); redesenhar(); toast('Foto trocada'); } catch (err) { toast(err.message); } };
   $('removerFoto').onclick = async () => { const fd = new FormData(); fd.append('remover', '1');
     try { const r = await fetch(D.urls.foto, { method: 'POST', body: fd, headers: { 'X-CSRFToken': CSRF }, credentials: 'same-origin' }); if (!r.ok) throw new Error('Não consegui voltar para a foto da Shopee.');
-      fotoPropria = null; montarVisual(); redesenhar(); toast('Voltou para a foto da Shopee'); } catch (err) { toast(err.message); } };
+      fotoPropria = null; recorte = null; montarVisual(); redesenhar(); toast('Voltou para a foto da Shopee'); } catch (err) { toast(err.message); } };
+  // ---- remover o fundo da foto (no navegador; o servidor só guarda o PNG pronto) -------------------
+  // A biblioteca roda a IA em segundo plano (a tela não trava) e baixa o modelo (~40 MB) na primeira vez.
+  const FUNDO_LIB = 'https://cdn.jsdelivr.net/npm/@imgly/background-removal@1.5.5/+esm', FUNDO_LADO = 1024;
+  let tirando = false;
+  function textoProgresso(t) { const p = $('progressoRecorte'); p.textContent = t; p.hidden = !t; }
+  async function paraBlob(canvas) { return new Promise((ok, erro) => canvas.toBlob((b) => (b ? ok(b) : erro(new Error('Não consegui preparar a foto.'))), 'image/png')); }
+  function cortarNasBordas(img) { // tira a margem transparente em volta do produto: o desenho encaixa o produto pela caixa dele
+    const k = document.createElement('canvas'); k.width = img.width; k.height = img.height; const c = k.getContext('2d', { willReadFrequently: true }); c.drawImage(img, 0, 0);
+    const px = c.getImageData(0, 0, k.width, k.height).data; let x0 = k.width, y0 = k.height, x1 = -1, y1 = -1;
+    for (let y = 0; y < k.height; y++) for (let x = 0; x < k.width; x++) if (px[(y * k.width + x) * 4 + 3] > 24) { if (x < x0) x0 = x; if (x > x1) x1 = x; if (y < y0) y0 = y; if (y > y1) y1 = y; }
+    if (x1 < 0) return null; // nada sobrou: a IA não achou o produto
+    const m = 3; x0 = Math.max(0, x0 - m); y0 = Math.max(0, y0 - m); x1 = Math.min(k.width - 1, x1 + m); y1 = Math.min(k.height - 1, y1 + m);
+    const o = document.createElement('canvas'); o.width = x1 - x0 + 1; o.height = y1 - y0 + 1; o.getContext('2d').drawImage(k, x0, y0, o.width, o.height, 0, 0, o.width, o.height); return o; }
+  $('tirarFundo').onclick = async () => {
+    if (tirando) return; tirando = true; const botao = $('tirarFundo'), antes = botao.textContent; botao.disabled = true; textoProgresso('Preparando…');
+    try {
+      const origem = fotoPropria || fotoShopee, esc = Math.min(1, FUNDO_LADO / Math.max(origem.width, origem.height));
+      const entrada = document.createElement('canvas'); entrada.width = Math.round(origem.width * esc); entrada.height = Math.round(origem.height * esc);
+      entrada.getContext('2d').drawImage(origem, 0, 0, entrada.width, entrada.height);
+      let blobEntrada; try { blobEntrada = await paraBlob(entrada); } catch (e) { throw new Error('Não consegui ler essa foto. Tente enviar a foto do produto pelo botão "Escolher outra foto…".'); }
+      const lib = await import(FUNDO_LIB);
+      const saida = await lib.removeBackground(blobEntrada, { model: 'isnet_quint8', output: { format: 'image/png' },
+        progress: (chave, atual, total) => { const baixando = String(chave).startsWith('fetch'); textoProgresso(baixando ? 'Baixando o modelo (só na primeira vez, leva um pouco mais)…' : 'Removendo o fundo… pode levar alguns segundos'); } });
+      const url = URL.createObjectURL(saida); const img = await carregar(url, false); URL.revokeObjectURL(url);
+      const cortada = img && cortarNasBordas(img); if (!cortada) throw new Error('Não encontrei o produto nessa foto. Tente com outra foto.');
+      textoProgresso('Salvando…'); const fd = new FormData(); fd.append('recorte', await paraBlob(cortada), 'recorte.png');
+      const r = await fetch(D.urls.recorte, { method: 'POST', body: fd, headers: { 'X-CSRFToken': CSRF }, credentials: 'same-origin' }); const j = await r.json().catch(() => ({}));
+      if (!r.ok) throw new Error(j.erro || 'Não consegui salvar o recorte.');
+      recorte = await carregar(j.url, false); est.usarRecorte = true; montarVisual(); redesenhar(); agendarSalvar(); textoProgresso('');
+      toast(FAMILIA(est.modelo) === 'premium' ? 'Pronto: o produto agora aparece sem fundo' : 'Pronto. O recorte aparece nos modelos ★');
+    } catch (err) { textoProgresso(''); toast(err.message && !/fetch|import|network/i.test(err.message) ? err.message : 'Não consegui remover o fundo agora. Confira sua conexão e tente de novo.'); }
+    finally { tirando = false; botao.disabled = false; if (!recorte) botao.textContent = antes; } };
+  $('removerRecorte').onclick = async () => { const fd = new FormData(); fd.append('remover', '1');
+    try { const r = await fetch(D.urls.recorte, { method: 'POST', body: fd, headers: { 'X-CSRFToken': CSRF }, credentials: 'same-origin' }); if (!r.ok) throw new Error('Não consegui apagar o recorte.');
+      recorte = null; montarVisual(); redesenhar(); toast('Voltou para a foto inteira'); } catch (err) { toast(err.message); } };
+  $('usarRecorte').onchange = (e) => { est.usarRecorte = e.target.checked; mudou(); };
   ['mostraNota', 'mostraDe', 'mostraArrasta'].forEach((k) => $(k).onchange = (e) => { est[k] = e.target.checked; mudou(); });
   $('arroba').oninput = (e) => { let v = e.target.value.trim().replace(/\s+/g, ''); if (v && !v.startsWith('@')) v = '@' + v; est.arroba = v; mudou(); };
   $('salvarPadrao').onclick = async () => { try { await postar(D.urls.padrao, { opcoes: { modelo: est.modelo, tema: est.tema, cor: est.cor, fonte: est.fonte, arroba: est.arroba, mostraNota: est.mostraNota, mostraDe: est.mostraDe, mostraArrasta: est.mostraArrasta } });

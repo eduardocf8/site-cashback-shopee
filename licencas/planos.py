@@ -17,9 +17,9 @@ CARROSSEIS = {
 
 # Bot de WhatsApp.
 BOT = {
-    False: {"grupos": 3, "ofertas_por_grupo_dia": 30, "intervalo_minimo": 15, "copiar": False, "ia": False,
+    False: {"grupos": 10, "ofertas_por_grupo_dia": 60, "intervalo_minimo": 15, "copiar": False, "ia": False,
             "alerta_produtos": 10, "alerta_intervalo_minimo": 60},
-    True: {"grupos": 20, "ofertas_por_grupo_dia": 100, "intervalo_minimo": 3, "copiar": True, "ia": True,
+    True: {"grupos": 50, "ofertas_por_grupo_dia": 300, "intervalo_minimo": 3, "copiar": True, "ia": True,
            "alerta_produtos": 50, "alerta_intervalo_minimo": 15},
 }
 
@@ -29,7 +29,7 @@ SITE = {
     True: {"botoes": 10, "produtos_escolhidos": True},
 }
 
-# Emissão NFS-e: notas de verdade por mês (None = sem limite). Vale o maior plano que a conta tiver.
+# Emissor NFS-e: notas de verdade por mês (None = sem limite). Vale o maior plano que a conta tiver.
 NOTAS_POR_MES = [
     (MODULO_NOTAS_ILIMITADO, None), (MODULO_NOTAS_10000, 10000), (MODULO_NOTAS_5000, 5000),
     (MODULO_NOTAS_2000, 2000), (MODULO_NOTAS_500, 500), (MODULO_NOTAS, 100),

@@ -51,7 +51,12 @@
       <div class="grupo-campo"><h3>Cor</h3><div class="temas" id="temas"></div></div>
       <div class="trava" data-premium><h3>Fonte dos títulos <span class="selo-premium">PREMIUM</span></h3>
         <select id="fonte" aria-label="Fonte dos títulos"><option value="modelo">A do modelo</option><option value="moderna">Moderna (DM Sans)</option><option value="geometrica">Geométrica (Sora)</option><option value="impacto">Impacto (Bebas)</option><option value="elegante">Elegante (Playfair)</option><option value="serifa">Serifa fina (Instrument)</option></select></div>
-      <div class="grupo-campo"><h3>Produto recortado (sem fundo)</h3><p class="dica">Em breve: o fundo da foto sai sozinho nos modelos ★. Por enquanto a foto entra num cartão branco.</p></div>
+      <div class="trava" data-premium><h3>Produto recortado (sem fundo) <span class="selo-premium">PREMIUM</span></h3>
+        <p class="dica" id="dicaRecorte">Tira o fundo da foto e deixa o produto solto nos modelos ★. Roda no seu navegador e leva alguns segundos; a tela continua livre enquanto isso.</p>
+        <div class="ec-acoes" style="justify-content:flex-start"><button class="ec-btn" id="tirarFundo" type="button">Remover o fundo da foto</button><button class="ec-btn" id="removerRecorte" type="button" hidden>Voltar para a foto inteira</button></div>
+        <p class="dica" id="progressoRecorte" role="status" hidden></p>
+        <div class="ec-linha" id="linhaRecorte" hidden>Usar o produto recortado<input type="checkbox" class="sw" role="switch" id="usarRecorte" checked></div>
+      </div>
       <div class="trava" data-premium><h3>Foto do produto <span class="selo-premium">PREMIUM</span></h3>
         <div class="ec-acoes" style="justify-content:flex-start"><label class="ec-btn" for="foto">Escolher outra foto…</label><button class="ec-btn" id="removerFoto" type="button" hidden>Voltar para a da Shopee</button></div>
         <input class="arquivo" type="file" id="foto" accept="image/jpeg,image/png,image/webp">

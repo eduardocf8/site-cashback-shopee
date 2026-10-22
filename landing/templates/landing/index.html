@@ -20,7 +20,7 @@
           <li><svg viewBox="0 0 24 24"><path d="{{ icones.site }}"/></svg>Meu site</li>
           <li><svg viewBox="0 0 24 24"><path d="{{ icones.carrosseis }}"/></svg>Gerador de carrosséis</li>
           <li><svg viewBox="0 0 24 24"><path d="{{ icones.resultados }}"/></svg>Resultados e metas</li>
-          <li class="largo"><svg viewBox="0 0 24 24"><path d="{{ icones.notas }}"/></svg>Emissão de notas fiscais</li>
+          <li class="largo"><svg viewBox="0 0 24 24"><path d="{{ icones.notas }}"/></svg>Emissor NFS-e</li>
         </ul>
       </div>
     </div>
@@ -47,13 +47,15 @@
           <h3>{{ m.nome }}</h3>
           <p>{{ m.frase }}</p>
           <span class="a-partir">a partir de <b>{{ m.a_partir }}</b>/mês</span>
+          <a class="ver-recursos" href="{% url m.pagina %}">Ver todos os recursos →</a>
         </article>
       {% endfor %}
       <article class="modulo">
         <svg viewBox="0 0 24 24" aria-hidden="true"><path d="{{ icones.notas }}"/></svg>
-        <h3>Emissão NFS-e</h3>
+        <h3>Emissor NFS-e</h3>
         <p>As notas fiscais dos vendedores que pagaram comissão extra, direto do relatório mensal da Shopee. Para afiliados pessoa jurídica.</p>
         <span class="a-partir">a partir de <b>{{ notas.0.preco }}</b>/mês</span>
+        <a class="ver-recursos" href="{% url 'landing_notas' %}">Ver como funciona →</a>
       </article>
     </div>
   </div>
@@ -62,11 +64,11 @@
 <section id="como" class="secao secao-creme">
   <div class="miolo">
     <p class="chapeu">Como funciona</p>
-    <h2>Do pagamento ao primeiro envio em três passos.</h2>
+    <h2>Do pagamento ao primeiro uso em três passos.</h2>
     <ol class="passos">
-      <li><span>1</span><h3>Escolha e pague</h3><p>Monte o seu plano abaixo e pague pelo checkout seguro da Zouti.</p></li>
-      <li><span>2</span><h3>Receba o acesso</h3><p>Assim que o pagamento é confirmado, a chave de acesso chega no seu e-mail.</p></li>
-      <li><span>3</span><h3>Conecte e divulgue</h3><p>Entre no painel, conecte a sua conta da Shopee e, se tiver o bot, o seu WhatsApp pelo QR Code.</p></li>
+      <li><span>1</span><h3>Escolha e pague</h3><p>Escolha os módulos que quiser, ou monte um combo, e pague pelo checkout seguro da Zouti.</p></li>
+      <li><span>2</span><h3>Receba o acesso</h3><p>Assim que o pagamento é confirmado, você recebe no e-mail o link para criar a sua senha e entrar no painel.</p></li>
+      <li><span>3</span><h3>Conecte e comece</h3><p>Entre no painel, conecte a sua conta da Shopee e use os módulos do seu plano. Se tiver o bot, o WhatsApp conecta pelo QR Code.</p></li>
     </ol>
   </div>
 </section>
@@ -77,19 +79,7 @@
     <h2>Standard para começar, Premium para crescer.</h2>
     <p class="secao-texto">Preços por mês. Plano anual com 17% de desconto disponível no checkout.</p>
     {% for m in modulos %}
-      <div class="bloco-plano">
-        <div class="bloco-titulo"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="{{ m.icone }}"/></svg><h3>{{ m.nome }}</h3></div>
-        <div class="par-planos">
-          {% for p in m.planos %}
-            <article class="plano{% if p.nivel == 'Premium' %} plano-destaque{% endif %}">
-              <h4>{{ p.nivel }}</h4>
-              <p class="preco"><b>{{ p.preco }}</b><span>/mês</span></p>
-              <ul>{% for item in p.itens %}<li>{{ item }}</li>{% endfor %}</ul>
-              <a class="botao{% if p.nivel != 'Premium' %} botao-vazado-escuro{% endif %}" href="{{ p.link }}">Assinar {{ m.nome }} {{ p.nivel }}</a>
-            </article>
-          {% endfor %}
-        </div>
-      </div>
+      {% include "landing/_bloco_plano.html" %}
     {% endfor %}
   </div>
 </section>
@@ -131,7 +121,7 @@
 
 <section id="notas" class="secao">
   <div class="miolo">
-    <p class="chapeu">Emissão NFS-e</p>
+    <p class="chapeu">Emissor NFS-e</p>
     <h2>Notas fiscais dos vendedores, sem digitar nada.</h2>
     <p class="secao-texto">Envie o relatório mensal da Shopee e o Appfiliado emite uma nota por loja no Emissor Nacional do governo, com envio por e-mail para cada vendedor. <strong>Exclusivo para afiliados pessoa jurídica</strong> (MEI ou Simples Nacional, com certificado digital A1). A partir de {{ notas.0.preco }} por mês.</p>
     <p style="margin-top:24px"><a class="botao" href="{% url 'landing_notas' %}">Ver como funciona e os planos de notas</a></p>

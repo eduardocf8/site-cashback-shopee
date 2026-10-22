@@ -26,12 +26,12 @@ LOGO = ('<svg viewBox="3 8.25 36 36" width="54" height="54"><g fill="none" strok
 BOT = ("whatsapp", "Bot de WhatsApp", "Ofertas da Shopee no automático nos seus grupos, com o seu link.")
 SITE = ("site", "Meu site", "Seu link na bio com vitrine de ofertas e conversor de links.")
 CARR = ("carrosseis", "Gerador de carrosséis", "Carrosséis para o Instagram prontos a partir de um link da Shopee.")
-NOTAS = ("notas", "Emissão NFS-e", "As notas dos vendedores direto do relatório da Shopee.")
+NOTAS = ("notas", "Emissor NFS-e", "As notas dos vendedores direto do relatório da Shopee.")
 
 AVULSOS = [
-    ("bot-standard", BOT, "Standard", ["Até 3 grupos e canais", "30 ofertas por dia em cada grupo",
+    ("bot-standard", BOT, "Standard", ["Até 10 grupos e canais", "60 ofertas por dia em cada grupo",
                                         "Seu link de afiliado em todas"]),
-    ("bot-premium", BOT, "Premium", ["Até 20 grupos e canais", "100 ofertas por dia em cada grupo",
+    ("bot-premium", BOT, "Premium", ["Até 50 grupos e canais", "300 ofertas por dia em cada grupo",
                                       "Copia ofertas de outros grupos e revisa o texto com IA"]),
     ("site-standard", SITE, "Standard", ["Até 3 botões", "Conversor de links da Shopee",
                                           "Vitrine com as ofertas do bot ou da busca"]),

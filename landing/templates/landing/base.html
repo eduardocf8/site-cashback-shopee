@@ -19,6 +19,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=DM+Sans:opsz,wght@9..40,400;9..40,500;9..40,700;9..40,800&display=swap">
+<script>(function (d) { d.className += " js"; setTimeout(function () { if (!window.landingPronta) d.className += " sem-animacao"; }, 3000); })(document.documentElement);</script>
 <link rel="stylesheet" href="{% static 'landing/landing.css' %}">
 <script src="https://cdn1.zouti.com.br/scripts/params/persistence.min.js"></script>
 <script src="{% static 'landing/landing.js' %}" defer></script>
@@ -43,7 +44,8 @@
 <footer class="rodape">
   <div class="miolo">
     <a class="marca" href="{% url 'landing' %}" aria-label="Appfiliado"><span class="logo"><svg width="40" height="40"><use href="#logo"/></svg></span><strong>Appfiliado</strong></a>
-    <p>Ferramentas para afiliados da Shopee. <a href="{% url 'landing_notas' %}">Emissão de notas fiscais</a> · <a href="{{ painel_url }}">Entrar no painel</a></p>
+    <p>Ferramentas para afiliados da Shopee.</p>
+    <p class="rodape-links"><a href="{% url 'landing_bot' %}">Bot de WhatsApp</a> · <a href="{% url 'landing_site' %}">Meu site</a> · <a href="{% url 'landing_carrosseis' %}">Gerador de carrosséis</a> · <a href="{% url 'landing_notas' %}">Emissor NFS-e</a> · <a href="{{ painel_url }}">Entrar no painel</a></p>
     <p class="aviso">O Appfiliado é uma ferramenta independente e não tem vínculo com a Shopee. Shopee é marca de seus respectivos donos. Não garantimos vendas nem comissões.</p>
   </div>
 </footer>
