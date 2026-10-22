@@ -11,4 +11,4 @@ Pra refazer depois de mudar alguma tela:
    (o `servidor_demo.py` troca a Shopee e o WhatsApp por respostas de exemplo).
 5. `python final.py` regrava as imagens `.webp` em `landing/static/landing/prints/`.
 
-Os tamanhos de cada imagem ficam em `landing/recursos.py` (`ALTURAS`): atualize se mudar a altura da captura.
+Cada tela sai em duas versões: computador (1100 px, sem o menu lateral) e celular (`-m`, layout de celular em 2x). Os tamanhos ficam em `landing/recursos.py` (`TAMANHOS`, vêm do `tamanhos.json` que o `final.py` grava): atualize se mudar o recorte.
