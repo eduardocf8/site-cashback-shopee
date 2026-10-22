@@ -410,7 +410,7 @@ DOZE_GRUPOS = [{"jid": f"{i}@g.us", "nome": f"Grupo {i}"} for i in range(1, 13)]
 
 @mock.patch.object(shopee_ofertas, "gerar_link_afiliado", side_effect=link_falso)
 class TestMotorNoPlanoStandard(TestCase):
-    """Standard: até 10 grupos, 90 ofertas por grupo por dia, intervalo de 15 min no mínimo,
+    """Standard: até 10 grupos, 60 ofertas por grupo por dia, intervalo de 15 min no mínimo,
     sem copiar ofertas e sem IA."""
 
     def setUp(self):
@@ -449,18 +449,18 @@ class TestMotorNoPlanoStandard(TestCase):
         self.assertEqual(self.config.proximo_envio_em, AGORA + timedelta(minutes=5))
 
     def test_limite_de_ofertas_por_grupo_no_dia(self, _link):
-        self.enviados_hoje("1@g.us", 90)
+        self.enviados_hoje("1@g.us", 60)
         self.rodar([produto(1)])
         novos = set(EnvioWhatsApp.objects.filter(item_id="1").values_list("destino", flat=True))
-        self.assertEqual(novos, {f"{i}@g.us" for i in range(2, 11)})  # o grupo 1 já recebeu as 90 de hoje
+        self.assertEqual(novos, {f"{i}@g.us" for i in range(2, 11)})  # o grupo 1 já recebeu as 60 de hoje
 
         for i in range(2, 11):
-            self.enviados_hoje(f"{i}@g.us", 90)
+            self.enviados_hoje(f"{i}@g.us", 60)
         self.config.proximo_envio_em = None
         self.config.save()
         self.rodar([produto(2)])
         self.assertFalse(EnvioWhatsApp.objects.filter(item_id="2").exists())
-        self.assertIn("90 ofertas de hoje", self.config.situacao)
+        self.assertIn("60 ofertas de hoje", self.config.situacao)
 
     def test_copiar_ofertas_e_do_premium(self, _link):
         self.config.modo = ConfiguracaoOfertas.MODO_COPIAR
@@ -496,7 +496,7 @@ class TestTelaNoPlanoStandard(BasePainel):
 
     def test_tela_mostra_o_que_o_plano_libera(self):
         html = self.client.get("/whatsapp/ofertas/").content.decode()
-        self.assertIn("No seu plano: até 10 grupos e canais, 90 ofertas por dia em cada um", html)
+        self.assertIn("No seu plano: até 10 grupos e canais, 60 ofertas por dia em cada um", html)
         self.assertIn('data-maximo="10"', html)
         self.assertRegex(html, r'value="copiar" disabled><span>Copiar de grupos e canais <small class="selo-premium">Premium')
         self.assertIn("A revisão com IA é do", html)
