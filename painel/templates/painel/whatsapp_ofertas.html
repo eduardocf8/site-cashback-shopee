@@ -10,7 +10,7 @@
 </header>
 {% include "painel/_abas_whatsapp.html" with aba="ofertas" %}
 {% if not regras.premium %}
-<p class="aviso aviso-info pequeno plano-bot">No seu plano: até {{ regras.grupos }} grupos e canais, {{ regras.ofertas_por_grupo_dia }} ofertas por dia em cada um e uma oferta a cada {{ regras.intervalo_minimo }} minutos, no mínimo. No <a href="{{ url_planos }}" target="_blank" rel="noopener">plano Premium</a>: até 20 grupos, 100 ofertas por dia em cada, intervalo a partir de 3 minutos, copiar ofertas de outros grupos e canais e revisão do texto com IA.</p>
+<p class="aviso aviso-info pequeno plano-bot">No seu plano: até {{ regras.grupos }} grupos e canais, {{ regras.ofertas_por_grupo_dia }} ofertas por dia em cada um e uma oferta a cada {{ regras.intervalo_minimo }} minutos, no mínimo. No <a href="{{ url_planos }}" target="_blank" rel="noopener">plano Premium</a>: até {{ regras_premium.grupos }} grupos, {{ regras_premium.ofertas_por_grupo_dia }} ofertas por dia em cada, intervalo a partir de 3 minutos, copiar ofertas de outros grupos e canais e revisão do texto com IA.</p>
 {% endif %}
 
 <div id="ofertas" data-url="{% url 'painel_whatsapp_ofertas_estado' %}" data-testando="{{ config.testando|yesno:'1,0' }}" data-versao="{{ versao }}"></div>
