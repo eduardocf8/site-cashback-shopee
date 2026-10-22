@@ -20,7 +20,7 @@
           <li><svg viewBox="0 0 24 24"><path d="{{ icones.site }}"/></svg>Meu site</li>
           <li><svg viewBox="0 0 24 24"><path d="{{ icones.carrosseis }}"/></svg>Gerador de carrosséis</li>
           <li><svg viewBox="0 0 24 24"><path d="{{ icones.resultados }}"/></svg>Resultados e metas</li>
-          <li class="largo"><svg viewBox="0 0 24 24"><path d="{{ icones.notas }}"/></svg>Emissão de notas fiscais</li>
+          <li class="largo"><svg viewBox="0 0 24 24"><path d="{{ icones.notas }}"/></svg>Emissor NFS-e</li>
         </ul>
       </div>
     </div>
@@ -51,7 +51,7 @@
       {% endfor %}
       <article class="modulo">
         <svg viewBox="0 0 24 24" aria-hidden="true"><path d="{{ icones.notas }}"/></svg>
-        <h3>Emissão NFS-e</h3>
+        <h3>Emissor NFS-e</h3>
         <p>As notas fiscais dos vendedores que pagaram comissão extra, direto do relatório mensal da Shopee. Para afiliados pessoa jurídica.</p>
         <span class="a-partir">a partir de <b>{{ notas.0.preco }}</b>/mês</span>
       </article>
@@ -131,7 +131,7 @@
 
 <section id="notas" class="secao">
   <div class="miolo">
-    <p class="chapeu">Emissão NFS-e</p>
+    <p class="chapeu">Emissor NFS-e</p>
     <h2>Notas fiscais dos vendedores, sem digitar nada.</h2>
     <p class="secao-texto">Envie o relatório mensal da Shopee e o Appfiliado emite uma nota por loja no Emissor Nacional do governo, com envio por e-mail para cada vendedor. <strong>Exclusivo para afiliados pessoa jurídica</strong> (MEI ou Simples Nacional, com certificado digital A1). A partir de {{ notas.0.preco }} por mês.</p>
     <p style="margin-top:24px"><a class="botao" href="{% url 'landing_notas' %}">Ver como funciona e os planos de notas</a></p>
