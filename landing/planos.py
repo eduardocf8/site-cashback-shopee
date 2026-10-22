@@ -10,8 +10,8 @@ NOMES = {"bot": "Bot de WhatsApp", "site": "Meu site", "carrosseis": "Gerador de
 NIVEIS = ("Standard", "Premium")
 PRECOS = {"bot": (49.90, 89.90), "site": (22.90, 35.90), "carrosseis": (19.90, 35.90)}  # mensal (Standard, Premium)
 DESCONTO_COMBO = {1: 1.0, 2: 0.90, 3: 0.80}  # 2 módulos: 10% a menos; 3 módulos: 20% a menos
-NOTAS = [("Até 100 notas por mês", 17.90), ("Até 500 notas por mês", 49.90), ("Até 2.000 notas por mês", 89.90),
-         ("Até 5.000 notas por mês", 129.90), ("Até 10.000 notas por mês", 169.90), ("Notas ilimitadas", 229.90)]
+NOTAS = [("Até 100 notas", 17.90), ("Até 500 notas", 49.90), ("Até 2.000 notas", 89.90),
+         ("Até 5.000 notas", 129.90), ("Até 10.000 notas", 169.90), ("Notas ilimitadas", 229.90)]
 
 LINKS = {
     "bot0": "https://pay.zouti.com.br/checkout?poi=prod_offer_p9rg1fgcszk7s4tzktp1av",
