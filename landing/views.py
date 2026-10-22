@@ -38,7 +38,7 @@ RESUMOS = {
 }
 INCLUSOS = [
     ("resultados", "Resultados e metas", "Vendas, comissões e ranking dos seus links num só lugar."),
-    ("conversor", "Conversor de links", "Cole um link da Shopee e receba o seu, com Sub ID."),
+    ("conversor", "Conversor de links", "Cole textos de terceiros e receba eles já com os links convertidos, prontos para compartilhar."),
     ("radar", "Radar de ofertas", "Mais de 30 mil produtos para filtrar por comissão, desconto e categoria."),
 ]
 PERGUNTAS = [
