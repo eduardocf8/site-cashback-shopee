@@ -12,11 +12,14 @@ RESUMOS = {
     "bot": {
         "icone": "whatsapp", "frase": "Ofertas da Shopee no automático nos seus grupos de WhatsApp, sempre com o seu link de afiliado.",
         "itens": (
-            ["Até 3 grupos e canais", "Até 30 ofertas por dia em cada grupo", "Busca por palavra-chave, loja ou categoria, com filtros",
-             "Modo campanha para 11.11 e Black Friday", "Alerta de preço para até 10 produtos"],
-            ["Até 20 grupos e canais", "Até 100 ofertas por dia em cada grupo", "Copia ofertas de outros grupos e troca pelo seu link",
-             "Revisão do texto com IA", "Alerta de preço para até 50 produtos, a cada 15 minutos"],
+            ["Até 10 grupos e canais", "Até 90 ofertas por dia em cada grupo/canal", "Alerta de preço para até 10 produtos"],
+            ["Até 50 grupos ou canais", "Até 300 ofertas por dia em cada grupo/canal", "Alerta de preço para até 50 produtos",
+             "Copia ofertas de outros grupos e troca pelo seu link", "Revisão de texto com IA"],
         ),
+        # Itens do Premium que o Standard não tem: a bolinha muda de cor para destacar.
+        "extras": ("Copia ofertas de outros grupos e troca pelo seu link", "Revisão de texto com IA"),
+        # Ferramentas iguais nos dois planos, mostradas embaixo dos cartões.
+        "comuns": ["Busca por palavra-chave, loja ou categoria, com filtros", "Modo campanha para datas específicas (como datas duplas)"],
     },
     "site": {
         "icone": "site", "frase": "Seu link na bio (seunome.appfiliado.com.br) com vitrine de ofertas e conversor de links.",
@@ -67,8 +70,10 @@ PERGUNTAS_NOTAS = [
 
 
 def _cartao(modulo, nivel):
-    return {"nivel": planos.NIVEIS[nivel], "preco": planos.brl(planos.PRECOS[modulo][nivel]), "itens": RESUMOS[modulo]["itens"][nivel],
-            "link": planos.LINKS[f"{modulo}{nivel}"]}
+    extras = RESUMOS[modulo].get("extras", ()) if nivel else ()
+    return {"nivel": planos.NIVEIS[nivel], "preco": planos.brl(planos.PRECOS[modulo][nivel]),
+            "itens": [{"texto": t, "extra": t in extras} for t in RESUMOS[modulo]["itens"][nivel]],
+            "tem_extras": bool(extras), "link": planos.LINKS[f"{modulo}{nivel}"]}
 
 
 def _comum(request):
@@ -96,7 +101,8 @@ def pagina(request):
     combos = planos.todos_os_combos()
     contexto = {
         "modulos": [{"codigo": m, "nome": planos.NOMES[m], "icone": ICONES[RESUMOS[m]["icone"]], "frase": RESUMOS[m]["frase"],
-                     "a_partir": planos.brl(planos.PRECOS[m][0]), "planos": [_cartao(m, 0), _cartao(m, 1)]} for m in planos.MODULOS],
+                     "a_partir": planos.brl(planos.PRECOS[m][0]), "comuns": RESUMOS[m].get("comuns", []),
+                     "planos": [_cartao(m, 0), _cartao(m, 1)]} for m in planos.MODULOS],
         "inclusos": [{"icone": ICONES[i], "nome": n, "frase": f} for i, n, f in INCLUSOS],
         "notas": _faixas_de_notas(),
         "montador": {"combos": combos, "modulos": [{"codigo": m, "nome": planos.NOMES[m]} for m in planos.MODULOS]},

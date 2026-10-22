@@ -84,11 +84,18 @@
             <article class="plano{% if p.nivel == 'Premium' %} plano-destaque{% endif %}">
               <h4>{{ p.nivel }}</h4>
               <p class="preco"><b>{{ p.preco }}</b><span>/mês</span></p>
-              <ul>{% for item in p.itens %}<li>{{ item }}</li>{% endfor %}</ul>
+              <ul>{% for item in p.itens %}<li{% if item.extra %} class="extra"{% endif %}>{{ item.texto }}</li>{% endfor %}</ul>
+              {% if p.tem_extras %}<p class="legenda-extra"><i aria-hidden="true"></i>Bolinha verde: a mais que no Standard</p>{% endif %}
               <a class="botao{% if p.nivel != 'Premium' %} botao-vazado-escuro{% endif %}" href="{{ p.link }}">Assinar {{ m.nome }} {{ p.nivel }}</a>
             </article>
           {% endfor %}
         </div>
+        {% if m.comuns %}
+          <div class="plano-comuns">
+            <h4>Em todos os planos</h4>
+            <ul>{% for item in m.comuns %}<li>{{ item }}</li>{% endfor %}</ul>
+          </div>
+        {% endif %}
       </div>
     {% endfor %}
   </div>
