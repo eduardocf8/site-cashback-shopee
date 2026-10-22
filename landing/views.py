@@ -24,10 +24,10 @@ RESUMOS = {
     "site": {
         "icone": "site", "frase": "Seu link na bio (seunome.appfiliado.com.br) com vitrine de ofertas e conversor de links.",
         "itens": (
-            ["Até 3 botões e ícones das redes sociais", "Conversor: o visitante cola um link e compra pelo seu", "Vitrine com as ofertas do bot ou de uma busca",
-             "Cliques contados e Sub ID próprio"],
-            ["Até 10 botões", "Vitrine com os produtos que você escolher", "Sem a marca \"Feito com Appfiliado\" no rodapé"],
+            ["Até 3 botões", "Vitrine de ofertas padrão", "Com assinatura do Appfiliado no rodapé"],
+            ["Até 10 botões", "Vitrine de ofertas personalizável", "Sem assinatura do Appfiliado no rodapé"],
         ),
+        "comuns": ["Conversor de links", "Contador de cliques", "SubID próprio"],
     },
     "carrosseis": {
         "icone": "carrosseis", "frase": "Cole um link da Shopee e receba um carrossel pronto para o Instagram.",
