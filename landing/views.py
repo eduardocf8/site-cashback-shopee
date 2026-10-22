@@ -6,7 +6,7 @@ from django.views.decorators.http import require_GET
 from licencas import planos as planos_do_app
 from painel.modulos import ICONES
 
-from . import planos
+from . import planos, recursos as conteudo
 
 # Resumo de cada plano, no mesmo texto do guia da Zouti (marketing/appfiliado/gerar_guia_zouti.py).
 RESUMOS = {
@@ -79,6 +79,16 @@ def _cartao(modulo, nivel):
             "tem_extras": bool(extras), "link": planos.LINKS[f"{modulo}{nivel}"]}
 
 
+PAGINA_DO_MODULO = {"bot": "landing_bot", "site": "landing_site", "carrosseis": "landing_carrosseis"}
+
+
+def _modulo(m):
+    """Os dados de um módulo para os cartões de plano (landing e páginas de recursos)."""
+    return {"codigo": m, "nome": planos.NOMES[m], "icone": ICONES[RESUMOS[m]["icone"]], "frase": RESUMOS[m]["frase"],
+            "a_partir": planos.brl(planos.PRECOS[m][0]), "comuns": RESUMOS[m].get("comuns", []), "pagina": PAGINA_DO_MODULO[m],
+            "planos": [_cartao(m, 0), _cartao(m, 1)]}
+
+
 def _comum(request):
     return {
         "painel_url": settings.APPFILIADO_PAINEL_URL,
@@ -103,9 +113,7 @@ def notas(request):
 def pagina(request):
     combos = planos.todos_os_combos()
     contexto = {
-        "modulos": [{"codigo": m, "nome": planos.NOMES[m], "icone": ICONES[RESUMOS[m]["icone"]], "frase": RESUMOS[m]["frase"],
-                     "a_partir": planos.brl(planos.PRECOS[m][0]), "comuns": RESUMOS[m].get("comuns", []),
-                     "planos": [_cartao(m, 0), _cartao(m, 1)]} for m in planos.MODULOS],
+        "modulos": [_modulo(m) for m in planos.MODULOS],
         "inclusos": [{"icone": ICONES[i], "nome": n, "frase": f} for i, n, f in INCLUSOS],
         "notas": _faixas_de_notas(),
         "montador": {"combos": combos, "modulos": [{"codigo": m, "nome": planos.NOMES[m]} for m in planos.MODULOS]},
@@ -126,11 +134,19 @@ def robots(request):
 
 @require_GET
 def sitemap(request):
+    caminhos = ["/", "/emissao-de-notas/"] + [f"/{conteudo.PAGINAS[m]()['slug']}/" for m in planos.MODULOS]
     xml = ('<?xml version="1.0" encoding="UTF-8"?><urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">'
-           f"<url><loc>https://{request.get_host()}/</loc></url>"
-           f"<url><loc>https://{request.get_host()}/emissao-de-notas/</loc></url></urlset>")
+           + "".join(f"<url><loc>https://{request.get_host()}{c}</loc></url>" for c in caminhos) + "</urlset>")
     return HttpResponse(xml, content_type="application/xml")
 
 
 def nao_encontrada(request, exception=None):
     return HttpResponseNotFound("Página não encontrada.", content_type="text/plain; charset=utf-8")
+
+
+@require_GET
+def recursos(request, modulo):
+    """Página com todos os recursos de um módulo (conteúdo em landing/recursos.py)."""
+    pagina = conteudo.PAGINAS[modulo]()
+    outros = [{"nome": planos.NOMES[m], "url": PAGINA_DO_MODULO[m]} for m in planos.MODULOS if m != modulo]
+    return render(request, "landing/recurso.html", {**_comum(request), "r": pagina, "m": _modulo(modulo), "outros": outros})

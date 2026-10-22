@@ -47,6 +47,7 @@
           <h3>{{ m.nome }}</h3>
           <p>{{ m.frase }}</p>
           <span class="a-partir">a partir de <b>{{ m.a_partir }}</b>/mês</span>
+          <a class="ver-recursos" href="{% url m.pagina %}">Ver todos os recursos →</a>
         </article>
       {% endfor %}
       <article class="modulo">
@@ -54,6 +55,7 @@
         <h3>Emissor NFS-e</h3>
         <p>As notas fiscais dos vendedores que pagaram comissão extra, direto do relatório mensal da Shopee. Para afiliados pessoa jurídica.</p>
         <span class="a-partir">a partir de <b>{{ notas.0.preco }}</b>/mês</span>
+        <a class="ver-recursos" href="{% url 'landing_notas' %}">Ver como funciona →</a>
       </article>
     </div>
   </div>

@@ -1,0 +1,102 @@
+{% extends "landing/base.html" %}
+{% block titulo %}{{ r.titulo }}{% endblock %}
+{% block descricao %}{{ r.descricao }}{% endblock %}
+{% block caminho %}/{{ r.slug }}/{% endblock %}
+{% block caminho_og %}/{{ r.slug }}/{% endblock %}
+{% block og_titulo %}{{ r.titulo }}{% endblock %}
+{% block og_descricao %}{{ r.descricao }}{% endblock %}
+{% block conteudo %}
+<main id="inicio">
+<section class="heroi">
+  <div class="miolo heroi-grade">
+    <div>
+      <p class="chapeu">{{ r.nome }} · Todos os recursos</p>
+      <h1>{{ r.h1 }}</h1>
+      <p class="heroi-texto">{{ r.texto }}</p>
+      <div class="heroi-botoes"><a class="botao botao-grande" href="#planos">Ver planos e preços</a><a class="botao botao-grande botao-vazado" href="#recursos">Ver todos os recursos</a></div>
+      <p class="heroi-nota">Pagamento pela Zouti. 7 dias de garantia.</p>
+    </div>
+    <div class="heroi-arte" aria-hidden="true">
+      <div class="painel-amostra">
+        <span class="painel-titulo">{{ r.nome }}: Standard × Premium</span>
+        <table class="resumo">
+          <thead><tr><th></th><th>Standard</th><th>Premium</th></tr></thead>
+          <tbody>{% for rotulo, a, b in r.resumo %}<tr><th scope="row">{{ rotulo }}</th><td>{{ a }}</td><td>{{ b }}</td></tr>{% endfor %}</tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section id="recursos" class="secao">
+  <div class="miolo">
+    <p class="chapeu">Tudo o que o {{ r.nome }} faz</p>
+    <h2>Todos os recursos, em detalhe.</h2>
+    <nav class="indice" aria-label="Neste módulo">{% for g in r.grupos %}<a href="#g{{ forloop.counter }}">{{ g.titulo }}</a>{% endfor %}</nav>
+  </div>
+</section>
+
+{% for g in r.grupos %}
+<section id="g{{ forloop.counter }}" class="secao secao-recursos{% if forloop.counter|divisibleby:2 %} secao-creme{% endif %}">
+  <div class="miolo">
+    <h2>{{ g.titulo }}</h2>
+    {% if g.intro %}<p class="secao-texto">{{ g.intro }}</p>{% endif %}
+    <div class="grade-recursos">
+      {% for item in g.itens %}
+        <article class="recurso{% if item.plano %} recurso-premium{% endif %}">
+          <h3>{{ item.nome }}{% if item.plano %} <span class="selo-recurso">{{ item.plano }}</span>{% endif %}</h3>
+          <p>{{ item.texto }}</p>
+        </article>
+      {% endfor %}
+    </div>
+  </div>
+</section>
+{% endfor %}
+
+<section id="comparar" class="secao secao-verde">
+  <div class="miolo">
+    <p class="chapeu chapeu-claro">Standard × Premium</p>
+    <h2>O que muda de um plano para o outro.</h2>
+    <div class="tabela-rolagem">
+      <table class="tabela-planos">
+        <thead><tr><th scope="col">Recurso</th><th scope="col">Standard</th><th scope="col">Premium</th></tr></thead>
+        <tbody>
+          {% for rotulo, a, b in r.tabela %}
+            <tr><th scope="row">{{ rotulo }}</th>
+              <td>{% if a is True %}<span class="sim" aria-label="Incluso">✓</span>{% elif a is False %}<span class="nao" aria-label="Não incluso">—</span>{% else %}{{ a }}{% endif %}</td>
+              <td>{% if b is True %}<span class="sim" aria-label="Incluso">✓</span>{% elif b is False %}<span class="nao" aria-label="Não incluso">—</span>{% else %}{{ b }}{% endif %}</td></tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+</section>
+
+<section id="planos" class="secao">
+  <div class="miolo">
+    <p class="chapeu">Planos</p>
+    <h2>Escolha o seu plano.</h2>
+    <p class="secao-texto">Preços por mês. Plano anual com 17% de desconto disponível no checkout. Quer juntar com outros módulos? <a href="{% url 'landing' %}#combo" style="color:var(--verde);font-weight:700">Monte o seu combo</a> e pague menos.</p>
+    {% include "landing/_bloco_plano.html" %}
+  </div>
+</section>
+
+<section id="perguntas" class="secao secao-creme">
+  <div class="miolo miolo-estreito">
+    <p class="chapeu">Perguntas frequentes</p>
+    <h2>Dúvidas sobre o {{ r.nome }}.</h2>
+    <div class="faq">
+      {% for pergunta, resposta in r.perguntas %}<details><summary>{{ pergunta }}</summary><p>{{ resposta }}</p></details>{% endfor %}
+    </div>
+    {% if whatsapp or email_suporte %}
+      <div class="contato">
+        <p>Não achou a resposta? Fale com a gente.</p>
+        {% if whatsapp %}<a class="botao" href="https://wa.me/{{ whatsapp }}?text=Ol%C3%A1!%20Tenho%20uma%20d%C3%BAvida%20sobre%20o%20{{ r.nome|urlencode }}%20do%20Appfiliado." rel="noopener">Chamar no WhatsApp</a>{% endif %}
+        {% if email_suporte %}<a class="botao botao-vazado-escuro" href="mailto:{{ email_suporte }}">{{ email_suporte }}</a>{% endif %}
+      </div>
+    {% endif %}
+    <p class="outros-modulos">Conheça também: {% for o in outros %}<a href="{% url o.url %}">{{ o.nome }}</a>, {% endfor %}<a href="{% url 'landing_notas' %}">Emissor NFS-e</a>.</p>
+  </div>
+</section>
+</main>
+{% endblock %}
