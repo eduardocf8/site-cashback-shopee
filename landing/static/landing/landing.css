@@ -427,3 +427,32 @@ p { margin: 0; }
 @media (max-width: 960px) { .plano-notas { flex-direction: column; align-items: stretch; gap: 20px; } .plano-notas .botao { text-align: center; } }
 @media (max-width: 960px) { .plano-notas > div { width: 100%; } .faixas-notas { grid-template-columns: repeat(2, 1fr); } }
 @media (max-width: 640px) { .plano-notas { padding: 20px 12px; } .plano-notas p { text-align: center; padding: 0 6px; } .faixas-notas { grid-template-columns: 1fr; } .faixas-notas li { padding: 13px 18px; font-size: 16px; } .so-grande { display: none; } .so-pequeno { display: inline; } }
+
+/* Telas do painel dentro de cada seção */
+.prints { margin-top: 36px; }
+.prints-painel { margin: 0; }
+.prints-painel + .prints-painel { margin-top: 36px; }
+.prints-janela { background: #fff; border-radius: 14px; overflow: hidden; box-shadow: 0 18px 44px rgba(31,58,46,.2); border: 1px solid var(--borda); }
+.prints-barra { display: flex; align-items: center; gap: 6px; padding: 10px 14px; background: #ECE7D8; }
+.prints-barra i { width: 10px; height: 10px; border-radius: 50%; background: #CFC8B2; display: block; }
+.prints-barra span { margin-left: 10px; font-size: 12px; color: var(--suave); background: #F6F3EA; border-radius: 999px; padding: 3px 14px; }
+.prints-janela img { display: block; width: 100%; height: auto; }
+.prints figcaption { margin-top: 14px; font-size: 16px; color: var(--suave); max-width: 760px; }
+.fundo-verde .prints figcaption, .secao-verde .prints figcaption { color: #CFDBD2; }
+.heroi-print .prints-janela { transform: rotate(1.5deg); }
+.heroi-print { align-self: center; }
+@media (max-width: 960px) { .heroi-print .prints-janela { transform: none; } }
+a.incluso { text-decoration: none; color: inherit; border-radius: 12px; transition: background .2s; }
+a.incluso:hover { background: rgba(31,58,46,.06); }
+a.incluso strong { text-decoration: underline; text-decoration-color: transparent; text-underline-offset: 3px; transition: text-decoration-color .2s; }
+a.incluso:hover strong { text-decoration-color: var(--verde); }
+
+.so-movel-nota { display: none; }
+@media (max-width: 640px) {
+  .prints-janela { overflow-x: auto; -webkit-overflow-scrolling: touch; }
+  .prints-janela img, .prints-barra { min-width: 800px; }
+  .prints figcaption { font-size: 15px; }
+  .so-movel-nota { display: inline; }
+  .heroi-print .prints-janela img, .heroi-print .prints-barra { min-width: 0; }
+  .heroi-print .prints-janela { overflow-x: hidden; }
+}

@@ -263,6 +263,131 @@ def carrosseis():
     }
 
 
+# ---- ferramentas incluídas em todos os planos (sem Standard × Premium) ----
+
+def radar():
+    return {
+        "codigo": "radar", "slug": "radar-de-ofertas", "url": "landing_radar", "nome": "Radar de ofertas", "incluso": True,
+        "titulo": "Radar de ofertas para afiliados da Shopee — Appfiliado",
+        "descricao": "Mais de 30 mil produtos da Shopee com comissão de afiliado, atualizados todo dia. Filtre por comissão, desconto, preço e categoria e copie o seu link de afiliado em um clique.",
+        "h1": "Ache o produto certo pra divulgar em segundos.",
+        "texto": "Mais de 30 mil produtos da Shopee com comissão de afiliado, atualizados todo dia. Filtre por comissão, desconto, preço e categoria e copie o seu link de afiliado em um clique.",
+        "grupos": [
+            _grupo("Do catálogo ao link", "Três passos e o produto está pronto pra divulgar.",
+                   _t("Busque", "Digite uma palavra-chave, escolha uma categoria ou só veja os mais vendidos."),
+                   _t("Filtre", "Refine por comissão, desconto, preço e avaliação até sobrar só o que vale a pena."),
+                   _t("Divulgue", "Copie o seu link de afiliado ou mande o produto direto pro grupo, com o Bot de WhatsApp.")),
+            _grupo("Filtros de verdade", "Encontre exatamente o tipo de produto que o seu público compra.",
+                   _t("Três ordens", "Mais vendidos, maior comissão ou maior desconto."),
+                   _t("Palavra-chave e categoria", "Busque por fone, air fryer ou vestido. Ou escolha entre as 27 categorias principais da Shopee."),
+                   _t("Mais filtros", "Preço mínimo e máximo, comissão de referência mínima, desconto mínimo e avaliação mínima."),
+                   _t("Comissão extra do vendedor", "Marque pra ver só os produtos com comissão extra, que rendem mais por venda.")),
+            _grupo("Tudo sobre o produto num cartão", "Você decide sem abrir a Shopee.",
+                   _t("Foto e selos", "Foto grande, selo de desconto e selo de comissão extra quando o produto tem."),
+                   _t("Preço e comissão", "Preço atual, comissão de referência em porcentagem e quanto isso dá em reais."),
+                   _t("Prova social", "Quantidade de vendidos, avaliação e nome da loja."),
+                   _t("Link de afiliado na hora", "O link sai com a sua conta da Shopee e com o Sub ID \"radar\", pra você ver em Resultados as vendas que vieram daqui.")),
+            _grupo("O que fazer com o produto", "Cada cartão tem os atalhos pro próximo passo.",
+                   _t("Copiar link", "Copia o seu link de afiliado, em todos os planos."),
+                   _t("Mandar no grupo", "Envia o produto, com foto e texto, pra um grupo ou canal de WhatsApp.", "Bot de WhatsApp"),
+                   _t("Acompanhar o preço", "Coloca o produto no alerta de preço pra você ser avisada quando ele cair.", "Bot de WhatsApp"),
+                   _t("Gerar carrossel", "Leva o produto pro gerador e já começa o carrossel do Instagram.", "Gerador de carrosséis")),
+            _grupo("Sempre atualizado", "O catálogo é renovado todo dia.",
+                   _t("Atualização diária", "Uma rodada por dia e uma completa por semana, com até 30 mil produtos."),
+                   _t("Preço de agora", "Ao mandar no grupo ou acompanhar o preço, o Radar consulta o preço de agora na Shopee."),
+                   _t("Busca rápida", "Os produtos ficam guardados no Appfiliado, então a busca é instantânea."),
+                   _t("Resultados por página", "24 produtos por página, com navegação numerada.")),
+        ],
+        "perguntas": [
+            ("O Radar custa a mais?", "Não. O Radar de ofertas está incluso em todos os planos do Appfiliado."),
+            ("De onde vêm os produtos?", "Do catálogo de produtos da Shopee que têm comissão de afiliado. O Appfiliado atualiza esse catálogo todo dia."),
+            ("O preço que aparece é o de agora?", "O catálogo é atualizado todo dia. Na hora de mandar no grupo ou acompanhar o preço, o Radar consulta o preço de agora na Shopee."),
+            ("Preciso do Bot de WhatsApp?", "Não. Copiar o link de afiliado funciona em todos os planos. Mandar no grupo e acompanhar o preço precisam do Bot de WhatsApp, e gerar carrossel precisa do Gerador de carrosséis."),
+            ("Não achei um produto que está na Shopee. E agora?", "A Shopee limita quantos produtos libera pra afiliados, então nem todo produto do site aparece no Radar. Cole o link dele no Conversor de links e gere o seu link do mesmo jeito."),
+        ],
+    }
+
+
+def conversor():
+    return {
+        "codigo": "conversor", "slug": "conversor-de-links", "url": "landing_conversor", "nome": "Conversor de links", "incluso": True,
+        "titulo": "Conversor de links de afiliado da Shopee — Appfiliado",
+        "descricao": "Cole um texto com links da Shopee e troque tudo pelo seu link de afiliado. O texto fica pronto pra encaminhar ou pra mandar direto num grupo de WhatsApp.",
+        "h1": "Troque os links de qualquer texto pelo seu link de afiliado.",
+        "texto": "Cole a mensagem de um canal, uma lista de ofertas ou links soltos. O Appfiliado troca todos os links da Shopee pelo seu link de afiliado e devolve o texto pronto pra encaminhar.",
+        "grupos": [
+            _grupo("Cole, converta, encaminhe", "Menos de um minuto do texto original ao texto com o seu link.",
+                   _t("Cole o texto", "Pode ser a mensagem que a Shopee mandou no canal dela ou uma lista de links de qualquer lugar."),
+                   _t("Escolha como sai", "Mantenha o texto e troque só os links, ou receba só a lista dos links convertidos."),
+                   _t("Converta e copie", "Clique em Converter, ajuste o texto se quiser e copie o resultado.")),
+            _grupo("Dois jeitos de sair", "O mesmo texto, no formato que você precisar.",
+                   _t("Manter o texto e trocar os links", "O texto fica igual e só os links da Shopee são trocados. Links que não são da Shopee, como convite de grupo, saem do texto."),
+                   _t("Só os links convertidos", "Sai a lista dos links, um por linha, pronta pra colar onde precisar.")),
+            _grupo("Feito pra afiliado", "Detalhes que fazem diferença no dia a dia.",
+                   _t("Links curtos funcionam", "Links s.shopee.com.br são abertos pra achar o produto certo."),
+                   _t("Link limpo do produto", "Cada link vira o link do produto antes de receber o seu link, sem o rastreio de quem divulgou antes."),
+                   _t("Sub ID opcional", "Escolha um Sub ID pra medir a divulgação. Em branco, as vendas aparecem em Resultados como \"conversor\"."),
+                   _t("Aviso quando não converte", "Se a Shopee não converter algum link, ele fica como estava e o painel diz qual foi.")),
+            _grupo("Direto pro grupo", "Pra quem tem o Bot de WhatsApp.",
+                   _t("Enviar no grupo", "Escolha o grupo ou o canal e envie o texto convertido sem sair da tela.", "Bot de WhatsApp"),
+                   _t("Ajuste antes de enviar", "O texto convertido fica editável, então você acerta a frase antes de mandar.")),
+            _grupo("Também no seu site", "O conversor chega aos seus seguidores.",
+                   _t("Conversor no Meu site", "Quem visita o seu link na bio cola um link da Shopee e vai pra loja pelo seu link de afiliado.", "Meu site"),
+                   _t("Limite por visitante", "Cada visitante converte até 20 links por hora, pra proteger o seu site.", "Meu site")),
+        ],
+        "perguntas": [
+            ("O Conversor custa a mais?", "Não. O Conversor de links está incluso em todos os planos do Appfiliado."),
+            ("Quantos links dá pra converter por vez?", "Até 20 links da Shopee em cada texto."),
+            ("E os links de outras pessoas?", "No modo que mantém o texto, links que não são da Shopee e links de afiliado de outra pessoa saem do texto. Só ficam os seus."),
+            ("Preciso conectar a minha conta da Shopee?", "Sim. O Conversor usa a sua conta de afiliado pra gerar os links, e a comissão cai na sua conta."),
+            ("Dá pra mandar o texto direto num grupo?", "Dá, com o Bot de WhatsApp conectado. Sem o Bot, você copia o resultado e encaminha."),
+        ],
+    }
+
+
+def resultados():
+    return {
+        "codigo": "resultados", "slug": "resultados-e-metas", "url": "landing_resultados", "nome": "Resultados e metas", "incluso": True, "duvidas": "Resultados e metas",
+        "titulo": "Resultados e metas de afiliado da Shopee — Appfiliado",
+        "descricao": "Veja faturamento, comissão e pedidos da sua conta da Shopee por dia, semana ou mês, descubra qual divulgação vende mais e acompanhe quanto falta pras metas de bônus.",
+        "h1": "Veja quanto vendeu, de onde veio e quanto falta pro bônus.",
+        "texto": "Faturamento, comissão e pedidos da sua conta da Shopee por dia, semana ou mês, com Sub IDs que mostram qual grupo, site ou post vende mais. Cadastre as metas do mês e acompanhe quanto falta pra cada faixa de bônus.",
+        "grupos": [
+            _grupo("Conecte uma vez", "Os números chegam sozinhos, sem planilha.",
+                   _t("Conecte a sua conta", "Em Configurações, informe o AppID e o Secret da Shopee. O Secret é guardado criptografado."),
+                   _t("O Appfiliado busca os números", "Faturamento, comissão e pedidos vêm direto da Shopee, e você pode atualizar quando quiser."),
+                   _t("Veja no painel e no e-mail", "Tudo no painel, e o resumo do dia chega no seu e-mail se você quiser.")),
+            _grupo("Resultados do jeito que você pergunta", "Escolha o período e veja só o que importa.",
+                   _t("Períodos prontos", "Hoje, ontem, últimos 7 dias, esta semana, semana passada, este mês, mês passado e últimos 30 dias. Ou escolha um período seu."),
+                   _t("Quatro números", "Faturamento, comissão estimada, comissão validada e pedidos, sem contar os cancelados."),
+                   _t("Gráfico por dia, semana ou mês", "Compare faturamento, comissão e pedidos com um clique."),
+                   _t("Produtos mais vendidos", "O ranking do período, com unidades, faturamento e comissão. A lista completa sai em Excel."),
+                   _t("Vendas do período", "Cada venda com produto, quantidade, valor, comissão, status e Sub ID. Busque, filtre e exporte pro Excel.")),
+            _grupo("Qual divulgação vende", "O Sub ID mostra de onde cada venda veio.",
+                   _t("Comissão por Sub ID", "Veja quanto cada grupo, site ou post rendeu. O Bot, o Conversor, o Radar e o Meu site já usam Sub IDs próprios."),
+                   _t("Agrupe do seu jeito", "Junte vários Sub IDs num nome só. Por exemplo, tudo que começa com \"grupo\" aparece como \"Grupos de WhatsApp\"."),
+                   _t("Vendas sem Sub ID", "Dê um nome pras vendas que vieram sem Sub ID, como \"Orgânico\".")),
+            _grupo("Metas da Shopee", "Saiba exatamente quanto falta pro bônus.",
+                   _t("Cadastre as faixas", "Informe a meta de 100%, 125% e 150% e o bônus de cada uma. Se deixar 125% e 150% em branco, o Appfiliado calcula."),
+                   _t("Quanto falta", "Para cada faixa, quanto falta faturar e quanto vale o bônus."),
+                   _t("Quanto por dia", "O valor por dia pros dias que restam pra chegar na próxima faixa."),
+                   _t("Projeção do mês", "No ritmo atual, em que faixa o mês fecha. E o bônus que já está garantido.")),
+            _grupo("Sempre à mão", "Os números aparecem onde você já está.",
+                   _t("Resumo no Início", "O mês atual, o dia de ontem e a meta do mês na primeira tela do painel."),
+                   _t("Relatório diário por e-mail", "No horário que você escolher, com resultados de ontem e do mês, Sub IDs e produtos mais vendidos."),
+                   _t("Mesmas regras da Shopee", "Faturamento e pedidos pela data da compra, comissão validada pela data em que a Shopee confirmou o pedido."),
+                   _t("Histórico guardado", "Os dias ficam guardados desde a conexão. A Shopee só deixa buscar uns 3 meses pra trás.")),
+        ],
+        "perguntas": [
+            ("Resultados e metas custam a mais?", "Não. Estão inclusos em todos os planos do Appfiliado."),
+            ("Os números batem com os da Shopee?", "As regras são as mesmas dos relatórios da Shopee. Faturamento e pedidos contam pela data da compra, sem os cancelados. A comissão validada conta pela data em que a Shopee confirmou o pedido."),
+            ("Por que de hoje só aparece a comissão validada?", "A Shopee libera faturamento, comissão estimada e pedidos no dia seguinte. A comissão validada vai entrando ao longo do dia."),
+            ("Preciso cadastrar as metas?", "Não, é opcional. Se a Shopee te deu metas com bônus no mês, cadastre pra acompanhar quanto falta."),
+            ("Dá pra exportar as vendas?", "Dá. As vendas do período saem em Excel, com os filtros que você aplicou."),
+        ],
+    }
+
+
 # ---- apresentação: o formato de cada seção, os rótulos do índice, os chips e as amostras de cor ----
 # Formatos: passos (etapas numeradas), split (título fixo à esquerda e lista à direita), destaque (um item
 # grande e os outros ao lado), lista (linhas compactas em duas colunas), cartoes (grade), faixa (itens
@@ -289,6 +414,21 @@ APRESENTACAO = {
         "numeros": lambda: [(f"{plano.SITE[False]['botoes']} a {plano.SITE[True]['botoes']}", "botões de link"),
                             ("7", "redes sociais"), ("100", "produtos na vitrine"), ("20/h", "conversões por visitante")],
     },
+    "radar": {
+        "layouts": ["passos", "split", "cartoes", "lista", "faixa"],
+        "curtos": ["Como funciona", "Filtros", "Cartão", "Atalhos", "Atualização"],
+        "numeros": lambda: [("30 mil", "produtos no catálogo"), ("27", "categorias"), ("1x ao dia", "atualização"), ("24", "produtos por página")],
+    },
+    "conversor": {
+        "layouts": ["passos", "split", "cartoes", "lista", "faixa"],
+        "curtos": ["Como funciona", "Dois jeitos", "Detalhes", "Direto pro grupo", "No seu site"],
+        "numeros": lambda: [("20", "links por vez"), ("2", "jeitos de sair"), ("1 clique", "pra copiar"), ("Sub ID", "pra medir cada divulgação")],
+    },
+    "resultados": {
+        "layouts": ["passos", "split", "destaque", "cartoes", "faixa"],
+        "curtos": ["Conexão", "Resultados", "Sub IDs", "Metas", "No dia a dia"],
+        "numeros": lambda: [("8", "períodos prontos"), ("3", "faixas de meta"), ("Excel", "pras vendas do período"), ("1x ao dia", "relatório por e-mail")],
+    },
     "carrosseis": {
         "layouts": ["passos", "destaque", "split", "cartoes", "premium", "lista", "faixa"],
         "curtos": ["Criação", "IA", "Modelos", "Visual", "Fundo e foto", "Editor", "Download"],
@@ -304,8 +444,9 @@ APRESENTACAO = {
 def _apresentar(modulo, pagina):
     ap = APRESENTACAO[modulo]
     fundo = ""
-    for g, layout, curto in zip(pagina["grupos"], ap["layouts"], ap["curtos"]):
+    for n, (g, layout, curto) in enumerate(zip(pagina["grupos"], ap["layouts"], ap["curtos"])):
         g["layout"], g["curto"] = layout, curto
+        g["prints"] = prints_de(modulo, n)
         if layout == "premium":
             g["fundo"] = "verde"
         else:  # alterna branco e creme, para duas seções vizinhas nunca terem a mesma cor
@@ -315,7 +456,44 @@ def _apresentar(modulo, pagina):
             item["chips"] = ap.get("chips", {}).get(item["nome"], [])
             item["cores"] = ap.get("cores", {}).get(item["nome"], [])
     pagina["numeros"] = ap["numeros"]()
+    pagina["print_do_topo"] = next((pr for g in pagina["grupos"] for pr in g["prints"]), None)
     return pagina
 
 
-PAGINAS = {m: (lambda m=m, f=f: _apresentar(m, f())) for m, f in {"bot": bot, "site": site, "carrosseis": carrosseis}.items()}
+PAGINAS = {m: (lambda m=m, f=f: _apresentar(m, f())) for m, f in {"bot": bot, "site": site, "carrosseis": carrosseis,
+                                                                  "radar": radar, "conversor": conversor, "resultados": resultados}.items()}
+
+# Prints do painel (landing/static/landing/prints/), mostrados dentro da seção que explica cada recurso:
+# {ferramenta: {número da seção: [(arquivo, legenda, texto alternativo)]}}. São telas reais do painel com dados de exemplo.
+PRINTS = {
+    "bot": {0: [("bot-conexao", "Conectado como mais um aparelho, com o histórico da conexão.", "Tela de conexão do Bot de WhatsApp")],
+            1: [("bot-ofertas", "De onde vêm as ofertas, os filtros e o histórico do que foi enviado.", "Tela de ofertas automáticas do Bot de WhatsApp")],
+            4: [("bot-campanhas", "Marque as datas da Shopee e o bot muda de ritmo e de texto sozinho.", "Tela do modo campanha do Bot de WhatsApp")],
+            5: [("bot-alerta", "Produtos acompanhados, últimos alertas e a mensagem que vai pros grupos.", "Tela do alerta de preço do Bot de WhatsApp")]},
+    "site": {0: [("site-editor", "Endereço, perfil e cores, com a prévia do site ao vivo.", "Editor do Meu site com prévia no celular")],
+             2: [("site-botoes", "Seus botões, o conversor de links e a prévia ao lado.", "Botões e conversor de links do Meu site")]},
+    "carrosseis": {5: [("carrossel-editor", "O carrossel pronto, com os textos de cada slide pra ajustar.", "Editor de carrosséis com o primeiro slide pronto")]},
+    "radar": {1: [("radar", "Busca por palavra-chave, categoria, preço, comissão e desconto.", "Tela de filtros do Radar de ofertas")],
+              2: [("radar-produtos", "Cada produto com foto, desconto, comissão e atalhos pra divulgar.", "Produtos do Radar de ofertas com comissão e desconto")]},
+    "conversor": {0: [("conversor", "Do texto original ao texto pronto, com o seu link no lugar dos links da Shopee.", "Tela do Conversor de links com o texto convertido")]},
+    "resultados": {1: [("resultados", "Faturamento, comissão e pedidos do período, com gráfico e meta do mês.", "Tela de resultados do mês"),
+                       ("resultados-produtos", "O ranking de produtos e a lista de vendas, com filtros e Excel.", "Produtos mais vendidos e vendas do período")],
+                   3: [("metas", "Quanto falta pra cada faixa de bônus e a projeção do mês.", "Tela de metas da Shopee")],
+                   4: [("inicio", "A primeira tela do painel, com o mês, o dia anterior e a meta.", "Tela inicial do painel do Appfiliado")]},
+    "notas": {0: [("notas-lote", "Notas autorizadas e e-mails indo pros vendedores, com o andamento de cada etapa.", "Lote de notas fiscais do Emissor NFS-e")],
+              1: [("notas", "Cadastro da empresa, certificado e o uso do seu plano no mês.", "Tela inicial do Emissor NFS-e")]},
+}
+
+
+ALTURAS = {"inicio": 780, "resultados": 900, "resultados-produtos": 900, "resultados-vendas": 900, "metas": 700, "radar": 700, "radar-produtos": 900,
+           "conversor": 1010, "bot-conexao": 700, "bot-ofertas": 900, "bot-alerta": 900, "bot-campanhas": 900, "site-editor": 900, "site-botoes": 900,
+           "carrossel-editor": 960, "notas-lote": 860, "notas": 860}
+
+
+def _print(a, leg, alt):
+    return {"arquivo": f"landing/prints/{a}.webp", "legenda": leg, "alt": alt, "largura": 1280, "altura": ALTURAS[a]}
+
+
+def prints_de(modulo, secao):
+    """As telas do painel que ilustram a seção `secao` (0, 1, ...) da página da ferramenta."""
+    return [_print(*p) for p in PRINTS.get(modulo, {}).get(secao, [])]

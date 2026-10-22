@@ -15,12 +15,12 @@
         <span class="painel-titulo">Seu painel Appfiliado</span>
         <span class="painel-dica">Clique em um módulo para conhecer.</span>
         <ul>
-          <li><a href="#incluso"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="{{ icones.radar }}"/></svg>Radar de ofertas</a></li>
-          <li><a href="#incluso"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="{{ icones.conversor }}"/></svg>Conversor de links</a></li>
+          <li><a href="{% url 'landing_radar' %}"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="{{ icones.radar }}"/></svg>Radar de ofertas</a></li>
+          <li><a href="{% url 'landing_conversor' %}"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="{{ icones.conversor }}"/></svg>Conversor de links</a></li>
           <li><a href="{% url 'landing_bot' %}"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="{{ icones.whatsapp }}"/></svg>Bot de WhatsApp</a></li>
           <li><a href="{% url 'landing_site' %}"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="{{ icones.site }}"/></svg>Meu site</a></li>
           <li><a href="{% url 'landing_carrosseis' %}"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="{{ icones.carrosseis }}"/></svg>Gerador de carrosséis</a></li>
-          <li><a href="#incluso"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="{{ icones.resultados }}"/></svg>Resultados e metas</a></li>
+          <li><a href="{% url 'landing_resultados' %}"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="{{ icones.resultados }}"/></svg>Resultados e metas</a></li>
           <li class="largo"><a href="{% url 'landing_notas' %}"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="{{ icones.notas }}"/></svg>Emissor NFS-e</a></li>
         </ul>
       </div>
@@ -31,7 +31,7 @@
 <section id="incluso" class="faixa" aria-label="Em todos os planos">
   <div class="miolo faixa-linha">
     {% for i in inclusos %}
-      <div class="incluso"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="{{ i.icone }}"/></svg><div><strong>{{ i.nome }}</strong><span>{{ i.frase }}</span></div></div>
+      <a class="incluso" href="{% url i.url %}"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="{{ i.icone }}"/></svg><div><strong>{{ i.nome }}</strong><span>{{ i.frase }}</span></div></a>
     {% endfor %}
   </div>
 </section>

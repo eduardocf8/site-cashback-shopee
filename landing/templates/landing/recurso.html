@@ -6,6 +6,7 @@
 {% block og_titulo %}{{ r.titulo }}{% endblock %}
 {% block og_descricao %}{{ r.descricao }}{% endblock %}
 {% block conteudo %}
+{% load static %}
 <main id="inicio" class="pagina-modulo">
 <section class="heroi">
   <div class="miolo heroi-grade">
@@ -16,6 +17,11 @@
       <div class="heroi-botoes"><a class="botao botao-grande" href="#planos">Ver planos e preços</a><a class="botao botao-grande botao-vazado" href="#recursos">Ver todos os recursos</a></div>
       <p class="heroi-nota">Pagamento pela Zouti. 7 dias de garantia.</p>
     </div>
+    {% if r.incluso %}
+    <div class="heroi-arte heroi-print">
+      <div class="prints-janela"><div class="prints-barra" aria-hidden="true"><i></i><i></i><i></i><span>app.appfiliado.com.br</span></div>{% with p=r.print_do_topo %}<img src="{% static p.arquivo %}" width="{{ p.largura }}" height="{{ p.altura }}" alt="{{ p.alt }}" decoding="async">{% endwith %}</div>
+    </div>
+    {% else %}
     <div class="heroi-arte" aria-hidden="true">
       <div class="painel-amostra">
         <span class="painel-titulo">{{ r.nome }}: Standard × Premium</span>
@@ -25,6 +31,7 @@
         </table>
       </div>
     </div>
+    {% endif %}
   </div>
 </section>
 
@@ -37,8 +44,8 @@
 <nav class="subnav" aria-label="Neste módulo" id="recursos">
   <div class="miolo subnav-linha">
     {% for g in r.grupos %}<a href="#g{{ forloop.counter }}" data-alvo="g{{ forloop.counter }}">{{ g.curto }}</a>{% endfor %}
-    <a href="#comparar" data-alvo="comparar">Standard × Premium</a>
-    <a href="#planos" data-alvo="planos">Planos</a>
+    {% if not r.incluso %}<a href="#comparar" data-alvo="comparar">Standard × Premium</a>{% endif %}
+    <a href="#planos" data-alvo="planos">{% if r.incluso %}Planos{% else %}Planos{% endif %}</a>
   </div>
 </nav>
 
@@ -131,10 +138,21 @@
         {% endfor %}
       </div>
     {% endif %}
+    {% if g.prints %}{% with prints=g.prints %}{% include "landing/_print_inline.html" %}{% endwith %}{% endif %}
   </div>
 </section>
 {% endfor %}
 
+{% if r.incluso %}
+<section id="planos" class="secao">
+  <div class="miolo">
+    <p class="chapeu">Planos</p>
+    <h2>Incluído em todos os planos.</h2>
+    <p class="secao-texto">{{ r.nome }} vem junto com qualquer módulo do Appfiliado, sem custo extra. Escolha o módulo que faz sentido pra você e use tudo no mesmo painel.</p>
+    <p class="heroi-botoes" style="margin-top:24px"><a class="botao botao-grande" href="{% url 'landing' %}#planos">Ver planos e preços</a><a class="botao botao-grande botao-vazado-escuro" href="{% url 'landing' %}#combo">Monte o seu combo</a></p>
+  </div>
+</section>
+{% else %}
 <section id="comparar" class="secao secao-verde">
   <div class="miolo">
     <p class="chapeu chapeu-claro">Standard × Premium</p>
@@ -163,17 +181,19 @@
   </div>
 </section>
 
+{% endif %}
+
 <section id="perguntas" class="secao secao-creme">
   <div class="miolo miolo-estreito">
     <p class="chapeu">Perguntas frequentes</p>
-    <h2>Dúvidas sobre o {{ r.nome }}.</h2>
+    <h2>Dúvidas sobre {% if r.duvidas %}{{ r.duvidas }}{% else %}o {{ r.nome }}{% endif %}.</h2>
     <div class="faq">
       {% for pergunta, resposta in r.perguntas %}<details><summary>{{ pergunta }}</summary><p>{{ resposta }}</p></details>{% endfor %}
     </div>
     {% if whatsapp or email_suporte %}
       <div class="contato">
         <p>Não achou a resposta? Fale com a gente.</p>
-        {% if whatsapp %}<a class="botao" href="https://wa.me/{{ whatsapp }}?text=Ol%C3%A1!%20Tenho%20uma%20d%C3%BAvida%20sobre%20o%20{{ r.nome|urlencode }}%20do%20Appfiliado." rel="noopener">Chamar no WhatsApp</a>{% endif %}
+        {% if whatsapp %}<a class="botao" href="https://wa.me/{{ whatsapp }}?text=Ol%C3%A1!%20Tenho%20uma%20d%C3%BAvida%20sobre%20{% if r.duvidas %}{{ r.duvidas|urlencode }}{% else %}o%20{{ r.nome|urlencode }}{% endif %}%20do%20Appfiliado." rel="noopener">Chamar no WhatsApp</a>{% endif %}
         {% if email_suporte %}<a class="botao botao-vazado-escuro" href="mailto:{{ email_suporte }}">{{ email_suporte }}</a>{% endif %}
       </div>
     {% endif %}
