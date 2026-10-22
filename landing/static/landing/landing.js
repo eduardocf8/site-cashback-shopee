@@ -1,5 +1,28 @@
 window.landingPronta = true;
 
+// O script de origem da Zouti reescreve a URL sem o "#seção" assim que a página carrega, e sem o "#" o
+// navegador não rola até a seção (um link como /#planos, vindo de outra página, abria no topo). Guardamos o
+// "#" antes (base.html), devolvemos ao endereço e rolamos até a seção; de novo no "load", se a pessoa ainda não rolou.
+(function () {
+  var hash = window.hashInicial;
+  if (!hash || hash.length < 2) return;
+  var ultima = null;
+  function ir(aoCarregar) {
+    var alvo; try { alvo = document.querySelector(hash); } catch (e) { return; }
+    if (!alvo) return;
+    if (aoCarregar && ultima !== null && Math.abs(window.scrollY - ultima) > 4) return; // a pessoa já rolou por conta própria
+    if (location.hash !== hash) history.replaceState(null, "", location.pathname + location.search + hash);
+    var html = document.documentElement, antes = html.style.scrollBehavior;
+    html.style.scrollBehavior = "auto"; alvo.scrollIntoView(); html.style.scrollBehavior = antes;
+    ultima = window.scrollY;
+  }
+  if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", function () { ir(false); }); else ir(false);
+  window.addEventListener("load", function () { ir(true); });
+  // as fontes e as imagens mudam a altura da página depois da primeira rolagem: acerta de novo, se a pessoa ainda não rolou
+  if (document.fonts && document.fonts.ready) document.fonts.ready.then(function () { ir(true); });
+  [300, 900, 1800].forEach(function (ms) { setTimeout(function () { ir(true); }, ms); });
+})();
+
 // Entrada suave dos blocos ao rolar a página: sobem e aparecem quando chegam na tela, e os cartões
 // de uma mesma grade entram em sequência. Sem JavaScript, sem IntersectionObserver ou com a opção
 // "reduzir movimento" do sistema, tudo aparece de uma vez (ver .js .revelar no CSS).

@@ -233,7 +233,9 @@ p { margin: 0; }
 .subnav a.ativo { background: var(--verde); color: var(--creme); }
 
 /* cada seção "sobe" sobre a anterior, com a borda de cima arredondada */
-.bloco, #comparar, #planos, #perguntas { position: relative; border-radius: 34px 34px 0 0; margin-top: -34px; padding: 84px 0 76px; scroll-margin-top: 130px; }
+.bloco, #comparar, #planos, #perguntas { position: relative; border-radius: 34px 34px 0 0; margin-top: -34px; padding: 84px 0 76px; }
+/* só as páginas de módulo têm o índice fixo embaixo do cabeçalho, que pede uma folga a mais ao rolar até a seção */
+.pagina-modulo .bloco, .pagina-modulo #comparar, .pagina-modulo #planos, .pagina-modulo #perguntas { scroll-margin-top: 46px; }
 .bloco { background: #fff; }
 .bloco.fundo-creme, #perguntas { background: var(--creme); }
 .bloco.fundo-verde { background: linear-gradient(160deg, var(--verde-2) 0, var(--verde) 55%, var(--verde-3) 100%); color: var(--creme); }
