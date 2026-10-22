@@ -88,33 +88,61 @@
   <div class="miolo">
     <p class="chapeu chapeu-claro">Combos</p>
     <h2>Monte o seu combo e pague menos.</h2>
-    <p class="secao-texto">Dois módulos juntos saem 10% mais baratos. Os três, 20%.</p>
+    <p class="secao-texto">Quanto mais módulos você junta, maior o desconto.</p>
+
+    <ol class="degraus" data-degraus aria-label="Desconto por quantidade de módulos">
+      <li data-n="1"><b>1 módulo</b><span>preço normal</span></li>
+      <li data-n="2"><b>2 módulos</b><span>10% de desconto</span></li>
+      <li data-n="3"><b>3 módulos</b><span>20% de desconto</span></li>
+    </ol>
+    <p class="dica-combo" data-dica aria-live="polite">Escolha um módulo para começar.</p>
+
     <div class="montador" data-montador>
-      <div class="montador-escolhas">
+      <div class="mod-cards">
         {% for m in modulos %}
-          <fieldset class="escolha" data-modulo="{{ m.codigo }}">
-            <legend>{{ m.nome }}</legend>
-            <label><input type="radio" name="{{ m.codigo }}" value="" checked><span>Não quero</span></label>
-            <label><input type="radio" name="{{ m.codigo }}" value="0"><span>Standard</span></label>
-            <label><input type="radio" name="{{ m.codigo }}" value="1"><span>Premium</span></label>
+          <fieldset class="mod-card" data-modulo="{{ m.codigo }}">
+            <legend class="sr">{{ m.nome }}</legend>
+            <div class="mod-topo"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="{{ m.icone }}"/></svg><h3>{{ m.nome }}</h3></div>
+            <p class="mod-frase">{{ m.curta }}</p>
+            <div class="niveis">
+              <label><input type="radio" name="{{ m.codigo }}" value="" checked><span>Não quero</span></label>
+              <label><input type="radio" name="{{ m.codigo }}" value="0"><span>Standard<small>{{ m.planos.0.preco }}</small></span></label>
+              <label><input type="radio" name="{{ m.codigo }}" value="1"><span>Premium<small>{{ m.planos.1.preco }}</small></span></label>
+            </div>
           </fieldset>
         {% endfor %}
       </div>
-      <div class="montador-resumo" aria-live="polite">
-        <p class="montador-vazio" data-vazio>Escolha ao menos um módulo para ver o preço.</p>
-        <div data-resultado hidden>
-          <span class="montador-nome" data-nome></span>
-          <p class="montador-preco"><b data-preco></b><span>/mês</span></p>
-          <p class="montador-economia" data-economia></p>
-          <a class="botao botao-grande" href="#planos" data-assinar>Assinar</a>
+
+      <div class="conta" aria-live="polite">
+        <p class="conta-vazia" data-vazio>Escolha ao menos um módulo para ver o preço do seu combo.</p>
+        <div class="conta-grade" data-resultado hidden>
+          <div class="conta-lista">
+            <p class="conta-titulo">Seu combo</p>
+            <ul data-linhas></ul>
+            <div class="conta-desconto" data-desconto hidden><span data-desc-rotulo></span><b data-desc-valor></b></div>
+          </div>
+          <div class="conta-total">
+            <span class="conta-rotulo">Total por mês</span>
+            <p class="montador-preco"><b data-preco></b><span>/mês</span></p>
+            <p class="montador-economia" data-economia></p>
+            <a class="botao botao-grande" href="#planos" data-assinar>Assinar este combo</a>
+          </div>
         </div>
       </div>
     </div>
     {{ montador|json_script:"dados-montador" }}
     <noscript><p class="secao-texto">Ative o JavaScript para montar o combo, ou escolha um dos combos prontos abaixo.</p></noscript>
+
+    <h3 class="combos-titulo">Ou escolha um combo pronto</h3>
     <div class="combos-prontos">
-      <article><h3>Combo Standard</h3><p>Bot + Meu site + Gerador de carrosséis, todos no Standard.</p><p class="preco"><s>{{ combo_standard.separado }}</s> <b>{{ combo_standard.preco }}</b><span>/mês</span></p><a class="botao" href="{{ combo_standard.link }}">Assinar o Combo Standard</a></article>
-      <article><h3>Combo Premium</h3><p>Bot + Meu site + Gerador de carrosséis, todos no Premium.</p><p class="preco"><s>{{ combo_premium.separado }}</s> <b>{{ combo_premium.preco }}</b><span>/mês</span></p><a class="botao" href="{{ combo_premium.link }}">Assinar o Combo Premium</a></article>
+      <article class="combo-pronto"><span class="selo-off">20% off</span><h3>Combo Standard</h3>
+        <ul><li>Bot de WhatsApp Standard</li><li>Meu site Standard</li><li>Gerador de carrosséis Standard</li></ul>
+        <p class="preco"><s>{{ combo_standard.separado }}</s> <b>{{ combo_standard.preco }}</b><span>/mês</span></p>
+        <a class="botao" href="{{ combo_standard.link }}">Assinar o Combo Standard</a></article>
+      <article class="combo-pronto combo-pronto-premium"><span class="selo-off">20% off</span><h3>Combo Premium</h3>
+        <ul><li>Bot de WhatsApp Premium</li><li>Meu site Premium</li><li>Gerador de carrosséis Premium</li></ul>
+        <p class="preco"><s>{{ combo_premium.separado }}</s> <b>{{ combo_premium.preco }}</b><span>/mês</span></p>
+        <a class="botao" href="{{ combo_premium.link }}">Assinar o Combo Premium</a></article>
     </div>
   </div>
 </section>
