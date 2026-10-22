@@ -437,6 +437,7 @@ p { margin: 0; }
 .prints-barra i { width: 10px; height: 10px; border-radius: 50%; background: #CFC8B2; display: block; }
 .prints-barra span { margin-left: 10px; font-size: 12px; color: var(--suave); background: #F6F3EA; border-radius: 999px; padding: 3px 14px; }
 .prints-janela img { display: block; width: 100%; height: auto; }
+.prints-janela picture { display: block; }
 .prints figcaption { margin-top: 14px; font-size: 16px; color: var(--suave); max-width: 760px; }
 .fundo-verde .prints figcaption, .secao-verde .prints figcaption { color: #CFDBD2; }
 .heroi-print .prints-janela { transform: rotate(1.5deg); }
@@ -447,15 +448,6 @@ a.incluso:hover { background: rgba(31,58,46,.06); }
 a.incluso strong { text-decoration: underline; text-decoration-color: transparent; text-underline-offset: 3px; transition: text-decoration-color .2s; }
 a.incluso:hover strong { text-decoration-color: var(--verde); }
 
-.so-movel-nota { display: none; }
-@media (max-width: 640px) {
-  .prints-janela { overflow-x: auto; -webkit-overflow-scrolling: touch; }
-  .prints-janela img, .prints-barra { min-width: 800px; }
-  .prints figcaption { font-size: 15px; }
-  .so-movel-nota { display: inline; }
-  .heroi-print .prints-janela img, .heroi-print .prints-barra { min-width: 0; }
-  .heroi-print .prints-janela { overflow-x: hidden; }
-}
 /* Celular: a seção em passos fica centralizada (título, texto e etapas). */
 @media (max-width: 640px) {
   .bloco-passos .miolo { text-align: center; }

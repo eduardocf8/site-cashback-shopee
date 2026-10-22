@@ -485,13 +485,31 @@ PRINTS = {
 }
 
 
-ALTURAS = {"inicio": 780, "resultados": 900, "resultados-produtos": 900, "resultados-vendas": 900, "metas": 700, "radar": 700, "radar-produtos": 900,
-           "conversor": 1010, "bot-conexao": 700, "bot-ofertas": 900, "bot-alerta": 900, "bot-campanhas": 900, "site-editor": 900, "site-botoes": 900,
-           "carrossel-editor": 960, "notas-lote": 860, "notas": 860}
+# Tamanhos (largura, altura) de cada imagem no computador e no celular, em pixels de tela. Saem do final.py.
+TAMANHOS = {
+    "bot-alerta": (1100, 2136, 420, 2300),
+    "bot-campanhas": (1100, 1345, 420, 2300),
+    "bot-conexao": (1100, 972, 420, 1329),
+    "bot-ofertas": (1100, 2361, 420, 2300),
+    "carrossel-editor": (1100, 1726, 420, 1757),
+    "conversor": (1100, 1088, 420, 1746),
+    "inicio": (1100, 1049, 420, 2179),
+    "metas": (1100, 900, 420, 1251),
+    "notas": (1100, 1102, 420, 1710),
+    "notas-lote": (1100, 1250, 420, 1700),
+    "radar": (1100, 577, 420, 703),
+    "radar-produtos": (1100, 1033, 420, 1785),
+    "resultados": (1100, 861, 442, 2144),
+    "resultados-produtos": (1100, 2044, 442, 2300),
+    "site-botoes": (1100, 1206, 420, 1387),
+    "site-editor": (1100, 1249, 420, 2300),
+}
 
 
 def _print(a, leg, alt):
-    return {"arquivo": f"landing/prints/{a}.webp", "legenda": leg, "alt": alt, "largura": 1280, "altura": ALTURAS[a]}
+    w, h, wm, hm = TAMANHOS[a]
+    return {"arquivo": f"landing/prints/{a}.webp", "arquivo_m": f"landing/prints/{a}-m.webp", "legenda": leg, "alt": alt,
+            "largura": w, "altura": h, "largura_m": wm, "altura_m": hm}
 
 
 def prints_de(modulo, secao):
