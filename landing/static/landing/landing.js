@@ -5,7 +5,7 @@ window.landingPronta = true;
 // "reduzir movimento" do sistema, tudo aparece de uma vez (ver .js .revelar no CSS).
 (function () {
   if (!("IntersectionObserver" in window) || window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
-  var GRADES = ".grade-modulos, .passos, .par-planos, .combos-prontos, .grade-notas, .grade-incluso, .faq, .checklist, .faixa-linha";
+  var GRADES = ".grade-modulos, .passos, .par-planos, .combos-prontos, .grade-notas, .grade-incluso, .faq, .checklist, .faixa-linha, .linha-passos, .split-itens, .destaque, .lista-recursos, .cartoes-premium, .faixa-recursos, .grade-recursos, .numeros-linha";
   var alvos = [];
 
   function marcar(el, atraso) {
@@ -13,7 +13,7 @@ window.landingPronta = true;
     if (atraso) el.style.setProperty("--atraso", atraso + "s");
     alvos.push(el);
   }
-  document.querySelectorAll(".secao > .miolo, .secao > .miolo-estreito, .faixa > .miolo").forEach(function (bloco) {
+  document.querySelectorAll(".secao > .miolo, .secao > .miolo-estreito, .faixa > .miolo, .bloco > .miolo, .numeros > .miolo, #comparar > .miolo").forEach(function (bloco) {
     Array.prototype.forEach.call(bloco.children, function (filho) {
       if (filho.matches(GRADES)) {
         Array.prototype.forEach.call(filho.children, function (cartao, i) { marcar(cartao, Math.min(i, 5) * 0.08); });
@@ -69,4 +69,21 @@ window.landingPronta = true;
   }
   raiz.addEventListener("change", atualizar);
   atualizar();
+})();
+
+// Índice fixo das páginas de módulo: destaca a seção que está na tela.
+(function () {
+  var links = document.querySelectorAll(".subnav a[data-alvo]");
+  if (!links.length || !("IntersectionObserver" in window)) return;
+  var porId = {}; links.forEach(function (a) { porId[a.dataset.alvo] = a; });
+  var visiveis = {};
+  var observador = new IntersectionObserver(function (itens) {
+    itens.forEach(function (i) { visiveis[i.target.id] = i.isIntersecting ? i.intersectionRatio : 0; });
+    var melhor = null, nota = 0;
+    Object.keys(visiveis).forEach(function (id) { if (visiveis[id] > nota) { nota = visiveis[id]; melhor = id; } });
+    links.forEach(function (a) { a.classList.toggle("ativo", a.dataset.alvo === melhor); });
+    var ativo = porId[melhor];
+    if (ativo && ativo.scrollIntoView && ativo.parentNode.scrollWidth > ativo.parentNode.clientWidth) { var pai = ativo.parentNode; pai.scrollTo({ left: ativo.offsetLeft - pai.clientWidth / 2 + ativo.clientWidth / 2, behavior: "smooth" }); }
+  }, { rootMargin: "-30% 0px -55% 0px", threshold: [0, 0.01, 0.1, 0.5] });
+  Object.keys(porId).forEach(function (id) { var el = document.getElementById(id); if (el) observador.observe(el); });
 })();

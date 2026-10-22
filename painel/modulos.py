@@ -50,7 +50,7 @@ MODULOS_DO_MENU = [
     {"slug": "conversor", "nome": "Conversor de links", "icone": "conversor", "modulo": None, "pronto": True},
     {
         "slug": "whatsapp", "nome": "Bot de WhatsApp", "icone": "whatsapp", "modulo": MODULO_WHATSAPP,
-        "pronto": True, "teste": True,
+        "pronto": True,
         "texto_bloqueado": "Envie ofertas com seu link de afiliado nos seus grupos e canais do WhatsApp, "
                            "no automático.",
     },

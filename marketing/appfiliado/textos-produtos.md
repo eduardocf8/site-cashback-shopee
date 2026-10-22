@@ -18,7 +18,7 @@ Ofertas da Shopee enviadas no automático para os seus grupos, sempre com o seu 
 - Busca por palavra-chave, loja ou categoria, com filtros de comissão, desconto, preço e avaliação
 - Horário e dias de envio, Sub ID por grupo e modo simulação para testar antes
 - Modo campanha: no 11.11, na Black Friday e nas outras datas, o bot muda sozinho o ritmo, o texto e o cupom
-- Alerta de preço: acompanha até 10 produtos e avisa por e-mail e nos grupos quando baixarem (conferência a cada 1 hora ou mais)
+- Alerta de preço: acompanha até 10 produtos e avisa quando o preço cair, no painel, por e-mail e, se você quiser, nos grupos (conferência a partir de 1 hora)
 
 Precisa de: um número de WhatsApp (conecta pelo QR Code) e a conta de afiliado da Shopee.
 
@@ -30,7 +30,7 @@ Tudo do Standard, com mais alcance e mais automação.
 - Até 300 ofertas por dia em cada grupo, com intervalo a partir de 3 minutos
 - Copia as ofertas de outros grupos e canais e troca pelo seu link de afiliado
 - Revisão do texto com IA (corrige o português sem mexer em link, preço ou cupom)
-- Alerta de preço com até 50 produtos, conferidos a cada 15 minutos
+- Alerta de preço com até 50 produtos, com conferência a partir de 15 minutos
 
 Precisa de: um número de WhatsApp (conecta pelo QR Code) e a conta de afiliado da Shopee.
 

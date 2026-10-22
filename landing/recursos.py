@@ -8,7 +8,7 @@ from licencas import planos as plano
 
 
 def _t(nome, texto, so=""):
-    return {"nome": nome, "texto": texto, "plano": so}
+    return {"nome": nome, "texto": texto, "plano": so, "chips": [], "cores": []}
 
 
 def _grupo(titulo, intro, *itens):
@@ -71,7 +71,7 @@ def bot():
                    _t("Onde avisar", "Sempre no painel e, se você quiser, por e-mail e nos grupos do WhatsApp (com a foto e o seu link de afiliado)."),
                    _t("Mensagem sua", "Escreva o aviso do seu jeito, com o produto, o preço antes, o preço agora, a queda e o link."),
                    _t("Histórico de preços", "Cada produto mostra o preço inicial, o menor preço visto e o último alerta. Produto sem estoque ou sem comissão fica marcado como indisponível.")),
-            _grupo("Só no Premium", "Recursos para quem quer mais alcance e mais automação.",
+            _grupo("Recursos que só o Premium tem", "Para quem quer mais alcance e mais automação.",
                    _t("Copiar ofertas de outros grupos e canais", "Marque os grupos e canais que você quer copiar. Toda mensagem com link da Shopee que chegar vira uma oferta sua, com o seu link de afiliado. Os links de quem postou são removidos, e só o seu entra. Mensagem sem link da Shopee é ignorada.", "Premium"),
                    _t("Revisão do texto com IA", "A IA revisa o texto das ofertas antes de enviar: só o português, corrigir frases que não combinam com o produto, ou deixar a chamada mais atraente. Link, preço e cupom nunca são alterados, e se algo der errado a oferta sai com o texto original.", "Premium")),
             _grupo("Cuidado com o seu número", "O bot foi feito para enviar sem exagero.",
@@ -263,4 +263,59 @@ def carrosseis():
     }
 
 
-PAGINAS = {"bot": bot, "site": site, "carrosseis": carrosseis}
+# ---- apresentação: o formato de cada seção, os rótulos do índice, os chips e as amostras de cor ----
+# Formatos: passos (etapas numeradas), split (título fixo à esquerda e lista à direita), destaque (um item
+# grande e os outros ao lado), lista (linhas compactas em duas colunas), cartoes (grade), faixa (itens
+# lado a lado) e premium (bloco escuro para o que é só do plano Premium).
+APRESENTACAO = {
+    "bot": {
+        "layouts": ["passos", "split", "lista", "destaque", "split", "cartoes", "premium", "faixa", "cartoes"],
+        "curtos": ["Conexão", "Ofertas", "Ritmo", "Testes", "Campanhas", "Alerta de preço", "Só no Premium", "Segurança", "Integrações"],
+        "chips": {"15 categorias prontas": ["Moda", "Beleza", "Casa e Decoração", "Eletrônicos e Celulares", "Eletrodomésticos", "Bebês e Infantil",
+                                           "Brinquedos e Games", "Esporte e Lazer", "Automotivo e Motos", "Pet Shop", "Papelaria e Escritório",
+                                           "Saúde e Bem-estar", "Alimentos e Bebidas", "Joias e Acessórios", "Ferramentas e Construção"],
+                  "Datas da Shopee": ["Dia do Consumidor", "3.3", "4.4", "5.5", "6.6", "7.7", "8.8", "9.9", "10.10", "11.11", "12.12", "Black Friday"]},
+        "numeros": lambda: [(f"{plano.BOT[False]['grupos']} a {plano.BOT[True]['grupos']}", "grupos e canais"),
+                            (f"{plano.BOT[False]['ofertas_por_grupo_dia']} a {plano.BOT[True]['ofertas_por_grupo_dia']}", "ofertas por dia, em cada grupo"),
+                            (f"{plano.BOT[True]['intervalo_minimo']} a {plano.BOT[False]['intervalo_minimo']} min", "entre uma oferta e outra"),
+                            (f"{plano.BOT[False]['alerta_produtos']} a {plano.BOT[True]['alerta_produtos']}", "produtos no alerta de preço")],
+    },
+    "site": {
+        "layouts": ["passos", "split", "destaque", "cartoes", "lista", "split", "faixa", "cartoes"],
+        "curtos": ["Endereço", "Aparência", "Botões", "Redes", "Conversor", "Vitrine", "Cliques", "Marca"],
+        "chips": {"Sete redes": ["Instagram", "TikTok", "YouTube", "X (Twitter)", "Facebook", "WhatsApp", "Telegram"]},
+        "cores": {"Cores": ["#E8541E", "#D92D20", "#D6336C", "#F783AC", "#7048E8", "#B197FC", "#2F6FDE", "#1E3A8A", "#0E9AA7", "#2F9E44",
+                            "#1F3A2E", "#F2B705", "#8B5E3C", "#5F6B7A", "#111111"]},
+        "numeros": lambda: [(f"{plano.SITE[False]['botoes']} a {plano.SITE[True]['botoes']}", "botões de link"),
+                            ("7", "redes sociais"), ("100", "produtos na vitrine"), ("20/h", "conversões por visitante")],
+    },
+    "carrosseis": {
+        "layouts": ["passos", "destaque", "split", "cartoes", "premium", "lista", "faixa"],
+        "curtos": ["Criação", "IA", "Modelos", "Visual", "Fundo e foto", "Editor", "Download"],
+        "chips": {"6 modelos Standard": ["Destaque", "Editorial", "Promo", "Neon", "Polaroid", "Bento"],
+                  "4 modelos Premium": ["Vitrine", "Anotado", "Etiqueta", "Ficha"]},
+        "cores": {"5 temas de cor": ["#1F3A2E", "#E8541E", "#D6336C", "#2F6FDE", "#141414"]},
+        "numeros": lambda: [(f"{plano.CARROSSEIS[False]['geracoes']} a {plano.CARROSSEIS[True]['geracoes']}", "carrosséis por dia"),
+                            ("10", "modelos"), ("2 a 10", "slides por carrossel"), ("1080×1350", "PNG pronto para o Instagram")],
+    },
+}
+
+
+def _apresentar(modulo, pagina):
+    ap = APRESENTACAO[modulo]
+    fundo = ""
+    for g, layout, curto in zip(pagina["grupos"], ap["layouts"], ap["curtos"]):
+        g["layout"], g["curto"] = layout, curto
+        if layout == "premium":
+            g["fundo"] = "verde"
+        else:  # alterna branco e creme, para duas seções vizinhas nunca terem a mesma cor
+            fundo = "creme" if fundo != "creme" else ""
+            g["fundo"] = fundo
+        for item in g["itens"]:
+            item["chips"] = ap.get("chips", {}).get(item["nome"], [])
+            item["cores"] = ap.get("cores", {}).get(item["nome"], [])
+    pagina["numeros"] = ap["numeros"]()
+    return pagina
+
+
+PAGINAS = {m: (lambda m=m, f=f: _apresentar(m, f())) for m, f in {"bot": bot, "site": site, "carrosseis": carrosseis}.items()}
