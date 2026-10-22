@@ -46,7 +46,7 @@ PERGUNTAS = [
     ("Como recebo o acesso depois de pagar?", "Logo após a confirmação do pagamento você recebe um e-mail com a chave de acesso. É só entrar no painel (app.appfiliado.com.br) e conectar a sua conta da Shopee."),
     ("Qual é a diferença entre Standard e Premium?", "O Premium libera mais volume e mais recursos em cada módulo (mais grupos e ofertas por dia no bot, mais botões no site, mais carrosséis por dia). As listas completas estão nos cartões de cada plano."),
     ("Preciso de um número de WhatsApp só para o bot?", "Você conecta pelo QR Code o número que quiser. Muita gente prefere um número separado do pessoal, só para divulgar as ofertas nos grupos."),
-    ("Posso pagar por ano?", "Pode. No checkout você escolhe mensal ou anual, e no anual você paga 10 meses e usa 12."),
+    ("Posso pagar por ano?", "Pode. No checkout você escolhe mensal ou anual, e o plano anual tem 17% de desconto."),
     ("Posso cancelar quando quiser?", "Pode. O cancelamento é feito pela Zouti, a plataforma de pagamento. O acesso segue até o fim do período já pago."),
     ("E se eu não gostar?", "Você tem 7 dias, a partir da compra, para pedir o reembolso integral pela Zouti."),
     ("O que preciso para emitir notas fiscais?", "A emissão é só para afiliados pessoa jurídica: é preciso uma empresa MEI ou do Simples Nacional e o certificado digital A1 (e-CNPJ). O Appfiliado importa o relatório mensal da Shopee e emite uma nota por loja no Emissor Nacional do governo."),
