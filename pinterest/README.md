@@ -50,3 +50,20 @@ Conferir os cliques de cada grupo em Análises, no Pinterest, 3 a 4 semanas depo
 |---|---|---|
 | 01/10/2026 | 5 tipográficos: Casa e decoração, Beleza, Celular e acessórios, Moda feminina, Esporte e ar livre (`marketing/pinterest/pins-teste/`) | Página da categoria na cash-b, `utm_source=pinterest` |
 | 01/10/2026 | 5 com foto do produto e "Marcar produtos": 01 (produto não informado), 02 mop spray com reservatório (Casa e Decoração), 03 ventilador de teto com luminária (Eletrodomésticos), 04 kit 7 saquinhos maternidade (Mãe e Bebê), 05 legging com cinta modeladora (Roupas Femininas) | Tag nativa da Shopee, sem link de destino |
+
+### Leitura em 22/10/2026 (3 semanas)
+
+Conta inteira, 01/10 a 22/10: 207 impressões, 5 engajamentos, 0 cliques de saída,
+0 salvamentos. Por Pin do teste (o resto ficou abaixo de 5 impressões e não apareceu
+no print):
+
+| Pin | Grupo | Impressões |
+|---|---|---|
+| Legging com cinta modeladora | Shopee (foto de produto) | 16 |
+| Mop spray com reservatório | Shopee (foto de produto) | 5 |
+| Kit 7 saquinhos maternidade | Shopee (foto de produto) | 5 |
+| 5 tipográficos da cash-b | cash-b | menos de 5 cada |
+
+Sem clique de saída em nenhum dos dois grupos, então ainda não dá para comparar
+destino. O que dá para ver: foto de produto teve mais alcance que arte só de texto.
+Conclusão: o gargalo é alcance (volume de Pins), não o tipo de link.
