@@ -177,7 +177,7 @@
         {% if email_suporte %}<a class="botao botao-vazado-escuro" href="mailto:{{ email_suporte }}">{{ email_suporte }}</a>{% endif %}
       </div>
     {% endif %}
-    <p class="outros-modulos">Conheça também: {% for o in outros %}<a href="{% url o.url %}">{{ o.nome }}</a>, {% endfor %}<a href="{% url 'landing_notas' %}">Emissor NFS-e</a>.</p>
+    <p class="outros-modulos">Conheça também: {% for o in outros %}<a href="{% url o.url %}">{{ o.nome }}</a>{% if forloop.last %} e {% else %}, {% endif %}{% endfor %}<a href="{% url 'landing_notas' %}">Emissor NFS-e</a>.</p>
   </div>
 </section>
 </main>

@@ -1022,7 +1022,7 @@ class TestAndamento(TestCase):
         lote.notas.update(situacao="autorizada", xml_nfse=xml_nfse())
         LoteNotas.objects.filter(pk=lote.pk).update(estado="concluido")
         pagina = self.client.get(f"/notas/lote/{lote.pk}/")
-        self.assertContains(pagina, "Pros vendedores, com o PDF e o XML")
+        self.assertContains(pagina, "Pros vendedores com o PDF e o XML")
         self.assertContains(pagina, 'data-acompanhar="/notas/andamento/"')  # notas prontas, e-mails ainda saindo
         self.assertContains(pagina, 'data-campo="email_sem">1</strong> sem e-mail no relatório')
         dados = self.client.get(f"/notas/andamento/?ids=&lote={lote.pk}").json()["lote"]
@@ -1033,7 +1033,7 @@ class TestAndamento(TestCase):
         self.assertEqual((dados["email"]["enviados"], dados["email"]["progresso"], dados["acompanhar"]), (2, 100, False))
         self.assertNotContains(self.client.get(f"/notas/lote/{lote.pk}/"), "data-acompanhar")
         # No ambiente de testes não sai e-mail: não há barra.
-        self.assertNotContains(self.client.get(f"/notas/lote/{self.lote.pk}/"), "Pros vendedores, com o PDF e o XML")
+        self.assertNotContains(self.client.get(f"/notas/lote/{self.lote.pk}/"), "Pros vendedores com o PDF e o XML")
 
 
 @unittest.skipUnless(connection.vendor == "postgresql", "envio simultâneo só roda com PostgreSQL")

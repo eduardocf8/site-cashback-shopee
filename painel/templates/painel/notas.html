@@ -45,7 +45,7 @@
   <div class="duas-colunas notas-emitir">
     <section class="card notas-cartao" id="mes" aria-labelledby="titulo-mes">
       <h2 id="titulo-mes">Notas dos vendedores (comissão extra)</h2>
-      <p class="suave pequeno">Na Central do Afiliado da Shopee: <strong>Relatórios › Relatório mensal</strong>, escolha o mês de conclusão e clique em <strong>Exportar</strong>. Envie o arquivo aqui do jeito que baixou (sem abrir no Excel). Sai uma nota por loja, e você confere tudo antes de emitir.</p>
+      <p class="suave pequeno">Na Central do Afiliado da Shopee: <strong>Relatórios › Relatório mensal</strong>, escolha o mês de conclusão e clique em <strong>Exportar</strong>. Envie o arquivo aqui do jeito que baixou (sem abrir no Excel). Sai uma nota por loja e você confere tudo antes de emitir.</p>
       <form method="post" enctype="multipart/form-data" class="formulario">
         {% csrf_token %}
         <input type="hidden" name="acao" value="importar">
@@ -57,7 +57,7 @@
 
     <section class="card notas-cartao" id="shopee" aria-labelledby="titulo-shopee">
       <h2 id="titulo-shopee">Nota da Shopee</h2>
-      <p class="suave pequeno">Uma por mês, com o valor bruto da comissão paga pela Shopee na fatura. Depois de autorizada, baixe o PDF e envie na Central do Afiliado até o dia 5.</p>
+      <p class="suave pequeno">Uma por mês com o valor bruto da comissão paga pela Shopee na fatura. Depois de autorizada, baixe o PDF e envie na Central do Afiliado até o dia 5.</p>
       <form method="post" class="formulario">
         {% csrf_token %}
         <input type="hidden" name="acao" value="shopee">
@@ -115,7 +115,7 @@
             </form>
           </div>
         {% else %}
-          <p class="suave pequeno">É o arquivo .pfx (ou .p12) do e-CNPJ da empresa, com a senha dele. O governo exige esse certificado para emitir notas por sistema, inclusive para MEI.</p>
+          <p class="suave pequeno">É o arquivo .pfx (ou .p12) do e-CNPJ da empresa com a senha dele. O governo exige esse certificado para emitir notas por sistema, inclusive para MEI.</p>
           <form method="post" enctype="multipart/form-data" class="formulario">
             {% csrf_token %}
             <input type="hidden" name="acao" value="certificado">

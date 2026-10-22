@@ -25,7 +25,7 @@
 
       {% elif conexao.estado == ConexaoWhatsApp.CONECTADO %}
         <p class="status-zap"><span class="ponto ok" aria-hidden="true"></span><strong>Conectado</strong> {{ conexao.numero_formatado }}{% if conexao.nome %} · {{ conexao.nome }}{% endif %}</p>
-        <p class="suave pequeno">Desde {{ conexao.conectado_em|date:"d/m" }} às {{ conexao.conectado_em|date:"H:i" }}. O servidor aparece como “Appfiliado” em Aparelhos conectados, no seu celular. Não precisa deixar computador ligado.</p>
+        <p class="suave pequeno">Desde {{ conexao.conectado_em|date:"d/m" }} às {{ conexao.conectado_em|date:"H:i" }}. O servidor aparece como “Appfiliado” em Aparelhos conectados no seu celular. Não precisa deixar computador ligado.</p>
         <form method="post" action="{% url 'painel_whatsapp_desconectar' %}" onsubmit="return confirm('Desconectar o WhatsApp do Appfiliado?');" style="margin-top:16px">
           {% csrf_token %}
           <button type="submit" class="botao botao-claro botao-pequeno">Desconectar</button>
@@ -33,7 +33,7 @@
 
       {% elif conexao.estado == ConexaoWhatsApp.RECONECTANDO %}
         <p class="status-zap"><span class="ponto atencao" aria-hidden="true"></span><strong>Reconectando…</strong> {{ conexao.numero_formatado }}</p>
-        <p class="suave pequeno">A conexão caiu e o servidor está voltando sozinho. Se demorar muito, confira em Aparelhos conectados, no celular, se o “Appfiliado” ainda aparece.</p>
+        <p class="suave pequeno">A conexão caiu e o servidor está voltando sozinho. Se demorar muito, confira no celular, em Aparelhos conectados, se o “Appfiliado” ainda aparece.</p>
         <form method="post" action="{% url 'painel_whatsapp_desconectar' %}" style="margin-top:16px">
           {% csrf_token %}
           <button type="submit" class="botao botao-claro botao-pequeno">Desconectar</button>

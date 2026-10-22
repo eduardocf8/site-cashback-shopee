@@ -5,7 +5,7 @@
 <header class="cabecalho">
   <div>
     <h1>Bot de WhatsApp</h1>
-    <p>Ofertas da Shopee enviadas com o seu link de afiliado, no automático: buscadas pela API ou copiadas de outros grupos e canais.</p>
+    <p>Ofertas da Shopee enviadas com o seu link de afiliado no automático: buscadas pela API ou copiadas de outros grupos e canais.</p>
   </div>
 </header>
 {% include "painel/_abas_whatsapp.html" with aba="campanhas" %}
@@ -108,7 +108,7 @@
 
     <section class="card" aria-labelledby="titulo-pagina-campanha">
       <h2 id="titulo-pagina-campanha">Mensagem da página da campanha</h2>
-      <p class="suave pequeno">Uma <strong>mensagem à parte</strong>, sem produto: só o link da página da campanha na Shopee, enviada de tantas em tantas ofertas.</p>
+      <p class="suave pequeno">Uma <strong>mensagem à parte</strong> sem produto: só o link da página da campanha na Shopee, enviada de tantas em tantas ofertas.</p>
       <label class="marcar">{{ form.pagina_ativa }}<span><strong>Enviar a página da campanha</strong><span class="ajuda">Quem clica cai na página do evento com o seu link: compras de qualquer produto de lá contam para você.</span></span></label>
       <div class="bloco-mensagem" data-ligado-por="id_pagina_ativa">
         <div class="campo">{% include "painel/_campo.html" with campo=form.link_campanha %}</div>
@@ -138,13 +138,13 @@
     </section>
     <section class="card" aria-labelledby="titulo-previa">
       <h2 id="titulo-previa">Prévia de uma oferta</h2>
-      <p class="suave pequeno">{% if campanha.mensagem_ativa %}Um produto de exemplo, com a frase e o cupom da campanha.{% else %}O texto das ofertas não muda: elas saem como na Automação.{% endif %}</p>
+      <p class="suave pequeno">{% if campanha.mensagem_ativa %}Um produto de exemplo com a frase e o cupom da campanha.{% else %}O texto das ofertas não muda: elas saem como na Automação.{% endif %}</p>
       <pre class="texto-oferta">{{ previa }}</pre>
     </section>
     <section class="card" aria-labelledby="titulo-previa-pagina">
       <h2 id="titulo-previa-pagina">Prévia da mensagem da página</h2>
       {% if campanha.pagina_ativa %}
-        <p class="suave pequeno">Sai sozinha, a cada {{ campanha.link_campanha_a_cada }} ofertas, com a prévia grande do link.</p>
+        <p class="suave pequeno">Sai sozinha a cada {{ campanha.link_campanha_a_cada }} ofertas com a prévia grande do link.</p>
         <pre class="texto-oferta">{{ previa_pagina }}</pre>
       {% else %}
         <p class="suave pequeno">Desligada: no dia da campanha vão só as ofertas.</p>

@@ -4,7 +4,7 @@
   --raio: 16px;
 }
 * { box-sizing: border-box; }
-html { scroll-behavior: smooth; scroll-padding-top: 84px; }
+html { scroll-behavior: smooth; scroll-padding-top: 67px; }
 body { margin: 0; font-family: "DM Sans", "Segoe UI", system-ui, sans-serif; color: var(--texto); background: #fff; line-height: 1.55; -webkit-font-smoothing: antialiased; }
 a { color: inherit; }
 h1, h2, h3, h4 { line-height: 1.12; letter-spacing: -.02em; margin: 0; }
@@ -61,7 +61,7 @@ p { margin: 0; }
 .incluso span { color: var(--suave); font-size: 14px; }
 
 /* seções */
-.secao { padding: 88px 0; }
+.secao { padding: 52px 0 76px; }
 .secao-creme { background: var(--creme); }
 .secao-verde { background: var(--verde); color: var(--creme); }
 .secao .chapeu { color: #7A5B00; }
@@ -143,7 +143,7 @@ p { margin: 0; }
   .topo-acoes { margin-left: auto; }
 }
 @media (max-width: 640px) {
-  .secao { padding: 60px 0; }
+  .secao { padding: 44px 0 56px; }
   .faixa-linha, .passos, .par-planos, .combos-prontos, .grade-notas, .grade-modulos { grid-template-columns: 1fr; }
   .entrar { display: none; }
   .escolha { grid-template-columns: 1fr; }
@@ -233,9 +233,11 @@ p { margin: 0; }
 .subnav a.ativo { background: var(--verde); color: var(--creme); }
 
 /* cada seção "sobe" sobre a anterior, com a borda de cima arredondada */
-.bloco, #comparar, #planos, #perguntas { position: relative; border-radius: 24px 24px 0 0; margin-top: -24px; padding: 40px 0 72px; }
+.bloco, #comparar, #planos, #perguntas { position: relative; border-radius: 24px 24px 0 0; margin-top: -24px; padding: 52px 0 72px; }
 /* só as páginas de módulo têm o índice fixo embaixo do cabeçalho, que pede uma folga a mais ao rolar até a seção */
-.pagina-modulo .bloco, .pagina-modulo #comparar, .pagina-modulo #planos, .pagina-modulo #perguntas { scroll-margin-top: 46px; }
+.pagina-modulo .bloco, .pagina-modulo #comparar, .pagina-modulo #planos, .pagina-modulo #perguntas { scroll-margin-top: 34px; }
+/* Ao chegar por um link, o topo da seção (e os cantos arredondados) fica escondido sob a barra: não aparece faixa da seção anterior. */
+.secao[id], main:not(.pagina-modulo) #planos, main:not(.pagina-modulo) #perguntas { scroll-margin-top: -24px; }
 .bloco { background: #fff; }
 .bloco.fundo-creme, #perguntas { background: var(--creme); }
 .bloco.fundo-verde { background: linear-gradient(160deg, var(--verde-2) 0, var(--verde) 55%, var(--verde-3) 100%); color: var(--creme); }
@@ -313,7 +315,7 @@ p { margin: 0; }
   .linha-passos li::before { display: none; }
   .subnav { top: 68px; }
 }
-@media (max-width: 640px) { .bloco, #comparar, #planos, #perguntas { border-radius: 20px 20px 0 0; margin-top: -20px; padding: 32px 0 56px; } .faixa-recursos > div { border-left: 0; border-top: 1px solid var(--borda); } .faixa-recursos > div:first-child { border-top: 0; } }
+@media (max-width: 640px) { .bloco, #comparar, #planos, #perguntas { border-radius: 20px 20px 0 0; margin-top: -20px; padding: 44px 0 56px; } .faixa-recursos > div { border-left: 0; border-top: 1px solid var(--borda); } .faixa-recursos > div:first-child { border-top: 0; } }
 
 .bloco.fundo-verde .chapeu { color: var(--amarelo); }
 
@@ -347,8 +349,15 @@ p { margin: 0; }
 .niveis input:checked + span { background: var(--amarelo); color: var(--verde); border-color: var(--amarelo); }
 .niveis input:focus-visible + span { outline: 3px solid var(--creme); outline-offset: 2px; }
 
-.conta { background: var(--creme); color: var(--texto); border-radius: 22px; padding: 28px 30px; }
-.conta-vazia { color: var(--suave); text-align: center; padding: 14px 0; }
+.conta { background: var(--creme); color: var(--texto); border-radius: 22px; padding: 28px 30px; display: grid; grid-template-rows: 1fr 0fr; transition: grid-template-rows .45s cubic-bezier(.3,.7,.3,1); }
+.conta.tem { grid-template-rows: 0fr 1fr; }
+.conta-caixa { min-height: 0; overflow: hidden; }
+/* Sem módulo escolhido o aviso fica no meio da caixa; ao escolher, ele sobe e some e o resumo do combo desce no lugar. */
+.conta-vazia { color: var(--suave); text-align: center; font-size: 21px; font-weight: 500; padding: 30px 0; margin: 0; transition: opacity .3s ease, transform .45s cubic-bezier(.3,.7,.3,1); }
+.conta.tem .conta-vazia { opacity: 0; transform: translateY(-18px); }
+.conta-grade { opacity: 0; transform: translateY(18px); transition: opacity .35s ease .1s, transform .45s cubic-bezier(.3,.7,.3,1); }
+.conta.tem .conta-grade { opacity: 1; transform: none; }
+@media (prefers-reduced-motion: reduce) { .conta, .conta-vazia, .conta-grade { transition: none; } }
 .conta-grade { display: grid; grid-template-columns: 1.2fr 1fr; gap: 36px; align-items: center; }
 .conta-titulo { font-size: 13px; letter-spacing: .1em; text-transform: uppercase; font-weight: 800; color: var(--suave); margin-bottom: 8px; }
 .conta-lista ul { list-style: none; margin: 0; padding: 0; display: grid; }
@@ -390,3 +399,5 @@ p { margin: 0; }
 /* "Não quero" selecionado fica discreto: o amarelo é só para o que a pessoa realmente escolheu */
 .niveis label:first-child input:checked + span { background: rgba(246,243,234,.12); color: var(--creme); border-color: rgba(246,243,234,.45); }
 @media (max-width: 960px) { .selo-off { position: static; justify-self: center; } }
+@media (max-width: 640px) { .pagina-modulo .bloco, .pagina-modulo #comparar, .pagina-modulo #planos, .pagina-modulo #perguntas { scroll-margin-top: 38px; } }
+@media (max-width: 640px) { .secao[id], main:not(.pagina-modulo) #planos, main:not(.pagina-modulo) #perguntas { scroll-margin-top: -20px; } }

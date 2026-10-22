@@ -69,7 +69,7 @@ window.landingPronta = true;
   var info = JSON.parse(dados.textContent);
   var brl = new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" });
   var NIVEIS = ["Standard", "Premium"], DESCONTO = { 2: 10, 3: 20 };
-  var vazio = raiz.querySelector("[data-vazio]"), resultado = raiz.querySelector("[data-resultado]");
+  var conta = raiz.querySelector("[data-conta]"), vazio = raiz.querySelector("[data-vazio]"), resultado = raiz.querySelector("[data-resultado]");
   var degraus = document.querySelectorAll("[data-degraus] li"), dica = document.querySelector("[data-dica]");
   var DICAS = {
     0: "Escolha um módulo para começar.",
@@ -90,8 +90,8 @@ window.landingPronta = true;
     var n = escolha.length, combo = info.combos[escolha.join("+")];
     degraus.forEach(function (li) { var k = +li.dataset.n; li.classList.toggle("ativo", k === n); li.classList.toggle("feito", k < n); });
     if (dica) dica.textContent = DICAS[n];
-    vazio.hidden = !!combo;
-    resultado.hidden = !combo;
+    conta.classList.toggle("tem", !!combo);
+    vazio.inert = !!combo; resultado.inert = !combo;
     if (!combo) return;
     var ul = raiz.querySelector("[data-linhas]"); ul.innerHTML = "";
     linhas.forEach(function (l) {

@@ -6,7 +6,7 @@
 <header class="cabecalho">
   <div>
     <h1>Bot de WhatsApp</h1>
-    <p>Ofertas da Shopee enviadas com o seu link de afiliado, no automático: buscadas pela API ou copiadas de outros grupos e canais.</p>
+    <p>Ofertas da Shopee enviadas com o seu link de afiliado no automático: buscadas pela API ou copiadas de outros grupos e canais.</p>
   </div>
 </header>
 {% include "painel/_abas_whatsapp.html" with aba="alertas" %}
@@ -136,8 +136,8 @@
       <section class="card" aria-labelledby="titulo-onde-avisar">
         <h2 id="titulo-onde-avisar">Onde avisar</h2>
         <label class="marcar"><input type="checkbox" checked disabled><span><strong>Aqui no painel</strong><span class="ajuda">Sempre: os alertas aparecem nesta aba e na tela Início.</span></span></label>
-        <label class="marcar" style="margin-top:12px">{{ form.avisar_email }}<span><strong>Por e-mail</strong><span class="ajuda">Para {{ conta.email }}, com o link de afiliado de cada produto.</span></span></label>
-        <label class="marcar" style="margin-top:12px">{{ form.enviar_grupos }}<span><strong>Postar nos grupos do WhatsApp</strong><span class="ajuda">O bot posta sozinho cada produto que baixou de preço, com foto e o seu link de afiliado, nos grupos da Automação.</span></span></label>
+        <label class="marcar" style="margin-top:12px">{{ form.avisar_email }}<span><strong>Por e-mail</strong><span class="ajuda">Para {{ conta.email }} com o link de afiliado de cada produto.</span></span></label>
+        <label class="marcar" style="margin-top:12px">{{ form.enviar_grupos }}<span><strong>Postar nos grupos do WhatsApp</strong><span class="ajuda">O bot posta sozinho cada produto que baixou de preço com foto e o seu link de afiliado nos grupos da Automação.</span></span></label>
         <div class="bloco-mensagem" data-ligado-por="id_enviar_grupos">
           {% if not whatsapp_conectado %}<p class="aviso aviso-warning pequeno">Seu WhatsApp não está conectado. Conecte na aba <a href="{% url 'painel_whatsapp' %}">Conexão</a>.</p>{% endif %}
           <p class="suave pequeno">{% if grupos_da_automacao %}Vai pros mesmos grupos das ofertas: <strong>{% for g in grupos_da_automacao %}{{ g.nome|default:"Grupo" }}{% if not forloop.last %}, {% endif %}{% endfor %}</strong>. Para mudar, use a aba <a href="{% url 'painel_whatsapp_ofertas' %}">Automação</a>.{% else %}Vai pros mesmos grupos das ofertas, mas nenhum está escolhido ainda. Escolha na aba <a href="{% url 'painel_whatsapp_ofertas' %}">Automação</a>.{% endif %}</p>
