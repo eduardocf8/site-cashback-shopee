@@ -25,7 +25,7 @@ LOGO = ('<svg viewBox="3 8.25 36 36" width="54" height="54"><g fill="none" strok
 
 BOT = ("whatsapp", "Bot de WhatsApp", "Ofertas da Shopee no automático nos seus grupos, com o seu link.")
 SITE = ("site", "Meu site", "Seu link na bio com vitrine de ofertas e conversor de links.")
-CARR = ("carrosseis", "Carrosséis", "Carrosséis para o Instagram prontos a partir de um link da Shopee.")
+CARR = ("carrosseis", "Gerador de carrosséis", "Carrosséis para o Instagram prontos a partir de um link da Shopee.")
 NOTAS = ("notas", "Emissão NFS-e", "As notas dos vendedores direto do relatório da Shopee.")
 
 AVULSOS = [
@@ -105,10 +105,10 @@ def artes() -> dict[str, str]:
         destaque = "Notas ilimitadas<br><small>por mês</small>" if numero is None else f"Até {numero} notas<br><small>por mês</small>"
         saida[f"nfse-{nome}"] = _pagina(["notas"], NOTAS[1], numero=destaque, beneficios=BENEFICIOS_NOTAS)
     tres = ["whatsapp", "site", "carrosseis"]
-    saida["combo-standard"] = _pagina(tres, "Combo Standard", "Standard", "Bot de WhatsApp + Meu site + Carrosséis.",
+    saida["combo-standard"] = _pagina(tres, "Combo Standard", "Standard", "Bot de WhatsApp + Meu site + Gerador de carrosséis.",
                                       beneficios=["Os 3 módulos no plano Standard", "20% mais barato que separado",
                                                   "Uma assinatura só"])
-    saida["combo-premium"] = _pagina(tres, "Combo Premium", "Premium", "Bot de WhatsApp + Meu site + Carrosséis.",
+    saida["combo-premium"] = _pagina(tres, "Combo Premium", "Premium", "Bot de WhatsApp + Meu site + Gerador de carrosséis.",
                                      beneficios=["Os 3 módulos no plano Premium", "20% mais barato que separado",
                                                  "Tudo liberado nos 3 módulos"])
     saida["combo-personalizado"] = _pagina(tres, "Combo personalizado", "", "Escolha os módulos e o plano de cada um.",

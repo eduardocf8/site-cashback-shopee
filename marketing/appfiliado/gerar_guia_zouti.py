@@ -14,7 +14,7 @@ E = html.escape
 PRECOS = {  # (Standard, Premium)
     "bot": (49.90, 89.90), "site": (22.90, 35.90), "carrosseis": (19.90, 35.90),
 }
-NOMES = {"bot": "Bot de WhatsApp", "site": "Meu site", "carrosseis": "Carrosséis"}
+NOMES = {"bot": "Bot de WhatsApp", "site": "Meu site", "carrosseis": "Gerador de carrosséis"}
 CODIGOS = {
     ("bot", 0): "whatsapp", ("bot", 1): "whatsapp_premium",
     ("site", 0): "site", ("site", 1): "site_sem_marca",
@@ -96,7 +96,7 @@ def produtos() -> list[dict]:
         total = sum(PRECOS[m][nivel] for m in modulos)
         lista.append({"grupo": "Combos fechados", "nome": nome, "mensal": com_desconto(total, 0.80),
                       "codigos": ", ".join(CODIGOS[(m, nivel)] for m in modulos), "arte": f"combo-{'premium' if nivel else 'standard'}",
-                      "frase": f"Bot de WhatsApp + Meu site + Carrosséis, todos no plano {NIVEL[nivel]}, 20% mais barato que separado.",
+                      "frase": f"Bot de WhatsApp + Meu site + Gerador de carrosséis, todos no plano {NIVEL[nivel]}, 20% mais barato que separado.",
                       "itens": [f"{NOMES[m]}: {LINHA[(m, nivel)]}" for m in modulos] + ["Uma assinatura só"], "precisa": ""})
     for n, fator in ((2, 0.90), (3, 0.80)):
         for escolhidos in itertools.combinations(modulos, n):

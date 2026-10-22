@@ -35,7 +35,7 @@ MODULOS = [
      "Em <strong>Alerta de preço</strong>, escolha produtos para acompanhar e receba o aviso quando baixarem."),
     ("Meu site", "Escolha o endereço, o nome e a cor, adicione os botões e confira a prévia ao lado. "
      "Quando estiver bom, marque o site como publicado e coloque o link na bio."),
-    ("Carrosséis", "Cole o link de um produto da Shopee e gere o carrossel. Ajuste os textos no editor e baixe as imagens para postar."),
+    ("Gerador de carrosséis", "Cole o link de um produto da Shopee e gere o carrossel. Ajuste os textos no editor e baixe as imagens para postar."),
     ("Emissão NFS-e", "Cadastre o CNPJ, envie o certificado digital A1, informe o serviço e faça uma nota de teste. "
      "Depois, envie o Relatório Mensal da Shopee: sai uma nota por loja, com e-mail para cada vendedor."),
 ]
