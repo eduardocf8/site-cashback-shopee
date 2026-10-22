@@ -55,7 +55,7 @@ Tudo do Standard, com mais espaço e a sua marca no lugar da nossa.
 
 ---
 
-## Carrosséis — Standard
+## Gerador de carrosséis — Standard
 
 Cole um link da Shopee e receba um carrossel pronto para o Instagram.
 
@@ -64,7 +64,7 @@ Cole um link da Shopee e receba um carrossel pronto para o Instagram.
 - Editor para ajustar os textos e baixar as imagens
 - Seu link de afiliado com Sub ID próprio para ver as vendas do Instagram
 
-## Carrosséis — Premium
+## Gerador de carrosséis — Premium
 
 Tudo do Standard, com mais volume e mais liberdade de criação.
 
@@ -91,20 +91,20 @@ Precisa de: empresa MEI ou Simples Nacional e certificado digital A1 (e-CNPJ).
 
 ## Combo Standard
 
-Bot de WhatsApp + Meu site + Carrosséis, todos no plano Standard, 20% mais barato que separado.
+Bot de WhatsApp + Meu site + Gerador de carrosséis, todos no plano Standard, 20% mais barato que separado.
 
 - Bot: até 3 grupos, 30 ofertas por dia em cada, modo campanha e alerta de preço
 - Meu site: até 3 botões, conversor e vitrine de ofertas
-- Carrosséis: 3 por dia, com roteiro por IA
+- Gerador de carrosséis: 3 por dia, com roteiro por IA
 - Uma assinatura só
 
 ## Combo Premium
 
-Bot de WhatsApp + Meu site + Carrosséis, todos no plano Premium, 20% mais barato que separado.
+Bot de WhatsApp + Meu site + Gerador de carrosséis, todos no plano Premium, 20% mais barato que separado.
 
 - Bot: até 20 grupos, 100 ofertas por dia em cada, copiar ofertas, IA e alerta de preço
 - Meu site: até 10 botões, vitrine com os produtos que você escolher e sem a nossa marca
-- Carrosséis: 10 por dia, modelos premium, cores livres e foto própria
+- Gerador de carrosséis: 10 por dia, modelos premium, cores livres e foto própria
 - Uma assinatura só
 
 ## Combo personalizado (modelo para as 18 combinações)
@@ -122,8 +122,8 @@ Linhas prontas para copiar:
 - Bot de WhatsApp Premium: até 20 grupos, 100 ofertas por dia em cada, copiar ofertas, IA e alerta de preço
 - Meu site Standard: até 3 botões, conversor e vitrine de ofertas
 - Meu site Premium: até 10 botões, produtos que você escolher e sem a nossa marca
-- Carrosséis Standard: 3 por dia, com roteiro por IA
-- Carrosséis Premium: 10 por dia, modelos premium, cores livres e foto própria
+- Gerador de carrosséis Standard: 3 por dia, com roteiro por IA
+- Gerador de carrosséis Premium: 10 por dia, modelos premium, cores livres e foto própria
 
 ---
 

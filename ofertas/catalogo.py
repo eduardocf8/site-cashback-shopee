@@ -50,7 +50,8 @@ NOMES_A_CADA = timedelta(minutes=10)
 LOTES_DE_NOMES_POR_VEZ = 5  # 5 x 50 nomes a cada 10 minutos (respeita o limite por minuto do Gemini)
 
 CAMPOS_ATUALIZADOS = [
-    "nome", "imagem_url", "preco_min", "preco_max", "percentual_desconto", "percentual_comissao", "avaliacao",
+    "nome", "imagem_url", "preco_min", "preco_max", "percentual_desconto", "percentual_comissao", "percentual_comissao_extra",
+    "avaliacao",
     "vendas", "categoria_id", "categoria_nome", "loja_nome", "product_link", "visto_em", "nome_curto",
 ]
 

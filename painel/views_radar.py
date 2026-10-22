@@ -5,6 +5,7 @@ WhatsApp) e gerar carrossel (Carrosséis). Fora do plano, o botão vem com cadea
 import logging
 
 from django.contrib import messages
+from django.core.paginator import Paginator
 from django.http import JsonResponse
 from django.shortcuts import redirect, render
 from django.urls import reverse
@@ -38,29 +39,19 @@ def _liberados(conta) -> dict:
 def radar_view(request):
     conta = conta_logada(request)
     filtros = radar.filtros_da_requisicao(request.GET)
-    try:
-        pagina = max(1, min(int(request.GET.get("pagina", 1)), radar.MAXIMO_PAGINAS))
-    except ValueError:
-        pagina = 1
-    produtos, tem_proxima, erro = [], False, ""
-    if conta.shopee_configurada:
-        try:
-            produtos, tem_proxima = radar.buscar(conta, filtros, pagina)
-        except Exception:  # noqa: BLE001
-            logger.warning("Radar: busca falhou", exc_info=True)
-            erro = "A Shopee não respondeu agora. Tente de novo em instantes."
+    pagina = Paginator(radar.consulta(filtros), radar.PRODUTOS_POR_PAGINA).get_page(request.GET.get("pagina"))
     pode = _liberados(conta)
     destinos = []
     if pode["bot"]:
         conexao = servico.conexao_da(conta)
         if conexao.estado == ConexaoWhatsApp.CONECTADO:
             destinos = servico.destinos_possiveis(conexao)
-    from bot_whatsapp.categorias import opcoes_categoria
-
     return render(request, "painel/radar.html", _contexto(
         request, "radar",
-        filtros=filtros, ordens=radar.ORDENS, categorias=opcoes_categoria(), produtos=produtos,
-        pagina=pagina, tem_proxima=tem_proxima, erro=erro, pode=pode, destinos=destinos,
+        filtros=filtros, ordens=radar.ORDENS, categorias=radar.categorias(),
+        produtos=[radar.cartao(o) for o in pagina], pagina=pagina,
+        paginas=pagina.paginator.get_elided_page_range(pagina.number, on_each_side=1, on_ends=1),
+        catalogo=radar.situacao_do_catalogo(), pode=pode, destinos=destinos,
         acompanhados=set(conta.produtos_acompanhados.values_list("item_id", flat=True)) if pode["bot"] else set(),
         shopee_conectada=conta.shopee_configurada, aqui=request.get_full_path(),
     ))

@@ -86,6 +86,11 @@ class Oferta(_CashbackEstimadoMixin, models.Model):
     percentual_comissao = models.DecimalField(
         max_digits=5, decimal_places=4, default=0, help_text="Ex: 0.0500 representa 5%."
     )
+    percentual_comissao_extra = models.DecimalField(
+        max_digits=5, decimal_places=4, default=0,
+        help_text="A parte da comissão que o vendedor paga a mais (sellerCommissionRate). Ex: 0.0400 = 4%. "
+        "Já está dentro de percentual_comissao; guardada à parte só para o Radar do Appfiliado destacar.",
+    )
     avaliacao = models.DecimalField(max_digits=3, decimal_places=2, null=True, blank=True)
     vendas = models.PositiveIntegerField(default=0)
     categoria_id = models.PositiveIntegerField("ID da categoria (nível 1)", db_index=True)

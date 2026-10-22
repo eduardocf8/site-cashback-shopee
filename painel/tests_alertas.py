@@ -10,6 +10,7 @@ from bot_whatsapp.models import (
     AlertaDisparado, AlertaPreco, ConexaoWhatsApp, ConfiguracaoOfertas, EnvioWhatsApp, ProdutoAcompanhado,
 )
 from bot_whatsapp.tests_ofertas import GRUPOS, produto
+from ofertas.models import Oferta
 
 from .cripto import cifrar
 from .tests import BasePainel
@@ -46,11 +47,15 @@ class TestTelaDoAlerta(BasePainel):
 
     def test_vitrine_e_ofertas_do_bot(self):
         EnvioWhatsApp.objects.create(conta=self.conta, destino="1@g.us", origem="oferta", item_id="77", produto="Air fryer")
-        with mock.patch.object(shopee_ofertas, "buscar_produtos", return_value=([produto(5, nome="Fone JBL")], False)) as busca:
+        Oferta.objects.create(item_id=5, nome="Fone JBL", nome_curto="Fone JBL", preco_min=Decimal("59.90"), preco_max=Decimal("59.90"),
+                              categoria_id=100535, vendas=10, product_link="https://shopee.com.br/p-i.1.5", visto_em=timezone.now())
+        Oferta.objects.create(item_id=6, nome="Caneca", nome_curto="Caneca", preco_min=Decimal("19.90"), preco_max=Decimal("19.90"),
+                              categoria_id=100535, vendas=10, product_link="https://shopee.com.br/p-i.1.6", visto_em=timezone.now())
+        with mock.patch.object(shopee_ofertas, "buscar_produtos") as api:
             resposta = self.client.get("/whatsapp/alertas/?q=fone")
-            self.client.get("/whatsapp/alertas/?q=fone")
-        self.assertEqual(busca.call_count, 1)  # a mesma busca fica guardada por 10 minutos
+        api.assert_not_called()  # a vitrine usa o catálogo da cash-b, não a API da Shopee
         self.assertContains(resposta, "Fone JBL")
+        self.assertNotContains(resposta, "Caneca")
         self.assertContains(resposta, "Air fryer")
         with mock.patch.object(shopee_ofertas, "buscar_produto_por_item", return_value=produto(5, nome="Fone JBL")):
             resposta = self.client.post("/whatsapp/alertas/", {"acao": "adicionar_item", "item_id": "5", "q": "fone"}, follow=True)

@@ -34,10 +34,10 @@
     </details>
     <div class="linha-radar"><button type="submit" class="botao botao-principal">Buscar</button></div>
   </form>
-  <p class="suave pequeno">A Shopee limita quantos produtos cada busca traz e mostra só os que pagam comissão de afiliado. Para ver outros produtos, mude a palavra-chave, a categoria ou a ordem. A categoria é conferida pelo nome do produto.</p>
+  <p class="suave pequeno">{{ catalogo.total|numero }} produtos da Shopee com comissão de afiliado, de todas as categorias, atualizados todos os dias{% if catalogo.atualizado_em %} (última atualização: {{ catalogo.atualizado_em|date:"d/m \à\s H:i" }}){% endif %}. A Shopee limita quantos produtos libera para afiliados, então nem todo produto do site aparece aqui. Não achou? Mude a palavra-chave ou cole o link no <a href="{% url 'painel_conversor' %}">Conversor</a>.</p>
 </section>
 
-{% if erro %}<p class="aviso aviso-warning">{{ erro }}</p>{% endif %}
+{% if catalogo.atrasado %}<p class="aviso aviso-warning">A atualização dos produtos está atrasada: os preços e a comissão podem estar desatualizados. Ao mandar no grupo ou acompanhar o preço, o Radar sempre consulta o preço de agora na Shopee.</p>{% endif %}
 
 {% if produtos %}
   <ul class="grade-radar-produtos">
@@ -88,16 +88,21 @@
       </li>
     {% endfor %}
   </ul>
-{% elif not erro %}
-  <section class="card"><p class="suave">Nenhum produto desta página passou nos filtros.{% if tem_proxima %} Veja a próxima página ou afrouxe algum filtro.{% else %} Tente afrouxar algum filtro.{% endif %}</p></section>
+{% else %}
+  <section class="card"><p class="suave">Nenhum produto encontrado com esses filtros. Tente afrouxar algum deles{% if filtros.so_extra %} (a comissão extra do vendedor aparece só em parte dos produtos){% endif %}.</p></section>
 {% endif %}
 
-{% if pagina > 1 or tem_proxima %}
-  <nav class="paginacao paginacao-radar" aria-label="Páginas do radar">
-    <span>Página {{ pagina }}</span>
+{% if pagina.paginator.num_pages > 1 %}
+  <nav class="paginacao" aria-label="Páginas do radar">
+    <span>Mostrando {{ pagina.start_index|numero }}–{{ pagina.end_index|numero }} de {{ pagina.paginator.count|numero }}</span>
     <div>
-      {% if pagina > 1 %}<a href="{% querystring pagina=pagina|add:'-1' %}" aria-label="Página anterior">‹ Anterior</a>{% endif %}
-      {% if tem_proxima %}<a href="{% querystring pagina=pagina|add:'1' %}" aria-label="Próxima página">Próxima ›</a>{% endif %}
+      {% if pagina.has_previous %}<a href="{% querystring pagina=pagina.previous_page_number %}" aria-label="Página anterior">‹</a>{% endif %}
+      {% for n in paginas %}
+        {% if n == pagina.paginator.ELLIPSIS %}<span>…</span>
+        {% elif n == pagina.number %}<span class="atual" aria-current="page">{{ n }}</span>
+        {% else %}<a href="{% querystring pagina=n %}">{{ n }}</a>{% endif %}
+      {% endfor %}
+      {% if pagina.has_next %}<a href="{% querystring pagina=pagina.next_page_number %}" aria-label="Próxima página">›</a>{% endif %}
     </div>
   </nav>
 {% endif %}

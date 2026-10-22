@@ -8,7 +8,6 @@ from datetime import date, timedelta
 from urllib.parse import quote
 
 from django.contrib import messages
-from django.core.cache import cache
 from django.core.paginator import Paginator
 from django.http import JsonResponse
 from django.shortcuts import redirect, render
@@ -454,17 +453,9 @@ def whatsapp_alertas(request):
             return redirect("painel_whatsapp_alertas")
         messages.error(request, "Confira os campos marcados.")
 
-    busca, resultados, erro_busca = request.GET.get("q", "").strip()[:120], [], ""
-    if busca and conta.shopee_configurada:
-        chave = f"alerta-busca:{conta.pk}:{hashlib.sha1(busca.lower().encode()).hexdigest()[:16]}"
-        resultados = cache.get(chave)
-        if resultados is None:
-            try:
-                resultados = alertas.buscar_na_vitrine(conta, busca)
-                cache.set(chave, resultados, 600)
-            except Exception:  # noqa: BLE001
-                logger.warning("Alerta de preço: busca na vitrine falhou", exc_info=True)
-                resultados, erro_busca = [], "A Shopee não respondeu agora. Tente de novo em instantes."
+    busca = " ".join(request.GET.get("q", "").split())[:120]
+    resultados = alertas.buscar_na_vitrine(conta, busca) if busca else []
+    erro_busca = ""
     todos = ProdutoAcompanhado.objects.filter(conta=conta)
     total = todos.count()
     pagina = Paginator(todos, PRODUTOS_POR_PAGINA).get_page(request.GET.get("pagina"))
