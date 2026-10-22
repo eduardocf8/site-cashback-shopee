@@ -124,11 +124,12 @@ p { margin: 0; }
 
 /* notas */
 .grade-notas { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; margin-top: 36px; }
-.faixa-nota { display: grid; gap: 4px; padding: 22px; border: 1px solid var(--borda); border-radius: var(--raio); text-decoration: none; background: var(--card); transition: border-color .15s, transform .15s; }
+.faixa-nota { display: grid; gap: 2px; justify-items: center; text-align: center; padding: 26px 22px 22px; border: 1px solid var(--borda); border-radius: var(--raio); text-decoration: none; background: var(--card); transition: border-color .15s, transform .15s; }
 .faixa-nota:hover { border-color: var(--verde); transform: translateY(-2px); }
-.faixa-nota span { font-weight: 700; color: var(--suave); }
-.faixa-nota b { font-size: 30px; font-weight: 800; letter-spacing: -.02em; }
-.faixa-nota em { font-style: normal; font-weight: 800; font-size: 16px; color: var(--verde); background: var(--amarelo); border: 2px solid var(--amarelo); border-radius: 999px; min-height: 46px; display: flex; align-items: center; justify-content: center; margin-top: 14px; transition: background .15s; }
+.faixa-nota span { font-weight: 700; color: var(--suave); font-size: 15px; }
+.faixa-nota b { font-size: 44px; font-weight: 800; letter-spacing: -.03em; line-height: 1.1; margin-top: 6px; color: var(--verde); }
+.faixa-nota small { font-size: 14px; color: var(--suave); }
+.faixa-nota em { font-style: normal; font-weight: 800; font-size: 16px; color: var(--verde); background: var(--amarelo); border: 2px solid var(--amarelo); border-radius: 999px; min-height: 46px; width: 100%; display: flex; align-items: center; justify-content: center; margin-top: 16px; transition: background .15s; }
 .faixa-nota:hover em { background: var(--amarelo-hover); border-color: var(--amarelo-hover); }
 
 /* perguntas */
