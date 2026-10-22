@@ -38,6 +38,8 @@ RESUMOS = {
             ["10 carrosséis por dia", "6 modelos Standard + 4 Premium", "Cores livres e 5 fontes à escolha", "Foto própria e remoção de fundo",
              f"Reescrita de slides por IA (até {planos_do_app.CARROSSEIS[True]['reescritas']} por dia)"],
         ),
+        # Os dois últimos itens do Premium ficam com a bolinha verde (o que o Standard não tem).
+        "extras": ("Foto própria e remoção de fundo", f"Reescrita de slides por IA (até {planos_do_app.CARROSSEIS[True]['reescritas']} por dia)"),
         "comuns": ["Roteiro, legendas e hashtags escritas por IA", "Ajuste manual dos textos gerados", "Edita, reordena e remove slides",
                    "Download de imagens", "SubID próprio"],
     },
