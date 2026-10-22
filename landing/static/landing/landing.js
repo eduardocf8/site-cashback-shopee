@@ -1,5 +1,28 @@
 window.landingPronta = true;
 
+// O script de origem da Zouti reescreve a URL sem o "#seção" assim que a página carrega, e sem o "#" o
+// navegador não rola até a seção (um link como /#planos, vindo de outra página, abria no topo). Guardamos o
+// "#" antes (base.html), devolvemos ao endereço e rolamos até a seção; de novo no "load", se a pessoa ainda não rolou.
+(function () {
+  var hash = window.hashInicial;
+  if (!hash || hash.length < 2) return;
+  var ultima = null;
+  function ir(aoCarregar) {
+    var alvo; try { alvo = document.querySelector(hash); } catch (e) { return; }
+    if (!alvo) return;
+    if (aoCarregar && ultima !== null && Math.abs(window.scrollY - ultima) > 4) return; // a pessoa já rolou por conta própria
+    if (location.hash !== hash) history.replaceState(null, "", location.pathname + location.search + hash);
+    var html = document.documentElement, antes = html.style.scrollBehavior;
+    html.style.scrollBehavior = "auto"; alvo.scrollIntoView(); html.style.scrollBehavior = antes;
+    ultima = window.scrollY;
+  }
+  if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", function () { ir(false); }); else ir(false);
+  window.addEventListener("load", function () { ir(true); });
+  // as fontes e as imagens mudam a altura da página depois da primeira rolagem: acerta de novo, se a pessoa ainda não rolou
+  if (document.fonts && document.fonts.ready) document.fonts.ready.then(function () { ir(true); });
+  [300, 900, 1800].forEach(function (ms) { setTimeout(function () { ir(true); }, ms); });
+})();
+
 // Entrada suave dos blocos ao rolar a página: sobem e aparecem quando chegam na tela, e os cartões
 // de uma mesma grade entram em sequência. Sem JavaScript, sem IntersectionObserver ou com a opção
 // "reduzir movimento" do sistema, tudo aparece de uma vez (ver .js .revelar no CSS).
@@ -38,34 +61,57 @@ window.landingPronta = true;
   alvos.forEach(function (el) { observador.observe(el); });
 })();
 
-// Montador de combo: soma os módulos escolhidos e leva ao checkout do produto que bate com a escolha.
+// Montador de combo: soma os módulos escolhidos, mostra o desconto e leva ao checkout do produto que bate com a escolha.
 (function () {
   var raiz = document.querySelector("[data-montador]");
   var dados = document.getElementById("dados-montador");
   if (!raiz || !dados) return;
   var info = JSON.parse(dados.textContent);
   var brl = new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" });
+  var NIVEIS = ["Standard", "Premium"], DESCONTO = { 2: 10, 3: 20 };
   var vazio = raiz.querySelector("[data-vazio]"), resultado = raiz.querySelector("[data-resultado]");
+  var degraus = document.querySelectorAll("[data-degraus] li"), dica = document.querySelector("[data-dica]");
+  var DICAS = {
+    0: "Escolha um módulo para começar.",
+    1: "Junte mais um módulo e ganhe 10% de desconto.",
+    2: "Mais um módulo e o desconto sobe para 20%.",
+    3: "Desconto máximo de 20% aplicado."
+  };
 
   function atualizar() {
-    var escolha = [];
+    var escolha = [], linhas = [];
     info.modulos.forEach(function (m) {
       var marcado = raiz.querySelector('input[name="' + m.codigo + '"]:checked');
-      if (marcado && marcado.value !== "") escolha.push(m.codigo + marcado.value);
+      var cartao = raiz.querySelector('[data-modulo="' + m.codigo + '"]');
+      var ligado = !!marcado && marcado.value !== "";
+      cartao.classList.toggle("escolhido", ligado);
+      if (ligado) { escolha.push(m.codigo + marcado.value); linhas.push({ nome: m.nome + " " + NIVEIS[+marcado.value], preco: m.precos[+marcado.value] }); }
     });
-    var combo = info.combos[escolha.join("+")];
+    var n = escolha.length, combo = info.combos[escolha.join("+")];
+    degraus.forEach(function (li) { var k = +li.dataset.n; li.classList.toggle("ativo", k === n); li.classList.toggle("feito", k < n); });
+    if (dica) dica.textContent = DICAS[n];
     vazio.hidden = !!combo;
     resultado.hidden = !combo;
     if (!combo) return;
-    raiz.querySelector("[data-nome]").textContent = combo.nome;
-    raiz.querySelector("[data-preco]").textContent = brl.format(combo.preco);
+    var ul = raiz.querySelector("[data-linhas]"); ul.innerHTML = "";
+    linhas.forEach(function (l) {
+      var li = document.createElement("li");
+      var nome = document.createElement("span"); nome.textContent = l.nome;
+      var preco = document.createElement("b"); preco.textContent = brl.format(l.preco);
+      li.appendChild(nome); li.appendChild(preco); ul.appendChild(li);
+    });
     var economia = Math.round((combo.separado - combo.preco) * 100) / 100;
-    raiz.querySelector("[data-economia]").textContent = economia > 0
-      ? "Separado seria " + brl.format(combo.separado) + ". Você economiza " + brl.format(economia) + " por mês."
-      : "";
+    var desc = raiz.querySelector("[data-desconto]");
+    desc.hidden = !(economia > 0);
+    if (economia > 0) {
+      raiz.querySelector("[data-desc-rotulo]").textContent = "Desconto do combo (" + DESCONTO[n] + "%)";
+      raiz.querySelector("[data-desc-valor]").textContent = "− " + brl.format(economia);
+    }
+    raiz.querySelector("[data-preco]").textContent = brl.format(combo.preco);
+    raiz.querySelector("[data-economia]").textContent = economia > 0 ? "Você economiza " + brl.format(economia) + " por mês." : "";
     var botao = raiz.querySelector("[data-assinar]");
     botao.href = combo.link;
-    botao.textContent = escolha.length > 1 ? "Assinar este combo" : "Assinar";
+    botao.textContent = n > 1 ? "Assinar este combo" : "Assinar";
   }
   raiz.addEventListener("change", atualizar);
   atualizar();

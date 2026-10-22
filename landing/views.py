@@ -38,6 +38,8 @@ RESUMOS = {
             ["10 carrosséis por dia", "6 modelos Standard + 4 Premium", "Cores livres e 5 fontes à escolha", "Foto própria e remoção de fundo",
              f"Reescrita de slides por IA (até {planos_do_app.CARROSSEIS[True]['reescritas']} por dia)"],
         ),
+        # Os dois últimos itens do Premium ficam com a bolinha verde (o que o Standard não tem).
+        "extras": ("Foto própria e remoção de fundo", f"Reescrita de slides por IA (até {planos_do_app.CARROSSEIS[True]['reescritas']} por dia)"),
         "comuns": ["Roteiro, legendas e hashtags escritas por IA", "Ajuste manual dos textos gerados", "Edita, reordena e remove slides",
                    "Download de imagens", "SubID próprio"],
     },
@@ -79,12 +81,13 @@ def _cartao(modulo, nivel):
             "tem_extras": bool(extras), "link": planos.LINKS[f"{modulo}{nivel}"]}
 
 
+FRASE_CURTA = {"bot": "Ofertas no automático nos seus grupos", "site": "Link na bio com vitrine e conversor", "carrosseis": "Carrosséis prontos para o Instagram"}
 PAGINA_DO_MODULO = {"bot": "landing_bot", "site": "landing_site", "carrosseis": "landing_carrosseis"}
 
 
 def _modulo(m):
     """Os dados de um módulo para os cartões de plano (landing e páginas de recursos)."""
-    return {"codigo": m, "nome": planos.NOMES[m], "icone": ICONES[RESUMOS[m]["icone"]], "frase": RESUMOS[m]["frase"],
+    return {"codigo": m, "nome": planos.NOMES[m], "icone": ICONES[RESUMOS[m]["icone"]], "frase": RESUMOS[m]["frase"], "curta": FRASE_CURTA[m],
             "a_partir": planos.brl(planos.PRECOS[m][0]), "comuns": RESUMOS[m].get("comuns", []), "pagina": PAGINA_DO_MODULO[m],
             "planos": [_cartao(m, 0), _cartao(m, 1)]}
 
@@ -116,7 +119,7 @@ def pagina(request):
         "modulos": [_modulo(m) for m in planos.MODULOS],
         "inclusos": [{"icone": ICONES[i], "nome": n, "frase": f} for i, n, f in INCLUSOS],
         "notas": _faixas_de_notas(),
-        "montador": {"combos": combos, "modulos": [{"codigo": m, "nome": planos.NOMES[m]} for m in planos.MODULOS]},
+        "montador": {"combos": combos, "modulos": [{"codigo": m, "nome": planos.NOMES[m], "precos": list(planos.PRECOS[m])} for m in planos.MODULOS]},
         "combo_standard": {"preco": planos.brl(combos["bot0+site0+carrosseis0"]["preco"]), "separado": planos.brl(combos["bot0+site0+carrosseis0"]["separado"]),
                            "link": combos["bot0+site0+carrosseis0"]["link"]},
         "combo_premium": {"preco": planos.brl(combos["bot1+site1+carrosseis1"]["preco"]), "separado": planos.brl(combos["bot1+site1+carrosseis1"]["separado"]),
