@@ -8,7 +8,6 @@
       <h1>Tudo o que o afiliado da Shopee precisa em um só lugar.</h1>
       <p class="heroi-texto">Encontre as melhores ofertas, divulgue no WhatsApp no automático, crie seu próprio site com conversor de links e vitrine, acompanhe seus resultados e metas e emita suas notas fiscais de afiliado.</p>
       <div class="heroi-botoes"><a class="botao botao-grande" href="#planos">Ver planos e preços</a><a class="botao botao-grande botao-vazado" href="#modulos">Conhecer os módulos</a></div>
-      <p class="heroi-atalho">Afiliado pessoa jurídica? <a href="{% url 'landing_notas' %}">Conheça o Emissor NFS-e &rarr;</a></p>
       <p class="heroi-nota">Pagamento pela Zouti. 7 dias de garantia.</p>
     </div>
     <div class="heroi-arte">
@@ -83,6 +82,16 @@
     {% for m in modulos %}
       {% include "landing/_bloco_plano.html" %}
     {% endfor %}
+    <div class="bloco-plano">
+      <div class="bloco-titulo"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="{{ icones.notas }}"/></svg><h3>Emissor NFS-e</h3></div>
+      <div class="plano-notas">
+        <div>
+          <p>Para afiliados pessoa jurídica (MEI ou Simples Nacional). O plano é pela quantidade de notas emitidas por mês, a partir de <strong>{{ notas.0.preco }}/mês</strong>.</p>
+          <ul class="faixas-notas">{% for n in notas %}<li><span>{{ n.nome }}</span><b>{{ n.preco }}</b></li>{% endfor %}</ul>
+        </div>
+        <a class="botao botao-grande" href="{% url 'landing_notas' %}#planos">Ver planos do Emissor NFS-e</a>
+      </div>
+    </div>
   </div>
 </section>
 

@@ -44,9 +44,6 @@ p { margin: 0; }
 .heroi h1 { font-size: clamp(36px, 4.6vw, 56px); font-weight: 800; }
 .heroi-texto { margin-top: 16px; font-size: 18px; color: #CFDBD2; max-width: 560px; }
 .heroi-botoes { display: flex; flex-wrap: wrap; gap: 14px; margin-top: 26px; }
-.heroi-atalho { margin-top: 18px; font-size: 15px; color: var(--creme); }
-.heroi-atalho a { color: var(--amarelo); font-weight: 700; text-underline-offset: 3px; }
-.heroi-atalho + .heroi-nota { margin-top: 8px; }
 .heroi-nota { margin-top: 18px; font-size: 14px; color: var(--claro); }
 .heroi-arte { display: grid; place-items: center; }
 .painel-amostra { width: min(380px, 100%); background: var(--creme); color: var(--texto); border-radius: 22px; padding: 20px; box-shadow: 0 24px 60px rgba(0,0,0,.35); transform: rotate(2deg); }
@@ -141,7 +138,6 @@ p { margin: 0; }
   .heroi-texto { font-size: 17px; margin-top: 14px; }
   .heroi-botoes { margin-top: 22px; }
   .painel-amostra li a { padding: 11px 12px; }
-  .heroi-atalho { margin-top: 12px; }
 }
 @media (max-width: 960px) {
   .heroi-grade, .montador { grid-template-columns: 1fr; }
@@ -420,3 +416,10 @@ p { margin: 0; }
 @media (max-width: 640px) { .secao[id], main:not(.pagina-modulo) #planos, main:not(.pagina-modulo) #perguntas { scroll-margin-top: -20px; } }
 @media (max-width: 960px) { .so-movel { display: block; } }
 @media (prefers-reduced-motion: reduce) { .painel-amostra li, .topo-botao span, .topo-menu { transition: none; } }
+.plano-notas { background: var(--card); border: 1px solid var(--borda); border-radius: var(--raio); padding: 26px; display: flex; align-items: center; justify-content: space-between; gap: 28px; }
+.plano-notas p { margin: 0; font-size: 16px; max-width: 640px; }
+.faixas-notas { list-style: none; margin: 16px 0 0; padding: 0; display: flex; flex-wrap: wrap; gap: 8px; }
+.faixas-notas li { display: inline-flex; gap: 8px; align-items: baseline; background: var(--creme); border: 1px solid var(--borda); border-radius: 999px; padding: 6px 14px; font-size: 14px; }
+.faixas-notas li span { color: var(--suave); text-transform: capitalize; }
+.plano-notas .botao { flex: none; }
+@media (max-width: 960px) { .plano-notas { flex-direction: column; align-items: stretch; gap: 20px; } .plano-notas .botao { text-align: center; } }
