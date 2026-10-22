@@ -35,7 +35,7 @@ RESUMOS = {
         "icone": "carrosseis", "frase": "Cole um link da Shopee e receba um carrossel pronto para o Instagram.",
         "itens": (
             ["3 carrosséis por dia", "6 modelos de carrossel", "5 temas de cor e 1 fonte"],
-            ["10 carrosséis por dia", "6 modelos Standard + 4 Premium", "Cores livres e 5 fontes à escolha", "Foto própria do produto",
+            ["10 carrosséis por dia", "6 modelos Standard + 4 Premium", "Cores livres e 5 fontes à escolha", "Foto própria e remoção de fundo",
              f"Reescrita de slides por IA (até {planos_do_app.CARROSSEIS[True]['reescritas']} por dia)"],
         ),
         "comuns": ["Roteiro, legendas e hashtags escritas por IA", "Ajuste manual dos textos gerados", "Edita, reordena e remove slides",
