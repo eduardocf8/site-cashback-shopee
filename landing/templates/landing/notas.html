@@ -21,7 +21,7 @@
         <span class="painel-titulo">Do relatório à caixa de entrada</span>
         <ol class="fluxo">
           <li><svg viewBox="0 0 24 24"><path d="{{ icones.baixar }}"/></svg><span><b>Relatório da Shopee</b>você envia o arquivo do mês</span></li>
-          <li><svg viewBox="0 0 24 24"><path d="{{ icones.notas }}"/></svg><span><b>Notas emitidas</b>uma por loja, no governo</span></li>
+          <li><svg viewBox="0 0 24 24"><path d="{{ icones.notas }}"/></svg><span><b>Notas emitidas</b>uma por loja</span></li>
           <li><svg viewBox="0 0 24 24"><path d="{{ icones.email }}"/></svg><span><b>E-mail para o vendedor</b>com o PDF e o XML</span></li>
         </ol>
       </div>
@@ -81,7 +81,7 @@
   <div class="miolo">
     <p class="chapeu">Planos</p>
     <h2>Escolha pela quantidade de notas que você emite por mês.</h2>
-    <p class="secao-texto">Preços por mês. Contam só as notas emitidas de verdade: as de teste ficam de fora e a cancelada libera a vaga. No checkout você pode escolher o plano anual, em que paga 10 meses e usa 12.</p>
+    <p class="secao-texto">Contam só as notas de verdade: as de teste não consomem seu crédito e, caso precise cancelar alguma, o crédito retorna para sua conta. Plano anual com 17% de desconto disponível no checkout.</p>
     <div class="grade-notas">
       {% for n in notas %}
         <a class="faixa-nota" href="{{ n.link }}"><span>{{ n.nome }}</span><b>{{ n.preco }}</b><em>Assinar</em></a>

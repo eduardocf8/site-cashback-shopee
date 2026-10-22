@@ -128,7 +128,8 @@ p { margin: 0; }
 .faixa-nota:hover { border-color: var(--verde); transform: translateY(-2px); }
 .faixa-nota span { font-weight: 700; color: var(--suave); }
 .faixa-nota b { font-size: 30px; font-weight: 800; letter-spacing: -.02em; }
-.faixa-nota em { font-style: normal; font-weight: 800; color: var(--verde); }
+.faixa-nota em { font-style: normal; font-weight: 800; font-size: 16px; color: var(--verde); background: var(--amarelo); border: 2px solid var(--amarelo); border-radius: 999px; min-height: 46px; display: flex; align-items: center; justify-content: center; margin-top: 14px; transition: background .15s; }
+.faixa-nota:hover em { background: var(--amarelo-hover); border-color: var(--amarelo-hover); }
 
 /* perguntas */
 .faq { margin-top: 32px; display: grid; gap: 10px; }
