@@ -18,7 +18,8 @@ class SiteDoAfiliadoMiddleware:
             sufixo = "." + dominio
             do_dominio = host == dominio or host.endswith(sufixo)
             if (do_dominio and host not in settings.APPFILIADO_PAINEL_HOSTS
-                    and host not in settings.APPFILIADO_API_HOSTS):
+                    and host not in settings.APPFILIADO_API_HOSTS
+                    and host not in settings.APPFILIADO_LANDING_HOSTS):  # a landing tem middleware próprio
                 endereco = host[: -len(sufixo)] if host.endswith(sufixo) else ""
                 if endereco and "." not in endereco and endereco not in ENDERECOS_RESERVADOS:
                     request.urlconf = "meusite.urls_publico"
