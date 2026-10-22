@@ -37,12 +37,12 @@ p { margin: 0; }
 /* herói */
 .heroi { background: radial-gradient(circle at 85% 10%, var(--verde-2) 0, var(--verde) 46%, var(--verde-3) 100%); color: var(--creme); overflow: hidden; position: relative; }
 .heroi::after { content: ""; position: absolute; right: -180px; bottom: -200px; width: 560px; height: 560px; border-radius: 50%; border: 70px solid rgba(242,194,48,.08); }
-.heroi-grade { display: grid; grid-template-columns: 1.15fr .85fr; gap: 48px; align-items: center; padding: 88px 0 96px; position: relative; z-index: 1; }
+.heroi-grade { display: grid; grid-template-columns: 1.15fr .85fr; gap: 48px; align-items: center; padding: 56px 0 64px; position: relative; z-index: 1; }
 .chapeu { font-weight: 800; font-size: 13px; letter-spacing: .12em; text-transform: uppercase; color: var(--amarelo-hover); margin-bottom: 14px; }
 .chapeu-claro, .heroi .chapeu { color: var(--amarelo); }
-.heroi h1 { font-size: clamp(38px, 5.4vw, 62px); font-weight: 800; }
-.heroi-texto { margin-top: 20px; font-size: 19px; color: #CFDBD2; max-width: 560px; }
-.heroi-botoes { display: flex; flex-wrap: wrap; gap: 14px; margin-top: 32px; }
+.heroi h1 { font-size: clamp(36px, 4.6vw, 56px); font-weight: 800; }
+.heroi-texto { margin-top: 16px; font-size: 18px; color: #CFDBD2; max-width: 560px; }
+.heroi-botoes { display: flex; flex-wrap: wrap; gap: 14px; margin-top: 26px; }
 .heroi-nota { margin-top: 18px; font-size: 14px; color: var(--claro); }
 .heroi-arte { display: grid; place-items: center; }
 .painel-amostra { width: min(380px, 100%); background: var(--creme); color: var(--texto); border-radius: 22px; padding: 20px; box-shadow: 0 24px 60px rgba(0,0,0,.35); transform: rotate(2deg); }
@@ -149,6 +149,14 @@ p { margin: 0; }
 .rodape a { color: var(--creme); }
 .rodape .aviso { color: var(--claro); font-size: 13px; max-width: 680px; }
 
+/* Notebook: a tela útil é baixa, então o hero inteiro (botões e nota) precisa caber na primeira tela. */
+@media (min-width: 961px) and (max-height: 800px) {
+  .heroi-grade { padding: 36px 0 44px; }
+  .heroi h1 { font-size: clamp(34px, 4vw, 48px); }
+  .heroi-texto { font-size: 17px; margin-top: 14px; }
+  .heroi-botoes { margin-top: 22px; }
+  .painel-amostra li { padding: 11px 12px; }
+}
 @media (max-width: 960px) {
   .heroi-grade, .montador { grid-template-columns: 1fr; }
   .heroi-grade { padding: 56px 0 64px; }
