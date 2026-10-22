@@ -13,14 +13,15 @@ RESUMOS = {
     "bot": {
         "icone": "whatsapp", "frase": "Ofertas da Shopee no automático nos seus grupos de WhatsApp, sempre com o seu link de afiliado.",
         "itens": (
-            ["Até 10 grupos e canais", "Até 90 ofertas por dia em cada grupo/canal", "Alerta de preço para até 10 produtos"],
+            ["Até 10 grupos e canais", "Até 60 ofertas por dia em cada grupo/canal", "Alerta de preço para até 10 produtos"],
             ["Até 50 grupos ou canais", "Até 300 ofertas por dia em cada grupo/canal", "Alerta de preço para até 50 produtos",
              "Copia ofertas de outros grupos e troca pelo seu link", "Revisão de texto com IA"],
         ),
         # Itens do Premium que o Standard não tem: a bolinha muda de cor para destacar.
         "extras": ("Copia ofertas de outros grupos e troca pelo seu link", "Revisão de texto com IA"),
         # Ferramentas iguais nos dois planos, mostradas embaixo dos cartões.
-        "comuns": ["Busca por palavra-chave, loja ou categoria, com filtros", "Modo campanha para datas específicas (como datas duplas)"],
+        "comuns": ["Busca por palavra-chave, loja ou categoria, com filtros", "Modo campanha para datas específicas (como datas duplas)",
+                   "Horário e dias de envio", "Sub ID por grupo", "Modo simulação para testar antes de enviar"],
     },
     "site": {
         "icone": "site", "frase": "Seu link na bio (seunome.appfiliado.com.br) com vitrine de ofertas e conversor de links.",
@@ -28,7 +29,7 @@ RESUMOS = {
             ["Até 3 botões", "Vitrine de ofertas padrão", "Com assinatura do Appfiliado no rodapé"],
             ["Até 10 botões", "Vitrine de ofertas personalizável", "Sem assinatura do Appfiliado no rodapé"],
         ),
-        "comuns": ["Conversor de links", "Contador de cliques", "SubID próprio"],
+        "comuns": ["Conversor de links", "Contador de cliques", "SubID próprio", "Ícones de todas as redes sociais"],
     },
     "carrosseis": {
         "icone": "carrosseis", "frase": "Cole um link da Shopee e receba um carrossel pronto para o Instagram.",
