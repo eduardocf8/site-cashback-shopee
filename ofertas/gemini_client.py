@@ -7,7 +7,7 @@ from django.conf import settings
 logger = logging.getLogger(__name__)
 
 PROMPT = (
-    "Você edita nomes de produtos de e-commerce pra um site de cashback. Reescreva cada "
+    "Você edita nomes de produtos de e-commerce para um site de cashback. Reescreva cada "
     "nome abaixo de forma mais enxuta (até uns 60 caracteres), removendo repetição de "
     "palavra-chave, emoji e informação irrelevante (frete, brinde, variações de cor/tamanho "
     "listadas à toa), mas mantendo o essencial: o que é o produto, marca (se houver) e a "

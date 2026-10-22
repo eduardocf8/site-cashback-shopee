@@ -55,7 +55,7 @@
 
     <section class="card" id="botoes" aria-labelledby="titulo-botoes">
       <div class="card-topo"><h2 id="titulo-botoes">Botões</h2><span class="suave pequeno">{{ botoes|length }} de {{ maximo_botoes }}</span></div>
-      {% if botoes|length > maximo_botoes %}<p class="aviso aviso-warning pequeno">Seu plano mostra até {{ maximo_botoes }} botões no site: os de baixo ficam escondidos. Apague alguns ou passe para o <a href="{{ url_planos }}" target="_blank" rel="noopener">plano Premium</a>.</p>{% endif %}
+      {% if botoes|length > maximo_botoes %}<p class="aviso aviso-warning pequeno">Seu plano mostra até {{ maximo_botoes }} botões no site: os de baixo ficam escondidos. Apague alguns ou passe pro <a href="{{ url_planos }}" target="_blank" rel="noopener">plano Premium</a>.</p>{% endif %}
       {% if botoes %}
         <ul class="lista-botoes">
           {% for b in botoes %}
@@ -95,7 +95,7 @@
 
     <section class="card" aria-labelledby="titulo-conversor">
       <h2 id="titulo-conversor">Conversor de links</h2>
-      <label class="marcar">{{ form.mostrar_conversor }}<span><strong>{{ form.mostrar_conversor.label }}</strong><span class="ajuda">Quem visita cola um link da Shopee e já vai para a Shopee pelo seu link de afiliado.</span></span></label>
+      <label class="marcar">{{ form.mostrar_conversor }}<span><strong>{{ form.mostrar_conversor.label }}</strong><span class="ajuda">Quem visita cola um link da Shopee e já vai pra Shopee pelo seu link de afiliado.</span></span></label>
       <div class="campo" style="margin-top:12px">{% include "painel/_campo.html" with campo=form.conversor_titulo %}</div>
       <div class="campo" style="margin-top:12px">{% include "painel/_campo.html" with campo=form.conversor_texto %}</div>
       <div class="campo" style="margin-top:12px">{% include "painel/_campo.html" with campo=form.conversor_botao %}</div>

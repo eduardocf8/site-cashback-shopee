@@ -233,7 +233,7 @@ p { margin: 0; }
 .subnav a.ativo { background: var(--verde); color: var(--creme); }
 
 /* cada seção "sobe" sobre a anterior, com a borda de cima arredondada */
-.bloco, #comparar, #planos, #perguntas { position: relative; border-radius: 34px 34px 0 0; margin-top: -34px; padding: 84px 0 76px; }
+.bloco, #comparar, #planos, #perguntas { position: relative; border-radius: 24px 24px 0 0; margin-top: -24px; padding: 40px 0 72px; }
 /* só as páginas de módulo têm o índice fixo embaixo do cabeçalho, que pede uma folga a mais ao rolar até a seção */
 .pagina-modulo .bloco, .pagina-modulo #comparar, .pagina-modulo #planos, .pagina-modulo #perguntas { scroll-margin-top: 46px; }
 .bloco { background: #fff; }
@@ -313,7 +313,7 @@ p { margin: 0; }
   .linha-passos li::before { display: none; }
   .subnav { top: 68px; }
 }
-@media (max-width: 640px) { .bloco, #comparar, #planos, #perguntas { border-radius: 24px 24px 0 0; margin-top: -24px; padding: 64px 0 56px; } .faixa-recursos > div { border-left: 0; border-top: 1px solid var(--borda); } .faixa-recursos > div:first-child { border-top: 0; } }
+@media (max-width: 640px) { .bloco, #comparar, #planos, #perguntas { border-radius: 20px 20px 0 0; margin-top: -20px; padding: 32px 0 56px; } .faixa-recursos > div { border-left: 0; border-top: 1px solid var(--borda); } .faixa-recursos > div:first-child { border-top: 0; } }
 
 .bloco.fundo-verde .chapeu { color: var(--amarelo); }
 

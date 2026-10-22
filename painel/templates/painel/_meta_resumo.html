@@ -10,7 +10,7 @@
   </div>
   {% if meta.proxima %}
     {% if mes_fechado %}
-      <p class="pequeno">O mês fechou. Ficaram faltando <strong>{{ meta.falta|brl }}</strong> para a faixa <strong>{{ meta.nome_proxima }}</strong>{% if meta.proxima.bonus %} (bônus {{ meta.proxima.bonus|brl0 }}){% endif %}.</p>
+      <p class="pequeno">O mês fechou. Ficaram faltando <strong>{{ meta.falta|brl }}</strong> pra faixa <strong>{{ meta.nome_proxima }}</strong>{% if meta.proxima.bonus %} (bônus {{ meta.proxima.bonus|brl0 }}){% endif %}.</p>
     {% else %}
       <p class="pequeno">Faltam <strong>{{ meta.falta|brl }}</strong> pra faixa <strong>{{ meta.nome_proxima }}</strong>{% if meta.proxima.bonus %} (bônus {{ meta.proxima.bonus|brl0 }}){% endif %}.</p>
     {% endif %}

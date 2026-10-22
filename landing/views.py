@@ -17,8 +17,6 @@ RESUMOS = {
             ["Até 50 grupos ou canais", "Até 300 ofertas por dia em cada grupo/canal", "Alerta de preço para até 50 produtos",
              "Copia ofertas de outros grupos e troca pelo seu link", "Revisão de texto com IA"],
         ),
-        # Itens do Premium que o Standard não tem: a bolinha muda de cor para destacar.
-        "extras": ("Copia ofertas de outros grupos e troca pelo seu link", "Revisão de texto com IA"),
         # Ferramentas iguais nos dois planos, mostradas embaixo dos cartões.
         "comuns": ["Busca por palavra-chave, loja ou categoria, com filtros", "Modo campanha para datas específicas (como datas duplas)",
                    "Horário e dias de envio", "Sub ID por grupo", "Modo simulação para testar antes de enviar"],
@@ -32,14 +30,12 @@ RESUMOS = {
         "comuns": ["Conversor de links", "Contador de cliques", "SubID próprio", "Ícones de 7 redes sociais"],
     },
     "carrosseis": {
-        "icone": "carrosseis", "frase": "Cole um link da Shopee e receba um carrossel pronto para o Instagram.",
+        "icone": "carrosseis", "frase": "Cole um link da Shopee e receba um carrossel pronto pro Instagram.",
         "itens": (
             ["3 carrosséis por dia", "6 modelos de carrossel", "5 temas de cor e 1 fonte"],
             ["10 carrosséis por dia", "6 modelos Standard + 4 Premium", "Cores livres e 5 fontes à escolha", "Foto própria e remoção de fundo",
              f"Reescrita de slides por IA (até {planos_do_app.CARROSSEIS[True]['reescritas']} por dia)"],
         ),
-        # Os dois últimos itens do Premium ficam com a bolinha verde (o que o Standard não tem).
-        "extras": ("Foto própria e remoção de fundo", f"Reescrita de slides por IA (até {planos_do_app.CARROSSEIS[True]['reescritas']} por dia)"),
         "comuns": ["Roteiro, legendas e hashtags escritas por IA", "Ajuste manual dos textos gerados", "Edita, reordena e remove slides",
                    "Download de imagens", "SubID próprio"],
     },
@@ -53,7 +49,7 @@ PERGUNTAS = [
     ("Preciso ter conta de afiliado da Shopee?", "Sim. O Appfiliado usa a sua conta de afiliado para gerar os links, e a comissão das vendas cai direto na sua conta da Shopee. Você conecta a conta uma vez, no painel."),
     ("Como recebo o acesso depois de pagar?", "Logo após a confirmação do pagamento você recebe um e-mail com o link para criar a sua senha. É só criar a senha, entrar no painel (app.appfiliado.com.br) e conectar a sua conta da Shopee."),
     ("Qual é a diferença entre Standard e Premium?", "O Premium libera mais volume e mais recursos em cada módulo (mais grupos e ofertas por dia no bot, mais botões no site, mais carrosséis por dia). As listas completas estão nos cartões de cada plano."),
-    ("Preciso de um número de WhatsApp só para o bot?", "Você conecta pelo QR Code o número que quiser. Muita gente prefere um número separado do pessoal, só para divulgar as ofertas nos grupos."),
+    ("Preciso de um número de WhatsApp só pro bot?", "Você conecta pelo QR Code o número que quiser. Muita gente prefere um número separado do pessoal, só para divulgar as ofertas nos grupos."),
     ("Posso pagar por ano?", "Pode. No checkout você escolhe mensal ou anual, e o plano anual tem 17% de desconto."),
     ("Posso cancelar quando quiser?", "Pode. O cancelamento é feito pela Zouti, a plataforma de pagamento. O acesso segue até o fim do período já pago."),
     ("E se eu não gostar?", "Você tem 7 dias, a partir da compra, para pedir o reembolso integral pela Zouti."),
@@ -67,7 +63,7 @@ PERGUNTAS_NOTAS = [
     ("Para que serve essa nota?", "Quando a Shopee paga ao afiliado a comissão extra de um vendedor, o afiliado presta um serviço a esse vendedor e emite a nota fiscal dele. O Appfiliado monta e emite essas notas a partir do relatório mensal da Shopee."),
     ("O que é o certificado A1 e onde consigo?", "É o certificado digital da empresa (e-CNPJ) em formato de arquivo, com extensão .pfx ou .p12, e uma senha. Você compra em uma certificadora. O certificado em cartão ou token (A3) não serve, porque não dá para exportar o arquivo."),
     ("Como as notas são contadas no plano?", "Conta cada nota emitida de verdade no mês. As notas de teste não contam, e a nota cancelada libera a vaga no mesmo mês. Escolha a faixa pela quantidade de notas que você costuma emitir."),
-    ("Posso testar antes de emitir de verdade?", "Pode. O Appfiliado tem o ambiente de testes do governo, igual ao de verdade mas sem valor fiscal. Comece por ele e, quando estiver tudo certo, passe para a emissão real."),
+    ("Posso testar antes de emitir de verdade?", "Pode. O Appfiliado tem o ambiente de testes do governo, igual ao de verdade mas sem valor fiscal. Comece por ele e, quando estiver tudo certo, passe pra emissão real."),
     ("E se uma nota sair errada?", "Dá para cancelar pelo painel do Appfiliado, que faz o cancelamento no Emissor Nacional."),
     ("O vendedor recebe a nota?", "Recebe. O Appfiliado manda um e-mail para cada vendedor, com o PDF e o XML da nota, no horário que você escolher."),
     ("O Appfiliado cuida dos impostos?", "Não. O Appfiliado emite as notas, mas a orientação tributária e contábil da sua empresa é com o seu contador. Em caso de dúvida sobre código de serviço ou tributação, fale com ele antes de emitir."),
@@ -75,13 +71,13 @@ PERGUNTAS_NOTAS = [
 
 
 def _cartao(modulo, nivel):
-    extras = RESUMOS[modulo].get("extras", ()) if nivel else ()
+    # No Premium todas as bolinhas são verdes.
     return {"nivel": planos.NIVEIS[nivel], "preco": planos.brl(planos.PRECOS[modulo][nivel]),
-            "itens": [{"texto": t, "extra": t in extras} for t in RESUMOS[modulo]["itens"][nivel]],
-            "tem_extras": bool(extras), "link": planos.LINKS[f"{modulo}{nivel}"]}
+            "itens": [{"texto": t, "extra": bool(nivel)} for t in RESUMOS[modulo]["itens"][nivel]],
+            "link": planos.LINKS[f"{modulo}{nivel}"]}
 
 
-FRASE_CURTA = {"bot": "Ofertas no automático nos seus grupos", "site": "Link na bio com vitrine e conversor", "carrosseis": "Carrosséis prontos para o Instagram"}
+FRASE_CURTA = {"bot": "Ofertas no automático nos seus grupos", "site": "Link na bio com vitrine e conversor", "carrosseis": "Carrosséis prontos pro Instagram"}
 PAGINA_DO_MODULO = {"bot": "landing_bot", "site": "landing_site", "carrosseis": "landing_carrosseis"}
 
 

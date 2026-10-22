@@ -151,7 +151,7 @@
 
     <section class="card notas-cartao" id="teste" aria-labelledby="titulo-teste">
       <h2 id="titulo-teste">Nota de teste</h2>
-      <p class="suave pequeno">Manda uma nota de R$ 1,00 para a Shopee no ambiente de testes do governo. Ela não tem valor fiscal e não aparece para ninguém: serve só para conferir se está tudo certo com o certificado e o serviço.</p>
+      <p class="suave pequeno">Manda uma nota de R$ 1,00 pra Shopee no ambiente de testes do governo. Ela não tem valor fiscal e não aparece para ninguém: serve só para conferir se está tudo certo com o certificado e o serviço.</p>
       {% if falta %}<p class="aviso aviso-warning pequeno">Antes, falta: {{ falta|join:" e " }}.</p>{% endif %}
       <form method="post" class="notas-testar" onsubmit="this.querySelector('button').disabled=true;this.querySelector('button').textContent='Enviando… (até 1 minuto)'">
         {% csrf_token %}

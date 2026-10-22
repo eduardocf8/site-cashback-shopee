@@ -25,7 +25,7 @@
     window.addEventListener("beforeinstallprompt", function (evento) {
         evento.preventDefault();
         eventoInstalacao = evento;
-        texto.textContent = "Instale a cash-b na tela inicial pra acessar mais rápido.";
+        texto.textContent = "Instale a cash-b na tela inicial para acessar mais rápido.";
         botaoAcao.hidden = false;
         botaoAcao.textContent = "Instalar";
         banner.hidden = false;

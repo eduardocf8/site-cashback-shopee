@@ -18,7 +18,7 @@
       {% else %}<span class="ponto" aria-hidden="true"></span>Modo campanha desligado{% endif %}
     </h2>
     {% if hoje_campanha %}
-      <p class="pequeno">Até as {{ campanha.horario_fim|time:"H:i" }}, o bot usa a configuração abaixo. Amanhã ele volta para a da Automação sozinho.</p>
+      <p class="pequeno">Até as {{ campanha.horario_fim|time:"H:i" }}, o bot usa a configuração abaixo. Amanhã ele volta pra da Automação sozinho.</p>
     {% elif proxima %}
       <p class="pequeno" id="proxima-campanha">Próxima campanha: <strong>{{ proxima.nome }}</strong>, {{ proxima.data|date:"l, d/m"|lower }} ({{ quando }}).</p>
     {% elif campanha.ativo %}
@@ -131,7 +131,7 @@
       <h2 id="titulo-como">Como funciona</h2>
       <ol class="passos-conversor">
         <li>Ligue o modo campanha e marque as datas em que ele deve valer.</li>
-        <li>No dia, à meia-noite, o bot passa a usar esta configuração sozinho. No dia seguinte, volta para a da Automação.</li>
+        <li>No dia, à meia-noite, o bot passa a usar esta configuração sozinho. No dia seguinte, volta pra da Automação.</li>
         <li>Mudou algo e salvou? Já vale para as próximas ofertas, até no meio da campanha.</li>
       </ol>
       <p class="suave pequeno">O bot não liga sozinho: a campanha só vale com as ofertas ligadas na Automação.</p>

@@ -13,7 +13,7 @@ Comissão validada: {{ mes.comissao_validada|brl }}
 {% if meta %}
 Meta de {{ nome_mes }}: {{ meta.faturamento|brl }} faturados até ontem
 {% for f in meta.faixas_tela %}- Faixa {{ f.nome }}: {{ f.faturamento|brl0 }}{% if f.bonus %} (bônus {{ f.bonus|brl0 }}){% endif %} - {% if f.batida %}batida{% else %}faltam {{ f.falta|brl0 }}{% endif %}
-{% endfor %}{% if meta.proxima %}Faltam {{ meta.falta|brl }} para a faixa {{ meta.nome_proxima }}: {{ meta.por_dia|brl }} por dia nos {{ meta.dias_restantes }} dias que faltam. No ritmo atual, o mês fecha em {{ meta.projecao|brl0 }}.{% else %}Todas as faixas do mês batidas!{% endif %}{% if meta.bonus_garantido %} Bônus garantido: {{ meta.bonus_garantido|brl }}.{% endif %}
+{% endfor %}{% if meta.proxima %}Faltam {{ meta.falta|brl }} pra faixa {{ meta.nome_proxima }}: {{ meta.por_dia|brl }} por dia nos {{ meta.dias_restantes }} dias que faltam. No ritmo atual, o mês fecha em {{ meta.projecao|brl0 }}.{% else %}Todas as faixas do mês batidas!{% endif %}{% if meta.bonus_garantido %} Bônus garantido: {{ meta.bonus_garantido|brl }}.{% endif %}
 {% endif %}{% if sub_ids %}
 Ontem por Sub ID
 {% for s in sub_ids %}- {{ s.sub_id }}: {{ s.vendas|numero }} venda{{ s.vendas|pluralize }}, {{ s.comissao|brl }}

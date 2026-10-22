@@ -1,7 +1,7 @@
 # Textos dos produtos do Appfiliado
 
-Para a descrição de cada produto no checkout da Zouti (e base da landing page).
-Valem para o plano mensal e o anual.
+Pra descrição de cada produto no checkout da Zouti (e base da landing page).
+Valem pro plano mensal e o anual.
 
 **Em todo plano:** acesso ao painel do Appfiliado (app.appfiliado.com.br) com Início,
 Resultados das vendas por Sub ID, Metas, o relatório diário por e-mail, o Conversor de links
@@ -57,7 +57,7 @@ Tudo do Standard, com mais espaço e a sua marca no lugar da nossa.
 
 ## Gerador de carrosséis — Standard
 
-Cole um link da Shopee e receba um carrossel pronto para o Instagram.
+Cole um link da Shopee e receba um carrossel pronto pro Instagram.
 
 - 3 carrosséis por dia
 - Roteiro dos slides, legenda e hashtags escritos por IA

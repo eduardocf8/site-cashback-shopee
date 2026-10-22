@@ -397,7 +397,7 @@ def editar_perfil(request):
                 messages.success(
                     request,
                     "Dados atualizados! Como você mudou o e-mail, mandamos um novo link de "
-                    "verificação pra ele.",
+                    "verificação para ele.",
                 )
             else:
                 messages.success(request, "Dados atualizados com sucesso!")

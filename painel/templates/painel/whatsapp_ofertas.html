@@ -22,7 +22,7 @@
       {% if config.simulacao %}<span class="selo-simulacao">Simulação</span>{% endif %}
     </h2>
     {% if campanha_hoje %}<p class="aviso aviso-success pequeno">Hoje é {{ campanha_hoje.nome }}: o bot está usando a configuração da aba <a href="{% url 'painel_whatsapp_campanhas' %}">Campanhas</a>. Amanhã volta para esta.</p>{% endif %}
-    {% if config.simulacao %}<p class="aviso aviso-info pequeno">Modo simulação ligado: nada é enviado para o WhatsApp. Desligue em "Simulação", no fim da página, para enviar de verdade.</p>{% endif %}
+    {% if config.simulacao %}<p class="aviso aviso-info pequeno">Modo simulação ligado: nada é enviado pro WhatsApp. Desligue em "Simulação", no fim da página, para enviar de verdade.</p>{% endif %}
     {% if not shopee_conectada %}
       <p class="aviso aviso-warning pequeno">Conecte sua conta da Shopee em <a href="{% url 'painel_configuracoes' %}">Configurações</a> - é com ela que o bot busca as ofertas e gera o seu link.</p>
     {% elif not whatsapp_conectado %}
@@ -118,7 +118,7 @@
       <fieldset class="campo formato-envio" id="formato-envio">
         <legend>Como enviar a oferta</legend>
         <label class="marcar"><input type="radio" name="formato_envio" value="foto"{% if form.formato_envio.value != "previa" %} checked{% endif %}><span><strong>Foto com o texto</strong><span class="ajuda">Nos grupos vai a foto do produto com o texto embaixo. Os canais do WhatsApp não aceitam foto com texto por aqui: neles vai o texto com uma prévia pequena do link.</span></span></label>
-        <label class="marcar"><input type="radio" name="formato_envio" value="previa"{% if form.formato_envio.value == "previa" %} checked{% endif %}><span><strong>Prévia grande do link</strong><span class="ajuda">Vai o texto com um cartão grande do link (a foto do produto inteira e o título), tanto nos grupos quanto nos canais. Sem a foto separada.</span></span></label>
+        <label class="marcar"><input type="radio" name="formato_envio" value="previa"{% if form.formato_envio.value == "previa" %} checked{% endif %}><span><strong>Prévia grande do link (recomendado)</strong><span class="ajuda">Deixa o grupo mais leve e converte mais, pois muita gente não baixa imagens automaticamente. Vai o texto com um cartão grande do link (a foto do produto inteira e o título), tanto nos grupos quanto nos canais. Sem a foto separada.</span></span></label>
       </fieldset>
       <div class="opcao-ia{% if not form.ia_disponivel or not regras.ia %} indisponivel{% endif %}">
         <label class="marcar">{{ form.ia_ativa }}<span><strong>Revisar o texto com IA</strong><span class="ajuda">Corrige o português e frases que não combinam com o produto antes de enviar. Links, preços e cupons nunca mudam: se a IA mexer neles, vai o texto original.</span></span></label>
@@ -162,7 +162,7 @@
         {% else %}
           <p class="suave pequeno">Conecte o WhatsApp na aba <a href="{% url 'painel_whatsapp' %}">Conexão</a> para ver seus grupos.</p>
         {% endif %}
-        {% if grupos_fora_do_plano %}<p class="aviso aviso-warning pequeno">Seu plano envia para até {{ regras.grupos }} grupos e canais: os {{ grupos_fora_do_plano }} último{{ grupos_fora_do_plano|pluralize }} da lista não recebe{{ grupos_fora_do_plano|pluralize:"m" }} ofertas. Desmarque alguns e salve, ou passe para o <a href="{{ url_planos }}" target="_blank" rel="noopener">plano Premium</a>.</p>{% endif %}
+        {% if grupos_fora_do_plano %}<p class="aviso aviso-warning pequeno">Seu plano envia para até {{ regras.grupos }} grupos e canais: os {{ grupos_fora_do_plano }} último{{ grupos_fora_do_plano|pluralize }} da lista não recebe{{ grupos_fora_do_plano|pluralize:"m" }} ofertas. Desmarque alguns e salve, ou passe pro <a href="{{ url_planos }}" target="_blank" rel="noopener">plano Premium</a>.</p>{% endif %}
         {% for e in form.grupos.errors %}<span class="erro">{{ e }}</span>{% endfor %}
       </fieldset>
       <div class="grade-campos">

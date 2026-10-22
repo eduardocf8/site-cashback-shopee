@@ -130,7 +130,7 @@ def motivo_para_esperar(config, conexao, agora) -> str:
         return "Escolha pelo menos um grupo."
     regras = regras_do_plano(config)
     if config.modo == ConfiguracaoOfertas.MODO_COPIAR and not regras["copiar"]:
-        return "Copiar ofertas de outros grupos é do plano Premium. Troque para a busca na Shopee ou faça o upgrade."
+        return "Copiar ofertas de outros grupos é do plano Premium. Troque pra busca na Shopee ou faça o upgrade."
     escolhidos = {g["jid"] for g in grupos_do_plano(config)}
     if escolhidos and escolhidos <= grupos_no_limite_de_hoje(config, agora):
         return f"Todos os grupos já receberam as {regras['ofertas_por_grupo_dia']} ofertas de hoje (limite do plano por grupo)."

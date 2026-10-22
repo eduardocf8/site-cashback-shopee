@@ -128,7 +128,7 @@ def processar_fila():
                 )
 
             zap.preparar_monitoramento_origem(GRUPO_ORIGEM)
-            print("Oferta enviada e bot voltou para o grupo de origem.")
+            print("Oferta enviada e bot voltou pro grupo de origem.")
             print()
 
         except Exception as e:
@@ -139,7 +139,7 @@ def processar_fila():
                 zap.limpar_preview_se_aberto()
                 zap.fechar_visualizador_midia()
                 zap.preparar_monitoramento_origem(GRUPO_ORIGEM)
-                print("Bot recuperado e voltou para o grupo de origem.")
+                print("Bot recuperado e voltou pro grupo de origem.")
             except Exception as erro_recuperacao:
                 print("Erro ao tentar recuperar o bot:")
                 print(erro_recuperacao)

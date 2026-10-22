@@ -567,7 +567,7 @@ class BotRunner:
                     zap.fechar_visualizador_midia()
                     if not self._modo_shopee():
                         zap.preparar_monitoramento_origem(self.settings.grupo_origem)
-                        self._log("Bot recuperado e voltou para o grupo de origem.")
+                        self._log("Bot recuperado e voltou pro grupo de origem.")
                 except Exception as erro_recuperacao:
                     self._log("Erro ao tentar recuperar o bot:")
                     self._log(erro_recuperacao)

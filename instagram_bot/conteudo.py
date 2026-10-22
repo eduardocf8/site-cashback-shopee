@@ -27,7 +27,7 @@ DICAS = [
     "Produtos com campanha de comissão extra rendem mais cashback. Fique de olho nas ofertas em destaque.",
     "O cashback só é confirmado depois que a Shopee valida o pedido, então evite cancelar ou trocar a compra.",
     "Compras maiores geram cashback maior. Vale juntar os itens do carrinho numa compra só.",
-    "Assim que o saldo aparece como \"Liberado\", já dá pra sacar — não precisa esperar mais nada.",
+    "Assim que o saldo aparece como \"Liberado\", já dá para sacar — não precisa esperar mais nada.",
     "Cadastre sua chave Pix com antecedência: assim que o saldo é liberado, o saque já sai na hora.",
 ]
 
@@ -35,7 +35,7 @@ LEMBRETES = [
     "Cashback de verdade: sem pegadinha, sem mensalidade.",
     "Toda compra na Shopee volta parte do dinheiro pro seu bolso.",
     "Cadastro grátis, cashback de verdade. Simples assim.",
-    "Você compra do jeito que já compra — a diferença é que parte volta pra você.",
+    "Você compra do jeito que já compra — a diferença é que parte volta para você.",
     "Sem letra miúda. O que você vê é o que você recebe.",
     "Já usou a cash-b essa semana?",
 ]
@@ -59,7 +59,7 @@ POSTS_INSTITUCIONAIS = [
         "texto": "Compra na Shopee do seu jeito. Cashback de verdade no fim.",
         "legenda": (
             "Não é papo de vendedor: você compra normalmente na Shopee, e uma parte do valor volta "
-            "pra você. 💚 Sem mensalidade, sem enrolação, sem mudar nada no seu jeito de comprar.\n"
+            "para você. 💚 Sem mensalidade, sem enrolação, sem mudar nada no seu jeito de comprar.\n"
             "Quer testar? Link na bio.\n#cashback #shopee #economia #cashbackshopee"
         ),
     },
@@ -76,7 +76,7 @@ POSTS_INSTITUCIONAIS = [
         "legenda": (
             "Resumindo a cash-b em uma frase: gera o link, compra na Shopee, e o cashback aparece "
             "no seu saldo assim que a Shopee confirma. 🔗🛍️💰 Nenhum passo a mais que isso.\n"
-            "Link na bio pra começar.\n#cashback #shopee #comofunciona"
+            "Link na bio para começar.\n#cashback #shopee #comofunciona"
         ),
     },
     {
@@ -91,8 +91,8 @@ POSTS_INSTITUCIONAIS = [
     {
         "texto": "Campanha de comissão extra? Só quem usa o link direto garante.",
         "legenda": (
-            "Uma dica pra quem quer render mais: quando a Shopee ativa comissão extra num produto, "
-            "o bônus só vale pra quem converteu o link daquele produto específico. ⚡ Fora isso, "
+            "Uma dica para quem quer render mais: quando a Shopee ativa comissão extra num produto, "
+            "o bônus só vale para quem converteu o link daquele produto específico. ⚡ Fora isso, "
             "comprar do jeito que preferir também garante cashback normal.\n#cashback #shopee #dicas"
         ),
     },
@@ -136,7 +136,7 @@ POSTS_INSTITUCIONAIS = [
     {
         "texto": "Cashback que realmente cai na sua conta. Sem pegadinha.",
         "legenda": (
-            "Zero taxa escondida, zero mensalidade, zero desculpa. A cash-b existe pra uma coisa só: "
+            "Zero taxa escondida, zero mensalidade, zero desculpa. A cash-b existe para uma coisa só: "
             "colocar parte do que você já gasta na Shopee de volta no seu bolso. ✅\n"
             "#cashback #semmensalidade #shopee"
         ),
@@ -153,7 +153,7 @@ POSTS_INSTITUCIONAIS = [
         "texto": "Todo real que você já ia gastar volta pro seu bolso.",
         "legenda": (
             "A conta é simples: você já compra na Shopee de qualquer jeito — com a cash-b, parte "
-            "desse dinheiro volta pra você em vez de ficar só na loja. 💰📈\n"
+            "desse dinheiro volta para você em vez de ficar só na loja. 💰📈\n"
             "#cashback #economia #shopee #dinheirodevolta"
         ),
     },
@@ -165,7 +165,7 @@ POSTS_INSTITUCIONAIS = [
         ),
     },
     {
-        "texto": "Sem custo pra começar: cadastre-se e ganhe cashback.",
+        "texto": "Sem custo para começar: cadastre-se e ganhe cashback.",
         "legenda": (
             "Criar sua conta na cash-b não custa nada e leva menos de um minuto. 🚀 Depois é só "
             "comprar na Shopee normalmente e ver o saldo crescer.\n👉 cash-b.com\n#cashback #shopee #cadastrese"
@@ -310,7 +310,7 @@ def a_conta_de_uma_oferta() -> "dict | None":
         "titulo": f"A conta de {nome}",
         "linhas": [
             ("Preço na Shopee", _formatar_reais(oferta.preco_min)),
-            ("Volta pra você", _formatar_reais(volta)),
+            ("Volta para você", _formatar_reais(volta)),
         ],
         "destaque": ("Saiu por", _formatar_reais(oferta.preco_min - volta)),
         "rodape": "Mesmo preço, mesma loja. A diferença é o que volta depois.",
@@ -405,7 +405,7 @@ def combo_de_stories_do_dia() -> "list[dict] | None":
             "titulo": "A conta do produto",
             "linhas": [
                 ("Preço na Shopee", _formatar_reais(oferta_percentual.preco_min)),
-                ("Volta pra você", _formatar_reais(volta_percentual)),
+                ("Volta para você", _formatar_reais(volta_percentual)),
             ],
             "destaque": ("Saiu por", _formatar_reais(oferta_percentual.preco_min - volta_percentual)),
             "rodape": "Mesmo preço, mesma loja. A diferença é o que volta depois.",

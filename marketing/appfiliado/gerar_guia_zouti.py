@@ -50,7 +50,7 @@ DESCRICOES = {
     ("site", 1): ("Tudo do Standard, com mais espaço e a sua marca no lugar da nossa.",
                   ["Até 10 botões", "Vitrine com os produtos que você escolher",
                    "Sem a marca \"Feito com Appfiliado\" no rodapé"], ""),
-    ("carrosseis", 0): ("Cole um link da Shopee e receba um carrossel pronto para o Instagram.",
+    ("carrosseis", 0): ("Cole um link da Shopee e receba um carrossel pronto pro Instagram.",
                         ["3 carrosséis por dia", "Roteiro dos slides, legenda e hashtags escritos por IA",
                          "Editor para ajustar os textos e baixar as imagens",
                          "Seu link de afiliado com Sub ID próprio para ver as vendas do Instagram"], ""),

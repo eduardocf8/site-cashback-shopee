@@ -20,7 +20,7 @@
     <div><span>Valor total</span><strong>{{ resumo.valor|brl }}</strong></div>
     <div><span>Fora da prévia</span><strong>{{ lote.ignoradas|length }}</strong></div>
   </div>
-  <p class="pequeno">Confira a lista. Nada foi enviado ainda. Ao confirmar, as notas vão para a fila e saem sozinhas, uma a uma (pode fechar a página){% if lote.ambiente == "1" %}, e cada vendedor com e-mail recebe a nota com o PDF e o XML{% endif %}.</p>
+  <p class="pequeno">Confira a lista. Nada foi enviado ainda. Ao confirmar, as notas vão pra fila e saem sozinhas, uma a uma (pode fechar a página){% if lote.ambiente == "1" %}, e cada vendedor com e-mail recebe a nota com o PDF e o XML{% endif %}.</p>
   {% if falta %}<p class="aviso aviso-warning pequeno">Antes de emitir, falta: {{ falta|join:" e " }}.</p>{% endif %}
   {% if lote.ambiente == "1" and plano.limite is not None %}
     {% if plano.sobram < 0 %}

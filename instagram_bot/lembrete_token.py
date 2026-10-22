@@ -37,7 +37,7 @@ def verificar_validade_token() -> dict:
 
     destinatario = settings.INSTAGRAM_APROVADOR_EMAIL
     if not destinatario:
-        logger.warning("[instagram_bot] INSTAGRAM_APROVADOR_EMAIL não configurado - não dá pra avisar sobre o token")
+        logger.warning("[instagram_bot] INSTAGRAM_APROVADOR_EMAIL não configurado - não dá para avisar sobre o token")
         return {"dias_restantes": dias_restantes, "lembrete_enviado": False}
 
     vencido = dias_restantes <= 0
@@ -50,7 +50,7 @@ def verificar_validade_token() -> dict:
     corpo = (
         f"Fica ligado: {situacao}\n\n"
         "Enquanto o token está vencido, o bot não consegue publicar nada no Instagram.\n\n"
-        "Pra renovar:\n"
+        "Para renovar:\n"
         "1. Gere um novo token de longa duração no painel da Meta for Developers "
         "(mesmo processo da configuração inicial - ver marketing/instagram/README.md).\n"
         "2. Atualize INSTAGRAM_ACCESS_TOKEN no Render (Environment).\n"

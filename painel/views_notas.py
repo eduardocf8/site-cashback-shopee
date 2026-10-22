@@ -323,7 +323,7 @@ def reenviar(request, pk):
     if nota.situacao in (NotaFiscal.RECUSADA, NotaFiscal.ERRO):
         try:
             servicos.reenviar_nota(nota)
-            messages.info(request, "Nota de volta para a fila. Ela sai em alguns instantes.")
+            messages.info(request, "Nota de volta pra fila. Ela sai em alguns instantes.")
         except servicos.ErroNotas as erro:
             messages.error(request, str(erro))
     return _volta(request, nota)

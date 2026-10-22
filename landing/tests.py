@@ -86,7 +86,7 @@ class TestPagina(TestCase):
         self.assertContains(site, "seunome.appfiliado.com.br")
         self.assertContains(site, planos.LINKS["site1"])
         car = self.abrir(caminho="/gerador-de-carrosseis/")
-        self.assertContains(car, "carrossel pronto para o Instagram")
+        self.assertContains(car, "carrossel pronto pro Instagram")
         self.assertContains(car, planos.LINKS["carrosseis0"])
         for pagina in (bot, site, car):
             self.assertContains(pagina, "persistence.min.js")

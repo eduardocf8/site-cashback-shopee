@@ -10,7 +10,7 @@ class Command(BaseCommand):
     def handle(self, *args, **options):
         self.stdout.write(f"Endpoint: {settings.SHOPEE_AFFILIATE_API_URL}")
         self.stdout.write(f"AppId configurado: {'sim' if settings.SHOPEE_AFFILIATE_APP_ID else 'NÃO'}")
-        self.stdout.write("Tentando gerar um link de afiliado para a página inicial da Shopee...\n")
+        self.stdout.write("Tentando gerar um link de afiliado pra página inicial da Shopee...\n")
 
         try:
             link = gerar_link_curto(settings.SHOPEE_HOME_URL, ["testeconexao"])

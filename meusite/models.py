@@ -98,7 +98,7 @@ class SiteAfiliado(models.Model):
     TITULO_PADRAO = "Achou algo na Shopee?"
     TEXTO_PADRAO = ("Cole o link do produto e compre pelo meu link. Você não paga nada a mais e me ajuda a "
                     "continuar postando ofertas.")
-    BOTAO_PADRAO = "Ir para a Shopee com o meu link"
+    BOTAO_PADRAO = "Ir pra Shopee com o meu link"
 
     def lista_de_redes(self) -> list[dict]:
         return [{"rede": rede, "nome": nome, "url": (self.redes or {}).get(rede)}
