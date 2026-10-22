@@ -13,8 +13,8 @@ e o Radar de ofertas (os produtos mais vendidos, de maior comissão e com mais d
 
 Ofertas da Shopee enviadas no automático para os seus grupos, sempre com o seu link de afiliado.
 
-- Até 3 grupos e canais
-- Até 30 ofertas por dia em cada grupo, com intervalo a partir de 15 minutos
+- Até 10 grupos e canais
+- Até 90 ofertas por dia em cada grupo, com intervalo a partir de 15 minutos
 - Busca por palavra-chave, loja ou categoria, com filtros de comissão, desconto, preço e avaliação
 - Horário e dias de envio, Sub ID por grupo e modo simulação para testar antes
 - Modo campanha: no 11.11, na Black Friday e nas outras datas, o bot muda sozinho o ritmo, o texto e o cupom
@@ -26,8 +26,8 @@ Precisa de: um número de WhatsApp (conecta pelo QR Code) e a conta de afiliado 
 
 Tudo do Standard, com mais alcance e mais automação.
 
-- Até 20 grupos e canais
-- Até 100 ofertas por dia em cada grupo, com intervalo a partir de 3 minutos
+- Até 50 grupos e canais
+- Até 300 ofertas por dia em cada grupo, com intervalo a partir de 3 minutos
 - Copia as ofertas de outros grupos e canais e troca pelo seu link de afiliado
 - Revisão do texto com IA (corrige o português sem mexer em link, preço ou cupom)
 - Alerta de preço com até 50 produtos, conferidos a cada 15 minutos
@@ -93,7 +93,7 @@ Precisa de: empresa MEI ou Simples Nacional e certificado digital A1 (e-CNPJ).
 
 Bot de WhatsApp + Meu site + Gerador de carrosséis, todos no plano Standard, 20% mais barato que separado.
 
-- Bot: até 3 grupos, 30 ofertas por dia em cada, modo campanha e alerta de preço
+- Bot: até 10 grupos, 90 ofertas por dia em cada, modo campanha e alerta de preço
 - Meu site: até 3 botões, conversor e vitrine de ofertas
 - Gerador de carrosséis: 3 por dia, com roteiro por IA
 - Uma assinatura só
@@ -102,7 +102,7 @@ Bot de WhatsApp + Meu site + Gerador de carrosséis, todos no plano Standard, 20
 
 Bot de WhatsApp + Meu site + Gerador de carrosséis, todos no plano Premium, 20% mais barato que separado.
 
-- Bot: até 20 grupos, 100 ofertas por dia em cada, copiar ofertas, IA e alerta de preço
+- Bot: até 50 grupos, 300 ofertas por dia em cada, copiar ofertas, IA e alerta de preço
 - Meu site: até 10 botões, vitrine com os produtos que você escolher e sem a nossa marca
 - Gerador de carrosséis: 10 por dia, modelos premium, cores livres e foto própria
 - Uma assinatura só
@@ -118,8 +118,8 @@ Este combo inclui:
 - **[Módulo] [Standard/Premium]:** [...] (se tiver 3)
 
 Linhas prontas para copiar:
-- Bot de WhatsApp Standard: até 3 grupos, 30 ofertas por dia em cada, modo campanha e alerta de preço
-- Bot de WhatsApp Premium: até 20 grupos, 100 ofertas por dia em cada, copiar ofertas, IA e alerta de preço
+- Bot de WhatsApp Standard: até 10 grupos, 90 ofertas por dia em cada, modo campanha e alerta de preço
+- Bot de WhatsApp Premium: até 50 grupos, 300 ofertas por dia em cada, copiar ofertas, IA e alerta de preço
 - Meu site Standard: até 3 botões, conversor e vitrine de ofertas
 - Meu site Premium: até 10 botões, produtos que você escolher e sem a nossa marca
 - Gerador de carrosséis Standard: 3 por dia, com roteiro por IA
