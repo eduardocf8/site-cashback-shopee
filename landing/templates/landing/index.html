@@ -3,14 +3,14 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Appfiliado — ferramentas para afiliados da Shopee</title>
-<meta name="description" content="Bot de WhatsApp, link na bio, gerador de carrosséis e emissão de notas fiscais para afiliados da Shopee. Escolha os módulos, monte o seu combo e comece hoje.">
+<title>Appfiliado — a solução completa para afiliados da Shopee</title>
+<meta name="description" content="A solução completa para afiliados da Shopee: encontre ofertas, divulgue no WhatsApp, no link na bio e no Instagram, acompanhe os resultados e emita notas fiscais. Num painel só.">
 <link rel="canonical" href="{{ endereco }}/">
 <meta property="og:type" content="website">
 <meta property="og:locale" content="pt_BR">
 <meta property="og:site_name" content="Appfiliado">
-<meta property="og:title" content="Appfiliado — ferramentas para afiliados da Shopee">
-<meta property="og:description" content="Ofertas no automático nos grupos de WhatsApp, link na bio, carrosséis para o Instagram e notas fiscais.">
+<meta property="og:title" content="Appfiliado — a solução completa para afiliados da Shopee">
+<meta property="og:description" content="Tudo o que o afiliado da Shopee precisa num painel só: ofertas, WhatsApp, link na bio, carrosséis, resultados e notas fiscais.">
 <meta property="og:url" content="{{ endereco }}/">
 <meta property="og:image" content="{{ endereco }}{% static 'landing/og.png' %}">
 <meta name="twitter:card" content="summary_large_image">
@@ -43,20 +43,23 @@
   <div class="miolo heroi-grade">
     <div>
       <p class="chapeu">Para afiliados da Shopee</p>
-      <h1>Divulgue ofertas da Shopee no automático.</h1>
-      <p class="heroi-texto">Bot de WhatsApp, link na bio, carrosséis para o Instagram e emissão de notas fiscais. Tudo num painel só, com o seu link de afiliado em cada oferta.</p>
-      <div class="heroi-botoes"><a class="botao botao-grande" href="#planos">Ver planos e preços</a><a class="botao botao-grande botao-vazado" href="#como">Como funciona</a></div>
+      <h1>Tudo o que o afiliado da Shopee precisa, num painel só.</h1>
+      <p class="heroi-texto">Encontre ofertas, divulgue no WhatsApp, no link na bio e no Instagram, acompanhe os seus resultados e emita as notas fiscais. Cada link sai com a sua conta de afiliado.</p>
+      <div class="heroi-botoes"><a class="botao botao-grande" href="#planos">Ver planos e preços</a><a class="botao botao-grande botao-vazado" href="#modulos">Conhecer os módulos</a></div>
       <p class="heroi-nota">Pagamento pela Zouti. 7 dias para pedir reembolso.</p>
     </div>
     <div class="heroi-arte" aria-hidden="true">
-      <div class="bolha-zap">
-        <span class="zap-nome">Ofertas VIP</span>
-        <div class="zap-msg">
-          <strong>🔥 Fone Bluetooth sem fio</strong>
-          <span>De <s>R$ 99,90</s> por <b>R$ 59,90</b></span>
-          <span class="zap-link">https://s.shopee.com.br/seu-link</span>
-        </div>
-        <span class="zap-hora">enviado pelo bot · 09:30</span>
+      <div class="painel-amostra">
+        <span class="painel-titulo">Seu painel Appfiliado</span>
+        <ul>
+          <li><svg viewBox="0 0 24 24"><path d="{{ icones.radar }}"/></svg>Radar de ofertas</li>
+          <li><svg viewBox="0 0 24 24"><path d="{{ icones.conversor }}"/></svg>Conversor de links</li>
+          <li><svg viewBox="0 0 24 24"><path d="{{ icones.whatsapp }}"/></svg>Bot de WhatsApp</li>
+          <li><svg viewBox="0 0 24 24"><path d="{{ icones.site }}"/></svg>Meu site</li>
+          <li><svg viewBox="0 0 24 24"><path d="{{ icones.carrosseis }}"/></svg>Gerador de carrosséis</li>
+          <li><svg viewBox="0 0 24 24"><path d="{{ icones.resultados }}"/></svg>Resultados e metas</li>
+          <li class="largo"><svg viewBox="0 0 24 24"><path d="{{ icones.notas }}"/></svg>Emissão de notas fiscais</li>
+        </ul>
       </div>
     </div>
   </div>
@@ -73,8 +76,8 @@
 <section id="modulos" class="secao">
   <div class="miolo">
     <p class="chapeu">Módulos</p>
-    <h2>Escolha o que você precisa. Junte quando quiser.</h2>
-    <p class="secao-texto">Cada módulo funciona sozinho. Ao juntar dois ou mais, o preço cai.</p>
+    <h2>Do achar a oferta ao emitir a nota, tudo no mesmo lugar.</h2>
+    <p class="secao-texto">Use só o que precisa hoje e some módulos quando crescer. Ao juntar dois ou mais, o preço cai.</p>
     <div class="grade-modulos">
       {% for m in modulos %}
         <article class="modulo">
