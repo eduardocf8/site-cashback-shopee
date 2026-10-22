@@ -553,7 +553,7 @@ class Gerenciador:
                 if "not connected" in str(erro).lower() and timezone.now() - envio.criado_em <= DESISTE_DO_ENVIO:
                     # A conexão caiu na hora (ex: este worker está sendo desligado num deploy):
                     # nada foi enviado. Devolve à fila para o outro worker, ou a próxima volta, tentar.
-                    logger.warning("WhatsApp: sem conexão ao enviar a mensagem %s; volta para a fila", envio.pk)
+                    logger.warning("WhatsApp: sem conexão ao enviar a mensagem %s; volta pra fila", envio.pk)
                     EnvioWhatsApp.objects.filter(pk=envio.pk, estado=EnvioWhatsApp.PENDENTE).update(enviado_em=None)
                     continue
                 logger.exception("WhatsApp: erro ao enviar a mensagem %s", envio.pk)
@@ -622,7 +622,7 @@ def miniatura(url: str = "", dados: bytes | None = None, lado: int = 300, qualid
         imagem.save(saida, format="JPEG", quality=qualidade)
         return saida.getvalue()
     except Exception:  # noqa: BLE001
-        logger.warning("WhatsApp: não consegui preparar a foto para a prévia: %s", (url or "arquivo")[:200])
+        logger.warning("WhatsApp: não consegui preparar a foto pra prévia: %s", (url or "arquivo")[:200])
         return None
 
 
@@ -685,7 +685,7 @@ def mensagem_com_previa_grande(cliente, envio, foto: bytes | None = None, canal:
     if not dados and envio.imagem_url:
         dados = rede.baixar(envio.imagem_url)
         if not dados:
-            logger.warning("WhatsApp: não consegui baixar a foto para a prévia grande: %s", envio.imagem_url[:200])
+            logger.warning("WhatsApp: não consegui baixar a foto pra prévia grande: %s", envio.imagem_url[:200])
     pronta = imagem_da_previa(dados) if dados else None
     if not pronta:
         return mensagem_com_previa(envio, foto)

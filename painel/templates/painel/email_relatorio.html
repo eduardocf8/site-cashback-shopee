@@ -73,7 +73,7 @@
       </table>
       <div style="margin-top:12px;padding:12px 14px;background:#FBF1CF;border-radius:10px;font-size:14px;color:#5C4400;line-height:1.5;">
         {% if meta.proxima %}
-          Faltam <strong>{{ meta.falta|brl|sem_quebra }}</strong> para a faixa <strong>{{ meta.nome_proxima }}</strong>{% if meta.proxima.bonus %} (bônus de {{ meta.proxima.bonus|brl0|sem_quebra }}){% endif %}: dá <strong>{{ meta.por_dia|brl|sem_quebra }} por dia</strong> nos {{ meta.dias_restantes }} dia{{ meta.dias_restantes|pluralize }} que faltam.<br>
+          Faltam <strong>{{ meta.falta|brl|sem_quebra }}</strong> pra faixa <strong>{{ meta.nome_proxima }}</strong>{% if meta.proxima.bonus %} (bônus de {{ meta.proxima.bonus|brl0|sem_quebra }}){% endif %}: dá <strong>{{ meta.por_dia|brl|sem_quebra }} por dia</strong> nos {{ meta.dias_restantes }} dia{{ meta.dias_restantes|pluralize }} que faltam.<br>
           No ritmo atual, o mês fecha em <strong>{{ meta.projecao|brl0|sem_quebra }}</strong>{% if meta.nome_faixa_projetada %}, na faixa {{ meta.nome_faixa_projetada }}{% else %}, abaixo da primeira faixa{% endif %}.
         {% else %}
           <strong>Todas as faixas do mês batidas! 🎉</strong>

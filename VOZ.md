@@ -35,15 +35,20 @@ o dono da marca aponta o que soa diferente do jeito dele de falar.
   qualquer lugar onde a palavra aparece como texto para o usuário ("saque
   via Pix", "chave Pix"). Nomes de constante e de campo no código
   (`chave_pix`, `TIPO_PIX`) não mudam - a regra é de escrita, não de código.
-- **"Pra" só quando for contração de "para" + "a" (artigo feminino).**
-  Ex: "pra revisão" está errado porque não existe "para a revisão" por trás
-  — o certo é "para revisão". Já "pra próxima sincronização" está certo,
-  porque é "para a próxima sincronização". Na dúvida, escrever por extenso
-  ("para você", "para quem comprou") e só contrair pra "pra" se sobrar um
-  "a" antes do substantivo/pronome feminino.
-  - Exceção: citação literal de um texto que já existe no site (ex: o
-    botão "Ir pra Shopee") não muda, mesmo fugindo da regra — é o nome
-    real do elemento, não prosa livre.
+- **"Pra" e "pro" só quando forem contração de "para" + artigo.**
+  "Para a" vira "pra", "para o" vira "pro" (ex: "pra Shopee", "pro
+  vendedor", "pra primeira compra"). Em texto novo, escrever sempre assim,
+  nunca "para a" / "para o" / "para os" / "para as" por extenso.
+  - Sem artigo por trás, escrever "para" por extenso: "para você", "para
+    quem comprou", "para começar", "para sempre", "para um", "para esse".
+    "Pra você" e "pra começar" estão errados porque não existe "para a você"
+    nem "para a começar" por trás.
+  - O mesmo vale no plural: "para os" vira "pros" e "para as" vira "pras".
+  - Exceção: texto de terceiros (mensagens de erro do governo, categorias
+    da Shopee) não muda.
+- **Sem vírgula antes do complemento em título.** "Ofertas automáticas da
+  Shopee com o seu link", não "da Shopee, com o seu link". Vale para
+  títulos e chamadas em que o "com…" / "no…" completa a frase.
 
 ## Onde essas regras já foram aplicadas
 

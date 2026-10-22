@@ -49,7 +49,7 @@
             <ol class="passos-qr">
               <li>Abra o WhatsApp no celular do número que vai postar as ofertas.</li>
               <li>Toque em <strong>⋮</strong> (Android) ou <strong>Configurações</strong> (iPhone) e em <strong>Aparelhos conectados</strong>.</li>
-              <li>Toque em <strong>Conectar um aparelho</strong> e aponte a câmera para o código.</li>
+              <li>Toque em <strong>Conectar um aparelho</strong> e aponte a câmera pro código.</li>
             </ol>
           </div>
           <p class="suave pequeno" style="margin-top:12px">O código muda a cada poucos segundos e a tela atualiza sozinha.</p>
@@ -85,7 +85,7 @@
               <option value="" disabled selected>Escolha o grupo ou canal</option>
               {% for g in destinos %}<option value="{{ g.jid }}">{% if g.tipo == "canal" %}Canal: {% endif %}{{ g.nome }}{% if g.participantes %} ({{ g.participantes }} {% if g.tipo == "canal" %}seguidores{% else %}pessoas{% endif %}){% endif %}</option>{% endfor %}
             </select>
-            <span class="ajuda">Para o teste, use um grupo só seu ou com pouca gente.</span>
+            <span class="ajuda">Pro teste, use um grupo só seu ou com pouca gente.</span>
           </div>
           <div class="campo">
             <label for="texto">Mensagem</label>

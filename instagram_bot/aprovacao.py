@@ -39,7 +39,7 @@ def enviar_email_aprovacao(
     """
     destinatario = settings.INSTAGRAM_APROVADOR_EMAIL
     if not destinatario:
-        logger.warning("[instagram_bot] INSTAGRAM_APROVADOR_EMAIL não configurado - não dá pra pedir aprovação")
+        logger.warning("[instagram_bot] INSTAGRAM_APROVADOR_EMAIL não configurado - não dá para pedir aprovação")
         return
 
     link_aprovar = request.build_absolute_uri(reverse("instagram_aprovar", args=[_gerar_token(registro.pk, "aprovar")]))

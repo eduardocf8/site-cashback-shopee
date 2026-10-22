@@ -83,7 +83,7 @@ class TestTelaDoAlerta(BasePainel):
         self.assertEqual((alerta.queda_minima, alerta.enviar_grupos), (15, True))
         self.assertContains(resposta, "nenhum está escolhido ainda")  # os grupos vêm da Automação
         ConfiguracaoOfertas.objects.filter(conta=self.conta).update(grupos=GRUPOS)
-        self.assertContains(self.client.get("/whatsapp/alertas/"), "Vai para os mesmos grupos das ofertas: <strong>Ofertas VIP, Achadinhos</strong>")
+        self.assertContains(self.client.get("/whatsapp/alertas/"), "Vai pros mesmos grupos das ofertas: <strong>Ofertas VIP, Achadinhos</strong>")
 
     def test_dez_produtos_por_pagina(self):
         self.conta.modulos_cortesia = "whatsapp_premium"

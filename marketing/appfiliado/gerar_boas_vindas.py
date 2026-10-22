@@ -42,7 +42,7 @@ MODULOS = [
 DICAS = [
     "Use <strong>Sub IDs</strong> diferentes para cada canal (grupos, Instagram, site). Em Resultados você vê quanto cada um vendeu.",
     "Ative o <strong>relatório diário por e-mail</strong> em Configurações para receber os números de ontem toda manhã.",
-    "O bot usa o WhatsApp de forma não oficial. Use um número só para as ofertas, sem exagerar no volume, para evitar bloqueios.",
+    "O bot usa o WhatsApp de forma não oficial. Use um número só pras ofertas, sem exagerar no volume, para evitar bloqueios.",
 ]
 
 CSS = """

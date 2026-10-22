@@ -1,7 +1,7 @@
 # Textos dos produtos do Appfiliado
 
-Para a descrição de cada produto no checkout da Zouti (e base da landing page).
-Valem para o plano mensal e o anual.
+Pra descrição de cada produto no checkout da Zouti (e base da landing page).
+Valem pro plano mensal e o anual.
 
 **Em todo plano:** acesso ao painel do Appfiliado (app.appfiliado.com.br) com Início,
 Resultados das vendas por Sub ID, Metas, o relatório diário por e-mail, o Conversor de links
@@ -11,7 +11,7 @@ e o Radar de ofertas (os produtos mais vendidos, de maior comissão e com mais d
 
 ## Bot de WhatsApp — Standard
 
-Ofertas da Shopee enviadas no automático para os seus grupos, sempre com o seu link de afiliado.
+Ofertas da Shopee enviadas no automático pros seus grupos, sempre com o seu link de afiliado.
 
 - Até 10 grupos e canais
 - Até 60 ofertas por dia em cada grupo, com intervalo a partir de 15 minutos
@@ -57,7 +57,7 @@ Tudo do Standard, com mais espaço e a sua marca no lugar da nossa.
 
 ## Gerador de carrosséis — Standard
 
-Cole um link da Shopee e receba um carrossel pronto para o Instagram.
+Cole um link da Shopee e receba um carrossel pronto pro Instagram.
 
 - 3 carrosséis por dia
 - Roteiro dos slides, legenda e hashtags escritos por IA
@@ -71,7 +71,7 @@ Tudo do Standard, com mais volume e mais liberdade de criação.
 - 10 carrosséis por dia
 - Modelos premium, cores livres e foto própria do produto
 - IA reescrevendo os slides que você quiser
-- Salve o seu padrão visual para os próximos carrosséis
+- Salve o seu padrão visual pros próximos carrosséis
 
 ---
 
@@ -107,7 +107,7 @@ Bot de WhatsApp + Meu site + Gerador de carrosséis, todos no plano Premium, 20%
 - Gerador de carrosséis: 10 por dia, modelos premium, cores livres e foto própria
 - Uma assinatura só
 
-## Combo personalizado (modelo para as 18 combinações)
+## Combo personalizado (modelo pras 18 combinações)
 
 Monte o seu: escolha os módulos e o plano de cada um.
 **10% de desconto com 2 módulos e 20% com 3.**

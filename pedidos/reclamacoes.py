@@ -134,7 +134,7 @@ def vincular(reclamacao: ReclamacaoPedido) -> None:
     """Liga o pedido "fora do site" à conta de quem reclamou e calcula o cashback como
     venda indireta. Levanta ReclamacaoInvalida se o pedido não puder mais ser vinculado."""
     if reclamacao.status != ReclamacaoPedido.STATUS_EM_ANALISE or not reclamacao.pedido_id:
-        raise ReclamacaoInvalida("Só dá pra vincular reclamação em análise, com pedido encontrado.")
+        raise ReclamacaoInvalida("Só dá para vincular reclamação em análise, com pedido encontrado.")
 
     with transaction.atomic():
         pedido = Pedido.objects.select_for_update().get(pk=reclamacao.pedido_id)

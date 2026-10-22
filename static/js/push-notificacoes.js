@@ -74,7 +74,7 @@
             })
             .catch(function (erro) {
                 if (erro.message !== "permissao-negada") {
-                    botao.textContent = "Não deu pra ativar agora";
+                    botao.textContent = "Não deu para ativar agora";
                 }
             });
     });

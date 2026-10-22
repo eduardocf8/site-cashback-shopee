@@ -3370,7 +3370,7 @@ class MainWindow(QMainWindow):
 
     def build_indicators_chart(self, rows):
         if not rows:
-            return "Nenhum indicador encontrado para o período selecionado."
+            return "Nenhum indicador encontrado pro período selecionado."
 
         max_sales = max(int(row.get("vendas") or 0) for row in rows) or 1
         lines = ["Vendas por Sub ID", ""]
@@ -3962,7 +3962,7 @@ class MainWindow(QMainWindow):
             return
 
         QApplication.clipboard().setText(link_afiliado)
-        self.add_log("Link afiliado copiado para a área de transferência.")
+        self.add_log("Link afiliado copiado pra área de transferência.")
         QMessageBox.information(self, "Copiar link afiliado", "Link afiliado copiado.")
 
     def export_history_csv(self):

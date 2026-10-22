@@ -100,7 +100,7 @@ def radar_enviar(request):
         estado = "simulada (o modo simulação está ligado)" if config.simulacao else "na fila. Sai em alguns segundos"
         messages.success(request, f"Oferta para “{grupo.get('nome', 'o grupo')}” {estado}.")
     except Exception as erro:  # noqa: BLE001
-        logger.warning("Radar: envio para o grupo falhou", exc_info=True)
+        logger.warning("Radar: envio pro grupo falhou", exc_info=True)
         messages.error(request, str(erro) if isinstance(erro, ValueError) else "Não deu para mandar agora. Tente de novo.")
     return redirect(_voltar(request))
 

@@ -229,7 +229,7 @@ def _resolver_item_id(url: str, timeout: int = 10) -> int:
             f"{saltos} redirecionamento(s) seguido(s)], mas não achei "
             "nenhum padrão de link de produto da Shopee (-i.<loja>.<item> ou "
             "/product/<loja>/<item>) nem na URL final nem no conteúdo da página - talvez "
-            "esse link precise ser aberto no navegador/app pra chegar na página do produto)."
+            "esse link precise ser aberto no navegador/app para chegar na página do produto)."
         )
     return int(match.group(1) or match.group(2))
 

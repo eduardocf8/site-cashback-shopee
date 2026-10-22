@@ -65,14 +65,13 @@ MODULOS_DO_MENU = [
         "slug": "carrosseis", "nome": "Carrosséis", "icone": "carrosseis", "modulo": MODULO_CARROSSEIS,
         # o premium libera o gerador inteiro, sem precisar do básico junto
         "modulos_que_liberam": [MODULO_CARROSSEIS, MODULO_CARROSSEIS_PREMIUM], "pronto": True,
-        "texto_bloqueado": "Cole o link de um produto da Shopee e receba um carrossel pronto para o "
+        "texto_bloqueado": "Cole o link de um produto da Shopee e receba um carrossel pronto pro "
                            "Instagram, com textos feitos por IA e o seu link de afiliado.",
     },
     {
         "slug": "notas", "nome": "Emissor NFS-e", "icone": "notas", "modulo": MODULO_NOTAS, "pronto": True,
-        "teste": True,
         "texto_bloqueado": "Emita no automático a nota da Shopee e as notas de cada vendedor que pagou "
-                           "comissão extra, e mande cada uma por e-mail para o vendedor.",
+                           "comissão extra, e mande cada uma por e-mail pro vendedor.",
     },
     {
         "slug": "instagram", "nome": "Instagram", "icone": "instagram", "modulo": MODULO_INSTAGRAM,

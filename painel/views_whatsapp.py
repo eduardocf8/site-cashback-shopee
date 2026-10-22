@@ -209,7 +209,7 @@ def whatsapp_ofertas_ligar(request):
         config.save(update_fields=["ativo", "proximo_envio_em", "situacao", "atualizado_em"])
         # Somem sozinhas quando a primeira oferta sair (ofertas.js).
         if config.simulacao:
-            messages.success(request, "Ligado em modo simulação: as ofertas aparecem aqui, mas nada vai para o WhatsApp.",
+            messages.success(request, "Ligado em modo simulação: as ofertas aparecem aqui, mas nada vai pro WhatsApp.",
                              extra_tags="some-ao-enviar")
         else:
             messages.success(request, "Ofertas automáticas ligadas. A primeira sai em instantes.", extra_tags="some-ao-enviar")
@@ -286,7 +286,7 @@ def _adicionar_data(request, campanha, hoje) -> None:
         messages.error(request, "Escolha o dia da data.")
         return
     if not nome:
-        messages.error(request, "Dê um nome para a data. Ex: Aniversário da loja.")
+        messages.error(request, "Dê um nome pra data. Ex: Aniversário da loja.")
     elif dia < hoje or dia > hoje + timedelta(days=365):
         messages.error(request, "Escolha um dia entre hoje e os próximos 12 meses.")
     elif len(campanha.datas_proprias or []) >= MAXIMO_DATAS_PROPRIAS:
@@ -351,7 +351,7 @@ def whatsapp_campanhas(request):
             return redirect(f"{reverse('painel_whatsapp_campanhas')}#datas")
         if form.is_valid():
             form.save()
-            messages.success(request, "Modo campanha salvo. Vale na hora para as próximas ofertas da campanha.")
+            messages.success(request, "Modo campanha salvo. Vale na hora pras próximas ofertas da campanha.")
             return redirect("painel_whatsapp_campanhas")
         messages.error(request, "Confira os campos marcados.")
     hoje_campanha = campanhas.campanha_do_dia(campanha, hoje)

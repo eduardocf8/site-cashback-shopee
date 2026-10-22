@@ -29,7 +29,7 @@ LINHA = {
     ("carrosseis", 1): "10 por dia, modelos premium, cores livres e foto própria",
 }
 DESCRICOES = {
-    ("bot", 0): ("Ofertas da Shopee enviadas no automático para os seus grupos, sempre com o seu link de afiliado.",
+    ("bot", 0): ("Ofertas da Shopee enviadas no automático pros seus grupos, sempre com o seu link de afiliado.",
                  ["Até 10 grupos e canais", "Até 60 ofertas por dia em cada grupo, com intervalo a partir de 15 minutos",
                   "Busca por palavra-chave, loja ou categoria, com filtros de comissão, desconto, preço e avaliação",
                   "Horário e dias de envio, Sub ID por grupo e modo simulação para testar antes",
@@ -50,13 +50,13 @@ DESCRICOES = {
     ("site", 1): ("Tudo do Standard, com mais espaço e a sua marca no lugar da nossa.",
                   ["Até 10 botões", "Vitrine com os produtos que você escolher",
                    "Sem a marca \"Feito com Appfiliado\" no rodapé"], ""),
-    ("carrosseis", 0): ("Cole um link da Shopee e receba um carrossel pronto para o Instagram.",
+    ("carrosseis", 0): ("Cole um link da Shopee e receba um carrossel pronto pro Instagram.",
                         ["3 carrosséis por dia", "Roteiro dos slides, legenda e hashtags escritos por IA",
                          "Editor para ajustar os textos e baixar as imagens",
                          "Seu link de afiliado com Sub ID próprio para ver as vendas do Instagram"], ""),
     ("carrosseis", 1): ("Tudo do Standard, com mais volume e mais liberdade de criação.",
                         ["10 carrosséis por dia", "Modelos premium, cores livres e foto própria do produto",
-                         "IA reescrevendo os slides que você quiser", "Salve o seu padrão visual para os próximos carrosséis"], ""),
+                         "IA reescrevendo os slides que você quiser", "Salve o seu padrão visual pros próximos carrosséis"], ""),
 }
 ARTES_AVULSO = {("bot", 0): "bot-standard", ("bot", 1): "bot-premium", ("site", 0): "site-standard",
                 ("site", 1): "site-premium", ("carrosseis", 0): "carrosseis-standard", ("carrosseis", 1): "carrosseis-premium"}

@@ -243,15 +243,15 @@
       toast(`Pronto. Restam ${j.restantes.reescritas} reescritas hoje.`); }
     catch (e) { toast(e.message); } finally { b.disabled = false; b.textContent = '✨ Outra versão'; } };
   $('modelo').onchange = (e) => { const novo = e.target.value, fam = FAMILIA(novo);
-    if (fam !== est.familia) { est.roteiros[fam] = fam === 'premium' ? paraPremium(roteiro()) : paraPadrao(roteiro()); est.familia = fam; toast('Textos levados para o novo modelo'); }
+    if (fam !== est.familia) { est.roteiros[fam] = fam === 'premium' ? paraPremium(roteiro()) : paraPadrao(roteiro()); est.familia = fam; toast('Textos levados pro novo modelo'); }
     est.modelo = novo; montarTudo(); agendarSalvar(); };
   $('fonte').onchange = (e) => { est.fonte = e.target.value; mudou(); };
   $('foto').onchange = async (e) => { const f = e.target.files[0]; e.target.value = ''; if (!f) return; const fd = new FormData(); fd.append('foto', f); toast('Enviando a foto…');
     try { const r = await fetch(D.urls.foto, { method: 'POST', body: fd, headers: { 'X-CSRFToken': CSRF }, credentials: 'same-origin' }); const j = await r.json().catch(() => ({})); if (!r.ok) throw new Error(j.erro || 'Não consegui enviar a foto.');
       fotoPropria = await carregar(j.url, false); recorte = null; montarVisual(); redesenhar(); toast('Foto trocada'); } catch (err) { toast(err.message); } };
   $('removerFoto').onclick = async () => { const fd = new FormData(); fd.append('remover', '1');
-    try { const r = await fetch(D.urls.foto, { method: 'POST', body: fd, headers: { 'X-CSRFToken': CSRF }, credentials: 'same-origin' }); if (!r.ok) throw new Error('Não consegui voltar para a foto da Shopee.');
-      fotoPropria = null; recorte = null; montarVisual(); redesenhar(); toast('Voltou para a foto da Shopee'); } catch (err) { toast(err.message); } };
+    try { const r = await fetch(D.urls.foto, { method: 'POST', body: fd, headers: { 'X-CSRFToken': CSRF }, credentials: 'same-origin' }); if (!r.ok) throw new Error('Não consegui voltar pra foto da Shopee.');
+      fotoPropria = null; recorte = null; montarVisual(); redesenhar(); toast('Voltou pra foto da Shopee'); } catch (err) { toast(err.message); } };
   // ---- remover o fundo da foto (no navegador; o servidor só guarda o PNG pronto) -------------------
   // A biblioteca roda a IA em segundo plano (a tela não trava) e baixa o modelo (~40 MB) na primeira vez.
   const FUNDO_LIB = 'https://cdn.jsdelivr.net/npm/@imgly/background-removal@1.5.5/+esm', FUNDO_LADO = 1024;
@@ -286,12 +286,12 @@
     finally { tirando = false; botao.disabled = false; if (!recorte) botao.textContent = antes; } };
   $('removerRecorte').onclick = async () => { const fd = new FormData(); fd.append('remover', '1');
     try { const r = await fetch(D.urls.recorte, { method: 'POST', body: fd, headers: { 'X-CSRFToken': CSRF }, credentials: 'same-origin' }); if (!r.ok) throw new Error('Não consegui apagar o recorte.');
-      recorte = null; montarVisual(); redesenhar(); toast('Voltou para a foto inteira'); } catch (err) { toast(err.message); } };
+      recorte = null; montarVisual(); redesenhar(); toast('Voltou pra foto inteira'); } catch (err) { toast(err.message); } };
   $('usarRecorte').onchange = (e) => { est.usarRecorte = e.target.checked; mudou(); };
   ['mostraNota', 'mostraDe', 'mostraArrasta'].forEach((k) => $(k).onchange = (e) => { est[k] = e.target.checked; mudou(); });
   $('arroba').oninput = (e) => { let v = e.target.value.trim().replace(/\s+/g, ''); if (v && !v.startsWith('@')) v = '@' + v; est.arroba = v; mudou(); };
   $('salvarPadrao').onclick = async () => { try { await postar(D.urls.padrao, { opcoes: { modelo: est.modelo, tema: est.tema, cor: est.cor, fonte: est.fonte, arroba: est.arroba, mostraNota: est.mostraNota, mostraDe: est.mostraDe, mostraArrasta: est.mostraArrasta } });
-    toast('Padrão salvo para os próximos carrosséis'); } catch (e) { toast(e.message); } };
+    toast('Padrão salvo pros próximos carrosséis'); } catch (e) { toast(e.message); } };
   $('legenda').oninput = (e) => { est.legenda = e.target.value; agendarSalvar(); }; $('hashtags').oninput = (e) => { est.hashtags = e.target.value; agendarSalvar(); };
   { const lg = $('legenda'), lab = lg.parentNode; lab.appendChild(comEmoji(lg)); }
   $('copiar').onclick = async () => { const txt = est.legenda + '\n\n' + est.hashtags; try { await navigator.clipboard.writeText(txt); toast('Legenda copiada'); } catch (e) { $('legenda').select(); toast('Selecione e copie a legenda'); } };
@@ -305,7 +305,7 @@
   $('baixar').onclick = async () => { if (!podeBaixar()) return; entregar(await pngDo(atual), nomeArq(atual)); };
   $('baixarTodos').onclick = async () => { if (!podeBaixar()) return; const b = $('baixarTodos'); b.disabled = true; b.textContent = 'Preparando…';
     try { const zip = new window.JSZip(); for (let i = 0; i < roteiro().length; i++) zip.file(nomeArq(i), await pngDo(i));
-      zip.file('legenda.txt', est.legenda + '\n\n' + est.hashtags + '\n\nSeu link de afiliado (para a bio): ' + (D.produto.link || '') + '\n');
+      zip.file('legenda.txt', est.legenda + '\n\n' + est.hashtags + '\n\nSeu link de afiliado (pra bio): ' + (D.produto.link || '') + '\n');
       entregar(await zip.generateAsync({ type: 'blob' }), `carrossel-${D.id}.zip`); } finally { b.disabled = false; b.textContent = 'Baixar todos (ZIP)'; } };
   $('copiarLink').onclick = async () => { try { await navigator.clipboard.writeText(D.produto.link); toast('Link copiado'); } catch (e) { toast('Não deu para copiar: ' + D.produto.link); } };
 

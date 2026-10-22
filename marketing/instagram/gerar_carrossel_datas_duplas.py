@@ -94,7 +94,7 @@ SLIDES = [
 
     Slide(LIGHT_BG, f"""
     {tag_label("como não perder", BRAND_PRIMARY)}
-    {titulo("Guarde a lista para a data", 28, DARK_BG)}
+    {titulo("Guarde a lista pra data", 28, DARK_BG)}
     {subtitulo(
         "O que você já ia comprar de qualquer jeito rende mais se esperar o dia da "
         "campanha. Anote agora, compre lá.",
@@ -117,7 +117,7 @@ E nessas datas a cash-b entra com mais uma camada: campanha de cashback aumentad
 
 Detalhe que vale saber: o valor maior fica gravado no pedido. Comprou durante a campanha, o cashback aumentado é seu mesmo depois que ela acaba.
 
-Vai comprar algo esse mês? Guarde para a data. Avisamos aqui quando estiver no ar.
+Vai comprar algo esse mês? Guarde pra data. Avisamos aqui quando estiver no ar.
 
 #cashback #shopeebrasil #datasduplas #ofertasshopee #economizar"""
 

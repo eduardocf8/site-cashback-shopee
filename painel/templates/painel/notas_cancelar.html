@@ -6,7 +6,7 @@
   <div>
     <a class="notas-voltar" href="{% if voltar == 'lote' and nota.lote_id %}{% url 'painel_notas_lote' nota.lote_id %}{% else %}{% url 'painel_notas' %}{% endif %}">← Voltar</a>
     <h1>Cancelar nota{% if nota.numero_nfse %} nº {{ nota.numero_nfse }}{% endif %}{% if nota.ambiente == "2" %} <span class="selo-venda selo-pendente">Ambiente de testes</span>{% endif %}</h1>
-    <p>O cancelamento vai para o Emissor Nacional, assinado com o certificado da sua empresa. Depois de aceito, não dá para desfazer.</p>
+    <p>O cancelamento vai pro Emissor Nacional, assinado com o certificado da sua empresa. Depois de aceito, não dá para desfazer.</p>
   </div>
 </header>
 
@@ -30,7 +30,7 @@
     <div class="campo">
       <label for="id_justificativa">Explique o motivo</label>
       <textarea id="id_justificativa" name="justificativa" rows="3" minlength="15" maxlength="255" required placeholder="Ex: valor da comissão errado, a nota certa será emitida em seguida.">{{ justificativa }}</textarea>
-      <span class="ajuda">De 15 a 255 letras. Vai junto no cancelamento e aparece para o vendedor.</span>
+      <span class="ajuda">De 15 a 255 letras. Vai junto no cancelamento e aparece pro vendedor.</span>
     </div>
     <ul class="suave pequeno notas-cancelar-avisos">
       {% if avisa_vendedor %}<li>O vendedor recebe um e-mail ({{ nota.tomador_email }}) avisando, com o PDF marcado como cancelado.</li>{% endif %}

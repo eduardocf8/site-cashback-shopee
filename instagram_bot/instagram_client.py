@@ -150,7 +150,7 @@ def publicar_container(creation_id: str, tentativas: int = 3, intervalo: float =
         except InstagramAPIError as erro:
             if tentativa < tentativas - 1 and erro.error_subcode == _SUBCODE_AINDA_NAO_PRONTO:
                 logger.warning(
-                    "[instagram_bot] container %s ainda não disponível pra publicar, tentando de novo: %s",
+                    "[instagram_bot] container %s ainda não disponível para publicar, tentando de novo: %s",
                     creation_id, erro,
                 )
                 time.sleep(intervalo)
