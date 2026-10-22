@@ -77,25 +77,7 @@
     <h2>Standard para começar, Premium para crescer.</h2>
     <p class="secao-texto">Preços por mês. Plano anual com 17% de desconto disponível no checkout.</p>
     {% for m in modulos %}
-      <div class="bloco-plano">
-        <div class="bloco-titulo"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="{{ m.icone }}"/></svg><h3>{{ m.nome }}</h3></div>
-        <div class="par-planos">
-          {% for p in m.planos %}
-            <article class="plano{% if p.nivel == 'Premium' %} plano-destaque{% endif %}">
-              <h4>{{ p.nivel }}</h4>
-              <p class="preco"><b>{{ p.preco }}</b><span>/mês</span></p>
-              <ul>{% for item in p.itens %}<li{% if item.extra %} class="extra"{% endif %}>{{ item.texto }}</li>{% endfor %}</ul>
-              <a class="botao{% if p.nivel != 'Premium' %} botao-vazado-escuro{% endif %}" href="{{ p.link }}">Assinar {{ m.nome }} {{ p.nivel }}</a>
-            </article>
-          {% endfor %}
-        </div>
-        {% if m.comuns %}
-          <div class="plano-comuns">
-            <h4>Em todos os planos</h4>
-            <ul>{% for item in m.comuns %}<li>{{ item }}</li>{% endfor %}</ul>
-          </div>
-        {% endif %}
-      </div>
+      {% include "landing/_bloco_plano.html" %}
     {% endfor %}
   </div>
 </section>

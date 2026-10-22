@@ -26,16 +26,16 @@ RESUMOS = {
     "site": {
         "icone": "site", "frase": "Seu link na bio (seunome.appfiliado.com.br) com vitrine de ofertas e conversor de links.",
         "itens": (
-            ["Até 3 botões", "Vitrine de ofertas padrão", "Com assinatura do Appfiliado no rodapé"],
-            ["Até 10 botões", "Vitrine de ofertas personalizável", "Sem assinatura do Appfiliado no rodapé"],
+            ["Até 3 botões", "Vitrine com as ofertas do bot ou de uma busca", "Com assinatura do Appfiliado no rodapé"],
+            ["Até 10 botões", "Vitrine com os produtos que você escolher", "Sem assinatura do Appfiliado no rodapé"],
         ),
-        "comuns": ["Conversor de links", "Contador de cliques", "SubID próprio", "Ícones de todas as redes sociais"],
+        "comuns": ["Conversor de links", "Contador de cliques", "SubID próprio", "Ícones de 7 redes sociais"],
     },
     "carrosseis": {
         "icone": "carrosseis", "frase": "Cole um link da Shopee e receba um carrossel pronto para o Instagram.",
         "itens": (
             ["3 carrosséis por dia", "6 modelos de carrossel", "5 temas de cor e 1 fonte"],
-            ["10 carrosséis por dia", "6 modelos Standard + 4 Premium", "Cores e fontes livres", "Foto própria e remoção de fundo",
+            ["10 carrosséis por dia", "6 modelos Standard + 4 Premium", "Cores livres e 5 fontes à escolha", "Foto própria do produto",
              f"Reescrita de slides por IA (até {planos_do_app.CARROSSEIS[True]['reescritas']} por dia)"],
         ),
         "comuns": ["Roteiro, legendas e hashtags escritas por IA", "Ajuste manual dos textos gerados", "Edita, reordena e remove slides",
