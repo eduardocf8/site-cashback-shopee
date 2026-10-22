@@ -29,7 +29,7 @@ CARR = ("carrosseis", "Gerador de carrosséis", "Carrosséis para o Instagram pr
 NOTAS = ("notas", "Emissor NFS-e", "As notas dos vendedores direto do relatório da Shopee.")
 
 AVULSOS = [
-    ("bot-standard", BOT, "Standard", ["Até 10 grupos e canais", "90 ofertas por dia em cada grupo",
+    ("bot-standard", BOT, "Standard", ["Até 10 grupos e canais", "60 ofertas por dia em cada grupo",
                                         "Seu link de afiliado em todas"]),
     ("bot-premium", BOT, "Premium", ["Até 50 grupos e canais", "300 ofertas por dia em cada grupo",
                                       "Copia ofertas de outros grupos e revisa o texto com IA"]),

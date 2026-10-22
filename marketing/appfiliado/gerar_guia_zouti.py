@@ -21,7 +21,7 @@ CODIGOS = {
     ("carrosseis", 0): "carrosseis", ("carrosseis", 1): "carrosseis_premium",
 }
 LINHA = {
-    ("bot", 0): "até 10 grupos, 90 ofertas por dia em cada, modo campanha e alerta de preço (10 produtos)",
+    ("bot", 0): "até 10 grupos, 60 ofertas por dia em cada, modo campanha e alerta de preço (10 produtos)",
     ("bot", 1): "até 50 grupos, 300 ofertas por dia em cada, copiar ofertas, IA e alerta de preço (50 produtos)",
     ("site", 0): "até 3 botões, conversor e vitrine de ofertas",
     ("site", 1): "até 10 botões, produtos que você escolher e sem a nossa marca",
@@ -30,7 +30,7 @@ LINHA = {
 }
 DESCRICOES = {
     ("bot", 0): ("Ofertas da Shopee enviadas no automático para os seus grupos, sempre com o seu link de afiliado.",
-                 ["Até 10 grupos e canais", "Até 90 ofertas por dia em cada grupo, com intervalo a partir de 15 minutos",
+                 ["Até 10 grupos e canais", "Até 60 ofertas por dia em cada grupo, com intervalo a partir de 15 minutos",
                   "Busca por palavra-chave, loja ou categoria, com filtros de comissão, desconto, preço e avaliação",
                   "Horário e dias de envio, Sub ID por grupo e modo simulação para testar antes",
                   "Modo campanha: no 11.11, na Black Friday e nas outras datas, o bot muda sozinho o ritmo, o texto e o cupom",
