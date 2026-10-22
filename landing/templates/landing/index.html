@@ -53,7 +53,7 @@
       <article class="modulo">
         <svg viewBox="0 0 24 24" aria-hidden="true"><path d="{{ icones.notas }}"/></svg>
         <h3>Emissor NFS-e</h3>
-        <p>As notas fiscais dos vendedores que pagaram comissão extra, direto do relatório mensal da Shopee. Para afiliados pessoa jurídica.</p>
+        <p>As notas fiscais dos vendedores que pagaram comissão extra direto do relatório mensal da Shopee. Para afiliados pessoa jurídica.</p>
         <span class="a-partir">a partir de <b>{{ notas.0.preco }}</b>/mês</span>
         <a class="ver-recursos" href="{% url 'landing_notas' %}">Ver como funciona →</a>
       </article>
@@ -66,7 +66,7 @@
     <p class="chapeu">Como funciona</p>
     <h2>Do pagamento ao primeiro uso em três passos.</h2>
     <ol class="passos">
-      <li><span>1</span><h3>Escolha e pague</h3><p>Escolha os módulos que quiser, ou monte um combo e pague pelo checkout seguro da Zouti.</p></li>
+      <li><span>1</span><h3>Escolha e pague</h3><p>Escolha os módulos ou monte um combo e pague pelo checkout seguro da Zouti.</p></li>
       <li><span>2</span><h3>Receba o acesso</h3><p>Assim que o pagamento é confirmado, você recebe no e-mail o link para criar a sua senha e entrar no painel.</p></li>
       <li><span>3</span><h3>Conecte e comece</h3><p>Entre no painel, conecte a sua conta da Shopee e use os módulos do seu plano. Se tiver o bot, o WhatsApp conecta pelo QR Code.</p></li>
     </ol>
@@ -151,7 +151,7 @@
   <div class="miolo">
     <p class="chapeu">Emissor NFS-e</p>
     <h2>Emissão de notas fiscais em lote, de forma rápida e sem digitar nada.</h2>
-    <p class="secao-texto">Cada vendedor que paga comissão extra precisa de uma nota e isso pode somar até milhares por mês. Envie o relatório mensal da Shopee e o Appfiliado emite todas de uma vez, uma por loja, no Emissor Nacional do governo e manda por e-mail para cada vendedor. <strong>Exclusivo para afiliados pessoa jurídica</strong> (MEI ou Simples Nacional, com certificado digital A1). A partir de {{ notas.0.preco }} por mês.</p>
+    <p class="secao-texto">Cada vendedor que paga comissão extra precisa de uma nota e isso pode somar até milhares por mês. Envie o relatório mensal da Shopee e o Appfiliado emite todas de uma vez, uma por loja, no Emissor Nacional do governo, e manda por e-mail para cada vendedor. <strong>Exclusivo para afiliados pessoa jurídica</strong> (MEI ou Simples Nacional, com certificado digital A1). A partir de {{ notas.0.preco }} por mês.</p>
     <p style="margin-top:24px"><a class="botao" href="{% url 'landing_notas' %}">Ver como funciona e os planos de notas</a></p>
   </div>
 </section>

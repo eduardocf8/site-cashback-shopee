@@ -11,7 +11,7 @@ from . import planos, recursos as conteudo
 # Resumo de cada plano, no mesmo texto do guia da Zouti (marketing/appfiliado/gerar_guia_zouti.py).
 RESUMOS = {
     "bot": {
-        "icone": "whatsapp", "frase": "Ofertas da Shopee no automático nos seus grupos de WhatsApp, sempre com o seu link de afiliado.",
+        "icone": "whatsapp", "frase": "Ofertas da Shopee no automático nos seus grupos de WhatsApp sempre com o seu link de afiliado.",
         "itens": (
             ["Até 10 grupos e canais", "Até 60 ofertas por dia em cada grupo/canal", "Alerta de preço para até 10 produtos"],
             ["Até 50 grupos ou canais", "Até 300 ofertas por dia em cada grupo/canal", "Alerta de preço para até 50 produtos",
@@ -46,7 +46,7 @@ INCLUSOS = [
     ("radar", "Radar de ofertas", "Mais de 30 mil produtos para filtrar por comissão, desconto e categoria."),
 ]
 PERGUNTAS = [
-    ("Preciso ter conta de afiliado da Shopee?", "Sim. O Appfiliado usa a sua conta de afiliado para gerar os links e a comissão das vendas cai direto na sua conta da Shopee. Você conecta a conta uma vez, no painel."),
+    ("Preciso ter conta de afiliado da Shopee?", "Sim. O Appfiliado usa a sua conta de afiliado para gerar os links e a comissão das vendas cai direto na sua conta da Shopee. Você conecta a conta uma vez no painel."),
     ("Como recebo o acesso depois de pagar?", "Logo após a confirmação do pagamento, você recebe um e-mail com o link para criar a sua senha. É só criar a senha, entrar no painel (app.appfiliado.com.br) e conectar a sua conta da Shopee."),
     ("Qual é a diferença entre Standard e Premium?", "O Premium libera mais volume e mais recursos em cada módulo (mais grupos e ofertas por dia no bot, mais botões no site, mais carrosséis por dia). As listas completas estão nos cartões de cada plano."),
     ("Preciso de um número de WhatsApp só pro bot?", "Você conecta pelo QR Code o número que quiser. Muita gente prefere um número separado do pessoal, só para divulgar as ofertas nos grupos."),
@@ -63,9 +63,9 @@ PERGUNTAS_NOTAS = [
     ("Para que serve essa nota?", "Quando a Shopee paga ao afiliado a comissão extra de um vendedor, o afiliado presta um serviço a esse vendedor e emite a nota fiscal dele. O Appfiliado monta e emite essas notas a partir do relatório mensal da Shopee."),
     ("O que é o certificado A1 e onde consigo?", "É o certificado digital da empresa (e-CNPJ) em formato de arquivo, com extensão .pfx ou .p12 e uma senha. Você compra em uma certificadora. O certificado em cartão ou token (A3) não serve, porque não dá para exportar o arquivo."),
     ("Como as notas são contadas no plano?", "Conta cada nota emitida de verdade no mês. As notas de teste não contam e a nota cancelada libera a vaga no mesmo mês. Escolha a faixa pela quantidade de notas que você costuma emitir."),
-    ("Posso testar antes de emitir de verdade?", "Pode. O Appfiliado tem o ambiente de testes do governo, igual ao de verdade mas sem valor fiscal. Comece por ele e, quando estiver tudo certo, passe pra emissão real."),
+    ("Posso testar antes de emitir de verdade?", "Pode. O Appfiliado tem o ambiente de testes do governo, igual ao de verdade, mas sem valor fiscal. Comece por ele e, quando estiver tudo certo, passe pra emissão real."),
     ("E se uma nota sair errada?", "Dá para cancelar pelo painel do Appfiliado, que faz o cancelamento no Emissor Nacional."),
-    ("O vendedor recebe a nota?", "Recebe. O Appfiliado manda um e-mail para cada vendedor, com o PDF e o XML da nota, no horário que você escolher."),
+    ("O vendedor recebe a nota?", "Recebe. O Appfiliado manda um e-mail para cada vendedor com o PDF e o XML da nota no horário que você escolher."),
     ("O Appfiliado cuida dos impostos?", "Não. O Appfiliado emite as notas, mas a orientação tributária e contábil da sua empresa é com o seu contador. Em caso de dúvida sobre código de serviço ou tributação, fale com ele antes de emitir."),
 ]
 
