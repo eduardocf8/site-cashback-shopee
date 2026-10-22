@@ -8,26 +8,28 @@
       <h1>Tudo o que o afiliado da Shopee precisa em um só lugar.</h1>
       <p class="heroi-texto">Encontre as melhores ofertas, divulgue no WhatsApp no automático, crie seu próprio site com conversor de links e vitrine, acompanhe seus resultados e metas e emita suas notas fiscais de afiliado.</p>
       <div class="heroi-botoes"><a class="botao botao-grande" href="#planos">Ver planos e preços</a><a class="botao botao-grande botao-vazado" href="#modulos">Conhecer os módulos</a></div>
+      <p class="heroi-atalho">Afiliado pessoa jurídica? <a href="{% url 'landing_notas' %}">Conheça o Emissor NFS-e &rarr;</a></p>
       <p class="heroi-nota">Pagamento pela Zouti. 7 dias de garantia.</p>
     </div>
-    <div class="heroi-arte" aria-hidden="true">
+    <div class="heroi-arte">
       <div class="painel-amostra">
         <span class="painel-titulo">Seu painel Appfiliado</span>
+        <span class="painel-dica">Clique em um módulo para conhecer.</span>
         <ul>
-          <li><svg viewBox="0 0 24 24"><path d="{{ icones.radar }}"/></svg>Radar de ofertas</li>
-          <li><svg viewBox="0 0 24 24"><path d="{{ icones.conversor }}"/></svg>Conversor de links</li>
-          <li><svg viewBox="0 0 24 24"><path d="{{ icones.whatsapp }}"/></svg>Bot de WhatsApp</li>
-          <li><svg viewBox="0 0 24 24"><path d="{{ icones.site }}"/></svg>Meu site</li>
-          <li><svg viewBox="0 0 24 24"><path d="{{ icones.carrosseis }}"/></svg>Gerador de carrosséis</li>
-          <li><svg viewBox="0 0 24 24"><path d="{{ icones.resultados }}"/></svg>Resultados e metas</li>
-          <li class="largo"><svg viewBox="0 0 24 24"><path d="{{ icones.notas }}"/></svg>Emissor NFS-e</li>
+          <li><a href="#incluso"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="{{ icones.radar }}"/></svg>Radar de ofertas</a></li>
+          <li><a href="#incluso"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="{{ icones.conversor }}"/></svg>Conversor de links</a></li>
+          <li><a href="{% url 'landing_bot' %}"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="{{ icones.whatsapp }}"/></svg>Bot de WhatsApp</a></li>
+          <li><a href="{% url 'landing_site' %}"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="{{ icones.site }}"/></svg>Meu site</a></li>
+          <li><a href="{% url 'landing_carrosseis' %}"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="{{ icones.carrosseis }}"/></svg>Gerador de carrosséis</a></li>
+          <li><a href="#incluso"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="{{ icones.resultados }}"/></svg>Resultados e metas</a></li>
+          <li class="largo"><a href="{% url 'landing_notas' %}"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="{{ icones.notas }}"/></svg>Emissor NFS-e</a></li>
         </ul>
       </div>
     </div>
   </div>
 </section>
 
-<section class="faixa" aria-label="Em todos os planos">
+<section id="incluso" class="faixa" aria-label="Em todos os planos">
   <div class="miolo faixa-linha">
     {% for i in inclusos %}
       <div class="incluso"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="{{ i.icone }}"/></svg><div><strong>{{ i.nome }}</strong><span>{{ i.frase }}</span></div></div>
