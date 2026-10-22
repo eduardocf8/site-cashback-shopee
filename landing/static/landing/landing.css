@@ -31,6 +31,7 @@ p { margin: 0; }
 .topo-menu a { text-decoration: none; color: var(--claro); }
 .topo-menu a:hover { color: var(--creme); }
 .topo-acoes { display: flex; align-items: center; gap: 16px; }
+.topo-botao, .so-movel { display: none; }
 .entrar { text-decoration: none; font-weight: 700; font-size: 15px; }
 .topo .botao { min-height: 40px; padding: 8px 18px; font-size: 14px; }
 
@@ -46,10 +47,14 @@ p { margin: 0; }
 .heroi-nota { margin-top: 18px; font-size: 14px; color: var(--claro); }
 .heroi-arte { display: grid; place-items: center; }
 .painel-amostra { width: min(380px, 100%); background: var(--creme); color: var(--texto); border-radius: 22px; padding: 20px; box-shadow: 0 24px 60px rgba(0,0,0,.35); transform: rotate(2deg); }
-.painel-titulo { display: block; font-weight: 800; font-size: 14px; color: var(--verde); margin: 2px 4px 14px; }
+.painel-titulo { display: block; font-weight: 800; font-size: 14px; color: var(--verde); margin: 2px 4px 2px; }
+.painel-dica { display: block; font-size: 13px; color: var(--suave); margin: 0 4px 14px; }
 .painel-amostra ul { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
-.painel-amostra li { background: #fff; border: 1px solid var(--borda); border-radius: 14px; padding: 14px 12px; display: grid; gap: 8px; font-weight: 700; font-size: 14px; line-height: 1.25; }
-.painel-amostra li.largo { grid-column: 1 / -1; grid-template-columns: auto 1fr; align-items: center; }
+.painel-amostra li { background: #fff; border: 1px solid var(--borda); border-radius: 14px; font-weight: 700; font-size: 14px; line-height: 1.25; transition: transform .2s, box-shadow .2s, border-color .2s; }
+.painel-amostra li a { display: grid; gap: 8px; padding: 14px 12px; height: 100%; text-decoration: none; color: inherit; }
+.painel-amostra li:hover { transform: translateY(-2px); border-color: var(--amarelo); box-shadow: 0 8px 18px rgba(31,58,46,.14); }
+.painel-amostra li.largo { grid-column: 1 / -1; }
+.painel-amostra li.largo a { grid-template-columns: auto 1fr; align-items: center; }
 .painel-amostra svg { width: 26px; height: 26px; fill: none; stroke: var(--verde); stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
 
 /* faixa de inclusos */
@@ -132,15 +137,23 @@ p { margin: 0; }
   .heroi h1 { font-size: clamp(34px, 4vw, 48px); }
   .heroi-texto { font-size: 17px; margin-top: 14px; }
   .heroi-botoes { margin-top: 22px; }
-  .painel-amostra li { padding: 11px 12px; }
+  .painel-amostra li a { padding: 11px 12px; }
 }
 @media (max-width: 960px) {
   .heroi-grade, .montador { grid-template-columns: 1fr; }
   .heroi-grade { padding: 56px 0 64px; }
   .grade-modulos { grid-template-columns: repeat(2, 1fr); }
   .grade-notas { grid-template-columns: repeat(2, 1fr); }
-  .topo-menu { display: none; }
   .topo-acoes { margin-left: auto; }
+  .topo-botao { display: grid; gap: 4px; align-content: center; justify-items: center; width: 40px; height: 40px; padding: 0; border: 1px solid rgba(246,243,234,.35); border-radius: 10px; background: transparent; cursor: pointer; }
+  .topo-botao span { display: block; width: 18px; height: 2px; border-radius: 2px; background: var(--creme); transition: transform .25s, opacity .2s; }
+  .topo.aberto .topo-botao span:nth-child(1) { transform: translateY(6px) rotate(45deg); }
+  .topo.aberto .topo-botao span:nth-child(2) { opacity: 0; }
+  .topo.aberto .topo-botao span:nth-child(3) { transform: translateY(-6px) rotate(-45deg); }
+  .topo-menu { position: absolute; top: 100%; left: 0; right: 0; margin: 0; flex-direction: column; gap: 0; padding: 6px 20px 14px; background: var(--verde); box-shadow: 0 18px 30px rgba(0,0,0,.28); border-top: 1px solid rgba(246,243,234,.14); visibility: hidden; opacity: 0; transform: translateY(-8px); pointer-events: none; transition: opacity .2s, transform .25s, visibility .25s; }
+  .topo.aberto .topo-menu { visibility: visible; opacity: 1; transform: none; pointer-events: auto; }
+  .topo-menu a { padding: 13px 4px; font-size: 17px; color: var(--creme); border-bottom: 1px solid rgba(246,243,234,.1); }
+  .topo-menu a:last-child { border-bottom: 0; }
 }
 @media (max-width: 640px) {
   .secao { padding: 44px 0 56px; }
@@ -401,3 +414,16 @@ p { margin: 0; }
 @media (max-width: 960px) { .selo-off { position: static; justify-self: center; } }
 @media (max-width: 640px) { .pagina-modulo .bloco, .pagina-modulo #comparar, .pagina-modulo #planos, .pagina-modulo #perguntas { scroll-margin-top: 38px; } }
 @media (max-width: 640px) { .secao[id], main:not(.pagina-modulo) #planos, main:not(.pagina-modulo) #perguntas { scroll-margin-top: -20px; } }
+@media (max-width: 960px) { .so-movel { display: block; } }
+@media (prefers-reduced-motion: reduce) { .painel-amostra li, .topo-botao span, .topo-menu { transition: none; } }
+.plano-notas { background: var(--card); border: 1px solid var(--borda); border-radius: var(--raio); padding: 26px; display: flex; align-items: center; justify-content: space-between; gap: 28px; }
+.plano-notas p { margin: 0; font-size: 16px; max-width: 640px; }
+.faixas-notas { list-style: none; margin: 18px 0 0; padding: 0; display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; }
+.faixas-notas li { display: flex; justify-content: space-between; align-items: baseline; gap: 12px; background: var(--creme); border: 1px solid var(--borda); border-radius: 12px; padding: 11px 16px; font-size: 15px; }
+.faixas-notas li span { color: var(--suave); }
+.faixas-notas li b { white-space: nowrap; }
+.so-pequeno { display: none; }
+.plano-notas .botao { flex: none; white-space: nowrap; }
+@media (max-width: 960px) { .plano-notas { flex-direction: column; align-items: stretch; gap: 20px; } .plano-notas .botao { text-align: center; } }
+@media (max-width: 960px) { .plano-notas > div { width: 100%; } .faixas-notas { grid-template-columns: repeat(2, 1fr); } }
+@media (max-width: 640px) { .plano-notas { padding: 20px 12px; } .plano-notas p { text-align: center; padding: 0 6px; } .faixas-notas { grid-template-columns: 1fr; } .faixas-notas li { padding: 13px 18px; font-size: 16px; } .so-grande { display: none; } .so-pequeno { display: inline; } }

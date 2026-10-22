@@ -133,3 +133,15 @@ window.landingPronta = true;
   }, { rootMargin: "-30% 0px -55% 0px", threshold: [0, 0.01, 0.1, 0.5] });
   Object.keys(porId).forEach(function (id) { var el = document.getElementById(id); if (el) observador.observe(el); });
 })();
+
+// Menu do celular: o botão do topo abre a mesma lista de seções do computador.
+(function () {
+  var topo = document.querySelector(".topo"), botao = document.querySelector(".topo-botao");
+  if (!topo || !botao) return;
+  function definir(aberto) { topo.classList.toggle("aberto", aberto); botao.setAttribute("aria-expanded", aberto ? "true" : "false"); botao.setAttribute("aria-label", aberto ? "Fechar o menu" : "Abrir o menu"); }
+  botao.addEventListener("click", function () { definir(!topo.classList.contains("aberto")); });
+  topo.querySelectorAll(".topo-menu a").forEach(function (a) { a.addEventListener("click", function () { definir(false); }); });
+  document.addEventListener("keydown", function (e) { if (e.key === "Escape") definir(false); });
+  document.addEventListener("click", function (e) { if (!topo.contains(e.target)) definir(false); });
+  window.addEventListener("resize", function () { if (window.innerWidth > 960) definir(false); });
+})();

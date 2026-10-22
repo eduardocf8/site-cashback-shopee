@@ -33,10 +33,10 @@
 <header class="topo">
   <div class="miolo topo-linha">
     <a class="marca" href="{% url 'landing' %}" aria-label="Appfiliado"><span class="logo"><svg width="40" height="40"><use href="#logo"/></svg></span><strong>Appfiliado</strong></a>
-    <nav class="topo-menu" aria-label="Seções">
-      <a href="{% url 'landing' %}#modulos">Módulos</a><a href="{% url 'landing' %}#planos">Planos</a><a href="{% url 'landing' %}#combo">Monte seu combo</a><a href="{% url 'landing_notas' %}">Notas fiscais</a><a href="{% url 'landing' %}#perguntas">Perguntas</a>
+    <nav class="topo-menu" id="menu-topo" aria-label="Seções">
+      <a href="{% url 'landing' %}#modulos">Módulos</a><a href="{% url 'landing' %}#planos">Planos</a><a href="{% url 'landing' %}#combo">Monte seu combo</a><a href="{% url 'landing_notas' %}">Notas fiscais</a><a href="{% url 'landing' %}#perguntas">Perguntas</a><a class="so-movel" href="{{ painel_url }}">Entrar</a>
     </nav>
-    <div class="topo-acoes"><a class="entrar" href="{{ painel_url }}">Entrar</a><a class="botao" href="{% url 'landing' %}#planos">Ver planos</a></div>
+    <div class="topo-acoes"><a class="entrar" href="{{ painel_url }}">Entrar</a><a class="botao" href="{% url 'landing' %}#planos">Ver planos</a><button class="topo-botao" type="button" aria-label="Abrir o menu" aria-expanded="false" aria-controls="menu-topo"><span></span><span></span><span></span></button></div>
   </div>
 </header>
 
