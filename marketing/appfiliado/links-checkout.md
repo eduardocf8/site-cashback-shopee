@@ -31,3 +31,13 @@ Nome do produto (igual ao do guia) → link. Usado na landing do appfiliado.com.
 - Meu site Standard + Gerador de carrosséis Premium: https://pay.zouti.com.br/checkout?poi=prod_offer_f38y2tssutfsfavswxwy9p
 - Meu site Premium + Gerador de carrosséis Premium: https://pay.zouti.com.br/checkout?poi=prod_offer_at0acntr656wz296f87i6y
 - Bot de WhatsApp Premium + Meu site Premium + Gerador de carrosséis Standard: https://pay.zouti.com.br/checkout?poi=prod_offer_dmlt8axrcic6pz7aliri8b
+- Bot de WhatsApp Standard + Meu site Standard: https://pay.zouti.com.br/checkout?poi=prod_offer_t4k6zflv0kk48mflxww6vi
+- Bot de WhatsApp Standard + Meu site Premium: https://pay.zouti.com.br/checkout?poi=prod_offer_agmsf88a798q6yenb91aem
+- Bot de WhatsApp Premium + Meu site Premium: https://pay.zouti.com.br/checkout?poi=prod_offer_ly16x42fignxdvpr3u439n
+- Meu site Standard + Gerador de carrosséis Standard: https://pay.zouti.com.br/checkout?poi=prod_offer_mzs2aupdzsatwkya77vljg
+- Meu site Premium + Gerador de carrosséis Standard: https://pay.zouti.com.br/checkout?poi=prod_offer_txj4s7foncmv2w5hb6gz8m
+- Bot de WhatsApp Standard + Meu site Standard + Gerador de carrosséis Premium: https://pay.zouti.com.br/checkout?poi=prod_offer_pi7gczh9q0buh4caau56qv
+- Bot de WhatsApp Standard + Meu site Premium + Gerador de carrosséis Standard: https://pay.zouti.com.br/checkout?poi=prod_offer_1bxw18xl81m9xtc6j2vv3s
+- Bot de WhatsApp Standard + Meu site Premium + Gerador de carrosséis Premium: https://pay.zouti.com.br/checkout?poi=prod_offer_fg07qptvkrtqiv9r1bg9sp
+- Bot de WhatsApp Premium + Meu site Standard + Gerador de carrosséis Standard: https://pay.zouti.com.br/checkout?poi=prod_offer_ykiqiyboifv2mgi362ou16
+- Bot de WhatsApp Premium + Meu site Standard + Gerador de carrosséis Premium: https://pay.zouti.com.br/checkout?poi=prod_offer_csofwqn9hr7l9ig34qfg2v

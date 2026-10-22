@@ -83,10 +83,10 @@ def simbolo(x, y, tamanho, cor, ponto=None):
 
 
 def ladrilho(x, y, lado, fundo, cor):
-    """Símbolo dentro do quadrado arredondado (o mesmo do favicon do painel)."""
-    miolo = lado * 0.5625  # 36/64 do lado, como no favicon
+    """Símbolo dentro do quadrado arredondado, do mesmo tamanho do painel e do favicon: a caixa
+    de 36 unidades do símbolo é o próprio quadrado, e o "a" ocupa uns 68% dele (commit bfe4fa7)."""
     return (f'<rect x="{x}" y="{y}" width="{lado}" height="{lado}" rx="{lado * 0.25}" fill="{fundo}"/>'
-            + simbolo(x + (lado - miolo) / 2, y + (lado - miolo) / 2, miolo, cor))
+            + simbolo(x, y, lado, cor))
 
 
 def logo_horizontal(x, y, altura, fundo_tile, cor_tile, cor_texto, assinatura=None, cor_assinatura=None):
@@ -182,9 +182,9 @@ def pecas_redes():
     # Avatares: o ícone sozinho. Redes cortam em círculo, então o símbolo fica na área central.
     saida[f + "avatar-amarelo-1080"] = documento(1080, 1080, ladrilho(0, 0, 1080, AMARELO, VERDE))
     saida[f + "avatar-verde-1080"] = documento(1080, 1080, f'<rect width="1080" height="1080" fill="{VERDE}"/>'
-                                               + simbolo(300, 300, 480, AMARELO))
+                                               + simbolo(180, 180, 720, AMARELO))
     saida[f + "avatar-amarelo-redondo-1080"] = documento(
-        1080, 1080, f'<rect width="1080" height="1080" fill="{AMARELO}"/>' + simbolo(300, 300, 480, VERDE))
+        1080, 1080, f'<rect width="1080" height="1080" fill="{AMARELO}"/>' + simbolo(180, 180, 720, VERDE))
     # Capas: o logotipo fica dentro da área segura de cada rede
     saida[f + "capa-youtube-2560x1440"] = capa(2560, 1440, 230, "Para afiliados Shopee")
     saida[f + "capa-facebook-1640x624"] = capa(1640, 624, 150, "Para afiliados Shopee")
