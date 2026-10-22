@@ -20,9 +20,9 @@ CATEGORIAS = {100: "Beleza", 200: "Áudio"}
 CREDENCIAIS = {"SHOPEE_AFFILIATE_APP_ID": "app", "SHOPEE_AFFILIATE_SECRET": "segredo"}
 
 
-def node(item_id, preco="10.00", comissao="0.05", vendas=100, nome=None, categoria=100):
+def node(item_id, preco="10.00", comissao="0.05", vendas=100, nome=None, categoria=100, extra="0"):
     return {"itemId": item_id, "productName": nome or f"Produto {item_id}", "priceMin": preco, "priceMax": preco,
-            "commissionRate": comissao, "sales": vendas, "productCatIds": [categoria] if categoria else [],
+            "commissionRate": comissao, "sellerCommissionRate": extra, "sales": vendas, "productCatIds": [categoria] if categoria else [],
             "productLink": f"https://shopee.com.br/p-i.1.{item_id}", "imageUrl": "", "shopName": "Loja"}
 
 
@@ -128,6 +128,14 @@ class TestGuardarPagina(TestCase):
         fone.refresh_from_db()
         self.assertEqual((fone.preco_min, fone.nome_curto, fone.visto_em), (Decimal("8.00"), "Fone BT", depois))
         self.assertEqual(Oferta.objects.get(item_id=2).nome_curto, "Nome novo")  # nome mudou: curto refeito depois
+
+    @mock.patch("ofertas.services.carregar_categorias_nivel1", return_value=CATEGORIAS)
+    def test_guarda_a_comissao_extra_do_vendedor_e_atualiza(self, _):
+        catalogo.guardar_pagina([node(1, comissao="0.10", extra="0.04"), node(2)], TERCA)
+        self.assertEqual(Oferta.objects.get(item_id=1).percentual_comissao_extra, Decimal("0.04"))
+        self.assertEqual(Oferta.objects.get(item_id=2).percentual_comissao_extra, 0)
+        catalogo.guardar_pagina([node(1, comissao="0.10", extra="0")], TERCA + timedelta(days=1))  # a campanha acabou
+        self.assertEqual(Oferta.objects.get(item_id=1).percentual_comissao_extra, 0)
 
 
 class TestNomesCurtos(TestCase):

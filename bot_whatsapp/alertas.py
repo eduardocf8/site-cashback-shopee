@@ -125,13 +125,15 @@ def adicionar_links(conta, texto: str) -> dict:
 
 
 def buscar_na_vitrine(conta, palavra: str) -> list[dict]:
-    from .ofertas import credenciais
+    """Os 12 produtos mais vendidos do catálogo da cash-b (ofertas/catalogo.py) que têm todas
+    as palavras no nome. Busca na nossa base: rápida e sem gastar chamadas da Shopee."""
+    from ofertas.models import Oferta
 
-    app_id, secret = credenciais(conta)
-    busca = ConfiguracaoOfertas(tipo_busca=ConfiguracaoOfertas.BUSCA_PALAVRA, palavra_chave=palavra[:120],
-                                ordenacao="mais_vendidos")
-    produtos, _ = shopee_ofertas.buscar_produtos(app_id, secret, busca, 1)
-    return produtos[:12]
+    ofertas = Oferta.objects.filter(preco_min__gt=0)
+    for parte in palavra.split():
+        ofertas = ofertas.filter(nome__icontains=parte)
+    return [{"item_id": str(o.item_id), "nome": o.nome_curto or o.nome, "preco": float(o.preco_min),
+             "imagem": o.imagem_url, "link": o.product_link} for o in ofertas.order_by("-vendas", "-id")[:12]]
 
 
 # --- Conferência ---------------------------------------------------------------------
