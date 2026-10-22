@@ -89,7 +89,7 @@
           <p>Para afiliados pessoa jurídica (MEI ou Simples Nacional). O plano é pela quantidade de notas emitidas por mês, a partir de <strong>{{ notas.0.preco }}/mês</strong>.</p>
           <ul class="faixas-notas">{% for n in notas %}<li><span>{{ n.nome }}</span><b>{{ n.preco }}</b></li>{% endfor %}</ul>
         </div>
-        <a class="botao botao-grande" href="{% url 'landing_notas' %}#planos">Ver planos do Emissor NFS-e</a>
+        <a class="botao botao-grande" href="{% url 'landing_notas' %}#planos"><span class="so-grande">Ver planos do Emissor NFS-e</span><span class="so-pequeno">Ver planos</span></a>
       </div>
     </div>
   </div>
