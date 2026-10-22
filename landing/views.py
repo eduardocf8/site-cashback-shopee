@@ -79,6 +79,10 @@ def _cartao(modulo, nivel):
 
 FRASE_CURTA = {"bot": "Ofertas no automático nos seus grupos", "site": "Link na bio com vitrine e conversor", "carrosseis": "Carrosséis prontos pro Instagram"}
 PAGINA_DO_MODULO = {"bot": "landing_bot", "site": "landing_site", "carrosseis": "landing_carrosseis"}
+URL_DO_INCLUSO = {"resultados": "landing_resultados", "conversor": "landing_conversor", "radar": "landing_radar"}
+# Ferramentas incluídas em todos os planos, que também têm página própria.
+INCLUIDOS_COM_PAGINA = [("resultados", "Resultados e metas", "landing_resultados"), ("radar", "Radar de ofertas", "landing_radar"),
+                        ("conversor", "Conversor de links", "landing_conversor")]
 
 
 def _modulo(m):
@@ -105,7 +109,8 @@ def _faixas_de_notas():
 
 @require_GET
 def notas(request):
-    return render(request, "landing/notas.html", {**_comum(request), "notas": _faixas_de_notas(), "perguntas": PERGUNTAS_NOTAS})
+    return render(request, "landing/notas.html", {**_comum(request), "notas": _faixas_de_notas(), "perguntas": PERGUNTAS_NOTAS,
+                                                   "prints": conteudo.prints_de("notas")})
 
 
 @require_GET
@@ -113,7 +118,7 @@ def pagina(request):
     combos = planos.todos_os_combos()
     contexto = {
         "modulos": [_modulo(m) for m in planos.MODULOS],
-        "inclusos": [{"icone": ICONES[i], "nome": n, "frase": f} for i, n, f in INCLUSOS],
+        "inclusos": [{"icone": ICONES[i], "nome": n, "frase": f, "url": URL_DO_INCLUSO[i]} for i, n, f in INCLUSOS],
         "notas": _faixas_de_notas(),
         "montador": {"combos": combos, "modulos": [{"codigo": m, "nome": planos.NOMES[m], "precos": list(planos.PRECOS[m])} for m in planos.MODULOS]},
         "combo_standard": {"preco": planos.brl(combos["bot0+site0+carrosseis0"]["preco"]), "separado": planos.brl(combos["bot0+site0+carrosseis0"]["separado"]),
@@ -121,6 +126,7 @@ def pagina(request):
         "combo_premium": {"preco": planos.brl(combos["bot1+site1+carrosseis1"]["preco"]), "separado": planos.brl(combos["bot1+site1+carrosseis1"]["separado"]),
                           "link": combos["bot1+site1+carrosseis1"]["link"]},
         "perguntas": PERGUNTAS,
+        "prints": conteudo.prints_da_home(),
         **_comum(request),
     }
     return render(request, "landing/index.html", contexto)
@@ -133,7 +139,7 @@ def robots(request):
 
 @require_GET
 def sitemap(request):
-    caminhos = ["/", "/emissao-de-notas/"] + [f"/{conteudo.PAGINAS[m]()['slug']}/" for m in planos.MODULOS]
+    caminhos = ["/", "/emissao-de-notas/"] + [f"/{conteudo.PAGINAS[m]()['slug']}/" for m in list(planos.MODULOS) + [i[0] for i in INCLUIDOS_COM_PAGINA]]
     xml = ('<?xml version="1.0" encoding="UTF-8"?><urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">'
            + "".join(f"<url><loc>https://{request.get_host()}{c}</loc></url>" for c in caminhos) + "</urlset>")
     return HttpResponse(xml, content_type="application/xml")
@@ -145,7 +151,10 @@ def nao_encontrada(request, exception=None):
 
 @require_GET
 def recursos(request, modulo):
-    """Página com todos os recursos de um módulo (conteúdo em landing/recursos.py)."""
+    """Página com todos os recursos de uma ferramenta (conteúdo em landing/recursos.py)."""
     pagina = conteudo.PAGINAS[modulo]()
     outros = [{"nome": planos.NOMES[m], "url": PAGINA_DO_MODULO[m]} for m in planos.MODULOS if m != modulo]
-    return render(request, "landing/recurso.html", {**_comum(request), "r": pagina, "m": _modulo(modulo), "outros": outros})
+    outros += [{"nome": nome, "url": url} for chave, nome, url in INCLUIDOS_COM_PAGINA if chave != modulo]
+    contexto = {**_comum(request), "r": pagina, "outros": outros, "prints": conteudo.prints_de(modulo),
+                "m": None if pagina.get("incluso") else _modulo(modulo), "notas": _faixas_de_notas()}
+    return render(request, "landing/recurso.html", contexto)

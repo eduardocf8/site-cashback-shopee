@@ -96,6 +96,28 @@ class TestPagina(TestCase):
             self.assertIn(caminho, mapa)
         self.assertContains(self.abrir(), "/bot-de-whatsapp/")  # a landing leva às páginas
 
+    def test_paginas_das_ferramentas_incluidas_em_todos_os_planos(self):
+        mapa = self.abrir(caminho="/sitemap.xml").content.decode()
+        home = self.abrir()
+        for caminho, trecho in (("/radar-de-ofertas/", "Ache o produto certo pra divulgar"),
+                                ("/conversor-de-links/", "Troque os links de qualquer texto"),
+                                ("/resultados-e-metas/", "Veja quanto vendeu")):
+            pagina = self.abrir(caminho=caminho)
+            self.assertContains(pagina, trecho)
+            self.assertContains(pagina, "Incluído em todos os planos")
+            self.assertNotContains(pagina, "Standard × Premium")  # sem plano próprio: não tem comparação
+            self.assertContains(pagina, "/prints/")
+            self.assertIn(caminho, mapa)
+            self.assertContains(home, f'href="{caminho}"')  # a faixa "Em todos os planos" e o mock do hero levam até elas
+
+    def test_telas_do_painel_aparecem_na_home_e_nas_paginas(self):
+        self.assertContains(self.abrir(), "Veja como é o Appfiliado por dentro")
+        self.assertContains(self.abrir(), "bot-ofertas")
+        for caminho in ("/bot-de-whatsapp/", "/meu-site/", "/gerador-de-carrosseis/", "/emissao-de-notas/"):
+            pagina = self.abrir(caminho=caminho)
+            self.assertContains(pagina, 'id="por-dentro"')
+            self.assertContains(pagina, "Telas reais do painel")
+
     def test_contato_so_aparece_quando_configurado(self):
         self.assertNotContains(self.abrir(), "wa.me")
         with override_settings(APPFILIADO_WHATSAPP_SUPORTE="+55 (11) 91234-5678", APPFILIADO_EMAIL_SUPORTE="ajuda@appfiliado.com.br"):
