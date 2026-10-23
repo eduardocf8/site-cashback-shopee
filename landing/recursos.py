@@ -328,7 +328,7 @@ def conversor():
                    _t("Link limpo do produto", "Cada link vira o link do produto antes de receber o seu link, sem o rastreio de quem divulgou antes."),
                    _t("Sub ID opcional", "Escolha um Sub ID pra medir a divulgação. Em branco, as vendas aparecem em Resultados como \"conversor\"."),
                    _t("Aviso quando não converte", "Se a Shopee não converter algum link, ele fica como estava e o painel diz qual foi.")),
-            _grupo("Direto pro grupo", "Pra quem tem o Bot de WhatsApp.",
+            _grupo("Encaminhe para grupos do WhatsApp", "Pra quem tem o Bot de WhatsApp.",
                    _t("Enviar no grupo", "Escolha o grupo ou o canal e envie o texto convertido sem sair da tela.", "Bot de WhatsApp"),
                    _t("Ajuste antes de enviar", "O texto convertido fica editável, então você acerta a frase antes de mandar.")),
             _grupo("Também no seu site", "O conversor chega aos seus seguidores.",
