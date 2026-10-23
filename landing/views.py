@@ -3,7 +3,7 @@ from django.http import HttpResponse, HttpResponseNotFound
 from django.shortcuts import render
 from django.views.decorators.http import require_GET
 
-from licencas import planos as planos_do_app
+from licencas import api_shopee, planos as planos_do_app
 from painel.modulos import ICONES
 
 from . import planos, recursos as conteudo
@@ -46,8 +46,9 @@ INCLUSOS = [
     ("radar", "Radar de ofertas", "Mais de 30 mil produtos para filtrar por comissão, desconto e categoria."),
 ]
 PERGUNTAS = [
-    ("Preciso ter conta de afiliado da Shopee?", "Sim. O Appfiliado usa a sua conta de afiliado para gerar os links e a comissão das vendas cai direto na sua conta da Shopee. Você conecta a conta uma vez no painel."),
-    ("Como recebo o acesso depois de pagar?", "Logo após a confirmação do pagamento, você recebe um e-mail com o link para criar a sua senha. É só criar a senha, entrar no painel (app.appfiliado.com.br) e conectar a sua conta da Shopee."),
+    ("Preciso ter conta de afiliado da Shopee?", "Sim, e com a API da Shopee liberada. O Appfiliado usa a sua conta de afiliado pra gerar os links e a comissão das vendas cai direto na sua conta da Shopee. Você pede a API à Shopee uma vez (a resposta leva até 5 dias úteis) e conecta a conta no painel."),
+    ("Como libero a API da Shopee?", "Envie o formulário de ajuda da Shopee escolhendo \"Quero ativar a API\" e acompanhe a página Open API do portal de afiliados. Quando o botão \"Aplicar\" aparecer, clique nele pra gerar o AppID e o Secret. O passo a passo completo está na seção \"Antes de começar\", aqui na página."),
+    ("Como recebo o acesso depois de pagar?", "Logo após a confirmação do pagamento, você recebe um e-mail com o link para criar a sua senha. É só criar a senha, entrar no painel (app.appfiliado.com.br) e conectar a sua conta da Shopee com o AppID e o Secret da API."),
     ("Qual é a diferença entre Standard e Premium?", "O Premium libera mais volume e mais recursos em cada módulo (mais grupos e ofertas por dia no bot, mais botões no site, mais carrosséis por dia). As listas completas estão nos cartões de cada plano."),
     ("Preciso de um número de WhatsApp só pro bot?", "Você conecta pelo QR Code o número que quiser. Muita gente prefere um número separado do pessoal, só para divulgar as ofertas nos grupos."),
     ("Posso pagar por ano?", "Pode. No checkout você escolhe mensal ou anual e o plano anual tem 17% de desconto."),
@@ -126,6 +127,7 @@ def pagina(request):
         "combo_premium": {"preco": planos.brl(combos["bot1+site1+carrosseis1"]["preco"]), "separado": planos.brl(combos["bot1+site1+carrosseis1"]["separado"]),
                           "link": combos["bot1+site1+carrosseis1"]["link"]},
         "perguntas": PERGUNTAS,
+        "api": api_shopee,
         **_comum(request),
     }
     return render(request, "landing/index.html", contexto)

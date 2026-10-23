@@ -9,6 +9,8 @@ import sys
 from pathlib import Path
 
 PASTA = Path(__file__).resolve().parent
+sys.path.insert(0, str(PASTA.parent.parent))
+from licencas import api_shopee  # noqa: E402
 E = html.escape
 LOGO = ('<svg viewBox="3 8.25 36 36" width="40" height="40"><g fill="none" stroke="currentColor" stroke-width="5" '
         'stroke-linecap="round"><circle cx="21" cy="26" r="9.5"/><path d="M30.5 16.5V36"/></g>'
@@ -21,9 +23,12 @@ PASSOS = [
     ("Crie a senha e entre",
      "Clique no link do e-mail, crie a sua senha e entre em <strong>app.appfiliado.com.br</strong>. "
      "Nas próximas vezes, entre pelo mesmo endereço com o seu e-mail e a senha."),
+    ("Libere a API da Shopee (antes de tudo)",
+     "Sem a API liberada, as ferramentas não funcionam. O pedido é feito à Shopee e leva até 5 dias úteis: faça já, o quanto antes. "
+     "Veja o passo a passo no quadro abaixo."),
     ("Conecte a sua conta da Shopee",
-     "Em <strong>Configurações</strong>, informe o <strong>AppID</strong> e o <strong>Secret</strong> da sua conta de afiliado. "
-     "Eles ficam no portal de afiliados da Shopee, em Open API. O Secret é guardado criptografado e nunca aparece de novo na tela."),
+     "Em <strong>Configurações</strong>, informe o <strong>AppID</strong> e o <strong>Secret</strong> que a Shopee criou pra você. "
+     "O Secret é guardado criptografado e nunca aparece de novo na tela."),
     ("Comece pelo módulo que você comprou",
      "O menu do painel mostra o que está liberado no seu plano."),
 ]
@@ -62,6 +67,11 @@ h2 { font-size: 14pt; color: #1F3A2E; margin: 8mm 0 3mm; padding-bottom: 2mm; bo
 .modulo { background: #F6F3EA; border-radius: 3mm; padding: 3.5mm 4.5mm; margin: 0 0 3mm; page-break-inside: avoid; }
 .modulo h3 { font-size: 11pt; color: #1F3A2E; margin-bottom: 1mm; }
 ul { padding-left: 5mm; } li { margin: 0 0 2mm; }
+.api { background: #FBF1CF; border-left: 4px solid #F2C230; border-radius: 2mm; padding: 4mm 5mm; margin: 2mm 0 4mm; page-break-inside: avoid; }
+.api h3 { font-size: 12pt; margin-bottom: 2mm; }
+.api ol { padding-left: 5mm; } .api li { margin: 0 0 1.5mm; }
+.api .campos { margin-top: 2mm; font-size: 10pt; }
+.api a { color: #1F3A2E; font-weight: 700; word-break: break-all; }
 .contato { margin-top: 8mm; background: #FBF1CF; border-left: 4px solid #F2C230; border-radius: 2mm; padding: 4mm 5mm; }
 .rodape { margin-top: 8mm; color: #5C6A61; font-size: 9pt; }
 """
@@ -73,6 +83,14 @@ def pagina(contato: str) -> str:
         for i, (t, d) in enumerate(PASSOS, 1))
     modulos = "".join(f"<div class='modulo'><h3>{E(t)}</h3><p>{d}</p></div>" for t, d in MODULOS)
     dicas = "".join(f"<li>{d}</li>" for d in DICAS)
+    api = (
+        "<div class='api'><h3>Como liberar a API da Shopee</h3><ol>"
+        + "".join(f"<li><strong>{E(t)}.</strong> {E(d)}</li>" for t, d in api_shopee.PASSOS)
+        + "</ol><p class='campos'><strong>No formulário, escolha:</strong> "
+        + "; ".join(f"{E(c)} <em>{E(v)}</em>" for c, v in api_shopee.CAMPOS_FORMULARIO[:2] + api_shopee.CAMPOS_FORMULARIO[4:])
+        + f". Informe também o ID de Afiliado e o telefone cadastrado no Programa de Afiliados.</p>"
+        f"<p class='campos'>Formulário: <a href='{E(api_shopee.URL_FORMULARIO)}'>{E(api_shopee.URL_FORMULARIO)}</a><br>"
+        f"Página Open API: <a href='{E(api_shopee.URL_OPEN_API)}'>{E(api_shopee.URL_OPEN_API)}</a></p></div>")
     bloco_contato = (f"<div class='contato'><strong>Precisa de ajuda?</strong> Fale com a gente: {E(contato)}.</div>"
                      if contato else "")
     return f"""<!doctype html><html lang="pt-BR"><head><meta charset="utf-8">
@@ -80,9 +98,9 @@ def pagina(contato: str) -> str:
 <style>{CSS}</style></head><body>
 <div class="topo"><div class="marca"><span class="logo">{LOGO}</span>Appfiliado</div>
 <h1>Bem-vindo ao Appfiliado!</h1>
-<p>Em 4 passos você começa a usar. Guarde este guia: ele reúne o caminho de cada módulo.</p></div>
+<p>Em 5 passos você começa a usar. O primeiro cuidado: liberar a API da Shopee. Guarde este guia: ele reúne o caminho de cada módulo.</p></div>
 <div class="corpo">
-<h2>Primeiros passos</h2>{passos}
+<h2>Primeiros passos</h2>{passos}{api}
 <h2>Cada módulo, em poucas linhas</h2>{modulos}
 <h2>Dicas para vender mais</h2><ul>{dicas}</ul>
 {bloco_contato}

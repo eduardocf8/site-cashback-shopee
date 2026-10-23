@@ -895,3 +895,10 @@ form[data-metas] .grade-campos { display: grid; grid-template-columns: 1fr 1fr; 
 .segmentado label:hover span { color: var(--texto); }
 .segmentado input:checked + span { background: var(--verde); color: #fff; }
 .segmentado input:focus-visible + span { outline: 3px solid var(--amarelo); outline-offset: 2px; }
+
+/* Guia: como liberar a API da Shopee */
+.guia-api { background: var(--fundo-suave, #F6F3EA); border-radius: 12px; padding: 12px 16px; margin-bottom: 16px; }
+.guia-api summary { cursor: pointer; font-weight: 700; }
+.guia-api-passos { padding-left: 20px; margin: 8px 0; display: grid; gap: 6px; }
+.guia-api-campos { list-style: none; padding: 0; margin: 10px 0; display: grid; gap: 4px; font-size: 14px; }
+.guia-api-links { display: flex; gap: 16px; align-items: center; flex-wrap: wrap; margin: 12px 0 0; }

@@ -17,6 +17,7 @@ from django.views.decorators.http import require_POST
 from accounts.ratelimit import _incrementar_contador, _obter_ip
 from bot_whatsapp import campanhas
 from bot_whatsapp.models import AlertaDisparado, ConexaoWhatsApp
+from licencas import api_shopee
 from licencas.models import INCLUI, MODULO_WHATSAPP, MODULOS, ContaAppfiliado
 from licencas.services import resposta_validacao
 
@@ -444,7 +445,7 @@ def configuracoes(request):
 
     return render(request, "painel/configuracoes.html", _contexto(
         request, "configuracoes", form_shopee=form_shopee, form_senha=form_senha, form_regra=form_regra,
-        form_relatorio=form_relatorio, preferencia_relatorio=preferencia,
+        form_relatorio=form_relatorio, preferencia_relatorio=preferencia, api=api_shopee,
         regras=resultados.resumo_das_regras(conta, telas.hoje()),
     ))
 
