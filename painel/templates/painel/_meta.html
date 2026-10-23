@@ -8,6 +8,29 @@
     <div class="meta-preenchido" style="width: {{ meta.porcentagem_barra }}%"></div>
     {% for f in meta.faixas_tela %}<span class="meta-marca{% if f.batida %} batida{% endif %}" style="left: {{ f.posicao }}%"></span>{% endfor %}
   </div>
+  {% if meta.modo_gmv %}
+    {% with f=meta.faixas_tela.0 %}
+    <ul class="faixas">
+      <li class="{% if f.batida %}batida{% endif %}">
+        <span class="faixa-nome">{% if f.batida %}{% include "painel/_icone.html" with caminho=icones.check %}{% endif %}Meta</span>
+        <span class="faixa-valor">{{ f.faturamento|brl0 }}</span>
+        <span class="suave faixa-falta">{% if f.batida %}batida{% else %}faltam {{ f.falta|brl }}{% endif %}</span>
+        <span class="faixa-bonus">bônus {{ meta.gmv_percentual|floatformat:"-2" }}% do GMV</span>
+      </li>
+    </ul>
+    {% endwith %}
+    {% if meta.proxima and meta.dias_restantes %}
+      <p class="pequeno">Para chegar em <strong>{{ meta.proxima.faturamento|brl0 }}</strong>: <strong>{{ meta.por_dia|brl }} por dia</strong> nos {{ meta.dias_restantes }} dia{{ meta.dias_restantes|pluralize }} que faltam.</p>
+    {% endif %}
+    {% if meta.bonus_atual %}
+      <p class="pequeno bom">Bônus até agora: <strong>{{ meta.bonus_atual|brl }}</strong> ({{ meta.gmv_percentual|floatformat:"-2" }}% de {{ meta.faturamento|brl }}). Cada R$ 1.000 a mais rende {{ meta.bonus_a_cada_mil|brl }}.</p>
+    {% else %}
+      <p class="pequeno suave">Passando da meta, o bônus é {{ meta.gmv_percentual|floatformat:"-2" }}% sobre todo o GMV do mês.</p>
+    {% endif %}
+    {% if meta.dias_restantes %}
+      <p class="pequeno suave">No ritmo atual, o mês fecha em {{ meta.projecao|brl0 }}{% if meta.bonus_projetado %} e o bônus em {{ meta.bonus_projetado|brl0 }}{% else %}, abaixo da meta{% endif %}.</p>
+    {% endif %}
+  {% else %}
   <ul class="faixas">
     {% for f in meta.faixas_tela %}
       <li class="{% if f.batida %}batida{% endif %}">
@@ -25,4 +48,5 @@
     <p class="pequeno suave">No ritmo atual, o mês fecha em {{ meta.projecao|brl0 }}{% if meta.nome_faixa_projetada %}, batendo a faixa {{ meta.nome_faixa_projetada }}{% endif %}.</p>
   {% endif %}
   {% if meta.bonus_garantido %}<p class="pequeno bom">Bônus garantido até agora: <strong>{{ meta.bonus_garantido|brl }}</strong></p>{% endif %}
+  {% endif %}
 </div>

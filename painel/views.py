@@ -299,7 +299,8 @@ def metas_view(request):
     ano, mes = ano_mes
 
     if request.method == "POST":
-        faixas = telas.faixas_do_formulario(request.POST)
+        gmv = request.POST.get("tipo") == "gmv"
+        faixas = telas.faixa_em_gmv_do_formulario(request.POST) if gmv else telas.faixas_do_formulario(request.POST)
         if faixas:
             MetaMensal.objects.update_or_create(conta=conta, ano=ano, mes=mes, defaults={"faixas": faixas})
             messages.success(request, f"Metas de {telas.nome_mes(ano, mes)} salvas.")
@@ -319,8 +320,10 @@ def metas_view(request):
             "faturamento": faixa.get("faturamento"),
             "bonus": faixa.get("bonus"),
         })
+    em_gmv = bool(faixas) and (faixas[0].get("gmv") or 0) > 0
     return render(request, "painel/metas.html", _contexto(
         request, "metas",
+        em_gmv=em_gmv, meta_gmv=faixas[0] if em_gmv else {},
         opcoes=[{"valor": f"{a}-{m:02d}", "nome": telas.nome_mes(a, m), "ativo": (a, m) == ano_mes} for a, m in opcoes],
         mes_valor=f"{ano}-{mes:02d}",
         nome_mes=telas.nome_mes(ano, mes),

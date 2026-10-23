@@ -701,6 +701,23 @@ class TestTelasDeResultados(BasePainel):
         self.client.post("/metas/?mes=2026-11", {"faturamento_1": ""})
         self.assertFalse(MetaMensal.objects.exists())
 
+    def test_meta_agenciada_com_bonus_em_percentual_do_gmv(self, _):
+        self.client.post("/metas/?mes=2026-11", {"tipo": "gmv", "meta_gmv_faturamento": "500.000", "meta_gmv_percentual": "2",
+                                                 "percentual_2": "125", "faturamento_1": "999"})
+        meta = MetaMensal.objects.get(conta=self.conta, ano=2026, mes=11)
+        self.assertEqual(meta.faixas, [{"percentual": 100, "faturamento": 500000.0, "bonus": 0, "gmv": 2.0}])  # uma meta só
+        html = self.client.get("/metas/?mes=2026-11").content.decode()
+        self.assertIn("Bônus (% do GMV)", html)
+        self.assertIn("% sobre todo o GMV", html)
+        from . import metas as regras
+        s = regras.situacao(600000.0, meta.faixas, date(2026, 11, 20), 2026, 11)
+        self.assertTrue(s["modo_gmv"])
+        self.assertEqual((s["bonus_atual"], s["bonus_garantido"], s["bonus_a_cada_mil"]), (12000.0, 12000.0, 20.0))  # 2% de TODO o GMV
+        abaixo = regras.situacao(100000.0, meta.faixas, date(2026, 11, 20), 2026, 11)
+        self.assertEqual(abaixo["bonus_atual"], 0.0)  # antes da meta não há bônus
+        self.client.post("/metas/?mes=2026-11", {"tipo": "gmv", "meta_gmv_faturamento": "500000", "meta_gmv_percentual": ""})
+        self.assertFalse(MetaMensal.objects.exists())  # sem o % não vale
+
     def test_mes_fora_das_opcoes_cai_no_mes_atual(self, _):
         self.client.post("/metas/?mes=2030-01", {"percentual_1": "100", "faturamento_1": "1000"})
         self.assertTrue(MetaMensal.objects.filter(ano=2026, mes=10).exists())
