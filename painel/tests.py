@@ -205,14 +205,14 @@ class TestPaginas(BasePainel):
     def test_modulo_inexistente(self):
         self.assertEqual(self.client.get("/m/nada/").status_code, 404)
 
-    def test_plano_mostra_modulos_assinaturas_e_chave(self):
+    def test_plano_mostra_modulos_assinaturas(self):
         ProdutoZouti.objects.create(zouti_product_id="prod_site", nome="Site", modulos="site")
         Assinatura.objects.create(
             conta=self.conta, zouti_subscription_id="sub_1", zouti_product_ids="prod_site",
             plano="Mensal", status=Assinatura.STATUS_ATIVA, proxima_cobranca=timezone.localdate() + timedelta(days=20),
         )
         html = self.client.get("/plano/").content.decode()
-        self.assertIn(self.conta.chave, html)
+        self.assertNotIn(self.conta.chave, html)
         self.assertIn("Mensal", html)
         self.assertEqual(len(re.findall(r"estado-liberado", html)), 2)  # whatsapp (cortesia) e site
 
