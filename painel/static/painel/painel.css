@@ -127,7 +127,7 @@ svg.icone { width: 18px; height: 18px; flex: none; fill: none; stroke: currentCo
 .card { background: var(--card); border: 1px solid var(--borda); border-radius: var(--raio); padding: 20px; }
 .card h2 { margin: 0 0 12px; font-size: 16px; }
 .card p { margin: 0; }
-.grade { display: grid; gap: 16px; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); }
+.grade { display: grid; gap: 16px; grid-template-columns: repeat(auto-fit, minmax(min(240px, 100%), 1fr)); }
 .duas-colunas { display: grid; gap: 16px; grid-template-columns: minmax(0, 2fr) minmax(0, 1fr); align-items: start; }
 .duas-colunas > * { min-width: 0; }
 .coluna-empilhada { display: flex; flex-direction: column; gap: 16px; min-width: 0; }
@@ -263,7 +263,7 @@ tr:last-child td { border-bottom: none; }
   .cartao-plano { display: none; }
   .link-plano-movel { display: inline; color: var(--amarelo); font-weight: 700; text-decoration: none; }
   .conteudo { padding: 20px 16px 32px; }
-  .duas-colunas { grid-template-columns: 1fr; }
+  .duas-colunas { grid-template-columns: minmax(0, 1fr); }
   /* No celular, uma coluna só, na ordem: gráfico, meta, detalhe, Sub IDs. */
   .colunas-independentes .coluna-empilhada { display: contents; }
   .colunas-independentes .ordem-1 { order: 1; } .colunas-independentes .ordem-2 { order: 2; }
@@ -279,7 +279,7 @@ tr:last-child td { border-bottom: none; }
 .card-topo h2 { margin: 0; }
 .bom { color: var(--bom-tinta); }
 
-.kpis { display: grid; gap: 16px; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); }
+.kpis { display: grid; gap: 16px; grid-template-columns: repeat(auto-fit, minmax(min(200px, 100%), 1fr)); }
 /* Início: os números do topo são do mês atual - o título diz isso. */
 .kpis-do-mes { display: flex; flex-direction: column; gap: 10px; }
 .kpis-topo { display: flex; align-items: baseline; justify-content: space-between; flex-wrap: wrap; gap: 4px 12px; }
@@ -371,7 +371,7 @@ table.numeros td, table.numeros th { white-space: nowrap; }
 .regra-texto .pequeno { overflow-wrap: anywhere; }
 form.form-regra { display: grid; grid-template-columns: minmax(250px, 1.2fr) 1fr 1fr auto; align-items: end; gap: 12px; }
 form.form-regra > .erros-form { grid-column: 1 / -1; }
-@media (max-width: 900px) { form.form-regra { grid-template-columns: 1fr; } }
+@media (max-width: 900px) { form.form-regra { grid-template-columns: minmax(0, 1fr); } }
 
 /* Bot de WhatsApp */
 .status-zap { display: flex; align-items: center; flex-wrap: wrap; gap: 8px; font-size: 15px; margin-bottom: 6px; }
@@ -416,7 +416,7 @@ form.form-regra > .erros-form { grid-column: 1 / -1; }
 .form-ofertas h2 { margin-bottom: 12px; }
 .campo select, .campo input[type="time"] { min-height: 44px; }
 .grade-campos { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px; margin-top: 10px; }
-@media (max-width: 600px) { .grade-campos { grid-template-columns: 1fr; } }
+@media (max-width: 600px) { .grade-campos { grid-template-columns: minmax(0, 1fr); } }
 /* "Das" e "Até" sempre lado a lado, também no celular. */
 .grade-horario { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px; }
 .grade-campos .grade-horario { grid-column: 1 / -1; }
@@ -469,7 +469,7 @@ form.form-regra > .erros-form { grid-column: 1 / -1; }
 .busca-grupos span { white-space: nowrap; }
 .selo-canal { margin-left: 4px; padding: 1px 8px; border-radius: 999px; background: var(--amarelo-suave); color: var(--amarelo-tinta); font-size: 11px; font-weight: 700; }
 .nenhum-grupo { padding: 8px 0; margin: 0; }
-.linha-origem { grid-template-columns: 1fr; }
+.linha-origem { grid-template-columns: minmax(0, 1fr); }
 .recebida-enviada .estado-recebida { color: var(--bom-tinta); }
 .recebida-erro .estado-recebida { color: var(--perigo); }
 
@@ -630,7 +630,7 @@ summary { cursor: pointer; }  /* "Editar", "Ver mensagem" etc. abrem ao clicar *
 .notas-emitir .formulario { flex: 1; }
 .notas-emitir .formulario > div:last-child { margin-top: auto; }
 .notas-cnpj { max-width: 360px; }
-.notas-dados { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 12px 20px; margin: 0; }
+.notas-dados { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(180px, 100%), 1fr)); gap: 12px 20px; margin: 0; }
 .notas-dados dt { font-size: 12px; color: var(--suave); }
 .notas-dados dd { margin: 2px 0 0; font-weight: 700; overflow-wrap: anywhere; }
 .notas-trocar[open] { flex-basis: 100%; order: 2; }
@@ -683,7 +683,7 @@ summary { cursor: pointer; }  /* "Editar", "Ver mensagem" etc. abrem ao clicar *
 .notas-pausa p { margin: 0; flex: 1 1 320px; }
 .notas-progresso span { transition: width .6s ease; }
 /* Andamento do lote: um cartão para as notas e outro para os e-mails. */
-.notas-andamento { display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: 16px; margin-bottom: 16px; }
+.notas-andamento { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(320px, 100%), 1fr)); gap: 16px; margin-bottom: 16px; }
 .notas-etapa { display: flex; flex-direction: column; gap: 12px; padding: 20px 22px; }
 .notas-etapa-topo { display: flex; align-items: center; gap: 12px; }
 .notas-etapa-icone { width: 40px; height: 40px; border-radius: 12px; background: var(--chip); color: var(--verde); display: grid; place-items: center; flex: none; }
@@ -708,7 +708,7 @@ summary { cursor: pointer; }  /* "Editar", "Ver mensagem" etc. abrem ao clicar *
 .notas-etapa-dica { margin: 0; font-size: 13px; color: var(--perigo); }
 .selo-neutro { background: var(--chip); color: var(--suave); }
 @media (max-width: 600px) {
-  .notas-andamento { grid-template-columns: 1fr; }
+  .notas-andamento { grid-template-columns: minmax(0, 1fr); }
   .notas-etapa { padding: 18px; }
   .notas-etapa-topo { flex-wrap: wrap; }
   .notas-etapa-numero strong { font-size: 28px; }
@@ -763,7 +763,7 @@ summary { cursor: pointer; }  /* "Editar", "Ver mensagem" etc. abrem ao clicar *
 
 /* Conversor de links */
 .conversor { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); }
-@media (max-width: 900px) { .conversor { grid-template-columns: 1fr; } }
+@media (max-width: 900px) { .conversor { grid-template-columns: minmax(0, 1fr); } }
 .conversor .formulario > * + * { margin-top: 14px; }
 .conversor textarea { min-height: 220px; font-family: inherit; line-height: 1.45; }
 .conversor fieldset.campo { border: 0; padding: 0; margin-left: 0; margin-right: 0; }
@@ -886,7 +886,7 @@ span.marcar-data { cursor: default; }
 form[data-metas] fieldset.campo { border: none; padding: 0; margin: 0 0 -6px; min-width: 0; }
 form[data-metas] legend { font-weight: 700; font-size: 13px; padding: 0; margin-bottom: 8px; }
 form[data-metas] .grade-campos { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; margin-bottom: 8px; }
-@media (max-width: 600px) { form[data-metas] .grade-campos { grid-template-columns: 1fr; } }
+@media (max-width: 600px) { form[data-metas] .grade-campos { grid-template-columns: minmax(0, 1fr); } }
 /* Seletor em uma linha só (Metas: Bônus fixo | % do GMV) */
 .segmentado { display: inline-grid; grid-auto-flow: column; grid-auto-columns: 1fr; width: fit-content; align-self: flex-start; gap: 4px; padding: 4px; border: 1px solid var(--borda); border-radius: 999px; background: var(--campo); }
 .segmentado label { margin: 0; cursor: pointer; }
