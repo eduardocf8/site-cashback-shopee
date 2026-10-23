@@ -7,7 +7,6 @@ from django.urls import reverse
 from licencas.models import (
     MODULO_CARROSSEIS,
     MODULO_CARROSSEIS_PREMIUM,
-    MODULO_INSTAGRAM,
     MODULO_NOTAS,
     MODULO_SITE,
     MODULO_WHATSAPP,
@@ -72,11 +71,6 @@ MODULOS_DO_MENU = [
         "slug": "notas", "nome": "Emissor NFS-e", "icone": "notas", "modulo": MODULO_NOTAS, "pronto": True,
         "texto_bloqueado": "Emita no automático a nota da Shopee e as notas de cada vendedor que pagou "
                            "comissão extra e mande cada uma por e-mail pro vendedor.",
-    },
-    {
-        "slug": "instagram", "nome": "Instagram", "icone": "instagram", "modulo": MODULO_INSTAGRAM,
-        "pronto": False, "so_em_breve": True,
-        "texto_em_breve": "Responda comentários e mande o link por mensagem direta no automático.",
     },
     {"slug": "configuracoes", "nome": "Configurações", "icone": "configuracoes", "modulo": None, "pronto": True},
 ]

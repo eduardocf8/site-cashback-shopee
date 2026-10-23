@@ -18,7 +18,7 @@ from accounts.ratelimit import _incrementar_contador, _obter_ip
 from bot_whatsapp import campanhas
 from bot_whatsapp.models import AlertaDisparado, ConexaoWhatsApp
 from licencas import api_shopee
-from licencas.models import INCLUI, MODULO_WHATSAPP, MODULOS, ContaAppfiliado
+from licencas.models import INCLUI, MODULO_INSTAGRAM, MODULO_VIDEOS, MODULO_WHATSAPP, MODULOS, ContaAppfiliado
 from licencas.services import resposta_validacao
 
 from . import cripto
@@ -347,6 +347,10 @@ def modulo(request, slug):
     return render(request, "painel/modulo.html", _contexto(request, slug, item=item, situacao=situacao))
 
 
+# Ainda não existem no produto; os códigos seguem na licença pra voltar depois sem migração.
+MODULOS_OCULTOS = {MODULO_VIDEOS, MODULO_INSTAGRAM}
+
+
 @conta_requerida
 def plano(request):
     conta = conta_logada(request)
@@ -357,6 +361,8 @@ def plano(request):
         cortesia.update(INCLUI.get(codigo, []))  # o básico que vem junto com o premium da cortesia
     linhas_modulos = []
     for codigo, nome in MODULOS:
+        if codigo in MODULOS_OCULTOS:
+            continue
         if codigo in liberados:
             origem = "Cortesia" if codigo in cortesia else "Assinatura"
         else:

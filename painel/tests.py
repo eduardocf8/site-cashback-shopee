@@ -190,17 +190,17 @@ class TestPaginas(BasePainel):
         super().setUp()
         self.entrar()
 
-    def test_menu_mostra_cadeado_e_em_breve(self):
+    def test_menu_mostra_cadeado_e_sem_modulos_futuros(self):
         html = self.client.get("/").content.decode()
-        self.assertIn("Não incluso no seu plano", html)  # vídeos (fora do plano): cadeado
-        self.assertIn("Em breve", html)  # Instagram (ainda não está no painel)
+        self.assertIn("Não incluso no seu plano", html)  # módulo fora do plano: cadeado
+        self.assertNotIn("Instagram</", html)  # automação do Instagram fora do menu por enquanto
 
     def test_modulo_fora_do_plano_mostra_convite(self):
         self.assertRedirects(self.client.get("/m/site/"), "/meu-site/", fetch_redirect_response=False)
         self.assertContains(self.client.get("/meu-site/"), "Não incluso no seu plano")
 
-    def test_modulo_ainda_nao_pronto_mostra_em_breve(self):
-        self.assertContains(self.client.get("/m/instagram/"), "Em breve")
+    def test_modulo_removido_do_menu_da_404(self):
+        self.assertEqual(self.client.get("/m/instagram/").status_code, 404)
 
     def test_modulo_inexistente(self):
         self.assertEqual(self.client.get("/m/nada/").status_code, 404)
@@ -215,6 +215,8 @@ class TestPaginas(BasePainel):
         self.assertNotIn(self.conta.chave, html)
         self.assertIn("Mensal", html)
         self.assertEqual(len(re.findall(r"estado-liberado", html)), 2)  # whatsapp (cortesia) e site
+        self.assertNotIn("Gerador de vídeos", html)
+        self.assertNotIn("Automação do Instagram", html)
 
 
 @override_settings(APPFILIADO_PAINEL_URL=f"https://{HOST}")
