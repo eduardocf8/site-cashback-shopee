@@ -19,8 +19,10 @@
       <input type="hidden" name="mes" value="{{ mes_valor }}">
       <fieldset class="campo opcoes-tipo">
         <legend class="sr">Como é o seu bônus?</legend>
-        <label class="marcar"><input type="radio" name="tipo" value="faixas"{% if not em_gmv %} checked{% endif %}><span><strong>Bônus fixo</strong></span></label>
-        <label class="marcar"><input type="radio" name="tipo" value="gmv"{% if em_gmv %} checked{% endif %}><span><strong>% do GMV</strong></span></label>
+        <div class="segmentado" role="radiogroup">
+          <label><input type="radio" name="tipo" value="faixas"{% if not em_gmv %} checked{% endif %}><span>Bônus fixo</span></label>
+          <label><input type="radio" name="tipo" value="gmv"{% if em_gmv %} checked{% endif %}><span>% do GMV</span></label>
+        </div>
       </fieldset>
 
       <div data-bloco="faixas"{% if em_gmv %} hidden{% endif %}>
