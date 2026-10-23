@@ -190,31 +190,33 @@ class TestPaginas(BasePainel):
         super().setUp()
         self.entrar()
 
-    def test_menu_mostra_cadeado_e_em_breve(self):
+    def test_menu_mostra_cadeado_e_sem_modulos_futuros(self):
         html = self.client.get("/").content.decode()
-        self.assertIn("Não incluso no seu plano", html)  # vídeos (fora do plano): cadeado
-        self.assertIn("Em breve", html)  # Instagram (ainda não está no painel)
+        self.assertIn("Não incluso no seu plano", html)  # módulo fora do plano: cadeado
+        self.assertNotIn("Instagram</", html)  # automação do Instagram fora do menu por enquanto
 
     def test_modulo_fora_do_plano_mostra_convite(self):
         self.assertRedirects(self.client.get("/m/site/"), "/meu-site/", fetch_redirect_response=False)
         self.assertContains(self.client.get("/meu-site/"), "Não incluso no seu plano")
 
-    def test_modulo_ainda_nao_pronto_mostra_em_breve(self):
-        self.assertContains(self.client.get("/m/instagram/"), "Em breve")
+    def test_modulo_removido_do_menu_da_404(self):
+        self.assertEqual(self.client.get("/m/instagram/").status_code, 404)
 
     def test_modulo_inexistente(self):
         self.assertEqual(self.client.get("/m/nada/").status_code, 404)
 
-    def test_plano_mostra_modulos_assinaturas_e_chave(self):
+    def test_plano_mostra_modulos_assinaturas(self):
         ProdutoZouti.objects.create(zouti_product_id="prod_site", nome="Site", modulos="site")
         Assinatura.objects.create(
             conta=self.conta, zouti_subscription_id="sub_1", zouti_product_ids="prod_site",
             plano="Mensal", status=Assinatura.STATUS_ATIVA, proxima_cobranca=timezone.localdate() + timedelta(days=20),
         )
         html = self.client.get("/plano/").content.decode()
-        self.assertIn(self.conta.chave, html)
+        self.assertNotIn(self.conta.chave, html)
         self.assertIn("Mensal", html)
         self.assertEqual(len(re.findall(r"estado-liberado", html)), 2)  # whatsapp (cortesia) e site
+        self.assertNotIn("Gerador de vídeos", html)
+        self.assertNotIn("Automação do Instagram", html)
 
 
 @override_settings(APPFILIADO_PAINEL_URL=f"https://{HOST}")
@@ -700,6 +702,23 @@ class TestTelasDeResultados(BasePainel):
 
         self.client.post("/metas/?mes=2026-11", {"faturamento_1": ""})
         self.assertFalse(MetaMensal.objects.exists())
+
+    def test_meta_agenciada_com_bonus_em_percentual_do_gmv(self, _):
+        self.client.post("/metas/?mes=2026-11", {"tipo": "gmv", "meta_gmv_faturamento": "500.000", "meta_gmv_percentual": "2",
+                                                 "percentual_2": "125", "faturamento_1": "999"})
+        meta = MetaMensal.objects.get(conta=self.conta, ano=2026, mes=11)
+        self.assertEqual(meta.faixas, [{"percentual": 100, "faturamento": 500000.0, "bonus": 0, "gmv": 2.0}])  # uma meta só
+        html = self.client.get("/metas/?mes=2026-11").content.decode()
+        self.assertIn("Bônus (% do GMV)", html)
+        self.assertIn("% sobre todo o GMV", html)
+        from . import metas as regras
+        s = regras.situacao(600000.0, meta.faixas, date(2026, 11, 20), 2026, 11)
+        self.assertTrue(s["modo_gmv"])
+        self.assertEqual((s["bonus_atual"], s["bonus_garantido"], s["bonus_a_cada_mil"]), (12000.0, 12000.0, 20.0))  # 2% de TODO o GMV
+        abaixo = regras.situacao(100000.0, meta.faixas, date(2026, 11, 20), 2026, 11)
+        self.assertEqual(abaixo["bonus_atual"], 0.0)  # antes da meta não há bônus
+        self.client.post("/metas/?mes=2026-11", {"tipo": "gmv", "meta_gmv_faturamento": "500000", "meta_gmv_percentual": ""})
+        self.assertFalse(MetaMensal.objects.exists())  # sem o % não vale
 
     def test_mes_fora_das_opcoes_cai_no_mes_atual(self, _):
         self.client.post("/metas/?mes=2030-01", {"percentual_1": "100", "faturamento_1": "1000"})

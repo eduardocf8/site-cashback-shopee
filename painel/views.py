@@ -17,7 +17,8 @@ from django.views.decorators.http import require_POST
 from accounts.ratelimit import _incrementar_contador, _obter_ip
 from bot_whatsapp import campanhas
 from bot_whatsapp.models import AlertaDisparado, ConexaoWhatsApp
-from licencas.models import INCLUI, MODULO_WHATSAPP, MODULOS, ContaAppfiliado
+from licencas import api_shopee
+from licencas.models import INCLUI, MODULO_INSTAGRAM, MODULO_VIDEOS, MODULO_WHATSAPP, MODULOS, ContaAppfiliado
 from licencas.services import resposta_validacao
 
 from . import cripto
@@ -299,7 +300,8 @@ def metas_view(request):
     ano, mes = ano_mes
 
     if request.method == "POST":
-        faixas = telas.faixas_do_formulario(request.POST)
+        gmv = request.POST.get("tipo") == "gmv"
+        faixas = telas.faixa_em_gmv_do_formulario(request.POST) if gmv else telas.faixas_do_formulario(request.POST)
         if faixas:
             MetaMensal.objects.update_or_create(conta=conta, ano=ano, mes=mes, defaults={"faixas": faixas})
             messages.success(request, f"Metas de {telas.nome_mes(ano, mes)} salvas.")
@@ -319,8 +321,10 @@ def metas_view(request):
             "faturamento": faixa.get("faturamento"),
             "bonus": faixa.get("bonus"),
         })
+    em_gmv = bool(faixas) and (faixas[0].get("gmv") or 0) > 0
     return render(request, "painel/metas.html", _contexto(
         request, "metas",
+        em_gmv=em_gmv, meta_gmv=faixas[0] if em_gmv else {},
         opcoes=[{"valor": f"{a}-{m:02d}", "nome": telas.nome_mes(a, m), "ativo": (a, m) == ano_mes} for a, m in opcoes],
         mes_valor=f"{ano}-{mes:02d}",
         nome_mes=telas.nome_mes(ano, mes),
@@ -343,6 +347,10 @@ def modulo(request, slug):
     return render(request, "painel/modulo.html", _contexto(request, slug, item=item, situacao=situacao))
 
 
+# Ainda não existem no produto; os códigos seguem na licença pra voltar depois sem migração.
+MODULOS_OCULTOS = {MODULO_VIDEOS, MODULO_INSTAGRAM}
+
+
 @conta_requerida
 def plano(request):
     conta = conta_logada(request)
@@ -353,6 +361,8 @@ def plano(request):
         cortesia.update(INCLUI.get(codigo, []))  # o básico que vem junto com o premium da cortesia
     linhas_modulos = []
     for codigo, nome in MODULOS:
+        if codigo in MODULOS_OCULTOS:
+            continue
         if codigo in liberados:
             origem = "Cortesia" if codigo in cortesia else "Assinatura"
         else:
@@ -441,7 +451,7 @@ def configuracoes(request):
 
     return render(request, "painel/configuracoes.html", _contexto(
         request, "configuracoes", form_shopee=form_shopee, form_senha=form_senha, form_regra=form_regra,
-        form_relatorio=form_relatorio, preferencia_relatorio=preferencia,
+        form_relatorio=form_relatorio, preferencia_relatorio=preferencia, api=api_shopee,
         regras=resultados.resumo_das_regras(conta, telas.hoje()),
     ))
 

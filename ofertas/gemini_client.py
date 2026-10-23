@@ -1,5 +1,6 @@
 import json
 import logging
+import time
 
 import requests
 from django.conf import settings
@@ -25,8 +26,28 @@ class GeminiAPIError(Exception):
     """Erro retornado pela API do Gemini, ou resposta em formato inesperado."""
 
 
-def _url() -> str:
-    return f"{settings.GEMINI_API_URL}/models/{settings.GEMINI_MODEL}:generateContent"
+# Cada modelo tem a sua própria cota no plano gratuito. Quando um estoura (429), ele descansa
+# um tempo e o próximo da lista assume; passado o descanso, o primeiro volta a ser usado.
+DESCANSO_SEM_COTA_SEGUNDOS = 30 * 60
+DESCANSO_MODELO_INEXISTENTE_SEGUNDOS = 6 * 3600
+_descansa_ate: dict[str, float] = {}
+
+
+def modelos() -> list[str]:
+    """GEMINI_MODELS (separados por vírgula, em ordem de preferência); sem ela, só GEMINI_MODEL."""
+    lista = [m.strip() for m in (getattr(settings, "GEMINI_MODELS", "") or "").split(",") if m.strip()]
+    return lista or [settings.GEMINI_MODEL]
+
+
+def _modelos_na_ordem() -> list[str]:
+    agora = time.monotonic()
+    todos = modelos()
+    livres = [m for m in todos if _descansa_ate.get(m, 0) <= agora]
+    return livres or todos  # todos descansando: tenta mesmo assim, na ordem de preferência
+
+
+def _url(modelo: str) -> str:
+    return f"{settings.GEMINI_API_URL}/models/{modelo}:generateContent"
 
 
 def encurtar_nomes(nomes: list[str]) -> list[str]:
@@ -48,13 +69,24 @@ def encurtar_nomes(nomes: list[str]) -> list[str]:
             "responseSchema": {"type": "array", "items": {"type": "string"}},
         },
     }
-    resposta = requests.post(
-        _url(),
-        headers={"x-goog-api-key": settings.GEMINI_API_KEY, "Content-Type": "application/json"},
-        json=payload,
-        timeout=60,
-    )
-    dados = resposta.json()
+    ultimo_erro = None
+    for modelo in _modelos_na_ordem():
+        resposta = requests.post(
+            _url(modelo),
+            headers={"x-goog-api-key": settings.GEMINI_API_KEY, "Content-Type": "application/json"},
+            json=payload,
+            timeout=60,
+        )
+        dados = resposta.json()
+        if resposta.status_code in (429, 404):
+            descanso = DESCANSO_SEM_COTA_SEGUNDOS if resposta.status_code == 429 else DESCANSO_MODELO_INEXISTENTE_SEGUNDOS
+            _descansa_ate[modelo] = time.monotonic() + descanso
+            ultimo_erro = GeminiAPIError((dados.get("error") or {}).get("message", f"HTTP {resposta.status_code} em {modelo}"))
+            logger.warning("[ofertas] %s sem resposta (HTTP %s), tentando o próximo modelo", modelo, resposta.status_code)
+            continue
+        break
+    else:
+        raise ultimo_erro
     if "error" in dados:
         raise GeminiAPIError(dados["error"].get("message", str(dados["error"])))
     resposta.raise_for_status()

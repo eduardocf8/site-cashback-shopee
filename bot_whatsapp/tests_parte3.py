@@ -96,7 +96,7 @@ class TestRevisorIA(TestCase):
         esperas = []
         with mock.patch.object(ia, "_chamar_modelo", side_effect=chamar_modelo):
             self.assertEqual(ia._chamar("p", 0.1, esperar=esperas.append), "ok")
-        self.assertEqual(chamados, ["gemini-3.1-flash-lite", "gemini-3.1-flash-lite", "gemini-flash-lite-latest", "gemini-2.5-flash-lite"])
+        self.assertEqual(chamados, ["gemini-3.1-flash-lite", "gemini-3.1-flash-lite", "gemini-3.5-flash-lite", "gemini-flash-lite-latest", "gemini-2.5-flash-lite"])
         self.assertEqual(esperas, [2])
 
     @COM_CHAVE

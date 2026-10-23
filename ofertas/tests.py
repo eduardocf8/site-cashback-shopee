@@ -794,3 +794,45 @@ class CriarStoryDeOfertaManualAdminTests(TestCase):
         registro = RegistroPublicacao.objects.get(oferta_nome="Produto manual")
         self.assertEqual(registro.status, RegistroPublicacao.STATUS_SIMULADO)
         self.assertEqual(registro.conteudo_tipo, RegistroPublicacao.CONTEUDO_OFERTA_DIARIA)
+
+
+class TestRodizioDeModelosGemini(TestCase):
+    def setUp(self):
+        from ofertas import gemini_client
+        self.gc = gemini_client
+        self.gc._descansa_ate.clear()
+        self.addCleanup(self.gc._descansa_ate.clear)
+
+    def _resposta(self, status, corpo):
+        from unittest import mock
+        r = mock.Mock(status_code=status)
+        r.json.return_value = corpo
+        r.raise_for_status.return_value = None
+        return r
+
+    @override_settings(GEMINI_API_KEY="k", GEMINI_MODELS="a,b")
+    def test_quando_a_cota_do_primeiro_acaba_usa_o_segundo_e_depois_volta(self):
+        from unittest import mock
+        ok = {"candidates": [{"content": {"parts": [{"text": '["curto"]'}]}}]}
+        sem_cota = {"error": {"message": "quota"}}
+        with mock.patch.object(self.gc.requests, "post", side_effect=[self._resposta(429, sem_cota), self._resposta(200, ok)]) as post:
+            self.assertEqual(self.gc.encurtar_nomes(["nome"]), ["curto"])
+        self.assertIn("/models/a:", post.call_args_list[0].args[0])
+        self.assertIn("/models/b:", post.call_args_list[1].args[0])
+        # com o "a" descansando, a próxima chamada já vai direto no "b"
+        with mock.patch.object(self.gc.requests, "post", return_value=self._resposta(200, ok)) as post:
+            self.gc.encurtar_nomes(["nome"])
+        self.assertIn("/models/b:", post.call_args.args[0])
+        # passado o descanso, o "a" volta a ser o primeiro
+        self.gc._descansa_ate["a"] = 0
+        with mock.patch.object(self.gc.requests, "post", return_value=self._resposta(200, ok)) as post:
+            self.gc.encurtar_nomes(["nome"])
+        self.assertIn("/models/a:", post.call_args.args[0])
+
+    @override_settings(GEMINI_API_KEY="k", GEMINI_MODELS="a,b")
+    def test_sem_cota_em_todos_levanta_erro(self):
+        from unittest import mock
+        sem_cota = self._resposta(429, {"error": {"message": "quota"}})
+        with mock.patch.object(self.gc.requests, "post", return_value=sem_cota):
+            with self.assertRaises(self.gc.GeminiAPIError):
+                self.gc.encurtar_nomes(["nome"])

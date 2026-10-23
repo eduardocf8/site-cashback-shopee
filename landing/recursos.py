@@ -101,11 +101,11 @@ def bot():
             ("Preciso deixar o computador ou o celular ligados?", "Não. O servidor do Appfiliado fica conectado ao seu WhatsApp como mais um aparelho, como no WhatsApp Web. Você só precisa do celular para ler o QR Code ao conectar."),
             ("Meu número pode ser bloqueado pelo WhatsApp?", "O WhatsApp não gosta de envio em excesso. O bot manda no máximo uma mensagem a cada 3 segundos, respeita o intervalo e o limite diário do seu plano e só envia pros grupos que você escolher. Mesmo assim, não há garantia contra bloqueio. Muita gente usa um número separado só pras divulgações."),
             ("Posso mandar para canais do WhatsApp?", "Pode, desde que o seu número seja dono ou administrador do canal. Como canais não aceitam foto com legenda, eles recebem o texto com a prévia do link."),
-            ("As ofertas saem com o meu link de afiliado?", "Sim. Cada oferta sai com o seu link, gerado na hora com a sua conta da Shopee. Você precisa conectar a conta de afiliado no painel."),
+            ("As ofertas saem com o meu link de afiliado?", "Sim. Cada oferta sai com o seu link, gerado na hora com a sua conta da Shopee. Você precisa conectar a conta de afiliado no painel, com a API da Shopee liberada."),
             ("Dá para testar sem enviar nada?", "Dá. O \"Testar busca\" mostra as próximas ofertas com a mensagem pronta e o modo simulação faz todo o processo sem enviar."),
             ("O que acontece nas datas como 11.11 e Black Friday?", "Se a data estiver ligada no modo campanha, o bot usa o ritmo, o texto e o cupom da campanha o dia todo e volta à configuração normal no dia seguinte."),
             ("Qual é a diferença entre Standard e Premium?", f"O Premium libera mais grupos e canais (até {p['grupos']}), mais ofertas por dia (até {p['ofertas_por_grupo_dia']}), um intervalo menor entre ofertas ({p['intervalo_minimo']} minutos), alerta de preço para mais produtos, a cópia de ofertas de outros grupos e a revisão de texto com IA."),
-            ("O que preciso para começar?", "Uma conta de afiliado da Shopee e um número de WhatsApp com os grupos ou canais para onde as ofertas vão."),
+            ("O que preciso para começar?", "Uma conta de afiliado da Shopee com a API liberada e um número de WhatsApp com os grupos ou canais para onde as ofertas vão."),
         ],
     }
 
@@ -252,7 +252,7 @@ def carrosseis():
         ],
         "perguntas": [
             ("Funciona com qualquer produto da Shopee?", "Com produtos liberados para afiliados. Se a Shopee não libera o produto para afiliados, o Appfiliado avisa que ele não tem comissão e a geração não conta no seu limite."),
-            ("Preciso conectar a minha conta da Shopee?", "Sim. O Appfiliado usa a sua conta de afiliado para buscar os dados do produto e gerar o seu link."),
+            ("Preciso conectar a minha conta da Shopee?", "Sim. O Appfiliado usa a sua conta de afiliado, com a API da Shopee liberada, para buscar os dados do produto e gerar o seu link."),
             ("Os carrosséis têm marca d'água?", "Não. As imagens saem limpas, prontas para postar."),
             ("Posso editar o preço que aparece no carrossel?", "Não. O preço vem da Shopee na hora da geração, para você não anunciar um valor errado."),
             ("E se a IA estiver fora do ar?", "O Appfiliado monta um roteiro simples e o carrossel é gerado do mesmo jeito. Você pode editar os textos como de costume."),
@@ -339,7 +339,7 @@ def conversor():
             ("O Conversor custa a mais?", "Não. O Conversor de links está incluso em todos os planos do Appfiliado."),
             ("Quantos links dá pra converter por vez?", "Até 20 links da Shopee em cada texto."),
             ("E os links de outras pessoas?", "No modo que mantém o texto, links que não são da Shopee e links de afiliado de outra pessoa saem do texto. Só ficam os seus."),
-            ("Preciso conectar a minha conta da Shopee?", "Sim. O Conversor usa a sua conta de afiliado pra gerar os links, e a comissão cai na sua conta."),
+            ("Preciso conectar a minha conta da Shopee?", "Sim. O Conversor usa a sua conta de afiliado, com a API da Shopee liberada, pra gerar os links, e a comissão cai na sua conta."),
             ("Dá pra mandar o texto direto num grupo?", "Dá, com o Bot de WhatsApp conectado. Sem o Bot, você copia o resultado e encaminha."),
         ],
     }

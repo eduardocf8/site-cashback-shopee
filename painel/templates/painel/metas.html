@@ -1,6 +1,7 @@
 {% extends "painel/base.html" %}
 {% load painel_extras %}
 {% block titulo %}Metas{% endblock %}
+{% block cabeca %}{% load static %}<script src="{% static 'painel/metas.js' %}" defer></script>{% endblock %}
 {% block conteudo %}
 <header class="cabecalho">
   <div><h1>Metas da Shopee</h1><p>Opcional: se a Shopee te deu metas no mês, cadastre as faixas de faturamento e o bônus de cada uma.</p></div>
@@ -13,23 +14,41 @@
 <div class="duas-colunas">
   <section class="card">
     <h2>Metas de {{ nome_mes }}</h2>
-    <p class="suave pequeno" style="margin-bottom:16px">Preencha a meta de 100%. Se deixar o faturamento de 125% e 150% em branco, calculamos a partir dela.</p>
-    <form method="post" class="formulario">
+    <form method="post" class="formulario" data-metas>
       {% csrf_token %}
       <input type="hidden" name="mes" value="{{ mes_valor }}">
-      <div class="tabela-rolagem">
-        <table class="tabela-metas">
-          <thead><tr><th scope="col">Faixa (%)</th><th scope="col">Faturamento (R$)</th><th scope="col">Bônus (R$)</th></tr></thead>
-          <tbody>
-            {% for l in linhas %}
-              <tr>
-                <td><label class="sr" for="percentual_{{ l.n }}">Percentual da faixa {{ l.n }}</label><input id="percentual_{{ l.n }}" name="percentual_{{ l.n }}" inputmode="decimal" value="{{ l.percentual|floatformat:'0' }}"></td>
-                <td><label class="sr" for="faturamento_{{ l.n }}">Faturamento da faixa {{ l.n }}</label><input id="faturamento_{{ l.n }}" name="faturamento_{{ l.n }}" inputmode="decimal" placeholder="Ex: 30.000" value="{% if l.faturamento %}{{ l.faturamento|floatformat:'-2g' }}{% endif %}"></td>
-                <td><label class="sr" for="bonus_{{ l.n }}">Bônus da faixa {{ l.n }}</label><input id="bonus_{{ l.n }}" name="bonus_{{ l.n }}" inputmode="decimal" placeholder="Ex: 300" value="{% if l.bonus %}{{ l.bonus|floatformat:'-2g' }}{% endif %}"></td>
-              </tr>
-            {% endfor %}
-          </tbody>
-        </table>
+      <fieldset class="campo opcoes-tipo">
+        <legend class="sr">Como é o seu bônus?</legend>
+        <div class="segmentado" role="radiogroup">
+          <label><input type="radio" name="tipo" value="faixas"{% if not em_gmv %} checked{% endif %}><span>Bônus fixo</span></label>
+          <label><input type="radio" name="tipo" value="gmv"{% if em_gmv %} checked{% endif %}><span>% do GMV</span></label>
+        </div>
+      </fieldset>
+
+      <div data-bloco="faixas"{% if em_gmv %} hidden{% endif %}>
+        <p class="suave pequeno" style="margin-bottom:16px">Preencha a meta de 100%. Se deixar o faturamento de 125% e 150% em branco, calculamos a partir dela.</p>
+        <div class="tabela-rolagem">
+          <table class="tabela-metas">
+            <thead><tr><th scope="col">Faixa (%)</th><th scope="col">Faturamento (R$)</th><th scope="col">Bônus (R$)</th></tr></thead>
+            <tbody>
+              {% for l in linhas %}
+                <tr>
+                  <td><label class="sr" for="percentual_{{ l.n }}">Percentual da faixa {{ l.n }}</label><input id="percentual_{{ l.n }}" name="percentual_{{ l.n }}" inputmode="decimal" value="{{ l.percentual|floatformat:'0' }}"></td>
+                  <td><label class="sr" for="faturamento_{{ l.n }}">Faturamento da faixa {{ l.n }}</label><input id="faturamento_{{ l.n }}" name="faturamento_{{ l.n }}" inputmode="decimal" placeholder="Ex: 30.000" value="{% if l.faturamento %}{{ l.faturamento|floatformat:'-2g' }}{% endif %}"></td>
+                  <td><label class="sr" for="bonus_{{ l.n }}">Bônus da faixa {{ l.n }}</label><input id="bonus_{{ l.n }}" name="bonus_{{ l.n }}" inputmode="decimal" placeholder="Ex: 300" value="{% if l.bonus %}{{ l.bonus|floatformat:'-2g' }}{% endif %}"></td>
+                </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <div data-bloco="gmv"{% if not em_gmv %} hidden{% endif %}>
+        <div class="grade-campos">
+          <div class="campo"><label for="meta_gmv_faturamento">Meta de faturamento (R$)</label><input id="meta_gmv_faturamento" name="meta_gmv_faturamento" inputmode="decimal" placeholder="Ex: 500.000" value="{% if meta_gmv.faturamento %}{{ meta_gmv.faturamento|floatformat:'-2g' }}{% endif %}"></div>
+          <div class="campo"><label for="meta_gmv_percentual">Bônus (% do GMV)</label><input id="meta_gmv_percentual" name="meta_gmv_percentual" inputmode="decimal" placeholder="Ex: 2" value="{% if meta_gmv.gmv %}{{ meta_gmv.gmv|floatformat:'-2' }}{% endif %}"></div>
+        </div>
+        <p class="suave pequeno">Exemplo: meta de R$ 500.000 e bônus de 2%. Com R$ 600.000 de GMV no mês, o bônus é R$ 12.000.</p>
       </div>
       <div><button type="submit" class="botao botao-principal">Salvar metas</button></div>
     </form>

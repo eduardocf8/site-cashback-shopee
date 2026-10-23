@@ -6,6 +6,9 @@ base), cada uma com um bônus. Como elas mudam todo mês e não vêm pela API, a
 pessoa cadastra à mão no painel (painel.models.MetaMensal):
 
     [{"percentual": 100, "faturamento": 30000.0, "bonus": 300.0}, ...]
+
+Afiliado agenciado tem uma meta só e um bônus em % do GMV (o faturamento bruto do mês): a faixa leva "gmv"
+(ex: 2.0) em vez de "bonus", e passando da meta cada real vendido a mais rende mais bônus (modo_gmv).
 """
 
 from datetime import date
@@ -25,10 +28,11 @@ def normalizar(metas) -> list[dict]:
             faturamento = float(meta.get("faturamento") or 0)
             bonus = float(meta.get("bonus") or 0)
             percentual = float(meta.get("percentual") or 0)
+            gmv = float(meta.get("gmv") or 0)
         except (AttributeError, TypeError, ValueError):
             continue
         if faturamento > 0:
-            limpas.append({"percentual": percentual, "faturamento": faturamento, "bonus": bonus})
+            limpas.append({"percentual": percentual, "faturamento": faturamento, "bonus": bonus, "gmv": gmv})
     return sorted(limpas, key=lambda m: m["faturamento"])
 
 
@@ -77,10 +81,21 @@ def situacao(faturamento: float, metas: list[dict], hoje: date, ano: int, mes: i
     projetadas = [m for m in metas if projecao >= m["faturamento"]]
     maior = metas[-1]["faturamento"] if metas else 0.0
 
+    modo_gmv = bool(metas) and metas[0].get("gmv", 0) > 0
+    extra = {}
+    if modo_gmv:
+        meta, pct = metas[0], metas[0]["gmv"]
+        extra = {
+            "modo_gmv": True, "gmv_percentual": pct,
+            "bonus_atual": round(faturamento * pct / 100, 2) if faturamento >= meta["faturamento"] else 0.0,
+            "bonus_projetado": round(projecao * pct / 100, 2) if projecao >= meta["faturamento"] else 0.0,
+            "bonus_a_cada_mil": round(1000 * pct / 100, 2),
+        }
     return {
+        **extra,
         "metas": metas,
         "batidas": batidas,
-        "bonus_garantido": batidas[-1]["bonus"] if batidas else 0.0,
+        "bonus_garantido": extra["bonus_atual"] if modo_gmv else (batidas[-1]["bonus"] if batidas else 0.0),
         "proxima": proxima,
         "falta": falta,
         "projecao": projecao,

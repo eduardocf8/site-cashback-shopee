@@ -10,7 +10,15 @@
       <span class="ponto {% if conta.shopee_validado_em %}ok{% endif %}" aria-hidden="true"></span>
       {% if conta.shopee_validado_em %}Conectada em {{ conta.shopee_validado_em|date:"d/m/Y H:i" }}{% else %}Não conectada{% endif %}
     </p>
-    <p class="suave pequeno" style="margin-bottom:16px">O AppID e o Secret ficam no portal de afiliados da Shopee, em Open API. O Secret é guardado criptografado e nunca aparece de novo na tela.</p>
+    <p class="suave pequeno" style="margin-bottom:16px">O AppID e o Secret ficam no portal de afiliados da Shopee, em Open API, e só existem depois que a Shopee libera a API pra você. O Secret é guardado criptografado e nunca aparece de novo na tela.</p>
+    <details class="guia-api"{% if not conta.shopee_validado_em %} open{% endif %}>
+      <summary>Ainda não tem o AppID e o Secret? Veja como liberar a API da Shopee</summary>
+      <p class="suave pequeno" style="margin:10px 0">{{ api.RESUMO }}</p>
+      <ol class="guia-api-passos">{% for t, d in api.PASSOS %}<li><strong>{{ t }}.</strong> {{ d }}</li>{% endfor %}</ol>
+      <ul class="guia-api-campos">{% for c, v in api.CAMPOS_FORMULARIO %}<li>{{ c }} <b>{{ v }}</b></li>{% endfor %}</ul>
+      <p class="guia-api-links"><a class="botao botao-escuro" href="{{ api.URL_FORMULARIO }}" target="_blank" rel="noopener">Abrir o formulário da Shopee</a>
+        <a href="{{ api.URL_OPEN_API }}" target="_blank" rel="noopener">Página Open API do afiliado</a></p>
+    </details>
     <form method="post" class="formulario">
       {% csrf_token %}
       <input type="hidden" name="formulario" value="shopee">

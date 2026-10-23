@@ -882,3 +882,23 @@ span.marcar-data { cursor: default; }
 .menu-grupo { flex-direction: column; }
 .menu-grupo select { flex: none; width: 100%; padding: 0 8px; }
 @media (min-width: 901px) { .mais-filtros .grade-radar { grid-template-columns: repeat(5, minmax(0, 1fr)); } }
+/* Metas: escolha do tipo de bônus */
+form[data-metas] fieldset.campo { border: none; padding: 0; margin: 0 0 -6px; min-width: 0; }
+form[data-metas] legend { font-weight: 700; font-size: 13px; padding: 0; margin-bottom: 8px; }
+form[data-metas] .grade-campos { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; margin-bottom: 8px; }
+@media (max-width: 600px) { form[data-metas] .grade-campos { grid-template-columns: 1fr; } }
+/* Seletor em uma linha só (Metas: Bônus fixo | % do GMV) */
+.segmentado { display: inline-grid; grid-auto-flow: column; grid-auto-columns: 1fr; width: fit-content; align-self: flex-start; gap: 4px; padding: 4px; border: 1px solid var(--borda); border-radius: 999px; background: var(--campo); }
+.segmentado label { margin: 0; cursor: pointer; }
+.segmentado input { position: absolute; opacity: 0; width: 1px; height: 1px; }
+.segmentado span { display: block; text-align: center; min-width: 118px; padding: 9px 20px; border-radius: 999px; font-weight: 700; font-size: 14px; color: var(--suave); white-space: nowrap; transition: background .2s, color .2s; }
+.segmentado label:hover span { color: var(--texto); }
+.segmentado input:checked + span { background: var(--verde); color: #fff; }
+.segmentado input:focus-visible + span { outline: 3px solid var(--amarelo); outline-offset: 2px; }
+
+/* Guia: como liberar a API da Shopee */
+.guia-api { background: var(--fundo-suave, #F6F3EA); border-radius: 12px; padding: 12px 16px; margin-bottom: 16px; }
+.guia-api summary { cursor: pointer; font-weight: 700; }
+.guia-api-passos { padding-left: 20px; margin: 8px 0; display: grid; gap: 6px; }
+.guia-api-campos { list-style: none; padding: 0; margin: 10px 0; display: grid; gap: 4px; font-size: 14px; }
+.guia-api-links { display: flex; gap: 16px; align-items: center; flex-wrap: wrap; margin: 12px 0 0; }

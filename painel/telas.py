@@ -114,6 +114,7 @@ def situacao_meta(conta, ano: int, mes: int, hoje: date) -> dict:
                 "batida": faturamento >= faixa["faturamento"],
                 "posicao": round(faixa["faturamento"] / maior * 100) if maior else 0,
                 "falta": max(0.0, faixa["faturamento"] - faturamento),
+                "gmv": faixa.get("gmv") or 0,
             }
             for faixa in faixas
         ],
@@ -162,6 +163,14 @@ def faixas_do_formulario(post, quantidade: int = 3) -> list[dict]:
         {"percentual": l["percentual"] or 0, "faturamento": l["faturamento"], "bonus": l["bonus"] or 0}
         for l in linhas if l["faturamento"]
     ]
+
+
+def faixa_em_gmv_do_formulario(post) -> list[dict]:
+    """Afiliado agenciado: uma meta de faturamento e o bônus em % do GMV (o bônus não é digitado)."""
+    faturamento, gmv = ler_numero_br(post.get("meta_gmv_faturamento")), ler_numero_br(post.get("meta_gmv_percentual"))
+    if not faturamento or not gmv or gmv <= 0 or gmv > 100:
+        return []
+    return [{"percentual": 100, "faturamento": faturamento, "bonus": 0, "gmv": gmv}]
 
 
 def meses_para_metas(hoje: date) -> list[tuple[int, int]]:

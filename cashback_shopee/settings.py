@@ -198,6 +198,8 @@ CASHBACK_MULTIPLICADOR_INDICACAO = float(os.environ.get("CASHBACK_MULTIPLICADOR_
 GEMINI_API_KEY = os.environ.get("GEMINI_API_KEY", "")
 GEMINI_API_URL = os.environ.get("GEMINI_API_URL", "https://generativelanguage.googleapis.com/v1beta")
 GEMINI_MODEL = os.environ.get("GEMINI_MODEL", "gemini-3.1-flash-lite")
+# Vários modelos, em ordem de preferência, separados por vírgula: quando a cota de um acaba, o próximo assume.
+GEMINI_MODELS = os.environ.get("GEMINI_MODELS", "gemini-3.1-flash-lite,gemini-3.5-flash-lite")
 # Appfiliado: revisão do texto das ofertas do Bot de WhatsApp (bot_whatsapp/ia.py). Uma
 # chave só, do Appfiliado (quem usa o painel não cria nada). Sem APPFILIADO_GEMINI_API_KEY,
 # usa a GEMINI_API_KEY; sem nenhuma, a opção aparece como indisponível.
