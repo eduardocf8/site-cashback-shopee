@@ -66,19 +66,23 @@
           <tr>
             <td style="padding:7px 0;border-top:1px solid #EDE8D9;font-weight:bold;">{{ f.nome }}</td>
             <td align="right" style="padding:7px 0;border-top:1px solid #EDE8D9;white-space:nowrap;">{{ f.faturamento|brl0|sem_quebra }}</td>
-            <td align="right" style="padding:7px 0;border-top:1px solid #EDE8D9;white-space:nowrap;">{% if f.bonus %}{{ f.bonus|brl0|sem_quebra }}{% else %}-{% endif %}</td>
+            <td align="right" style="padding:7px 0;border-top:1px solid #EDE8D9;white-space:nowrap;">{% if f.gmv %}{{ f.gmv|floatformat:"-2" }}% do GMV{% elif f.bonus %}{{ f.bonus|brl0|sem_quebra }}{% else %}-{% endif %}</td>
             <td align="right" style="padding:7px 0 7px 10px;border-top:1px solid #EDE8D9;white-space:nowrap;">{% if f.batida %}<span style="color:#1F6B3E;font-weight:bold;">✓ Batida</span>{% else %}<span style="color:#5C6A61;">faltam {{ f.falta|brl0|sem_quebra }}</span>{% endif %}</td>
           </tr>
         {% endfor %}
       </table>
       <div style="margin-top:12px;padding:12px 14px;background:#FBF1CF;border-radius:10px;font-size:14px;color:#5C4400;line-height:1.5;">
-        {% if meta.proxima %}
+        {% if meta.modo_gmv %}
+          {% if meta.proxima %}Faltam <strong>{{ meta.falta|brl|sem_quebra }}</strong> pra meta: dá <strong>{{ meta.por_dia|brl|sem_quebra }} por dia</strong> nos {{ meta.dias_restantes }} dia{{ meta.dias_restantes|pluralize }} que faltam.{% else %}<strong>Meta batida! 🎉</strong>{% endif %}<br>
+          {% if meta.bonus_atual %}Bônus até agora: <strong>{{ meta.bonus_atual|brl|sem_quebra }}</strong> ({{ meta.gmv_percentual|floatformat:"-2" }}% do GMV). Cada R$ 1.000 a mais rende {{ meta.bonus_a_cada_mil|brl|sem_quebra }}.<br>{% endif %}
+          No ritmo atual, o mês fecha em <strong>{{ meta.projecao|brl0|sem_quebra }}</strong>{% if meta.bonus_projetado %} e o bônus em <strong>{{ meta.bonus_projetado|brl0|sem_quebra }}</strong>{% else %}, abaixo da meta{% endif %}.
+        {% elif meta.proxima %}
           Faltam <strong>{{ meta.falta|brl|sem_quebra }}</strong> pra faixa <strong>{{ meta.nome_proxima }}</strong>{% if meta.proxima.bonus %} (bônus de {{ meta.proxima.bonus|brl0|sem_quebra }}){% endif %}: dá <strong>{{ meta.por_dia|brl|sem_quebra }} por dia</strong> nos {{ meta.dias_restantes }} dia{{ meta.dias_restantes|pluralize }} que faltam.<br>
           No ritmo atual, o mês fecha em <strong>{{ meta.projecao|brl0|sem_quebra }}</strong>{% if meta.nome_faixa_projetada %}, na faixa {{ meta.nome_faixa_projetada }}{% else %}, abaixo da primeira faixa{% endif %}.
         {% else %}
           <strong>Todas as faixas do mês batidas! 🎉</strong>
         {% endif %}
-        {% if meta.bonus_garantido %}<br>Bônus garantido até agora: <strong>{{ meta.bonus_garantido|brl|sem_quebra }}</strong>.{% endif %}
+        {% if meta.bonus_garantido and not meta.modo_gmv %}<br>Bônus garantido até agora: <strong>{{ meta.bonus_garantido|brl|sem_quebra }}</strong>.{% endif %}
       </div>
     {% endif %}
 
