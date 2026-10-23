@@ -201,7 +201,7 @@ def carrosseis():
         ],
         "grupos": [
             _grupo("Do link ao carrossel em segundos", "Você só precisa de um link de produto da Shopee.",
-                   _t("Cole o link", "Aceita links shopee.com.br e s.shopee.com.br. Se você colar um texto, o Appfiliado usa o primeiro link da Shopee que achar. A geração leva até 30 segundos."),
+                   _t("Cole o link", "Se você colar um texto, o Appfiliado usa o primeiro link da Shopee que achar. A geração leva até 30 segundos."),
                    _t("Dados do produto", "O Appfiliado puxa o nome, o preço, a nota, as vendas, a foto e a loja direto da Shopee. O preço antigo é calculado a partir do desconto."),
                    _t("Seu link de afiliado", "O carrossel sai com o seu link de afiliado e o Sub ID \"instagram\", para você ver em Resultados as vendas que vêm do Instagram."),
                    _t("Preço sempre certo", "O preço vem da Shopee na hora da geração e não é editável, para ninguém anunciar um valor errado.")),
@@ -324,7 +324,7 @@ def conversor():
                    _t("Manter o texto e trocar os links", "O texto fica igual e só os links da Shopee são trocados. Links que não são da Shopee, como convite de grupo, saem do texto."),
                    _t("Só os links convertidos", "Sai a lista dos links, um por linha, pronta pra colar onde precisar.")),
             _grupo("Feito pra afiliado", "Detalhes que fazem diferença no dia a dia.",
-                   _t("Links curtos funcionam", "Links s.shopee.com.br são abertos pra achar o produto certo."),
+                   _t("Links curtos funcionam", "Os links curtos da Shopee são abertos pra achar o produto certo."),
                    _t("Link limpo do produto", "Cada link vira o link do produto antes de receber o seu link, sem o rastreio de quem divulgou antes."),
                    _t("Sub ID opcional", "Escolha um Sub ID pra medir a divulgação. Em branco, as vendas aparecem em Resultados como \"conversor\"."),
                    _t("Aviso quando não converte", "Se a Shopee não converter algum link, ele fica como estava e o painel diz qual foi.")),
