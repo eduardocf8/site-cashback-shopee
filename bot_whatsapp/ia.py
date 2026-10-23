@@ -66,7 +66,7 @@ def _modelo() -> str:
 
 # Quando o modelo principal está sobrecarregado (o Google responde 503 em picos de uso),
 # tenta de novo e depois estes, na ordem. Modelo que não existir para a chave é pulado.
-MODELOS_RESERVA = ("gemini-flash-lite-latest", "gemini-2.5-flash-lite")
+MODELOS_RESERVA = ("gemini-3.5-flash-lite", "gemini-flash-lite-latest", "gemini-2.5-flash-lite")
 ESPERAS_ANTES_DE_TENTAR_DE_NOVO = (2,)  # segundos (uma nova tentativa no modelo principal)
 STATUS_PASSAGEIROS = {429, 500, 502, 503, 504}  # sobrecarga ou falha momentânea
 
