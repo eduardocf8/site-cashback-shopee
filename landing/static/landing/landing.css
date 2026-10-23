@@ -480,3 +480,13 @@ a.incluso:hover strong { text-decoration-color: var(--verde); }
   .topo-acoes { gap: 8px; }
   .topo-acoes .botao { padding-left: 14px; padding-right: 14px; }
 }
+
+/* Quadro Standard × Premium inteiro na tela do celular, sem rolagem lateral */
+@media (max-width: 640px) {
+  .tabela-planos { table-layout: fixed; }
+  .tabela-planos th, .tabela-planos td { padding: 12px 8px; font-size: 14px; line-height: 1.35; overflow-wrap: anywhere; }
+  .tabela-planos th:first-child { width: 38%; padding-left: 12px; }
+  .tabela-planos td { white-space: normal; }
+  .tabela-planos thead th { font-size: 11px; letter-spacing: .04em; }
+  .tabela-planos .sim { font-size: 18px; }
+}
