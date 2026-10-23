@@ -887,3 +887,5 @@ form[data-metas] fieldset.campo { border: none; padding: 0; margin: 0 0 18px; mi
 form[data-metas] legend { font-weight: 700; font-size: 13px; padding: 0; margin-bottom: 8px; }
 form[data-metas] .grade-campos { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; margin-bottom: 8px; }
 @media (max-width: 600px) { form[data-metas] .grade-campos { grid-template-columns: 1fr; } }
+form[data-metas] .opcoes-tipo { display: flex; gap: 12px; flex-wrap: wrap; }
+form[data-metas] .opcoes-tipo .marcar { margin: 0; }

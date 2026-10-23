@@ -17,10 +17,10 @@
     <form method="post" class="formulario" data-metas>
       {% csrf_token %}
       <input type="hidden" name="mes" value="{{ mes_valor }}">
-      <fieldset class="campo">
-        <legend>Como é o seu bônus?</legend>
-        <label class="marcar"><input type="radio" name="tipo" value="faixas"{% if not em_gmv %} checked{% endif %}><span><strong>Faixas com bônus fixo</strong><span class="ajuda">A Shopee deu metas de 100%, 125% e 150%, cada uma com um valor de bônus.</span></span></label>
-        <label class="marcar"><input type="radio" name="tipo" value="gmv"{% if em_gmv %} checked{% endif %}><span><strong>% do GMV (afiliado agenciado)</strong><span class="ajuda">Uma meta de faturamento. Passando dela, o bônus é um % sobre todo o GMV (faturamento bruto) do mês: cada real vendido a mais rende mais bônus.</span></span></label>
+      <fieldset class="campo opcoes-tipo">
+        <legend class="sr">Como é o seu bônus?</legend>
+        <label class="marcar"><input type="radio" name="tipo" value="faixas"{% if not em_gmv %} checked{% endif %}><span><strong>Bônus fixo</strong></span></label>
+        <label class="marcar"><input type="radio" name="tipo" value="gmv"{% if em_gmv %} checked{% endif %}><span><strong>% do GMV</strong></span></label>
       </fieldset>
 
       <div data-bloco="faixas"{% if em_gmv %} hidden{% endif %}>
