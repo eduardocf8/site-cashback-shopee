@@ -19,7 +19,7 @@
 .gerar-carrossel form { display: flex; gap: 10px; flex-wrap: wrap; }
 .gerar-carrossel input[type=url], .gerar-carrossel input[type=text] { flex: 1 1 320px; min-width: 0; min-height: 46px; border: 1px solid var(--borda); border-radius: 12px; padding: 0 14px; font: inherit; background: var(--campo); color: var(--texto); }
 .gerar-carrossel .botao[disabled] { opacity: .7; cursor: progress; }
-.lista-carrosseis { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 14px; }
+.lista-carrosseis { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(220px, 100%), 1fr)); gap: 14px; }
 .cartao-carrossel { display: flex; gap: 12px; align-items: center; padding: 12px; background: var(--card); border: 1px solid var(--borda); border-radius: var(--raio); text-decoration: none; color: var(--texto); min-width: 0; }
 .cartao-carrossel:hover { border-color: var(--borda-forte); color: var(--texto); }
 .cartao-carrossel img { width: 64px; height: 64px; border-radius: 10px; object-fit: cover; flex: none; background: var(--chip); }
