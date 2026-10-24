@@ -252,7 +252,7 @@ def enviar_lembrete_primeira_compra_7_dias(request) -> int:
         "Notamos que você criou sua conta na cash-b, mas ainda não fez nenhuma compra "
         "por aqui.\n\n"
         "É simples: você gera um link com cashback pra qualquer produto da Shopee, "
-        "compra normalmente usando esse link, e uma parte do valor volta pra você em "
+        "compra normalmente usando esse link, e uma parte do valor volta para você em "
         "dinheiro (via Pix, depois de juntar R$ 20,00 de saldo). Não tem nenhum custo "
         "a mais nisso — você paga o mesmo preço de sempre, só que uma parte volta.\n\n"
         f"Dá uma olhada nas ofertas: {link_ofertas}\n\n"
@@ -266,7 +266,7 @@ def enviar_lembrete_primeira_compra_7_dias(request) -> int:
         "ainda não fez nenhuma compra por aqui.</p>"
         "<p style='margin:0;'>É simples: você gera um link com cashback pra qualquer "
         "produto da Shopee, compra normalmente usando esse link, e uma parte do valor "
-        "volta pra você em dinheiro (via Pix, depois de juntar R$ 20,00 de saldo). Não "
+        "volta para você em dinheiro (via Pix, depois de juntar R$ 20,00 de saldo). Não "
         "tem nenhum custo a mais nisso — você paga o mesmo preço de sempre, só que "
         "uma parte volta.</p>"
     )
@@ -293,9 +293,9 @@ def enviar_lembrete_primeira_compra_30_dias(request) -> int:
         "Olá!\n\n"
         "Faz um mês que você criou sua conta na cash-b e ainda não usou o cashback em "
         "nenhuma compra na Shopee.\n\n"
-        "Não tem pegadinha nem prazo pra aproveitar: da próxima vez que for comprar na "
+        "Não tem pegadinha nem prazo para aproveitar: da próxima vez que for comprar na "
         "Shopee, gere o link pela cash-b antes de fechar o pedido, e uma parte do "
-        "valor volta pra você — sem pagar nada a mais por isso.\n\n"
+        "valor volta para você — sem pagar nada a mais por isso.\n\n"
         f"Ver ofertas: {link_ofertas}\n\n"
         "Equipe cash-b"
         + _rodape_redes_sociais_texto()
@@ -305,9 +305,9 @@ def enviar_lembrete_primeira_compra_30_dias(request) -> int:
         "<p style='margin:0 0 12px;'>Olá!</p>"
         "<p style='margin:0 0 12px;'>Faz um mês que você criou sua conta na cash-b e "
         "ainda não usou o cashback em nenhuma compra na Shopee.</p>"
-        "<p style='margin:0;'>Não tem pegadinha nem prazo pra aproveitar: da próxima "
+        "<p style='margin:0;'>Não tem pegadinha nem prazo para aproveitar: da próxima "
         "vez que for comprar na Shopee, gere o link pela cash-b antes de fechar o "
-        "pedido, e uma parte do valor volta pra você — sem pagar nada a mais por "
+        "pedido, e uma parte do valor volta para você — sem pagar nada a mais por "
         "isso.</p>"
     )
     corpo_html = render_to_string(

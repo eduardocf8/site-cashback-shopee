@@ -1,0 +1,170 @@
+{% extends "painel/base.html" %}
+{% load painel_extras static %}
+{% block titulo %}Resultados{% endblock %}
+{% block conteudo %}
+<header class="cabecalho">
+  <div><h1>Resultados</h1><p>{{ periodo.descricao }}</p></div>
+  {% if shopee_conectada %}{% include "painel/_sincronizacao.html" %}{% endif %}
+</header>
+
+{% if not shopee_conectada %}
+  {% include "painel/_conectar_shopee.html" %}
+{% else %}
+<section class="card filtros" aria-label="Período">
+  <nav class="chips" aria-label="Período">
+    {% for chave, nome in presets %}{% if chave != "personalizado" %}
+      <a class="chip{% if periodo.chave == chave %} ativo{% endif %}" href="{% querystring periodo=chave de=None ate=None agrupar=None %}"{% if periodo.chave == chave %} aria-current="true"{% endif %}>{{ nome }}</a>
+    {% endif %}{% endfor %}
+  </nav>
+  <form method="get" class="filtro-datas">
+    <input type="hidden" name="periodo" value="personalizado">
+    <input type="hidden" name="metrica" value="{{ periodo.metrica }}">
+    <label>De <input type="date" name="de" value="{{ periodo.inicio|date:'Y-m-d' }}"></label>
+    <label>Até <input type="date" name="ate" value="{{ periodo.fim|date:'Y-m-d' }}"></label>
+    <button type="submit" class="botao botao-escuro botao-pequeno">Ver período</button>
+  </form>
+</section>
+
+{% include "painel/_kpis.html" with valores=totais legenda=periodo.descricao %}
+{% if inclui_hoje %}
+  <p class="aviso aviso-info pequeno">De hoje só aparece a comissão validada: a Shopee libera faturamento, comissão estimada e pedidos no dia seguinte.</p>
+{% endif %}
+
+<div class="duas-colunas colunas-independentes">
+  {# Cada coluna empilha os seus cartões (sem buraco quando um cartão é mais alto que o do lado). #}
+  <div class="coluna-empilhada">
+    <section class="card ordem-1">
+      <div class="card-topo">
+        <h2>{{ nome_metrica }} {% if periodo.agrupar == "dia" %}por dia{% elif periodo.agrupar == "semana" %}por semana{% else %}por mês{% endif %}</h2>
+        <nav class="chips chips-pequenos" aria-label="Agrupar">
+          {% for chave, nome in agrupamentos %}<a class="chip{% if periodo.agrupar == chave %} ativo{% endif %}" href="{% querystring agrupar=chave %}">{{ nome }}</a>{% endfor %}
+        </nav>
+      </div>
+      <nav class="chips chips-pequenos" aria-label="O que mostrar no gráfico" style="margin-bottom:14px">
+        {% for chave, nome in metricas %}<a class="chip{% if periodo.metrica == chave %} ativo{% endif %}" href="{% querystring metrica=chave %}">{{ nome }}</a>{% endfor %}
+      </nav>
+      {% include "painel/_grafico.html" with titulo_grafico=nome_metrica %}
+    </section>
+    <section class="card ordem-3">
+      <h2>Detalhe {% if periodo.agrupar == "dia" %}por dia{% elif periodo.agrupar == "semana" %}por semana{% else %}por mês{% endif %}</h2>
+      <div class="tabela-rolagem">
+        <table class="numeros">
+          <thead><tr><th scope="col">Período</th><th scope="col">Pedidos</th><th scope="col">Faturamento</th><th scope="col">Estimada</th><th scope="col">Validada</th></tr></thead>
+          <tbody>
+            {% for l in linhas %}
+              <tr><td>{{ l.rotulo }}</td><td>{{ l.pedidos|numero }}</td><td>{{ l.faturamento|brl }}</td><td>{{ l.comissao_estimada|brl }}</td><td>{{ l.comissao_validada|brl }}</td></tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </section>
+  </div>
+  <div class="coluna-empilhada">
+    <section class="card ordem-2">
+      {% if meta and meta.metas %}
+        <h2>Meta do mês</h2>
+        {% include "painel/_meta.html" %}
+      {% else %}
+        <div class="card-topo"><h2>Comissão por Sub ID</h2><a class="pequeno" href="{% url 'painel_configuracoes' %}#sub-ids">Agrupar</a></div>
+        {% include "painel/_sub_ids.html" %}
+      {% endif %}
+    </section>
+    {% if meta and meta.metas %}
+      <section class="card ordem-4"><div class="card-topo"><h2>Comissão por Sub ID</h2><a class="pequeno" href="{% url 'painel_configuracoes' %}#sub-ids">Agrupar</a></div>{% include "painel/_sub_ids.html" %}</section>
+    {% else %}
+      <section class="card ordem-4">
+        <h2>Como os números são contados</h2>
+        <p class="suave pequeno"><strong>Faturamento</strong> e <strong>pedidos</strong> contam pela data da compra, sem os cancelados - o mesmo critério das metas da Shopee. A <strong>comissão estimada</strong> também conta pela compra e ainda pode mudar. A <strong>validada</strong> conta pela data em que a Shopee confirmou o pedido.</p>
+        {% if sincronizacao.cobertura_inicio %}<p class="suave pequeno" style="margin-top:8px">Dados guardados desde {{ sincronizacao.cobertura_inicio|date:"d/m/Y" }} - a API da Shopee só alcança uns 3 meses para trás.</p>{% endif %}
+      </section>
+    {% endif %}
+  </div>
+</div>
+
+<section class="card" id="produtos" aria-labelledby="titulo-produtos">
+  <div class="card-topo"><h2 id="titulo-produtos">Produtos mais vendidos</h2><span class="suave pequeno">Lista completa no Excel</span></div>
+  {% if ranking %}
+    <div class="tabela-rolagem">
+      <table class="tabela-vendas tabela-ranking">
+        <thead><tr><th scope="col"><span class="sr">Posição</span></th><th scope="col">Produto</th><th scope="col" class="n">Unid.</th><th scope="col" class="n">Faturamento</th><th scope="col" class="n">Comissão</th></tr></thead>
+        <tbody>
+          {% for p in ranking %}
+            <tr>
+              <td class="posicao">{{ forloop.counter }}</td>
+              <td><div class="produto-venda">{% include "painel/_foto_produto.html" with url=p.imagem_url %}<div class="produto-nome"><span>{{ p.nome|default:"Produto sem nome" }}</span><div class="barra-ranking" aria-hidden="true"><span style="width:{{ p.barra }}%"></span></div></div></div></td>
+              <td class="n" data-rotulo="Unidades">{{ p.unidades|numero }}</td>
+              <td class="n" data-rotulo="Faturamento">{{ p.faturamento|brl }}</td>
+              <td class="n" data-rotulo="Comissão"><strong>{{ p.comissao|brl }}</strong></td>
+            </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  {% else %}
+    <p class="suave pequeno">{% if tem_vendas_guardadas %}Nenhum produto vendido nesse período.{% else %}Os produtos vendidos aparecem aqui depois da próxima atualização com a Shopee.{% endif %}</p>
+  {% endif %}
+</section>
+
+<section class="card" id="vendas" aria-labelledby="titulo-vendas" data-tela="{{ tela_vendas }}">
+  <div class="card-topo">
+    <h2 id="titulo-vendas">Vendas do período</h2>
+    {% if pagina_vendas.paginator.count %}<a class="botao botao-claro botao-pequeno" href="{% url 'painel_exportar_vendas' %}{% querystring pagina=None %}" download>{% include "painel/_icone.html" with caminho=icones.baixar %}Exportar Excel</a>{% endif %}
+  </div>
+  <p class="suave pequeno">{{ pagina_vendas.paginator.count|numero }} ite{{ pagina_vendas.paginator.count|pluralize:"m vendido,ns vendidos" }}{% if filtros_vendas.busca or filtros_vendas.sub or filtros_vendas.situacao %} com esses filtros{% endif %}. As vendas aparecem pela data da compra, normalmente no dia seguinte.</p>
+  <form method="get" action="#vendas" class="filtros-vendas" id="filtros-vendas">
+    {% for chave, valor in parametros_periodo %}<input type="hidden" name="{{ chave }}" value="{{ valor }}">{% endfor %}
+    <input type="hidden" name="situacao" value="{{ filtros_vendas.situacao }}">
+    <input type="search" name="busca" value="{{ filtros_vendas.busca }}" placeholder="Buscar produto" aria-label="Buscar produto">
+    <select name="sub" aria-label="Sub ID">
+      <option value="">Todos os Sub IDs</option>
+      {% for g in grupos_vendas %}<option value="{{ g }}"{% if g == filtros_vendas.sub %} selected{% endif %}>{{ g }}</option>{% endfor %}
+    </select>
+    <select name="ordem" aria-label="Ordem">
+      <option value="recentes"{% if filtros_vendas.ordem == "recentes" %} selected{% endif %}>Mais recentes</option>
+      <option value="comissao"{% if filtros_vendas.ordem == "comissao" %} selected{% endif %}>Maior comissão</option>
+    </select>
+    <noscript><button type="submit" class="botao botao-escuro botao-pequeno">Filtrar</button></noscript>
+  </form>
+  <nav class="chips chips-vendas" aria-label="Status">
+    {% for chave, nome in situacoes_vendas %}<a class="chip{% if filtros_vendas.situacao == chave %} ativo{% endif %}" href="{% querystring situacao=chave pagina=None %}#vendas"{% if filtros_vendas.situacao == chave %} aria-current="true"{% endif %}>{{ nome }}</a>{% endfor %}
+  </nav>
+  {% if pagina_vendas.object_list %}
+    <div class="tabela-rolagem">
+      <table class="tabela-vendas tabela-lista-vendas">
+        <thead><tr><th scope="col">Compra</th><th scope="col">Produto</th><th scope="col" class="n">Qtd</th><th scope="col" class="n">Valor</th><th scope="col" class="n">Comissão</th><th scope="col">Status</th><th scope="col">Sub ID</th></tr></thead>
+        <tbody>
+          {% for v in pagina_vendas %}
+            <tr>
+              <td class="data-venda">{{ v.comprado_em|date:"d/m H:i" }}</td>
+              <td><div class="produto-venda">{% include "painel/_foto_produto.html" with url=v.imagem_url %}<span class="produto-nome">{{ v.nome|default:"Produto sem nome" }}</span></div></td>
+              <td class="n" data-rotulo="Qtd">{{ v.quantidade }}</td>
+              <td class="n" data-rotulo="Valor">{{ v.valor|brl }}</td>
+              <td class="n" data-rotulo="Comissão"><strong>{{ v.comissao|brl }}</strong></td>
+              <td data-rotulo="Status"><span class="selo-venda selo-{{ v.situacao }}">{{ v.get_situacao_display }}</span></td>
+              <td data-rotulo="Sub ID" class="sub-venda">{{ v.grupo }}</td>
+            </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+    {% if pagina_vendas.paginator.num_pages > 1 %}
+      <nav class="paginacao" aria-label="Páginas das vendas">
+        <span>Mostrando {{ pagina_vendas.start_index|numero }}–{{ pagina_vendas.end_index|numero }} de {{ pagina_vendas.paginator.count|numero }}</span>
+        <div>
+          {% if pagina_vendas.has_previous %}<a href="{% querystring pagina=pagina_vendas.previous_page_number %}#vendas" aria-label="Página anterior">‹</a>{% endif %}
+          {% for n in paginas_vendas %}
+            {% if n == pagina_vendas.paginator.ELLIPSIS %}<span>…</span>
+            {% elif n == pagina_vendas.number %}<span class="atual" aria-current="page">{{ n }}</span>
+            {% else %}<a href="{% querystring pagina=n %}#vendas">{{ n }}</a>{% endif %}
+          {% endfor %}
+          {% if pagina_vendas.has_next %}<a href="{% querystring pagina=pagina_vendas.next_page_number %}#vendas" aria-label="Próxima página">›</a>{% endif %}
+        </div>
+      </nav>
+    {% endif %}
+  {% else %}
+    <p class="suave pequeno">{% if not tem_vendas_guardadas %}As vendas aparecem aqui depois da próxima atualização com a Shopee.{% elif filtros_vendas.busca or filtros_vendas.sub or filtros_vendas.situacao %}Nenhuma venda com esses filtros.{% else %}Nenhuma venda nesse período.{% endif %}</p>
+  {% endif %}
+</section>
+<script src="{% static 'painel/vendas.js' %}" defer></script>
+{% endif %}
+{% endblock %}

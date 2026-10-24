@@ -1,0 +1,15 @@
+{% load static %}
+<div class="prints">
+  {% for p in prints %}
+    <figure class="prints-painel">
+      <div class="prints-janela">
+        <div class="prints-barra" aria-hidden="true"><i></i><i></i><i></i><span>app.appfiliado.com.br</span></div>
+        <picture>
+          <source media="(max-width: 640px)" srcset="{% static p.arquivo_m %}" width="{{ p.largura_m }}" height="{{ p.altura_m }}">
+          <img src="{% static p.arquivo %}" width="{{ p.largura }}" height="{{ p.altura }}" alt="{{ p.alt }}" loading="lazy" decoding="async">
+        </picture>
+      </div>
+      <figcaption>{{ p.legenda }}</figcaption>
+    </figure>
+  {% endfor %}
+</div>

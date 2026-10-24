@@ -2,7 +2,10 @@ from django.contrib import admin, messages
 from django.shortcuts import get_object_or_404, redirect
 from django.urls import path, reverse
 
-from .models import CashbackMaximoCache, NomeCurtoCache, Oferta, OfertaDestaqueManual, OfertaManual
+from .models import (
+    BuscaCatalogo, CashbackMaximoCache, NomeCurtoCache, Oferta, OfertaDestaqueManual, OfertaManual,
+    SincronizacaoCatalogo,
+)
 
 
 class _PreviewCashbackMixin:
@@ -44,14 +47,14 @@ class OfertaAdmin(admin.ModelAdmin):
         "percentual_desconto",
         "categoria_nome",
         "vendas",
-        "criado_em",
+        "visto_em",
     )
     list_filter = ("categoria_nome",)
     search_fields = ("nome", "nome_curto", "loja_nome")
     readonly_fields = tuple(f.name for f in Oferta._meta.fields)
 
     def has_add_permission(self, request):
-        # Ofertas só existem via sincronizar_ofertas() - a tela de admin é só consulta.
+        # Ofertas só existem via sincronização do catálogo (ofertas/catalogo.py) - a tela de admin é só consulta.
         return False
 
 
@@ -161,4 +164,33 @@ class CashbackMaximoCacheAdmin(admin.ModelAdmin):
         return False
 
     def has_delete_permission(self, request, obj=None):
+        return False
+
+
+@admin.register(SincronizacaoCatalogo)
+class SincronizacaoCatalogoAdmin(admin.ModelAdmin):
+    """Como está a sincronização do catálogo (roda sozinha no worker - ofertas/catalogo.py)."""
+
+    list_display = ("rodada", "completa", "iniciada_em", "finalizada_em", "paginas_lidas", "produtos_vistos",
+                    "removidos", "total_no_site", "ultimo_erro")
+
+    @admin.display(description="produtos no site")
+    def total_no_site(self, obj):
+        return Oferta.objects.count()
+
+    def has_add_permission(self, request):
+        return False
+
+    def has_change_permission(self, request, obj=None):
+        return False
+
+
+@admin.register(BuscaCatalogo)
+class BuscaCatalogoAdmin(admin.ModelAdmin):
+    list_display = ("nome", "pagina", "limite_paginas", "terminada", "produtos", "falhas", "ultimo_erro")
+
+    def has_add_permission(self, request):
+        return False
+
+    def has_change_permission(self, request, obj=None):
         return False

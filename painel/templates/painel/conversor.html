@@ -1,0 +1,86 @@
+{% extends "painel/base.html" %}
+{% load static painel_extras %}
+{% block titulo %}Conversor de links{% endblock %}
+{% block conteudo %}
+<header class="cabecalho">
+  <div><h1>Conversor de links</h1><p>Cole um texto com links da Shopee, como a mensagem do canal da Shopee, e troque tudo pelo seu link de afiliado.</p></div>
+</header>
+
+{% if not shopee_conectada %}
+  {% include "painel/_conectar_shopee.html" %}
+{% else %}
+<div class="duas-colunas conversor">
+  <section class="card" aria-labelledby="titulo-colar">
+    <h2 id="titulo-colar">Texto ou links</h2>
+    <form method="post" class="formulario" id="form-conversor">
+      {% csrf_token %}
+      <div class="campo">
+        <label for="texto">Cole aqui</label>
+        <textarea name="texto" id="texto" rows="10" required placeholder="Ex: 🔥 Ofertas do dia na Shopee! https://s.shopee.com.br/...">{{ dados.texto }}</textarea>
+        <span class="ajuda">Até {{ maximo_links }} links da Shopee por vez.</span>
+      </div>
+      <fieldset class="campo">
+        <legend>Como sair</legend>
+        <div class="opcoes-chip">{% for valor, nome in modos %}<label class="chip-opcao"><input type="radio" name="modo" value="{{ valor }}"{% if dados.modo == valor %} checked{% endif %}><span>{{ nome }}</span></label>{% endfor %}</div>
+        <span class="ajuda" data-modo="texto">O texto fica igual. Links que não são da Shopee, como convite de grupo, saem do texto.</span>
+        <span class="ajuda" data-modo="links">Sai só a lista dos links convertidos, um por linha.</span>
+      </fieldset>
+      <div class="campo">
+        <label for="sub_id">Sub ID (opcional)</label>
+        <input name="sub_id" id="sub_id" maxlength="100" value="{{ dados.sub_id }}" placeholder="{{ sub_id_padrao }}" autocomplete="off">
+        <span class="ajuda">Só letras e números. Em branco, as vendas aparecem em Resultados como “{{ sub_id_padrao }}”.</span>
+      </div>
+      <div><button type="submit" class="botao botao-principal" data-convertendo="Convertendo…">Converter</button></div>
+    </form>
+  </section>
+
+  <section class="card" aria-labelledby="titulo-resultado">
+    <h2 id="titulo-resultado">Pronto para encaminhar</h2>
+    {% if resultado %}
+      <p class="suave pequeno">{{ resultado.convertidos }} link{{ resultado.convertidos|pluralize }} convertido{{ resultado.convertidos|pluralize }}{% if resultado.removidos %} · {{ resultado.removidos }} link{{ resultado.removidos|pluralize }} de fora da Shopee removido{{ resultado.removidos|pluralize }}{% endif %}.</p>
+      {% if resultado.falharam %}
+        <p class="aviso aviso-warning pequeno">A Shopee não converteu {{ resultado.falharam|length }} link{{ resultado.falharam|pluralize }}{% if dados.modo == "texto" %}, que ficou como estava no texto{% endif %}: {% for l in resultado.falharam %}<span class="quebra">{{ l }}</span>{% if not forloop.last %}, {% endif %}{% endfor %}</p>
+      {% endif %}
+      <div class="campo">
+        <label for="resultado" class="sr">Resultado</label>
+        {% if bot.destinos %}<span class="ajuda">Você pode ajustar o texto antes de enviar no grupo.</span>{% endif %}
+        <textarea id="resultado" rows="10" form="form-enviar" name="texto"{% if not bot.destinos %} readonly{% endif %}>{{ resultado.texto }}</textarea>
+      </div>
+      <div class="acoes-conversor">
+        <button type="button" class="botao botao-escuro" id="copiar-resultado">{% include "painel/_icone.html" with caminho=icones.copiar %}Copiar</button>
+      </div>
+      {% if bot.liberado %}
+        <div class="enviar-conversor">
+          <h3>Enviar no grupo</h3>
+          {% if not bot.conectado %}
+            <p class="suave pequeno">Conecte o WhatsApp em <a href="{% url 'painel_whatsapp' %}">Bot de WhatsApp</a> para enviar daqui.</p>
+          {% elif not bot.destinos %}
+            <p class="suave pequeno">Nenhum grupo ou canal encontrado. Atualize a lista em <a href="{% url 'painel_whatsapp' %}">Bot de WhatsApp</a>.</p>
+          {% else %}
+            <form method="post" action="{% url 'painel_conversor_enviar' %}" id="form-enviar" class="linha-enviar">
+              {% csrf_token %}
+              <label for="destino" class="sr">Grupo ou canal</label>
+              <select name="destino" id="destino" required>
+                <option value="" disabled selected>Escolha o grupo ou canal</option>
+                {% for g in bot.destinos %}<option value="{{ g.jid }}">{% if g.tipo == "canal" %}Canal: {% endif %}{{ g.nome }}</option>{% endfor %}
+              </select>
+              <button type="submit" class="botao botao-principal">Enviar</button>
+            </form>
+          {% endif %}
+        </div>
+      {% else %}
+        <p class="suave pequeno convite-bot">Quer mandar direto nos seus grupos sem copiar e colar? <a href="{{ url_planos }}" target="_blank" rel="noopener">Assine o Bot de WhatsApp</a> para liberar o envio.</p>
+      {% endif %}
+    {% else %}
+      <ol class="passos-conversor">
+        <li>Copie a mensagem que a Shopee mandou no canal dela, ou de qualquer lugar.</li>
+        <li>Cole ao lado, escolha como quer que saia e clique em <strong>Converter</strong>.</li>
+        <li>Copie o resultado e encaminhe{% if bot.liberado %}, ou mande direto num grupo pelo bot{% endif %}.</li>
+      </ol>
+      <p class="suave pequeno">Os links saem com o seu link de afiliado e o Sub ID escolhido, para você ver as vendas em Resultados.</p>
+    {% endif %}
+  </section>
+</div>
+{% endif %}
+{% endblock %}
+{% block cabeca %}<script src="{% static 'painel/conversor.js' %}" defer></script>{% endblock %}

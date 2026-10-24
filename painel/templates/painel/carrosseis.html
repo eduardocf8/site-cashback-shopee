@@ -1,0 +1,54 @@
+{% extends "painel/base.html" %}
+{% load static %}
+{% block titulo %}Carrosséis{% endblock %}
+{% block cabeca %}<link rel="stylesheet" href="{% static 'painel/carrossel/carrossel.css' %}">{% endblock %}
+{% block conteudo %}
+<header class="cabecalho">
+  <div>
+    <h1>Carrosséis</h1>
+    <p>Cole o link de um produto da Shopee e receba um carrossel pronto pro Instagram.</p>
+  </div>
+</header>
+
+<section class="card gerar-carrossel">
+  {% if not shopee_ok %}
+    <p>Para gerar carrosséis com o seu link de afiliado, conecte primeiro sua conta da Shopee.</p>
+    <p><a class="botao botao-escuro" href="{% url 'painel_configuracoes' %}">Conectar a Shopee</a></p>
+  {% else %}
+    <form method="post" id="form-gerar">
+      {% csrf_token %}
+      <label class="sr" for="link-produto">Link do produto na Shopee</label>
+      <input type="url" id="link-produto" name="link" required placeholder="https://s.shopee.com.br/…" inputmode="url" autocomplete="off">
+      <button class="botao botao-principal" type="submit" {% if restantes.geracoes <= 0 %}disabled{% endif %}>Gerar carrossel</button>
+    </form>
+    <p class="suave">
+      {% if restantes.geracoes <= 0 %}Você usou os {{ restantes.limite }} carrosséis de hoje. Amanhã libera de novo.{% if not premium %} No <a href="{{ url_planos }}" target="_blank" rel="noopener">plano Premium</a> são 10 por dia.{% endif %}
+      {% else %}Restam {{ restantes.geracoes }} de {{ restantes.limite }} carrosséis hoje.{% endif %}
+      O link de afiliado sai com o Sub ID <strong>instagram</strong>, para você ver as vendas do Instagram em Resultados.
+      {% if not premium %}<br>Quer 10 carrosséis por dia, mais modelos, cores livres e a IA reescrevendo slides? Isso está no <a href="{{ url_planos }}" target="_blank" rel="noopener">plano Premium</a>.{% endif %}
+    </p>
+  {% endif %}
+</section>
+
+<section>
+  <h2 class="titulo-secao">Seus carrosséis</h2>
+  {% if carrosseis %}
+    <div class="lista-carrosseis">
+      {% for c in carrosseis %}
+        <a class="cartao-carrossel" href="{% url 'painel_carrossel' c.pk %}">
+          <img src="{{ c.produto.imagem }}" alt="" loading="lazy" referrerpolicy="no-referrer">
+          <div><strong>{{ c.produto.nome }}</strong><small>{{ c.criado_em|date:"d/m/Y H:i" }}</small></div>
+        </a>
+      {% endfor %}
+    </div>
+  {% else %}
+    <p class="suave">Nenhum carrossel ainda. O primeiro sai em alguns segundos depois de colar o link.</p>
+  {% endif %}
+</section>
+<script>
+  // Gerar leva alguns segundos (Shopee + IA): avisa e evita o clique duplo.
+  document.getElementById('form-gerar')?.addEventListener('submit', (e) => {
+    const b = e.target.querySelector('button'); b.disabled = true; b.textContent = 'Gerando… (até 30 segundos)';
+  });
+</script>
+{% endblock %}

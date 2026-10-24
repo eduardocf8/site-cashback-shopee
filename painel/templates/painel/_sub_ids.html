@@ -1,0 +1,16 @@
+{% load painel_extras %}
+{% if sub_ids %}
+  <ul class="lista-barras">
+    {% with maior=sub_ids.0.comissao %}
+    {% for s in sub_ids %}
+      <li>
+        <div class="lista-barras-topo"><span title="{{ s.sub_id }}">{{ s.sub_id }}</span><strong>{{ s.comissao|brl }}</strong></div>
+        <div class="trilho-fino"><div style="width: {% widthratio s.comissao maior 100 %}%"></div></div>
+        <span class="suave pequeno">{{ s.vendas }} venda{{ s.vendas|pluralize }}{% if s.quantidade > 1 %} · {{ s.quantidade }} Sub IDs juntos{% endif %}</span>
+      </li>
+    {% endfor %}
+    {% endwith %}
+  </ul>
+{% else %}
+  <p class="suave pequeno">Sem vendas com Sub ID nesse período.</p>
+{% endif %}

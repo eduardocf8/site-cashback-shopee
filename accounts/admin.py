@@ -8,7 +8,7 @@ from django.urls import path
 from ofertas.models import Oferta
 
 from .comunicacoes import FILTROS, enviar_comunicacao, obter_destinatarios
-from .models import ComunicacaoEmail, ConfiguracaoIndicacao, Indicacao, PushSubscription, User
+from .models import ComunicacaoEmail, ConfiguracaoIndicacao, EventoFunil, Indicacao, PushSubscription, User
 from .push import enviar_push
 
 
@@ -197,3 +197,20 @@ class PushSubscriptionAdmin(admin.ModelAdmin):
 
 
 admin.site.register(User, UserAdmin)
+
+
+@admin.register(EventoFunil)
+class EventoFunilAdmin(admin.ModelAdmin):
+    """Só leitura: serve pra conferir as tentativas do funil (ex.: se algum robô passou
+    pelo filtro de accounts/funil.py, olhando o navegador)."""
+
+    list_display = ("criado_em", "etapa", "origem", "metodo", "user_agent")
+    list_filter = ("etapa", "origem", "metodo")
+    search_fields = ("funil_id", "user_agent")
+    date_hierarchy = "criado_em"
+
+    def has_add_permission(self, request):
+        return False
+
+    def has_change_permission(self, request, obj=None):
+        return False

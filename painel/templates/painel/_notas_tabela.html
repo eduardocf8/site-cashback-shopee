@@ -1,0 +1,30 @@
+{% load painel_extras %}
+<div class="tabela-rolagem">
+  <table class="tabela-vendas notas-tabela">
+    <thead><tr><th scope="col">Para</th><th scope="col" class="n">Valor</th><th scope="col">Situação</th>{% if com_email %}<th scope="col">E-mail</th>{% endif %}<th scope="col"><span class="sr">Ações</span></th></tr></thead>
+    <tbody>
+      {% for n in notas %}
+        <tr data-nota="{{ n.pk }}" data-situacao="{{ n.situacao }}">
+          <td><span class="produto-nome"><strong>{{ n.tomador_nome }}</strong></span>{% if n.ambiente == "2" and not sem_selo %} <span class="selo-venda selo-pendente">Teste</span>{% endif %}
+            <span class="suave pequeno notas-sub">{% if n.loja_nome %}{{ n.loja_nome }} · {% endif %}{{ n.tomador_documento }}{% if not n.lote_id %} · criada em {{ n.criada_em|date:"d/m/Y \à\s H:i" }}{% endif %}</span>
+            {% if n.enviada_em %}<span class="suave pequeno notas-sub">{% if n.autorizada_em %}Autorizada em {{ n.autorizada_em|date:"d/m/Y \à\s H:i:s" }}{% else %}Último envio em {{ n.enviada_em|date:"d/m/Y \à\s H:i:s" }}{% endif %}{% if n.tentativas > 1 %} · {{ n.tentativas }} tentativas{% endif %}</span>{% endif %}
+            {% if n.situacao == "cancelada" and n.cancelada_em %}<span class="suave pequeno notas-sub">Cancelada em {{ n.cancelada_em|date:"d/m/Y \à\s H:i" }}: {{ n.get_cancelamento_motivo_display }} - {{ n.cancelamento_justificativa }}</span>{% endif %}
+            {% if n.mensagens and n.situacao != "autorizada" and n.situacao != "cancelada" %}<ul class="notas-motivos">{% for m in n.mensagens %}<li>{% if m.codigo %}<strong>{{ m.codigo }}</strong> {% endif %}{{ m.descricao }}</li>{% endfor %}</ul>{% endif %}</td>
+          <td class="n" data-rotulo="Valor">{{ n.valor|brl }}</td>
+          <td data-rotulo="Situação"><span class="notas-situacao selo-venda {% if n.situacao == 'autorizada' %}selo-concluido{% elif n.situacao == 'recusada' or n.situacao == 'erro' or n.situacao == 'cancelada' %}selo-cancelado{% else %}selo-pendente{% endif %}">{{ n.get_situacao_display }}{% if n.numero_nfse %} nº {{ n.numero_nfse }}{% endif %}</span></td>
+          {% if com_email %}<td data-rotulo="E-mail" class="pequeno">{% if n.email_situacao == "falhou" %}<span class="notas-erro-email" title="{{ n.email_erro }}">Falhou</span>{% else %}{{ n.get_email_situacao_display }}{% endif %}</td>{% endif %}
+          <td class="notas-acoes">
+            <div class="notas-acoes-grade">
+              {% if n.xml_nfse %}<a class="botao botao-claro botao-pequeno" href="{% url 'painel_nota_pdf' n.pk %}" target="_blank" rel="noopener">PDF</a><a class="botao botao-claro botao-pequeno" href="{% url 'painel_nota_xml' n.pk %}">XML</a>{% else %}<span></span><span></span>{% endif %}
+              <span class="notas-acoes-extra">
+                {% if n.situacao == "recusada" or n.situacao == "erro" %}<form method="post" action="{% url 'painel_nota_reenviar' n.pk %}">{% csrf_token %}<input type="hidden" name="voltar" value="{{ voltar }}"><button type="submit" class="botao botao-claro botao-pequeno">Tentar de novo</button></form>{% endif %}
+                {% if n.situacao == "autorizada" and n.email_situacao == "falhou" or n.situacao == "autorizada" and n.email_situacao == "enviado" %}<form method="post" action="{% url 'painel_nota_reenviar_email' n.pk %}">{% csrf_token %}<input type="hidden" name="voltar" value="{{ voltar }}"><button type="submit" class="botao botao-claro botao-pequeno">Reenviar e-mail</button></form>{% endif %}
+                {% if n.situacao == "autorizada" and n.chave %}<a class="link-botao pequeno perigo" href="{% url 'painel_nota_cancelar' n.pk %}?voltar={{ voltar }}">Cancelar</a>{% endif %}
+              </span>
+            </div>
+          </td>
+        </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>

@@ -5,14 +5,13 @@ import time
 import unicodedata
 from decimal import Decimal, InvalidOperation
 from pathlib import Path
-from urllib.parse import unquote
+from urllib.parse import unquote, urljoin, urlsplit
 
 import requests
 from django.conf import settings
-from django.db import transaction
 from django.db.models import Sum
 
-from links.shopee_client import buscar_oferta_por_item_id, buscar_ofertas_produtos
+from links.shopee_client import buscar_oferta_por_item_id
 
 from . import gemini_client
 from .gemini_client import GeminiAPIError, GeminiConfigError
@@ -69,6 +68,7 @@ def _montar_oferta(node: dict, categorias_nivel1: dict[int, str]) -> Oferta:
         preco_max=_decimal_seguro(node.get("priceMax")),
         percentual_desconto=int(node.get("priceDiscountRate") or 0),
         percentual_comissao=_decimal_seguro(node.get("commissionRate")),
+        percentual_comissao_extra=_decimal_seguro(node.get("sellerCommissionRate")),
         avaliacao=avaliacao,
         vendas=int(node.get("sales") or 0),
         categoria_id=categoria_id,
@@ -110,6 +110,57 @@ def resolver_item_id_sem_rede(url: str) -> int | None:
     if match:
         return int(match.group(1) or match.group(2))
     return None
+
+
+# Endereços que o servidor aceita abrir para achar o produto (o próprio domínio ou um
+# subdomínio dele - "s.shopee.com.br" sim, "shopee.com.br.golpe.com" não).
+DOMINIOS_DA_SHOPEE = ("shopee.com.br", "shopee.com", "shp.ee", "shope.ee", "shoope.top")
+MAXIMO_REDIRECIONAMENTOS = 6
+MAXIMO_BYTES_DA_PAGINA = 1_000_000
+
+
+def eh_host_da_shopee(url: str) -> bool:
+    """O link é mesmo da Shopee? Confere o host de verdade (sem usuário/senha no endereço,
+    só http/https, domínio igual ou subdomínio de um da lista)."""
+    try:
+        partes = urlsplit(str(url or "").strip())
+        host = (partes.hostname or "").rstrip(".").lower()
+    except ValueError:
+        return False
+    if partes.scheme.lower() not in ("http", "https") or partes.username is not None or "@" in partes.netloc:
+        return False
+    return any(host == d or host.endswith("." + d) for d in DOMINIOS_DA_SHOPEE)
+
+
+def _abrir_pagina_da_shopee(url: str, timeout: float, cabecalhos: dict) -> tuple[str, str, int, int]:
+    """Segue os redirecionamentos um por um, só enquanto continuam na Shopee, com tempo
+    total e tamanho da página limitados. Devolve (URL final, texto, status, saltos).
+    Um redirecionamento para fora da Shopee não é aberto: a URL dele vira a final (o
+    item_id às vezes já está nela)."""
+    limite = time.monotonic() + timeout
+    atual, saltos = url, 0
+    sessao = requests.Session()  # guarda os cookies entre um redirecionamento e outro, como o navegador
+    while True:
+        restante = limite - time.monotonic()
+        if restante <= 0:
+            raise requests.Timeout("tempo total esgotado")
+        with sessao.get(atual, allow_redirects=False, timeout=min(restante, timeout), headers=cabecalhos,
+                        stream=True) as resposta:
+            destino = resposta.headers.get("Location") if resposta.is_redirect else None
+            if destino and saltos < MAXIMO_REDIRECIONAMENTOS:
+                proxima = urljoin(atual, destino)
+                if not eh_host_da_shopee(proxima):
+                    return proxima, "", resposta.status_code, saltos + 1
+                atual, saltos = proxima, saltos + 1
+                continue
+            pedacos, total = [], 0
+            for pedaco in resposta.iter_content(chunk_size=16384):
+                pedacos.append(pedaco)
+                total += len(pedaco)
+                if total >= MAXIMO_BYTES_DA_PAGINA or time.monotonic() > limite:
+                    break
+            texto = b"".join(pedacos)[:MAXIMO_BYTES_DA_PAGINA].decode(resposta.encoding or "utf-8", errors="replace")
+            return atual, texto, resposta.status_code, saltos
 
 
 def _texto_da_pagina_normalizado(html: str) -> str:
@@ -159,22 +210,26 @@ def _resolver_item_id(url: str, timeout: int = 10) -> int:
         "Sec-Fetch-Mode": "navigate",
         "Sec-Fetch-Dest": "document",
     }
+    if not eh_host_da_shopee(url):
+        # Só abre endereço da própria Shopee: o link vem de visitante, de mensagem de grupo
+        # de terceiros ou do afiliado - nunca deixa o servidor buscar outro endereço (SSRF).
+        raise LinkProdutoInvalidoError(f"O link {url} não é da Shopee.")
     try:
-        resposta = requests.get(url, allow_redirects=True, timeout=timeout, headers=cabecalhos)
+        url_final, texto, status, saltos = _abrir_pagina_da_shopee(url, timeout, cabecalhos)
     except requests.RequestException as erro:
         raise LinkProdutoInvalidoError(f"Não consegui abrir o link {url}: {erro}") from erro
 
-    match = PADRAO_ITEM_ID_NA_URL.search(resposta.url) or PADRAO_ITEM_ID_NA_URL.search(
-        _texto_da_pagina_normalizado(resposta.text)
+    match = PADRAO_ITEM_ID_NA_URL.search(url_final) or PADRAO_ITEM_ID_NA_URL.search(
+        _texto_da_pagina_normalizado(texto)
     )
     if not match:
         raise LinkProdutoInvalidoError(
             f"Não consegui identificar o produto a partir do link {url} "
-            f"(redirecionou pra {resposta.url} [status={resposta.status_code}, "
-            f"{len(resposta.history)} redirecionamento(s) seguido(s)], mas não achei "
+            f"(redirecionou pra {url_final} [status={status}, "
+            f"{saltos} redirecionamento(s) seguido(s)], mas não achei "
             "nenhum padrão de link de produto da Shopee (-i.<loja>.<item> ou "
             "/product/<loja>/<item>) nem na URL final nem no conteúdo da página - talvez "
-            "esse link precise ser aberto no navegador/app pra chegar na página do produto)."
+            "esse link precise ser aberto no navegador/app para chegar na página do produto)."
         )
     return int(match.group(1) or match.group(2))
 
@@ -220,7 +275,7 @@ def buscar_oferta_por_item(item_id: int) -> Oferta:
     return _montar_oferta(node, carregar_categorias_nivel1())
 
 
-def _aplicar_nomes_curtos(ofertas: list[Oferta]) -> None:
+def _aplicar_nomes_curtos(ofertas: list[Oferta], limite_lotes: int | None = None) -> None:
     """Preenche oferta.nome_curto pra cada oferta. Reaproveita o NomeCurtoCache (que
     sobrevive entre sincronizações, diferente de Oferta - ver models.py) pra só chamar o
     Gemini nos itens novos ou com nome mudado desde a última vez. nome_curto nunca fica
@@ -239,11 +294,12 @@ def _aplicar_nomes_curtos(ofertas: list[Oferta]) -> None:
             pendentes.append(oferta)
 
     lotes = [pendentes[i : i + TAMANHO_LOTE_GEMINI] for i in range(0, len(pendentes), TAMANHO_LOTE_GEMINI)]
-    lotes_a_processar = lotes[:LIMITE_LOTES_POR_EXECUCAO]
+    limite_lotes = limite_lotes or LIMITE_LOTES_POR_EXECUCAO
+    lotes_a_processar = lotes[:limite_lotes]
     if len(lotes) > len(lotes_a_processar):
         logger.info(
-            "[ofertas] %s produto(s) sem nome_curto ficam pra próxima sincronização (limite de %s lote(s) por execução)",
-            sum(len(lote) for lote in lotes[LIMITE_LOTES_POR_EXECUCAO:]), LIMITE_LOTES_POR_EXECUCAO,
+            "[ofertas] %s produto(s) sem nome_curto ficam pra próxima vez (limite de %s lote(s) por execução)",
+            sum(len(lote) for lote in lotes[limite_lotes:]), limite_lotes,
         )
 
     cache_pra_salvar = []
@@ -273,51 +329,28 @@ def _aplicar_nomes_curtos(ofertas: list[Oferta]) -> None:
         )
 
 
-def encurtar_nomes_pendentes() -> dict:
+def encurtar_nomes_pendentes(limite_lotes: int = LIMITE_LOTES_POR_EXECUCAO) -> dict:
     """Melhora, aos poucos, o nome_curto das ofertas que ainda estão iguais ao nome
-    original (ou seja, ainda não passaram pelo Gemini com sucesso). Chamado por uma
-    tarefa agendada própria (ver cashback_shopee/views.py e tarefas-diarias.yml),
-    separada da sincronização com a Shopee, pra ter os 120s de orçamento só pra si."""
-    ofertas = list(Oferta.objects.all())
-    _aplicar_nomes_curtos(ofertas)
-    Oferta.objects.bulk_update(ofertas, ["nome_curto"], batch_size=200)
-    return {"total_ofertas": len(ofertas)}
+    original, das mais vendidas para as menos (são elas que aparecem primeiro no site).
+    Quem já passou pelo Gemini com esse mesmo nome (NomeCurtoCache) não entra de novo.
+    Chamado pela thread do catálogo no worker (ofertas/catalogo.py) e pela tarefa
+    agendada do site (cashback_shopee/views.py), que tem os 120s só para si."""
+    from django.db.models import Exists, F, OuterRef
+
+    ja_tem = NomeCurtoCache.objects.filter(item_id=OuterRef("item_id"), nome_original=OuterRef("nome"))
+    pendentes = list(
+        Oferta.objects.filter(nome_curto=F("nome")).exclude(Exists(ja_tem))
+        .order_by("-vendas")[: limite_lotes * TAMANHO_LOTE_GEMINI]
+    )
+    if pendentes:
+        _aplicar_nomes_curtos(pendentes, limite_lotes=limite_lotes)
+        Oferta.objects.bulk_update(pendentes, ["nome_curto"], batch_size=200)
+    return {"pendentes_nesta_vez": len(pendentes)}
 
 
-def sincronizar_ofertas(limite_por_pagina: int = 50, max_paginas: int = 70) -> dict:
-    """Busca as ofertas de produtos (productOfferV2, listType ALL) e substitui a lista atual.
-
-    Full-replace (não incremental): uma "oferta" é só uma foto do que a Shopee está
-    oferecendo hoje, sem status a preservar entre sincronizações (diferente de Pedido/Saque).
-
-    max_paginas=70 (x50 = até 3.500 produtos) dá margem sobre o teto real observado pra essa
-    conta (2.800 produtos em 56 páginas, medido com explorar_limite_catalogo em 2026-09-04) -
-    a Shopee pode liberar mais ofertas com o tempo, e o loop já para sozinho em hasNextPage=False
-    bem antes de chegar nesse teto, então não custa nada deixar folga.
-    """
-    categorias_nivel1 = carregar_categorias_nivel1()
-
-    ofertas_novas = []
-    pagina = 1
-    while pagina <= max_paginas:
-        resultado = buscar_ofertas_produtos(pagina, limite_por_pagina)
-        for node in resultado["nodes"]:
-            ofertas_novas.append(_montar_oferta(node, categorias_nivel1))
-        if not resultado["pageInfo"].get("hasNextPage"):
-            break
-        pagina += 1
-
-    # Dedup por item_id (a Shopee pode repetir um item entre páginas se o feed
-    # for atualizado no meio da sincronização).
-    por_item_id = {oferta.item_id: oferta for oferta in ofertas_novas}
-
-    with transaction.atomic():
-        Oferta.objects.all().delete()
-        Oferta.objects.bulk_create(por_item_id.values(), batch_size=200)
-
-    _atualizar_cashback_maximo(por_item_id.values())
-
-    return {"total": len(por_item_id), "paginas_percorridas": pagina}
+# A sincronização do catálogo (guardar e atualizar, por categoria, no worker) fica em
+# ofertas/catalogo.py. A antiga sincronizar_ofertas() apagava e recriava tudo a cada dia,
+# só com o feed geral (~1.560 produtos), dentro da requisição do site.
 
 
 def obter_cashback_maximo_anunciado() -> Decimal:
@@ -329,18 +362,6 @@ def obter_cashback_maximo_anunciado() -> Decimal:
     if cache and cache.percentual_maximo:
         return cache.percentual_maximo
     return Decimal(str(settings.CASHBACK_MAXIMO_ANUNCIADO))
-
-
-def _atualizar_cashback_maximo(ofertas) -> None:
-    """Recalcula o maior % de cashback anunciado na home a partir das ofertas
-    recém-sincronizadas. Chamado uma vez por sincronização, não por request - ver
-    CashbackMaximoCache."""
-    percentuais = [
-        oferta.percentual_cashback for oferta in ofertas if oferta.preco_min and oferta.percentual_comissao
-    ]
-    if not percentuais:
-        return
-    CashbackMaximoCache.atualizar(max(percentuais))
 
 
 def normalizar_nome_produto(nome: str) -> str:
@@ -355,12 +376,14 @@ def selecionar_top_ofertas_sem_duplicar(quantidade: int) -> list[Oferta]:
     """As ofertas mais vendidas (Oferta.Meta.ordering = -vendas), sem repetir produto.
 
     A Shopee pode anunciar o mesmo produto genérico (ex: "Percarbonato de sódio") em
-    lojas diferentes, cada uma com seu próprio item_id - sincronizar_ofertas só remove
+    lojas diferentes, cada uma com seu próprio item_id - a sincronização do catálogo só remove
     duplicado por item_id, então sem essa checagem o mesmo produto pode aparecer mais
     de uma vez no mesmo story/post."""
     selecionadas = []
     nomes_vistos = set()
-    for oferta in Oferta.objects.all():
+    # Só os mais vendidos (a lista é ordenada por -vendas): com dezenas de milhares de
+    # produtos, percorrer o catálogo todo a cada visita à home carregaria tudo na memória.
+    for oferta in Oferta.objects.all()[: max(quantidade * 50, 500)]:
         nome_normalizado = normalizar_nome_produto(oferta.nome)
         if nome_normalizado in nomes_vistos:
             continue

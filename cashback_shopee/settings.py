@@ -69,9 +69,9 @@ if not DEBUG:
     SECURE_SSL_REDIRECT = True
     SESSION_COOKIE_SECURE = True
     CSRF_COOKIE_SECURE = True
-    # Começa com 1 hora (valor conservador); pode aumentar depois de confirmar que o
-    # HTTPS está estável, seguindo a documentação do Django antes de mudar.
-    SECURE_HSTS_SECONDS = 3600
+    # 1 ano: o navegador nunca mais tenta abrir os domínios sem HTTPS (que já é obrigatório
+    # há tempo). Sem includeSubDomains: cada subdomínio do Meu site decide pelo próprio host.
+    SECURE_HSTS_SECONDS = 31536000
 
 
 # Application definition
@@ -95,6 +95,13 @@ INSTALLED_APPS = [
     "axes",
     "licencas",
     "pinterest",
+    "painel",
+    "bot_whatsapp",
+    "meusite",
+    "carrosseis",
+    "notas",
+    "landing",
+    "atendimento",
 ]
 
 AUTH_USER_MODEL = "accounts.User"
@@ -115,6 +122,12 @@ AUTHENTICATION_BACKENDS = [
 # bloquear a conta de outra pessoa de propósito só errando a senha dela várias vezes
 # de um IP diferente (negação de serviço via bloqueio).
 AXES_LOCKOUT_PARAMETERS = [["username", "ip_address"]]
+# Quantos proxies acrescentam o IP no X-Forwarded-For antes do Django (no Render, 1). Com 0,
+# usa o REMOTE_ADDR (desenvolvimento). Vale para os limites por IP e para o django-axes.
+NUMERO_DE_PROXIES = int(os.environ.get("NUMERO_DE_PROXIES", "1" if os.environ.get("RENDER") else "0"))
+if NUMERO_DE_PROXIES:
+    AXES_IPWARE_PROXY_COUNT = NUMERO_DE_PROXIES
+    AXES_IPWARE_META_PRECEDENCE_ORDER = ["HTTP_X_FORWARDED_FOR", "REMOTE_ADDR"]
 AXES_FAILURE_LIMIT = 5
 AXES_COOLOFF_TIME = 1  # horas até o bloqueio expirar sozinho
 AXES_RESET_ON_SUCCESS = True
@@ -186,6 +199,32 @@ CASHBACK_MULTIPLICADOR_INDICACAO = float(os.environ.get("CASHBACK_MULTIPLICADOR_
 GEMINI_API_KEY = os.environ.get("GEMINI_API_KEY", "")
 GEMINI_API_URL = os.environ.get("GEMINI_API_URL", "https://generativelanguage.googleapis.com/v1beta")
 GEMINI_MODEL = os.environ.get("GEMINI_MODEL", "gemini-3.1-flash-lite")
+# Vários modelos, em ordem de preferência, separados por vírgula: quando a cota de um acaba, o próximo assume.
+GEMINI_MODELS = os.environ.get("GEMINI_MODELS", "gemini-3.1-flash-lite,gemini-3.5-flash-lite")
+# Appfiliado: revisão do texto das ofertas do Bot de WhatsApp (bot_whatsapp/ia.py). Uma
+# chave só, do Appfiliado (quem usa o painel não cria nada). Sem APPFILIADO_GEMINI_API_KEY,
+# usa a GEMINI_API_KEY; sem nenhuma, a opção aparece como indisponível.
+APPFILIADO_GEMINI_API_KEY = os.environ.get("APPFILIADO_GEMINI_API_KEY", "")
+APPFILIADO_GEMINI_MODELO = os.environ.get("APPFILIADO_GEMINI_MODELO", "")
+
+# Agente de vendas no WhatsApp do Appfiliado (app atendimento). Liga quando há a conta cujo
+# WhatsApp conectado é o número de vendas e a ANTHROPIC_API_KEY. O aviso de "chamar você"
+# vai pro número em ATENDIMENTO_AVISAR (só dígitos, com DDI e DDD).
+# Notas fiscais das assinaturas do Appfiliado (notas/assinaturas.py): cada pagamento confirmado pela
+# Zouti vira uma NFS-e emitida pela empresa cadastrada no Emissor desta conta. Sem a conta, desligado.
+# O ambiente começa no de testes do governo ("2"); "1" = produção. Código, NBS e descrição do serviço
+# próprios dessas notas (o serviço das notas da Shopee da mesma empresa continua o de sempre).
+NOTAS_ASSINATURAS_CONTA_ID = int(os.environ.get("APPFILIADO_NOTAS_ASSINATURAS_CONTA_ID", "0") or 0)
+NOTAS_ASSINATURAS_AMBIENTE = os.environ.get("APPFILIADO_NOTAS_ASSINATURAS_AMBIENTE", "2")
+NOTAS_ASSINATURAS_CODIGO = os.environ.get("APPFILIADO_NOTAS_ASSINATURAS_CODIGO", "010501")
+NOTAS_ASSINATURAS_CODIGO_MUNICIPAL = os.environ.get("APPFILIADO_NOTAS_ASSINATURAS_CODIGO_MUNICIPAL", "")
+NOTAS_ASSINATURAS_NBS = os.environ.get("APPFILIADO_NOTAS_ASSINATURAS_NBS", "111032200")
+NOTAS_ASSINATURAS_DESCRICAO = os.environ.get("APPFILIADO_NOTAS_ASSINATURAS_DESCRICAO", "Assinatura Appfiliado")
+
+ATENDIMENTO_CONTA_ID = int(os.environ.get("APPFILIADO_ATENDIMENTO_CONTA_ID", "0") or 0)
+ATENDIMENTO_AVISAR = os.environ.get("APPFILIADO_ATENDIMENTO_AVISAR", "")
+ATENDIMENTO_MODELO = os.environ.get("APPFILIADO_ATENDIMENTO_MODELO", "claude-opus-5-5")
+ANTHROPIC_API_KEY = os.environ.get("ANTHROPIC_API_KEY", "")
 
 # Credenciais da API da Asaas para pagar os saques via PIX (ficam no arquivo .env, nunca no código)
 # Login com Google (accounts/google_oauth.py). Sem os dois, o botão "Continuar com
@@ -282,24 +321,71 @@ PINTEREST_NOME_BOARD = os.environ.get("PINTEREST_NOME_BOARD", "Ofertas de {categ
 # automacao_instagram/management/commands/automacao_instagram_worker.py).
 AUTOMACAO_INSTAGRAM_INTERVALO_SEGUNDOS = int(os.environ.get("AUTOMACAO_INSTAGRAM_INTERVALO_SEGUNDOS", "30"))
 
-# App licencas: backend de validação de assinatura do Appfiliado (bot separado, ver
-# Appfiliado/LICENCA.md). O Appfiliado não tem relação de marca com a
+# App licencas: backend de assinatura do Appfiliado (contas, módulos e validação da
+# chave pelo app - ver licencas/models.py). O Appfiliado não tem relação de marca com a
 # cash-b - reaproveitamos só a infraestrutura Django já existente.
 #
-# Token configurado no painel da Kiwify em Webhooks > (o webhook do Appfiliado) > Token.
-# Usado pra conferir a assinatura HMAC-SHA1 que a Kiwify manda em ?signature= na própria
-# URL do webhook (ver licencas/views.py::_assinatura_valida - formato confirmado contra
-# um payload de teste real, não está documentado publicamente).
-KIWIFY_WEBHOOK_TOKEN = os.environ.get("KIWIFY_WEBHOOK_TOKEN", "")
+# Segredo do webhook da Zouti (painel da Zouti > Integrações > Webhooks > o webhook do
+# Appfiliado). Usado pra conferir o cabeçalho x-zouti-signature (HMAC-SHA256) de cada
+# aviso - sem ele preenchido, todo webhook é recusado. Ver
+# licencas/services.py::assinatura_webhook_valida.
+ZOUTI_WEBHOOK_SECRET = os.environ.get("ZOUTI_WEBHOOK_SECRET", "")
 
-# Remetente do e-mail com a chave de licença. Como o Appfiliado ainda não tem domínio
-# próprio, isso usa o mesmo endereço verificado da cash-b no Brevo (contato@cash-b.com)
-# só como transporte técnico - o nome de exibição já é "Appfiliado", sem menção a cash-b
-# no corpo do e-mail. Troque pra um domínio próprio do Appfiliado assim que existir um.
+# Imagem enviada por usuário ou vinda de grupo de terceiros: acima de 60 megapixels o Pillow
+# recusa ao abrir (o padrão dele só avisa até ~179 MP, e uma foto de 20 KB "descompacta" em GB).
+from PIL import Image as _Image  # noqa: E402
+
+_Image.MAX_IMAGE_PIXELS = 30_000_000
+
+# Domínios que só servem a API do Appfiliado (ex: api.appfiliado.com.br). Em qualquer
+# um deles, só /licencas/ responde - o resto do site da cash-b dá 404, pra não aparecer
+# a cash-b num endereço do Appfiliado. Cada domínio também precisa estar em
+# DJANGO_ALLOWED_HOSTS. Separados por vírgula.
+APPFILIADO_API_HOSTS = [
+    h.strip().lower() for h in os.environ.get("APPFILIADO_API_HOSTS", "").split(",") if h.strip()
+]
+
+# Painel web do Appfiliado (app painel). APPFILIADO_PAINEL_HOSTS: domínios que mostram
+# só o painel (cada um também precisa estar em DJANGO_ALLOWED_HOSTS).
+# APPFILIADO_PAINEL_URL: endereço usado nos links dos e-mails.
+APPFILIADO_PAINEL_HOSTS = [
+    h.strip().lower() for h in os.environ.get("APPFILIADO_PAINEL_HOSTS", "").split(",") if h.strip()
+]
+APPFILIADO_PAINEL_URL = os.environ.get("APPFILIADO_PAINEL_URL", "https://app.appfiliado.com.br")
+# Meu site: cada conta ganha seunome.<APPFILIADO_SITES_DOMINIO> (precisa de um DNS
+# curinga *.appfiliado.com.br apontando para o Render). Sem ele, o site ainda abre em
+# <painel>/s/seunome/. Ver meusite/middleware.py.
+APPFILIADO_SITES_DOMINIO = os.environ.get("APPFILIADO_SITES_DOMINIO", "").strip().lower().lstrip(".")
+if APPFILIADO_SITES_DOMINIO:
+    ALLOWED_HOSTS.append("." + APPFILIADO_SITES_DOMINIO)
+# Página de vendas (landing/): o domínio puro e o www. Sem variável, vale o domínio dos sites
+# (APPFILIADO_SITES_DOMINIO); precisam estar no Render como domínio personalizado.
+APPFILIADO_LANDING_HOSTS = [h.strip().lower() for h in os.environ.get("APPFILIADO_LANDING_HOSTS", "").split(",") if h.strip()] or (
+    [APPFILIADO_SITES_DOMINIO, "www." + APPFILIADO_SITES_DOMINIO] if APPFILIADO_SITES_DOMINIO else [])
+# Contato que aparece na página de vendas (só aparece o que estiver preenchido).
+APPFILIADO_WHATSAPP_SUPORTE = os.environ.get("APPFILIADO_WHATSAPP_SUPORTE", "")
+APPFILIADO_EMAIL_SUPORTE = os.environ.get("APPFILIADO_EMAIL_SUPORTE", "")
+# Página com os planos (botão "Desbloquear" dos módulos que a conta não tem).
+APPFILIADO_URL_PLANOS = os.environ.get("APPFILIADO_URL_PLANOS", "https://appfiliado.com.br")
+# Chave Fernet pra cifrar os segredos das contas (ex: Secret da Shopee) - ver painel/cripto.py.
+# Gerar com: python -c "from cryptography.fernet import Fernet; print(Fernet.generate_key().decode())"
+APPFILIADO_CHAVE_CRIPTOGRAFIA = os.environ.get("APPFILIADO_CHAVE_CRIPTOGRAFIA", "")
+
+# Remetente do e-mail com a chave de licença. O padrão usa o endereço da cash-b já
+# verificado no Brevo só como transporte técnico (o nome de exibição já é "Appfiliado").
+# Depois de autenticar appfiliado.com.br no Brevo, troque pela variável de ambiente:
+# APPFILIADO_EMAIL_REMETENTE="Appfiliado <contato@appfiliado.com.br>".
+# Bot de WhatsApp no servidor (app bot_whatsapp): o Background Worker do
+# sincronizar_painel --loop também mantém as conexões de WhatsApp. "False" desliga.
+APPFILIADO_WHATSAPP_NO_WORKER = os.environ.get("APPFILIADO_WHATSAPP_NO_WORKER", "True").lower() in ("1", "true", "yes", "sim")
 APPFILIADO_EMAIL_REMETENTE = os.environ.get("APPFILIADO_EMAIL_REMETENTE", "Appfiliado <contato@cash-b.com>")
 
 MIDDLEWARE = [
     "django.middleware.security.SecurityMiddleware",
+    "licencas.middleware.SoApiNoDominioAppfiliadoMiddleware",  # api.appfiliado.com.br só responde /licencas/
+    "painel.middleware.DominioDoPainelMiddleware",  # app.appfiliado.com.br mostra só o painel
+    "landing.middleware.LandingDoAppfiliadoMiddleware",  # appfiliado.com.br mostra só a página de vendas
+    "meusite.middleware.SiteDoAfiliadoMiddleware",  # seunome.appfiliado.com.br mostra o site da conta
     "whitenoise.middleware.WhiteNoiseMiddleware",
     "django.contrib.sessions.middleware.SessionMiddleware",
     "django.middleware.common.CommonMiddleware",
@@ -415,11 +501,34 @@ STORAGES = {
 # console) - útil em desenvolvimento local.
 
 BREVO_API_KEY = os.environ.get("BREVO_API_KEY", "")
-EMAIL_BACKEND = (
-    "cashback_shopee.brevo_email_backend.BrevoAPIEmailBackend"
-    if BREVO_API_KEY
-    else "django.core.mail.backends.console.EmailBackend"
-)
+
+# Amazon SES (cashback_shopee/ses_email_backend.py): bem mais barato em volume que o Brevo.
+# Usado para os e-mails das notas fiscais (um por vendedor, milhares por mês) e, se quiser,
+# para todo o resto. A região padrão é São Paulo.
+AWS_SES_REGIAO = os.environ.get("AWS_SES_REGIAO", "sa-east-1")
+AWS_SES_ACCESS_KEY_ID = os.environ.get("AWS_SES_ACCESS_KEY_ID", "")
+AWS_SES_SECRET_ACCESS_KEY = os.environ.get("AWS_SES_SECRET_ACCESS_KEY", "")
+AWS_SES_CONFIGURATION_SET = os.environ.get("AWS_SES_CONFIGURATION_SET", "")
+
+_BACKENDS_DE_EMAIL = {
+    "brevo": "cashback_shopee.brevo_email_backend.BrevoAPIEmailBackend",
+    "ses": "cashback_shopee.ses_email_backend.SESEmailBackend",
+    "console": "django.core.mail.backends.console.EmailBackend",
+}
+# EMAIL_PROVEDOR: "brevo", "ses" ou "console". Sem nada, usa o Brevo se tiver a chave (como sempre foi).
+EMAIL_PROVEDOR = os.environ.get("EMAIL_PROVEDOR", "").strip().lower() or ("brevo" if BREVO_API_KEY else "console")
+EMAIL_BACKEND = _BACKENDS_DE_EMAIL.get(EMAIL_PROVEDOR, _BACKENDS_DE_EMAIL["console"])
+# Os e-mails das notas fiscais podem ir por outro serviço (ex: só eles pelo SES).
+NOTAS_EMAIL_PROVEDOR = os.environ.get("NOTAS_EMAIL_PROVEDOR", "").strip().lower() or EMAIL_PROVEDOR
+NOTAS_EMAIL_BACKEND = _BACKENDS_DE_EMAIL.get(NOTAS_EMAIL_PROVEDOR, EMAIL_BACKEND)
+# Remetente das notas (precisa ser de um domínio verificado no serviço escolhido).
+NOTAS_EMAIL_REMETENTE = os.environ.get("NOTAS_EMAIL_REMETENTE", "") or None  # None = APPFILIADO_EMAIL_REMETENTE
+# Teto de e-mails de notas por dia (0 = sem teto). Útil no plano grátis do Brevo (300/dia).
+NOTAS_EMAILS_POR_DIA = int(os.environ.get("NOTAS_EMAILS_POR_DIA", "0") or 0)
+# Quantas notas vão ao governo ao mesmo tempo, e quantos e-mails saem ao mesmo tempo.
+# (O Amazon SES aceita 14 e-mails por segundo na conta liberada.)
+NOTAS_ENVIOS_SIMULTANEOS = int(os.environ.get("NOTAS_ENVIOS_SIMULTANEOS", "6") or 6)
+NOTAS_EMAILS_SIMULTANEOS = int(os.environ.get("NOTAS_EMAILS_SIMULTANEOS", "4") or 4)
 EMAIL_TIMEOUT = int(os.environ.get("EMAIL_TIMEOUT", "10"))
 DEFAULT_FROM_EMAIL = os.environ.get("DEFAULT_FROM_EMAIL", "cash-b <contato@cash-b.com>")
 

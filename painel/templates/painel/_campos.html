@@ -1,0 +1,9 @@
+{% if form.non_field_errors %}<ul class="erros-form">{% for e in form.non_field_errors %}<li>{{ e }}</li>{% endfor %}</ul>{% endif %}
+{% for campo in form %}
+  <div class="campo">
+    <label for="{{ campo.id_for_label }}">{{ campo.label }}</label>
+    {{ campo }}
+    {% if campo.help_text %}<span class="ajuda">{{ campo.help_text }}</span>{% endif %}
+    {% for e in campo.errors %}<span class="erro">{{ e }}</span>{% endfor %}
+  </div>
+{% endfor %}

@@ -48,7 +48,12 @@ def executar_graphql(query: str) -> dict:
             "Configure SHOPEE_AFFILIATE_APP_ID e SHOPEE_AFFILIATE_SECRET no arquivo .env "
             "com as credenciais da sua conta de afiliado Shopee."
         )
+    return executar_graphql_com_credenciais(app_id, secret, query)
 
+
+def executar_graphql_com_credenciais(app_id: str, secret: str, query: str) -> dict:
+    """Igual executar_graphql, mas com as credenciais de outra conta de afiliado
+    (usado pelo painel do Appfiliado, com as credenciais de cada cliente)."""
     payload = json.dumps({"query": query}, ensure_ascii=False, separators=(",", ":"))
     timestamp = int(time.time())
     assinatura = _assinar(app_id, secret, timestamp, payload)
@@ -92,8 +97,10 @@ def gerar_link_curto(origin_url: str, sub_ids: list[str]) -> str:
     return dados["generateShortLink"]["shortLink"]
 
 
-def buscar_ofertas_produtos(pagina: int, limite: int = 50) -> dict:
-    """Consulta a query productOfferV2 (listType ALL) para montar a página de ofertas.
+def buscar_ofertas_produtos(pagina: int, limite: int = 50, categoria: int | None = None) -> dict:
+    """Consulta a query productOfferV2 para montar a página de ofertas: o feed geral
+    (listType ALL) ou, com `categoria`, os produtos de uma categoria (productCatId) - cada
+    categoria traz uma lista própria (ver ofertas/catalogo.py).
 
     Usa commissionRate (= shopeeCommissionRate + sellerCommissionRate), não só
     shopeeCommissionRate. sellerCommissionRate é um bônus de campanha do vendedor,
@@ -105,10 +112,11 @@ def buscar_ofertas_produtos(pagina: int, limite: int = 50) -> dict:
     query = (
         "query{"
         "productOfferV2("
-        f"listType:0,page:{pagina},limit:{limite}"
+        + (f"productCatId:{int(categoria)}," if categoria else "listType:0,")
+        + f"page:{pagina},limit:{limite}"
         "){"
         "nodes{"
-        "itemId commissionRate sales priceMax priceMin productCatIds ratingStar "
+        "itemId commissionRate sellerCommissionRate sales priceMax priceMin productCatIds ratingStar "
         "priceDiscountRate imageUrl productName shopName productLink offerLink"
         "}"
         "pageInfo{page limit hasNextPage}"
@@ -117,6 +125,26 @@ def buscar_ofertas_produtos(pagina: int, limite: int = 50) -> dict:
     )
     dados = executar_graphql(query)
     return dados["productOfferV2"]
+
+
+def listar_ids_de_ofertas(pagina: int, limite: int = 50, *, ordem: int | None = None, palavra: str = "",
+                          categoria: int | None = None, loja: int | None = None) -> dict:
+    """Uma página da productOfferV2 só com os itemId - para medir quantos produtos cada
+    busca traz (ver ofertas/management/commands/explorar_limite_catalogo.py). Sem palavra-
+    chave, categoria ou loja, é o mesmo feed geral (listType ALL) da sincronização."""
+    argumentos = [f"page:{int(pagina)}", f"limit:{int(limite)}"]
+    if palavra:
+        argumentos.append(f"keyword:{json.dumps(palavra, ensure_ascii=False)}")
+    elif categoria:
+        argumentos.append(f"productCatId:{int(categoria)}")
+    elif loja:
+        argumentos.append(f"shopId:{int(loja)}")
+    else:
+        argumentos.append("listType:0")
+    if ordem:
+        argumentos.append(f"sortType:{int(ordem)}")
+    query = f"query{{productOfferV2({','.join(argumentos)}){{nodes{{itemId}}pageInfo{{page limit hasNextPage}}}}}}"
+    return executar_graphql(query)["productOfferV2"]
 
 
 def buscar_oferta_por_item_id(item_id: int) -> dict | None:
@@ -131,7 +159,7 @@ def buscar_oferta_por_item_id(item_id: int) -> dict | None:
         f"listType:0,itemId:{item_id},page:1,limit:1"
         "){"
         "nodes{"
-        "itemId commissionRate sales priceMax priceMin productCatIds ratingStar "
+        "itemId commissionRate sellerCommissionRate sales priceMax priceMin productCatIds ratingStar "
         "priceDiscountRate imageUrl productName shopName productLink offerLink"
         "}"
         "}"

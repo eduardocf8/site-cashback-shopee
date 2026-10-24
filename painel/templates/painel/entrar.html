@@ -1,0 +1,14 @@
+{% extends "painel/base_simples.html" %}
+{% block titulo %}Entrar{% endblock %}
+{% block conteudo %}
+<section class="card">
+  <h1>Entrar no painel</h1>
+  <p class="suave">Seus resultados, metas e automações de afiliado Shopee num lugar só. Use o e-mail da sua assinatura.</p>
+  <form method="post" class="formulario" style="margin-top:20px">
+    {% csrf_token %}
+    {% include "painel/_campos.html" %}
+    <button type="submit" class="botao botao-principal">Entrar</button>
+  </form>
+</section>
+<p class="links-abaixo"><a href="{% url 'painel_esqueci_senha' %}">Criar ou recuperar senha</a></p>
+{% endblock %}

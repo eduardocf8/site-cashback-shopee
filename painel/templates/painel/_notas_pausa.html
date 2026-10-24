@@ -1,0 +1,6 @@
+{% if empresa.emissao_pausada %}
+  <div class="aviso aviso-error notas-pausa" role="alert">
+    <p><strong>Emissão pausada.</strong> {{ empresa.emissao_pausada }} As notas que faltam continuam na fila e voltam a sair quando você enviar o certificado de novo ou retomar.</p>
+    <form method="post" action="{% url 'painel_notas' %}">{% csrf_token %}<input type="hidden" name="acao" value="retomar"><input type="hidden" name="voltar" value="{{ voltar|default:'' }}"><button type="submit" class="botao botao-claro botao-pequeno">Retomar</button></form>
+  </div>
+{% endif %}

@@ -1,0 +1,7 @@
+{% load painel_extras %}
+<div class="kpis">
+  <div class="card kpi"><span class="kpi-titulo">Faturamento</span><strong class="kpi-valor">{{ valores.faturamento|brl }}</strong><span class="kpi-detalhe">{{ legenda }}</span></div>
+  <div class="card kpi"><span class="kpi-titulo">Comissão estimada</span><strong class="kpi-valor">{{ valores.comissao_estimada|brl }}</strong><span class="kpi-detalhe">pela data da compra</span></div>
+  <div class="card kpi"><span class="kpi-titulo">Comissão validada</span><strong class="kpi-valor">{{ valores.comissao_validada|brl }}</strong><span class="kpi-detalhe">pela data em que validou</span></div>
+  <div class="card kpi"><span class="kpi-titulo">Pedidos</span><strong class="kpi-valor">{{ valores.pedidos|numero }}</strong><span class="kpi-detalhe">sem os cancelados</span></div>
+</div>

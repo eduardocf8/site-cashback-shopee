@@ -109,3 +109,19 @@ dinheiro sai.
 
 O fechamento usa o fundo `06-halo`, o único da família em que o miolo não fica vazio -
 ele existe para emoldurar, que é o que uma assinatura pede.
+
+## Appfiliado: vídeo das funcionalidades
+
+Em `src/appfiliado/`: gancho, uma cena por ferramenta (Bot, Radar, Conversor, Carrosséis, Meu site,
+Resultados e metas, Emissor NFS-e) e o fechamento, com as telas do painel recriadas em React e o uso
+simulado (cursor, digitação, ofertas chegando no grupo, números contando). Texto na tela e sem voz, pra
+os creators gravarem por cima. O mesmo vídeo sai em três formatos:
+
+```bash
+npm run render:appfiliado-vertical    # 9:16 (Reels, TikTok, stories) -> saida/appfiliado-vertical.mp4
+npm run render:appfiliado-retrato     # 4:5 (feed e anúncios)         -> saida/appfiliado-retrato.mp4
+npm run render:appfiliado-horizontal  # 16:9 (YouTube, site)          -> saida/appfiliado-horizontal.mp4
+```
+
+Textos e duração de cada cena ficam em `FERRAMENTAS` (`src/appfiliado/Video.tsx`); as demonstrações, em
+`src/appfiliado/cenas.tsx`. As fotos de produto são as mesmas dos prints do site (`public/appfiliado/produtos/`).

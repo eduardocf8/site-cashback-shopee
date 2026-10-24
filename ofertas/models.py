@@ -86,6 +86,11 @@ class Oferta(_CashbackEstimadoMixin, models.Model):
     percentual_comissao = models.DecimalField(
         max_digits=5, decimal_places=4, default=0, help_text="Ex: 0.0500 representa 5%."
     )
+    percentual_comissao_extra = models.DecimalField(
+        max_digits=5, decimal_places=4, default=0,
+        help_text="A parte da comissão que o vendedor paga a mais (sellerCommissionRate). Ex: 0.0400 = 4%. "
+        "Já está dentro de percentual_comissao; guardada à parte só para o Radar do Appfiliado destacar.",
+    )
     avaliacao = models.DecimalField(max_digits=3, decimal_places=2, null=True, blank=True)
     vendas = models.PositiveIntegerField(default=0)
     categoria_id = models.PositiveIntegerField("ID da categoria (nível 1)", db_index=True)
@@ -95,9 +100,15 @@ class Oferta(_CashbackEstimadoMixin, models.Model):
         "Link original do produto", help_text="Convertido em link de afiliado só na hora do clique."
     )
     criado_em = models.DateTimeField(auto_now_add=True)
+    visto_em = models.DateTimeField(
+        "visto na Shopee em", null=True, blank=True, db_index=True,
+        help_text="Última vez que o produto veio numa busca da sincronização (ofertas/catalogo.py). "
+        "Quem fica dias sem aparecer (sem estoque ou sem comissão) sai do site.",
+    )
 
     class Meta:
         ordering = ["-vendas"]
+        indexes = [models.Index(fields=["-vendas"], name="oferta_mais_vendidas")]
 
     def __str__(self):
         return f"{self.nome} (R$ {self.preco_min}–{self.preco_max})"
@@ -248,3 +259,50 @@ class OfertaDestaqueManual(_OfertaCuradaBase):
     @property
     def url_ir(self) -> str:
         return reverse("ofertas_destaque_manual_ir", args=[self.id])
+
+
+class SincronizacaoCatalogo(models.Model):
+    """Estado da rodada de sincronização do catálogo (uma linha só, pk=1). Ver
+    ofertas/catalogo.py: todo dia uma rodada curta (primeiras páginas de cada busca) e,
+    uma vez por semana, a completa."""
+
+    rodada = models.DateField("rodada do dia", null=True, blank=True)
+    completa = models.BooleanField("rodada completa (semanal)", default=False)
+    ultima_completa = models.DateField(null=True, blank=True)
+    iniciada_em = models.DateTimeField(null=True, blank=True)
+    finalizada_em = models.DateTimeField(null=True, blank=True)
+    paginas_lidas = models.PositiveIntegerField(default=0)
+    produtos_vistos = models.PositiveIntegerField(default=0)
+    removidos = models.PositiveIntegerField("removidos no fim da rodada", default=0)
+    ultimo_erro = models.CharField(max_length=500, blank=True)
+
+    class Meta:
+        verbose_name = "sincronização do catálogo"
+        verbose_name_plural = "sincronização do catálogo"
+
+    def __str__(self):
+        situacao = "terminada" if self.finalizada_em else "em andamento"
+        return f"Rodada {self.rodada or '-'} ({'completa' if self.completa else 'diária'}, {situacao})"
+
+
+class BuscaCatalogo(models.Model):
+    """Uma das buscas da sincronização (o feed geral ou uma categoria principal) e até
+    onde ela já foi na rodada de hoje."""
+
+    chave = models.CharField(max_length=40, unique=True)
+    nome = models.CharField(max_length=100)
+    categoria_id = models.PositiveIntegerField(null=True, blank=True)
+    pagina = models.PositiveIntegerField("próxima página", default=1)
+    limite_paginas = models.PositiveIntegerField(default=10)
+    terminada = models.BooleanField(default=True)
+    falhas = models.PositiveSmallIntegerField(default=0)
+    produtos = models.PositiveIntegerField("produtos nesta rodada", default=0)
+    ultimo_erro = models.CharField(max_length=300, blank=True)
+
+    class Meta:
+        ordering = ["id"]
+        verbose_name = "busca do catálogo"
+        verbose_name_plural = "buscas do catálogo"
+
+    def __str__(self):
+        return self.nome

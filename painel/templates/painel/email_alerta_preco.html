@@ -1,0 +1,38 @@
+{% load painel_extras %}<!doctype html>
+<html lang="pt-BR"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="color-scheme" content="light only"><meta name="supported-color-schemes" content="light only">
+<title>Alerta de preço</title>
+<style>:root { color-scheme: light only; supported-color-schemes: light only; }</style></head>
+<body style="margin:0;padding:0;background:#F6F3EA;font-family:Arial,Helvetica,sans-serif;color:#1C2B23;">
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="width:100%;background:#F6F3EA;padding:24px 12px;">
+<tr><td align="center">
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="width:100%;max-width:600px;">
+  <tr><td style="background:#1F3A2E;border-radius:14px 14px 0 0;padding:20px 24px;">
+    <table role="presentation" cellpadding="0" cellspacing="0"><tr>
+      <td width="36" height="36" valign="middle" style="width:36px;height:36px;"><img src="{{ url_logo }}" width="36" height="36" alt="Appfiliado" style="display:block;width:36px;height:36px;border:0;outline:none;"></td>
+      <td style="padding-left:10px;color:#F6F3EA;"><div style="font-size:17px;font-weight:bold;">Appfiliado</div><div style="font-size:12px;color:#B9C7BE;">Para afiliados Shopee</div></td>
+    </tr></table>
+  </td></tr>
+  <tr><td style="background:#FFFFFF;padding:24px;border:1px solid #E5DFCD;border-top:none;">
+    <h1 style="margin:0 0 4px;font-size:20px;">📉 {% if alertas|length == 1 %}Um produto baixou de preço{% else %}{{ alertas|length }} produtos baixaram de preço{% endif %}</h1>
+    <p style="margin:0 0 18px;color:#5C6A61;font-size:14px;">Dos produtos que você acompanha no alerta de preço.</p>
+    <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="width:100%;border-collapse:collapse;font-size:14px;">
+      {% for a in alertas %}<tr>
+        <td width="72" valign="top" style="width:72px;padding:12px 12px 12px 0;border-top:1px solid #EDE8D9;">{% if a.imagem %}<img src="{{ a.imagem }}" width="64" height="64" alt="" style="display:block;width:64px;height:64px;border-radius:8px;border:0;object-fit:cover;">{% endif %}</td>
+        <td valign="top" style="padding:12px 0;border-top:1px solid #EDE8D9;line-height:1.4;">
+          <div>{{ a.nome|truncatechars:90 }}</div>
+          <div style="margin-top:4px;"><span style="color:#5C6A61;text-decoration:line-through;">{{ a.preco_antes|brl|sem_quebra }}</span>&nbsp; <strong style="font-size:16px;">{{ a.preco_agora|brl|sem_quebra }}</strong>&nbsp; <span style="display:inline-block;padding:1px 8px;border-radius:999px;background:#E3F1E7;color:#1F6B3E;font-weight:bold;font-size:12px;">−{{ a.queda|floatformat:"-1" }}%</span></div>
+          {% if a.link_afiliado %}<div style="margin-top:6px;"><a href="{{ a.link_afiliado }}" style="color:#1F3A2E;font-weight:bold;">Ver na Shopee com o seu link</a></div>{% endif %}
+        </td>
+      </tr>{% endfor %}
+    </table>
+    <p style="margin:24px 0 0;"><a href="{{ url_alertas }}" style="display:inline-block;background:#F2C230;color:#1C2B23;text-decoration:none;font-weight:bold;padding:12px 20px;border-radius:10px;">Ver no painel</a></p>
+    <p style="margin:18px 0 0;font-size:12px;color:#5C6A61;">Os links deste e-mail já são o seu link de afiliado com o Sub ID “alerta”.</p>
+  </td></tr>
+  <tr><td style="padding:16px 8px;font-size:12px;color:#5C6A61;text-align:center;">
+    Você recebe este e-mail porque ligou o alerta de preço no Appfiliado. Para desligar, desmarque “Avisar por e-mail” no <a href="{{ url_alertas }}" style="color:#1F3A2E;">alerta de preço</a>.<br>
+    Appfiliado: ferramentas feitas só para afiliados da Shopee. Somos independentes, sem vínculo oficial com a Shopee.
+  </td></tr>
+</table>
+</td></tr></table>
+</body></html>

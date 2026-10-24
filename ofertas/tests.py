@@ -1,6 +1,6 @@
 from datetime import timedelta
 from decimal import Decimal
-from unittest.mock import Mock, patch
+from unittest.mock import MagicMock, Mock, patch
 
 from django.contrib.auth import get_user_model
 from django.test import TestCase, override_settings
@@ -22,7 +22,6 @@ from .services import (
     resolver_item_id_com_rede,
     resolver_item_id_sem_rede,
     selecionar_carrossel_home,
-    sincronizar_ofertas,
 )
 
 CREDENCIAIS_TESTE = {
@@ -242,44 +241,35 @@ class CashbackMaximoAnunciadoTests(TestCase):
 
         self.assertEqual(maximo, Decimal("2.4"))
 
-    @patch("ofertas.services.buscar_ofertas_produtos")
-    def test_sincronizacao_calcula_o_maximo_real_do_catalogo(self, mock_buscar):
-        mock_buscar.return_value = self._pagina(
-            [
-                self._node(1, "0.03", "100.00"),  # 3% de R$100 = R$3
-                self._node(2, "0.08", "100.00"),  # 8% de R$100 = R$8
-            ]
-        )
+    def _sincronizar(self, nodes):
+        from django.utils import timezone
 
-        sincronizar_ofertas()
-        maximo = obter_cashback_maximo_anunciado()
+        from ofertas.catalogo import atualizar_cashback_maximo, guardar_pagina
 
-        self.assertEqual(maximo, Decimal("8.0"))
+        guardar_pagina(nodes, timezone.now())
+        atualizar_cashback_maximo()
 
-    @patch("ofertas.services.buscar_ofertas_produtos")
-    def test_oferta_sem_preco_nao_entra_na_conta_do_maximo(self, mock_buscar):
-        mock_buscar.return_value = self._pagina(
-            [
-                self._node(1, "0.20", "0"),  # sem preço sincronizado - fica de fora
-                self._node(2, "0.08", "50.00"),
-            ]
-        )
+    def test_sincronizacao_calcula_o_maximo_real_do_catalogo(self):
+        self._sincronizar([
+            self._node(1, "0.03", "100.00"),  # 3% de R$100 = R$3
+            self._node(2, "0.08", "100.00"),  # 8% de R$100 = R$8
+        ])
 
-        sincronizar_ofertas()
-        maximo = obter_cashback_maximo_anunciado()
+        self.assertEqual(obter_cashback_maximo_anunciado(), Decimal("8.0"))
 
-        self.assertEqual(maximo, Decimal("8.0"))
+    def test_oferta_sem_preco_nao_entra_na_conta_do_maximo(self):
+        self._sincronizar([
+            self._node(1, "0.20", "0"),  # sem preço sincronizado - fica de fora
+            self._node(2, "0.08", "50.00"),
+        ])
 
-    @patch("ofertas.services.buscar_ofertas_produtos")
-    def test_resincronizar_atualiza_o_maximo_anterior(self, mock_buscar):
-        mock_buscar.return_value = self._pagina([self._node(1, "0.05", "100.00")])
-        sincronizar_ofertas()
+        self.assertEqual(obter_cashback_maximo_anunciado(), Decimal("8.0"))
 
-        mock_buscar.return_value = self._pagina([self._node(2, "0.09", "100.00")])
-        sincronizar_ofertas()
+    def test_resincronizar_atualiza_o_maximo_anterior(self):
+        self._sincronizar([self._node(1, "0.05", "100.00")])
+        self._sincronizar([self._node(1, "0.09", "100.00")])  # o mesmo produto, comissão nova
 
-        maximo = obter_cashback_maximo_anunciado()
-        self.assertEqual(maximo, Decimal("9.0"))
+        self.assertEqual(obter_cashback_maximo_anunciado(), Decimal("9.0"))
 
 
 class BuscarOfertaPorLinkTests(TestCase):
@@ -364,21 +354,41 @@ class ResolverItemIdComRedeTests(TestCase):
     chamada fora do ciclo de requisição de um usuário (ver
     links/services.py::resolver_item_id_alvo_pendentes, ROADMAP.md Fase 41/42)."""
 
-    @patch("ofertas.services.requests.get")
+    @staticmethod
+    def resposta(texto="", status=200, location=None):
+        """Resposta falsa do requests (com stream e sem seguir redirecionamento sozinho)."""
+        r = MagicMock()
+        r.__enter__.return_value = r
+        r.status_code, r.encoding = status, "utf-8"
+        r.is_redirect = location is not None
+        r.headers = {"Location": location} if location else {}
+        r.iter_content.return_value = [texto.encode()]
+        return r
+
+    @patch("ofertas.services.requests.Session.get")
     def test_resolve_seguindo_o_redirecionamento(self, mock_get):
-        mock_get.return_value = Mock(
-            url="https://shopee.com.br/produto-i.1.999", text="", status_code=200, history=[1],
-        )
+        mock_get.side_effect = [self.resposta(status=302, location="https://shopee.com.br/produto-i.1.999"),
+                                self.resposta("<html></html>")]
 
         self.assertEqual(resolver_item_id_com_rede("https://s.shopee.com.br/abc123"), 999)
+        self.assertFalse(mock_get.call_args.kwargs["allow_redirects"])  # um por um, conferindo cada destino
 
-    @patch("ofertas.services.requests.get")
+    @patch("ofertas.services.requests.Session.get")
     def test_link_nao_identificado_retorna_none_em_vez_de_levantar_erro(self, mock_get):
-        mock_get.return_value = Mock(
-            url="https://s.shopee.com.br/abc123", text="", status_code=200, history=[],
-        )
+        mock_get.return_value = self.resposta("")
 
         self.assertIsNone(resolver_item_id_com_rede("https://s.shopee.com.br/abc123"))
+
+    @patch("ofertas.services.requests.Session.get")
+    def test_nunca_abre_endereco_fora_da_shopee(self, mock_get):
+        for url in ("https://shopee.com.br@169.254.169.254/latest", "http://shopee.com.br@127.0.0.1:8765/x",
+                    "https://shopee.com.br.golpe.com/x", "https://s.shopee.golpe.com/x", "ftp://shopee.com.br/x"):
+            self.assertIsNone(resolver_item_id_com_rede(url), url)
+        mock_get.assert_not_called()
+        # Redirecionamento para fora da Shopee não é seguido.
+        mock_get.return_value = self.resposta(status=302, location="http://127.0.0.1:8000/interno")
+        self.assertIsNone(resolver_item_id_com_rede("https://s.shopee.com.br/abc"))
+        self.assertEqual(mock_get.call_count, 1)
 
     # Trechos reais (encurtados) da página que a Shopee devolve pra um link curto: 200
     # sem redirecionamento HTTP, com o destino embutido no HTML só de forma escapada.
@@ -391,13 +401,13 @@ class ResolverItemIdComRedeTests(TestCase):
         '%2F1356856417%2F22893790071%3Fd_id%3D09b43\\u0026path=shopee%2FTRANSFER_PAGE">'
     )
 
-    @patch("ofertas.services.requests.get")
+    @patch("ofertas.services.requests.Session.get")
     def test_link_curto_com_destino_escapado_no_html(self, mock_get):
         for url, pagina in (
             ("https://s.shopee.com.br/8V9juuKQqX", self.PAGINA_S_SHOPEE),
             ("https://br.shp.ee/SPbtUzbT", self.PAGINA_SHP_EE),
         ):
-            mock_get.return_value = Mock(url=url, text=pagina, status_code=200, history=[])
+            mock_get.return_value = self.resposta(pagina)
 
             self.assertEqual(resolver_item_id_com_rede(url), 22893790071)
 
@@ -784,3 +794,45 @@ class CriarStoryDeOfertaManualAdminTests(TestCase):
         registro = RegistroPublicacao.objects.get(oferta_nome="Produto manual")
         self.assertEqual(registro.status, RegistroPublicacao.STATUS_SIMULADO)
         self.assertEqual(registro.conteudo_tipo, RegistroPublicacao.CONTEUDO_OFERTA_DIARIA)
+
+
+class TestRodizioDeModelosGemini(TestCase):
+    def setUp(self):
+        from ofertas import gemini_client
+        self.gc = gemini_client
+        self.gc._descansa_ate.clear()
+        self.addCleanup(self.gc._descansa_ate.clear)
+
+    def _resposta(self, status, corpo):
+        from unittest import mock
+        r = mock.Mock(status_code=status)
+        r.json.return_value = corpo
+        r.raise_for_status.return_value = None
+        return r
+
+    @override_settings(GEMINI_API_KEY="k", GEMINI_MODELS="a,b")
+    def test_quando_a_cota_do_primeiro_acaba_usa_o_segundo_e_depois_volta(self):
+        from unittest import mock
+        ok = {"candidates": [{"content": {"parts": [{"text": '["curto"]'}]}}]}
+        sem_cota = {"error": {"message": "quota"}}
+        with mock.patch.object(self.gc.requests, "post", side_effect=[self._resposta(429, sem_cota), self._resposta(200, ok)]) as post:
+            self.assertEqual(self.gc.encurtar_nomes(["nome"]), ["curto"])
+        self.assertIn("/models/a:", post.call_args_list[0].args[0])
+        self.assertIn("/models/b:", post.call_args_list[1].args[0])
+        # com o "a" descansando, a próxima chamada já vai direto no "b"
+        with mock.patch.object(self.gc.requests, "post", return_value=self._resposta(200, ok)) as post:
+            self.gc.encurtar_nomes(["nome"])
+        self.assertIn("/models/b:", post.call_args.args[0])
+        # passado o descanso, o "a" volta a ser o primeiro
+        self.gc._descansa_ate["a"] = 0
+        with mock.patch.object(self.gc.requests, "post", return_value=self._resposta(200, ok)) as post:
+            self.gc.encurtar_nomes(["nome"])
+        self.assertIn("/models/a:", post.call_args.args[0])
+
+    @override_settings(GEMINI_API_KEY="k", GEMINI_MODELS="a,b")
+    def test_sem_cota_em_todos_levanta_erro(self):
+        from unittest import mock
+        sem_cota = self._resposta(429, {"error": {"message": "quota"}})
+        with mock.patch.object(self.gc.requests, "post", return_value=sem_cota):
+            with self.assertRaises(self.gc.GeminiAPIError):
+                self.gc.encurtar_nomes(["nome"])

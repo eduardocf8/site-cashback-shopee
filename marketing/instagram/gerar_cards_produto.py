@@ -419,7 +419,7 @@ def gerar(produtos=None):
                    nome_arquivo=f"carrossel-tira-{nome}-1x.png", escala=1)
 
     print("\nQuadros-chave da rolagem — Posição X da camada da tira, em pixels do quadro")
-    print("(projeto de 1080 de largura; o passo de um card para o outro é sempre 780):")
+    print("(projeto de 1080 de largura; o passo de um card pro outro é sempre 780):")
     nomes = [p["nome"] for p in produtos] + ["cash-b (fim)"]
     for x, nome in zip(quadros, nomes):
         print(f"  {x:>7} px  ->  {nome}")

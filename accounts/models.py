@@ -295,6 +295,10 @@ class EventoFunil(models.Model):
         max_length=20, blank=True, help_text="Onde esbarrou no cadastro: conversor, ir_shopee, oferta, story.",
     )
     metodo = models.CharField(max_length=12, blank=True, help_text="Cadastro: formulario ou google.")
+    user_agent = models.CharField(
+        max_length=255, blank=True,
+        help_text="Navegador de quem fez a etapa - pra conferir se algum robô passou pelo filtro.",
+    )
     criado_em = models.DateTimeField(auto_now_add=True, db_index=True)
 
     class Meta:

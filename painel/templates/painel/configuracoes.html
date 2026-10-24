@@ -1,0 +1,106 @@
+{% extends "painel/base.html" %}
+{% block titulo %}Configurações{% endblock %}
+{% block conteudo %}
+<header class="cabecalho"><div><h1>Configurações</h1><p>Sua conta da Shopee, relatório por e-mail, agrupamentos de Sub IDs e sua senha.</p></div></header>
+
+<div class="duas-colunas">
+  <section class="card" aria-labelledby="titulo-shopee">
+    <h2 id="titulo-shopee">Conta de afiliado da Shopee</h2>
+    <p class="status-shopee" style="margin-bottom:8px">
+      <span class="ponto {% if conta.shopee_validado_em %}ok{% endif %}" aria-hidden="true"></span>
+      {% if conta.shopee_validado_em %}Conectada em {{ conta.shopee_validado_em|date:"d/m/Y H:i" }}{% else %}Não conectada{% endif %}
+    </p>
+    <p class="suave pequeno" style="margin-bottom:16px">O AppID e o Secret ficam no portal de afiliados da Shopee, em Open API, e só existem depois que a Shopee libera a API pra você. O Secret é guardado criptografado e nunca aparece de novo na tela.</p>
+    <details class="guia-api"{% if not conta.shopee_validado_em %} open{% endif %}>
+      <summary>Ainda não tem o AppID e o Secret? Veja como liberar a API da Shopee</summary>
+      <p class="suave pequeno" style="margin:10px 0">{{ api.RESUMO }}</p>
+      <ol class="guia-api-passos">{% for t, d in api.PASSOS %}<li><strong>{{ t }}.</strong> {{ d }}</li>{% endfor %}</ol>
+      <ul class="guia-api-campos">{% for c, v in api.CAMPOS_FORMULARIO %}<li>{{ c }} <b>{{ v }}</b></li>{% endfor %}</ul>
+      <p class="guia-api-links"><a class="botao botao-escuro" href="{{ api.URL_FORMULARIO }}" target="_blank" rel="noopener">Abrir o formulário da Shopee</a>
+        <a href="{{ api.URL_OPEN_API }}" target="_blank" rel="noopener">Página Open API do afiliado</a></p>
+    </details>
+    <form method="post" class="formulario">
+      {% csrf_token %}
+      <input type="hidden" name="formulario" value="shopee">
+      {% include "painel/_campos.html" with form=form_shopee %}
+      <div><button type="submit" class="botao botao-principal">Salvar e testar</button></div>
+    </form>
+  </section>
+
+  <section class="card" aria-labelledby="titulo-senha">
+    <h2 id="titulo-senha">Trocar senha</h2>
+    <form method="post" class="formulario">
+      {% csrf_token %}
+      <input type="hidden" name="formulario" value="senha">
+      {% include "painel/_campos.html" with form=form_senha %}
+      <div><button type="submit" class="botao botao-escuro">Trocar senha</button></div>
+    </form>
+  </section>
+</div>
+
+<section class="card" id="relatorio" aria-labelledby="titulo-relatorio" style="margin-top:16px">
+  <h2 id="titulo-relatorio">Relatório diário por e-mail</h2>
+  <p class="suave pequeno" style="margin-bottom:14px">Todo dia, no horário que você escolher: comissão, faturamento e pedidos de ontem e do mês, Sub IDs, produtos mais vendidos{% if "whatsapp" in modulos_liberados %} e as ofertas que o bot enviou{% endif %}. Vai para <strong>{{ conta.email }}</strong>.</p>
+  <form method="post" class="formulario">
+    {% csrf_token %}
+    <input type="hidden" name="formulario" value="relatorio">
+    <label class="marcar">{{ form_relatorio.ativo }}<span><strong>Receber o relatório diário por e-mail</strong></span></label>
+    <div class="campo">{% include "painel/_campo.html" with campo=form_relatorio.hora %}</div>
+    <div class="campo">{% include "painel/_campo.html" with campo=form_relatorio.emails_extras %}</div>
+    {% if preferencia_relatorio.ultimo_erro %}<p class="aviso aviso-warning pequeno">O último envio falhou. Você pode tentar de novo agora com "Enviar e-mail agora".</p>
+    {% elif preferencia_relatorio.ultimo_envio_dia and preferencia_relatorio.ativo %}<p class="suave pequeno">Último enviado em {{ preferencia_relatorio.ultimo_envio_dia|date:"d/m" }}.</p>{% endif %}
+    <div class="botoes-linha">
+      <button type="submit" class="botao botao-principal">Salvar</button>
+      <button type="submit" name="acao" value="testar" class="botao botao-claro"{% if not conta.shopee_validado_em %} disabled title="Conecte sua conta da Shopee primeiro"{% endif %}>Enviar e-mail agora</button>
+    </div>
+  </form>
+</section>
+
+<section class="card" id="sub-ids" aria-labelledby="titulo-sub-ids" style="margin-top:16px">
+  <h2 id="titulo-sub-ids">Agrupar Sub IDs</h2>
+  <p class="suave pequeno" style="margin-bottom:16px">Junte vários Sub IDs num nome só nos seus resultados. Ex: todo Sub ID que <strong>começa com</strong> "grupo" aparece como "Grupos de WhatsApp". Sem diferença entre maiúsculas e minúsculas. Se um Sub ID se encaixar em mais de um agrupamento, vale o primeiro da lista. Para dar um nome às vendas que vieram sem Sub ID, escolha <strong>está vazio</strong>.</p>
+
+  {% if regras %}
+    <ol class="regras">
+      {% for item in regras %}
+        <li>
+          <div class="regra-texto">
+            {% if item.regra.operador == "sem" %}
+              <span>Vendas <strong>sem Sub ID</strong>: mostrar como <strong>{{ item.regra.nome }}</strong></span>
+              <span class="suave pequeno">{% if item.quantidade %}Teve venda sem Sub ID nos últimos 90 dias{% else %}Nenhuma venda sem Sub ID nos últimos 90 dias{% endif %}</span>
+            {% else %}
+              <span>Se o Sub ID <strong>{{ item.regra.get_operador_display }}</strong> “{{ item.regra.texto }}”, mostrar como <strong>{{ item.regra.nome }}</strong></span>
+              <span class="suave pequeno">{% if item.quantidade %}Junta {{ item.quantidade }} Sub ID{{ item.quantidade|pluralize }} dos últimos 90 dias (ex: {{ item.exemplos|join:", " }}){% else %}Nenhum Sub ID dos últimos 90 dias entra aqui{% endif %}</span>
+            {% endif %}
+          </div>
+          <form method="post">
+            {% csrf_token %}
+            <input type="hidden" name="formulario" value="apagar_regra_sub_id">
+            <input type="hidden" name="regra" value="{{ item.regra.pk }}">
+            <button type="submit" class="botao botao-claro botao-pequeno">Apagar</button>
+          </form>
+        </li>
+      {% endfor %}
+    </ol>
+  {% endif %}
+
+  <form method="post" class="formulario form-regra">
+    {% csrf_token %}
+    <input type="hidden" name="formulario" value="regra_sub_id">
+    {% include "painel/_campos.html" with form=form_regra %}
+    <div><button type="submit" class="botao botao-escuro">{% include "painel/_icone.html" with caminho=icones.mais %}Adicionar agrupamento</button></div>
+  </form>
+  <script>
+    // "está vazio" (vendas sem Sub ID) não usa o campo de texto.
+    (function () {
+      var operador = document.querySelector('.form-regra [name="operador"]');
+      var texto = document.querySelector('.form-regra [name="texto"]');
+      if (!operador || !texto) return;
+      var campo = texto.closest('.campo') || texto.parentElement;
+      function aplicar() { var vazio = operador.value === 'sem'; campo.style.visibility = vazio ? 'hidden' : ''; if (vazio) texto.value = ''; }
+      operador.addEventListener('change', aplicar);
+      aplicar();
+    })();
+  </script>
+</section>
+{% endblock %}

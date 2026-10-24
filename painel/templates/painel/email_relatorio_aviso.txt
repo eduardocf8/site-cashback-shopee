@@ -1,0 +1,15 @@
+{% autoescape off %}{% if motivo == "nao_saiu" %}Seus números de ontem ainda não saíram
+
+Às {{ hora|time:"H:i" }} fomos buscar na Shopee os seus resultados de ontem ({{ ontem|date:"d/m" }}), mas eles ainda não apareceram por lá. A Shopee costuma liberar os números do dia anterior entre 7h e 8h, às vezes mais tarde.
+{% if automatico %}
+Vamos continuar conferindo a cada 30 minutos e mandamos o relatório assim que os números saírem. Se não saírem até as {{ hora_de_desistir }}h (ou se ontem não teve nenhuma venda), o relatório de hoje não vai.
+{% else %}
+Tente de novo daqui a pouco pelo botão "Enviar e-mail agora".
+{% endif %}{% else %}Não consegui buscar seus resultados
+
+Às {{ hora|time:"H:i" }} a Shopee não respondeu quando fomos buscar os seus resultados de ontem ({{ ontem|date:"d/m" }}). Tente de novo daqui a alguns minutos pelo botão "Enviar e-mail agora".
+{% endif %}
+Abrir o painel: {{ url_resultados }}
+
+Para desligar este e-mail: {{ url_configuracoes }}
+{% endautoescape %}

@@ -1,0 +1,198 @@
+{% extends "painel/base.html" %}
+{% load static %}
+{% block titulo %}Meu site{% endblock %}
+{% block conteudo %}
+<header class="cabecalho">
+  <div><h1>Meu site</h1><p>Seu link na bio: perfil, botões, conversor de links e vitrine de ofertas.</p></div>
+  {% if url_publica %}<div class="botoes-linha"><a class="botao botao-claro botao-pequeno" href="{{ url_publica }}" target="_blank" rel="noopener">Ver meu site ↗</a><button type="button" class="botao botao-escuro botao-pequeno" data-copiar="{{ url_publica }}">Copiar link</button></div>{% endif %}
+</header>
+
+<div class="duas-colunas site-editor">
+  <form method="post" id="form-site" class="form-ofertas" novalidate>
+    {% csrf_token %}
+    <input type="hidden" name="acao" value="salvar">
+
+    <section class="card" aria-labelledby="titulo-endereco">
+      <div class="card-topo"><h2 id="titulo-endereco">Endereço</h2>
+        <label class="marcar pequeno">{{ form.publicado }}<span>Site no ar</span></label></div>
+      <div class="endereco-site">
+        {% if not dominio_sites %}<span class="suave">{{ prefixo_sem_dominio }}</span>{% endif %}{{ form.endereco }}{% if dominio_sites %}<span class="suave">.{{ dominio_sites }}</span>{% endif %}
+      </div>
+      <span class="ajuda suave pequeno">{{ form.endereco.help_text }}</span>
+      {% for e in form.endereco.errors %}<span class="erro">{{ e }}</span>{% endfor %}
+      {% if url_publica %}<p class="pequeno" style="margin-top:8px">Seu link: <a href="{{ url_publica }}" target="_blank" rel="noopener"><strong>{{ url_publica }}</strong></a></p>{% endif %}
+    </section>
+
+    <section class="card" aria-labelledby="titulo-perfil">
+      <h2 id="titulo-perfil">Perfil</h2>
+      <div class="foto-editor">
+        <div class="foto-site" style="background:{{ site.cor }}">{% if site.foto %}<img src="/s/{{ site.endereco }}/foto.jpg?previa=1&v={{ site.foto_versao }}" alt="">{% else %}{{ site.nome|default:site.endereco|slice:":1"|upper }}{% endif %}</div>
+        <div class="botoes-linha">
+          <label class="botao botao-claro botao-pequeno" for="campo-foto">Trocar foto</label>
+          <input type="file" id="campo-foto" name="foto" accept="image/*" form="form-foto" hidden>
+          {% if site.foto %}<button type="submit" form="form-foto" name="acao" value="remover_foto" class="link-botao pequeno">Tirar a foto</button>{% endif %}
+        </div>
+      </div>
+      <div class="campo">{% include "painel/_campo.html" with campo=form.nome %}</div>
+      <div class="campo" style="margin-top:12px">{% include "painel/_campo.html" with campo=form.frase %}</div>
+      <fieldset class="campo" style="margin-top:12px">
+        <legend>{{ form.layout.label }}</legend>
+        <div class="opcoes-chip" id="layout-site">{% for opcao in form.layout %}<label class="chip-opcao">{{ opcao.tag }}<span>{{ opcao.choice_label }}</span></label>{% endfor %}</div>
+      </fieldset>
+      <fieldset class="campo" style="margin-top:14px">
+        <legend>{{ form.cor.label }}</legend>
+        <div class="cores-site">{% for opcao in form.cor %}{% if opcao.data.value == "outra" %}<label class="cor-site cor-outra" title="Outra cor">{{ opcao.tag }}<span style="background:{{ form.cor_outra.value|default:'#E8541E' }}"></span></label><input type="color" name="cor_outra" id="seletor-cor" value="{{ form.cor_outra.value|default:'#E8541E' }}" aria-label="Escolher outra cor">{% else %}<label class="cor-site" title="{{ opcao.choice_label }}">{{ opcao.tag }}<span style="background:{{ opcao.data.value }}"></span></label>{% endif %}{% endfor %}</div>
+        <p class="suave pequeno" style="margin:8px 0 0">O último círculo abre o seletor para escolher qualquer cor.</p>
+        {% for e in form.cor.errors %}<span class="erro">{{ e }}</span>{% endfor %}
+      </fieldset>
+      <fieldset class="campo" style="margin-top:22px">
+        <legend>Redes sociais <span class="suave" style="font-weight:400">(ícones embaixo dos botões, opcional)</span></legend>
+        <div class="grade-campos" style="margin-top:4px">
+          {% for campo in form.campos_das_redes %}<div class="campo">{% include "painel/_campo.html" with campo=campo %}</div>{% endfor %}
+        </div>
+      </fieldset>
+    </section>
+
+    <section class="card" id="botoes" aria-labelledby="titulo-botoes">
+      <div class="card-topo"><h2 id="titulo-botoes">Botões</h2><span class="suave pequeno">{{ botoes|length }} de {{ maximo_botoes }}</span></div>
+      {% if botoes|length > maximo_botoes %}<p class="aviso aviso-warning pequeno">Seu plano mostra até {{ maximo_botoes }} botões no site: os de baixo ficam escondidos. Apague alguns ou passe pro <a href="{{ url_planos }}" target="_blank" rel="noopener">plano Premium</a>.</p>{% endif %}
+      {% if botoes %}
+        <ul class="lista-botoes">
+          {% for b in botoes %}
+            <li>
+              <div class="botao-linha">
+                <div class="botao-info"><strong>{{ b.texto }}</strong>{% if b.destaque %} <span class="selo-ia">destaque</span>{% endif %}<br><span class="suave pequeno">{{ b.url|truncatechars:48 }} · {{ b.cliques_30 }} clique{{ b.cliques_30|pluralize }} em 30 dias</span></div>
+                <div class="botao-acoes">
+                  <button type="submit" form="botao-{{ b.pk }}" name="acao" value="botao_subir" class="icone-botao" title="Subir" aria-label="Subir este botão" {% if forloop.first %}disabled{% endif %}><svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true"><path d="M6 15l6-6 6 6" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
+                  <button type="submit" form="botao-{{ b.pk }}" name="acao" value="botao_descer" class="icone-botao" title="Descer" aria-label="Descer este botão" {% if forloop.last %}disabled{% endif %}><svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true"><path d="M6 9l6 6 6-6" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
+                </div>
+              </div>
+              <details class="editar-botao"><summary class="pequeno">Editar</summary><div class="corpo-botao">
+                <div class="campo"><label>Texto do botão</label><input name="texto" value="{{ b.texto }}" maxlength="80" form="botao-{{ b.pk }}" data-botao-texto="{{ b.pk }}" data-emoji></div>
+                <div class="campo"><label>Link</label><input name="url" value="{{ b.url }}" maxlength="500" form="botao-{{ b.pk }}"></div>
+                <label class="marcar pequeno"><input type="checkbox" name="destaque" form="botao-{{ b.pk }}" data-botao-destaque="{{ b.pk }}" {% if b.destaque %}checked{% endif %}><span>Em destaque (na cor do site)</span></label>
+                <div class="botoes-linha"><button type="submit" form="botao-{{ b.pk }}" name="acao" value="botao_editar" class="botao botao-escuro botao-pequeno">Salvar botão</button>
+                  <button type="submit" form="botao-{{ b.pk }}" name="acao" value="botao_apagar" class="link-botao pequeno perigo">Apagar</button></div>
+              </div></details>
+            </li>
+          {% endfor %}
+        </ul>
+      {% else %}
+        <p class="suave pequeno">Coloque aqui o link do seu grupo de ofertas, canal, Instagram, cupons...</p>
+      {% endif %}
+      {% if botoes|length >= maximo_botoes and not regras.premium %}
+        <p class="suave pequeno">No seu plano são até {{ maximo_botoes }} botões. No <a href="{{ url_planos }}" target="_blank" rel="noopener">plano Premium</a> são até 10.</p>
+      {% endif %}
+      {% if botoes|length < maximo_botoes %}
+        <details class="novo-botao"{% if not botoes %} open{% endif %}><summary class="botao botao-claro botao-pequeno">+ Adicionar botão</summary><div class="corpo-botao">
+          <div class="campo"><label for="novo-texto">Texto do botão</label><input id="novo-texto" name="texto" maxlength="80" placeholder="💬 Entrar no grupo de ofertas" form="botao-novo" data-botao-texto="novo" data-emoji></div>
+          <div class="campo"><label for="novo-url">Link</label><input id="novo-url" name="url" maxlength="500" placeholder="https://chat.whatsapp.com/..." form="botao-novo"></div>
+          <label class="marcar pequeno"><input type="checkbox" name="destaque" form="botao-novo" data-botao-destaque="novo"><span>Em destaque (na cor do site)</span></label>
+          <div><button type="submit" form="botao-novo" name="acao" value="botao_novo" class="botao botao-escuro botao-pequeno">Adicionar</button></div>
+        </div></details>
+      {% endif %}
+    </section>
+
+    <section class="card" aria-labelledby="titulo-conversor">
+      <h2 id="titulo-conversor">Conversor de links</h2>
+      <label class="marcar">{{ form.mostrar_conversor }}<span><strong>{{ form.mostrar_conversor.label }}</strong><span class="ajuda">Quem visita cola um link da Shopee e já vai pra Shopee pelo seu link de afiliado.</span></span></label>
+      <div class="campo" style="margin-top:12px">{% include "painel/_campo.html" with campo=form.conversor_titulo %}</div>
+      <div class="campo" style="margin-top:12px">{% include "painel/_campo.html" with campo=form.conversor_texto %}</div>
+      <div class="campo" style="margin-top:12px">{% include "painel/_campo.html" with campo=form.conversor_botao %}</div>
+      <div class="campo" style="margin-top:12px">{% include "painel/_campo.html" with campo=form.sub_id %}</div>
+    </section>
+
+    <section class="card" aria-labelledby="titulo-vitrine">
+      <h2 id="titulo-vitrine">Vitrine de ofertas</h2>
+      <fieldset class="campo" id="fonte-vitrine">
+        <legend>{{ form.vitrine.label }}</legend>
+        {% for opcao in form.vitrine %}{% if opcao.data.value == "manual" and not regras.produtos_escolhidos %}<label class="marcar opcao-premium"><input type="radio" name="{{ opcao.data.name }}" value="manual"{% if opcao.data.selected %} checked{% else %} disabled{% endif %}><span>{{ opcao.choice_label }} <small class="selo-premium">Premium</small></span></label>{% else %}<label class="marcar">{{ opcao.tag }}<span>{{ opcao.choice_label }}</span></label>{% endif %}{% endfor %}
+        {% for e in form.vitrine.errors %}<span class="erro">{{ e }}</span>{% endfor %}
+        {% if not regras.produtos_escolhidos %}<span class="ajuda">Escolher os produtos um a um é do <a href="{{ url_planos }}" target="_blank" rel="noopener">plano Premium</a>.</span>{% endif %}
+      </fieldset>
+      <fieldset class="campo" id="formato-vitrine" style="margin:12px 0 20px" data-sem-vitrine-esconde>
+        <legend>{{ form.vitrine_formato.label }}</legend>
+        <div class="opcoes-chip">{% for opcao in form.vitrine_formato %}<label class="chip-opcao">{{ opcao.tag }}<span>{{ opcao.choice_label }}</span></label>{% endfor %}</div>
+      </fieldset>
+      <p class="suave pequeno" data-vitrine="bot">Cada oferta que o bot envia entra no topo da vitrine (o mesmo produto não repete). Ficam as 100 mais recentes; as mais antigas saem.</p>
+      <div data-vitrine="busca" class="bloco-modo">
+        <fieldset class="campo"><legend>{{ form.busca_tipo.label }}</legend>
+          <div class="opcoes-chip" id="tipo-busca">{% for opcao in form.busca_tipo %}<label class="chip-opcao">{{ opcao.tag }}<span>{{ opcao.choice_label }}</span></label>{% endfor %}</div></fieldset>
+        <div class="campo" data-tipo="palavra_chave">{% include "painel/_campo.html" with campo=form.palavra_chave %}</div>
+        <div class="campo" data-tipo="loja">{% include "painel/_campo.html" with campo=form.loja %}</div>
+        <fieldset class="campo" data-tipo="categoria"><legend>{{ form.categorias.label }}</legend>
+          <div class="opcoes-chip">{% for opcao in form.categorias %}<label class="chip-opcao">{{ opcao.tag }}<span>{{ opcao.choice_label }}</span></label>{% endfor %}</div>
+          {% for e in form.categorias.errors %}<span class="erro">{{ e }}</span>{% endfor %}</fieldset>
+        <div class="campo">{% include "painel/_campo.html" with campo=form.ordenacao %}</div>
+        <p class="suave pequeno">A busca é refeita sozinha a cada 3 horas (até 100 produtos).</p>
+      </div>
+      <div data-vitrine="manual" class="bloco-modo">
+        <div class="campo">{% include "painel/_campo.html" with campo=form.links_manuais %}</div>
+      </div>
+      <div class="campo" style="margin-top:12px" data-sem-vitrine-esconde>{% include "painel/_campo.html" with campo=form.sub_id_vitrine %}</div>
+      <p class="pequeno" style="margin-top:10px" data-vitrine-status>
+        {% if site.vitrine == "nenhuma" %}{% elif site.vitrine_pedida %}<span class="suave">Montando a vitrine com a Shopee…</span>
+        {% else %}<strong>{{ total_produtos }}</strong> produto{{ total_produtos|pluralize }} na vitrine agora{% if site.vitrine_atualizada_em and site.vitrine != "bot" %} · atualizada em {{ site.vitrine_atualizada_em|date:"d/m H:i" }}{% endif %}.{% endif %}
+      </p>
+      {% if site.vitrine_erro %}<p class="aviso aviso-warning pequeno">{{ site.vitrine_erro }}</p>{% endif %}
+      {% if produtos_vitrine and site.vitrine != "nenhuma" %}
+        <details class="produtos-vitrine" data-sem-vitrine-esconde>
+          <summary class="pequeno"><strong>Ver os produtos e corrigir as categorias</strong> ({{ produtos_vitrine|length }})</summary>
+          <p class="suave pequeno">A categoria vem da Shopee (a que o vendedor escolheu no cadastro) e às vezes está errada. Troque aqui: vale na hora e continua valendo quando a vitrine se atualizar.</p>
+          <ul class="lista-produtos-vitrine" data-url-categoria="{% url 'painel_meu_site_categoria' 0 %}">
+            {% for p in produtos_vitrine %}
+              <li>
+                {% if p.imagem_url %}<img src="{{ p.imagem_url }}" alt="" loading="lazy" referrerpolicy="no-referrer">{% else %}<span class="sem-foto" aria-hidden="true"></span>{% endif %}
+                <span class="nome-produto pequeno">{{ p.nome|truncatechars:70 }}</span>
+                <select class="categoria-produto" data-produto="{{ p.pk }}" aria-label="Categoria de {{ p.nome|truncatechars:40 }}">
+                  <option value=""{% if not p.categoria %} selected{% endif %}>Sem categoria</option>
+                  {% for chave, nome in opcoes_categoria %}<option value="{{ chave }}"{% if p.categoria == chave %} selected{% endif %}>{{ nome }}</option>{% endfor %}
+                </select>
+              </li>
+            {% endfor %}
+          </ul>
+        </details>
+      {% endif %}
+    </section>
+
+    <div class="barra-salvar"><button type="submit" class="botao botao-principal">Salvar</button></div>
+  </form>
+
+  <div class="coluna-lateral">
+    <section class="card" aria-labelledby="titulo-cliques">
+      <h2 id="titulo-cliques">Cliques nos últimos {{ cliques.dias }} dias</h2>
+      <div class="numeros-site">
+        <div><strong>{{ cliques.visitas }}</strong><span>visitas</span></div>
+        <div><strong>{{ cliques.botoes }}</strong><span>em botões</span></div>
+        <div><strong>{{ cliques.produtos }}</strong><span>em produtos</span></div>
+        <div><strong>{{ cliques.conversor }}</strong><span>no conversor</span></div>
+      </div>
+      {% if cliques.top_produtos %}
+        <h3 class="pequeno" style="margin:14px 0 6px">Produtos mais clicados</h3>
+        <ol class="top-produtos">{% for p in cliques.top_produtos %}<li><span>{{ p.alvo_nome|truncatechars:50 }}</span><strong>{{ p.soma }}</strong></li>{% endfor %}</ol>
+      {% endif %}
+      {% if not sem_marca %}<p class="suave pequeno" style="margin-top:12px">O rodapé do site mostra "Feito com Appfiliado". No <a href="{{ url_planos }}" target="_blank" rel="noopener">plano Premium</a> do Meu site ele sai e você ganha até 10 botões e a vitrine com os produtos que escolher.</p>{% endif %}
+    </section>
+    <section class="card previa-site" aria-labelledby="titulo-previa">
+      <div class="card-topo"><h2 id="titulo-previa">Prévia</h2><span class="suave pequeno">{% if site.publicado %}No ar{% else %}Fora do ar{% endif %}</span></div>
+      <div class="celular"><iframe id="previa" src="{{ url_previa }}" title="Prévia do seu site"></iframe></div>
+    </section>
+  </div>
+</div>
+
+<form method="post" enctype="multipart/form-data" id="form-foto" hidden>{% csrf_token %}<input type="hidden" name="acao" value="foto"></form>
+<dialog id="ajustar-foto" class="janela-foto" aria-labelledby="titulo-ajustar-foto">
+  <h2 id="titulo-ajustar-foto">Ajustar foto</h2>
+  <p class="suave pequeno">Arraste para posicionar e use o controle para dar zoom.</p>
+  <canvas class="area-recorte" width="600" height="600" tabindex="-1" autofocus></canvas>
+  <label class="controle-zoom"><span aria-hidden="true">−</span><input type="range" min="1" max="4" step="0.01" value="1" aria-label="Zoom"><span aria-hidden="true">+</span></label>
+  <div class="botoes-janela">
+    <button type="button" class="botao botao-claro" data-fechar>Cancelar</button>
+    <button type="button" class="botao botao-principal" data-usar>Usar esta foto</button>
+  </div>
+</dialog>
+<form method="post" id="botao-novo" hidden>{% csrf_token %}</form>
+{% for b in botoes %}<form method="post" id="botao-{{ b.pk }}" hidden>{% csrf_token %}<input type="hidden" name="botao" value="{{ b.pk }}"></form>{% endfor %}
+<script src="{% static 'painel/emojis.js' %}" defer></script>
+<script src="{% static 'painel/meusite.js' %}" defer></script>
+{% endblock %}

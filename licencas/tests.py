@@ -1,271 +1,366 @@
 import hashlib
 import hmac
 import json
+import time
+from datetime import date, timedelta
+from unittest import mock
 
-from django.test import Client, TestCase, override_settings
+from django.core import mail
+from django.db import connection
+from django.db.migrations.executor import MigrationExecutor
+from django.test import Client, TestCase, TransactionTestCase, override_settings
+from django.utils import timezone
 
-from .models import EventoWebhookKiwify, Licenca
-from .services import aplicar_evento_webhook, interpretar_evento
+from .models import Assinatura, ContaAppfiliado, EventoWebhookZouti, ProdutoZouti
+from .services import assinatura_webhook_valida, resposta_validacao
+
+SEGREDO = "segredo-de-teste"
+PRODUTO_BOT = "prod_bot"
+PRODUTO_SITE = "prod_site"
 
 
-def _payload_compra_aprovada(subscription_id="sub-123", email="cliente@exemplo.com"):
-    """Formato confirmado contra um payload real de teste (ver LICENCA.md) -
-    usado como base pra simular o resto do ciclo de vida da assinatura."""
+def _iso(d: date) -> str:
+    return f"{d.isoformat()}T12:00:00.000Z"
+
+
+def _assinatura_payload(
+    sub_id="sub_1", email="cliente@exemplo.com", status="ACTIVE", produto=PRODUTO_BOT,
+    atualizada="2026-10-01T10:00:00.000Z", fim_periodo=None, order_id="ord_1",
+):
+    """Mesmo formato do exemplo de Subscription da documentação da Zouti."""
+    fim = fim_periodo or (timezone.localdate() + timedelta(days=30))
     return {
-        "webhook_event_type": "order_approved",
-        "order_status": "paid",
-        "Customer": {"email": email, "full_name": "Cliente Exemplo"},
-        "Subscription": {
-            "id": subscription_id,
-            "status": "active",
-            "plan": {"name": "Mensal"},
-            "next_payment": "2026-11-25T00:00:00.000Z",
-        },
+        "id": sub_id,
+        "order_id": order_id,
+        "status": status,
+        "customer": {"id": "cus_1", "name": "Cliente Exemplo", "email": email},
+        "plan": {"id": "plan_1", "name": "Mensal", "interval": "MONTHLY"},
+        "current_period_end": _iso(fim),
+        "next_payment_date": _iso(fim),
+        "line_items": [{"name": "Plano", "product_id": produto, "quantity": 1}],
+        "cancel_at_period_end": False,
+        "updated_at": atualizada,
     }
 
 
-class TestInterpretarEvento(TestCase):
-    """Testa só a lógica de decisão (sem banco) pra cada tipo de evento que a
-    Kiwify pode mandar - cobre os casos que LICENCA.md marcava como "ainda
-    não confirmados contra um evento real" (cancelamento, reembolso,
-    chargeback, recusa, atraso)."""
+@override_settings(ZOUTI_WEBHOOK_SECRET=SEGREDO)
+class BaseZouti(TestCase):
+    def setUp(self):
+        self.client = Client()
+        ProdutoZouti.objects.create(zouti_product_id=PRODUTO_BOT, nome="Bot", modulos="whatsapp")
+        ProdutoZouti.objects.create(zouti_product_id=PRODUTO_SITE, nome="Site", modulos="site,vitrine")
+        self._evento = 0
 
-    def test_compra_aprovada_libera(self):
-        resultado = interpretar_evento(_payload_compra_aprovada())
-        self.assertEqual(resultado["status"], Licenca.STATUS_ATIVA)
-        self.assertEqual(resultado["motivo"], "")
-        self.assertEqual(resultado["plano"], "Mensal")
+    def enviar(self, tipo_evento, payload, objeto="Subscription", evento_id=None, segredo=SEGREDO):
+        self._evento += 1
+        corpo = json.dumps(payload).encode()
+        assinatura = hmac.new(segredo.encode(), corpo, hashlib.sha256).hexdigest()
+        # O e-mail com a chave sai em transaction.on_commit - aqui roda na hora.
+        with self.captureOnCommitCallbacks(execute=True):
+            return self.client.post(
+                "/licencas/webhook/zouti/",
+                data=corpo,
+                content_type="application/json",
+                HTTP_X_ZOUTI_SIGNATURE=f"t={int(time.time() * 1000)},v1={assinatura}",
+                HTTP_X_ZOUTI_EVENT_ID=evento_id or f"evt_{self._evento}",
+                HTTP_X_ZOUTI_EVENT_TYPE=tipo_evento,
+                HTTP_X_ZOUTI_OBJECT_NAME=objeto,
+                HTTP_X_ZOUTI_OBJECT_ID=payload.get("id", ""),
+            )
 
-    def test_cancelamento_bloqueia(self):
-        payload = _payload_compra_aprovada()
-        payload["webhook_event_type"] = "subscription_canceled"
-        payload["Subscription"]["status"] = "cancelled"
-        resultado = interpretar_evento(payload)
-        self.assertEqual(resultado["status"], Licenca.STATUS_CANCELADA)
-        self.assertIn("cancelada", resultado["motivo"].lower())
-
-    def test_atraso_de_pagamento_bloqueia(self):
-        payload = _payload_compra_aprovada()
-        payload["Subscription"]["status"] = "late"
-        resultado = interpretar_evento(payload)
-        self.assertEqual(resultado["status"], Licenca.STATUS_ATRASADA)
-
-    def test_reembolso_por_webhook_event_type_bloqueia(self):
-        payload = _payload_compra_aprovada()
-        payload["webhook_event_type"] = "order_refunded"
-        payload["order_status"] = "refunded"
-        resultado = interpretar_evento(payload)
-        self.assertEqual(resultado["status"], Licenca.STATUS_REEMBOLSADA)
-
-    def test_reembolso_por_order_status_bloqueia_mesmo_sem_webhook_event_type(self):
-        payload = _payload_compra_aprovada()
-        payload["webhook_event_type"] = ""
-        payload["order_status"] = "refunded"
-        resultado = interpretar_evento(payload)
-        self.assertEqual(resultado["status"], Licenca.STATUS_REEMBOLSADA)
-
-    def test_chargeback_bloqueia(self):
-        payload = _payload_compra_aprovada()
-        payload["webhook_event_type"] = "chargeback"
-        resultado = interpretar_evento(payload)
-        self.assertEqual(resultado["status"], Licenca.STATUS_CHARGEBACK)
-
-    def test_pagamento_recusado_bloqueia(self):
-        payload = _payload_compra_aprovada()
-        payload["webhook_event_type"] = "order_refused"
-        payload["order_status"] = "refused"
-        del payload["Subscription"]
-        resultado = interpretar_evento(payload)
-        self.assertEqual(resultado["status"], Licenca.STATUS_RECUSADA)
-
-    def test_status_de_assinatura_desconhecido_bloqueia_por_padrao(self):
-        """Se a Kiwify um dia mandar um Subscription.status que a gente ainda
-        não mapeou, tem que bloquear (fail-safe) e não liberar "por garantia"."""
-        payload = _payload_compra_aprovada()
-        payload["Subscription"]["status"] = "paused_por_algum_motivo_novo"
-        resultado = interpretar_evento(payload)
-        self.assertEqual(resultado["status"], Licenca.STATUS_CANCELADA)
-        self.assertIn("não reconhecido", resultado["motivo"])
-
-    def test_evento_sem_nenhum_sinal_reconhecido_bloqueia_por_padrao(self):
-        resultado = interpretar_evento({})
-        self.assertEqual(resultado["status"], Licenca.STATUS_CANCELADA)
-        self.assertIn("não reconhecido", resultado["motivo"])
-
-
-class TestCicloDeVidaDaAssinatura(TestCase):
-    """Testa que o MESMO registro de Licenca é atualizado (não duplicado)
-    conforme os eventos chegam pra uma assinatura - e que o e-mail com a
-    chave só é enviado uma vez, na criação."""
-
-    def test_cancelamento_apos_compra_atualiza_a_mesma_licenca(self):
-        compra = _payload_compra_aprovada(subscription_id="sub-ciclo-de-vida")
-        licenca1 = aplicar_evento_webhook(compra)
-        self.assertEqual(licenca1.status, Licenca.STATUS_ATIVA)
-        self.assertTrue(licenca1.ativa)
-        chave_original = licenca1.chave
-
-        cancelamento = _payload_compra_aprovada(subscription_id="sub-ciclo-de-vida")
-        cancelamento["webhook_event_type"] = "subscription_canceled"
-        cancelamento["Subscription"]["status"] = "cancelled"
-        licenca2 = aplicar_evento_webhook(cancelamento)
-
-        self.assertEqual(licenca1.pk, licenca2.pk)
-        self.assertEqual(licenca2.chave, chave_original)
-        self.assertEqual(licenca2.status, Licenca.STATUS_CANCELADA)
-        self.assertFalse(licenca2.ativa)
-
-    def test_reembolso_depois_de_atraso_bloqueia_com_o_motivo_do_reembolso(self):
-        """Sinais fortes (reembolso/chargeback) tem prioridade sobre o status
-        geral da assinatura, porque podem chegar antes da Kiwify atualizar
-        Subscription.status - ver comentário em interpretar_evento."""
-        compra = _payload_compra_aprovada(subscription_id="sub-prioridade")
-        aplicar_evento_webhook(compra)
-
-        atraso = _payload_compra_aprovada(subscription_id="sub-prioridade")
-        atraso["Subscription"]["status"] = "late"
-        aplicar_evento_webhook(atraso)
-
-        reembolso = _payload_compra_aprovada(subscription_id="sub-prioridade")
-        reembolso["webhook_event_type"] = "order_refunded"
-        licenca = aplicar_evento_webhook(reembolso)
-
-        self.assertEqual(licenca.status, Licenca.STATUS_REEMBOLSADA)
-
-    def test_email_so_e_enviado_na_criacao_no_evento_de_cancelamento(self):
-        from unittest.mock import patch
-
-        compra = _payload_compra_aprovada(subscription_id="sub-email")
-        with patch("licencas.services.enviar_email_licenca") as mock_enviar:
-            aplicar_evento_webhook(compra)
-            self.assertEqual(mock_enviar.call_count, 1)
-
-            cancelamento = _payload_compra_aprovada(subscription_id="sub-email")
-            cancelamento["Subscription"]["status"] = "cancelled"
-            aplicar_evento_webhook(cancelamento)
-            self.assertEqual(mock_enviar.call_count, 1, "não deveria reenviar e-mail numa atualização")
-
-
-@override_settings(KIWIFY_WEBHOOK_TOKEN="token-de-teste-123")
-class TestWebhookEValidacaoDePontaAPonta(TestCase):
-    """Simula exatamente o que a Kiwify e o bot fazem de verdade: POST no
-    webhook com assinatura HMAC válida, e depois o bot chamando
-    /licencas/validar/ com a chave recebida - confere a cadeia completa."""
-
-    def _assinar(self, corpo_bytes):
-        return hmac.new(b"token-de-teste-123", corpo_bytes, hashlib.sha1).hexdigest()
-
-    def _postar_webhook(self, client, payload):
-        corpo = json.dumps(payload).encode("utf-8")
-        assinatura = self._assinar(corpo)
-        return client.post(
-            f"/licencas/webhook/kiwify/?signature={assinatura}",
-            data=corpo,
-            content_type="application/json",
+    def validar(self, chave):
+        resposta = self.client.post(
+            "/licencas/validar/", data=json.dumps({"chave": chave}), content_type="application/json",
         )
+        return resposta.json()
 
-    def test_assinatura_invalida_e_recusada(self):
-        client = Client()
-        corpo = json.dumps(_payload_compra_aprovada()).encode("utf-8")
-        resposta = client.post(
-            "/licencas/webhook/kiwify/?signature=assinatura-errada",
-            data=corpo,
-            content_type="application/json",
-        )
+
+class TestAssinaturaDoWebhook(TestCase):
+    def setUp(self):
+        self.t = str(int(time.time() * 1000))
+
+    def test_hmac_do_corpo_bruto(self):
+        corpo = b'{"a": 1}'
+        v1 = hmac.new(SEGREDO.encode(), corpo, hashlib.sha256).hexdigest()
+        self.assertTrue(assinatura_webhook_valida(corpo, f"t={self.t},v1={v1}", SEGREDO))
+        self.assertTrue(assinatura_webhook_valida(corpo, f"v1={v1}", SEGREDO))
+
+    def test_hmac_com_timestamp_tambem_aceito(self):
+        corpo = b'{"a": 1}'
+        v1 = hmac.new(SEGREDO.encode(), self.t.encode() + b"." + corpo, hashlib.sha256).hexdigest()
+        self.assertTrue(assinatura_webhook_valida(corpo, f"t={self.t},v1={v1}", SEGREDO))
+
+    def test_recusa_assinatura_errada_ou_sem_segredo(self):
+        corpo = b'{"a": 1}'
+        v1 = hmac.new(b"outro", corpo, hashlib.sha256).hexdigest()
+        self.assertFalse(assinatura_webhook_valida(corpo, f"t={self.t},v1={v1}", SEGREDO))
+        self.assertFalse(assinatura_webhook_valida(corpo, "", SEGREDO))
+        self.assertFalse(assinatura_webhook_valida(corpo, f"t={self.t},v1={v1}", ""))
+
+    def test_recusa_aviso_velho_repetido(self):
+        corpo = b'{"a": 1}'
+        v1 = hmac.new(SEGREDO.encode(), corpo, hashlib.sha256).hexdigest()
+        velho = str(int((time.time() - 6 * 24 * 3600) * 1000))
+        self.assertFalse(assinatura_webhook_valida(corpo, f"t={velho},v1={v1}", SEGREDO))
+        self.assertFalse(assinatura_webhook_valida(corpo, f"t=abc,v1={v1}", SEGREDO))
+
+
+class TestWebhookZouti(BaseZouti):
+    def test_assinatura_invalida_recusada_e_registrada(self):
+        resposta = self.enviar("SUBSCRIPTION_ACTIVATED", _assinatura_payload(), segredo="errado")
         self.assertEqual(resposta.status_code, 403)
-        evento = EventoWebhookKiwify.objects.latest("recebido_em")
+        self.assertFalse(ContaAppfiliado.objects.exists())
+        evento = EventoWebhookZouti.objects.get()
         self.assertFalse(evento.assinatura_valida)
-        self.assertFalse(evento.processado_com_sucesso)
 
-    def test_fluxo_completo_compra_depois_cancelamento(self):
-        client = Client()
+    def test_ativacao_cria_conta_e_manda_chave_uma_vez(self):
+        self.assertEqual(self.enviar("SUBSCRIPTION_CREATED", _assinatura_payload(status="INCOMPLETE")).status_code, 200)
+        self.assertEqual(len(mail.outbox), 0)  # ainda não pagou
 
-        resposta_compra = self._postar_webhook(
-            client, _payload_compra_aprovada(subscription_id="sub-e2e", email="e2e@exemplo.com")
+        self.enviar("SUBSCRIPTION_ACTIVATED", _assinatura_payload(atualizada="2026-10-01T10:01:00.000Z"))
+        self.enviar("SUBSCRIPTION_RENEWED", _assinatura_payload(atualizada="2026-11-01T10:00:00.000Z"))
+
+        conta = ContaAppfiliado.objects.get(email="cliente@exemplo.com")
+        self.assertEqual(conta.nome, "Cliente Exemplo")
+        self.assertIsNotNone(conta.chave_enviada_em)
+        self.assertEqual(len(mail.outbox), 1)
+        self.assertEqual(mail.outbox[0].subject, "Bem-vindo ao Appfiliado — crie sua senha")
+        self.assertIn("/senha/definir/", mail.outbox[0].body)  # link para criar a senha do painel
+        self.assertNotIn("aplicativo", mail.outbox[0].body)  # o Appfiliado agora é só no navegador
+        self.assertEqual(conta.assinaturas.get().status, Assinatura.STATUS_ATIVA)
+
+    def test_evento_repetido_nao_e_reprocessado(self):
+        self.enviar("SUBSCRIPTION_ACTIVATED", _assinatura_payload(), evento_id="evt_x")
+        Assinatura.objects.update(status=Assinatura.STATUS_CANCELADA)
+        resposta = self.enviar("SUBSCRIPTION_ACTIVATED", _assinatura_payload(), evento_id="evt_x")
+        self.assertTrue(resposta.json().get("duplicado"))
+        self.assertEqual(Assinatura.objects.get().status, Assinatura.STATUS_CANCELADA)
+
+    def test_erro_ao_processar_responde_500_pra_zouti_tentar_de_novo(self):
+        payload = _assinatura_payload()
+        payload["customer"]["email"] = ""
+        resposta = self.enviar("SUBSCRIPTION_ACTIVATED", payload)
+        self.assertEqual(resposta.status_code, 500)
+        self.assertFalse(EventoWebhookZouti.objects.get().processado_com_sucesso)
+
+    def test_evento_mais_antigo_nao_desfaz_o_mais_novo(self):
+        self.enviar("SUBSCRIPTION_CANCELED", _assinatura_payload(
+            status="CANCELED", atualizada="2026-10-05T10:00:00.000Z", fim_periodo=timezone.localdate() - timedelta(days=1),
+        ))
+        self.enviar("SUBSCRIPTION_ACTIVATED", _assinatura_payload(atualizada="2026-10-01T10:00:00.000Z"))
+        self.assertEqual(Assinatura.objects.get().status, Assinatura.STATUS_CANCELADA)
+
+    def test_evento_que_nao_mexe_em_licenca_e_ignorado_sem_erro(self):
+        resposta = self.enviar("ABANDONED_CART_CREATED", {"id": "cart_1"}, objeto="AbandonedCart")
+        self.assertEqual(resposta.status_code, 200)
+        self.assertIn("Ignorado", EventoWebhookZouti.objects.get().resultado)
+
+
+class TestCicloDaAssinatura(BaseZouti):
+    def chave(self):
+        return ContaAppfiliado.objects.get(email="cliente@exemplo.com").chave
+
+    def test_atraso_bloqueia(self):
+        self.enviar("SUBSCRIPTION_ACTIVATED", _assinatura_payload())
+        self.enviar("SUBSCRIPTION_LATE_RENEWAL_WARNING", _assinatura_payload(atualizada="2026-11-02T10:00:00.000Z"))
+        dados = self.validar(self.chave())
+        self.assertFalse(dados["valido"])
+        self.assertIn("atrasado", dados["motivo"])
+
+    def test_cancelada_mantem_acesso_ate_o_fim_do_periodo_pago(self):
+        self.enviar("SUBSCRIPTION_ACTIVATED", _assinatura_payload())
+        self.enviar("SUBSCRIPTION_CANCELED", _assinatura_payload(
+            status="CANCELED", atualizada="2026-10-02T10:00:00.000Z", fim_periodo=timezone.localdate() + timedelta(days=10),
+        ))
+        self.assertTrue(self.validar(self.chave())["valido"])
+
+        Assinatura.objects.update(acesso_ate=timezone.localdate() - timedelta(days=1))
+        dados = self.validar(self.chave())
+        self.assertFalse(dados["valido"])
+        self.assertIn("cancelada", dados["motivo"])
+
+    def test_estorno_pelo_pagamento_bloqueia_e_so_renovacao_reabre(self):
+        self.enviar("SUBSCRIPTION_ACTIVATED", _assinatura_payload())
+        self.enviar("PAYMENT_REFUNDED", {"id": "pmt_1", "status": "REFUNDED", "subscription_id": "sub_1"}, objeto="Payment")
+        self.assertEqual(Assinatura.objects.get().status, Assinatura.STATUS_REEMBOLSADA)
+
+        # Um evento de status qualquer depois do estorno não devolve o acesso...
+        self.enviar("SUBSCRIPTION_ACTIVATED", _assinatura_payload(atualizada="2026-10-03T10:00:00.000Z"))
+        self.assertEqual(Assinatura.objects.get().status, Assinatura.STATUS_REEMBOLSADA)
+        # ...nem uma renovação antiga repetida (aviso capturado e reenviado, ou sem data)...
+        self.enviar("SUBSCRIPTION_RENEWED", _assinatura_payload(atualizada="2026-09-15T10:00:00.000Z"))
+        self.enviar("SUBSCRIPTION_RENEWED", _assinatura_payload(atualizada=None))
+        self.assertEqual(Assinatura.objects.get().status, Assinatura.STATUS_REEMBOLSADA)
+        # ...só uma renovação paga depois do estorno.
+        self.enviar("SUBSCRIPTION_RENEWED", _assinatura_payload(atualizada="2099-11-01T10:00:00.000Z"))
+        self.assertEqual(Assinatura.objects.get().status, Assinatura.STATUS_ATIVA)
+
+    def test_estorno_parcial_nao_bloqueia(self):
+        self.enviar("SUBSCRIPTION_ACTIVATED", _assinatura_payload())
+        self.enviar(
+            "PAYMENT_REFUNDED", {"id": "pmt_1", "status": "PARTIALLY_REFUNDED", "subscription_id": "sub_1"},
+            objeto="Payment",
         )
-        self.assertEqual(resposta_compra.status_code, 200)
+        self.assertEqual(Assinatura.objects.get().status, Assinatura.STATUS_ATIVA)
 
-        licenca = Licenca.objects.get(kiwify_subscription_id="sub-e2e")
-        self.assertEqual(licenca.status, Licenca.STATUS_ATIVA)
+    def test_chargeback_pelo_pedido_bloqueia(self):
+        self.enviar("SUBSCRIPTION_ACTIVATED", _assinatura_payload(order_id="ord_9"))
+        self.enviar("ORDER_DISPUTED", {"id": "ord_9", "status": "DISPUTED"}, objeto="Order")
+        dados = self.validar(self.chave())
+        self.assertFalse(dados["valido"])
+        self.assertIn("Chargeback", dados["motivo"])
 
-        resposta_validar_ok = client.post(
-            "/licencas/validar/",
-            data=json.dumps({"chave": licenca.chave}),
-            content_type="application/json",
+
+class TestValidacaoEModulos(BaseZouti):
+    def test_resposta_mantem_campos_antigos_e_traz_modulos(self):
+        self.enviar("SUBSCRIPTION_ACTIVATED", _assinatura_payload())
+        conta = ContaAppfiliado.objects.get()
+        dados = self.validar(conta.chave)
+        self.assertEqual(dados["valido"], True)
+        self.assertEqual(dados["motivo"], "")
+        self.assertEqual(dados["plano"], "Mensal")
+        self.assertTrue(dados["expira_em"])
+        self.assertEqual(dados["conta_ativa"], True)
+        self.assertEqual(dados["modulos"], ["whatsapp"])
+
+    def test_dois_produtos_somam_modulos_na_mesma_chave(self):
+        self.enviar("SUBSCRIPTION_ACTIVATED", _assinatura_payload())
+        self.enviar("SUBSCRIPTION_ACTIVATED", _assinatura_payload(sub_id="sub_2", produto=PRODUTO_SITE, order_id="ord_2"))
+        self.assertEqual(ContaAppfiliado.objects.count(), 1)
+        self.assertEqual(self.validar(ContaAppfiliado.objects.get().chave)["modulos"], ["whatsapp", "site", "vitrine"])
+
+    def test_plano_sem_bot_abre_conta_mas_nao_o_app_antigo(self):
+        self.enviar("SUBSCRIPTION_ACTIVATED", _assinatura_payload(produto=PRODUTO_SITE))
+        dados = self.validar(ContaAppfiliado.objects.get().chave)
+        self.assertFalse(dados["valido"])
+        self.assertTrue(dados["conta_ativa"])
+        self.assertIn("não inclui o bot", dados["motivo"])
+
+    def test_produto_mapeado_depois_vale_na_hora(self):
+        self.enviar("SUBSCRIPTION_ACTIVATED", _assinatura_payload(produto="prod_novo"))
+        chave = ContaAppfiliado.objects.get().chave
+        self.assertEqual(self.validar(chave)["modulos"], [])
+        ProdutoZouti.objects.create(zouti_product_id="prod_novo", nome="Pacote", modulos="whatsapp,videos")
+        self.assertEqual(self.validar(chave)["modulos"], ["whatsapp", "videos"])
+
+    def test_cortesia_libera_ate_o_prazo(self):
+        conta = ContaAppfiliado.objects.create(email="eu@exemplo.com", modulos_cortesia="whatsapp,site")
+        dados = self.validar(conta.chave)
+        self.assertTrue(dados["valido"])
+        self.assertEqual(dados["plano"], "Cortesia")
+
+        conta.cortesia_ate = timezone.localdate() - timedelta(days=1)
+        conta.save()
+        dados = resposta_validacao(conta)
+        self.assertFalse(dados["valido"])
+        self.assertEqual(dados["modulos"], [])
+
+    def test_chave_desconhecida(self):
+        dados = self.validar("AF-NAOEXISTE")
+        self.assertFalse(dados["valido"])
+        self.assertIn("não encontrada", dados["motivo"])
+
+    def test_requisicao_invalida(self):
+        resposta = self.client.post("/licencas/validar/", data="[1]", content_type="application/json")
+        self.assertEqual(resposta.status_code, 400)
+
+
+class TestAdmin(BaseZouti):
+    def test_telas_do_admin_abrem_e_salvam_modulos(self):
+        from django.contrib.auth import get_user_model
+
+        admin = get_user_model().objects.create_superuser(
+            username="admin", email="admin@exemplo.com", password="senha-forte-123",
         )
-        self.assertEqual(resposta_validar_ok.json()["valido"], True)
+        self.client.force_login(admin)
+        self.enviar("SUBSCRIPTION_ACTIVATED", _assinatura_payload())
+        conta = ContaAppfiliado.objects.get()
 
-        cancelamento = _payload_compra_aprovada(subscription_id="sub-e2e", email="e2e@exemplo.com")
-        cancelamento["webhook_event_type"] = "subscription_canceled"
-        cancelamento["Subscription"]["status"] = "cancelled"
-        resposta_cancelamento = self._postar_webhook(client, cancelamento)
-        self.assertEqual(resposta_cancelamento.status_code, 200)
+        for url in [
+            "/admin/licencas/contaappfiliado/",
+            f"/admin/licencas/contaappfiliado/{conta.pk}/change/",
+            "/admin/licencas/produtozouti/add/",
+            "/admin/licencas/eventowebhookzouti/",
+        ]:
+            self.assertEqual(self.client.get(url).status_code, 200, url)
 
-        resposta_validar_bloqueado = client.post(
-            "/licencas/validar/",
-            data=json.dumps({"chave": licenca.chave}),
-            content_type="application/json",
+        resposta = self.client.post("/admin/licencas/produtozouti/add/", {
+            "zouti_product_id": "prod_pacote", "nome": "Pacote", "modulos": ["site", "videos"],
+        })
+        self.assertEqual(resposta.status_code, 302)
+        self.assertEqual(ProdutoZouti.objects.get(zouti_product_id="prod_pacote").modulos, "site,videos")
+
+
+@override_settings(APPFILIADO_PAINEL_URL="https://app.appfiliado.com.br")
+class TestAdminLinkDaSenha(TestCase):
+    def setUp(self):
+        from django.contrib.auth import get_user_model
+
+        admin = get_user_model().objects.create_superuser(
+            username="admin", email="admin@exemplo.com", password="senha-forte-123",
         )
-        corpo_validar = resposta_validar_bloqueado.json()
-        self.assertEqual(corpo_validar["valido"], False)
-        self.assertIn("cancelada", corpo_validar["motivo"].lower())
+        self.client.force_login(admin)
+        self.conta = ContaAppfiliado.objects.create(email="dono@exemplo.com")
 
-    def test_fluxo_completo_compra_depois_reembolso(self):
-        client = Client()
-        self._postar_webhook(
-            client, _payload_compra_aprovada(subscription_id="sub-reembolso-e2e")
-        )
-        licenca = Licenca.objects.get(kiwify_subscription_id="sub-reembolso-e2e")
+    def acao(self, nome):
+        return self.client.post("/admin/licencas/contaappfiliado/", {
+            "action": nome, "_selected_action": [self.conta.pk],
+        }, follow=True)
 
-        reembolso = _payload_compra_aprovada(subscription_id="sub-reembolso-e2e")
-        reembolso["webhook_event_type"] = "order_refunded"
-        self._postar_webhook(client, reembolso)
+    def test_mostra_o_link_na_tela(self):
+        resposta = self.acao("mostrar_link_senha")
+        self.assertContains(resposta, "https://app.appfiliado.com.br/senha/definir/")
+        self.assertEqual(len(mail.outbox), 0)
 
-        resposta = client.post(
-            "/licencas/validar/",
-            data=json.dumps({"chave": licenca.chave}),
-            content_type="application/json",
-        )
-        corpo = resposta.json()
-        self.assertEqual(corpo["valido"], False)
-        self.assertIn("reembolsada", corpo["motivo"].lower())
+    def test_avisa_quando_o_email_falha(self):
+        with mock.patch("painel.emails.EmailMessage.send", side_effect=Exception("remetente não autorizado")):
+            resposta = self.acao("enviar_link_senha")
+        self.assertContains(resposta, "Não consegui enviar para: dono@exemplo.com")
 
-    def test_fluxo_completo_compra_depois_chargeback(self):
-        client = Client()
-        self._postar_webhook(
-            client, _payload_compra_aprovada(subscription_id="sub-chargeback-e2e")
-        )
-        licenca = Licenca.objects.get(kiwify_subscription_id="sub-chargeback-e2e")
 
-        chargeback = _payload_compra_aprovada(subscription_id="sub-chargeback-e2e")
-        chargeback["webhook_event_type"] = "chargeback"
-        self._postar_webhook(client, chargeback)
+@override_settings(APPFILIADO_API_HOSTS=["api.appfiliado.com.br"], ALLOWED_HOSTS=["api.appfiliado.com.br", "testserver"])
+class TestDominioDaApi(TestCase):
+    def test_dominio_da_api_so_responde_licencas(self):
+        cliente = Client(HTTP_HOST="api.appfiliado.com.br")
+        self.assertEqual(cliente.get("/").status_code, 404)
+        self.assertEqual(cliente.get("/admin/").status_code, 404)
+        resposta = cliente.post("/licencas/validar/", data=json.dumps({"chave": "x"}), content_type="application/json")
+        self.assertEqual(resposta.status_code, 200)
 
-        resposta = client.post(
-            "/licencas/validar/",
-            data=json.dumps({"chave": licenca.chave}),
-            content_type="application/json",
-        )
-        corpo = resposta.json()
-        self.assertEqual(corpo["valido"], False)
-        self.assertIn("chargeback", corpo["motivo"].lower())
 
-    def test_fluxo_completo_compra_depois_atraso_de_pagamento(self):
-        client = Client()
-        self._postar_webhook(
-            client, _payload_compra_aprovada(subscription_id="sub-atraso-e2e")
-        )
-        licenca = Licenca.objects.get(kiwify_subscription_id="sub-atraso-e2e")
+class TestMigracaoDasLicencasAntigas(TransactionTestCase):
+    """A chave de quem já usava o app (época da Kiwify) tem que continuar valendo."""
 
-        atraso = _payload_compra_aprovada(subscription_id="sub-atraso-e2e")
-        atraso["Subscription"]["status"] = "late"
-        self._postar_webhook(client, atraso)
+    def test_licenca_ativa_vira_conta_com_cortesia_e_mesma_chave(self):
+        executor = MigrationExecutor(connection)
+        executor.migrate([("licencas", "0001_initial")])
+        apps_antigos = executor.loader.project_state([("licencas", "0001_initial")]).apps
+        Licenca = apps_antigos.get_model("licencas", "Licenca")
+        Licenca.objects.create(chave="AF-ANTIGA1", email="Dono@Exemplo.com", nome="Dono", status="ativa")
+        Licenca.objects.create(chave="AF-ANTIGA2", email="ex@exemplo.com", status="cancelada")
 
-        resposta = client.post(
-            "/licencas/validar/",
-            data=json.dumps({"chave": licenca.chave}),
-            content_type="application/json",
-        )
-        corpo = resposta.json()
-        self.assertEqual(corpo["valido"], False)
-        self.assertIn("atrasado", corpo["motivo"].lower())
+        executor = MigrationExecutor(connection)
+        executor.loader.build_graph()
+        # Até a última migração, para o modelo atual bater com as colunas do banco.
+        executor.migrate(executor.loader.graph.leaf_nodes())
+
+        dono = ContaAppfiliado.objects.get(chave="AF-ANTIGA1")
+        self.assertEqual(dono.email, "dono@exemplo.com")
+        self.assertEqual(dono.modulos_liberados(), ["whatsapp"])
+        self.assertIsNotNone(dono.chave_enviada_em)
+        self.assertEqual(ContaAppfiliado.objects.get(chave="AF-ANTIGA2").modulos_liberados(), [])
+
+
+class TestFaixasDosPlanos(TestCase):
+    def test_faixas_de_notas_e_premium_incluem_o_basico(self):
+        from licencas import planos
+
+        for codigo, limite in (("notas", 100), ("notas_500", 500), ("notas_2000", 2000), ("notas_5000", 5000),
+                               ("notas_10000", 10000), ("notas_ilimitado", None), ("", 0)):
+            conta = ContaAppfiliado.objects.create(email=f"{codigo or 'nada'}@x.com", modulos_cortesia=codigo)
+            self.assertEqual(planos.notas_por_mes(conta), limite, codigo)
+        # Vale o maior plano que a conta tiver, e o premium já traz o básico.
+        conta = ContaAppfiliado.objects.create(email="m@x.com", modulos_cortesia="notas_500,notas_5000,site_sem_marca")
+        self.assertEqual(planos.notas_por_mes(conta), 5000)
+        self.assertIn("site", conta.modulos_liberados())
+        self.assertIn("notas", conta.modulos_liberados())

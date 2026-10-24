@@ -1,0 +1,111 @@
+{% extends "painel/base.html" %}
+{% load static painel_extras %}
+{% block titulo %}Radar de ofertas{% endblock %}
+{% block cabeca %}<script src="{% static 'painel/radar.js' %}" defer></script>{% endblock %}
+{% block conteudo %}
+<header class="cabecalho">
+  <div><h1>Radar de ofertas</h1><p>Encontre ofertas da Shopee para divulgar: os produtos mais vendidos, os de maior comissão e os com mais desconto.</p></div>
+</header>
+
+{% if not shopee_conectada %}
+  {% include "painel/_conectar_shopee.html" %}
+{% else %}
+<section class="card filtros-radar" aria-labelledby="titulo-filtros-radar">
+  <h2 id="titulo-filtros-radar" class="sr">Filtros</h2>
+  <form method="get" class="formulario">
+    <nav class="chips" aria-label="Ordem">
+      {% for valor, nome in ordens %}<label class="chip-opcao"><input type="radio" name="ordem" value="{{ valor }}"{% if filtros.ordem == valor %} checked{% endif %} data-envia><span>{{ nome }}</span></label>{% endfor %}
+    </nav>
+    <div class="grade-radar">
+      <div class="campo campo-largo"><label for="palavra">Palavra-chave</label><input id="palavra" name="palavra" value="{{ filtros.palavra }}" placeholder="Ex: fone, air fryer, vestido" maxlength="80"></div>
+      <div class="campo campo-largo"><label for="categoria">Categoria</label>
+        <select id="categoria" name="categoria"><option value="">Todas</option>{% for c, nome in categorias %}<option value="{{ c }}"{% if filtros.categoria == c %} selected{% endif %}>{{ nome }}</option>{% endfor %}</select></div>
+    </div>
+    <details class="mais-filtros"{% if filtros.preco_min is not None or filtros.preco_max is not None or filtros.comissao_min is not None or filtros.desconto_min is not None or filtros.avaliacao_min is not None or filtros.so_extra %} open data-em-uso{% endif %}>
+      <summary>Mais filtros</summary>
+      <div class="grade-radar">
+        <div class="campo"><label for="preco_min">Preço de</label><input id="preco_min" name="preco_min" inputmode="decimal" placeholder="R$" value="{{ filtros.preco_min|default_if_none:'' }}"></div>
+        <div class="campo"><label for="preco_max">até</label><input id="preco_max" name="preco_max" inputmode="decimal" placeholder="R$" value="{{ filtros.preco_max|default_if_none:'' }}"></div>
+        <div class="campo"><label for="comissao_min">Comissão de ref. mín. (%)</label><input id="comissao_min" name="comissao_min" inputmode="numeric" value="{{ filtros.comissao_min|default_if_none:'' }}"></div>
+        <div class="campo"><label for="desconto_min">Desconto mín. (%)</label><input id="desconto_min" name="desconto_min" inputmode="numeric" value="{{ filtros.desconto_min|default_if_none:'' }}"></div>
+        <div class="campo"><label for="avaliacao_min">Avaliação mín.</label><input id="avaliacao_min" name="avaliacao_min" inputmode="decimal" placeholder="0 a 5" value="{{ filtros.avaliacao_min|default_if_none:'' }}"></div>
+      </div>
+      <label class="marcar extra-radar"><input type="checkbox" name="so_extra" value="1"{% if filtros.so_extra %} checked{% endif %}><span><strong>Só com comissão extra do vendedor</strong></span></label>
+    </details>
+    <div class="linha-radar"><button type="submit" class="botao botao-principal">Buscar</button></div>
+  </form>
+  <p class="suave pequeno">{{ catalogo.total|numero }} produtos da Shopee com comissão de afiliado, de todas as categorias, atualizados todos os dias{% if catalogo.atualizado_em %} (última atualização: {{ catalogo.atualizado_em|date:"d/m \à\s H:i" }}){% endif %}. A Shopee limita quantos produtos libera para afiliados, então nem todo produto do site aparece aqui. Não achou? Mude a palavra-chave ou cole o link no <a href="{% url 'painel_conversor' %}">Conversor</a>.</p>
+</section>
+
+{% if catalogo.atrasado %}<p class="aviso aviso-warning">A atualização dos produtos está atrasada: os preços e a comissão podem estar desatualizados. Ao mandar no grupo ou acompanhar o preço, o Radar sempre consulta o preço de agora na Shopee.</p>{% endif %}
+
+{% if produtos %}
+  <ul class="grade-radar-produtos">
+    {% for p in produtos %}
+      <li class="cartao-radar">
+        <div class="foto-radar">
+          {% if p.imagem %}<img src="{{ p.imagem }}" alt="" loading="lazy" referrerpolicy="no-referrer">{% endif %}
+          {% if p.desconto %}<span class="selo-desconto">-{{ p.desconto|floatformat:0 }}%</span>{% endif %}
+          {% if p.comissao_extra %}<span class="selo-extra" title="O vendedor paga comissão a mais">+{{ p.comissao_extra|floatformat:"-1" }}% extra</span>{% endif %}
+        </div>
+        <a class="nome-radar" href="{{ p.link }}" target="_blank" rel="noopener">{{ p.nome|truncatechars:80 }}</a>
+        <div class="numeros-radar">
+          <strong class="preco-radar">{{ p.preco|brl }}</strong>
+          <span class="ganho-radar" title="Comissão de referência: o percentual que a Shopee informa para este produto. A sua comissão real aparece em Resultados.">Comissão de referência {{ p.comissao|floatformat:"-1" }}% · <strong>~{{ p.ganho|brl }}</strong></span>
+          <span class="suave pequeno">{% if p.vendas %}{{ p.vendas|numero }} vendidos{% endif %}{% if p.avaliacao %} · ⭐ {{ p.avaliacao|floatformat:1 }}{% endif %}{% if p.loja %} · {{ p.loja|truncatechars:24 }}{% endif %}</span>
+        </div>
+        <div class="acoes-radar">
+          <button type="button" class="botao botao-escuro botao-pequeno copiar-radar" data-copiar-link="{{ p.link }}">{% include "painel/_icone.html" with caminho=icones.copiar %}Copiar link</button>
+          {% if pode.bot %}
+            {% if destinos %}
+              <details class="enviar-radar">
+                <summary class="botao botao-claro botao-pequeno" title="Mandar no grupo">{% include "painel/_icone.html" with caminho=icones.enviar %}Grupo</summary>
+                <form method="post" action="{% url 'painel_radar_enviar' %}" class="menu-grupo">
+                  {% csrf_token %}<input type="hidden" name="item_id" value="{{ p.item_id }}"><input type="hidden" name="voltar" value="{{ aqui }}">
+                  <label class="sr" for="destino-{{ p.item_id }}">Grupo</label>
+                  <select id="destino-{{ p.item_id }}" name="destino" required>{% for g in destinos %}<option value="{{ g.jid }}">{{ g.nome }}</option>{% endfor %}</select>
+                  <button type="submit" class="botao botao-principal botao-pequeno">Enviar</button>
+                </form>
+              </details>
+            {% else %}
+              <a class="botao botao-claro botao-pequeno" href="{% url 'painel_whatsapp' %}" title="Conecte o WhatsApp para mandar daqui">{% include "painel/_icone.html" with caminho=icones.enviar %}Grupo</a>
+            {% endif %}
+            {% if p.item_id in acompanhados %}
+              <span class="selo-acompanhando" title="Já está no alerta de preço">✓ No alerta</span>
+            {% else %}
+              <form method="post" action="{% url 'painel_radar_acompanhar' %}">{% csrf_token %}<input type="hidden" name="item_id" value="{{ p.item_id }}"><input type="hidden" name="voltar" value="{{ aqui }}"><button type="submit" class="botao botao-claro botao-pequeno" title="Acompanhar o preço (alerta de preço)">{% include "painel/_icone.html" with caminho=icones.sino %}Alerta</button></form>
+            {% endif %}
+          {% else %}
+            <a class="botao botao-claro botao-pequeno travado" href="{{ url_planos }}" target="_blank" rel="noopener" title="Mandar no grupo: do Bot de WhatsApp">{% include "painel/_icone.html" with caminho=icones.cadeado %}Grupo</a>
+            <a class="botao botao-claro botao-pequeno travado" href="{{ url_planos }}" target="_blank" rel="noopener" title="Alerta de preço: do Bot de WhatsApp">{% include "painel/_icone.html" with caminho=icones.cadeado %}Alerta</a>
+          {% endif %}
+          {% if pode.carrosseis %}
+            <form method="post" action="{% url 'painel_carrosseis' %}">{% csrf_token %}<input type="hidden" name="link" value="{{ p.link }}"><button type="submit" class="botao botao-claro botao-pequeno" data-enviando="Gerando…" title="Gerar carrossel">{% include "painel/_icone.html" with caminho=icones.imagens %}Carrossel</button></form>
+          {% else %}
+            <a class="botao botao-claro botao-pequeno travado" href="{{ url_planos }}" target="_blank" rel="noopener" title="Gerar carrossel: dos Carrosséis">{% include "painel/_icone.html" with caminho=icones.cadeado %}Carrossel</a>
+          {% endif %}
+        </div>
+      </li>
+    {% endfor %}
+  </ul>
+{% else %}
+  <section class="card"><p class="suave">Nenhum produto encontrado com esses filtros. Tente afrouxar algum deles{% if filtros.so_extra %} (a comissão extra do vendedor aparece só em parte dos produtos){% endif %}.</p></section>
+{% endif %}
+
+{% if pagina.paginator.num_pages > 1 %}
+  <nav class="paginacao" aria-label="Páginas do radar">
+    <span>Mostrando {{ pagina.start_index|numero }}–{{ pagina.end_index|numero }} de {{ pagina.paginator.count|numero }}</span>
+    <div>
+      {% if pagina.has_previous %}<a href="{% querystring pagina=pagina.previous_page_number %}" aria-label="Página anterior">‹</a>{% endif %}
+      {% for n in paginas %}
+        {% if n == pagina.paginator.ELLIPSIS %}<span>…</span>
+        {% elif n == pagina.number %}<span class="atual" aria-current="page">{{ n }}</span>
+        {% else %}<a href="{% querystring pagina=n %}">{{ n }}</a>{% endif %}
+      {% endfor %}
+      {% if pagina.has_next %}<a href="{% querystring pagina=pagina.next_page_number %}" aria-label="Próxima página">›</a>{% endif %}
+    </div>
+  </nav>
+{% endif %}
+{% endif %}
+<span hidden data-url-link="{% url 'painel_radar_link' %}">{% csrf_token %}</span>
+{% endblock %}

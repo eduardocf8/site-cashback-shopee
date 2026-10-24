@@ -1,0 +1,50 @@
+{% extends "painel/base.html" %}
+{% block titulo %}Plano e assinatura{% endblock %}
+{% block conteudo %}
+<header class="cabecalho">
+  <div><h1>Plano e assinatura</h1><p>O que está liberado na sua conta.</p></div>
+  <a class="botao botao-principal" href="{{ url_planos }}" target="_blank" rel="noopener">Ver todos os planos</a>
+</header>
+
+<div>
+  <section class="card">
+    <h2>Módulos</h2>
+    <div class="tabela-rolagem">
+      <table>
+        <thead><tr><th scope="col">Módulo</th><th scope="col">Situação</th><th scope="col">Por quê</th></tr></thead>
+        <tbody>
+          {% for linha in linhas_modulos %}
+            <tr>
+              <td>{{ linha.nome }}</td>
+              <td>{% if linha.liberado %}<span class="estado estado-liberado">Liberado</span>{% else %}<span class="estado estado-bloqueado">Não incluso</span>{% endif %}</td>
+              <td class="suave">{{ linha.origem|default:"—" }}</td>
+            </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </section>
+</div>
+
+<section class="card">
+  <h2>Assinaturas</h2>
+  {% if assinaturas %}
+    <div class="tabela-rolagem">
+      <table>
+        <thead><tr><th scope="col">Plano</th><th scope="col">Situação</th><th scope="col">Próxima cobrança</th></tr></thead>
+        <tbody>
+          {% for a in assinaturas %}
+            <tr>
+              <td>{{ a.plano|default:"—" }}</td>
+              <td>{{ a.get_status_display }}{% if a.motivo %} <span class="suave pequeno">· {{ a.motivo }}</span>{% endif %}</td>
+              <td>{{ a.proxima_cobranca|date:"d/m/Y"|default:"—" }}</td>
+            </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  {% else %}
+    <p class="suave">Nenhuma assinatura paga nesta conta{% if modulos_liberados %} - seus módulos estão liberados como cortesia{% endif %}.</p>
+  {% endif %}
+</section>
+{% endblock %}

@@ -1,0 +1,12 @@
+{% if grafico.tem_dados %}
+  <div class="grafico" role="img" aria-label="{{ titulo_grafico }}">
+    {% for b in grafico.itens %}
+      <div class="grafico-coluna" title="{{ b.dica }}">
+        <div class="grafico-barra{% if b.destaque %} destaque{% endif %}" style="height: {{ b.altura }}%"></div>
+        <span class="grafico-rotulo">{{ b.rotulo }}</span>
+      </div>
+    {% endfor %}
+  </div>
+{% else %}
+  <p class="grafico-vazio suave">Nenhuma venda nesse período ainda.</p>
+{% endif %}

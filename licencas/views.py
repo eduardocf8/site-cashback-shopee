@@ -1,5 +1,3 @@
-import hashlib
-import hmac
 import json
 import logging
 
@@ -8,92 +6,100 @@ from django.http import HttpResponseForbidden, JsonResponse
 from django.views.decorators.csrf import csrf_exempt
 from django.views.decorators.http import require_POST
 
-from .models import EventoWebhookKiwify, Licenca
-from .services import aplicar_evento_webhook
+from accounts.ratelimit import _incrementar_contador
+
+from .models import ContaAppfiliado, EventoWebhookZouti
+from .services import assinatura_webhook_valida, processar_evento, resposta_validacao
 
 logger = logging.getLogger(__name__)
 
 
-def _assinatura_valida(request) -> bool:
-    """A Kiwify manda `?signature=<hmac>` na própria URL do webhook - hex de
-    HMAC-SHA1(chave=Token configurado no painel do webhook, mensagem=corpo bruto da
-    requisição). Confirmado batendo contra um payload de teste real; não documentado
-    publicamente, então não mude sem novo teste."""
-    token = settings.KIWIFY_WEBHOOK_TOKEN
-    assinatura_recebida = request.GET.get("signature", "")
-    if not token or not assinatura_recebida:
-        return False
-    assinatura_esperada = hmac.new(token.encode(), request.body, hashlib.sha1).hexdigest()
-    return hmac.compare_digest(assinatura_recebida, assinatura_esperada)
-
-
 @csrf_exempt
 @require_POST
-def webhook_kiwify(request):
-    assinatura_ok = _assinatura_valida(request)
+def webhook_zouti(request):
+    """Recebe os webhooks da Zouti (Integrações > Webhooks no painel dela).
+
+    Só responde 2xx quando o evento foi guardado - se der erro ao processar, responde
+    500 pra Zouti tentar de novo (ela reenvia por até 4 dias)."""
+    cabecalho = request.headers.get("x-zouti-signature", "")
+    assinatura_ok = assinatura_webhook_valida(request.body, cabecalho, settings.ZOUTI_WEBHOOK_SECRET)
 
     try:
         payload = json.loads(request.body)
     except (ValueError, TypeError):
-        payload = {}
+        payload = None
 
-    evento = EventoWebhookKiwify(
-        webhook_event_type=payload.get("webhook_event_type", ""),
-        order_status=payload.get("order_status", ""),
-        subscription_status=(payload.get("Subscription") or {}).get("status", ""),
-        kiwify_subscription_id=(payload.get("Subscription") or {}).get("id", ""),
-        email=(payload.get("Customer") or {}).get("email", ""),
+    evento_id = request.headers.get("x-zouti-event-id", "")[:64]
+    tipo_evento = request.headers.get("x-zouti-event-type", "")[:60]
+    tipo_objeto = request.headers.get("x-zouti-object-name", "")[:30]
+    cliente = (payload.get("customer") or {}) if isinstance(payload, dict) else {}
+    evento = EventoWebhookZouti(
+        zouti_event_id=evento_id,
+        tipo_evento=tipo_evento,
+        tipo_objeto=tipo_objeto,
+        zouti_object_id=request.headers.get("x-zouti-object-id", "")[:64],
+        email=str(cliente.get("email") or "")[:254],
         corpo_bruto=request.body.decode("utf-8", errors="replace"),
         assinatura_valida=assinatura_ok,
     )
 
     if not assinatura_ok:
-        evento.erro = "Assinatura inválida ou token não configurado."
-        evento.save()
-        logger.warning("Licencas: webhook da Kiwify com assinatura inválida, recusado.")
+        # Qualquer um na internet pode chamar este endereço: do pedido recusado guarda só o
+        # começo, e no máximo 50 por hora (senão dava para encher o banco de dados).
+        evento.erro = "Assinatura inválida ou segredo do webhook não configurado."
+        evento.corpo_bruto = evento.corpo_bruto[:2000]
+        if _incrementar_contador("zouti:assinatura_invalida", 3600) <= 50:
+            evento.save()
+        logger.warning("Licencas: webhook da Zouti com assinatura inválida, recusado.")
         return HttpResponseForbidden("Assinatura inválida.")
 
-    if not payload:
+    if not isinstance(payload, dict):
         evento.erro = "Payload não é um JSON válido."
         evento.save()
         return JsonResponse({"ok": False, "erro": "payload inválido"}, status=400)
 
+    if evento_id and EventoWebhookZouti.objects.filter(
+        zouti_event_id=evento_id, processado_com_sucesso=True,
+    ).exists():
+        evento.processado_com_sucesso = True
+        evento.resultado = "Duplicado: evento já processado antes."
+        evento.save()
+        return JsonResponse({"ok": True, "duplicado": True})
+
     try:
-        aplicar_evento_webhook(payload)
+        evento.resultado = processar_evento(tipo_evento, tipo_objeto, payload)[:200]
         evento.processado_com_sucesso = True
     except Exception as erro:
         evento.erro = str(erro)
-        logger.exception("Licencas: falha ao processar webhook da Kiwify.")
-    finally:
-        evento.save()
+        logger.exception("Licencas: falha ao processar webhook da Zouti.")
+    evento.save()
 
+    if not evento.processado_com_sucesso:
+        return JsonResponse({"ok": False}, status=500)
     return JsonResponse({"ok": True})
 
 
 @csrf_exempt
 @require_POST
 def validar_licenca(request):
-    """Contrato documentado em Appfiliado/LICENCA.md - não mude a
-    forma da resposta sem atualizar o bot também."""
+    """Chamado pelo app do Appfiliado (Appfiliado/licenca.py). Ver
+    services.resposta_validacao pro formato da resposta - não tire nem mude o
+    significado de um campo sem atualizar o app também."""
     try:
         payload = json.loads(request.body)
     except (ValueError, TypeError):
+        payload = None
+    if not isinstance(payload, dict):
         return JsonResponse({"valido": False, "motivo": "Requisição inválida."}, status=400)
 
-    chave = (payload.get("chave") or "").strip()
+    chave = str(payload.get("chave") or "").strip()
     if not chave:
         return JsonResponse({"valido": False, "motivo": "Chave de licença não informada."}, status=400)
 
-    try:
-        licenca = Licenca.objects.get(chave=chave)
-    except Licenca.DoesNotExist:
-        return JsonResponse({"valido": False, "motivo": "Chave de licença não encontrada."})
+    conta = ContaAppfiliado.objects.filter(chave=chave).first()
+    if not conta:
+        return JsonResponse(
+            {"valido": False, "motivo": "Chave de licença não encontrada.", "conta_ativa": False, "modulos": []}
+        )
 
-    return JsonResponse(
-        {
-            "valido": licenca.ativa,
-            "motivo": "" if licenca.ativa else (licenca.motivo or "Assinatura não está ativa."),
-            "plano": licenca.plano,
-            "expira_em": licenca.expira_em.isoformat() if licenca.expira_em else "",
-        }
-    )
+    return JsonResponse(resposta_validacao(conta))

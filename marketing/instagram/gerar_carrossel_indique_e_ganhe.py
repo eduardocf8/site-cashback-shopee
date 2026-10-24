@@ -55,7 +55,7 @@ SLIDES = [
 
     Slide(LIGHT_BG, f"""
     {tag_label("os dois lados", BRAND_PRIMARY)}
-    {titulo("Ninguém perde para o outro ganhar", 28, DARK_BG)}
+    {titulo("Ninguém perde pro outro ganhar", 28, DARK_BG)}
     <div style="margin-top:16px;">
         {caso("Quem foi indicado", "Dobro do cashback na primeira compra")}
         {caso("Quem indicou", "Dobro do cashback na compra seguinte")}
@@ -95,13 +95,13 @@ SLIDES = [
     """, False, seta=False),
 ]
 
-LEGENDA = """Indique e ganhe: o cashback vem em dobro para os dois lados. 💜
+LEGENDA = """Indique e ganhe: o cashback vem em dobro pros dois lados. 💜
 
 Como funciona: você compartilha seu link, a pessoa cria a conta e compra. A primeira compra dela vem com o dobro do cashback — e, assim que a Shopee valida esse pedido, a sua próxima compra também vem dobrada.
 
 Não tem limite de quantas pessoas você indica, e o dobro não sai do bolso de ninguém: sai da parte da comissão que a cash-b guardaria.
 
-🔑 O bônus só é ativado depois que você e a pessoa indicada tiverem uma chave Pix cadastrada e verificada, cada uma no CPF de quem é dono da conta. O dobro vale para a primeira compra validada depois disso.
+🔑 O bônus só é ativado depois que você e a pessoa indicada tiverem uma chave Pix cadastrada e verificada, cada uma no CPF de quem é dono da conta. O dobro vale pra primeira compra validada depois disso.
 
 ⚠️ Um aviso importante: o programa não fica ligado o tempo todo. Ele abre em períodos específicos, e enquanto está fora do ar o link de indicação não aparece no painel. Quando abrir, avisamos aqui no perfil e no site — vale seguir e ficar de olho.
 

@@ -2597,6 +2597,19 @@ Base pra decidir o 13.11 (converter sem cadastro) com dado em vez de palpite.
 - [x] Testes do fluxo completo (conversor -> cadastro -> 1º link no mesmo funil),
       robôs, tentativa repetida e o resumo.
 
+**Ajuste em 17/10** (primeiros dados: 69 tentativas, todas por ofertas, 0 cadastros
+dessa coorte, enquanto 37 pessoas se cadastraram direto):
+
+- [x] Filtro de robôs ampliado: robô da Meta que abre links compartilhados no
+      Instagram (`meta-externalagent`), catálogo do Facebook, scripts (python, curl...),
+      ferramentas de SEO/teste e requisição sem User-Agent.
+- [x] `EventoFunil.user_agent` - navegador guardado na tentativa e no cadastro, pra
+      conferir depois quem é gente (Admin > Accounts > Eventos do funil, só leitura).
+- [x] Tabela **"Cadastros por dia"** (Total / Google / Formulário) na seção do funil
+      do Analytics, respeitando o filtro de datas (padrão: últimos 30 dias).
+- Limitação conhecida: quem clica numa oferta no navegador do Instagram e termina o
+  cadastro no Safari/Chrome vira outro visitante - o cadastro não é ligado à tentativa.
+
 ---
 
 ## Fase 63 — "Como a cash-b ganha dinheiro?" (benchmark internacional) ✅
@@ -2678,6 +2691,310 @@ numa área fora da lista, mas no mesmo espírito (integridade de pagamento):
       insuficiente, porque SQLite não trava por linha) - o teste aceita os dois
       desfechos, já que a garantia que importa (nunca criar os 2 Saques) é a mesma
       nos dois bancos.
+
+---
+
+## Fase 66 — Appfiliado: Zouti no lugar da Kiwify, conta com módulos
+
+O Appfiliado deixa de ser "só o bot de WhatsApp" e vira uma marca com vários serviços
+(bot, Meu site, vitrine, vídeos, Instagram), vendidos avulsos ou em pacotes. A
+plataforma de pagamento troca da Kiwify pra Zouti (taxa menor; nenhum assinante tinha
+entrado pela Kiwify ainda). Tudo no app `licencas`:
+
+- [x] **`ContaAppfiliado`** no lugar de `Licenca`: uma chave por pessoa (e-mail), que
+      vale pra todos os módulos. Comprar outro serviço depois só soma módulos à mesma
+      chave. Também aceita **módulos de cortesia** à mão no /admin/ (uso próprio,
+      clientes antigos do conversor), com prazo opcional.
+- [x] **`Assinatura`** (uma por `sub_...` da Zouti) e **`ProdutoZouti`**, que diz
+      quais módulos cada produto libera. Os módulos são calculados na hora da
+      validação, então cadastrar ou mudar um produto no /admin/ vale na hora, sem
+      deploy.
+- [x] **Webhook `/licencas/webhook/zouti/`**: confere o `x-zouti-signature`
+      (HMAC-SHA256, segredo em `ZOUTI_WEBHOOK_SECRET`), guarda tudo cru em
+      `EventoWebhookZouti`, ignora evento repetido (`x-zouti-event-id`) e ignora
+      evento mais antigo que o último aplicado (`updated_at`), porque a Zouti reenvia
+      por até 4 dias. Responde 500 quando falha ao processar, pra ela tentar de novo.
+- [x] **Regras**: ativa e teste grátis liberam; atrasada bloqueia; cancelada mantém o
+      acesso até o fim do período já pago; estorno (`ORDER_REFUNDED`/`PAYMENT_REFUNDED`,
+      só total) e chargeback bloqueiam na hora e só uma `SUBSCRIPTION_RENEWED` reabre.
+- [x] **`/licencas/validar/` compatível com o app atual**: `valido`, `motivo`, `plano` e
+      `expira_em` continuam querendo dizer "pode abrir o bot de WhatsApp". Novos:
+      `conta_ativa` e `modulos`, pra versão do app com módulos.
+- [x] **Migração**: as licenças da época da Kiwify viram contas com a mesma chave; a
+      ativa ganha cortesia do módulo de WhatsApp (ninguém precisa reativar o app).
+- [x] **`api.appfiliado.com.br` pronto pra ligar**: com o domínio em
+      `APPFILIADO_API_HOSTS` (e em `DJANGO_ALLOWED_HOSTS`), só `/licencas/` responde
+      nele; o resto da cash-b dá 404 (`licencas/middleware.py`).
+
+Falta, fora do código: criar os produtos na Zouti e cadastrar cada um em Admin >
+Produtos da Zouti; criar o webhook na Zouti apontando pra
+`https://<domínio>/licencas/webhook/zouti/` com os eventos de assinatura, estorno e
+chargeback; e testar com o "Testar Webhook" do painel (o evento aparece em Admin >
+Eventos de webhook da Zouti, com "assinatura válida" marcada). Do lado do app:
+`Appfiliado/licenca.py` ainda só lê os campos antigos - ler `modulos` entra junto
+com o novo layout.
+
+---
+
+## Fase 67 — Painel web do Appfiliado (base)
+
+Decisão: o Appfiliado vira um **painel no navegador** (`app.appfiliado.com.br`) em vez de
+um app de Windows com tudo dentro. O bot de WhatsApp deve passar a rodar no servidor
+(conexão por QR Code, sem programa no computador) - depende de um teste com número de
+teste antes (ver plano na conversa). Esta fase é só a base, no app `painel`:
+
+- [x] **Domínio próprio**: com o domínio em `APPFILIADO_PAINEL_HOSTS`, o middleware
+      `painel.middleware.DominioDoPainelMiddleware` troca as URLs pelas de
+      `painel/urls_dominio.py` - painel na raiz, `/licencas/` e `/healthz/`; nada da
+      cash-b (nem /admin/), e 404/500 com a cara do Appfiliado. O painel não existe no
+      domínio da cash-b.
+- [x] **Login próprio**, separado do login da cash-b: senha (hasher do Django) na
+      `ContaAppfiliado`; sessão guarda a conta e uma assinatura da senha (trocar a senha
+      derruba as outras sessões); 8 erros em 15 min por IP ou e-mail bloqueiam; links de
+      criar/recuperar senha no mesmo esquema do "esqueci a senha" do Django (uso único,
+      3 dias). O e-mail da chave (webhook da Zouti) já leva o link de criar senha.
+- [x] **Telas**: Início (primeiros passos e módulos), páginas de módulo com cadeado ou
+      "Em breve", Plano e assinatura (módulos, assinaturas, chave do app), Configurações
+      (conta da Shopee e troca de senha). Visual da proposta C, funciona no celular.
+- [x] **Credenciais da Shopee de cada conta**: o Secret é guardado cifrado
+      (`painel/cripto.py`, Fernet, chave em `APPFILIADO_CHAVE_CRIPTOGRAFIA`) e só é salvo
+      depois de a Shopee aceitar (`painel/shopee.py`).
+- [x] Admin: ação "Enviar link pra criar/trocar a senha do painel".
+
+Para ligar em produção: CNAME `app` -> serviço do Render (nuvem cinza na Cloudflare),
+domínio adicionado no Render, `app.appfiliado.com.br` em `DJANGO_ALLOWED_HOSTS` e em
+`APPFILIADO_PAINEL_HOSTS`, e de preferência `APPFILIADO_CHAVE_CRIPTOGRAFIA`.
+
+Próximo: fase 2 do painel - Início com números reais, Resultados (dia/semana/mês/
+personalizado; estimada, validada e faturamento) e metas mensais (3 faixas com bônus),
+reaproveitando `Appfiliado/periodos.py`, `Appfiliado/metas.py` e
+`ConversorAfiliados.obter_resultados_periodo`.
+
+## Fase 68 — Painel do Appfiliado: Resultados, Metas e Início com números reais
+
+- [x] **Resultados** (`/resultados/`): hoje, ontem, últimos 7 dias, esta semana, semana
+      passada, este mês, mês passado, últimos 30 dias ou datas escolhidas (até 1 ano);
+      faturamento, comissão estimada, comissão validada e pedidos; gráfico por dia, semana
+      ou mês (escolhendo a métrica), tabela de detalhe e comissão por Sub ID.
+- [x] **Metas** (`/metas/`): até 3 faixas por mês (100/125/150% por padrão) com
+      faturamento e bônus, digitadas à mão (mês passado, este e o próximo). Faixa com %
+      e sem faturamento é calculada pela primeira faixa preenchida. Situação: faixas
+      batidas, quanto falta, quanto faturar por dia, projeção no ritmo atual e bônus
+      garantido - no Início, em Metas e em Resultados (quando o período é de um mês só).
+- [x] **Início** só com o geral: números do mês, o dia de hoje e a meta resumida (sem
+      meta cadastrada, um botão "+ Cadastrar metas" - nem todo afiliado tem metas, então
+      isso não vira passo pendente). Gráficos, Sub IDs e detalhes ficam em Resultados.
+- [x] **Só Shopee, deixado claro**: slogan "Para afiliados Shopee" no painel, texto da
+      tela de entrar, assinatura dos e-mails e aviso no rodapé: "ferramentas feitas só
+      para afiliados da Shopee. Somos independentes, sem vínculo oficial com a Shopee."
+      A página de vendas (fase 5) deve repetir isso.
+- [x] **A Shopee só libera faturamento, comissão estimada e pedidos no dia seguinte**
+      (no mesmo dia só a comissão validada vai entrando): o Início mostra "Ontem" e a
+      "Comissão validada hoje"; Resultados avisa quando o período inclui hoje; a
+      projeção da meta usa o ritmo até ontem (painel e app de Windows).
+- [x] **Agrupar Sub IDs** (Configurações): regras "começa com / não começa com /
+      contém / não contém / termina com / não termina com" + nome do grupo, sem
+      diferenciar maiúsculas; vale a primeira regra que casar (até 20 por conta). Só
+      muda como os Sub IDs aparecem em Resultados - os dados guardados não mudam.
+- [x] **Sub ID lido do jeito da Shopee**: o `utmContent` traz os 5 Sub IDs do link
+      separados por "-" ("----" = nenhum). Cada venda conta uma vez, com os campos
+      preenchidos juntos ("siteconversor----" vira "siteconversor"). Os dados antigos
+      se corrigem na próxima sincronização (a janela de 89 dias é refeita toda vez).
+- [x] **Português dos textos**: "pra" só quando dá para trocar por "para a"; nos outros
+      casos, "para" (telas, e-mails, admin e comentários do painel e das licenças).
+- [x] **Como os números chegam**: as telas só leem o banco (`ResultadoDiario`,
+      `ResultadoSubIdDiario`). Quem busca na Shopee é o comando
+      `python manage.py sincronizar_painel --loop` (`painel/resultados.py`): a cada 30 s
+      atende quem clicou em "Atualizar agora" e, a cada 3 h, atualiza todas as contas
+      com Shopee conectada. Busca os últimos 89 dias (limite da API, paginando) e
+      recalcula faturamento/estimada/pedidos/Sub IDs da janela toda e a validada só dos
+      últimos 60 dias (dias mais antigos ficam como estavam). Regras iguais às do app:
+      faturamento e estimada pela data da compra sem CANCELLED/UNPAID, validada pela
+      data de validação do item (COMPLETED). Erros aparecem na tela e no admin.
+- [x] Admin: "Sincronizações de resultados" (com ação para buscar de novo) e "Metas
+      mensais".
+
+Para ligar em produção: criar no Render um **Background Worker** do mesmo repositório,
+com build `pip install -r requirements.txt` e start
+`python manage.py sincronizar_painel --loop`, e as **mesmas variáveis de ambiente** do
+serviço web (no mínimo `DATABASE_URL`, `DJANGO_SECRET_KEY` e, se usar,
+`APPFILIADO_CHAVE_CRIPTOGRAFIA` - sem elas o worker não decifra o Secret da Shopee).
+Sem o worker, as telas abrem mas os números não chegam.
+
+Próximo: fase 0 do bot no servidor (teste com número de teste), depois o Bot de
+WhatsApp dentro do painel.
+
+
+## Fase 69 — Bot de WhatsApp no servidor (versão de teste)
+
+Objetivo: ver se a conexão do WhatsApp pelo servidor fica estável com o número que já
+posta as ofertas, sem programa no computador e sem janela de navegador.
+
+- [x] App `bot_whatsapp`: `ConexaoWhatsApp` (estado, QR, número, grupos, pedidos do
+      painel), `EnvioWhatsApp` (fila de mensagens) e `EventoWhatsApp` (histórico de
+      quedas e reconexões).
+- [x] Biblioteca **neonize** (Python, por cima do whatsmeow): o servidor entra como
+      mais um "aparelho conectado" ("Appfiliado"), igual ao WhatsApp Web. A sessão fica
+      no próprio Postgres (tabelas `whatsmeow_*`), então deploy e reinício não pedem QR
+      de novo (`WHATSAPP_DATABASE_URL` opcional; padrão `DATABASE_URL`).
+- [x] Roda no mesmo Background Worker do `sincronizar_painel --loop`, numa thread
+      (`bot_whatsapp/gerenciador.py`) - sem serviço novo nem custo a mais.
+      `APPFILIADO_WHATSAPP_NO_WORKER=False` desliga. Se a biblioteca não carregar, só o
+      WhatsApp fica desligado (a busca da Shopee continua).
+- [x] Painel `/whatsapp/`: conectar pelo QR (atualiza sozinho), conectado/reconectando/
+      desconectar, lista de grupos, mensagem de teste (texto ou foto com legenda) e
+      histórico da conexão. Passo "Conectar seu WhatsApp" no Início.
+- [ ] Teste real: deixar conectado alguns dias e olhar o histórico.
+- [x] Correções do teste real: QR inteiro (SVG com viewBox), mínimo de histórico ao
+      conectar + `GOMEMLIMIT` (o worker passava de 512 MB), "Desconectando…" que
+      atualiza sozinho, log de memória a cada 10 min.
+
+## Fase 70 — Ofertas automáticas pela API da Shopee (bot de ofertas, parte 1)
+
+- [x] `ConfiguracaoOfertas` por conta, com os filtros do app de Windows: busca geral,
+      palavra-chave, loja (link ou número) ou categorias (palavras no nome, mesma lista
+      do app); ordem (mais vendidos, maior comissão, maior desconto); comissão,
+      desconto, preço, vendas e avaliação mínimos; cupom; Sub IDs.
+- [x] Onde e quando: grupos escolhidos na lista, uma oferta a cada N minutos, horário
+      (pode passar da meia-noite), **dias da semana**, **limite por dia** e **não repetir
+      o mesmo produto no mesmo grupo por N dias** (padrão 7; no app era para sempre).
+- [x] Motor (`bot_whatsapp/ofertas.py`, thread no mesmo worker): busca paginada que
+      continua de onde parou (volta à página 1 depois de 3 h), link de afiliado com os
+      Sub IDs, texto pelo mesmo formatador do app e **foto do produto com o texto na
+      legenda** (sem depender da prévia do link). Sem produto novo: tenta de novo em 30
+      min; erro: em 5 min. O motivo de não estar enviando aparece no painel.
+- [x] **Sub ID por grupo, flexível**: "Sub IDs padrão" para todos + um "Sub ID próprio"
+      opcional ao lado de cada grupo (ex: 4 grupos com o padrão e 1 com "vip"). Gera um
+      link por combinação de Sub IDs; o texto é o mesmo, só o link muda.
+- [x] **Canais como destino**: a lista traz os canais em que o número é dono ou
+      administrador (só esses aceitam postagem). Nos canais a oferta vai como texto com a
+      prévia do link montada no servidor (título + foto de até 300 px), porque foto com
+      legenda em canal exige um "media handle" que a biblioteca não envia.
+- [x] **Busca na lista de grupos e canais** (sem acento/maiúscula), contador de
+      selecionados e "Atualizar lista de grupos e canais" na própria tela.
+- [x] Envio espaçado: no máximo 1 mensagem a cada 3 s por número; contas se revezam.
+- [x] Tela `/whatsapp/ofertas/` (aba ao lado de "Conexão"): ligar/pausar, "Testar
+      busca" (as próximas 5 ofertas, com a mensagem), últimas ofertas enviadas.
+- [x] Parte 2: copiar ofertas de um ou mais grupos/canais (Fase 71).
+- [x] Parte 3: revisão do texto com IA (chave única do Appfiliado), modo simulação,
+      e-mail diário com o relatório (Fase 74).
+
+## Fase 71 — Copiar ofertas de grupos e canais (bot de ofertas, parte 2)
+
+- [x] "De onde vêm as ofertas": **Buscar na Shopee** (parte 1) ou **Copiar de grupos e
+      canais**. No modo cópia a pessoa marca **quantos grupos e canais de origem quiser**
+      (no app de Windows era só 1), com busca na lista. Origem e destino não podem ser o
+      mesmo grupo.
+- [x] O worker ouve as mensagens das origens (`MessageEv`): só as que têm link da Shopee
+      e não foram enviadas pelo próprio número. Cada uma vira uma `OfertaRecebida`
+      (sem duplicar), com a foto baixada para uma pasta temporária (apagada após 6 h).
+- [x] Motor (`repassar_proxima`): pega a recebida mais antiga, descobre o produto pelo
+      link curto (`copia.py`), gera o link de afiliado **da conta** (com os Sub IDs,
+      inclusive por grupo), tira o link de quem postou e manda com a foto da mensagem
+      (ou a do produto). Respeita intervalo (0 = repassa assim que chega), horário,
+      dias, limite diário e "não repetir por N dias". Recebida com mais de 1 h vence.
+- [x] Cartão "Ofertas recebidas" com o que chegou e o que aconteceu (na fila,
+      repassada, ignorada e o motivo, erro).
+- [x] **Tela ao vivo**: a cada 5 s a tela pergunta se algo mudou (oferta enviada ou
+      recebida, status) e troca só os cartões de status, recebidas e enviadas, sem
+      recarregar a página nem perder o que estava sendo digitado no formulário.
+- [x] **Menu lateral fixo** no computador: fica parado ao rolar a página e aperta os
+      espaços em telas baixas para tudo caber.
+
+## Fase 72 — Vendas na aba Resultados
+
+- [x] Cada produto vendido passa a ficar guardado (`VendaItem`): produto, foto, loja,
+      pedido, quantidade, valor, comissão, status e Sub ID. A sincronização troca a
+      janela da API (~3 meses) e o que é mais antigo fica guardado por **13 meses**.
+- [x] **Produtos mais vendidos** do período (5 primeiros, sem cancelados), com barra
+      comparando com o 1º.
+- [x] **Vendas do período**: 20 por página, busca pelo produto, filtro de Sub ID (com
+      os agrupamentos), status (pendentes, concluídos, cancelados) e ordem (mais
+      recentes ou maior comissão). No celular cada venda vira um cartão.
+- [x] **Exportar Excel**: todas as vendas do período com os filtros, mais loja,
+      pedido, status na Shopee e data de validação; aba "Produtos" com o ranking
+      completo.
+- [x] Corrigido: os botões de período da aba Resultados geravam link com "??" e o
+      período escolhido era ignorado.
+
+## Fase 73 — Sincronização mais leve
+
+- [x] As vendas da Shopee são processadas e salvas **página por página** (500 por vez),
+      sem segurar tudo na memória: numa conta com 20 mil vendas o pico caiu de ~44 MB
+      para ~3 MB.
+- [x] **Busca rápida** (a cada 3 h e "Atualizar agora"): só as compras dos últimos 30
+      dias. **Completa** (~3 meses, o máximo da API): 1x por dia, entre 3h e 6h, para
+      pegar validações atrasadas (compra de mais de 30 dias concluída só agora).
+- [x] A comissão validada de cada dia sai dos itens guardados no banco (pela data de
+      validação), então a busca rápida não perde o que foi validado de compras antigas.
+- [x] Se a Shopee falhar no meio, nada do que estava guardado se perde (transação).
+- [x] Log de cada sincronização: rápida/completa, memória antes e depois e, na
+      completa, quantas validações vieram mais de 30 dias depois da compra (para saber
+      se a completa diária ainda é necessária).
+
+## Fase 74 — Bot de ofertas, parte 3: IA, simulação e relatório por e-mail
+
+- [x] **Revisão do texto com IA** (Gemini, `bot_whatsapp/ia.py`): chave única do
+      Appfiliado (`APPFILIADO_GEMINI_API_KEY`, ou a `GEMINI_API_KEY`), quem usa só liga a
+      opção. Tipos leve/contextual/criativa (prompts do app de Windows). Se a IA mexer em
+      link, preço ou cupom, aumentar demais o texto ou falhar, vai o texto original. Uma
+      revisão por oferta (não por grupo); até 300 por conta por dia. O "Testar busca"
+      mostra a primeira oferta já revisada. Sem chave, a opção aparece indisponível.
+- [x] **Modo simulação**: faz tudo (produto, link, texto, IA), mas não envia; aparece em
+      "Últimas ofertas enviadas" como "Simulado", com a mensagem. Enquanto ligado, as
+      simulações contam para o limite e para não repetir; ao desligar, não bloqueiam nada.
+      Buscando na Shopee, simula até sem o WhatsApp conectado.
+- [x] Histórico com "Ver mensagem" (texto completo) e selo "IA" nas revisadas.
+- [x] **Grupos e canais salvos no topo** das listas de destino e de origem, com uma
+      linha separando dos outros.
+- [x] **Relatório diário por e-mail** (`painel/relatorio.py`), ligado em Configurações:
+      ontem e o mês (faturamento, pedidos, estimada, validada), meta, Sub IDs com os
+      agrupamentos, 3 mais vendidos e as ofertas do bot. Vai a partir das 8h, depois da
+      atualização de hoje com a Shopee (ou às 11h, sem ela), para a conta e até 3 e-mails
+      extras. Botão "Salvar e enviar um agora" para testar.
+
+## Fase 75 — Ajustes do bot e Meu site
+
+Ajustes do bot de ofertas:
+- [x] IA mais resistente (nova tentativa e modelos reserva quando o Gemini está
+      sobrecarregado), motivo de cada oferta que saiu sem IA no histórico.
+- [x] Modo copiar: aceita ofertas do próprio número, mensagens temporárias/editadas,
+      links sem "https://" e canais (atualizações ao vivo); o que chega sem link da
+      Shopee aparece como ignorado, com o motivo.
+- [x] Tela: aviso de "ligadas" some quando a primeira oferta sai; horários em 24 h;
+      status e "Das/Até" melhores no celular; "Salvar" mais alto no celular; "Ver
+      mensagem" sem vazar do quadro.
+
+Meu site (app `meusite`), o "link na bio" de cada conta:
+- [x] Endereço `seunome.appfiliado.com.br` (`APPFILIADO_SITES_DOMINIO` + DNS curinga) e,
+      sem ele, `app.appfiliado.com.br/s/seunome/`.
+- [x] Visual no estilo Linktree: fundo na cor do site, foto, nome, frase, botões
+      "pílula" (um em destaque) e ícones das redes (Instagram, TikTok, YouTube, X,
+      Facebook, WhatsApp, Telegram; aceita link ou @).
+- [x] Conversor de links (textos personalizáveis): o visitante cola um link da
+      Shopee e vai para a Shopee pelo link de afiliado da conta, com o Sub ID do
+      site (padrão "site"); até 20 por hora por visitante.
+- [x] Vitrine: as últimas ofertas que o bot enviou (as 100 mais recentes, sem
+      repetir), uma busca na Shopee (refeita a cada 3 h) ou produtos escolhidos;
+      filtro por categoria. Links de afiliado gerados pelo worker.
+- [x] Cliques por dia: visitas, botões, redes, produtos e conversor; o editor mostra
+      os últimos 30 dias e os produtos mais clicados.
+- [x] Editor no painel com prévia de celular ao vivo; foto guardada no banco (o disco
+      do Render não guarda arquivos).
+- [x] Rodapé "Feito com Appfiliado", que some com o adicional "Meu site sem a marca
+      Appfiliado" (novo módulo `site_sem_marca`).
+- [x] Dois estilos ("Fundo colorido" e "Fundo claro"), 15 cores prontas e "Outra
+      cor" livre; o texto troca para escuro quando a cor é clara (`meusite/cores.py`).
+      Vitrine em lista ou em carrossel.
+- [x] Bot de WhatsApp: escolha "Como enviar a oferta" nas configurações: "Foto com o
+      texto" (grupo: foto + texto; canal: texto com prévia pequena) ou "Prévia grande
+      do link" (grupo e canal: cartão grande com a foto inteira do produto, sem foto separada).
+      Foto com legenda em canal não é possível com a biblioteca atual.
+- [x] Bot de WhatsApp: sem oferta duplicada quando dois workers rodam juntos (o antigo
+      e o novo, durante um deploy): o motor, o repasse do modo copiar, o envio ao
+      WhatsApp e o e-mail diário "reservam" a vez no banco antes de agir.
+- [x] Foto ajustável ao enviar (arrastar e zoom, com o recorte feito no navegador) e
+      prévia do editor na largura real de um celular.
 
 ---
 

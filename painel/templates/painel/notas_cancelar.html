@@ -1,0 +1,48 @@
+{% extends "painel/base.html" %}
+{% load painel_extras %}
+{% block titulo %}Cancelar nota · Emissor NFS-e{% endblock %}
+{% block conteudo %}
+<header class="cabecalho">
+  <div>
+    <a class="notas-voltar" href="{% if voltar == 'lote' and nota.lote_id %}{% url 'painel_notas_lote' nota.lote_id %}{% else %}{% url 'painel_notas' %}{% endif %}">← Voltar</a>
+    <h1>Cancelar nota{% if nota.numero_nfse %} nº {{ nota.numero_nfse }}{% endif %}{% if nota.ambiente == "2" %} <span class="selo-venda selo-pendente">Ambiente de testes</span>{% endif %}</h1>
+    <p>O cancelamento vai pro Emissor Nacional, assinado com o certificado da sua empresa. Depois de aceito, não dá para desfazer.</p>
+  </div>
+</header>
+
+<section class="card notas-cartao notas-cancelar" aria-labelledby="titulo-nota">
+  <h2 id="titulo-nota">{{ nota.tomador_nome }}</h2>
+  <div class="notas-numeros">
+    <div><span>Valor</span><strong>{{ nota.valor|brl }}</strong></div>
+    <div><span>Autorizada em</span><strong>{{ nota.autorizada_em|date:"d/m/Y"|default:"-" }}</strong></div>
+    <div><span>Documento</span><strong>{{ nota.tomador_documento }}</strong></div>
+  </div>
+  <p class="suave pequeno notas-sub">Chave de acesso: {{ nota.chave }}</p>
+
+  {% if nota.situacao == "autorizada" %}
+  <form method="post" class="formulario" onsubmit="return confirm('Cancelar esta nota no emissor nacional? Não dá para desfazer.')">
+    {% csrf_token %}
+    <input type="hidden" name="voltar" value="{{ voltar }}">
+    <fieldset class="campo">
+      <legend>Motivo</legend>
+      {% for valor, nome in motivos %}<label class="marcar"><input type="radio" name="motivo" value="{{ valor }}" required{% if motivo == valor %} checked{% endif %}><span>{{ nome }}</span></label>{% endfor %}
+    </fieldset>
+    <div class="campo">
+      <label for="id_justificativa">Explique o motivo</label>
+      <textarea id="id_justificativa" name="justificativa" rows="3" minlength="15" maxlength="255" required placeholder="Ex: valor da comissão errado, a nota certa será emitida em seguida.">{{ justificativa }}</textarea>
+      <span class="ajuda">De 15 a 255 letras. Vai junto no cancelamento e aparece pro vendedor.</span>
+    </div>
+    <ul class="suave pequeno notas-cancelar-avisos">
+      {% if avisa_vendedor %}<li>O vendedor recebe um e-mail ({{ nota.tomador_email }}) avisando, com o PDF marcado como cancelado.</li>{% endif %}
+      {% if nota.ambiente == "1" %}<li>A nota cancelada libera uma vaga no plano do mês em que foi emitida.</li>{% endif %}
+      <li>A prefeitura pode ter um prazo para cancelar sem análise. Se passou, o governo recusa e mostra o motivo aqui.</li>
+    </ul>
+    <div class="botoes-linha"><button type="submit" class="botao botao-perigo">Cancelar a nota</button></div>
+  </form>
+  {% elif nota.situacao == "cancelada" %}
+    <p class="aviso aviso-info pequeno">Esta nota já foi cancelada{% if nota.cancelada_em %} em {{ nota.cancelada_em|date:"d/m/Y \à\s H:i" }}{% endif %}.</p>
+  {% else %}
+    <p class="aviso aviso-warning pequeno">Só dá para cancelar uma nota autorizada.</p>
+  {% endif %}
+</section>
+{% endblock %}

@@ -1,0 +1,19 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+{% include "painel/_cabeca.html" %}
+<title>{% block titulo %}Entrar{% endblock %} · Appfiliado</title>
+</head>
+<body>
+<main class="tela-simples">
+  <div class="caixa-simples">
+    <div class="marca">
+      {% include "painel/_logo.html" %}
+      <span class="marca-texto"><strong>Appfiliado</strong><small>Para afiliados Shopee</small></span>
+    </div>
+    {% block conteudo %}{% endblock %}
+    {% include "painel/_aviso_shopee.html" %}
+  </div>
+</main>
+</body>
+</html>

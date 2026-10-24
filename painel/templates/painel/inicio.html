@@ -1,0 +1,93 @@
+{% extends "painel/base.html" %}
+{% load painel_extras %}
+{% block titulo %}Início{% endblock %}
+{% block conteudo %}
+<header class="cabecalho">
+  <div>
+    <h1>Olá{% if primeiro_nome %}, {{ primeiro_nome }}{% endif %}!</h1>
+    <p>{{ hoje }}</p>
+  </div>
+  {% if shopee_conectada %}{% include "painel/_sincronizacao.html" %}{% endif %}
+</header>
+
+{% if alertas_novos %}
+  <p class="aviso aviso-success aviso-campanha">📉 {% if alertas_novos == 1 %}Um produto que você acompanha baixou de preço.{% else %}{{ alertas_novos }} alertas de preço novos.{% endif %} <a href="{% url 'painel_whatsapp_alertas' %}">Ver alertas</a></p>
+{% endif %}
+{% if aviso_campanha %}
+  <p class="aviso aviso-{{ aviso_campanha.tipo }} aviso-campanha">{{ aviso_campanha.texto }} <a href="{% url 'painel_whatsapp_campanhas' %}">Ver modo campanha</a></p>
+{% endif %}
+
+{% if passos_pendentes %}
+  <section class="card" aria-labelledby="titulo-passos">
+    <h2 id="titulo-passos">Primeiros passos</h2>
+    <ul class="passos">
+      {% for passo in passos %}
+        <li>
+          <span class="marcador {% if passo.feito %}feito{% endif %}">{% include "painel/_icone.html" with caminho=icones.check %}</span>
+          <span class="titulo {% if passo.feito %}feito-texto{% endif %}">{{ passo.titulo }}</span>
+          {% if passo.feito %}<span class="estado estado-liberado">Feito</span>
+          {% elif passo.em_breve %}<span class="estado estado-em_breve">Em breve</span>
+          {% elif passo.href %}<a class="botao botao-escuro botao-pequeno" href="{% url passo.href %}">{{ passo.acao }}</a>{% endif %}
+        </li>
+      {% endfor %}
+    </ul>
+  </section>
+{% endif %}
+
+{% if shopee_conectada %}
+  <section class="kpis-do-mes" aria-labelledby="titulo-kpis-mes">
+    <div class="kpis-topo">
+      {% if mes_fechado %}
+        <h2 id="titulo-kpis-mes"><span class="selo-mes selo-mes-fechado">Mês passado</span> {{ nome_mes }} <span class="suave pequeno">(fechado)</span></h2>
+        <span class="suave pequeno">O mês todo. O mês novo aparece aqui amanhã, quando a Shopee liberar os números de hoje · <a href="{% url 'painel_resultados' %}">ver outros períodos</a></span>
+      {% else %}
+        <h2 id="titulo-kpis-mes"><span class="selo-mes">Mês atual</span> {{ nome_mes }}</h2>
+        <span class="suave pequeno">Do dia 1º até hoje · <a href="{% url 'painel_resultados' %}">ver outros períodos</a></span>
+      {% endif %}
+    </div>
+    {% include "painel/_kpis.html" with valores=mes legenda="pedidos validados + pendentes" %}
+  </section>
+
+  <div class="duas-colunas">
+    <section class="card">
+      {% if meta.metas %}
+        <div class="card-topo"><h2>{% if mes_fechado %}Meta de {{ nome_mes }}{% else %}Meta do mês{% endif %}</h2><a class="pequeno" href="{% url 'painel_metas' %}">Ver metas</a></div>
+        {% include "painel/_meta_resumo.html" %}
+      {% else %}
+        <h2>{% if mes_fechado %}Meta de {{ nome_mes }}{% else %}Meta do mês{% endif %}</h2>
+        <p class="suave pequeno" style="margin-bottom:14px">Se a Shopee te deu metas com bônus este mês, cadastre aqui e acompanhe quanto falta para cada faixa.</p>
+        <a class="botao botao-claro botao-pequeno" href="{% url 'painel_metas' %}">{% include "painel/_icone.html" with caminho=icones.mais %}Cadastrar metas</a>
+      {% endif %}
+    </section>
+    <section class="card hoje">
+      <div class="card-topo"><h2>Ontem</h2><span class="suave pequeno">{{ ontem|date:"d/m" }}</span></div>
+      <dl class="resumo-hoje">
+        <div><dt>Faturamento</dt><dd>{{ do_ontem.faturamento|brl }}</dd></div>
+        <div><dt>Comissão estimada</dt><dd>{{ do_ontem.comissao_estimada|brl }}</dd></div>
+        <div><dt>Pedidos</dt><dd>{{ do_ontem.pedidos|numero }}</dd></div>
+      </dl>
+      <div class="validada-hoje">
+        <span>Comissão validada hoje</span>
+        <strong>{{ do_dia.comissao_validada|brl }}</strong>
+      </div>
+      <p class="suave pequeno" style="margin:8px 0 16px">A Shopee libera faturamento, comissão estimada e pedidos no dia seguinte. A comissão validada vai entrando ao longo do dia.</p>
+      <a class="botao botao-claro botao-pequeno" href="{% url 'painel_resultados' %}">Ver resultados detalhados</a>
+    </section>
+  </div>
+{% endif %}
+
+<section aria-labelledby="titulo-modulos">
+  <h2 id="titulo-modulos" style="font-size:16px;margin:4px 0 12px">Seus módulos</h2>
+  <div class="grade">
+    {% for m in cartoes_modulos %}
+      <a class="card modulo-card" href="{{ m.href }}">
+        <div class="topo">
+          <span class="icone-redondo">{% include "painel/_icone.html" with caminho=m.icone_path %}</span>
+          <span class="estado estado-{{ m.estado }}">{% if m.estado == "liberado" %}Liberado{% elif m.estado == "bloqueado" %}Não incluso{% else %}Em breve{% endif %}</span>
+        </div>
+        <strong>{{ m.nome }}</strong>
+      </a>
+    {% endfor %}
+  </div>
+</section>
+{% endblock %}

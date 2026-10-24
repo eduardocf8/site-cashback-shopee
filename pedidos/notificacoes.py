@@ -126,7 +126,7 @@ def notificar_indicador_bonus_pendente(indicacao):
         "Isso significa que o SEU próximo pedido validado vai vir com o dobro de "
         "cashback. Aproveite!\n\n"
         "Se estiver rolando uma campanha de cashback extra, seu pedido já vem com o "
-        "valor aumentado da campanha e o bônus da indicação fica guardado para o "
+        "valor aumentado da campanha e o bônus da indicação fica guardado pro "
         "pedido seguinte, depois que ela terminar.\n\n"
         "Equipe cash-b"
         + _rodape_redes_sociais_texto()
@@ -142,7 +142,7 @@ def notificar_indicador_bonus_pendente(indicacao):
                 "pedido validado</strong> vai vir com o dobro de cashback. Aproveite!</p>"
                 "<p style='margin:0;'>Se estiver rolando uma campanha de cashback extra, "
                 "seu pedido já vem com o valor aumentado da campanha e o bônus da "
-                "indicação fica guardado para o pedido seguinte, depois que ela "
+                "indicação fica guardado pro pedido seguinte, depois que ela "
                 "terminar.</p>"
             ),
             **_contexto_redes_sociais(),

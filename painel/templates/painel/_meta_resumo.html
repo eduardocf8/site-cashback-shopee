@@ -1,0 +1,29 @@
+{% load painel_extras %}
+<div class="meta meta-resumo">
+  <div class="meta-topo">
+    <strong class="meta-valor">{{ meta.faturamento|brl }}</strong>
+    <span class="suave pequeno">faturados em {{ meta.nome_mes }}</span>
+  </div>
+  <div class="meta-trilho" aria-hidden="true">
+    <div class="meta-preenchido" style="width: {{ meta.porcentagem_barra }}%"></div>
+    {% for f in meta.faixas_tela %}<span class="meta-marca{% if f.batida %} batida{% endif %}" style="left: {{ f.posicao }}%"></span>{% endfor %}
+  </div>
+  {% if meta.modo_gmv %}
+    {% if meta.proxima %}
+      <p class="pequeno">{% if mes_fechado %}O mês fechou. Ficaram faltando{% else %}Faltam{% endif %} <strong>{{ meta.falta|brl }}</strong> pra meta de <strong>{{ meta.proxima.faturamento|brl0 }}</strong> (bônus de <strong>{{ meta.gmv_percentual|floatformat:"-2" }}% do GMV</strong>).</p>
+    {% else %}
+      <p class="pequeno bom"><strong>Meta batida!</strong> O bônus é {{ meta.gmv_percentual|floatformat:"-2" }}% do GMV do mês.</p>
+    {% endif %}
+    {% if meta.bonus_atual %}<p class="pequeno bom">{% if mes_fechado %}Bônus do mês{% else %}Bônus até agora{% endif %}: <strong>{{ meta.bonus_atual|brl }}</strong>{% if not mes_fechado %} <span class="suave">(cada R$ 1.000 a mais rende {{ meta.bonus_a_cada_mil|brl }})</span>{% endif %}</p>{% endif %}
+    {% if not mes_fechado and meta.dias_restantes %}<p class="pequeno suave">No ritmo atual, o mês fecha em {{ meta.projecao|brl0 }}{% if meta.bonus_projetado %} e o bônus em {{ meta.bonus_projetado|brl0 }}{% else %}, abaixo da meta{% endif %}.</p>{% endif %}
+  {% elif meta.proxima %}
+    {% if mes_fechado %}
+      <p class="pequeno">O mês fechou. Ficaram faltando <strong>{{ meta.falta|brl }}</strong> pra faixa <strong>{{ meta.nome_proxima }}</strong>{% if meta.proxima.bonus %} (bônus {{ meta.proxima.bonus|brl0 }}){% endif %}.</p>
+    {% else %}
+      <p class="pequeno">Faltam <strong>{{ meta.falta|brl }}</strong> pra faixa <strong>{{ meta.nome_proxima }}</strong>{% if meta.proxima.bonus %} (bônus {{ meta.proxima.bonus|brl0 }}){% endif %}.</p>
+    {% endif %}
+  {% else %}
+    <p class="pequeno bom"><strong>Todas as faixas do mês batidas!</strong></p>
+  {% endif %}
+  {% if meta.bonus_garantido and not meta.modo_gmv %}<p class="pequeno bom">{% if mes_fechado %}Bônus conquistado no mês{% else %}Bônus garantido até agora{% endif %}: <strong>{{ meta.bonus_garantido|brl }}</strong></p>{% endif %}
+</div>

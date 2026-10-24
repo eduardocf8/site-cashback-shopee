@@ -71,7 +71,7 @@ SLIDES = [
     Slide(LIGHT_BG, item(
         "2", "Passar por outro link de afiliado",
         "Se você clica no link da cash-b e, antes de fechar a compra, clica no link de "
-        "outro site ou app de cashback, a comissão pode acabar indo para o outro.",
+        "outro site ou app de cashback, a comissão pode acabar indo pro outro.",
         "Escolha um caminho e vá até o fim por ele.",
     ), True),
 
@@ -91,7 +91,7 @@ SLIDES = [
 
     Slide(LIGHT_BG, item(
         "5", "O pagamento não ser confirmado",
-        "Boleto que vence, Pix que não é pago, cartão recusado. Para a Shopee, esse "
+        "Boleto que vence, Pix que não é pago, cartão recusado. Pra Shopee, esse "
         "pedido nunca virou venda.",
         "Confira se o pagamento passou antes de contar com o cashback.",
     ), True),

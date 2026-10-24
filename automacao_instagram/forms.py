@@ -66,7 +66,7 @@ class AutomacaoStoryForm(forms.ModelForm):
         fields = ("nome", "modo_resposta", "texto_personalizado", "ativa")
         labels = {
             "nome": "Nome da automação",
-            "modo_resposta": "O que enviar por DM pra quem responder",
+            "modo_resposta": "O que enviar por DM para quem responder",
             "texto_personalizado": "Mensagem personalizada",
             "ativa": "Automação ativa",
         }

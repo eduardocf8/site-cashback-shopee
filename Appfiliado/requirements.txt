@@ -1,0 +1,4 @@
+playwright
+PySide6
+nuitka
+pywin32; sys_platform == "win32"

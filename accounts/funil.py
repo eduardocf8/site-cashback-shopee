@@ -3,21 +3,41 @@ esbarram no pedido de cadastro, quantos se cadastram (formulário ou Google) e q
 geram o primeiro link depois. Decide se "converter sem cadastro" vale o esforço."""
 import re
 import secrets
+from datetime import timedelta
 from functools import wraps
 
 from django.contrib.auth.views import redirect_to_login
 from django.db import IntegrityError
+from django.db.models import Count, Q
+from django.db.models.functions import TruncDate
+from django.utils import timezone
 
 from .models import EventoFunil
 
 SESSION_KEY_FUNIL = "funil_sem_conta_id"
-# Prévias de link (WhatsApp, Facebook, Pinterest) e buscadores batem nessas URLs sem
-# ser gente - contá-los inflaria as "tentativas".
-PADRAO_ROBO = re.compile(r"bot|crawl|spider|slurp|preview|facebookexternalhit|whatsapp|pinterest|headless", re.I)
+# Prévias de link (WhatsApp, Facebook, Pinterest), buscadores, ferramentas de SEO e
+# scripts batem nessas URLs sem ser gente - contá-los inflaria as "tentativas".
+# "externalagent" pega o robô da Meta que abre links compartilhados no Instagram
+# (meta-externalagent) e o de catálogo (facebookcatalog).
+PADRAO_ROBO = re.compile(
+    r"bot|crawl|spider|slurp|preview|scrap|fetch|headless|lighthouse|pagespeed|"
+    r"facebookexternalhit|externalagent|facebookcatalog|whatsapp|pinterest|telegram|"
+    r"discord|slack|skype|embedly|google-inspectiontool|googleother|"
+    r"python|curl|wget|go-http-client|okhttp|axios|java/|libwww|httpclient|"
+    r"semrush|ahrefs|gtmetrix",
+    re.I,
+)
+TAMANHO_USER_AGENT = 255
+
+
+def _user_agent(request) -> str:
+    return request.META.get("HTTP_USER_AGENT", "")
 
 
 def _eh_robo(request) -> bool:
-    return bool(PADRAO_ROBO.search(request.META.get("HTTP_USER_AGENT", "")))
+    user_agent = _user_agent(request)
+    # Navegador de verdade sempre manda User-Agent; vazio é script.
+    return not user_agent.strip() or bool(PADRAO_ROBO.search(user_agent))
 
 
 def _funil_id(request, criar: bool) -> str | None:
@@ -38,12 +58,18 @@ def _registrar(funil_id, etapa, **campos):
 def registrar_tentativa(request, origem: str) -> None:
     if request.user.is_authenticated or _eh_robo(request):
         return
-    _registrar(_funil_id(request, criar=True), EventoFunil.TENTATIVA, origem=origem)
+    _registrar(
+        _funil_id(request, criar=True), EventoFunil.TENTATIVA,
+        origem=origem, user_agent=_user_agent(request)[:TAMANHO_USER_AGENT],
+    )
 
 
 def registrar_cadastro(request, metodo: str) -> None:
     """Todo cadastro novo entra - com ou sem tentativa antes (quem já chegou decidido)."""
-    _registrar(_funil_id(request, criar=True), EventoFunil.CADASTRO, metodo=metodo)
+    _registrar(
+        _funil_id(request, criar=True), EventoFunil.CADASTRO,
+        metodo=metodo, user_agent=_user_agent(request)[:TAMANHO_USER_AGENT],
+    )
 
 
 def registrar_primeiro_link(request) -> None:
@@ -97,3 +123,38 @@ def obter_funil(data_inicio=None, data_fim=None) -> dict:
         "cadastros_periodo": cadastros_periodo.count(),
         "cadastros_periodo_google": cadastros_periodo.filter(metodo="google").count(),
     }
+
+
+DIAS_PADRAO_CADASTROS_POR_DIA = 30
+DIAS_MAXIMOS_CADASTROS_POR_DIA = 90
+
+
+def obter_cadastros_por_dia(data_inicio=None, data_fim=None) -> list[dict]:
+    """Uma linha por dia (mais recente primeiro): total de cadastros, pelo Google e pelo
+    formulário. Sem período, os últimos 30 dias; períodos longos ficam com os 90 dias
+    finais. Só tem dados desde a Fase 62 (início da medição do funil)."""
+    fim = data_fim or timezone.localdate()
+    inicio = data_inicio or fim - timedelta(days=DIAS_PADRAO_CADASTROS_POR_DIA - 1)
+    inicio = max(inicio, fim - timedelta(days=DIAS_MAXIMOS_CADASTROS_POR_DIA - 1))
+
+    por_dia = {
+        linha["dia"]: linha
+        for linha in EventoFunil.objects.filter(
+            etapa=EventoFunil.CADASTRO, criado_em__date__gte=inicio, criado_em__date__lte=fim
+        )
+        .annotate(dia=TruncDate("criado_em"))
+        .values("dia")
+        .annotate(total=Count("id"), google=Count("id", filter=Q(metodo="google")))
+    }
+    linhas = []
+    dia = fim
+    while dia >= inicio:
+        linha = por_dia.get(dia, {"total": 0, "google": 0})
+        linhas.append({
+            "dia": dia,
+            "total": linha["total"],
+            "google": linha["google"],
+            "formulario": linha["total"] - linha["google"],
+        })
+        dia -= timedelta(days=1)
+    return linhas
