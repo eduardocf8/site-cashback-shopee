@@ -230,18 +230,12 @@ Itens novos/atualizados a partir dele - **ordem sugerida de implementação**:
        duplicada. Indicação, origem e evento de cadastro da Meta iguais ao formulário.
        Desligado sem `GOOGLE_CLIENT_ID`/`GOOGLE_CLIENT_SECRET`; URI de redirecionamento
        no Google Cloud: `https://cash-b.com/login/google/callback/`.
-5. [ ] **13.11 Converter sem cadastro** (grande, já existia) - **decidido em
-       24/10/2026 com 7 dias de dados (16-23/10, "Funil de quem chega sem conta",
-       admin > Analytics), em andamento**: 4.787 tentativas sem conta no período
-       (quase todas na vitrine - o gargalo é o clique em "Ir pra oferta" exigir
-       login, não o conversor), só 3 cadastros posteriores vindos desse tráfego.
-       Considerar pedir só e-mail/Google ao gerar o link, porque o navegador
-       interno do Instagram perde o cookie do clique anônimo. - a Méliuz prova que
-       funciona: guardar o clique anônimo num cookie e ligar à conta quando a
-       pessoa se cadastrar no mesmo navegador; cashback só pago com cadastro.
-       Mexe em `gerar_click`, sincronização e Termos de Uso. Fica por último
-       porque fica bem melhor com o 13.15 pronto (cadastro em 1 clique depois da
-       compra) e com os itens 1-3 já medindo a conversão atual.
+5. [x] **13.11 Converter sem cadastro** (grande, já existia) - decidido em
+       24/10/2026 com 7 dias de dados (16-23/10, "Funil de quem chega sem conta"):
+       4.787 tentativas sem conta no período (quase todas na vitrine - o gargalo
+       era o clique em "Ir pra oferta"/"Ir pra Shopee" exigir login, não o
+       conversor), só 3 cadastros posteriores vindos desse tráfego. Implementado
+       na Fase 76.
 
 ## Fase 14 — Redesign: de "gerador de link" a vitrine de ofertas ✅ (pausada por decisão do dono, ver abaixo)
 
@@ -2995,6 +2989,58 @@ Meu site (app `meusite`), o "link na bio" de cada conta:
       WhatsApp e o e-mail diário "reservam" a vez no banco antes de agir.
 - [x] Foto ajustável ao enviar (arrastar e zoom, com o recorte feito no navegador) e
       prévia do editor na largura real de um celular.
+
+---
+
+## Fase 76 — Converter sem cadastro (13.11)
+
+Implementado em 24/10/2026, a partir da decisão registrada no item 13.11 acima (7
+dias de dados do funil, sem esperar as 2-3 semanas originais).
+
+- [x] **Página de escolha** em vez de forçar login de cara ou redirecionar direto
+      pra Shopee: `/continuar/` (`links/views.py::continuar_sem_cadastro`) mostra
+      "Cadastrar e continuar" (ganha cashback) e "Continuar sem cadastro" (vai pra
+      Shopee sem cashback). `accounts/funil.py::exigir_login_ou_pagina_de_escolha`
+      substitui `exigir_login_medindo` em `ofertas/views.py` (`ir_para_oferta`,
+      `ir_para_oferta_manual`, `ir_para_oferta_destaque_manual`) e em
+      `links/views.py::ir_para_shopee`. O conversor da home continua mandando pro
+      cadastro direto (não revisado nessa fase).
+- [x] **Clique anônimo**: `Click.usuario` passou a aceitar `null` (migração
+      `links/0007`) e usa subId `"anon"` no lugar de `"user<id>"`
+      (`Click.sub_id_usuario`). `gerar_click` normaliza `AnonymousUser` pra `None`.
+      Limite de 20 cliques anônimos/hora por IP (`accounts/funil.py`), separado do
+      uso normal de quem já tem conta.
+- [x] **Cookie do clique anônimo** (`accounts/cliques_anonimos.py`): assinado,
+      essencial (sem pedir consentimento - mesma base do cookie de origem que já
+      existia, ver Política de Cookies), guarda até 20 ids de clique por até 7
+      dias. `salvar_click_anonimo` grava a cada clique sem conta;
+      `ligar_clicks_anonimos` liga à conta nova todo clique do cookie ainda sem
+      usuário e dentro da janela de 7 dias - chamada em `accounts/views.py`, no
+      cadastro (`_concluir_cadastro`) e no login/cadastro pelo Google
+      (`callback_google`, nos dois casos: conta nova e conta já existente). Os
+      `Pedido`s que já existiam a partir desses cliques ganham `usuario` na hora
+      (aparecem em "Meus pedidos" de cara); o `valor_cashback` deles é recalculado
+      sozinho na sincronização seguinte. O cookie é apagado depois de entrar
+      (`_redirecionar_depois_de_entrar`).
+- [x] **Sincronização** (`pedidos/services.py::_montar_defaults`): item de pedido
+      só gera cashback quando o clique tem `usuario` (`click.usuario_id`) - clique
+      anônimo soma a comissão normalmente (é real, a Shopee paga), mas cashback
+      fica zerado até alguém se cadastrar.
+- [x] **Funil** (`accounts/funil.py`/`accounts/models.py::EventoFunil`): nova etapa
+      `clicou_sem_conta`, registrada quando a pessoa escolhe "continuar sem
+      cadastro" na página de escolha. `obter_funil` passou a reportar quantos
+      clicaram sem conta e quantos desses se cadastraram depois.
+- [x] **Admin**: filtro de origem "Sem cadastro" em Pedidos e na tela de Analytics
+      (`pedidos/analytics.py::ORIGEM_SEM_CADASTRO` - `click` preenchido,
+      `usuario` vazio), pra ver a comissão de clique anônimo ainda não convertido
+      em cashback de ninguém.
+- [x] **Textos**: Termos de Uso (seções 2 e 5), Política de Cookies (novo item nos
+      cookies essenciais) e FAQ ("Preciso ter conta pra usar a cash-b?") explicam o
+      clique sem cadastro e a janela de 7 dias.
+- [x] **Fora dessa fase, por decisão do dono**: Meta/CAPI continua disparando
+      `GerouLinkCashback` pro clique anônimo igual a antes (mesmo código,
+      proposital - mudar o sinal pros anúncios estava fora de escopo); o conversor
+      da home segue mandando direto pro cadastro.
 
 ---
 
