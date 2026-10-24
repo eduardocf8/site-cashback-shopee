@@ -51,6 +51,9 @@ class EmpresaNotas(models.Model):
     # Hora (0-23, horário de Brasília) para mandar os e-mails das notas aos vendedores.
     # Vazio = logo depois que as notas saem.
     email_horario = models.PositiveSmallIntegerField(null=True, blank=True)
+    # E-mail da contabilidade: recebe os XMLs e a planilha das notas do mês quando a pessoa manda
+    # pelo botão no Emissor (notas/contabilidade.py).
+    contabilidade_email = models.EmailField(blank=True)
 
     criada_em = models.DateTimeField(auto_now_add=True)
     atualizada_em = models.DateTimeField(auto_now=True)
@@ -137,7 +140,9 @@ class NotaFiscal(models.Model):
     TIPO_SHOPEE = "shopee"
     TIPO_VENDEDOR = "vendedor"
     TIPO_TESTE = "teste"
-    TIPOS = [(TIPO_SHOPEE, "Shopee"), (TIPO_VENDEDOR, "Vendedor"), (TIPO_TESTE, "Teste")]
+    TIPO_ASSINATURA = "assinatura"  # assinatura do Appfiliado paga na Zouti (notas/assinaturas.py)
+    TIPOS = [(TIPO_SHOPEE, "Shopee"), (TIPO_VENDEDOR, "Vendedor"), (TIPO_TESTE, "Teste"),
+             (TIPO_ASSINATURA, "Assinatura do Appfiliado")]
 
     PREVIA = "previa"  # importada, esperando a pessoa confirmar o lote
     FILA = "fila"
@@ -173,6 +178,15 @@ class NotaFiscal(models.Model):
     tomador_pais = models.CharField(max_length=2, blank=True)  # ISO, só para estrangeiro
     tomador_endereco = models.CharField(max_length=300, blank=True)  # como veio no relatório da Shopee
     valor = models.DecimalField(max_digits=15, decimal_places=2)
+
+    # Serviço próprio desta nota (vazio = o serviço cadastrado na empresa). Usado nas notas das
+    # assinaturas do Appfiliado, que a mesma empresa emite com outro código.
+    servico_codigo = models.CharField(max_length=6, blank=True)
+    servico_codigo_municipal = models.CharField(max_length=20, blank=True)
+    servico_descricao = models.TextField(blank=True)
+    servico_nbs = models.CharField(max_length=9, blank=True)
+    # De onde veio a nota, pra nunca emitir duas vezes a mesma coisa (ex: "zouti:sub_x:2026-10-21").
+    referencia = models.CharField(max_length=120, blank=True)
 
     # Série e número só são definidos na primeira tentativa de envio (sem buracos na
     # numeração por causa de prévias descartadas).
@@ -211,6 +225,8 @@ class NotaFiscal(models.Model):
         verbose_name_plural = "notas fiscais"
         constraints = [
             models.UniqueConstraint(fields=["empresa", "ambiente", "serie", "numero"], name="nota_numero_unico"),
+            models.UniqueConstraint(fields=["empresa", "ambiente", "referencia"], condition=~models.Q(referencia=""),
+                                    name="nota_referencia_unica"),
         ]
         indexes = [models.Index(fields=["empresa", "situacao"]), models.Index(fields=["situacao", "criada_em"]),
                    models.Index(fields=["email_situacao"])]

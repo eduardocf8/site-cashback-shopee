@@ -210,6 +210,17 @@ APPFILIADO_GEMINI_MODELO = os.environ.get("APPFILIADO_GEMINI_MODELO", "")
 # Agente de vendas no WhatsApp do Appfiliado (app atendimento). Liga quando há a conta cujo
 # WhatsApp conectado é o número de vendas e a ANTHROPIC_API_KEY. O aviso de "chamar você"
 # vai pro número em ATENDIMENTO_AVISAR (só dígitos, com DDI e DDD).
+# Notas fiscais das assinaturas do Appfiliado (notas/assinaturas.py): cada pagamento confirmado pela
+# Zouti vira uma NFS-e emitida pela empresa cadastrada no Emissor desta conta. Sem a conta, desligado.
+# O ambiente começa no de testes do governo ("2"); "1" = produção. Código, NBS e descrição do serviço
+# próprios dessas notas (o serviço das notas da Shopee da mesma empresa continua o de sempre).
+NOTAS_ASSINATURAS_CONTA_ID = int(os.environ.get("APPFILIADO_NOTAS_ASSINATURAS_CONTA_ID", "0") or 0)
+NOTAS_ASSINATURAS_AMBIENTE = os.environ.get("APPFILIADO_NOTAS_ASSINATURAS_AMBIENTE", "2")
+NOTAS_ASSINATURAS_CODIGO = os.environ.get("APPFILIADO_NOTAS_ASSINATURAS_CODIGO", "010501")
+NOTAS_ASSINATURAS_CODIGO_MUNICIPAL = os.environ.get("APPFILIADO_NOTAS_ASSINATURAS_CODIGO_MUNICIPAL", "")
+NOTAS_ASSINATURAS_NBS = os.environ.get("APPFILIADO_NOTAS_ASSINATURAS_NBS", "111032200")
+NOTAS_ASSINATURAS_DESCRICAO = os.environ.get("APPFILIADO_NOTAS_ASSINATURAS_DESCRICAO", "Assinatura Appfiliado")
+
 ATENDIMENTO_CONTA_ID = int(os.environ.get("APPFILIADO_ATENDIMENTO_CONTA_ID", "0") or 0)
 ATENDIMENTO_AVISAR = os.environ.get("APPFILIADO_ATENDIMENTO_AVISAR", "")
 ATENDIMENTO_MODELO = os.environ.get("APPFILIADO_ATENDIMENTO_MODELO", "claude-opus-5-5")

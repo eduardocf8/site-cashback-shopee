@@ -24,8 +24,35 @@ def conexao():
     return get_connection()
 
 
+def _assinatura(nota) -> tuple[str, str]:
+    """Assunto e texto do e-mail da nota de uma assinatura do Appfiliado (para o cliente)."""
+    empresa = nota.empresa
+    corpo = (
+        f"Olá, {nota.tomador_nome}!\n\n"
+        "Segue a nota fiscal de serviço (NFS-e) do pagamento da sua assinatura do Appfiliado.\n\n"
+        f"Serviço: {nota.servico_descricao}\n"
+        f"Prestador: {empresa.razao_social} (CNPJ {empresa.cnpj_formatado})\n"
+        f"Número da NFS-e: {nota.numero_nfse or '-'}\n"
+        f"Valor: {_brl(nota.valor)}\n"
+        f"Chave de acesso: {nota.chave}\n\n"
+        "O PDF e o XML da nota estão em anexo. Você também pode consultar a nota em "
+        "https://www.nfse.gov.br/consultapublica com a chave de acesso.\n\n"
+        "Dúvidas? É só responder este e-mail.\n\n"
+        "Obrigado por usar o Appfiliado!\n"
+    )
+    return f"Nota fiscal da sua assinatura do Appfiliado (NFS-e nº {nota.numero_nfse or nota.numero})", corpo
+
+
 def montar(nota, connection=None) -> EmailMessage:
     empresa = nota.empresa
+    if nota.tipo == nota.TIPO_ASSINATURA:
+        assunto, corpo = _assinatura(nota)
+        mensagem = EmailMessage(subject=assunto, body=corpo,
+                                from_email=settings.NOTAS_EMAIL_REMETENTE or settings.APPFILIADO_EMAIL_REMETENTE,
+                                to=[nota.tomador_email], reply_to=[empresa.conta.email], connection=connection)
+        mensagem.attach(danfse.nome_arquivo(nota, "pdf"), danfse.pdf(nota.xml_nfse), "application/pdf")
+        mensagem.attach(danfse.nome_arquivo(nota, "xml"), nota.xml_nfse.encode("utf-8"), "application/xml")
+        return mensagem
     referencia = ""
     if nota.lote_id:
         mes = nota.lote.mes_referencia
@@ -64,7 +91,9 @@ def montar_cancelamento(nota, connection=None) -> EmailMessage:
     corpo = (
         f"Olá, {nota.tomador_nome}!\n\n"
         f"A nota fiscal de serviço (NFS-e) nº {nota.numero_nfse or '-'} emitida por {empresa.razao_social} "
-        f"(CNPJ {empresa.cnpj_formatado}) para a sua loja foi cancelada no Emissor Nacional.\n\n"
+        f"(CNPJ {empresa.cnpj_formatado}) "
+        f"{'da sua assinatura do Appfiliado' if nota.tipo == nota.TIPO_ASSINATURA else 'para a sua loja'} "
+        "foi cancelada no Emissor Nacional.\n\n"
         f"Valor da nota: {_brl(nota.valor)}\n"
         f"Chave de acesso: {nota.chave}\n"
         f"Motivo: {motivo} - {nota.cancelamento_justificativa}\n\n"

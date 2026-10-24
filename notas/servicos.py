@@ -60,7 +60,7 @@ def uso_do_plano(empresa, hoje=None) -> dict:
     usadas = NotaFiscal.objects.filter(
         empresa=empresa, ambiente=AMBIENTE_PRODUCAO, situacao__in=SITUACOES_QUE_CONTAM,
         competencia__year=hoje.year, competencia__month=hoje.month,
-    ).count()
+    ).exclude(tipo=NotaFiscal.TIPO_ASSINATURA).count()  # as das assinaturas do Appfiliado não ocupam o plano
     limite = planos.notas_por_mes(empresa.conta)
     restam = None if limite is None else max(0, limite - usadas)
     return {"limite": limite, "usadas": usadas, "restam": restam, "mes": MESES[hoje.month - 1],
@@ -224,9 +224,15 @@ def _guardar_campos(ambiente: str, campos):
 _PADRAO = object()  # endereço do tomador: o de sempre (ver _endereco_do_tomador)
 
 
-def _tomador(nota, campos, end=_PADRAO) -> dps.Tomador:
+def _tomador(nota, campos, end=_PADRAO) -> dps.Tomador | None:
     if nota.tomador_documento == SHOPEE_CNPJ:
         return SHOPEE
+    if nota.tipo == NotaFiscal.TIPO_ASSINATURA and nota.tomador_tipo == "cpf" and not nota.tomador_endereco:
+        # Cliente pessoa física de uma assinatura: a Zouti não manda o endereço. Quando a nota exige
+        # endereço (IBS/CBS), vai sem identificar o tomador, como as notas de software para consumidor.
+        if "IBSCBS" in campos:
+            return None
+        end = None
     tomador = dps.Tomador(nota.tomador_tipo, nota.tomador_documento, nota.tomador_nome, nota.tomador_email,
                           nota.tomador_pais)
     if nota.tomador_tipo in ("cnpj", "cpf"):
@@ -291,6 +297,15 @@ def _recusa_de_endereco(mensagens) -> bool:
                for m in mensagens)
 
 
+def _servico(nota, com_ibscbs: bool) -> dps.Servico:
+    """O serviço da nota: o próprio dela (notas das assinaturas do Appfiliado) ou o da empresa."""
+    if nota.servico_codigo:
+        return dps.Servico(nota.servico_codigo, nota.servico_descricao, nota.servico_codigo_municipal,
+                           nota.servico_nbs if com_ibscbs else "")
+    e = nota.empresa
+    return dps.Servico(e.codigo_tributacao, e.descricao_servico, e.codigo_municipal, e.codigo_nbs if com_ibscbs else "")
+
+
 def _montar_assinada(nota, cert, campos=None, end=_PADRAO) -> bytes:
     campos = campos_novos(nota.ambiente) if campos is None else campos
     e = nota.empresa
@@ -306,8 +321,7 @@ def _montar_assinada(nota, cert, campos=None, end=_PADRAO) -> bytes:
         serie=nota.serie, numero=nota.numero, competencia=nota.competencia,
         prestador=dps.Prestador(e.cnpj, e.municipio_ibge, e.regime, e.inscricao_municipal),
         tomador=_tomador(nota, campos, end),
-        servico=dps.Servico(e.codigo_tributacao, e.descricao_servico, e.codigo_municipal,
-                            e.codigo_nbs if "IBSCBS" in campos else ""),
+        servico=_servico(nota, "IBSCBS" in campos),
         valor=nota.valor,
     )
     dps.validar(raiz)  # sempre confere no esquema oficial 1.01 antes
@@ -447,7 +461,8 @@ def _avisar_vendedor_do_cancelamento(nota):
     não desfaz o cancelamento: a pessoa vê o aviso e pode avisar por fora."""
     from . import email as email_notas
 
-    if nota.ambiente != AMBIENTE_PRODUCAO or nota.tipo != NotaFiscal.TIPO_VENDEDOR or not nota.tomador_email:
+    if (nota.ambiente != AMBIENTE_PRODUCAO or nota.tipo not in (NotaFiscal.TIPO_VENDEDOR, NotaFiscal.TIPO_ASSINATURA)
+            or not nota.tomador_email):
         return None
     try:
         email_notas.montar_cancelamento(nota, connection=email_notas.conexao()).send()
