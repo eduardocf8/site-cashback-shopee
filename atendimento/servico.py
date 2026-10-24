@@ -75,7 +75,9 @@ def registrar(ev, texto: str, tem_midia: bool) -> None:
             return
         Mensagem.objects.create(conversa=conversa, autor=Mensagem.VOCE, texto=texto[:MAXIMO_DO_TEXTO],
                                 whatsapp_id=msg_id, respondida=True)
-        # Você respondeu pelo celular: o agente sai da frente nesta conversa.
+        # Você respondeu pelo celular: o agente sai da frente nesta conversa e não responde depois o
+        # que você já respondeu.
+        conversa.mensagens.filter(autor=Mensagem.CLIENTE, respondida=False).update(respondida=True)
         conversa.estado, conversa.humano_desde = Conversa.HUMANO, agora
         conversa.motivo_humano = conversa.motivo_humano or "Você respondeu pelo celular."
         conversa.save()
@@ -85,7 +87,10 @@ def registrar(ev, texto: str, tem_midia: bool) -> None:
     conversa.ultima_recebida_em = agora
     conversa.save()
     if texto:
-        Mensagem.objects.create(conversa=conversa, autor=Mensagem.CLIENTE, texto=texto[:MAXIMO_DO_TEXTO], whatsapp_id=msg_id)
+        # Com a conversa com você, a mensagem já nasce tratada: ao voltar (#ia ou depois de 12 h), o agente
+        # responde só o que chegar dali pra frente, e não o que você já respondeu.
+        Mensagem.objects.create(conversa=conversa, autor=Mensagem.CLIENTE, texto=texto[:MAXIMO_DO_TEXTO], whatsapp_id=msg_id,
+                                respondida=conversa.estado == Conversa.HUMANO)
     elif tem_midia:
         # Áudio, foto sem legenda, figurinha: responde na hora, sem gastar a IA.
         Mensagem.objects.create(conversa=conversa, autor=Mensagem.CLIENTE, texto="[mídia sem texto]",

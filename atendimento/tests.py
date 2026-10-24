@@ -151,8 +151,21 @@ class TestAtendimento(TestCase):
         conversa = Conversa.objects.get()
         self.assertEqual(conversa.estado, Conversa.HUMANO)
         self.assertTrue(conversa.mensagens.filter(autor=Mensagem.VOCE).exists())
+        self._chegou("Obrigado!", msg_id="M2")  # chegou enquanto você atendia
         servico.registrar(evento("#ia", minha=True, msg_id="EU2"), "#ia", False)
         self.assertEqual(Conversa.objects.get().estado, Conversa.IA)
+        # Ao voltar, o agente não responde o que chegou enquanto você atendia...
+        self._passar_a_espera()
+        with mock.patch.object(agente, "_cliente") as cliente:
+            servico.uma_volta({CONTA: self.sessao})
+        cliente.assert_not_called()
+        # ...só a próxima mensagem, e na hora (depois da espera de digitação).
+        self._chegou("E o plano anual?", msg_id="M3")
+        self._passar_a_espera()
+        claude = ClaudeFalso(resposta_do_claude("O anual sai com 17% de desconto."))
+        with mock.patch.object(agente, "_cliente", return_value=claude):
+            servico.uma_volta({CONTA: self.sessao})
+        self.assertEqual(self.sessao.enviadas[-1][1], "O anual sai com 17% de desconto.")
 
     def test_pausa_antiga_volta_pro_agente(self):
         Conversa.objects.create(chat="1@s.whatsapp.net", estado=Conversa.HUMANO,
