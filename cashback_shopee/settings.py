@@ -101,6 +101,7 @@ INSTALLED_APPS = [
     "carrosseis",
     "notas",
     "landing",
+    "atendimento",
 ]
 
 AUTH_USER_MODEL = "accounts.User"
@@ -205,6 +206,14 @@ GEMINI_MODELS = os.environ.get("GEMINI_MODELS", "gemini-3.1-flash-lite,gemini-3.
 # usa a GEMINI_API_KEY; sem nenhuma, a opção aparece como indisponível.
 APPFILIADO_GEMINI_API_KEY = os.environ.get("APPFILIADO_GEMINI_API_KEY", "")
 APPFILIADO_GEMINI_MODELO = os.environ.get("APPFILIADO_GEMINI_MODELO", "")
+
+# Agente de vendas no WhatsApp do Appfiliado (app atendimento). Liga quando há a conta cujo
+# WhatsApp conectado é o número de vendas e a ANTHROPIC_API_KEY. O aviso de "chamar você"
+# vai pro número em ATENDIMENTO_AVISAR (só dígitos, com DDI e DDD).
+ATENDIMENTO_CONTA_ID = int(os.environ.get("APPFILIADO_ATENDIMENTO_CONTA_ID", "0") or 0)
+ATENDIMENTO_AVISAR = os.environ.get("APPFILIADO_ATENDIMENTO_AVISAR", "")
+ATENDIMENTO_MODELO = os.environ.get("APPFILIADO_ATENDIMENTO_MODELO", "claude-opus-5-5")
+ANTHROPIC_API_KEY = os.environ.get("ANTHROPIC_API_KEY", "")
 
 # Credenciais da API da Asaas para pagar os saques via PIX (ficam no arquivo .env, nunca no código)
 # Login com Google (accounts/google_oauth.py). Sem os dois, o botão "Continuar com
