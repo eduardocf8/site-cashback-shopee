@@ -147,6 +147,28 @@
           <div><button type="submit" class="botao botao-escuro">Salvar horário</button></div>
         </form>
       </section>
+
+      <section class="card notas-cartao" id="contabilidade" aria-labelledby="titulo-contabilidade">
+        <h2 id="titulo-contabilidade">Notas pra contabilidade</h2>
+        <p class="suave pequeno">Um ZIP com o XML de cada nota de verdade do mês (autorizadas e canceladas) e uma planilha-resumo, direto no e-mail do seu escritório de contabilidade.</p>
+        <form method="post" class="formulario">
+          {% csrf_token %}
+          <input type="hidden" name="acao" value="contabilidade">
+          {% include "painel/_campos.html" with form=form_contabilidade %}
+          <div><button type="submit" class="botao botao-escuro">Salvar e-mail</button></div>
+        </form>
+        {% if empresa.contabilidade_email %}
+          <form method="post" class="formulario" style="margin-top:16px">
+            {% csrf_token %}
+            <input type="hidden" name="acao" value="contabilidade_enviar">
+            <div class="campo">
+              <label for="mes-contabilidade">Mandar agora as notas de</label>
+              <select name="mes" id="mes-contabilidade">{% for valor, nome in meses_contabilidade %}<option value="{{ valor }}"{% if forloop.counter == 2 %} selected{% endif %}>{{ nome }}</option>{% endfor %}</select>
+            </div>
+            <div><button type="submit" class="botao botao-claro">Enviar pra {{ empresa.contabilidade_email }}</button></div>
+          </form>
+        {% endif %}
+      </section>
     </div>
 
     <section class="card notas-cartao" id="teste" aria-labelledby="titulo-teste">

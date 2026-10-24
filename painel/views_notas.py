@@ -3,6 +3,7 @@ teste, importação do Relatório Mensal da Shopee (uma nota por loja) e nota da
 As regras ficam em notas/servicos.py; o envio de verdade é feito pelo worker (notas/fila.py)."""
 
 import io
+import logging
 import zipfile
 
 from django import forms
@@ -11,6 +12,7 @@ from django.core.cache import cache
 from django.core.paginator import Paginator
 from django.http import HttpResponse, JsonResponse
 from django.shortcuts import get_object_or_404, redirect, render
+from django.urls import reverse
 from django.utils import timezone
 from django.views.decorators.debug import sensitive_post_parameters
 from django.views.decorators.http import require_POST
@@ -23,6 +25,8 @@ from . import modulos as mod
 from .autenticacao import conta_logada, conta_requerida, destino_seguro
 from .exportar import texto_sem_formula
 from .views import _contexto
+
+logger = logging.getLogger(__name__)
 
 
 def _bloqueio(request, conta):
@@ -48,6 +52,27 @@ class HorarioEmailForm(forms.Form):
     horario = forms.ChoiceField(label="Quando mandar os e-mails", choices=HORARIOS_EMAIL, required=False,
                                 help_text="Horário de Brasília. Com um horário, os e-mails de cada lote saem na "
                                           "próxima vez que der essa hora depois de você mandar emitir.")
+
+
+class ContabilidadeForm(forms.Form):
+    email = forms.EmailField(label="E-mail da contabilidade", required=False,
+                             help_text="Todo dia 1 ela recebe o XML de cada nota do mês anterior e uma planilha-resumo. "
+                                       "Você recebe uma cópia. Deixe em branco pra não enviar.")
+
+
+def _meses_para_enviar(hoje=None) -> list[tuple[str, str]]:
+    from notas.contabilidade import mes_anterior
+
+    mes = timezone.localdate().replace(day=1) if hoje is None else hoje.replace(day=1)
+    meses = []
+    for _ in range(6):
+        meses.append((f"{mes:%Y-%m}", f"{MESES_NOME[mes.month - 1].capitalize()} de {mes.year}"))
+        mes = mes_anterior(mes)
+    return meses
+
+
+MESES_NOME = ["janeiro", "fevereiro", "março", "abril", "maio", "junho", "julho", "agosto", "setembro", "outubro",
+              "novembro", "dezembro"]
 
 
 class ServicoForm(forms.Form):
@@ -76,6 +101,7 @@ def notas(request):
         servicos.aplicar_servico_padrao(empresa)  # empresas cadastradas antes do padrão existir
     form_horario = HorarioEmailForm(initial={"horario": "" if getattr(empresa, "email_horario", None) is None
                                              else str(empresa.email_horario)})
+    form_contabilidade = ContabilidadeForm(initial={"email": getattr(empresa, "contabilidade_email", "")})
     form_cert, form_servico = CertificadoForm(), ServicoForm(initial={
         "codigo_tributacao": getattr(empresa, "codigo_tributacao", ""),
         "codigo_municipal": getattr(empresa, "codigo_municipal", ""),
@@ -132,6 +158,39 @@ def notas(request):
                         texto += f" {reagendados} e-mail{'s' if reagendados > 1 else ''} que ainda não tinha{'m' if reagendados > 1 else ''} saído segue{'m' if reagendados > 1 else ''} o novo horário."
                     messages.success(request, texto)
                     return redirect("painel_notas")
+            elif acao == "contabilidade":
+                form_contabilidade = ContabilidadeForm(request.POST)
+                if form_contabilidade.is_valid():
+                    from notas.contabilidade import mes_anterior
+
+                    novo = form_contabilidade.cleaned_data["email"].strip().lower()
+                    if novo != empresa.contabilidade_email:
+                        # O envio automático começa no próximo mês; o que já passou vai pelo botão.
+                        empresa.contabilidade_email, empresa.contabilidade_enviado_mes = novo, mes_anterior()
+                        empresa.save(update_fields=["contabilidade_email", "contabilidade_enviado_mes", "atualizada_em"])
+                    messages.success(request, f"Pronto: todo dia 1 as notas do mês anterior vão pra {novo}." if novo
+                                     else "Envio pra contabilidade desligado.")
+                    return redirect(reverse("painel_notas") + "#contabilidade")
+            elif acao == "contabilidade_enviar":
+                from datetime import date
+
+                from notas import contabilidade
+
+                if not empresa.contabilidade_email:
+                    raise servicos.ErroNotas("Cadastre antes o e-mail da contabilidade.")
+                validos = dict(_meses_para_enviar())
+                escolhido = request.POST.get("mes", "")
+                if escolhido not in validos:
+                    raise servicos.ErroNotas("Escolha um mês da lista.")
+                ano, mes = (int(p) for p in escolhido.split("-"))
+                try:
+                    totais = contabilidade.enviar(empresa, date(ano, mes, 1))
+                except Exception:  # noqa: BLE001
+                    logger.exception("Notas: envio manual à contabilidade")
+                    raise servicos.ErroNotas("Não deu pra mandar o e-mail agora. Tente de novo em alguns minutos.")
+                messages.success(request, f"Enviado pra {empresa.contabilidade_email}: {totais['notas']} nota"
+                                          f"{'s' if totais['notas'] != 1 else ''} de {validos[escolhido].lower()}.")
+                return redirect(reverse("painel_notas") + "#contabilidade")
             elif acao == "importar":
                 arquivo = request.FILES.get("relatorio")
                 if not arquivo:
@@ -158,7 +217,8 @@ def notas(request):
             if acao != "certificado":
                 return redirect("painel_notas")
 
-    contexto = {"empresa": empresa, "form_cert": form_cert, "form_servico": form_servico, "form_horario": form_horario}
+    contexto = {"empresa": empresa, "form_cert": form_cert, "form_servico": form_servico, "form_horario": form_horario,
+                "form_contabilidade": form_contabilidade, "meses_contabilidade": _meses_para_enviar()}
     if empresa:
         contexto["falta"] = servicos.pronta_para_emitir(empresa)
         contexto["ultimas"] = empresa.notas.filter(lote__isnull=True).exclude(tipo=NotaFiscal.TIPO_ASSINATURA)[:10]

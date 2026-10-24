@@ -51,6 +51,10 @@ class EmpresaNotas(models.Model):
     # Hora (0-23, horário de Brasília) para mandar os e-mails das notas aos vendedores.
     # Vazio = logo depois que as notas saem.
     email_horario = models.PositiveSmallIntegerField(null=True, blank=True)
+    # Contabilidade: todo dia 1 recebe por e-mail os XMLs e a planilha das notas do mês anterior
+    # (notas/contabilidade.py). Vazio = não envia. Guarda o último mês enviado (dia 1).
+    contabilidade_email = models.EmailField(blank=True)
+    contabilidade_enviado_mes = models.DateField(null=True, blank=True)
 
     criada_em = models.DateTimeField(auto_now_add=True)
     atualizada_em = models.DateTimeField(auto_now=True)
