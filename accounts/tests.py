@@ -2013,6 +2013,23 @@ class LoginGoogleTests(TestCase):
         self._callback(self._iniciar(), {**PERFIL_GOOGLE, "sub": "g-456", "email": "outra@gmail.com"})
         self.assertEqual(User.objects.filter(cpf__isnull=True).count(), 2)
 
+    @patch("links.services.gerar_link_curto")
+    def test_login_em_conta_existente_tambem_liga_clique_anonimo(self, mock_gerar_link):
+        """Não é só cadastro novo - entrar numa conta que já existia (ROADMAP 13.11,
+        decisão de 24/10/2026) também liga o clique anônimo desse navegador."""
+        mock_gerar_link.return_value = "https://shope.ee/abc"
+        self._callback(self._iniciar())  # cria a conta
+        self.client.logout()
+
+        self.client.get(reverse("ir_para_shopee") + "?continuar=sem_cadastro")
+        click = Click.objects.get()
+        self.assertIsNone(click.usuario_id)
+
+        self._callback(self._iniciar())  # login de novo, conta já existe
+
+        click.refresh_from_db()
+        self.assertEqual(click.usuario.google_sub, "g-123")
+
     def test_email_ja_cadastrado_vincula_em_vez_de_duplicar(self):
         existente = User.objects.create_user(
             username="antiga", password="x", cpf="39053344705", email="nova.pessoa@gmail.com"
@@ -2101,11 +2118,13 @@ class FunilSemContaTests(TestCase):
         self.assertIn("primeiro_link", etapas)
         self.assertEqual(EventoFunil.objects.values("funil_id").distinct().count(), 1)
 
-    def test_ir_pra_shopee_sem_login_conta_tentativa_e_manda_pro_login(self):
+    def test_ir_pra_shopee_sem_login_conta_tentativa_e_manda_pra_pagina_de_escolha(self):
+        """Desde a decisão de 24/10/2026 (ROADMAP 13.11), não força mais login de
+        cara - manda pra página de escolha (ver links/views.py::continuar_sem_cadastro)."""
         from .models import EventoFunil
         resposta = self.client.get(reverse("ir_para_shopee"))
         self.assertEqual(resposta.status_code, 302)
-        self.assertIn(reverse("login"), resposta.url)
+        self.assertIn(reverse("continuar_sem_cadastro"), resposta.url)
         self.assertTrue(EventoFunil.objects.filter(etapa="tentativa", origem="ir_shopee").exists())
 
     def test_robo_nao_conta(self):
@@ -2188,3 +2207,82 @@ class FunilSemContaTests(TestCase):
         self.assertEqual(f["taxa_cadastro"], 66.7)
         self.assertEqual(f["cadastros_periodo"], 3)
         self.assertEqual(f["cadastraram_google"], 2)
+
+    def test_resumo_do_funil_conta_quem_clicou_sem_conta(self):
+        from .funil import obter_funil
+        from .models import EventoFunil
+        EventoFunil.objects.create(funil_id="f1", etapa="tentativa", origem="ir_shopee")
+        EventoFunil.objects.create(funil_id="f1", etapa="clicou_sem_conta", origem="ir_shopee")
+        EventoFunil.objects.create(funil_id="f1", etapa="cadastro", metodo="formulario")
+        EventoFunil.objects.create(funil_id="f2", etapa="tentativa", origem="oferta")
+
+        f = obter_funil()
+
+        self.assertEqual(f["clicaram_sem_conta"], 1)
+        self.assertEqual(f["taxa_clique_sem_conta"], 50.0)
+        self.assertEqual(f["cadastraram_depois_de_clicar_sem_conta"], 1)
+
+
+class CliquesAnonimosTests(TestCase):
+    """Liga o clique anônimo à conta nova quando a pessoa se cadastra ou entra com o
+    Google, dentro da janela de 7 dias, no mesmo navegador (ROADMAP 13.11, decisão de
+    24/10/2026) - ver accounts/cliques_anonimos.py."""
+
+    def _dados_cadastro(self, **extra):
+        dados = {
+            "nome_completo": "Nova Conta Teste", "username": "novaconta", "email": "nova@example.com",
+            "cpf": "14783246947", "password1": "senha-forte-123", "password2": "senha-forte-123",
+        }
+        dados.update(extra)
+        return dados
+
+    @patch("links.services.gerar_link_curto")
+    def test_clique_anonimo_e_ligado_a_conta_nova_no_cadastro(self, mock_gerar_link):
+        mock_gerar_link.return_value = "https://shope.ee/abc"
+        self.client.get(reverse("ir_para_shopee") + "?continuar=sem_cadastro")
+        click = Click.objects.get()
+        self.assertIsNone(click.usuario_id)
+
+        self.client.post(reverse("registrar"), self._dados_cadastro())
+
+        click.refresh_from_db()
+        self.assertEqual(click.usuario.username, "novaconta")
+
+    @patch("links.services.gerar_link_curto")
+    def test_clique_fora_da_janela_de_7_dias_nao_e_ligado(self, mock_gerar_link):
+        mock_gerar_link.return_value = "https://shope.ee/abc"
+        self.client.get(reverse("ir_para_shopee") + "?continuar=sem_cadastro")
+        click = Click.objects.get()
+        Click.objects.filter(pk=click.pk).update(criado_em=timezone.now() - timedelta(days=8))
+
+        self.client.post(reverse("registrar"), self._dados_cadastro())
+
+        click.refresh_from_db()
+        self.assertIsNone(click.usuario_id)
+
+    @patch("links.services.gerar_link_curto")
+    def test_pedido_existente_ganha_usuario_quando_o_clique_e_ligado(self, mock_gerar_link):
+        mock_gerar_link.return_value = "https://shope.ee/abc"
+        self.client.get(reverse("ir_para_shopee") + "?continuar=sem_cadastro")
+        click = Click.objects.get()
+        pedido = Pedido.objects.create(order_id="X1", conversion_id="c1", click=click, status_shopee_bruto="")
+
+        self.client.post(reverse("registrar"), self._dados_cadastro())
+
+        pedido.refresh_from_db()
+        self.assertEqual(pedido.usuario.username, "novaconta")
+
+    def test_sem_cookie_nao_quebra_o_cadastro(self):
+        resposta = self.client.post(reverse("registrar"), self._dados_cadastro())
+        self.assertEqual(resposta.status_code, 302)
+
+    @patch("links.services.gerar_link_curto")
+    def test_cookie_e_apagado_depois_de_entrar(self, mock_gerar_link):
+        mock_gerar_link.return_value = "https://shope.ee/abc"
+        self.client.get(reverse("ir_para_shopee") + "?continuar=sem_cadastro")
+
+        resposta = self.client.post(reverse("registrar"), self._dados_cadastro())
+
+        cookie = resposta.cookies.get("cashb_clique_anonimo")
+        self.assertIsNotNone(cookie)
+        self.assertEqual(int(cookie["max-age"]), 0)

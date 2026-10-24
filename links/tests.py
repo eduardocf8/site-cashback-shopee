@@ -95,6 +95,41 @@ class ClickModelTests(TestCase):
         self.assertEqual(len(sub_id), 32)
         validar_sub_ids([sub_id])
 
+    def test_sub_id_usuario_de_clique_anonimo_e_anon(self):
+        """ROADMAP 13.11 (decisão de 24/10/2026) - clique sem conta usa "anon" no
+        lugar de "user<id>", pra identificar na sincronização que esse clique ainda
+        não tem usuário (ver pedidos/services.py::_montar_defaults)."""
+        click = Click.objects.create(
+            usuario=None, tipo=Click.TIPO_HOME, url_original="https://shopee.com.br/", link_gerado=""
+        )
+        sub_id = click.sub_id_usuario()
+        self.assertEqual(sub_id, "anon")
+        validar_sub_ids([sub_id])
+
+
+class GerarClickAnonimoTests(TestCase):
+    """Clique sem conta (ROADMAP 13.11, decisão de 24/10/2026) - gerar_click aceita
+    usuario=None (ou o AnonymousUser que request.user é quando não tem login)."""
+
+    @patch("links.services.gerar_link_curto")
+    def test_usuario_none_cria_click_sem_usuario_com_subid_anon(self, mock_gerar_link):
+        mock_gerar_link.return_value = "https://shope.ee/abc"
+
+        click = gerar_click(None, Click.TIPO_HOME, None)
+
+        self.assertIsNone(click.usuario_id)
+        self.assertEqual(mock_gerar_link.call_args.args[1], ["anon", click.id.hex])
+
+    @patch("links.services.gerar_link_curto")
+    def test_anonymous_user_e_normalizado_pra_none(self, mock_gerar_link):
+        from django.contrib.auth.models import AnonymousUser
+
+        mock_gerar_link.return_value = "https://shope.ee/abc"
+
+        click = gerar_click(AnonymousUser(), Click.TIPO_HOME, None)
+
+        self.assertIsNone(click.usuario_id)
+
 
 class ValidarSubIdsTests(TestCase):
     def test_aceita_letras_e_numeros(self):
@@ -334,6 +369,92 @@ class HomeConversorVisitanteNaoLogadoTests(TestCase):
 
         self.assertEqual(resposta.status_code, 302)
         self.assertEqual(Click.objects.count(), 0)
+
+
+class IrParaShopeeSemCadastroTests(TestCase):
+    """ROADMAP 13.11 (decisão de 24/10/2026): quem clica em "Ir pra Shopee" sem conta
+    cai na página de escolha; só gera o clique (anônimo) se escolher "continuar sem
+    cadastro" ali."""
+
+    def setUp(self):
+        cache.clear()  # evita herdar contador de rate limit de outro teste (click_anonimo)
+
+    def test_sem_login_manda_pra_pagina_de_escolha_com_next_e_origem(self):
+        resposta = self.client.get(reverse("ir_para_shopee"))
+
+        self.assertRedirects(
+            resposta,
+            f"{reverse('continuar_sem_cadastro')}?next=%2Fir-para-shopee%2F&origem=ir_shopee",
+            fetch_redirect_response=False,
+        )
+        self.assertEqual(Click.objects.count(), 0)
+
+    @patch("links.services.gerar_link_curto")
+    def test_continuar_sem_cadastro_gera_click_anonimo_e_guarda_cookie(self, mock_gerar_link):
+        mock_gerar_link.return_value = "https://shope.ee/home123"
+
+        resposta = self.client.get(reverse("ir_para_shopee") + "?continuar=sem_cadastro")
+
+        click = Click.objects.get()
+        self.assertIsNone(click.usuario_id)
+        self.assertRedirects(resposta, "https://shope.ee/home123", fetch_redirect_response=False)
+        cookie = resposta.cookies.get("cashb_clique_anonimo")
+        self.assertIsNotNone(cookie)
+        # Assinado (ver django.http.HttpResponse.set_signed_cookie), mas sem
+        # criptografia - o valor original aparece de qualquer jeito, antes da
+        # assinatura.
+        self.assertIn(click.id.hex, cookie.value)
+
+    @patch("links.services.gerar_link_curto")
+    def test_continuar_sem_cadastro_registra_etapa_do_funil(self, mock_gerar_link):
+        from accounts.models import EventoFunil
+
+        mock_gerar_link.return_value = "https://shope.ee/home123"
+
+        self.client.get(reverse("ir_para_shopee") + "?continuar=sem_cadastro")
+
+        self.assertTrue(
+            EventoFunil.objects.filter(etapa=EventoFunil.CLICOU_SEM_CONTA, origem="ir_shopee").exists()
+        )
+
+    @patch("links.services.gerar_link_curto")
+    def test_limite_de_cliques_anonimos_por_ip(self, mock_gerar_link):
+        from accounts.funil import LIMITE_CLIQUES_ANONIMOS_POR_HORA
+
+        mock_gerar_link.return_value = "https://shope.ee/home123"
+
+        for _ in range(LIMITE_CLIQUES_ANONIMOS_POR_HORA):
+            self.client.get(reverse("ir_para_shopee") + "?continuar=sem_cadastro")
+
+        resposta = self.client.get(reverse("ir_para_shopee") + "?continuar=sem_cadastro")
+
+        self.assertEqual(resposta.status_code, 429)
+
+
+class ContinuarSemCadastroViewTests(TestCase):
+    """Página de escolha (ROADMAP 13.11) - ver accounts/funil.py::exigir_login_ou_pagina_de_escolha."""
+
+    def test_mostra_as_duas_opcoes_com_os_links_certos(self):
+        resposta = self.client.get(
+            reverse("continuar_sem_cadastro") + "?next=/ir-para-shopee/&origem=ir_shopee"
+        )
+
+        self.assertContains(resposta, "Cadastrar e continuar")
+        self.assertContains(resposta, "Continuar sem cadastro")
+        self.assertContains(resposta, f"{reverse('registrar')}?next=%2Fir-para-shopee%2F")
+        self.assertContains(resposta, "/ir-para-shopee/?continuar=sem_cadastro")
+
+    def test_next_externo_e_recusado(self):
+        resposta = self.client.get(
+            reverse("continuar_sem_cadastro") + "?next=https://outrosite.com/roubo"
+        )
+
+        self.assertRedirects(resposta, reverse("home"))
+
+    def test_sem_next_redireciona_pra_home(self):
+        resposta = self.client.get(reverse("continuar_sem_cadastro"))
+
+        self.assertRedirects(resposta, reverse("home"))
 
 
 @override_settings(SHOPEE_CASHBACK_PERCENTUAL=100)

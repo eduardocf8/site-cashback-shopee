@@ -235,6 +235,48 @@ class SincronizarTests(TestCase):
         self.assertEqual(pedido.valor_cashback, Decimal("0"))
 
     @patch("pedidos.services.buscar_conversoes")
+    def test_clique_anonimo_gera_comissao_mas_nao_cashback(self, mock_buscar):
+        """ROADMAP 13.11 (decisão de 24/10/2026): clique sem conta (click.usuario
+        vazio) tem Click de verdade - diferente do teste acima, que não identifica
+        Click nenhum - mas ainda assim não paga cashback pra ninguém, só a comissão
+        real continua sendo contabilizada (ver _montar_defaults)."""
+        click_anonimo = Click.objects.create(
+            usuario=None, tipo=Click.TIPO_HOME, url_original="https://shopee.com.br/",
+            link_gerado="https://shope.ee/anon",
+        )
+        mock_buscar.return_value = {
+            "nodes": [{
+                "conversionId": "999", "purchaseTime": 1700000000,
+                "utmContent": f"{click_anonimo.sub_id_usuario()},{click_anonimo.sub_id_click()}",
+                "orders": [{
+                    "orderId": "ORD-ANON", "orderStatus": "PENDING",
+                    "items": [{"completeTime": None, "itemTotalCommission": "8.00", "actualAmount": "100.00"}],
+                }],
+            }],
+            "pageInfo": {"hasNextPage": False, "scrollId": ""},
+        }
+
+        sincronizar(1690000000, 1700000000)
+
+        pedido = Pedido.objects.get(order_id="ORD-ANON")
+        self.assertIsNone(pedido.usuario)
+        self.assertEqual(pedido.click, click_anonimo)
+        self.assertEqual(pedido.valor_comissao, Decimal("8.00"))
+        self.assertEqual(pedido.valor_cashback, Decimal("0"))
+
+        # Depois que o clique ganha usuário (cadastro dentro da janela - ver
+        # accounts/cliques_anonimos.py), a sincronização seguinte recalcula o
+        # cashback normalmente, porque _montar_defaults lê click.usuario de novo.
+        click_anonimo.usuario = self.usuario
+        click_anonimo.save(update_fields=["usuario"])
+
+        sincronizar(1690000000, 1700000000)
+
+        pedido.refresh_from_db()
+        self.assertEqual(pedido.usuario, self.usuario)
+        self.assertEqual(pedido.valor_cashback, Decimal("8.00"))
+
+    @patch("pedidos.services.buscar_conversoes")
     def test_segue_paginacao_ate_acabar(self, mock_buscar):
         pagina1 = self._pagina(
             [{"orderId": "ORD5", "orderStatus": "PENDING", "items": [{"completeTime": None, "itemTotalCommission": "1.00"}]}],
@@ -1434,6 +1476,33 @@ class ObterAnalyticsTests(TestCase):
 
         self.assertEqual(dados["total_pedidos"], 1)
         self.assertEqual(dados["total_comissao"], Decimal("20.00"))
+
+    def test_filtro_origem_sem_cadastro_traz_so_clique_anonimo(self):
+        """ROADMAP 13.11 (decisão de 24/10/2026) - pedido com Click mas ainda sem
+        usuário (clique anônimo, ver accounts/cliques_anonimos.py)."""
+        click_com_conta = Click.objects.create(
+            usuario=self.usuario, tipo=Click.TIPO_HOME,
+            url_original="https://shopee.com.br/", link_gerado="https://shope.ee/abc",
+        )
+        click_anonimo = Click.objects.create(
+            usuario=None, tipo=Click.TIPO_HOME,
+            url_original="https://shopee.com.br/", link_gerado="https://shope.ee/anon",
+        )
+        self._criar_pedido("COM-CONTA", Pedido.STATUS_VALIDADO, "10.00", "5.00", timezone.now(), click=click_com_conta)
+        # _criar_pedido sempre usa self.usuario quando usuario=None (ver ternário acima) -
+        # pra um pedido genuinamente sem usuário, cria direto pelo ORM.
+        Pedido.objects.create(
+            order_id="SEM-CADASTRO", conversion_id="1", usuario=None, click=click_anonimo,
+            status=Pedido.STATUS_VALIDADO, status_shopee_bruto="COMPLETED",
+            valor_comissao=Decimal("20.00"), valor_cashback=Decimal("0.00"), data_compra=timezone.now(),
+        )
+        self._criar_pedido("FORA-DO-SITE", Pedido.STATUS_VALIDADO, "7.00", "3.00", timezone.now())
+
+        dados = obter_analytics(origem="sem_cadastro")
+
+        self.assertEqual(dados["total_pedidos"], 1)
+        self.assertEqual(dados["total_comissao"], Decimal("20.00"))
+        self.assertEqual(dados["total_cashback"], Decimal("0"))
 
     def test_sem_filtro_origem_traz_tudo(self):
         click = Click.objects.create(
