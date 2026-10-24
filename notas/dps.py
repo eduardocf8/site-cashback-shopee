@@ -98,7 +98,7 @@ def _limpa(texto: str, maximo: int) -> str:
 
 
 def montar(*, ambiente: str, emitida_em: datetime, serie: str, numero: int, competencia: date,
-           prestador: Prestador, tomador: Tomador, servico: Servico, valor) -> etree._Element:
+           prestador: Prestador, tomador: Tomador | None, servico: Servico, valor) -> etree._Element:
     if prestador.regime not in OPCAO_SIMPLES:
         raise ErroDPS("Regime da empresa não aceito (só MEI ou Simples Nacional, por enquanto).")
     if Decimal(valor) <= 0:
@@ -128,6 +128,8 @@ def montar(*, ambiente: str, emitida_em: datetime, serie: str, numero: int, comp
         _texto(reg, "regApTribSN", 1)  # ISS e tributos federais apurados no próprio Simples
     _texto(reg, "regEspTrib", 0)  # nenhum regime especial (obrigatório para MEI, regra E0174)
 
+    if tomador is None:  # tomador não identificado (consumidor sem os dados que a nota exige)
+        return _depois_do_tomador(inf, ambiente, prestador, tomador, servico, valor)
     toma = _grupo(inf, "toma")
     if tomador.tipo == "cnpj":
         _texto(toma, "CNPJ", tomador.documento)
@@ -163,7 +165,10 @@ def montar(*, ambiente: str, emitida_em: datetime, serie: str, numero: int, comp
         _texto(end, "xBairro", _limpa(tomador.bairro, 60))
     if tomador.email:
         _texto(toma, "email", _limpa(tomador.email, 80))
+    return _depois_do_tomador(inf, ambiente, prestador, tomador, servico, valor)
 
+
+def _depois_do_tomador(inf, ambiente, prestador, tomador, servico, valor):
     serv = _grupo(inf, "serv")
     _texto(_grupo(serv, "locPrest"), "cLocPrestacao", prestador.municipio_ibge)
     cserv = _grupo(serv, "cServ")
@@ -173,7 +178,7 @@ def montar(*, ambiente: str, emitida_em: datetime, serie: str, numero: int, comp
     _texto(cserv, "xDescServ", _limpa(servico.descricao, 2000))
     if servico.nbs:
         _texto(cserv, "cNBS", servico.nbs)  # depois da descrição no leiaute 1.01 (antes, na NT 009)
-    if tomador.tipo == "nif":
+    if tomador is not None and tomador.tipo == "nif":
         # Comércio exterior (regra E0330), com os mesmos valores das notas para o exterior já
         # autorizadas em produção: modo 2 (consumo no Brasil), sem vínculo, real (986),
         # sem mecanismo de apoio (01/01), sem movimentação de bens (1), sem envio ao MDIC (0).
@@ -190,7 +195,7 @@ def montar(*, ambiente: str, emitida_em: datetime, serie: str, numero: int, comp
     _texto(trib_mun, "tpRetISSQN", 1)  # ISS não retido (MEI não pode ter retenção, regra E0583)
     tot = _grupo(trib, "totTrib")
     _texto(tot, "indTotTrib", 0)  # não informa o valor aproximado dos tributos (MEI: regra E0710)
-    return raiz
+    return inf.getparent()
 
 
 # Campos novos da reforma tributária. Os ambientes do governo vão ganhando esses campos aos
@@ -227,7 +232,7 @@ REGRA_IBSCBS_OBRIGATORIO = "E0855"
 def com_campos_novos(raiz: etree._Element, campos) -> etree._Element:
     """Põe na DPS (já validada no leiaute 1.01) os campos novos pedidos (ver CAMPOS_POR_GRUPO).
     finNFSe = 0 (nota regular), indDest = 0 (destinatário é o próprio tomador),
-    indFinal = 0 (não é consumo pessoal: o tomador é empresa)."""
+    indFinal = 0 quando o tomador é empresa e 1 quando é pessoa física (consumidor final)."""
     inf = raiz[0]
     if "finNFSe" in campos:
         ancora = inf.find(f"{{{NS}}}cMotivoEmisTI")
@@ -257,7 +262,8 @@ def com_campos_novos(raiz: etree._Element, campos) -> etree._Element:
         if "IBSCBS.finNFSe" in campos:
             _texto(grupo, "finNFSe", 0)
         if "IBSCBS.indFinal" in campos:
-            _texto(grupo, "indFinal", 0)
+            pessoa_fisica = inf.find(f"{{{NS}}}toma") is None or inf.find(f"{{{NS}}}toma/{{{NS}}}CPF") is not None
+            _texto(grupo, "indFinal", 1 if pessoa_fisica else 0)
         exterior = inf.find(f"{{{NS}}}toma/{{{NS}}}NIF") is not None
         if not exterior:  # exportação não tem tributação de IBS/CBS: cIndOp não vai (regra E0859)
             _texto(grupo, "cIndOp", IBSCBS_INDICADOR)

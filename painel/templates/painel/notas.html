@@ -168,5 +168,13 @@
       {% include "painel/_notas_tabela.html" with notas=ultimas voltar="" %}
     </section>
   {% endif %}
+
+  {% if assinaturas %}
+    <section class="card notas-cartao" aria-labelledby="titulo-assinaturas">
+      <h2 id="titulo-assinaturas">Notas das assinaturas do Appfiliado</h2>
+      <p class="suave pequeno">Emitidas sozinhas a cada pagamento confirmado na Zouti, com o serviço próprio das assinaturas. Não ocupam o seu plano.</p>
+      {% include "painel/_notas_tabela.html" with notas=assinaturas voltar="" %}
+    </section>
+  {% endif %}
 {% endif %}
 {% endblock %}

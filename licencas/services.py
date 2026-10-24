@@ -97,10 +97,17 @@ def processar_evento(tipo_evento: str, tipo_objeto: str, payload: dict) -> str:
     tipo_evento = (tipo_evento or "").upper()
     tipo_objeto = tipo_objeto or ""
 
+    from notas import assinaturas as notas_assinaturas
+
     if tipo_objeto == "Subscription" or tipo_evento.startswith("SUBSCRIPTION_"):
-        return _aplicar_evento_assinatura(tipo_evento, payload)
+        resultado = _aplicar_evento_assinatura(tipo_evento, payload)
+        # A nota fiscal do pagamento vem depois da licença (e fora da transação dela).
+        nota = notas_assinaturas.registrar_pagamento(tipo_evento, payload)
+        return f"{nota} {resultado}".strip()
     if tipo_evento in EVENTOS_ESTORNO or tipo_evento in EVENTOS_CHARGEBACK:
-        return _aplicar_estorno_ou_chargeback(tipo_evento, payload)
+        resultado, sub_ids = _aplicar_estorno_ou_chargeback(tipo_evento, payload)
+        nota = notas_assinaturas.cancelar_por_estorno(sub_ids, estorno=tipo_evento in EVENTOS_ESTORNO)
+        return f"{nota} {resultado}".strip()
     return f"Ignorado: evento {tipo_evento or '?'} não muda licenças."
 
 
@@ -172,12 +179,12 @@ def _aplicar_evento_assinatura(tipo_evento: str, payload: dict) -> str:
 
 
 @transaction.atomic
-def _aplicar_estorno_ou_chargeback(tipo_evento: str, payload: dict) -> str:
+def _aplicar_estorno_ou_chargeback(tipo_evento: str, payload: dict) -> tuple[str, list[str]]:
     status_objeto = (payload.get("status") or "").upper()
     estorno = tipo_evento in EVENTOS_ESTORNO
     if estorno and status_objeto != "REFUNDED":
         # Estorno parcial (PARTIALLY_REFUNDED) não tira o acesso.
-        return f"Ignorado: {tipo_evento} com status {status_objeto or '?'} (estorno parcial)."
+        return f"Ignorado: {tipo_evento} com status {status_objeto or '?'} (estorno parcial).", []
 
     # Payment traz subscription_id e order_id; Order só o próprio id (= order_id).
     if tipo_evento.startswith("PAYMENT_"):
@@ -193,7 +200,7 @@ def _aplicar_estorno_ou_chargeback(tipo_evento: str, payload: dict) -> str:
     if not assinaturas and order_id:
         assinaturas = list(Assinatura.objects.select_for_update().filter(zouti_order_id=order_id))
     if not assinaturas:
-        return f"{tipo_evento}: nenhuma assinatura vinculada (pedido {order_id or '?'})."
+        return f"{tipo_evento}: nenhuma assinatura vinculada (pedido {order_id or '?'}).", []
 
     novo_status = Assinatura.STATUS_REEMBOLSADA if estorno else Assinatura.STATUS_CHARGEBACK
     motivo = "Compra reembolsada." if estorno else "Chargeback registrado nesta compra."
@@ -207,7 +214,7 @@ def _aplicar_estorno_ou_chargeback(tipo_evento: str, payload: dict) -> str:
         assinatura.zouti_atualizada_em = max(assinatura.zouti_atualizada_em or agora, agora)
         assinatura.save()
         ids.append(assinatura.zouti_subscription_id)
-    return f"{tipo_evento}: {', '.join(ids)} agora '{novo_status}'."
+    return f"{tipo_evento}: {', '.join(ids)} agora '{novo_status}'.", ids
 
 
 # --- Validação pelo app ----------------------------------------------------------------

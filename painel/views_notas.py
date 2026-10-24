@@ -161,7 +161,9 @@ def notas(request):
     contexto = {"empresa": empresa, "form_cert": form_cert, "form_servico": form_servico, "form_horario": form_horario}
     if empresa:
         contexto["falta"] = servicos.pronta_para_emitir(empresa)
-        contexto["ultimas"] = empresa.notas.filter(lote__isnull=True)[:10]
+        contexto["ultimas"] = empresa.notas.filter(lote__isnull=True).exclude(tipo=NotaFiscal.TIPO_ASSINATURA)[:10]
+        # Notas das assinaturas do Appfiliado (só na conta que as emite: notas/assinaturas.py).
+        contexto["assinaturas"] = empresa.notas.filter(tipo=NotaFiscal.TIPO_ASSINATURA)[:20]
         contexto["avulsas_na_fila"] = any(n.situacao in (NotaFiscal.FILA, NotaFiscal.ENVIANDO) for n in contexto["ultimas"])
         contexto["lotes"] = empresa.lotes.all()[:12]
         contexto["teste_ok"] = empresa.notas.filter(tipo=NotaFiscal.TIPO_TESTE, situacao=NotaFiscal.AUTORIZADA).exists()
