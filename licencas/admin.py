@@ -64,6 +64,25 @@ class ContaAppfiliadoForm(forms.ModelForm):
 @admin.register(ContaAppfiliado)
 class ContaAppfiliadoAdmin(admin.ModelAdmin):
     form = ContaAppfiliadoForm
+
+    def get_urls(self):
+        from django.urls import path
+
+        return [path("painel-do-dono/", self.admin_site.admin_view(self.painel_do_dono),
+                     name="licencas_painel_do_dono")] + super().get_urls()
+
+    def painel_do_dono(self, request):
+        """Painel do dono (licencas/dono.py): receita, assinantes, uso e o que precisa de atenção."""
+        from django.core.exceptions import PermissionDenied
+        from django.template.response import TemplateResponse
+
+        from . import dono
+
+        if not self.has_view_permission(request):
+            raise PermissionDenied
+        contexto = {**self.admin_site.each_context(request), "title": "Painel do dono · Appfiliado",
+                    "n": dono.numeros(), "sem_uso_dias": dono.SEM_USO_APOS.days}
+        return TemplateResponse(request, "admin/painel_do_dono.html", contexto)
     list_display = ("id", "email", "nome", "chave", "modulos_agora", "criada_em")
     search_fields = ("email", "nome", "chave", "assinaturas__zouti_subscription_id")
     readonly_fields = (

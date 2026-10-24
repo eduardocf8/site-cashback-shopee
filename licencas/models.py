@@ -101,6 +101,8 @@ class ContaAppfiliado(models.Model):
     # pessoa ainda não definiu (o link vai no e-mail da chave).
     senha = models.CharField(max_length=128, blank=True)
     ultimo_login = models.DateTimeField(null=True, blank=True)
+    # Última vez que abriu o painel (atualiza no máximo uma vez por hora): "sem uso" no painel do dono.
+    ultimo_acesso_em = models.DateTimeField(null=True, blank=True)
 
     # Credenciais da Open API de afiliados da Shopee da própria pessoa - os
     # relatórios e o bot do painel usam essas, não as da cash-b. O Secret fica
@@ -234,6 +236,11 @@ class Assinatura(models.Model):
         help_text="Pra assinatura cancelada: acesso continua até o fim do período já pago.",
     )
 
+    # Pro painel do dono (licencas/dono.py): quanto custa cada ciclo, de quantos meses é o ciclo e
+    # quando deixou de valer (cancelada, reembolsada ou chargeback).
+    valor = models.DecimalField(max_digits=10, decimal_places=2, null=True, blank=True)
+    meses_por_ciclo = models.PositiveSmallIntegerField(null=True, blank=True)
+    encerrada_em = models.DateTimeField(null=True, blank=True)
     zouti_atualizada_em = models.DateTimeField(
         null=True, blank=True,
         help_text="updated_at do último evento aplicado - evita que um evento antigo, reenviado "
@@ -247,6 +254,13 @@ class Assinatura(models.Model):
 
     def __str__(self):
         return f"{self.zouti_subscription_id} - {self.conta.email} ({self.get_status_display()})"
+
+    @property
+    def valor_mensal(self):
+        """Quanto rende por mês (a anual dividida por 12). None = valor desconhecido."""
+        if self.valor is None:
+            return None
+        return (self.valor / (self.meses_por_ciclo or 1)).quantize(self.valor)
 
     def lista_product_ids(self) -> list[str]:
         return [p.strip() for p in self.zouti_product_ids.split(",") if p.strip()]
@@ -289,3 +303,17 @@ class EventoWebhookZouti(models.Model):
 
     def __str__(self):
         return f"{self.tipo_evento or '?'} ({self.recebido_em:%d/%m/%Y %H:%M})"
+
+
+class ResumoSemanalDono(models.Model):
+    """Marca o resumo semanal do painel do dono já enviado (um por semana, de domingo a sábado)."""
+
+    semana = models.DateField(unique=True, help_text="O domingo que abre a semana resumida.")
+    enviado_em = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        verbose_name = "resumo semanal do dono"
+        verbose_name_plural = "resumos semanais do dono"
+
+    def __str__(self):
+        return f"Semana de {self.semana:%d/%m/%Y}"

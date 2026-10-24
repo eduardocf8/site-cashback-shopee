@@ -1,0 +1,111 @@
+{% extends "admin/base_site.html" %}
+{% load painel_extras %}
+{% block extrastyle %}
+{{ block.super }}
+<style>
+  .dono { display: flex; flex-direction: column; gap: 22px; max-width: 1200px; }
+  .dono h2 { margin: 0 0 10px; font-size: 1.05rem; }
+  .dono-cartoes { display: grid; grid-template-columns: repeat(auto-fit, minmax(165px, 1fr)); gap: 12px; }
+  .dono-cartao { border: 1px solid var(--border-color); border-radius: 8px; padding: 14px; background: var(--body-bg); }
+  .dono-cartao small { display: block; color: var(--body-quiet-color); font-size: .78rem; text-transform: uppercase; letter-spacing: .03em; }
+  .dono-cartao strong { display: block; font-size: 1.45rem; margin: 6px 0 2px; white-space: nowrap; }
+  .dono-cartao span { color: var(--body-quiet-color); font-size: .82rem; }
+  .dono-caixa { border: 1px solid var(--border-color); border-radius: 8px; padding: 16px; background: var(--body-bg); }
+  .dono-duas { display: grid; grid-template-columns: repeat(auto-fit, minmax(340px, 1fr)); gap: 16px; }
+  .dono-grafico { display: grid; grid-template-columns: repeat(12, minmax(0, 1fr)); gap: 8px; align-items: end; height: 170px; margin: 8px 0 6px; }
+  .dono-barra { display: flex; flex-direction: column; justify-content: flex-end; align-items: center; height: 100%; gap: 4px; font-size: .72rem; }
+  .dono-barra i { display: block; width: 100%; background: var(--primary); border-radius: 4px 4px 0 0; min-height: 2px; }
+  .dono table { width: 100%; }
+  .dono td.n, .dono th.n { text-align: right; white-space: nowrap; }
+  .dono .vazio { color: var(--body-quiet-color); }
+  .dono .alerta { color: var(--error-fg); font-weight: 600; }
+  .dono ul.dono-lista { margin: 0; padding: 0; list-style: none; }
+  .dono ul.dono-lista li { padding: 6px 0; border-top: 1px solid var(--hairline-color); list-style: none; }
+  .dono ul.dono-lista li:first-child { border-top: 0; }
+  .dono .quieto { color: var(--body-quiet-color); font-size: .82rem; }
+</style>
+{% endblock %}
+{% block breadcrumbs %}<div class="breadcrumbs"><a href="{% url 'admin:index' %}">Início</a> › Painel do dono</div>{% endblock %}
+{% block content %}
+<div class="dono">
+  <p class="quieto">Atualizado agora ({{ n.agora|date:"d/m/Y H:i" }}). Cortesias não entram nos números. O resumo da semana chega no e-mail de suporte todo domingo às 9h.{% if n.sem_valor %} <span class="alerta">{{ n.sem_valor }} assinatura{{ n.sem_valor|pluralize }} ativa{{ n.sem_valor|pluralize }} sem valor conhecido (não entram na receita).</span>{% endif %}</p>
+
+  <section>
+    <div class="dono-cartoes">
+      <div class="dono-cartao"><small>Receita recorrente mensal</small><strong>{{ n.receita|brl }}</strong><span>anuais divididas por 12</span></div>
+      <div class="dono-cartao"><small>Assinantes ativos</small><strong>{{ n.contas }}</strong><span>{{ n.assinaturas }} assinatura{{ n.assinaturas|pluralize }}</span></div>
+      <div class="dono-cartao"><small>Ticket médio</small><strong>{{ n.ticket|brl }}</strong><span>por cliente, por mês</span></div>
+      <div class="dono-cartao"><small>Novas no mês</small><strong>{{ n.mes.novas|length }}</strong><span>assinatura{{ n.mes.novas|length|pluralize }}</span></div>
+      <div class="dono-cartao"><small>Saídas no mês</small><strong>{{ n.mes.saidas|length }}</strong><span>{{ n.mes.canceladas }} cancelada{{ n.mes.canceladas|pluralize }} · {{ n.mes.reembolsadas }} reembolso{{ n.mes.reembolsadas|pluralize }} · {{ n.mes.chargebacks }} chargeback{{ n.mes.chargebacks|pluralize }}</span></div>
+    </div>
+  </section>
+
+  <section class="dono-caixa">
+    <h2>Últimos 12 meses</h2>
+    <div class="dono-grafico" aria-hidden="true">
+      {% for l in n.evolucao %}<div class="dono-barra" title="{{ l.mes }}: R$ {{ l.receita|floatformat:2 }}"><span>{{ l.receita|floatformat:0 }}</span><i style="height:{{ l.altura }}%"></i></div>{% endfor %}
+    </div>
+    <table>
+      <thead><tr><th>Mês</th><th class="n">Receita recorrente</th><th class="n">Assinantes</th><th class="n">Assinaturas</th><th class="n">Novas</th><th class="n">Saídas</th></tr></thead>
+      <tbody>{% for l in n.evolucao reversed %}<tr><td>{{ l.mes }}</td><td class="n">{{ l.receita|brl }}</td><td class="n">{{ l.contas }}</td><td class="n">{{ l.assinaturas }}</td><td class="n">{{ l.novas }}</td><td class="n">{{ l.saidas }}</td></tr>{% endfor %}</tbody>
+    </table>
+  </section>
+
+  <section class="dono-caixa">
+    <h2>Por produto (assinaturas que valem hoje)</h2>
+    {% if n.por_produto %}
+      <table>
+        <thead><tr><th>Produto</th><th class="n">Ativas</th><th class="n">Mensais</th><th class="n">Anuais</th><th class="n">Receita por mês</th></tr></thead>
+        <tbody>{% for p in n.por_produto %}<tr><td>{{ p.produto }}</td><td class="n">{{ p.ativas }}</td><td class="n">{{ p.mensais }}</td><td class="n">{{ p.anuais }}{% if p.outras %} (+{{ p.outras }} outros ciclos){% endif %}</td><td class="n">{{ p.receita|brl }}</td></tr>{% endfor %}</tbody>
+      </table>
+    {% else %}<p class="vazio">Nenhuma assinatura ativa.</p>{% endif %}
+  </section>
+
+  <div class="dono-duas">
+    <section class="dono-caixa">
+      <h2>Entradas e saídas do mês</h2>
+      <ul class="dono-lista">
+        {% for i in n.mes.novas %}<li>🟢 <a href="{% url 'admin:licencas_contaappfiliado_change' i.a.conta_id %}">{{ i.a.conta.email }}</a> · {{ i.produto }}{% if i.a.valor %} · {{ i.a.valor|brl }}{% if i.a.meses_por_ciclo == 12 %}/ano{% else %}/mês{% endif %}{% endif %} <span class="quieto">{{ i.a.criada_em|date:"d/m" }}</span></li>{% endfor %}
+        {% for i in n.mes.saidas %}<li>🔴 <a href="{% url 'admin:licencas_contaappfiliado_change' i.a.conta_id %}">{{ i.a.conta.email }}</a> · {{ i.produto }} · {{ i.tipo }} <span class="quieto">{{ i.a.encerrada_em|date:"d/m" }}</span></li>{% endfor %}
+        {% if not n.mes.novas and not n.mes.saidas %}<li class="vazio">Nada neste mês ainda.</li>{% endif %}
+      </ul>
+    </section>
+
+    <section class="dono-caixa">
+      <h2>Uso do produto</h2>
+      <p>Bots ligados: <strong>{{ n.uso.bots_ligados }}</strong> · conectados agora: <strong>{{ n.uso.bots_conectados }}</strong> · parados: <strong{% if n.uso.parados %} class="alerta"{% endif %}>{{ n.uso.parados|length }}</strong></p>
+      {% if n.uso.parados %}<ul class="dono-lista">{% for c in n.uso.parados %}<li><a href="{% url 'admin:licencas_contaappfiliado_change' c.conta_id %}">{{ c.conta.email }}</a> · {% if c.parado_motivo == "deslogou" %}WhatsApp desconectado{% else %}conexão caiu{% endif %} <span class="quieto">desde {{ c.parado_desde|date:"d/m H:i" }}</span></li>{% endfor %}</ul>{% endif %}
+      <h2 style="margin-top:16px">Sem entrar no painel há {{ sem_uso_dias }} dias ou mais ({{ n.uso.sem_uso|length }})</h2>
+      <ul class="dono-lista">
+        {% for s in n.uso.sem_uso|slice:":15" %}<li><a href="{% url 'admin:licencas_contaappfiliado_change' s.conta.pk %}">{{ s.conta.email }}</a> <span class="quieto">{% if s.ultimo %}último acesso {{ s.ultimo|date:"d/m/Y" }}{% else %}nunca entrou{% endif %}</span></li>{% empty %}<li class="vazio">Todo mundo entrou nos últimos {{ sem_uso_dias }} dias.</li>{% endfor %}
+        {% if n.uso.sem_uso|length > 15 %}<li class="quieto">e mais {{ n.uso.sem_uso|length|add:"-15" }}.</li>{% endif %}
+      </ul>
+      <h2 style="margin-top:16px">Configuração pela metade ({{ n.uso.pela_metade|length }})</h2>
+      <ul class="dono-lista">
+        {% for p in n.uso.pela_metade|slice:":15" %}<li><a href="{% url 'admin:licencas_contaappfiliado_change' p.conta.pk %}">{{ p.conta.email }}</a> <span class="quieto">falta: {{ p.faltam|join:"; " }}</span></li>{% empty %}<li class="vazio">Ninguém com passo pendente.</li>{% endfor %}
+        {% if n.uso.pela_metade|length > 15 %}<li class="quieto">e mais {{ n.uso.pela_metade|length|add:"-15" }}.</li>{% endif %}
+      </ul>
+    </section>
+  </div>
+
+  <section class="dono-caixa">
+    <h2>Precisa da sua atenção</h2>
+    <div class="dono-duas">
+      <div>
+        <h3>Pagamentos atrasados ({{ n.atencao.atrasadas|length }})</h3>
+        <ul class="dono-lista">{% for a in n.atencao.atrasadas %}<li><a href="{% url 'admin:licencas_contaappfiliado_change' a.conta_id %}">{{ a.conta.email }}</a> · {{ a.plano }}</li>{% empty %}<li class="vazio">Nenhum.</li>{% endfor %}</ul>
+        <h3>Notas recusadas nos últimos 30 dias ({{ n.atencao.notas_recusadas|length }})</h3>
+        <ul class="dono-lista">{% for nota in n.atencao.notas_recusadas %}<li>{% if nota.tipo == "assinatura" %}<strong>Sua</strong> (assinatura){% else %}{{ nota.empresa.conta.email }}{% endif %} · {{ nota.tomador_nome|truncatechars:30 }} · <span class="quieto">{{ nota.criada_em|date:"d/m" }}</span></li>{% empty %}<li class="vazio">Nenhuma.</li>{% endfor %}</ul>
+        <h3>Avisos da Zouti com falha ({{ n.atencao.webhooks_com_falha|length }})</h3>
+        <ul class="dono-lista">{% for e in n.atencao.webhooks_com_falha %}<li><a href="{% url 'admin:licencas_eventowebhookzouti_change' e.pk %}">{{ e.tipo_evento|default:"?" }}</a> · {{ e.email }} <span class="quieto">{{ e.recebido_em|date:"d/m H:i" }}</span></li>{% empty %}<li class="vazio">Nenhum.</li>{% endfor %}</ul>
+      </div>
+      <div>
+        <h3>Bots com erro ({{ n.atencao.bots_com_erro|length }})</h3>
+        <ul class="dono-lista">{% for c in n.atencao.bots_com_erro %}<li><a href="{% url 'admin:licencas_contaappfiliado_change' c.conta_id %}">{{ c.conta.email }}</a> <span class="quieto">{{ c.ultimo_erro|truncatechars:90 }}</span></li>{% empty %}<li class="vazio">Nenhum.</li>{% endfor %}</ul>
+        <h3>Conversas do agente esperando você ({{ n.atencao.conversas|length }})</h3>
+        <ul class="dono-lista">{% for c in n.atencao.conversas %}<li>{{ c.nome|default:c.telefone }} <span class="quieto">{{ c.motivo_humano|truncatechars:70 }} · {{ c.ultima_recebida_em|date:"d/m H:i" }}</span></li>{% empty %}<li class="vazio">Nenhuma.</li>{% endfor %}</ul>
+      </div>
+    </div>
+  </section>
+</div>
+{% endblock %}

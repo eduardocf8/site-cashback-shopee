@@ -6,6 +6,7 @@ mesma pessoa pode ter as duas coisas com senhas diferentes, e uma nunca dá
 acesso à outra. A sessão guarda o id da conta e uma assinatura da senha: trocar
 a senha derruba as outras sessões abertas (mesma ideia do Django)."""
 
+from datetime import timedelta
 from functools import wraps
 from urllib.parse import urlencode
 
@@ -61,12 +62,25 @@ def conta_logada(request) -> ContaAppfiliado | None:
     return conta
 
 
+def _marcar_acesso(conta) -> None:
+    """Último acesso ao painel (no máximo uma escrita por hora): o painel do dono usa pra achar
+    quem paga e não está usando."""
+    from django.utils import timezone
+
+    agora = timezone.now()
+    if not conta.ultimo_acesso_em or agora - conta.ultimo_acesso_em > timedelta(hours=1):
+        type(conta).objects.filter(pk=conta.pk).update(ultimo_acesso_em=agora)
+        conta.ultimo_acesso_em = agora
+
+
 def conta_requerida(view):
     @wraps(view)
     def interna(request, *args, **kwargs):
-        if conta_logada(request) is None:
+        conta = conta_logada(request)
+        if conta is None:
             destino = reverse("painel_entrar") + "?" + urlencode({"proximo": request.get_full_path()})
             return redirect(destino)
+        _marcar_acesso(conta)
         return view(request, *args, **kwargs)
     return interna
 

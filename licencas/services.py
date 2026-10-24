@@ -3,6 +3,7 @@ import hmac
 import logging
 import time
 from datetime import date, datetime, timedelta
+from decimal import Decimal
 
 from django.conf import settings
 from django.core.mail import EmailMessage
@@ -111,6 +112,26 @@ def processar_evento(tipo_evento: str, tipo_objeto: str, payload: dict) -> str:
     return f"Ignorado: evento {tipo_evento or '?'} não muda licenças."
 
 
+def valor_e_ciclo(payload: dict) -> tuple[Decimal | None, int | None]:
+    """Valor de cada cobrança, em reais (a Zouti manda em centavos), e de quantos meses é o
+    ciclo (1 = mensal, 12 = anual). None quando o evento não traz."""
+    itens = payload.get("line_items") or []
+    plano = payload.get("plan") or {}
+    try:
+        centavos = sum(int(i.get("amount") or 0) for i in itens) if itens else int(plano.get("amount") or 0)
+    except (TypeError, ValueError):
+        centavos = 0
+    valor = (Decimal(centavos) / 100).quantize(Decimal("0.01")) if centavos else None
+    intervalo = str(plano.get("interval") or "").upper()
+    meses = (12 if "YEAR" in intervalo or "ANNUAL" in intervalo else 6 if "SEMI" in intervalo
+             else 3 if "QUARTER" in intervalo or "TRIMEST" in intervalo else 1 if intervalo else None)
+    try:
+        quantos = int(plano.get("interval_count") or 1)
+    except (TypeError, ValueError):
+        quantos = 1
+    return valor, (meses * max(1, quantos) if meses else None)
+
+
 @transaction.atomic
 def _aplicar_evento_assinatura(tipo_evento: str, payload: dict) -> str:
     sub_id = str(payload.get("id") or "")[:64]
@@ -156,6 +177,16 @@ def _aplicar_evento_assinatura(tipo_evento: str, payload: dict) -> str:
 
     plano = payload.get("plan") or {}
     product_ids = [i.get("product_id") for i in payload.get("line_items") or [] if i.get("product_id")]
+    valor, meses = valor_e_ciclo(payload)
+    if valor is not None:
+        assinatura.valor = valor
+    if meses:
+        assinatura.meses_por_ciclo = meses
+    # Painel do dono: quando deixou de valer (e volta a vazio se voltar a valer).
+    if novo_status in Assinatura.STATUS_QUE_LIBERAM or novo_status == Assinatura.STATUS_INCOMPLETA:
+        assinatura.encerrada_em = None
+    elif novo_status != Assinatura.STATUS_ATRASADA and not assinatura.encerrada_em:
+        assinatura.encerrada_em = atualizado_em or timezone.now()
 
     assinatura.conta = conta
     assinatura.status = novo_status
@@ -210,6 +241,7 @@ def _aplicar_estorno_ou_chargeback(tipo_evento: str, payload: dict) -> tuple[str
         assinatura.status = novo_status
         assinatura.motivo = motivo
         assinatura.acesso_ate = None
+        assinatura.encerrada_em = assinatura.encerrada_em or agora
         # Marca a hora do estorno: só uma renovação depois dela libera de novo.
         assinatura.zouti_atualizada_em = max(assinatura.zouti_atualizada_em or agora, agora)
         assinatura.save()
