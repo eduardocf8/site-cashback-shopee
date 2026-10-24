@@ -39,6 +39,14 @@ class ConexaoWhatsApp(models.Model):
     pedido_desconectar = models.BooleanField(default=False)
     pedido_grupos = models.BooleanField(default=False)
     erro = models.TextField(blank=True)
+    # Bot parado sem a pessoa ter pedido (ver bot_whatsapp/avisos_de_queda.py): desde quando e por
+    # quê ("deslogou": o WhatsApp tirou o aparelho, precisa do QR Code; "caiu": não voltou sozinho).
+    # Volta a vazio quando conecta de novo ou quando a pessoa desconecta pelo painel.
+    PARADO_DESLOGOU, PARADO_CAIU = "deslogou", "caiu"
+    parado_desde = models.DateTimeField(null=True, blank=True)
+    parado_motivo = models.CharField(max_length=10, blank=True)
+    parado_avisos = models.PositiveSmallIntegerField(default=0)
+    parado_avisado_em = models.DateTimeField(null=True, blank=True)
     atualizado_em = models.DateTimeField(auto_now=True)
 
     class Meta:

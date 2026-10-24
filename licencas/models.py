@@ -109,6 +109,9 @@ class ContaAppfiliado(models.Model):
     shopee_secret_cifrado = models.TextField(blank=True)
     shopee_validado_em = models.DateTimeField(null=True, blank=True)
 
+    # E-mails de primeiros passos (painel/primeiros_passos.py): dia 1 e dia 3 depois da compra.
+    passos_email_1_em = models.DateTimeField(null=True, blank=True)
+    passos_email_2_em = models.DateTimeField(null=True, blank=True)
     criada_em = models.DateTimeField(auto_now_add=True)
     atualizada_em = models.DateTimeField(auto_now=True)
 

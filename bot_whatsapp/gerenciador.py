@@ -30,7 +30,7 @@ from django.utils import timezone
 
 from atendimento import servico as atendimento
 
-from . import copia, rede
+from . import avisos_de_queda, copia, rede
 from .models import ConexaoWhatsApp, ConfiguracaoOfertas, EnvioWhatsApp, OfertaRecebida
 from .servico import registrar_evento
 
@@ -236,7 +236,8 @@ class Gerenciador:
         estados = [ConexaoWhatsApp.CONECTADO, ConexaoWhatsApp.RECONECTANDO]
         for conexao in ConexaoWhatsApp.objects.filter(estado__in=estados).exclude(jid=""):
             conexao.estado = ConexaoWhatsApp.RECONECTANDO
-            conexao.save(update_fields=["estado", "atualizado_em"])
+            avisos_de_queda.parou(conexao, ConexaoWhatsApp.PARADO_CAIU)  # se não voltar, avisa
+            conexao.save(update_fields=["estado", *avisos_de_queda.CAMPOS, "atualizado_em"])
             registrar_evento(conexao.conta_id, "retomando", "Servidor reiniciado - reconectando a sessão salva.")
             self.abrir(conexao.conta_id, conexao.jid)
 
@@ -288,6 +289,7 @@ class Gerenciador:
         conexao.qr_codigo = ""
         conexao.erro = ""
         conexao.pedido_grupos = True
+        avisos_de_queda.voltou(conexao)
         conexao.save()
         if era == ConexaoWhatsApp.RECONECTANDO:
             registrar_evento(conexao.conta_id, "reconectou", "Conexão de volta.")
@@ -297,13 +299,15 @@ class Gerenciador:
     def _aviso_caiu(self, conexao, _detalhe):
         if conexao.estado == ConexaoWhatsApp.CONECTADO:
             conexao.estado = ConexaoWhatsApp.RECONECTANDO
-            conexao.save(update_fields=["estado", "atualizado_em"])
+            avisos_de_queda.parou(conexao, ConexaoWhatsApp.PARADO_CAIU)
+            conexao.save(update_fields=["estado", *avisos_de_queda.CAMPOS, "atualizado_em"])
             registrar_evento(conexao.conta_id, "caiu", "A conexão caiu - reconectando sozinho.")
 
     def _aviso_deslogou(self, conexao, detalhe):
         sessao = self.sessoes.pop(conexao.conta_id, None)
         if sessao:
             sessao.parar()
+        avisos_de_queda.parou(conexao, ConexaoWhatsApp.PARADO_DESLOGOU)
         self._limpar(conexao, erro="O WhatsApp desconectou este aparelho (pelo celular ou por segurança).")
         registrar_evento(conexao.conta_id, "deslogou", f"Aparelho desconectado pelo WhatsApp ({detalhe}).")
 
@@ -408,7 +412,8 @@ class Gerenciador:
             conexao.save()
         elif conexao.jid and conexao.estado in (ConexaoWhatsApp.CONECTADO, ConexaoWhatsApp.RECONECTANDO):
             conexao.estado = ConexaoWhatsApp.RECONECTANDO
-            conexao.save(update_fields=["estado", "atualizado_em"])
+            avisos_de_queda.parou(conexao, ConexaoWhatsApp.PARADO_CAIU)
+            conexao.save(update_fields=["estado", *avisos_de_queda.CAMPOS, "atualizado_em"])
             registrar_evento(conexao.conta_id, "parou", (detalhe or "A sessão parou.") + " Tentando de novo em 30 s.")
             self.reabrir_em[conexao.conta_id] = time.monotonic() + ESPERA_PARA_REABRIR
 
@@ -434,6 +439,7 @@ class Gerenciador:
             except Exception:  # noqa: BLE001
                 logger.exception("WhatsApp: erro no logout da conta %s", conexao.conta_id)
             sessao.parar()
+        avisos_de_queda.voltou(conexao)  # foi a pessoa que desconectou: não é queda
         self._limpar(conexao)
         registrar_evento(conexao.conta_id, "desconectou", "Desconectado pelo painel.")
 

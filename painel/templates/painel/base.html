@@ -43,6 +43,7 @@
       {# Avisos que ficam na página até a coisa acontecer (ex: "a primeira oferta sai em instantes"). #}
       <ul class="avisos">{% for m in messages %}{% if "some-ao-enviar" in m.extra_tags %}<li class="aviso aviso-{{ m.level_tag }}" data-some-ao-enviar>{{ m }}</li>{% endif %}{% endfor %}</ul>
     {% endif %}
+    {% if bot_parado %}<p class="aviso aviso-error faixa-bot-parado" role="alert"><span><strong>Seu bot está parado:</strong> {% if bot_parado == "deslogou" %}o WhatsApp foi desconectado.{% else %}a conexão com o WhatsApp caiu e não voltou sozinha.{% endif %} As ofertas não estão saindo nos seus grupos.</span> <a class="botao botao-pequeno botao-perigo" href="{% url 'painel_whatsapp' %}">Reconectar</a></p>{% endif %}
     {% if aviso_relatorio %}<p class="aviso aviso-warning">Seus números de ontem ({{ aviso_relatorio.ontem|date:"d/m" }}) ainda não saíram na Shopee, por isso o relatório por e-mail ainda não foi.{% if aviso_relatorio.automatico %} Estamos conferindo a cada 30 minutos: ele vai assim que os números saírem.{% endif %}</p>{% endif %}
     {% block conteudo %}{% endblock %}
     {% include "painel/_aviso_shopee.html" %}

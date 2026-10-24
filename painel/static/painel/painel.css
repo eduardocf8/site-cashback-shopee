@@ -917,3 +917,7 @@ form[data-metas] .grade-campos { display: grid; grid-template-columns: 1fr 1fr; 
 .guia-api-passos { padding-left: 20px; margin: 8px 0; display: grid; gap: 6px; }
 .guia-api-campos { list-style: none; padding: 0; margin: 10px 0; display: grid; gap: 4px; font-size: 14px; }
 .guia-api-links { display: flex; gap: 16px; align-items: center; flex-wrap: wrap; margin: 12px 0 0; }
+
+/* Faixa de bot parado (WhatsApp caiu ou foi desconectado), no topo de todas as páginas. */
+.faixa-bot-parado { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 10px; border: 1px solid #F5C2BD; }
+.faixa-bot-parado .botao { margin-left: auto; }
