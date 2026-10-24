@@ -86,3 +86,12 @@ propósito, para a narração e o som ficarem no editor.
 | 17,27s | 518 | 31 | Fechamento | "acesse / cash-b.com" assenta | suave |
 | 18,33s | 550 | 33 | Fechamento | ".com" some e "cash-b" cresce | crescendo até o impacto |
 | 20,50s | 615 | 37 | Fim | último quadro, na batida 37 | a música faz fade aqui |
+
+## Appfiliado
+
+- `appfiliado-vertical.mp4` (1080×1920, 9:16): Reels, TikTok e stories.
+- `appfiliado-retrato.mp4` (1080×1350, 4:5): feed do Instagram e anúncios.
+- `appfiliado-horizontal.mp4` (1920×1080, 16:9): YouTube e site.
+
+Cerca de 70 s, texto na tela e sem áudio (pra gravar a fala e pôr a música no editor). Refazer:
+`npm run render:appfiliado-vertical` (e `-retrato`, `-horizontal`) e copiar de `saida/` pra cá.
