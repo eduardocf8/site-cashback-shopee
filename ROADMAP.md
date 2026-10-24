@@ -3000,11 +3000,17 @@ dias de dados do funil, sem esperar as 2-3 semanas originais).
 - [x] **Página de escolha** em vez de forçar login de cara ou redirecionar direto
       pra Shopee: `/continuar/` (`links/views.py::continuar_sem_cadastro`) mostra
       "Cadastrar e continuar" (ganha cashback) e "Continuar sem cadastro" (vai pra
-      Shopee sem cashback). `accounts/funil.py::exigir_login_ou_pagina_de_escolha`
+      Shopee, cashback só se cadastrar dentro de 7 dias no mesmo navegador e sem
+      clicar em outro link de afiliado no caminho - ajuste de texto de 24/10, pra
+      tirar uma contradição apontada pelo dono do produto entre essa condição e o
+      card recomendado). `accounts/funil.py::exigir_login_ou_pagina_de_escolha`
       substitui `exigir_login_medindo` em `ofertas/views.py` (`ir_para_oferta`,
       `ir_para_oferta_manual`, `ir_para_oferta_destaque_manual`) e em
-      `links/views.py::ir_para_shopee`. O conversor da home continua mandando pro
-      cadastro direto (não revisado nessa fase).
+      `links/views.py::ir_para_shopee`. O conversor da home (`links/views.py::home`)
+      também usa a página de escolha: POST sem login manda pra lá; "Continuar sem
+      cadastro" volta pro conversor via GET (`?continuar=sem_cadastro&url_produto=`),
+      que converte o link ali mesmo com clique anônimo - mesmo limite de 20
+      cliques/hora por IP e mesmo cookie dos outros caminhos.
 - [x] **Clique anônimo**: `Click.usuario` passou a aceitar `null` (migração
       `links/0007`) e usa subId `"anon"` no lugar de `"user<id>"`
       (`Click.sub_id_usuario`). `gerar_click` normaliza `AnonymousUser` pra `None`.
@@ -3039,8 +3045,7 @@ dias de dados do funil, sem esperar as 2-3 semanas originais).
       clique sem cadastro e a janela de 7 dias.
 - [x] **Fora dessa fase, por decisão do dono**: Meta/CAPI continua disparando
       `GerouLinkCashback` pro clique anônimo igual a antes (mesmo código,
-      proposital - mudar o sinal pros anúncios estava fora de escopo); o conversor
-      da home segue mandando direto pro cadastro.
+      proposital - mudar o sinal pros anúncios estava fora de escopo).
 
 ---
 

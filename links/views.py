@@ -7,14 +7,20 @@ from django.conf import settings
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
 from django.core.cache import cache
-from django.http import JsonResponse
+from django.http import HttpResponse, JsonResponse
 from django.shortcuts import redirect, render
 from django.utils.http import url_has_allowed_host_and_scheme
 from django.views.decorators.http import require_GET
 from django.urls import reverse
 
 from accounts.cliques_anonimos import salvar_click_anonimo
-from accounts.funil import exigir_login_ou_pagina_de_escolha, registrar_primeiro_link, registrar_tentativa
+from accounts.funil import (
+    clique_anonimo_permitido,
+    exigir_login_ou_pagina_de_escolha,
+    registrar_clique_sem_conta,
+    registrar_primeiro_link,
+    registrar_tentativa,
+)
 from accounts.ratelimit import limitar_por_ip
 from ofertas.services import (
     LinkProdutoInvalidoError,
@@ -56,25 +62,47 @@ def home(request):
     link_convertido = None
     oferta_convertida = None
     sem_comissao_convertida = False
+    click_gerado = None
 
     if request.method == "POST":
         if not request.user.is_authenticated:
             registrar_tentativa(request, "conversor")
-            # Manda pro cadastro, não pro login - quem chega de anúncio colando um link
-            # geralmente ainda não tem conta (ver ROADMAP.md). O link colado é
-            # preservado e reaplicado automaticamente depois do cadastro (ver
-            # accounts/views.py::registrar, parâmetro "next").
+            # Página de escolha em vez de ir direto pro cadastro (ROADMAP 13.11,
+            # decisão de 24/10/2026): "Cadastrar e continuar" volta pra cá com o link
+            # preservado (ver accounts/views.py::registrar, parâmetro "next");
+            # "Continuar sem cadastro" também volta pra cá, como GET (ver o elif abaixo).
             proximo = f"{reverse('home')}?{urlencode({'url_produto': request.POST.get('url_produto', '')})}"
-            return redirect(f"{reverse('registrar')}?{urlencode({'next': proximo})}")
+            return redirect(
+                f"{reverse('continuar_sem_cadastro')}?{urlencode({'next': proximo, 'origem': 'conversor'})}"
+            )
 
         form = LinkProdutoForm(request.POST)
         if form.is_valid():
             url_produto = form.cleaned_data["url_produto"]
-            click = _criar_click_e_avisar(request, Click.TIPO_PRODUTO, url_produto, mensagem_sucesso=None)
-            if click:
-                link_convertido = click.link_gerado
+            click_gerado = _criar_click_e_avisar(request, Click.TIPO_PRODUTO, url_produto, mensagem_sucesso=None)
+            if click_gerado:
+                link_convertido = click_gerado.link_gerado
                 oferta_convertida, sem_comissao_convertida = _buscar_cashback_real(url_produto)
             form = LinkProdutoForm()
+    elif (
+        not request.user.is_authenticated
+        and request.GET.get("continuar") == "sem_cadastro"
+        and request.GET.get("url_produto")
+    ):
+        # "Continuar sem cadastro" escolhido na página de escolha - mesmo fluxo do
+        # POST acima, mas o clique fica anônimo (ver accounts/cliques_anonimos.py).
+        if not clique_anonimo_permitido(request):
+            return HttpResponse("Muitas tentativas sem cadastro. Crie uma conta pra continuar.", status=429)
+        registrar_tentativa(request, "conversor")
+        registrar_clique_sem_conta(request, "conversor")
+        form = LinkProdutoForm({"url_produto": request.GET["url_produto"]})
+        if form.is_valid():
+            url_produto = form.cleaned_data["url_produto"]
+            click_gerado = _criar_click_e_avisar(request, Click.TIPO_PRODUTO, url_produto, mensagem_sucesso=None)
+            if click_gerado:
+                link_convertido = click_gerado.link_gerado
+                oferta_convertida, sem_comissao_convertida = _buscar_cashback_real(url_produto)
+        form = LinkProdutoForm()
     else:
         inicial = {}
         if request.GET.get("url_produto"):
@@ -106,7 +134,12 @@ def home(request):
     }
     if request.user.is_authenticated:
         contexto.update(calcular_resumo_saldo_nav(request.user))
-    return render(request, "links/home.html", contexto)
+    resposta = render(request, "links/home.html", contexto)
+    if click_gerado and not request.user.is_authenticated:
+        # Clique anônimo (ROADMAP 13.11) - guarda no navegador pra ligar à conta se a
+        # pessoa se cadastrar dentro de 7 dias (ver accounts/cliques_anonimos.py).
+        salvar_click_anonimo(request, resposta, click_gerado.id.hex)
+    return resposta
 
 
 @exigir_login_ou_pagina_de_escolha("ir_shopee")

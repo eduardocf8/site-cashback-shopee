@@ -114,7 +114,10 @@ LIMITE_CLIQUES_ANONIMOS_POR_HORA = 20
 JANELA_CLIQUES_ANONIMOS_SEGUNDOS = 3600
 
 
-def _clique_anonimo_permitido(request) -> bool:
+def clique_anonimo_permitido(request) -> bool:
+    """Limite de cliques anônimos por IP - usado pelo decorador abaixo e também
+    direto por links/views.py::home (conversor), que tem seu próprio tratamento de
+    "continuar sem cadastro" por já lidar com GET/POST misturados."""
     chave = f"ratelimit:click_anonimo:{_obter_ip(request)}"
     return _incrementar_contador(chave, JANELA_CLIQUES_ANONIMOS_SEGUNDOS) <= LIMITE_CLIQUES_ANONIMOS_POR_HORA
 
@@ -132,7 +135,7 @@ def exigir_login_ou_pagina_de_escolha(origem: str):
             if request.user.is_authenticated:
                 return view(request, *args, **kwargs)
             if request.GET.get(PARAMETRO_CONTINUAR_SEM_CADASTRO) == VALOR_CONTINUAR_SEM_CADASTRO:
-                if not _clique_anonimo_permitido(request):
+                if not clique_anonimo_permitido(request):
                     return HttpResponse(
                         "Muitas tentativas sem cadastro. Crie uma conta pra continuar.", status=429
                     )

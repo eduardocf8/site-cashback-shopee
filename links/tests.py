@@ -2,6 +2,7 @@ import hashlib
 import json
 from decimal import Decimal
 from unittest.mock import patch
+from urllib.parse import urlencode
 
 from django.contrib.auth import get_user_model
 from django.core.cache import cache
@@ -346,29 +347,66 @@ class HomeCashbackMaximoTests(TestCase):
 
 
 class HomeConversorVisitanteNaoLogadoTests(TestCase):
-    """Quem chega de anúncio e tenta converter um link sem estar logado vai pro
-    cadastro, não pro login - a maior parte de quem clica num anúncio ainda não tem
-    conta (ver ROADMAP.md). O link colado é preservado na querystring, pra continuar
-    de onde parou depois de criar a conta (ver accounts/views.py::registrar)."""
+    """Quem chega de anúncio e tenta converter um link sem estar logado cai na
+    página de escolha (ROADMAP 13.11, decisão de 24/10/2026), não direto no cadastro:
+    "Cadastrar e continuar" (link preservado, ver accounts/views.py::registrar) ou
+    "Continuar sem cadastro" (clique fica anônimo, ver links/views.py::home)."""
 
-    def test_redireciona_pro_cadastro_preservando_o_link_colado(self):
-        resposta = self.client.post(
-            reverse("home"), {"url_produto": "https://shopee.com.br/produto-exemplo-i.1.999"}
-        )
+    URL_PRODUTO = "https://shopee.com.br/produto-exemplo-i.1.999"
 
-        self.assertRedirects(
-            resposta,
-            "/registrar/?next=%2F%3Furl_produto%3Dhttps%253A%252F%252Fshopee.com.br%252Fproduto-exemplo-i.1.999",
-            fetch_redirect_response=False,
-        )
+    def setUp(self):
+        cache.clear()  # evita herdar contador de rate limit de click_anonimo de outro teste
+
+    def test_redireciona_pra_pagina_de_escolha_preservando_o_link_colado(self):
+        resposta = self.client.post(reverse("home"), {"url_produto": self.URL_PRODUTO})
+
+        proximo = f"{reverse('home')}?{urlencode({'url_produto': self.URL_PRODUTO})}"
+        esperado = f"{reverse('continuar_sem_cadastro')}?{urlencode({'next': proximo, 'origem': 'conversor'})}"
+        self.assertRedirects(resposta, esperado, fetch_redirect_response=False)
 
     def test_nao_cria_click_nem_tenta_converter_sem_estar_logado(self):
-        resposta = self.client.post(
-            reverse("home"), {"url_produto": "https://shopee.com.br/produto-exemplo-i.1.999"}
-        )
+        resposta = self.client.post(reverse("home"), {"url_produto": self.URL_PRODUTO})
 
         self.assertEqual(resposta.status_code, 302)
         self.assertEqual(Click.objects.count(), 0)
+
+    @patch("links.services.gerar_link_curto")
+    def test_continuar_sem_cadastro_converte_o_link_anonimamente(self, mock_gerar_link):
+        mock_gerar_link.return_value = "https://shope.ee/produto123"
+
+        resposta = self.client.get(reverse("home"), {"url_produto": self.URL_PRODUTO, "continuar": "sem_cadastro"})
+
+        self.assertEqual(resposta.status_code, 200)
+        self.assertContains(resposta, "https://shope.ee/produto123")
+        click = Click.objects.get()
+        self.assertIsNone(click.usuario_id)
+        self.assertEqual(click.tipo, Click.TIPO_PRODUTO)
+        cookie = resposta.cookies.get("cashb_clique_anonimo")
+        self.assertIsNotNone(cookie)
+        self.assertIn(click.id.hex, cookie.value)
+
+    @patch("links.services.gerar_link_curto")
+    def test_continuar_sem_cadastro_registra_etapa_do_funil(self, mock_gerar_link):
+        from accounts.models import EventoFunil
+
+        mock_gerar_link.return_value = "https://shope.ee/produto123"
+
+        self.client.get(reverse("home"), {"url_produto": self.URL_PRODUTO, "continuar": "sem_cadastro"})
+
+        self.assertTrue(EventoFunil.objects.filter(etapa=EventoFunil.CLICOU_SEM_CONTA, origem="conversor").exists())
+
+    @patch("links.services.gerar_link_curto")
+    def test_limite_de_cliques_anonimos_por_ip(self, mock_gerar_link):
+        from accounts.funil import LIMITE_CLIQUES_ANONIMOS_POR_HORA
+
+        mock_gerar_link.return_value = "https://shope.ee/produto123"
+
+        for _ in range(LIMITE_CLIQUES_ANONIMOS_POR_HORA):
+            self.client.get(reverse("home"), {"url_produto": self.URL_PRODUTO, "continuar": "sem_cadastro"})
+
+        resposta = self.client.get(reverse("home"), {"url_produto": self.URL_PRODUTO, "continuar": "sem_cadastro"})
+
+        self.assertEqual(resposta.status_code, 429)
 
 
 class IrParaShopeeSemCadastroTests(TestCase):
