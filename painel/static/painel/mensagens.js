@@ -15,6 +15,19 @@
   document.querySelectorAll("#destino input, #quando input").forEach(function (el) { el.addEventListener("change", mostrar); });
   mostrar();
 
+  // Embaixo da escolha do nicho: os grupos que estão nele.
+  var seletorNicho = form.querySelector("select[name=nicho]");
+  var dadosNicho = document.getElementById("dados-grupos-por-nicho");
+  if (seletorNicho && dadosNicho) {
+    var gruposPorNicho = JSON.parse(dadosNicho.textContent);
+    var mostrarGrupos = function () {
+      var nomes = gruposPorNicho[seletorNicho.value];
+      document.getElementById("grupos-do-nicho").textContent = nomes ? "Vai pra: " + nomes + "." : "";
+    };
+    seletorNicho.addEventListener("change", mostrarGrupos);
+    mostrarGrupos();
+  }
+
   // Prévia: *negrito*, _itálico_, ~riscado~ e as quebras de linha, como no WhatsApp.
   var texto = form.querySelector("textarea[name=texto]");
   var previa = document.getElementById("previa-texto");

@@ -942,3 +942,4 @@ form[data-metas] .grade-campos { display: grid; grid-template-columns: 1fr 1fr; 
 .campo-hora { max-width: 160px; }
 .form-mensagem textarea { width: 100%; box-sizing: border-box; }
 .contador-texto.erro { color: var(--perigo); }
+.form-mensagem #destino, .form-mensagem #quando { margin-bottom: 14px; }

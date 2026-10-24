@@ -500,6 +500,15 @@ def _nichos_em_uso(config) -> list[tuple[str, str]]:
             for nicho, grupos in nichos_do_plano(config)]
 
 
+def _grupos_por_nicho(config) -> dict[str, str]:
+    """Os nomes dos grupos de cada nicho, pra mostrar embaixo da escolha do nicho."""
+    from bot_whatsapp.ofertas import nichos_do_plano
+
+    if not config or not config.por_nicho:
+        return {}
+    return {nicho["id"]: ", ".join(g.get("nome") or g["jid"] for g in grupos) for nicho, grupos in nichos_do_plano(config)}
+
+
 def _disparos(conta) -> list[dict]:
     """As últimas mensagens que saíram (ou não): um item por disparo, com a situação em cada grupo."""
     envios = (EnvioWhatsApp.objects.filter(conta=conta, origem=EnvioWhatsApp.MENSAGEM)
@@ -584,7 +593,7 @@ def whatsapp_mensagens(request):
             item["pra_quem"] = "Nicho " + nomes_nicho.get(item["m"].nicho, "que não está mais em uso").split(" (")[0]
     return render(request, "painel/whatsapp_mensagens.html", _contexto(
         request, "whatsapp", form=form, editando=editando, agendadas=lista, disparos=_disparos(conta),
-        conexao=conexao, regras=regras, maximo=regras["mensagens_agendadas"],
+        conexao=conexao, regras=regras, maximo=regras["mensagens_agendadas"], grupos_por_nicho=_grupos_por_nicho(config),
         tem_grupos_no_bot=bool(config and config.grupos),
     ))
 

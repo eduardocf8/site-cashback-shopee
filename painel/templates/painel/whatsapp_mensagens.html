@@ -42,7 +42,9 @@
       <div class="opcoes-chip" id="destino">{% for opcao in form.destino %}<label class="chip-opcao">{{ opcao.tag }}<span>{{ opcao.choice_label }}</span></label>{% endfor %}</div>
       <p class="suave pequeno" data-destino="todos">{% if tem_grupos_no_bot %}Os grupos e canais escolhidos na <a href="{% url 'painel_whatsapp_ofertas' %}">Automação</a>.{% else %}Você ainda não escolheu grupos na <a href="{% url 'painel_whatsapp_ofertas' %}">Automação</a>. Escolha lá ou marque “Escolher os grupos”.{% endif %}</p>
       <div class="campo" data-destino="nicho">
-        {% if form.nicho.field.choices %}{% include "painel/_campo.html" with campo=form.nicho %}{% endif %}
+        {% if form.nicho.field.choices %}{% include "painel/_campo.html" with campo=form.nicho %}
+          <span class="ajuda grupos-do-nicho" id="grupos-do-nicho"></span>
+          {{ grupos_por_nicho|json_script:"dados-grupos-por-nicho" }}{% endif %}
       </div>
       <fieldset class="campo" data-destino="grupos">
         <legend class="sr">{{ form.grupos.label }}</legend>
