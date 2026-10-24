@@ -475,6 +475,21 @@ form.form-regra > .erros-form { grid-column: 1 / -1; }
 
 /* Campos do modo escolhido: respiro depois dos botões de modo e entre os campos. */
 .bloco-modo { margin-top: 22px; display: flex; flex-direction: column; gap: 18px; }
+.bloco-envio { display: flex; flex-direction: column; gap: 18px; }
+
+/* Envio por nicho (Premium): o nicho de cada grupo na lista; "Todos" (ofertas em geral) em destaque. */
+.lista-grupos.por-nicho .lista-grupos-topo, .lista-grupos.por-nicho .linha-grupo { grid-template-columns: minmax(0, 1fr) 200px 120px; }
+.nicho-do-grupo option { background: var(--card); color: var(--tinta, inherit); font-weight: 400; }
+.nicho-do-grupo option.nicho-todos, .nicho-do-grupo.nicho-todos { background: var(--amarelo-suave); color: var(--amarelo-tinta); font-weight: 700; }
+.nicho-do-grupo { width: 100%; min-width: 0; height: 34px; padding: 0 6px; border-radius: 8px; border: 1px solid var(--borda); background: var(--campo); font: inherit; font-size: 13px; color: inherit; }
+@media (max-width: 600px) {
+  .lista-grupos.por-nicho .lista-grupos-topo, .lista-grupos.por-nicho .linha-grupo { grid-template-columns: minmax(0, 3fr) minmax(0, 2fr); }
+  .lista-grupos.por-nicho .lista-grupos-topo > span:first-child, .lista-grupos.por-nicho .linha-grupo > label { grid-column: 1 / -1; }
+  .lista-grupos.por-nicho .linha-grupo { padding-bottom: 8px; border-bottom: 1px solid var(--trilho); }
+}
+.ofertas-teste .titulo-nicho-teste { display: block; padding-top: 8px; border-top: 1px solid var(--trilho); }
+.ofertas-teste .titulo-nicho-teste:first-child { border-top: 0; padding-top: 0; }
+.ofertas-teste .erro-nicho-teste { display: block; }
 
 /* ---------- Vendas e produtos (aba Resultados) ---------- */
 .tabela-vendas td.n, .tabela-vendas th.n { text-align: right; white-space: nowrap; }

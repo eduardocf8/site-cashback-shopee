@@ -139,6 +139,10 @@ class ConfiguracaoOfertas(models.Model):
 
     MODO_SHOPEE, MODO_COPIAR = "shopee", "copiar"
     MODOS = [(MODO_SHOPEE, "Buscar na Shopee"), (MODO_COPIAR, "Copiar de grupos e canais")]
+    # Buscando na Shopee: as mesmas ofertas pra todos os grupos ou cada nicho com os seus grupos
+    # (Premium). Copiando de grupos, vale sempre o envio pra todos.
+    ENVIO_TODOS, ENVIO_NICHO = "todos", "nicho"
+    ENVIOS = [(ENVIO_TODOS, "Mesmas ofertas pra todos"), (ENVIO_NICHO, "Por nicho")]
 
     conta = models.OneToOneField(ContaAppfiliado, on_delete=models.CASCADE, related_name="ofertas_config")
     ativo = models.BooleanField(default=False)
@@ -167,6 +171,12 @@ class ConfiguracaoOfertas(models.Model):
     sub_ids_por_grupo = models.JSONField(default=dict, blank=True)
 
     grupos = models.JSONField(default=list, blank=True, help_text='[{"jid": "...@g.us", "nome": "..."}]')
+    modo_envio = models.CharField("como distribuir", max_length=10, choices=ENVIOS, default=ENVIO_TODOS)
+    # Envio por nicho: o nicho (categoria) de cada grupo, {"jid": "beleza"}. Grupo fora daqui = "todos"
+    # (ofertas em geral). Cada nicho em uso busca as próprias ofertas e manda só pros grupos dele.
+    nichos = models.JSONField(default=dict, blank=True)
+    # Onde a busca de cada nicho parou: {"beleza": {"pagina": 3, "em": "2026-10-24T10:00:00+00:00"}}
+    paginas_nichos = models.JSONField(default=dict, blank=True)
     intervalo_minutos = models.PositiveSmallIntegerField(default=5)
     horario_inicio = models.TimeField(default=time(7, 0))
     horario_fim = models.TimeField(default=time(23, 0))
@@ -225,6 +235,10 @@ class ConfiguracaoOfertas(models.Model):
         """Sub IDs do link desse grupo: os próprios dele, se tiver; senão, o padrão."""
         texto = (self.sub_ids_por_grupo or {}).get(jid, "") or self.sub_ids
         return [s.strip() for s in str(texto or "").split(",") if s.strip()][:5]
+
+    @property
+    def por_nicho(self) -> bool:
+        return self.modo == self.MODO_SHOPEE and self.modo_envio == self.ENVIO_NICHO
 
     def chave_da_busca(self) -> str:
         """Muda quando muda algo que altera a lista de produtos (aí a busca recomeça)."""
