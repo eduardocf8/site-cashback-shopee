@@ -80,6 +80,9 @@ def buscar_produtos(app_id: str, secret: str, config, pagina: int) -> tuple[list
     argumentos = [f"limit:{POR_PAGINA}", f"page:{int(pagina)}"]
     if config.tipo_busca == config.BUSCA_PALAVRA and config.palavra_chave.strip():
         argumentos.append(f"keyword:{json.dumps(config.palavra_chave.strip(), ensure_ascii=False)}")
+    categoria_shopee = getattr(config, "categoria_shopee", None)  # envio por nicho
+    if categoria_shopee:
+        argumentos.append(f"productCatId:{int(categoria_shopee)}")
     if config.tipo_busca == config.BUSCA_LOJA:
         loja = extrair_id_da_loja(config.loja)
         if not loja:
@@ -141,6 +144,10 @@ def passa_nos_filtros(produto: dict, config) -> bool:
     if config.preco_maximo and produto["preco"] > float(config.preco_maximo):
         return False
     if config.avaliacao_minima and produto["avaliacao"] < float(config.avaliacao_minima):
+        return False
+    # Envio por nicho: a busca já é na categoria; isto confere a categoria principal do produto.
+    categoria_shopee = getattr(config, "categoria_shopee", None)
+    if categoria_shopee and produto.get("categoria_id") and produto["categoria_id"] != int(categoria_shopee):
         return False
     if config.tipo_busca == config.BUSCA_CATEGORIA:
         return produto_pertence_as_categorias(produto["nome"], config.categorias)

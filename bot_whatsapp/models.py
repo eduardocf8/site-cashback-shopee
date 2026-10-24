@@ -172,10 +172,10 @@ class ConfiguracaoOfertas(models.Model):
 
     grupos = models.JSONField(default=list, blank=True, help_text='[{"jid": "...@g.us", "nome": "..."}]')
     modo_envio = models.CharField("como distribuir", max_length=10, choices=ENVIOS, default=ENVIO_TODOS)
-    # Envio por nicho: o nicho (categoria) de cada grupo, {"jid": "beleza"}. Grupo fora daqui = "todos"
+    # Envio por nicho: o nicho de cada grupo (id da categoria principal da Shopee), {"jid": "100631"}. Grupo fora daqui = "todos"
     # (ofertas em geral). Cada nicho em uso busca as próprias ofertas e manda só pros grupos dele.
     nichos = models.JSONField(default=dict, blank=True)
-    # Onde a busca de cada nicho parou: {"beleza": {"pagina": 3, "em": "2026-10-24T10:00:00+00:00"}}
+    # Onde a busca de cada nicho parou: {"100631": {"pagina": 3, "em": "2026-10-24T10:00:00+00:00"}}
     paginas_nichos = models.JSONField(default=dict, blank=True)
     intervalo_minutos = models.PositiveSmallIntegerField(default=5)
     horario_inicio = models.TimeField(default=time(7, 0))

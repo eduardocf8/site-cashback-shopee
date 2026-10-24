@@ -111,35 +111,38 @@ def grupos_que_ainda_nao_receberam(config, item_id: str, agora, limite_do_dia: b
 NICHO_TODOS = "todos"
 
 
-def nome_do_nicho(nicho: str) -> str:
-    from .categorias import opcoes_categoria
+def categorias_da_shopee() -> list[tuple[str, str]]:
+    """As categorias principais da Shopee (id, nome), em ordem alfabética: são os nichos."""
+    from ofertas.services import carregar_categorias_nivel1
 
+    return sorted(((str(id_), nome) for id_, nome in carregar_categorias_nivel1().items()), key=lambda c: c[1])
+
+
+def nome_do_nicho(nicho: str) -> str:
     if nicho == NICHO_TODOS:
         return "Todos"
-    return next((rotulo.split(" (")[0] for valor, rotulo in opcoes_categoria() if valor == nicho), nicho)
+    return dict(categorias_da_shopee()).get(nicho, nicho)
 
 
 def nichos_do_plano(config) -> list[tuple[dict, list[dict]]]:
-    """Envio por nicho: os nichos em uso ("todos" primeiro, depois na ordem das categorias), cada
-    um com os seus grupos que cabem no plano. Grupo sem nicho escolhido fica em "todos"."""
-    from .categorias import opcoes_categoria
-
-    ordem = [NICHO_TODOS] + [valor for valor, _ in opcoes_categoria()]
+    """Envio por nicho: os nichos em uso ("todos" primeiro, depois as categorias em ordem
+    alfabética), cada um com os seus grupos que cabem no plano. Grupo sem nicho = "todos"."""
+    ordem = [NICHO_TODOS] + [id_ for id_, _ in categorias_da_shopee()]
     por_nicho: dict[str, list[dict]] = {}
     for grupo in grupos_do_plano(config):
-        nicho = (config.nichos or {}).get(grupo["jid"]) or NICHO_TODOS
+        nicho = str((config.nichos or {}).get(grupo["jid"]) or NICHO_TODOS)
         por_nicho.setdefault(nicho if nicho in ordem else NICHO_TODOS, []).append(grupo)
     return [({"id": n, "nome": nome_do_nicho(n)}, por_nicho[n]) for n in ordem if n in por_nicho]
 
 
 def config_do_nicho(config, nicho: dict, grupos: list[dict]):
     """Cópia da config, só na memória (nunca é salva), com a busca e os grupos do nicho: a
-    categoria dele ou, no "Todos", ofertas em geral. Filtros, mensagem, ritmo e IA continuam os da config."""
+    categoria da Shopee dele (busca direto nela) ou, no "Todos", ofertas em geral. Filtros,
+    mensagem, ritmo e IA continuam os da config."""
     do_nicho = copy.copy(config)
-    todos = nicho["id"] == NICHO_TODOS
-    do_nicho.tipo_busca = ConfiguracaoOfertas.BUSCA_GERAL if todos else ConfiguracaoOfertas.BUSCA_CATEGORIA
-    do_nicho.palavra_chave, do_nicho.loja = "", ""
-    do_nicho.categorias = [] if todos else [nicho["id"]]
+    do_nicho.tipo_busca = ConfiguracaoOfertas.BUSCA_GERAL
+    do_nicho.palavra_chave, do_nicho.loja, do_nicho.categorias = "", "", []
+    do_nicho.categoria_shopee = None if nicho["id"] == NICHO_TODOS else int(nicho["id"])
     do_nicho.grupos = grupos
     do_nicho.chave_do_cache = (config.conta_id, nicho["id"])
     onde_parou = (config.paginas_nichos or {}).get(nicho["id"]) or {}
