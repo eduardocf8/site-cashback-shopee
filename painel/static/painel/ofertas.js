@@ -7,13 +7,27 @@
     document.querySelectorAll("[data-modo]").forEach(function (el) {
       el.hidden = el.dataset.modo !== modo;
     });
+    // Copiando de grupos, vale sempre o envio pra todos.
+    var envio = modo === "shopee" ? (document.querySelector("#modo-envio input:checked") || {}).value || "todos" : "todos";
+    document.querySelectorAll("[data-envio]").forEach(function (el) {
+      el.hidden = el.dataset.envio !== envio;
+    });
+    var listaGrupos = document.getElementById("lista-grupos");
+    if (listaGrupos) listaGrupos.classList.toggle("por-nicho", envio === "nicho");
     var escolhido = (document.querySelector("#tipo-busca input:checked") || {}).value;
     document.querySelectorAll("[data-tipo]").forEach(function (el) {
       el.hidden = el.dataset.tipo !== escolhido;
     });
   }
-  document.querySelectorAll("#modo input, #tipo-busca input").forEach(function (el) {
+  document.querySelectorAll("#modo input, #modo-envio input, #tipo-busca input").forEach(function (el) {
     el.addEventListener("change", mostrar);
+  });
+
+  // Envio por nicho: o "Todos" fica destacado também no campo fechado.
+  function destacarTodos(sel) { sel.classList.toggle("nicho-todos", sel.value === "todos"); }
+  document.querySelectorAll("select.nicho-do-grupo").forEach(function (sel) {
+    destacarTodos(sel);
+    sel.addEventListener("change", function () { destacarTodos(sel); });
   });
   // Horários em 24 h: põe os ":" sozinho (digitar "0730" vira "07:30").
   document.querySelectorAll("input[data-hora]").forEach(function (campo) {
@@ -58,6 +72,8 @@
         lista.querySelectorAll('input[type="checkbox"]').forEach(function (caixa) {
           caixa.disabled = !caixa.checked && cheio;
           var linha = caixa.closest(".linha-grupo");
+          var nichoDoGrupo = linha && linha.querySelector("select.nicho-do-grupo");
+          if (nichoDoGrupo) nichoDoGrupo.disabled = caixa.disabled;
           if (linha) {
             linha.classList.toggle("travada", caixa.disabled);
             linha.title = caixa.disabled ? "Seu plano permite até " + maximo + " grupos e canais. Desmarque um para escolher outro." : "";
