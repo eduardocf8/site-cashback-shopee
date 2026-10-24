@@ -14,6 +14,7 @@ from licencas.services import processar_evento
 from . import assinaturas, certificado, dps, servicos
 from . import email as email_notas
 from .models import AMBIENTE_PRODUCAO, NotaFiscal
+from .sefin import Resposta
 from .tests import ClienteFalso, autorizada, criar_conta, criar_empresa, gerar_pfx, xml_nfse
 
 # Como chega da Zouti (o evento de assinatura ativada, com dados fictícios).
@@ -143,6 +144,19 @@ class TestEmissao(BaseAssinaturas):
         self.assertIn("pagamento da sua assinatura", mensagem.body)
         self.assertNotIn("comissão extra", mensagem.body)
         self.assertEqual(mensagem.to, ["carla@exemplo.com"])
+
+
+class TestRecusaDoGoverno(BaseAssinaturas):
+    def test_recusa_por_endereco_mostra_o_motivo_do_governo(self):
+        """Sem endereço não há outro a tentar: a nota guarda a mensagem do governo, e não a nossa."""
+        assinaturas.registrar_pagamento("SUBSCRIPTION_ACTIVATED", evento())
+        recusa = Resposta(400, {"erros": [{"codigo": "E0239", "descricao": "Endereço do tomador obrigatório"}]})
+        with mock.patch.object(servicos, "ClienteSefin", ClienteFalso(emitir=recusa)), \
+                mock.patch.object(servicos, "campos_novos", return_value=frozenset({"IBSCBS"})):
+            servicos.processar(NotaFiscal.objects.get())
+        nota = NotaFiscal.objects.get()
+        self.assertEqual(nota.situacao, NotaFiscal.RECUSADA)
+        self.assertEqual(nota.mensagens[0]["codigo"], "E0239")
 
 
 class TestEstorno(BaseAssinaturas):
