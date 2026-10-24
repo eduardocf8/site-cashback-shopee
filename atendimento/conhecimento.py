@@ -66,7 +66,8 @@ def _precos() -> str:
 def _api_shopee() -> str:
     passos = "\n".join(f"{i}. {t}: {d}" for i, (t, d) in enumerate(api_shopee.PASSOS, 1))
     campos = "; ".join(f"{c}: {v}" for c, v in api_shopee.CAMPOS_FORMULARIO)
-    return (f"{api_shopee.RESUMO}\nPasso a passo:\n{passos}\nComo preencher o formulário: {campos}.\n"
+    return (f"{api_shopee.RESUMO}\nExceção: o Emissor NFS-e não precisa da API da Shopee, porque usa o Relatório Mensal "
+            "que o afiliado baixa na Central do Afiliado e envia no painel.\nPasso a passo:\n{passos}\nComo preencher o formulário: {campos}.\n"
             f"Formulário da Shopee: {api_shopee.URL_FORMULARIO}\nPágina Open API do afiliado: {api_shopee.URL_OPEN_API}")
 
 
