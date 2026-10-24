@@ -440,13 +440,18 @@ form.form-regra > .erros-form { grid-column: 1 / -1; }
 .lista-grupos { display: flex; flex-direction: column; gap: 2px; max-height: 320px; overflow-y: auto; border: 1px solid var(--borda); border-radius: 10px; padding: 6px 10px; }
 .lista-grupos label { display: flex; align-items: center; gap: 10px; padding: 7px 0; font-size: 14px; font-weight: 500; cursor: pointer; }
 .lista-grupos input[type="checkbox"] { width: 18px; height: 18px; min-height: 0; padding: 0; flex: none; accent-color: var(--verde); }
-.barra-salvar { position: sticky; bottom: 12px; display: flex; justify-content: flex-end; }
-.barra-salvar .botao { box-shadow: 0 6px 18px rgba(31, 58, 46, .18); }
-/* No celular a barra do navegador e a área do gesto do iPhone cobrem a parte de baixo
-   da tela: o botão flutua mais alto e respeita a área segura. */
+/* Salvar: no computador fica no fim do formulário (não flutua por cima dos campos). No
+   celular vira uma faixa fixa no rodapé da tela, com a área segura do iPhone, e a página
+   ganha um respiro embaixo pra faixa não cobrir os últimos campos. */
+.barra-salvar { display: flex; justify-content: flex-end; gap: 10px; }
 @media (max-width: 700px) {
-  .barra-salvar { bottom: calc(28px + env(safe-area-inset-bottom, 0px)); padding-right: 4px; }
-  .barra-salvar .botao { min-height: 48px; padding: 0 26px; }
+  .barra-salvar {
+    position: fixed; left: 0; right: 0; bottom: 0; z-index: 30;
+    padding: 10px 16px calc(10px + env(safe-area-inset-bottom, 0px));
+    background: var(--card); border-top: 1px solid var(--borda); box-shadow: 0 -4px 14px rgba(31, 58, 46, .08);
+  }
+  .barra-salvar .botao { flex: 1; min-height: 48px; }
+  .conteudo:has(.barra-salvar) { padding-bottom: calc(96px + env(safe-area-inset-bottom, 0px)); }
 }
 .coluna-lateral { display: flex; flex-direction: column; gap: 16px; min-width: 0; }
 .ofertas-teste { list-style: none; margin: 8px 0 0; padding: 0; display: flex; flex-direction: column; gap: 12px; }
