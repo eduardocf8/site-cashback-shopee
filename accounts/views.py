@@ -24,6 +24,7 @@ from saques.services import calcular_saldo_disponivel
 from cashback_shopee.meta_capi import DADOS_CADASTRO, enviar_evento, gerar_event_id
 
 from . import google_oauth
+from .cliques_anonimos import NOME_COOKIE as COOKIE_CLIQUE_ANONIMO, ligar_clicks_anonimos
 from .funil import registrar_cadastro
 from .forms import ChavePixForm, EditarPerfilForm, RegistroForm
 from .verificacao_pix import CAMPOS_VERIFICACAO, LimiteDeTentativasError, nomes_conferem, verificar_chave_pix
@@ -83,6 +84,7 @@ def _concluir_cadastro(request, usuario, codigo_indicacao, metodo):
     # e com o AxesBackend adicionado (proteção de força bruta no login) o Django
     # não consegue mais inferir sozinho qual backend usar com 2 configurados.
     login(request, usuario, backend="django.contrib.auth.backends.ModelBackend")
+    ligar_clicks_anonimos(request, usuario)
     event_id = gerar_event_id()
     enviar_evento("CompleteRegistration", request, event_id, DADOS_CADASTRO)
     request.session[SESSION_KEY_EVENTO_CADASTRO_PIXEL] = event_id
@@ -92,8 +94,13 @@ def _redirecionar_depois_de_entrar(request, proximo):
     if proximo and url_has_allowed_host_and_scheme(
         proximo, allowed_hosts={request.get_host()}, require_https=request.is_secure()
     ):
-        return redirect(proximo)
-    return redirect("dashboard")
+        resposta = redirect(proximo)
+    else:
+        resposta = redirect("dashboard")
+    # A partir daqui a pessoa já está logada - não precisa mais guardar clique
+    # anônimo nesse navegador (ver accounts/cliques_anonimos.py).
+    resposta.delete_cookie(COOKIE_CLIQUE_ANONIMO)
+    return resposta
 
 
 SESSION_KEY_GOOGLE = "login_google"
@@ -138,6 +145,7 @@ def callback_google(request):
         _concluir_cadastro(request, usuario, dados.get("ref", ""), metodo="google")
     else:
         login(request, usuario, backend="django.contrib.auth.backends.ModelBackend")
+        ligar_clicks_anonimos(request, usuario)
     return _redirecionar_depois_de_entrar(request, dados.get("next", ""))
 
 

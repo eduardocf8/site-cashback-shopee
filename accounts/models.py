@@ -275,16 +275,18 @@ class ComunicacaoEmail(models.Model):
 
 
 class EventoFunil(models.Model):
-    """Funil de quem chega sem conta (ROADMAP 13.11 - medir antes de construir): tentou
-    usar o site sem conta -> se cadastrou -> gerou o primeiro link. Um registro por
-    etapa por visitante (funil_id guardado na sessão, que sobrevive ao login). Ver
-    accounts/funil.py."""
+    """Funil de quem chega sem conta (ROADMAP 13.11): tentou usar o site sem conta ->
+    (clicou sem cadastro, se escolheu continuar assim) -> se cadastrou -> gerou o
+    primeiro link. Um registro por etapa por visitante (funil_id guardado na sessão,
+    que sobrevive ao login). Ver accounts/funil.py."""
 
     TENTATIVA = "tentativa"
+    CLICOU_SEM_CONTA = "clicou_sem_conta"
     CADASTRO = "cadastro"
     PRIMEIRO_LINK = "primeiro_link"
     ETAPA_CHOICES = [
         (TENTATIVA, "Tentou usar sem conta"),
+        (CLICOU_SEM_CONTA, "Clicou sem conta (foi pra Shopee)"),
         (CADASTRO, "Cadastrou"),
         (PRIMEIRO_LINK, "Gerou o primeiro link"),
     ]

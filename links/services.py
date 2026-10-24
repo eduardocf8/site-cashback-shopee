@@ -11,6 +11,10 @@ LIMITE_RESOLUCOES_POR_EXECUCAO = 30
 def gerar_click(usuario, tipo: str, url_original: str | None, item_id_alvo: int | None = None) -> Click:
     """Cria um Click com subIds próprios e obtém o link de afiliado na API Shopee.
 
+    usuario pode ser None (clique anônimo, ROADMAP 13.11) ou o AnonymousUser que o
+    Django põe em request.user quando não tem login - normalizado pra None aqui, pra
+    quem chama poder passar request.user direto sem se preocupar com isso.
+
     item_id_alvo identifica qual produto gerou o clique (link específico ou card da
     vitrine) - usado depois, na sincronização de pedidos, pra confirmar que a compra
     real bate com o produto do link antes de aplicar o piso de cashback de venda
@@ -22,6 +26,9 @@ def gerar_click(usuario, tipo: str, url_original: str | None, item_id_alvo: int 
     cliques só contam pro piso de venda indireta até a tarefa agendada
     (resolver_item_id_alvo_pendentes) conseguir resolver de verdade, seguindo
     redirecionamento, em segundo plano (ver ROADMAP.md, Fase 42)."""
+    if usuario is not None and not usuario.is_authenticated:
+        usuario = None
+
     url_alvo = url_original if tipo != Click.TIPO_HOME else settings.SHOPEE_HOME_URL
 
     if item_id_alvo is None and tipo != Click.TIPO_HOME and url_alvo:

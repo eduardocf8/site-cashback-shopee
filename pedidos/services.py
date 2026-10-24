@@ -165,11 +165,13 @@ def _montar_defaults(
     #
     # Sem Click identificado, o pedido não veio daqui (outra campanha, compra pessoal etc.
     # - ver OrigemFilter em pedidos/admin.py) e não tem usuário pra receber o cashback, então
-    # não faz sentido calcular um valor que nunca vai ser pago a ninguém. valor_comissao
-    # continua sendo somado normalmente - é o que a Shopee realmente paga pra conta de
-    # afiliado, independente da origem do pedido. Exceção: pedido sem clique que o admin
-    # já vinculou a alguém (usuario_manual, ver ReclamacaoPedido) - esse paga cashback
-    # como venda indireta, senão a sincronização seguinte zeraria o que foi aprovado.
+    # não faz sentido calcular um valor que nunca vai ser pago a ninguém. Mesma lógica pro
+    # clique que existe mas ainda é anônimo (click.usuario_id vazio - ROADMAP 13.11): tem
+    # Click, só não tem usuário ainda. valor_comissao continua sendo somado normalmente - é
+    # o que a Shopee realmente paga pra conta de afiliado, independente da origem do
+    # pedido ou de ter usuário. Exceção: pedido sem clique que o admin já vinculou a
+    # alguém (usuario_manual, ver ReclamacaoPedido) - esse paga cashback como venda
+    # indireta, senão a sincronização seguinte zeraria o que foi aprovado.
     pedido_valor = Decimal("0")
     comissao = Decimal("0")
     cashback = Decimal("0")
@@ -181,7 +183,12 @@ def _montar_defaults(
         comissao += comissao_item
         venda_direta_item = False
         cashback_item = Decimal("0.00")
-        if click and comissao_item > 0:
+        # click.usuario_id vazio = clique ainda anônimo (ROADMAP 13.11): a comissão
+        # continua sendo somada normalmente (comissao, abaixo), mas sem cashback pra
+        # ninguém ainda - se a pessoa se cadastrar dentro da janela de 7 dias, o
+        # clique ganha usuario (ver accounts/cliques_anonimos.py) e a sincronização
+        # seguinte recalcula esse mesmo item com o cashback correto, nesse mesmo "if".
+        if click and click.usuario_id and comissao_item > 0:
             item_bate_com_o_link = _item_bate_com_o_click(click, item.get("itemId"))
             venda_direta_item = click.tipo != Click.TIPO_HOME and item_bate_com_o_link
             percentual_minimo = _percentual_minimo_garantido(click, item_bate_com_o_link)

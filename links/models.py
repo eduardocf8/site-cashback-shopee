@@ -20,7 +20,16 @@ class Click(models.Model):
     ]
 
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
-    usuario = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name="clicks")
+    usuario = models.ForeignKey(
+        settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name="clicks", null=True, blank=True,
+        help_text=(
+            "Vazio enquanto o clique for anônimo (ROADMAP 13.11 - clicou sem estar "
+            "logado). Preenchido na hora do clique pra quem já tem conta, ou depois, "
+            "se a pessoa se cadastrar dentro de 7 dias no mesmo navegador (ver "
+            "accounts/cliques_anonimos.py). Sem usuário, o pedido correspondente não "
+            "paga cashback (ver pedidos/services.py::_montar_defaults)."
+        ),
+    )
     tipo = models.CharField(max_length=10, choices=TIPO_CHOICES)
     # URLField tem max_length=200 por padrão, e um link da Shopee copiado do navegador (com
     # parâmetros de rastreio) passa disso fácil: o banco recusava e o usuário via erro 500.
@@ -41,7 +50,7 @@ class Click(models.Model):
         ordering = ["-criado_em"]
 
     def sub_id_usuario(self) -> str:
-        return f"user{self.usuario_id}"
+        return f"user{self.usuario_id}" if self.usuario_id else "anon"
 
     def sub_id_click(self) -> str:
         # A API Shopee só aceita letras e números no subId (sem hífen/símbolo),
