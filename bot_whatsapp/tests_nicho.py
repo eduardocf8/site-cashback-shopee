@@ -152,6 +152,12 @@ class TestTelaPorNicho(BasePainel):
         self.assertIn('value="Casa e cozinha"', html)
         self.assertIn('<option value="n1" selected>Beleza</option>', html)
         self.assertIn('id="modelo-nicho"', html)
+        self.assertIn('class="lista-grupos por-nicho"', html)
+
+        self.client.post("/whatsapp/ofertas/", self.dados(modo_envio="todos"))
+        html = self.client.get("/whatsapp/ofertas/").content.decode()
+        self.assertIn('class="lista-grupos" id="lista-grupos"', html)
+        self.assertIn('<span data-envio="nicho" hidden>Nicho</span>', html)
 
     def test_validacoes(self):
         resposta = self.client.post("/whatsapp/ofertas/", self.dados(**{"nicho_de_1@g.us": "", "nicho_de_2@g.us": ""}))

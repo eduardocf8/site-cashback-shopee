@@ -244,6 +244,12 @@ class ConfiguracaoOfertasForm(forms.ModelForm):
         } for n in nichos]
 
     @property
+    def mostrar_nicho(self) -> bool:
+        """A coluna "Nicho" da lista de grupos já vem visível (sem esperar o JavaScript)."""
+        return (self.regras["nicho"] and self["modo"].value() == ConfiguracaoOfertas.MODO_SHOPEE
+                and self["modo_envio"].value() == ConfiguracaoOfertas.ENVIO_NICHO)
+
+    @property
     def nicho_em_branco(self) -> dict:
         """Modelo de nicho novo (a tela troca o __ID__ por um id novo)."""
         return {"id": "__ID__", "nome": "", "palavra_chave": "", "total_grupos": 0, "resumo": SEM_CATEGORIA,

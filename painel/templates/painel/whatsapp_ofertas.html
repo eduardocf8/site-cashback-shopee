@@ -167,12 +167,12 @@
             <input type="search" id="busca-grupos" data-lista="lista-grupos" data-maximo="{{ regras.grupos }}" placeholder="Buscar grupo ou canal" aria-label="Buscar grupo ou canal" autocomplete="off">
             <span class="suave pequeno contador" aria-live="polite"></span>
           </div>
-          <div class="lista-grupos" id="lista-grupos">
-            <div class="lista-grupos-topo suave pequeno"><span>Grupo ou canal</span>{% if regras.nicho %}<span data-envio="nicho">Nicho</span>{% endif %}<span>Sub ID próprio (opcional)</span></div>
+          <div class="lista-grupos{% if form.mostrar_nicho %} por-nicho{% endif %}" id="lista-grupos">
+            <div class="lista-grupos-topo suave pequeno"><span>Grupo ou canal</span>{% if regras.nicho %}<span data-envio="nicho"{% if not form.mostrar_nicho %} hidden{% endif %}>Nicho</span>{% endif %}<span>Sub ID próprio (opcional)</span></div>
             {% for linha in form.linhas_dos_grupos %}
               <div class="linha-grupo{% if linha.divisa %} linha-divisa{% endif %}" data-nome="{{ linha.opcao.choice_label|lower }}">
                 <label>{{ linha.opcao.tag }}<span>{{ linha.opcao.choice_label }}</span>{% if linha.canal %}<span class="selo-canal">Canal</span>{% endif %}</label>
-                {% if regras.nicho %}<select name="nicho_de_{{ linha.opcao.data.value }}" class="nicho-do-grupo" data-envio="nicho" data-valor="{{ linha.nicho }}" aria-label="Nicho de {{ linha.opcao.choice_label }}"><option value="">Não recebe</option>{% for n in form.nichos_na_tela %}<option value="{{ n.id }}"{% if n.id == linha.nicho %} selected{% endif %}>{{ n.nome|default:"(sem nome)" }}</option>{% endfor %}</select>{% endif %}
+                {% if regras.nicho %}<select name="nicho_de_{{ linha.opcao.data.value }}" class="nicho-do-grupo" data-envio="nicho"{% if not form.mostrar_nicho %} hidden{% endif %} data-valor="{{ linha.nicho }}" aria-label="Nicho de {{ linha.opcao.choice_label }}"><option value="">Não recebe</option>{% for n in form.nichos_na_tela %}<option value="{{ n.id }}"{% if n.id == linha.nicho %} selected{% endif %}>{{ n.nome|default:"(sem nome)" }}</option>{% endfor %}</select>{% endif %}
                 <input type="text" name="subid_{{ linha.opcao.data.value }}" value="{{ linha.sub_id }}" placeholder="padrão" maxlength="300" aria-label="Sub ID próprio de {{ linha.opcao.choice_label }}">
               </div>
             {% endfor %}
