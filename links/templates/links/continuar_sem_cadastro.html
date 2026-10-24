@@ -1,0 +1,40 @@
+{% extends "accounts/base.html" %}
+{% block titulo %}Continuar pra Shopee{% endblock %}
+{% block meta_descricao %}Cadastre-se pra garantir o cashback dessa compra, ou continue sem cadastro.{% endblock %}
+{% block largura_container %}480px{% endblock %}
+{% block conteudo %}
+    <style>
+        .escolha-titulo { text-align: center; margin-bottom: 4px; }
+        .escolha-legenda { text-align: center; color: var(--muted); margin-bottom: 24px; }
+        .escolha-opcao {
+            border: 1px solid var(--line); border-radius: 10px; padding: 18px; margin-bottom: 14px;
+        }
+        .escolha-opcao.recomendada { border-color: var(--brand); background: var(--paper-2); }
+        .escolha-opcao h2 { font-size: 16px; margin: 0 0 6px; }
+        .escolha-opcao p { font-size: 13.5px; color: var(--muted); margin: 0 0 14px; }
+        .escolha-opcao .botao-primario { width: 100%; text-align: center; margin-top: 0; }
+        .escolha-opcao .link-sem-cadastro {
+            display: block; text-align: center; color: var(--muted); font-size: 14px; text-decoration: underline;
+        }
+    </style>
+
+    <h1 class="escolha-titulo">Antes de ir pra Shopee</h1>
+    <p class="escolha-legenda">Você pode continuar sem cadastro, mas só quem tem conta na cash-b recebe cashback.</p>
+
+    <div class="escolha-opcao recomendada">
+        <h2>Cadastrar e continuar</h2>
+        <p>
+            Leva 1 clique com o Google. Garante até
+            {{ cashback_percentual_maximo|floatformat:"-1" }}% de cashback nessa
+            compra (e nas próximas) - mesmo se você se cadastrar só depois de
+            comprar, até 7 dias pelo mesmo navegador.
+        </p>
+        <a class="botao-primario" href="{{ link_cadastrar }}">Cadastrar e continuar</a>
+    </div>
+
+    <div class="escolha-opcao">
+        <h2>Continuar sem cadastro</h2>
+        <p>Vai direto pra Shopee, mas essa compra não gera cashback nenhum.</p>
+        <a class="link-sem-cadastro" href="{{ link_continuar }}">Continuar sem cadastro</a>
+    </div>
+{% endblock %}

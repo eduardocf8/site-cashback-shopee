@@ -9,10 +9,12 @@ from django.contrib.auth.decorators import login_required
 from django.core.cache import cache
 from django.http import JsonResponse
 from django.shortcuts import redirect, render
+from django.utils.http import url_has_allowed_host_and_scheme
 from django.views.decorators.http import require_GET
 from django.urls import reverse
 
-from accounts.funil import exigir_login_medindo, registrar_primeiro_link, registrar_tentativa
+from accounts.cliques_anonimos import salvar_click_anonimo
+from accounts.funil import exigir_login_ou_pagina_de_escolha, registrar_primeiro_link, registrar_tentativa
 from accounts.ratelimit import limitar_por_ip
 from ofertas.services import (
     LinkProdutoInvalidoError,
@@ -107,12 +109,39 @@ def home(request):
     return render(request, "links/home.html", contexto)
 
 
-@exigir_login_medindo("ir_shopee")
+@exigir_login_ou_pagina_de_escolha("ir_shopee")
 def ir_para_shopee(request):
     click = _criar_click_e_avisar(request, Click.TIPO_HOME, None, mensagem_sucesso=None)
     if click is None:
         return redirect("home")
-    return redirect(click.link_gerado)
+    resposta = redirect(click.link_gerado)
+    if not request.user.is_authenticated:
+        # Clique anônimo (ROADMAP 13.11) - guarda no navegador pra ligar à conta se a
+        # pessoa se cadastrar dentro de 7 dias (ver accounts/cliques_anonimos.py).
+        salvar_click_anonimo(request, resposta, click.id.hex)
+    return resposta
+
+
+def continuar_sem_cadastro(request):
+    """Página de escolha de quem esbarrou no login ao clicar sem conta (ROADMAP
+    13.11, decisão de 24/10/2026): "Cadastrar e continuar" (ganha cashback) ou
+    "Continuar sem cadastro" (vai pra Shopee sem cashback, clique fica anônimo).
+    Mostrada pelo decorador accounts.funil.exigir_login_ou_pagina_de_escolha, em vez
+    de forçar o login de cara. "origem" (conversor/ir_shopee/oferta/story) só serve
+    pra registrar a tentativa no funil - ver accounts/funil.py - não é usada aqui."""
+    proximo = request.GET.get("next", "")
+    if not proximo or not url_has_allowed_host_and_scheme(
+        proximo, allowed_hosts={request.get_host()}, require_https=request.is_secure()
+    ):
+        return redirect("home")
+
+    separador = "&" if "?" in proximo else "?"
+    contexto = {
+        "link_cadastrar": f"{reverse('registrar')}?{urlencode({'next': proximo})}",
+        "link_continuar": f"{proximo}{separador}{urlencode({'continuar': 'sem_cadastro'})}",
+        "cashback_percentual_maximo": obter_cashback_maximo_anunciado(),
+    }
+    return render(request, "links/continuar_sem_cadastro.html", contexto)
 
 
 @login_required

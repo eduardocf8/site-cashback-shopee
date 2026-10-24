@@ -5,7 +5,8 @@ from django.db.models import F
 from django.shortcuts import get_object_or_404, redirect, render
 from django.utils import timezone
 
-from accounts.funil import exigir_login_medindo, registrar_primeiro_link
+from accounts.cliques_anonimos import salvar_click_anonimo
+from accounts.funil import exigir_login_ou_pagina_de_escolha, registrar_primeiro_link
 from links.models import Click
 from links.services import gerar_click
 from links.shopee_client import ShopeeAPIError, ShopeeConfigError, SubIdInvalidoError
@@ -107,10 +108,15 @@ def _ir_com_click_ou_erro(request, product_link, nome_da_view_de_erro, item_id_c
     # de novo pra disparar o Pixel do navegador (ver ROADMAP.md).
     enviar_evento("GerouLinkCashback", request, gerar_event_id(), {"tipo_click": click.tipo})
     registrar_primeiro_link(request)
-    return redirect(click.link_gerado)
+    resposta = redirect(click.link_gerado)
+    if not request.user.is_authenticated:
+        # Clique anônimo (ROADMAP 13.11) - guarda no navegador pra ligar à conta se a
+        # pessoa se cadastrar dentro de 7 dias (ver accounts/cliques_anonimos.py).
+        salvar_click_anonimo(request, resposta, click.id.hex)
+    return resposta
 
 
-@exigir_login_medindo("oferta")
+@exigir_login_ou_pagina_de_escolha("oferta")
 def ir_para_oferta(request, oferta_id):
     oferta = get_object_or_404(Oferta, pk=oferta_id)
     # Oferta já tem o item_id certo (vem da sincronização) - passa direto, sem
@@ -118,7 +124,7 @@ def ir_para_oferta(request, oferta_id):
     return _ir_com_click_ou_erro(request, oferta.product_link, "ofertas_lista", item_id_conhecido=oferta.item_id)
 
 
-@exigir_login_medindo("oferta")
+@exigir_login_ou_pagina_de_escolha("oferta")
 def ir_para_oferta_manual(request, oferta_manual_id):
     """Mesmo fluxo de ir_para_oferta, mas pra uma OfertaManual (cadastrada no admin) -
     essas só aparecem no carrossel da home, então o erro volta pra lá, não pra
@@ -127,7 +133,7 @@ def ir_para_oferta_manual(request, oferta_manual_id):
     return _ir_com_click_ou_erro(request, oferta.product_link, "home")
 
 
-@exigir_login_medindo("oferta")
+@exigir_login_ou_pagina_de_escolha("oferta")
 def ir_para_oferta_destaque_manual(request, oferta_destaque_manual_id):
     """Mesmo fluxo de ir_para_oferta, mas pra OfertaDestaqueManual (a "Oferta do dia"
     manual, cadastrada na página dedicada do admin) - só aparece na home."""
