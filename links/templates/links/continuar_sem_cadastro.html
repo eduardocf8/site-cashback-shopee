@@ -24,17 +24,19 @@
     <div class="escolha-opcao recomendada">
         <h2>Cadastrar e continuar</h2>
         <p>
-            Leva 1 clique com o Google. Garante até
-            {{ cashback_percentual_maximo|floatformat:"-1" }}% de cashback nessa
-            compra (e nas próximas) - mesmo se você se cadastrar só depois de
-            comprar, até 7 dias pelo mesmo navegador.
+            Leva 1 clique com o Google. Cashback garantido nessa compra e nas
+            próximas.
         </p>
         <a class="botao-primario" href="{{ link_cadastrar }}">Cadastrar e continuar</a>
     </div>
 
     <div class="escolha-opcao">
         <h2>Continuar sem cadastro</h2>
-        <p>Vai direto pra Shopee, mas essa compra não gera cashback nenhum.</p>
+        <p>
+            Vai direto pra Shopee. Se cadastrar em até 7 dias desse clique, nesse
+            mesmo navegador, e sem clicar em outro link de afiliado no caminho até a
+            compra, você ainda pode ganhar o cashback.
+        </p>
         <a class="link-sem-cadastro" href="{{ link_continuar }}">Continuar sem cadastro</a>
     </div>
 {% endblock %}

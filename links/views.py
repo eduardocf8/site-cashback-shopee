@@ -139,7 +139,6 @@ def continuar_sem_cadastro(request):
     contexto = {
         "link_cadastrar": f"{reverse('registrar')}?{urlencode({'next': proximo})}",
         "link_continuar": f"{proximo}{separador}{urlencode({'continuar': 'sem_cadastro'})}",
-        "cashback_percentual_maximo": obter_cashback_maximo_anunciado(),
     }
     return render(request, "links/continuar_sem_cadastro.html", contexto)
 
