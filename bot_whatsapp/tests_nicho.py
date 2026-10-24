@@ -15,12 +15,14 @@ from .models import ConexaoWhatsApp, ConfiguracaoOfertas, EnvioWhatsApp
 from .tests_ofertas import AGORA, link_falso, produto
 
 GRUPOS = [{"jid": f"{i}@g.us", "nome": f"Grupo {i}"} for i in range(1, 5)]
-NICHOS = {"1@g.us": "beleza", "2@g.us": "beleza"}  # o 3 fica em "Todos"
+NICHOS = {"1@g.us": "100630", "2@g.us": "100630"}  # Beleza; o 3 fica em "Todos"
 
 
 def busca_por_nicho(app_id, secret, config, pagina):
-    """A mesma busca pros dois; no nicho Beleza só passa o batom (filtro da categoria)."""
-    return [produto(f"10{pagina}", nome="Batom matte"), produto(f"11{pagina}", nome="Carregador turbo")], True
+    """Na categoria Beleza a Shopee devolve o batom e (por engano) um carregador, que a conferência
+    da categoria barra; no "Todos", a busca geral traz os dois."""
+    return [produto(f"10{pagina}", nome="Batom matte", categoria_id=100630),
+            produto(f"11{pagina}", nome="Carregador turbo", categoria_id=100013)], True
 
 
 @mock.patch.object(shopee_ofertas, "gerar_link_afiliado", side_effect=link_falso)
@@ -56,7 +58,7 @@ class TestMotorPorNicho(TestCase):
         self.assertEqual(self.config.proximo_envio_em, AGORA + timedelta(minutes=5))
         self.assertEqual(self.config.situacao, "")
         self.assertEqual(self.config.paginas_nichos["todos"]["pagina"], 2)
-        self.assertEqual(set(self.config.paginas_nichos), {"todos", "beleza"})
+        self.assertEqual(set(self.config.paginas_nichos), {"todos", "100630"})
 
         # Na vez seguinte cada nicho continua da sua lista.
         self.rodar(AGORA + timedelta(minutes=5))
@@ -107,7 +109,7 @@ class TestMotorPorNicho(TestCase):
         self.config.refresh_from_db()
         nichos = [(o["nicho"], o.get("nome")) for o in self.config.teste_resultado]
         self.assertEqual(nichos, [("Todos", "Batom matte"), ("Todos", "Carregador turbo"), ("Todos", "Batom matte")]
-                         + [("Beleza e Cuidados Pessoais", "Batom matte")] * 3)
+                         + [("Beleza", "Batom matte")] * 3)
 
 
 class TestTelaPorNicho(BasePainel):
@@ -125,7 +127,7 @@ class TestTelaPorNicho(BasePainel):
             "intervalo_minutos": "10", "horario_inicio": "08:00", "horario_fim": "22:00",
             "dias_semana": ["0", "1", "2", "3", "4"], "repetir_apos_dias": "7",
             "grupos": ["1@g.us", "2@g.us", "3@g.us"],
-            "nicho_de_1@g.us": "beleza", "nicho_de_2@g.us": "todos", "nicho_de_3@g.us": "inventado", "nicho_de_4@g.us": "casa",
+            "nicho_de_1@g.us": "100631", "nicho_de_2@g.us": "todos", "nicho_de_3@g.us": "beleza", "nicho_de_4@g.us": "100636",
         }
         base.update(extra)
         return base
@@ -136,18 +138,18 @@ class TestTelaPorNicho(BasePainel):
         config = ConfiguracaoOfertas.objects.get(conta=self.conta)
         self.assertEqual(config.modo_envio, "nicho")
         # "Todos" e valor inválido não são guardados; o grupo 4 não recebe, mas o nicho dele fica guardado
-        self.assertEqual(config.nichos, {"1@g.us": "beleza", "4@g.us": "casa"})
+        self.assertEqual(config.nichos, {"1@g.us": "100631", "4@g.us": "100636"})
         self.assertEqual([g["jid"] for g in config.grupos], ["1@g.us", "2@g.us", "3@g.us"])
 
         html = self.client.get("/whatsapp/ofertas/").content.decode()
         self.assertIn('class="lista-grupos por-nicho"', html)
-        self.assertIn('<option value="beleza" selected>Beleza e Cuidados Pessoais</option>', html)
+        self.assertIn('<option value="100631" selected>Animais Domésticos</option>', html)
         self.assertIn('<option value="todos" selected class="nicho-todos">Todos</option>', html)
         self.assertNotIn("Palavra-chave do nicho", html)
 
         self.client.post("/whatsapp/ofertas/", self.dados(modo_envio="todos"))
         config.refresh_from_db()
-        self.assertEqual((config.modo_envio, config.nichos), ("todos", {"1@g.us": "beleza", "4@g.us": "casa"}))
+        self.assertEqual((config.modo_envio, config.nichos), ("todos", {"1@g.us": "100631", "4@g.us": "100636"}))
         html = self.client.get("/whatsapp/ofertas/").content.decode()
         self.assertIn('class="lista-grupos" id="lista-grupos"', html)
         self.assertIn('<span data-envio="nicho" hidden>Nicho</span>', html)
@@ -161,3 +163,21 @@ class TestTelaPorNicho(BasePainel):
         self.assertIn("envio por nicho", html)
         resposta = self.client.post("/whatsapp/ofertas/", self.dados())
         self.assertContains(resposta, "O envio por nicho é do plano Premium.")
+
+
+class TestBuscaDoNicho(TestCase):
+    def test_busca_direto_na_categoria_da_shopee(self):
+        config = ConfiguracaoOfertas(nichos={})
+        do_nicho = ofertas.config_do_nicho(config, {"id": "100631", "nome": "Animais Domésticos"}, [])
+        with mock.patch.object(shopee_ofertas, "_consultar_produtos", return_value={"nodes": []}) as consulta:
+            shopee_ofertas.buscar_produtos("1", "s", do_nicho, 1)
+        self.assertIn("productCatId:100631", consulta.call_args.args[2])
+        # a petisqueira que veio de outra categoria é barrada
+        self.assertFalse(shopee_ofertas.passa_nos_filtros(produto(1, nome="Petisqueira porta petiscos", categoria_id=100636), do_nicho))
+        self.assertTrue(shopee_ofertas.passa_nos_filtros(produto(2, nome="Coleira", categoria_id=100631), do_nicho))
+
+    def test_petisco_de_gente_nao_e_pet_no_filtro_de_categorias(self):
+        from .categorias import produto_pertence_as_categorias
+
+        self.assertFalse(produto_pertence_as_categorias("Petisqueira 4 divisórias porta petiscos", ["pet"]))
+        self.assertTrue(produto_pertence_as_categorias("Petisco para cachorro sabor carne", ["pet"]))

@@ -228,8 +228,10 @@ class ConfiguracaoOfertasForm(forms.ModelForm):
 
     @property
     def opcoes_nicho(self) -> list[tuple[str, str]]:
-        """Opções da coluna "Nicho": "Todos" (ofertas em geral) e as categorias, com o nome curto."""
-        return [("todos", "Todos")] + [(valor, rotulo.split(" (")[0]) for valor, rotulo in self.fields["categorias"].choices]
+        """Opções da coluna "Nicho": "Todos" (ofertas em geral) e as categorias da Shopee."""
+        from bot_whatsapp.ofertas import categorias_da_shopee
+
+        return [("todos", "Todos")] + categorias_da_shopee()
 
     @property
     def mostrar_nicho(self) -> bool:
