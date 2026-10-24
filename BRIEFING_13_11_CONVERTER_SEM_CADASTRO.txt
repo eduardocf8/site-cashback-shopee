@@ -1,0 +1,86 @@
+BRIEFING PARA A CONVERSA DO SITE - ROADMAP 13.11 "CONVERTER SEM CADASTRO"
+(24/10/2026. Escrito a partir da conversa de marketing/Meta Ads, lendo a branch de produção
+claude/shopee-cashback-site-6hb939 no commit 4a63206. Nada foi alterado no código.)
+
+DECISÃO DO DONO
+O dono decidiu liberar o 13.11 sem esperar as 2-3 semanas do ROADMAP: a janela de medição
+foi reduzida para 7 dias e ele já quer construir. A medição de 16 a 23/10 sustenta isso (abaixo).
+
+1) O QUE OS DADOS MOSTRAM (admin > Analytics > "Funil de quem chega sem conta", 16 a 23/10)
+- 4.787 tentativas sem conta (~600 por dia).
+- Por origem: ofertas 4.785, conversor 2, ir pra Shopee 0, story 0.
+- Só 3 dessas pessoas se cadastraram depois (0,1%), e as 3 geraram o primeiro link.
+- Cadastros no período: 247 (40 pelo Google), ~30 por dia, quase todos vindos direto do anúncio.
+CONCLUSÃO: o gargalo é a VITRINE (clique em "Ir pra oferta" exige login), não o conversor.
+Hoje esse clique nem chega à Shopee, então nenhuma comissão entra desse tráfego.
+CUIDADO: ~600 tentativas/dia é bem mais que os ~100 cliques/dia do anúncio. Parte pode ser
+robô que o filtro de accounts/funil.py (PADRAO_ROBO) não pega. Conferir user_agent e origem
+das tentativas (o admin já guarda o navegador). Isso NÃO precisa travar o trabalho.
+
+2) DECISÕES DO DONO A CONFIRMAR ANTES DE CONSTRUIR (minha sugestão entre parênteses)
+a) Quem clica sem conta ganha cashback? O ROADMAP diz: cashback só pago com cadastro; a
+   comissão da Shopee entra de qualquer forma. (Manter.)
+b) Janela para ligar um clique anônimo a uma conta nova. (Sugestão: 7 dias; a compra costuma
+   vir logo após o clique. Mais longo aumenta a chance de ligar, mas também de disputa.)
+c) Redirecionar direto para a Shopee ou mostrar antes uma página nossa com duas escolhas:
+   "Cadastrar e continuar (cashback)" e "Continuar sem cashback"? (Recomendo a página: é mais
+   honesto, deixa o aviso ANTES do clique e converte mais cadastros. Custa um passo a mais.)
+d) Texto dos Termos de Uso, do FAQ e da página de cookies sobre o clique anônimo.
+e) Enquadramento do cookie do clique anônimo (necessário vs. consentimento). Conferir com
+   a política atual de cookies (o banner do Pixel/CAPI foi mexido em 15/10, commit 3e22a1a).
+
+3) DESENHO PROPOSTO
+- Liberar sem login: ir_para_oferta, ir_para_oferta_manual e o terceiro view com
+  @exigir_login_medindo("oferta") em ofertas/views.py, e ir_para_shopee em links/views.py.
+  O conversor da home (links/views.py::home) já manda o visitante para /registrar/ guardando o
+  link em "next"; revisar se continua fazendo sentido.
+- Clique anônimo: hoje Click.usuario é FK obrigatória (CASCADE) e gerar_click
+  (links/services.py) manda subIds ["user<ID>", click.id.hex]. Para o anônimo: tornar
+  Click.usuario opcional (migração) e usar subId tipo "anon" + click.id.hex (só letras e
+  números; ver validar_sub_ids).
+- Cookie: guardar no navegador os ids dos cliques anônimos (assinado, com validade igual à
+  janela da decisão 2b).
+- Ligar à conta no cadastro: em accounts/views.py::registrar e no callback do Google
+  (accounts/google_oauth.py), ler o cookie e preencher Click.usuario dos cliques ainda
+  anônimos e dentro da janela. Pedidos já criados a partir desses cliques também precisam
+  ter Pedido.usuario atualizado.
+- Sincronização (pedidos/services.py): resolver_click(utmContent) acha o Click pelo hex; o
+  usuário do pedido vem de click.usuario. Pedido de clique ainda anônimo deve ficar SEM
+  cashback (usuario nulo) e ser ligado depois se a conta aparecer dentro da janela. Conferir
+  como o pedido sem usuário se comporta nas telas de admin e nos relatórios.
+- Funil (accounts/funil.py): manter EventoFunil; adicionar etapa "clicou sem conta" para medir
+  quantos seguem para a Shopee, quantos se cadastram depois e comissão gerada.
+- Meta/CAPI: o evento server-side "GerouLinkCashback" (links/views / ofertas/views) hoje
+  assume usuário; decidir se o clique anônimo dispara o evento (respeitando o consentimento).
+
+4) RISCOS
+- O navegador interno do Instagram perde o cookie: quem clica por lá e se cadastra em outro
+  navegador não será ligado. Reduz o ganho, não invalida. A página da decisão 2c ajuda
+  (cadastro ANTES do clique).
+- Mexe em geração de clique, sincronização de pedidos e Termos: precisa de testes fortes e
+  cuidado com pedidos antigos (não alterar cashback já calculado).
+- Fraude/abuso: limitar cliques por navegador e por IP (limitar_por_ip já existe no projeto).
+- Transparência: o aviso "sem cadastro não há cashback" tem que aparecer antes do clique,
+  para não parecer isca. Não usar a palavra "cashback" como promessa no caminho anônimo.
+
+5) TESTES SUGERIDOS
+- Clique anônimo cria Click sem usuário, com subId "anon..." válido.
+- Cookie guarda e expira dentro da janela; cadastro por formulário e por Google ligam os
+  cliques; fora da janela não ligam.
+- Pedido de clique anônimo não gera cashback; depois de ligado à conta, passa a gerar.
+- Visitante bloqueado/robô não cria clique; limite por IP funciona.
+- Pedidos e saldos existentes não mudam (regressão).
+
+6) COMO SABER SE DEU CERTO (7 e 14 dias depois do ar)
+- Taxa de tentativas que viram clique para a Shopee.
+- Cadastros posteriores ligados a cliques anônimos.
+- Comissão da Shopee em pedidos de clique anônimo (comissão sem cashback pago).
+- Cadastros totais/dia e custo por cadastro do anúncio (a Meta passou a contar só quem aceita
+  cookies desde 16/10, então preferir a contagem real do site).
+
+7) FORA DE ESCOPO
+- Mudar percentuais de cashback ou a regra de piso direto/indireto.
+- Qualquer alteração nos anúncios da Meta.
+
+Atualizar o ROADMAP: trocar "2-3 semanas" por "decidido em 24/10/2026 com 7 dias de dados"
+e marcar o 13.11 como em andamento.
