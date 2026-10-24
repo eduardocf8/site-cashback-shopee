@@ -475,6 +475,29 @@ form.form-regra > .erros-form { grid-column: 1 / -1; }
 
 /* Campos do modo escolhido: respiro depois dos botões de modo e entre os campos. */
 .bloco-modo { margin-top: 22px; display: flex; flex-direction: column; gap: 18px; }
+.bloco-envio { display: flex; flex-direction: column; gap: 18px; }
+
+/* Envio por nicho (Premium): cartões dos nichos e o nicho de cada grupo na lista. */
+.lista-nichos { display: flex; flex-direction: column; gap: 10px; margin: 10px 0; }
+.nicho { display: flex; flex-direction: column; gap: 8px; padding: 12px; border: 1px solid var(--borda); border-radius: 12px; background: var(--campo); }
+.nicho-topo { display: flex; align-items: center; gap: 12px; }
+.nicho input[type="text"] { width: 100%; min-width: 0; min-height: 38px; padding: 0 10px; border-radius: 8px; border: 1px solid var(--borda); background: var(--card); font: inherit; font-size: 14px; color: inherit; box-sizing: border-box; }
+.nicho-topo input[type="text"] { flex: 1; font-weight: 700; }
+.nicho-categorias summary { cursor: pointer; }
+.nicho-categorias .opcoes-chip { margin-top: 8px; }
+.nicho-categorias .chip-opcao span { min-height: 30px; padding: 0 10px; font-size: 13px; }
+#adicionar-nicho { align-self: flex-start; }
+.lista-grupos.por-nicho .lista-grupos-topo, .lista-grupos.por-nicho .linha-grupo { grid-template-columns: minmax(0, 1fr) 150px 140px; }
+.lista-grupos.por-nicho .linha-grupo label input[type="checkbox"] { display: none; }
+.nicho-do-grupo { width: 100%; min-width: 0; height: 34px; padding: 0 6px; border-radius: 8px; border: 1px solid var(--borda); background: var(--campo); font: inherit; font-size: 13px; color: inherit; }
+@media (max-width: 600px) {
+  .lista-grupos.por-nicho .lista-grupos-topo, .lista-grupos.por-nicho .linha-grupo { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); }
+  .lista-grupos.por-nicho .lista-grupos-topo > span:first-child, .lista-grupos.por-nicho .linha-grupo > label { grid-column: 1 / -1; }
+  .lista-grupos.por-nicho .linha-grupo { padding-bottom: 8px; border-bottom: 1px solid var(--trilho); }
+}
+.ofertas-teste .titulo-nicho-teste { display: block; padding-top: 8px; border-top: 1px solid var(--trilho); }
+.ofertas-teste .titulo-nicho-teste:first-child { border-top: 0; padding-top: 0; }
+.ofertas-teste .erro-nicho-teste { display: block; }
 
 /* ---------- Vendas e produtos (aba Resultados) ---------- */
 .tabela-vendas td.n, .tabela-vendas th.n { text-align: right; white-space: nowrap; }

@@ -7,14 +7,88 @@
     document.querySelectorAll("[data-modo]").forEach(function (el) {
       el.hidden = el.dataset.modo !== modo;
     });
+    // Copiando de grupos, vale sempre o envio pra todos.
+    var envio = modo === "shopee" ? (document.querySelector("#modo-envio input:checked") || {}).value || "todos" : "todos";
+    document.querySelectorAll("[data-envio]").forEach(function (el) {
+      el.hidden = el.dataset.envio !== envio;
+    });
+    var listaGrupos = document.getElementById("lista-grupos");
+    if (listaGrupos) {
+      var antes = listaGrupos.classList.contains("por-nicho");
+      listaGrupos.classList.toggle("por-nicho", envio === "nicho");
+      if (envio === "nicho" && !antes) sincronizarGrupos();
+    }
     var escolhido = (document.querySelector("#tipo-busca input:checked") || {}).value;
     document.querySelectorAll("[data-tipo]").forEach(function (el) {
       el.hidden = el.dataset.tipo !== escolhido;
     });
   }
-  document.querySelectorAll("#modo input, #tipo-busca input").forEach(function (el) {
+  document.querySelectorAll("#modo input, #modo-envio input, #tipo-busca input").forEach(function (el) {
     el.addEventListener("change", mostrar);
   });
+
+  // Envio por nicho: os nichos (nome, categorias, palavra-chave) e, na lista de grupos,
+  // o nicho de cada grupo. Por nicho, recebe as ofertas o grupo que está num nicho.
+  var listaNichos = document.getElementById("lista-nichos");
+  var modeloNicho = document.getElementById("modelo-nicho");
+  function nichos() {
+    return listaNichos ? Array.prototype.map.call(listaNichos.querySelectorAll(".nicho"), function (card) {
+      return { id: card.dataset.nicho, nome: card.querySelector("[data-nome-nicho]").value.trim(), card: card };
+    }) : [];
+  }
+  function sincronizarGrupos() {
+    var listaGrupos = document.getElementById("lista-grupos");
+    if (!listaGrupos || !listaGrupos.classList.contains("por-nicho")) return;
+    document.querySelectorAll("select.nicho-do-grupo").forEach(function (sel) {
+      var caixa = sel.closest(".linha-grupo").querySelector('input[type="checkbox"]');
+      if (caixa) caixa.checked = !!sel.value;
+    });
+    // recalcula o contador e o limite do plano
+    listaGrupos.dispatchEvent(new Event("change"));
+  }
+  function atualizarNichos() {
+    var lista = nichos();
+    document.querySelectorAll("select.nicho-do-grupo").forEach(function (sel) {
+      var valor = sel.value;
+      while (sel.options.length > 1) sel.remove(1);
+      lista.forEach(function (n) { sel.add(new Option(n.nome || "(sem nome)", n.id)); });
+      sel.value = lista.some(function (n) { return n.id === valor; }) ? valor : "";
+    });
+    lista.forEach(function (n) {
+      var total = document.querySelectorAll('select.nicho-do-grupo option[value="' + n.id + '"]:checked').length;
+      n.card.querySelector("[data-grupos-do-nicho]").textContent = total + (total === 1 ? " grupo" : " grupos");
+      var marcadas = Array.prototype.map.call(n.card.querySelectorAll(".nicho-categorias input:checked"), function (c) {
+        return c.nextElementSibling.textContent.split(" (")[0];
+      });
+      n.card.querySelector("[data-resumo-categorias]").textContent = marcadas.length ? marcadas.join(", ") : "todas";
+    });
+    var botao = document.getElementById("adicionar-nicho");
+    if (botao && listaNichos) botao.disabled = lista.length >= parseInt(listaNichos.dataset.maximo, 10);
+  }
+  if (listaNichos && modeloNicho) {
+    document.getElementById("adicionar-nicho").addEventListener("click", function () {
+      var id = "n" + Math.random().toString(36).slice(2, 10).replace(/[^a-z0-9]/g, "");
+      var caixa = document.createElement("div");
+      caixa.innerHTML = modeloNicho.innerHTML.replace(/__ID__/g, id);
+      var card = caixa.firstElementChild;
+      listaNichos.appendChild(card);
+      atualizarNichos();
+      card.querySelector("[data-nome-nicho]").focus();
+    });
+    listaNichos.addEventListener("click", function (e) {
+      var botao = e.target.closest("[data-tirar-nicho]");
+      if (!botao) return;
+      botao.closest(".nicho").remove();
+      atualizarNichos();
+      sincronizarGrupos();
+    });
+    listaNichos.addEventListener("input", atualizarNichos);
+    listaNichos.addEventListener("change", atualizarNichos);
+    document.querySelectorAll("select.nicho-do-grupo").forEach(function (sel) {
+      sel.addEventListener("change", function () { sincronizarGrupos(); atualizarNichos(); });
+    });
+    atualizarNichos();
+  }
   // Horários em 24 h: põe os ":" sozinho (digitar "0730" vira "07:30").
   document.querySelectorAll("input[data-hora]").forEach(function (campo) {
     campo.addEventListener("input", function () {
@@ -58,6 +132,8 @@
         lista.querySelectorAll('input[type="checkbox"]').forEach(function (caixa) {
           caixa.disabled = !caixa.checked && cheio;
           var linha = caixa.closest(".linha-grupo");
+          var nichoDoGrupo = linha && linha.querySelector("select.nicho-do-grupo");
+          if (nichoDoGrupo) nichoDoGrupo.disabled = caixa.disabled;
           if (linha) {
             linha.classList.toggle("travada", caixa.disabled);
             linha.title = caixa.disabled ? "Seu plano permite até " + maximo + " grupos e canais. Desmarque um para escolher outro." : "";

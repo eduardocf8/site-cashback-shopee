@@ -10,7 +10,7 @@
 </header>
 {% include "painel/_abas_whatsapp.html" with aba="ofertas" %}
 {% if not regras.premium %}
-<p class="aviso aviso-info pequeno plano-bot">No seu plano: até {{ regras.grupos }} grupos e canais, {{ regras.ofertas_por_grupo_dia }} ofertas por dia em cada um e uma oferta a cada {{ regras.intervalo_minimo }} minutos, no mínimo. No <a href="{{ url_planos }}" target="_blank" rel="noopener">plano Premium</a>: até {{ regras_premium.grupos }} grupos, {{ regras_premium.ofertas_por_grupo_dia }} ofertas por dia em cada, intervalo a partir de 3 minutos, copiar ofertas de outros grupos e canais e revisão do texto com IA.</p>
+<p class="aviso aviso-info pequeno plano-bot">No seu plano: até {{ regras.grupos }} grupos e canais, {{ regras.ofertas_por_grupo_dia }} ofertas por dia em cada um e uma oferta a cada {{ regras.intervalo_minimo }} minutos, no mínimo. No <a href="{{ url_planos }}" target="_blank" rel="noopener">plano Premium</a>: até {{ regras_premium.grupos }} grupos, {{ regras_premium.ofertas_por_grupo_dia }} ofertas por dia em cada, intervalo a partir de 3 minutos, envio por nicho (cada grupo com as ofertas do seu tema), copiar ofertas de outros grupos e canais e revisão do texto com IA.</p>
 {% endif %}
 
 <div id="ofertas" data-url="{% url 'painel_whatsapp_ofertas_estado' %}" data-testando="{{ config.testando|yesno:'1,0' }}" data-versao="{{ versao }}"></div>
@@ -84,6 +84,13 @@
 
       <div data-modo="shopee" class="bloco-modo">
       <fieldset class="campo">
+        <legend>Pra quem vão as ofertas</legend>
+        <div class="opcoes-chip" id="modo-envio">{% for opcao in form.modo_envio %}{% if opcao.data.value == "nicho" and not regras.nicho %}<label class="chip-opcao chip-premium" title="Disponível no plano Premium"><input type="radio" name="{{ opcao.data.name }}" value="nicho"{% if opcao.data.selected %} checked{% else %} disabled{% endif %}><span>{{ opcao.choice_label }} <small class="selo-premium">Premium</small></span></label>{% else %}<label class="chip-opcao">{{ opcao.tag }}<span>{{ opcao.choice_label }}</span></label>{% endif %}{% endfor %}</div>
+        {% if not regras.nicho %}<span class="ajuda">Por nicho (Premium): cada grupo recebe as ofertas do seu tema, como beleza, moda ou casa.</span>{% endif %}
+        {% for e in form.modo_envio.errors %}<span class="erro">{{ e }}</span>{% endfor %}
+      </fieldset>
+      <div data-envio="todos" class="bloco-envio">
+      <fieldset class="campo">
         <legend>{{ form.tipo_busca.label }}</legend>
         <div class="opcoes-chip" id="tipo-busca">{% for opcao in form.tipo_busca %}<label class="chip-opcao">{{ opcao.tag }}<span>{{ opcao.choice_label }}</span></label>{% endfor %}</div>
       </fieldset>
@@ -95,6 +102,18 @@
         <span class="ajuda">O bot confere o nome do produto com palavras de cada categoria.</span>
         {% for e in form.categorias.errors %}<span class="erro">{{ e }}</span>{% endfor %}
       </fieldset>
+      </div>
+      {% if regras.nicho %}
+      <fieldset class="campo bloco-envio" data-envio="nicho">
+        <legend>Nichos</legend>
+        <span class="ajuda">Cada nicho busca as próprias ofertas e manda só pros grupos dele. A cada intervalo sai uma oferta em cada nicho. Sem categoria nem palavra-chave, o nicho recebe ofertas em geral. Os grupos de cada nicho você escolhe em “Onde e quando”.</span>
+        <div class="lista-nichos" id="lista-nichos" data-maximo="{{ form.MAXIMO_NICHOS }}">
+          {% for n in form.nichos_na_tela %}{% include "painel/_nicho.html" %}{% endfor %}
+        </div>
+        <button type="button" class="botao botao-claro" id="adicionar-nicho">+ Adicionar nicho</button>
+        <template id="modelo-nicho">{% include "painel/_nicho.html" with n=form.nicho_em_branco %}</template>
+      </fieldset>
+      {% endif %}
       <div class="campo">{% include "painel/_campo.html" with campo=form.ordenacao %}</div>
       </div>
     </section>
@@ -149,10 +168,11 @@
             <span class="suave pequeno contador" aria-live="polite"></span>
           </div>
           <div class="lista-grupos" id="lista-grupos">
-            <div class="lista-grupos-topo suave pequeno"><span>Grupo ou canal</span><span>Sub ID próprio (opcional)</span></div>
+            <div class="lista-grupos-topo suave pequeno"><span>Grupo ou canal</span>{% if regras.nicho %}<span data-envio="nicho">Nicho</span>{% endif %}<span>Sub ID próprio (opcional)</span></div>
             {% for linha in form.linhas_dos_grupos %}
               <div class="linha-grupo{% if linha.divisa %} linha-divisa{% endif %}" data-nome="{{ linha.opcao.choice_label|lower }}">
                 <label>{{ linha.opcao.tag }}<span>{{ linha.opcao.choice_label }}</span>{% if linha.canal %}<span class="selo-canal">Canal</span>{% endif %}</label>
+                {% if regras.nicho %}<select name="nicho_de_{{ linha.opcao.data.value }}" class="nicho-do-grupo" data-envio="nicho" data-valor="{{ linha.nicho }}" aria-label="Nicho de {{ linha.opcao.choice_label }}"><option value="">Não recebe</option>{% for n in form.nichos_na_tela %}<option value="{{ n.id }}"{% if n.id == linha.nicho %} selected{% endif %}>{{ n.nome|default:"(sem nome)" }}</option>{% endfor %}</select>{% endif %}
                 <input type="text" name="subid_{{ linha.opcao.data.value }}" value="{{ linha.sub_id }}" placeholder="padrão" maxlength="300" aria-label="Sub ID próprio de {{ linha.opcao.choice_label }}">
               </div>
             {% endfor %}
@@ -220,6 +240,8 @@
           <p class="suave pequeno">As próximas ofertas com os filtros salvos ({{ config.teste_em|date:"d/m H:i" }}):</p>
           <ul class="ofertas-teste">
             {% for o in config.teste_resultado %}
+              {% if o.nicho %}{% ifchanged o.nicho %}<li class="titulo-nicho-teste"><strong>{{ o.nicho }}</strong></li>{% endifchanged %}{% endif %}
+              {% if o.erro %}<li class="erro-nicho-teste"><span class="aviso aviso-warning pequeno">{{ o.erro }}</span></li>{% else %}
               <li>
                 {% if o.imagem %}<img src="{{ o.imagem }}" alt="" loading="lazy" referrerpolicy="no-referrer">{% else %}<span class="sem-foto" aria-hidden="true"></span>{% endif %}
                 <div>
@@ -228,7 +250,7 @@
                   <details{% if o.revisado_ia %} open{% endif %}><summary class="pequeno">Ver mensagem{% if o.revisado_ia %} <span class="selo-ia">revisada pela IA</span>{% endif %}</summary><pre class="texto-oferta">{{ o.texto }}</pre></details>
                   {% if o.ia_status and not o.revisado_ia %}<span class="aviso aviso-warning pequeno aviso-ia">IA: {{ o.ia_status }}</span>{% endif %}
                 </div>
-              </li>
+              </li>{% endif %}
             {% endfor %}
           </ul>
         {% else %}

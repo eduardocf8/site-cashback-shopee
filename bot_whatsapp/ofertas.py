@@ -9,6 +9,7 @@ Regras herdadas do app de Windows: busca paginada continuando de onde parou
 mesmo texto (formatador). Novidades do painel: dias da semana, limite por dia e
 "não repetir por N dias" (no app era para sempre)."""
 
+import copy
 import logging
 import threading
 import time
@@ -17,6 +18,7 @@ from datetime import timedelta
 from django.db import close_old_connections
 from django.db.models import Count
 from django.utils import timezone
+from django.utils.dateparse import parse_datetime
 
 from licencas import planos
 from painel import cripto
@@ -35,6 +37,7 @@ ESPERA_SEM_PRODUTO = timedelta(minutes=30)
 ESPERA_APOS_ERRO = timedelta(minutes=5)
 VALIDADE_DO_CACHE = 60 * 60  # segundos
 OFERTAS_NO_TESTE = 5
+OFERTAS_POR_NICHO_NO_TESTE = 3
 LINK_DE_EXEMPLO = "https://s.shopee.com.br/seu-link"
 MARCADOR_DO_LINK = "{{LINK_DE_AFILIADO}}"
 
@@ -105,6 +108,36 @@ def grupos_que_ainda_nao_receberam(config, item_id: str, agora, limite_do_dia: b
     return [g for g in grupos_do_plano(config) if g["jid"] not in ja_receberam and g["jid"] not in cheios]
 
 
+def nichos_do_plano(config) -> list[tuple[dict, list[dict]]]:
+    """Envio por nicho: cada nicho que tem grupos, com os grupos dele que cabem no plano."""
+    permitidos = {g["jid"]: g for g in grupos_do_plano(config)}
+    saida = []
+    for nicho in config.nichos or []:
+        grupos = [permitidos[jid] for jid in nicho.get("grupos") or [] if jid in permitidos]
+        if grupos:
+            saida.append((nicho, grupos))
+    return saida
+
+
+def config_do_nicho(config, nicho: dict, grupos: list[dict]):
+    """Cópia da config, só na memória (nunca é salva), com a busca e os grupos do nicho.
+    Filtros, mensagem, ritmo e IA continuam os da config. Sem palavra-chave nem
+    categoria, o nicho recebe ofertas em geral."""
+    do_nicho = copy.copy(config)
+    categorias = [c for c in nicho.get("categorias") or [] if c]
+    palavra = str(nicho.get("palavra_chave") or "").strip()
+    do_nicho.tipo_busca = (ConfiguracaoOfertas.BUSCA_PALAVRA if palavra else
+                           ConfiguracaoOfertas.BUSCA_CATEGORIA if categorias else ConfiguracaoOfertas.BUSCA_GERAL)
+    do_nicho.palavra_chave, do_nicho.categorias, do_nicho.loja = palavra, categorias, ""
+    do_nicho.conferir_categorias = bool(palavra and categorias)
+    do_nicho.grupos = grupos
+    do_nicho.chave_do_cache = (config.conta_id, nicho.get("id"))
+    onde_parou = (config.paginas_nichos or {}).get(nicho.get("id")) or {}
+    do_nicho.pagina_atual = int(onde_parou.get("pagina") or 1)
+    do_nicho.pagina_em = parse_datetime(str(onde_parou.get("em") or ""))
+    return do_nicho
+
+
 def intervalo_do_plano(config) -> int:
     """Minutos até a próxima oferta: o escolhido, mas nunca menos que o mínimo do plano
     (copiando de outros grupos, 0 = repassa assim que chegar)."""
@@ -131,6 +164,11 @@ def motivo_para_esperar(config, conexao, agora) -> str:
     regras = regras_do_plano(config)
     if config.modo == ConfiguracaoOfertas.MODO_COPIAR and not regras["copiar"]:
         return "Copiar ofertas de outros grupos é do plano Premium. Troque pra busca na Shopee ou faça o upgrade."
+    if config.por_nicho:
+        if not regras["nicho"]:
+            return "O envio por nicho é do plano Premium. Troque para “Mesmas ofertas pra todos” ou faça o upgrade."
+        if not nichos_do_plano(config):
+            return "Escolha os grupos de cada nicho."
     escolhidos = {g["jid"] for g in grupos_do_plano(config)}
     if escolhidos and escolhidos <= grupos_no_limite_de_hoje(config, agora):
         return f"Todos os grupos já receberam as {regras['ofertas_por_grupo_dia']} ofertas de hoje (limite do plano por grupo)."
@@ -269,14 +307,18 @@ class Motor:
         return bool(config.campanha_hoje and config.ultimo_envio_em and not config.situacao
                     and config.ultimo_envio_em + timedelta(minutes=intervalo_do_plano(config)) <= agora)
 
-    def talvez_enviar_pagina_da_campanha(self, config, agora):
+    def talvez_enviar_pagina_da_campanha(self, config, agora, antes: int | None = None):
         """A cada N ofertas do dia de campanha, manda a página da campanha (com o link de
-        afiliado de cada grupo). Um erro aqui não atrapalha as ofertas."""
+        afiliado de cada grupo). Um erro aqui não atrapalha as ofertas. antes = quantas
+        tinham saído antes desta vez (por nicho saem várias de uma vez)."""
         campanha = getattr(config, "campanha", None)
         if not (campanha and campanha.pagina_ativa and campanha.link_campanha):
             return
         a_cada = max(3, campanha.link_campanha_a_cada or 10)
-        if ofertas_enviadas_hoje(config.conta, agora, config.simulacao) % a_cada:
+        agora_sao = ofertas_enviadas_hoje(config.conta, agora, config.simulacao)
+        if antes is None:
+            antes = agora_sao - 1
+        if agora_sao // a_cada <= max(0, antes) // a_cada:
             return
         texto = campanhas.texto_da_pagina(config.campanha_hoje["nome"], campanha.titulo_pagina, campanha.texto_pagina,
                                          campanha.cupom, MARCADOR_DO_LINK)
@@ -300,6 +342,9 @@ class Motor:
 
         if config.modo == ConfiguracaoOfertas.MODO_COPIAR:
             self.repassar_proxima(config, agora)
+            return
+        if config.por_nicho:
+            self.enviar_por_nicho(config, agora)
             return
 
         produto, grupos = self.proximo_produto(config, agora)
@@ -327,6 +372,60 @@ class Motor:
         config.ultimo_erro = ""
         config.save(update_fields=[
             "ultimo_envio_em", "proximo_envio_em", "situacao", "ultimo_erro", "pagina_atual", "pagina_em",
+            "atualizado_em", *CAMPOS_DA_IA,
+        ])
+
+    def enviar_por_nicho(self, config, agora):
+        """Uma oferta por nicho a cada intervalo, cada uma para os grupos do seu nicho."""
+        nichos = nichos_do_plano(config)
+        restam = None
+        antes = ofertas_enviadas_hoje(config.conta, agora, config.simulacao)
+        if config.limite_diario:
+            restam = config.limite_diario - antes
+        escolhidas, paginas = [], {}
+        for nicho, grupos in nichos:
+            if restam is not None and len(escolhidas) >= restam:
+                break
+            do_nicho = config_do_nicho(config, nicho, grupos)
+            produto, destinos = self.proximo_produto(do_nicho, agora)
+            paginas[nicho["id"]] = {"pagina": do_nicho.pagina_atual,
+                                    "em": do_nicho.pagina_em.isoformat() if do_nicho.pagina_em else ""}
+            if produto:
+                escolhidas.append((nicho, produto, destinos))
+        # Guarda onde a busca de cada nicho parou (e esquece a dos nichos apagados).
+        ids = {n.get("id") for n in config.nichos or []}
+        config.paginas_nichos = {k: v for k, v in {**(config.paginas_nichos or {}), **paginas}.items() if k in ids}
+        if not escolhidas:
+            if not self._reservar_a_vez(config, agora + ESPERA_SEM_PRODUTO):
+                return
+            config.situacao = "Nenhuma oferta nova nos nichos com esses filtros agora. Tento de novo em 30 minutos."
+            config.save(update_fields=["situacao", "proximo_envio_em", "paginas_nichos", "atualizado_em"])
+            return
+
+        proximo = agora + timedelta(minutes=intervalo_do_plano(config))
+        if not self._reservar_a_vez(config, proximo):
+            return
+        erros = []
+        for nicho, produto, destinos in escolhidas:
+            try:  # um nicho com problema (ex: link que não gerou) não segura os outros
+                modelo, revisado = revisar_com_ia(config, montar_texto(produto, MARCADOR_DO_LINK, config.cupom), agora)
+                modelo = campanhas.com_abertura(modelo, frase_da_campanha(config))
+                enfileirar(
+                    config, destinos, modelo, produto["link"],
+                    item_id=produto["item_id"], nome=produto["nome"], imagem_url=produto["imagem"],
+                    revisado_ia=revisado, produto=produto,
+                )
+            except Exception as erro:  # noqa: BLE001
+                logger.exception("Ofertas: erro no nicho %s da conta %s", nicho.get("nome"), config.conta_id)
+                erros.append(f"{nicho.get('nome') or 'nicho'}: {str(erro)[:200]}")
+        if len(erros) == len(escolhidas):
+            raise RuntimeError("; ".join(erros))
+        self.talvez_enviar_pagina_da_campanha(config, agora, antes)
+        config.ultimo_envio_em = agora
+        config.situacao = ""
+        config.ultimo_erro = "; ".join(erros)[:500]
+        config.save(update_fields=[
+            "ultimo_envio_em", "proximo_envio_em", "situacao", "ultimo_erro", "paginas_nichos",
             "atualizado_em", *CAMPOS_DA_IA,
         ])
 
@@ -410,12 +509,13 @@ class Motor:
     def proximo_produto(self, config, agora) -> tuple[dict | None, list[dict]]:
         """O próximo produto que passa nos filtros e ainda não foi para algum dos
         grupos, e para quais grupos ele vai."""
-        cache = self.cache.get(config.conta_id)
+        chave_do_cache = getattr(config, "chave_do_cache", config.conta_id)  # por nicho: uma busca por nicho
+        cache = self.cache.get(chave_do_cache)
         if (not cache or cache["chave"] != config.chave_da_busca()
                 or time.monotonic() - cache["em"] > VALIDADE_DO_CACHE):
             busca_mudou = bool(cache) and cache["chave"] != config.chave_da_busca()  # ex: começou ou acabou a campanha
             cache = {"chave": config.chave_da_busca(), "produtos": [], "em": time.monotonic()}
-            self.cache[config.conta_id] = cache
+            self.cache[chave_do_cache] = cache
             if busca_mudou or not config.pagina_em or agora - config.pagina_em > RECOMECAR_BUSCA_APOS:
                 config.pagina_atual = 1
 
@@ -454,10 +554,34 @@ class Motor:
 
     def testar(self, config, agora) -> list[dict]:
         """As próximas ofertas que sairiam com os filtros atuais (sem mexer na posição
-        da busca e sem gerar link - o texto mostra um link de exemplo)."""
+        da busca e sem gerar link - o texto mostra um link de exemplo). Por nicho: as
+        primeiras de cada nicho, cada uma marcada com o nome dele (um nicho sem oferta
+        vira uma linha com o motivo)."""
         app_id, secret = credenciais(config.conta)
         if not app_id or not secret:
             raise ValueError("Conecte sua conta da Shopee em Configurações.")
+        if not config.por_nicho:
+            return self._testar_busca(config, agora, OFERTAS_NO_TESTE)
+        if not regras_do_plano(config)["nicho"]:
+            raise ValueError("O envio por nicho é do plano Premium. Troque para “Mesmas ofertas pra todos” ou faça o upgrade.")
+        if not config.nichos:
+            raise ValueError("Crie pelo menos um nicho e salve antes de testar.")
+        grupos_de = {n.get("id"): g for n, g in nichos_do_plano(config)}
+        resultado = []
+        for nicho in config.nichos:
+            do_nicho = config_do_nicho(config, nicho, grupos_de.get(nicho.get("id"), []))
+            try:
+                achadas = self._testar_busca(do_nicho, agora, OFERTAS_POR_NICHO_NO_TESTE, revisar=not resultado)
+            except ValueError as erro:
+                achadas = [{"erro": str(erro)}]
+            finally:
+                for campo in CAMPOS_DA_IA:  # a IA conta na config de verdade
+                    setattr(config, campo, getattr(do_nicho, campo))
+            resultado += [{**a, "nicho": nicho.get("nome", "")} for a in achadas]
+        return resultado
+
+    def _testar_busca(self, config, agora, quantas: int, revisar: bool = True) -> list[dict]:
+        app_id, secret = credenciais(config.conta)
         achadas = []
         recebidos = barrados_pelos_filtros = ja_enviados = 0
         pagina = 1
@@ -472,7 +596,7 @@ class Motor:
                     ja_enviados += 1
                     continue
                 texto, revisado = montar_texto(produto, MARCADOR_DO_LINK, config.cupom), False
-                if not achadas:  # a IA revisa só a primeira, para mostrar como fica
+                if not achadas and revisar:  # a IA revisa só a primeira, para mostrar como fica
                     texto, revisado = revisar_com_ia(config, texto, agora)
                 achadas.append({
                     "nome": produto["nome"], "preco": produto["preco"], "comissao": produto["comissao"],
@@ -480,9 +604,10 @@ class Motor:
                     "imagem": produto["imagem"], "texto": texto.replace(MARCADOR_DO_LINK, LINK_DE_EXEMPLO),
                     "revisado_ia": revisado,
                     # o que a IA fez com a primeira (aparece embaixo dela no "Teste da busca")
-                    "ia_status": config.ia_status if (config.ia_ativa and regras_do_plano(config)["ia"] and not achadas) else "",
+                    "ia_status": config.ia_status if (config.ia_ativa and regras_do_plano(config)["ia"]
+                                                      and not achadas and revisar) else "",
                 })
-                if len(achadas) >= OFERTAS_NO_TESTE:
+                if len(achadas) >= quantas:
                     return achadas
             if not tem_proxima:
                 break

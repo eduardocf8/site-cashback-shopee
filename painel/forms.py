@@ -117,6 +117,9 @@ def _marcar_divisa(linhas: list[dict], salvos) -> list[dict]:
     return linhas
 
 
+SEM_CATEGORIA = "todas"
+
+
 class ConfiguracaoOfertasForm(forms.ModelForm):
     """Ofertas automáticas (bot_whatsapp.ConfiguracaoOfertas). Preços e avaliação
     entram como texto para aceitar "39,90"."""
@@ -136,7 +139,7 @@ class ConfiguracaoOfertasForm(forms.ModelForm):
     class Meta:
         model = ConfiguracaoOfertas
         fields = [
-            "modo", "origens", "tipo_busca", "palavra_chave", "loja", "categorias", "ordenacao",
+            "modo", "modo_envio", "origens", "tipo_busca", "palavra_chave", "loja", "categorias", "ordenacao",
             "comissao_minima", "desconto_minimo", "preco_minimo", "preco_maximo", "vendas_minimas",
             "avaliacao_minima", "cupom", "sub_ids", "grupos", "intervalo_minutos", "horario_inicio",
             "horario_fim", "dias_semana", "limite_diario", "repetir_apos_dias", "formato_envio", "ia_ativa", "ia_tipo", "simulacao",
@@ -159,6 +162,7 @@ class ConfiguracaoOfertasForm(forms.ModelForm):
         }
         widgets = {
             "modo": forms.RadioSelect,
+            "modo_envio": forms.RadioSelect,
             "tipo_busca": forms.RadioSelect,
             "ia_tipo": forms.RadioSelect,
             "formato_envio": forms.RadioSelect,
@@ -178,6 +182,7 @@ class ConfiguracaoOfertasForm(forms.ModelForm):
         self.ia_disponivel = ia.disponivel()
         self.fields["ia_tipo"].required = False
         self.fields["formato_envio"].required = False
+        self.fields["modo_envio"].required = False
         if not self.ia_disponivel or not self.regras["ia"]:  # sem a chave do Appfiliado ou fora do plano
             self.fields["ia_ativa"].disabled = True
             self.fields["ia_tipo"].disabled = True
@@ -220,6 +225,69 @@ class ConfiguracaoOfertasForm(forms.ModelForm):
         else:
             self.fields["intervalo_minutos"].help_text = f"No seu plano, mínimo de {self.regras['intervalo_minimo']} minutos."
             self.fields["intervalo_minutos"].widget.attrs["min"] = self.regras["intervalo_minimo"]
+
+    MAXIMO_NICHOS = 10
+
+    def clean_modo_envio(self):
+        return self.cleaned_data.get("modo_envio") or self.instance.modo_envio or ConfiguracaoOfertas.ENVIO_TODOS
+
+    @property
+    def nichos_na_tela(self) -> list[dict]:
+        """Os nichos como estão na tela (o que foi digitado, se voltou com erro; senão, os salvos),
+        cada um com as opções de categoria já marcadas."""
+        nichos = self._nichos_digitados()[0] if self.is_bound and self.regras["nicho"] else (self.instance.nichos or [])
+        escolhas = list(self.fields["categorias"].choices)
+        return [{
+            **n, "opcoes": [(valor, rotulo, valor in (n.get("categorias") or [])) for valor, rotulo in escolhas],
+            "total_grupos": len(n.get("grupos") or []),
+            "resumo": ", ".join(r.split(" (")[0] for v, r in escolhas if v in (n.get("categorias") or [])) or SEM_CATEGORIA,
+        } for n in nichos]
+
+    @property
+    def nicho_em_branco(self) -> dict:
+        """Modelo de nicho novo (a tela troca o __ID__ por um id novo)."""
+        return {"id": "__ID__", "nome": "", "palavra_chave": "", "total_grupos": 0, "resumo": SEM_CATEGORIA,
+                "opcoes": [(valor, rotulo, False) for valor, rotulo in self.fields["categorias"].choices]}
+
+    def _nicho_do_grupo(self, jid: str) -> str:
+        if self.is_bound and self.regras["nicho"]:
+            return str(self.data.get(f"nicho_de_{jid}", "")).strip()
+        for nicho in self.instance.nichos or []:
+            if jid in (nicho.get("grupos") or []):
+                return nicho.get("id", "")
+        return ""
+
+    def _nichos_digitados(self) -> tuple[list[dict], list[str]]:
+        """Lê os nichos do formulário: nicho_id, nicho_nome e nicho_palavra (um por nicho, na ordem),
+        nicho_cat_<id> (categorias) e nicho_de_<jid> (o nicho de cada grupo). Devolve (nichos, erros)."""
+        import re
+
+        validas = {valor for valor, _ in self.fields["categorias"].choices}
+        ids = self.data.getlist("nicho_id") if hasattr(self.data, "getlist") else []
+        nomes = self.data.getlist("nicho_nome") if hasattr(self.data, "getlist") else []
+        palavras = self.data.getlist("nicho_palavra") if hasattr(self.data, "getlist") else []
+        nichos, erros, vistos = [], [], set()
+        for i, id_ in enumerate(ids):
+            id_ = str(id_).strip()
+            if not re.fullmatch(r"[a-z0-9]{1,16}", id_) or id_ in vistos:
+                continue
+            vistos.add(id_)
+            nome = " ".join(str(nomes[i] if i < len(nomes) else "").split())[:40]
+            palavra = " ".join(str(palavras[i] if i < len(palavras) else "").split())[:120]
+            categorias = [c for c in self.data.getlist(f"nicho_cat_{id_}") if c in validas]
+            if not nome and not palavra and not categorias:
+                continue  # nicho novo deixado em branco
+            if not nome:
+                erros.append("Dê um nome pra cada nicho.")
+            nichos.append({"id": id_, "nome": nome, "categorias": categorias, "palavra_chave": palavra, "grupos": []})
+        if len(nichos) > self.MAXIMO_NICHOS:
+            erros.append(f"Dá para ter até {self.MAXIMO_NICHOS} nichos.")
+        por_id = {n["id"]: n for n in nichos}
+        for jid in self.nomes_dos_grupos:  # um grupo fica num nicho só
+            nicho = por_id.get(str(self.data.get(f"nicho_de_{jid}", "")).strip())
+            if nicho:
+                nicho["grupos"].append(jid)
+        return nichos, sorted(set(erros))
 
     OPCIONAIS_ZERO = ("comissao_minima", "desconto_minimo", "vendas_minimas", "limite_diario")
 
@@ -286,6 +354,7 @@ class ConfiguracaoOfertasForm(forms.ModelForm):
                 "opcao": opcao,
                 "sub_id": self._sub_id_digitado(opcao.data["value"]),
                 "canal": str(opcao.data["value"]).endswith("@newsletter"),
+                "nicho": self._nicho_do_grupo(opcao.data["value"]),
             }
             for opcao in self["grupos"]
         ], self.instance.grupos)
@@ -308,6 +377,25 @@ class ConfiguracaoOfertasForm(forms.ModelForm):
 
         dados = super().clean()
         regras = self.regras
+        por_nicho = (dados.get("modo") == ConfiguracaoOfertas.MODO_SHOPEE
+                     and dados.get("modo_envio") == ConfiguracaoOfertas.ENVIO_NICHO)
+        if regras["nicho"]:
+            # Os nichos ficam guardados mesmo enviando pra todos (não perde o que foi montado).
+            nichos, erros = self._nichos_digitados()
+            for erro in erros:
+                self.add_error("modo_envio", erro)
+            self.instance.nichos = nichos
+            if por_nicho:
+                # Por nicho, recebem as ofertas os grupos que estão em algum nicho.
+                com_nicho = {jid for n in nichos for jid in n["grupos"]}
+                dados["grupos"] = [{"jid": jid, "nome": nome} for jid, nome in self.nomes_dos_grupos.items()
+                                   if jid in com_nicho]
+                if not nichos:
+                    self.add_error("modo_envio", "Crie pelo menos um nicho.")
+                elif not com_nicho:
+                    self.add_error("modo_envio", "Escolha os grupos de cada nicho (na lista de grupos, em “Onde e quando”).")
+        elif por_nicho:
+            self.add_error("modo_envio", "O envio por nicho é do plano Premium.")
         if dados.get("modo") == ConfiguracaoOfertas.MODO_COPIAR and not regras["copiar"]:
             self.add_error("modo", "Copiar ofertas de outros grupos e canais é do plano Premium.")
         if len(dados.get("grupos") or []) > regras["grupos"]:
@@ -324,7 +412,7 @@ class ConfiguracaoOfertasForm(forms.ModelForm):
             if repetidos:
                 nomes = ", ".join(sorted(self.nomes_das_origens.get(j, j) for j in repetidos))
                 self.add_error("origens", f"Um grupo não pode ser origem e destino ao mesmo tempo: {nomes}.")
-        else:
+        elif not por_nicho:  # por nicho, cada um tem a sua busca
             tipo = dados.get("tipo_busca")
             if tipo == "palavra_chave" and not (dados.get("palavra_chave") or "").strip():
                 self.add_error("palavra_chave", "Informe a palavra-chave.")
@@ -332,8 +420,8 @@ class ConfiguracaoOfertasForm(forms.ModelForm):
                 self.add_error("loja", "Não achei a loja nesse link. Cole o link da página da loja na Shopee.")
             if tipo == "categoria" and not dados.get("categorias"):
                 self.add_error("categorias", "Escolha pelo menos uma categoria.")
-            if dados.get("intervalo_minutos") == 0:
-                self.add_error("intervalo_minutos", "Na busca da Shopee o intervalo mínimo é 1 minuto.")
+        if dados.get("modo") != ConfiguracaoOfertas.MODO_COPIAR and dados.get("intervalo_minutos") == 0:
+            self.add_error("intervalo_minutos", "Na busca da Shopee o intervalo mínimo é 1 minuto.")
         minimo, maximo = dados.get("preco_minimo"), dados.get("preco_maximo")
         if minimo is not None and maximo is not None and minimo > maximo:
             self.add_error("preco_maximo", "O preço máximo é menor que o mínimo.")

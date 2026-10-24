@@ -1,0 +1,13 @@
+<div class="nicho" data-nicho="{{ n.id }}">
+  <input type="hidden" name="nicho_id" value="{{ n.id }}">
+  <div class="nicho-topo">
+    <input type="text" name="nicho_nome" value="{{ n.nome }}" placeholder="Nome do nicho (ex: Beleza)" maxlength="40" aria-label="Nome do nicho" data-nome-nicho>
+    <button type="button" class="link-botao perigo pequeno" data-tirar-nicho>Excluir</button>
+  </div>
+  <details class="nicho-categorias">
+    <summary class="pequeno">Categorias: <span data-resumo-categorias>{{ n.resumo }}</span></summary>
+    <div class="opcoes-chip">{% for valor, rotulo, marcado in n.opcoes %}<label class="chip-opcao"><input type="checkbox" name="nicho_cat_{{ n.id }}" value="{{ valor }}"{% if marcado %} checked{% endif %}><span>{{ rotulo }}</span></label>{% endfor %}</div>
+  </details>
+  <input type="text" name="nicho_palavra" value="{{ n.palavra_chave }}" placeholder="Palavra-chave (opcional, ex: maquiagem)" maxlength="120" aria-label="Palavra-chave do nicho">
+  <span class="suave pequeno" data-grupos-do-nicho>{{ n.total_grupos }} grupo{{ n.total_grupos|pluralize }}</span>
+</div>

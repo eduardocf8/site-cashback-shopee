@@ -15,6 +15,7 @@ RESUMOS = {
         "itens": (
             ["Até 10 grupos e canais", "Até 60 ofertas por dia em cada grupo/canal", "Alerta de preço para até 10 produtos"],
             ["Até 50 grupos ou canais", "Até 300 ofertas por dia em cada grupo/canal", "Alerta de preço para até 50 produtos",
+             "Envio por nicho: cada grupo com as ofertas do seu tema",
              "Copia ofertas de outros grupos e troca pelo seu link", "Revisão de texto com IA"],
         ),
         # Ferramentas iguais nos dois planos, mostradas embaixo dos cartões.
