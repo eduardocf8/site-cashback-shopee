@@ -64,14 +64,14 @@ class ContaAppfiliadoForm(forms.ModelForm):
 @admin.register(ContaAppfiliado)
 class ContaAppfiliadoAdmin(admin.ModelAdmin):
     form = ContaAppfiliadoForm
-    list_display = ("email", "nome", "chave", "modulos_agora", "criada_em")
+    list_display = ("id", "email", "nome", "chave", "modulos_agora", "criada_em")
     search_fields = ("email", "nome", "chave", "assinaturas__zouti_subscription_id")
     readonly_fields = (
-        "chave", "chave_enviada_em", "modulos_agora", "tem_senha_painel", "ultimo_login",
+        "id", "chave", "chave_enviada_em", "modulos_agora", "tem_senha_painel", "ultimo_login",
         "shopee_app_id", "shopee_validado_em", "criada_em", "atualizada_em",
     )
     fields = (
-        "email", "nome", "chave", "chave_enviada_em", "modulos_agora",
+        "id", "email", "nome", "chave", "chave_enviada_em", "modulos_agora",
         "modulos_cortesia", "cortesia_ate",
         "tem_senha_painel", "ultimo_login", "shopee_app_id", "shopee_validado_em",
         "criada_em", "atualizada_em",
