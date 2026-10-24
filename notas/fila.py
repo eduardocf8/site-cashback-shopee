@@ -240,26 +240,4 @@ def uma_volta(limite_segundos: float = 45) -> list[str]:
     if emails:
         linhas.append(f"Notas fiscais: {emails} e-mail(s) enviado(s).")
     fechar_lotes()
-    enviados = _contabilidade()
-    if enviados:
-        linhas.append(f"Notas fiscais: notas do mês enviadas a {enviados} contabilidade(s).")
     return linhas
-
-
-_proxima_contabilidade = 0.0
-
-
-def _contabilidade() -> int:
-    """No começo de cada mês, manda o mês anterior pras contabilidades cadastradas (uma vez por hora
-    confere se falta alguma; só depois das 7h, pra não mandar de madrugada)."""
-    global _proxima_contabilidade
-    if time.monotonic() < _proxima_contabilidade or timezone.localtime().hour < 7:
-        return 0
-    _proxima_contabilidade = time.monotonic() + 3600
-    from . import contabilidade
-
-    try:
-        return contabilidade.enviar_mes_anterior()
-    except Exception:  # noqa: BLE001 - não pode parar a emissão
-        logger.exception("Notas: envio mensal à contabilidade")
-        return 0

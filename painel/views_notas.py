@@ -56,8 +56,8 @@ class HorarioEmailForm(forms.Form):
 
 class ContabilidadeForm(forms.Form):
     email = forms.EmailField(label="E-mail da contabilidade", required=False,
-                             help_text="Todo dia 1 ela recebe o XML de cada nota do mês anterior e uma planilha-resumo. "
-                                       "Você recebe uma cópia. Deixe em branco pra não enviar.")
+                             help_text="Pra onde vão as notas do mês quando você apertar o botão abaixo. "
+                                       "Você recebe uma cópia.")
 
 
 def _meses_para_enviar(hoje=None) -> list[tuple[str, str]]:
@@ -161,15 +161,10 @@ def notas(request):
             elif acao == "contabilidade":
                 form_contabilidade = ContabilidadeForm(request.POST)
                 if form_contabilidade.is_valid():
-                    from notas.contabilidade import mes_anterior
-
-                    novo = form_contabilidade.cleaned_data["email"].strip().lower()
-                    if novo != empresa.contabilidade_email:
-                        # O envio automático começa no próximo mês; o que já passou vai pelo botão.
-                        empresa.contabilidade_email, empresa.contabilidade_enviado_mes = novo, mes_anterior()
-                        empresa.save(update_fields=["contabilidade_email", "contabilidade_enviado_mes", "atualizada_em"])
-                    messages.success(request, f"Pronto: todo dia 1 as notas do mês anterior vão pra {novo}." if novo
-                                     else "Envio pra contabilidade desligado.")
+                    empresa.contabilidade_email = form_contabilidade.cleaned_data["email"].strip().lower()
+                    empresa.save(update_fields=["contabilidade_email", "atualizada_em"])
+                    messages.success(request, "E-mail da contabilidade salvo." if empresa.contabilidade_email
+                                     else "E-mail da contabilidade apagado.")
                     return redirect(reverse("painel_notas") + "#contabilidade")
             elif acao == "contabilidade_enviar":
                 from datetime import date

@@ -41,28 +41,14 @@ class TestContabilidade(TestCase):
         self.assertEqual(len([n for n in nomes if n.startswith("cancelamentos/")]), 1)
         self.assertIn("resumo.csv", nomes)
 
-    def test_dia_1_manda_o_mes_anterior_uma_vez_so(self):
-        enviados = contabilidade.enviar_mes_anterior(dt.date(2026, 10, 1))
-        self.assertEqual(enviados, 1)
-        self.assertEqual(len(mail.outbox), 1)
+    def test_email_pra_contabilidade_com_copia_pro_dono(self):
+        totais = contabilidade.enviar(self.empresa, dt.date(2026, 9, 1))
+        self.assertEqual(totais["notas"], 2)
         email = mail.outbox[0]
         self.assertEqual((email.to, email.cc), (["fiscal@contabil.com"], ["dono@empresa.com"]))
         self.assertIn("setembro de 2026", email.subject)
         self.assertIn("Notas: 2 (das quais 1 cancelada)", email.body)
         self.assertTrue(email.attachments[0][0].endswith("2026-09.zip"))
-        self.assertEqual(contabilidade.enviar_mes_anterior(dt.date(2026, 10, 2)), 0)  # já foi
-        self.assertEqual(len(mail.outbox), 1)
-
-    def test_espera_as_notas_do_mes_sairem_da_fila(self):
-        nota(self.empresa, dt.date(2026, 9, 30), situacao=NotaFiscal.FILA, numero=9)
-        self.assertEqual(contabilidade.enviar_mes_anterior(dt.date(2026, 10, 1)), 0)
-        NotaFiscal.objects.filter(numero=9).update(situacao=NotaFiscal.AUTORIZADA)
-        self.assertEqual(contabilidade.enviar_mes_anterior(dt.date(2026, 10, 1)), 1)
-
-    def test_sem_email_nao_manda(self):
-        self.empresa.contabilidade_email = ""
-        self.empresa.save()
-        self.assertEqual(contabilidade.enviar_mes_anterior(dt.date(2026, 10, 1)), 0)
 
 
 @override_settings(APPFILIADO_PAINEL_HOSTS=[HOST], ALLOWED_HOSTS=[HOST, "testserver"], APPFILIADO_PAINEL_URL=f"https://{HOST}")
@@ -82,8 +68,6 @@ class TestTelaContabilidade(TestCase):
         self.client.post("/notas/", {"acao": "contabilidade", "email": "Fiscal@Contabil.com"})
         self.empresa.refresh_from_db()
         self.assertEqual(self.empresa.contabilidade_email, "fiscal@contabil.com")
-        # O automático começa no próximo mês: o que já passou não sai sozinho.
-        self.assertEqual(self.empresa.contabilidade_enviado_mes, contabilidade.mes_anterior())
         mes = contabilidade.mes_anterior()
         resposta = self.client.post("/notas/", {"acao": "contabilidade_enviar", "mes": f"{mes:%Y-%m}"}, follow=True)
         self.assertContains(resposta, "Enviado pra fiscal@contabil.com")
