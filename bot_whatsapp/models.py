@@ -172,11 +172,10 @@ class ConfiguracaoOfertas(models.Model):
 
     grupos = models.JSONField(default=list, blank=True, help_text='[{"jid": "...@g.us", "nome": "..."}]')
     modo_envio = models.CharField("como distribuir", max_length=10, choices=ENVIOS, default=ENVIO_TODOS)
-    # Envio por nicho: cada um busca as próprias ofertas (categorias e palavra-chave; sem nenhuma =
-    # ofertas em geral) e manda pros seus grupos. Um grupo fica num nicho só.
-    # [{"id": "n1a2b3", "nome": "Beleza", "categorias": ["beleza"], "palavra_chave": "", "grupos": ["...@g.us"]}]
-    nichos = models.JSONField(default=list, blank=True)
-    # Onde a busca de cada nicho parou: {"id do nicho": {"pagina": 3, "em": "2026-10-24T10:00:00+00:00"}}
+    # Envio por nicho: o nicho (categoria) de cada grupo, {"jid": "beleza"}. Grupo fora daqui = "todos"
+    # (ofertas em geral). Cada nicho em uso busca as próprias ofertas e manda só pros grupos dele.
+    nichos = models.JSONField(default=dict, blank=True)
+    # Onde a busca de cada nicho parou: {"beleza": {"pagina": 3, "em": "2026-10-24T10:00:00+00:00"}}
     paginas_nichos = models.JSONField(default=dict, blank=True)
     intervalo_minutos = models.PositiveSmallIntegerField(default=5)
     horario_inicio = models.TimeField(default=time(7, 0))

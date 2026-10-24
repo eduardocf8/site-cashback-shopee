@@ -73,7 +73,7 @@ def bot():
                    _t("Mensagem sua", "Escreva o aviso do seu jeito com o produto, o preço antes, o preço agora, a queda e o link."),
                    _t("Histórico de preços", "Cada produto mostra o preço inicial, o menor preço visto e o último alerta. Produto sem estoque ou sem comissão fica marcado como indisponível.")),
             _grupo("Recursos que só o Premium tem", "Para quem quer mais alcance e mais automação.",
-                   _t("Envio por nicho", "Crie nichos como beleza, moda ou casa, cada um com as suas categorias ou palavra-chave, e escolha os grupos de cada um. A cada intervalo sai uma oferta em cada nicho, só pros grupos dele. Um nicho sem filtro recebe ofertas em geral.", "Premium"),
+                   _t("Envio por nicho", "Escolha o nicho de cada grupo, como beleza, moda ou casa, ou “Todos” pra ofertas em geral. A cada intervalo sai uma oferta em cada nicho, só pros grupos dele. Os filtros e o texto da mensagem valem pra todos.", "Premium"),
                    _t("Copiar ofertas de outros grupos e canais", "Marque os grupos e canais que você quer copiar. Toda mensagem com link da Shopee que chegar vira uma oferta sua, com o seu link de afiliado. Os links de quem postou são removidos e só o seu entra. Mensagem sem link da Shopee é ignorada.", "Premium"),
                    _t("Revisão do texto com IA", "A IA revisa o texto das ofertas antes de enviar: só o português, corrigir frases que não combinam com o produto, ou deixar a chamada mais atraente. Link, preço e cupom nunca são alterados. Se algo der errado, a oferta sai com o texto original.", "Premium")),
             _grupo("Cuidado com o seu número", "O bot foi feito para enviar sem exagero.",

@@ -103,17 +103,7 @@
         {% for e in form.categorias.errors %}<span class="erro">{{ e }}</span>{% endfor %}
       </fieldset>
       </div>
-      {% if regras.nicho %}
-      <fieldset class="campo bloco-envio" data-envio="nicho">
-        <legend>Nichos</legend>
-        <span class="ajuda">Cada nicho busca as próprias ofertas e manda só pros grupos dele. A cada intervalo sai uma oferta em cada nicho. Sem categoria nem palavra-chave, o nicho recebe ofertas em geral. Os grupos de cada nicho você escolhe em “Onde e quando”.</span>
-        <div class="lista-nichos" id="lista-nichos" data-maximo="{{ form.MAXIMO_NICHOS }}">
-          {% for n in form.nichos_na_tela %}{% include "painel/_nicho.html" %}{% endfor %}
-        </div>
-        <button type="button" class="botao botao-claro" id="adicionar-nicho">+ Adicionar nicho</button>
-        <template id="modelo-nicho">{% include "painel/_nicho.html" with n=form.nicho_em_branco %}</template>
-      </fieldset>
-      {% endif %}
+      {% if regras.nicho %}<p class="suave pequeno bloco-envio" data-envio="nicho">Cada grupo recebe as ofertas do nicho escolhido pra ele na lista de grupos, em “Onde e quando”. “Todos” recebe ofertas em geral. A cada intervalo sai uma oferta em cada nicho em uso.</p>{% endif %}
       <div class="campo">{% include "painel/_campo.html" with campo=form.ordenacao %}</div>
       </div>
     </section>
@@ -172,7 +162,7 @@
             {% for linha in form.linhas_dos_grupos %}
               <div class="linha-grupo{% if linha.divisa %} linha-divisa{% endif %}" data-nome="{{ linha.opcao.choice_label|lower }}">
                 <label>{{ linha.opcao.tag }}<span>{{ linha.opcao.choice_label }}</span>{% if linha.canal %}<span class="selo-canal">Canal</span>{% endif %}</label>
-                {% if regras.nicho %}<select name="nicho_de_{{ linha.opcao.data.value }}" class="nicho-do-grupo" data-envio="nicho"{% if not form.mostrar_nicho %} hidden{% endif %} data-valor="{{ linha.nicho }}" aria-label="Nicho de {{ linha.opcao.choice_label }}"><option value="">Não recebe</option>{% for n in form.nichos_na_tela %}<option value="{{ n.id }}"{% if n.id == linha.nicho %} selected{% endif %}>{{ n.nome|default:"(sem nome)" }}</option>{% endfor %}</select>{% endif %}
+                {% if regras.nicho %}<select name="nicho_de_{{ linha.opcao.data.value }}" class="nicho-do-grupo{% if linha.nicho == "todos" %} nicho-todos{% endif %}" data-envio="nicho"{% if not form.mostrar_nicho %} hidden{% endif %} aria-label="Nicho de {{ linha.opcao.choice_label }}">{% for valor, rotulo in form.opcoes_nicho %}<option value="{{ valor }}"{% if valor == linha.nicho %} selected{% endif %}{% if valor == "todos" %} class="nicho-todos"{% endif %}>{{ rotulo }}</option>{% endfor %}</select>{% endif %}
                 <input type="text" name="subid_{{ linha.opcao.data.value }}" value="{{ linha.sub_id }}" placeholder="padrão" maxlength="300" aria-label="Sub ID próprio de {{ linha.opcao.choice_label }}">
               </div>
             {% endfor %}

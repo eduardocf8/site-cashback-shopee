@@ -108,31 +108,41 @@ def grupos_que_ainda_nao_receberam(config, item_id: str, agora, limite_do_dia: b
     return [g for g in grupos_do_plano(config) if g["jid"] not in ja_receberam and g["jid"] not in cheios]
 
 
+NICHO_TODOS = "todos"
+
+
+def nome_do_nicho(nicho: str) -> str:
+    from .categorias import opcoes_categoria
+
+    if nicho == NICHO_TODOS:
+        return "Todos"
+    return next((rotulo.split(" (")[0] for valor, rotulo in opcoes_categoria() if valor == nicho), nicho)
+
+
 def nichos_do_plano(config) -> list[tuple[dict, list[dict]]]:
-    """Envio por nicho: cada nicho que tem grupos, com os grupos dele que cabem no plano."""
-    permitidos = {g["jid"]: g for g in grupos_do_plano(config)}
-    saida = []
-    for nicho in config.nichos or []:
-        grupos = [permitidos[jid] for jid in nicho.get("grupos") or [] if jid in permitidos]
-        if grupos:
-            saida.append((nicho, grupos))
-    return saida
+    """Envio por nicho: os nichos em uso ("todos" primeiro, depois na ordem das categorias), cada
+    um com os seus grupos que cabem no plano. Grupo sem nicho escolhido fica em "todos"."""
+    from .categorias import opcoes_categoria
+
+    ordem = [NICHO_TODOS] + [valor for valor, _ in opcoes_categoria()]
+    por_nicho: dict[str, list[dict]] = {}
+    for grupo in grupos_do_plano(config):
+        nicho = (config.nichos or {}).get(grupo["jid"]) or NICHO_TODOS
+        por_nicho.setdefault(nicho if nicho in ordem else NICHO_TODOS, []).append(grupo)
+    return [({"id": n, "nome": nome_do_nicho(n)}, por_nicho[n]) for n in ordem if n in por_nicho]
 
 
 def config_do_nicho(config, nicho: dict, grupos: list[dict]):
-    """Cópia da config, só na memória (nunca é salva), com a busca e os grupos do nicho.
-    Filtros, mensagem, ritmo e IA continuam os da config. Sem palavra-chave nem
-    categoria, o nicho recebe ofertas em geral."""
+    """Cópia da config, só na memória (nunca é salva), com a busca e os grupos do nicho: a
+    categoria dele ou, no "Todos", ofertas em geral. Filtros, mensagem, ritmo e IA continuam os da config."""
     do_nicho = copy.copy(config)
-    categorias = [c for c in nicho.get("categorias") or [] if c]
-    palavra = str(nicho.get("palavra_chave") or "").strip()
-    do_nicho.tipo_busca = (ConfiguracaoOfertas.BUSCA_PALAVRA if palavra else
-                           ConfiguracaoOfertas.BUSCA_CATEGORIA if categorias else ConfiguracaoOfertas.BUSCA_GERAL)
-    do_nicho.palavra_chave, do_nicho.categorias, do_nicho.loja = palavra, categorias, ""
-    do_nicho.conferir_categorias = bool(palavra and categorias)
+    todos = nicho["id"] == NICHO_TODOS
+    do_nicho.tipo_busca = ConfiguracaoOfertas.BUSCA_GERAL if todos else ConfiguracaoOfertas.BUSCA_CATEGORIA
+    do_nicho.palavra_chave, do_nicho.loja = "", ""
+    do_nicho.categorias = [] if todos else [nicho["id"]]
     do_nicho.grupos = grupos
-    do_nicho.chave_do_cache = (config.conta_id, nicho.get("id"))
-    onde_parou = (config.paginas_nichos or {}).get(nicho.get("id")) or {}
+    do_nicho.chave_do_cache = (config.conta_id, nicho["id"])
+    onde_parou = (config.paginas_nichos or {}).get(nicho["id"]) or {}
     do_nicho.pagina_atual = int(onde_parou.get("pagina") or 1)
     do_nicho.pagina_em = parse_datetime(str(onde_parou.get("em") or ""))
     return do_nicho
@@ -167,8 +177,6 @@ def motivo_para_esperar(config, conexao, agora) -> str:
     if config.por_nicho:
         if not regras["nicho"]:
             return "O envio por nicho é do plano Premium. Troque para “Mesmas ofertas pra todos” ou faça o upgrade."
-        if not nichos_do_plano(config):
-            return "Escolha os grupos de cada nicho."
     escolhidos = {g["jid"] for g in grupos_do_plano(config)}
     if escolhidos and escolhidos <= grupos_no_limite_de_hoje(config, agora):
         return f"Todos os grupos já receberam as {regras['ofertas_por_grupo_dia']} ofertas de hoje (limite do plano por grupo)."
@@ -392,9 +400,8 @@ class Motor:
                                     "em": do_nicho.pagina_em.isoformat() if do_nicho.pagina_em else ""}
             if produto:
                 escolhidas.append((nicho, produto, destinos))
-        # Guarda onde a busca de cada nicho parou (e esquece a dos nichos apagados).
-        ids = {n.get("id") for n in config.nichos or []}
-        config.paginas_nichos = {k: v for k, v in {**(config.paginas_nichos or {}), **paginas}.items() if k in ids}
+        # Guarda onde a busca de cada nicho parou (e esquece a dos nichos que ninguém usa mais).
+        config.paginas_nichos = paginas
         if not escolhidas:
             if not self._reservar_a_vez(config, agora + ESPERA_SEM_PRODUTO):
                 return
@@ -564,12 +571,12 @@ class Motor:
             return self._testar_busca(config, agora, OFERTAS_NO_TESTE)
         if not regras_do_plano(config)["nicho"]:
             raise ValueError("O envio por nicho é do plano Premium. Troque para “Mesmas ofertas pra todos” ou faça o upgrade.")
-        if not config.nichos:
-            raise ValueError("Crie pelo menos um nicho e salve antes de testar.")
-        grupos_de = {n.get("id"): g for n, g in nichos_do_plano(config)}
+        nichos = nichos_do_plano(config)
+        if not nichos:
+            raise ValueError("Escolha pelo menos um grupo e salve antes de testar.")
         resultado = []
-        for nicho in config.nichos:
-            do_nicho = config_do_nicho(config, nicho, grupos_de.get(nicho.get("id"), []))
+        for nicho, grupos in nichos:
+            do_nicho = config_do_nicho(config, nicho, grupos)
             try:
                 achadas = self._testar_busca(do_nicho, agora, OFERTAS_POR_NICHO_NO_TESTE, revisar=not resultado)
             except ValueError as erro:

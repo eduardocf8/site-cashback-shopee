@@ -117,9 +117,6 @@ def _marcar_divisa(linhas: list[dict], salvos) -> list[dict]:
     return linhas
 
 
-SEM_CATEGORIA = "todas"
-
-
 class ConfiguracaoOfertasForm(forms.ModelForm):
     """Ofertas automáticas (bot_whatsapp.ConfiguracaoOfertas). Preços e avaliação
     entram como texto para aceitar "39,90"."""
@@ -226,22 +223,13 @@ class ConfiguracaoOfertasForm(forms.ModelForm):
             self.fields["intervalo_minutos"].help_text = f"No seu plano, mínimo de {self.regras['intervalo_minimo']} minutos."
             self.fields["intervalo_minutos"].widget.attrs["min"] = self.regras["intervalo_minimo"]
 
-    MAXIMO_NICHOS = 10
-
     def clean_modo_envio(self):
         return self.cleaned_data.get("modo_envio") or self.instance.modo_envio or ConfiguracaoOfertas.ENVIO_TODOS
 
     @property
-    def nichos_na_tela(self) -> list[dict]:
-        """Os nichos como estão na tela (o que foi digitado, se voltou com erro; senão, os salvos),
-        cada um com as opções de categoria já marcadas."""
-        nichos = self._nichos_digitados()[0] if self.is_bound and self.regras["nicho"] else (self.instance.nichos or [])
-        escolhas = list(self.fields["categorias"].choices)
-        return [{
-            **n, "opcoes": [(valor, rotulo, valor in (n.get("categorias") or [])) for valor, rotulo in escolhas],
-            "total_grupos": len(n.get("grupos") or []),
-            "resumo": ", ".join(r.split(" (")[0] for v, r in escolhas if v in (n.get("categorias") or [])) or SEM_CATEGORIA,
-        } for n in nichos]
+    def opcoes_nicho(self) -> list[tuple[str, str]]:
+        """Opções da coluna "Nicho": "Todos" (ofertas em geral) e as categorias, com o nome curto."""
+        return [("todos", "Todos")] + [(valor, rotulo.split(" (")[0]) for valor, rotulo in self.fields["categorias"].choices]
 
     @property
     def mostrar_nicho(self) -> bool:
@@ -249,51 +237,25 @@ class ConfiguracaoOfertasForm(forms.ModelForm):
         return (self.regras["nicho"] and self["modo"].value() == ConfiguracaoOfertas.MODO_SHOPEE
                 and self["modo_envio"].value() == ConfiguracaoOfertas.ENVIO_NICHO)
 
-    @property
-    def nicho_em_branco(self) -> dict:
-        """Modelo de nicho novo (a tela troca o __ID__ por um id novo)."""
-        return {"id": "__ID__", "nome": "", "palavra_chave": "", "total_grupos": 0, "resumo": SEM_CATEGORIA,
-                "opcoes": [(valor, rotulo, False) for valor, rotulo in self.fields["categorias"].choices]}
-
     def _nicho_do_grupo(self, jid: str) -> str:
-        if self.is_bound and self.regras["nicho"]:
+        if self.is_bound and self.regras["nicho"] and f"nicho_de_{jid}" in self.data:
             return str(self.data.get(f"nicho_de_{jid}", "")).strip()
-        for nicho in self.instance.nichos or []:
-            if jid in (nicho.get("grupos") or []):
-                return nicho.get("id", "")
-        return ""
+        return (self.instance.nichos or {}).get(jid) or "todos"
 
-    def _nichos_digitados(self) -> tuple[list[dict], list[str]]:
-        """Lê os nichos do formulário: nicho_id, nicho_nome e nicho_palavra (um por nicho, na ordem),
-        nicho_cat_<id> (categorias) e nicho_de_<jid> (o nicho de cada grupo). Devolve (nichos, erros)."""
-        import re
-
-        validas = {valor for valor, _ in self.fields["categorias"].choices}
-        ids = self.data.getlist("nicho_id") if hasattr(self.data, "getlist") else []
-        nomes = self.data.getlist("nicho_nome") if hasattr(self.data, "getlist") else []
-        palavras = self.data.getlist("nicho_palavra") if hasattr(self.data, "getlist") else []
-        nichos, erros, vistos = [], [], set()
-        for i, id_ in enumerate(ids):
-            id_ = str(id_).strip()
-            if not re.fullmatch(r"[a-z0-9]{1,16}", id_) or id_ in vistos:
+    def _nichos_escolhidos(self) -> dict:
+        """O nicho de cada grupo ({jid: categoria}); "Todos" não é guardado. Grupo que não veio
+        na tela (ex: travado pelo limite do plano) fica com o que já estava."""
+        validos = {valor for valor, _ in self.opcoes_nicho}
+        nichos = dict(self.instance.nichos or {}) if isinstance(self.instance.nichos, dict) else {}
+        for jid in self.nomes_dos_grupos:
+            if f"nicho_de_{jid}" not in self.data:
                 continue
-            vistos.add(id_)
-            nome = " ".join(str(nomes[i] if i < len(nomes) else "").split())[:40]
-            palavra = " ".join(str(palavras[i] if i < len(palavras) else "").split())[:120]
-            categorias = [c for c in self.data.getlist(f"nicho_cat_{id_}") if c in validas]
-            if not nome and not palavra and not categorias:
-                continue  # nicho novo deixado em branco
-            if not nome:
-                erros.append("Dê um nome pra cada nicho.")
-            nichos.append({"id": id_, "nome": nome, "categorias": categorias, "palavra_chave": palavra, "grupos": []})
-        if len(nichos) > self.MAXIMO_NICHOS:
-            erros.append(f"Dá para ter até {self.MAXIMO_NICHOS} nichos.")
-        por_id = {n["id"]: n for n in nichos}
-        for jid in self.nomes_dos_grupos:  # um grupo fica num nicho só
-            nicho = por_id.get(str(self.data.get(f"nicho_de_{jid}", "")).strip())
-            if nicho:
-                nicho["grupos"].append(jid)
-        return nichos, sorted(set(erros))
+            valor = str(self.data.get(f"nicho_de_{jid}", "")).strip()
+            if valor in validos and valor != "todos":
+                nichos[jid] = valor
+            else:
+                nichos.pop(jid, None)
+        return nichos
 
     OPCIONAIS_ZERO = ("comissao_minima", "desconto_minimo", "vendas_minimas", "limite_diario")
 
@@ -386,20 +348,7 @@ class ConfiguracaoOfertasForm(forms.ModelForm):
         por_nicho = (dados.get("modo") == ConfiguracaoOfertas.MODO_SHOPEE
                      and dados.get("modo_envio") == ConfiguracaoOfertas.ENVIO_NICHO)
         if regras["nicho"]:
-            # Os nichos ficam guardados mesmo enviando pra todos (não perde o que foi montado).
-            nichos, erros = self._nichos_digitados()
-            for erro in erros:
-                self.add_error("modo_envio", erro)
-            self.instance.nichos = nichos
-            if por_nicho:
-                # Por nicho, recebem as ofertas os grupos que estão em algum nicho.
-                com_nicho = {jid for n in nichos for jid in n["grupos"]}
-                dados["grupos"] = [{"jid": jid, "nome": nome} for jid, nome in self.nomes_dos_grupos.items()
-                                   if jid in com_nicho]
-                if not nichos:
-                    self.add_error("modo_envio", "Crie pelo menos um nicho.")
-                elif not com_nicho:
-                    self.add_error("modo_envio", "Escolha os grupos de cada nicho (na lista de grupos, em “Onde e quando”).")
+            self.instance.nichos = self._nichos_escolhidos()  # guardados mesmo enviando pra todos
         elif por_nicho:
             self.add_error("modo_envio", "O envio por nicho é do plano Premium.")
         if dados.get("modo") == ConfiguracaoOfertas.MODO_COPIAR and not regras["copiar"]:

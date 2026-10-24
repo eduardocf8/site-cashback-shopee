@@ -142,8 +142,7 @@ def passa_nos_filtros(produto: dict, config) -> bool:
         return False
     if config.avaliacao_minima and produto["avaliacao"] < float(config.avaliacao_minima):
         return False
-    # Nicho com palavra-chave e categorias: busca pela palavra e confere a categoria também.
-    if config.tipo_busca == config.BUSCA_CATEGORIA or getattr(config, "conferir_categorias", False):
+    if config.tipo_busca == config.BUSCA_CATEGORIA:
         return produto_pertence_as_categorias(produto["nome"], config.categorias)
     return True
 
