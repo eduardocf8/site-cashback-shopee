@@ -143,6 +143,7 @@
         <select name="origem" id="id_origem">
             <option value="">Todos</option>
             <option value="site" {% if filtro_origem == "site" %}selected{% endif %}>Gerados no site (com cashback)</option>
+            <option value="sem_cadastro" {% if filtro_origem == "sem_cadastro" %}selected{% endif %}>Sem cadastro (clique anônimo, sem cashback ainda)</option>
             <option value="fora" {% if filtro_origem == "fora" %}selected{% endif %}>Fora do site (sem cashback)</option>
         </select>
     </div>
@@ -318,10 +319,11 @@
 <div class="analytics-secao">
     <h2>Funil de quem chega sem conta</h2>
     <p class="help">
-        Quem tentou converter um link, ir pra Shopee ou abrir uma oferta sem estar logado (e esbarrou no
-        cadastro) - quantos se cadastraram e quantos geraram o primeiro link depois. Coorte pela data da
-        tentativa. Base pra decidir o item 13.11 do ROADMAP (converter sem cadastro). Medição começou
-        com a Fase 62; antes disso não há dados.
+        Quem tentou converter um link, ir pra Shopee ou abrir uma oferta sem estar logado (e esbarrou na
+        página de escolha) - quantos clicaram sem cadastro, quantos se cadastraram e quantos geraram o
+        primeiro link depois. Coorte pela data da tentativa. Item 13.11 do ROADMAP (converter sem
+        cadastro), decidido em 24/10/2026 com os dados da Fase 62; a página de escolha existe desde
+        então - antes disso "Clicaram sem conta" fica sempre zero.
     </p>
     {% with f=funil_sem_conta %}
     <div class="analytics-cards">
@@ -329,6 +331,11 @@
             <h3>Tentaram sem conta</h3>
             <div class="valor">{{ f.tentativas }}</div>
             <div class="legenda">conversor {{ f.tentativas_por_origem.conversor }} · ir pra Shopee {{ f.tentativas_por_origem.ir_shopee }} · ofertas {{ f.tentativas_por_origem.oferta }} · story {{ f.tentativas_por_origem.story }}</div>
+        </div>
+        <div class="analytics-card">
+            <h3>Clicaram sem conta</h3>
+            <div class="valor">{{ f.clicaram_sem_conta }}{% if f.taxa_clique_sem_conta is not None %} <small>({{ f.taxa_clique_sem_conta }}%)</small>{% endif %}</div>
+            <div class="legenda">{{ f.cadastraram_depois_de_clicar_sem_conta }} se cadastraram depois - ver comissão em Pedidos, filtro "Sem cadastro"</div>
         </div>
         <div class="analytics-card">
             <h3>Se cadastraram</h3>

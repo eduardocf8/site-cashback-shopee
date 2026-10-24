@@ -61,6 +61,12 @@ def _no_periodo(queryset: QuerySet, campo_data: str, data_inicio, data_fim) -> Q
 
 ORIGEM_SITE = "site"
 ORIGEM_FORA = "fora"
+# Clique do site, mas ainda sem conta (ROADMAP 13.11, decisão de 24/10/2026) - veio
+# daqui (tem Click) e gerou comissão de verdade pra cash-b, mas ninguém recebe
+# cashback enquanto a pessoa não se cadastrar dentro da janela de 7 dias (ver
+# accounts/cliques_anonimos.py e pedidos/services.py::_montar_defaults). Serve pra
+# medir quanto de comissão está "parado" nessa situação.
+ORIGEM_SEM_CADASTRO = "sem_cadastro"
 
 
 def obter_pedidos_filtrados(data_inicio=None, data_fim=None, status=None, origem=None) -> QuerySet:
@@ -70,7 +76,8 @@ def obter_pedidos_filtrados(data_inicio=None, data_fim=None, status=None, origem
     "origem" distingue pedidos gerados por aqui (têm um Click vinculado, geram cashback
     de verdade pra um usuário) dos que sobram sem Click - outras campanhas, compras
     pessoais etc. (ver pedidos/admin.py::OrigemFilter) - continuam guardados no banco
-    com um valor_cashback calculado, mas não são pagos a ninguém de verdade."""
+    com um valor_cashback calculado, mas não são pagos a ninguém de verdade. Mesma
+    coisa pro clique anônimo ainda não ligado a conta (ORIGEM_SEM_CADASTRO)."""
     pedidos = _no_periodo(Pedido.objects.all(), "data_compra", data_inicio, data_fim)
     if status:
         pedidos = pedidos.filter(status=status)
@@ -78,6 +85,8 @@ def obter_pedidos_filtrados(data_inicio=None, data_fim=None, status=None, origem
         pedidos = pedidos.filter(Pedido.filtro_do_site())
     elif origem == ORIGEM_FORA:
         pedidos = pedidos.exclude(Pedido.filtro_do_site())
+    elif origem == ORIGEM_SEM_CADASTRO:
+        pedidos = pedidos.filter(click__isnull=False, usuario__isnull=True)
     return pedidos
 
 

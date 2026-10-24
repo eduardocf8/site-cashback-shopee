@@ -16,6 +16,7 @@ from .analytics import (
     INDICADORES_SERIE_DIARIA,
     MESES_GRAFICO_SACADO_PADRAO,
     ORIGEM_FORA,
+    ORIGEM_SEM_CADASTRO,
     ORIGEM_SITE,
     ROTULOS_TIPO_SALDO,
     gerar_planilha_analytics,
@@ -60,11 +61,14 @@ class OrigemFilter(admin.SimpleListFilter):
     def lookups(self, request, model_admin):
         return (
             ("site", "Gerados no site"),
+            ("sem_cadastro", "Sem cadastro (clique anônimo, sem cashback ainda)"),
             ("fora", "Fora do site (não identificados)"),
             ("todos", "Todos"),
         )
 
     def queryset(self, request, queryset):
+        if self.value() == "sem_cadastro":
+            return queryset.filter(click__isnull=False, usuario__isnull=True)
         if self.value() == "fora":
             return queryset.exclude(Pedido.filtro_do_site())
         if self.value() == "todos":
@@ -165,7 +169,7 @@ class PedidoAdmin(admin.ModelAdmin):
 
     def _filtros_da_request(self, request):
         origem = request.GET.get("origem") or None
-        if origem not in (ORIGEM_SITE, ORIGEM_FORA):
+        if origem not in (ORIGEM_SITE, ORIGEM_FORA, ORIGEM_SEM_CADASTRO):
             origem = None
         return (
             _parse_data(request.GET.get("data_inicio")),
