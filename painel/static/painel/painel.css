@@ -943,3 +943,5 @@ form[data-metas] .grade-campos { display: grid; grid-template-columns: 1fr 1fr; 
 .form-mensagem textarea { width: 100%; box-sizing: border-box; }
 .contador-texto.erro { color: var(--perigo); }
 .form-mensagem #destino, .form-mensagem #quando { margin-bottom: 14px; }
+/* Mensagens: o botão de enviar fica no fim do formulário (não flutua: é a última ação). */
+.barra-enviar { display: flex; justify-content: flex-end; gap: 10px; flex-wrap: wrap; }

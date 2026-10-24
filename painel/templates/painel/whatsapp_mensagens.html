@@ -83,7 +83,7 @@
       </div>
     </section>
 
-    <div class="barra-salvar">
+    <div class="barra-enviar">
       {% if editando %}<a class="botao botao-claro" href="{% url 'painel_whatsapp_mensagens' %}">Cancelar edição</a>{% endif %}
       <button type="submit" class="botao botao-principal" id="botao-mensagem" data-agora="Enviar agora" data-agendar="{% if editando %}Salvar{% else %}Agendar{% endif %}">Enviar agora</button>
     </div>
