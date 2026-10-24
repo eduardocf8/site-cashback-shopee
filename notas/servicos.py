@@ -224,10 +224,15 @@ def _guardar_campos(ambiente: str, campos):
 _PADRAO = object()  # endereço do tomador: o de sempre (ver _endereco_do_tomador)
 
 
+def _assinatura_sem_endereco(nota) -> bool:
+    """Cliente pessoa física de uma assinatura do Appfiliado: a Zouti não manda o endereço."""
+    return nota.tipo == NotaFiscal.TIPO_ASSINATURA and nota.tomador_tipo == "cpf" and not nota.tomador_endereco
+
+
 def _tomador(nota, campos, end=_PADRAO) -> dps.Tomador | None:
     if nota.tomador_documento == SHOPEE_CNPJ:
         return SHOPEE
-    if nota.tipo == NotaFiscal.TIPO_ASSINATURA and nota.tomador_tipo == "cpf" and not nota.tomador_endereco:
+    if _assinatura_sem_endereco(nota):
         # Cliente pessoa física de uma assinatura: a Zouti não manda o endereço. Quando a nota exige
         # endereço (IBS/CBS), vai sem identificar o tomador, como as notas de software para consumidor.
         if "IBSCBS" in campos:
@@ -411,7 +416,8 @@ def processar(nota: NotaFiscal, cert=None, cliente=None) -> NotaFiscal:
                 resposta = nova
             else:
                 empresa.regime = antes
-        if not resposta.ok and _recusa_de_endereco(resposta.mensagens) and nota.tomador_tipo in ("cnpj", "cpf"):
+        if (not resposta.ok and _recusa_de_endereco(resposta.mensagens) and nota.tomador_tipo in ("cnpj", "cpf")
+                and not _assinatura_sem_endereco(nota)):
             resposta = _reenviar_com_outro_endereco(nota, cert, cliente, campos, resposta)
         if resposta.ok and resposta.campo("chaveAcesso"):
             _autorizar(nota, resposta.campo("chaveAcesso"), resposta.xml_nfse(), resposta.mensagens)
