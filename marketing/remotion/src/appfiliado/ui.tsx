@@ -1,7 +1,7 @@
 /** Peças de interface reaproveitadas pelas cenas: o visual do painel do Appfiliado recriado em React,
  * o cursor que "usa" a ferramenta e os números que contam. Tudo desenhado numa área lógica de
  * 900 x 1000 (ver Cena em Video.tsx, que escala pro formato do vídeo). */
-import React from 'react';
+import React, {createContext, useCallback, useContext, useLayoutEffect, useRef, useState} from 'react';
 import {Easing, Img, interpolate, spring, staticFile, useCurrentFrame, useVideoConfig} from 'remotion';
 import {C, FONTE, ICONES} from './marca';
 
@@ -74,12 +74,52 @@ export const Interruptor: React.FC<{ligado: number}> = ({ligado}) => (
 
 const interpolateCor = (t: number) => (t > 0.5 ? C.ok : '#C9C2AE');
 
-/** Cursor de mouse que percorre pontos [frame, x, y] e "clica" nos frames indicados. */
-export const Cursor: React.FC<{pontos: [number, number, number][]; cliques?: number[]}> = ({pontos, cliques = []}) => {
+type Ponto = {x: number; y: number};
+type Alvos = {alvos: Record<string, Ponto>; raiz: React.RefObject<HTMLDivElement | null>; marcar: (nome: string, p: Ponto) => void};
+const AlvosCtx = createContext<Alvos | null>(null);
+
+/** Área da demonstração: guarda onde está o centro de cada <Alvo>, medido na própria tela a cada quadro,
+ * pra o cursor clicar exatamente no botão (mesmo quando ele muda de lugar ou de tamanho). */
+export const AreaDeAlvos: React.FC<{children: React.ReactNode; style?: React.CSSProperties}> = ({children, style}) => {
+  const raiz = useRef<HTMLDivElement>(null);
+  const [alvos, setAlvos] = useState<Record<string, Ponto>>({});
+  const marcar = useCallback((nome: string, p: Ponto) => {
+    setAlvos((a) => (a[nome] && Math.abs(a[nome].x - p.x) < 0.5 && Math.abs(a[nome].y - p.y) < 0.5 ? a : {...a, [nome]: p}));
+  }, []);
+  return (
+    <AlvosCtx.Provider value={{alvos, raiz, marcar}}>
+      <div ref={raiz} data-area-alvos="" style={{position: 'absolute', inset: 0, ...style}}>{children}</div>
+    </AlvosCtx.Provider>
+  );
+};
+
+/** Marca um elemento como alvo do cursor (o cursor mira no centro dele). */
+export const Alvo: React.FC<{nome: string; children: React.ReactNode; bloco?: boolean}> = ({nome, children, bloco}) => {
+  const ctx = useContext(AlvosCtx);
+  const ref = useRef<HTMLDivElement>(null);
+  useLayoutEffect(() => {
+    const el = ref.current;
+    // o ref da área ainda não está ligado quando o efeito do filho roda: acha a área pelo DOM
+    const raiz = el?.closest('[data-area-alvos]') as HTMLDivElement | null;
+    if (!el || !raiz || !ctx) return;
+    const r = el.getBoundingClientRect();
+    const base = raiz.getBoundingClientRect();
+    const escala = base.width / raiz.offsetWidth || 1; // a demonstração é escalada pro formato do vídeo
+    ctx.marcar(nome, {x: (r.left + r.width / 2 - base.left) / escala, y: (r.top + r.height / 2 - base.top) / escala});
+  });
+  return <div ref={ref} style={{display: bloco ? 'block' : 'inline-block'}}>{children}</div>;
+};
+
+/** Cursor de mouse que percorre pontos [frame, x, y] ou [frame, nome do alvo] e "clica" nos frames
+ * indicados. A ponta da seta fica exatamente no ponto. */
+export const Cursor: React.FC<{pontos: ([number, number, number] | [number, string])[]; cliques?: number[]}> = ({pontos, cliques = []}) => {
   const frame = useCurrentFrame();
-  const fs = pontos.map((p) => p[0]);
-  const x = interpolate(frame, fs, pontos.map((p) => p[1]), {extrapolateLeft: 'clamp', extrapolateRight: 'clamp', easing: Easing.inOut(Easing.cubic)});
-  const y = interpolate(frame, fs, pontos.map((p) => p[2]), {extrapolateLeft: 'clamp', extrapolateRight: 'clamp', easing: Easing.inOut(Easing.cubic)});
+  const ctx = useContext(AlvosCtx);
+  const resolvidos = pontos.map((p) => (typeof p[1] === 'string' ? {f: p[0], ...(ctx?.alvos[p[1]] ?? {x: NaN, y: NaN})} : {f: p[0], x: p[1], y: p[2] as number}));
+  if (resolvidos.some((p) => Number.isNaN(p.x))) return null; // alvos ainda não medidos neste quadro
+  const fs = resolvidos.map((p) => p.f);
+  const x = interpolate(frame, fs, resolvidos.map((p) => p.x), {extrapolateLeft: 'clamp', extrapolateRight: 'clamp', easing: Easing.inOut(Easing.cubic)});
+  const y = interpolate(frame, fs, resolvidos.map((p) => p.y), {extrapolateLeft: 'clamp', extrapolateRight: 'clamp', easing: Easing.inOut(Easing.cubic)});
   const aparece = interpolate(frame, [fs[0], fs[0] + 8], [0, 1], {extrapolateLeft: 'clamp', extrapolateRight: 'clamp'});
   const clique = cliques.map((c) => frame - c).find((d) => d >= 0 && d < 14);
   return (
@@ -88,7 +128,9 @@ export const Cursor: React.FC<{pontos: [number, number, number][]; cliques?: num
         <div style={{position: 'absolute', left: -38, top: -38, width: 76, height: 76, borderRadius: '50%', border: `5px solid ${C.amarelo}`,
           opacity: 1 - clique / 14, transform: `scale(${0.4 + clique / 10})`}} />
       )}
-      <svg width={54} height={54} viewBox="0 0 24 24" style={{transform: `scale(${clique !== undefined && clique < 5 ? 0.85 : 1})`, filter: 'drop-shadow(0 4px 6px rgba(0,0,0,.35))'}}>
+      {/* a ponta da seta está em (4, 2) no desenho de 24 -> (9, 4,5) px no tamanho de 54 */}
+      <svg width={54} height={54} viewBox="0 0 24 24" style={{position: 'absolute', left: -9, top: -4.5, transformOrigin: '9px 4.5px',
+        transform: `scale(${clique !== undefined && clique < 5 ? 0.85 : 1})`, filter: 'drop-shadow(0 4px 6px rgba(0,0,0,.35))'}}>
         <path d="M4 2l15 9.5-6.6 1.4 3.8 7.4-3 1.5-3.8-7.4L4 19z" fill={C.tinta} stroke={C.branco} strokeWidth={1.4} strokeLinejoin="round" />
       </svg>
     </div>

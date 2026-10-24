@@ -4,9 +4,8 @@
 import React from 'react';
 import {interpolate, useCurrentFrame, useVideoConfig} from 'remotion';
 import {C} from './marca';
-import {Aviso, Botao, Card, Chip, Contador, Cursor, Digitando, Foto, Interruptor, entra, mola, produto} from './ui';
+import {Alvo, AreaDeAlvos, Aviso, Botao, Card, Chip, Contador, Cursor, Digitando, Foto, Interruptor, entra, mola, produto} from './ui';
 
-const cheio: React.CSSProperties = {position: 'absolute', inset: 0};
 
 // --- Bot de WhatsApp --------------------------------------------------------------------------------
 
@@ -22,14 +21,14 @@ export const CenaBot: React.FC = () => {
   const ligado = interpolate(f, [44, 52], [0, 1], {extrapolateLeft: 'clamp', extrapolateRight: 'clamp'});
   const chegadas = [80, 150, 220];
   return (
-    <div style={cheio}>
+    <AreaDeAlvos>
       <Card style={{position: 'absolute', left: 0, right: 0, top: 0, height: 170, display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '0 40px'}}>
         <div>
           <div style={{fontSize: 22, fontWeight: 800, letterSpacing: '.12em', color: '#8A6A00', textTransform: 'uppercase'}}>Automação</div>
           <div style={{fontSize: 40, fontWeight: 800, marginTop: 6}}>{ligado > 0.5 ? 'Ofertas ligadas' : 'Ofertas desligadas'}</div>
           <div style={{fontSize: 24, color: C.cinza, marginTop: 4}}>Uma oferta a cada 5 min · 8h às 22h</div>
         </div>
-        <div style={{transform: 'scale(1.4)', transformOrigin: 'right center'}}><Interruptor ligado={ligado} /></div>
+        <div style={{transform: 'scale(1.4)', transformOrigin: 'right center'}}><Alvo nome="ligar"><Interruptor ligado={ligado} /></Alvo></div>
       </Card>
       <div style={{position: 'absolute', left: 0, right: 0, top: 200, bottom: 0, borderRadius: 32, overflow: 'hidden', background: C.zap, border: `2px solid ${C.borda}`}}>
         <div style={{height: 104, background: '#1F3A2E', color: C.creme, display: 'flex', alignItems: 'center', gap: 20, padding: '0 30px', position: 'relative', zIndex: 2}}>
@@ -58,8 +57,8 @@ export const CenaBot: React.FC = () => {
           })}
         </div>
       </div>
-      <Cursor pontos={[[10, 520, 600], [40, 815, 96], [70, 815, 96], [90, 900, 300]]} cliques={[44]} />
-    </div>
+      <Cursor pontos={[[10, 520, 600], [40, 'ligar'], [70, 'ligar'], [90, 900, 300]]} cliques={[44]} />
+    </AreaDeAlvos>
   );
 };
 
@@ -78,14 +77,14 @@ export const CenaRadar: React.FC = () => {
   const lista = ordenado ? [...RADAR].sort((a, b) => b.com + b.extra - (a.com + a.extra)) : RADAR;
   const troca = entra(f, 96, 18);
   return (
-    <div style={cheio}>
+    <AreaDeAlvos>
       <Card style={{padding: 24, display: 'flex', alignItems: 'center', gap: 18}}>
         <div style={{fontSize: 34}}>🔎</div>
         <div style={{fontSize: 32, fontWeight: 500, flex: 1}}>{f < 18 ? <span style={{color: '#A8A08A'}}>Ex.: fone, air fryer, vestido</span> : <Digitando texto="mais vendidos em eletrônicos" inicio={18} fim={58} />}</div>
       </Card>
       <div style={{display: 'flex', gap: 12, marginTop: 20, flexWrap: 'wrap'}}>
         <Chip texto="Mais vendidos" ativo={!ordenado} />
-        <Chip texto="Maior comissão" ativo={ordenado} />
+        <Alvo nome="ordem"><Chip texto="Maior comissão" ativo={ordenado} /></Alvo>
         <Chip texto="Maior desconto" />
       </div>
       <div style={{display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 20, marginTop: 26, opacity: ordenado ? troca : 1}}>
@@ -99,14 +98,14 @@ export const CenaRadar: React.FC = () => {
             </div>
             <div style={{fontSize: 24, fontWeight: 800, marginTop: 12, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis'}}>{p.nome}</div>
             <div style={{fontSize: 28, fontWeight: 800, marginTop: 4}}>{p.preco}</div>
-            <div style={{marginTop: 10, background: i === 0 && f > 160 && f < 175 ? C.amarelo : C.verde, color: i === 0 && f > 160 && f < 175 ? C.verde : C.creme,
-              borderRadius: 14, textAlign: 'center', fontWeight: 800, fontSize: 22, padding: '12px 0'}}>Copiar meu link</div>
+            <Alvo nome={`copiar-${i}`} bloco><div style={{marginTop: 10, background: i === 0 && f > 160 && f < 175 ? C.amarelo : C.verde, color: i === 0 && f > 160 && f < 175 ? C.verde : C.creme,
+              borderRadius: 14, textAlign: 'center', fontWeight: 800, fontSize: 22, padding: '12px 0'}}>Copiar meu link</div></Alvo>
           </Card>
         ))}
       </div>
       <Aviso texto="Seu link de afiliado foi copiado" inicio={168} duracao={60} />
-      <Cursor pontos={[[10, 450, 60], [60, 450, 60], [86, 330, 156], [110, 330, 156], [150, 220, 560], [190, 220, 560]]} cliques={[96, 162]} />
-    </div>
+      <Cursor pontos={[[10, 450, 60], [60, 450, 60], [86, 'ordem'], [110, 'ordem'], [150, 'copiar-0'], [190, 'copiar-0']]} cliques={[96, 162]} />
+    </AreaDeAlvos>
   );
 };
 
@@ -123,7 +122,7 @@ export const CenaConversor: React.FC = () => {
   const f = useCurrentFrame();
   const convertido = f >= 84;
   return (
-    <div style={cheio}>
+    <AreaDeAlvos>
       <Card style={{padding: 34}}>
         <div style={{fontSize: 24, fontWeight: 800, color: C.cinza, marginBottom: 14}}>{convertido ? 'Pronto pra encaminhar' : 'Cole o texto ou os links'}</div>
         <div style={{background: '#FBF9F3', border: `2px solid ${C.borda}`, borderRadius: 20, padding: 28, fontSize: 28, lineHeight: 1.5, minHeight: 540}}>
@@ -140,15 +139,18 @@ export const CenaConversor: React.FC = () => {
         <div style={{display: 'flex', gap: 14, marginTop: 24, alignItems: 'center'}}>
           <Chip texto="Manter o texto e trocar os links" ativo />
           <div style={{flex: 1}} />
-          <Botao texto="Converter" tipo="principal" apertado={f >= 70 && f < 78 ? 1 : 0} />
+          {/* o mesmo botão vira "Copiar texto" depois de converter */}
+          <Alvo nome="botao">{convertido
+            ? <Botao texto="Copiar texto" tipo="escuro" apertado={f >= 188 && f < 196 ? 1 : 0} />
+            : <Botao texto="Converter" tipo="principal" apertado={f >= 70 && f < 78 ? 1 : 0} />}</Alvo>
         </div>
       </Card>
       <div style={{marginTop: 26, display: 'flex', justifyContent: 'center', opacity: entra(f, 130), fontSize: 30, fontWeight: 800, color: C.verde}}>
         ✓ 3 links trocados pelo seu link de afiliado
       </div>
       <Aviso texto="Texto copiado" inicio={196} duracao={50} />
-      <Cursor pontos={[[20, 300, 700], [60, 770, 770], [100, 770, 770], [170, 640, 770], [190, 640, 770]]} cliques={[72, 190]} />
-    </div>
+      <Cursor pontos={[[20, 300, 700], [60, 'botao'], [100, 'botao'], [170, 'botao'], [190, 'botao']]} cliques={[72, 190]} />
+    </AreaDeAlvos>
   );
 };
 
@@ -174,10 +176,10 @@ export const CenaCarrosseis: React.FC = () => {
   const slideAtual = f < 170 ? 0 : f < 215 ? 1 : 2;
   const deslize = mola(f, slideAtual === 0 ? 120 : slideAtual === 1 ? 170 : 215, fps, 18);
   return (
-    <div style={cheio}>
+    <AreaDeAlvos>
       <Card style={{padding: 24, display: 'flex', gap: 16, alignItems: 'center'}}>
         <div style={{fontSize: 28, flex: 1, whiteSpace: 'nowrap', overflow: 'hidden'}}><Digitando texto="https://s.shopee.com.br/8Kz1aQ" inicio={8} fim={30} /></div>
-        <Botao texto="Gerar carrossel" tipo="escuro" apertado={f >= 44 && f < 52 ? 1 : 0} style={{fontSize: 24, padding: '14px 24px'}} />
+        <Alvo nome="gerar"><Botao texto="Gerar carrossel" tipo="escuro" apertado={f >= 44 && f < 52 ? 1 : 0} style={{fontSize: 24, padding: '14px 24px'}} /></Alvo>
       </Card>
       {!pronto && f >= 50 && (
         <div style={{marginTop: 40, display: 'grid', gap: 18}}>
@@ -210,8 +212,8 @@ export const CenaCarrosseis: React.FC = () => {
           </div>
         </div>
       )}
-      <Cursor pontos={[[30, 600, 300], [40, 700, 64], [60, 700, 64], [80, 860, 500]]} cliques={[46]} />
-    </div>
+      <Cursor pontos={[[24, 600, 300], [40, 'gerar'], [60, 'gerar'], [80, 860, 500]]} cliques={[46]} />
+    </AreaDeAlvos>
   );
 };
 
@@ -230,7 +232,7 @@ export const CenaSite: React.FC = () => {
   const cor = f >= 150 ? C.verde : '#D6336C';
   const vitrine = interpolate(f, [175, 240], [0, -300], {extrapolateLeft: 'clamp', extrapolateRight: 'clamp'});
   return (
-    <div style={{...cheio, display: 'flex', gap: 36, alignItems: 'flex-start', justifyContent: 'center'}}>
+    <AreaDeAlvos style={{display: 'flex', gap: 36, alignItems: 'flex-start', justifyContent: 'center'}}>
       <div style={{width: 520, height: 1000, borderRadius: 70, background: '#101a14', padding: 18, flex: 'none', position: 'relative'}}>
         <div style={{height: '100%', borderRadius: 54, overflow: 'hidden', background: cor, padding: '70px 34px', color: C.branco, textAlign: 'center'}}>
           <div style={{transform: `scale(${mola(f, 6, fps)})`, width: 150, height: 150, margin: '0 auto', borderRadius: '50%', overflow: 'hidden', border: '6px solid rgba(255,255,255,.6)'}}>
@@ -267,7 +269,7 @@ export const CenaSite: React.FC = () => {
           <div style={{fontSize: 20, color: C.cinza, fontWeight: 800}}>Cor do site</div>
           <div style={{display: 'flex', gap: 10, marginTop: 12}}>
             {['#D6336C', C.verde, '#2F6FD8', '#E8590C'].map((c) => (
-              <div key={c} style={{width: 46, height: 46, borderRadius: '50%', background: c, outline: c === cor ? `4px solid ${C.amarelo}` : 'none', outlineOffset: 3}} />
+              <Alvo key={c} nome={`cor-${c}`}><div style={{width: 46, height: 46, borderRadius: '50%', background: c, outline: c === cor ? `4px solid ${C.amarelo}` : 'none', outlineOffset: 3}} /></Alvo>
             ))}
           </div>
         </Card>
@@ -276,8 +278,8 @@ export const CenaSite: React.FC = () => {
           <div style={{fontSize: 44, fontWeight: 800}}><Contador valor={1389} inicio={190} duracao={40} /></div>
         </Card>
       </div>
-      <Cursor pontos={[[100, 700, 500], [140, 700, 377], [160, 700, 377], [190, 760, 600]]} cliques={[148]} />
-    </div>
+      <Cursor pontos={[[100, 700, 500], [140, `cor-${C.verde}`], [160, `cor-${C.verde}`], [190, 760, 600]]} cliques={[148]} />
+    </AreaDeAlvos>
   );
 };
 
@@ -289,7 +291,7 @@ export const CenaResultados: React.FC = () => {
   const f = useCurrentFrame();
   const meta = interpolate(f, [120, 200], [0, 1], {extrapolateLeft: 'clamp', extrapolateRight: 'clamp'});
   return (
-    <div style={cheio}>
+    <AreaDeAlvos>
       <div style={{display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 18}}>
         {[['Faturamento', 51693.46, true], ['Comissão estimada', 4393.94, true], ['Comissão validada', 1554.97, true], ['Pedidos', 1348, false]].map(([r, v, reais], i) => (
           <Card key={r as string} style={{padding: 26, opacity: entra(f, i * 6)}}>
@@ -319,7 +321,7 @@ export const CenaResultados: React.FC = () => {
           {meta >= 1 ? '🎉 Faixa 100% batida: bônus de R$ 300' : `Faltam R$ ${Math.round(52000 * (1 - meta) * 0.12).toLocaleString('pt-BR')} pra faixa 100%`}
         </div>
       </Card>
-    </div>
+    </AreaDeAlvos>
   );
 };
 
@@ -334,14 +336,14 @@ export const CenaNotas: React.FC = () => {
   const notas = Math.round(interpolate(f, [60, 170], [0, 86], {extrapolateLeft: 'clamp', extrapolateRight: 'clamp'}));
   const emails = Math.round(interpolate(f, [150, 230], [0, 83], {extrapolateLeft: 'clamp', extrapolateRight: 'clamp'}));
   return (
-    <div style={cheio}>
+    <AreaDeAlvos>
       <Card style={{display: 'flex', gap: 22, alignItems: 'center', transform: `translateY(${(1 - arquivo) * -120}px)`, opacity: arquivo}}>
         <div style={{width: 80, height: 80, borderRadius: 20, background: C.creme, display: 'grid', placeItems: 'center', fontSize: 40}}>📄</div>
         <div style={{flex: 1}}>
           <div style={{fontSize: 30, fontWeight: 800}}>MonthlyReport_202609.csv</div>
           <div style={{fontSize: 22, color: C.cinza}}>Relatório Mensal da Shopee · 86 lojas</div>
         </div>
-        <Botao texto={f >= 50 ? 'Emitindo…' : 'Emitir 86 notas'} tipo="principal" apertado={f >= 40 && f < 48 ? 1 : 0} style={{fontSize: 24, padding: '14px 22px'}} />
+        <Alvo nome="emitir"><Botao texto={f >= 50 ? 'Emitindo…' : 'Emitir 86 notas'} tipo="principal" apertado={f >= 40 && f < 48 ? 1 : 0} style={{fontSize: 24, padding: '14px 22px'}} /></Alvo>
       </Card>
       <Card style={{marginTop: 20}}>
         <div style={{display: 'flex', justifyContent: 'space-between', alignItems: 'baseline'}}>
@@ -368,7 +370,7 @@ export const CenaNotas: React.FC = () => {
         <div style={{fontSize: 40}}>✉️</div>
         <div style={{flex: 1, fontSize: 26}}><b>{emails} de 83</b> vendedores receberam o PDF e o XML</div>
       </Card>
-      <Cursor pontos={[[20, 500, 400], [36, 760, 66], [56, 760, 66], [80, 860, 400]]} cliques={[42]} />
-    </div>
+      <Cursor pontos={[[20, 500, 400], [36, 'emitir'], [56, 'emitir'], [80, 860, 400]]} cliques={[42]} />
+    </AreaDeAlvos>
   );
 };
