@@ -145,6 +145,9 @@ class MetaPixelCadastroTests(TestCase):
     depois do redirect) - com o MESMO event_id, pra Meta deduplicar (ver
     cashback_shopee/meta_capi.py)."""
 
+    def setUp(self):
+        cache.clear()  # evita herdar contador de rate limit de "registrar" de outro teste
+
     def _dados_cadastro(self, **extra):
         dados = {
             "username": "novaconta", "email": "nova@example.com", "cpf": "14783246947",
@@ -2095,6 +2098,7 @@ class FunilSemContaTests(TestCase):
     )
 
     def setUp(self):
+        cache.clear()  # evita herdar contador de rate limit de "registrar" de outro teste
         # Sem User-Agent a requisição conta como robô (ver accounts/funil.py).
         from django.test import Client
         self.client = Client(HTTP_USER_AGENT=self.NAVEGADOR)
@@ -2227,6 +2231,9 @@ class CliquesAnonimosTests(TestCase):
     """Liga o clique anônimo à conta nova quando a pessoa se cadastra ou entra com o
     Google, dentro da janela de 7 dias, no mesmo navegador (ROADMAP 13.11, decisão de
     24/10/2026) - ver accounts/cliques_anonimos.py."""
+
+    def setUp(self):
+        cache.clear()  # evita herdar/deixar contador de rate limit de "registrar" pra outro teste
 
     def _dados_cadastro(self, **extra):
         dados = {
