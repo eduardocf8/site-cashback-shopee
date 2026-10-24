@@ -230,11 +230,12 @@ Itens novos/atualizados a partir dele - **ordem sugerida de implementação**:
        duplicada. Indicação, origem e evento de cadastro da Meta iguais ao formulário.
        Desligado sem `GOOGLE_CLIENT_ID`/`GOOGLE_CLIENT_SECRET`; URI de redirecionamento
        no Google Cloud: `https://cash-b.com/login/google/callback/`.
-5. [ ] **13.11 Converter sem cadastro** (grande, já existia) - **em espera, medindo
-       antes de construir (Fase 62)**: com o login com Google (13.15) o pedido de
-       cadastro virou 1 clique, então parte do ganho pode já ter vindo. Decidir com 2-3
-       semanas de dados do "Funil de quem chega sem conta" (admin > Analytics). Se
-       fizer: considerar pedir só e-mail/Google ao gerar o link, porque o navegador
+5. [ ] **13.11 Converter sem cadastro** (grande, já existia) - **decidido em
+       24/10/2026 com 7 dias de dados (16-23/10, "Funil de quem chega sem conta",
+       admin > Analytics), em andamento**: 4.787 tentativas sem conta no período
+       (quase todas na vitrine - o gargalo é o clique em "Ir pra oferta" exigir
+       login, não o conversor), só 3 cadastros posteriores vindos desse tráfego.
+       Considerar pedir só e-mail/Google ao gerar o link, porque o navegador
        interno do Instagram perde o cookie do clique anônimo. - a Méliuz prova que
        funciona: guardar o clique anônimo num cookie e ligar à conta quando a
        pessoa se cadastrar no mesmo navegador; cashback só pago com cadastro.
