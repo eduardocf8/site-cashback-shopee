@@ -921,3 +921,24 @@ form[data-metas] .grade-campos { display: grid; grid-template-columns: 1fr 1fr; 
 /* Faixa de bot parado (WhatsApp caiu ou foi desconectado), no topo de todas as páginas. */
 .faixa-bot-parado { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 10px; border: 1px solid #F5C2BD; }
 .faixa-bot-parado .botao { margin-left: auto; }
+
+/* Aba Mensagens do Bot: prévia no estilo do WhatsApp e listas das mensagens. */
+.previa-zap { background: #E9E2D3; border-radius: 12px; padding: 14px; }
+.balao-zap { background: #fff; border-radius: 10px 10px 10px 2px; padding: 6px; max-width: 320px; box-shadow: 0 1px 1px rgba(0,0,0,.08); }
+.balao-zap img { display: block; width: 100%; border-radius: 8px; margin-bottom: 6px; }
+.previa-texto { padding: 2px 6px 4px; font-size: 14px; line-height: 1.45; overflow-wrap: anywhere; }
+.previa-texto .link-previa { color: #027EB5; }
+.lista-mensagens { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; }
+.lista-mensagens li { display: flex; flex-direction: column; gap: 3px; padding: 10px 0; border-top: 1px solid var(--trilho); }
+.lista-mensagens li:first-child { border-top: 0; padding-top: 0; }
+.lista-mensagens li.pausada .texto-curto { opacity: .6; }
+.lista-mensagens .texto-curto { font-size: 14px; overflow-wrap: anywhere; }
+.acoes-mensagem { display: flex; gap: 14px; align-items: center; }
+.acoes-mensagem form { margin: 0; }
+.selo-pausada { padding: 1px 8px; border-radius: 999px; background: var(--trilho); font-size: 12px; font-weight: 700; }
+.foto-atual { display: flex; align-items: center; gap: 12px; margin-bottom: 8px; }
+.foto-atual img { width: 72px; height: 72px; object-fit: cover; border-radius: 8px; }
+.bloco-semanal { display: flex; flex-direction: column; gap: 14px; }
+.campo-hora { max-width: 160px; }
+.form-mensagem textarea { width: 100%; box-sizing: border-box; }
+.contador-texto.erro { color: var(--perigo); }

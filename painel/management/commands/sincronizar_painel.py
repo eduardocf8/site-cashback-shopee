@@ -44,6 +44,9 @@ class Command(BaseCommand):
             from ofertas.catalogo import iniciar_em_segundo_plano as iniciar_catalogo
 
             iniciar_catalogo()  # catálogo de ofertas da cash-b, aos poucos (thread própria)
+            from bot_whatsapp.mensagens import iniciar_em_segundo_plano as iniciar_mensagens
+
+            iniciar_mensagens()  # mensagens avulsas agendadas nos grupos (thread própria)
         proximo_log_de_memoria = 0.0
         while True:
             if loop and time.monotonic() >= proximo_log_de_memoria:

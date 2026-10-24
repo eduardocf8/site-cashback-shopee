@@ -1,10 +1,12 @@
+from datetime import datetime
 from decimal import Decimal
 
 from django import forms
+from django.utils import timezone
 from django.contrib.auth.password_validation import validate_password
-from django.core.validators import MaxValueValidator, MinValueValidator
+from django.core.validators import MaxLengthValidator, MaxValueValidator, MinValueValidator
 
-from bot_whatsapp.models import AlertaPreco, CampanhaBot, ConfiguracaoOfertas
+from bot_whatsapp.models import AlertaPreco, CampanhaBot, ConfiguracaoOfertas, MensagemAvulsa
 
 
 class EntrarForm(forms.Form):
@@ -549,3 +551,121 @@ class AlertaPrecoForm(forms.ModelForm):
         if valor < self.regras["alerta_intervalo_minimo"]:
             raise forms.ValidationError("Esse intervalo não está no seu plano.")
         return valor
+
+
+class MensagemAvulsaForm(forms.ModelForm):
+    """Aba Mensagens do Bot: texto (com foto opcional), pra quem e quando."""
+
+    FOTO_LADO = 1600
+    FOTO_MAXIMO_MB = 8
+    MAXIMO_CARACTERES = 3000
+
+    foto_nova = forms.ImageField(label="Foto (opcional)", required=False)
+    remover_foto = forms.BooleanField(required=False)
+    grupos = forms.MultipleChoiceField(label="Grupos", required=False, widget=forms.CheckboxSelectMultiple)
+    nicho = forms.ChoiceField(label="Nicho", required=False)
+    dias_semana = forms.TypedMultipleChoiceField(label="Dias", choices=DIAS_DA_SEMANA, coerce=int, required=False,
+                                                 widget=forms.CheckboxSelectMultiple)
+    data = forms.DateField(label="Dia", required=False, widget=forms.DateInput(attrs={"type": "date"}, format="%Y-%m-%d"))
+    hora_agendada = forms.TimeField(label="Hora", required=False, widget=forms.TimeInput(attrs=ATTRS_HORA, format="%H:%M"))
+
+    class Meta:
+        model = MensagemAvulsa
+        fields = ["texto", "destino", "quando", "hora"]
+        labels = {"texto": "Mensagem", "destino": "Pra quem", "quando": "Quando", "hora": "Hora"}
+        widgets = {
+            "texto": forms.Textarea(attrs={"rows": 7, "placeholder": "Ex: Hoje às 20h tem live de cupons aqui no grupo! 🔥"}),
+            "destino": forms.RadioSelect, "quando": forms.RadioSelect,
+            "hora": forms.TimeInput(attrs=ATTRS_HORA, format="%H:%M"),
+        }
+
+    def __init__(self, *args, conta=None, destinos=None, nichos=None, regras=None, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.conta, self.regras = conta, regras or {}
+        self.fields["texto"].validators.append(MaxLengthValidator(self.MAXIMO_CARACTERES))
+        self.fields["texto"].error_messages["required"] = "Escreva a mensagem."
+        self.fields["hora"].required = False
+        self.nomes_dos_grupos = {g["jid"]: g.get("nome", g["jid"]) for g in destinos or [] if g.get("jid")}
+        self.fields["grupos"].choices = sorted(self.nomes_dos_grupos.items(), key=lambda item: item[1].lower())
+        self.fields["nicho"].choices = nichos or []
+        if not nichos:  # sem envio por nicho na Automação, a opção não aparece
+            self.fields["destino"].choices = [c for c in self.fields["destino"].choices if c[0] != "nicho"]
+        instancia = self.instance
+        if instancia.pk:
+            self.initial.update({"grupos": instancia.grupos, "nicho": instancia.nicho, "dias_semana": instancia.dias_semana})
+            if instancia.agendada_para:
+                local = timezone.localtime(instancia.agendada_para)
+                self.initial.update({"data": local.date(), "hora_agendada": local.time()})
+
+    def clean_texto(self):
+        texto = (self.cleaned_data.get("texto") or "").replace("\r\n", "\n").strip()
+        if not texto:
+            raise forms.ValidationError("Escreva a mensagem.")
+        return texto
+
+    def clean_foto_nova(self):
+        from PIL import Image, ImageOps
+        import io
+
+        arquivo = self.cleaned_data.get("foto_nova")
+        if not arquivo:
+            return None
+        if arquivo.size > self.FOTO_MAXIMO_MB * 1024 * 1024:
+            raise forms.ValidationError(f"A foto pode ter até {self.FOTO_MAXIMO_MB} MB.")
+        aberta = Image.open(arquivo)
+        if aberta.size[0] * aberta.size[1] > 30_000_000:  # "bomba" de pixels
+            raise forms.ValidationError("Essa foto é grande demais. Use uma de até 30 megapixels.")
+        imagem = ImageOps.exif_transpose(aberta).convert("RGB")
+        imagem.thumbnail((self.FOTO_LADO, self.FOTO_LADO), Image.LANCZOS)
+        saida = io.BytesIO()
+        imagem.save(saida, "JPEG", quality=86, optimize=True)
+        return saida.getvalue()
+
+    def clean(self):
+        from bot_whatsapp.models import MensagemAvulsa
+
+        dados = super().clean()
+        destino, quando = dados.get("destino"), dados.get("quando")
+        if destino == MensagemAvulsa.DESTINO_GRUPOS and not dados.get("grupos"):
+            self.add_error("grupos", "Escolha pelo menos um grupo.")
+        if destino == MensagemAvulsa.DESTINO_GRUPOS and len(dados.get("grupos") or []) > self.regras.get("grupos", 50):
+            self.add_error("grupos", f"No seu plano dá pra escolher até {self.regras.get('grupos')} grupos e canais.")
+        if destino == MensagemAvulsa.DESTINO_NICHO and not dados.get("nicho"):
+            self.add_error("nicho", "Escolha o nicho.")
+        if quando == MensagemAvulsa.QUANDO_AGENDAR:
+            if not dados.get("data") or dados.get("hora_agendada") is None:
+                self.add_error("data", "Escolha o dia e a hora.")
+            else:
+                marcada = timezone.make_aware(datetime.combine(dados["data"], dados["hora_agendada"]))
+                if marcada <= timezone.now():
+                    self.add_error("data", "Esse horário já passou.")
+                dados["agendada_para"] = marcada
+        if quando == MensagemAvulsa.QUANDO_SEMANAL:
+            if not dados.get("dias_semana"):
+                self.add_error("dias_semana", "Escolha pelo menos um dia.")
+            if dados.get("hora") is None:
+                self.add_error("hora", "Escolha a hora.")
+        return dados
+
+    def save(self, commit=True):
+        from bot_whatsapp import mensagens
+        from bot_whatsapp.models import MensagemAvulsa
+
+        m = super().save(commit=False)
+        dados = self.cleaned_data
+        m.conta = self.conta
+        m.grupos = list(dados.get("grupos") or []) if m.destino == MensagemAvulsa.DESTINO_GRUPOS else []
+        m.nicho = (dados.get("nicho") or "") if m.destino == MensagemAvulsa.DESTINO_NICHO else ""
+        m.dias_semana = sorted(dados.get("dias_semana") or []) if m.quando == MensagemAvulsa.QUANDO_SEMANAL else []
+        m.agendada_para = dados.get("agendada_para") if m.quando == MensagemAvulsa.QUANDO_AGENDAR else None
+        if m.quando != MensagemAvulsa.QUANDO_SEMANAL:
+            m.hora = None
+        if dados.get("foto_nova"):
+            m.foto = dados["foto_nova"]
+        elif dados.get("remover_foto"):
+            m.foto = None
+        m.proxima_em = mensagens.calcular_proxima(m, timezone.now())
+        m.pausada = False
+        if commit:
+            m.save()
+        return m

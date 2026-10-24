@@ -31,7 +31,7 @@ from django.utils import timezone
 from atendimento import servico as atendimento
 
 from . import avisos_de_queda, copia, rede
-from .models import ConexaoWhatsApp, ConfiguracaoOfertas, EnvioWhatsApp, OfertaRecebida
+from .models import ConexaoWhatsApp, ConfiguracaoOfertas, EnvioWhatsApp, MensagemAvulsa, OfertaRecebida
 from .servico import registrar_evento
 
 logger = logging.getLogger(__name__)
@@ -553,7 +553,8 @@ class Gerenciador:
             try:
                 # A foto vai sempre como bytes baixados aqui (com os limites de rede.py): um
                 # texto solto nunca chega à biblioteca, que abriria arquivo local ou URL interna.
-                foto = ler_foto(envio.imagem_arquivo) or (rede.baixar(envio.imagem_url) if envio.imagem_url else None)
+                foto = (ler_foto(envio.imagem_arquivo) or (rede.baixar(envio.imagem_url) if envio.imagem_url else None)
+                        or _foto_da_mensagem(envio))
                 if envio.formato == "previa":
                     # Cartão grande do link (grupo e canal); sem foto separada.
                     sessao.cliente.send_message(
@@ -610,6 +611,14 @@ def _imagem_aceitavel(dados: bytes) -> bool:
     except Exception:  # noqa: BLE001
         logger.warning("WhatsApp: foto recusada (não abre ou é grande demais)")
         return False
+
+
+def _foto_da_mensagem(envio) -> bytes | None:
+    """Mensagem avulsa: a foto que a pessoa mandou fica no banco, junto da mensagem."""
+    if not envio.mensagem_id:
+        return None
+    foto = MensagemAvulsa.objects.filter(pk=envio.mensagem_id).values_list("foto", flat=True).first()
+    return bytes(foto) if foto else None
 
 
 def ler_foto(caminho: str) -> bytes | None:

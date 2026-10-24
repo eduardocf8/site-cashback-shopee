@@ -1,0 +1,144 @@
+{% extends "painel/base.html" %}
+{% load static painel_extras %}
+{% block titulo %}Mensagens · Bot de WhatsApp{% endblock %}
+{% block conteudo %}
+<header class="cabecalho">
+  <div>
+    <h1>Bot de WhatsApp</h1>
+    <p>Ofertas da Shopee enviadas com o seu link de afiliado no automático: buscadas pela API ou copiadas de outros grupos e canais.</p>
+  </div>
+</header>
+{% include "painel/_abas_whatsapp.html" with aba="mensagens" %}
+
+{% if conexao.estado != "conectado" %}<p class="aviso aviso-warning pequeno">Seu WhatsApp não está conectado. As mensagens saem quando ele estiver conectado (na aba <a href="{% url 'painel_whatsapp' %}">Conexão</a>).</p>{% endif %}
+
+<div class="duas-colunas" style="margin-top:16px">
+  <form method="post" enctype="multipart/form-data" class="formulario form-ofertas form-mensagem" novalidate id="form-mensagem">
+    {% csrf_token %}
+    <input type="hidden" name="acao" value="salvar">
+    {% if editando %}<input type="hidden" name="pk" value="{{ editando.pk }}">{% endif %}
+    {% if form.non_field_errors %}<ul class="erros-form">{% for e in form.non_field_errors %}<li>{{ e }}</li>{% endfor %}</ul>{% endif %}
+
+    <section class="card" aria-labelledby="titulo-mensagem">
+      <h2 id="titulo-mensagem">{% if editando %}Editar mensagem{% else %}Nova mensagem{% endif %}</h2>
+      <p class="suave pequeno">Um aviso, uma live, um cupom do dia: escreva e mande pros seus grupos agora ou na hora que quiser. Não conta no limite de ofertas.</p>
+      <div class="campo">
+        <label for="{{ form.texto.id_for_label }}">{{ form.texto.label }}</label>
+        {{ form.texto }}
+        <span class="ajuda">Links da Shopee viram o seu link de afiliado na hora do envio (com o Sub ID de cada grupo). Use *negrito* e _itálico_ como no WhatsApp. <span class="contador-texto" data-maximo="{{ form.MAXIMO_CARACTERES }}"></span></span>
+        {% for e in form.texto.errors %}<span class="erro">{{ e }}</span>{% endfor %}
+      </div>
+      <div class="campo campo-foto">
+        <label for="{{ form.foto_nova.id_for_label }}">{{ form.foto_nova.label }}</label>
+        {% if editando.foto %}<div class="foto-atual"><img src="{% url 'painel_whatsapp_mensagem_foto' editando.pk %}?v={{ editando.atualizada_em|date:'U' }}" alt="Foto atual" id="foto-atual"><label class="marcar pequeno"><input type="checkbox" name="remover_foto" id="remover-foto"><span>Tirar a foto</span></label></div>{% endif %}
+        <input type="file" name="foto_nova" id="{{ form.foto_nova.id_for_label }}" accept="image/jpeg,image/png,image/webp">
+        <span class="ajuda">JPG, PNG ou WebP de até 8 MB. Nos canais, vai o texto com a prévia do link (os canais não aceitam foto com texto por aqui).</span>
+        {% for e in form.foto_nova.errors %}<span class="erro">{{ e }}</span>{% endfor %}
+      </div>
+    </section>
+
+    <section class="card" aria-labelledby="titulo-pra-quem">
+      <h2 id="titulo-pra-quem">{{ form.destino.label }}</h2>
+      <div class="opcoes-chip" id="destino">{% for opcao in form.destino %}<label class="chip-opcao">{{ opcao.tag }}<span>{{ opcao.choice_label }}</span></label>{% endfor %}</div>
+      <p class="suave pequeno" data-destino="todos">{% if tem_grupos_no_bot %}Os grupos e canais escolhidos na <a href="{% url 'painel_whatsapp_ofertas' %}">Automação</a>.{% else %}Você ainda não escolheu grupos na <a href="{% url 'painel_whatsapp_ofertas' %}">Automação</a>. Escolha lá ou marque “Escolher os grupos”.{% endif %}</p>
+      <div class="campo" data-destino="nicho">
+        {% if form.nicho.field.choices %}{% include "painel/_campo.html" with campo=form.nicho %}{% endif %}
+      </div>
+      <fieldset class="campo" data-destino="grupos">
+        <legend class="sr">{{ form.grupos.label }}</legend>
+        {% if form.grupos.field.choices %}
+          <div class="busca-grupos">
+            <input type="search" data-lista="lista-grupos-mensagem" placeholder="Buscar grupo ou canal" aria-label="Buscar grupo ou canal" autocomplete="off">
+            <span class="suave pequeno contador" aria-live="polite"></span>
+          </div>
+          <div class="lista-grupos" id="lista-grupos-mensagem">
+            {% for opcao in form.grupos %}
+              <div class="linha-grupo linha-origem" data-nome="{{ opcao.choice_label|lower }}"><label>{{ opcao.tag }}<span>{{ opcao.choice_label }}</span>{% if "@newsletter" in opcao.data.value %}<span class="selo-canal">Canal</span>{% endif %}</label></div>
+            {% endfor %}
+            <p class="suave pequeno nenhum-grupo" hidden>Nenhum grupo ou canal com esse nome.</p>
+          </div>
+        {% else %}
+          <p class="suave pequeno">Conecte o WhatsApp na aba <a href="{% url 'painel_whatsapp' %}">Conexão</a> pra ver seus grupos.</p>
+        {% endif %}
+        {% for e in form.grupos.errors %}<span class="erro">{{ e }}</span>{% endfor %}
+      </fieldset>
+    </section>
+
+    <section class="card" aria-labelledby="titulo-quando">
+      <h2 id="titulo-quando">{{ form.quando.label }}</h2>
+      <div class="opcoes-chip" id="quando">{% for opcao in form.quando %}<label class="chip-opcao">{{ opcao.tag }}<span>{{ opcao.choice_label }}</span></label>{% endfor %}</div>
+      <div class="grade-horario" data-quando="agendar">
+        <div class="campo">{% include "painel/_campo.html" with campo=form.data %}</div>
+        <div class="campo">{% include "painel/_campo.html" with campo=form.hora_agendada %}</div>
+      </div>
+      <div data-quando="semanal" class="bloco-semanal">
+        <fieldset class="campo">
+          <legend>{{ form.dias_semana.label }}</legend>
+          <div class="opcoes-chip">{% for opcao in form.dias_semana %}<label class="chip-opcao">{{ opcao.tag }}<span>{{ opcao.choice_label }}</span></label>{% endfor %}</div>
+          {% for e in form.dias_semana.errors %}<span class="erro">{{ e }}</span>{% endfor %}
+        </fieldset>
+        <div class="campo campo-hora">{% include "painel/_campo.html" with campo=form.hora %}</div>
+      </div>
+    </section>
+
+    <div class="barra-salvar">
+      {% if editando %}<a class="botao botao-claro" href="{% url 'painel_whatsapp_mensagens' %}">Cancelar edição</a>{% endif %}
+      <button type="submit" class="botao botao-principal" id="botao-mensagem" data-agora="Enviar agora" data-agendar="{% if editando %}Salvar{% else %}Agendar{% endif %}">Enviar agora</button>
+    </div>
+  </form>
+
+  <div class="coluna-lateral">
+    <section class="card" aria-labelledby="titulo-previa">
+      <h2 id="titulo-previa">Prévia</h2>
+      <div class="previa-zap">
+        <div class="balao-zap">
+          <img id="previa-foto" alt="" hidden>
+          <div id="previa-texto" class="previa-texto"><span class="suave">Sua mensagem aparece aqui.</span></div>
+        </div>
+      </div>
+    </section>
+
+    <section class="card" aria-labelledby="titulo-agendadas">
+      <h2 id="titulo-agendadas">Agendadas <span class="suave pequeno">({{ agendadas|length }} de {{ maximo }})</span></h2>
+      {% if agendadas %}
+        <ul class="lista-mensagens">
+          {% for item in agendadas %}
+            <li{% if item.m.pausada %} class="pausada"{% endif %}>
+              <strong class="texto-curto">{{ item.m.texto|truncatechars:90 }}</strong>
+              <span class="suave pequeno">{% if item.m.foto %}📷 {% endif %}{{ item.quando }} · {{ item.pra_quem }} ({{ item.total_grupos }} grupo{{ item.total_grupos|pluralize }})</span>
+              <span class="pequeno">{% if item.m.pausada %}<span class="selo-pausada">Pausada</span>{% elif item.m.quando == "agora" %}Na fila: sai em instantes{% else %}Próxima: {{ item.m.proxima_em|date:"D, d/m"|lower }} às {{ item.m.proxima_em|date:"H:i" }}{% endif %}</span>
+              <span class="acoes-mensagem">
+                <a class="link-botao pequeno" href="?editar={{ item.m.pk }}">Editar</a>
+                <form method="post">{% csrf_token %}<input type="hidden" name="pk" value="{{ item.m.pk }}">{% if item.m.pausada %}<button type="submit" name="acao" value="retomar" class="link-botao pequeno">Retomar</button>{% else %}<button type="submit" name="acao" value="pausar" class="link-botao pequeno">Pausar</button>{% endif %}</form>
+                <form method="post" onsubmit="return confirm('Excluir esta mensagem?')">{% csrf_token %}<input type="hidden" name="pk" value="{{ item.m.pk }}"><button type="submit" name="acao" value="excluir" class="link-botao perigo pequeno">Excluir</button></form>
+              </span>
+            </li>
+          {% endfor %}
+        </ul>
+      {% else %}
+        <p class="suave pequeno">Nenhuma mensagem agendada.</p>
+      {% endif %}
+    </section>
+
+    <section class="card" aria-labelledby="titulo-enviadas">
+      <h2 id="titulo-enviadas">Enviadas</h2>
+      {% if disparos %}
+        <ul class="lista-mensagens">
+          {% for d in disparos %}
+            <li>
+              <span class="suave pequeno">{{ d.em|date:"d/m H:i" }}</span>
+              <strong class="texto-curto">{{ d.texto|truncatechars:90 }}</strong>
+              <span class="pequeno">{% if d.na_fila %}Na fila: {{ d.enviados }} de {{ d.envios|length }} já foram{% elif d.erros|length == d.envios|length %}<span class="envio-erro">Não enviada</span>{% else %}Enviada em {{ d.enviados }} de {{ d.envios|length }} grupo{{ d.envios|length|pluralize }}{% endif %}</span>
+              {% if d.erros %}<span class="pequeno envio-erro">{{ d.erros.0.erro|default:"Erro no envio" }}{% if d.erros|length > 1 and d.erros|length < d.envios|length %} ({{ d.erros|length }} grupos){% endif %}</span>{% endif %}
+              <details><summary class="pequeno">Ver mensagem</summary><pre class="texto-oferta">{{ d.texto }}</pre></details>
+            </li>
+          {% endfor %}
+        </ul>
+      {% else %}
+        <p class="suave pequeno">Nenhuma mensagem enviada ainda.</p>
+      {% endif %}
+    </section>
+  </div>
+</div>
+<script src="{% static 'painel/mensagens.js' %}" defer></script>
+{% endblock %}
