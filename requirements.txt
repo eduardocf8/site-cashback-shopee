@@ -19,4 +19,5 @@ phonenumbers==9.0.41
 defusedxml==0.7.1
 fonttools==4.67.0
 neonize==0.5.2
+anthropic==2.3.0
 segno==1.6.6

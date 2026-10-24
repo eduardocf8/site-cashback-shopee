@@ -28,6 +28,8 @@ from django.conf import settings
 from django.db import close_old_connections
 from django.utils import timezone
 
+from atendimento import servico as atendimento
+
 from . import copia, rede
 from .models import ConexaoWhatsApp, ConfiguracaoOfertas, EnvioWhatsApp, OfertaRecebida
 from .servico import registrar_evento
@@ -160,6 +162,9 @@ class Sessao:
             # a fila as dos grupos/canais de origem com link ou foto. As do próprio
             # número também valem (muita gente posta a oferta do mesmo chip): não há
             # risco de loop, porque origem e destino nunca são o mesmo grupo.
+            if atendimento.deve_ouvir(conta_id, ev):  # conversa privada do número de vendas
+                self.fila.put(("atendimento", conta_id, ev, self))
+                return
             if not self.origens or _jid_texto(ev.Info.MessageSource.Chat) not in self.origens:
                 return
             texto = copia.texto_da_mensagem(ev.Message)
@@ -220,6 +225,7 @@ class Gerenciador:
         self.atualizar_origens()
         self.enviar_pendentes()
         self.limpar_fotos_antigas()
+        atendimento.uma_volta(self.sessoes)
 
     def retomar(self):
         """Ao ligar o worker (ex: depois de um deploy), reabre as sessões que
@@ -306,6 +312,12 @@ class Gerenciador:
 
     def _aviso_instavel(self, conexao, _detalhe):
         registrar_evento(conexao.conta_id, "instavel", "O WhatsApp parou de responder por alguns segundos.")
+
+    def _aviso_atendimento(self, _conexao, ev):
+        mensagem = copia.desembrulhar(ev.Message)
+        midia = any(mensagem.HasField(c) for c in ("audioMessage", "imageMessage", "videoMessage", "stickerMessage",
+                                                    "documentMessage", "ptvMessage"))
+        atendimento.registrar(ev, copia.texto_da_mensagem(ev.Message).strip(), midia)
 
     def _aviso_mensagem(self, conexao, ev):
         """Guarda a oferta que chegou numa origem (o motor das ofertas repassa) e

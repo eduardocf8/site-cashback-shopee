@@ -72,7 +72,7 @@ def produto_do_link(conta, texto: str) -> dict:
         raise ErroGerador("Conecte sua conta de afiliado da Shopee em Configurações para gerar carrosséis.")
     links = copia.links_shopee(texto)
     if not links:
-        raise ErroGerador("Cole um link de produto da Shopee (shopee.com.br ou s.shopee.com.br).")
+        raise ErroGerador("Cole um link de produto da Shopee.")
     from accounts.ratelimit import _incrementar_contador
 
     # O limite do dia só conta carrossel gerado; abrir o link (até 10 s) tem limite próprio.
