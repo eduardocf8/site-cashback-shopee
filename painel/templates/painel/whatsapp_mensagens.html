@@ -60,7 +60,7 @@
             <p class="suave pequeno nenhum-grupo" hidden>Nenhum grupo ou canal com esse nome.</p>
           </div>
         {% else %}
-          <p class="suave pequeno">Conecte o WhatsApp na aba <a href="{% url 'painel_whatsapp' %}">Conexão</a> pra ver seus grupos.</p>
+          <p class="suave pequeno">Conecte o WhatsApp na aba <a href="{% url 'painel_whatsapp' %}">Conexão</a> para ver seus grupos.</p>
         {% endif %}
         {% for e in form.grupos.errors %}<span class="erro">{{ e }}</span>{% endfor %}
       </fieldset>

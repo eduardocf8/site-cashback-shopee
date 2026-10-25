@@ -22,7 +22,7 @@
     var gruposPorNicho = JSON.parse(dadosNicho.textContent);
     var mostrarGrupos = function () {
       var nomes = gruposPorNicho[seletorNicho.value];
-      document.getElementById("grupos-do-nicho").textContent = nomes ? "Vai pra: " + nomes + "." : "";
+      document.getElementById("grupos-do-nicho").textContent = nomes ? "Vai para: " + nomes + "." : "";
     };
     seletorNicho.addEventListener("change", mostrarGrupos);
     mostrarGrupos();

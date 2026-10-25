@@ -65,7 +65,7 @@ AJUDA_DO_FORMATO = (
     "{botao} = o botão amarelo · {numeros} = os números da pessoa (dia 21) · [texto](destino) vira link "
     "(destinos: planos, automacao, campanhas, mensagens, alerta, resultados, radar, conversor, site, carrosseis, notas, "
     "configuracoes, sugestoes, inicio ou https://...) · linha começando com [bot], [premium], [site], [carrosséis], "
-    "[carrosséis premium], [notas], [api] ou [emissor] só aparece pra quem tem; [sem ...] pra quem não tem."
+    "[carrosséis premium], [notas], [api] ou [emissor] só aparece para quem tem; [sem ...] para quem não tem."
 )
 
 
@@ -126,7 +126,7 @@ class TextoEmailDicaAdmin(admin.ModelAdmin):
             if not destino:
                 return HttpResponse("Seu usuário do admin não tem e-mail. Cadastre um e tente de novo.")
             emails_valor.enviar(exemplo, salvo.chave, para=[destino], liberados=liberados, texto=texto)
-            return HttpResponse(f"<p style='font-family:sans-serif'>Teste enviado pra <strong>{destino}</strong> "
+            return HttpResponse(f"<p style='font-family:sans-serif'>Teste enviado para <strong>{destino}</strong> "
                                 f"({'tem o módulo' if variante == 'com' else 'não tem o módulo'}). Pode fechar esta aba.</p>")
         _, _, html = emails_valor.montar(exemplo, salvo.chave, liberados=liberados, texto=texto)
         return HttpResponse(html)

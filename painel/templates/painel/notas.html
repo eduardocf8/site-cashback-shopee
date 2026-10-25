@@ -165,7 +165,7 @@
               <label for="mes-contabilidade">Mandar agora as notas de</label>
               <select name="mes" id="mes-contabilidade">{% for valor, nome in meses_contabilidade %}<option value="{{ valor }}"{% if forloop.counter == 2 %} selected{% endif %}>{{ nome }}</option>{% endfor %}</select>
             </div>
-            <div><button type="submit" class="botao botao-claro">Enviar pra {{ empresa.contabilidade_email }}</button></div>
+            <div><button type="submit" class="botao botao-claro">Enviar para {{ empresa.contabilidade_email }}</button></div>
           </form>
         {% endif %}
       </section>

@@ -155,7 +155,7 @@ class TestPrimeirosPassos(TestCase):
         self.conta.save()
         primeiros_passos.enviar_pendentes(AGORA + timedelta(days=2))
         self.assertEqual(len(mail.outbox), 2)
-        self.assertEqual(mail.outbox[1].subject, "Precisa de ajuda pra configurar o Appfiliado?")
+        self.assertEqual(mail.outbox[1].subject, "Precisa de ajuda para configurar o Appfiliado?")
         self.assertIn("ainda faltam 2 passos", mail.outbox[1].body)
         self.assertIn("é só responder este e-mail ou chamar a gente no WhatsApp", mail.outbox[1].body)
         self.assertIn("✅ Conectar sua conta de afiliado da Shopee", mail.outbox[1].body)
