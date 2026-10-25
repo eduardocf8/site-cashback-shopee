@@ -17,6 +17,8 @@ class Conversa(models.Model):
     ultima_recebida_em = models.DateTimeField(null=True, blank=True)
     respostas_no_dia = models.PositiveIntegerField(default=0)
     dia_das_respostas = models.DateField(null=True, blank=True)
+    # Até quando as suas respostas nesta conversa já viraram (ou não) sugestão de resposta aprendida.
+    aprendizado_em = models.DateTimeField(null=True, blank=True)
     criada_em = models.DateTimeField(auto_now_add=True)
     atualizada_em = models.DateTimeField(auto_now=True)
 
@@ -49,3 +51,32 @@ class Mensagem(models.Model):
 
     def __str__(self):
         return f"{self.get_autor_display()}: {self.texto[:60]}"
+
+
+class RespostaAprendida(models.Model):
+    """Pergunta e resposta que o agente aprendeu com você (ver atendimento/aprendizado.py). Só as
+    aprovadas entram no que ele sabe, e valem pra todos os clientes."""
+
+    SUGERIDA, APROVADA, DESCARTADA = "sugerida", "aprovada", "descartada"
+    ESTADOS = [(SUGERIDA, "Sugerida (esperando você)"), (APROVADA, "Aprovada (o agente usa)"),
+               (DESCARTADA, "Descartada")]
+
+    pergunta = models.TextField()
+    resposta = models.TextField()
+    estado = models.CharField(max_length=12, choices=ESTADOS, default=SUGERIDA, db_index=True)
+    conversa = models.ForeignKey(Conversa, null=True, blank=True, on_delete=models.SET_NULL, related_name="aprendidas",
+                                 help_text="De onde veio (vazio = criada por você no admin).")
+    whatsapp_id = models.CharField(max_length=120, blank=True, db_index=True,
+                                   help_text="A mensagem com a sugestão no seu WhatsApp (pra saber a que você respondeu).")
+    enviada_em = models.DateTimeField(null=True, blank=True)
+    decidida_em = models.DateTimeField(null=True, blank=True)
+    criada_em = models.DateTimeField(auto_now_add=True)
+    atualizada_em = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ["-criada_em"]
+        verbose_name = "resposta aprendida"
+        verbose_name_plural = "respostas aprendidas"
+
+    def __str__(self):
+        return self.pergunta[:80]

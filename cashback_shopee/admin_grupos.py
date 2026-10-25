@@ -46,6 +46,7 @@ GRUPOS = [
         ]),
         ("Agente de vendas no WhatsApp", [
             ("atendimento.conversa", "Conversas"),
+            ("atendimento.respostaaprendida", "Respostas aprendidas"),
         ]),
         ("Painel", [
             ("painel.sincronizacaoresultados", "Sincronizações de resultados"),
