@@ -461,7 +461,7 @@ def _apresentar(modulo, pagina):
             item["chips"] = ap.get("chips", {}).get(item["nome"], [])
             item["cores"] = ap.get("cores", {}).get(item["nome"], [])
     pagina["numeros"] = ap["numeros"]()
-    pagina["print_do_topo"] = next((pr for g in pagina["grupos"] for pr in g["prints"]), None)
+    pagina["print_do_topo"] = next((pr for g in pagina["grupos"] for pr in g["prints"] if not pr["celular"]), None)
     return pagina
 
 
@@ -515,14 +515,25 @@ TAMANHOS = {
 
 
 # Prints em moldura de celular (o que o visitante vê), sem a janela do painel em volta. Um arquivo só.
-CELULAR = {"site-pronto"}
+# "editor": o celular ao lado do editor do painel. "texto": o celular com as partes explicadas ao lado.
+CELULAR = {"site-pronto": "texto"}
+
+# Partes do site apontadas ao lado do celular: (altura no celular em %, título, texto).
+ANOTACOES = {"site-pronto": [
+    (12, "Perfil", "Sua foto, o nome e uma frase curta."),
+    (28, "Botões", "Grupo VIP, canal, cupons. O principal fica em destaque na cor do site."),
+    (40, "Redes sociais", "Os ícones das redes que você preencher."),
+    (54, "Conversor de links", "O visitante cola um link da Shopee e compra pelo seu link."),
+    (77, "Vitrine de ofertas", "As ofertas do dia em carrossel ou em lista, com o seu link em cada produto."),
+]}
 
 
 def _print(a, leg, alt):
     w, h, wm, hm = TAMANHOS[a]
-    celular = a in CELULAR
+    celular = CELULAR.get(a)
     return {"arquivo": f"landing/prints/{a}.webp", "arquivo_m": f"landing/prints/{a}{'' if celular else '-m'}.webp",
-            "legenda": leg, "alt": alt, "largura": w, "altura": h, "largura_m": wm, "altura_m": hm, "celular": celular}
+            "legenda": leg, "alt": alt, "largura": w, "altura": h, "largura_m": wm, "altura_m": hm, "celular": celular,
+            "anotacoes": [{"y": y, "titulo": t, "texto": x} for y, t, x in ANOTACOES.get(a, [])]}
 
 
 def prints_de(modulo, secao):
