@@ -53,7 +53,7 @@ def notificar_pedido_validado(pedido):
         f"Olá, {pedido.usuario.username}!\n\n"
         f'Seu pedido "{produto}" foi validado pela Shopee.\n'
         f"Cashback: R$ {valor}\n\n"
-        f"Esse saldo fica disponível pra saque a partir de {prazo}.\n\n"
+        f"Esse saldo fica disponível para saque a partir de {prazo}.\n\n"
         "Equipe cash-b"
         + _rodape_redes_sociais_texto()
     )
@@ -67,7 +67,7 @@ def notificar_pedido_validado(pedido):
             ),
             "destaque_valor": f"R$ {valor}",
             "corpo_html_depois": (
-                f"<p style='margin:0;'>Esse saldo fica disponível pra saque a partir "
+                f"<p style='margin:0;'>Esse saldo fica disponível para saque a partir "
                 f"de {prazo}.</p>"
             ),
             **_contexto_redes_sociais(),
@@ -77,7 +77,7 @@ def notificar_pedido_validado(pedido):
     enviar_push(
         pedido.usuario,
         "Pedido validado!",
-        f'"{produto}" — R$ {valor} de cashback, liberado pra saque em {prazo}.',
+        f'"{produto}" — R$ {valor} de cashback, liberado para saque em {prazo}.',
         url="/dashboard/#pedidos",
     )
 
@@ -104,7 +104,7 @@ def notificar_pedido_liberado(pedido):
             **_contexto_redes_sociais(),
         },
     )
-    _enviar(pedido.usuario, "cash-b — cashback liberado pra saque", corpo, corpo_html)
+    _enviar(pedido.usuario, "cash-b — cashback liberado para saque", corpo, corpo_html)
     enviar_push(
         pedido.usuario,
         "Cashback liberado!",

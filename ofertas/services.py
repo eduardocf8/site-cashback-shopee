@@ -225,7 +225,7 @@ def _resolver_item_id(url: str, timeout: int = 10) -> int:
     if not match:
         raise LinkProdutoInvalidoError(
             f"Não consegui identificar o produto a partir do link {url} "
-            f"(redirecionou pra {url_final} [status={status}, "
+            f"(redirecionou para {url_final} [status={status}, "
             f"{saltos} redirecionamento(s) seguido(s)], mas não achei "
             "nenhum padrão de link de produto da Shopee (-i.<loja>.<item> ou "
             "/product/<loja>/<item>) nem na URL final nem no conteúdo da página - talvez "

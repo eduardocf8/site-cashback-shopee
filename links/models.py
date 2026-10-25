@@ -24,7 +24,7 @@ class Click(models.Model):
         settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name="clicks", null=True, blank=True,
         help_text=(
             "Vazio enquanto o clique for anônimo (ROADMAP 13.11 - clicou sem estar "
-            "logado). Preenchido na hora do clique pra quem já tem conta, ou depois, "
+            "logado). Preenchido na hora do clique para quem já tem conta, ou depois, "
             "se a pessoa se cadastrar dentro de 7 dias no mesmo navegador (ver "
             "accounts/cliques_anonimos.py). Sem usuário, o pedido correspondente não "
             "paga cashback (ver pedidos/services.py::_montar_defaults)."
@@ -36,11 +36,11 @@ class Click(models.Model):
     url_original = models.URLField("URL original da Shopee", max_length=URL_MAX_LENGTH)
     item_id_alvo = models.BigIntegerField(
         "Item ID do produto clicado", null=True, blank=True,
-        help_text="Preenchido quando dá pra identificar de cara qual produto gerou "
+        help_text="Preenchido quando dá para identificar de cara qual produto gerou "
         "esse clique (link específico ou card da vitrine), sem seguir "
-        "redirecionamento nenhum - usado só pra confirmar depois que a compra real é "
-        "do mesmo produto, não pra garantir cashback de campanha nem nada do tipo. "
-        "Fica vazio pra cliques na home ('Ir pra Shopee') e pra links que não dá pra "
+        "redirecionamento nenhum - usado só para confirmar depois que a compra real é "
+        "do mesmo produto, não para garantir cashback de campanha nem nada do tipo. "
+        "Fica vazio para cliques na home ('Ir pra Shopee') e para links que não dá para "
         "identificar sem seguir redirecionamento (ver ROADMAP.md, Fase 41).",
     )
     link_gerado = models.URLField("Link de afiliado gerado", max_length=URL_MAX_LENGTH)

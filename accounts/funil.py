@@ -137,7 +137,7 @@ def exigir_login_ou_pagina_de_escolha(origem: str):
             if request.GET.get(PARAMETRO_CONTINUAR_SEM_CADASTRO) == VALOR_CONTINUAR_SEM_CADASTRO:
                 if not clique_anonimo_permitido(request):
                     return HttpResponse(
-                        "Muitas tentativas sem cadastro. Crie uma conta pra continuar.", status=429
+                        "Muitas tentativas sem cadastro. Crie uma conta para continuar.", status=429
                     )
                 registrar_tentativa(request, origem)
                 registrar_clique_sem_conta(request, origem)

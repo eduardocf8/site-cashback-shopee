@@ -37,9 +37,9 @@
 <p class="help" style="margin: 0 0 20px;">
     {% if linhas %}
         {{ linhas|length }} usuário{{ linhas|length|pluralize }}
-        {% if eh_acumulado %}com saldo disponível pra saque{% else %}com saldo nesse mês{% endif %}, do maior pro menor.
+        {% if eh_acumulado %}com saldo disponível para saque{% else %}com saldo nesse mês{% endif %}, do maior pro menor.
     {% else %}
-        Ninguém com saldo {% if eh_acumulado %}disponível pra saque no momento{% else %}nesse tipo/mês{% endif %}.
+        Ninguém com saldo {% if eh_acumulado %}disponível para saque no momento{% else %}nesse tipo/mês{% endif %}.
     {% endif %}
 </p>
 

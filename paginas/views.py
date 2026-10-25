@@ -111,7 +111,7 @@ def contato(request):
                 messages.error(
                     request,
                     "Não conseguimos enviar sua mensagem agora. Tenta de novo em alguns minutos "
-                    "ou escreve direto pra contato@cash-b.com.",
+                    "ou escreve direto para contato@cash-b.com.",
                 )
             return redirect("contato")
     else:

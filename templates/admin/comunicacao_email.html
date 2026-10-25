@@ -144,7 +144,7 @@
     <div class="form-row">
         <label for="id_banner">Imagem de banner (opcional)</label>
         <input type="file" name="banner" id="id_banner" accept="image/*">
-        <p class="ajuda">Aparece no topo do e-mail - tipo o banner de campanha que a Shopee usa nos e-mails deles - e substitui o texto do corpo, que deixa de aparecer abaixo dele (o corpo aparece só no lugar do banner, se a imagem não carregar, e na versão em texto simples). O e-mail ganha o banner clicável, um rodapé com o site e o Instagram e o link de descadastro. Precisa de HTML pra aparecer (já ativa automaticamente quando você sobe uma imagem aqui, mesmo sem escolher nenhuma oferta).</p>
+        <p class="ajuda">Aparece no topo do e-mail - tipo o banner de campanha que a Shopee usa nos e-mails deles - e substitui o texto do corpo, que deixa de aparecer abaixo dele (o corpo aparece só no lugar do banner, se a imagem não carregar, e na versão em texto simples). O e-mail ganha o banner clicável, um rodapé com o site e o Instagram e o link de descadastro. Precisa de HTML para aparecer (já ativa automaticamente quando você sobe uma imagem aqui, mesmo sem escolher nenhuma oferta).</p>
         <img id="banner-preview" style="display:none; max-width:100%; margin-top:8px; border-radius:8px;">
     </div>
     <div class="form-row">
@@ -154,7 +154,7 @@
                 <option value="{{ chave }}">{{ rotulo }}</option>
             {% endfor %}
         </select>
-        <p class="ajuda">Anúncio/promoção não vai pra quem desligou e-mail de marketing, e inclui o link "não quero mais receber" no rodapé. Comunicação geral vai pra todo mundo do filtro escolhido, sem esse link - use só pra avisos importantes que não sejam propaganda.</p>
+        <p class="ajuda">Anúncio/promoção não vai para quem desligou e-mail de marketing, e inclui o link "não quero mais receber" no rodapé. Comunicação geral vai para todo mundo do filtro escolhido, sem esse link - use só para avisos importantes que não sejam propaganda.</p>
     </div>
     <div class="form-row">
         <label for="id_filtro">Destinatários</label>
@@ -176,7 +176,7 @@
             <input type="text" id="ofertas-busca-input" placeholder="Buscar produto pelo nome…" autocomplete="off">
             <div class="ofertas-resultados" id="ofertas-resultados" hidden></div>
         </div>
-        <p class="ajuda">Escolha ofertas do site pra incluir como vitrine de produtos no e-mail (imagem + link de cashback de cada uma). Deixe em branco pra mandar só texto.</p>
+        <p class="ajuda">Escolha ofertas do site para incluir como vitrine de produtos no e-mail (imagem + link de cashback de cada uma). Deixe em branco para mandar só texto.</p>
         <div class="ofertas-selecionadas" id="ofertas-selecionadas"></div>
         <div id="ofertas-hidden-inputs"></div>
     </div>

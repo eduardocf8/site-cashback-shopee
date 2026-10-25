@@ -95,7 +95,7 @@ class OfertaManualAdmin(_PreviewCashbackMixin, _CriarStoryMixin, admin.ModelAdmi
     )
     actions = ["criar_story_de_oferta"]
 
-    @admin.action(description="Criar story dessa(s) oferta(s) e mandar pra aprovação")
+    @admin.action(description="Criar story dessa(s) oferta(s) e mandar para aprovação")
     def criar_story_de_oferta(self, request, queryset):
         for oferta in queryset:
             self._criar_story(request, oferta)
