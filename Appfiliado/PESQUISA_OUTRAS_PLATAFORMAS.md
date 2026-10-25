@@ -377,3 +377,23 @@ Legenda:
 - Temu: temu.com/br/affiliate_policy.html (11/06/2026).
 - Shein: br.shein.com/campus--a-1500.html.
 - Concorrentes: sites, páginas de ajuda e código das extensões do Chrome de cada ferramenta.
+
+---
+
+## 8. Pontos em aberto (limite de buscas na pesquisa de 25/10/2026)
+
+Pra uma segunda rodada, se for retomar:
+
+1. **Mercado Livre:** quem paga a comissão base, o ML ou o vendedor. Define pra quem seria a nota.
+2. **Amazon:** se existe programa oficial pra ferramentas (permissão pra guardar as chaves da Creators API dos clientes).
+3. **Impostos de comissão do exterior (AliExpress):**
+   - texto da SC Cosit 162/2026;
+   - risco de ISS na exportação;
+   - datas da NFS-e nacional e dos campos IBS/CBS pra Simples e MEI;
+   - regra de câmbio do carnê-leão.
+4. **Admitad:** moeda e forma de pagamento no Brasil; exigência de nota.
+5. **Lojas em outras redes:** em qual estão Boticário, Drogasil e Raia (além da Lomadee) e a MadeiraMadeira.
+6. **Pelando e Promobit:** de onde tiram preço e foto.
+7. **YouTube:** tutoriais de ferramentas pro Mercado Livre, não consultados.
+
+Outros itens marcados "não confirmado" ficaram em aberto por login ou bloqueio dos sites. Esses só se resolvem com conta de afiliado ou falando com a plataforma.
