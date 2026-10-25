@@ -1,0 +1,10 @@
+{% extends "admin/change_form.html" %}
+{% block submit_buttons_bottom %}
+<div class="submit-row" style="flex-wrap:wrap;gap:8px">
+  <span style="margin-right:auto;color:var(--body-quiet-color)">Veja antes de salvar:</span>
+  <button type="submit" class="button" formaction="{% url 'admin:painel_textoemaildica_previa' original.pk %}" formtarget="_blank" name="variante" value="com">Prévia: quem tem o módulo</button>
+  <button type="submit" class="button" formaction="{% url 'admin:painel_textoemaildica_previa' original.pk %}" formtarget="_blank" name="variante" value="sem">Prévia: quem não tem</button>
+  <button type="submit" class="button" formaction="{% url 'admin:painel_textoemaildica_previa' original.pk %}" formtarget="_blank" name="enviar_teste" value="1">Enviar teste pro meu e-mail</button>
+</div>
+{{ block.super }}
+{% endblock %}

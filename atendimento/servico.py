@@ -11,7 +11,7 @@ from django.conf import settings
 from django.db import close_old_connections
 from django.utils import timezone
 
-from . import agente
+from . import agente, aprendizado
 from .models import Conversa, Mensagem
 
 logger = logging.getLogger(__name__)
@@ -27,7 +27,7 @@ COMANDO_VOLTAR = "#ia"  # você digita na conversa, pelo celular, pra devolver a
 AVISO_SO_TEXTO = "Por aqui eu só consigo ler mensagens de texto 🙏 Pode me escrever a sua dúvida?"
 
 _executor = ThreadPoolExecutor(max_workers=2, thread_name_prefix="atendimento")
-_em_andamento: set[int] = set()
+_em_andamento: set = set()  # conversas sendo respondidas (pk) ou analisadas ("aprender", pk)
 _enviando: set[tuple[str, str]] = set()  # (chat, texto) saindo agora: o eco não é mensagem sua
 _trava = threading.Lock()
 
@@ -52,6 +52,19 @@ def _telefone(ev) -> str:
     return ""
 
 
+def _citada(ev) -> str:
+    """Id da mensagem que você respondeu com "Responder" (citação), ou ""."""
+    try:
+        from bot_whatsapp import copia
+
+        mensagem = copia.desembrulhar(ev.Message)
+        if mensagem.HasField("extendedTextMessage"):
+            return str(getattr(mensagem.extendedTextMessage.contextInfo, "stanzaID", "") or "")
+    except Exception:  # noqa: BLE001
+        pass
+    return ""
+
+
 def registrar(ev, texto: str, tem_midia: bool) -> None:
     """Guarda a mensagem que chegou (da pessoa ou sua, digitada no celular)."""
     fonte = ev.Info.MessageSource
@@ -61,6 +74,12 @@ def registrar(ev, texto: str, tem_midia: bool) -> None:
         return  # o próprio agente mandou (ou a mensagem chegou duas vezes)
     conversa, _ = Conversa.objects.get_or_create(chat=chat)
     agora = timezone.now()
+    if not fonte.IsFromMe and aprendizado.eh_o_dono(_telefone(ev)):
+        # Você, do seu número pessoal, respondendo uma sugestão de resposta aprendida.
+        confirmacao = aprendizado.tratar_resposta_do_dono(texto, _citada(ev))
+        if confirmacao:
+            Mensagem.objects.create(conversa=conversa, autor=Mensagem.AGENTE, texto=confirmacao, respondida=True)
+            return
     if fonte.IsFromMe:
         with _trava:
             eco = (chat, texto) in _enviando
@@ -110,6 +129,13 @@ def uma_volta(sessoes: dict) -> None:
         mensagens__autor=Mensagem.VOCE, mensagens__criada_em__gte=agora - VOLTA_PRO_AGENTE,
     ).update(estado=Conversa.IA, motivo_humano="", humano_desde=None)
     _enviar_avisos_prontos(sessao)
+    _enviar_sugestoes(sessao)
+    for pk in aprendizado.conversas_prontas(agora):
+        with _trava:
+            if ("aprender", pk) in _em_andamento:
+                continue
+            _em_andamento.add(("aprender", pk))
+        _executor.submit(_aprender, pk)
     pendentes = (Conversa.objects.filter(estado=Conversa.IA, mensagens__autor=Mensagem.CLIENTE, mensagens__respondida=False,
                                          ultima_recebida_em__lte=agora - ESPERA_ANTES_DE_RESPONDER)
                  .distinct().values_list("pk", flat=True)[:10])
@@ -127,6 +153,26 @@ def _enviar_avisos_prontos(sessao) -> None:
                                        ).select_related("conversa")[:5]:
         msg.whatsapp_id = _enviar(sessao, msg.conversa.chat, msg.texto) or "falhou"
         msg.save(update_fields=["whatsapp_id"])
+
+
+def _enviar_sugestoes(sessao) -> None:
+    """Sugestões de resposta aprendida que ainda não foram pro seu WhatsApp."""
+    for r in aprendizado.para_enviar():
+        r.whatsapp_id = _enviar(sessao, f"{aprendizado._digitos(settings.ATENDIMENTO_AVISAR)}@s.whatsapp.net",
+                                aprendizado.texto_da_sugestao(r))
+        r.enviada_em = timezone.now()
+        r.save(update_fields=["whatsapp_id", "enviada_em", "atualizada_em"])
+
+
+def _aprender(pk: int) -> None:
+    close_old_connections()
+    try:
+        aprendizado.analisar(pk)
+    except Exception:  # noqa: BLE001 - sem sugestão desta vez; a conversa já ficou marcada
+        logger.exception("Atendimento: falha ao montar a sugestão de resposta da conversa %s", pk)
+    finally:
+        with _trava:
+            _em_andamento.discard(("aprender", pk))
 
 
 def _atender(pk: int, sessao) -> None:

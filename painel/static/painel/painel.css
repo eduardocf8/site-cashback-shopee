@@ -440,13 +440,18 @@ form.form-regra > .erros-form { grid-column: 1 / -1; }
 .lista-grupos { display: flex; flex-direction: column; gap: 2px; max-height: 320px; overflow-y: auto; border: 1px solid var(--borda); border-radius: 10px; padding: 6px 10px; }
 .lista-grupos label { display: flex; align-items: center; gap: 10px; padding: 7px 0; font-size: 14px; font-weight: 500; cursor: pointer; }
 .lista-grupos input[type="checkbox"] { width: 18px; height: 18px; min-height: 0; padding: 0; flex: none; accent-color: var(--verde); }
-.barra-salvar { position: sticky; bottom: 12px; display: flex; justify-content: flex-end; }
-.barra-salvar .botao { box-shadow: 0 6px 18px rgba(31, 58, 46, .18); }
-/* No celular a barra do navegador e a área do gesto do iPhone cobrem a parte de baixo
-   da tela: o botão flutua mais alto e respeita a área segura. */
+/* Salvar: no computador fica no fim do formulário (não flutua por cima dos campos). No
+   celular vira uma faixa fixa no rodapé da tela, com a área segura do iPhone, e a página
+   ganha um respiro embaixo pra faixa não cobrir os últimos campos. */
+.barra-salvar { display: flex; justify-content: flex-end; gap: 10px; }
 @media (max-width: 700px) {
-  .barra-salvar { bottom: calc(28px + env(safe-area-inset-bottom, 0px)); padding-right: 4px; }
-  .barra-salvar .botao { min-height: 48px; padding: 0 26px; }
+  .barra-salvar {
+    position: fixed; left: 0; right: 0; bottom: 0; z-index: 30;
+    padding: 10px 16px calc(10px + env(safe-area-inset-bottom, 0px));
+    background: var(--card); border-top: 1px solid var(--borda); box-shadow: 0 -4px 14px rgba(31, 58, 46, .08);
+  }
+  .barra-salvar .botao { flex: 1; min-height: 48px; }
+  .conteudo:has(.barra-salvar) { padding-bottom: calc(96px + env(safe-area-inset-bottom, 0px)); }
 }
 .coluna-lateral { display: flex; flex-direction: column; gap: 16px; min-width: 0; }
 .ofertas-teste { list-style: none; margin: 8px 0 0; padding: 0; display: flex; flex-direction: column; gap: 12px; }
@@ -917,3 +922,39 @@ form[data-metas] .grade-campos { display: grid; grid-template-columns: 1fr 1fr; 
 .guia-api-passos { padding-left: 20px; margin: 8px 0; display: grid; gap: 6px; }
 .guia-api-campos { list-style: none; padding: 0; margin: 10px 0; display: grid; gap: 4px; font-size: 14px; }
 .guia-api-links { display: flex; gap: 16px; align-items: center; flex-wrap: wrap; margin: 12px 0 0; }
+
+/* Faixa de bot parado (WhatsApp caiu ou foi desconectado), no topo de todas as páginas. */
+.faixa-bot-parado { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 10px; border: 1px solid #F5C2BD; }
+.faixa-bot-parado .botao { margin-left: auto; }
+
+/* Aba Mensagens do Bot: prévia no estilo do WhatsApp e listas das mensagens. */
+.previa-zap { background: #E9E2D3; border-radius: 12px; padding: 14px; }
+.balao-zap { background: #fff; border-radius: 10px 10px 10px 2px; padding: 6px; max-width: 320px; box-shadow: 0 1px 1px rgba(0,0,0,.08); }
+.balao-zap img { display: block; width: 100%; border-radius: 8px; margin-bottom: 6px; }
+.previa-texto { padding: 2px 6px 4px; font-size: 14px; line-height: 1.45; overflow-wrap: anywhere; }
+.previa-texto .link-previa { color: #027EB5; }
+.lista-mensagens { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; }
+.lista-mensagens li { display: flex; flex-direction: column; gap: 3px; padding: 10px 0; border-top: 1px solid var(--trilho); }
+.lista-mensagens li:first-child { border-top: 0; padding-top: 0; }
+.lista-mensagens li.pausada .texto-curto { opacity: .6; }
+.lista-mensagens .texto-curto { font-size: 14px; overflow-wrap: anywhere; }
+.acoes-mensagem { display: flex; gap: 14px; align-items: center; }
+.acoes-mensagem form { margin: 0; }
+.selo-pausada { padding: 1px 8px; border-radius: 999px; background: var(--trilho); font-size: 12px; font-weight: 700; }
+.foto-atual { display: flex; align-items: center; gap: 12px; margin-bottom: 8px; }
+.foto-atual img { width: 72px; height: 72px; object-fit: cover; border-radius: 8px; }
+.bloco-semanal { display: flex; flex-direction: column; gap: 14px; }
+.campo-hora { max-width: 160px; }
+.form-mensagem textarea { width: 100%; box-sizing: border-box; }
+.contador-texto.erro { color: var(--perigo); }
+.form-mensagem #destino, .form-mensagem #quando { margin-bottom: 14px; }
+/* Mensagens: o botão de enviar fica no fim do formulário (não flutua: é a última ação). */
+.barra-enviar { display: flex; justify-content: flex-end; gap: 10px; flex-wrap: wrap; }
+
+/* Sugerir melhoria */
+.form-sugestao textarea, .form-sugestao select { width: 100%; box-sizing: border-box; }
+.bloco-sugestao { display: flex; flex-direction: column; gap: 16px; margin: 18px 0; }
+.form-sugestao .marcar { margin-top: 14px; }
+.selo-sugestao { padding: 1px 8px; border-radius: 999px; background: var(--trilho); font-size: 12px; font-weight: 700; }
+.selo-feita { background: var(--verde); color: #fff; }
+.selo-planejada, .selo-analise { background: var(--amarelo-suave); color: var(--amarelo-tinta); }

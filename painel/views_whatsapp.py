@@ -17,15 +17,15 @@ from django.views.decorators.http import require_POST
 
 from bot_whatsapp import alertas, campanhas, servico
 from bot_whatsapp.models import (
-    AlertaDisparado, AlertaPreco, CampanhaBot, ConexaoWhatsApp, ConfiguracaoOfertas, EnvioWhatsApp, EventoWhatsApp, OfertaRecebida,
-    ProdutoAcompanhado,
+    AlertaDisparado, AlertaPreco, CampanhaBot, ConexaoWhatsApp, ConfiguracaoOfertas, EnvioWhatsApp, EventoWhatsApp,
+    MensagemAvulsa, OfertaRecebida, ProdutoAcompanhado,
 )
 from bot_whatsapp.ofertas import grupos_do_plano, intervalo_do_plano, montar_texto, ofertas_enviadas_hoje
 from licencas import planos
 
 from . import modulos as mod
 from .autenticacao import conta_logada, conta_requerida
-from .forms import AlertaPrecoForm, CampanhaBotForm, ConfiguracaoOfertasForm
+from .forms import AlertaPrecoForm, CampanhaBotForm, ConfiguracaoOfertasForm, MensagemAvulsaForm
 from .views import _contexto
 
 logger = logging.getLogger(__name__)
@@ -484,3 +484,125 @@ def whatsapp_alertas(request):
         whatsapp_conectado=conexao.estado == ConexaoWhatsApp.CONECTADO,
         shopee_conectada=bool(conta.shopee_validado_em),
     ))
+
+
+# --- Mensagens avulsas --------------------------------------------------------------
+
+DISPAROS_NA_TELA = 15
+
+
+def _nichos_em_uso(config) -> list[tuple[str, str]]:
+    from bot_whatsapp.ofertas import nichos_do_plano
+
+    if not config or not config.por_nicho:
+        return []
+    return [(nicho["id"], f"{nicho['nome']} ({len(grupos)} grupo{'s' if len(grupos) > 1 else ''})")
+            for nicho, grupos in nichos_do_plano(config)]
+
+
+def _grupos_por_nicho(config) -> dict[str, str]:
+    """Os nomes dos grupos de cada nicho, pra mostrar embaixo da escolha do nicho."""
+    from bot_whatsapp.ofertas import nichos_do_plano
+
+    if not config or not config.por_nicho:
+        return {}
+    return {nicho["id"]: ", ".join(g.get("nome") or g["jid"] for g in grupos) for nicho, grupos in nichos_do_plano(config)}
+
+
+def _disparos(conta) -> list[dict]:
+    """As últimas mensagens que saíram (ou não): um item por disparo, com a situação em cada grupo."""
+    envios = (EnvioWhatsApp.objects.filter(conta=conta, origem=EnvioWhatsApp.MENSAGEM)
+              .order_by("-disparo_em", "id")[:DISPAROS_NA_TELA * 20])
+    disparos: dict[tuple, dict] = {}
+    for envio in envios:
+        chave = (envio.mensagem_id, envio.disparo_em)
+        item = disparos.setdefault(chave, {"em": envio.disparo_em, "texto": envio.texto, "envios": []})
+        item["envios"].append(envio)
+    lista = list(disparos.values())[:DISPAROS_NA_TELA]
+    for item in lista:
+        estados = [e.estado for e in item["envios"]]
+        item["enviados"] = estados.count(EnvioWhatsApp.ENVIADO)
+        item["na_fila"] = estados.count(EnvioWhatsApp.PENDENTE)
+        item["erros"] = [e for e in item["envios"] if e.estado == EnvioWhatsApp.ERRO]
+    return lista
+
+
+@conta_requerida
+def whatsapp_mensagens(request):
+    from bot_whatsapp import mensagens
+
+    conta = conta_logada(request)
+    if not _liberado(conta):
+        return _bloqueado(request)
+    regras = planos.bot(conta)
+    conexao = servico.conexao_da(conta)
+    config = ConfiguracaoOfertas.objects.filter(conta=conta).first()
+    editando = None
+    pk = request.POST.get("pk") or request.GET.get("editar")
+    if pk and str(pk).isdigit():
+        editando = MensagemAvulsa.objects.filter(conta=conta, pk=pk).first()
+    agendadas = MensagemAvulsa.objects.filter(conta=conta, proxima_em__isnull=False)
+    acao = request.POST.get("acao", "") if request.method == "POST" else ""
+
+    if acao in ("pausar", "retomar", "excluir") and editando:
+        if acao == "excluir":
+            editando.delete()
+            messages.info(request, "Mensagem excluída.")
+        else:
+            editando.pausada = acao == "pausar"
+            if not editando.pausada and editando.proxima_em and editando.proxima_em < timezone.now():
+                # Ficou pausada e passou da hora: a semanal vai pra próxima; a agendada sai agora.
+                editando.proxima_em = mensagens.calcular_proxima(editando, timezone.now()) or timezone.now()
+            editando.save(update_fields=["pausada", "proxima_em", "atualizada_em"])
+            messages.info(request, "Mensagem pausada." if editando.pausada else "Mensagem retomada.")
+        return redirect("painel_whatsapp_mensagens")
+
+    destinos = servico.destinos_possiveis(conexao)
+    form = MensagemAvulsaForm(request.POST if acao == "salvar" else None, request.FILES if acao == "salvar" else None,
+                              instance=editando or MensagemAvulsa(conta=conta), conta=conta, destinos=destinos,
+                              nichos=_nichos_em_uso(config), regras=regras)
+    if acao == "salvar":
+        cheio = not editando and agendadas.count() >= regras["mensagens_agendadas"]
+        if cheio:
+            messages.error(request, f"Você já tem {regras['mensagens_agendadas']} mensagens agendadas, o máximo do seu "
+                                    "plano. Exclua alguma pra criar outra.")
+        elif form.is_valid():
+            mensagem = form.save()
+            if not mensagens.destinos(mensagem, config, conexao):
+                messages.warning(request, "Mensagem salva, mas ainda não tem nenhum grupo pra receber: escolha os grupos "
+                                          "na Automação ou marque “Escolher os grupos”.")
+            elif mensagem.quando == MensagemAvulsa.QUANDO_AGORA:
+                aviso = "" if conexao.estado == ConexaoWhatsApp.CONECTADO else (
+                    " Seu WhatsApp está desconectado: ela sai assim que reconectar (em até 1 hora).")
+                messages.success(request, "Mensagem enviada pra fila: sai em instantes." + aviso)
+            else:
+                messages.success(request, f"Mensagem agendada: {mensagens.descrever_quando(mensagem).lower()}.")
+            return redirect("painel_whatsapp_mensagens")
+        else:
+            messages.error(request, "Confira os campos marcados.")
+
+    lista = []
+    for m in agendadas.order_by("pausada", "proxima_em"):
+        grupos = mensagens.destinos(m, config, conexao)
+        lista.append({"m": m, "quando": mensagens.descrever_quando(m), "total_grupos": len(grupos),
+                      "pra_quem": {"todos": "Todos os grupos do bot", "nicho": f"Nicho: {m.nicho}",
+                                   "grupos": "Grupos escolhidos"}.get(m.destino, "")})
+    nomes_nicho = dict(_nichos_em_uso(config))
+    for item in lista:
+        if item["m"].destino == MensagemAvulsa.DESTINO_NICHO:
+            item["pra_quem"] = "Nicho " + nomes_nicho.get(item["m"].nicho, "que não está mais em uso").split(" (")[0]
+    return render(request, "painel/whatsapp_mensagens.html", _contexto(
+        request, "whatsapp", form=form, editando=editando, agendadas=lista, disparos=_disparos(conta),
+        conexao=conexao, regras=regras, maximo=regras["mensagens_agendadas"], grupos_por_nicho=_grupos_por_nicho(config),
+        tem_grupos_no_bot=bool(config and config.grupos),
+    ))
+
+
+@conta_requerida
+def whatsapp_mensagem_foto(request, pk):
+    from django.http import Http404, HttpResponse
+
+    foto = MensagemAvulsa.objects.filter(conta=conta_logada(request), pk=pk).values_list("foto", flat=True).first()
+    if not foto:
+        raise Http404
+    return HttpResponse(bytes(foto), content_type="image/jpeg")

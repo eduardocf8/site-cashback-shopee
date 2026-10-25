@@ -44,12 +44,18 @@ GRUPOS = [
             ("licencas.produtozouti", "Produtos da Zouti"),
             ("licencas.eventowebhookzouti", "Eventos de webhook da Zouti"),
         ]),
+        ("Agente de vendas no WhatsApp", [
+            ("atendimento.conversa", "Conversas"),
+            ("atendimento.respostaaprendida", "Respostas aprendidas"),
+        ]),
         ("Painel", [
             ("painel.sincronizacaoresultados", "Sincronizações de resultados"),
             ("painel.vendaitem", "Itens vendidos"),
             ("painel.metamensal", "Metas mensais"),
             ("painel.regrasubid", "Regras de Sub ID"),
             ("painel.relatorioemail", "Relatórios por e-mail"),
+            ("painel.textoemaildica", "E-mails de dicas (novos assinantes)"),
+            ("painel.sugestao", "Sugestões dos afiliados"),
         ]),
         ("Bot de WhatsApp", [
             ("bot_whatsapp.conexaowhatsapp", "Conexões"),
@@ -98,6 +104,7 @@ GRUPOS = [
 ACOES = {
     "🛒 Site Cash-B": [("📊 Ver analytics", "admin:pedidos_analytics"),
                       ("✉️ Enviar comunicação por e-mail", "admin:accounts_comunicacao")],
+    "📱 Appfiliado": [("📈 Painel do dono", "admin:licencas_painel_do_dono")],
 }
 
 

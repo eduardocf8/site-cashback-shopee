@@ -227,3 +227,79 @@ class RelatorioEmail(models.Model):
     def destinatarios(self) -> list[str]:
         extras = [e.strip() for e in (self.emails_extras or "").split(",") if e.strip()]
         return list(dict.fromkeys([self.conta.email, *extras]))
+
+
+class EmailValorEnviado(models.Model):
+    """Cada e-mail da sequência de dicas dos novos assinantes (painel/emails_valor.py) que já saiu
+    (ou foi pulado porque passou do dia) pra uma conta."""
+
+    conta = models.ForeignKey("licencas.ContaAppfiliado", on_delete=models.CASCADE, related_name="emails_valor")
+    chave = models.CharField(max_length=30)
+    enviado_em = models.DateTimeField(auto_now_add=True)
+    pulado = models.BooleanField(default=False, help_text="Não saiu (o servidor estava fora no dia).")
+
+    class Meta:
+        constraints = [models.UniqueConstraint(fields=["conta", "chave"], name="email_valor_unico")]
+        verbose_name = "e-mail de dicas enviado"
+        verbose_name_plural = "e-mails de dicas enviados"
+
+    def __str__(self):
+        return f"{self.conta_id} - {self.chave}"
+
+
+class TextoEmailDica(models.Model):
+    """O texto de cada e-mail de dicas (painel/emails_valor.py), editável no admin. O formato é
+    simples (sem HTML): **negrito**, linha começando com ↳ vira item, "Dica:" vira a caixinha,
+    {nome} vira o primeiro nome e [texto](link) vira link. Ver emails_valor.formatar."""
+
+    chave = models.CharField(max_length=30, unique=True, editable=False)
+    assunto = models.CharField(max_length=150)
+    texto = models.TextField("texto pra quem tem o módulo do e-mail (ou pra todos)")
+    texto_sem = models.TextField("texto pra quem não tem o módulo", blank=True,
+                                 help_text="Vazio = todos recebem o texto de cima.")
+    ativo = models.BooleanField("enviar este e-mail", default=True)
+    atualizado_em = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        verbose_name = "e-mail de dicas"
+        verbose_name_plural = "e-mails de dicas"
+
+    def __str__(self):
+        return self.assunto
+
+
+class Sugestao(models.Model):
+    """Sugestão de melhoria ou de ferramenta nova, mandada pelo painel (Sugerir melhoria)."""
+
+    MELHORIA, NOVA = "melhoria", "nova"
+    TIPOS = [(MELHORIA, "Melhorar uma ferramenta que já existe"), (NOVA, "Uma ferramenta nova")]
+    FERRAMENTAS = [
+        ("bot", "Bot de WhatsApp"), ("site", "Meu site"), ("carrosseis", "Carrosséis"), ("notas", "Emissor NFS-e"),
+        ("radar", "Radar de ofertas"), ("conversor", "Conversor de links"), ("resultados", "Resultados e metas"),
+        ("outra", "Outra"),
+    ]
+    IMPORTANCIAS = [(1, "Seria legal"), (2, "Ajudaria bastante"), (3, "Preciso muito")]
+    NOVA_SITUACAO, ANALISE, PLANEJADA, FEITA, NAO_VAI = "nova", "analise", "planejada", "feita", "nao_vai"
+    SITUACOES = [(NOVA_SITUACAO, "Nova"), (ANALISE, "Em análise"), (PLANEJADA, "Planejada"), (FEITA, "Feita"),
+                 (NAO_VAI, "Não vai rolar")]
+
+    conta = models.ForeignKey("licencas.ContaAppfiliado", on_delete=models.CASCADE, related_name="sugestoes")
+    tipo = models.CharField(max_length=10, choices=TIPOS)
+    ferramenta = models.CharField(max_length=12, choices=FERRAMENTAS, blank=True)
+    descricao = models.TextField("o que mudaria / que ferramenta")
+    beneficio = models.TextField("como ajudaria / que problema resolve", blank=True)
+    como_hoje = models.TextField("como faz hoje", blank=True)
+    importancia = models.PositiveSmallIntegerField(choices=IMPORTANCIAS, default=2)
+    pode_contatar = models.BooleanField("pode chamar pra conversar", default=False)
+    situacao = models.CharField(max_length=10, choices=SITUACOES, default=NOVA_SITUACAO, db_index=True)
+    anotacoes = models.TextField("suas anotações", blank=True)
+    avisada_em = models.DateTimeField(null=True, blank=True, help_text="Quando a pessoa recebeu o aviso de que ficou pronta.")
+    criada_em = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ["-criada_em"]
+        verbose_name = "sugestão"
+        verbose_name_plural = "sugestões"
+
+    def __str__(self):
+        return self.descricao[:80]

@@ -98,9 +98,19 @@ def logo_horizontal(x, y, altura, fundo_tile, cor_tile, cor_texto, assinatura=No
         nome_tam = altura * 0.46
     d, larg = NEGRITO.caminho("Appfiliado", nome_tam, x + altura + desloca, 0, espaco=-0.01)
     if assinatura:
-        base_nome = y + altura * 0.5
+        # Igual ao painel (.marca em painel.css, ladrilho de 40 px): nome 17 px, frase 12 px, 2 px entre
+        # as linhas, line-height 1.15, 10 px até o ladrilho, e o bloco centralizado na altura do ladrilho.
+        k = altura / 40
+        nome_tam, ass_tam, desloca = 17 * k, 12 * k, 10 * k
+        hhea = NEGRITO.ttf["hhea"]
+        sobe, desce = hhea.ascent / NEGRITO.upem, -hhea.descent / NEGRITO.upem
+        linha = lambda t: t * 1.15  # noqa: E731
+        topo = y + (altura - (linha(nome_tam) + 2 * k + linha(ass_tam))) / 2
+        meia = lambda t: (linha(t) - (sobe + desce) * t) / 2  # noqa: E731
+        base_nome = topo + meia(nome_tam) + sobe * nome_tam
+        base_ass = topo + linha(nome_tam) + 2 * k + meia(ass_tam) + sobe * ass_tam
         d, larg = NEGRITO.caminho("Appfiliado", nome_tam, x + altura + desloca, base_nome, espaco=-0.01)
-        d2, larg2 = MEDIA.caminho(assinatura, altura * 0.24, x + altura + desloca, base_nome + altura * 0.27)
+        d2, larg2 = MEDIA.caminho(assinatura, ass_tam, x + altura + desloca, base_ass)
         cortes = f'<g fill="{cor_assinatura or cor_texto}">{d2}</g>'
         larg = max(larg, larg2)
     else:
@@ -167,12 +177,10 @@ def linha_de_texto(fonte, texto, tamanho, cor, w, y, espaco=0.0):
     return f'<g fill="{cor}">{d}</g>'
 
 
-def capa(w, h, altura_logo, frase=None, deslocamento=0):
-    meio = logo_centro(w, h, altura_logo, cor_texto=CREME)
-    extra = ""
-    if frase:
-        extra = linha_de_texto(MEDIA, frase, altura_logo * 0.25, SUAVE, w, h / 2 + altura_logo * 0.78 + deslocamento)
-        meio = f'<g transform="translate(0 {-altura_logo * 0.12:.1f})">{meio}</g>' + f'<g transform="translate(0 {-altura_logo * 0.12:.1f})">{extra}</g>'
+def capa(w, h, altura_logo, frase=None):
+    """Logotipo centralizado; com frase, ela vai embaixo do nome, alinhada com ele (como no painel)."""
+    # Com a assinatura, o nome fica menor dentro do mesmo ladrilho (como no painel): o conjunto cresce um pouco.
+    meio = logo_centro(w, h, altura_logo * 1.25 if frase else altura_logo, assinatura=frase, cor_texto=CREME, cor_ass=SUAVE)
     return documento(w, h, fundo_verde(w, h) + meio, defs=FUNDO_DEGRADE)
 
 

@@ -79,6 +79,10 @@ def _gerar(app_id: str, secret: str, origem: str, sub_ids: list[str]) -> str:
         return ""
 
 
+def tem_link_da_shopee(texto: str) -> bool:
+    return any(p[3] for p in _pedacos(texto or ""))
+
+
 def _pedacos(texto: str):
     """Cada link do texto: (início, fim, link sem pontuação colada, link normalizado ou ""
     se não for da Shopee). E-mail ("fulano@gmail.com") não conta como link."""
@@ -95,8 +99,11 @@ def _pedacos(texto: str):
         yield inicio_limpo, inicio_limpo + len(limpo), limpo, normalizado if copia.eh_link_shopee(normalizado) else ""
 
 
-def converter(conta, texto: str, modo: str, sub_id: str = "") -> dict:
-    """{"texto", "convertidos", "falharam", "removidos"}. Levanta ErroConversor."""
+def converter(conta, texto: str, modo: str, sub_id: str = "", *, sub_ids: list[str] | None = None,
+              manter_outros_links: bool = False) -> dict:
+    """{"texto", "convertidos", "falharam", "removidos"}. Levanta ErroConversor.
+    sub_ids: a lista inteira (mensagem avulsa do bot, com os Sub IDs de cada grupo).
+    manter_outros_links: os links que não são da Shopee ficam no texto (mensagem avulsa)."""
     texto = (texto or "").replace("\r\n", "\n")
     if not texto.strip():
         raise ErroConversor("Cole um texto ou um link da Shopee.")
@@ -104,7 +111,8 @@ def converter(conta, texto: str, modo: str, sub_id: str = "") -> dict:
         raise ErroConversor(f"O texto passou de {MAXIMO_CARACTERES:,} caracteres. Divida em partes.".replace(",", "."))
     if not conta.shopee_configurada:
         raise ErroConversor("Conecte sua conta da Shopee em Configurações para converter links.")
-    sub_ids = [sub_id.strip()] if (sub_id or "").strip() else [SUB_ID_PADRAO]
+    if sub_ids is None:
+        sub_ids = [sub_id.strip()] if (sub_id or "").strip() else [SUB_ID_PADRAO]
     try:
         shopee_ofertas.validar_sub_ids(sub_ids)
     except shopee_ofertas.SubIdInvalido as erro:
@@ -139,6 +147,8 @@ def converter(conta, texto: str, modo: str, sub_id: str = "") -> dict:
         partes.append(texto[ultimo:inicio])
         if normalizado:
             partes.append(novo[normalizado] or normalizado)  # não converteu: fica o da Shopee, e a tela avisa
+        elif manter_outros_links:
+            partes.append(texto[inicio:fim])
         else:
             removidos += 1
         ultimo = fim

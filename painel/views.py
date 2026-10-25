@@ -23,7 +23,7 @@ from licencas.services import resposta_validacao
 
 from . import cripto
 from . import modulos as mod
-from . import exportar, periodos, relatorio, resultados, telas
+from . import exportar, periodos, primeiros_passos, relatorio, resultados, telas
 from .models import MetaMensal, RegraSubId, RelatorioEmail
 from .autenticacao import (
     conta_logada,
@@ -60,8 +60,20 @@ def _contexto(request, ativo: str, **extra) -> dict:
         "url_planos": settings.APPFILIADO_URL_PLANOS,
         "icones": mod.ICONES,
         "aviso_relatorio": relatorio.aviso_da_tela(conta) if conta and ativo in TELAS_COM_AVISO_DO_RELATORIO else None,
+        "bot_parado": _bot_parado(conta, liberados),
         **extra,
     }
+
+
+def _bot_parado(conta, liberados) -> str:
+    """Faixa vermelha no topo do painel quando o WhatsApp parou sem a pessoa pedir: o motivo
+    ("deslogou" ou "caiu") ou "" (ver bot_whatsapp/avisos_de_queda.py)."""
+    from bot_whatsapp.avisos_de_queda import esta_parado
+
+    if not conta or MODULO_WHATSAPP not in liberados:
+        return ""
+    conexao = ConexaoWhatsApp.objects.filter(conta=conta).first()
+    return conexao.parado_motivo if esta_parado(conexao) else ""
 
 
 TELAS_COM_AVISO_DO_RELATORIO = {"inicio", "resultados", "configuracoes"}
@@ -154,21 +166,12 @@ def inicio(request):
         for item, item_menu in zip(mod.MODULOS_DO_MENU, mod.menu(liberados, ""))
         if item["modulo"]
     ]
-    passos = [
-        {"titulo": "Conectar sua conta de afiliado da Shopee", "feito": bool(conta.shopee_validado_em),
-         "acao": "Conectar", "href": "painel_configuracoes"},
-    ]
-    if MODULO_WHATSAPP in liberados:
-        conexao = ConexaoWhatsApp.objects.filter(conta=conta).first()
-        passos.append({
-            "titulo": "Conectar seu WhatsApp pelo QR Code",
-            "feito": bool(conexao and conexao.estado != ConexaoWhatsApp.DESCONECTADO),
-            "acao": "Conectar", "href": "painel_whatsapp",
-        })
+    # O mesmo checklist dos e-mails de primeiros passos (a senha já foi criada: a pessoa entrou).
+    passos = [p for p in primeiros_passos.passos(conta, liberados) if p["chave"] != "senha"]
     contexto = {
         "hoje": _hoje_por_extenso(),
         "passos": passos,
-        "passos_pendentes": any(not p["feito"] and not p.get("em_breve") for p in passos),
+        "passos_pendentes": bool(primeiros_passos.pendentes(passos)),
         "cartoes_modulos": cartoes_modulos,
         "primeiro_nome": (conta.nome or "").split(" ")[0],
         "shopee_conectada": bool(conta.shopee_validado_em),
@@ -467,3 +470,43 @@ def erro_500(request):
     return render(request, "painel/erro.html", {"titulo": "Algo deu errado",
                                                  "texto": "Tivemos um problema aqui. Tente de novo em instantes."},
                   status=500)
+
+
+def parar_dicas(request, token):
+    """Link do rodapé dos e-mails de dicas (painel/emails_valor.py): para a sequência, sem login."""
+    from django.http import Http404
+
+    from . import emails_valor
+
+    conta = emails_valor.conta_do_link(token)
+    if not conta:
+        raise Http404
+    if not conta.sem_dicas_por_email:
+        type(conta).objects.filter(pk=conta.pk).update(sem_dicas_por_email=True)
+    return render(request, "painel/parar_dicas.html", {"email": conta.email})
+
+
+@conta_requerida
+def sugestoes(request):
+    """Sugerir melhoria: formulário pros afiliados mandarem ideias (painel/sugestoes.py)."""
+    from django.contrib import messages
+
+    from . import sugestoes as servico_sugestoes
+    from .forms import SugestaoForm
+    from .models import Sugestao
+
+    conta = conta_logada(request)
+    form = SugestaoForm(request.POST or None)
+    if request.method == "POST":
+        hoje = Sugestao.objects.filter(conta=conta, criada_em__gte=timezone.now() - timedelta(days=1)).count()
+        if hoje >= servico_sugestoes.POR_DIA:
+            messages.error(request, "Você já mandou muitas sugestões hoje. Obrigado! Manda as próximas amanhã.")
+        elif form.is_valid():
+            sugestao = form.criar(conta)
+            servico_sugestoes.avisar_voce(sugestao)
+            messages.success(request, "Valeu! A sua sugestão chegou. Quando ela sair do papel, você recebe um aviso por e-mail.")
+            return redirect("painel_sugestoes")
+        else:
+            messages.error(request, "Confira os campos marcados.")
+    enviadas = Sugestao.objects.filter(conta=conta)[:10]
+    return render(request, "painel/sugestoes.html", _contexto(request, "sugestoes", form=form, enviadas=enviadas))

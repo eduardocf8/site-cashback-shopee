@@ -39,6 +39,14 @@ class ConexaoWhatsApp(models.Model):
     pedido_desconectar = models.BooleanField(default=False)
     pedido_grupos = models.BooleanField(default=False)
     erro = models.TextField(blank=True)
+    # Bot parado sem a pessoa ter pedido (ver bot_whatsapp/avisos_de_queda.py): desde quando e por
+    # quê ("deslogou": o WhatsApp tirou o aparelho, precisa do QR Code; "caiu": não voltou sozinho).
+    # Volta a vazio quando conecta de novo ou quando a pessoa desconecta pelo painel.
+    PARADO_DESLOGOU, PARADO_CAIU = "deslogou", "caiu"
+    parado_desde = models.DateTimeField(null=True, blank=True)
+    parado_motivo = models.CharField(max_length=10, blank=True)
+    parado_avisos = models.PositiveSmallIntegerField(default=0)
+    parado_avisado_em = models.DateTimeField(null=True, blank=True)
     atualizado_em = models.DateTimeField(auto_now=True)
 
     class Meta:
@@ -61,12 +69,13 @@ class EnvioWhatsApp(models.Model):
     # Simulado: o bot fez tudo (escolheu o produto, gerou o link, montou o texto), mas o
     # modo simulação estava ligado - não vai para o WhatsApp.
     ESTADOS = [(PENDENTE, "Na fila"), (ENVIADO, "Enviado"), (ERRO, "Erro"), (SIMULADO, "Simulado")]
-    TESTE, OFERTA, CAMPANHA, ALERTA = "teste", "oferta", "campanha", "alerta"
+    TESTE, OFERTA, CAMPANHA, ALERTA, MENSAGEM = "teste", "oferta", "campanha", "alerta", "mensagem"
     # CAMPANHA: a página da campanha da Shopee, mandada a cada N ofertas no modo campanha
     # (não conta no limite de ofertas por dia nem no "não repetir").
     # ALERTA: produto acompanhado que baixou de preço (alerta de preço), postado nos grupos.
+    # MENSAGEM: mensagem avulsa escrita pela pessoa (aba Mensagens), agora ou agendada.
     ORIGENS = [(TESTE, "Mensagem de teste"), (OFERTA, "Oferta automática"), (CAMPANHA, "Página da campanha"),
-               (ALERTA, "Alerta de preço")]
+               (ALERTA, "Alerta de preço"), (MENSAGEM, "Mensagem avulsa")]
 
     conta = models.ForeignKey(ContaAppfiliado, on_delete=models.CASCADE, related_name="envios_whatsapp")
     destino = models.CharField(max_length=80, help_text='JID do grupo, ex: "120363...@g.us".')
@@ -88,6 +97,9 @@ class EnvioWhatsApp(models.Model):
     # "foto" (foto com o texto; no canal, prévia pequena) ou "previa" (cartão grande do link).
     formato = models.CharField(max_length=10, default="foto")
     ia_motivo = models.CharField(max_length=300, blank=True, help_text="Por que a IA não revisou (com a IA ligada).")
+    # Mensagem avulsa: de onde veio (a foto sai dela) e qual disparo foi (um envio por grupo).
+    mensagem = models.ForeignKey("MensagemAvulsa", null=True, blank=True, on_delete=models.SET_NULL, related_name="envios")
+    disparo_em = models.DateTimeField(null=True, blank=True)
 
     class Meta:
         ordering = ["-id"]
@@ -419,3 +431,38 @@ class AlertaDisparado(models.Model):
         ordering = ["-criado_em"]
         verbose_name = "alerta disparado"
         verbose_name_plural = "alertas disparados"
+
+
+class MensagemAvulsa(models.Model):
+    """Mensagem escrita pela pessoa (aba Mensagens do Bot) pra mandar nos grupos agora, num dia e
+    hora marcados ou toda semana. Quem dispara é bot_whatsapp/mensagens.py, no worker."""
+
+    DESTINO_TODOS, DESTINO_NICHO, DESTINO_GRUPOS = "todos", "nicho", "grupos"
+    DESTINOS = [(DESTINO_TODOS, "Todos os grupos do bot"), (DESTINO_NICHO, "Os grupos de um nicho"),
+                (DESTINO_GRUPOS, "Escolher os grupos")]
+    QUANDO_AGORA, QUANDO_AGENDAR, QUANDO_SEMANAL = "agora", "agendar", "semanal"
+    QUANDOS = [(QUANDO_AGORA, "Agora"), (QUANDO_AGENDAR, "Agendar"), (QUANDO_SEMANAL, "Repetir toda semana")]
+
+    conta = models.ForeignKey(ContaAppfiliado, on_delete=models.CASCADE, related_name="mensagens_avulsas")
+    texto = models.TextField()
+    foto = models.BinaryField(null=True, blank=True)  # JPEG (o disco do servidor não guarda arquivos)
+    destino = models.CharField(max_length=10, choices=DESTINOS, default=DESTINO_TODOS)
+    nicho = models.CharField(max_length=20, blank=True)
+    grupos = models.JSONField(default=list, blank=True)  # jids, com destino "grupos"
+    quando = models.CharField(max_length=10, choices=QUANDOS, default=QUANDO_AGORA)
+    agendada_para = models.DateTimeField(null=True, blank=True)
+    dias_semana = models.JSONField(default=list, blank=True)  # 0 = segunda ... 6 = domingo
+    hora = models.TimeField(null=True, blank=True)
+    proxima_em = models.DateTimeField(null=True, blank=True, db_index=True, help_text="Vazio = já foi (não repete).")
+    pausada = models.BooleanField(default=False)
+    ultimo_envio_em = models.DateTimeField(null=True, blank=True)
+    criada_em = models.DateTimeField(auto_now_add=True)
+    atualizada_em = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ["proxima_em", "-id"]
+        verbose_name = "mensagem avulsa"
+        verbose_name_plural = "mensagens avulsas"
+
+    def __str__(self):
+        return f"{self.conta.email} - {self.texto[:40]}"

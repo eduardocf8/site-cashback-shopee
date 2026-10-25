@@ -1,0 +1,69 @@
+{% extends "painel/base.html" %}
+{% block titulo %}Sugerir melhoria{% endblock %}
+{% block conteudo %}
+<header class="cabecalho">
+  <div>
+    <h1>Ajude a construir o Appfiliado</h1>
+    <p>O Appfiliado é feito pra afiliados da Shopee, e as melhores ideias vêm de quem divulga todo dia. Conte o que deixaria o seu trabalho mais fácil. Eu leio todas as sugestões. <em>Eduardo, fundador do Appfiliado</em></p>
+  </div>
+</header>
+
+<div class="duas-colunas">
+  <form method="post" class="formulario form-ofertas form-sugestao" novalidate id="form-sugestao">
+    {% csrf_token %}
+    <section class="card">
+      <fieldset class="campo">
+        <legend>{{ form.tipo.label }}</legend>
+        <div class="opcoes-chip" id="tipo-sugestao">{% for opcao in form.tipo %}<label class="chip-opcao">{{ opcao.tag }}<span>{{ opcao.choice_label }}</span></label>{% endfor %}</div>
+      </fieldset>
+
+      <div class="bloco-sugestao" data-tipo="melhoria">
+        <div class="campo">{% include "painel/_campo.html" with campo=form.ferramenta %}</div>
+        <div class="campo">{% include "painel/_campo.html" with campo=form.mudaria %}</div>
+        <div class="campo">{% include "painel/_campo.html" with campo=form.ajudaria %}</div>
+      </div>
+      <div class="bloco-sugestao" data-tipo="nova">
+        <div class="campo">{% include "painel/_campo.html" with campo=form.nova %}</div>
+        <div class="campo">{% include "painel/_campo.html" with campo=form.problema %}</div>
+        <div class="campo">{% include "painel/_campo.html" with campo=form.como_hoje %}</div>
+      </div>
+
+      <fieldset class="campo">
+        <legend>{{ form.importancia.label }}</legend>
+        <div class="opcoes-chip">{% for opcao in form.importancia %}<label class="chip-opcao">{{ opcao.tag }}<span>{{ opcao.choice_label }}</span></label>{% endfor %}</div>
+      </fieldset>
+      <label class="marcar">{{ form.pode_contatar }}<span>{{ form.pode_contatar.label }}</span></label>
+    </section>
+    <div class="barra-enviar"><button type="submit" class="botao botao-principal">Enviar sugestão</button></div>
+  </form>
+
+  <div class="coluna-lateral">
+    <section class="card" aria-labelledby="titulo-enviadas">
+      <h2 id="titulo-enviadas">Suas sugestões</h2>
+      {% if enviadas %}
+        <ul class="lista-mensagens">
+          {% for s in enviadas %}
+            <li>
+              <span class="suave pequeno">{{ s.criada_em|date:"d/m/Y" }} · {{ s.get_tipo_display }}{% if s.ferramenta %} · {{ s.get_ferramenta_display }}{% endif %}</span>
+              <strong class="texto-curto">{{ s.descricao|truncatechars:120 }}</strong>
+              <span class="pequeno"><span class="selo-sugestao selo-{{ s.situacao }}">{{ s.get_situacao_display }}</span></span>
+            </li>
+          {% endfor %}
+        </ul>
+      {% else %}
+        <p class="suave pequeno">As sugestões que você mandar aparecem aqui, com a situação de cada uma.</p>
+      {% endif %}
+    </section>
+  </div>
+</div>
+<script>
+  (function () {
+    function mostrar() {
+      var tipo = (document.querySelector("#tipo-sugestao input:checked") || {}).value;
+      document.querySelectorAll(".bloco-sugestao").forEach(function (el) { el.hidden = el.dataset.tipo !== tipo; });
+    }
+    document.querySelectorAll("#tipo-sugestao input").forEach(function (el) { el.addEventListener("change", mostrar); });
+    mostrar();
+  })();
+</script>
+{% endblock %}

@@ -365,6 +365,8 @@ APPFILIADO_LANDING_HOSTS = [h.strip().lower() for h in os.environ.get("APPFILIAD
 # Contato que aparece na página de vendas (só aparece o que estiver preenchido).
 APPFILIADO_WHATSAPP_SUPORTE = os.environ.get("APPFILIADO_WHATSAPP_SUPORTE", "")
 APPFILIADO_EMAIL_SUPORTE = os.environ.get("APPFILIADO_EMAIL_SUPORTE", "")
+# Endereço do admin (link do resumo semanal do painel do dono, que vai pro e-mail de suporte).
+APPFILIADO_ADMIN_URL = os.environ.get("APPFILIADO_ADMIN_URL", "https://cash-b.com/admin/")
 # Página com os planos (botão "Desbloquear" dos módulos que a conta não tem).
 APPFILIADO_URL_PLANOS = os.environ.get("APPFILIADO_URL_PLANOS", "https://appfiliado.com.br")
 # Chave Fernet pra cifrar os segredos das contas (ex: Secret da Shopee) - ver painel/cripto.py.

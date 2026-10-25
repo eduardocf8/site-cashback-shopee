@@ -95,8 +95,81 @@ def _cliente():
 
 
 def _sistema() -> list[dict]:
-    # Fixo e grande: fica em cache entre as conversas (leitura do cache custa ~10%).
-    return [{"type": "text", "text": INSTRUCOES + conhecimento.texto(), "cache_control": {"type": "ephemeral", "ttl": "1h"}}]
+    # Fixo e grande: fica em cache entre as conversas (leitura do cache custa ~10%). As respostas que
+    # você aprovou vêm num bloco à parte: quando mudam, só esse pedaço sai do cache.
+    blocos = [{"type": "text", "text": INSTRUCOES + conhecimento.texto(), "cache_control": {"type": "ephemeral", "ttl": "1h"}}]
+    aprendidas = respostas_aprovadas()
+    if aprendidas:
+        blocos.append({"type": "text", "text": aprendidas, "cache_control": {"type": "ephemeral", "ttl": "1h"}})
+    return blocos
+
+
+def respostas_aprovadas() -> str:
+    from .models import RespostaAprendida
+
+    lista = RespostaAprendida.objects.filter(estado=RespostaAprendida.APROVADA).order_by("criada_em")
+    if not lista:
+        return ""
+    linhas = ["Respostas que o dono do Appfiliado já deu (valem como a base; se contradisserem a base, vale a resposta "
+              "mais recente daqui):"]
+    linhas += [f"- Pergunta: {r.pergunta.strip()}\n  Resposta: {r.resposta.strip()}" for r in lista]
+    return "\n".join(linhas)
+
+
+# --- Aprender com as suas respostas (ver aprendizado.py) --------------------------------
+
+INSTRUCOES_APRENDIZADO = """Você ajuda o assistente de vendas do Appfiliado (ferramentas pra afiliados da Shopee) a aprender.
+Abaixo está um trecho de uma conversa do WhatsApp em que o dono do Appfiliado ("Você") respondeu um cliente no lugar do
+assistente. Decida se as respostas do dono ensinam algo que vale pra QUALQUER cliente e, se sim, escreva UMA pergunta e
+UMA resposta genéricas pra guardar.
+
+Regras
+- Generalize: nada de nome, telefone, e-mail, valores combinados, prazos dados àquele cliente ou detalhes da conta dele.
+- Não guarde: casos pessoais (problema numa conta, cobrança, reembolso, desconto ou condição especial), conversa social,
+  algo que só vale pra aquele cliente, nem o que já está nas respostas já aprendidas.
+- A resposta deve dizer só o que o dono disse, sem inventar nada além. Escreva em português do Brasil, curto (até 4
+  linhas), no tom do WhatsApp, usando "pra"/"pro".
+- Se não houver nada que valha pra todos, use aprender = false e deixe pergunta e resposta vazias."""
+
+FERRAMENTA_APRENDER = {
+    "name": "registrar_aprendizado",
+    "description": "Registra a decisão: aprender ou não, e a pergunta e a resposta genéricas.",
+    "strict": True,
+    "input_schema": {
+        "type": "object",
+        "properties": {
+            "aprender": {"type": "boolean"},
+            "pergunta": {"type": "string"},
+            "resposta": {"type": "string"},
+        },
+        "required": ["aprender", "pergunta", "resposta"],
+        "additionalProperties": False,
+    },
+}
+
+
+def sugerir_aprendizado(trecho: str, ja_aprendidas: str = "", cliente=None) -> dict | None:
+    """{"pergunta", "resposta"} pra você aprovar, ou None quando não há nada que valha pra todos."""
+    cliente = cliente or _cliente()
+    conteudo = (f"Respostas já aprendidas:\n{ja_aprendidas or '(nenhuma)'}\n\nTrecho da conversa:\n{trecho}")
+    resposta = cliente.beta.messages.create(
+        model=settings.ATENDIMENTO_MODELO,
+        max_tokens=2000,
+        system=INSTRUCOES_APRENDIZADO,
+        messages=[{"role": "user", "content": conteudo}],
+        tools=[FERRAMENTA_APRENDER],
+        tool_choice={"type": "tool", "name": "registrar_aprendizado"},
+        betas=["server-side-fallback-2026-07-01"],
+        fallbacks="default",
+    )
+    chamada = next((b for b in resposta.content if b.type == "tool_use"), None)
+    if not chamada:
+        return None
+    dados = chamada.input if isinstance(chamada.input, dict) else json.loads(chamada.input)
+    pergunta, texto = str(dados.get("pergunta") or "").strip(), str(dados.get("resposta") or "").strip()
+    if not dados.get("aprender") or not pergunta or not texto:
+        return None
+    return {"pergunta": pergunta[:500], "resposta": texto[:1500]}
 
 
 def responder(historico: list[dict], nome: str = "", cliente=None) -> Resposta:
