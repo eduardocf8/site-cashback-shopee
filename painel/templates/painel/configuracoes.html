@@ -10,7 +10,7 @@
       <span class="ponto {% if conta.shopee_validado_em %}ok{% endif %}" aria-hidden="true"></span>
       {% if conta.shopee_validado_em %}Conectada em {{ conta.shopee_validado_em|date:"d/m/Y H:i" }}{% else %}Não conectada{% endif %}
     </p>
-    <p class="suave pequeno" style="margin-bottom:16px">O AppID e o Secret ficam no portal de afiliados da Shopee, em Open API, e só existem depois que a Shopee libera a API pra você. O Secret é guardado criptografado e nunca aparece de novo na tela.</p>
+    <p class="suave pequeno" style="margin-bottom:16px">O AppID e o Secret ficam no portal de afiliados da Shopee, em Open API, e só existem depois que a Shopee libera a API para você. O Secret é guardado criptografado e nunca aparece de novo na tela.</p>
     <details class="guia-api"{% if not conta.shopee_validado_em %} open{% endif %}>
       <summary>Ainda não tem o AppID e o Secret? Veja como liberar a API da Shopee</summary>
       <p class="suave pequeno" style="margin:10px 0">{{ api.RESUMO }}</p>

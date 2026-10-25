@@ -123,7 +123,7 @@
     <h2>Valor sacado por mês</h2>
     <form class="resumo-filtros" method="get">
         <div class="campo">
-            <label for="id_meses_passados">Meses pra trás</label>
+            <label for="id_meses_passados">Meses para trás</label>
             <input type="number" name="meses_passados" id="id_meses_passados" value="{{ meses_passados }}" min="0" max="24">
         </div>
         <div class="acoes">
@@ -131,7 +131,7 @@
         </div>
     </form>
     <p class="help" style="margin: -10px 0 20px;">
-        Soma dos saques efetivamente pagos (via Pix) em cada mês. Clique numa barra pra
+        Soma dos saques efetivamente pagos (via Pix) em cada mês. Clique numa barra para
         ver a quebra por usuário.
     </p>
     <svg id="grafico-sacado" viewBox="0 0 900 260" preserveAspectRatio="xMidYMid meet"></svg>
@@ -140,13 +140,13 @@
 <div class="resumo-secao">
     <h2>Saldo liberado</h2>
     <p class="help" style="margin: 0 0 20px;">
-        <strong>Disponível pra saque</strong> é o acumulado de sempre: todo cashback já
-        liberado (não só esse mês) menos todo saque já pago - é o que dá pra sacar hoje.
+        <strong>Disponível para saque</strong> é o acumulado de sempre: todo cashback já
+        liberado (não só esse mês) menos todo saque já pago - é o que dá para sacar hoje.
         Mês atual é o saldo real liberado <em>só nesse mês</em> (já processado). Os 2
         meses seguintes são uma <strong>projeção</strong>: soma o que está validado
-        (previsto pra liberar naquele mês) com o que ainda está pendente (assumindo, de
+        (previsto para liberar naquele mês) com o que ainda está pendente (assumindo, de
         forma otimista, que vai validar logo - projetado a partir da data da compra).
-        Clique num valor pra ver a quebra por usuário.
+        Clique num valor para ver a quebra por usuário.
     </p>
     <table class="resumo-tabela">
         <thead>

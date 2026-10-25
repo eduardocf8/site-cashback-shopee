@@ -252,7 +252,7 @@ class PedidoAdmin(admin.ModelAdmin):
     def resumo_financeiro_view(self, request):
         meses_passados = _parse_inteiro(request.GET.get("meses_passados"), MESES_GRAFICO_SACADO_PADRAO)
         linha_disponivel = {
-            "rotulo": "Disponível pra saque",
+            "rotulo": "Disponível para saque",
             "eh_atual": False,
             "eh_projecao": False,
             "eh_disponivel": True,

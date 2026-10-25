@@ -254,8 +254,8 @@ class TextoEmailDica(models.Model):
 
     chave = models.CharField(max_length=30, unique=True, editable=False)
     assunto = models.CharField(max_length=150)
-    texto = models.TextField("texto pra quem tem o módulo do e-mail (ou pra todos)")
-    texto_sem = models.TextField("texto pra quem não tem o módulo", blank=True,
+    texto = models.TextField("texto para quem tem o módulo do e-mail (ou para todos)")
+    texto_sem = models.TextField("texto para quem não tem o módulo", blank=True,
                                  help_text="Vazio = todos recebem o texto de cima.")
     ativo = models.BooleanField("enviar este e-mail", default=True)
     atualizado_em = models.DateTimeField(auto_now=True)
@@ -290,7 +290,7 @@ class Sugestao(models.Model):
     beneficio = models.TextField("como ajudaria / que problema resolve", blank=True)
     como_hoje = models.TextField("como faz hoje", blank=True)
     importancia = models.PositiveSmallIntegerField(choices=IMPORTANCIAS, default=2)
-    pode_contatar = models.BooleanField("pode chamar pra conversar", default=False)
+    pode_contatar = models.BooleanField("pode chamar para conversar", default=False)
     situacao = models.CharField(max_length=10, choices=SITUACOES, default=NOVA_SITUACAO, db_index=True)
     anotacoes = models.TextField("suas anotações", blank=True)
     avisada_em = models.DateTimeField(null=True, blank=True, help_text="Quando a pessoa recebeu o aviso de que ficou pronta.")

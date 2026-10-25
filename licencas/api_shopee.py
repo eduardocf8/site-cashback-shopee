@@ -17,10 +17,10 @@ CAMPOS_FORMULARIO = [
 PASSOS = [
     ("Tenha o cadastro de afiliado aprovado", "Você precisa ser afiliado da Shopee (Programa de Afiliados) antes de pedir a API."),
     ("Envie a solicitação no formulário da Shopee", "Preencha o formulário de ajuda da Shopee escolhendo \"Quero ativar a API\" e envie. Ao final aparece a mensagem \"Seu caso será enviado para análise\"."),
-    ("Aguarde a análise", "A Shopee tem até 5 dias úteis pra responder, mas nem sempre manda e-mail. Consulte a sua solicitação todos os dias."),
+    ("Aguarde a análise", "A Shopee tem até 5 dias úteis para responder, mas nem sempre manda e-mail. Consulte a sua solicitação todos os dias."),
     ("Clique em Aplicar", "Entre na página Open API do portal de afiliados. Quando o botão \"Aplicar\" aparecer, a API foi liberada: clique nele e a Shopee cria o seu AppID e o seu Secret."),
     ("Informe no Appfiliado", "Em Configurações do painel, cole o AppID e o Secret. Pronto: as ferramentas passam a funcionar."),
 ]
 
-RESUMO = ("Pra usar as ferramentas do Appfiliado, a sua conta de afiliado precisa ter a API da Shopee liberada. "
+RESUMO = ("Para usar as ferramentas do Appfiliado, a sua conta de afiliado precisa ter a API da Shopee liberada. "
           "É um pedido simples feito à Shopee, que responde em até 5 dias úteis.")

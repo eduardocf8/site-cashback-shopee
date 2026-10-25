@@ -234,7 +234,7 @@ def _passar_pra_voce(sessao, conversa, humano: dict) -> None:
     contato = conversa.link_whatsapp or "(sem número visível; veja no WhatsApp do Appfiliado)"
     aviso = (f"🔔 *Atendimento Appfiliado*\n{quem} precisa de você: {conversa.motivo_humano}\n{contato}\n\n"
              + (f"Resumo: {humano['resumo']}\n\n" if humano.get("resumo") else "")
-             + f"O agente pausou nessa conversa. Pra devolver, mande {COMANDO_VOLTAR} na conversa pelo celular.")
+             + f"O agente pausou nessa conversa. Para devolver, mande {COMANDO_VOLTAR} na conversa pelo celular.")
     _enviar(sessao, f"{settings.ATENDIMENTO_AVISAR}@s.whatsapp.net", aviso)
 
 

@@ -99,7 +99,7 @@ class TestPagina(TestCase):
     def test_paginas_das_ferramentas_incluidas_em_todos_os_planos(self):
         mapa = self.abrir(caminho="/sitemap.xml").content.decode()
         home = self.abrir()
-        for caminho, trecho in (("/radar-de-ofertas/", "Ache o produto certo pra divulgar"),
+        for caminho, trecho in (("/radar-de-ofertas/", "Ache o produto certo para divulgar"),
                                 ("/conversor-de-links/", "Troque os links de qualquer texto"),
                                 ("/resultados-e-metas/", "Veja quanto vendeu")):
             pagina = self.abrir(caminho=caminho)

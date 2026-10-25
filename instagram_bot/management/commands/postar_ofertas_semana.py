@@ -9,7 +9,7 @@ from instagram_bot.services import publicar_post_ofertas_semana
 class Command(BaseCommand):
     help = (
         "Posta o carrossel \"melhores ofertas da semana\" agora, fora do calendário "
-        "automático (normalmente só roda toda sexta) - útil pra testar sem esperar até "
+        "automático (normalmente só roda toda sexta) - útil para testar sem esperar até "
         "sexta. Roda pelo Shell do Render: python manage.py postar_ofertas_semana"
     )
 
@@ -22,7 +22,7 @@ class Command(BaseCommand):
         if not host:
             raise CommandError(
                 "RENDER_EXTERNAL_HOSTNAME não configurado - esse comando espera rodar em produção "
-                "(Shell do Render), pra montar os links do e-mail de aprovação com o host certo."
+                "(Shell do Render), para montar os links do e-mail de aprovação com o host certo."
             )
         request = RequestFactory().get("/", secure=True, SERVER_NAME=host)
 
@@ -34,7 +34,7 @@ class Command(BaseCommand):
         self.stdout.write(self.style.SUCCESS(f"Registro criado: status={registro.get_status_display()}"))
         if registro.status == registro.STATUS_PENDENTE_APROVACAO:
             self.stdout.write(
-                f"Aprovação enviada por e-mail pra {settings.INSTAGRAM_APROVADOR_EMAIL} - "
+                f"Aprovação enviada por e-mail para {settings.INSTAGRAM_APROVADOR_EMAIL} - "
                 "confira e clique em \"Aprovar e publicar\" por lá."
             )
         elif registro.status == registro.STATUS_ERRO:

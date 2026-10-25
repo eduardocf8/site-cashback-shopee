@@ -17,7 +17,7 @@ def _aprovar_e_pagar(modeladmin, request, queryset, processar, nome_provedor):
         modeladmin.message_user(request, "Nenhum saque selecionado estava com status 'Solicitado'.")
     else:
         modeladmin.message_user(
-            request, f"{processados} saque(s) enviado(s) pra {nome_provedor}, {pagos} pago(s) com sucesso."
+            request, f"{processados} saque(s) enviado(s) para {nome_provedor}, {pagos} pago(s) com sucesso."
         )
 
 

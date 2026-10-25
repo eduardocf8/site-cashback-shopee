@@ -70,7 +70,7 @@ class TestTelaContabilidade(TestCase):
         self.assertEqual(self.empresa.contabilidade_email, "fiscal@contabil.com")
         mes = contabilidade.mes_anterior()
         resposta = self.client.post("/notas/", {"acao": "contabilidade_enviar", "mes": f"{mes:%Y-%m}"}, follow=True)
-        self.assertContains(resposta, "Enviado pra fiscal@contabil.com")
+        self.assertContains(resposta, "Enviado para fiscal@contabil.com")
         self.assertEqual(mail.outbox[0].to, ["fiscal@contabil.com"])
 
     def test_mes_fora_da_lista_e_recusado(self):

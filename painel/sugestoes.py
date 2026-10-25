@@ -21,7 +21,7 @@ def avisar_voce(s: Sugestao) -> None:
         "",
         f"Tipo: {s.get_tipo_display()}" + (f" · {s.get_ferramenta_display()}" if s.ferramenta else ""),
         f"Faria diferença: {s.get_importancia_display()}",
-        f"Pode chamar pra conversar: {'sim' if s.pode_contatar else 'não'}",
+        f"Pode chamar para conversar: {'sim' if s.pode_contatar else 'não'}",
         "",
         ("O que mudaria: " if s.tipo == Sugestao.MELHORIA else "Ferramenta: ") + s.descricao,
     ]

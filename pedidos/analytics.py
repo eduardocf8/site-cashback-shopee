@@ -412,7 +412,7 @@ ROTULOS_TIPO_SALDO = {
     "liberado": "Liberado",
     "projecao": "Projeção de liberação",
     "pago": "Pago (saques)",
-    "disponivel": "Saldo disponível pra saque",
+    "disponivel": "Saldo disponível para saque",
 }
 
 

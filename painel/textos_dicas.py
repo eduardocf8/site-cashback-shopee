@@ -26,7 +26,7 @@ Foi pensando nisso que eu montei o Bot do Appfiliado:
 
 ↳ **Intervalo e horário:** uma oferta a cada X minutos, só na janela em que o seu público está acordado
 ↳ **Não repetir:** o mesmo produto não volta pro mesmo grupo por quantos dias você escolher
-↳ **Filtros:** comissão, desconto, preço e avaliação mínimos, pra só passar o que vale a pena
+↳ **Filtros:** comissão, desconto, preço e avaliação mínimos, para só passar o que vale a pena
 ↳ **Modo simulação:** você vê o que sairia antes de mandar de verdade
 
 {imagem}
@@ -35,7 +35,7 @@ Minha dica: comece com uma oferta a cada 15 ou 20 minutos, das 8h às 22h, e com
 
 {botao}
 
-[sem premium] No Premium, cada grupo pode receber as ofertas do seu nicho (beleza, casa, pet…), a IA revisa o texto antes de enviar e dá pra copiar ofertas de outros grupos com o seu link. [Ver o Premium](planos)""",
+[sem premium] No Premium, cada grupo pode receber as ofertas do seu nicho (beleza, casa, pet…), a IA revisa o texto antes de enviar e dá para copiar ofertas de outros grupos com o seu link. [Ver o Premium](planos)""",
         "texto_sem": """Converter link de afiliado um por um cansa. E quem copia oferta de outros canais ainda precisa tirar o link de quem postou e pôr o seu.
 
 O **Conversor de links** do Appfiliado faz isso de uma vez:
@@ -65,7 +65,7 @@ Em **Resultados**, no Appfiliado, você vê:
 
 E se quiser, recebe tudo isso por e-mail toda manhã: é só ligar o relatório diário em [Configurações](configuracoes).
 
-Minha dica: use um Sub ID diferente pra cada lugar onde você divulga (ex: grupovip, instagram, site).
+Minha dica: use um Sub ID diferente para cada lugar onde você divulga (ex: grupovip, instagram, site).
 [bot] No Bot, cada grupo pode ter o seu Sub ID próprio.
 
 [sem api] **Importante:** pros números aparecerem, conecte a API da Shopee em [Configurações](configuracoes).
@@ -107,7 +107,7 @@ Minha dica: ligue as próximas datas no modo campanha agora e agende um aviso no
 
 Três coisas que ajudam nessas datas:
 
-↳ No **Radar**, ordene por **maior desconto** pra achar as melhores ofertas do dia
+↳ No **Radar**, ordene por **maior desconto** para achar as melhores ofertas do dia
 ↳ No **Conversor**, cole a mensagem da Shopee com os links da campanha e saia com tudo no seu link
 ↳ Deixe a página da campanha no seu link na bio
 
@@ -152,7 +152,7 @@ Juntando com o que você já tem, sai com desconto de combo: 10% com 2 módulos 
 
 {numeros}
 
-**Me conta:** o que está funcionando e o que falta no Appfiliado pra você vender mais? Responda este e-mail ou mande a sua ideia no formulário de sugestões. Eu leio todas.
+**Me conta:** o que está funcionando e o que falta no Appfiliado para você vender mais? Responda este e-mail ou mande a sua ideia no formulário de sugestões. Eu leio todas.
 
 {botao}
 

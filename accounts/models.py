@@ -235,7 +235,7 @@ class ComunicacaoEmail(models.Model):
         choices=TIPO_CHOICES,
         default=TIPO_ANUNCIO,
         help_text="Anúncio/promoção respeita quem desligou e-mail de marketing e inclui o link de "
-        "descadastro. Comunicação geral vai pra todo mundo do filtro, sem esse link.",
+        "descadastro. Comunicação geral vai para todo mundo do filtro, sem esse link.",
     )
     filtro = models.CharField("Filtro de destinatários", max_length=30, choices=FILTRO_CHOICES)
     ofertas = models.ManyToManyField(
@@ -255,7 +255,7 @@ class ComunicacaoEmail(models.Model):
     corpo_html = models.TextField(
         "Corpo em HTML (com a vitrine)",
         blank=True,
-        help_text="Gerado automaticamente a partir do corpo em texto + ofertas escolhidas - guardado aqui pra "
+        help_text="Gerado automaticamente a partir do corpo em texto + ofertas escolhidas - guardado aqui para "
         "manter fiel o que foi realmente mandado, mesmo que preço/imagem da oferta mude depois.",
     )
     total_destinatarios = models.PositiveIntegerField("Total de destinatários", default=0)
@@ -299,7 +299,7 @@ class EventoFunil(models.Model):
     metodo = models.CharField(max_length=12, blank=True, help_text="Cadastro: formulario ou google.")
     user_agent = models.CharField(
         max_length=255, blank=True,
-        help_text="Navegador de quem fez a etapa - pra conferir se algum robô passou pelo filtro.",
+        help_text="Navegador de quem fez a etapa - para conferir se algum robô passou pelo filtro.",
     )
     criado_em = models.DateTimeField(auto_now_add=True, db_index=True)
 

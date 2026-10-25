@@ -572,7 +572,7 @@ class MensagemAvulsaForm(forms.ModelForm):
     class Meta:
         model = MensagemAvulsa
         fields = ["texto", "destino", "quando", "hora"]
-        labels = {"texto": "Mensagem", "destino": "Pra quem", "quando": "Quando", "hora": "Hora"}
+        labels = {"texto": "Mensagem", "destino": "Para quem", "quando": "Quando", "hora": "Hora"}
         widgets = {
             "texto": forms.Textarea(attrs={"rows": 7, "placeholder": "Ex: Hoje às 20h tem live de cupons aqui no grupo! 🔥"}),
             "destino": forms.RadioSelect, "quando": forms.RadioSelect,
@@ -629,7 +629,7 @@ class MensagemAvulsaForm(forms.ModelForm):
         if destino == MensagemAvulsa.DESTINO_GRUPOS and not dados.get("grupos"):
             self.add_error("grupos", "Escolha pelo menos um grupo.")
         if destino == MensagemAvulsa.DESTINO_GRUPOS and len(dados.get("grupos") or []) > self.regras.get("grupos", 50):
-            self.add_error("grupos", f"No seu plano dá pra escolher até {self.regras.get('grupos')} grupos e canais.")
+            self.add_error("grupos", f"No seu plano dá para escolher até {self.regras.get('grupos')} grupos e canais.")
         if destino == MensagemAvulsa.DESTINO_NICHO and not dados.get("nicho"):
             self.add_error("nicho", "Escolha o nicho.")
         if quando == MensagemAvulsa.QUANDO_AGENDAR:
@@ -681,7 +681,7 @@ class SugestaoForm(forms.Form):
     ferramenta = forms.ChoiceField(label="Qual ferramenta?", choices=[("", "Escolha")] + _Sugestao.FERRAMENTAS,
                                    required=False)
     mudaria = forms.CharField(label="O que você mudaria nela?", required=False, max_length=3000, widget=forms.Textarea(
-        attrs={"rows": 4, "placeholder": "Ex: queria escolher um horário diferente pra cada grupo do bot."}))
+        attrs={"rows": 4, "placeholder": "Ex: queria escolher um horário diferente para cada grupo do bot."}))
     ajudaria = forms.CharField(label="Como isso ajudaria nas suas vendas? (opcional)", required=False, max_length=3000,
                                widget=forms.Textarea(attrs={"rows": 3, "placeholder": "Ex: meus grupos de madrugada vendem bem, mas os outros não."}))
     nova = forms.CharField(label="Que ferramenta você gostaria de ter?", required=False, max_length=3000, widget=forms.Textarea(
@@ -690,9 +690,9 @@ class SugestaoForm(forms.Form):
                                widget=forms.Textarea(attrs={"rows": 3}))
     como_hoje = forms.CharField(label="Como você faz isso hoje? (opcional)", required=False, max_length=2000,
                                 widget=forms.Textarea(attrs={"rows": 2, "placeholder": "Ex: faço na mão ou uso outro app."}))
-    importancia = forms.TypedChoiceField(label="Quanto isso faria diferença pra você?", choices=_Sugestao.IMPORTANCIAS,
+    importancia = forms.TypedChoiceField(label="Quanto isso faria diferença para você?", choices=_Sugestao.IMPORTANCIAS,
                                          coerce=int, initial=2, widget=forms.RadioSelect)
-    pode_contatar = forms.BooleanField(label="Pode me chamar pra conversar sobre essa ideia", required=False)
+    pode_contatar = forms.BooleanField(label="Pode me chamar para conversar sobre essa ideia", required=False)
 
     def clean(self):
         dados = super().clean()

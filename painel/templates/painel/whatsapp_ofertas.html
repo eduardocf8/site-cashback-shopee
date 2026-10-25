@@ -84,7 +84,7 @@
 
       <div data-modo="shopee" class="bloco-modo">
       <fieldset class="campo">
-        <legend>Pra quem vão as ofertas</legend>
+        <legend>Para quem vão as ofertas</legend>
         <div class="opcoes-chip" id="modo-envio">{% for opcao in form.modo_envio %}{% if opcao.data.value == "nicho" and not regras.nicho %}<label class="chip-opcao chip-premium" title="Disponível no plano Premium"><input type="radio" name="{{ opcao.data.name }}" value="nicho"{% if opcao.data.selected %} checked{% else %} disabled{% endif %}><span>{{ opcao.choice_label }} <small class="selo-premium">Premium</small></span></label>{% else %}<label class="chip-opcao">{{ opcao.tag }}<span>{{ opcao.choice_label }}</span></label>{% endif %}{% endfor %}</div>
         {% if not regras.nicho %}<span class="ajuda">Por nicho (Premium): cada grupo recebe as ofertas do seu tema, como beleza, moda ou casa.</span>{% endif %}
         {% for e in form.modo_envio.errors %}<span class="erro">{{ e }}</span>{% endfor %}
@@ -103,7 +103,7 @@
         {% for e in form.categorias.errors %}<span class="erro">{{ e }}</span>{% endfor %}
       </fieldset>
       </div>
-      {% if regras.nicho %}<p class="suave pequeno bloco-envio" data-envio="nicho">Cada grupo recebe as ofertas do nicho escolhido pra ele na lista de grupos, em “Onde e quando”. “Todos” recebe ofertas em geral. A cada intervalo sai uma oferta em cada nicho em uso.</p>{% endif %}
+      {% if regras.nicho %}<p class="suave pequeno bloco-envio" data-envio="nicho">Cada grupo recebe as ofertas do nicho escolhido para ele na lista de grupos, em “Onde e quando”. “Todos” recebe ofertas em geral. A cada intervalo sai uma oferta em cada nicho em uso.</p>{% endif %}
       <div class="campo">{% include "painel/_campo.html" with campo=form.ordenacao %}</div>
       </div>
     </section>

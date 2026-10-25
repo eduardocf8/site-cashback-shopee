@@ -305,7 +305,7 @@ def _publicar_story_de_oferta(oferta: Oferta, data, request, automatico: bool = 
     desconto, comissão) que vale a pena conferir antes de publicar."""
     imagem = gerar_imagem_oferta_story(oferta)
     nome_exibido = oferta.nome_curto or oferta.nome
-    legenda = f"{nome_exibido} — cashback garantido na cash-b. Link na bio pra ver essa e outras ofertas. 🛍️💸"
+    legenda = f"{nome_exibido} — cashback garantido na cash-b. Link na bio para ver essa e outras ofertas. 🛍️💸"
 
     registro = _publicar_ou_simular(
         imagem, legenda, RegistroPublicacao.TIPO_STORY, RegistroPublicacao.CONTEUDO_OFERTA_DIARIA,
@@ -445,7 +445,7 @@ def publicar_post_ofertas_semana(data, request) -> RegistroPublicacao | None:
     ]
     legenda = (
         "As ofertas em destaque essa semana na cash-b — cashback garantido em cada uma. "
-        "Link na bio pra ver todas. 🔥\n#cashback #shopee #ofertas"
+        "Link na bio para ver todas. 🔥\n#cashback #shopee #ofertas"
     )
     return _publicar_ou_simular_carrossel(
         [capa, *slides], legenda, RegistroPublicacao.TIPO_FEED, RegistroPublicacao.CONTEUDO_OFERTAS_SEMANA,

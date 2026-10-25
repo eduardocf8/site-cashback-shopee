@@ -13,7 +13,7 @@ class Command(BaseCommand):
     help = (
         "Loop infinito: a cada AUTOMACAO_INSTAGRAM_INTERVALO_SEGUNDOS, verifica "
         "comentários novos nas automações ativas (todas as contas) e responde/envia "
-        "DM conforme configurado. Pensado pra rodar como Background Worker no Render "
+        "DM conforme configurado. Pensado para rodar como Background Worker no Render "
         "(processo à parte do site, não do gunicorn) - ver README."
     )
 

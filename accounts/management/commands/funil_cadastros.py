@@ -34,7 +34,7 @@ class Command(BaseCommand):
         parser.add_argument(
             "--desde", type=str, default="",
             help="Data inicial YYYY-MM-DD. Se informada, ignora --dias. Use a data em que "
-                 "a campanha começou pra a coorte bater com o período do anúncio.",
+                 "a campanha começou para a coorte bater com o período do anúncio.",
         )
         parser.add_argument(
             "--ate", type=str, default="",

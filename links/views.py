@@ -92,7 +92,7 @@ def home(request):
         # "Continuar sem cadastro" escolhido na página de escolha - mesmo fluxo do
         # POST acima, mas o clique fica anônimo (ver accounts/cliques_anonimos.py).
         if not clique_anonimo_permitido(request):
-            return HttpResponse("Muitas tentativas sem cadastro. Crie uma conta pra continuar.", status=429)
+            return HttpResponse("Muitas tentativas sem cadastro. Crie uma conta para continuar.", status=429)
         registrar_tentativa(request, "conversor")
         registrar_clique_sem_conta(request, "conversor")
         form = LinkProdutoForm({"url_produto": request.GET["url_produto"]})

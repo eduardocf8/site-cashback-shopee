@@ -565,11 +565,11 @@ def whatsapp_mensagens(request):
         cheio = not editando and agendadas.count() >= regras["mensagens_agendadas"]
         if cheio:
             messages.error(request, f"Você já tem {regras['mensagens_agendadas']} mensagens agendadas, o máximo do seu "
-                                    "plano. Exclua alguma pra criar outra.")
+                                    "plano. Exclua alguma para criar outra.")
         elif form.is_valid():
             mensagem = form.save()
             if not mensagens.destinos(mensagem, config, conexao):
-                messages.warning(request, "Mensagem salva, mas ainda não tem nenhum grupo pra receber: escolha os grupos "
+                messages.warning(request, "Mensagem salva, mas ainda não tem nenhum grupo para receber: escolha os grupos "
                                           "na Automação ou marque “Escolher os grupos”.")
             elif mensagem.quando == MensagemAvulsa.QUANDO_AGORA:
                 aviso = "" if conexao.estado == ConexaoWhatsApp.CONECTADO else (

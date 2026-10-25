@@ -74,7 +74,7 @@ class Oferta(_CashbackEstimadoMixin, models.Model):
     nome = models.CharField(max_length=255)
     nome_curto = models.CharField(
         max_length=255, blank=True,
-        help_text="Versão enxuta do nome (via Gemini) pra exibição - ver ofertas/gemini_client.py. "
+        help_text="Versão enxuta do nome (via Gemini) para exibição - ver ofertas/gemini_client.py. "
         "Sempre preenchido (cai pro nome original se o Gemini não estiver configurado/disponível).",
     )
     imagem_url = models.URLField(blank=True)
@@ -170,7 +170,7 @@ class _OfertaCuradaBase(_CashbackEstimadoMixin, models.Model):
     preco_antigo = models.DecimalField(
         "Preço antigo", max_digits=10, decimal_places=2, null=True, blank=True,
         help_text="Preço original, exibido riscado. Opcional - deixe em branco quando a loja não mostrar "
-        "um preço \"de\" pra esse produto.",
+        "um preço \"de\" para esse produto.",
     )
     preco_novo = models.DecimalField("Preço novo", max_digits=10, decimal_places=2)
     preco_avista = models.DecimalField(

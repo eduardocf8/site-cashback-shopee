@@ -18,7 +18,7 @@ class ContaInstagramConectada(models.Model):
         settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name="contas_instagram"
     )
     nome_exibicao = models.CharField(
-        "Nome de exibição", max_length=100, help_text="Ex: @usecashb - só pra identificar a conta nas telas."
+        "Nome de exibição", max_length=100, help_text="Ex: @usecashb - só para identificar a conta nas telas."
     )
     instagram_business_account_id = models.CharField(
         "ID da conta comercial do Instagram",
@@ -29,7 +29,7 @@ class ContaInstagramConectada(models.Model):
     access_token = models.CharField(
         "Access token",
         max_length=512,
-        help_text="Token de longa duração gerado no painel da Meta pra essa conta.",
+        help_text="Token de longa duração gerado no painel da Meta para essa conta.",
     )
     criado_em = models.DateTimeField(auto_now_add=True)
 
@@ -47,7 +47,7 @@ class AutomacaoComentario(models.Model):
     bate com alguma das palavras-chave cadastradas."""
 
     conta = models.ForeignKey(ContaInstagramConectada, on_delete=models.CASCADE, related_name="automacoes")
-    nome = models.CharField("Nome da automação", max_length=100, help_text="Só pra identificar, ex: Sorteio de agosto")
+    nome = models.CharField("Nome da automação", max_length=100, help_text="Só para identificar, ex: Sorteio de agosto")
     instagram_media_id = models.CharField("ID do post no Instagram", max_length=64)
     link_post = models.URLField("Link do post", blank=True)
     palavras_chave = models.TextField(
@@ -94,7 +94,7 @@ class AutomacaoStory(models.Model):
     ]
 
     conta = models.ForeignKey(ContaInstagramConectada, on_delete=models.CASCADE, related_name="automacoes_story")
-    nome = models.CharField("Nome da automação", max_length=100, help_text="Só pra identificar, ex: Fone bluetooth 02/09")
+    nome = models.CharField("Nome da automação", max_length=100, help_text="Só para identificar, ex: Fone bluetooth 02/09")
     instagram_story_media_id = models.CharField("ID do story no Instagram", max_length=64)
     story_permalink = models.URLField("Link do story", blank=True)
     modo_resposta = models.CharField(

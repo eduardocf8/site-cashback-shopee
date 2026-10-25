@@ -103,16 +103,16 @@ class UserAdmin(BaseUserAdmin):
                     request=request,
                 )
                 if comunicacao.total_destinatarios == 0:
-                    messages.warning(request, "Nenhum destinatário encontrado pra esse filtro - nada foi enviado.")
+                    messages.warning(request, "Nenhum destinatário encontrado para esse filtro - nada foi enviado.")
                 elif comunicacao.total_enviados < comunicacao.total_destinatarios:
                     messages.warning(
                         request,
-                        f"Enviado pra {comunicacao.total_enviados} de {comunicacao.total_destinatarios} "
+                        f"Enviado para {comunicacao.total_enviados} de {comunicacao.total_destinatarios} "
                         "destinatário(s) - alguns lotes falharam, confira os logs do servidor.",
                     )
                 else:
                     messages.success(
-                        request, f"E-mail enviado com sucesso pra {comunicacao.total_enviados} destinatário(s)."
+                        request, f"E-mail enviado com sucesso para {comunicacao.total_enviados} destinatário(s)."
                     )
                 return redirect("admin:accounts_comunicacao")
 
@@ -191,7 +191,7 @@ class PushSubscriptionAdmin(admin.ModelAdmin):
             self.message_user(
                 request,
                 "Não saiu nenhuma notificação - o envio falhou no servidor. Procure por "
-                '"Falha ao enviar push" nos logs do Render pra ver o erro exato.',
+                '"Falha ao enviar push" nos logs do Render para ver o erro exato.',
                 level=messages.WARNING,
             )
 

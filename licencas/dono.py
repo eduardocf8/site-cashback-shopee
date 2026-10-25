@@ -250,4 +250,4 @@ def enviar_resumo_semanal(agora=None) -> list[str]:
     except Exception:  # noqa: BLE001
         ResumoSemanalDono.objects.filter(semana=domingo).delete()  # tenta de novo na próxima volta
         raise
-    return [f"Resumo semanal do dono enviado pra {destino} (semana de {domingo:%d/%m})."]
+    return [f"Resumo semanal do dono enviado para {destino} (semana de {domingo:%d/%m})."]

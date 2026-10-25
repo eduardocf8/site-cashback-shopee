@@ -63,7 +63,7 @@ def passos(conta, liberados=None) -> list[dict]:
                       "acao": "Gerar", "href": "painel_carrosseis"})
     if MODULO_NOTAS in liberados:
         lista.append({"chave": "notas", "titulo": "Cadastrar a empresa e o certificado digital",
-                      "detalhe": "pra emitir as notas", "acao": "Cadastrar", "href": "painel_notas",
+                      "detalhe": "para emitir as notas", "acao": "Cadastrar", "href": "painel_notas",
                       "feito": EmpresaNotas.objects.filter(conta=conta).exclude(certificado_cifrado="").exists()})
     return lista
 
@@ -129,13 +129,13 @@ def montar_email(conta, lista: list[dict], segundo: bool = False) -> tuple[str, 
     nome = f", {conta.nome.split(' ')[0]}" if conta.nome else ""
     quantos = f"{len(faltam)} passo{'s' if len(faltam) > 1 else ''}"
     if segundo:
-        assunto = "Precisa de ajuda pra configurar o Appfiliado?"
-        abertura = (f"Notamos que ainda falta{'m' if len(faltam) > 1 else ''} {quantos} pra você aproveitar o Appfiliado. "
+        assunto = "Precisa de ajuda para configurar o Appfiliado?"
+        abertura = (f"Notamos que ainda falta{'m' if len(faltam) > 1 else ''} {quantos} para você aproveitar o Appfiliado. "
                     "Se travou em alguma parte, a gente te ajuda: é só responder este e-mail"
                     + (f" ou chamar a gente no WhatsApp: {link_whatsapp}" if link_whatsapp else "") + ".")
     else:
         assunto = ("Falta pouco pras suas ofertas começarem a sair" if tem_bot
-                   else "Falta pouco pra começar a usar o Appfiliado")
+                   else "Falta pouco para começar a usar o Appfiliado")
         abertura = (f"Você está a {quantos} de ver o bot postando nos seus grupos:" if tem_bot
                     else f"Você está a {quantos} de começar a usar o Appfiliado:")
     corpo = (

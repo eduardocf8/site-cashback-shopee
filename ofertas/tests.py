@@ -748,7 +748,7 @@ class OfertaDestaqueManualAdminTests(TestCase):
 
         resposta = self.client.get(reverse("admin:ofertas_ofertadestaquemanual_change", args=[destaque.pk]))
 
-        self.assertContains(resposta, "Criar story e mandar pra aprovação")
+        self.assertContains(resposta, "Criar story e mandar para aprovação")
 
     def test_botao_criar_story_gera_registro_pendente_e_volta_pra_edicao(self):
         destaque = OfertaDestaqueManual.objects.create(

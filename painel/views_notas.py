@@ -56,7 +56,7 @@ class HorarioEmailForm(forms.Form):
 
 class ContabilidadeForm(forms.Form):
     email = forms.EmailField(label="E-mail da contabilidade", required=False,
-                             help_text="Pra onde vão as notas do mês quando você apertar o botão abaixo. "
+                             help_text="Para onde vão as notas do mês quando você apertar o botão abaixo. "
                                        "Você recebe uma cópia.")
 
 
@@ -182,8 +182,8 @@ def notas(request):
                     totais = contabilidade.enviar(empresa, date(ano, mes, 1))
                 except Exception:  # noqa: BLE001
                     logger.exception("Notas: envio manual à contabilidade")
-                    raise servicos.ErroNotas("Não deu pra mandar o e-mail agora. Tente de novo em alguns minutos.")
-                messages.success(request, f"Enviado pra {empresa.contabilidade_email}: {totais['notas']} nota"
+                    raise servicos.ErroNotas("Não deu para mandar o e-mail agora. Tente de novo em alguns minutos.")
+                messages.success(request, f"Enviado para {empresa.contabilidade_email}: {totais['notas']} nota"
                                           f"{'s' if totais['notas'] != 1 else ''} de {validos[escolhido].lower()}.")
                 return redirect(reverse("painel_notas") + "#contabilidade")
             elif acao == "importar":
