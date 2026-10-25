@@ -180,7 +180,7 @@ def _automacao_nova_post(request, conta):
     try:
         midias = instagram_api.listar_midias_recentes(conta.instagram_business_account_id, conta.access_token)
     except instagram_api.InstagramAPIError as erro:
-        messages.error(request, f"Não deu pra buscar os posts dessa conta: {erro}")
+        messages.error(request, f"Não deu para buscar os posts dessa conta: {erro}")
         midias = []
 
     if request.method == "POST":
@@ -210,7 +210,7 @@ def _automacao_nova_story(request, conta):
     try:
         stories = instagram_api.listar_stories_recentes(conta.instagram_business_account_id, conta.access_token)
     except instagram_api.InstagramAPIError as erro:
-        messages.error(request, f"Não deu pra buscar os stories dessa conta: {erro}")
+        messages.error(request, f"Não deu para buscar os stories dessa conta: {erro}")
         stories = []
 
     nomes_por_media_id = dict(

@@ -8,7 +8,7 @@ from ofertas.services import LinkProdutoInvalidoError
 
 class Command(BaseCommand):
     help = (
-        "Posta um story pra UM produto específico da Shopee, escolhido na mão (fora "
+        "Posta um story para UM produto específico da Shopee, escolhido na mão (fora "
         "do calendário automático) - passa o link do produto (aceita shopee.com.br e "
         "link curto shp.ee). Roda pelo Shell do Render: "
         "python manage.py postar_oferta_especifica <link>"
@@ -26,7 +26,7 @@ class Command(BaseCommand):
         if not host:
             raise CommandError(
                 "RENDER_EXTERNAL_HOSTNAME não configurado - esse comando espera rodar em produção "
-                "(Shell do Render), pra montar os links do e-mail de aprovação com o host certo."
+                "(Shell do Render), para montar os links do e-mail de aprovação com o host certo."
             )
         request = RequestFactory().get("/", secure=True, SERVER_NAME=host)
 
@@ -40,7 +40,7 @@ class Command(BaseCommand):
         ))
         if registro.status == registro.STATUS_PENDENTE_APROVACAO:
             self.stdout.write(
-                f"Aprovação enviada por e-mail pra {settings.INSTAGRAM_APROVADOR_EMAIL} - "
+                f"Aprovação enviada por e-mail para {settings.INSTAGRAM_APROVADOR_EMAIL} - "
                 "confira e clique em \"Aprovar e publicar\" por lá."
             )
         elif registro.status == registro.STATUS_ERRO:

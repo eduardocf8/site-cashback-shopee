@@ -51,7 +51,7 @@ class RegistroPublicacaoAdmin(admin.ModelAdmin):
     )
     actions = ["tentar_publicar_de_novo"]
 
-    @admin.action(description="Tentar publicar de novo (converte a arte pra JPEG se precisar)")
+    @admin.action(description="Tentar publicar de novo (converte a arte para JPEG se precisar)")
     def tentar_publicar_de_novo(self, request, queryset):
         for registro in queryset:
             if registro.status != RegistroPublicacao.STATUS_ERRO:

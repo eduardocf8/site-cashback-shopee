@@ -266,7 +266,7 @@ def maior_cashback_de_hoje() -> "dict | None":
         "numero": _formatar_percentual(oferta.percentual_cashback),
         "rotulo": "o maior cashback em %",
         "subrotulo": "entre os mais vendidos",
-        "apoio": f"É quanto volta pra você comprando {nome} pela cash-b.",
+        "apoio": f"É quanto volta para você comprando {nome} pela cash-b.",
     }
 
 
