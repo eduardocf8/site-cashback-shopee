@@ -68,6 +68,16 @@ def passos(conta, liberados=None) -> list[dict]:
     return lista
 
 
+ADIAR_POR = timedelta(hours=12)
+
+
+def cartao_visivel(conta, agora=None) -> bool:
+    """O cartão do Início some de vez com "Não mostrar novamente" e por 12 horas com "Me lembre mais tarde"."""
+    if conta.passos_ocultos:
+        return False
+    return not conta.passos_adiados_ate or conta.passos_adiados_ate <= (agora or timezone.now())
+
+
 def pendentes(lista: list[dict]) -> list[dict]:
     return [p for p in lista if not p["feito"]]
 

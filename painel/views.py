@@ -111,6 +111,19 @@ def entrar(request):
 
 
 @require_POST
+@conta_requerida
+def ocultar_passos(request):
+    """Botões do cartão "Primeiros passos": adiar por 12 horas ou esconder de vez."""
+    conta = conta_logada(request)
+    if request.POST.get("acao") == "nunca":
+        conta.passos_ocultos = True
+    else:
+        conta.passos_adiados_ate = timezone.now() + primeiros_passos.ADIAR_POR
+    conta.save(update_fields=["passos_ocultos", "passos_adiados_ate"])
+    return redirect("painel_inicio")
+
+
+@require_POST
 def sair(request):
     fazer_logout(request)
     return redirect("painel_entrar")
@@ -171,7 +184,7 @@ def inicio(request):
     contexto = {
         "hoje": _hoje_por_extenso(),
         "passos": passos,
-        "passos_pendentes": bool(primeiros_passos.pendentes(passos)),
+        "passos_pendentes": bool(primeiros_passos.pendentes(passos)) and primeiros_passos.cartao_visivel(conta),
         "cartoes_modulos": cartoes_modulos,
         "primeiro_nome": (conta.nome or "").split(" ")[0],
         "shopee_conectada": bool(conta.shopee_validado_em),

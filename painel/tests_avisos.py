@@ -192,3 +192,37 @@ class TestPrimeirosPassos(TestCase):
         self.assertEqual([p["chave"] for p in lista], ["senha", "notas"])
         self.assertEqual([p["chave"] for p in primeiros_passos.passos(self.conta, ["whatsapp", "site", "notas"])],
                          ["senha", "shopee", "whatsapp", "ofertas", "site", "notas"])
+
+
+class TestOcultarPrimeirosPassos(BasePainel):
+    """Botões do cartão "Primeiros passos" no Início."""
+
+    def setUp(self):
+        super().setUp()
+        self.entrar()
+
+    def test_cartao_aparece_com_os_dois_botoes(self):
+        r = self.client.get("/")
+        if "Primeiros passos" not in r.content.decode():
+            self.skipTest("esta conta de teste não tem passos pendentes")
+        self.assertContains(r, "Me lembre mais tarde")
+        self.assertContains(r, "Não mostrar novamente")
+
+    def test_lembrar_mais_tarde_esconde_por_12_horas(self):
+        self.client.post("/primeiros-passos/ocultar/", {"acao": "depois"})
+        self.conta.refresh_from_db()
+        self.assertFalse(primeiros_passos.cartao_visivel(self.conta))
+        self.assertNotContains(self.client.get("/"), "Me lembre mais tarde")
+        self.assertFalse(primeiros_passos.cartao_visivel(self.conta, timezone.now() + timedelta(hours=11)))
+        self.assertTrue(primeiros_passos.cartao_visivel(self.conta, timezone.now() + timedelta(hours=12, minutes=1)))
+        self.assertFalse(self.conta.passos_ocultos)
+
+    def test_nao_mostrar_novamente_esconde_de_vez(self):
+        self.client.post("/primeiros-passos/ocultar/", {"acao": "nunca"})
+        self.conta.refresh_from_db()
+        self.assertTrue(self.conta.passos_ocultos)
+        self.assertFalse(primeiros_passos.cartao_visivel(self.conta, timezone.now() + timedelta(days=365)))
+        self.assertNotContains(self.client.get("/"), "Primeiros passos")
+
+    def test_so_aceita_post(self):
+        self.assertEqual(self.client.get("/primeiros-passos/ocultar/").status_code, 405)

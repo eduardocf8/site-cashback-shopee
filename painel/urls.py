@@ -4,6 +4,7 @@ from . import views, views_carrosseis, views_conversor, views_radar, views_notas
 
 urlpatterns = [
     path("", views.inicio, name="painel_inicio"),
+    path("primeiros-passos/ocultar/", views.ocultar_passos, name="painel_ocultar_passos"),
     path("entrar/", views.entrar, name="painel_entrar"),
     path("sair/", views.sair, name="painel_sair"),
     path("senha/esqueci/", views.esqueci_senha, name="painel_esqueci_senha"),
