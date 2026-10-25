@@ -63,7 +63,8 @@ CSS = f"""
 body {{ font-family: DM, sans-serif; font-weight: 500; color: {TINTA}; }}
 .slide {{ width: var(--w); height: var(--h); position: relative; overflow: hidden; display: flex; flex-direction: column;
   padding: 72px var(--px, 84px) 64px; background: {CREME}; }}
-.slide.capa {{ --px: 140px; }}
+.slide.capa {{ --px: 200px; }}  /* grade 3:4 mostra só os 810 px do meio: 135 px cortados + 65 px de margem */
+.slide.capa h1 {{ font-size: 74px; }}
 .slide.verde {{ background: radial-gradient(120% 90% at 88% 6%, {VERDE_2} 0%, {VERDE} 46%, {VERDE_3} 100%); color: {CREME}; }}
 .slide.amarelo {{ background: {AMARELO}; }}
 .marca {{ display: flex; align-items: center; gap: 16px; font-weight: 800; font-size: 34px; letter-spacing: -.01em; }}
@@ -459,8 +460,8 @@ CHECAR = """() => {
     const t = el.textContent.trim().slice(0, 45);
     if (r.top < cima - 1 || r.bottom > baixo + 1 || r.left < lado - 1 || r.right > W - lado + 1)
       erros.push(`fora da área segura: "${t}" (${[r.left, r.top, r.right, r.bottom].map(Math.round)})`);
-    if (capa && el.matches('h1,p') && (r.left < 134 || r.right > W - 134))
-      erros.push(`fora dos 810 px do meio (grade 3:4): "${t}"`);
+    if (capa && (r.left < 175 || r.right > W - 175))
+      erros.push(`perto demais da borda da grade 3:4: "${t}"`);
     if (el.scrollWidth > el.clientWidth + 2) erros.push(`texto vazando na largura: "${t}"`);
     const temTexto = [...el.childNodes].some(n => n.nodeType === 3 && n.textContent.trim());
     if (temTexto && parseFloat(getComputedStyle(el).fontSize) < fonteMin) erros.push(`fonte pequena (${getComputedStyle(el).fontSize}): "${t}"`);
