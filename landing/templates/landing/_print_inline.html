@@ -1,6 +1,29 @@
 {% load static %}
 <div class="prints">
   {% for p in prints %}
+    {% if p.celular %}{% with e=p.celular.editor %}
+    <figure class="prints-painel prints-combo">
+      <div class="combo">
+        <div class="combo-editor">
+          <div class="prints-janela">
+            <div class="prints-barra" aria-hidden="true"><i></i><i></i><i></i><span>app.appfiliado.com.br</span></div>
+            <picture>
+              <source media="(max-width: 760px)" srcset="{% static e.arquivo_m %}" width="{{ e.largura_m }}" height="{{ e.altura_m }}">
+              <img src="{% static e.arquivo %}" width="{{ e.largura }}" height="{{ e.altura }}" alt="{{ e.alt }}" loading="lazy" decoding="async">
+            </picture>
+          </div>
+          <p class="combo-legenda">{{ e.legenda }}</p>
+        </div>
+        <div class="combo-celular">
+          <span class="combo-rotulo">Prévia</span>
+          <img src="{% static p.arquivo %}" width="{{ p.largura }}" height="{{ p.altura }}" alt="{{ p.alt }}" loading="lazy" decoding="async">
+          <p class="combo-legenda">{{ p.celular.legenda }}</p>
+        </div>
+      </div>
+      <figcaption>{{ p.legenda }}</figcaption>
+    </figure>
+    {% endwith %}
+    {% else %}
     <figure class="prints-painel">
       <div class="prints-janela">
         <div class="prints-barra" aria-hidden="true"><i></i><i></i><i></i><span>app.appfiliado.com.br</span></div>
@@ -11,5 +34,6 @@
       </div>
       <figcaption>{{ p.legenda }}</figcaption>
     </figure>
+    {% endif %}
   {% endfor %}
 </div>
