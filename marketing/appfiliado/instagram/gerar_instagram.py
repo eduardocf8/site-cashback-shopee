@@ -1,4 +1,4 @@
-"""Posts do feed (carrosséis 1080x1350) e stories dos destaques (1080x1920) do Instagram do Appfiliado.
+"""Posts do feed (carrosséis 1080x1080, 1:1) e stories dos destaques (1080x1920) do Instagram do Appfiliado.
 
 Uso (na raiz do repositório): python3 marketing/appfiliado/instagram/gerar_instagram.py [nome-do-post ...]
 Sai em marketing/appfiliado/instagram/feed/<post>/NN.jpg, destaques/<destaque>/NN.jpg e uma folha de
@@ -6,7 +6,13 @@ contato (previa-<post>.jpg) pra conferir tudo de uma vez. As legendas ficam em l
 
 Cores e símbolo da identidade (marketing/appfiliado/gerar_identidade.py), fonte DM Sans; as telas são os
 prints do painel com a conta fictícia "Achadinhos da Bia" (landing/static/landing/prints/*-m.webp).
-Regras de texto em VOZ.md (pra/pro, vírgulas)."""
+Regras de texto em VOZ.md (pra/pro, vírgulas).
+
+Limites conferidos a cada slide (o script avisa se algo sair deles):
+- feed: texto a 40 px ou mais das bordas, fonte de 26 px ou mais; na capa, o texto fica nos 810 px do meio
+  porque a grade do perfil mostra os posts em 3:4 e corta as laterais de um post quadrado;
+- stories: nada de texto nos 250 px de cima (barra de progresso e nome) nem nos 250 px de baixo (campo de
+  resposta), e 60 px ou mais das laterais."""
 
 import base64
 import html
@@ -35,6 +41,7 @@ ICONES = {
     "chave": "M15 7a4 4 0 1 1-3.9 4.9L4 19v2h3v-2h2v-2h2l1.1-1.1A4 4 0 0 1 15 7zM16 9.5h.01",
     "duvidas": "M12 21a9 9 0 1 0 0-18 9 9 0 0 0 0 18zM9.5 9a2.5 2.5 0 1 1 3.5 2.3c-.6.3-1 .9-1 1.6V14M12 17h.01",
     "planos": "M4 7h16v12H4zM4 11h16M8 15h3",
+    "sobre": "M12 21a9 9 0 1 0 0-18 9 9 0 0 0 0 18zM12 11v6M12 7.5h.01",
 }
 
 
@@ -55,7 +62,8 @@ CSS = f"""
 * {{ box-sizing: border-box; margin: 0; padding: 0; }}
 body {{ font-family: DM, sans-serif; font-weight: 500; color: {TINTA}; }}
 .slide {{ width: var(--w); height: var(--h); position: relative; overflow: hidden; display: flex; flex-direction: column;
-  padding: 92px 88px 84px; background: {CREME}; }}
+  padding: 72px var(--px, 84px) 64px; background: {CREME}; }}
+.slide.capa {{ --px: 140px; }}
 .slide.verde {{ background: radial-gradient(120% 90% at 88% 6%, {VERDE_2} 0%, {VERDE} 46%, {VERDE_3} 100%); color: {CREME}; }}
 .slide.amarelo {{ background: {AMARELO}; }}
 .marca {{ display: flex; align-items: center; gap: 16px; font-weight: 800; font-size: 34px; letter-spacing: -.01em; }}
@@ -64,12 +72,12 @@ body {{ font-family: DM, sans-serif; font-weight: 500; color: {TINTA}; }}
 .verde .marca {{ color: {CREME}; }}
 .chapeu {{ font-size: 26px; font-weight: 800; letter-spacing: .14em; text-transform: uppercase; color: #8A6A00; }}
 .verde .chapeu {{ color: {AMARELO}; }}
-h1 {{ font-weight: 800; letter-spacing: -.03em; line-height: 1.02; font-size: 96px; margin-top: 22px; }}
-h1.menor {{ font-size: 74px; line-height: 1.06; }}
+h1 {{ font-weight: 800; letter-spacing: -.03em; line-height: 1.03; font-size: 80px; margin-top: 20px; }}
+h1.menor {{ font-size: 66px; line-height: 1.07; }}
 h1 em, h2 em {{ font-style: normal; background: linear-gradient(transparent 58%, {AMARELO} 58%, {AMARELO} 92%, transparent 92%); }}
 .verde h1 em, .verde h2 em {{ background: none; color: {AMARELO}; }}
-h2 {{ font-weight: 800; letter-spacing: -.025em; line-height: 1.06; font-size: 64px; margin-top: 18px; }}
-.texto {{ font-size: 36px; line-height: 1.38; color: #4E5C53; margin-top: 26px; max-width: 880px; }}
+h2 {{ font-weight: 800; letter-spacing: -.025em; line-height: 1.07; font-size: 54px; margin-top: 16px; }}
+.texto {{ font-size: 32px; line-height: 1.36; color: #4E5C53; margin-top: 22px; max-width: 900px; }}
 .verde .texto {{ color: {SUAVE}; }}
 .rodape {{ margin-top: auto; display: flex; align-items: center; justify-content: space-between; font-size: 28px; font-weight: 800; }}
 .rodape .pagina {{ opacity: .55; }}
@@ -81,40 +89,61 @@ h2 {{ font-weight: 800; letter-spacing: -.025em; line-height: 1.06; font-size: 6
 .verde .icone-grande {{ background: rgba(246,243,234,.10); border: 3px solid rgba(246,243,234,.16); }}
 .icone-grande svg {{ width: 86px; height: 86px; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }}
 /* celular com a tela do painel */
-.celular {{ position: absolute; left: 50%; transform: translateX(-50%); width: var(--cw); background: #101a14; border-radius: 64px;
+.celular {{ position: relative; flex: none; margin: 40px auto 0; width: var(--cw); background: #101a14; border-radius: 64px;
   padding: 18px; box-shadow: 0 40px 90px rgba(23,48,31,.28), 0 0 0 3px rgba(23,48,31,.12); }}
 .celular .tela {{ border-radius: 48px; overflow: hidden; background: #F6F3EA; padding-top: 78px; }}
 .celular .tela div {{ height: 100%; background-repeat: no-repeat; background-size: 100% auto; }}
 .celular::before {{ content: ""; position: absolute; top: 34px; left: 50%; width: 120px; height: 30px; margin-left: -60px; border-radius: 20px; background: #101a14; z-index: 2; }}
-.lista {{ list-style: none; display: grid; gap: 24px; margin: auto 0; padding-top: 40px; }}
-.lista li {{ display: flex; gap: 28px; align-items: flex-start; background: #fff; border: 2px solid #E6DFC9; border-radius: 32px; padding: 36px 38px; }}
+.lista {{ list-style: none; display: grid; gap: 16px; margin: auto 0; padding-top: 28px; }}
+.lista li {{ display: flex; gap: 24px; align-items: flex-start; background: #fff; border: 2px solid #E6DFC9; border-radius: 28px; padding: 22px 30px; }}
 .verde .lista li {{ background: rgba(246,243,234,.07); border-color: rgba(246,243,234,.14); }}
-.lista .n {{ flex: none; width: 64px; height: 64px; border-radius: 50%; background: {AMARELO}; color: {VERDE}; font-weight: 800; font-size: 32px; display: grid; place-items: center; }}
+.lista .n {{ flex: none; width: 56px; height: 56px; border-radius: 50%; background: {AMARELO}; color: {VERDE}; font-weight: 800; font-size: 30px; display: grid; place-items: center; }}
 .lista .ok {{ flex: none; width: 52px; height: 52px; border-radius: 50%; background: {VERDE}; display: grid; place-items: center; margin-top: 4px; }}
 .verde .lista .ok {{ background: {AMARELO}; }}
 .lista .ok svg {{ width: 30px; height: 30px; fill: none; stroke: {AMARELO}; stroke-width: 3.2; stroke-linecap: round; stroke-linejoin: round; }}
 .verde .lista .ok svg {{ stroke: {VERDE}; }}
-.lista b {{ display: block; font-size: 42px; font-weight: 800; letter-spacing: -.01em; line-height: 1.15; }}
-.lista div > span {{ display: block; font-size: 32px; line-height: 1.35; color: #5B675F; margin-top: 6px; }}
+.lista b {{ display: block; font-size: 36px; font-weight: 800; letter-spacing: -.01em; line-height: 1.15; }}
+.lista div > span {{ display: block; font-size: 29px; line-height: 1.32; color: #5B675F; margin-top: 6px; }}
 .verde .lista div > span {{ color: {SUAVE}; }}
-.premium {{ font-style: normal; display: inline-block; font-size: 22px; font-weight: 800; letter-spacing: .1em; text-transform: uppercase; background: {VERDE};
+.premium {{ font-style: normal; display: inline-block; font-size: 26px; font-weight: 800; letter-spacing: .1em; text-transform: uppercase; background: {VERDE};
   color: {AMARELO}; border-radius: 999px; padding: 6px 16px; margin-left: 12px; vertical-align: 6px; }}
-.numeros {{ display: grid; grid-template-columns: 1fr 1fr; gap: 22px; margin-top: 48px; }}
-.numeros div {{ background: #fff; border: 2px solid #E6DFC9; border-radius: 30px; padding: 34px; }}
+.numeros {{ display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin: auto 0; }}
+.numeros div {{ background: #fff; border: 2px solid #E6DFC9; border-radius: 28px; padding: 30px; }}
 .verde .numeros div {{ background: rgba(246,243,234,.07); border-color: rgba(246,243,234,.14); }}
-.numeros b {{ display: block; font-size: 66px; font-weight: 800; letter-spacing: -.03em; line-height: 1; }}
+.numeros b {{ display: block; font-size: 60px; font-weight: 800; letter-spacing: -.03em; line-height: 1; }}
 .verde .numeros b {{ color: {AMARELO}; }}
-.numeros span {{ display: block; font-size: 28px; color: #5B675F; margin-top: 12px; line-height: 1.3; }}
+.numeros span {{ display: block; font-size: 29px; color: #5B675F; margin-top: 12px; line-height: 1.3; }}
 .verde .numeros span {{ color: {SUAVE}; }}
-.precos {{ display: grid; gap: 18px; margin-top: 40px; }}
+.precos {{ display: grid; gap: 12px; margin-top: 30px; }}
 .precos div {{ display: flex; justify-content: space-between; align-items: baseline; gap: 20px; background: rgba(246,243,234,.07);
-  border: 2px solid rgba(246,243,234,.14); border-radius: 26px; padding: 26px 32px; font-size: 34px; }}
-.precos b {{ color: {AMARELO}; font-size: 40px; font-weight: 800; white-space: nowrap; }}
-.precos small {{ font-size: 24px; color: {SUAVE}; }}
+  border: 2px solid rgba(246,243,234,.14); border-radius: 24px; padding: 16px 30px; font-size: 32px; }}
+.precos b {{ color: {AMARELO}; font-size: 36px; font-weight: 800; white-space: nowrap; }}
+.precos small {{ font-size: 26px; color: {SUAVE}; }}
 .balao {{ background: #fff; border-radius: 30px 30px 30px 8px; padding: 28px 32px; font-size: 32px; line-height: 1.38; box-shadow: 0 16px 40px rgba(23,48,31,.10);
   max-width: 820px; }}
 .balao.meu {{ background: #DCF8C6; border-radius: 30px 30px 8px 30px; margin-left: auto; }}
-.story .slide {{ justify-content: center; }}
+/* listas curtas no feed: letras maiores pra ocupar o quadrado */
+.lista.folgada {{ gap: 20px; }}
+.lista.folgada li {{ padding: 30px 34px; }}
+.lista.folgada b {{ font-size: 40px; }}
+.lista.folgada div > span {{ font-size: 31px; }}
+/* stories: os tamanhos maiores, longe das faixas que o Instagram cobre (o slide é desenhado em 864x1536 e
+   ampliado 1,25x: 200 px aqui = 250 px na imagem) */
+.story .slide {{ justify-content: center; padding: 200px 56px; }}
+.story .slide.capa {{ --px: 56px; }}
+.story h1 {{ font-size: 92px; }}
+.story h1.menor {{ font-size: 72px; }}
+.story h2 {{ font-size: 62px; }}
+.story .texto {{ font-size: 35px; }}
+.story .lista {{ gap: 22px; padding-top: 36px; }}
+.story .lista li {{ padding: 32px 34px; border-radius: 32px; }}
+.story .lista b {{ font-size: 40px; }}
+.story .lista div > span {{ font-size: 31px; }}
+.story .numeros {{ margin-top: 48px; }}
+.story .numeros b {{ font-size: 66px; }}
+.story .precos {{ gap: 16px; margin-top: 40px; }}
+.story .precos div {{ padding: 24px 32px; font-size: 33px; }}
+.story .precos b {{ font-size: 39px; }}
 .story .slide.com-tela {{ justify-content: flex-start; }}
 .story .rodape, .story .contador {{ display: none; }}
 .story .lista {{ margin: 0; }}
@@ -124,6 +153,7 @@ h2 {{ font-weight: 800; letter-spacing: -.025em; line-height: 1.06; font-size: 6
 
 def _pagina(slide_html: str, largura: int, altura: int) -> str:
     slide_html = slide_html.replace("e-mail", "e&#8209;mail")  # sem quebrar linha no hífen
+    slide_html = slide_html.replace("R$ ", "R$&nbsp;")  # o "R$" não fica sozinho no fim da linha
     return (f"<!doctype html><html><head><meta charset='utf-8'><style>:root{{--w:{largura}px;--h:{altura}px}}{CSS}</style></head>"
             f"<body class='{"story" if STORY["ativo"] else ""}'>{slide_html}</body></html>")
 
@@ -154,22 +184,22 @@ def capa(chapeu, titulo, texto="", icone=None, verde=True):
         topo = f'<div style="display:flex;justify-content:space-between;align-items:flex-start">{_marca()}{_icone(icone) if icone else ""}</div>'
         enfeite = ('<div class="circulo-fundo" style="width:900px;height:900px;right:-380px;bottom:-360px"></div>'
                    '<div class="circulo-fundo" style="width:560px;height:560px;right:-200px;bottom:-180px"></div>') if verde else ""
-        return (f'<section class="slide{" verde" if verde else ""}">{enfeite}{topo}<div style="margin-top:auto;position:relative">'
+        return (f'<section class="slide capa{" verde" if verde else ""}">{enfeite}{topo}<div style="margin-top:auto;position:relative">'
                 f'<p class="chapeu">{E(chapeu)}</p><h1>{titulo}</h1>{f"<p class=texto>{texto}</p>" if texto else ""}</div>'
                 f'<div style="height:70px"></div>{_rodape(i, total)}</section>')
     return montar
 
 
-def tela(chapeu, titulo, texto, imagem, recorte=0, verde=False, largura_celular=640):
-    """Título em cima e o celular com o print saindo pela borda de baixo."""
+def tela(chapeu, titulo, texto, imagem, recorte=0, verde=False):
+    """Título em cima e o celular com o print logo abaixo, saindo pela borda de baixo."""
     def montar(i, total, w, h):
         dados, lw, _ = _print(imagem)
+        largura_celular = 640 if STORY["ativo"] else 620
         escala = (largura_celular - 36) / lw
-        topo_celular = 520
         return (f'<section class="slide com-tela{" verde" if verde else ""}"><div style="display:flex;justify-content:space-between;align-items:center">'
                 f'<p class="chapeu">{E(chapeu)}</p><span class="chapeu contador" style="color:inherit;opacity:.45;letter-spacing:.04em">{i}/{total} →</span></div><h2>{titulo}</h2>'
-                f'<p class="texto" style="font-size:33px;margin-top:20px">{texto}</p>'
-                f'<div class="celular" style="--cw:{largura_celular}px;top:{topo_celular}px">'
+                f'<p class="texto">{texto}</p>'
+                f'<div class="celular" style="--cw:{largura_celular}px">'
                 f'<div class="tela" style="height:{h}px"><div style="background-image:url({dados});background-position:0 -{recorte * escala:.0f}px"></div></div></div>'
                 f'</section>')
     return montar
@@ -185,8 +215,8 @@ def lista(chapeu, titulo, itens, numerada=False, verde=False, texto=""):
             marca = f'<span class="n">{k}</span>' if numerada else '<span class="ok"><svg viewBox="0 0 24 24"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg></span>'
             lis += f"<li>{marca}<div><b>{nome}{premium}</b>{f'<span>{desc}</span>' if desc else ''}</div></li>"
         return (f'<section class="slide{" verde" if verde else ""}"><p class="chapeu">{E(chapeu)}</p><h2>{titulo}</h2>'
-                f'{f"<p class=texto style=font-size:32px;margin-top:18px>{texto}</p>" if texto else ""}'
-                f'<ul class="lista">{lis}</ul><div style="height:50px"></div>{_rodape(i, total)}</section>')
+                f'{f"<p class=texto>{texto}</p>" if texto else ""}'
+                f'<ul class="lista{" folgada" if len(itens) <= 4 else ""}">{lis}</ul><div style="height:50px"></div>{_rodape(i, total)}</section>')
     return montar
 
 
@@ -203,7 +233,7 @@ def precos(chapeu, titulo, linhas, nota=""):
     def montar(i, total, w, h):
         cel = "".join(f"<div><span>{E(n)}{f'<br><small>{E(d)}</small>' if d else ''}</span><b>{E(p)}</b></div>" for n, p, d in linhas)
         return (f'<section class="slide verde"><p class="chapeu">{E(chapeu)}</p><h2>{titulo}</h2><div class="precos">{cel}</div>'
-                f'{f"<p class=texto style=font-size:28px;margin-top:28px>{nota}</p>" if nota else ""}'
+                f'{f"<p class=texto style=font-size:29px;margin-top:24px>{nota}</p>" if nota else ""}'
                 f'<div style="height:40px"></div>{_rodape(i, total)}</section>')
     return montar
 
@@ -346,6 +376,27 @@ FEED = {
 }
 
 DESTAQUES = {
+    "sobre": [
+        capa("Sobre o Appfiliado", "Feito pra quem <em>divulga a Shopee.</em>",
+             "As ferramentas do dia a dia do afiliado num painel só.", icone="sobre"),
+        lista("Sobre o Appfiliado", "Escolha os seus módulos", [
+            ("Bot de WhatsApp", "Ofertas no automático nos seus grupos."),
+            ("Meu site", "Link na bio com vitrine e conversor."),
+            ("Gerador de carrosséis", "Carrossel pronto a partir de um link."),
+            ("Emissor NFS-e", "As notas da comissão em poucos cliques."),
+        ]),
+        lista("Em todos os planos", "Já vem junto", [
+            ("Radar de ofertas", "Mais de 30 mil produtos com comissão."),
+            ("Conversor de links", "Troca os links de qualquer texto pelo seu."),
+            ("Resultados e metas", "Quanto vendeu e de onde veio."),
+        ], verde=True),
+        lista("Sobre o Appfiliado", "Pode ficar tranquilo", [
+            ("API oficial da Shopee", "A comissão cai direto na sua conta de afiliado."),
+            ("Sem instalar nada", "Tudo roda no navegador e no nosso servidor."),
+            ("7 dias de garantia", "E cancelamento quando quiser, sem multa."),
+        ]),
+        cta("Conheça o <span style='color:#F2C230'>Appfiliado.</span>", "Planos, prints e perguntas frequentes no site.", botao="Link na bio"),
+    ],
     "comece-aqui": [
         capa("Comece aqui", "1. Libere a <em>API da Shopee</em>", "Peça direto à Shopee: a resposta sai em até 5 dias úteis.", icone="chave"),
         lista("Comece aqui", "Depois da compra", [
@@ -379,7 +430,7 @@ for nome, icone, post in (("bot", "bot", "03-bot-de-whatsapp"), ("meu-site", "si
     DESTAQUES[nome] = [s for s in FEED[post][1:-1]]
 
 
-CAPAS_DOS_DESTAQUES = {"comece-aqui": "chave", "planos": "planos", "duvidas": "duvidas", "bot": "bot", "meu-site": "site",
+CAPAS_DOS_DESTAQUES = {"sobre": "sobre", "comece-aqui": "chave", "planos": "planos", "duvidas": "duvidas", "bot": "bot", "meu-site": "site",
                        "carrosseis": "carrosseis", "notas": "notas"}
 
 
@@ -393,6 +444,28 @@ def capa_do_destaque(icone):
     return montar
 
 
+CHECAR = """() => {
+  const W = innerWidth, H = innerHeight, story = document.body.classList.contains('story');
+  const cima = story ? 200 : 40, baixo = story ? H - 200 : H - 40, lado = story ? 48 : 40, fonteMin = story ? 24 : 26;
+  const capa = !story && document.querySelector('.slide.capa');
+  const erros = [];
+  for (const el of document.querySelectorAll('h1,h2,p,b,li,.selo,.balao,.precos div,.numeros div,.rodape span,.lista div > span')) {
+    if (el.closest('.celular')) continue;
+    const r = el.getBoundingClientRect();
+    if (!r.width || !r.height) continue;
+    const t = el.textContent.trim().slice(0, 45);
+    if (r.top < cima - 1 || r.bottom > baixo + 1 || r.left < lado - 1 || r.right > W - lado + 1)
+      erros.push(`fora da área segura: "${t}" (${[r.left, r.top, r.right, r.bottom].map(Math.round)})`);
+    if (capa && el.matches('h1,p') && (r.left < 134 || r.right > W - 134))
+      erros.push(`fora dos 810 px do meio (grade 3:4): "${t}"`);
+    if (el.scrollWidth > el.clientWidth + 2) erros.push(`texto vazando na largura: "${t}"`);
+    const temTexto = [...el.childNodes].some(n => n.nodeType === 3 && n.textContent.trim());
+    if (temTexto && parseFloat(getComputedStyle(el).fontSize) < fonteMin) erros.push(`fonte pequena (${getComputedStyle(el).fontSize}): "${t}"`);
+  }
+  return [...new Set(erros)];
+}"""
+
+
 def _renderizar(slides, pasta: Path, largura, altura, navegador, escala=1.0):
     """`escala` > 1 desenha numa tela menor e amplia (stories: tudo 25% maior, pra ler no celular)."""
     pasta.mkdir(parents=True, exist_ok=True)
@@ -404,6 +477,8 @@ def _renderizar(slides, pasta: Path, largura, altura, navegador, escala=1.0):
     for i, montar in enumerate(slides, 1):
         pagina.set_content(_pagina(montar(i, len(slides), largura, altura), largura, altura))
         pagina.wait_for_timeout(150)
+        for erro in pagina.evaluate(CHECAR):
+            print(f"  ATENÇÃO {pasta.name}/{i:02d}: {erro}")
         destino = pasta / f"{i:02d}.jpg"
         pagina.screenshot(path=str(destino), type="jpeg", quality=92, clip={"x": 0, "y": 0, "width": largura, "height": altura})
         arquivos.append(destino)
@@ -430,7 +505,7 @@ def main():
         for nome, slides in FEED.items():
             if filtro and nome not in filtro:
                 continue
-            arquivos = _renderizar(slides, AQUI / "feed" / nome, 1080, 1350, navegador)
+            arquivos = _renderizar(slides, AQUI / "feed" / nome, 1080, 1080, navegador)
             _previa(arquivos, AQUI / "feed" / f"previa-{nome}.jpg")
             print(nome, len(arquivos))
         for nome, slides in DESTAQUES.items():
