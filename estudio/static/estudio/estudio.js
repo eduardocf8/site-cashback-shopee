@@ -113,7 +113,7 @@
   let escalaPalco = 1;
   function desenharPalco() {
     const i = est.atual, s = est.slides[i], b = M.base(est.formato);
-    const area = $('es-palco-area'), largura = Math.max(260, area.clientWidth), altura = Math.max(320, window.innerHeight - 230);
+    const area = $('es-palco-area'), largura = Math.max(260, area.clientWidth), altura = Math.max(320, window.innerHeight - 270);
     const k = Math.min(largura / b.w, altura / b.h); escalaPalco = k;
     const esc = $('es-escala'); esc.style.width = b.w * k + 'px'; esc.style.height = b.h * k + 'px';
     const quadro = $('es-quadro'); quadro.style.transform = `scale(${k})`;
@@ -139,6 +139,7 @@
     montar(i, dentro);
   }
   function desenharLista() {
+    const rolagem = document.querySelector('.es-lista'), y = rolagem.scrollTop;
     const lista = $('es-slides'); lista.innerHTML = '';
     est.slides.forEach((s, i) => {
       const img = el('div', { class: 'es-mini-img' });
@@ -149,11 +150,13 @@
           el('button', { type: 'button', title: 'Descer', disabled: i === est.slides.length - 1, on: { click: mover(1) } }, '↓'),
           el('button', { type: 'button', title: 'Duplicar', disabled: est.slides.length >= cfg.max_slides, on: { click: (ev) => { ev.stopPropagation(); est.slides.splice(i + 1, 0, copia(s)); est.atual = i + 1; tudo(); marcarSujo(); } } }, '⧉'),
           el('button', { type: 'button', title: 'Apagar', disabled: est.slides.length === 1, on: { click: (ev) => { ev.stopPropagation(); if (!confirm('Apagar este slide?')) return; est.slides.splice(i, 1); est.atual = Math.min(est.atual, est.slides.length - 1); tudo(); marcarSujo(); } } }, '🗑')));
-      const item = el('div', { class: 'es-mini' + (i === est.atual ? ' ativo' : ''), on: { click: () => { est.atual = i; desenharLista(); desenharPalco(); desenharCampos(); } } }, img, barra);
+      const item = el('div', { class: 'es-mini' + (i === est.atual ? ' ativo' : ''), on: { click: () => selecionar(i) } }, img, barra);
       lista.append(item);
       miniatura(i, img, lista.clientWidth - 16 || 180);
     });
     $('es-adicionar').disabled = est.slides.length >= cfg.max_slides;
+    rolagem.scrollTop = y;
+    mostrarAtual();
   }
   let pendente = null;
   function atualizar() {
@@ -166,6 +169,29 @@
     }, 70);
   }
   function tudo() { desenharLista(); desenharPalco(); desenharCampos(); }
+
+  // Troca o slide aberto sem redesenhar a lista, para a rolagem do painel ficar onde está.
+  function selecionar(i) {
+    if (i < 0 || i >= est.slides.length) return;
+    est.atual = i;
+    document.querySelectorAll('#es-slides .es-mini').forEach((m, k) => m.classList.toggle('ativo', k === i));
+    desenharPalco(); desenharCampos(); mostrarAtual();
+  }
+  // Deixa o slide aberto visível na lista (só rola se ele estiver fora da área visível).
+  function mostrarAtual() {
+    const m = document.querySelectorAll('#es-slides .es-mini')[est.atual];
+    const caixa = document.querySelector('.es-lista');
+    if (m && caixa) { // rola só a lista, nunca a página
+      const r = m.getBoundingClientRect(), c = caixa.getBoundingClientRect();
+      if (r.top < c.top) caixa.scrollTop -= c.top - r.top + 8;
+      else if (r.bottom > c.bottom) caixa.scrollTop += r.bottom - c.bottom + 8;
+    }
+    $('es-anterior').disabled = est.atual === 0;
+    $('es-proximo').disabled = est.atual === est.slides.length - 1;
+    $('es-posicao').textContent = `Slide ${est.atual + 1} de ${est.slides.length}`;
+  }
+  $('es-anterior').addEventListener('click', () => selecionar(est.atual - 1));
+  $('es-proximo').addEventListener('click', () => selecionar(est.atual + 1));
 
   // ---- campos do slide ------------------------------------------------------------------------
   const ROTULOS_LISTA = {
@@ -277,7 +303,8 @@
 
   function desenharCampos() {
     const i = est.atual, s = est.slides[i], tipo = cfg.tipos[s.tipo] || { campos: [] };
-    const c = $('es-campos'); c.innerHTML = '';
+    const c = $('es-campos'), yCampos = c.scrollTop, mesmoSlide = desenharCampos.ultimo === i; c.innerHTML = '';
+    desenharCampos.ultimo = i;
     const topo = el('div', { class: 'es-grupo' }, el('b', {}, `Slide ${i + 1}`),
       selecao('Tipo do slide', Object.entries(cfg.tipos).map(([k, t]) => [k, t.nome]), s.tipo, (v) => {
         const novo = M.novo(v); Object.keys(novo).forEach((k) => { if (k === 'tipo' || s[k] === undefined || s[k] === '') s[k] = novo[k]; }); s.tipo = v;
@@ -301,6 +328,7 @@
     });
     textos_.append(el('p', { class: 'es-dica' }, 'Para destacar uma palavra, coloque entre asteriscos: *destaque*.'));
     c.append(textos_, grupoFundo(s), grupoAjustes(s, i));
+    c.scrollTop = mesmoSlide ? yCampos : 0;
   }
 
   // ---- exportar -------------------------------------------------------------------------------
