@@ -1,0 +1,69 @@
+{% extends "admin/base_site.html" %}
+{% load static %}
+{% block extrastyle %}{{ block.super }}<link rel="stylesheet" href="{% static 'estudio/estudio.css' %}">{% endblock %}
+{% block breadcrumbs %}<div class="breadcrumbs"><a href="{% url 'admin:index' %}">Início</a> › <a href="{{ config.urls.lista }}">Estúdio de posts · {{ config.nome }}</a> › <span id="migalha">{{ projeto.nome }}</span></div>{% endblock %}
+{% block content %}
+{% csrf_token %}
+<div id="estudio" class="estudio marca-{{ config.marca }}">
+  <div class="es-barra">
+    <input id="es-nome" class="es-nome" maxlength="120" aria-label="Nome do post">
+    <select id="es-formato" aria-label="Formato"></select>
+    <button type="button" class="es-bt" id="es-modelos">Começar de um modelo</button>
+    <button type="button" class="es-bt es-ia" id="es-ia">✨ Criar ou ajustar com IA</button>
+    <span class="es-espaco"></span>
+    <label class="es-check"><input type="checkbox" id="es-guias" checked> Margens de segurança</label>
+    <button type="button" class="es-bt" id="es-baixar">Baixar slide</button>
+    <button type="button" class="es-bt" id="es-zip">Baixar tudo (ZIP)</button>
+    <button type="button" class="es-bt es-salvar" id="es-salvar">Salvar</button>
+  </div>
+  <div class="es-corpo">
+    <aside class="es-lista">
+      <div id="es-slides"></div>
+      <div class="es-adicionar">
+        <select id="es-novo-tipo" aria-label="Tipo do novo slide"></select>
+        <button type="button" class="es-bt" id="es-adicionar">+ Slide</button>
+      </div>
+    </aside>
+    <main class="es-palco">
+      <div class="es-palco-area" id="es-palco-area"><div id="es-escala" class="es-escala"><div id="es-quadro"></div><div id="es-guias-camada" class="es-guias"></div></div></div>
+      <ul id="es-avisos" class="es-avisos"></ul>
+    </main>
+    <aside class="es-campos" id="es-campos"></aside>
+  </div>
+  <section class="es-legenda">
+    <div class="es-legenda-topo"><b>Legenda</b><span id="es-legenda-conta"></span><button type="button" class="es-bt" id="es-copiar">Copiar legenda</button></div>
+    <textarea id="es-legenda" rows="6" maxlength="2200" placeholder="A legenda do post (a IA escreve uma quando cria o post)."></textarea>
+  </section>
+  <div id="es-exportar" class="es-exportar" aria-hidden="true"></div>
+</div>
+
+<dialog id="es-dialogo-ia" class="es-dialogo">
+  <form method="dialog">
+    <h2>Criar ou ajustar com IA</h2>
+    <p class="es-quieto">Descreva o que você quer. A IA escreve os textos, escolhe o tipo e o fundo de cada slide e faz a legenda. Depois, tudo continua editável.</p>
+    <label class="es-radio"><input type="radio" name="es-ia-modo" value="novo" checked> Criar um post novo</label>
+    <label class="es-radio"><input type="radio" name="es-ia-modo" value="ajustar"> Ajustar este post</label>
+    <textarea id="es-ia-pedido" rows="5" placeholder="Ex.: carrossel de 5 slides sobre o modo campanha para a Black Friday, chamando para o link na bio."></textarea>
+    <p id="es-ia-erro" class="es-erro"></p>
+    <div class="es-dialogo-botoes"><button value="cancelar" class="es-bt">Cancelar</button><button type="button" id="es-ia-gerar" class="es-bt es-salvar">Gerar</button></div>
+  </form>
+</dialog>
+
+<dialog id="es-dialogo-modelos" class="es-dialogo es-dialogo-largo">
+  <form method="dialog">
+    <h2>Começar de um modelo</h2>
+    <p class="es-quieto">O modelo substitui os slides e a legenda deste post. Depois, é só editar.</p>
+    <div id="es-modelos-lista" class="es-modelos-lista"></div>
+    <div class="es-dialogo-botoes"><button value="cancelar" class="es-bt">Fechar</button></div>
+  </form>
+</dialog>
+
+{{ config|json_script:"es-config" }}
+{{ projeto|json_script:"es-projeto" }}
+{{ modelos|json_script:"es-modelos-dados" }}
+<script src="{% static 'estudio/vendor/html-to-image.js' %}"></script>
+<script src="{% static 'estudio/vendor/jszip.min.js' %}"></script>
+<script src="{% static 'estudio/marca-appfiliado.js' %}"></script>
+<script src="{% static 'estudio/marca-cashb.js' %}"></script>
+<script src="{% static 'estudio/estudio.js' %}"></script>
+{% endblock %}

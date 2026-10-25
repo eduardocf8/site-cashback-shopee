@@ -1,0 +1,183 @@
+[
+ {
+  "codigo": "beneficios",
+  "nome": "Post: Benefícios de usar a cash-b",
+  "formato": "retrato",
+  "legenda": "Toda compra na Shopee gera cashback para você — e a maioria das pessoas nem sabe disso. 💜\n\nQuando a compra passa por um link de afiliado, a Shopee paga uma comissão. Ela nunca volta para quem comprou. A cash-b devolve uma parte dela para você.\n\nCadastro grátis, sem mensalidade, saque via Pix. Você compra do jeito que já compra.\n\nSalve para começar pela próxima compra.\n\n#cashback #shopeebrasil #economizar #dinheirodevolta #achadinhosshopee",
+  "slides": [
+   {
+    "tipo": "capa",
+    "chapeu": "cash-b explica",
+    "titulo": "Toda compra na Shopee gera *cashback* para você.",
+    "texto": "E a maioria das pessoas nem sabe disso.",
+    "selo": "",
+    "fundo": {
+     "modo": "cor",
+     "cor": "claro"
+    }
+   },
+   {
+    "tipo": "texto",
+    "chapeu": "o problema",
+    "titulo": "Quando a compra passa por um link, alguém ganha uma comissão.",
+    "texto": "A Shopee paga essa comissão para quem te levou até o produto. Ela nunca volta para quem realmente comprou.",
+    "destaque": "",
+    "fundo": {
+     "modo": "cor",
+     "cor": "escuro"
+    }
+   },
+   {
+    "tipo": "texto",
+    "chapeu": "a solução",
+    "titulo": "A cash-b devolve essa comissão para você.",
+    "texto": "Você compra do jeito que já compra na Shopee. A diferença é que parte do dinheiro cai de volta na sua conta, via Pix.",
+    "destaque": "",
+    "fundo": {
+     "modo": "cor",
+     "cor": "roxo"
+    }
+   },
+   {
+    "tipo": "lista",
+    "chapeu": "por que usar",
+    "titulo": "Os benefícios, direto ao ponto",
+    "texto": "",
+    "numerada": false,
+    "itens": [
+     {
+      "titulo": "Cashback real",
+      "texto": "Toda compra participante gera dinheiro de volta."
+     },
+     {
+      "titulo": "Cadastro grátis",
+      "texto": "Sem mensalidade, sem taxa escondida."
+     },
+     {
+      "titulo": "Saque via Pix",
+      "texto": "Direto na sua conta, sem burocracia."
+     },
+     {
+      "titulo": "Do seu jeito",
+      "texto": "Você compra como sempre comprou na Shopee."
+     }
+    ],
+    "fundo": {
+     "modo": "cor",
+     "cor": "claro"
+    }
+   },
+   {
+    "tipo": "lista",
+    "chapeu": "como funciona",
+    "titulo": "3 passos e pronto",
+    "texto": "",
+    "numerada": true,
+    "itens": [
+     {
+      "titulo": "Encontre o produto",
+      "texto": "Converta o link, acesse pela vitrine ou clique em \"Ir pra Shopee\"."
+     },
+     {
+      "titulo": "Compre normalmente",
+      "texto": "Do jeito que você já compra, sem nada a mais."
+     },
+     {
+      "titulo": "Receba cashback",
+      "texto": "Depois que o pedido for validado, o dinheiro vai pro seu saldo liberado."
+     }
+    ],
+    "fundo": {
+     "modo": "cor",
+     "cor": "claro"
+    }
+   },
+   {
+    "tipo": "cta",
+    "titulo": "Bora começar?",
+    "texto": "",
+    "botao": "cash-b.com",
+    "fundo": {
+     "modo": "cor",
+     "cor": "roxo"
+    }
+   }
+  ]
+ },
+ {
+  "codigo": "passo-a-passo-stories",
+  "nome": "Stories: Como funciona",
+  "formato": "story",
+  "legenda": "",
+  "slides": [
+   {
+    "tipo": "capa",
+    "chapeu": "cash-b explica",
+    "titulo": "Como ganhar *cashback* na Shopee",
+    "texto": "Em 3 passos, sem pagar nada a mais.",
+    "selo": "",
+    "fundo": {
+     "modo": "arte",
+     "arte": "canto",
+     "tom": "escuro"
+    }
+   },
+   {
+    "tipo": "lista",
+    "chapeu": "passo a passo",
+    "titulo": "É assim:",
+    "texto": "",
+    "numerada": true,
+    "itens": [
+     {
+      "titulo": "Gere o link na cash-b",
+      "texto": "Cole o link do produto ou use a vitrine."
+     },
+     {
+      "titulo": "Compre normalmente",
+      "texto": "O preço na Shopee é o mesmo."
+     },
+     {
+      "titulo": "Receba via Pix",
+      "texto": "Depois que a Shopee confirmar a compra."
+     }
+    ],
+    "fundo": {
+     "modo": "cor",
+     "cor": "claro"
+    }
+   },
+   {
+    "tipo": "cta",
+    "titulo": "Comece pela próxima compra",
+    "texto": "O link está na bio.",
+    "botao": "cash-b.com",
+    "fundo": {
+     "modo": "arte",
+     "arte": "halo",
+     "tom": "escuro"
+    }
+   }
+  ]
+ },
+ {
+  "codigo": "recado-story",
+  "nome": "Story: Recado rápido",
+  "formato": "story",
+  "legenda": "",
+  "slides": [
+   {
+    "tipo": "texto",
+    "chapeu": "aviso",
+    "titulo": "Seu recado em *uma frase.*",
+    "texto": "Um texto curto para explicar.",
+    "destaque": "",
+    "fundo": {
+     "modo": "arte",
+     "arte": "manchas",
+     "tom": "escuro"
+    }
+   }
+  ]
+ }
+]

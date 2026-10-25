@@ -37,6 +37,9 @@ GRUPOS = [
             ("instagram_bot.registropublicacao", "Publicações"),
             ("instagram_bot.estadotokeninstagram", None),
         ]),
+        ("Estúdio de posts", [
+            ("estudio.projetocashb", "Posts e stories da cash-b"),
+        ]),
     ]),
     ("📱 Appfiliado", [
         ("Contas e assinaturas", [
@@ -56,6 +59,9 @@ GRUPOS = [
             ("painel.relatorioemail", "Relatórios por e-mail"),
             ("painel.textoemaildica", "E-mails de dicas (novos assinantes)"),
             ("painel.sugestao", "Sugestões dos afiliados"),
+        ]),
+        ("Estúdio de posts", [
+            ("estudio.projetoappfiliado", "Posts e stories do Appfiliado"),
         ]),
         ("Bot de WhatsApp", [
             ("bot_whatsapp.conexaowhatsapp", "Conexões"),
@@ -103,8 +109,10 @@ GRUPOS = [
 # Botões que aparecem embaixo do nome do produto, na página inicial do admin.
 ACOES = {
     "🛒 Site Cash-B": [("📊 Ver analytics", "admin:pedidos_analytics"),
-                      ("✉️ Enviar comunicação por e-mail", "admin:accounts_comunicacao")],
-    "📱 Appfiliado": [("📈 Painel do dono", "admin:licencas_painel_do_dono")],
+                      ("✉️ Enviar comunicação por e-mail", "admin:accounts_comunicacao"),
+                      ("🎨 Estúdio de posts", "admin:estudio_projetocashb_changelist")],
+    "📱 Appfiliado": [("📈 Painel do dono", "admin:licencas_painel_do_dono"),
+                     ("🎨 Estúdio de posts", "admin:estudio_projetoappfiliado_changelist")],
 }
 
 

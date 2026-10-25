@@ -1,0 +1,95 @@
+/* Editor do Estúdio de posts (dentro do admin). Usa as variáveis de cor do admin do Django,
+   então funciona no tema claro e no escuro. */
+#content { max-width: none; }
+.estudio { display: flex; flex-direction: column; gap: 14px; }
+.es-barra { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+.es-nome { font-size: 1.05rem; font-weight: 600; padding: 7px 10px; min-width: 260px; }
+.es-espaco { flex: 1; }
+.es-bt { border: 1px solid var(--border-color); background: var(--body-bg); color: var(--body-fg); border-radius: 6px; padding: 7px 12px;
+  cursor: pointer; font-size: .85rem; line-height: 1.2; }
+.es-bt:hover { border-color: var(--link-fg); }
+.es-bt:disabled { opacity: .55; cursor: wait; }
+.es-salvar { background: var(--button-bg); color: var(--button-fg); border-color: var(--button-bg); }
+.es-salvar:hover { background: var(--button-hover-bg); }
+.es-ia { border-color: #b98a00; }
+.es-check { display: inline-flex; gap: 6px; align-items: center; font-size: .85rem; }
+.es-corpo { display: grid; grid-template-columns: 210px minmax(0, 1fr) 390px; gap: 16px; align-items: start; }
+@media (max-width: 1200px) { .es-corpo { grid-template-columns: 170px minmax(0, 1fr) 330px; } }
+
+/* lista de slides */
+.es-lista { display: flex; flex-direction: column; gap: 10px; position: sticky; top: 10px; max-height: calc(100vh - 40px); overflow: auto; padding-right: 4px; }
+.es-mini { border: 2px solid transparent; border-radius: 8px; padding: 6px; background: var(--darkened-bg); cursor: pointer; }
+.es-mini.ativo { border-color: var(--link-fg); }
+.es-mini .es-mini-img { position: relative; overflow: hidden; border-radius: 4px; background: #ddd; }
+.es-mini .es-mini-img > div { transform-origin: 0 0; position: absolute; left: 0; top: 0; pointer-events: none; }
+.es-mini-barra { display: flex; justify-content: space-between; align-items: center; margin-top: 5px; font-size: .75rem; }
+.es-mini-barra button { border: 0; background: none; cursor: pointer; font-size: .85rem; padding: 2px 4px; color: var(--body-fg); }
+.es-mini-barra button:disabled { opacity: .3; cursor: default; }
+.es-adicionar { display: flex; gap: 6px; }
+.es-adicionar select { flex: 1; min-width: 0; }
+
+/* palco */
+.es-palco { min-width: 0; display: flex; flex-direction: column; align-items: center; gap: 10px; position: sticky; top: 10px; }
+.es-palco-area { width: 100%; display: flex; justify-content: center; }
+.es-escala { position: relative; box-shadow: 0 10px 30px rgba(0,0,0,.18); }
+.es-escala > #es-quadro, .es-escala > .es-guias { position: absolute; left: 0; top: 0; transform-origin: 0 0; }
+.es-guias { pointer-events: none; }
+.es-guias div { position: absolute; border: 2px dashed rgba(255, 0, 120, .75); }
+.es-guias div.grade { border-color: rgba(0, 170, 255, .85); border-style: solid; border-width: 2px; }
+.es-guias span { position: absolute; font: 600 13px/1 sans-serif; color: #fff; background: rgba(0,0,0,.55); padding: 3px 6px; border-radius: 3px; }
+.es-avisos { list-style: none; margin: 0; padding: 0; width: 100%; max-width: 640px; }
+.es-avisos li { list-style: none; background: #fff4d6; color: #6b4b00; border: 1px solid #f0d58c; border-radius: 6px; padding: 7px 10px; margin: 0 0 6px; font-size: .82rem; }
+.es-avisos li.ok { background: #e7f6ec; color: #1e5b33; border-color: #b5e0c3; }
+
+/* campos */
+.es-campos { display: flex; flex-direction: column; gap: 12px; max-height: calc(100vh - 40px); overflow: auto; position: sticky; top: 10px; padding-right: 4px; }
+.es-grupo { border: 1px solid var(--border-color); border-radius: 8px; padding: 12px; display: flex; flex-direction: column; gap: 10px; }
+.es-grupo > b { font-size: .9rem; }
+.es-campo { display: flex; flex-direction: column; gap: 4px; }
+.es-campo > span { font-size: .78rem; color: var(--body-quiet-color); }
+.es-campo input[type=text], .es-campo textarea, .es-campo select { width: 100%; box-sizing: border-box; font-size: .9rem; padding: 6px 8px; }
+.es-campo textarea { resize: vertical; min-height: 54px; }
+.es-dica { font-size: .75rem; color: var(--body-quiet-color); margin: 0; }
+.es-linha { display: flex; gap: 6px; align-items: center; }
+.es-linha > * { min-width: 0; }
+.es-linha input[type=range] { flex: 1; }
+.es-valor { font-size: .78rem; width: 52px; text-align: right; color: var(--body-quiet-color); }
+.es-item { border: 1px dashed var(--border-color); border-radius: 6px; padding: 8px; display: flex; flex-direction: column; gap: 6px; }
+.es-item-barra { display: flex; justify-content: space-between; align-items: center; font-size: .75rem; color: var(--body-quiet-color); }
+.es-item-barra button { border: 0; background: none; cursor: pointer; color: var(--body-fg); }
+.es-pequeno { font-size: .78rem; display: inline-flex; gap: 5px; align-items: center; }
+.es-cores { display: flex; flex-wrap: wrap; gap: 6px; }
+.es-cor { width: 34px; height: 34px; border-radius: 8px; border: 2px solid var(--border-color); cursor: pointer; padding: 0; }
+.es-cor.ativo, .es-arte.ativo, .es-imagem.ativo { outline: 3px solid var(--link-fg); outline-offset: 1px; }
+.es-artes, .es-imagens { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; }
+.es-arte, .es-imagem { border: 1px solid var(--border-color); border-radius: 6px; padding: 0; cursor: pointer; background: none; overflow: hidden; aspect-ratio: 1; position: relative; }
+.es-arte span { position: absolute; left: 4px; bottom: 4px; font-size: .68rem; background: rgba(0,0,0,.55); color: #fff; padding: 1px 4px; border-radius: 3px; }
+.es-arte svg, .es-imagem img { width: 100%; height: 100%; display: block; object-fit: cover; }
+.es-abas { display: flex; gap: 4px; }
+.es-abas button { flex: 1; }
+.es-abas button.ativo { background: var(--button-bg); color: var(--button-fg); border-color: var(--button-bg); }
+
+/* legenda */
+.es-legenda { border: 1px solid var(--border-color); border-radius: 8px; padding: 12px; }
+.es-legenda-topo { display: flex; gap: 10px; align-items: center; margin-bottom: 8px; }
+.es-legenda-topo span { flex: 1; font-size: .78rem; color: var(--body-quiet-color); }
+.es-legenda textarea { width: 100%; box-sizing: border-box; font-size: .9rem; }
+
+/* exportação: o slide é montado aqui, no tamanho real, fora da tela */
+.es-exportar { position: fixed; left: -30000px; top: 0; }
+
+/* diálogos */
+.es-dialogo { border: 1px solid var(--border-color); border-radius: 10px; padding: 18px; max-width: 520px; width: 92vw; background: var(--body-bg); color: var(--body-fg); }
+.es-dialogo-largo { max-width: 900px; }
+.es-dialogo h2 { margin: 0 0 8px; font-size: 1.1rem; }
+.es-dialogo textarea { width: 100%; box-sizing: border-box; margin-top: 8px; font-size: .9rem; }
+.es-quieto { color: var(--body-quiet-color); font-size: .85rem; margin: 0 0 10px; }
+.es-radio { display: flex; gap: 6px; align-items: center; margin: 4px 0; font-size: .9rem; }
+.es-erro { color: var(--error-fg); font-size: .85rem; min-height: 1em; margin: 6px 0 0; }
+.es-dialogo-botoes { display: flex; justify-content: flex-end; gap: 8px; margin-top: 12px; }
+.es-modelos-lista { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 10px; max-height: 60vh; overflow: auto; }
+.es-modelo { border: 1px solid var(--border-color); border-radius: 8px; padding: 6px; background: none; cursor: pointer; text-align: left; color: var(--body-fg); }
+.es-modelo:hover { border-color: var(--link-fg); }
+.es-modelo .es-mini-img { position: relative; overflow: hidden; border-radius: 4px; }
+.es-modelo .es-mini-img > div { transform-origin: 0 0; position: absolute; left: 0; top: 0; pointer-events: none; }
+.es-modelo b { display: block; font-size: .8rem; margin-top: 5px; }
