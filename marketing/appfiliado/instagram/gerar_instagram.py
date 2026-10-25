@@ -131,6 +131,9 @@ h2 {{ font-weight: 800; letter-spacing: -.025em; line-height: 1.07; font-size: 5
    ampliado 1,25x: 200 px aqui = 250 px na imagem) */
 .story .slide {{ justify-content: center; padding: 200px 56px; }}
 .story .slide.capa {{ --px: 56px; }}
+.story .capa-texto {{ margin: auto 0 !important; padding-bottom: 60px; }}
+.story .slide.capa h1 {{ font-size: 112px; line-height: 1.02; }}
+.story .slide.capa .texto {{ font-size: 38px; }}
 .story h1 {{ font-size: 92px; }}
 .story h1.menor {{ font-size: 72px; }}
 .story h2 {{ font-size: 62px; }}
@@ -184,7 +187,7 @@ def capa(chapeu, titulo, texto="", icone=None, verde=True):
         topo = f'<div style="display:flex;justify-content:space-between;align-items:flex-start">{_marca()}{_icone(icone) if icone else ""}</div>'
         enfeite = ('<div class="circulo-fundo" style="width:900px;height:900px;right:-380px;bottom:-360px"></div>'
                    '<div class="circulo-fundo" style="width:560px;height:560px;right:-200px;bottom:-180px"></div>') if verde else ""
-        return (f'<section class="slide capa{" verde" if verde else ""}">{enfeite}{topo}<div style="margin-top:auto;position:relative">'
+        return (f'<section class="slide capa{" verde" if verde else ""}">{enfeite}{topo}<div class="capa-texto" style="margin-top:auto;position:relative">'
                 f'<p class="chapeu">{E(chapeu)}</p><h1>{titulo}</h1>{f"<p class=texto>{texto}</p>" if texto else ""}</div>'
                 f'<div style="height:70px"></div>{_rodape(i, total)}</section>')
     return montar
