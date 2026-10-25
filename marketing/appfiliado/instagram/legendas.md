@@ -4,6 +4,10 @@ Imagens geradas por `gerar_instagram.py` (rode de novo depois de mudar texto, pr
 Posts do feed em `feed/<post>/`, stories dos destaques em `destaques/<destaque>/`, capas em `destaques/capas/`.
 As folhas `previa-*.jpg` mostram cada post inteiro de uma vez, só pra conferir (não publicar).
 
+Tamanhos: feed em **1080x1080 (1:1)**, stories e capas dos destaques em **1080x1920**. Na capa de cada post, o
+texto fica nos 810 px do meio, porque a grade do perfil mostra os posts em 3:4 e corta as laterais. Nos stories,
+nada importante fica nos 250 px de cima nem nos 250 px de baixo, que o Instagram cobre.
+
 ## Perfil
 
 - **Nome:** Appfiliado | Ferramentas pra afiliados da Shopee
@@ -43,6 +47,7 @@ ficam no topo de qualquer jeito.
 
 | Destaque | Capa | Stories |
 |---|---|---|
+| Sobre | `destaques/capas/sobre.jpg` | `destaques/sobre/` |
 | Comece aqui | `destaques/capas/comece-aqui.jpg` | `destaques/comece-aqui/` |
 | Planos | `destaques/capas/planos.jpg` | `destaques/planos/` |
 | Bot | `destaques/capas/bot.jpg` | `destaques/bot/` |
@@ -52,7 +57,7 @@ ficam no topo de qualquer jeito.
 | Dúvidas | `destaques/capas/duvidas.jpg` | `destaques/duvidas/` |
 
 Publique os stories de cada destaque (com figurinha de link pro site ou pro WhatsApp no último) e adicione
-ao destaque. No story final de "Comece aqui" e "Planos", use a figurinha **Link** apontando pro site.
+ao destaque. Deixe "Sobre" como o primeiro destaque. No story final de "Sobre", "Comece aqui" e "Planos", use a figurinha **Link** apontando pro site.
 
 ---
 
