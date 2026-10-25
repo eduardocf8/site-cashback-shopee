@@ -52,7 +52,7 @@ def _precos() -> str:
             continue  # módulo avulso, já listado acima
         linhas.append(f"- {combo['nome']}: {planos.brl(combo['preco'])}/mês (separado sairia {planos.brl(combo['separado'])}). "
                       f"Checkout: {combo['link']}")
-    linhas.append("\nEmissor NFS-e (só pra afiliado pessoa jurídica, MEI ou Simples Nacional, com certificado digital A1). "
+    linhas.append("\nEmissor NFS-e (só para afiliado pessoa jurídica, MEI ou Simples Nacional, com certificado digital A1). "
                   "Emite as notas fiscais dos vendedores que pagaram comissão extra, direto do relatório mensal da Shopee. "
                   "O plano é pela quantidade de notas emitidas no mês:")
     for (nome, preco), link in zip(planos.NOTAS, planos.LINKS_NOTAS.values()):
@@ -75,10 +75,10 @@ def _api_shopee() -> str:
 def texto() -> str:
     perguntas = "\n".join(f"P: {p} R: {r}" for p, r in site.PERGUNTAS)
     return f"""# O que é o Appfiliado
-Ferramentas pra afiliados da Shopee num painel só (app.appfiliado.com.br): encontrar ofertas, divulgar no WhatsApp,
+Ferramentas para afiliados da Shopee num painel só (app.appfiliado.com.br): encontrar ofertas, divulgar no WhatsApp,
 no link na bio e no Instagram, acompanhar os resultados e emitir notas fiscais. Site: https://appfiliado.com.br
 O Appfiliado é independente e não tem vínculo oficial com a Shopee. Pagamento pelo checkout seguro da Zouti, com Pix, boleto ou cartão de crédito (as condições de parcelamento aparecem no próprio checkout).
-Depois de pagar, a pessoa recebe no e-mail o link pra criar a senha e entrar no painel.
+Depois de pagar, a pessoa recebe no e-mail o link para criar a senha e entrar no painel.
 {("Suporte por e-mail: " + settings.APPFILIADO_EMAIL_SUPORTE) if settings.APPFILIADO_EMAIL_SUPORTE else ""}
 
 # Antes de tudo: a API da Shopee

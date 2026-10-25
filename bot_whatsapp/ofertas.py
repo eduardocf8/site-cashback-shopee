@@ -179,7 +179,7 @@ def motivo_para_esperar(config, conexao, agora) -> str:
         return "Copiar ofertas de outros grupos é do plano Premium. Troque pra busca na Shopee ou faça o upgrade."
     if config.por_nicho:
         if not regras["nicho"]:
-            return "O envio por nicho é do plano Premium. Troque para “Mesmas ofertas pra todos” ou faça o upgrade."
+            return "O envio por nicho é do plano Premium. Troque para “Mesmas ofertas para todos” ou faça o upgrade."
     escolhidos = {g["jid"] for g in grupos_do_plano(config)}
     if escolhidos and escolhidos <= grupos_no_limite_de_hoje(config, agora):
         return f"Todos os grupos já receberam as {regras['ofertas_por_grupo_dia']} ofertas de hoje (limite do plano por grupo)."
@@ -573,7 +573,7 @@ class Motor:
         if not config.por_nicho:
             return self._testar_busca(config, agora, OFERTAS_NO_TESTE)
         if not regras_do_plano(config)["nicho"]:
-            raise ValueError("O envio por nicho é do plano Premium. Troque para “Mesmas ofertas pra todos” ou faça o upgrade.")
+            raise ValueError("O envio por nicho é do plano Premium. Troque para “Mesmas ofertas para todos” ou faça o upgrade.")
         nichos = nichos_do_plano(config)
         if not nichos:
             raise ValueError("Escolha pelo menos um grupo e salve antes de testar.")

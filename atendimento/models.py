@@ -67,7 +67,7 @@ class RespostaAprendida(models.Model):
     conversa = models.ForeignKey(Conversa, null=True, blank=True, on_delete=models.SET_NULL, related_name="aprendidas",
                                  help_text="De onde veio (vazio = criada por você no admin).")
     whatsapp_id = models.CharField(max_length=120, blank=True, db_index=True,
-                                   help_text="A mensagem com a sugestão no seu WhatsApp (pra saber a que você respondeu).")
+                                   help_text="A mensagem com a sugestão no seu WhatsApp (para saber a que você respondeu).")
     enviada_em = models.DateTimeField(null=True, blank=True)
     decidida_em = models.DateTimeField(null=True, blank=True)
     criada_em = models.DateTimeField(auto_now_add=True)

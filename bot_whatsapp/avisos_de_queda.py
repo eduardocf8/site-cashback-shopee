@@ -100,12 +100,12 @@ def enviar_email(conexao, lembrete: bool = False) -> bool:
         explicacao = (f"O WhatsApp desconectou o Appfiliado às {hora} de {dia}. Isso acontece quando o aparelho "
                       "é removido em \"Aparelhos conectados\", quando você troca de celular ou quando o WhatsApp "
                       "encerra a sessão.")
-        como_voltar = ("Pra voltar, leva menos de um minuto: abra o painel, clique em Conectar e leia o QR Code "
+        como_voltar = ("Para voltar, leva menos de um minuto: abra o painel, clique em Conectar e leia o QR Code "
                        "com o celular.")
     else:
         assunto = "Seu bot do Appfiliado parou: a conexão com o WhatsApp caiu"
         explicacao = f"A conexão com o seu WhatsApp caiu às {hora} de {dia} e não voltou sozinha."
-        como_voltar = ("Pra voltar, abra o painel e clique em Conectar. Se pedir, leia o QR Code com o celular. "
+        como_voltar = ("Para voltar, abra o painel e clique em Conectar. Se pedir, leia o QR Code com o celular. "
                        "Confira também se o celular está com internet.")
     if lembrete:
         assunto = "Lembrete: " + assunto[0].lower() + assunto[1:]

@@ -76,7 +76,7 @@ def analisar(pk: int, agora=None, cliente=None) -> RespostaAprendida | None:
 def texto_da_sugestao(r: RespostaAprendida) -> str:
     return ("💡 *Aprender esta resposta?*\n"
             f"*Pergunta:* {r.pergunta}\n*Resposta:* {r.resposta}\n\n"
-            f"Responda *{APROVAR}* pra aprovar, *{DESCARTAR}* pra descartar, ou use \"Responder\" nesta mensagem e "
+            f"Responda *{APROVAR}* para aprovar, *{DESCARTAR}* para descartar, ou use \"Responder\" nesta mensagem e "
             "escreva a resposta do jeito certo, que ela entra no lugar.")
 
 

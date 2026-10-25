@@ -154,7 +154,7 @@ class ConfiguracaoOfertas(models.Model):
     # Buscando na Shopee: as mesmas ofertas pra todos os grupos ou cada nicho com os seus grupos
     # (Premium). Copiando de grupos, vale sempre o envio pra todos.
     ENVIO_TODOS, ENVIO_NICHO = "todos", "nicho"
-    ENVIOS = [(ENVIO_TODOS, "Mesmas ofertas pra todos"), (ENVIO_NICHO, "Por nicho")]
+    ENVIOS = [(ENVIO_TODOS, "Mesmas ofertas para todos"), (ENVIO_NICHO, "Por nicho")]
 
     conta = models.OneToOneField(ContaAppfiliado, on_delete=models.CASCADE, related_name="ofertas_config")
     ativo = models.BooleanField(default=False)
