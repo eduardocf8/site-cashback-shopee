@@ -1,0 +1,1473 @@
+[
+ {
+  "codigo": "01-apresentacao",
+  "nome": "Post: Apresentação",
+  "formato": "quadrado",
+  "slides": [
+   {
+    "tipo": "capa",
+    "chapeu": "Para afiliados da Shopee",
+    "titulo": "Tudo que você usa para divulgar *num painel só.*",
+    "texto": "Ofertas no automático, link na bio, carrosséis, resultados e notas fiscais.",
+    "icone": "",
+    "fundo": {
+     "modo": "arte",
+     "arte": "circulos",
+     "tom": "escuro"
+    }
+   },
+   {
+    "tipo": "tela",
+    "chapeu": "Bot de WhatsApp",
+    "titulo": "Ofertas no automático nos seus grupos",
+    "texto": "Ele escolhe as ofertas, gera o seu link e publica no ritmo que você definir.",
+    "print": "bot-ofertas",
+    "recorte": 0,
+    "fundo": {
+     "modo": "cor",
+     "cor": "creme"
+    }
+   },
+   {
+    "tipo": "tela",
+    "chapeu": "Meu site",
+    "titulo": "Seu link na bio com vitrine e conversor",
+    "texto": "Uma página em seunome.appfiliado.com.br com botões, redes e ofertas.",
+    "print": "site-editor",
+    "recorte": 0,
+    "fundo": {
+     "modo": "cor",
+     "cor": "creme"
+    }
+   },
+   {
+    "tipo": "tela",
+    "chapeu": "Gerador de carrosséis",
+    "titulo": "Cole um link e receba um carrossel pronto",
+    "texto": "A IA escreve os slides, a legenda e as hashtags. Você ajusta e baixa.",
+    "print": "carrossel-editor",
+    "recorte": 0,
+    "fundo": {
+     "modo": "cor",
+     "cor": "creme"
+    }
+   },
+   {
+    "tipo": "tela",
+    "chapeu": "Incluído em todos os planos",
+    "titulo": "Radar, Conversor e Resultados",
+    "texto": "Ache o produto certo, troque links pelo seu e veja quanto cada divulgação vendeu.",
+    "print": "radar-produtos",
+    "recorte": 0,
+    "fundo": {
+     "modo": "cor",
+     "cor": "creme"
+    }
+   },
+   {
+    "tipo": "tela",
+    "chapeu": "Emissor NFS-e",
+    "titulo": "As notas dos vendedores direto do relatório da Shopee",
+    "texto": "Para afiliado pessoa jurídica: uma nota por loja, com e-mail para cada vendedor.",
+    "print": "notas-lote",
+    "recorte": 0,
+    "fundo": {
+     "modo": "cor",
+     "cor": "creme"
+    }
+   },
+   {
+    "tipo": "cta",
+    "titulo": "Comece hoje a partir de *R$ 19,90/mês.*",
+    "texto": "Monte o seu combo e pague menos. 7 dias de garantia e cancelamento quando quiser.",
+    "botao": "Link na bio",
+    "site": "appfiliado.com.br",
+    "fundo": {
+     "modo": "arte",
+     "arte": "canto",
+     "tom": "escuro"
+    }
+   }
+  ],
+  "legenda": "Tudo que você usa como afiliado Shopee num painel só 🧡\n\nO Appfiliado nasceu para tirar o trabalho repetitivo da rotina do afiliado:\n\n🤖 Bot de WhatsApp: ofertas no automático nos seus grupos, sempre com o seu link\n🌐 Meu site: um link na bio com vitrine e conversor de links\n🖼️ Gerador de carrosséis: cole um link e receba o carrossel pronto\n📊 Radar, Conversor e Resultados: incluídos em todos os planos\n🧾 Emissor NFS-e: as notas da comissão extra direto do relatório da Shopee\n\nPlanos a partir de R$ 19,90/mês, com 7 dias de garantia.\n👉 Link na bio\n\n#afiliadoshopee #shopeeafiliados #marketingdeafiliados #achadinhosdashopee #rendaextra"
+ },
+ {
+  "codigo": "02-api-da-shopee",
+  "nome": "Post: API da Shopee",
+  "formato": "quadrado",
+  "slides": [
+   {
+    "tipo": "capa",
+    "chapeu": "Antes de começar",
+    "titulo": "Libere a *API da Shopee* na sua conta de afiliado.",
+    "texto": "É ela que gera o seu link e traz os seus números. O pedido é feito direto à Shopee.",
+    "icone": "chave",
+    "fundo": {
+     "modo": "arte",
+     "arte": "circulos",
+     "tom": "escuro"
+    }
+   },
+   {
+    "tipo": "lista",
+    "chapeu": "Passo a passo",
+    "titulo": "Como pedir a API",
+    "texto": "",
+    "numerada": true,
+    "itens": [
+     {
+      "titulo": "Tenha o cadastro de afiliado aprovado",
+      "texto": "No Programa de Afiliados da Shopee.",
+      "premium": false
+     },
+     {
+      "titulo": "Envie o formulário de ajuda da Shopee",
+      "texto": "Escolha o cenário \"Quero ativar a API\".",
+      "premium": false
+     },
+     {
+      "titulo": "Aguarde a análise",
+      "texto": "A Shopee tem até 5 dias úteis para responder.",
+      "premium": false
+     },
+     {
+      "titulo": "Clique em Aplicar",
+      "texto": "Na página Open API do portal de afiliados.",
+      "premium": false
+     },
+     {
+      "titulo": "Cole o AppID e o Secret no Appfiliado",
+      "texto": "Em Configurações do painel. Pronto!",
+      "premium": false
+     }
+    ],
+    "fundo": {
+     "modo": "cor",
+     "cor": "creme"
+    }
+   },
+   {
+    "tipo": "lista",
+    "chapeu": "No formulário",
+    "titulo": "Como preencher",
+    "texto": "",
+    "numerada": false,
+    "itens": [
+     {
+      "titulo": "Já é afiliado da Shopee?",
+      "texto": "Sim",
+      "premium": false
+     },
+     {
+      "titulo": "Problema de login ou conta?",
+      "texto": "Não, estou com outras dificuldades / dúvidas",
+      "premium": false
+     },
+     {
+      "titulo": "ID de afiliado e telefone",
+      "texto": "Os mesmos do seu cadastro no Programa de Afiliados",
+      "premium": false
+     },
+     {
+      "titulo": "Tema",
+      "texto": "Tenho dúvidas/ dificuldades com meu cadastro / conta",
+      "premium": false
+     },
+     {
+      "titulo": "Cenário",
+      "texto": "Quero ativar a API",
+      "premium": false
+     }
+    ],
+    "fundo": {
+     "modo": "cor",
+     "cor": "creme"
+    }
+   },
+   {
+    "tipo": "lista",
+    "chapeu": "Dica de ouro",
+    "titulo": "Não espere o e-mail",
+    "texto": "",
+    "numerada": false,
+    "itens": [
+     {
+      "titulo": "Olhe todo dia a página Open API",
+      "texto": "affiliate.shopee.com.br/open_api",
+      "premium": false
+     },
+     {
+      "titulo": "Apareceu o botão Aplicar?",
+      "texto": "A API foi liberada: clique e a Shopee cria o AppID e o Secret.",
+      "premium": false
+     },
+     {
+      "titulo": "Guarde o Secret com cuidado",
+      "texto": "No Appfiliado ele fica criptografado e nunca aparece de novo.",
+      "premium": false
+     }
+    ],
+    "fundo": {
+     "modo": "cor",
+     "cor": "verde"
+    }
+   },
+   {
+    "tipo": "cta",
+    "titulo": "Com a API liberada, *é só conectar e usar.*",
+    "texto": "O link do formulário e o passo a passo também estão no site e no painel.",
+    "botao": "Link na bio",
+    "site": "appfiliado.com.br",
+    "fundo": {
+     "modo": "arte",
+     "arte": "canto",
+     "tom": "escuro"
+    }
+   }
+  ],
+  "legenda": "Antes de usar qualquer ferramenta de afiliado, tem um passo que muita gente não conhece: liberar a API da Shopee 🔑\n\nÉ ela que gera o seu link de afiliado e traz os seus números. O pedido é feito direto à Shopee e a resposta sai em até 5 dias úteis.\n\nArraste pro lado para ver o passo a passo e como preencher o formulário.\n\n💡 Dica: não espere o e-mail. Entre todo dia na página Open API do portal de afiliados. Quando aparecer o botão \"Aplicar\", a API foi liberada.\n\nSalve este post para não perder 📌\n\n#afiliadoshopee #shopeeafiliados #apishopee #marketingdeafiliados #afiliados"
+ },
+ {
+  "codigo": "03-bot-de-whatsapp",
+  "nome": "Post: Bot de WhatsApp",
+  "formato": "quadrado",
+  "slides": [
+   {
+    "tipo": "capa",
+    "chapeu": "Bot de WhatsApp",
+    "titulo": "Seus grupos com *ofertas no automático.*",
+    "texto": "Sem instalar nada e sem deixar o computador ligado.",
+    "icone": "bot",
+    "fundo": {
+     "modo": "arte",
+     "arte": "circulos",
+     "tom": "escuro"
+    }
+   },
+   {
+    "tipo": "tela",
+    "chapeu": "Conexão",
+    "titulo": "Conecte pelo QR Code em minutos",
+    "texto": "O servidor fica conectado como mais um aparelho e volta sozinho se a conexão cair.",
+    "print": "bot-conexao",
+    "recorte": 120,
+    "fundo": {
+     "modo": "cor",
+     "cor": "creme"
+    }
+   },
+   {
+    "tipo": "tela",
+    "chapeu": "Automação",
+    "titulo": "Você decide o que, quando e quanto",
+    "texto": "Busca por palavra-chave, loja ou categoria, filtros, horários e intervalo entre as ofertas.",
+    "print": "bot-ofertas",
+    "recorte": 470,
+    "fundo": {
+     "modo": "cor",
+     "cor": "creme"
+    }
+   },
+   {
+    "tipo": "tela",
+    "chapeu": "Modo campanha",
+    "titulo": "Datas da Shopee no piloto automático",
+    "texto": "No 11.11 e na Black Friday o bot muda o ritmo, o texto e o cupom sozinho.",
+    "print": "bot-campanhas",
+    "recorte": 380,
+    "fundo": {
+     "modo": "cor",
+     "cor": "creme"
+    }
+   },
+   {
+    "tipo": "tela",
+    "chapeu": "Alerta de preço",
+    "titulo": "Avisa quando o produto baixa",
+    "texto": "Escolha os produtos e receba o aviso no e-mail ou direto nos grupos.",
+    "print": "bot-alerta",
+    "recorte": 380,
+    "fundo": {
+     "modo": "cor",
+     "cor": "creme"
+    }
+   },
+   {
+    "tipo": "lista",
+    "chapeu": "Só no Premium",
+    "titulo": "Recursos que fazem diferença",
+    "texto": "",
+    "numerada": false,
+    "itens": [
+     {
+      "titulo": "Copia ofertas de outros grupos",
+      "texto": "E troca pelo seu link de afiliado.",
+      "premium": true
+     },
+     {
+      "titulo": "Revisão do texto com IA",
+      "texto": "Mensagens mais caprichadas, sem você reescrever.",
+      "premium": true
+     },
+     {
+      "titulo": "Até 50 grupos e 300 ofertas por dia",
+      "texto": "Em cada grupo ou canal.",
+      "premium": true
+     }
+    ],
+    "fundo": {
+     "modo": "cor",
+     "cor": "creme"
+    }
+   },
+   {
+    "tipo": "cta",
+    "titulo": "Bot de WhatsApp a partir de *R$ 49,90/mês.*",
+    "texto": "Comece com o modo simulação: ele faz tudo sem enviar nada.",
+    "botao": "Link na bio",
+    "site": "appfiliado.com.br",
+    "fundo": {
+     "modo": "arte",
+     "arte": "canto",
+     "tom": "escuro"
+    }
+   }
+  ],
+  "legenda": "Seus grupos de WhatsApp com ofertas da Shopee no automático 🤖\n\nO bot escolhe as ofertas, gera o seu link de afiliado e publica nos grupos e canais que você definir, no ritmo e nos horários que você quiser.\n\n✅ Conexão por QR Code, sem computador ligado\n✅ Busca por palavra-chave, loja ou categoria\n✅ Modo campanha pro 11.11 e a Black Friday\n✅ Alerta de preço dos produtos que você escolher\n⭐ Premium: copia ofertas de outros grupos e troca pelo seu link\n\nA partir de R$ 49,90/mês. Comece no modo simulação, que faz tudo sem enviar nada.\n👉 Link na bio\n\n#afiliadoshopee #grupodeofertas #botwhatsapp #achadinhosdashopee #shopeeafiliados"
+ },
+ {
+  "codigo": "04-meu-site",
+  "nome": "Post: Meu site",
+  "formato": "quadrado",
+  "slides": [
+   {
+    "tipo": "capa",
+    "chapeu": "Meu site",
+    "titulo": "Um link na bio que *vende por você.*",
+    "texto": "seunome.appfiliado.com.br com botões, redes, vitrine e conversor.",
+    "icone": "site",
+    "fundo": {
+     "modo": "arte",
+     "arte": "circulos",
+     "tom": "escuro"
+    }
+   },
+   {
+    "tipo": "tela",
+    "chapeu": "Do seu jeito",
+    "titulo": "Nome, foto, cores e botões",
+    "texto": "Veja a prévia ao vivo enquanto edita e publique quando estiver bom.",
+    "print": "site-editor",
+    "recorte": 0,
+    "fundo": {
+     "modo": "cor",
+     "cor": "creme"
+    }
+   },
+   {
+    "tipo": "tela",
+    "chapeu": "Botões de link",
+    "titulo": "Seus links com os cliques de cada um",
+    "texto": "Organize como quiser e veja quantos cliques cada botão recebeu.",
+    "print": "site-botoes",
+    "recorte": 0,
+    "fundo": {
+     "modo": "cor",
+     "cor": "creme"
+    }
+   },
+   {
+    "tipo": "lista",
+    "chapeu": "Na sua página",
+    "titulo": "O que o visitante encontra",
+    "texto": "",
+    "numerada": false,
+    "itens": [
+     {
+      "titulo": "Vitrine de ofertas",
+      "texto": "As ofertas do bot ou uma busca na Shopee, com o seu link.",
+      "premium": false
+     },
+     {
+      "titulo": "Conversor de links",
+      "texto": "O visitante cola o link e compra pelo seu link de afiliado.",
+      "premium": false
+     },
+     {
+      "titulo": "Suas redes sociais",
+      "texto": "Instagram, TikTok, YouTube, WhatsApp e mais.",
+      "premium": false
+     }
+    ],
+    "fundo": {
+     "modo": "cor",
+     "cor": "creme"
+    }
+   },
+   {
+    "tipo": "cta",
+    "titulo": "Meu site a partir de *R$ 22,90/mês.*",
+    "texto": "No Premium: mais botões, produtos escolhidos por você e sem a assinatura do Appfiliado.",
+    "botao": "Link na bio",
+    "site": "appfiliado.com.br",
+    "fundo": {
+     "modo": "arte",
+     "arte": "canto",
+     "tom": "escuro"
+    }
+   }
+  ],
+  "legenda": "Um link na bio que vende por você 🌐\n\nCom o Meu site você tem uma página em seunome.appfiliado.com.br com:\n\n• Botões de link com os cliques de cada um\n• Suas redes sociais\n• Vitrine de ofertas com o seu link\n• Conversor de links: o visitante cola o link e compra pelo seu\n\nA partir de R$ 22,90/mês.\n👉 Link na bio\n\n#linknabio #afiliadoshopee #shopeeafiliados #marketingdeafiliados #achadinhosdashopee"
+ },
+ {
+  "codigo": "05-gerador-de-carrosseis",
+  "nome": "Post: Gerador de carrosséis",
+  "formato": "quadrado",
+  "slides": [
+   {
+    "tipo": "capa",
+    "chapeu": "Gerador de carrosséis",
+    "titulo": "Cole um link da Shopee. *O carrossel sai pronto.*",
+    "texto": "Roteiro, legenda e hashtags escritos por IA.",
+    "icone": "carrosseis",
+    "fundo": {
+     "modo": "arte",
+     "arte": "circulos",
+     "tom": "escuro"
+    }
+   },
+   {
+    "tipo": "tela",
+    "chapeu": "Editor",
+    "titulo": "Ajuste tudo antes de baixar",
+    "texto": "Textos, modelos, cores e slides. O preço vem sempre certo da Shopee.",
+    "print": "carrossel-editor",
+    "recorte": 0,
+    "fundo": {
+     "modo": "cor",
+     "cor": "creme"
+    }
+   },
+   {
+    "tipo": "numeros",
+    "chapeu": "Em números",
+    "titulo": "Feito pro Instagram",
+    "pares": [
+     {
+      "valor": "10",
+      "legenda": "modelos de carrossel"
+     },
+     {
+      "valor": "2 a 10",
+      "legenda": "slides por carrossel"
+     },
+     {
+      "valor": "1080×1350",
+      "legenda": "PNG no formato do feed"
+     },
+     {
+      "valor": "3 a 10",
+      "legenda": "carrosséis por dia"
+     }
+    ],
+    "fundo": {
+     "modo": "cor",
+     "cor": "verde"
+    }
+   },
+   {
+    "tipo": "lista",
+    "chapeu": "Só no Premium",
+    "titulo": "Para quem posta todo dia",
+    "texto": "",
+    "numerada": false,
+    "itens": [
+     {
+      "titulo": "Foto própria com remoção de fundo",
+      "texto": "",
+      "premium": true
+     },
+     {
+      "titulo": "Cores e fontes livres",
+      "texto": "",
+      "premium": true
+     },
+     {
+      "titulo": "Outra versão do texto com IA",
+      "texto": "",
+      "premium": true
+     }
+    ],
+    "fundo": {
+     "modo": "cor",
+     "cor": "creme"
+    }
+   },
+   {
+    "tipo": "cta",
+    "titulo": "Carrosséis a partir de *R$ 19,90/mês.*",
+    "texto": "Cada carrossel já sai com o seu link de afiliado e o Sub ID \"instagram\".",
+    "botao": "Link na bio",
+    "site": "appfiliado.com.br",
+    "fundo": {
+     "modo": "arte",
+     "arte": "canto",
+     "tom": "escuro"
+    }
+   }
+  ],
+  "legenda": "Cole um link da Shopee. O carrossel sai pronto 🖼️\n\nO Appfiliado puxa os dados do produto, a IA escreve o roteiro dos slides, a legenda e as hashtags, e você ajusta tudo no editor e baixa as imagens já no formato do feed.\n\n• 10 modelos\n• 2 a 10 slides por carrossel\n• Preço sempre certo, direto da Shopee\n• Seu link de afiliado com o Sub ID \"instagram\"\n\nA partir de R$ 19,90/mês.\n👉 Link na bio\n\n#carrosselinstagram #afiliadoshopee #achadinhosdashopee #shopeeafiliados #conteudo"
+ },
+ {
+  "codigo": "06-radar-de-ofertas",
+  "nome": "Post: Radar de ofertas",
+  "formato": "quadrado",
+  "slides": [
+   {
+    "tipo": "capa",
+    "chapeu": "Radar de ofertas",
+    "titulo": "Ache o produto certo *em segundos.*",
+    "texto": "Incluído em todos os planos.",
+    "icone": "radar",
+    "fundo": {
+     "modo": "arte",
+     "arte": "circulos",
+     "tom": "escuro"
+    }
+   },
+   {
+    "tipo": "tela",
+    "chapeu": "Catálogo",
+    "titulo": "Mais de 30 mil produtos com comissão",
+    "texto": "Filtre por comissão, desconto, preço e categoria. Atualizado todo dia.",
+    "print": "radar-produtos",
+    "recorte": 0,
+    "fundo": {
+     "modo": "cor",
+     "cor": "creme"
+    }
+   },
+   {
+    "tipo": "lista",
+    "chapeu": "Num clique",
+    "titulo": "O que fazer com o produto",
+    "texto": "",
+    "numerada": false,
+    "itens": [
+     {
+      "titulo": "Copiar o seu link de afiliado",
+      "texto": "",
+      "premium": false
+     },
+     {
+      "titulo": "Mandar no grupo",
+      "texto": "Com o Bot de WhatsApp.",
+      "premium": false
+     },
+     {
+      "titulo": "Acompanhar o preço",
+      "texto": "Com o alerta de preço do bot.",
+      "premium": false
+     },
+     {
+      "titulo": "Gerar um carrossel",
+      "texto": "Com o Gerador de carrosséis.",
+      "premium": false
+     }
+    ],
+    "fundo": {
+     "modo": "cor",
+     "cor": "creme"
+    }
+   },
+   {
+    "tipo": "cta",
+    "titulo": "O Radar vem em *todos os planos.*",
+    "texto": "Escolha um módulo e ele já está no seu painel.",
+    "botao": "Link na bio",
+    "site": "appfiliado.com.br",
+    "fundo": {
+     "modo": "arte",
+     "arte": "canto",
+     "tom": "escuro"
+    }
+   }
+  ],
+  "legenda": "Ache o produto certo para divulgar em segundos 🎯\n\nO Radar reúne mais de 30 mil produtos da Shopee com comissão de afiliado, atualizados todo dia. Filtre por comissão, desconto, preço e categoria e copie o seu link em um clique.\n\nVem incluído em todos os planos do Appfiliado.\n👉 Link na bio\n\n#afiliadoshopee #achadinhosdashopee #shopeeafiliados #comissao #ofertasshopee"
+ },
+ {
+  "codigo": "07-conversor-de-links",
+  "nome": "Post: Conversor de links",
+  "formato": "quadrado",
+  "slides": [
+   {
+    "tipo": "capa",
+    "chapeu": "Conversor de links",
+    "titulo": "Troque os links de qualquer texto *pelo seu.*",
+    "texto": "Incluído em todos os planos.",
+    "icone": "conversor",
+    "fundo": {
+     "modo": "arte",
+     "arte": "circulos",
+     "tom": "escuro"
+    }
+   },
+   {
+    "tipo": "tela",
+    "chapeu": "Como funciona",
+    "titulo": "Cole, converta e encaminhe",
+    "texto": "Até 20 links por vez. Links curtos da Shopee também funcionam.",
+    "print": "conversor",
+    "recorte": 0,
+    "fundo": {
+     "modo": "cor",
+     "cor": "creme"
+    }
+   },
+   {
+    "tipo": "lista",
+    "chapeu": "Feito para afiliado",
+    "titulo": "Detalhes que importam",
+    "texto": "",
+    "numerada": false,
+    "itens": [
+     {
+      "titulo": "Mantém o texto e troca só os links",
+      "texto": "Ou devolve só a lista de links convertidos.",
+      "premium": false
+     },
+     {
+      "titulo": "Link limpo do produto",
+      "texto": "Sem o rastreio de quem divulgou antes.",
+      "premium": false
+     },
+     {
+      "titulo": "Sub ID opcional",
+      "texto": "Para medir cada divulgação em Resultados.",
+      "premium": false
+     },
+     {
+      "titulo": "Direto pro grupo",
+      "texto": "Com o Bot de WhatsApp, sem sair da tela.",
+      "premium": false
+     }
+    ],
+    "fundo": {
+     "modo": "cor",
+     "cor": "creme"
+    }
+   },
+   {
+    "tipo": "cta",
+    "titulo": "O Conversor vem em *todos os planos.*",
+    "texto": "E no Meu site os seus visitantes também podem converter.",
+    "botao": "Link na bio",
+    "site": "appfiliado.com.br",
+    "fundo": {
+     "modo": "arte",
+     "arte": "canto",
+     "tom": "escuro"
+    }
+   }
+  ],
+  "legenda": "Viu uma lista de ofertas boa? Troque todos os links pelo seu em um clique 🔗\n\nCole a mensagem de um canal ou links soltos: o Appfiliado troca todos os links da Shopee pelo seu link de afiliado e devolve o texto pronto para encaminhar. Links curtos também funcionam.\n\nIncluído em todos os planos.\n👉 Link na bio\n\n#afiliadoshopee #linkdeafiliado #shopeeafiliados #achadinhosdashopee #afiliados"
+ },
+ {
+  "codigo": "08-resultados-e-metas",
+  "nome": "Post: Resultados e metas",
+  "formato": "quadrado",
+  "slides": [
+   {
+    "tipo": "capa",
+    "chapeu": "Resultados e metas",
+    "titulo": "Veja quanto vendeu *e de onde veio.*",
+    "texto": "Incluído em todos os planos.",
+    "icone": "resultados",
+    "fundo": {
+     "modo": "arte",
+     "arte": "circulos",
+     "tom": "escuro"
+    }
+   },
+   {
+    "tipo": "tela",
+    "chapeu": "Resultados",
+    "titulo": "Faturamento, comissão e pedidos",
+    "texto": "Por dia, semana ou mês, com os produtos mais vendidos.",
+    "print": "resultados",
+    "recorte": 1150,
+    "fundo": {
+     "modo": "cor",
+     "cor": "creme"
+    }
+   },
+   {
+    "tipo": "tela",
+    "chapeu": "Metas",
+    "titulo": "Quanto falta pro bônus da Shopee",
+    "texto": "Para agenciado: cadastre as faixas e acompanhe a projeção do mês.",
+    "print": "metas",
+    "recorte": 760,
+    "fundo": {
+     "modo": "cor",
+     "cor": "creme"
+    }
+   },
+   {
+    "tipo": "lista",
+    "chapeu": "Sempre à mão",
+    "titulo": "Sem abrir planilha",
+    "texto": "",
+    "numerada": false,
+    "itens": [
+     {
+      "titulo": "Comissão por Sub ID",
+      "texto": "Descubra qual grupo, site ou post vende mais.",
+      "premium": false
+     },
+     {
+      "titulo": "Relatório diário por e-mail",
+      "texto": "Os números de ontem toda manhã.",
+      "premium": false
+     },
+     {
+      "titulo": "Vendas em Excel",
+      "texto": "Com um clique.",
+      "premium": false
+     }
+    ],
+    "fundo": {
+     "modo": "cor",
+     "cor": "creme"
+    }
+   },
+   {
+    "tipo": "cta",
+    "titulo": "Resultados e metas vêm em *todos os planos.*",
+    "texto": "Conecte a sua conta da Shopee uma vez e pronto.",
+    "botao": "Link na bio",
+    "site": "appfiliado.com.br",
+    "fundo": {
+     "modo": "arte",
+     "arte": "canto",
+     "tom": "escuro"
+    }
+   }
+  ],
+  "legenda": "Quanto você vendeu hoje? E de onde veio? 📊\n\nNo Appfiliado você vê faturamento, comissão e pedidos por dia, semana ou mês, descobre qual grupo, site ou post vende mais com os Sub IDs e recebe os números de ontem toda manhã por e-mail.\n\nAgenciado? Cadastre as faixas de meta e acompanhe quanto falta pro bônus.\n\nIncluído em todos os planos.\n👉 Link na bio\n\n#afiliadoshopee #shopeeafiliados #metas #marketingdeafiliados #resultados"
+ },
+ {
+  "codigo": "09-emissor-nfse",
+  "nome": "Post: Emissor NFS-e",
+  "formato": "quadrado",
+  "slides": [
+   {
+    "tipo": "capa",
+    "chapeu": "Emissor NFS-e",
+    "titulo": "As notas da comissão extra *em poucos cliques.*",
+    "texto": "Para afiliado pessoa jurídica (MEI ou Simples Nacional).",
+    "icone": "notas",
+    "fundo": {
+     "modo": "arte",
+     "arte": "circulos",
+     "tom": "escuro"
+    }
+   },
+   {
+    "tipo": "tela",
+    "chapeu": "Como funciona",
+    "titulo": "Do relatório da Shopee às notas",
+    "texto": "Envie o Relatório Mensal: sai uma nota por loja no Emissor Nacional.",
+    "print": "notas",
+    "recorte": 1130,
+    "fundo": {
+     "modo": "cor",
+     "cor": "creme"
+    }
+   },
+   {
+    "tipo": "tela",
+    "chapeu": "Lote",
+    "titulo": "Cada vendedor recebe a nota por e-mail",
+    "texto": "Com o PDF e o XML, no horário que você escolher.",
+    "print": "notas-lote",
+    "recorte": 0,
+    "fundo": {
+     "modo": "cor",
+     "cor": "creme"
+    }
+   },
+   {
+    "tipo": "precos",
+    "chapeu": "Planos",
+    "titulo": "Pague pela quantidade de notas",
+    "nota": "Por mês. Notas de teste não contam e nota cancelada libera a vaga.",
+    "fundo": {
+     "modo": "cor",
+     "cor": "verde"
+    },
+    "linhas": [
+     {
+      "rotulo": "Até 100 notas",
+      "valor": "R$ 17,90",
+      "detalhe": ""
+     },
+     {
+      "rotulo": "Até 500 notas",
+      "valor": "R$ 49,90",
+      "detalhe": ""
+     },
+     {
+      "rotulo": "Até 2.000 notas",
+      "valor": "R$ 89,90",
+      "detalhe": ""
+     },
+     {
+      "rotulo": "Até 5.000 notas",
+      "valor": "R$ 129,90",
+      "detalhe": ""
+     },
+     {
+      "rotulo": "Até 10.000 notas",
+      "valor": "R$ 169,90",
+      "detalhe": ""
+     },
+     {
+      "rotulo": "Ilimitadas",
+      "valor": "R$ 229,90",
+      "detalhe": ""
+     }
+    ]
+   },
+   {
+    "tipo": "cta",
+    "titulo": "Emita com *o seu certificado A1.*",
+    "texto": "Comece pelo ambiente de testes do governo, sem valor fiscal.",
+    "botao": "Link na bio",
+    "site": "appfiliado.com.br",
+    "fundo": {
+     "modo": "arte",
+     "arte": "canto",
+     "tom": "escuro"
+    }
+   }
+  ],
+  "legenda": "Afiliado PJ: as notas da comissão extra em poucos cliques 🧾\n\nEnvie o Relatório Mensal da Shopee e o Appfiliado emite uma nota por loja no Emissor Nacional, com e-mail para cada vendedor com o PDF e o XML.\n\n• Para MEI ou Simples Nacional, com certificado A1\n• Comece pelo ambiente de testes do governo\n• Planos pela quantidade de notas, a partir de R$ 17,90/mês\n\n👉 Link na bio\n\n#afiliadopj #notafiscal #nfse #afiliadoshopee #mei"
+ },
+ {
+  "codigo": "destaque-sobre",
+  "nome": "Destaque: Sobre",
+  "formato": "story",
+  "slides": [
+   {
+    "tipo": "capa",
+    "chapeu": "Sobre o Appfiliado",
+    "titulo": "Feito para quem é *afiliado Shopee.*",
+    "texto": "As ferramentas do dia a dia do afiliado num painel só.",
+    "icone": "sobre",
+    "fundo": {
+     "modo": "arte",
+     "arte": "circulos",
+     "tom": "escuro"
+    }
+   },
+   {
+    "tipo": "lista",
+    "chapeu": "Sobre o Appfiliado",
+    "titulo": "Escolha os seus módulos",
+    "texto": "",
+    "numerada": false,
+    "itens": [
+     {
+      "titulo": "Bot de WhatsApp",
+      "texto": "Ofertas no automático nos seus grupos.",
+      "premium": false
+     },
+     {
+      "titulo": "Meu site",
+      "texto": "Link na bio com vitrine e conversor.",
+      "premium": false
+     },
+     {
+      "titulo": "Gerador de carrosséis",
+      "texto": "Carrossel pronto a partir de um link.",
+      "premium": false
+     },
+     {
+      "titulo": "Emissor NFS-e",
+      "texto": "As notas da comissão em poucos cliques.",
+      "premium": false
+     }
+    ],
+    "fundo": {
+     "modo": "cor",
+     "cor": "creme"
+    }
+   },
+   {
+    "tipo": "lista",
+    "chapeu": "Em todos os planos",
+    "titulo": "Já vem junto",
+    "texto": "",
+    "numerada": false,
+    "itens": [
+     {
+      "titulo": "Radar de ofertas",
+      "texto": "Mais de 30 mil produtos com comissão.",
+      "premium": false
+     },
+     {
+      "titulo": "Conversor de links",
+      "texto": "Troca os links de qualquer texto pelo seu.",
+      "premium": false
+     },
+     {
+      "titulo": "Resultados e metas",
+      "texto": "Quanto vendeu e de onde veio.",
+      "premium": false
+     }
+    ],
+    "fundo": {
+     "modo": "cor",
+     "cor": "verde"
+    }
+   },
+   {
+    "tipo": "lista",
+    "chapeu": "Sobre o Appfiliado",
+    "titulo": "Pode ficar tranquilo",
+    "texto": "",
+    "numerada": false,
+    "itens": [
+     {
+      "titulo": "API oficial da Shopee",
+      "texto": "A comissão cai direto na sua conta de afiliado.",
+      "premium": false
+     },
+     {
+      "titulo": "Sem instalar nada",
+      "texto": "Tudo roda no navegador e no nosso servidor.",
+      "premium": false
+     },
+     {
+      "titulo": "7 dias de garantia",
+      "texto": "E cancelamento quando quiser, sem multa.",
+      "premium": false
+     }
+    ],
+    "fundo": {
+     "modo": "cor",
+     "cor": "creme"
+    }
+   },
+   {
+    "tipo": "cta",
+    "titulo": "Conheça o *Appfiliado.*",
+    "texto": "Planos, prints e perguntas frequentes no site.",
+    "botao": "Link na bio",
+    "site": "appfiliado.com.br",
+    "fundo": {
+     "modo": "arte",
+     "arte": "canto",
+     "tom": "escuro"
+    }
+   }
+  ]
+ },
+ {
+  "codigo": "destaque-comece-aqui",
+  "nome": "Destaque: Comece aqui",
+  "formato": "story",
+  "slides": [
+   {
+    "tipo": "capa",
+    "chapeu": "Comece aqui",
+    "titulo": "1. Libere a *API da Shopee*",
+    "texto": "Peça direto à Shopee: a resposta sai em até 5 dias úteis.",
+    "icone": "chave",
+    "fundo": {
+     "modo": "arte",
+     "arte": "circulos",
+     "tom": "escuro"
+    }
+   },
+   {
+    "tipo": "lista",
+    "chapeu": "Comece aqui",
+    "titulo": "Depois da compra",
+    "texto": "",
+    "numerada": true,
+    "itens": [
+     {
+      "titulo": "Confira o e-mail",
+      "texto": "Chega o link para criar a senha.",
+      "premium": false
+     },
+     {
+      "titulo": "Entre no painel",
+      "texto": "app.appfiliado.com.br",
+      "premium": false
+     },
+     {
+      "titulo": "Conecte a Shopee",
+      "texto": "AppID e Secret em Configurações.",
+      "premium": false
+     },
+     {
+      "titulo": "Use o seu módulo",
+      "texto": "O menu mostra o que está liberado.",
+      "premium": false
+     }
+    ],
+    "fundo": {
+     "modo": "cor",
+     "cor": "verde"
+    }
+   },
+   {
+    "tipo": "cta",
+    "titulo": "Ficou alguma dúvida?",
+    "texto": "Chame a gente no WhatsApp. O link está na bio.",
+    "botao": "Falar no WhatsApp",
+    "site": "appfiliado.com.br",
+    "fundo": {
+     "modo": "arte",
+     "arte": "canto",
+     "tom": "escuro"
+    }
+   }
+  ]
+ },
+ {
+  "codigo": "destaque-planos",
+  "nome": "Destaque: Planos",
+  "formato": "story",
+  "slides": [
+   {
+    "tipo": "precos",
+    "chapeu": "Planos",
+    "titulo": "Módulos por mês",
+    "nota": "Radar, Conversor e Resultados vêm em todos os planos. Plano anual com 17% de desconto.",
+    "fundo": {
+     "modo": "cor",
+     "cor": "verde"
+    },
+    "linhas": [
+     {
+      "rotulo": "Bot de WhatsApp",
+      "valor": "R$ 49,90",
+      "detalhe": "Premium R$ 89,90"
+     },
+     {
+      "rotulo": "Meu site",
+      "valor": "R$ 22,90",
+      "detalhe": "Premium R$ 35,90"
+     },
+     {
+      "rotulo": "Gerador de carrosséis",
+      "valor": "R$ 19,90",
+      "detalhe": "Premium R$ 35,90"
+     },
+     {
+      "rotulo": "Emissor NFS-e",
+      "valor": "R$ 17,90",
+      "detalhe": "por quantidade de notas"
+     }
+    ]
+   },
+   {
+    "tipo": "lista",
+    "chapeu": "Combos",
+    "titulo": "Junte módulos e pague menos",
+    "texto": "",
+    "numerada": false,
+    "itens": [
+     {
+      "titulo": "2 módulos",
+      "texto": "10% de desconto",
+      "premium": false
+     },
+     {
+      "titulo": "3 módulos",
+      "texto": "20% de desconto",
+      "premium": false
+     },
+     {
+      "titulo": "7 dias de garantia",
+      "texto": "Não gostou? Devolvemos o valor.",
+      "premium": false
+     }
+    ],
+    "fundo": {
+     "modo": "cor",
+     "cor": "verde"
+    }
+   },
+   {
+    "tipo": "cta",
+    "titulo": "Monte o seu combo",
+    "texto": "No site você escolhe Standard ou Premium em cada módulo.",
+    "botao": "Ver planos",
+    "site": "appfiliado.com.br",
+    "fundo": {
+     "modo": "arte",
+     "arte": "canto",
+     "tom": "escuro"
+    }
+   }
+  ]
+ },
+ {
+  "codigo": "destaque-duvidas",
+  "nome": "Destaque: Dúvidas",
+  "formato": "story",
+  "slides": [
+   {
+    "tipo": "conversa",
+    "chapeu": "Dúvidas",
+    "titulo": "Preciso deixar o computador ligado?",
+    "baloes": [
+     {
+      "texto": "Preciso deixar o computador ligado pro bot funcionar?",
+      "meu": true
+     },
+     {
+      "texto": "Não! O bot roda no servidor do Appfiliado. Você conecta pelo QR Code e pode desligar tudo.",
+      "meu": false
+     }
+    ],
+    "fundo": {
+     "modo": "cor",
+     "cor": "areia"
+    }
+   },
+   {
+    "tipo": "conversa",
+    "chapeu": "Dúvidas",
+    "titulo": "A comissão cai para mim?",
+    "baloes": [
+     {
+      "texto": "A comissão das vendas cai na minha conta?",
+      "meu": true
+     },
+     {
+      "texto": "Cai direto na sua conta da Shopee. Todos os links saem com o seu link de afiliado.",
+      "meu": false
+     }
+    ],
+    "fundo": {
+     "modo": "cor",
+     "cor": "areia"
+    }
+   },
+   {
+    "tipo": "conversa",
+    "chapeu": "Dúvidas",
+    "titulo": "E se eu não gostar?",
+    "baloes": [
+     {
+      "texto": "E se eu não gostar?",
+      "meu": true
+     },
+     {
+      "texto": "Você tem 7 dias para pedir o reembolso integral e pode cancelar quando quiser, sem multa.",
+      "meu": false
+     }
+    ],
+    "fundo": {
+     "modo": "cor",
+     "cor": "areia"
+    }
+   }
+  ]
+ },
+ {
+  "codigo": "destaque-bot",
+  "nome": "Destaque: Bot",
+  "formato": "story",
+  "slides": [
+   {
+    "tipo": "tela",
+    "chapeu": "Conexão",
+    "titulo": "Conecte pelo QR Code em minutos",
+    "texto": "O servidor fica conectado como mais um aparelho e volta sozinho se a conexão cair.",
+    "print": "bot-conexao",
+    "recorte": 120,
+    "fundo": {
+     "modo": "cor",
+     "cor": "creme"
+    }
+   },
+   {
+    "tipo": "tela",
+    "chapeu": "Automação",
+    "titulo": "Você decide o que, quando e quanto",
+    "texto": "Busca por palavra-chave, loja ou categoria, filtros, horários e intervalo entre as ofertas.",
+    "print": "bot-ofertas",
+    "recorte": 470,
+    "fundo": {
+     "modo": "cor",
+     "cor": "creme"
+    }
+   },
+   {
+    "tipo": "tela",
+    "chapeu": "Modo campanha",
+    "titulo": "Datas da Shopee no piloto automático",
+    "texto": "No 11.11 e na Black Friday o bot muda o ritmo, o texto e o cupom sozinho.",
+    "print": "bot-campanhas",
+    "recorte": 380,
+    "fundo": {
+     "modo": "cor",
+     "cor": "creme"
+    }
+   },
+   {
+    "tipo": "tela",
+    "chapeu": "Alerta de preço",
+    "titulo": "Avisa quando o produto baixa",
+    "texto": "Escolha os produtos e receba o aviso no e-mail ou direto nos grupos.",
+    "print": "bot-alerta",
+    "recorte": 380,
+    "fundo": {
+     "modo": "cor",
+     "cor": "creme"
+    }
+   },
+   {
+    "tipo": "lista",
+    "chapeu": "Só no Premium",
+    "titulo": "Recursos que fazem diferença",
+    "texto": "",
+    "numerada": false,
+    "itens": [
+     {
+      "titulo": "Copia ofertas de outros grupos",
+      "texto": "E troca pelo seu link de afiliado.",
+      "premium": true
+     },
+     {
+      "titulo": "Revisão do texto com IA",
+      "texto": "Mensagens mais caprichadas, sem você reescrever.",
+      "premium": true
+     },
+     {
+      "titulo": "Até 50 grupos e 300 ofertas por dia",
+      "texto": "Em cada grupo ou canal.",
+      "premium": true
+     }
+    ],
+    "fundo": {
+     "modo": "cor",
+     "cor": "creme"
+    }
+   }
+  ]
+ },
+ {
+  "codigo": "destaque-meu-site",
+  "nome": "Destaque: Meu site",
+  "formato": "story",
+  "slides": [
+   {
+    "tipo": "tela",
+    "chapeu": "Do seu jeito",
+    "titulo": "Nome, foto, cores e botões",
+    "texto": "Veja a prévia ao vivo enquanto edita e publique quando estiver bom.",
+    "print": "site-editor",
+    "recorte": 0,
+    "fundo": {
+     "modo": "cor",
+     "cor": "creme"
+    }
+   },
+   {
+    "tipo": "tela",
+    "chapeu": "Botões de link",
+    "titulo": "Seus links com os cliques de cada um",
+    "texto": "Organize como quiser e veja quantos cliques cada botão recebeu.",
+    "print": "site-botoes",
+    "recorte": 0,
+    "fundo": {
+     "modo": "cor",
+     "cor": "creme"
+    }
+   },
+   {
+    "tipo": "lista",
+    "chapeu": "Na sua página",
+    "titulo": "O que o visitante encontra",
+    "texto": "",
+    "numerada": false,
+    "itens": [
+     {
+      "titulo": "Vitrine de ofertas",
+      "texto": "As ofertas do bot ou uma busca na Shopee, com o seu link.",
+      "premium": false
+     },
+     {
+      "titulo": "Conversor de links",
+      "texto": "O visitante cola o link e compra pelo seu link de afiliado.",
+      "premium": false
+     },
+     {
+      "titulo": "Suas redes sociais",
+      "texto": "Instagram, TikTok, YouTube, WhatsApp e mais.",
+      "premium": false
+     }
+    ],
+    "fundo": {
+     "modo": "cor",
+     "cor": "creme"
+    }
+   }
+  ]
+ },
+ {
+  "codigo": "destaque-carrosseis",
+  "nome": "Destaque: Carrosséis",
+  "formato": "story",
+  "slides": [
+   {
+    "tipo": "tela",
+    "chapeu": "Editor",
+    "titulo": "Ajuste tudo antes de baixar",
+    "texto": "Textos, modelos, cores e slides. O preço vem sempre certo da Shopee.",
+    "print": "carrossel-editor",
+    "recorte": 0,
+    "fundo": {
+     "modo": "cor",
+     "cor": "creme"
+    }
+   },
+   {
+    "tipo": "numeros",
+    "chapeu": "Em números",
+    "titulo": "Feito pro Instagram",
+    "pares": [
+     {
+      "valor": "10",
+      "legenda": "modelos de carrossel"
+     },
+     {
+      "valor": "2 a 10",
+      "legenda": "slides por carrossel"
+     },
+     {
+      "valor": "1080×1350",
+      "legenda": "PNG no formato do feed"
+     },
+     {
+      "valor": "3 a 10",
+      "legenda": "carrosséis por dia"
+     }
+    ],
+    "fundo": {
+     "modo": "cor",
+     "cor": "verde"
+    }
+   },
+   {
+    "tipo": "lista",
+    "chapeu": "Só no Premium",
+    "titulo": "Para quem posta todo dia",
+    "texto": "",
+    "numerada": false,
+    "itens": [
+     {
+      "titulo": "Foto própria com remoção de fundo",
+      "texto": "",
+      "premium": true
+     },
+     {
+      "titulo": "Cores e fontes livres",
+      "texto": "",
+      "premium": true
+     },
+     {
+      "titulo": "Outra versão do texto com IA",
+      "texto": "",
+      "premium": true
+     }
+    ],
+    "fundo": {
+     "modo": "cor",
+     "cor": "creme"
+    }
+   }
+  ]
+ },
+ {
+  "codigo": "destaque-notas",
+  "nome": "Destaque: Notas",
+  "formato": "story",
+  "slides": [
+   {
+    "tipo": "tela",
+    "chapeu": "Como funciona",
+    "titulo": "Do relatório da Shopee às notas",
+    "texto": "Envie o Relatório Mensal: sai uma nota por loja no Emissor Nacional.",
+    "print": "notas",
+    "recorte": 1130,
+    "fundo": {
+     "modo": "cor",
+     "cor": "creme"
+    }
+   },
+   {
+    "tipo": "tela",
+    "chapeu": "Lote",
+    "titulo": "Cada vendedor recebe a nota por e-mail",
+    "texto": "Com o PDF e o XML, no horário que você escolher.",
+    "print": "notas-lote",
+    "recorte": 0,
+    "fundo": {
+     "modo": "cor",
+     "cor": "creme"
+    }
+   },
+   {
+    "tipo": "precos",
+    "chapeu": "Planos",
+    "titulo": "Pague pela quantidade de notas",
+    "nota": "Por mês. Notas de teste não contam e nota cancelada libera a vaga.",
+    "fundo": {
+     "modo": "cor",
+     "cor": "verde"
+    },
+    "linhas": [
+     {
+      "rotulo": "Até 100 notas",
+      "valor": "R$ 17,90",
+      "detalhe": ""
+     },
+     {
+      "rotulo": "Até 500 notas",
+      "valor": "R$ 49,90",
+      "detalhe": ""
+     },
+     {
+      "rotulo": "Até 2.000 notas",
+      "valor": "R$ 89,90",
+      "detalhe": ""
+     },
+     {
+      "rotulo": "Até 5.000 notas",
+      "valor": "R$ 129,90",
+      "detalhe": ""
+     },
+     {
+      "rotulo": "Até 10.000 notas",
+      "valor": "R$ 169,90",
+      "detalhe": ""
+     },
+     {
+      "rotulo": "Ilimitadas",
+      "valor": "R$ 229,90",
+      "detalhe": ""
+     }
+    ]
+   }
+  ]
+ }
+]

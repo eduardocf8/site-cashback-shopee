@@ -102,6 +102,7 @@ INSTALLED_APPS = [
     "notas",
     "landing",
     "atendimento",
+    "estudio",
 ]
 
 AUTH_USER_MODEL = "accounts.User"
@@ -224,6 +225,8 @@ NOTAS_ASSINATURAS_DESCRICAO = os.environ.get("APPFILIADO_NOTAS_ASSINATURAS_DESCR
 ATENDIMENTO_CONTA_ID = int(os.environ.get("APPFILIADO_ATENDIMENTO_CONTA_ID", "0") or 0)
 ATENDIMENTO_AVISAR = os.environ.get("APPFILIADO_ATENDIMENTO_AVISAR", "")
 ATENDIMENTO_MODELO = os.environ.get("APPFILIADO_ATENDIMENTO_MODELO", "claude-opus-5-5")
+# Modelo que monta os posts no Estúdio de posts do admin (usa a mesma ANTHROPIC_API_KEY).
+ESTUDIO_MODELO = os.environ.get("ESTUDIO_MODELO", "claude-opus-5-5")
 ANTHROPIC_API_KEY = os.environ.get("ANTHROPIC_API_KEY", "")
 
 # Credenciais da API da Asaas para pagar os saques via PIX (ficam no arquivo .env, nunca no código)
