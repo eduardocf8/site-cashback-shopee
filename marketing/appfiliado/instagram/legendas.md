@@ -69,7 +69,7 @@ Hashtags base (use 5 a 8 por post, não precisa de todas):
 ### 1. Apresentação
 
 ```
-Tudo que você usa pra divulgar a Shopee num painel só 🧡
+Tudo que você usa como afiliado Shopee num painel só 🧡
 
 O Appfiliado nasceu pra tirar o trabalho repetitivo da rotina do afiliado:
 

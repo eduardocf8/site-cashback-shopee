@@ -377,7 +377,7 @@ FEED = {
 
 DESTAQUES = {
     "sobre": [
-        capa("Sobre o Appfiliado", "Feito pra quem <em>divulga a Shopee.</em>",
+        capa("Sobre o Appfiliado", "Feito pra quem é <em>afiliado Shopee.</em>",
              "As ferramentas do dia a dia do afiliado num painel só.", icone="sobre"),
         lista("Sobre o Appfiliado", "Escolha os seus módulos", [
             ("Bot de WhatsApp", "Ofertas no automático nos seus grupos."),
