@@ -167,12 +167,10 @@ def linha_de_texto(fonte, texto, tamanho, cor, w, y, espaco=0.0):
     return f'<g fill="{cor}">{d}</g>'
 
 
-def capa(w, h, altura_logo, frase=None, deslocamento=0):
-    meio = logo_centro(w, h, altura_logo, cor_texto=CREME)
-    extra = ""
-    if frase:
-        extra = linha_de_texto(MEDIA, frase, altura_logo * 0.25, SUAVE, w, h / 2 + altura_logo * 0.78 + deslocamento)
-        meio = f'<g transform="translate(0 {-altura_logo * 0.12:.1f})">{meio}</g>' + f'<g transform="translate(0 {-altura_logo * 0.12:.1f})">{extra}</g>'
+def capa(w, h, altura_logo, frase=None):
+    """Logotipo centralizado; com frase, ela vai embaixo do nome, alinhada com ele (como no painel)."""
+    # Com a assinatura, o nome fica menor dentro do mesmo ladrilho: o conjunto cresce um pouco.
+    meio = logo_centro(w, h, altura_logo * 1.2 if frase else altura_logo, assinatura=frase, cor_texto=CREME, cor_ass=SUAVE)
     return documento(w, h, fundo_verde(w, h) + meio, defs=FUNDO_DEGRADE)
 
 
