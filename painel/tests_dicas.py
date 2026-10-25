@@ -98,3 +98,54 @@ class TestDicas(TestCase):
         html = mail.outbox[0].alternatives[0][0]
         self.assertIn("conversor.jpg", html)
         self.assertIn("Conhecer o Bot", html)
+
+
+class TestFormatoEditavel(TestCase):
+    def dados(self, **extra):
+        from django.utils import timezone
+
+        base = {"nome": "Ana", "tem_bot": True, "premium_bot": False, "tem_site": False, "tem_carrosseis": False,
+                "premium_carrosseis": False, "tem_notas": False, "shopee_conectada": True, "sugerir_emissor": False,
+                "img": "https://x/", "numeros": None, "links": {"planos": "https://appfiliado.com.br"}}
+        base.update(extra)
+        return base
+
+    def test_formato_simples(self):
+        texto = ("Oi **{nome}**, tudo bem?\nSegunda linha.\n\n↳ um\n↳ dois\n\nMinha dica: faça assim.\n\n{imagem}\n\n{botao}\n\n"
+                 "[sem premium] No Premium tem mais. [Ver o Premium](planos)\n[site] Só pra quem tem site.\n\n<script>x</script>")
+        html = emails_valor.formatar(texto, self.dados(), "foto.jpg", ("Abrir", "planos"))
+        self.assertIn("Oi <strong>Ana</strong>, tudo bem?<br>Segunda linha.", html)
+        self.assertIn("↳ um</div>", html)
+        self.assertIn("<strong>Minha dica:</strong> faça assim.", html)
+        self.assertIn('src="https://x/foto.jpg"', html)
+        self.assertIn('href="https://appfiliado.com.br" style="display:inline-block', html)
+        self.assertIn('No Premium tem mais. <a href="https://appfiliado.com.br"', html)
+        self.assertNotIn("Só pra quem tem site", html)
+        self.assertNotIn("<script>", html)  # o texto do admin não vira HTML de verdade
+        self.assertNotIn("No Premium tem mais", emails_valor.formatar(texto, self.dados(premium_bot=True)))
+
+
+@override_settings(APPFILIADO_PAINEL_HOSTS=[HOST], ALLOWED_HOSTS=[HOST, "testserver"], APPFILIADO_PAINEL_URL=f"https://{HOST}")
+class TestEditorNoAdmin(TestCase):
+    def setUp(self):
+        from django.contrib.auth import get_user_model
+
+        from .models import TextoEmailDica
+
+        self.usuario = get_user_model().objects.create_superuser("dono", "dono@exemplo.com", "senha-forte-123")
+        self.client.force_login(self.usuario)
+        self.texto = TextoEmailDica.objects.get(chave="bot")
+
+    def test_lista_editar_previa_e_teste(self):
+        self.assertContains(self.client.get("/admin/painel/textoemaildica/"), "O grupo que vende todo dia não é sorte")
+        pagina = self.client.get(f"/admin/painel/textoemaildica/{self.texto.pk}/change/")
+        self.assertContains(pagina, "Prévia: quem não tem")
+        self.assertContains(pagina, "Enviar teste pro meu e-mail")
+        url = f"/admin/painel/textoemaildica/{self.texto.pk}/previa/"
+        dados = {"assunto": "Assunto novo", "texto": "Olá {nome}, texto **novo** ainda não salvo.", "texto_sem": "Pra quem não tem."}
+        self.assertContains(self.client.post(url, {**dados, "variante": "com"}), "texto <strong>novo</strong> ainda não salvo")
+        self.assertContains(self.client.post(url, {**dados, "variante": "sem"}), "Pra quem não tem.")
+        self.client.post(url, {**dados, "enviar_teste": "1"})
+        self.assertEqual((mail.outbox[0].to, mail.outbox[0].subject), (["dono@exemplo.com"], "Assunto novo"))
+        self.texto.refresh_from_db()
+        self.assertEqual(self.texto.assunto, "O grupo que vende todo dia não é sorte")  # a prévia não salva

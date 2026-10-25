@@ -16,7 +16,7 @@
   <tr><td style="background:#FFFFFF;padding:26px 24px 22px;border:1px solid #E5DFCD;border-top:none;border-radius:0 0 14px 14px;">
 <!--corpo-->
     <p style="{{ p }}">Fala{% if nome %}, {{ nome }}{% endif %}!</p>
-{% block conteudo %}{% endblock %}
+{{ corpo|safe }}
     <p style="{{ p }}margin-top:20px;">Abraço,<br><strong>Eduardo</strong><br><span style="color:#5C6A61;">Fundador do Appfiliado</span></p>
 <!--/corpo-->
   </td></tr>

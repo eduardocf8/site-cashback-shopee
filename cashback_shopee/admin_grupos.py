@@ -54,6 +54,8 @@ GRUPOS = [
             ("painel.metamensal", "Metas mensais"),
             ("painel.regrasubid", "Regras de Sub ID"),
             ("painel.relatorioemail", "Relatórios por e-mail"),
+            ("painel.textoemaildica", "E-mails de dicas (novos assinantes)"),
+            ("painel.sugestao", "Sugestões dos afiliados"),
         ]),
         ("Bot de WhatsApp", [
             ("bot_whatsapp.conexaowhatsapp", "Conexões"),

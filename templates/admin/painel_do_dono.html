@@ -102,6 +102,8 @@
       <div>
         <h3>Bots com erro ({{ n.atencao.bots_com_erro|length }})</h3>
         <ul class="dono-lista">{% for c in n.atencao.bots_com_erro %}<li><a href="{% url 'admin:licencas_contaappfiliado_change' c.conta_id %}">{{ c.conta.email }}</a> <span class="quieto">{{ c.ultimo_erro|truncatechars:90 }}</span></li>{% empty %}<li class="vazio">Nenhum.</li>{% endfor %}</ul>
+        <h3>Sugestões novas dos afiliados ({{ n.atencao.sugestoes|length }})</h3>
+        <ul class="dono-lista">{% for s in n.atencao.sugestoes %}<li><a href="{% url 'admin:painel_sugestao_change' s.pk %}">{{ s.descricao|truncatechars:80 }}</a> <span class="quieto">{{ s.conta.email }} · {{ s.get_importancia_display|lower }}</span></li>{% empty %}<li class="vazio">Nenhuma.</li>{% endfor %}</ul>
         <h3>Conversas do agente esperando você ({{ n.atencao.conversas|length }})</h3>
         <ul class="dono-lista">{% for c in n.atencao.conversas %}<li>{{ c.nome|default:c.telefone }} <span class="quieto">{{ c.motivo_humano|truncatechars:70 }} · {{ c.ultima_recebida_em|date:"d/m H:i" }}</span></li>{% empty %}<li class="vazio">Nenhuma.</li>{% endfor %}</ul>
       </div>

@@ -950,3 +950,11 @@ form[data-metas] .grade-campos { display: grid; grid-template-columns: 1fr 1fr; 
 .form-mensagem #destino, .form-mensagem #quando { margin-bottom: 14px; }
 /* Mensagens: o botão de enviar fica no fim do formulário (não flutua: é a última ação). */
 .barra-enviar { display: flex; justify-content: flex-end; gap: 10px; flex-wrap: wrap; }
+
+/* Sugerir melhoria */
+.form-sugestao textarea, .form-sugestao select { width: 100%; box-sizing: border-box; }
+.bloco-sugestao { display: flex; flex-direction: column; gap: 16px; margin: 18px 0; }
+.form-sugestao .marcar { margin-top: 14px; }
+.selo-sugestao { padding: 1px 8px; border-radius: 999px; background: var(--trilho); font-size: 12px; font-weight: 700; }
+.selo-feita { background: var(--verde); color: #fff; }
+.selo-planejada, .selo-analise { background: var(--amarelo-suave); color: var(--amarelo-tinta); }

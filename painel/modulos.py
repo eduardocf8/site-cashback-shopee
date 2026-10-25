@@ -30,6 +30,7 @@ ICONES = {
     "notas": "M6 3h9l4 4v14H6zM14 3v5h5M9 12h7M9 16h7",
     "email": "M3 6h18v12H3zM3 7l9 6 9-6",
     "seta_cima": "M6 15l6-6 6 6",
+    "ideia": "M9 18h6M10 21h4M12 3a6 6 0 0 0-3.5 10.9c.6.5 1 1.2 1 2.1h5c0-.9.4-1.6 1-2.1A6 6 0 0 0 12 3z",
     "conversor": "M10 14a4 4 0 0 0 5.7 0l3-3a4 4 0 0 0-5.7-5.7l-1 1M14 10a4 4 0 0 0-5.7 0l-3 3a4 4 0 0 0 5.7 5.7l1-1",
     "copiar": "M8 8h11v11H8zM5 16V5h11",
     "radar": "M12 3a9 9 0 1 0 9 9M12 7a5 5 0 1 0 5 5M12 12l6-6M17 3v4h4",
@@ -72,6 +73,7 @@ MODULOS_DO_MENU = [
         "texto_bloqueado": "Emita no automático a nota da Shopee e as notas de cada vendedor que pagou "
                            "comissão extra e mande cada uma por e-mail pro vendedor.",
     },
+    {"slug": "sugestoes", "nome": "Sugerir melhoria", "icone": "ideia", "modulo": None, "pronto": True},
     {"slug": "configuracoes", "nome": "Configurações", "icone": "configuracoes", "modulo": None, "pronto": True},
 ]
 
@@ -86,6 +88,7 @@ URL_DE_SLUG = {
     "site": "painel_meu_site",
     "carrosseis": "painel_carrosseis",
     "notas": "painel_notas",
+    "sugestoes": "painel_sugestoes",
     "configuracoes": "painel_configuracoes",
 }
 

@@ -669,3 +669,52 @@ class MensagemAvulsaForm(forms.ModelForm):
         if commit:
             m.save()
         return m
+
+
+class SugestaoForm(forms.Form):
+    """Sugerir melhoria: as perguntas mudam com o tipo (melhorar uma ferramenta ou uma nova)."""
+
+    from .models import Sugestao as _Sugestao
+
+    tipo = forms.ChoiceField(label="Sobre o que é a sua sugestão?", choices=_Sugestao.TIPOS, widget=forms.RadioSelect,
+                             initial=_Sugestao.MELHORIA)
+    ferramenta = forms.ChoiceField(label="Qual ferramenta?", choices=[("", "Escolha")] + _Sugestao.FERRAMENTAS,
+                                   required=False)
+    mudaria = forms.CharField(label="O que você mudaria nela?", required=False, max_length=3000, widget=forms.Textarea(
+        attrs={"rows": 4, "placeholder": "Ex: queria escolher um horário diferente pra cada grupo do bot."}))
+    ajudaria = forms.CharField(label="Como isso ajudaria nas suas vendas? (opcional)", required=False, max_length=3000,
+                               widget=forms.Textarea(attrs={"rows": 3, "placeholder": "Ex: meus grupos de madrugada vendem bem, mas os outros não."}))
+    nova = forms.CharField(label="Que ferramenta você gostaria de ter?", required=False, max_length=3000, widget=forms.Textarea(
+        attrs={"rows": 3, "placeholder": "Ex: postar as ofertas no Telegram também."}))
+    problema = forms.CharField(label="Que problema ela resolveria no seu dia a dia?", required=False, max_length=3000,
+                               widget=forms.Textarea(attrs={"rows": 3}))
+    como_hoje = forms.CharField(label="Como você faz isso hoje? (opcional)", required=False, max_length=2000,
+                                widget=forms.Textarea(attrs={"rows": 2, "placeholder": "Ex: faço na mão ou uso outro app."}))
+    importancia = forms.TypedChoiceField(label="Quanto isso faria diferença pra você?", choices=_Sugestao.IMPORTANCIAS,
+                                         coerce=int, initial=2, widget=forms.RadioSelect)
+    pode_contatar = forms.BooleanField(label="Pode me chamar pra conversar sobre essa ideia", required=False)
+
+    def clean(self):
+        dados = super().clean()
+        if dados.get("tipo") == self._Sugestao.MELHORIA:
+            if not dados.get("ferramenta"):
+                self.add_error("ferramenta", "Escolha a ferramenta.")
+            if not (dados.get("mudaria") or "").strip():
+                self.add_error("mudaria", "Conte o que você mudaria.")
+        elif dados.get("tipo") == self._Sugestao.NOVA:
+            if not (dados.get("nova") or "").strip():
+                self.add_error("nova", "Conte que ferramenta você gostaria de ter.")
+            if not (dados.get("problema") or "").strip():
+                self.add_error("problema", "Conte que problema ela resolveria.")
+        return dados
+
+    def criar(self, conta):
+        dados = self.cleaned_data
+        melhoria = dados["tipo"] == self._Sugestao.MELHORIA
+        return self._Sugestao.objects.create(
+            conta=conta, tipo=dados["tipo"], ferramenta=dados["ferramenta"] if melhoria else "",
+            descricao=(dados["mudaria"] if melhoria else dados["nova"]).strip(),
+            beneficio=(dados["ajudaria"] if melhoria else dados["problema"]).strip(),
+            como_hoje="" if melhoria else dados["como_hoje"].strip(),
+            importancia=dados["importancia"], pode_contatar=dados["pode_contatar"],
+        )

@@ -484,3 +484,29 @@ def parar_dicas(request, token):
     if not conta.sem_dicas_por_email:
         type(conta).objects.filter(pk=conta.pk).update(sem_dicas_por_email=True)
     return render(request, "painel/parar_dicas.html", {"email": conta.email})
+
+
+@conta_requerida
+def sugestoes(request):
+    """Sugerir melhoria: formulário pros afiliados mandarem ideias (painel/sugestoes.py)."""
+    from django.contrib import messages
+
+    from . import sugestoes as servico_sugestoes
+    from .forms import SugestaoForm
+    from .models import Sugestao
+
+    conta = conta_logada(request)
+    form = SugestaoForm(request.POST or None)
+    if request.method == "POST":
+        hoje = Sugestao.objects.filter(conta=conta, criada_em__gte=timezone.now() - timedelta(days=1)).count()
+        if hoje >= servico_sugestoes.POR_DIA:
+            messages.error(request, "Você já mandou muitas sugestões hoje. Obrigado! Manda as próximas amanhã.")
+        elif form.is_valid():
+            sugestao = form.criar(conta)
+            servico_sugestoes.avisar_voce(sugestao)
+            messages.success(request, "Valeu! A sua sugestão chegou. Quando ela sair do papel, você recebe um aviso por e-mail.")
+            return redirect("painel_sugestoes")
+        else:
+            messages.error(request, "Confira os campos marcados.")
+    enviadas = Sugestao.objects.filter(conta=conta)[:10]
+    return render(request, "painel/sugestoes.html", _contexto(request, "sugestoes", form=form, enviadas=enviadas))

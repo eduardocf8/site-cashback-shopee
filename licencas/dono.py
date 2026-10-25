@@ -131,6 +131,7 @@ def atencao(agora) -> dict:
     from atendimento.models import Conversa
     from bot_whatsapp.models import ConfiguracaoOfertas
     from notas.models import NotaFiscal
+    from painel.models import Sugestao
 
     desde = agora - timedelta(days=30)
     return {
@@ -142,6 +143,7 @@ def atencao(agora) -> dict:
         "webhooks_com_falha": list(EventoWebhookZouti.objects.filter(
             assinatura_valida=True, processado_com_sucesso=False, recebido_em__gte=desde)[:30]),
         "conversas": list(Conversa.objects.filter(estado=Conversa.HUMANO).order_by("-ultima_recebida_em")[:30]),
+        "sugestoes": list(Sugestao.objects.filter(situacao=Sugestao.NOVA_SITUACAO).select_related("conta")[:30]),
     }
 
 
@@ -222,6 +224,7 @@ def montar_resumo(agora) -> tuple[str, str]:
         f"  • Bots com erro: {len(atencao_['bots_com_erro'])}",
         f"  • Avisos da Zouti com falha (30 dias): {len(atencao_['webhooks_com_falha'])}",
         f"  • Conversas do agente esperando você: {len(atencao_['conversas'])}",
+        f"  • Sugestões novas dos afiliados: {len(atencao_['sugestoes'])}",
         "",
         f"Painel completo: {settings.APPFILIADO_ADMIN_URL.rstrip('/')}/licencas/contaappfiliado/painel-do-dono/",
     ]

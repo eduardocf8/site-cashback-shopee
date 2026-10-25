@@ -9,6 +9,7 @@ urlpatterns = [
     path("senha/esqueci/", views.esqueci_senha, name="painel_esqueci_senha"),
     path("senha/definir/<uidb64>/<token>/", views.definir_senha, name="painel_definir_senha"),
     path("emails/parar-dicas/<str:token>/", views.parar_dicas, name="painel_parar_dicas"),
+    path("sugestoes/", views.sugestoes, name="painel_sugestoes"),
     path("plano/", views.plano, name="painel_plano"),
     path("resultados/", views.resultados_view, name="painel_resultados"),
     path("resultados/atualizar/", views.atualizar_resultados, name="painel_atualizar_resultados"),
