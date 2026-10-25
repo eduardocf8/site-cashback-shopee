@@ -475,9 +475,8 @@ PRINTS = {
             1: [("bot-ofertas", "De onde vêm as ofertas, os filtros e o histórico do que foi enviado.", "Tela de ofertas automáticas do Bot de WhatsApp")],
             4: [("bot-campanhas", "Marque as datas da Shopee e o bot muda de ritmo e de texto sozinho.", "Tela do modo campanha do Bot de WhatsApp")],
             5: [("bot-alerta", "Produtos acompanhados, últimos alertas e a mensagem que vai pros grupos.", "Tela do alerta de preço do Bot de WhatsApp")]},
-    "site": {0: [("site-pronto", "Um exemplo pronto: 3 botões, 4 redes sociais, o conversor de links e a vitrine de ofertas em carrossel.",
-                  "Exemplo de site pronto no celular, com botões, redes sociais, conversor de links e vitrine de ofertas"),
-                 ("site-editor", "Endereço, perfil e cores, com a prévia do site ao vivo.", "Editor do Meu site com prévia no celular")],
+    "site": {0: [("site-pronto", "O editor e, ao lado, o site pronto: 3 botões, 4 redes sociais, o conversor de links e a vitrine de ofertas em carrossel.",
+                  "Exemplo de site pronto no celular, com botões, redes sociais, conversor de links e vitrine de ofertas")],
              2: [("site-botoes", "Seus botões, o conversor de links e a prévia ao lado.", "Botões e conversor de links do Meu site")]},
     "carrosseis": {5: [("carrossel-editor", "O carrossel pronto, com os textos de cada slide pra ajustar.", "Editor de carrosséis com o primeiro slide pronto")]},
     "radar": {1: [("radar", "Busca por palavra-chave, categoria, preço, comissão e desconto.", "Tela de filtros do Radar de ofertas")],
@@ -511,29 +510,26 @@ TAMANHOS = {
     "site-pronto": (380, 1129, 300, 891),  # o site visto pelo visitante, num celular (marketing/appfiliado/prints/site_pronto.py)
     "site-botoes": (1100, 1206, 420, 1387),
     "site-editor": (1100, 1249, 420, 2300),
+    "site-editor-form": (712, 1159, 420, 1462),  # recorte do site-editor só com a coluna do formulário
 }
 
 
-# Prints em moldura de celular (o que o visitante vê), sem a janela do painel em volta. Um arquivo só.
-# "editor": o celular ao lado do editor do painel. "texto": o celular com as partes explicadas ao lado.
-CELULAR = {"site-pronto": "texto"}
-
-# Partes do site apontadas ao lado do celular: (altura no celular em %, título, texto).
-ANOTACOES = {"site-pronto": [
-    (12, "Perfil", "Sua foto, o nome e uma frase curta."),
-    (28, "Botões", "Grupo VIP, canal, cupons. O principal fica em destaque na cor do site."),
-    (40, "Redes sociais", "Os ícones das redes que você preencher."),
-    (54, "Conversor de links", "O visitante cola um link da Shopee e compra pelo seu link."),
-    (77, "Vitrine de ofertas", "As ofertas do dia em carrossel ou em lista, com o seu link em cada produto."),
-]}
+# O site pronto (o que o visitante vê) num celular ao lado do editor do painel, como no Appfiliado.
+# {print do celular: (print do editor, legenda do celular, legenda do editor)}. No computador vale a legenda
+# do PRINTS. No celular, um fica embaixo do outro, cada um com a sua legenda.
+AO_LADO_DO_EDITOR = {"site-pronto": ("site-editor-form",
+                                     "O site pronto: 3 botões, 4 redes sociais, o conversor de links e a vitrine de ofertas em carrossel.",
+                                     "No editor você escolhe o endereço, a foto, o nome, as cores e as redes sociais.")}
 
 
 def _print(a, leg, alt):
     w, h, wm, hm = TAMANHOS[a]
-    celular = CELULAR.get(a)
-    return {"arquivo": f"landing/prints/{a}.webp", "arquivo_m": f"landing/prints/{a}{'' if celular else '-m'}.webp",
-            "legenda": leg, "alt": alt, "largura": w, "altura": h, "largura_m": wm, "altura_m": hm, "celular": celular,
-            "anotacoes": [{"y": y, "titulo": t, "texto": x} for y, t, x in ANOTACOES.get(a, [])]}
+    p = {"arquivo": f"landing/prints/{a}.webp", "arquivo_m": f"landing/prints/{a}-m.webp",
+         "legenda": leg, "alt": alt, "largura": w, "altura": h, "largura_m": wm, "altura_m": hm, "celular": None}
+    if a in AO_LADO_DO_EDITOR:
+        e, leg_celular, leg_editor = AO_LADO_DO_EDITOR[a]
+        p["celular"] = {"legenda": leg_celular, "editor": _print(e, leg_editor, "Editor do Meu site: endereço, perfil, cores e redes sociais")}
+    return p
 
 
 def prints_de(modulo, secao):

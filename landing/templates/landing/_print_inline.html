@@ -1,33 +1,28 @@
 {% load static %}
 <div class="prints">
   {% for p in prints %}
-    {% if p.celular == "editor" %}
+    {% if p.celular %}{% with e=p.celular.editor %}
     <figure class="prints-painel prints-combo">
       <div class="combo">
-        <div class="prints-janela">
-          <div class="prints-barra" aria-hidden="true"><i></i><i></i><i></i><span>app.appfiliado.com.br</span></div>
-          <img src="{% static 'landing/prints/site-editor-form.webp' %}" width="712" height="1159" alt="Editor do Meu site: endereço, perfil, cores e redes sociais" loading="lazy" decoding="async">
+        <div class="combo-editor">
+          <div class="prints-janela">
+            <div class="prints-barra" aria-hidden="true"><i></i><i></i><i></i><span>app.appfiliado.com.br</span></div>
+            <picture>
+              <source media="(max-width: 760px)" srcset="{% static e.arquivo_m %}" width="{{ e.largura_m }}" height="{{ e.altura_m }}">
+              <img src="{% static e.arquivo %}" width="{{ e.largura }}" height="{{ e.altura }}" alt="{{ e.alt }}" loading="lazy" decoding="async">
+            </picture>
+          </div>
+          <p class="combo-legenda">{{ e.legenda }}</p>
         </div>
         <div class="combo-celular">
           <span class="combo-rotulo">Prévia</span>
           <img src="{% static p.arquivo %}" width="{{ p.largura }}" height="{{ p.altura }}" alt="{{ p.alt }}" loading="lazy" decoding="async">
+          <p class="combo-legenda">{{ p.celular.legenda }}</p>
         </div>
       </div>
       <figcaption>{{ p.legenda }}</figcaption>
     </figure>
-    {% elif p.celular %}
-    <figure class="prints-painel prints-anotado">
-      <div class="anotado">
-        <img src="{% static p.arquivo %}" width="{{ p.largura }}" height="{{ p.altura }}" alt="{{ p.alt }}" loading="lazy" decoding="async">
-        <div class="anotado-lado">
-          <p class="anotado-chapeu">O que o visitante vê</p>
-          <ul>
-            {% for n in p.anotacoes %}<li style="--y:{{ n.y }}%"><b>{{ n.titulo }}</b><span>{{ n.texto }}</span></li>{% endfor %}
-          </ul>
-        </div>
-      </div>
-      <figcaption>{{ p.legenda }}</figcaption>
-    </figure>
+    {% endwith %}
     {% else %}
     <figure class="prints-painel">
       <div class="prints-janela">
