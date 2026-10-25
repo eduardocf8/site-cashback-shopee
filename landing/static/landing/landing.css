@@ -441,6 +441,10 @@ p { margin: 0; }
 .prints figcaption { margin-top: 14px; font-size: 16px; color: var(--suave); max-width: 760px; }
 .fundo-verde .prints figcaption, .secao-verde .prints figcaption { color: #CFDBD2; }
 .heroi-print .prints-janela { transform: rotate(1.5deg); }
+/* Print em moldura de celular (o site do afiliado visto pelo visitante). */
+.prints-celular { text-align: center; }
+.prints-celular img { display: block; width: 380px; max-width: 78%; height: auto; margin: 0 auto; filter: drop-shadow(0 18px 30px rgba(31,58,46,.25)); }
+.prints-celular figcaption { margin-left: auto; margin-right: auto; }
 .heroi-print { align-self: center; }
 @media (max-width: 960px) { .heroi-print .prints-janela { transform: none; } }
 a.incluso { text-decoration: none; color: inherit; border-radius: 12px; transition: background .2s; }

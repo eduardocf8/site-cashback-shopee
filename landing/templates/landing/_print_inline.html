@@ -1,6 +1,12 @@
 {% load static %}
 <div class="prints">
   {% for p in prints %}
+    {% if p.celular %}
+    <figure class="prints-painel prints-celular">
+      <img src="{% static p.arquivo %}" width="{{ p.largura }}" height="{{ p.altura }}" alt="{{ p.alt }}" loading="lazy" decoding="async">
+      <figcaption>{{ p.legenda }}</figcaption>
+    </figure>
+    {% else %}
     <figure class="prints-painel">
       <div class="prints-janela">
         <div class="prints-barra" aria-hidden="true"><i></i><i></i><i></i><span>app.appfiliado.com.br</span></div>
@@ -11,5 +17,6 @@
       </div>
       <figcaption>{{ p.legenda }}</figcaption>
     </figure>
+    {% endif %}
   {% endfor %}
 </div>
