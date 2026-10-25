@@ -1,0 +1,24 @@
+{% extends "painel/emails/valor/_base.html" %}
+{% block conteudo %}
+{% if tem_bot %}
+    <p style="{{ p }}">Uma coisa que eu aprendi divulgando oferta em grupo: quem vende todo dia não é quem posta mais. É quem posta <strong>no ritmo certo</strong>, sem cansar o grupo.</p>
+    <p style="{{ p }}">Foi pensando nisso que eu montei o Bot do Appfiliado:</p>
+    <div style="{{ li }}">↳ <strong>Intervalo e horário:</strong> uma oferta a cada X minutos, só na janela em que o seu público está acordado</div>
+    <div style="{{ li }}">↳ <strong>Não repetir:</strong> o mesmo produto não volta pro mesmo grupo por quantos dias você escolher</div>
+    <div style="{{ li }}">↳ <strong>Filtros:</strong> comissão, desconto, preço e avaliação mínimos, pra só passar o que vale a pena</div>
+    <div style="{{ li }}margin-bottom:16px;">↳ <strong>Modo simulação:</strong> você vê o que sairia antes de mandar de verdade</div>
+    {% include "painel/emails/valor/_imagem.html" with arquivo="bot-ofertas.jpg" alt="Automação do Bot de WhatsApp" %}
+    <div style="{{ dica }}"><strong>Minha dica:</strong> comece com uma oferta a cada 15 ou 20 minutos, das 8h às 22h, e comissão mínima de 10%. Depois de uma semana, veja em Resultados quais grupos venderam mais e ajuste.</div>
+    {% include "painel/emails/valor/_botao.html" with link=url.whatsapp_ofertas texto="Abrir a Automação" %}
+    {% if not premium_bot %}<p style="{{ p }}font-size:14px;color:#5C6A61;">No Premium, cada grupo pode receber as ofertas do seu nicho (beleza, casa, pet…), a IA revisa o texto antes de enviar e dá pra copiar ofertas de outros grupos com o seu link. <a href="{{ url_planos }}" style="color:#1F3A2E;">Ver o Premium</a></p>{% endif %}
+{% else %}
+    <p style="{{ p }}">Converter link de afiliado um por um cansa. E quem copia oferta de outros canais ainda precisa tirar o link de quem postou e pôr o seu.</p>
+    <p style="{{ p }}">O <strong>Conversor de links</strong> do Appfiliado faz isso de uma vez:</p>
+    <div style="{{ li }}">↳ Cole o texto inteiro (aquela mensagem da Shopee ou de outro canal)</div>
+    <div style="{{ li }}">↳ Todos os links da Shopee viram os seus, com o Sub ID que você quiser</div>
+    <div style="{{ li }}margin-bottom:16px;">↳ Os links de outras pessoas saem do texto</div>
+    {% include "painel/emails/valor/_imagem.html" with arquivo="conversor.jpg" alt="Conversor de links" %}
+    {% include "painel/emails/valor/_botao.html" with link=url.conversor texto="Abrir o Conversor" %}
+    <p style="{{ p }}font-size:14px;color:#5C6A61;">Se você divulga em grupos de WhatsApp, o Bot faz isso sozinho o dia todo, com o seu link. <a href="{{ url_planos }}" style="color:#1F3A2E;">Conhecer o Bot</a></p>
+{% endif %}
+{% endblock %}

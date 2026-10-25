@@ -227,3 +227,21 @@ class RelatorioEmail(models.Model):
     def destinatarios(self) -> list[str]:
         extras = [e.strip() for e in (self.emails_extras or "").split(",") if e.strip()]
         return list(dict.fromkeys([self.conta.email, *extras]))
+
+
+class EmailValorEnviado(models.Model):
+    """Cada e-mail da sequência de dicas dos novos assinantes (painel/emails_valor.py) que já saiu
+    (ou foi pulado porque passou do dia) pra uma conta."""
+
+    conta = models.ForeignKey("licencas.ContaAppfiliado", on_delete=models.CASCADE, related_name="emails_valor")
+    chave = models.CharField(max_length=30)
+    enviado_em = models.DateTimeField(auto_now_add=True)
+    pulado = models.BooleanField(default=False, help_text="Não saiu (o servidor estava fora no dia).")
+
+    class Meta:
+        constraints = [models.UniqueConstraint(fields=["conta", "chave"], name="email_valor_unico")]
+        verbose_name = "e-mail de dicas enviado"
+        verbose_name_plural = "e-mails de dicas enviados"
+
+    def __str__(self):
+        return f"{self.conta_id} - {self.chave}"

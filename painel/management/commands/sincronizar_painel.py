@@ -9,6 +9,7 @@ from django.db import close_old_connections
 from bot_whatsapp.avisos_de_queda import uma_volta as avisar_bots_parados
 from licencas.dono import enviar_resumo_semanal
 from painel.memoria import memoria_em_uso_mb
+from painel.emails_valor import enviar_pendentes as enviar_dicas
 from painel.primeiros_passos import enviar_pendentes as enviar_primeiros_passos
 from meusite.vitrine import uma_volta as atualizar_vitrines
 from notas.fila import tem_fila as notas_na_fila
@@ -68,6 +69,8 @@ class Command(BaseCommand):
                 for linha in avisar_bots_parados():  # e-mail quando o WhatsApp de alguém para
                     self.stdout.write(linha)
                 for linha in enviar_primeiros_passos():  # e-mails do dia 1 e do dia 3 pra quem assinou
+                    self.stdout.write(linha)
+                for linha in enviar_dicas():  # e-mails de dicas dos dias 2 a 21, às 10h
                     self.stdout.write(linha)
                 for linha in enviar_resumo_semanal():  # painel do dono: domingo às 9h, pro e-mail de suporte
                     self.stdout.write(linha)

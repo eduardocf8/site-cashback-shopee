@@ -111,6 +111,8 @@ class ContaAppfiliado(models.Model):
     shopee_secret_cifrado = models.TextField(blank=True)
     shopee_validado_em = models.DateTimeField(null=True, blank=True)
 
+    # Pediu pra parar os e-mails de dicas (painel/emails_valor.py), pelo link no rodapé.
+    sem_dicas_por_email = models.BooleanField("não quer e-mails de dicas", default=False)
     # E-mails de primeiros passos (painel/primeiros_passos.py): dia 1 e dia 3 depois da compra.
     passos_email_1_em = models.DateTimeField(null=True, blank=True)
     passos_email_2_em = models.DateTimeField(null=True, blank=True)

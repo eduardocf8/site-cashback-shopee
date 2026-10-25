@@ -470,3 +470,17 @@ def erro_500(request):
     return render(request, "painel/erro.html", {"titulo": "Algo deu errado",
                                                  "texto": "Tivemos um problema aqui. Tente de novo em instantes."},
                   status=500)
+
+
+def parar_dicas(request, token):
+    """Link do rodapé dos e-mails de dicas (painel/emails_valor.py): para a sequência, sem login."""
+    from django.http import Http404
+
+    from . import emails_valor
+
+    conta = emails_valor.conta_do_link(token)
+    if not conta:
+        raise Http404
+    if not conta.sem_dicas_por_email:
+        type(conta).objects.filter(pk=conta.pk).update(sem_dicas_por_email=True)
+    return render(request, "painel/parar_dicas.html", {"email": conta.email})

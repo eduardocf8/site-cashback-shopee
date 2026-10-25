@@ -1,0 +1,28 @@
+{% extends "painel/emails/valor/_base.html" %}
+{% block conteudo %}
+    <p style="{{ p }}">Grupo de WhatsApp vende muito, mas quem chega pelo Instagram também compra. O segredo é ter um caminho fácil do post até o link.</p>
+{% if tem_site %}
+    <p style="{{ p }}"><strong>No seu site</strong> (o seu link na bio):</p>
+    <div style="{{ li }}">↳ Deixe o botão mais importante em destaque, como o link do seu grupo VIP</div>
+    <div style="{{ li }}">↳ Use a vitrine{% if tem_bot %} com as últimas ofertas que o bot enviou: ela se atualiza sozinha{% else %} com uma busca da Shopee que combine com o seu público{% endif %}</div>
+    <div style="{{ li }}margin-bottom:16px;">↳ Acompanhe os cliques de cada botão e produto no painel</div>
+    {% include "painel/emails/valor/_imagem.html" with arquivo="site-editor.jpg" alt="Editor do Meu site" %}
+{% endif %}
+{% if tem_carrosseis %}
+    <p style="{{ p }}"><strong>Nos carrosséis:</strong> cole o link de um produto e o Appfiliado monta o carrossel com textos feitos por IA e o seu link. {% if premium_carrosseis %}Dica: salve o seu modelo, cor e @ como padrão, e os próximos já saem com a sua cara.{% else %}Dica: troque o texto de um slide direto no editor antes de baixar, pra deixar com o seu jeito de falar.{% endif %}</p>
+    {% if not tem_site %}{% include "painel/emails/valor/_imagem.html" with arquivo="carrossel-editor.jpg" alt="Editor de carrosséis" %}{% endif %}
+{% endif %}
+{% if tem_site or tem_carrosseis %}
+    {% include "painel/emails/valor/_botao.html" with link=url.inicio texto="Abrir o Appfiliado" %}
+{% endif %}
+{% if not tem_site and not tem_carrosseis %}
+    <p style="{{ p }}">No Appfiliado, dois módulos fazem esse caminho:</p>
+    <div style="{{ li }}">↳ <strong>Meu site:</strong> o seu link na bio, com botões, conversor de links pro seu público e vitrine de ofertas</div>
+    <div style="{{ li }}margin-bottom:16px;">↳ <strong>Carrosséis:</strong> cole o link de um produto e receba um carrossel pronto pro Instagram, com textos feitos por IA</div>
+    {% include "painel/emails/valor/_imagem.html" with arquivo="carrossel-editor.jpg" alt="Editor de carrosséis" %}
+    <p style="{{ p }}">Juntando com o que você já tem, sai com desconto de combo: 10% com 2 módulos e 20% com 3.</p>
+    {% include "painel/emails/valor/_botao.html" with link=url_planos texto="Ver os planos" %}
+{% elif not tem_site or not tem_carrosseis %}
+    <p style="{{ p }}font-size:14px;color:#5C6A61;">{% if not tem_site %}Quer um link na bio com vitrine e conversor pro seu público? Conheça o <a href="{{ url_planos }}" style="color:#1F3A2E;">Meu site</a>.{% else %}Quer posts prontos pro Instagram a partir de um link? Conheça os <a href="{{ url_planos }}" style="color:#1F3A2E;">Carrosséis</a>.{% endif %}</p>
+{% endif %}
+{% endblock %}

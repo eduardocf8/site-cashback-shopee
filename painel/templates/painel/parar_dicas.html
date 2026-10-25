@@ -1,0 +1,7 @@
+{% extends "painel/base_simples.html" %}
+{% block titulo %}Dicas por e-mail{% endblock %}
+{% block conteudo %}
+<h1 style="font-size:20px;margin:18px 0 8px">Pronto, você não vai mais receber as dicas</h1>
+<p class="suave">O {{ email }} saiu da lista de dicas do Appfiliado. Os e-mails importantes da sua conta (senha, avisos do bot, notas fiscais e relatórios que você ligou) continuam chegando normalmente.</p>
+<p><a class="botao botao-principal" href="{% url 'painel_inicio' %}">Ir pro painel</a></p>
+{% endblock %}
