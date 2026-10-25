@@ -2,7 +2,7 @@
 
 Uso (na raiz do repositório): python3 marketing/appfiliado/instagram/gerar_instagram.py [nome-do-post ...]
 Sai em marketing/appfiliado/instagram/feed/<post>/NN.jpg, destaques/<destaque>/NN.jpg e uma folha de
-contato (previa-<post>.jpg) pra conferir tudo de uma vez. As legendas ficam em legendas.md.
+contato (previa-<post>.jpg) para conferir tudo de uma vez. As legendas ficam em legendas.md.
 
 Cores e símbolo da identidade (marketing/appfiliado/gerar_identidade.py), fonte DM Sans; as telas são os
 prints do painel com a conta fictícia "Achadinhos da Bia" (landing/static/landing/prints/*-m.webp).
@@ -122,7 +122,7 @@ h2 {{ font-weight: 800; letter-spacing: -.025em; line-height: 1.07; font-size: 5
 .balao {{ background: #fff; border-radius: 30px 30px 30px 8px; padding: 28px 32px; font-size: 32px; line-height: 1.38; box-shadow: 0 16px 40px rgba(23,48,31,.10);
   max-width: 820px; }}
 .balao.meu {{ background: #DCF8C6; border-radius: 30px 30px 8px 30px; margin-left: auto; }}
-/* listas curtas no feed: letras maiores pra ocupar o quadrado */
+/* listas curtas no feed: letras maiores para ocupar o quadrado */
 .lista.folgada {{ gap: 20px; }}
 .lista.folgada li {{ padding: 30px 34px; }}
 .lista.folgada b {{ font-size: 40px; }}
@@ -246,7 +246,7 @@ def cta(titulo, texto, botao="Link na bio"):
         return (f'<section class="slide verde"><div class="circulo-fundo" style="width:1000px;height:1000px;left:-420px;top:-420px"></div>'
                 f'{_marca()}<div style="margin:auto 0;position:relative"><h1 class="menor">{titulo}</h1><p class="texto">{texto}</p>'
                 f'<div style="display:flex;gap:18px;margin-top:46px;flex-wrap:wrap"><span class="selo">{E(botao)} ↗</span>'
-                f'<span class="selo claro">appfiliado.com.br</span></div></div>{_rodape(i, total, seta=False, texto="Salve pra ver depois")}</section>')
+                f'<span class="selo claro">appfiliado.com.br</span></div></div>{_rodape(i, total, seta=False, texto="Salve para ver depois")}</section>')
     return montar
 
 
@@ -266,13 +266,13 @@ def conversa(chapeu, titulo, baloes, verde=False):
 PRECO_MIN = "R$ 19,90"
 FEED = {
     "01-apresentacao": [
-        capa("Pra afiliados da Shopee", "Tudo que você usa pra divulgar <em>num painel só.</em>",
+        capa("Para afiliados da Shopee", "Tudo que você usa para divulgar <em>num painel só.</em>",
              "Ofertas no automático, link na bio, carrosséis, resultados e notas fiscais."),
         tela("Bot de WhatsApp", "Ofertas no automático nos seus grupos", "Ele escolhe as ofertas, gera o seu link e publica no ritmo que você definir.", "bot-ofertas", 0),
         tela("Meu site", "Seu link na bio com vitrine e conversor", "Uma página em seunome.appfiliado.com.br com botões, redes e ofertas.", "site-editor", 0),
         tela("Gerador de carrosséis", "Cole um link e receba um carrossel pronto", "A IA escreve os slides, a legenda e as hashtags. Você ajusta e baixa.", "carrossel-editor", 0),
         tela("Incluído em todos os planos", "Radar, Conversor e Resultados", "Ache o produto certo, troque links pelo seu e veja quanto cada divulgação vendeu.", "radar-produtos", 0),
-        tela("Emissor NFS-e", "As notas dos vendedores direto do relatório da Shopee", "Pra afiliado pessoa jurídica: uma nota por loja, com e-mail pra cada vendedor.", "notas-lote", 0),
+        tela("Emissor NFS-e", "As notas dos vendedores direto do relatório da Shopee", "Para afiliado pessoa jurídica: uma nota por loja, com e-mail para cada vendedor.", "notas-lote", 0),
         cta("Comece hoje a partir de <span style='color:#F2C230'>" + PRECO_MIN + "/mês.</span>",
             "Monte o seu combo e pague menos. 7 dias de garantia e cancelamento quando quiser."),
     ],
@@ -282,7 +282,7 @@ FEED = {
         lista("Passo a passo", "Como pedir a API", [
             ("Tenha o cadastro de afiliado aprovado", "No Programa de Afiliados da Shopee."),
             ("Envie o formulário de ajuda da Shopee", "Escolha o cenário \"Quero ativar a API\"."),
-            ("Aguarde a análise", "A Shopee tem até 5 dias úteis pra responder."),
+            ("Aguarde a análise", "A Shopee tem até 5 dias úteis para responder."),
             ("Clique em Aplicar", "Na página Open API do portal de afiliados."),
             ("Cole o AppID e o Secret no Appfiliado", "Em Configurações do painel. Pronto!"),
         ], numerada=True),
@@ -330,7 +330,7 @@ FEED = {
         tela("Editor", "Ajuste tudo antes de baixar", "Textos, modelos, cores e slides. O preço vem sempre certo da Shopee.", "carrossel-editor", 0),
         numeros("Em números", "Feito pro Instagram", [("10", "modelos de carrossel"), ("2 a 10", "slides por carrossel"),
                                                         ("1080×1350", "PNG no formato do feed"), ("3 a 10", "carrosséis por dia")]),
-        lista("Só no Premium", "Pra quem posta todo dia", [
+        lista("Só no Premium", "Para quem posta todo dia", [
             ("Foto própria com remoção de fundo", "", True), ("Cores e fontes livres", "", True), ("Outra versão do texto com IA", "", True),
         ]),
         cta("Carrosséis a partir de <span style='color:#F2C230'>R$ 19,90/mês.</span>", "Cada carrossel já sai com o seu link de afiliado e o Sub ID \"instagram\"."),
@@ -347,10 +347,10 @@ FEED = {
     "07-conversor-de-links": [
         capa("Conversor de links", "Troque os links de qualquer texto <em>pelo seu.</em>", "Incluído em todos os planos.", icone="conversor"),
         tela("Como funciona", "Cole, converta e encaminhe", "Até 20 links por vez. Links curtos da Shopee também funcionam.", "conversor", 0),
-        lista("Feito pra afiliado", "Detalhes que importam", [
+        lista("Feito para afiliado", "Detalhes que importam", [
             ("Mantém o texto e troca só os links", "Ou devolve só a lista de links convertidos."),
             ("Link limpo do produto", "Sem o rastreio de quem divulgou antes."),
-            ("Sub ID opcional", "Pra medir cada divulgação em Resultados."),
+            ("Sub ID opcional", "Para medir cada divulgação em Resultados."),
             ("Direto pro grupo", "Com o Bot de WhatsApp, sem sair da tela."),
         ]),
         cta("O Conversor vem em <span style='color:#F2C230'>todos os planos.</span>", "E no Meu site os seus visitantes também podem converter."),
@@ -358,7 +358,7 @@ FEED = {
     "08-resultados-e-metas": [
         capa("Resultados e metas", "Veja quanto vendeu <em>e de onde veio.</em>", "Incluído em todos os planos.", icone="resultados"),
         tela("Resultados", "Faturamento, comissão e pedidos", "Por dia, semana ou mês, com os produtos mais vendidos.", "resultados", 1150),
-        tela("Metas", "Quanto falta pro bônus da Shopee", "Pra agenciado: cadastre as faixas e acompanhe a projeção do mês.", "metas", 760),
+        tela("Metas", "Quanto falta pro bônus da Shopee", "Para agenciado: cadastre as faixas e acompanhe a projeção do mês.", "metas", 760),
         lista("Sempre à mão", "Sem abrir planilha", [
             ("Comissão por Sub ID", "Descubra qual grupo, site ou post vende mais."),
             ("Relatório diário por e-mail", "Os números de ontem toda manhã."),
@@ -367,7 +367,7 @@ FEED = {
         cta("Resultados e metas vêm em <span style='color:#F2C230'>todos os planos.</span>", "Conecte a sua conta da Shopee uma vez e pronto."),
     ],
     "09-emissor-nfse": [
-        capa("Emissor NFS-e", "As notas da comissão extra <em>em poucos cliques.</em>", "Pra afiliado pessoa jurídica (MEI ou Simples Nacional).", icone="notas"),
+        capa("Emissor NFS-e", "As notas da comissão extra <em>em poucos cliques.</em>", "Para afiliado pessoa jurídica (MEI ou Simples Nacional).", icone="notas"),
         tela("Como funciona", "Do relatório da Shopee às notas", "Envie o Relatório Mensal: sai uma nota por loja no Emissor Nacional.", "notas", 1130),
         tela("Lote", "Cada vendedor recebe a nota por e-mail", "Com o PDF e o XML, no horário que você escolher.", "notas-lote", 0),
         precos("Planos", "Pague pela quantidade de notas", [
@@ -380,7 +380,7 @@ FEED = {
 
 DESTAQUES = {
     "sobre": [
-        capa("Sobre o Appfiliado", "Feito pra quem é <em>afiliado Shopee.</em>",
+        capa("Sobre o Appfiliado", "Feito para quem é <em>afiliado Shopee.</em>",
              "As ferramentas do dia a dia do afiliado num painel só.", icone="sobre"),
         lista("Sobre o Appfiliado", "Escolha os seus módulos", [
             ("Bot de WhatsApp", "Ofertas no automático nos seus grupos."),
@@ -403,7 +403,7 @@ DESTAQUES = {
     "comece-aqui": [
         capa("Comece aqui", "1. Libere a <em>API da Shopee</em>", "Peça direto à Shopee: a resposta sai em até 5 dias úteis.", icone="chave"),
         lista("Comece aqui", "Depois da compra", [
-            ("Confira o e-mail", "Chega o link pra criar a senha."), ("Entre no painel", "app.appfiliado.com.br"),
+            ("Confira o e-mail", "Chega o link para criar a senha."), ("Entre no painel", "app.appfiliado.com.br"),
             ("Conecte a Shopee", "AppID e Secret em Configurações."), ("Use o seu módulo", "O menu mostra o que está liberado."),
         ], numerada=True, verde=True),
         cta("Ficou alguma dúvida?", "Chame a gente no WhatsApp. O link está na bio.", botao="Falar no WhatsApp"),
@@ -422,10 +422,10 @@ DESTAQUES = {
     "duvidas": [
         conversa("Dúvidas", "Preciso deixar o computador ligado?", [("Preciso deixar o computador ligado pro bot funcionar?", True),
                  ("Não! O bot roda no servidor do Appfiliado. Você conecta pelo QR Code e pode desligar tudo.", False)]),
-        conversa("Dúvidas", "A comissão cai pra mim?", [("A comissão das vendas cai na minha conta?", True),
+        conversa("Dúvidas", "A comissão cai para mim?", [("A comissão das vendas cai na minha conta?", True),
                  ("Cai direto na sua conta da Shopee. Todos os links saem com o seu link de afiliado.", False)]),
         conversa("Dúvidas", "E se eu não gostar?", [("E se eu não gostar?", True),
-                 ("Você tem 7 dias pra pedir o reembolso integral e pode cancelar quando quiser, sem multa.", False)]),
+                 ("Você tem 7 dias para pedir o reembolso integral e pode cancelar quando quiser, sem multa.", False)]),
     ],
 }
 for nome, icone, post in (("bot", "bot", "03-bot-de-whatsapp"), ("meu-site", "site", "04-meu-site"),
@@ -470,7 +470,7 @@ CHECAR = """() => {
 
 
 def _renderizar(slides, pasta: Path, largura, altura, navegador, escala=1.0):
-    """`escala` > 1 desenha numa tela menor e amplia (stories: tudo 25% maior, pra ler no celular)."""
+    """`escala` > 1 desenha numa tela menor e amplia (stories: tudo 25% maior, para ler no celular)."""
     pasta.mkdir(parents=True, exist_ok=True)
     for antigo in [*pasta.glob("*.png"), *pasta.glob("*.jpg")]:
         antigo.unlink()

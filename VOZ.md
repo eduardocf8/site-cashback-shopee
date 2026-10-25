@@ -50,8 +50,8 @@ o dono da marca aponta o que soa diferente do jeito dele de falar.
   Shopee com o seu link", não "da Shopee, com o seu link". Vale para
   títulos e chamadas em que o "com…" / "no…" completa a frase.
 - **Appfiliado: o público é "afiliado Shopee", não quem "divulga a Shopee".**
-  Use "pra afiliados Shopee", "pra quem é afiliado Shopee", "ser afiliado
-  Shopee". Evite "divulgar a Shopee" e "feito pra quem divulga a Shopee".
+  Use "para afiliados Shopee", "para quem é afiliado Shopee", "ser afiliado
+  Shopee". Evite "divulgar a Shopee" e "feito para quem divulga a Shopee".
 
 ## Onde essas regras já foram aplicadas
 

@@ -2,7 +2,7 @@
 
 Imagens geradas por `gerar_instagram.py` (rode de novo depois de mudar texto, preço ou print).
 Posts do feed em `feed/<post>/`, stories dos destaques em `destaques/<destaque>/`, capas em `destaques/capas/`.
-As folhas `previa-*.jpg` mostram cada post inteiro de uma vez, só pra conferir (não publicar).
+As folhas `previa-*.jpg` mostram cada post inteiro de uma vez, só para conferir (não publicar).
 
 Tamanhos: feed em **1080x1080 (1:1)**, stories e capas dos destaques em **1080x1920**. Na capa de cada post, o
 texto fica nos 810 px do meio, porque a grade do perfil mostra os posts em 3:4 e corta as laterais. Nos stories,
@@ -10,7 +10,7 @@ nada importante fica nos 250 px de cima nem nos 250 px de baixo, que o Instagram
 
 ## Perfil
 
-- **Nome:** Appfiliado | Ferramentas pra afiliados da Shopee
+- **Nome:** Appfiliado | Ferramentas para afiliados da Shopee
 - **Foto:** `marketing/appfiliado/identidade/redes-sociais/avatar-amarelo-redondo-1080.png`
 - **Bio:**
   ```
@@ -40,7 +40,7 @@ O Instagram mostra o último post no canto de cima à esquerda. Publique na orde
 | 8 | Resultados e metas | `feed/08-resultados-e-metas` |
 | 9 | Emissor NFS-e | `feed/09-emissor-nfse` |
 
-Dá pra publicar tudo no mesmo dia (perfil novo) ou 1 a 2 por dia na semana do lançamento. Os 3 fixados
+Dá para publicar tudo no mesmo dia (perfil novo) ou 1 a 2 por dia na semana do lançamento. Os 3 fixados
 ficam no topo de qualquer jeito.
 
 ## Destaques
@@ -71,7 +71,7 @@ Hashtags base (use 5 a 8 por post, não precisa de todas):
 ```
 Tudo que você usa como afiliado Shopee num painel só 🧡
 
-O Appfiliado nasceu pra tirar o trabalho repetitivo da rotina do afiliado:
+O Appfiliado nasceu para tirar o trabalho repetitivo da rotina do afiliado:
 
 🤖 Bot de WhatsApp: ofertas no automático nos seus grupos, sempre com o seu link
 🌐 Meu site: um link na bio com vitrine e conversor de links
@@ -92,11 +92,11 @@ Antes de usar qualquer ferramenta de afiliado, tem um passo que muita gente não
 
 É ela que gera o seu link de afiliado e traz os seus números. O pedido é feito direto à Shopee e a resposta sai em até 5 dias úteis.
 
-Arraste pro lado pra ver o passo a passo e como preencher o formulário.
+Arraste pro lado para ver o passo a passo e como preencher o formulário.
 
 💡 Dica: não espere o e-mail. Entre todo dia na página Open API do portal de afiliados. Quando aparecer o botão "Aplicar", a API foi liberada.
 
-Salve este post pra não perder 📌
+Salve este post para não perder 📌
 
 #afiliadoshopee #shopeeafiliados #apishopee #marketingdeafiliados #afiliados
 ```
@@ -159,7 +159,7 @@ A partir de R$ 19,90/mês.
 ### 6. Radar de ofertas
 
 ```
-Ache o produto certo pra divulgar em segundos 🎯
+Ache o produto certo para divulgar em segundos 🎯
 
 O Radar reúne mais de 30 mil produtos da Shopee com comissão de afiliado, atualizados todo dia. Filtre por comissão, desconto, preço e categoria e copie o seu link em um clique.
 
@@ -174,7 +174,7 @@ Vem incluído em todos os planos do Appfiliado.
 ```
 Viu uma lista de ofertas boa? Troque todos os links pelo seu em um clique 🔗
 
-Cole a mensagem de um canal ou links soltos: o Appfiliado troca todos os links da Shopee pelo seu link de afiliado e devolve o texto pronto pra encaminhar. Links curtos também funcionam.
+Cole a mensagem de um canal ou links soltos: o Appfiliado troca todos os links da Shopee pelo seu link de afiliado e devolve o texto pronto para encaminhar. Links curtos também funcionam.
 
 Incluído em todos os planos.
 👉 Link na bio
@@ -202,9 +202,9 @@ Incluído em todos os planos.
 ```
 Afiliado PJ: as notas da comissão extra em poucos cliques 🧾
 
-Envie o Relatório Mensal da Shopee e o Appfiliado emite uma nota por loja no Emissor Nacional, com e-mail pra cada vendedor com o PDF e o XML.
+Envie o Relatório Mensal da Shopee e o Appfiliado emite uma nota por loja no Emissor Nacional, com e-mail para cada vendedor com o PDF e o XML.
 
-• Pra MEI ou Simples Nacional, com certificado A1
+• Para MEI ou Simples Nacional, com certificado A1
 • Comece pelo ambiente de testes do governo
 • Planos pela quantidade de notas, a partir de R$ 17,90/mês
 
