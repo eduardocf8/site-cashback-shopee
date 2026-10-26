@@ -47,9 +47,12 @@ depois, com o vídeo 2. As duas juntas também funcionam, porque cada uma tem o 
 ## 2. Checklist antes de gravar
 
 **No painel da Meta for Developers (app)**
-- [ ] **Nome de exibição: Appfiliado** e **ícone do Appfiliado** (aparecem na tela de consentimento).
-- [ ] **URL da Política de Privacidade:** `https://appfiliado.com.br/privacidade/`
-- [ ] **Exclusão de dados:** `https://app.appfiliado.com.br/instagram/apagar-dados/`
+- [x] **Nome de exibição: Appfiliado** e **ícone do Appfiliado** (aparecem na tela de consentimento).
+- [x] **Nome do app do Instagram: "Appfiliado - IG".** A tela de consentimento usa esse nome, que é separado do nome de exibição: em Casos de uso › Configuração da API com login do Instagram, clique em **Sincronizar nome do app** depois de trocar o nome de exibição.
+- [x] **URL da Política de Privacidade:** `https://appfiliado.com.br/privacidade/`
+- [x] **URL dos Termos de Serviço:** `https://appfiliado.com.br/termos-de-uso/`
+- [x] **URL do site:** `https://app.appfiliado.com.br/entrar/`, com as instruções da seção 7 em "Fornecer instruções de teste".
+- [x] **Exclusão de dados:** `https://app.appfiliado.com.br/instagram/apagar-dados/`, no tipo **URL de retorno de chamada** (não "URL de instruções": o endereço não é uma página, a Meta recusa).
 - [ ] **Login comercial do Instagram:** redirecionamento `https://app.appfiliado.com.br/estudio/instagram/retorno/`, cancelar autorização `https://app.appfiliado.com.br/instagram/desautorizar/`.
 - [ ] **Webhooks:** `https://cash-b.com/instagram/automacao/webhook/`, campos `comments` e `messages` assinados.
 - [x] **Modo do app: Publicado.**
