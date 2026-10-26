@@ -94,7 +94,8 @@ def quando_de(texto: str, agora=None):
 def agendar(post, arquivos: list, quando=None) -> Publicacao:
     """Cria a publicação do post (já salvo). quando=None: publica assim que o worker pegar."""
     conta = post.conta
-    if not ContaInstagram.objects.filter(conta=conta).exists():
+    ig = ContaInstagram.objects.filter(conta=conta).first()
+    if not ig:
         raise ErroPublicacao("Conecte o seu Instagram para publicar.")
     if not arquivos:
         raise ErroPublicacao("Nenhuma imagem chegou. Tente de novo.")
@@ -111,7 +112,7 @@ def agendar(post, arquivos: list, quando=None) -> Publicacao:
     agora = timezone.now()
     with transaction.atomic():
         pub = Publicacao.objects.create(
-            conta=conta, post=post, nome=post.nome[:120], tipo=tipo,
+            conta=conta, post=post, nome=post.nome[:120], tipo=tipo, ig_id=ig.ig_id, ig_username=ig.username,
             legenda=post.legenda if tipo == Publicacao.FEED else "",
             agendada_para=quando or agora, agora=quando is None, miniatura=imagens[0][1])
         ImagemPublicacao.objects.bulk_create([
@@ -217,6 +218,9 @@ def publicar(pub: Publicacao) -> str:
     ig = ContaInstagram.objects.filter(conta=pub.conta).first()
     if not ig:
         return _erro(pub, "O Instagram foi desconectado antes da publicação.")
+    if pub.ig_id and pub.ig_id != ig.ig_id:
+        return _erro(pub, f"Agendada para @{pub.ig_username}, mas agora o Instagram conectado é @{ig.username}. "
+                          f"Conecte o @{pub.ig_username} de novo ou publique outra vez pelo editor.")
     if mod.estado(mod.POR_SLUG["estudio_instagram"], pub.conta.modulos_liberados()) != "liberado":
         return _erro(pub, "O Estúdio Instagram não está mais no seu plano.")
     if pub.tipo == Publicacao.FEED and pub.midias:  # já tinha saído antes de o worker cair

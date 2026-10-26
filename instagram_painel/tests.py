@@ -127,6 +127,16 @@ class TestAvisos(TestCase):
         W.separar_e_processar(aviso_comentario("quero"))
         resposta.assert_not_called()
 
+    def test_automacao_de_outro_instagram_nao_responde(self, msg, privada, resposta):
+        self.a.ig_id, self.a.ig_username = "outro", "usecashb"
+        self.a.save()
+        W.separar_e_processar(aviso_comentario("quero"))
+        resposta.assert_not_called()
+        self.a.ig_id = IG_ID  # a do Instagram conectado responde
+        self.a.save()
+        W.separar_e_processar(aviso_comentario("quero"))
+        resposta.assert_called_once()
+
     def test_plano_standard_so_responde_comentario(self, msg, privada, resposta):
         self.c.modulos_cortesia = "instagram"
         self.c.save()
@@ -315,12 +325,29 @@ class TestTelas(TestCase):
         self.assertRedirects(r, "/estudio/automacoes/", fetch_redirect_response=False)
         self.assertContains(self.client.get("/estudio/automacoes/"), "Sem limite por mês")
 
+    def test_automacao_guarda_o_instagram_e_a_lista_mostra(self):
+        c = conta(email="contas@exemplo.com")
+        conectada(c)
+        self.entrar(c)
+        dados = {"nome": "Nova", "gatilho": "comentario", "palavras": "quero", "enviar_dm": "on", "texto_dm": "oi", "ativa": "on"}
+        self.client.post("/estudio/automacoes/nova/", dados)
+        self.assertEqual(Automacao.objects.get(nome="Nova").ig_username, "achadosdabia")
+        Automacao.objects.create(conta=c, nome="Antiga", ig_id="outro", ig_username="usecashb", respostas="ok", texto_dm="oi")
+        r = self.client.get("/estudio/automacoes/")
+        self.assertContains(r, "@achadosdabia")
+        self.assertContains(r, "é do @usecashb, que não está conectado")
+
+    def test_sem_instagram_nao_cria_automacao(self):
+        self.entrar(conta(email="semig@exemplo.com"))
+        r = self.client.post("/estudio/automacoes/nova/", {"nome": "x", "gatilho": "comentario", "enviar_dm": "on", "texto_dm": "oi"})
+        self.assertContains(r, "Conecte o seu Instagram antes de criar a automação.")
+
     def test_standard_ate_5_ligadas(self):
         c = conta(modulos="instagram", email="cinco@exemplo.com")
         conectada(c)
         self.entrar(c)
         for i in range(5):
-            Automacao.objects.create(conta=c, nome=f"a{i}", respostas="ok", texto_dm="oi")
+            Automacao.objects.create(conta=c, nome=f"a{i}", ig_id=IG_ID, respostas="ok", texto_dm="oi")
         dados = {"nome": "sexta", "gatilho": "comentario", "palavras": "quero", "enviar_dm": "on", "texto_dm": "oi", "ativa": "on"}
         self.assertContains(self.client.post("/estudio/automacoes/nova/", dados), "até 5 automações ligadas")
         del dados["ativa"]
@@ -386,7 +413,9 @@ class TestJanelaHistoricoEExcluir(TestCase):
         state = self.client.session["instagram_state"]
         with mock.patch.object(conexao, "conectar", return_value=ContaInstagram(username="bia")):
             r = self.client.get(f"/estudio/instagram/retorno/?code=abc&state={state}")
-        self.assertContains(r, "window.opener.location.href = destino")
+        # avisa a página principal (sem depender do window.opener, que o Instagram corta) e fecha
+        self.assertContains(r, 'new BroadcastChannel("appfiliado-instagram").postMessage("pronto")')
+        self.assertContains(r, "window.close()")
         self.assertContains(r, "/estudio/automacoes/")
         # sem a janela, continua voltando direto
         self.client.get("/estudio/instagram/conectar/")

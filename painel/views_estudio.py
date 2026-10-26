@@ -16,6 +16,8 @@ from django.urls import reverse
 from django.views.decorators.http import require_POST
 
 from carrosseis.servicos import ErroGerador
+from instagram_painel import api as ig_api
+from instagram_painel.models import ContaInstagram
 from estudio import afiliados as A
 from estudio.marcas import CAMPOS_TEXTO, FORMATOS, LIMITES_LISTA, MARCAS
 from estudio.models import FONTES_AFILIADO, TEMAS_AFILIADO, ImagemAfiliado, MarcaAfiliado, ModeloAfiliado, PostInstagram
@@ -84,6 +86,7 @@ def lista(request, conta):
         shopee_ok=conta.shopee_configurada, ia_ligada=bool(settings.ANTHROPIC_API_KEY),
         formatos=[(k, v[0]) for k, v in FORMATOS.items()], previa_modelos=A.modelos(conta),
         previa_config={**_desenho(conta), "exemplo": static("estudio/exemplo-produto.jpg")},
+        ig=ContaInstagram.objects.filter(conta=conta).first(), configurado=bool(ig_api.app_id() and ig_api.app_secret()),
     ))
 
 

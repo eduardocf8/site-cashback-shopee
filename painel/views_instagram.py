@@ -18,6 +18,7 @@ from django.http import Http404, HttpResponse, JsonResponse
 from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import reverse
 from django.utils import timezone
+from django.utils.http import url_has_allowed_host_and_scheme
 from django.views.decorators.csrf import csrf_exempt
 from django.views.decorators.http import require_POST
 
@@ -25,7 +26,7 @@ from estudio.models import PostInstagram
 from instagram_painel import api, conexao
 from instagram_painel import publicar as P
 from instagram_painel.models import Automacao, ContaInstagram, Disparo, ImagemPublicacao, Publicacao
-from instagram_painel.webhook import na_fila, palavras, respondidas_no_mes, valendo
+from instagram_painel.webhook import ligadas, na_fila, palavras, respondidas_no_mes, valendo
 from licencas import planos as planos_do_app
 
 from . import conversor
@@ -50,6 +51,11 @@ def _ig(conta) -> ContaInstagram | None:
     return ContaInstagram.objects.filter(conta=conta).first()
 
 
+def _ig_id(conta) -> str:
+    ig = _ig(conta)
+    return ig.ig_id if ig else ""
+
+
 def _tem_automacoes(conta) -> bool:
     return mod.estado(mod.POR_SLUG[SLUG_AUTOMACOES], conta.modulos_liberados()) == "liberado"
 
@@ -61,18 +67,22 @@ def _pagina_da_conexao(conta) -> str:
 
 @_automacoes
 def automacoes(request, conta):
-    plano = planos_do_app.automacoes(conta)
-    valem = set(valendo(conta, plano).values_list("pk", flat=True))
+    plano, ig = planos_do_app.automacoes(conta), _ig(conta)
+    ig_id = ig.ig_id if ig else ""
+    valem = set(valendo(conta, ig_id, plano).values_list("pk", flat=True))
     lista = []
     for a in Automacao.objects.filter(conta=conta):
         total = a.disparos.count()
-        fora = ("Parada: responder stories e DMs é do plano Premium." if a.gatilho not in plano["gatilhos"]
+        outra = bool(a.ig_id and a.ig_id != ig_id)
+        fora = (f"Parada: é do @{a.ig_username}, que não está conectado." if outra
+                else "Parada: responder stories e DMs é do plano Premium." if a.gatilho not in plano["gatilhos"]
                 else f"Parada: no Standard valem só as {plano['ativas']} ligadas mais recentes." if a.ativa and a.pk not in valem else "")
-        lista.append({"a": a, "total": total, "dms": a.disparos.filter(dm_ok=True).count(),
+        lista.append({"a": a, "total": total, "dms": a.disparos.filter(dm_ok=True).count(), "outra_conta": outra,
                       "palavras": ", ".join(palavras(a)).upper(), "fora_do_plano": fora})
+    lista.sort(key=lambda item: item["outra_conta"])  # as do Instagram conectado primeiro
     return render(request, "painel/estudio_automacoes.html", _contexto(
         request, SLUG_AUTOMACOES, ig=_ig(conta), plano=plano, lista=lista, respondidas=respondidas_no_mes(conta),
-        ligadas=Automacao.objects.filter(conta=conta, ativa=True).count(),
+        ligadas=ligadas(conta, ig_id).count(),
         fila=na_fila(conta), configurado=bool(api.app_id() and api.app_secret()),
     ))
 
@@ -123,6 +133,9 @@ def retorno(request, conta):
 def desconectar(request, conta):
     conexao.desconectar(conta)
     messages.info(request, "Instagram desconectado. As automações e as publicações agendadas ficam paradas até conectar de novo.")
+    voltar = request.POST.get("voltar", "")
+    if voltar and url_has_allowed_host_and_scheme(voltar, allowed_hosts=None) and voltar.startswith("/"):
+        return redirect(voltar)
     return redirect(_pagina_da_conexao(conta))
 
 
@@ -169,8 +182,8 @@ class AutomacaoForm(forms.ModelForm):
         if not self.plano["sub_id"]:
             d["sub_id"] = self.instance.sub_id
         if self.plano["ativas"] and d.get("ativa") and not self.antes[2]:
-            ligadas = Automacao.objects.filter(conta=self.conta, ativa=True).exclude(pk=self.instance.pk).count()
-            if ligadas >= self.plano["ativas"]:
+            outras = ligadas(self.conta, _ig_id(self.conta)).exclude(pk=self.instance.pk).count()
+            if outras >= self.plano["ativas"]:
                 self.add_error("ativa", f"No plano Standard ficam até {self.plano['ativas']} automações ligadas ao mesmo tempo. "
                                         "Pause outra ou salve esta desligada. No Premium não há limite.")
         gatilho = d.get("gatilho")
@@ -229,11 +242,14 @@ def _form_contexto(request, conta, form, automacao=None):
 def automacao_nova(request, conta):
     if request.method == "POST":
         form = AutomacaoForm(request.POST, conta=conta)
-        if Automacao.objects.filter(conta=conta).count() >= MAX_AUTOMACOES:
+        ig = _ig(conta)
+        if not ig:
+            form.add_error(None, "Conecte o seu Instagram antes de criar a automação.")
+        elif Automacao.objects.filter(conta=conta).count() >= MAX_AUTOMACOES:
             form.add_error(None, f"Você chegou a {MAX_AUTOMACOES} automações. Exclua alguma para criar outra.")
         elif form.is_valid():
             a = form.save(commit=False)
-            a.conta = conta
+            a.conta, a.ig_id, a.ig_username = conta, ig.ig_id, ig.username
             post = PostInstagram.objects.filter(conta=conta, pk=request.POST.get("post") or 0).first()
             a.post_estudio = post
             a.save()
@@ -251,7 +267,7 @@ def automacao_nova(request, conta):
             if planos_do_app.automacoes(conta)["sub_id"]:
                 inicial["sub_id"] = _sub_id_sugerido(post.nome)
         plano = planos_do_app.automacoes(conta)
-        if plano["ativas"] and Automacao.objects.filter(conta=conta, ativa=True).count() >= plano["ativas"]:
+        if plano["ativas"] and ligadas(conta, _ig_id(conta)).count() >= plano["ativas"]:
             inicial["ativa"] = False  # Standard com todas as vagas ocupadas: nasce desligada
         form = AutomacaoForm(initial=inicial, conta=conta)
     return render(request, "painel/estudio_automacao.html", _form_contexto(request, conta, form) | {
@@ -274,7 +290,7 @@ def automacao(request, conta, pk):
 def automacao_ligar(request, conta, pk):
     a = get_object_or_404(Automacao, pk=pk, conta=conta)
     limite = planos_do_app.automacoes(conta)["ativas"]
-    if not a.ativa and limite and Automacao.objects.filter(conta=conta, ativa=True).count() >= limite:
+    if not a.ativa and limite and ligadas(conta, _ig_id(conta)).count() >= limite:
         messages.error(request, f"No plano Standard ficam até {limite} automações ligadas ao mesmo tempo. "
                                 "Pause outra para ligar esta. No Premium não há limite.")
     else:
@@ -314,7 +330,7 @@ def historico(request, conta):
 def _publicacao_json(p: Publicacao) -> dict:
     return {"id": p.pk, "tipo": p.get_tipo_display(), "estado": p.estado, "estado_nome": p.get_estado_display(),
             "quando": timezone.localtime(p.publicada_em or p.agendada_para).strftime("%d/%m/%Y %H:%M"),
-            "link": p.permalink, "erro": p.erro, "agora": p.agora,
+            "link": p.permalink, "erro": p.erro, "agora": p.agora, "conta": f"@{p.ig_username}" if p.ig_username else "",
             "cancelar": reverse("painel_estudio_publicacao_cancelar", args=[p.pk]) if p.estado == Publicacao.PENDENTE else "",
             "tentar": reverse("painel_estudio_publicacao_tentar", args=[p.pk]) if p.estado == Publicacao.ERRO else ""}
 

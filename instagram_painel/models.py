@@ -53,6 +53,10 @@ class Automacao(models.Model):
     ]
 
     conta = models.ForeignKey(ContaAppfiliado, on_delete=models.CASCADE, related_name="automacoes_instagram")
+    # O Instagram em que a automação foi criada: ela só responde quando esse Instagram está conectado.
+    # Vazio: criada antes deste registro (vale para o Instagram que estiver conectado).
+    ig_id = models.CharField(max_length=64, blank=True, db_index=True)
+    ig_username = models.CharField(max_length=64, blank=True)
     nome = models.CharField(max_length=100)
     gatilho = models.CharField(max_length=20, choices=GATILHOS, default=COMENTARIO)
     # Post ou story escolhido. Vazio: vale para todos os posts (ou todos os stories).
@@ -137,6 +141,9 @@ class Publicacao(models.Model):
                (ERRO, "Não publicada"), (CANCELADA, "Cancelada")]
 
     conta = models.ForeignKey(ContaAppfiliado, on_delete=models.CASCADE, related_name="publicacoes_instagram")
+    # O Instagram para onde vai (o conectado na hora de agendar). Se trocar a conta antes, não publica na outra.
+    ig_id = models.CharField(max_length=64, blank=True)
+    ig_username = models.CharField(max_length=64, blank=True)
     post = models.ForeignKey("estudio.PostInstagram", null=True, blank=True, on_delete=models.SET_NULL, related_name="publicacoes")
     nome = models.CharField(max_length=120)
     tipo = models.CharField(max_length=10, choices=TIPOS, default=FEED)

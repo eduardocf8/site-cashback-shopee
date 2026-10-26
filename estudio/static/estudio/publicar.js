@@ -3,6 +3,15 @@
  * painel, que publica pela API do Instagram (instagram_painel/publicar.py). */
 (function () {
   'use strict';
+  // Espera o fim do login do Instagram, aberto numa janela à parte. A página do Instagram corta a ligação entre as
+  // duas janelas, então a janela do login avisa por BroadcastChannel (e localStorage, nos navegadores antigos).
+  window.esperarInstagram = function (pronto) {
+    let feito = false;
+    const fim = () => { if (feito) return; feito = true; pronto(); };
+    try { const canal = new BroadcastChannel('appfiliado-instagram'); canal.onmessage = (e) => { if (e.data === 'pronto') fim(); }; } catch (e) { /* sem canal */ }
+    window.addEventListener('storage', (e) => { if (e.key === 'appfiliado-instagram') fim(); });
+  };
+
   const $ = (id) => document.getElementById(id);
   const botao = $('es-publicar'), dialogo = $('es-dialogo-publicar');
   if (!botao || !dialogo || !window.Estudio) return;
@@ -30,7 +39,7 @@
           const janela = window.open(b.href, 'conectar-instagram', `width=${l},height=${a},left=${x},top=${y}`);
           if (!janela) return; // bloqueou a janela: segue no link (o post já foi salvo ao abrir)
           e.preventDefault(); b.textContent = 'Conectando… (termine na janela do Instagram)';
-          const espera = setInterval(() => { if (janela.closed) { clearInterval(espera); carregar(); } }, 800);
+          esperarInstagram(carregar);
         });
         caixa.append(b);
       } else caixa.append(el('p', { class: 'es-quieto' }, 'A conexão com o Instagram ainda não está configurada.'));
@@ -54,7 +63,7 @@
     caixa.append(el('h3', {}, 'Publicações deste post'));
     const ul = el('ul', {});
     info.publicacoes.forEach((p) => {
-      const li = el('li', { class: `pub-${p.estado}` }, el('span', { class: 'pub-selo' }, p.estado_nome), ` ${p.tipo} · ${p.quando}`);
+      const li = el('li', { class: `pub-${p.estado}` }, el('span', { class: 'pub-selo' }, p.estado_nome), ` ${p.tipo}${p.conta ? ' · ' + p.conta : ''} · ${p.quando}`);
       if (p.link) li.append(' · ', el('a', { href: p.link, target: '_blank', rel: 'noopener' }, 'Ver no Instagram'));
       if (p.erro) li.append(el('small', { class: 'es-erro' }, p.erro));
       [['cancelar', 'Cancelar'], ['tentar', 'Tentar de novo']].forEach(([k, nome]) => {
