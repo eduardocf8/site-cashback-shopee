@@ -76,6 +76,7 @@ class TestPagina(TestCase):
         pagina = self.abrir(caminho="/termos-de-uso/")
         self.assertContains(pagina, "Termos de Uso")
         self.assertContains(pagina, "7 dias")
+        self.assertContains(pagina, "63.842.267/0001-46")
         self.assertContains(pagina, 'href="/privacidade/"')
         self.assertContains(self.abrir(caminho="/sitemap.xml"), "/termos-de-uso/")
         self.assertContains(self.abrir(), 'href="/termos-de-uso/"')
