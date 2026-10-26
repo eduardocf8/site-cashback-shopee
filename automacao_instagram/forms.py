@@ -103,8 +103,8 @@ class PadraoRespostaStoryForm(forms.ModelForm):
             "texto_botao": "Até 20 caracteres (limite do Instagram).",
         }
         widgets = {
-            "texto": forms.Textarea(attrs={"rows": 3, "maxlength": 600}),
-            "texto_botao": forms.TextInput(attrs={"maxlength": 20}),
+            "texto": forms.Textarea(attrs={"rows": 3, "maxlength": 600, "data-emoji": ""}),
+            "texto_botao": forms.TextInput(attrs={"maxlength": 20, "data-emoji": ""}),
         }
         # O campo já tira os espaços das pontas: só espaço conta como vazio.
         error_messages = {

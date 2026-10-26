@@ -1,4 +1,5 @@
 {% extends "automacao_instagram/base.html" %}
+{% load static %}
 {% block titulo %}Resposta dos stories{% endblock %}
 {% block estilo_extra %}
 <style>
@@ -22,11 +23,33 @@
     .dm-bot .dm-botao { border-top: 1px solid var(--line); padding: 10px 12px; text-align: center; font-size: 14px; font-weight: 600; color: #262626; overflow-wrap: anywhere; }
     .dm-desligado { opacity: .45; }
 
+    /* Botão de emoji nos dois campos (painel/emojis.js, o mesmo do Appfiliado). */
+    .campo-com-emoji { position: relative; display: block; }
+    .campo-com-emoji > input, .campo-com-emoji > textarea { padding-right: 44px; width: 100%; }
+    .campo-com-emoji button.botao-emoji {
+        position: absolute; right: 6px; top: 50%; transform: translateY(-50%); width: 32px; height: 32px;
+        margin: 0; padding: 0; border: 0; border-radius: 8px; background: transparent;
+        font-size: 18px; line-height: 1; cursor: pointer; opacity: .75; display: flex;
+    }
+    .campo-com-emoji.em-texto-longo button.botao-emoji { top: 9px; transform: none; }
+    .campo-com-emoji button.botao-emoji:hover { opacity: 1; background: var(--paper-2); }
+    .paleta-emoji {
+        position: absolute; right: 0; top: calc(100% + 6px); z-index: 50; width: min(320px, calc(100vw - 48px));
+        display: grid; grid-template-columns: repeat(8, 1fr); gap: 2px; padding: 8px;
+        background: #fff; border: 1px solid var(--line); border-radius: 12px; box-shadow: var(--shadow);
+    }
+    .paleta-emoji button {
+        width: auto; margin: 0; border: 0; background: transparent; color: inherit; font-size: 20px;
+        line-height: 1; padding: 6px 0; border-radius: 8px; cursor: pointer;
+    }
+    .paleta-emoji button:hover { background: var(--paper-2); }
+
     @media (max-width: 880px) {
         .padrao-grade { grid-template-columns: minmax(0, 1fr); }
         .dm-previa { position: static; }
     }
 </style>
+<script src="{% static 'painel/emojis.js' %}" defer></script>
 {% endblock %}
 {% block conteudo %}
 <p class="legenda"><a href="{% url 'automacao_lista' %}">&larr; Automações</a></p>
