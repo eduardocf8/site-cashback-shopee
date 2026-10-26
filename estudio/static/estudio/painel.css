@@ -73,3 +73,47 @@
   .es-criar-abas button { white-space: nowrap; }
   .es-criar-abas button small { display: none; }
 }
+
+/* ---------- Automações do Instagram ---------- */
+.ig-conexao { display: flex; align-items: center; justify-content: space-between; gap: 16px; flex-wrap: wrap; }
+.ig-conexao form { margin: 0; }
+.ig-perfil { display: flex; align-items: center; gap: 14px; }
+.ig-perfil img, .ig-sem-foto { width: 56px; height: 56px; border-radius: 50%; object-fit: cover; background: var(--chip); display: grid; place-items: center; font-weight: 800; }
+.ig-perfil strong { display: block; font-size: 16px; }
+.ig-perfil small { display: block; font-size: 13px; color: var(--suave); }
+.ig-ok { color: var(--bom-tinta) !important; }
+.ig-erro { color: var(--perigo) !important; font-size: 12px; }
+.ig-automacoes { display: grid; gap: 10px; }
+.ig-automacao { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 12px 16px; }
+.ig-automacao.pausada { opacity: .6; }
+.ig-automacao form { margin: 0; }
+.ig-automacao-link { display: flex; align-items: center; gap: 14px; text-decoration: none; color: var(--texto); min-width: 0; flex: 1; }
+.ig-automacao-link:hover { color: var(--texto); }
+.ig-automacao-link img, .ig-midia-vazia { width: 52px; height: 52px; border-radius: 10px; object-fit: cover; background: var(--chip); flex: none; display: grid; place-items: center; font-size: 12px; color: var(--suave); }
+.ig-automacao-link strong { display: block; }
+.ig-automacao-link small { display: block; color: var(--suave); font-size: 12.5px; }
+.ig-form { display: grid; gap: 16px; max-width: 760px; }
+.ig-form label { display: flex; flex-direction: column; gap: 4px; font-weight: 600; font-size: 14px; }
+.ig-form label small, .ig-form fieldset > small { font-weight: 400; }
+.ig-form label.es-check { flex-direction: row; align-items: center; gap: 8px; }
+.ig-form input[type=text], .ig-form input[type=url], .ig-form textarea { font: inherit; font-weight: 400; padding: 10px 12px; border: 1px solid var(--borda); border-radius: 10px; background: var(--campo); }
+.ig-form fieldset { border: 1px solid var(--borda); border-radius: 12px; padding: 14px; display: grid; gap: 10px; margin: 0; }
+.ig-form fieldset[hidden] { display: none; }
+.ig-form legend { font-weight: 700; padding: 0 6px; }
+.ig-gatilhos { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 8px; }
+.ig-gatilho { flex-direction: row !important; align-items: center; gap: 8px; border: 1px solid var(--borda); border-radius: 10px; padding: 10px 12px; cursor: pointer; }
+.ig-gatilho:has(input:checked) { border-color: var(--verde); background: var(--bom-suave); }
+.ig-escolhido { display: flex; align-items: center; gap: 12px; }
+.ig-escolhido img { width: 64px; height: 64px; object-fit: cover; border-radius: 10px; }
+.ig-escolhido .ig-todos { font-weight: 700; }
+.linha-botoes { display: flex; gap: 8px; flex-wrap: wrap; }
+.ig-midias { display: grid; grid-template-columns: repeat(auto-fill, minmax(96px, 1fr)); gap: 8px; max-height: 360px; overflow: auto; }
+.ig-midias[hidden] { display: none; }
+.ig-midia { border: 1px solid var(--borda); border-radius: 10px; padding: 0; overflow: hidden; aspect-ratio: 1; background: var(--chip); cursor: pointer; }
+.ig-midia img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.ig-midia span { font-size: 11px; padding: 6px; display: block; }
+.ig-historico { padding: 0; overflow-x: auto; }
+.ig-historico table { width: 100%; border-collapse: collapse; font-size: 13.5px; }
+.ig-historico th, .ig-historico td { text-align: left; padding: 10px 14px; border-bottom: 1px solid var(--borda); }
+.ig-historico th { color: var(--suave); font-weight: 600; }
+.es-topo-editor a.es-bt { text-decoration: none; display: inline-flex; align-items: center; }

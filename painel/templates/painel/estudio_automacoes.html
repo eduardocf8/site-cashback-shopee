@@ -1,0 +1,68 @@
+{% extends "painel/base.html" %}
+{% load static %}
+{% block titulo %}Automações · Estúdio Instagram{% endblock %}
+{% block cabeca %}<link rel="stylesheet" href="{% static 'estudio/painel.css' %}">{% endblock %}
+{% block conteudo %}
+<div class="es-pagina">
+<header class="cabecalho">
+  <div>
+    <a class="suave" href="{% url 'painel_estudio' %}">← Estúdio Instagram</a>
+    <h1>Automações <span class="es-selo-teste">Em teste</span></h1>
+    <p>Quem comentar a palavra certa no seu post (ou responder o seu story) recebe o seu link no direto, na hora.</p>
+  </div>
+  {% if premium and ig %}<a class="botao botao-principal" href="{% url 'painel_estudio_automacao_nova' %}">Nova automação</a>{% endif %}
+</header>
+
+<section class="card ig-conexao">
+  {% if ig %}
+    <div class="ig-perfil">
+      {% if ig.foto %}<img src="{{ ig.foto }}" alt="" referrerpolicy="no-referrer">{% else %}<span class="ig-sem-foto">@</span>{% endif %}
+      <div>
+        <strong>@{{ ig.username }}</strong>{% if ig.nome %}<small>{{ ig.nome }}</small>{% endif %}
+        <small class="{% if ig.erro %}ig-erro{% else %}ig-ok{% endif %}">{% if ig.erro %}{{ ig.erro }}{% elif ig.avisos_ligados %}Conectado e recebendo os comentários e mensagens.{% else %}Conectado.{% endif %}</small>
+      </div>
+    </div>
+    <form method="post" action="{% url 'painel_instagram_desconectar' %}" onsubmit="return confirm('Desconectar o Instagram? As automações serão pausadas.')">{% csrf_token %}<button class="botao botao-claro" type="submit">Desconectar</button></form>
+  {% else %}
+    <div>
+      <h2>Conecte o seu Instagram</h2>
+      <p class="suave">Precisa ser uma conta profissional (comercial ou de criador). Você entra pelo próprio Instagram e escolhe o que o Appfiliado pode fazer: ler os comentários e responder, mandar mensagens no direto e publicar posts.</p>
+    </div>
+    {% if configurado %}<a class="botao botao-principal" href="{% url 'painel_instagram_conectar' %}">Conectar Instagram</a>
+    {% else %}<p class="suave">A conexão com o Instagram ainda não está configurada no servidor.</p>{% endif %}
+  {% endif %}
+</section>
+
+{% if not premium %}
+  <section class="card">
+    <h2>Automações são do plano Premium</h2>
+    <p class="suave">Responda comentários e stories no automático, com o seu link de afiliado no direto. <a href="{{ url_planos }}" target="_blank" rel="noopener">Conhecer o Premium</a></p>
+  </section>
+{% elif ig %}
+  <section>
+    <h2 class="titulo-secao">Suas automações</h2>
+    {% if lista %}
+      <div class="ig-automacoes">
+        {% for item in lista %}
+          <article class="card ig-automacao{% if not item.a.ativa %} pausada{% endif %}">
+            <a class="ig-automacao-link" href="{% url 'painel_estudio_automacao' item.a.pk %}">
+              {% if item.a.midia_imagem %}<img src="{{ item.a.midia_imagem }}" alt="" referrerpolicy="no-referrer" loading="lazy">{% else %}<span class="ig-midia-vazia">{% if item.a.gatilho == "direto" %}✉️{% elif item.a.midia_id %}{% if item.a.gatilho == "story" %}Story{% else %}Post{% endif %}{% else %}Todos{% endif %}</span>{% endif %}
+              <div>
+                <strong>{{ item.a.nome }}</strong>
+                <small>{{ item.a.get_gatilho_display }}{% if item.palavras %} · {{ item.palavras }}{% else %} · qualquer texto{% endif %}</small>
+                <small>{{ item.total }} pessoa{{ item.total|pluralize }} respondida{{ item.total|pluralize }} · {{ item.dms }} no direto</small>
+              </div>
+            </a>
+            <form method="post" action="{% url 'painel_estudio_automacao_ligar' item.a.pk %}">{% csrf_token %}<input type="hidden" name="voltar" value="lista">
+              <button class="botao botao-pequeno {% if item.a.ativa %}botao-claro{% else %}botao-principal{% endif %}" type="submit">{% if item.a.ativa %}Pausar{% else %}Ligar{% endif %}</button>
+            </form>
+          </article>
+        {% endfor %}
+      </div>
+    {% else %}
+      <p class="suave">Nenhuma automação ainda. Crie a primeira: por exemplo, "comente QUERO e receba o link".</p>
+    {% endif %}
+  </section>
+{% endif %}
+</div>
+{% endblock %}
