@@ -178,3 +178,46 @@
 .ig-escolhido { border: 1px solid var(--verde); background: var(--bom-suave); border-radius: 10px; padding: 8px 12px; }
 .ig-escolhido span { flex: 1; font-size: 13.5px; }
 .ig-midia.ativo { outline: 3px solid var(--verde); outline-offset: -3px; }
+
+/* ---------- Topo do editor: nome, Salvar, Publicar e "Mais" ---------- */
+.es-cabeca { display: grid; grid-template-columns: minmax(0, 1fr); justify-content: stretch; gap: 4px; }
+.es-cabeca-linha { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
+.es-titulo-campo { flex: 1 1 320px; min-width: 0; display: flex; align-items: center; gap: 6px; }
+.es-titulo { flex: 1; min-width: 0; font: inherit; font-size: 22px; font-weight: 800; letter-spacing: -.02em; color: var(--texto);
+  border: 1px solid transparent; border-radius: 10px; background: transparent; padding: 4px 8px; margin-left: -8px; text-overflow: ellipsis; }
+.es-titulo:hover { border-color: var(--borda); }
+.es-titulo:focus { border-color: var(--verde); background: var(--campo); outline: none; }
+.es-lapis { color: var(--suave); font-size: 16px; }
+.es-acoes-principais { display: flex; gap: 8px; align-items: center; flex: none; }
+.es-acoes-principais .es-bt { font: inherit; font-weight: 700; font-size: 14px; padding: 9px 14px; border-radius: 10px; white-space: nowrap; }
+.es-mais { position: relative; }
+.es-mais summary { list-style: none; cursor: pointer; }
+.es-mais summary::-webkit-details-marker { display: none; }
+.es-menu { position: absolute; right: 0; top: calc(100% + 6px); z-index: 30; min-width: 250px; background: #FFFFFF; border: 1px solid var(--borda);
+  border-radius: 12px; box-shadow: 0 12px 32px rgba(23,48,31,.16); padding: 6px; display: grid; }
+.es-menu form { margin: 0; }
+.es-menu button, .es-menu a { display: block; width: 100%; text-align: left; font: inherit; font-size: 14px; color: var(--texto); background: none; border: 0;
+  border-radius: 8px; padding: 9px 12px; cursor: pointer; text-decoration: none; }
+.es-menu button:hover, .es-menu a:hover { background: var(--chip); }
+.es-menu hr { border: 0; border-top: 1px solid var(--borda); margin: 4px 6px; }
+.es-menu .es-perigo { color: var(--perigo); }
+.es-ajustes { background: #FFFFFF; border: 1px solid var(--borda); border-radius: 12px; padding: 10px 12px; }
+.es-ajuste { display: inline-flex; align-items: center; gap: 6px; font-size: 13px; font-weight: 600; color: var(--suave); }
+.es-ajuste select { font-size: 14px; color: var(--texto); }
+.sr { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+@media (max-width: 760px) {
+  .es-titulo { font-size: 19px; }
+  .es-acoes-principais { width: 100%; }
+  .es-acoes-principais > button:nth-child(2) { flex: 1; }
+  .es-ajustes { display: grid; grid-template-columns: 1fr 1fr; }
+  .es-ajuste { display: grid; gap: 2px; }
+  .es-ajuste select { width: 100%; }
+  .es-ajustes .es-bt { width: 100%; }
+  .es-ajustes .es-ia, .es-ajustes .es-check { grid-column: 1 / -1; }
+}
+@media (min-width: 761px) { .es-cabeca-linha { flex-wrap: nowrap; } .es-titulo-campo { flex: 1 1 0; } }
+@media (max-width: 760px) { .es-ajustes #es-modelos { grid-column: 1 / -1; } }
+/* Miniatura do slide: o nome encurta, os botões ficam na mesma linha. */
+.es-mini-barra { gap: 4px; }
+.es-mini-barra > span:first-child { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.es-mini-barra > span:last-child { flex: none; white-space: nowrap; }

@@ -4,32 +4,41 @@
 {% block cabeca %}<link rel="stylesheet" href="{% static 'estudio/estudio.css' %}"><link rel="stylesheet" href="{% static 'estudio/painel.css' %}">{% endblock %}
 {% block conteudo %}
 {% csrf_token %}
-<div class="es-topo-editor">
-  <div>
-    <a class="voltar" href="{% url 'painel_estudio' %}">← Estúdio Instagram</a>
-    <h1 id="migalha">{{ post.nome }}</h1>
-  </div>
-  <div class="acoes">
-    {% if post.produto.link %}<button type="button" class="es-bt" id="es-copiar-link" data-link="{{ post.produto.link }}">Copiar link de afiliado</button>{% endif %}
-    {% if tem_automacoes %}<a class="es-bt" href="{% url 'painel_estudio_automacao_nova' %}?post={{ post.pk }}">Criar automação</a>{% endif %}
-    <button type="button" class="es-bt es-salvar" id="es-publicar" data-url="{% url 'painel_estudio_publicar' post.pk %}">Publicar no Instagram</button>
-    <form method="post" action="{% url 'painel_estudio_duplicar' post.pk %}">{% csrf_token %}<button class="es-bt" type="submit">Duplicar</button></form>
-    <form method="post" action="{% url 'painel_estudio_apagar' post.pk %}" onsubmit="return confirm('Apagar este post?')">{% csrf_token %}<button class="es-bt" type="submit">Apagar</button></form>
+<div class="es-topo-editor es-cabeca">
+  <a class="voltar" href="{% url 'painel_estudio' %}">← Estúdio Instagram</a>
+  <div class="es-cabeca-linha">
+    <label class="es-titulo-campo" title="Clique para mudar o nome do post">
+      <span class="sr">Nome do post</span>
+      <input id="es-nome" class="es-titulo" maxlength="120">
+      <span class="es-lapis" aria-hidden="true">✎</span>
+    </label>
+    <div class="es-acoes-principais">
+      <button type="button" class="es-bt" id="es-salvar">Salvar</button>
+      <button type="button" class="es-bt es-salvar" id="es-publicar" data-url="{% url 'painel_estudio_publicar' post.pk %}">Publicar no Instagram</button>
+      <details class="es-mais">
+        <summary class="es-bt">Mais <span aria-hidden="true">▾</span></summary>
+        <div class="es-menu" role="menu">
+          {% if post.produto.link %}<button type="button" role="menuitem" id="es-copiar-link" data-link="{{ post.produto.link }}">Copiar link de afiliado</button>{% endif %}
+          {% if tem_automacoes %}<a role="menuitem" href="{% url 'painel_estudio_automacao_nova' %}?post={{ post.pk }}">Criar automação para este post</a>{% endif %}
+          {% if post.produto.link or tem_automacoes %}<hr>{% endif %}
+          <button type="button" role="menuitem" id="es-baixar">Baixar este slide (PNG)</button>
+          <button type="button" role="menuitem" id="es-zip">Baixar tudo (ZIP)</button>
+          {% if premium %}<button type="button" role="menuitem" id="es-salvar-modelo">Salvar como modelo</button>{% endif %}
+          <hr>
+          <form method="post" action="{% url 'painel_estudio_duplicar' post.pk %}">{% csrf_token %}<button type="submit" role="menuitem">Duplicar post</button></form>
+          <form method="post" action="{% url 'painel_estudio_apagar' post.pk %}" onsubmit="return confirm('Apagar este post?')">{% csrf_token %}<button type="submit" role="menuitem" class="es-perigo">Apagar post</button></form>
+        </div>
+      </details>
+    </div>
   </div>
 </div>
 <div id="estudio" class="estudio marca-afiliado">
-  <div class="es-barra">
-    <input id="es-nome" class="es-nome" maxlength="120" aria-label="Nome do post">
-    <select id="es-formato" aria-label="Formato"></select>
-    {% if premium %}<select id="es-tema" aria-label="Cores">{% for k, nome in temas %}<option value="{{ k }}">{{ nome }}</option>{% endfor %}</select>{% endif %}
+  <div class="es-barra es-ajustes" aria-label="Ajustes do post">
+    <label class="es-ajuste">Formato<select id="es-formato"></select></label>
+    {% if premium %}<label class="es-ajuste">Cores<select id="es-tema">{% for k, nome in temas %}<option value="{{ k }}">{{ nome }}</option>{% endfor %}</select></label>{% endif %}
     <button type="button" class="es-bt" id="es-modelos">Trocar de modelo</button>
     <button type="button" class="es-bt es-ia" id="es-ia">✨ Criar ou ajustar com IA</button>
-    <span class="es-espaco"></span>
     <label class="es-check"><input type="checkbox" id="es-guias" checked> Margens de segurança</label>
-    <button type="button" class="es-bt" id="es-baixar">Baixar slide</button>
-    <button type="button" class="es-bt" id="es-zip">Baixar tudo (ZIP)</button>
-    {% if premium %}<button type="button" class="es-bt" id="es-salvar-modelo">Salvar como modelo</button>{% endif %}
-    <button type="button" class="es-bt es-salvar" id="es-salvar">Salvar</button>
   </div>
   <div class="es-corpo">
     <aside class="es-lista">
@@ -111,6 +120,10 @@
 <script src="{% static 'estudio/estudio.js' %}"></script>
 <script src="{% static 'estudio/publicar.js' %}"></script>
 <script>
+  // "Mais": fecha ao clicar fora ou depois de escolher um item.
+  const mais = document.querySelector('.es-mais');
+  document.addEventListener('click', (e) => { if (mais && mais.open && !mais.contains(e.target)) mais.open = false; });
+  mais?.querySelectorAll('.es-menu button[type=button]').forEach((b) => b.addEventListener('click', () => setTimeout(() => { mais.open = false; }, 150)));
   document.getElementById('es-copiar-link')?.addEventListener('click', async (e) => {
     await navigator.clipboard.writeText(e.target.dataset.link); e.target.textContent = 'Link copiado ✓';
     setTimeout(() => { e.target.textContent = 'Copiar link de afiliado'; }, 2000);
