@@ -7,8 +7,8 @@ from django.urls import reverse
 
 from instagram_bot.models import RegistroPublicacao
 
-from . import instagram_api
-from .models import AutomacaoStory, RespostaStoryProcessada
+from . import instagram_api, padrao_story
+from .models import AutomacaoStory, PadraoRespostaStory, RespostaStoryProcessada
 
 logger = logging.getLogger(__name__)
 
@@ -73,11 +73,11 @@ def _processar_um_evento(evento: dict, request) -> None:
     if not story_media_id:
         return  # não é resposta a story (DM comum, reação a mensagem, etc.) - fora do escopo daqui.
 
-    automacao = AutomacaoStory.objects.filter(
-        instagram_story_media_id=story_media_id, ativa=True,
-    ).select_related("conta").first()
+    automacao = _automacao_do_story(story_media_id)
     if not automacao:
         return  # sem automação configurada pra esse story - igual comentário sem palavra-chave, ignora.
+    if automacao.automatica and not PadraoRespostaStory.carregar().ativo:
+        return  # padrão desligado: as automações criadas sozinhas param junto.
 
     sender_id = (evento.get("sender") or {}).get("id", "")
     if not sender_id or _ja_respondido(automacao, sender_id):
@@ -92,22 +92,42 @@ def _processar_um_evento(evento: dict, request) -> None:
                 automacao.pk, story_media_id,
             )
             return
-        texto_dm = f"Aqui está o link com o cashback garantido: {link}"
+        texto_dm, botao = padrao_story.mensagem_com_link(link)
     else:
-        texto_dm = automacao.texto_personalizado
+        texto_dm, botao = automacao.texto_personalizado, None
 
     registro = RespostaStoryProcessada(
         automacao=automacao, instagram_autor_id=sender_id, texto_recebido=mensagem.get("text", ""),
     )
+    conta = automacao.conta
     try:
-        instagram_api.enviar_mensagem_direta(
-            automacao.conta.instagram_business_account_id, sender_id, texto_dm, automacao.conta.access_token,
-        )
+        try:
+            instagram_api.enviar_mensagem_direta(
+                conta.instagram_business_account_id, sender_id, texto_dm, conta.access_token, botao=botao,
+            )
+        except instagram_api.InstagramAPIError:
+            if not botao:
+                raise
+            # Se a Meta recusar o botão, manda o mesmo texto com o link escrito no fim.
+            logger.warning("[automacao_instagram] DM com botão recusada pra %s - mandando só texto", sender_id)
+            instagram_api.enviar_mensagem_direta(
+                conta.instagram_business_account_id, sender_id, f"{texto_dm}\n\n{botao[1]}", conta.access_token,
+            )
         registro.dm_enviada = True
     except instagram_api.InstagramAPIError as erro:
         logger.exception("[automacao_instagram] falha ao enviar DM de resposta a story pra %s", sender_id)
         registro.dm_erro = str(erro)
     registro.save()
+
+
+def _automacao_do_story(story_media_id: str) -> AutomacaoStory | None:
+    """A automação ativa desse story. Story de oferta do bot ainda sem automação (postado antes do
+    padrão existir, por exemplo) ganha uma na hora; automação pausada continua pausada."""
+    automacoes = AutomacaoStory.objects.filter(instagram_story_media_id=story_media_id).select_related("conta")
+    if automacoes.exists():
+        return automacoes.filter(ativa=True).first()
+    registro = RegistroPublicacao.objects.filter(instagram_media_id=story_media_id).first()
+    return padrao_story.garantir_automacao(registro) if registro else None
 
 
 def processar_evento_webhook(payload: dict, request) -> None:

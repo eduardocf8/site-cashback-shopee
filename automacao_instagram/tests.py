@@ -10,7 +10,7 @@ from django.urls import reverse
 from instagram_bot.models import RegistroPublicacao
 
 from . import webhook
-from .models import AutomacaoStory, ContaInstagramConectada, RespostaStoryProcessada
+from .models import AutomacaoStory, ContaInstagramConectada, PadraoRespostaStory, RespostaStoryProcessada
 
 APP_SECRET_TESTE = "segredo-do-app-de-teste"
 
@@ -103,7 +103,11 @@ class ProcessamentoDeRespostaAStoryTests(TestCase):
         self.assertEqual(conta_id, "1")
         self.assertEqual(destinatario, "99887766")
         self.assertEqual(token, "token-conta")
-        self.assertIn(f"/instagram/story/{self.registro.pk}/ir/", texto_enviado)
+        # O texto vem do padrão e o link vai no botão.
+        self.assertEqual(texto_enviado, PadraoRespostaStory.TEXTO_PADRAO)
+        titulo, url = mock_enviar.call_args.kwargs["botao"]
+        self.assertEqual(titulo, PadraoRespostaStory.TEXTO_BOTAO_PADRAO)
+        self.assertIn(f"/instagram/story/{self.registro.pk}/ir/", url)
 
     @patch("automacao_instagram.instagram_api.enviar_mensagem_direta")
     def test_modo_personalizada_manda_o_texto_configurado(self, mock_enviar):
@@ -315,3 +319,206 @@ class AutomacaoListaEAlternarAtivaTests(TestCase):
         self.client.post(reverse("automacao_story_alternar_ativa", args=[self.automacao.pk]))
         self.automacao.refresh_from_db()
         self.assertTrue(self.automacao.ativa)
+
+
+def _registro_de_oferta(**campos) -> RegistroPublicacao:
+    dados = dict(
+        data="2026-10-26", tipo=RegistroPublicacao.TIPO_STORY,
+        conteudo_tipo=RegistroPublicacao.CONTEUDO_OFERTA_DIARIA, status=RegistroPublicacao.STATUS_PUBLICADO,
+        sucesso=True, modo_simulacao=False, instagram_media_id="17900000000000001", oferta_item_id=777,
+        oferta_nome="Fone Bluetooth TWS", link_produto_original="https://shopee.com.br/fone-i.1.777",
+    )
+    dados.update(campos)
+    return RegistroPublicacao.objects.create(**dados)
+
+
+@override_settings(INSTAGRAM_APP_SECRET=APP_SECRET_TESTE, INSTAGRAM_BUSINESS_ACCOUNT_ID="1")
+class StoriesDeOfertaDoBotTests(TestCase):
+    """Story de oferta postado pelo bot ganha a automação sozinho e a DM usa o padrão (texto + botão)."""
+
+    def setUp(self):
+        self.usuario = get_user_model().objects.create_user(
+            username="dono", password="senha123", cpf="39053344705", is_staff=True
+        )
+        self.conta = ContaInstagramConectada.objects.create(
+            usuario=self.usuario, nome_exibicao="@usecashb",
+            instagram_business_account_id="1", access_token="token-conta",
+        )
+
+    def _responder(self, media_id="17900000000000001", sender_id="99887766"):
+        payload = {"entry": [{"id": "1", "messaging": [{
+            "sender": {"id": sender_id}, "message": {"text": "Quero!", "reply_to": {"story": {"id": media_id}}},
+        }]}]}
+        corpo = json.dumps(payload).encode()
+        return self.client.post(
+            reverse("automacao_webhook_instagram"), data=corpo, content_type="application/json",
+            HTTP_X_HUB_SIGNATURE_256=_assinar(corpo),
+        )
+
+    def test_story_de_oferta_publicado_ganha_a_automacao_sozinho(self):
+        registro = _registro_de_oferta()
+
+        automacao = AutomacaoStory.objects.get()
+        self.assertTrue(automacao.automatica)
+        self.assertTrue(automacao.ativa)
+        self.assertEqual(automacao.conta, self.conta)
+        self.assertEqual(automacao.instagram_story_media_id, "17900000000000001")
+        self.assertEqual(automacao.modo_resposta, AutomacaoStory.MODO_LINK_PRODUTO)
+        self.assertIn("Fone Bluetooth TWS", automacao.nome)
+
+        registro.save()  # gravar de novo não duplica
+        self.assertEqual(AutomacaoStory.objects.count(), 1)
+
+    def test_story_aprovado_depois_por_email_ganha_a_automacao_na_aprovacao(self):
+        registro = _registro_de_oferta(
+            status=RegistroPublicacao.STATUS_PENDENTE_APROVACAO, sucesso=False, instagram_media_id="",
+        )
+        self.assertFalse(AutomacaoStory.objects.exists())
+
+        registro.status, registro.sucesso = RegistroPublicacao.STATUS_PUBLICADO, True
+        registro.instagram_media_id = "17900000000000009"
+        registro.save(update_fields=["status", "sucesso", "instagram_media_id"])
+
+        self.assertEqual(AutomacaoStory.objects.get().instagram_story_media_id, "17900000000000009")
+
+    def test_link_gravado_depois_do_id_tambem_cria(self):
+        # Publicação direta: o ID do story é gravado antes do link do produto.
+        registro = _registro_de_oferta(link_produto_original="")
+        self.assertFalse(AutomacaoStory.objects.exists())
+
+        registro.link_produto_original = "https://shopee.com.br/fone-i.1.777"
+        registro.save(update_fields=["link_produto_original"])
+        self.assertTrue(AutomacaoStory.objects.filter(automatica=True).exists())
+
+    def test_story_simulado_ou_sem_link_nao_ganha_automacao(self):
+        _registro_de_oferta(modo_simulacao=True)
+        _registro_de_oferta(
+            instagram_media_id="17900000000000002", link_produto_original="",
+            conteudo_tipo=RegistroPublicacao.CONTEUDO_DICA,
+        )
+        self.assertFalse(AutomacaoStory.objects.exists())
+
+    @override_settings(INSTAGRAM_BUSINESS_ACCOUNT_ID="outra-conta")
+    def test_sem_a_conta_do_bot_conectada_nao_cria_nem_quebra_a_publicacao(self):
+        registro = _registro_de_oferta()
+        self.assertTrue(registro.pk)
+        self.assertFalse(AutomacaoStory.objects.exists())
+
+    def test_padrao_desligado_nao_cria(self):
+        PadraoRespostaStory.objects.create(pk=1, ativo=False)
+        _registro_de_oferta()
+        self.assertFalse(AutomacaoStory.objects.exists())
+
+    @patch("automacao_instagram.instagram_api.enviar_mensagem_direta")
+    def test_resposta_ao_story_manda_o_texto_do_padrao_com_o_botao(self, mock_enviar):
+        PadraoRespostaStory.objects.create(pk=1, texto="Corre que acaba!", texto_botao="Quero o meu")
+        registro = _registro_de_oferta()
+
+        self.assertEqual(self._responder().status_code, 200)
+
+        mock_enviar.assert_called_once()
+        self.assertEqual(mock_enviar.call_args[0][2], "Corre que acaba!")
+        titulo, url = mock_enviar.call_args.kwargs["botao"]
+        self.assertEqual(titulo, "Quero o meu")
+        self.assertTrue(url.endswith(f"/instagram/story/{registro.pk}/ir/"))
+        self.assertTrue(RespostaStoryProcessada.objects.get().dm_enviada)
+
+    @patch("automacao_instagram.instagram_api.enviar_mensagem_direta")
+    def test_botao_recusado_manda_o_texto_com_o_link_no_fim(self, mock_enviar):
+        from . import instagram_api
+
+        mock_enviar.side_effect = [instagram_api.InstagramAPIError("template recusado"), "mid"]
+        registro = _registro_de_oferta()
+
+        self._responder()
+
+        self.assertEqual(mock_enviar.call_count, 2)
+        texto = mock_enviar.call_args_list[1][0][2]
+        self.assertTrue(texto.startswith(PadraoRespostaStory.TEXTO_PADRAO))
+        self.assertTrue(texto.endswith(f"/instagram/story/{registro.pk}/ir/"))
+        self.assertIsNone(mock_enviar.call_args_list[1].kwargs.get("botao"))
+        self.assertTrue(RespostaStoryProcessada.objects.get().dm_enviada)
+
+    @patch("automacao_instagram.instagram_api.enviar_mensagem_direta")
+    def test_desligar_o_padrao_para_as_automacoes_automaticas(self, mock_enviar):
+        _registro_de_oferta()
+        PadraoRespostaStory.objects.filter(pk=1).update(ativo=False)
+
+        self._responder()
+
+        mock_enviar.assert_not_called()
+
+    @patch("automacao_instagram.instagram_api.enviar_mensagem_direta")
+    def test_story_antigo_sem_automacao_ganha_uma_na_primeira_resposta(self, mock_enviar):
+        PadraoRespostaStory.objects.create(pk=1, ativo=False)
+        _registro_de_oferta()  # postado com o padrão desligado: ficou sem automação
+        PadraoRespostaStory.objects.filter(pk=1).update(ativo=True)
+
+        self._responder()
+
+        self.assertTrue(AutomacaoStory.objects.get().automatica)
+        mock_enviar.assert_called_once()
+
+    @patch("automacao_instagram.instagram_api.enviar_mensagem_direta")
+    def test_automacao_automatica_pausada_continua_pausada(self, mock_enviar):
+        _registro_de_oferta()
+        AutomacaoStory.objects.update(ativa=False)
+
+        self._responder()
+
+        mock_enviar.assert_not_called()
+        self.assertEqual(AutomacaoStory.objects.count(), 1)
+
+    @patch("automacao_instagram.instagram_api.enviar_mensagem_direta")
+    def test_mensagem_personalizada_continua_sem_botao(self, mock_enviar):
+        AutomacaoStory.objects.create(
+            conta=self.conta, nome="Dica", instagram_story_media_id="story-dica",
+            modo_resposta=AutomacaoStory.MODO_PERSONALIZADA, texto_personalizado="Olha nosso site",
+        )
+        self._responder(media_id="story-dica")
+        self.assertEqual(mock_enviar.call_args[0][2], "Olha nosso site")
+        self.assertIsNone(mock_enviar.call_args.kwargs.get("botao"))
+
+
+@override_settings(INSTAGRAM_BUSINESS_ACCOUNT_ID="1")
+class TelaDoPadraoDeRespostaTests(TestCase):
+    def setUp(self):
+        self.usuario = get_user_model().objects.create_user(
+            username="dono", password="senha123", cpf="39053344705", is_staff=True
+        )
+        self.client.force_login(self.usuario)
+        self.url = reverse("automacao_padrao_story")
+
+    def test_mostra_o_padrao_e_avisa_quando_a_conta_do_bot_falta(self):
+        resposta = self.client.get(self.url)
+        self.assertContains(resposta, PadraoRespostaStory.TEXTO_PADRAO)
+        self.assertContains(resposta, "A conta do bot não está em Contas conectadas")
+
+        ContaInstagramConectada.objects.create(
+            usuario=self.usuario, nome_exibicao="@usecashb", instagram_business_account_id="1", access_token="t",
+        )
+        resposta = self.client.get(self.url)
+        self.assertNotContains(resposta, "A conta do bot não está em Contas conectadas")
+        self.assertContains(resposta, "@usecashb")
+
+    def test_salva_o_texto_e_o_botao(self):
+        resposta = self.client.post(self.url, {"ativo": "on", "texto": "  Aproveita!  ", "texto_botao": "Comprar"})
+        self.assertRedirects(resposta, self.url)
+        padrao = PadraoRespostaStory.carregar()
+        self.assertEqual((padrao.texto, padrao.texto_botao, padrao.ativo), ("Aproveita!", "Comprar", True))
+
+    def test_desliga(self):
+        self.client.post(self.url, {"texto": "Oi", "texto_botao": "Ver"})
+        self.assertFalse(PadraoRespostaStory.carregar().ativo)
+
+    def test_recusa_texto_vazio_e_botao_longo(self):
+        resposta = self.client.post(self.url, {"ativo": "on", "texto": "   ", "texto_botao": "x" * 21})
+        self.assertEqual(resposta.status_code, 200)
+        self.assertContains(resposta, "Escreva a mensagem.")
+        self.assertEqual(PadraoRespostaStory.carregar().texto, PadraoRespostaStory.TEXTO_PADRAO)
+
+    def test_so_staff_entra(self):
+        self.client.logout()
+        cliente = get_user_model().objects.create_user(username="cliente", password="x", cpf="52998224725")
+        self.client.force_login(cliente)
+        self.assertEqual(self.client.get(self.url).status_code, 302)

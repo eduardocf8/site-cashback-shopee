@@ -1,0 +1,101 @@
+{% extends "automacao_instagram/base.html" %}
+{% block titulo %}Resposta dos stories{% endblock %}
+{% block estilo_extra %}
+<style>
+    .padrao-grade { display: grid; grid-template-columns: minmax(0, 1fr) 320px; gap: 20px; align-items: start; }
+    .padrao-grade .cartao { margin: 0; }
+    .padrao-status { display: flex; flex-wrap: wrap; gap: 8px 18px; align-items: center; font-size: 14px; color: var(--ink-soft); margin-bottom: 20px; }
+    .padrao-status strong { color: var(--ink); }
+    .padrao-aviso { background: #fff4e0; color: #7a4d00; border-radius: 8px; padding: 12px 14px; font-size: 14px; line-height: 1.5; margin-bottom: 20px; }
+    .padrao-contador { font-size: 12px; color: var(--muted); text-align: right; margin-top: 4px; }
+
+    .dm-previa { position: sticky; top: 20px; }
+    .dm-previa h2 { font-size: 13px; color: var(--muted); font-weight: 600; margin: 0 0 10px; }
+    .dm-tela { background: #fff; border: 1px solid var(--line); border-radius: 18px; padding: 14px; }
+    .dm-topo { display: flex; align-items: center; gap: 8px; padding-bottom: 12px; border-bottom: 1px solid var(--line-soft); font-size: 13px; font-weight: 600; color: var(--ink); }
+    .dm-topo .avatar { width: 28px; height: 28px; border-radius: 50%; background: var(--brand); color: #fff; display: flex; align-items: center; justify-content: center; font-size: 12px; font-weight: 700; }
+    .dm-conversa { display: flex; flex-direction: column; gap: 8px; padding-top: 12px; }
+    .dm-story { align-self: flex-end; font-size: 11px; color: var(--muted); }
+    .dm-eu { align-self: flex-end; background: #3797f0; color: #fff; border-radius: 18px; padding: 8px 12px; font-size: 14px; max-width: 80%; }
+    .dm-bot { align-self: flex-start; max-width: 85%; border: 1px solid var(--line); border-radius: 18px; overflow: hidden; background: #fff; }
+    .dm-bot .dm-texto { padding: 10px 12px; font-size: 14px; color: #262626; white-space: pre-wrap; overflow-wrap: anywhere; }
+    .dm-bot .dm-botao { border-top: 1px solid var(--line); padding: 10px 12px; text-align: center; font-size: 14px; font-weight: 600; color: #262626; overflow-wrap: anywhere; }
+    .dm-desligado { opacity: .45; }
+
+    @media (max-width: 880px) {
+        .padrao-grade { grid-template-columns: minmax(0, 1fr); }
+        .dm-previa { position: static; }
+    }
+</style>
+{% endblock %}
+{% block conteudo %}
+<p class="legenda"><a href="{% url 'automacao_lista' %}">&larr; Automações</a></p>
+<div class="cabecalho-pagina">
+    <h1>Resposta dos stories de oferta</h1>
+</div>
+<p class="legenda" style="margin-top:-10px;margin-bottom:16px;">Cada story de oferta que o bot posta ganha uma automação sozinho. Quem responder ou reagir ao story recebe esta mensagem por DM, com um botão que abre o link do produto daquele story.</p>
+
+{% if not conta_bot %}
+<div class="padrao-aviso">
+    <strong>A conta do bot não está em Contas conectadas.</strong>
+    {% if id_conta_bot %}Cadastre em <a href="{% url 'automacao_contas' %}">Contas conectadas</a> a conta com o ID <code>{{ id_conta_bot }}</code> (o mesmo do bot). Sem ela, os stories não ganham automação.{% else %}A variável <code>INSTAGRAM_BUSINESS_ACCOUNT_ID</code> do bot está vazia.{% endif %}
+</div>
+{% else %}
+<div class="padrao-status">
+    <span>Conta: <strong>{{ conta_bot.nome_exibicao }}</strong></span>
+    <span>Stories com automação: <strong>{{ total_automaticas }}</strong></span>
+    <span>DMs enviadas: <strong>{{ dms_automaticas }}</strong></span>
+    <span>{% if padrao.ativo %}<span class="pilula pilula-ativa">Ligado</span>{% else %}<span class="pilula pilula-pausada">Desligado</span>{% endif %}</span>
+</div>
+{% endif %}
+
+<div class="padrao-grade">
+    <div class="cartao">
+        <form method="post">
+            {% csrf_token %}
+            {% include "automacao_instagram/_campo_formulario.html" with field=form.ativo %}
+            {% include "automacao_instagram/_campo_formulario.html" with field=form.texto %}
+            <div class="padrao-contador"><span id="conta-texto">0</span>/600</div>
+            {% include "automacao_instagram/_campo_formulario.html" with field=form.texto_botao %}
+            <div class="padrao-contador"><span id="conta-botao">0</span>/20</div>
+            {% if form.non_field_errors %}<div class="erros">{{ form.non_field_errors|striptags }}</div>{% endif %}
+            <button type="submit">Salvar</button>
+        </form>
+    </div>
+
+    <aside class="dm-previa" aria-label="Prévia da DM">
+        <h2>Como chega no Instagram</h2>
+        <div class="dm-tela" id="dm-tela">
+            <div class="dm-topo"><span class="avatar">c</span>{{ conta_bot.nome_exibicao|default:"@usecashb" }}</div>
+            <div class="dm-conversa">
+                <span class="dm-story">Respondeu ao seu story</span>
+                <div class="dm-eu">Quero! 😍</div>
+                <div class="dm-bot">
+                    <div class="dm-texto" id="previa-texto"></div>
+                    <div class="dm-botao" id="previa-botao"></div>
+                </div>
+            </div>
+        </div>
+    </aside>
+</div>
+
+<script>
+    (function () {
+        var texto = document.getElementById("id_texto");
+        var botao = document.getElementById("id_texto_botao");
+        var ativo = document.getElementById("id_ativo");
+        function atualizar() {
+            document.getElementById("previa-texto").textContent = texto.value.trim() || "…";
+            document.getElementById("previa-botao").textContent = botao.value.trim() || "…";
+            document.getElementById("conta-texto").textContent = texto.value.length;
+            document.getElementById("conta-botao").textContent = botao.value.length;
+            document.getElementById("dm-tela").classList.toggle("dm-desligado", !ativo.checked);
+        }
+        [texto, botao, ativo].forEach(function (campo) {
+            campo.addEventListener("input", atualizar);
+            campo.addEventListener("change", atualizar);
+        });
+        atualizar();
+    })();
+</script>
+{% endblock %}

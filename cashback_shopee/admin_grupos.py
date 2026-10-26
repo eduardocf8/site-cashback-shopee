@@ -92,6 +92,7 @@ GRUPOS = [
             ("automacao_instagram.comentarioprocessado", None),
         ]),
         ("Stories", [
+            ("automacao_instagram.padraorespostastory", None),
             ("automacao_instagram.automacaostory", None),
             ("automacao_instagram.respostastoryprocessada", None),
         ]),

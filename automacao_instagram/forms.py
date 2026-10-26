@@ -1,6 +1,6 @@
 from django import forms
 
-from .models import AutomacaoComentario, AutomacaoStory, ContaInstagramConectada
+from .models import AutomacaoComentario, AutomacaoStory, ContaInstagramConectada, PadraoRespostaStory
 
 
 class ContaInstagramForm(forms.ModelForm):
@@ -90,3 +90,24 @@ class ProcessarComentarioManualForm(forms.Form):
     instagram_comment_id = forms.CharField(label="ID do comentário")
     texto_comentario = forms.CharField(label="Texto do comentário", widget=forms.Textarea(attrs={"rows": 2}))
     autor_username = forms.CharField(label="Usuário de quem comentou", required=False)
+
+
+class PadraoRespostaStoryForm(forms.ModelForm):
+    """A mensagem que vai para quem responde um story de oferta do bot (o link vai no botão)."""
+
+    class Meta:
+        model = PadraoRespostaStory
+        fields = ("ativo", "texto", "texto_botao")
+        help_texts = {
+            "texto": "Vai no corpo da DM, sem o link: o link do produto vai no botão logo abaixo.",
+            "texto_botao": "Até 20 caracteres (limite do Instagram).",
+        }
+        widgets = {
+            "texto": forms.Textarea(attrs={"rows": 3, "maxlength": 600}),
+            "texto_botao": forms.TextInput(attrs={"maxlength": 20}),
+        }
+        # O campo já tira os espaços das pontas: só espaço conta como vazio.
+        error_messages = {
+            "texto": {"required": "Escreva a mensagem."},
+            "texto_botao": {"required": "Escreva o texto do botão."},
+        }

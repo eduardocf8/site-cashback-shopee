@@ -66,6 +66,7 @@
 
 <div class="cartao" style="margin-top:20px;">
 <h2 style="margin-top:0;">Respostas a stories</h2>
+<p class="legenda" style="margin-top:-4px;">Stories de oferta do bot ganham automação sozinhos{% if not padrao_story.ativo %} (<strong>desligado</strong>){% endif %}. <a href="{% url 'automacao_padrao_story' %}">Personalizar a mensagem</a></p>
 {% if automacoes_story %}
 <div class="tabela-scroll">
 <table>
@@ -76,10 +77,10 @@
     </tr>
     {% for automacao in automacoes_story %}
     <tr>
-        <td>{{ automacao.nome }}{% if automacao.story_permalink %} <a href="{{ automacao.story_permalink }}" target="_blank" rel="noopener">(ver story)</a>{% endif %}</td>
+        <td>{{ automacao.nome }}{% if automacao.automatica %} <span class="pilula pilula-auto" style="margin-left:4px;">automática</span>{% endif %}{% if automacao.story_permalink %} <a href="{{ automacao.story_permalink }}" target="_blank" rel="noopener">(ver story)</a>{% endif %}</td>
         <td>{{ automacao.conta.nome_exibicao }}</td>
         <td>{% if automacao.ativa %}<span class="pilula pilula-ativa">Ativa</span>{% else %}<span class="pilula pilula-pausada">Pausada</span>{% endif %}</td>
-        <td>{{ automacao.get_modo_resposta_display }}</td>
+        <td>{% if automacao.modo_resposta == 'link_produto' %}Link do produto{% else %}Mensagem personalizada{% endif %}</td>
         <td>{{ automacao.total_respostas }}</td>
         <td>{{ automacao.dms_enviadas }}</td>
         <td>

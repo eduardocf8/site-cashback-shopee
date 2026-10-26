@@ -13,11 +13,12 @@ from django.views.decorators.csrf import csrf_exempt
 
 from instagram_bot.models import RegistroPublicacao
 
-from . import instagram_api, services, webhook
+from . import instagram_api, padrao_story, services, webhook
 from .forms import (
     AutomacaoComentarioForm,
     AutomacaoStoryForm,
     ContaInstagramForm,
+    PadraoRespostaStoryForm,
     ProcessarComentarioManualForm,
 )
 from .models import (
@@ -25,6 +26,7 @@ from .models import (
     AutomacaoStory,
     ComentarioProcessado,
     ContaInstagramConectada,
+    PadraoRespostaStory,
     RespostaStoryProcessada,
 )
 
@@ -127,6 +129,34 @@ def automacao_lista(request):
         {
             "automacoes": automacoes, "resumo": resumo,
             "automacoes_story": automacoes_story, "resumo_story": resumo_story,
+            "padrao_story": PadraoRespostaStory.carregar(),
+        },
+    )
+
+
+@staff_required
+def padrao_story_editar(request):
+    """Tela da mensagem padrão dos stories de oferta do bot (ver padrao_story.py)."""
+    padrao = PadraoRespostaStory.carregar()
+    if request.method == "POST":
+        form = PadraoRespostaStoryForm(request.POST, instance=padrao)
+        if form.is_valid():
+            form.save()
+            messages.success(request, "Mensagem padrão salva.")
+            return redirect("automacao_padrao_story")
+    else:
+        form = PadraoRespostaStoryForm(instance=padrao)
+
+    automaticas = AutomacaoStory.objects.filter(automatica=True)
+    return render(
+        request, "automacao_instagram/padrao_story.html",
+        {
+            "form": form, "padrao": padrao, "conta_bot": padrao_story.conta_do_bot(),
+            "id_conta_bot": settings.INSTAGRAM_BUSINESS_ACCOUNT_ID,
+            "total_automaticas": automaticas.count(),
+            "dms_automaticas": RespostaStoryProcessada.objects.filter(
+                automacao__automatica=True, dm_enviada=True,
+            ).count(),
         },
     )
 

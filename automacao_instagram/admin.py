@@ -5,6 +5,7 @@ from .models import (
     AutomacaoStory,
     ComentarioProcessado,
     ContaInstagramConectada,
+    PadraoRespostaStory,
     RespostaStoryProcessada,
 )
 
@@ -39,8 +40,8 @@ class ComentarioProcessadoAdmin(admin.ModelAdmin):
 
 @admin.register(AutomacaoStory)
 class AutomacaoStoryAdmin(admin.ModelAdmin):
-    list_display = ("nome", "conta", "modo_resposta", "ativa", "criado_em")
-    list_filter = ("ativa", "conta", "modo_resposta")
+    list_display = ("nome", "conta", "modo_resposta", "ativa", "automatica", "criado_em")
+    list_filter = ("ativa", "automatica", "conta", "modo_resposta")
     search_fields = ("nome", "instagram_story_media_id")
 
 
@@ -53,3 +54,8 @@ class RespostaStoryProcessadaAdmin(admin.ModelAdmin):
 
     def has_add_permission(self, request):
         return False
+
+
+@admin.register(PadraoRespostaStory)
+class PadraoRespostaStoryAdmin(admin.ModelAdmin):
+    list_display = ("__str__", "ativo", "texto_botao", "atualizado_em")

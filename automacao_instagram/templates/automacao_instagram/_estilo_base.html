@@ -66,6 +66,7 @@
     .pilula::before { content: ""; width: 6px; height: 6px; border-radius: 50%; background: currentColor; }
     .pilula-ativa { background: var(--success-bg); color: var(--success); }
     .pilula-pausada { background: var(--line-soft); color: var(--muted); }
+    .pilula-auto { background: var(--brand-soft); color: var(--brand-strong); }
 
     .cabecalho-pagina { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 20px; }
     .cabecalho-pagina .botao { margin-top: 0; }
@@ -109,16 +110,17 @@
     .ajuda-balao {
         position: absolute; bottom: calc(100% + 9px); left: 50%; transform: translateX(-50%) translateY(4px);
         background: var(--ink); color: var(--paper-2); font-size: 12.5px; font-weight: 400; line-height: 1.45;
-        padding: 9px 11px; border-radius: 7px; width: max-content; max-width: 260px; text-align: left;
-        opacity: 0; visibility: hidden; pointer-events: none; transition: opacity .12s ease, transform .12s ease;
+        padding: 9px 11px; border-radius: 7px; width: max-content; max-width: min(260px, calc(100vw - 48px)); text-align: left;
+        display: none; pointer-events: none;
         z-index: 10; box-shadow: var(--shadow);
     }
     .ajuda-balao::after {
         content: ""; position: absolute; top: 100%; left: 50%; transform: translateX(-50%);
         border: 5px solid transparent; border-top-color: var(--ink);
     }
+    /* Escondido com display: none (e não só invisível) para não alargar a página no celular. */
     .ajuda-tooltip:hover .ajuda-balao, .ajuda-icone:focus + .ajuda-balao {
-        opacity: 1; visibility: visible; transform: translateX(-50%) translateY(0);
+        display: block; transform: translateX(-50%) translateY(0);
     }
 
     .cartao { background: var(--paper); border: 1px solid var(--line); border-radius: 12px; box-shadow: var(--shadow); padding: 24px; }

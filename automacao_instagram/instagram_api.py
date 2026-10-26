@@ -72,15 +72,31 @@ def listar_stories_recentes(instagram_business_account_id: str, access_token: st
     return dados.get("data", [])
 
 
-def enviar_mensagem_direta(instagram_business_account_id: str, recipient_id: str, texto: str, access_token: str) -> str:
+def _mensagem(texto: str, botao: tuple[str, str] | None) -> dict:
+    """Texto simples, ou texto com um botão (título, endereço) que abre o link - modelo de botão da
+    Meta: texto até 640 caracteres e título do botão até 20."""
+    if not botao:
+        return {"text": texto}
+    titulo, url = botao
+    return {"attachment": {"type": "template", "payload": {
+        "template_type": "button", "text": texto[:640],
+        "buttons": [{"type": "web_url", "url": url, "title": titulo[:20]}],
+    }}}
+
+
+def enviar_mensagem_direta(
+    instagram_business_account_id: str, recipient_id: str, texto: str, access_token: str,
+    botao: tuple[str, str] | None = None,
+) -> str:
     """DM avulsa pro recipient_id (o "sender.id" que chega no webhook de mensagens) -
     diferente de enviar_resposta_privada (atrelada a um comment_id, só funciona até 7
     dias/1 vez por comentário). Usada pra responder quem respondeu um story (ver
-    automacao_instagram/webhook.py). Retorna o id da mensagem criada."""
+    automacao_instagram/webhook.py). Com `botao`, a DM leva um botão que abre o link.
+    Retorna o id da mensagem criada."""
     dados = _chamar(
         "POST", f"{instagram_business_account_id}/messages", access_token,
         recipient=json.dumps({"id": recipient_id}),
-        message=json.dumps({"text": texto}),
+        message=json.dumps(_mensagem(texto, botao)),
     )
     return dados.get("message_id", "")
 

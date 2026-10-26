@@ -82,6 +82,10 @@
                     <svg class="icone" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M13 2 4 14h6l-1 8 9-12h-6l1-8Z"/></svg>
                     Automações
                 </a>
+                <a href="{% url 'automacao_padrao_story' %}" class="{% if request.resolver_match.url_name == 'automacao_padrao_story' %}ativo{% endif %}">
+                    <svg class="icone" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 6a2 2 0 0 1 2-2h12a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2h-7l-5 4v-4H6a2 2 0 0 1-2-2z"/><path d="M8.5 9.5h7M8.5 12.5h4.5"/></svg>
+                    Resposta dos stories
+                </a>
                 <a href="{% url 'automacao_historico' %}" class="{% if request.resolver_match.url_name == 'automacao_historico' or request.resolver_match.url_name == 'automacao_historico_story' %}ativo{% endif %}">
                     <svg class="icone" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3.5 2"/></svg>
                     Histórico
