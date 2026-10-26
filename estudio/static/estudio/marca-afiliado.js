@@ -95,7 +95,7 @@
   }
   const p = (txt, cls) => txt ? `<p class="${cls || 'texto'}">${marcar(txt)}</p>` : '';
   const chapeu = (s) => s.chapeu ? `<p class="chapeu">${esc(s.chapeu)}</p>` : '';
-  const foto = (s, cls, extra) => urlOk(s.foto) ? `<div class="foto ${cls || ''}"><div class="foto-img" style="background-image:url('${esc(s.foto)}')"></div>${extra || ''}</div>` : '';
+  const foto = (s, cls, extra) => urlOk(s.foto) ? `<div class="foto ${cls || ''}${s.sem_fundo ? ' sem-fundo' : ''}"><div class="foto-img" style="background-image:url('${esc(s.foto)}')"></div>${extra || ''}</div>` : '';
   const desconto = (s) => s.desconto ? `<span class="desconto">${esc(s.desconto)}</span>` : '';
 
   const TIPOS = {
@@ -238,6 +238,10 @@
 .af .foto { position: relative; background: #FFFFFF; border-radius: 36px; box-shadow: 0 24px 60px rgba(0,0,0,.16); overflow: visible; }
 .af .foto-img { position: absolute; inset: 18px; background: center/contain no-repeat; border-radius: 22px; }
 /* a foto da Shopee é quadrada: na capa, o cartão também é */
+/* produto solto (foto sem fundo): sem o cartão, com sombra no próprio produto */
+.af .foto.sem-fundo { background: none; box-shadow: none; }
+.af .foto.sem-fundo .foto-img { inset: 0; border-radius: 0; filter: drop-shadow(0 26px 26px rgba(0,0,0,.28)); }
+.af .foto.sem-fundo .desconto { right: 0; top: 0; }
 .af .foto-capa { --lado: 560px; width: min(100%, var(--lado)); height: var(--lado); margin-bottom: 34px; }
 .af.f-quadrado .foto-capa { --lado: 420px; }
 .af.capa-grade .foto-capa { --lado: 470px; }

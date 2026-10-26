@@ -130,8 +130,8 @@ class TestCriarEEditar(Base):
         self.assertEqual(post.slides[1]["preco"], "R$ 47,90")
         self.assertEqual(post.slides[0]["foto"], PRODUTO["imagem"])
         self.assertEqual(UsoCarrossel.objects.get(conta=c).geracoes, 1)
-        sistema = cliente.beta.messages.create.call_args.kwargs["system"]
-        self.assertIn("Preço agora: R$ 47,90", sistema)
+        pedido = cliente.beta.messages.create.call_args.kwargs["messages"][0]["content"]
+        self.assertIn("Preço agora: R$ 47,90", pedido)  # o produto vai na mensagem; o sistema fica em cache
 
     def test_standard_salva_sem_ajustes_nem_imagem_de_fundo_nem_cor_da_marca(self):
         c = conta(modulos="carrosseis")
@@ -217,3 +217,54 @@ class TestImagensEMarca(Base):
         self.assertEqual(A.temas(c)["marca"]["a"], "#FF0000")
         self.client.post("/estudio/minha-marca/", {"arroba": "bia com espaço"})
         self.assertEqual(MarcaAfiliado.objects.get(conta=c).arroba, "@bia")
+
+
+class TestModelosProprios(Base):
+    def post_de_produto(self, c):
+        foto = PRODUTO["imagem"]
+        return PostInstagram.objects.create(conta=c, nome="Garrafa", tema="azul", formato="retrato", produto=dict(PRODUTO), slides=[
+            {"tipo": "capa", "fundo": {"modo": "cor", "cor": "tema"}, "titulo": "Café *quente*", "foto": foto, "sem_fundo": True, "desconto": "-47%"},
+            {"tipo": "preco", "fundo": {"modo": "cor", "cor": "tema"}, "titulo": "Preço", "preco": "R$ 47,90", "de": "R$ 89,90", "desconto": "-47%"}])
+
+    def test_salva_sem_os_dados_do_produto_e_cria_post_com_ele(self):
+        c = conta()
+        self.entrar(c)
+        post = self.post_de_produto(c)
+        j = self.client.post(f"/estudio/{post.pk}/salvar-modelo/", json.dumps({"nome": "Meu achado"}), content_type="application/json").json()
+        m = c.modelos_instagram.get()
+        self.assertEqual((j["nome"], m.tema, m.produto), ("Meu achado", "azul", True))
+        self.assertEqual((m.slides[0]["foto"], m.slides[0]["desconto"]), ("", ""))
+        self.assertNotIn("sem_fundo", m.slides[0])
+        self.assertEqual(m.slides[1]["preco"], "R$ 0,00")
+        self.assertContains(self.client.get("/estudio/"), "Meu achado")
+        self.client.post("/estudio/novo/", {"como": "modelo", "modelo": j["codigo"]})
+        novo = PostInstagram.objects.exclude(pk=post.pk).get()
+        self.assertEqual((novo.nome, novo.tema, novo.slides[0]["titulo"]), ("Meu achado", "azul", "Café *quente*"))
+
+    def test_standard_nao_salva_nem_usa_modelo_proprio(self):
+        c = conta(modulos="carrosseis")
+        self.entrar(c)
+        post = self.post_de_produto(c)
+        self.assertEqual(self.client.post(f"/estudio/{post.pk}/salvar-modelo/", "{}", content_type="application/json").status_code, 400)
+        from .models import ModeloAfiliado
+        m = ModeloAfiliado.objects.create(conta=c, nome="Antigo", slides=post.slides)
+        self.assertNotIn(f"meu-{m.pk}", [x["codigo"] for x in A.modelos(c)])
+        self.client.post("/estudio/novo/", {"como": "modelo", "modelo": f"meu-{m.pk}"})
+        self.assertEqual(PostInstagram.objects.filter(conta=c).count(), 1)
+
+    def test_apaga_so_o_proprio_modelo(self):
+        from .models import ModeloAfiliado
+        outro = ModeloAfiliado.objects.create(conta=conta(email="outra@exemplo.com"), nome="Dela")
+        c = conta()
+        self.entrar(c)
+        meu = ModeloAfiliado.objects.create(conta=c, nome="Meu")
+        self.assertEqual(self.client.post(f"/estudio/modelos/{outro.pk}/apagar/").status_code, 404)
+        self.client.post(f"/estudio/modelos/{meu.pk}/apagar/")
+        self.assertEqual(list(ModeloAfiliado.objects.values_list("nome", flat=True)), ["Dela"])
+
+    def test_produto_solto_e_do_premium(self):
+        for modulos, esperado in (("carrosseis_premium", True), ("carrosseis", None)):
+            c = conta(modulos=modulos, email=f"{modulos}@exemplo.com")
+            slides = A.limpar_slides([{"tipo": "produto", "fundo": {"modo": "cor", "cor": "claro"}, "foto": "/estudio/imagens/1/", "sem_fundo": True}],
+                                     A.eh_premium(c))
+            self.assertEqual(slides[0].get("sem_fundo"), esperado)

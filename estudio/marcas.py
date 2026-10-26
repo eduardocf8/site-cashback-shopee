@@ -85,8 +85,8 @@ MARCAS["afiliado"] = {
     "nome": "Estúdio Instagram",
     "formato_padrao": "retrato",
     "tipos": {
-        "capa": ("Capa", ["chapeu", "titulo", "texto", "foto", "desconto"]),
-        "produto": ("Produto com foto", ["chapeu", "titulo", "texto", "foto", "selo"]),
+        "capa": ("Capa", ["chapeu", "titulo", "texto", "foto", "sem_fundo", "desconto"]),
+        "produto": ("Produto com foto", ["chapeu", "titulo", "texto", "foto", "sem_fundo", "selo"]),
         "preco": ("Preço", ["chapeu", "titulo", "de", "preco", "desconto", "nota"]),
         "lista": ("Lista", ["chapeu", "titulo", "texto", "itens", "numerada"]),
         "texto": ("Texto com destaque", ["chapeu", "titulo", "texto", "destaque"]),
@@ -117,5 +117,6 @@ def tipos_para_ia(marca: str) -> str:
     """Descrição dos tipos de slide para o prompt da IA."""
     linhas = []
     for codigo, (nome, campos) in MARCAS[marca]["tipos"].items():
-        linhas.append(f"- {codigo} ({nome}): campos {', '.join(campos)}")
+        # foto e sem_fundo vêm do produto e do editor, não da IA
+        linhas.append(f"- {codigo} ({nome}): campos {', '.join(c for c in campos if c not in ('foto', 'sem_fundo'))}")
     return "\n".join(linhas)

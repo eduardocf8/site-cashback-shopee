@@ -38,17 +38,19 @@
       {% endif %}
     </div>
     <div role="tabpanel" id="aba-modelo" aria-labelledby="t-modelo" hidden>
-      <form method="post" action="{% url 'painel_estudio_novo' %}" style="max-width:none">
-        {% csrf_token %}<input type="hidden" name="como" value="modelo">
-        <div class="es-modelos-grade">
-          {% for m in modelos %}
-            <button class="es-modelo-cartao" type="submit" name="modelo" value="{{ m.codigo }}">
+      <form method="post" action="{% url 'painel_estudio_novo' %}" id="f-modelo">{% csrf_token %}<input type="hidden" name="como" value="modelo"></form>
+      <div class="es-modelos-grade">
+        {% for m in modelos %}
+          <div class="es-modelo-item{% if m.meu %} es-meu{% endif %}">
+            <button class="es-modelo-cartao" type="submit" form="f-modelo" name="modelo" value="{{ m.codigo }}">
               <div class="es-previa" data-modelo="{{ m.codigo }}"></div>
-              <strong>{{ m.nome }}</strong><small>{{ m.formato_nome }} · {{ m.descricao }}</small>
+              <strong>{% if m.meu %}<span class="es-selo-teste">Seu</span> {% endif %}{{ m.nome }}</strong><small>{{ m.formato_nome }} · {{ m.descricao }}</small>
             </button>
-          {% endfor %}
-        </div>
-      </form>
+            {% if m.meu %}<form method="post" action="{% url 'painel_estudio_apagar_modelo' m.meu %}" onsubmit="return confirm('Apagar o modelo &quot;{{ m.nome|escapejs }}&quot;?')">{% csrf_token %}<button class="es-apagar-modelo" type="submit">Apagar modelo</button></form>{% endif %}
+          </div>
+        {% endfor %}
+      </div>
+      {% if premium %}<p class="suave" style="margin-top:12px">Para salvar um modelo seu, abra um post e use "Salvar como modelo".</p>{% endif %}
     </div>
     <div role="tabpanel" id="aba-ia" aria-labelledby="t-ia" hidden>
       {% if ia_ligada %}

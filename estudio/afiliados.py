@@ -21,11 +21,12 @@ from carrosseis.models import UsoCarrossel
 
 from . import ia
 from .marcas import FORMATOS, MARCAS, TEMAS_AFILIADO
-from .models import FONTES_AFILIADO, ImagemAfiliado, MarcaAfiliado, PostInstagram
+from .models import FONTES_AFILIADO, ImagemAfiliado, MarcaAfiliado, ModeloAfiliado, PostInstagram
 
 MARCA = "afiliado"
 MAX_SLIDES = 10
 MAX_IMAGENS = 80
+MAX_MODELOS = 30
 LADO_IMAGEM = 1600
 LADO_LOGO = 600
 MAX_ENVIO = 12 * 1024 * 1024
@@ -44,13 +45,46 @@ def eh_premium(conta) -> bool:
 
 
 @lru_cache(maxsize=1)
-def modelos() -> list[dict]:
+def _padrao() -> list[dict]:
     caminho = Path(__file__).parent / "modelos" / "afiliado.json"
     return json.loads(caminho.read_text(encoding="utf-8"))
 
 
-def modelo(codigo: str) -> dict | None:
-    return next((m for m in modelos() if m["codigo"] == codigo), None)
+def modelos(conta=None) -> list[dict]:
+    """Os modelos do Appfiliado e, no Premium, os que a pessoa salvou (código "meu-<id>")."""
+    lista = [dict(m) for m in _padrao()]
+    if conta is not None and eh_premium(conta):
+        lista = [{"codigo": f"meu-{m.pk}", "nome": m.nome, "descricao": "Seu modelo", "formato": m.formato, "tema": m.tema,
+                  "legenda": m.legenda, "slides": m.slides, "produto": m.produto, "meu": m.pk}
+                 for m in ModeloAfiliado.objects.filter(conta=conta)] + lista
+    return lista
+
+
+def modelo(codigo: str, conta=None) -> dict | None:
+    return next((m for m in modelos(conta) if m["codigo"] == codigo), None)
+
+
+def salvar_como_modelo(post: PostInstagram, nome: str) -> ModeloAfiliado:
+    """Guarda o post como modelo. Se ele é de um produto, tira a foto e o preço desse produto:
+    no próximo post, entram os do produto novo."""
+    if not eh_premium(post.conta):
+        raise ErroEstudio("Salvar os seus modelos é do plano Premium.")
+    if ModeloAfiliado.objects.filter(conta=post.conta).count() >= MAX_MODELOS:
+        raise ErroEstudio(f"Você chegou a {MAX_MODELOS} modelos. Apague algum para salvar outro.")
+    slides = copy.deepcopy(post.slides)
+    produto = post.produto or {}
+    if produto.get("nome"):
+        for s in slides:
+            if s["tipo"] in ("capa", "produto"):  # a foto (ou o recorte dela) é do produto antigo
+                s["foto"] = ""
+                s.pop("sem_fundo", None)
+            if s["tipo"] == "preco":
+                s.update(preco="R$ 0,00", de="", desconto="")
+            if s["tipo"] == "capa" and "desconto" in s:
+                s["desconto"] = ""
+    nome = (str(nome or "").strip() or post.nome)[:80]
+    return ModeloAfiliado.objects.create(conta=post.conta, nome=nome, formato=post.formato, tema=post.tema, slides=slides,
+                                         legenda=post.legenda, produto=bool(produto.get("nome")))
 
 
 # --- cores ------------------------------------------------------------------------------------
@@ -101,6 +135,7 @@ def limpar_slides(slides, premium: bool) -> list:
         if not premium:
             limpo.pop("ajustes", None)
             limpo.pop("capa", None)
+            limpo.pop("sem_fundo", None)
             if limpo["fundo"]["modo"] == "imagem":
                 limpo["fundo"] = {"modo": "cor", "cor": "tema"}
         saida.append(limpo)
@@ -193,7 +228,7 @@ def criar(conta, como: str, link: str = "", pedido: str = "", codigo_modelo: str
         feito = _com_ia(conta, formato, pedido)
         post.nome, post.legenda, post.slides = feito["nome"], feito["legenda"], limpar_slides(feito["slides"], premium)
     elif como == "modelo":
-        m = modelo(codigo_modelo)
+        m = modelo(codigo_modelo, conta)
         if not m:
             raise ErroEstudio("Escolha um modelo.")
         post.nome, post.formato, post.tema, post.legenda = m["nome"], m["formato"], m["tema"], m["legenda"]

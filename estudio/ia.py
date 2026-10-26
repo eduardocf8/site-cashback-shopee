@@ -82,7 +82,7 @@ def _voz() -> str:
     return caminho.read_text(encoding="utf-8") if caminho.exists() else ""
 
 
-def _sistema(marca: str, formato: str, produto: dict | None = None) -> str:
+def _sistema(marca: str, formato: str) -> str:
     m = MARCAS[marca]
     nome_formato, largura, altura = FORMATOS[formato]
     limites = "; ".join(f"{campo} até {n} caracteres" for campo, (_, n) in CAMPOS_TEXTO.items())
@@ -124,8 +124,10 @@ Escreva também a legenda do post: gancho na primeira linha, texto curto, chamad
 
 # Material da marca
 {conhecimento(marca)}
-{"" if marca != "afiliado" else chr(10) + "# Produto da Shopee" + chr(10) + _produto_em_texto(produto or {}) + chr(10)
- + "A foto do produto entra sozinha nos slides capa e produto. No slide preco, use os valores exatos acima." + chr(10)}"""
+
+# Resposta
+Entregue o post sempre chamando a ferramenta montar_post, sem texto fora dela.
+"""
 
 
 def _ferramenta(marca: str) -> dict:
@@ -239,6 +241,8 @@ def limpar_slide(marca: str, s: dict) -> dict | None:
         elif campo == "foto":
             foto = str(s.get("foto") or "")[:600]
             out["foto"] = foto if re.match(r"^(/(?!/)|https://)[^\s'\"()<>\\]*$", foto) else ""
+        elif campo == "sem_fundo":
+            out["sem_fundo"] = s.get("sem_fundo") is True
         elif campo == "recorte":
             try:
                 out["recorte"] = min(max(int(s.get("recorte") or 0), 0), 3000)
@@ -272,15 +276,20 @@ def gerar(marca: str, formato: str, pedido: str, atual: dict | None = None, clie
                     + json.dumps({"slides": atual.get("slides", []), "legenda": atual.get("legenda", "")}, ensure_ascii=False))
     else:
         conteudo = f"Crie um post com este pedido: {pedido}"
+    if marca == "afiliado":
+        conteudo += ("\n\n# Produto da Shopee\n" + _produto_em_texto(produto or {})
+                     + "\nA foto do produto entra sozinha nos slides capa e produto. No slide preco, use os valores exatos acima.")
     cliente = cliente or _cliente()
     try:
         resposta = cliente.beta.messages.create(
             model=modelo or settings.ESTUDIO_MODELO,
             max_tokens=12000,
-            system=_sistema(marca, formato, produto),
+            # O sistema é igual para a mesma marca e formato: fica em cache e sai mais barato.
+            system=[{"type": "text", "text": _sistema(marca, formato), "cache_control": {"type": "ephemeral"}}],
             messages=[{"role": "user", "content": conteudo}],
             tools=[_ferramenta(marca)],
-            tool_choice={"type": "tool", "name": "montar_post"},
+            # Opus 5.5 e Sonnet 5.5 não aceitam forçar a ferramenta (erro 400): a instrução fica no sistema.
+            tool_choice={"type": "auto"},
             betas=["server-side-fallback-2026-07-01"],
             fallbacks="default",
         )

@@ -131,7 +131,8 @@ Regras
 - A resposta deve dizer só o que o dono disse, sem inventar nada além. Escreva em português do Brasil, curto (até 4
   linhas), no tom do WhatsApp, usando "pra"/"pro"
   só como contração de "para a"/"para o" e "para" nos outros casos.
-- Se não houver nada que valha para todos, use aprender = false e deixe pergunta e resposta vazias."""
+- Se não houver nada que valha para todos, use aprender = false e deixe pergunta e resposta vazias.
+- Responda sempre chamando a ferramenta registrar_aprendizado, sem texto fora dela."""
 
 FERRAMENTA_APRENDER = {
     "name": "registrar_aprendizado",
@@ -159,8 +160,10 @@ def sugerir_aprendizado(trecho: str, ja_aprendidas: str = "", cliente=None) -> d
         max_tokens=2000,
         system=INSTRUCOES_APRENDIZADO,
         messages=[{"role": "user", "content": conteudo}],
-        tools=[FERRAMENTA_APRENDER],
-        tool_choice={"type": "tool", "name": "registrar_aprendizado"},
+        # Opus 5.5 e Sonnet 5.5 não aceitam forçar a ferramenta (tool_choice "tool" dá erro 400):
+        # o modelo escolhe sozinho, com a instrução no fim do prompt.
+        tools=[{**FERRAMENTA_APRENDER, "strict": True}],
+        tool_choice={"type": "auto"},
         betas=["server-side-fallback-2026-07-01"],
         fallbacks="default",
     )

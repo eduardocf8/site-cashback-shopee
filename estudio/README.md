@@ -43,6 +43,12 @@ o item do menu some e todas as páginas respondem 404.
 - **Standard** (modo "simples"): edita textos e a foto, reordena e apaga slides. Cores e fundos vêm do modelo.
 - **Premium** (modo "completo"): tudo do estúdio do admin, mais as cores, a fonte e o logo da Minha marca.
 - **Imagens** (fotos enviadas, logo e miniaturas) ficam no banco, como no resto do painel.
+- **Remover o fundo** (Premium): a mesma IA de recorte do gerador de carrosséis (`@imgly/background-removal`),
+  rodando no navegador. O PNG sem fundo vira uma imagem da pessoa e o slide marca `sem_fundo` (produto solto).
+- **Salvar como modelo** (Premium): até 30 por conta. Se o post era de um produto, a foto e o preço saem do
+  modelo e entram os do próximo produto.
+- **IA:** `tool_choice` vai `auto` (Opus 5.5 e Sonnet 5.5 recusam forçar a ferramenta) e o prompt do sistema
+  fica em cache; o produto vai na mensagem.
 
 | Arquivo | O que faz |
 |---|---|

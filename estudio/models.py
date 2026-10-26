@@ -135,3 +135,23 @@ class ImagemAfiliado(models.Model):
 
     class Meta:
         ordering = ["-enviada_em"]
+
+
+class ModeloAfiliado(models.Model):
+    """"Salvar como modelo" (Premium): um post do afiliado que vira ponto de partida para os próximos."""
+
+    conta = models.ForeignKey("licencas.ContaAppfiliado", on_delete=models.CASCADE, related_name="modelos_instagram")
+    nome = models.CharField(max_length=80)
+    formato = models.CharField(max_length=20, choices=FORMATOS, default="retrato")
+    tema = models.CharField(max_length=20, choices=TEMAS_AFILIADO, default="verde")
+    slides = models.JSONField(default=list)
+    legenda = models.TextField(blank=True)
+    # Nasceu de um post com produto: ao usar, a foto e o preço do produto novo entram nos slides.
+    produto = models.BooleanField(default=False)
+    criado_em = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ["-criado_em"]
+
+    def __str__(self):
+        return self.nome

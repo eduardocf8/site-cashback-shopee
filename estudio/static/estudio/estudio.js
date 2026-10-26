@@ -298,9 +298,51 @@
   function campoFoto(s) {
     const g = el('div', { class: 'es-campo' }, el('span', {}, 'Foto'));
     const produto = (cfg.produto || {}).imagem;
-    g.append(...enviarEGaleria(s.foto || '', (url) => { s.foto = url; atualizar(); desenharCampos(); }, produto ? [[produto, 'Foto do produto na Shopee']] : []));
-    if (s.foto) g.append(el('button', { type: 'button', class: 'es-bt', on: { click: () => { s.foto = ''; atualizar(); desenharCampos(); } } }, 'Tirar a foto'));
+    g.append(...enviarEGaleria(s.foto || '', (url) => { s.foto = url; s.sem_fundo = false; atualizar(); desenharCampos(); }, produto ? [[produto, 'Foto do produto na Shopee']] : []));
+    if (!s.foto) return g;
+    const botoes = el('div', { class: 'es-linha' }, el('button', { type: 'button', class: 'es-bt', on: { click: () => { s.foto = ''; s.sem_fundo = false; atualizar(); desenharCampos(); } } }, 'Tirar a foto'));
+    g.append(botoes);
+    if (cfg.premium && cfg.urls.imagens) {
+      const andamento = el('p', { class: 'es-dica', hidden: true });
+      botoes.append(el('button', { type: 'button', class: 'es-bt', on: { click: (e) => ocupado(e.target, async () => {
+        andamento.hidden = false;
+        try { s.foto = await semFundo(s.foto, (t) => { andamento.textContent = t; }); s.sem_fundo = true; atualizar(); desenharCampos(); }
+        finally { andamento.hidden = true; }
+      }) } }, 'Remover o fundo'));
+      g.append(andamento, el('label', { class: 'es-pequeno' }, el('input', { type: 'checkbox', checked: !!s.sem_fundo,
+        on: { change: (e) => { s.sem_fundo = e.target.checked; atualizar(); } } }), 'Produto solto, sem o cartão branco (para foto sem fundo)'));
+    }
     return g;
+  }
+
+  // ---- remover o fundo da foto (Premium) --------------------------------------------------------
+  // A IA de recorte roda no navegador (a mesma do gerador de carrosséis); o servidor só guarda o PNG pronto.
+  // Baixa o modelo (~40 MB) na primeira vez.
+  const FUNDO_LIB = 'https://cdn.jsdelivr.net/npm/@imgly/background-removal@1.5.5/+esm', FUNDO_LADO = 1024;
+  const paraBlob = (canvas) => new Promise((ok, erro) => canvas.toBlob((b) => (b ? ok(b) : erro(new Error('Não consegui preparar a foto.'))), 'image/png'));
+  async function semFundo(url, avisar) {
+    avisar('Preparando a foto…');
+    const img = await new Promise((ok, erro) => { const i = new Image(); if (!url.startsWith('/')) i.crossOrigin = 'anonymous';
+      i.onload = () => ok(i); i.onerror = () => erro(new Error('Não consegui abrir essa foto. Envie a foto do produto pelo campo acima.')); i.src = url; });
+    const k = Math.min(1, FUNDO_LADO / Math.max(img.width, img.height)), entrada = document.createElement('canvas');
+    entrada.width = Math.round(img.width * k); entrada.height = Math.round(img.height * k);
+    entrada.getContext('2d').drawImage(img, 0, 0, entrada.width, entrada.height);
+    let lib;
+    try { lib = await import(FUNDO_LIB); } catch (e) { throw new Error('Não consegui carregar o recorte agora. Confira sua conexão e tente de novo.'); }
+    const saida = await lib.removeBackground(await paraBlob(entrada), { model: 'isnet_quint8', output: { format: 'image/png' },
+      progress: (chave) => avisar(String(chave).startsWith('fetch') ? 'Baixando o recorte (só na primeira vez, leva um pouco mais)…' : 'Removendo o fundo… pode levar alguns segundos') });
+    // corta a margem transparente em volta do produto, para ele ocupar a caixa da foto
+    const bmp = await createImageBitmap(saida), c = document.createElement('canvas'); c.width = bmp.width; c.height = bmp.height;
+    const ctx = c.getContext('2d', { willReadFrequently: true }); ctx.drawImage(bmp, 0, 0);
+    const px = ctx.getImageData(0, 0, c.width, c.height).data; let x0 = c.width, y0 = c.height, x1 = -1, y1 = -1;
+    for (let y = 0; y < c.height; y++) for (let x = 0; x < c.width; x++) if (px[(y * c.width + x) * 4 + 3] > 24) { if (x < x0) x0 = x; if (x > x1) x1 = x; if (y < y0) y0 = y; if (y > y1) y1 = y; }
+    if (x1 < 0) throw new Error('Não encontrei o produto nessa foto. Tente com outra foto.');
+    const m = 4; x0 = Math.max(0, x0 - m); y0 = Math.max(0, y0 - m); x1 = Math.min(c.width - 1, x1 + m); y1 = Math.min(c.height - 1, y1 + m);
+    const corte = document.createElement('canvas'); corte.width = x1 - x0 + 1; corte.height = y1 - y0 + 1;
+    corte.getContext('2d').drawImage(c, x0, y0, corte.width, corte.height, 0, 0, corte.width, corte.height);
+    avisar('Salvando…');
+    const fd = new FormData(); fd.append('arquivo', await paraBlob(corte), 'sem-fundo.png');
+    return (await post(cfg.urls.imagens, null, fd)).imagens[0].url;
   }
 
   function grupoAjustes(s, i) {
@@ -344,6 +386,7 @@
       else if (campo === 'icone') textos_.append(selecao('Ícone', [['', 'Sem ícone']].concat(cfg.icones.map((k) => [k, M.nomesIcones[k] || k])), s.icone || '', (v) => { s.icone = v; atualizar(); }));
       else if (campo === 'print') textos_.append(selecao('Tela do painel', Object.keys(cfg.prints).map((k) => [k, k]), s.print || '', (v) => { s.print = v; atualizar(); }));
       else if (campo === 'foto') textos_.append(campoFoto(s));
+      else if (campo === 'sem_fundo') { /* dentro do campo da foto */ }
       else if (campo === 'recorte') textos_.append(faixa('Descer a tela', s.recorte || 0, 0, 3000, 10, (v) => `${v}`, (v) => { s.recorte = v; atualizar(); }));
     });
     textos_.append(el('p', { class: 'es-dica' }, 'Para destacar uma palavra, coloque entre asteriscos: *destaque*.'));
@@ -394,6 +437,13 @@
     setTimeout(() => { if (!est.sujo) $('es-salvar').textContent = 'Salvar'; }, 2500);
   }
   $('es-salvar').addEventListener('click', (e) => ocupado(e.target, salvar));
+  // "Salvar como modelo" (Estúdio Instagram, Premium): salva o post e guarda uma cópia como modelo.
+  if ($('es-salvar-modelo') && cfg.urls.modelo) $('es-salvar-modelo').addEventListener('click', (e) => ocupado(e.target, async () => {
+    const nome = prompt('Nome do modelo:', est.nome); if (nome === null) return;
+    await salvar();
+    const j = await post(cfg.urls.modelo, { nome });
+    alert(`Modelo "${j.nome}" salvo. Ele aparece em "De um modelo" e em "Trocar de modelo".`);
+  }));
   document.addEventListener('keydown', (e) => { if ((e.ctrlKey || e.metaKey) && e.key === 's') { e.preventDefault(); $('es-salvar').click(); } });
   window.addEventListener('beforeunload', (e) => { if (est.sujo) { e.preventDefault(); e.returnValue = ''; } });
 

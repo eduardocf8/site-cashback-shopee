@@ -18,7 +18,7 @@ from django.views.decorators.http import require_POST
 from carrosseis.servicos import ErroGerador
 from estudio import afiliados as A
 from estudio.marcas import CAMPOS_TEXTO, FORMATOS, LIMITES_LISTA, MARCAS
-from estudio.models import FONTES_AFILIADO, TEMAS_AFILIADO, ImagemAfiliado, MarcaAfiliado, PostInstagram
+from estudio.models import FONTES_AFILIADO, TEMAS_AFILIADO, ImagemAfiliado, MarcaAfiliado, ModeloAfiliado, PostInstagram
 
 from . import modulos as mod
 from .autenticacao import conta_logada, conta_requerida
@@ -70,12 +70,12 @@ def _url_miniatura(post) -> str:
 def lista(request, conta):
     posts = PostInstagram.objects.filter(conta=conta).only("pk", "nome", "formato", "atualizado_em", "miniatura")[:60]
     cartoes = [{"post": p, "miniatura": _url_miniatura(p), "formato": FORMATOS[p.formato][0]} for p in posts]
-    modelos = [{k: m[k] for k in ("codigo", "nome", "descricao", "formato")} | {"formato_nome": FORMATOS[m["formato"]][0]}
-               for m in A.modelos()]
+    modelos = [{k: m[k] for k in ("codigo", "nome", "descricao", "formato")} | {"formato_nome": FORMATOS[m["formato"]][0], "meu": m.get("meu")}
+               for m in A.modelos(conta)]
     return render(request, "painel/estudio.html", _contexto(
         request, SLUG, cartoes=cartoes, modelos=modelos, premium=A.eh_premium(conta), restantes=A.restantes(conta),
         shopee_ok=conta.shopee_configurada, ia_ligada=bool(settings.ANTHROPIC_API_KEY),
-        formatos=[(k, v[0]) for k, v in FORMATOS.items()], previa_modelos=A.modelos(),
+        formatos=[(k, v[0]) for k, v in FORMATOS.items()], previa_modelos=A.modelos(conta),
         previa_config={**_desenho(conta), "exemplo": static("estudio/exemplo-produto.jpg")},
     ))
 
@@ -122,7 +122,8 @@ def _config(conta, post) -> dict:
         "cores": m["cores"], "artes": m["artes"], "tons": m["tons"], "icones": [], "prints": {},
         "produto": {k: post.produto.get(k) for k in ("nome", "imagem", "preco", "de", "desconto")} if post.produto else {},
         "urls": {"salvar": reverse("painel_estudio_salvar", args=[post.pk]), "ia": reverse("painel_estudio_ia", args=[post.pk]),
-                 "imagens": reverse("painel_estudio_imagens"), "lista": reverse("painel_estudio")},
+                 "imagens": reverse("painel_estudio_imagens"), "lista": reverse("painel_estudio"),
+                 "modelo": reverse("painel_estudio_salvar_modelo", args=[post.pk]) if desenho["premium"] else ""},
         "ia_ligada": bool(settings.ANTHROPIC_API_KEY),
         "campos_texto": {k: list(v) for k, v in CAMPOS_TEXTO.items()}, "limites": LIMITES_LISTA, "max_slides": A.MAX_SLIDES,
     }
@@ -136,7 +137,7 @@ def editor(request, conta, pk):
     temas = [(k, n) for k, n in TEMAS_AFILIADO if k != "marca" or "marca" in A.temas(conta)]
     r = A.restantes(conta)
     return render(request, "painel/estudio_editor.html", _contexto(
-        request, SLUG, post=post, config=_config(conta, post), projeto=projeto, modelos=A.modelos(), premium=premium, temas=temas,
+        request, SLUG, post=post, config=_config(conta, post), projeto=projeto, modelos=A.modelos(conta), premium=premium, temas=temas,
         restantes=f"Restam {r['geracoes']} de {r['limite']} criações com IA hoje.",
     ))
 
@@ -160,6 +161,26 @@ def ia(request, conta, pk):
         return JsonResponse(A.ajustar_com_ia(post, _json(request)))
     except (ValueError, A.ErroEstudio) as erro:
         return JsonResponse({"erro": str(erro)}, status=400)
+
+
+@require_POST
+@_beta
+def salvar_modelo(request, conta, pk):
+    """Guarda o post (já salvo) como modelo. Premium."""
+    post = _do_dono(conta, pk)
+    try:
+        m = A.salvar_como_modelo(post, _json(request).get("nome"))
+    except (ValueError, A.ErroEstudio) as erro:
+        return JsonResponse({"erro": str(erro)}, status=400)
+    return JsonResponse({"codigo": f"meu-{m.pk}", "nome": m.nome})
+
+
+@require_POST
+@_beta
+def apagar_modelo(request, conta, pk):
+    get_object_or_404(ModeloAfiliado, pk=pk, conta=conta).delete()
+    messages.info(request, "Modelo apagado.")
+    return redirect("painel_estudio")
 
 
 @require_POST
