@@ -40,10 +40,46 @@ def conhecimento(marca: str) -> str:
     if marca == "appfiliado":
         from atendimento.conhecimento import texto
         return texto()
+    if marca == "afiliado":
+        return GUIA_AFILIADO
     paginas = RAIZ / "paginas" / "templates" / "paginas"
     partes = [_sem_html(paginas / nome) for nome in ("faq.html", "regras_cashback.html", "e_confiavel.html")
               if (paginas / nome).exists()]
     return "Site: https://cash-b.com\n\n" + "\n\n".join(partes)
+
+
+GUIA_AFILIADO = """Posts de afiliado Shopee que funcionam:
+- Capa com o benefício ou a dor que o produto resolve, não só o nome do produto.
+- Um slide com a foto e o que o produto tem de bom (2 ou 3 pontos concretos, tirados do nome e dos dados).
+- Um slide de preço, quando há preço: o preço antigo riscado, o preço de agora e o selo de desconto.
+- Chamada final para o link na bio (feed) ou para o link do story (story).
+- Nada de promessa que o produto não faz, nada de "o mais barato do Brasil", nada de urgência falsa.
+- Quando não há produto (post de dicas, cupom, lista de achados), escreva só o que o pedido trouxe.
+- Escreva na voz de quem achou o produto e está contando para os seguidores ("achei", "vi hoje", "eu indico"),
+  não como anúncio de loja.
+- Não repita a mesma informação no post: a nota, as vendas ou uma característica aparecem uma vez só (o selo da
+  foto também não repete o texto do slide), e cada slide traz algo novo. O chapéu diz do que o slide trata
+  ("Preço de hoje"), nunca repete o nome do produto.
+- Não faça contas com o preço ("metade", "economize R$ X", "quase de graça"): use só os números que vieram nos dados."""
+
+
+def _produto_em_texto(produto: dict) -> str:
+    if not produto:
+        return "Nenhum produto da Shopee neste post."
+    from carrosseis.ia import brl, vendidos
+
+    linhas = [f"Nome: {produto.get('nome', '')}"]
+    if produto.get("preco"):
+        linhas.append(f"Preço agora: {brl(produto['preco'])}")
+    if produto.get("de"):
+        linhas.append(f"Preço antigo: {brl(produto['de'])} (desconto de {produto.get('desconto')}%)")
+    if produto.get("nota"):
+        linhas.append(f"Nota na Shopee: {produto['nota']:.1f}".replace(".", ","))
+    if produto.get("vendas"):
+        linhas.append(f"Vendidos: {vendidos(int(produto['vendas']))}")
+    if produto.get("loja"):
+        linhas.append(f"Loja: {produto['loja']}")
+    return "\n".join(linhas)
 
 
 @lru_cache(maxsize=1)
@@ -86,6 +122,8 @@ baloes: [{{"texto", "meu"}}] (meu=true é a mensagem da pessoa, false é a respo
 Cada slide tem fundo: {{"modo": "cor", "cor": um de {list(m['cores'])}}} ou
 {{"modo": "arte", "arte": uma de {list(m['artes'])}, "tom": "escuro" ou "claro"}}.
 Alterne fundos escuros e claros para dar ritmo. Capa e chamada final costumam ficar no escuro.
+A arte "halo" (círculos no meio do slide) só serve para slide com pouquíssimo texto, centralizado no círculo: um
+título curto e no máximo uma frase, sem lista. Nos outros slides, use outra arte (na chamada final, "canto").
 {f"Ícones (campo icone da capa): {', '.join(m['icones'])}." if m['icones'] else ""}
 {f"Prints do painel (campo print do tipo tela): {', '.join(m['prints'])}. O campo recorte (0 a 1500) desce a tela do print." if m['prints'] else ""}
 
@@ -94,6 +132,9 @@ Escreva também a legenda do post: gancho na primeira linha, texto curto, chamad
 
 # Material da marca
 {conhecimento(marca)}
+
+# Resposta
+Entregue o post sempre chamando a ferramenta montar_post, sem texto fora dela.
 """
 
 
@@ -205,6 +246,11 @@ def limpar_slide(marca: str, s: dict) -> dict | None:
             out["icone"] = s.get("icone") if s.get("icone") in m["icones"] else ""
         elif campo == "print":
             out["print"] = s.get("print") if s.get("print") in m["prints"] else (m["prints"][0] if m["prints"] else "")
+        elif campo == "foto":
+            foto = str(s.get("foto") or "")[:600]
+            out["foto"] = foto if re.match(r"^(/(?!/)|https://)[^\s'\"()<>\\]*$", foto) else ""
+        elif campo == "sem_fundo":
+            out["sem_fundo"] = s.get("sem_fundo") is True
         elif campo == "recorte":
             try:
                 out["recorte"] = min(max(int(s.get("recorte") or 0), 0), 3000)
@@ -213,19 +259,44 @@ def limpar_slide(marca: str, s: dict) -> dict | None:
     return out
 
 
+LISTAS = ("itens", "pares", "linhas", "baloes")
+
+
+def texto_minimo(s: dict) -> bool:
+    """Pouco texto, sem lista nem foto: o único caso em que a arte "halo" (círculos no meio) combina."""
+    textos = sum(len(str(s.get(c) or "")) for c in ("chapeu", "titulo", "texto", "destaque", "nota", "codigo"))
+    return textos <= 90 and not any(s.get(c) for c in LISTAS) and not s.get("foto") and s["tipo"] in ("capa", "cta", "texto")
+
+
+def _ajustar_halo(s: dict) -> dict:
+    """Halo com texto demais vira "canto"; com pouco texto, o texto vai para o meio do círculo."""
+    if s["fundo"].get("arte") != "halo":
+        return s
+    if not texto_minimo(s):
+        s["fundo"]["arte"] = "canto"
+    else:
+        s["ajustes"] = {**s.get("ajustes", {}), "alinhar": "centro", "posicao": "meio"}
+    return s
+
+
 def limpar(marca: str, dados: dict) -> dict:
-    slides = [x for x in (limpar_slide(marca, s) for s in (dados.get("slides") or [])[:MAX_SLIDES]) if x]
+    """O que a IA devolveu (o que a pessoa salva passa só por limpar_slide)."""
+    slides = [_ajustar_halo(x) for x in (limpar_slide(marca, s) for s in (dados.get("slides") or [])[:MAX_SLIDES]) if x]
     if not slides:
         raise ErroIA("A IA não devolveu nenhum slide válido. Tente pedir de outro jeito.")
     return {"nome": _txt(dados.get("nome"), 120) or "Post da IA", "legenda": str(dados.get("legenda") or "").strip()[:2200],
             "slides": slides}
 
 
-def gerar(marca: str, formato: str, pedido: str, atual: dict | None = None, cliente=None) -> dict:
-    """atual: {"slides", "legenda"} quando é para ajustar um post que já existe."""
+def gerar(marca: str, formato: str, pedido: str, atual: dict | None = None, cliente=None,
+          produto: dict | None = None, modelo: str = "") -> dict:
+    """atual: {"slides", "legenda"} quando é para ajustar um post que já existe.
+    produto: os dados da Shopee (Estúdio Instagram). modelo: troca o modelo da IA."""
     if marca not in MARCAS or formato not in FORMATOS:
         raise ErroIA("Marca ou formato desconhecido.")
     pedido = (pedido or "").strip()[:3000]
+    if not pedido and produto and not atual:
+        pedido = "Um carrossel sobre este produto: capa, produto, preço e chamada final."
     if not pedido:
         raise ErroIA("Escreva o que você quer no post.")
     if atual:
@@ -234,15 +305,20 @@ def gerar(marca: str, formato: str, pedido: str, atual: dict | None = None, clie
                     + json.dumps({"slides": atual.get("slides", []), "legenda": atual.get("legenda", "")}, ensure_ascii=False))
     else:
         conteudo = f"Crie um post com este pedido: {pedido}"
+    if marca == "afiliado":
+        conteudo += ("\n\n# Produto da Shopee\n" + _produto_em_texto(produto or {})
+                     + "\nA foto do produto entra sozinha nos slides capa e produto. No slide preco, use os valores exatos acima.")
     cliente = cliente or _cliente()
     try:
         resposta = cliente.beta.messages.create(
-            model=settings.ESTUDIO_MODELO,
+            model=modelo or settings.ESTUDIO_MODELO,
             max_tokens=12000,
-            system=_sistema(marca, formato),
+            # O sistema é igual para a mesma marca e formato: fica em cache e sai mais barato.
+            system=[{"type": "text", "text": _sistema(marca, formato), "cache_control": {"type": "ephemeral"}}],
             messages=[{"role": "user", "content": conteudo}],
             tools=[_ferramenta(marca)],
-            tool_choice={"type": "tool", "name": "montar_post"},
+            # Opus 5.5 e Sonnet 5.5 não aceitam forçar a ferramenta (erro 400): a instrução fica no sistema.
+            tool_choice={"type": "auto"},
             betas=["server-side-fallback-2026-07-01"],
             fallbacks="default",
         )

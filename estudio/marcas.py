@@ -24,6 +24,10 @@ CAMPOS_TEXTO = {
     "botao": ("Botão", 28),
     "site": ("Selo do site", 30),
     "selo": ("Selo", 30),
+    "preco": ("Preço", 20),
+    "de": ("Preço antigo (riscado)", 20),
+    "desconto": ("Selo de desconto", 14),
+    "codigo": ("Código do cupom", 24),
 }
 LIMITES_LISTA = {"itens": 5, "pares": 4, "linhas": 6, "baloes": 4}
 
@@ -75,9 +79,44 @@ MARCAS = {
 }
 
 
+# O Estúdio Instagram do painel: posts do próprio afiliado, com as cores do tema escolhido (ou da
+# marca dele, no Premium). "foto" é a foto do produto (da Shopee ou enviada pela pessoa).
+MARCAS["afiliado"] = {
+    "nome": "Estúdio Instagram",
+    "formato_padrao": "retrato",
+    "tipos": {
+        "capa": ("Capa", ["chapeu", "titulo", "texto", "foto", "sem_fundo", "desconto"]),
+        "produto": ("Produto com foto", ["chapeu", "titulo", "texto", "foto", "sem_fundo", "selo"]),
+        "preco": ("Preço", ["chapeu", "titulo", "de", "preco", "desconto", "nota"]),
+        "lista": ("Lista", ["chapeu", "titulo", "texto", "itens", "numerada"]),
+        "texto": ("Texto com destaque", ["chapeu", "titulo", "texto", "destaque"]),
+        "cupom": ("Cupom", ["chapeu", "titulo", "codigo", "texto", "nota"]),
+        "cta": ("Chamada final", ["titulo", "texto", "botao"]),
+    },
+    "cores": {"tema": "Cor do tema", "claro": "Claro", "destaque": "Destaque", "branco": "Branco", "escuro": "Escuro"},
+    "artes": {"circulos": "Círculos", "canto": "Canto", "manchas": "Manchas", "ondas": "Ondas", "moldura": "Moldura", "halo": "Halo"},
+    "tons": {"escuro": "Cor do tema", "claro": "Claro"},
+    "icones": [],
+    "prints": [],
+    "voz": ("Quem posta é um afiliado Shopee, para os seguidores dele. Fale como uma pessoa que indica achados, "
+            "de um jeito animado e honesto. Não diga que é a loja nem a Shopee. Preço e desconto só os que vieram nos "
+            "dados do produto; se não vieram, não escreva valores. Diga que o preço pode mudar. "
+            "Chame para o link na bio (ou para o link do story, em stories)."),
+}
+# As mesmas cores dos temas do gerador de carrosséis (painel/static/painel/carrossel/carrossel.js).
+TEMAS_AFILIADO = {
+    "verde": {"a": "#1F3A2E", "b": "#F6F3EA", "acc": "#F2C230", "ink": "#1D2A23"},
+    "laranja": {"a": "#E8541E", "b": "#FFF3EA", "acc": "#FFD23F", "ink": "#2A1408"},
+    "rosa": {"a": "#D6336C", "b": "#FFF0F5", "acc": "#FFE066", "ink": "#3A0F20"},
+    "azul": {"a": "#2F6FDE", "b": "#EEF4FF", "acc": "#FFD43B", "ink": "#0F1F3F"},
+    "preto": {"a": "#141414", "b": "#F5F1E8", "acc": "#D8B44A", "ink": "#141414"},
+}
+
+
 def tipos_para_ia(marca: str) -> str:
     """Descrição dos tipos de slide para o prompt da IA."""
     linhas = []
     for codigo, (nome, campos) in MARCAS[marca]["tipos"].items():
-        linhas.append(f"- {codigo} ({nome}): campos {', '.join(campos)}")
+        # foto e sem_fundo vêm do produto e do editor, não da IA
+        linhas.append(f"- {codigo} ({nome}): campos {', '.join(c for c in campos if c not in ('foto', 'sem_fundo'))}")
     return "\n".join(linhas)

@@ -1,0 +1,133 @@
+{% extends "painel/base.html" %}
+{% load static %}
+{% block titulo %}Estúdio Instagram{% endblock %}
+{% block cabeca %}<link rel="stylesheet" href="{% static 'estudio/painel.css' %}">{% endblock %}
+{% block conteudo %}
+<div class="es-pagina">
+<header class="cabecalho">
+  <div>
+    <h1>Estúdio Instagram <span class="es-selo-teste">Em teste</span></h1>
+    <p>Crie posts e stories com o seu link de afiliado. Depois é só baixar e postar.</p>
+  </div>
+  <a class="botao botao-claro" href="{% url 'painel_estudio_marca' %}">Minha marca</a>
+</header>
+
+<section class="card es-criar" aria-label="Criar post">
+  <div class="es-criar-abas" role="tablist">
+    <button type="button" role="tab" aria-selected="true" aria-controls="aba-produto" id="t-produto">Do link de um produto<small>A IA monta o post com a foto e o preço</small></button>
+    <button type="button" role="tab" aria-selected="false" aria-controls="aba-modelo" id="t-modelo">De um modelo<small>Escolha e edite os textos</small></button>
+    <button type="button" role="tab" aria-selected="false" aria-controls="aba-ia" id="t-ia">Com IA<small>Descreva o post que você quer</small></button>
+    <button type="button" role="tab" aria-selected="false" aria-controls="aba-branco" id="t-branco">Em branco<small>Comece do zero</small></button>
+  </div>
+  <div class="es-criar-corpo">
+    <div role="tabpanel" id="aba-produto" aria-labelledby="t-produto">
+      {% if not shopee_ok %}
+        <p>Para criar posts com o seu link de afiliado, conecte primeiro sua conta da Shopee.</p>
+        <p><a class="botao botao-escuro" href="{% url 'painel_configuracoes' %}">Conectar a Shopee</a></p>
+      {% else %}
+        <form method="post" action="{% url 'painel_estudio_novo' %}" data-espera="Criando o post… (até 1 minuto)">
+          {% csrf_token %}<input type="hidden" name="como" value="produto">
+          <label>Link do produto na Shopee<input type="url" name="link" required placeholder="https://s.shopee.com.br/…" inputmode="url" autocomplete="off"></label>
+          <label>O que destacar (opcional)<input type="text" name="pedido" maxlength="300" placeholder="Ex.: fale que é ótimo para presente de Natal"></label>
+          <div class="linha">
+            <label>Formato<select name="formato">{% for k, nome in formatos %}<option value="{{ k }}"{% if k == "retrato" %} selected{% endif %}>{{ nome }}</option>{% endfor %}</select></label>
+            <button class="botao botao-principal" type="submit">Criar post</button>
+          </div>
+          <p class="suave">O link de afiliado sai com o Sub ID <strong>instagram</strong>. {% if ia_ligada %}{% if restantes.geracoes > 0 %}Restam {{ restantes.geracoes }} de {{ restantes.limite }} criações com IA hoje.{% else %}As criações com IA de hoje acabaram: o post sai do modelo, com a foto e o preço do produto.{% endif %}{% endif %}</p>
+        </form>
+      {% endif %}
+    </div>
+    <div role="tabpanel" id="aba-modelo" aria-labelledby="t-modelo" hidden>
+      <form method="post" action="{% url 'painel_estudio_novo' %}" id="f-modelo">{% csrf_token %}<input type="hidden" name="como" value="modelo"></form>
+      <div class="es-modelos-grade">
+        {% for m in modelos %}
+          <div class="es-modelo-item{% if m.meu %} es-meu{% endif %}">
+            <button class="es-modelo-cartao" type="submit" form="f-modelo" name="modelo" value="{{ m.codigo }}">
+              <div class="es-previa" data-modelo="{{ m.codigo }}"></div>
+              <strong>{% if m.meu %}<span class="es-selo-teste">Seu</span> {% endif %}{{ m.nome }}</strong><small>{{ m.formato_nome }} · {{ m.descricao }}</small>
+            </button>
+            {% if m.meu %}<form method="post" action="{% url 'painel_estudio_apagar_modelo' m.meu %}" onsubmit="return confirm('Apagar o modelo &quot;{{ m.nome|escapejs }}&quot;?')">{% csrf_token %}<button class="es-apagar-modelo" type="submit">Apagar modelo</button></form>{% endif %}
+          </div>
+        {% endfor %}
+      </div>
+      {% if premium %}<p class="suave" style="margin-top:12px">Para salvar um modelo seu, abra um post e use "Salvar como modelo".</p>{% endif %}
+    </div>
+    <div role="tabpanel" id="aba-ia" aria-labelledby="t-ia" hidden>
+      {% if ia_ligada %}
+        <form method="post" action="{% url 'painel_estudio_novo' %}" data-espera="A IA está montando o post… (até 1 minuto)">
+          {% csrf_token %}<input type="hidden" name="como" value="ia">
+          <label>O que você quer no post<textarea name="pedido" rows="4" required maxlength="3000" placeholder="Ex.: carrossel com 3 dicas para economizar nas compras da Shopee, chamando para o link na bio."></textarea></label>
+          <div class="linha">
+            <label>Formato<select name="formato">{% for k, nome in formatos %}<option value="{{ k }}"{% if k == "retrato" %} selected{% endif %}>{{ nome }}</option>{% endfor %}</select></label>
+            <button class="botao botao-principal" type="submit" {% if restantes.geracoes <= 0 %}disabled{% endif %}>Criar com IA</button>
+          </div>
+          <p class="suave">{% if restantes.geracoes > 0 %}Restam {{ restantes.geracoes }} de {{ restantes.limite }} criações com IA hoje.{% else %}Você usou as {{ restantes.limite }} criações com IA de hoje. Amanhã libera de novo.{% endif %}</p>
+        </form>
+      {% else %}
+        <p class="suave">A IA está desligada agora. Comece de um modelo.</p>
+      {% endif %}
+    </div>
+    <div role="tabpanel" id="aba-branco" aria-labelledby="t-branco" hidden>
+      <form method="post" action="{% url 'painel_estudio_novo' %}">
+        {% csrf_token %}<input type="hidden" name="como" value="branco">
+        <div class="linha">
+          <label>Formato<select name="formato">{% for k, nome in formatos %}<option value="{{ k }}"{% if k == "retrato" %} selected{% endif %}>{{ nome }}</option>{% endfor %}</select></label>
+          <button class="botao botao-principal" type="submit">Começar</button>
+        </div>
+        {% if not premium %}<p class="suave">No seu plano, o post em branco começa com uma capa. Montar slide por slide é do plano Premium.</p>{% endif %}
+      </form>
+    </div>
+  </div>
+</section>
+
+<section>
+  <h2 class="titulo-secao">Seus posts</h2>
+  {% if cartoes %}
+    <div class="es-posts">
+      {% for c in cartoes %}
+        <a class="es-post" href="{% url 'painel_estudio_editor' c.post.pk %}">
+          {% if c.miniatura %}<img src="{{ c.miniatura }}" alt="" loading="lazy">{% else %}<span class="sem-miniatura">Sem prévia</span>{% endif %}
+          <strong>{{ c.post.nome }}</strong><small>{{ c.formato }} · {{ c.post.atualizado_em|date:"d/m/Y H:i" }}</small>
+        </a>
+      {% endfor %}
+    </div>
+  {% else %}
+    <p class="suave">Nenhum post ainda. Cole o link de um produto ou escolha um modelo acima.</p>
+  {% endif %}
+</section>
+</div>
+
+{{ previa_config|json_script:"es-config" }}
+{{ previa_modelos|json_script:"es-modelos-dados" }}
+<script src="{% static 'estudio/marca-afiliado.js' %}"></script>
+<script>
+(function () {
+  // Abas do "criar post"
+  const abas = document.querySelectorAll('.es-criar-abas [role=tab]');
+  abas.forEach((aba) => aba.addEventListener('click', () => {
+    abas.forEach((a) => { const sel = a === aba; a.setAttribute('aria-selected', sel); document.getElementById(a.getAttribute('aria-controls')).hidden = !sel; });
+  }));
+  // Criar leva alguns segundos (Shopee + IA): avisa e evita o clique duplo.
+  document.querySelectorAll('form[data-espera]').forEach((f) => f.addEventListener('submit', () => {
+    const b = f.querySelector('button[type=submit]'); b.disabled = true; b.textContent = f.dataset.espera;
+  }));
+  // Prévia da capa de cada modelo, com o mesmo desenho do editor.
+  const cfg = JSON.parse(document.getElementById('es-config').textContent);
+  const modelos = JSON.parse(document.getElementById('es-modelos-dados').textContent);
+  const M = window.EstudioMarcas.afiliado;
+  // Nas prévias, os modelos de produto aparecem com uma foto e um preço de exemplo.
+  const exemplo = { nome: 'Exemplo', imagem: cfg.exemplo, preco: 47.9, de: 89.9, desconto: 47 };
+  const estilo = document.createElement('style'); estilo.textContent = M.css(cfg); document.head.append(estilo);
+  function desenhar() {
+    document.querySelectorAll('.es-previa[data-modelo]').forEach((caixa) => {
+      const m = modelos.find((x) => x.codigo === caixa.dataset.modelo); if (!m) return;
+      const b = M.base(m.formato), largura = caixa.clientWidth || 160, k = largura / b.w;
+      caixa.style.height = b.h * k + 'px';
+      caixa.innerHTML = `<div style="transform:scale(${k})">${M.render((m.produto ? M.comProduto(JSON.parse(JSON.stringify(m.slides)), exemplo) : m.slides)[0], { i: 0, total: m.slides.length, formato: m.formato, tema: m.tema }, cfg)}</div>`;
+    });
+  }
+  document.getElementById('t-modelo').addEventListener('click', () => requestAnimationFrame(desenhar));
+  document.fonts.ready.then(desenhar);
+})();
+</script>
+{% endblock %}

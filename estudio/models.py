@@ -69,3 +69,89 @@ class ImagemEstudio(models.Model):
 
     def __str__(self):
         return self.nome or self.arquivo.name
+
+
+# --- Estúdio Instagram (painel do afiliado) ------------------------------------------------------
+# Imagens ficam no banco (BinaryField), como no resto do painel: o disco do servidor não guarda arquivos.
+
+TEMAS_AFILIADO = [("verde", "Verde"), ("laranja", "Laranja"), ("rosa", "Rosa"), ("azul", "Azul"), ("preto", "Preto"),
+                  ("marca", "Minha marca")]
+FONTES_AFILIADO = [("moderna", "Moderna"), ("geometrica", "Geométrica"), ("impacto", "Impacto"), ("elegante", "Elegante"),
+                   ("serifa", "Serifada"), ("suave", "Suave")]
+
+
+class PostInstagram(models.Model):
+    """Post ou sequência de stories que o afiliado faz no Estúdio Instagram do painel."""
+
+    RASCUNHO = "rascunho"
+    ESTADOS = [(RASCUNHO, "Rascunho"), ("agendado", "Agendado"), ("publicado", "Publicado"), ("erro", "Erro ao publicar")]
+
+    conta = models.ForeignKey("licencas.ContaAppfiliado", on_delete=models.CASCADE, related_name="posts_instagram")
+    formato = models.CharField(max_length=20, choices=FORMATOS, default="retrato")
+    tema = models.CharField(max_length=20, choices=TEMAS_AFILIADO, default="verde")
+    nome = models.CharField(max_length=120, default="Novo post")
+    slides = models.JSONField(default=list, blank=True)
+    legenda = models.TextField(blank=True)
+    # Produto da Shopee quando o post nasceu de um link: nome, preco, de, desconto, imagem, link (de afiliado).
+    produto = models.JSONField(default=dict, blank=True)
+    miniatura = models.BinaryField(null=True, blank=True)  # JPEG pequeno do primeiro slide
+    estado = models.CharField(max_length=20, choices=ESTADOS, default=RASCUNHO)
+    criado_em = models.DateTimeField(auto_now_add=True)
+    atualizado_em = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ["-atualizado_em"]
+        verbose_name = "post do Estúdio Instagram"
+        verbose_name_plural = "posts do Estúdio Instagram"
+
+    def __str__(self):
+        return self.nome
+
+
+class MarcaAfiliado(models.Model):
+    """"Minha marca": o @ (todos os planos) e a identidade que entra nos posts (Premium)."""
+
+    conta = models.OneToOneField("licencas.ContaAppfiliado", on_delete=models.CASCADE, related_name="marca_instagram")
+    nome = models.CharField("nome exibido", max_length=60, blank=True)
+    arroba = models.CharField("@ do Instagram", max_length=31, blank=True)
+    cor = models.CharField("cor principal", max_length=7, default="#1F3A2E")
+    cor_destaque = models.CharField("cor de destaque", max_length=7, default="#F2C230")
+    fonte = models.CharField(max_length=20, choices=FONTES_AFILIADO, default="moderna")
+    logo = models.BinaryField(null=True, blank=True)  # PNG
+    atualizada_em = models.DateTimeField(auto_now=True)
+
+    def __str__(self):
+        return self.arroba or self.nome or f"Marca da conta {self.conta_id}"
+
+
+class ImagemAfiliado(models.Model):
+    """Imagem enviada pelo afiliado: foto de produto (todos os planos) ou fundo de slide (Premium)."""
+
+    conta = models.ForeignKey("licencas.ContaAppfiliado", on_delete=models.CASCADE, related_name="imagens_instagram")
+    dados = models.BinaryField()
+    tipo = models.CharField(max_length=20, default="image/jpeg")
+    nome = models.CharField(max_length=120, blank=True)
+    enviada_em = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ["-enviada_em"]
+
+
+class ModeloAfiliado(models.Model):
+    """"Salvar como modelo" (Premium): um post do afiliado que vira ponto de partida para os próximos."""
+
+    conta = models.ForeignKey("licencas.ContaAppfiliado", on_delete=models.CASCADE, related_name="modelos_instagram")
+    nome = models.CharField(max_length=80)
+    formato = models.CharField(max_length=20, choices=FORMATOS, default="retrato")
+    tema = models.CharField(max_length=20, choices=TEMAS_AFILIADO, default="verde")
+    slides = models.JSONField(default=list)
+    legenda = models.TextField(blank=True)
+    # Nasceu de um post com produto: ao usar, a foto e o preço do produto novo entram nos slides.
+    produto = models.BooleanField(default=False)
+    criado_em = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ["-criado_em"]
+
+    def __str__(self):
+        return self.nome

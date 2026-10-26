@@ -69,6 +69,13 @@ MODULOS_DO_MENU = [
                            "Instagram com textos feitos por IA e o seu link de afiliado.",
     },
     {
+        # Em construção: só aparece para contas com a chave "beta" ligada no admin.
+        "slug": "estudio_instagram", "nome": "Estúdio Instagram", "icone": "instagram", "modulo": MODULO_CARROSSEIS,
+        "modulos_que_liberam": [MODULO_CARROSSEIS, MODULO_CARROSSEIS_PREMIUM], "pronto": True,
+        "beta": "beta_estudio_instagram",
+        "texto_bloqueado": "Crie posts e stories com a sua marca e publique direto no seu Instagram.",
+    },
+    {
         "slug": "notas", "nome": "Emissor NFS-e", "icone": "notas", "modulo": MODULO_NOTAS, "pronto": True,
         "texto_bloqueado": "Emita no automático a nota da Shopee e as notas de cada vendedor que pagou "
                            "comissão extra e mande cada uma por e-mail pro vendedor.",
@@ -87,6 +94,7 @@ URL_DE_SLUG = {
     "whatsapp": "painel_whatsapp",
     "site": "painel_meu_site",
     "carrosseis": "painel_carrosseis",
+    "estudio_instagram": "painel_estudio",
     "notas": "painel_notas",
     "sugestoes": "painel_sugestoes",
     "configuracoes": "painel_configuracoes",
@@ -102,9 +110,16 @@ def estado(item: dict, liberados: list[str]) -> str:
     return "liberado" if item["pronto"] else "em_breve"
 
 
-def menu(liberados: list[str], ativo: str) -> list[dict]:
+def ve_beta(item: dict, conta) -> bool:
+    """Item em construção ("beta") só aparece para a conta com a chave ligada."""
+    return not item.get("beta") or bool(getattr(conta, item["beta"], False))
+
+
+def menu(liberados: list[str], ativo: str, conta=None) -> list[dict]:
     itens = []
     for item in MODULOS_DO_MENU:
+        if not ve_beta(item, conta):
+            continue
         situacao = estado(item, liberados)
         url_name = URL_DE_SLUG.get(item["slug"])
         href = reverse(url_name) if url_name else reverse("painel_modulo", args=[item["slug"]])

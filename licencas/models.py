@@ -116,6 +116,14 @@ class ContaAppfiliado(models.Model):
     # E-mails de primeiros passos (painel/primeiros_passos.py): dia 1 e dia 3 depois da compra.
     passos_email_1_em = models.DateTimeField(null=True, blank=True)
     passos_email_2_em = models.DateTimeField(null=True, blank=True)
+    # Cartão "Primeiros passos" do Início: "Me lembre mais tarde" esconde até esta hora;
+    # "Não mostrar novamente" esconde de vez.
+    passos_adiados_ate = models.DateTimeField(null=True, blank=True)
+    passos_ocultos = models.BooleanField(default=False)
+    # Recursos ainda em construção: só aparecem no painel de quem tiver a chave ligada (admin).
+    beta_estudio_instagram = models.BooleanField(
+        "testa o Estúdio Instagram", default=False,
+        help_text="Mostra o Estúdio Instagram (ainda em construção) no painel desta conta. Os outros não veem nada.")
     criada_em = models.DateTimeField(auto_now_add=True)
     atualizada_em = models.DateTimeField(auto_now=True)
 

@@ -55,7 +55,7 @@ def _contexto(request, ativo: str, **extra) -> dict:
     liberados = conta.modulos_liberados() if conta else []
     return {
         "conta": conta,
-        "menu": mod.menu(liberados, ativo),
+        "menu": mod.menu(liberados, ativo, conta),
         "modulos_liberados": liberados,
         "url_planos": settings.APPFILIADO_URL_PLANOS,
         "icones": mod.ICONES,
@@ -111,6 +111,19 @@ def entrar(request):
 
 
 @require_POST
+@conta_requerida
+def ocultar_passos(request):
+    """Botões do cartão "Primeiros passos": adiar por 12 horas ou esconder de vez."""
+    conta = conta_logada(request)
+    if request.POST.get("acao") == "nunca":
+        conta.passos_ocultos = True
+    else:
+        conta.passos_adiados_ate = timezone.now() + primeiros_passos.ADIAR_POR
+    conta.save(update_fields=["passos_ocultos", "passos_adiados_ate"])
+    return redirect("painel_inicio")
+
+
+@require_POST
 def sair(request):
     fazer_logout(request)
     return redirect("painel_entrar")
@@ -160,18 +173,13 @@ def inicio(request):
     fim_mes = hoje - timedelta(days=1) if mes_fechado else hoje
     inicio_mes = fim_mes.replace(day=1)
 
-    cartoes_modulos = [
-        {**item, "estado": mod.estado(item, liberados), "icone_path": mod.ICONES[item["icone"]],
-         "href": item_menu["href"]}
-        for item, item_menu in zip(mod.MODULOS_DO_MENU, mod.menu(liberados, ""))
-        if item["modulo"]
-    ]
+    cartoes_modulos = [item for item in mod.menu(liberados, "", conta) if item["modulo"]]
     # O mesmo checklist dos e-mails de primeiros passos (a senha já foi criada: a pessoa entrou).
     passos = [p for p in primeiros_passos.passos(conta, liberados) if p["chave"] != "senha"]
     contexto = {
         "hoje": _hoje_por_extenso(),
         "passos": passos,
-        "passos_pendentes": bool(primeiros_passos.pendentes(passos)),
+        "passos_pendentes": bool(primeiros_passos.pendentes(passos)) and primeiros_passos.cartao_visivel(conta),
         "cartoes_modulos": cartoes_modulos,
         "primeiro_nome": (conta.nome or "").split(" ")[0],
         "shopee_conectada": bool(conta.shopee_validado_em),
@@ -340,7 +348,7 @@ def metas_view(request):
 @conta_requerida
 def modulo(request, slug):
     item = mod.POR_SLUG.get(slug)
-    if not item:
+    if not item or not mod.ve_beta(item, conta_logada(request)):
         raise Http404
     if slug in mod.URL_DE_SLUG:  # módulo com página própria (ex: /m/site/ -> /meu-site/)
         return redirect(mod.URL_DE_SLUG[slug])

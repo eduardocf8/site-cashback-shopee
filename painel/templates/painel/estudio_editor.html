@@ -1,0 +1,93 @@
+{% extends "painel/base.html" %}
+{% load static %}
+{% block titulo %}{{ post.nome }} · Estúdio Instagram{% endblock %}
+{% block cabeca %}<link rel="stylesheet" href="{% static 'estudio/estudio.css' %}"><link rel="stylesheet" href="{% static 'estudio/painel.css' %}">{% endblock %}
+{% block conteudo %}
+{% csrf_token %}
+<div class="es-topo-editor">
+  <div>
+    <a class="voltar" href="{% url 'painel_estudio' %}">← Estúdio Instagram</a>
+    <h1 id="migalha">{{ post.nome }}</h1>
+  </div>
+  <div class="acoes">
+    {% if post.produto.link %}<button type="button" class="es-bt" id="es-copiar-link" data-link="{{ post.produto.link }}">Copiar link de afiliado</button>{% endif %}
+    <form method="post" action="{% url 'painel_estudio_duplicar' post.pk %}">{% csrf_token %}<button class="es-bt" type="submit">Duplicar</button></form>
+    <form method="post" action="{% url 'painel_estudio_apagar' post.pk %}" onsubmit="return confirm('Apagar este post?')">{% csrf_token %}<button class="es-bt" type="submit">Apagar</button></form>
+  </div>
+</div>
+<div id="estudio" class="estudio marca-afiliado">
+  <div class="es-barra">
+    <input id="es-nome" class="es-nome" maxlength="120" aria-label="Nome do post">
+    <select id="es-formato" aria-label="Formato"></select>
+    {% if premium %}<select id="es-tema" aria-label="Cores">{% for k, nome in temas %}<option value="{{ k }}">{{ nome }}</option>{% endfor %}</select>{% endif %}
+    <button type="button" class="es-bt" id="es-modelos">Trocar de modelo</button>
+    <button type="button" class="es-bt es-ia" id="es-ia">✨ Criar ou ajustar com IA</button>
+    <span class="es-espaco"></span>
+    <label class="es-check"><input type="checkbox" id="es-guias" checked> Margens de segurança</label>
+    <button type="button" class="es-bt" id="es-baixar">Baixar slide</button>
+    <button type="button" class="es-bt" id="es-zip">Baixar tudo (ZIP)</button>
+    {% if premium %}<button type="button" class="es-bt" id="es-salvar-modelo">Salvar como modelo</button>{% endif %}
+    <button type="button" class="es-bt es-salvar" id="es-salvar">Salvar</button>
+  </div>
+  <div class="es-corpo">
+    <aside class="es-lista">
+      <div id="es-slides"></div>
+      <div class="es-adicionar">
+        <select id="es-novo-tipo" aria-label="Tipo do novo slide"></select>
+        <button type="button" class="es-bt" id="es-adicionar">+ Slide</button>
+      </div>
+    </aside>
+    <main class="es-palco">
+      <div class="es-palco-area" id="es-palco-area"><div id="es-escala" class="es-escala"><div id="es-quadro"></div><div id="es-guias-camada" class="es-guias"></div></div></div>
+      <div class="es-navegar">
+        <button type="button" class="es-bt" id="es-anterior">← Slide anterior</button>
+        <span id="es-posicao"></span>
+        <button type="button" class="es-bt" id="es-proximo">Próximo slide →</button>
+      </div>
+      <ul id="es-avisos" class="es-avisos"></ul>
+    </main>
+    <aside class="es-campos" id="es-campos"></aside>
+  </div>
+  <section class="es-legenda">
+    <div class="es-legenda-topo"><b>Legenda</b><span id="es-legenda-conta"></span><button type="button" class="es-bt" id="es-copiar">Copiar legenda</button></div>
+    <textarea id="es-legenda" rows="6" maxlength="2200" placeholder="A legenda do post (a IA escreve uma quando cria o post)."></textarea>
+  </section>
+  <div id="es-exportar" class="es-exportar" aria-hidden="true"></div>
+</div>
+
+<dialog id="es-dialogo-ia" class="es-dialogo">
+  <form method="dialog">
+    <h2>Criar ou ajustar com IA</h2>
+    <p class="es-quieto">Descreva o que você quer. A IA escreve os textos e a legenda{% if post.produto %} a partir do produto{% endif %}. Depois, tudo continua editável.</p>
+    <label class="es-radio"><input type="radio" name="es-ia-modo" value="ajustar" checked> Ajustar este post</label>
+    <label class="es-radio"><input type="radio" name="es-ia-modo" value="novo"> Criar os slides de novo</label>
+    <textarea id="es-ia-pedido" rows="4" placeholder="Ex.: deixe os textos mais curtos e fale que é ótimo para presente."></textarea>
+    <p class="es-quieto" id="es-ia-restantes">{{ restantes }}</p>
+    <p id="es-ia-erro" class="es-erro"></p>
+    <div class="es-dialogo-botoes"><button value="cancelar" class="es-bt">Cancelar</button><button type="button" id="es-ia-gerar" class="es-bt es-salvar">Gerar</button></div>
+  </form>
+</dialog>
+
+<dialog id="es-dialogo-modelos" class="es-dialogo es-dialogo-largo">
+  <form method="dialog">
+    <h2>Trocar de modelo</h2>
+    <p class="es-quieto">O modelo substitui os slides e a legenda deste post{% if post.produto %}. A foto e o preço do produto entram sozinhos{% endif %}.</p>
+    <div id="es-modelos-lista" class="es-modelos-lista"></div>
+    <div class="es-dialogo-botoes"><button value="cancelar" class="es-bt">Fechar</button></div>
+  </form>
+</dialog>
+
+{{ config|json_script:"es-config" }}
+{{ projeto|json_script:"es-projeto" }}
+{{ modelos|json_script:"es-modelos-dados" }}
+<script src="{% static 'estudio/vendor/html-to-image.js' %}"></script>
+<script src="{% static 'estudio/vendor/jszip.min.js' %}"></script>
+<script src="{% static 'estudio/marca-afiliado.js' %}"></script>
+<script src="{% static 'estudio/estudio.js' %}"></script>
+<script>
+  document.getElementById('es-copiar-link')?.addEventListener('click', async (e) => {
+    await navigator.clipboard.writeText(e.target.dataset.link); e.target.textContent = 'Link copiado ✓';
+    setTimeout(() => { e.target.textContent = 'Copiar link de afiliado'; }, 2000);
+  });
+</script>
+{% endblock %}

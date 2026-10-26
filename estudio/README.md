@@ -29,3 +29,30 @@ Editor de posts e stories do Instagram dentro do admin, um para cada marca:
 | `modelos/*.json` | Modelos iniciais. Os do Appfiliado vêm dos posts e destaques publicados. |
 
 Mudou uma cor ou um tamanho nas artes de `marketing/`? Mude também no `marca-*.js` correspondente.
+
+## Estúdio Instagram (painel do afiliado)
+
+O mesmo editor, dentro do painel, para o afiliado fazer os posts dele. Está **em teste**: só aparece
+para a conta com "testa o Estúdio Instagram" marcado no admin (Contas do Appfiliado). Para as outras,
+o item do menu some e todas as páginas respondem 404.
+
+- **Criar:** do link de um produto da Shopee (a IA escreve; sem IA, sai do modelo de produto com a foto
+  e o preço), de um modelo, com um pedido para a IA ou em branco. A IA gasta o mesmo limite do dia do
+  gerador de carrosséis e usa `ESTUDIO_MODELO_AFILIADOS`.
+- **Preço e foto** vêm sempre dos dados da Shopee (`afiliados.com_produto`): a IA não escreve valores.
+- **Standard** (modo "simples"): edita textos e a foto, reordena e apaga slides. Cores e fundos vêm do modelo.
+- **Premium** (modo "completo"): tudo do estúdio do admin, mais as cores, a fonte e o logo da Minha marca.
+- **Imagens** (fotos enviadas, logo e miniaturas) ficam no banco, como no resto do painel.
+- **Remover o fundo** (Premium): a mesma IA de recorte do gerador de carrosséis (`@imgly/background-removal`),
+  rodando no navegador. O PNG sem fundo vira uma imagem da pessoa e o slide marca `sem_fundo` (produto solto).
+- **Salvar como modelo** (Premium): até 30 por conta. Se o post era de um produto, a foto e o preço saem do
+  modelo e entram os do próximo produto.
+- **IA:** `tool_choice` vai `auto` (Opus 5.5 e Sonnet 5.5 recusam forçar a ferramenta) e o prompt do sistema
+  fica em cache; o produto vai na mensagem.
+
+| Arquivo | O que faz |
+|---|---|
+| `static/estudio/marca-afiliado.js` | Desenho dos slides do afiliado: temas do gerador de carrosséis ou a Minha marca, com contraste calculado por slide. |
+| `afiliados.py` | Regras de plano, criar post, limite da IA, imagens e Minha marca. |
+| `modelos/afiliado.json` | Modelos dos afiliados (`"produto": true` recebe a foto e o preço do produto). |
+| `painel/views_estudio.py` | As telas do painel. |

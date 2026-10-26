@@ -227,6 +227,8 @@ ATENDIMENTO_AVISAR = os.environ.get("APPFILIADO_ATENDIMENTO_AVISAR", "")
 ATENDIMENTO_MODELO = os.environ.get("APPFILIADO_ATENDIMENTO_MODELO", "claude-opus-5-5")
 # Modelo que monta os posts no Estúdio de posts do admin (usa a mesma ANTHROPIC_API_KEY).
 ESTUDIO_MODELO = os.environ.get("ESTUDIO_MODELO", "claude-opus-5-5")
+# O do Estúdio Instagram dos afiliados (painel): mais barato, porque roda para todos os clientes.
+ESTUDIO_MODELO_AFILIADOS = os.environ.get("ESTUDIO_MODELO_AFILIADOS", "claude-sonnet-5-5")
 ANTHROPIC_API_KEY = os.environ.get("ANTHROPIC_API_KEY", "")
 
 # Credenciais da API da Asaas para pagar os saques via PIX (ficam no arquivo .env, nunca no código)

@@ -1,0 +1,77 @@
+[
+  {
+    "codigo": "achado", "produto": true, "nome": "Achado do dia", "formato": "retrato", "tema": "verde",
+    "descricao": "Capa com a foto, o que o produto tem de bom, preço e chamada.",
+    "legenda": "Achei e precisava mostrar para vocês 👀\n\nO link está na bio. O preço é o de hoje e pode mudar a qualquer momento.\n\n#achadinhos #shopee #achadosdashopee #ofertas #promoção",
+    "slides": [
+      {"tipo": "capa", "fundo": {"modo": "cor", "cor": "tema"}, "chapeu": "Achado do dia", "titulo": "O achado que *facilita* a sua rotina", "texto": "", "foto": "", "desconto": ""},
+      {"tipo": "produto", "fundo": {"modo": "cor", "cor": "claro"}, "chapeu": "Por que eu indico", "titulo": "O que ele tem de bom", "texto": "Prático, bem avaliado e com entrega para todo o Brasil.", "foto": "", "selo": "Bem avaliado"},
+      {"tipo": "preco", "fundo": {"modo": "cor", "cor": "tema"}, "chapeu": "Preço de hoje", "titulo": "Vale cada centavo", "de": "", "preco": "R$ 0,00", "desconto": "", "nota": "Preço visto hoje. Pode mudar a qualquer momento."},
+      {"tipo": "cta", "fundo": {"modo": "arte", "arte": "canto", "tom": "escuro"}, "titulo": "Quer o seu? O link está *na bio.*", "texto": "Salve este post para achar depois.", "botao": "Link na bio"}
+    ]
+  },
+  {
+    "codigo": "oferta", "produto": true, "nome": "Oferta relâmpago", "formato": "retrato", "tema": "laranja",
+    "descricao": "Para quando o preço caiu: capa chamativa, preço e chamada.",
+    "legenda": "Baixou o preço! 🔥\n\nCorre no link da bio antes que acabe. O preço é o de hoje e pode mudar.\n\n#achadinhos #shopee #ofertarelampago #promoção #desconto",
+    "slides": [
+      {"tipo": "capa", "fundo": {"modo": "cor", "cor": "destaque"}, "chapeu": "Oferta relâmpago", "titulo": "Corre que *baixou* o preço", "texto": "", "foto": "", "desconto": ""},
+      {"tipo": "preco", "fundo": {"modo": "cor", "cor": "tema"}, "chapeu": "Só hoje", "titulo": "Olha esse preço", "de": "", "preco": "R$ 0,00", "desconto": "", "nota": "Preço visto hoje. Pode mudar a qualquer momento."},
+      {"tipo": "cta", "fundo": {"modo": "arte", "arte": "manchas", "tom": "escuro"}, "titulo": "O link está *na bio.*", "texto": "Corre antes que o preço volte.", "botao": "Link na bio"}
+    ]
+  },
+  {
+    "codigo": "top3", "nome": "Top 3 achados", "formato": "retrato", "tema": "rosa",
+    "descricao": "Lista de achados com uma capa só de texto.",
+    "legenda": "Separei 3 achados que valem muito a pena 💖\n\nOs links estão na bio. Me conta qual você levaria!\n\n#achadinhos #shopee #achadosdashopee #comprinhas #dicas",
+    "slides": [
+      {"tipo": "capa", "fundo": {"modo": "arte", "arte": "circulos", "tom": "escuro"}, "chapeu": "Achados da semana", "titulo": "3 achados que *valem* a pena", "texto": "Arraste para ver todos.", "foto": "", "desconto": ""},
+      {"tipo": "lista", "fundo": {"modo": "cor", "cor": "claro"}, "chapeu": "Os escolhidos", "titulo": "Anota aí", "texto": "", "numerada": true, "itens": [
+        {"titulo": "Primeiro achado", "texto": "Por que vale a pena, em uma frase."},
+        {"titulo": "Segundo achado", "texto": "Por que vale a pena, em uma frase."},
+        {"titulo": "Terceiro achado", "texto": "Por que vale a pena, em uma frase."}]},
+      {"tipo": "cta", "fundo": {"modo": "arte", "arte": "canto", "tom": "escuro"}, "titulo": "Os links estão *na bio.*", "texto": "Salve para não perder.", "botao": "Link na bio"}
+    ]
+  },
+  {
+    "codigo": "dica", "nome": "Dica de compra", "formato": "retrato", "tema": "preto",
+    "descricao": "Post de conteúdo: uma dica útil para quem compra na Shopee.",
+    "legenda": "Salva essa dica para a próxima compra 📌\n\nTem mais achados no link da bio.\n\n#shopee #dicasdecompra #achadinhos #economia #comprasonline",
+    "slides": [
+      {"tipo": "capa", "fundo": {"modo": "cor", "cor": "tema"}, "chapeu": "Dica de compra", "titulo": "Como achar *ofertas boas* na Shopee", "texto": "Três passos que eu sigo sempre.", "foto": "", "desconto": ""},
+      {"tipo": "lista", "fundo": {"modo": "cor", "cor": "claro"}, "chapeu": "Passo a passo", "titulo": "Antes de comprar", "texto": "", "numerada": true, "itens": [
+        {"titulo": "Veja as avaliações com foto", "texto": "Elas mostram o produto de verdade."},
+        {"titulo": "Compare o preço antigo", "texto": "Desconto bom é em cima do preço de sempre."},
+        {"titulo": "Use os cupons do dia", "texto": "Eles somam com a oferta."}]},
+      {"tipo": "texto", "fundo": {"modo": "cor", "cor": "destaque"}, "chapeu": "Bônus", "titulo": "Frete grátis compensa?", "texto": "Junte os itens da mesma loja para bater o valor mínimo.", "destaque": "Vale mais do que pagar o frete duas vezes."},
+      {"tipo": "cta", "fundo": {"modo": "arte", "arte": "ondas", "tom": "escuro"}, "titulo": "Os achados estão *na bio.*", "texto": "Siga para receber mais dicas.", "botao": "Link na bio"}
+    ]
+  },
+  {
+    "codigo": "cupom", "nome": "Cupom do dia", "formato": "quadrado", "tema": "azul",
+    "descricao": "Divulgue um cupom: o código em destaque e como usar.",
+    "legenda": "Cupom novo na área 🎟️\n\nCopie o código e use no carrinho antes de pagar. Vale enquanto durar.\n\n#shopee #cupom #cupomshopee #desconto #achadinhos",
+    "slides": [
+      {"tipo": "cupom", "fundo": {"modo": "cor", "cor": "tema"}, "chapeu": "Cupom do dia", "titulo": "Desconto extra na *Shopee*", "codigo": "CUPOM10", "texto": "Use no carrinho antes de pagar.", "nota": "Vale enquanto durar."},
+      {"tipo": "cta", "fundo": {"modo": "arte", "arte": "canto", "tom": "escuro"}, "titulo": "Mais cupons *na bio.*", "texto": "Salve este post para usar depois.", "botao": "Link na bio"}
+    ]
+  },
+  {
+    "codigo": "achado-story", "produto": true, "nome": "Story de achado", "formato": "story", "tema": "laranja",
+    "descricao": "Sequência de stories: a foto do produto, o preço e o link.",
+    "legenda": "",
+    "slides": [
+      {"tipo": "produto", "fundo": {"modo": "cor", "cor": "claro"}, "chapeu": "Achado do dia", "titulo": "Olha o que eu achei", "texto": "", "foto": "", "selo": ""},
+      {"tipo": "preco", "fundo": {"modo": "cor", "cor": "tema"}, "chapeu": "Preço de hoje", "titulo": "E o preço?", "de": "", "preco": "R$ 0,00", "desconto": "", "nota": "Pode mudar a qualquer momento."},
+      {"tipo": "cta", "fundo": {"modo": "arte", "arte": "canto", "tom": "escuro"}, "titulo": "Toque no *link* para ver", "texto": "Ou chama no direct que eu mando.", "botao": "Link aqui"}
+    ]
+  },
+  {
+    "codigo": "cupom-story", "nome": "Story de cupom", "formato": "story", "tema": "azul",
+    "descricao": "Um story com o código do cupom em destaque.",
+    "legenda": "",
+    "slides": [
+      {"tipo": "cupom", "fundo": {"modo": "arte", "arte": "ondas", "tom": "escuro"}, "chapeu": "Cupom do dia", "titulo": "Copie o código", "codigo": "CUPOM10", "texto": "Use no carrinho antes de pagar.", "nota": "Vale enquanto durar."}
+    ]
+  }
+]

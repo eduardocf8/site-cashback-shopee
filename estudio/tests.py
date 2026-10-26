@@ -140,15 +140,19 @@ class EstudioTests(TestCase):
         self.assertEqual(tela["recorte"], 0)
         self.assertEqual(len(lista["itens"]), 5)
         kwargs = cliente.beta.messages.create.call_args.kwargs
-        self.assertEqual(kwargs["tool_choice"], {"type": "tool", "name": "montar_post"})
-        self.assertIn('"pra/pro/pras/pros" só como contração', kwargs["system"])
-        self.assertIn("afiliado Shopee", kwargs["system"])
+        # Opus 5.5 e Sonnet 5.5 recusam tool_choice "tool": vai "auto", com a instrução no sistema (em cache)
+        self.assertEqual(kwargs["tool_choice"], {"type": "auto"})
+        sistema = kwargs["system"][0]
+        self.assertEqual(sistema["cache_control"], {"type": "ephemeral"})
+        self.assertIn("chamando a ferramenta montar_post", sistema["text"])
+        self.assertIn('"pra/pro/pras/pros" só como contração', sistema["text"])
+        self.assertIn("afiliado Shopee", sistema["text"])
 
     def test_ia_da_cashb_usa_o_material_do_site(self):
         cliente = mock.Mock()
         cliente.beta.messages.create.return_value = _resposta({"nome": "x", "legenda": "", "slides": [{"tipo": "cta", "titulo": "Bora", "fundo": {"modo": "cor", "cor": "roxo"}}]})
         ia.gerar("cashb", "retrato", "post", cliente=cliente)
-        sistema = cliente.beta.messages.create.call_args.kwargs["system"]
+        sistema = cliente.beta.messages.create.call_args.kwargs["system"][0]["text"]
         self.assertIn("cash-b", sistema)
         self.assertIn("Perguntas frequentes", sistema)
         self.assertIn("'Pix', nunca 'PIX'", sistema)

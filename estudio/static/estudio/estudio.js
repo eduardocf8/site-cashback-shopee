@@ -12,11 +12,14 @@
   const AMOSTRAS = {
     appfiliado: { verde: '#1F3A2E', creme: '#F6F3EA', amarelo: '#F2C230', branco: '#FFFFFF', areia: '#E9E2D3' },
     cashb: { roxo: 'linear-gradient(165deg,#4c1d95,#6d28d9 55%,#a78bfa)', claro: '#f8fafc', lilas: '#f1eefb', escuro: '#111827', branco: '#FFFFFF' },
-  }[cfg.marca];
+  }[cfg.marca] || {};
+  const amostra = (k) => (M.amostra ? M.amostra(k, est.tema, cfg) : AMOSTRAS[k]);
+  // "simples" (Estúdio Instagram, plano Standard): edita textos e foto e reordena; o resto é do modelo.
+  const completo = cfg.modo !== 'simples';
   const MIN_FONTE = 26; // px na imagem final
 
   const copia = (x) => JSON.parse(JSON.stringify(x));
-  const est = { id: inicial.id, nome: inicial.nome, formato: inicial.formato, slides: copia(inicial.slides || []), legenda: inicial.legenda || '', atual: 0, sujo: false };
+  const est = { id: inicial.id, nome: inicial.nome, formato: inicial.formato, tema: inicial.tema || '', slides: copia(inicial.slides || []), legenda: inicial.legenda || '', atual: 0, sujo: false };
   if (!est.slides.length) est.slides.push(M.novo('capa'));
 
   // ---- utilidades de DOM ---------------------------------------------------------------------
@@ -41,11 +44,12 @@
     return j;
   }
   const slug = (s) => (s || 'post').normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '').slice(0, 50) || 'post';
+  function mostrarNome() { const m = $('migalha'); if (m) m.textContent = est.nome; }
   function marcarSujo() { est.sujo = true; $('es-salvar').textContent = 'Salvar *'; }
 
   // ---- montar um slide ------------------------------------------------------------------------
   document.head.append(el('style', {}, M.css(cfg)));
-  const ctxDe = (i) => ({ i, total: est.slides.length, formato: est.formato });
+  const ctxDe = (i) => ({ i, total: est.slides.length, formato: est.formato, tema: est.tema });
 
   // Ajustes manuais: tamanho do título e do texto, margens extras, alinhamento e posição.
   // Os dois últimos já vêm como classes do desenho da marca; aqui entram os que mexem em medidas.
@@ -113,7 +117,7 @@
   let escalaPalco = 1;
   function desenharPalco() {
     const i = est.atual, s = est.slides[i], b = M.base(est.formato);
-    const area = $('es-palco-area'), largura = Math.max(260, area.clientWidth), altura = Math.max(320, window.innerHeight - 230);
+    const area = $('es-palco-area'), largura = Math.max(260, area.clientWidth), altura = Math.max(320, window.innerHeight - 270);
     const k = Math.min(largura / b.w, altura / b.h); escalaPalco = k;
     const esc = $('es-escala'); esc.style.width = b.w * k + 'px'; esc.style.height = b.h * k + 'px';
     const quadro = $('es-quadro'); quadro.style.transform = `scale(${k})`;
@@ -139,6 +143,7 @@
     montar(i, dentro);
   }
   function desenharLista() {
+    const rolagem = document.querySelector('.es-lista'), y = rolagem.scrollTop;
     const lista = $('es-slides'); lista.innerHTML = '';
     est.slides.forEach((s, i) => {
       const img = el('div', { class: 'es-mini-img' });
@@ -147,13 +152,16 @@
         el('span', {},
           el('button', { type: 'button', title: 'Subir', disabled: i === 0, on: { click: mover(-1) } }, '↑'),
           el('button', { type: 'button', title: 'Descer', disabled: i === est.slides.length - 1, on: { click: mover(1) } }, '↓'),
-          el('button', { type: 'button', title: 'Duplicar', disabled: est.slides.length >= cfg.max_slides, on: { click: (ev) => { ev.stopPropagation(); est.slides.splice(i + 1, 0, copia(s)); est.atual = i + 1; tudo(); marcarSujo(); } } }, '⧉'),
+          completo && el('button', { type: 'button', title: 'Duplicar', disabled: est.slides.length >= cfg.max_slides, on: { click: (ev) => { ev.stopPropagation(); est.slides.splice(i + 1, 0, copia(s)); est.atual = i + 1; tudo(); marcarSujo(); } } }, '⧉'),
           el('button', { type: 'button', title: 'Apagar', disabled: est.slides.length === 1, on: { click: (ev) => { ev.stopPropagation(); if (!confirm('Apagar este slide?')) return; est.slides.splice(i, 1); est.atual = Math.min(est.atual, est.slides.length - 1); tudo(); marcarSujo(); } } }, '🗑')));
-      const item = el('div', { class: 'es-mini' + (i === est.atual ? ' ativo' : ''), on: { click: () => { est.atual = i; desenharLista(); desenharPalco(); desenharCampos(); } } }, img, barra);
+      const item = el('div', { class: 'es-mini' + (i === est.atual ? ' ativo' : ''), on: { click: () => selecionar(i) } }, img, barra);
       lista.append(item);
-      miniatura(i, img, lista.clientWidth - 16 || 180);
+      miniatura(i, img, img.clientWidth || lista.clientWidth - 16 || 180);
     });
     $('es-adicionar').disabled = est.slides.length >= cfg.max_slides;
+    document.querySelector('.es-adicionar').hidden = !completo;
+    rolagem.scrollTop = y;
+    mostrarAtual();
   }
   let pendente = null;
   function atualizar() {
@@ -162,10 +170,33 @@
     pendente = setTimeout(() => {
       desenharPalco();
       const caixa = document.querySelectorAll('#es-slides .es-mini-img')[est.atual];
-      if (caixa) miniatura(est.atual, caixa, $('es-slides').clientWidth - 16 || 180);
+      if (caixa) miniatura(est.atual, caixa, caixa.clientWidth || $('es-slides').clientWidth - 16 || 180);
     }, 70);
   }
   function tudo() { desenharLista(); desenharPalco(); desenharCampos(); }
+
+  // Troca o slide aberto sem redesenhar a lista, para a rolagem do painel ficar onde está.
+  function selecionar(i) {
+    if (i < 0 || i >= est.slides.length) return;
+    est.atual = i;
+    document.querySelectorAll('#es-slides .es-mini').forEach((m, k) => m.classList.toggle('ativo', k === i));
+    desenharPalco(); desenharCampos(); mostrarAtual();
+  }
+  // Deixa o slide aberto visível na lista (só rola se ele estiver fora da área visível).
+  function mostrarAtual() {
+    const m = document.querySelectorAll('#es-slides .es-mini')[est.atual];
+    const caixa = document.querySelector('.es-lista');
+    if (m && caixa) { // rola só a lista, nunca a página
+      const r = m.getBoundingClientRect(), c = caixa.getBoundingClientRect();
+      if (r.top < c.top) caixa.scrollTop -= c.top - r.top + 8;
+      else if (r.bottom > c.bottom) caixa.scrollTop += r.bottom - c.bottom + 8;
+    }
+    $('es-anterior').disabled = est.atual === 0;
+    $('es-proximo').disabled = est.atual === est.slides.length - 1;
+    $('es-posicao').textContent = `Slide ${est.atual + 1} de ${est.slides.length}`;
+  }
+  $('es-anterior').addEventListener('click', () => selecionar(est.atual - 1));
+  $('es-proximo').addEventListener('click', () => selecionar(est.atual + 1));
 
   // ---- campos do slide ------------------------------------------------------------------------
   const ROTULOS_LISTA = {
@@ -223,39 +254,95 @@
     } } }, nome);
     g.append(el('div', { class: 'es-abas' }, aba('cor', 'Cor'), aba('arte', 'Arte'), aba('imagem', 'Imagem')));
     if (f.modo === 'cor') {
-      g.append(el('div', { class: 'es-cores' }, Object.entries(cfg.cores).map(([k, nome]) => el('button', { type: 'button', title: nome, class: 'es-cor' + (f.cor === k ? ' ativo' : ''), style: `background:${AMOSTRAS[k]}`,
+      g.append(el('div', { class: 'es-cores' }, Object.entries(cfg.cores).map(([k, nome]) => el('button', { type: 'button', title: nome, class: 'es-cor' + (f.cor === k ? ' ativo' : ''), style: `background:${amostra(k)}`,
         on: { click: () => { f.cor = k; atualizar(); desenharCampos(); } } }))));
     } else if (f.modo === 'arte') {
       g.append(selecao('Tom', Object.entries(cfg.tons), f.tom || 'escuro', (v) => { f.tom = v; atualizar(); desenharCampos(); }));
       const grade = el('div', { class: 'es-artes' });
       Object.entries(cfg.artes).forEach(([k, nome]) => {
-        const amostra = M.fundo({ modo: 'arte', arte: k, tom: f.tom }, 300, 300).html;
+        const desenho = M.fundo({ modo: 'arte', arte: k, tom: f.tom }, 300, 300, M.paleta ? M.paleta(cfg, est.tema) : undefined).html;
         const bt = el('button', { type: 'button', class: 'es-arte' + (f.arte === k ? ' ativo' : ''), title: nome, on: { click: () => { f.arte = k; atualizar(); desenharCampos(); } } });
-        bt.innerHTML = `<div style="position:absolute;inset:0;transform:scale(1);">${amostra}</div>`;
+        bt.innerHTML = `<div style="position:absolute;inset:0;transform:scale(1);">${desenho}</div>`;
         bt.firstChild.querySelectorAll('.fundo').forEach((d) => { d.style.position = 'absolute'; d.style.inset = '0'; });
         const svg = bt.querySelector('svg'); if (svg) { svg.setAttribute('width', '100%'); svg.setAttribute('height', '100%'); svg.setAttribute('preserveAspectRatio', 'xMidYMid slice'); }
         bt.append(el('span', {}, nome)); grade.append(bt);
       });
       g.append(grade);
     } else {
-      const galeria = el('div', { class: 'es-imagens' }, el('p', { class: 'es-dica' }, 'Carregando imagens…'));
-      const enviar = el('input', { type: 'file', accept: 'image/jpeg,image/png,image/webp', on: { change: async (e) => {
-        const arq = e.target.files[0]; if (!arq) return;
-        const fd = new FormData(); fd.append('arquivo', arq);
-        try { const j = await post(cfg.urls.imagens, null, fd); f.imagem = j.imagens[0].url; atualizar(); desenharCampos(); }
-        catch (erro) { alert(erro.message); }
-      } } });
-      g.append(el('label', { class: 'es-campo' }, el('span', {}, 'Enviar imagem (JPG, PNG ou WebP, até 12 MB)'), enviar), galeria,
+      g.append(...enviarEGaleria(f.imagem, (url) => { f.imagem = url; atualizar(); desenharCampos(); }),
         faixa('Escurecer a imagem (véu)', f.veu || 0, 0, 0.85, 0.05, (v) => `${Math.round(v * 100)}%`, (v) => { f.veu = v; atualizar(); }),
         el('p', { class: 'es-dica' }, 'Com véu de 30% ou mais, o texto fica claro. Sem véu, o texto fica escuro.'));
-      fetch(cfg.urls.imagens, { credentials: 'same-origin' }).then((r) => r.json()).then((j) => {
-        galeria.innerHTML = '';
-        if (!j.imagens.length) galeria.append(el('p', { class: 'es-dica' }, 'Nenhuma imagem enviada ainda.'));
-        j.imagens.forEach((im) => galeria.append(el('button', { type: 'button', title: im.nome, class: 'es-imagem' + (f.imagem === im.url ? ' ativo' : ''),
-          on: { click: () => { f.imagem = im.url; atualizar(); desenharCampos(); } } }, el('img', { src: im.url, alt: im.nome, loading: 'lazy' }))));
-      }).catch(() => { galeria.innerHTML = ''; });
     }
     return g;
+  }
+
+  // Campo de envio e a galeria das imagens já enviadas. escolher(url) recebe a imagem clicada.
+  function enviarEGaleria(atual, escolher, extras) {
+    const galeria = el('div', { class: 'es-imagens' }, el('p', { class: 'es-dica' }, 'Carregando imagens…'));
+    const enviar = el('input', { type: 'file', accept: 'image/jpeg,image/png,image/webp', on: { change: async (e) => {
+      const arq = e.target.files[0]; if (!arq) return;
+      const fd = new FormData(); fd.append('arquivo', arq);
+      try { const j = await post(cfg.urls.imagens, null, fd); escolher(j.imagens[0].url); }
+      catch (erro) { alert(erro.message); }
+    } } });
+    const botao = (url, nome) => el('button', { type: 'button', title: nome, class: 'es-imagem' + (atual === url ? ' ativo' : ''),
+      on: { click: () => escolher(url) } }, el('img', { src: url, alt: nome, loading: 'lazy' }));
+    fetch(cfg.urls.imagens, { credentials: 'same-origin' }).then((r) => r.json()).then((j) => {
+      galeria.innerHTML = '';
+      (extras || []).filter(([url]) => !j.imagens.some((im) => im.url === url)).forEach(([url, nome]) => galeria.append(botao(url, nome)));
+      if (!j.imagens.length && !(extras || []).length) galeria.append(el('p', { class: 'es-dica' }, 'Nenhuma imagem enviada ainda.'));
+      j.imagens.forEach((im) => galeria.append(botao(im.url, im.nome)));
+    }).catch(() => { galeria.innerHTML = ''; });
+    return [el('label', { class: 'es-campo' }, el('span', {}, 'Enviar imagem (JPG, PNG ou WebP, até 12 MB)'), enviar), galeria];
+  }
+  function campoFoto(s) {
+    const g = el('div', { class: 'es-campo' }, el('span', {}, 'Foto'));
+    const produto = (cfg.produto || {}).imagem;
+    g.append(...enviarEGaleria(s.foto || '', (url) => { s.foto = url; s.sem_fundo = false; atualizar(); desenharCampos(); }, produto ? [[produto, 'Foto do produto na Shopee']] : []));
+    if (!s.foto) return g;
+    const botoes = el('div', { class: 'es-linha' }, el('button', { type: 'button', class: 'es-bt', on: { click: () => { s.foto = ''; s.sem_fundo = false; atualizar(); desenharCampos(); } } }, 'Tirar a foto'));
+    g.append(botoes);
+    if (cfg.premium && cfg.urls.imagens) {
+      const andamento = el('p', { class: 'es-dica', hidden: true });
+      botoes.append(el('button', { type: 'button', class: 'es-bt', on: { click: (e) => ocupado(e.target, async () => {
+        andamento.hidden = false;
+        try { s.foto = await semFundo(s.foto, (t) => { andamento.textContent = t; }); s.sem_fundo = true; atualizar(); desenharCampos(); }
+        finally { andamento.hidden = true; }
+      }) } }, 'Remover o fundo'));
+      g.append(andamento, el('label', { class: 'es-pequeno' }, el('input', { type: 'checkbox', checked: !!s.sem_fundo,
+        on: { change: (e) => { s.sem_fundo = e.target.checked; atualizar(); } } }), 'Produto solto, sem o cartão branco (para foto sem fundo)'));
+    }
+    return g;
+  }
+
+  // ---- remover o fundo da foto (Premium) --------------------------------------------------------
+  // A IA de recorte roda no navegador (a mesma do gerador de carrosséis); o servidor só guarda o PNG pronto.
+  // Baixa o modelo (~40 MB) na primeira vez.
+  const FUNDO_LIB = 'https://cdn.jsdelivr.net/npm/@imgly/background-removal@1.5.5/+esm', FUNDO_LADO = 1024;
+  const paraBlob = (canvas) => new Promise((ok, erro) => canvas.toBlob((b) => (b ? ok(b) : erro(new Error('Não consegui preparar a foto.'))), 'image/png'));
+  async function semFundo(url, avisar) {
+    avisar('Preparando a foto…');
+    const img = await new Promise((ok, erro) => { const i = new Image(); if (!url.startsWith('/')) i.crossOrigin = 'anonymous';
+      i.onload = () => ok(i); i.onerror = () => erro(new Error('Não consegui abrir essa foto. Envie a foto do produto pelo campo acima.')); i.src = url; });
+    const k = Math.min(1, FUNDO_LADO / Math.max(img.width, img.height)), entrada = document.createElement('canvas');
+    entrada.width = Math.round(img.width * k); entrada.height = Math.round(img.height * k);
+    entrada.getContext('2d').drawImage(img, 0, 0, entrada.width, entrada.height);
+    let lib;
+    try { lib = await import(FUNDO_LIB); } catch (e) { throw new Error('Não consegui carregar o recorte agora. Confira sua conexão e tente de novo.'); }
+    const saida = await lib.removeBackground(await paraBlob(entrada), { model: 'isnet_quint8', output: { format: 'image/png' },
+      progress: (chave) => avisar(String(chave).startsWith('fetch') ? 'Baixando o recorte (só na primeira vez, leva um pouco mais)…' : 'Removendo o fundo… pode levar alguns segundos') });
+    // corta a margem transparente em volta do produto, para ele ocupar a caixa da foto
+    const bmp = await createImageBitmap(saida), c = document.createElement('canvas'); c.width = bmp.width; c.height = bmp.height;
+    const ctx = c.getContext('2d', { willReadFrequently: true }); ctx.drawImage(bmp, 0, 0);
+    const px = ctx.getImageData(0, 0, c.width, c.height).data; let x0 = c.width, y0 = c.height, x1 = -1, y1 = -1;
+    for (let y = 0; y < c.height; y++) for (let x = 0; x < c.width; x++) if (px[(y * c.width + x) * 4 + 3] > 24) { if (x < x0) x0 = x; if (x > x1) x1 = x; if (y < y0) y0 = y; if (y > y1) y1 = y; }
+    if (x1 < 0) throw new Error('Não encontrei o produto nessa foto. Tente com outra foto.');
+    const m = 4; x0 = Math.max(0, x0 - m); y0 = Math.max(0, y0 - m); x1 = Math.min(c.width - 1, x1 + m); y1 = Math.min(c.height - 1, y1 + m);
+    const corte = document.createElement('canvas'); corte.width = x1 - x0 + 1; corte.height = y1 - y0 + 1;
+    corte.getContext('2d').drawImage(c, x0, y0, corte.width, corte.height, 0, 0, corte.width, corte.height);
+    avisar('Salvando…');
+    const fd = new FormData(); fd.append('arquivo', await paraBlob(corte), 'sem-fundo.png');
+    return (await post(cfg.urls.imagens, null, fd)).imagens[0].url;
   }
 
   function grupoAjustes(s, i) {
@@ -277,13 +364,14 @@
 
   function desenharCampos() {
     const i = est.atual, s = est.slides[i], tipo = cfg.tipos[s.tipo] || { campos: [] };
-    const c = $('es-campos'); c.innerHTML = '';
+    const c = $('es-campos'), yCampos = c.scrollTop, mesmoSlide = desenharCampos.ultimo === i; c.innerHTML = '';
+    desenharCampos.ultimo = i;
     const topo = el('div', { class: 'es-grupo' }, el('b', {}, `Slide ${i + 1}`),
-      selecao('Tipo do slide', Object.entries(cfg.tipos).map(([k, t]) => [k, t.nome]), s.tipo, (v) => {
+      completo && selecao('Tipo do slide', Object.entries(cfg.tipos).map(([k, t]) => [k, t.nome]), s.tipo, (v) => {
         const novo = M.novo(v); Object.keys(novo).forEach((k) => { if (k === 'tipo' || s[k] === undefined || s[k] === '') s[k] = novo[k]; }); s.tipo = v;
         atualizar(); desenharCampos(); desenharLista();
       }));
-    if (est.formato !== 'story') {
+    if (completo && est.formato !== 'story') {
       const marcado = M.ehCapa(s, ctxDe(i));
       topo.append(el('label', { class: 'es-pequeno' }, el('input', { type: 'checkbox', checked: marcado, on: { change: (e) => { s.capa = e.target.checked; atualizar(); desenharCampos(); } } }),
         'Usar como capa (margens maiores, que cabem na grade do perfil)'));
@@ -297,10 +385,15 @@
       else if (campo === 'logo') textos_.append(el('label', { class: 'es-pequeno' }, el('input', { type: 'checkbox', checked: s.logo !== false, on: { change: (e) => { s.logo = e.target.checked; atualizar(); } } }), 'Mostrar o logo'));
       else if (campo === 'icone') textos_.append(selecao('Ícone', [['', 'Sem ícone']].concat(cfg.icones.map((k) => [k, M.nomesIcones[k] || k])), s.icone || '', (v) => { s.icone = v; atualizar(); }));
       else if (campo === 'print') textos_.append(selecao('Tela do painel', Object.keys(cfg.prints).map((k) => [k, k]), s.print || '', (v) => { s.print = v; atualizar(); }));
+      else if (campo === 'foto') textos_.append(campoFoto(s));
+      else if (campo === 'sem_fundo') { /* dentro do campo da foto */ }
       else if (campo === 'recorte') textos_.append(faixa('Descer a tela', s.recorte || 0, 0, 3000, 10, (v) => `${v}`, (v) => { s.recorte = v; atualizar(); }));
     });
     textos_.append(el('p', { class: 'es-dica' }, 'Para destacar uma palavra, coloque entre asteriscos: *destaque*.'));
-    c.append(textos_, grupoFundo(s), grupoAjustes(s, i));
+    c.append(textos_);
+    if (completo) c.append(grupoFundo(s), grupoAjustes(s, i));
+    else c.append(el('p', { class: 'es-dica es-dica-plano' }, 'Cores, fundos e ajustes finos vêm do modelo. No plano Premium você muda tudo e usa a sua marca.'));
+    c.scrollTop = mesmoSlide ? yCampos : 0;
   }
 
   // ---- exportar -------------------------------------------------------------------------------
@@ -313,7 +406,8 @@
   async function imagem(i, tipo, largura) {
     const b = M.base(est.formato), caixa = $('es-exportar');
     const no = montar(i, caixa); await carregarImagens(no);
-    const fontEmbedCSS = imagem.fontes || (imagem.fontes = await htmlToImage.getFontEmbedCSS(no));
+    const fontes = imagem.fontes = imagem.fontes || {}, chave = est.tema || '-';
+    const fontEmbedCSS = fontes[chave] || (fontes[chave] = await htmlToImage.getFontEmbedCSS(no));
     const op = { width: b.w, height: b.h, pixelRatio: largura ? largura / b.w : b.escala, fontEmbedCSS, cacheBust: false };
     const url = tipo === 'jpg' ? await htmlToImage.toJpeg(no, Object.assign({ quality: 0.82, backgroundColor: '#ffffff' }, op)) : await htmlToImage.toPng(no, op);
     caixa.innerHTML = '';
@@ -337,18 +431,25 @@
   async function salvar() {
     let miniatura = '';
     try { miniatura = await imagem(0, 'jpg', 360); } catch (e) { /* sem miniatura, salva assim mesmo */ }
-    const j = await post(cfg.urls.salvar, { id: est.id, nome: est.nome, formato: est.formato, slides: est.slides, legenda: est.legenda, miniatura });
-    if (!est.id) { est.id = j.id; history.replaceState(null, '', j.url); }
+    const j = await post(cfg.urls.salvar, { id: est.id, nome: est.nome, formato: est.formato, tema: est.tema, slides: est.slides, legenda: est.legenda, miniatura });
+    if (!est.id) { est.id = j.id; if (j.url) history.replaceState(null, '', j.url); }
     est.sujo = false; $('es-salvar').textContent = 'Salvo ✓';
     setTimeout(() => { if (!est.sujo) $('es-salvar').textContent = 'Salvar'; }, 2500);
   }
   $('es-salvar').addEventListener('click', (e) => ocupado(e.target, salvar));
+  // "Salvar como modelo" (Estúdio Instagram, Premium): salva o post e guarda uma cópia como modelo.
+  if ($('es-salvar-modelo') && cfg.urls.modelo) $('es-salvar-modelo').addEventListener('click', (e) => ocupado(e.target, async () => {
+    const nome = prompt('Nome do modelo:', est.nome); if (nome === null) return;
+    await salvar();
+    const j = await post(cfg.urls.modelo, { nome });
+    alert(`Modelo "${j.nome}" salvo. Ele aparece em "De um modelo" e em "Trocar de modelo".`);
+  }));
   document.addEventListener('keydown', (e) => { if ((e.ctrlKey || e.metaKey) && e.key === 's') { e.preventDefault(); $('es-salvar').click(); } });
   window.addEventListener('beforeunload', (e) => { if (est.sujo) { e.preventDefault(); e.returnValue = ''; } });
 
   // ---- barra de cima ----------------------------------------------------------------------------
   $('es-nome').value = est.nome;
-  $('es-nome').addEventListener('input', (e) => { est.nome = e.target.value; $('migalha').textContent = est.nome; marcarSujo(); });
+  $('es-nome').addEventListener('input', (e) => { est.nome = e.target.value; mostrarNome(); marcarSujo(); });
   Object.entries(cfg.formatos).forEach(([k, f]) => $('es-formato').append(el('option', { value: k, selected: k === est.formato }, `${f.nome} (${f.w}x${f.h})`)));
   $('es-formato').addEventListener('change', (e) => { est.formato = e.target.value; marcarSujo(); tudo(); });
   Object.entries(cfg.tipos).forEach(([k, t]) => $('es-novo-tipo').append(el('option', { value: k }, t.nome)));
@@ -357,6 +458,10 @@
     est.slides.splice(est.atual + 1, 0, M.novo($('es-novo-tipo').value)); est.atual += 1; marcarSujo(); tudo();
   });
   $('es-guias').addEventListener('change', desenharPalco);
+  if ($('es-tema')) {
+    $('es-tema').value = est.tema;
+    $('es-tema').addEventListener('change', (e) => { est.tema = e.target.value; marcarSujo(); tudo(); });
+  }
   $('es-legenda').value = est.legenda;
   const contarLegenda = () => { $('es-legenda-conta').textContent = `${est.legenda.length}/2200 caracteres`; };
   $('es-legenda').addEventListener('input', (e) => { est.legenda = e.target.value; contarLegenda(); marcarSujo(); });
@@ -378,7 +483,8 @@
     $('es-ia-erro').textContent = 'A IA está montando o post. Isso leva de 20 segundos a 1 minuto…';
     try {
       const j = await post(cfg.urls.ia, { pedido, formato: est.formato, ajustar, slides: est.slides, legenda: est.legenda });
-      est.slides = j.slides; est.legenda = j.legenda || est.legenda; if (!ajustar) { est.nome = j.nome; $('es-nome').value = est.nome; $('migalha').textContent = est.nome; }
+      est.slides = j.slides; est.legenda = j.legenda || est.legenda; if (!ajustar) { est.nome = j.nome; $('es-nome').value = est.nome; mostrarNome(); }
+      if (j.restantes && $('es-ia-restantes')) $('es-ia-restantes').textContent = j.restantes;
       $('es-legenda').value = est.legenda; contarLegenda(); est.atual = 0; marcarSujo(); dIA.close(); tudo();
     } catch (erro) { $('es-ia-erro').textContent = erro.message; }
   }));
@@ -395,12 +501,15 @@
       lista.append(el('button', { type: 'button', class: 'es-modelo', on: { click: () => {
         if (est.slides.length > 1 && !confirm(`Trocar os slides deste post pelo modelo "${m.nome}"?`)) return;
         est.formato = m.formato; est.slides = copia(m.slides); est.legenda = m.legenda || ''; est.atual = 0;
+        if (m.tema) { est.tema = m.tema; if ($('es-tema')) $('es-tema').value = est.tema; }
+        if (M.comProduto && m.produto) M.comProduto(est.slides, cfg.produto);
         if (!est.id) { est.nome = m.nome.replace(/^(Post|Destaque): /, ''); $('es-nome').value = est.nome; }
         $('es-formato').value = est.formato; $('es-legenda').value = est.legenda; contarLegenda(); marcarSujo(); dMod.close(); tudo();
       } } }, img, el('b', {}, m.nome)));
-      est.formato = m.formato; est.slides = m.slides;
+      const temaAtual = est.tema;
+      est.formato = m.formato; est.slides = M.comProduto && m.produto ? M.comProduto(copia(m.slides), cfg.produto) : m.slides; est.tema = m.tema || est.tema;
       miniatura(0, img, 150);
-      est.formato = formatoAtual; est.slides = slidesAtuais;
+      est.formato = formatoAtual; est.slides = slidesAtuais; est.tema = temaAtual;
     });
   });
 

@@ -31,6 +31,11 @@
         </li>
       {% endfor %}
     </ul>
+    <form method="post" action="{% url 'painel_ocultar_passos' %}" class="passos-ocultar">
+      {% csrf_token %}
+      <button type="submit" name="acao" value="depois" class="botao botao-claro botao-pequeno">Me lembre mais tarde</button>
+      <button type="submit" name="acao" value="nunca" class="botao botao-claro botao-pequeno">Não mostrar novamente</button>
+    </form>
   </section>
 {% endif %}
 

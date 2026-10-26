@@ -173,6 +173,7 @@ svg.icone { width: 18px; height: 18px; flex: none; fill: none; stroke: currentCo
 .marcador svg { width: 14px; height: 14px; stroke-width: 3; }
 .passos .titulo { flex: 1; }
 .passos .feito-texto { text-decoration: line-through; color: var(--suave); }
+.passos-ocultar { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 14px; padding-top: 14px; border-top: 1px solid var(--trilho); }
 
 /* ---------- Módulos ---------- */
 .modulo-card { display: flex; flex-direction: column; gap: 10px; text-decoration: none; color: inherit; }
