@@ -6,7 +6,7 @@
     <div>
       <p class="chapeu">Para afiliados da Shopee</p>
       <h1>Tudo o que o afiliado da Shopee precisa em um só lugar.</h1>
-      <p class="heroi-texto">Encontre as melhores ofertas, divulgue no WhatsApp no automático, crie seu próprio site com conversor de links e vitrine, acompanhe seus resultados e metas e emita suas notas fiscais de afiliado.</p>
+      <p class="heroi-texto">{% if lancado %}Encontre as melhores ofertas, divulgue no WhatsApp no automático, crie e publique posts no Instagram, responda os comentários com o seu link na DM, tenha o seu site com vitrine, acompanhe seus resultados e emita suas notas fiscais de afiliado.{% else %}Encontre as melhores ofertas, divulgue no WhatsApp no automático, crie seu próprio site com conversor de links e vitrine, acompanhe seus resultados e metas e emita suas notas fiscais de afiliado.{% endif %}</p>
       <div class="heroi-botoes"><a class="botao botao-grande" href="#planos">Ver planos e preços</a><a class="botao botao-grande botao-vazado" href="#modulos">Conhecer os módulos</a></div>
       <p class="heroi-nota">Pagamento pela Zouti. 7 dias de garantia.</p>
     </div>
@@ -19,9 +19,14 @@
           <li><a href="{% url 'landing_conversor' %}"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="{{ icones.conversor }}"/></svg>Conversor de links</a></li>
           <li><a href="{% url 'landing_bot' %}"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="{{ icones.whatsapp }}"/></svg>Bot de WhatsApp</a></li>
           <li><a href="{% url 'landing_site' %}"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="{{ icones.site }}"/></svg>Meu site</a></li>
+          {% if lancado %}
+          <li><a href="{% url 'landing_estudio' %}"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="{{ icones.instagram }}"/></svg>Estúdio Instagram</a></li>
+          <li><a href="{% url 'landing_automacoes' %}"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="{{ icones.automacoes }}"/></svg>Automações do Instagram</a></li>
+          {% else %}
           <li><a href="{% url 'landing_carrosseis' %}"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="{{ icones.carrosseis }}"/></svg>Gerador de carrosséis</a></li>
+          {% endif %}
           <li><a href="{% url 'landing_resultados' %}"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="{{ icones.resultados }}"/></svg>Resultados e metas</a></li>
-          <li class="largo"><a href="{% url 'landing_notas' %}"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="{{ icones.notas }}"/></svg>Emissor NFS-e</a></li>
+          <li{% if not lancado %} class="largo"{% endif %}><a href="{% url 'landing_notas' %}"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="{{ icones.notas }}"/></svg>Emissor NFS-e</a></li>
         </ul>
       </div>
     </div>
@@ -40,8 +45,8 @@
   <div class="miolo">
     <p class="chapeu">Módulos</p>
     <h2>Do achar a oferta ao emitir a nota, tudo no mesmo lugar.</h2>
-    <p class="secao-texto">Use só o que precisa hoje e some módulos quando crescer. Ao juntar dois ou mais, o preço cai.</p>
-    <div class="grade-modulos">
+    <p class="secao-texto">Use só o que precisa hoje e some módulos quando crescer. {% if lancado %}Nos pacotes, o preço cai.{% else %}Ao juntar dois ou mais, o preço cai.{% endif %}</p>
+    <div class="grade-modulos{% if lancado %} grade-modulos-5{% endif %}">
       {% for m in modulos %}
         <article class="modulo">
           <svg viewBox="0 0 24 24" aria-hidden="true"><path d="{{ m.icone }}"/></svg>
@@ -67,7 +72,7 @@
     <p class="chapeu">Como funciona</p>
     <h2>Do pagamento ao primeiro uso em três passos.</h2>
     <ol class="passos">
-      <li><span>1</span><h3>Escolha e pague</h3><p>Escolha os módulos ou monte um combo e pague pelo checkout seguro da Zouti.</p></li>
+      <li><span>1</span><h3>Escolha e pague</h3><p>Escolha os módulos{% if lancado %} ou um pacote{% else %} ou monte um combo{% endif %} e pague pelo checkout seguro da Zouti.</p></li>
       <li><span>2</span><h3>Receba o acesso</h3><p>Assim que o pagamento é confirmado, você recebe no e-mail o link para criar a sua senha e entrar no painel.</p></li>
       <li><span>3</span><h3>Conecte e comece</h3><p>Entre no painel, conecte a sua conta da Shopee (com a API liberada) e use os módulos do seu plano.</p></li>
     </ol>
@@ -113,6 +118,35 @@
   </div>
 </section>
 
+{% if lancado %}
+<section id="pacotes" class="secao secao-verde">
+  <div class="miolo">
+    <p class="chapeu chapeu-claro">Pacotes</p>
+    <h2>Junte módulos num pacote e pague menos.</h2>
+    <p class="secao-texto">Todos os módulos do pacote no mesmo plano, Standard ou Premium, numa assinatura só. Plano anual com 17% de desconto no checkout.</p>
+    <div class="pacotes">
+      {% for p in pacotes %}
+        <article class="combo-pronto pacote{% if p.codigo == 'completo' %} combo-pronto-premium{% endif %}">
+          <span class="selo-off">{{ p.desconto }}% off</span>
+          <h3>{{ p.nome }}</h3>
+          <p class="pacote-frase">{{ p.frase }}</p>
+          <ul>{% for m in p.modulos %}<li>{{ m }}</li>{% endfor %}</ul>
+          <div class="pacote-niveis">
+            {% for n in p.niveis %}
+              <div class="pacote-nivel">
+                <span class="pacote-rotulo">{{ n.nivel }}</span>
+                <p class="preco"><s>{{ n.separado }}</s> <b>{{ n.preco }}</b><span>/mês</span></p>
+                {% if n.link %}<a class="botao{% if n.nivel == 'Standard' %} botao-vazado{% endif %}" href="{{ n.link }}">Assinar {{ p.nome }} {{ n.nivel }}</a>
+                {% else %}<span class="botao botao-vazado botao-em-breve" aria-disabled="true">Em breve</span>{% endif %}
+              </div>
+            {% endfor %}
+          </div>
+        </article>
+      {% endfor %}
+    </div>
+  </div>
+</section>
+{% else %}
 <section id="combo" class="secao secao-verde">
   <div class="miolo">
     <p class="chapeu chapeu-claro">Combos</p>
@@ -175,6 +209,7 @@
     </div>
   </div>
 </section>
+{% endif %}
 
 <section id="notas" class="secao">
   <div class="miolo">

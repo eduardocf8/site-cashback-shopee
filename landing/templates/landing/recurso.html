@@ -149,7 +149,7 @@
     <p class="chapeu">Planos</p>
     <h2>Incluído em todos os planos.</h2>
     <p class="secao-texto">{{ r.nome }} vem junto com qualquer módulo do Appfiliado, sem custo extra. Escolha o módulo que faz sentido para você e use tudo no mesmo painel.</p>
-    <p class="heroi-botoes" style="margin-top:24px"><a class="botao botao-grande" href="{% url 'landing' %}#planos">Ver planos e preços</a><a class="botao botao-grande botao-vazado-escuro" href="{% url 'landing' %}#combo">Monte o seu combo</a></p>
+    <p class="heroi-botoes" style="margin-top:24px"><a class="botao botao-grande" href="{% url 'landing' %}#planos">Ver planos e preços</a>{% if lancado %}<a class="botao botao-grande botao-vazado-escuro" href="{% url 'landing' %}#pacotes">Ver os pacotes</a>{% else %}<a class="botao botao-grande botao-vazado-escuro" href="{% url 'landing' %}#combo">Monte o seu combo</a>{% endif %}</p>
   </div>
 </section>
 {% else %}
@@ -176,7 +176,7 @@
   <div class="miolo">
     <p class="chapeu">Planos</p>
     <h2>Escolha o seu plano.</h2>
-    <p class="secao-texto">Preços por mês. Plano anual com 17% de desconto disponível no checkout. Quer juntar com outros módulos? <a href="{% url 'landing' %}#combo" style="color:var(--verde);font-weight:700">Monte o seu combo</a> e pague menos.</p>
+    <p class="secao-texto">Preços por mês. Plano anual com 17% de desconto disponível no checkout. {% if lancado %}Quer juntar com outros módulos? <a href="{% url 'landing' %}#pacotes" style="color:var(--verde);font-weight:700">Veja os pacotes</a> e pague menos.{% else %}Quer juntar com outros módulos? <a href="{% url 'landing' %}#combo" style="color:var(--verde);font-weight:700">Monte o seu combo</a> e pague menos.{% endif %}</p>
     {% include "landing/_bloco_plano.html" %}
   </div>
 </section>
