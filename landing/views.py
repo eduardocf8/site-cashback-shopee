@@ -185,6 +185,11 @@ def privacidade(request):
     return render(request, "landing/privacidade.html", _comum(request))
 
 
+@require_GET
+def termos(request):
+    return render(request, "landing/termos.html", _comum(request))
+
+
 def _pacotes():
     return [{**p, "niveis": [{**n, "preco": planos.brl(n["preco"]), "separado": planos.brl(n["separado"])} for n in p["niveis"]]}
             for p in planos.pacotes()]
@@ -208,7 +213,7 @@ def robots(request):
 
 @require_GET
 def sitemap(request):
-    caminhos = ["/", "/emissao-de-notas/", "/privacidade/"] + [f"/{conteudo.PAGINAS[m]()['slug']}/" for m in list(planos.modulos()) + [i[0] for i in INCLUIDOS_COM_PAGINA]]
+    caminhos = ["/", "/emissao-de-notas/", "/privacidade/", "/termos-de-uso/"] + [f"/{conteudo.PAGINAS[m]()['slug']}/" for m in list(planos.modulos()) + [i[0] for i in INCLUIDOS_COM_PAGINA]]
     xml = ('<?xml version="1.0" encoding="UTF-8"?><urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">'
            + "".join(f"<url><loc>https://{request.get_host()}{c}</loc></url>" for c in caminhos) + "</urlset>")
     return HttpResponse(xml, content_type="application/xml")
