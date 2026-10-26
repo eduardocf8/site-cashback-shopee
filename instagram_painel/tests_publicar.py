@@ -153,6 +153,19 @@ class TestFila(TestCase):
         self.assertIn("plano", pub.erro)
         criar.assert_not_called()
 
+    @mock.patch.object(api, "criar_container")
+    def test_trocou_o_instagram_antes_da_hora_nao_publica_na_outra_conta(self, criar):
+        post = post_de(self.c, slides=1)
+        pub = P.agendar(post, com_imagens(post))
+        self.assertEqual(pub.ig_username, "achadosdabia")
+        self.ig.delete()
+        conectada(self.c, ig_id="999", username="outraconta")
+        P.uma_volta()
+        pub.refresh_from_db()
+        self.assertEqual(pub.estado, Publicacao.ERRO)
+        self.assertIn("Agendada para @achadosdabia", pub.erro)
+        criar.assert_not_called()
+
     def test_so_um_processo_pega_cada_publicacao(self):
         post = post_de(self.c, slides=1)
         pub = P.agendar(post, com_imagens(post))

@@ -166,3 +166,9 @@
 .ig-gatilho .es-selo-teste { margin-left: auto; }
 .ig-premium { display: grid; gap: 8px; border-top: 1px dashed var(--borda); padding-top: 10px; }
 .ig-premium-bloqueado { opacity: .6; }
+.ig-conta { display: inline-block; margin-left: 6px; font-size: 12px; font-weight: 700; padding: 2px 8px; border-radius: 999px; background: var(--bom-suave); color: var(--bom-tinta); vertical-align: middle; }
+.ig-conta-outra { background: var(--chip); color: var(--suave); }
+.ig-escolhido[hidden] { display: none; }
+.ig-escolhido { border: 1px solid var(--verde); background: var(--bom-suave); border-radius: 10px; padding: 8px 12px; }
+.ig-escolhido span { flex: 1; font-size: 13.5px; }
+.ig-midia.ativo { outline: 3px solid var(--verde); outline-offset: -3px; }

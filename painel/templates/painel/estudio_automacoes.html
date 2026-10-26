@@ -41,7 +41,7 @@
             <a class="ig-automacao-link" href="{% url 'painel_estudio_automacao' item.a.pk %}">
               {% if item.a.midia_imagem %}<img src="{{ item.a.midia_imagem }}" alt="" referrerpolicy="no-referrer" loading="lazy">{% else %}<span class="ig-midia-vazia">{% if item.a.gatilho == "direto" %}✉️{% elif item.a.midia_id %}{% if item.a.gatilho == "story" %}Story{% else %}Post{% endif %}{% else %}Todos{% endif %}</span>{% endif %}
               <div>
-                <strong>{{ item.a.nome }}</strong>
+                <strong>{{ item.a.nome }} <span class="ig-conta{% if item.outra_conta or not item.a.ig_username %} ig-conta-outra{% endif %}" title="{% if item.a.ig_username %}Criada no Instagram @{{ item.a.ig_username }}{% else %}Criada antes de o Appfiliado guardar a conta: responde no Instagram que estiver conectado{% endif %}">{% if item.a.ig_username %}@{{ item.a.ig_username }}{% else %}Instagram não registrado{% endif %}</span></strong>
                 <small>{{ item.a.get_gatilho_display }}{% if item.palavras %} · {{ item.palavras }}{% else %} · qualquer texto{% endif %}</small>
                 {% if item.fora_do_plano %}<small class="ig-erro">{{ item.fora_do_plano }}</small>
                 {% else %}<small>{{ item.total }} pessoa{{ item.total|pluralize }} respondida{{ item.total|pluralize }} · {{ item.dms }} por DM</small>{% endif %}

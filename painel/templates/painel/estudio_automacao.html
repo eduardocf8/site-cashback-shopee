@@ -8,7 +8,8 @@
   <div>
     <a class="suave" href="{% url 'painel_estudio_automacoes' %}">← Automações</a>
     <h1>{% if automacao %}{{ automacao.nome }}{% else %}Nova automação{% endif %}</h1>
-    {% if ig %}<p>No Instagram @{{ ig.username }}.</p>{% else %}<p>Conecte o seu Instagram para a automação funcionar.</p>{% endif %}
+    {% if automacao and automacao.ig_username %}<p>No Instagram @{{ automacao.ig_username }}.{% if not ig or ig.ig_id != automacao.ig_id %} Ela só responde quando esse Instagram estiver conectado.{% endif %}</p>
+    {% elif ig %}<p>No Instagram @{{ ig.username }}.</p>{% else %}<p>Conecte o seu Instagram para criar a automação.</p>{% endif %}
   </div>
   {% if automacao %}
     <div class="es-topo-editor"><div class="acoes">
@@ -40,11 +41,11 @@
 
   <fieldset id="ig-onde">
     <legend id="ig-onde-titulo">Em qual post</legend>
-    <div class="ig-escolhido" id="ig-escolhido"></div>
-    <div class="linha-botoes">
-      <button type="button" class="botao botao-claro" id="ig-escolher">Escolher no Instagram</button>
-      <button type="button" class="botao botao-claro" id="ig-todos">Todos</button>
+    <div class="ig-gatilhos">
+      <label class="ig-gatilho"><input type="radio" name="onde" value="todos"><span id="ig-onde-todos">Todos os posts</span></label>
+      <label class="ig-gatilho"><input type="radio" name="onde" value="um"><span id="ig-onde-um">Um post específico</span></label>
     </div>
+    <div class="ig-escolhido" id="ig-escolhido" hidden></div>
     <div class="ig-midias" id="ig-midias" hidden></div>
     <p class="suave" id="ig-midias-aviso"></p>
   </fieldset>
@@ -116,43 +117,66 @@
   const urlMidias = "{% url 'painel_instagram_midias' %}";
   const esc = (s) => String(s || '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]);
   const gatilho = () => (form.querySelector('[name=gatilho]:checked') || {}).value;
+  const onde = () => (form.querySelector('[name=onde]:checked') || {}).value;
+  const MIDIA = ['midia_id', 'midia_link', 'midia_imagem', 'midia_legenda'];
+  const limpar = () => MIDIA.forEach((n) => { campo(n).value = ''; });
+  const marcar = (v) => { form.querySelector(`[name=onde][value=${v}]`).checked = true; };
+  const nome = () => (gatilho() === 'story' ? 'story' : 'post');
+
+  // O post (ou story) escolhido aparece embaixo das opções, com o botão de trocar.
   function mostrarEscolhido() {
-    const g = gatilho(), id = campo('midia_id').value, img = campo('midia_imagem').value, leg = campo('midia_legenda').value;
-    $('ig-escolhido').innerHTML = id
-      ? `${img ? `<img src="${esc(img)}" alt="" referrerpolicy="no-referrer">` : ''}<span>${esc(leg || (g === 'story' ? 'Story escolhido' : 'Post escolhido'))}</span>`
-      : `<span class="ig-todos">${g === 'story' ? 'Todos os stories' : 'Todos os posts'}</span>`;
+    const caixa = $('ig-escolhido'), id = campo('midia_id').value;
+    caixa.hidden = !id;
+    if (!id) return;
+    const img = campo('midia_imagem').value, leg = campo('midia_legenda').value;
+    caixa.innerHTML = `${img ? `<img src="${esc(img)}" alt="" referrerpolicy="no-referrer">` : ''}`
+      + `<span>${esc(leg || (nome() === 'story' ? 'Story escolhido' : 'Post escolhido'))}</span>`
+      + '<button type="button" class="botao botao-claro botao-pequeno" id="ig-trocar">Trocar</button>';
+    $('ig-trocar').addEventListener('click', buscar);
   }
-  function trocar() {
-    const g = gatilho();
-    $('ig-onde').hidden = g === 'direto';
-    $('ig-onde-titulo').textContent = g === 'story' ? 'Em qual story (precisa estar no ar)' : 'Em qual post';
-    $('ig-resposta').hidden = g !== 'comentario';
-    $('ig-palavras-dica').textContent = g === 'direto'
-      ? 'Uma por linha ou separadas por vírgula. Obrigatório para DM. Maiúsculas e acentos não importam.'
-      : 'Uma por linha ou separadas por vírgula. Maiúsculas e acentos não importam. Em branco: ' + (g === 'story' ? 'qualquer resposta ao story.' : 'qualquer comentário.');
-    $('ig-midias').hidden = true; mostrarEscolhido();
-  }
-  form.querySelectorAll('[name=gatilho]').forEach((r) => r.addEventListener('change', () => {
-    ['midia_id', 'midia_link', 'midia_imagem', 'midia_legenda'].forEach((n) => { campo(n).value = ''; }); trocar();
-  }));
-  $('ig-todos').addEventListener('click', () => { ['midia_id', 'midia_link', 'midia_imagem', 'midia_legenda'].forEach((n) => { campo(n).value = ''; }); $('ig-midias').hidden = true; mostrarEscolhido(); });
-  $('ig-escolher').addEventListener('click', async () => {
-    const caixa = $('ig-midias'), aviso = $('ig-midias-aviso'); aviso.textContent = 'Buscando no Instagram…';
+  async function buscar() {
+    const caixa = $('ig-midias'), aviso = $('ig-midias-aviso');
+    aviso.textContent = 'Buscando no Instagram…'; caixa.hidden = true;
     try {
-      const r = await fetch(`${urlMidias}?tipo=${gatilho() === 'story' ? 'story' : 'post'}`, { credentials: 'same-origin' });
+      const r = await fetch(`${urlMidias}?tipo=${nome()}`, { credentials: 'same-origin' });
       const j = await r.json(); if (!r.ok) throw new Error(j.erro || 'Não deu certo.');
-      aviso.textContent = j.itens.length ? '' : (gatilho() === 'story' ? 'Nenhum story no ar agora.' : 'Nenhum post encontrado.');
+      aviso.textContent = j.itens.length ? `Clique no ${nome()} que vai ter a automação.` : (nome() === 'story' ? 'Nenhum story no ar agora.' : 'Nenhum post encontrado.');
       caixa.innerHTML = ''; caixa.hidden = !j.itens.length;
       j.itens.forEach((m) => {
-        const b = document.createElement('button'); b.type = 'button'; b.className = 'ig-midia'; b.title = m.legenda;
+        const b = document.createElement('button'); b.type = 'button'; b.className = 'ig-midia' + (m.id === campo('midia_id').value ? ' ativo' : ''); b.title = m.legenda;
         b.innerHTML = m.imagem ? `<img src="${esc(m.imagem)}" alt="" referrerpolicy="no-referrer" loading="lazy">` : `<span>${esc(m.legenda || 'Sem imagem')}</span>`;
         b.addEventListener('click', () => {
           campo('midia_id').value = m.id; campo('midia_link').value = m.link || ''; campo('midia_imagem').value = m.imagem || '';
-          campo('midia_legenda').value = (m.legenda || '').slice(0, 190); caixa.hidden = true; mostrarEscolhido();
+          campo('midia_legenda').value = (m.legenda || '').slice(0, 190); caixa.hidden = true; aviso.textContent = ''; mostrarEscolhido();
         });
         caixa.append(b);
       });
     } catch (e) { aviso.textContent = e.message; }
+  }
+  form.querySelectorAll('[name=onde]').forEach((r) => r.addEventListener('change', () => {
+    if (onde() === 'todos') { limpar(); $('ig-midias').hidden = true; $('ig-midias-aviso').textContent = ''; mostrarEscolhido(); }
+    else if (!campo('midia_id').value) buscar();
+  }));
+  function trocar() {
+    const g = gatilho();
+    $('ig-onde').hidden = g === 'direto';
+    $('ig-onde-titulo').textContent = g === 'story' ? 'Em qual story' : 'Em qual post';
+    $('ig-onde-todos').textContent = g === 'story' ? 'Todos os stories' : 'Todos os posts';
+    $('ig-onde-um').textContent = g === 'story' ? 'Um story específico (no ar)' : 'Um post específico';
+    $('ig-resposta').hidden = g !== 'comentario';
+    $('ig-palavras-dica').textContent = g === 'direto'
+      ? 'Uma por linha ou separadas por vírgula. Obrigatório para DM. Maiúsculas e acentos não importam.'
+      : 'Uma por linha ou separadas por vírgula. Maiúsculas e acentos não importam. Em branco: ' + (g === 'story' ? 'qualquer resposta ao story.' : 'qualquer comentário.');
+    $('ig-midias').hidden = true; $('ig-midias-aviso').textContent = '';
+    marcar(campo('midia_id').value ? 'um' : 'todos'); mostrarEscolhido();
+  }
+  form.querySelectorAll('[name=gatilho]').forEach((r) => r.addEventListener('change', () => { limpar(); trocar(); }));
+  // "Um post específico" sem post escolhido não salva.
+  form.addEventListener('submit', (e) => {
+    if (gatilho() !== 'direto' && onde() === 'um' && !campo('midia_id').value) {
+      e.preventDefault(); $('ig-midias-aviso').textContent = `Escolha o ${nome()} na lista acima, ou marque "Todos".`;
+      $('ig-onde').scrollIntoView({ block: 'center' });
+    }
   });
   trocar();
 })();

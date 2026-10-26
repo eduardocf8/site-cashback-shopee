@@ -18,6 +18,7 @@ import unicodedata
 from datetime import timedelta
 
 from django.db import IntegrityError, transaction
+from django.db.models import Q
 from django.utils import timezone
 
 from licencas import planos
@@ -115,19 +116,28 @@ def _vagas_na_hora(conta, agora=None) -> int:
     return LIMITE_POR_HORA - Disparo.objects.filter(automacao__conta=conta, enviado_em__gte=desde).count()
 
 
-def valendo(conta, plano: dict | None = None):
-    """As automações ligadas que o plano cobre: no Standard, só as mais recentes até o limite (quem
-    passou para o Standard com mais ligadas fica com as últimas criadas)."""
+def do_instagram(automacoes, ig_id: str):
+    """As automações do Instagram conectado (e as antigas, de antes de guardar a conta)."""
+    return automacoes.filter(Q(ig_id="") | Q(ig_id=ig_id)) if ig_id else automacoes.filter(ig_id="")
+
+
+def ligadas(conta, ig_id: str):
+    return do_instagram(Automacao.objects.filter(conta=conta, ativa=True), ig_id)
+
+
+def valendo(conta, ig_id: str, plano: dict | None = None):
+    """As automações ligadas do Instagram conectado que o plano cobre: no Standard, só as mais recentes até
+    o limite (quem passou para o Standard com mais ligadas fica com as últimas criadas)."""
     plano = plano or planos.automacoes(conta)
-    ligadas = Automacao.objects.filter(conta=conta, ativa=True).order_by("-criada_em")
+    ligadas_ = ligadas(conta, ig_id).order_by("-criada_em")
     if plano.get("ativas"):
-        return ligadas.filter(pk__in=list(ligadas.values_list("pk", flat=True)[:plano["ativas"]]))
-    return ligadas
+        return ligadas_.filter(pk__in=list(ligadas_.values_list("pk", flat=True)[:plano["ativas"]]))
+    return ligadas_
 
 
 def _escolher(ig: ContaInstagram, gatilho: str, midia_id: str, texto: str) -> Automacao | None:
     """A automação do post/story específico vem antes da que vale para todos."""
-    ativas = valendo(ig.conta).filter(gatilho=gatilho)
+    ativas = valendo(ig.conta, ig.ig_id).filter(gatilho=gatilho)
     especificas = [a for a in ativas if midia_id and a.midia_id == midia_id]
     gerais = [a for a in ativas if not a.midia_id]
     return next((a for a in especificas + gerais if bate(a, texto)), None)
@@ -225,6 +235,9 @@ def enviar_fila(agora=None) -> list[str]:
             prazo = PRAZO_COMENTARIO if d.automacao.gatilho == Automacao.COMENTARIO else PRAZO_DM
             if agora - d.criado_em > prazo:
                 Disparo.objects.filter(pk=d.pk).update(na_fila=False, erro="Não enviada: passou do prazo do Instagram para responder.")
+                continue
+            if d.automacao.ig_id and d.automacao.ig_id != ig.ig_id:
+                Disparo.objects.filter(pk=d.pk).update(na_fila=False, erro="Não enviada: o Instagram conectado mudou.")
                 continue
             if not d.automacao.ativa or not _plano_cobre(ig, d.automacao.gatilho):
                 Disparo.objects.filter(pk=d.pk).update(na_fila=False, erro="Não enviada: a automação foi pausada ou saiu do plano.")

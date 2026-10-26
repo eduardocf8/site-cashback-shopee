@@ -1,4 +1,4 @@
-{# O Instagram conectado (ou o botão de conectar). Serve às Automações e às Publicações do Estúdio. #}
+{# O Instagram conectado (ou o botão de conectar). Aparece no Estúdio, nas Publicações e nas Automações. #}
 <section class="card ig-conexao">
   {% if ig %}
     <div class="ig-perfil">
@@ -8,7 +8,7 @@
         <small class="{% if ig.erro %}ig-erro{% else %}ig-ok{% endif %}">{% if ig.erro %}{{ ig.erro }}{% elif ig.avisos_ligados %}Conectado e recebendo os comentários e as DMs.{% else %}Conectado.{% endif %}</small>
       </div>
     </div>
-    <form method="post" action="{% url 'painel_instagram_desconectar' %}" onsubmit="return confirm('Desconectar o Instagram? As automações e as publicações agendadas param até você conectar de novo.')">{% csrf_token %}<button class="botao botao-claro" type="submit">Desconectar</button></form>
+    <form method="post" action="{% url 'painel_instagram_desconectar' %}" onsubmit="return confirm('Desconectar o Instagram? As automações e as publicações agendadas param até você conectar de novo.')">{% csrf_token %}<input type="hidden" name="voltar" value="{{ request.path }}"><button class="botao botao-claro" type="submit">Desconectar</button></form>
   {% else %}
     <div>
       <h2>Conecte o seu Instagram</h2>
@@ -19,6 +19,14 @@
   {% endif %}
 </section>
 <script>
+  // Espera o fim do login do Instagram, aberto numa janela à parte. A página do Instagram corta a ligação entre as
+  // duas janelas, então a janela do login avisa por BroadcastChannel (e localStorage, nos navegadores antigos).
+  window.esperarInstagram = function (pronto) {
+    let feito = false;
+    const fim = () => { if (feito) return; feito = true; pronto(); };
+    try { const canal = new BroadcastChannel('appfiliado-instagram'); canal.onmessage = (e) => { if (e.data === 'pronto') fim(); }; } catch (e) { /* sem canal */ }
+    window.addEventListener('storage', (e) => { if (e.key === 'appfiliado-instagram') fim(); });
+  };
   // O login do Instagram abre numa janela menor, ao lado do painel. Se o navegador bloquear, abre aqui mesmo.
   document.getElementById('ig-conectar')?.addEventListener('click', (e) => {
     const l = 560, a = 760, x = window.screenX + Math.max(0, (window.outerWidth - l) / 2), y = window.screenY + Math.max(0, (window.outerHeight - a) / 2);
@@ -26,6 +34,6 @@
     if (!janela) return;
     e.preventDefault();
     e.currentTarget.textContent = 'Conectando… (termine na janela do Instagram)';
-    const espera = setInterval(() => { if (janela.closed) { clearInterval(espera); window.location.reload(); } }, 800);
+    esperarInstagram(() => window.location.reload());
   });
 </script>
