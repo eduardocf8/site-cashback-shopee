@@ -33,6 +33,19 @@
   {% endif %}
 </section>
 
+{% if ig %}
+  <section class="card ig-avisos">
+    <h2>Avisos do Instagram <span class="es-selo-teste">Teste</span></h2>
+    <p class="suave">O que a Meta mandou para o Appfiliado sobre @{{ ig.username }} na última semana.
+      {% if ultimo_aviso %}Último aviso de qualquer conta: {{ ultimo_aviso.recebido_em|date:"d/m H:i" }} ({{ ultimo_aviso.campo }}).{% else %}Nenhum aviso de nenhuma conta chegou ainda.{% endif %}</p>
+    {% if avisos %}
+      <ul>{% for a in avisos %}<li><small>{{ a.recebido_em|date:"d/m H:i:s" }} · {{ a.campo }}</small> {{ a.resumo }}</li>{% endfor %}</ul>
+    {% else %}
+      <p class="suave">Nenhum aviso desta conta ainda.</p>
+    {% endif %}
+  </section>
+{% endif %}
+
 {% if not premium %}
   <section class="card">
     <h2>Automações são do plano Premium</h2>

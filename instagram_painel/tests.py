@@ -244,3 +244,21 @@ class TestTelas(TestCase):
         self.entrar(conta())
         self.assertEqual(self.client.get(f"/estudio/automacoes/{outra.pk}/").status_code, 404)
         self.assertEqual(self.client.post(f"/estudio/automacoes/{outra.pk}/apagar/").status_code, 404)
+
+
+class TestAvisosRecebidos(TestCase):
+    def test_guarda_resumo_de_qualquer_conta_e_mostra_na_tela(self):
+        from .models import AvisoRecebido
+
+        W.separar_e_processar(aviso_comentario("quero muito", ig_id="qualquer"))
+        W.separar_e_processar(aviso_mensagem("🔥", story="s1", ig_id=IG_ID))
+        self.assertEqual(AvisoRecebido.objects.get(ig_id="qualquer").resumo, "@maria comentou: quero muito")
+        self.assertEqual(AvisoRecebido.objects.get(ig_id=IG_ID).resumo, "Resposta a story: 🔥")
+        c = conta()
+        conectada(c)
+        cliente = Client(HTTP_HOST=HOST)
+        with override_settings(APPFILIADO_PAINEL_HOSTS=[HOST], ALLOWED_HOSTS=[HOST, "testserver"]):
+            cliente.post("/entrar/", {"email": c.email, "senha": SENHA})
+            pagina = cliente.get("/estudio/automacoes/")
+        self.assertContains(pagina, "Resposta a story: 🔥")
+        self.assertNotContains(pagina, "quero muito")  # de outra conta: só a hora do último aviso

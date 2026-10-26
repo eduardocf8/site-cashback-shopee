@@ -18,7 +18,7 @@ from django.views.decorators.http import require_POST
 from estudio import afiliados as A
 from estudio.models import PostInstagram
 from instagram_painel import api, conexao
-from instagram_painel.models import Automacao, ContaInstagram
+from instagram_painel.models import Automacao, AvisoRecebido, ContaInstagram
 from instagram_painel.webhook import palavras
 
 from .views import _contexto
@@ -46,8 +46,12 @@ def automacoes(request, conta):
             total = a.disparos.count()
             lista.append({"a": a, "total": total, "dms": a.disparos.filter(dm_ok=True).count(),
                           "palavras": ", ".join(palavras(a)).upper()})
+    ig = _ig(conta)
+    # Em teste: mostra se os avisos da Meta estão chegando (os desta conta e o último de qualquer conta).
+    avisos = list(AvisoRecebido.objects.filter(ig_id=ig.ig_id)[:15]) if ig else []
     return render(request, "painel/estudio_automacoes.html", _contexto(
-        request, SLUG, ig=_ig(conta), premium=premium, lista=lista, configurado=bool(api.app_id() and api.app_secret()),
+        request, SLUG, ig=ig, premium=premium, lista=lista, configurado=bool(api.app_id() and api.app_secret()),
+        avisos=avisos, ultimo_aviso=AvisoRecebido.objects.first(),
     ))
 
 

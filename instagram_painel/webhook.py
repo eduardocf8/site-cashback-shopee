@@ -19,7 +19,7 @@ from django.db import IntegrityError, transaction
 from django.utils import timezone
 
 from . import api
-from .models import Automacao, ContaInstagram, Disparo
+from .models import Automacao, AvisoRecebido, ContaInstagram, Disparo
 
 logger = logging.getLogger(__name__)
 LIMITE_POR_HORA = 150
@@ -144,11 +144,47 @@ def _mensagem(ig: ContaInstagram, evento: dict) -> None:
     d.save(update_fields=["dm_ok", "erro"])
 
 
+GUARDAR_AVISOS_POR = timedelta(days=7)
+
+
+def _resumo(campo: str, valor: dict) -> str:
+    if campo == "comments":
+        return f"@{(valor.get('from') or {}).get('username', '?')} comentou: {str(valor.get('text', ''))[:200]}"
+    msg = valor.get("message") or {}
+    if msg.get("is_echo"):
+        return "Mensagem enviada pela própria conta"
+    if (msg.get("reply_to") or {}).get("story"):
+        return f"Resposta a story: {str(msg.get('text', ''))[:200]}"
+    if msg:
+        return f"DM: {str(msg.get('text', ''))[:200]}"
+    return api.corpo_json(valor)[:300]
+
+
+def registrar_avisos(payload: dict) -> None:
+    """Guarda um resumo de cada aviso que chegou (de qualquer conta), para a tela de teste."""
+    try:
+        novos = []
+        for entrada in payload.get("entry") or []:
+            if not isinstance(entrada, dict):
+                continue
+            ig_id = str(entrada.get("id") or "")[:64]
+            for change in entrada.get("changes") or []:
+                valor = change.get("value") if isinstance(change.get("value"), dict) else {}
+                novos.append(AvisoRecebido(ig_id=ig_id, campo=str(change.get("field") or "?")[:40], resumo=_resumo(change.get("field"), valor)))
+            for evento in entrada.get("messaging") or []:
+                novos.append(AvisoRecebido(ig_id=ig_id, campo="messaging", resumo=_resumo("messages", evento)))
+        AvisoRecebido.objects.bulk_create(novos)
+        AvisoRecebido.objects.filter(recebido_em__lt=timezone.now() - GUARDAR_AVISOS_POR).delete()
+    except Exception:
+        logger.exception("Instagram: falha ao registrar avisos")
+
+
 def separar_e_processar(payload: dict) -> dict:
     """Trata os avisos das contas conectadas no Appfiliado e devolve o payload para a automação da cash-b.
 
     Os avisos de uma conta conectada também seguem para a cash-b: a mesma conta (a @usecashb, por
     exemplo) pode estar nos dois lugares, e cada lado só responde onde tem automação configurada."""
+    registrar_avisos(payload)
     entradas = payload.get("entry") or []
     ids = {str(e.get("id")) for e in entradas if isinstance(e, dict)}
     contas = {ig.ig_id: ig for ig in ContaInstagram.objects.filter(ig_id__in=ids).select_related("conta")}
