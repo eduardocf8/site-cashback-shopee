@@ -201,22 +201,31 @@
 .es-menu button:hover, .es-menu a:hover { background: var(--chip); }
 .es-menu hr { border: 0; border-top: 1px solid var(--borda); margin: 4px 6px; }
 .es-menu .es-perigo { color: var(--perigo); }
-.es-ajustes { background: #FFFFFF; border: 1px solid var(--borda); border-radius: 12px; padding: 10px 12px; }
-.es-ajuste { display: inline-flex; align-items: center; gap: 6px; font-size: 13px; font-weight: 600; color: var(--suave); }
-.es-ajuste select { font-size: 14px; color: var(--texto); }
+/* Ajustes do post: pílulas do mesmo tamanho (formato e cores mostram o que está escolhido). */
+.es-ajustes { display: flex; flex-wrap: wrap; gap: 8px; }
+.es-pilula { display: inline-flex; align-items: center; justify-content: center; gap: 6px; height: 40px; padding: 0 14px; border: 1px solid var(--borda);
+  border-radius: 999px; background: #FFFFFF; color: var(--texto); font: inherit; font-size: 14px; font-weight: 600; cursor: pointer; white-space: nowrap; }
+.es-pilula:hover { border-color: var(--borda-forte); }
+.es-pilula select { border: 0; background: transparent; font: inherit; font-weight: 700; color: var(--texto); padding: 0 2px; cursor: pointer; max-width: 100%; }
+.es-pilula select:focus { outline: none; }
+.es-pilula:focus-within { border-color: var(--verde); }
+.es-pilula-ia { background: var(--amarelo-suave); border-color: var(--amarelo); }
+.so-pequeno { display: none; }
+.es-guias-opcao { justify-content: center; margin-top: 8px; color: var(--suave); }
 .sr { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
 @media (max-width: 760px) {
   .es-titulo { font-size: 19px; }
   .es-acoes-principais { width: 100%; }
   .es-acoes-principais > button:nth-child(2) { flex: 1; }
   .es-ajustes { display: grid; grid-template-columns: 1fr 1fr; }
-  .es-ajuste { display: grid; gap: 2px; }
-  .es-ajuste select { width: 100%; }
-  .es-ajustes .es-bt { width: 100%; }
-  .es-ajustes .es-ia, .es-ajustes .es-check { grid-column: 1 / -1; }
+  .es-pilula { width: 100%; padding: 0 10px; }
+  .es-pilula select { flex: 1; min-width: 0; }
+  .so-grande { display: none; }
+  .so-pequeno { display: inline; }
+  .es-ajustes > :last-child:nth-child(odd) { grid-column: 1 / -1; }
+}
 }
 @media (min-width: 761px) { .es-cabeca-linha { flex-wrap: nowrap; } .es-titulo-campo { flex: 1 1 0; } }
-@media (max-width: 760px) { .es-ajustes #es-modelos { grid-column: 1 / -1; } }
 /* Miniatura do slide: o nome encurta, os botões ficam na mesma linha. */
 .es-mini-barra { gap: 4px; }
 .es-mini-barra > span:first-child { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }

@@ -450,7 +450,7 @@
   // ---- barra de cima ----------------------------------------------------------------------------
   $('es-nome').value = est.nome;
   $('es-nome').addEventListener('input', (e) => { est.nome = e.target.value; mostrarNome(); marcarSujo(); });
-  Object.entries(cfg.formatos).forEach(([k, f]) => $('es-formato').append(el('option', { value: k, selected: k === est.formato }, `${f.nome} (${f.w}x${f.h})`)));
+  Object.entries(cfg.formatos).forEach(([k, f]) => $('es-formato').append(el('option', { value: k, selected: k === est.formato, title: `${f.w}x${f.h}` }, f.nome)));
   $('es-formato').addEventListener('change', (e) => { est.formato = e.target.value; marcarSujo(); tudo(); });
   Object.entries(cfg.tipos).forEach(([k, t]) => $('es-novo-tipo').append(el('option', { value: k }, t.nome)));
   $('es-adicionar').addEventListener('click', () => {

@@ -33,12 +33,11 @@
   </div>
 </div>
 <div id="estudio" class="estudio marca-afiliado">
-  <div class="es-barra es-ajustes" aria-label="Ajustes do post">
-    <label class="es-ajuste">Formato<select id="es-formato"></select></label>
-    {% if premium %}<label class="es-ajuste">Cores<select id="es-tema">{% for k, nome in temas %}<option value="{{ k }}">{{ nome }}</option>{% endfor %}</select></label>{% endif %}
-    <button type="button" class="es-bt" id="es-modelos">Trocar de modelo</button>
-    <button type="button" class="es-bt es-ia" id="es-ia">✨ Criar ou ajustar com IA</button>
-    <label class="es-check"><input type="checkbox" id="es-guias" checked> Margens de segurança</label>
+  <div class="es-ajustes" aria-label="Ajustes do post">
+    <label class="es-pilula" title="Formato do post"><span aria-hidden="true">📐</span><span class="sr">Formato</span><select id="es-formato"></select></label>
+    {% if premium %}<label class="es-pilula" title="Cores do post"><span aria-hidden="true">🎨</span><span class="sr">Cores</span><select id="es-tema">{% for k, nome in temas %}<option value="{{ k }}">{{ nome }}</option>{% endfor %}</select></label>{% endif %}
+    <button type="button" class="es-pilula" id="es-modelos"><span aria-hidden="true">🔄</span> Trocar modelo</button>
+    <button type="button" class="es-pilula es-pilula-ia" id="es-ia"><span aria-hidden="true">✨</span> <span class="so-grande">Criar ou ajustar com IA</span><span class="so-pequeno">Ajustar com IA</span></button>
   </div>
   <div class="es-corpo">
     <aside class="es-lista">
@@ -55,6 +54,7 @@
         <span id="es-posicao"></span>
         <button type="button" class="es-bt" id="es-proximo">Próximo slide →</button>
       </div>
+      <label class="es-check es-guias-opcao"><input type="checkbox" id="es-guias" checked> Mostrar as margens de segurança</label>
       <ul id="es-avisos" class="es-avisos"></ul>
     </main>
     <aside class="es-campos" id="es-campos"></aside>
