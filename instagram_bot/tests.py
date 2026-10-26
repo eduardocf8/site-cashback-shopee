@@ -276,6 +276,43 @@ class AlinhamentoDosPassosTests(TestCase):
         self.assertLess(abs(centro_circulo - centro_texto), 7)
 
 
+class ChamadaParaAcaoNoStoryTests(TestCase):
+    """O story de oferta pedia "link na bio"; agora pede resposta ao story ("comente
+    'link'...") porque é dali que a automação de DM detecta o clique e manda o link
+    (com cashback rastreado) - ver automacao_instagram/webhook.py, MODO_LINK_PRODUTO.
+    Texto bem mais longo que "link na bio", por isso quebra em até 2 linhas."""
+
+    def setUp(self):
+        self.oferta = Oferta.objects.create(
+            item_id=901, nome="Produto da chamada", nome_curto="produto da chamada",
+            preco_min=Decimal("49.90"), preco_max=Decimal("49.90"),
+            imagem_url="", percentual_comissao=Decimal("0.1000"), categoria_id=1,
+        )
+
+    def test_nao_promete_mais_link_na_bio(self):
+        """Gera a imagem sem estourar (smoke test) - a asserção real de conteúdo
+        textual não dá pra fazer em pixel, mas garante que o código novo roda."""
+        imagem = templates_imagem.gerar_imagem_oferta_story(self.oferta)
+
+        self.assertEqual(imagem.size, (1080, 1920))
+
+    def test_texto_da_chamada_cabe_na_largura_em_ate_2_linhas(self):
+        from PIL import Image, ImageDraw
+
+        img = Image.new("RGB", (1080, 1920))
+        draw = ImageDraw.Draw(img)
+        fonte = templates_imagem._fonte(32, negrito=True)
+        largura_util = 1080 - 72 * 2
+
+        linhas = templates_imagem._quebrar_texto(
+            draw, 'Comente "link" para receber o link da oferta', fonte, largura_util,
+        )
+
+        self.assertLessEqual(len(linhas), 2)
+        for linha in linhas:
+            self.assertLessEqual(draw.textlength(linha, font=fonte), largura_util)
+
+
 class BarraCampanhaNoStoryTests(TestCase):
     """Campanha 10.10 (ver RESUMO_BARRA_CAMPANHA_BOT_INSTAGRAM.txt): o selo "X%
     cashback" do story de oferta usa o mesmo cálculo do site
