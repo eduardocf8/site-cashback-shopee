@@ -1,6 +1,6 @@
 from django.urls import include, path
 
-from . import views, views_carrosseis, views_conversor, views_radar, views_notas, views_site, views_whatsapp
+from . import views, views_carrosseis, views_conversor, views_estudio, views_radar, views_notas, views_site, views_whatsapp
 
 urlpatterns = [
     path("", views.inicio, name="painel_inicio"),
@@ -49,6 +49,18 @@ urlpatterns = [
     path("carrosseis/<int:pk>/foto/", views_carrosseis.foto, name="painel_carrossel_foto"),
     path("carrosseis/<int:pk>/recorte/", views_carrosseis.recorte, name="painel_carrossel_recorte"),
     path("carrosseis/<int:pk>/apagar/", views_carrosseis.apagar, name="painel_carrossel_apagar"),
+    path("estudio/", views_estudio.lista, name="painel_estudio"),
+    path("estudio/novo/", views_estudio.novo, name="painel_estudio_novo"),
+    path("estudio/imagens/", views_estudio.imagens, name="painel_estudio_imagens"),
+    path("estudio/imagens/<int:pk>/", views_estudio.imagem, name="painel_estudio_imagem"),
+    path("estudio/minha-marca/", views_estudio.minha_marca, name="painel_estudio_marca"),
+    path("estudio/minha-marca/logo/", views_estudio.logo, name="painel_estudio_logo"),
+    path("estudio/<int:pk>/", views_estudio.editor, name="painel_estudio_editor"),
+    path("estudio/<int:pk>/salvar/", views_estudio.salvar, name="painel_estudio_salvar"),
+    path("estudio/<int:pk>/ia/", views_estudio.ia, name="painel_estudio_ia"),
+    path("estudio/<int:pk>/apagar/", views_estudio.apagar, name="painel_estudio_apagar"),
+    path("estudio/<int:pk>/duplicar/", views_estudio.duplicar, name="painel_estudio_duplicar"),
+    path("estudio/<int:pk>/miniatura/", views_estudio.miniatura, name="painel_estudio_miniatura"),
     path("notas/", views_notas.notas, name="painel_notas"),
     path("notas/<int:pk>/reenviar/", views_notas.reenviar, name="painel_nota_reenviar"),
     path("notas/<int:pk>/cancelar/", views_notas.cancelar, name="painel_nota_cancelar"),

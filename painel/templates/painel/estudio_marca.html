@@ -1,0 +1,43 @@
+{% extends "painel/base.html" %}
+{% load static %}
+{% block titulo %}Minha marca · Estúdio Instagram{% endblock %}
+{% block cabeca %}<link rel="stylesheet" href="{% static 'estudio/painel.css' %}">{% endblock %}
+{% block conteudo %}
+<div class="es-pagina">
+<header class="cabecalho">
+  <div>
+    <a class="suave" href="{% url 'painel_estudio' %}">← Estúdio Instagram</a>
+    <h1>Minha marca</h1>
+    <p>O que aparece nos seus posts: o seu @ e, no plano Premium, o seu logo, as suas cores e a sua fonte.</p>
+  </div>
+</header>
+<section class="card">
+  <form class="es-marca-form" method="post" enctype="multipart/form-data">
+    {% csrf_token %}
+    <label>Seu @ no Instagram
+      <input type="text" name="arroba" value="{{ marca.arroba }}" maxlength="31" placeholder="@seuperfil" autocomplete="off">
+      <small class="suave">Aparece no rodapé dos slides do feed e no topo da capa.</small>
+    </label>
+    <fieldset {% if not premium %}disabled{% endif %}>
+      <legend>Identidade{% if not premium %} <span class="es-selo-teste">Premium</span>{% endif %}</legend>
+      {% if not premium %}<p class="suave">Com o plano Premium, os seus posts saem com o seu logo, as suas cores e a sua fonte. <a href="{{ url_planos }}" target="_blank" rel="noopener">Conhecer o Premium</a></p>{% endif %}
+      <label>Nome da marca<input type="text" name="nome" value="{{ marca.nome }}" maxlength="60"></label>
+      <div style="display:flex;gap:18px;flex-wrap:wrap">
+        <label>Cor principal<input type="color" name="cor" value="{{ marca.cor }}"></label>
+        <label>Cor de destaque<input type="color" name="cor_destaque" value="{{ marca.cor_destaque }}"></label>
+      </div>
+      <label>Fonte dos títulos
+        <select name="fonte">{% for k, nome in fontes %}<option value="{{ k }}"{% if k == marca.fonte %} selected{% endif %}>{{ nome }}</option>{% endfor %}</select>
+      </label>
+      <label>Logo (PNG com fundo transparente fica melhor)
+        {% if logo %}<img class="es-logo-atual" src="{{ logo }}" alt="Seu logo">{% endif %}
+        <input type="file" name="logo" accept="image/png,image/jpeg,image/webp">
+      </label>
+      {% if logo %}<label class="es-check" style="flex-direction:row;font-weight:400"><input type="checkbox" name="tirar_logo" value="1"> Tirar o logo</label>{% endif %}
+      <p class="suave">Nos posts, escolha as cores "Minha marca" no editor.</p>
+    </fieldset>
+    <div><button class="botao botao-principal" type="submit">Salvar</button></div>
+  </form>
+</section>
+</div>
+{% endblock %}

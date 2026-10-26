@@ -55,7 +55,7 @@ def _contexto(request, ativo: str, **extra) -> dict:
     liberados = conta.modulos_liberados() if conta else []
     return {
         "conta": conta,
-        "menu": mod.menu(liberados, ativo),
+        "menu": mod.menu(liberados, ativo, conta),
         "modulos_liberados": liberados,
         "url_planos": settings.APPFILIADO_URL_PLANOS,
         "icones": mod.ICONES,
@@ -173,12 +173,7 @@ def inicio(request):
     fim_mes = hoje - timedelta(days=1) if mes_fechado else hoje
     inicio_mes = fim_mes.replace(day=1)
 
-    cartoes_modulos = [
-        {**item, "estado": mod.estado(item, liberados), "icone_path": mod.ICONES[item["icone"]],
-         "href": item_menu["href"]}
-        for item, item_menu in zip(mod.MODULOS_DO_MENU, mod.menu(liberados, ""))
-        if item["modulo"]
-    ]
+    cartoes_modulos = [item for item in mod.menu(liberados, "", conta) if item["modulo"]]
     # O mesmo checklist dos e-mails de primeiros passos (a senha já foi criada: a pessoa entrou).
     passos = [p for p in primeiros_passos.passos(conta, liberados) if p["chave"] != "senha"]
     contexto = {
@@ -353,7 +348,7 @@ def metas_view(request):
 @conta_requerida
 def modulo(request, slug):
     item = mod.POR_SLUG.get(slug)
-    if not item:
+    if not item or not mod.ve_beta(item, conta_logada(request)):
         raise Http404
     if slug in mod.URL_DE_SLUG:  # módulo com página própria (ex: /m/site/ -> /meu-site/)
         return redirect(mod.URL_DE_SLUG[slug])
