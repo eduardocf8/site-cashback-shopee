@@ -126,11 +126,13 @@
     <p class="secao-texto">Todos os módulos do pacote no mesmo plano, Standard ou Premium, numa assinatura só. Plano anual com 17% de desconto no checkout.</p>
     <div class="pacotes">
       {% for p in pacotes %}
-        <article class="combo-pronto pacote{% if p.codigo == 'completo' %} combo-pronto-premium{% endif %}">
-          <span class="selo-off">{{ p.desconto }}% off</span>
-          <h3>{{ p.nome }}</h3>
-          <p class="pacote-frase">{{ p.frase }}</p>
-          <ul>{% for m in p.modulos %}<li>{{ m }}</li>{% endfor %}</ul>
+        <article class="combo-pronto pacote{% if p.codigo == 'completo' %} combo-pronto-premium pacote-completo{% endif %}">
+          <div class="pacote-cabeca">
+            <span class="selo-off">{{ p.desconto }}% off</span>
+            <h3>{{ p.nome }}</h3>
+            <p class="pacote-frase">{{ p.frase }}</p>
+            <ul>{% for m in p.modulos %}<li>{{ m }}</li>{% endfor %}</ul>
+          </div>
           <div class="pacote-niveis">
             {% for n in p.niveis %}
               <div class="pacote-nivel">

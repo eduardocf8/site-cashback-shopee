@@ -61,15 +61,16 @@ Tudo do Standard, com a cara da sua marca.
 Quem comentar a palavra certa no seu post recebe o seu link de afiliado por DM, na hora.
 - Respostas a comentários nos posts
 - Resposta no comentário e DM com o seu link
-- Até 1.000 pessoas respondidas por mês
+- Sem limite de pessoas respondidas por mês
 - Histórico de quem foi respondido
 
 Precisa de: um Instagram profissional (comercial ou de criador).
 
 ### Automações do Instagram Premium
 Tudo do Standard, também nos stories e nas DMs.
-- Respostas a comentários, stories e DMs com palavra-chave
-- Até 10.000 pessoas respondidas por mês
+- Respostas a quem responde os seus stories
+- Respostas a DMs com palavra-chave
+- Sem limite de pessoas respondidas por mês
 
 ### Pacote Ofertas (Standard / Premium)
 Bot de WhatsApp + Meu site no mesmo plano, numa assinatura só, cerca de 10% mais barato que separado.

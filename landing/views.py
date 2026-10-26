@@ -56,11 +56,12 @@ RESUMOS = {
     "automacoes": {
         "icone": "automacoes", "frase": "Quem comentar a palavra certa no seu post recebe o seu link de afiliado por DM, na hora.",
         "itens": (
-            ["Respostas a comentários nos posts", "Até 1.000 pessoas respondidas por mês"],
-            ["Respostas a comentários, stories e DMs", "Até 10.000 pessoas respondidas por mês"],
+            ["Respostas a comentários nos posts"],
+            ["Respostas a comentários nos posts", "Respostas a quem responde os seus stories", "Respostas a DMs com palavra-chave"],
         ),
-        "comuns": ["Resposta no comentário e DM com o seu link", "Um post específico ou todos os posts", "Palavras que disparam a resposta",
-                   "Cada pessoa recebe uma vez só", "Histórico de quem foi respondido"],
+        "comuns": ["Sem limite de pessoas respondidas por mês", "Resposta no comentário e DM com o seu link",
+                   "Um post específico ou todos os posts", "Palavras que disparam a resposta", "Cada pessoa recebe uma vez só",
+                   "Histórico de quem foi respondido"],
     },
 }
 INCLUSOS = [

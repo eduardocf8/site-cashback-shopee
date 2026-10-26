@@ -20,12 +20,17 @@
 {% include "painel/_instagram_conexao.html" %}
 
 {% if ig %}
-  <section class="card ig-uso{% if no_limite %} ig-uso-cheio{% endif %}">
+  <section class="card ig-uso">
     <div>
-      <strong>{{ usadas|floatformat:"0g" }} de {{ plano.pessoas_por_mes|floatformat:"0g" }} pessoas respondidas este mês</strong>
-      <small>{% if no_limite %}Você chegou ao limite do plano: as automações voltam a responder no dia 1º.{% else %}A contagem recomeça todo dia 1º.{% endif %}{% if not plano.premium %} No Premium são 10.000 por mês e também respostas a stories e DMs.{% endif %}</small>
+      <strong>{{ respondidas|floatformat:"0g" }} pessoa{{ respondidas|pluralize }} respondida{{ respondidas|pluralize }} este mês</strong>
+      <small>Sem limite por mês.{% if not plano.premium %} No Premium, as automações também respondem stories e DMs.{% endif %}</small>
     </div>
-    <progress max="{{ plano.pessoas_por_mes }}" value="{{ usadas }}"></progress>
+    {% if fila %}
+      <div class="ig-fila">
+        <strong>{{ fila|floatformat:"0g" }} na fila</strong>
+        <small>O Instagram aceita até 750 respostas por hora. As que passam disso saem na hora seguinte, em ordem.</small>
+      </div>
+    {% endif %}
   </section>
   <section>
     <h2 class="titulo-secao">Suas automações</h2>

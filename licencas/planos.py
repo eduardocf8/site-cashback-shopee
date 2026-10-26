@@ -15,11 +15,11 @@ CARROSSEIS = {
     True: {"geracoes": 10, "reescritas": 40},
 }
 
-# Automações do Instagram: quais gatilhos e quantas pessoas respondidas por mês (cada pessoa conta
-# uma vez por automação, como no histórico).
+# Automações do Instagram: quais gatilhos cada plano responde. Sem limite de pessoas por mês (a API da
+# Meta não cobra; o limite por hora do Instagram é tratado com uma fila, em instagram_painel/webhook.py).
 AUTOMACOES = {
-    False: {"gatilhos": ("comentario",), "pessoas_por_mes": 1000},
-    True: {"gatilhos": ("comentario", "story", "direto"), "pessoas_por_mes": 10000},
+    False: {"gatilhos": ("comentario",)},
+    True: {"gatilhos": ("comentario", "story", "direto")},
 }
 
 # Bot de WhatsApp.

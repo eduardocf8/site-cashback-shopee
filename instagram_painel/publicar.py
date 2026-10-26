@@ -275,15 +275,18 @@ def uma_volta(agora=None) -> list[str]:
 
 
 def rodar():
+    from .webhook import enviar_fila
+
     while True:
         close_old_connections()
-        try:
-            for linha in uma_volta():
-                logger.info(linha)
-        except Exception:  # noqa: BLE001 - o worker não pode cair por causa disso
-            logger.exception("Instagram: erro na fila de publicações")
+        for nome, volta in (("publicações", uma_volta), ("respostas das automações", enviar_fila)):
+            try:
+                for linha in volta():
+                    logger.info(linha)
+            except Exception:  # noqa: BLE001 - o worker não pode cair por causa disso
+                logger.exception("Instagram: erro na fila de %s", nome)
         time.sleep(INTERVALO)
 
 
 def iniciar_em_segundo_plano():
-    threading.Thread(target=rodar, name="publicacoes-instagram", daemon=True).start()
+    threading.Thread(target=rodar, name="filas-instagram", daemon=True).start()

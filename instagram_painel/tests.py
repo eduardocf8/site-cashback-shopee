@@ -102,20 +102,49 @@ class TestAvisos(TestCase):
         W.separar_e_processar(aviso_mensagem("cupom", autor="444", mid="mid4", is_echo=True))  # a própria conta
         self.assertEqual(msg.call_count, 2)
 
-    def test_plano_standard_so_comentario_e_limite_do_mes(self, msg, privada, resposta):
+    def test_plano_standard_so_responde_comentario(self, msg, privada, resposta):
         self.c.modulos_cortesia = "instagram"
         self.c.save()
         Automacao.objects.create(conta=self.c, nome="Story", gatilho=Automacao.STORY, texto_dm="Link do story")
         W.separar_e_processar(aviso_mensagem("🔥", story="s1"))
         msg.assert_not_called()  # resposta a story é do Premium
-        with mock.patch.dict("licencas.planos.AUTOMACOES", {False: {"gatilhos": ("comentario",), "pessoas_por_mes": 1}}):
-            W.separar_e_processar(aviso_comentario("quero", autor="1", comentario="c1"))
-            W.separar_e_processar(aviso_comentario("quero", autor="2", comentario="c2"))
-        self.assertEqual(resposta.call_count, 1)  # o segundo passou do limite do mês
+        W.separar_e_processar(aviso_comentario("quero", autor="1", comentario="c1"))
+        self.assertEqual(resposta.call_count, 1)
         self.c.modulos_cortesia = "carrosseis_premium"  # sem o módulo das Automações
         self.c.save()
         W.separar_e_processar(aviso_comentario("quero", autor="3", comentario="c3"))
         self.assertEqual(resposta.call_count, 1)
+
+    def test_post_viral_passa_do_limite_da_hora_vai_para_a_fila_e_sai_depois(self, msg, privada, resposta):
+        from datetime import timedelta
+
+        from django.utils import timezone
+
+        with mock.patch.object(W, "LIMITE_POR_HORA", 2):
+            for i in range(4):
+                W.separar_e_processar(aviso_comentario("quero", autor=str(i), comentario=f"c{i}"))
+            self.assertEqual(privada.call_count, 2)
+            self.assertEqual(W.na_fila(self.c), 2)
+            self.assertEqual(W.enviar_fila(), [])  # a hora ainda está cheia
+            # uma hora depois: a fila sai, por ordem de chegada
+            Disparo.objects.filter(na_fila=False).update(enviado_em=timezone.now() - timedelta(hours=2))
+            self.assertIn("2 resposta(s) da fila", W.enviar_fila()[0])
+        self.assertEqual([c.args[2] for c in privada.call_args_list], ["c0", "c1", "c2", "c3"])
+        self.assertEqual(W.na_fila(self.c), 0)
+        self.assertEqual(Disparo.objects.filter(dm_ok=True).count(), 4)
+
+    def test_fila_respeita_o_prazo_do_instagram(self, msg, privada, resposta):
+        from datetime import timedelta
+
+        from django.utils import timezone
+
+        d = Disparo.objects.create(automacao=self.a, evento_id="velho", autor_id="9", na_fila=True)
+        Disparo.objects.filter(pk=d.pk).update(criado_em=timezone.now() - timedelta(days=8))
+        W.enviar_fila()
+        d.refresh_from_db()
+        self.assertFalse(d.na_fila)
+        self.assertIn("prazo", d.erro)
+        privada.assert_not_called()
 
     def test_erro_do_instagram_fica_no_historico(self, msg, privada, resposta):
         privada.side_effect = api.ErroInstagram("janela de 7 dias")
@@ -259,7 +288,7 @@ class TestTelas(TestCase):
         self.assertContains(r, "do plano Premium das Automações")
         r = self.client.post("/estudio/automacoes/nova/", {"nome": "y", "gatilho": "comentario", "palavras": "quero", "enviar_dm": "on", "texto_dm": "oi"})
         self.assertRedirects(r, "/estudio/automacoes/", fetch_redirect_response=False)
-        self.assertContains(self.client.get("/estudio/automacoes/"), "0 de 1.000 pessoas respondidas")
+        self.assertContains(self.client.get("/estudio/automacoes/"), "Sem limite por mês")
 
     def test_so_estudio_nao_abre_automacoes_mas_conecta_e_publica(self):
         self.entrar(conta(modulos="carrosseis_premium", email="estudio@exemplo.com"))

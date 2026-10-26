@@ -343,16 +343,14 @@ def estudio():
 
 
 def automacoes():
-    s, p = plano.AUTOMACOES[False], plano.AUTOMACOES[True]
-    mil = lambda n: f"{n:,}".replace(",", ".")  # noqa: E731
     return {
         "codigo": "automacoes", "slug": "automacoes-instagram", "url": "landing_automacoes", "nome": "Automações do Instagram",
         "titulo": "Automações do Instagram para afiliado Shopee — Appfiliado",
-        "descricao": "Quem comentar a palavra certa no seu post recebe o seu link de afiliado por DM, na hora. Respostas a comentários, stories e DMs no automático.",
+        "descricao": "Quem comentar a palavra certa no seu post recebe o seu link de afiliado por DM, na hora. Respostas a comentários, stories e DMs no automático, sem limite por mês.",
         "h1": "Comentou QUERO, recebeu o link na DM.",
         "texto": "Escolha o post e a palavra. Quem comentar recebe uma resposta no comentário e o seu link de afiliado por DM, sem você responder um por um.",
         "resumo": [
-            ("Pessoas respondidas por mês", mil(s["pessoas_por_mes"]), mil(p["pessoas_por_mes"])),
+            ("Pessoas respondidas por mês", "Sem limite", "Sem limite"),
             ("Comentários nos posts", "Sim", "Sim"),
             ("Respostas aos stories", "—", "Sim"),
             ("DMs com palavra-chave", "—", "Sim"),
@@ -371,15 +369,15 @@ def automacoes():
                    _t("DM com palavra-chave", "Quem mandar uma DM com a palavra, como CUPOM, recebe a resposta na hora.", "Premium")),
             _grupo("Seguro para a sua conta", "Regras para não parecer spam.",
                    _t("Uma vez por pessoa", "Cada pessoa recebe a resposta uma vez só em cada automação, mesmo se comentar de novo."),
-                   _t("Limite por hora", "No máximo 150 respostas por hora, dentro das regras do Instagram."),
+                   _t("Post viralizou? Ninguém fica sem resposta", "Não há limite por mês. O Instagram aceita até 750 respostas por hora em cada conta: passando disso, as respostas entram numa fila e saem na hora seguinte, por ordem de chegada."),
                    _t("API oficial", "O Appfiliado usa a API oficial do Instagram (Meta). Nada de senha nem de extensão no navegador."),
                    _t("No seu controle", "Pause, edite ou exclua cada automação no painel quando quiser.")),
             _grupo("Histórico", "Veja quem foi respondido.",
                    _t("Quem recebeu", "Data, pessoa, o que ela escreveu e se a resposta e a DM saíram."),
-                   _t("Uso do mês", "O painel mostra quantas pessoas foram respondidas no mês e quanto falta para o limite do plano.")),
+                   _t("Resumo do mês", "O painel mostra quantas pessoas foram respondidas no mês e quantas estão na fila, quando o post viraliza.")),
         ],
         "tabela": [
-            ("Pessoas respondidas por mês", mil(s["pessoas_por_mes"]), mil(p["pessoas_por_mes"])),
+            ("Pessoas respondidas por mês", "Sem limite", "Sem limite"),
             ("Respostas a comentários nos posts", True, True),
             ("Resposta no comentário e DM com o link", True, True),
             ("Histórico de quem foi respondido", True, True),
@@ -389,9 +387,9 @@ def automacoes():
         "perguntas": [
             ("Preciso de uma conta profissional no Instagram?", "Sim: comercial ou de criador. Você conecta pelo login oficial do Instagram, sem passar a sua senha para o Appfiliado."),
             ("A DM chega para quem não me segue?", "Chega. A DM em resposta a um comentário vai para quem comentou, mesmo que a pessoa não siga você. Nesse caso, ela aparece nas solicitações de mensagem."),
-            ("O que conta no limite do mês?", "Cada pessoa respondida conta uma vez em cada automação. A contagem recomeça todo dia 1º. Se chegar ao limite, as automações param até o mês virar."),
+            ("Tem limite de respostas?", "Não por mês. O Instagram aceita até 750 respostas por hora em cada conta: se um post viralizar e passar disso, as respostas entram numa fila e saem na hora seguinte, por ordem de chegada. A resposta a um comentário pode sair até 7 dias depois dele; a de uma DM ou resposta de story, até 24 horas depois."),
             ("Preciso deixar o painel aberto?", "Não. As automações rodam no servidor do Appfiliado, 24 horas por dia."),
-            ("O que muda do Standard pro Premium?", f"O Premium também responde stories e DMs com palavra-chave e vai até {mil(p['pessoas_por_mes'])} pessoas por mês. O Standard responde comentários nos posts, até {mil(s['pessoas_por_mes'])} pessoas por mês."),
+            ("O que muda do Standard pro Premium?", "O Standard responde comentários nos posts. O Premium também responde quem responde os seus stories e quem manda DM com a palavra-chave. Nos dois, sem limite de pessoas por mês."),
         ],
     }
 
@@ -574,8 +572,8 @@ APRESENTACAO = {
     "automacoes": {
         "layouts": ["passos", "destaque", "premium", "cartoes", "faixa"],
         "curtos": ["Como funciona", "Comentários", "Stories e DMs", "Segurança", "Histórico"],
-        "numeros": lambda: [("1.000 a 10.000", "pessoas respondidas por mês"), ("3", "gatilhos: comentário, story e DM"),
-                            ("150", "respostas por hora, no máximo"), ("1 vez", "por pessoa em cada automação")],
+        "numeros": lambda: [("Sem limite", "de pessoas respondidas por mês"), ("3", "gatilhos: comentário, story e DM"),
+                            ("750/h", "e o que passar vai para a fila"), ("1 vez", "por pessoa em cada automação")],
     },
     "carrosseis": {
         "layouts": ["passos", "destaque", "split", "cartoes", "premium", "lista", "faixa"],

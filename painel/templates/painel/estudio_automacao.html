@@ -87,7 +87,7 @@
                 <td>{% if d.autor_username %}@{{ d.autor_username }}{% else %}—{% endif %}</td>
                 <td>{{ d.texto|truncatechars:60 }}</td>
                 <td>{% if automacao.gatilho == "comentario" and automacao.responder_comentario %}{% if d.resposta_ok %}✓{% else %}✗{% endif %}{% else %}—{% endif %}</td>
-                <td>{% if d.dm_ok %}✓{% elif automacao.enviar_dm %}✗{% else %}—{% endif %}{% if d.erro %} <small class="ig-erro" title="{{ d.erro }}">{{ d.erro|truncatechars:40 }}</small>{% endif %}</td>
+                <td>{% if d.na_fila %}Na fila{% elif d.dm_ok %}✓{% elif automacao.enviar_dm %}✗{% else %}—{% endif %}{% if d.erro %} <small class="ig-erro" title="{{ d.erro }}">{{ d.erro|truncatechars:40 }}</small>{% endif %}</td>
               </tr>
             {% endfor %}
           </tbody>

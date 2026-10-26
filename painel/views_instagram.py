@@ -23,7 +23,7 @@ from estudio.models import PostInstagram
 from instagram_painel import api, conexao
 from instagram_painel import publicar as P
 from instagram_painel.models import Automacao, ContaInstagram, Disparo, ImagemPublicacao, Publicacao
-from instagram_painel.webhook import palavras, respondidas_no_mes
+from instagram_painel.webhook import na_fila, palavras, respondidas_no_mes
 from licencas import planos as planos_do_app
 
 from . import modulos as mod
@@ -64,10 +64,9 @@ def automacoes(request, conta):
         total = a.disparos.count()
         lista.append({"a": a, "total": total, "dms": a.disparos.filter(dm_ok=True).count(),
                       "palavras": ", ".join(palavras(a)).upper(), "fora_do_plano": a.gatilho not in plano["gatilhos"]})
-    usadas = respondidas_no_mes(conta)
     return render(request, "painel/estudio_automacoes.html", _contexto(
-        request, SLUG_AUTOMACOES, ig=_ig(conta), plano=plano, lista=lista, usadas=usadas,
-        no_limite=usadas >= plano["pessoas_por_mes"], configurado=bool(api.app_id() and api.app_secret()),
+        request, SLUG_AUTOMACOES, ig=_ig(conta), plano=plano, lista=lista, respondidas=respondidas_no_mes(conta),
+        fila=na_fila(conta), configurado=bool(api.app_id() and api.app_secret()),
     ))
 
 

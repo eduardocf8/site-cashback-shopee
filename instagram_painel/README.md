@@ -1,8 +1,10 @@
-# Instagram dos afiliados (Estúdio Instagram › Automações)
+# Instagram dos afiliados (Automações do Instagram e publicação do Estúdio)
 
 O afiliado conecta o Instagram dele pelo **Login do Instagram para empresas** e cria automações de
-resposta, no estilo do ManyChat. Está **em teste**: só aparece para a conta com "testa o Estúdio
-Instagram" marcado no admin (Contas do Appfiliado). As automações são do plano **Premium**.
+resposta, no estilo do ManyChat. As Automações são um módulo próprio (`instagram` e
+`instagram_premium`): o Standard responde comentários; o Premium, também stories e DMs. Até o
+lançamento (`APPFILIADO_LANCAMENTO_INSTAGRAM`), só aparece para a conta com "testa o Estúdio
+Instagram" marcado no admin (Contas do Appfiliado).
 
 ## O que faz
 
@@ -13,8 +15,11 @@ Instagram" marcado no admin (Contas do Appfiliado). As automações são do plan
 | Alguém **manda uma DM** com uma das palavras (obrigatório ter palavra) | DM |
 
 Regras: cada pessoa recebe uma vez por automação; aviso repetido da Meta não responde de novo; a
-própria conta e resposta dentro de outro comentário ficam de fora; até 150 respostas por hora por
-conta. O histórico ("Quem recebeu") mostra o que saiu e os erros do Instagram.
+própria conta e resposta dentro de outro comentário ficam de fora. Sem limite por mês. O Instagram
+aceita 750 DMs de resposta a comentário por hora em cada conta: passando de 600 na hora, as respostas
+entram na fila (`Disparo.na_fila`) e o worker manda na hora seguinte, em ordem (`webhook.enviar_fila`),
+dentro do prazo do Instagram (7 dias depois do comentário, 24 horas depois da DM). O histórico
+("Quem recebeu") mostra o que saiu, o que está na fila e os erros do Instagram.
 
 No editor de um post do Estúdio, "Criar automação" já abre com o nome e o link de afiliado do produto.
 

@@ -94,6 +94,9 @@ class Disparo(models.Model):
     resposta_ok = models.BooleanField(default=False)
     dm_ok = models.BooleanField(default=False)
     erro = models.CharField(max_length=400, blank=True)
+    # Passou do limite por hora do Instagram (post viralizando): espera na fila e sai na hora seguinte.
+    na_fila = models.BooleanField(default=False, db_index=True)
+    enviado_em = models.DateTimeField(null=True, blank=True, db_index=True)
     criado_em = models.DateTimeField(auto_now_add=True)
 
     class Meta:
