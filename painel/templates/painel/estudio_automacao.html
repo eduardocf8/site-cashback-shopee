@@ -13,7 +13,7 @@
   {% if automacao %}
     <div class="es-topo-editor"><div class="acoes">
       <form method="post" action="{% url 'painel_estudio_automacao_ligar' automacao.pk %}">{% csrf_token %}<button class="botao {% if automacao.ativa %}botao-claro{% else %}botao-principal{% endif %}" type="submit">{% if automacao.ativa %}Pausar{% else %}Ligar{% endif %}</button></form>
-      <form method="post" action="{% url 'painel_estudio_automacao_apagar' automacao.pk %}" onsubmit="return confirm('Apagar esta automação?')">{% csrf_token %}<button class="botao botao-claro" type="submit">Apagar</button></form>
+      <form method="post" action="{% url 'painel_estudio_automacao_excluir' automacao.pk %}" onsubmit="return confirm('Excluir esta automação? O histórico dela também sai.')">{% csrf_token %}<button class="botao botao-claro" type="submit">Excluir</button></form>
     </div></div>
   {% endif %}
 </header>
@@ -73,7 +73,7 @@
 
 {% if automacao %}
   <section>
-    <h2 class="titulo-secao">Quem recebeu</h2>
+    <h2 class="titulo-secao">Quem recebeu <a class="suave" style="font-size:14px;font-weight:500" href="{% url 'painel_estudio_historico' %}?automacao={{ automacao.pk }}">Ver histórico completo</a></h2>
     {% if disparos %}
       <div class="card ig-historico">
         <table>

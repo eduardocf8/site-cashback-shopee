@@ -1,0 +1,60 @@
+{% extends "painel/base.html" %}
+{% load static %}
+{% block titulo %}Histórico · Automações{% endblock %}
+{% block cabeca %}<link rel="stylesheet" href="{% static 'estudio/painel.css' %}">{% endblock %}
+{% block conteudo %}
+<div class="es-pagina">
+<header class="cabecalho">
+  <div>
+    <a class="suave" href="{% url 'painel_estudio_automacoes' %}">← Automações</a>
+    <h1>Histórico das automações</h1>
+    <p>Quem as suas automações responderam, do mais novo para o mais antigo.</p>
+  </div>
+</header>
+
+<section class="card ig-filtro">
+  <form method="get">
+    <label>Automação
+      <select name="automacao" onchange="this.form.submit()">
+        <option value="">Todas</option>
+        {% for a in automacoes %}<option value="{{ a.pk }}"{% if escolhida and escolhida.pk == a.pk %} selected{% endif %}>{{ a.nome }}</option>{% endfor %}
+      </select>
+    </label>
+  </form>
+  <div class="ig-numeros">
+    <div><strong>{{ total }}</strong><small>pessoa{{ total|pluralize }} respondida{{ total|pluralize }}</small></div>
+    <div><strong>{{ respostas }}</strong><small>resposta{{ respostas|pluralize }} no comentário</small></div>
+    <div><strong>{{ dms }}</strong><small>DM{{ dms|pluralize }} enviada{{ dms|pluralize }}</small></div>
+  </div>
+</section>
+
+{% if pagina.object_list %}
+  <div class="card ig-historico">
+    <table>
+      <thead><tr><th>Quando</th><th>Automação</th><th>Pessoa</th><th>Escreveu</th><th>Comentário</th><th>DM</th></tr></thead>
+      <tbody>
+        {% for d in pagina %}
+          <tr>
+            <td>{{ d.criado_em|date:"d/m/Y H:i" }}</td>
+            <td><a href="{% url 'painel_estudio_automacao' d.automacao.pk %}">{{ d.automacao.nome }}</a><br><small class="suave">{{ d.automacao.get_gatilho_display }}</small></td>
+            <td>{% if d.autor_username %}@{{ d.autor_username }}{% else %}—{% endif %}</td>
+            <td>{{ d.texto|truncatechars:80 }}</td>
+            <td>{% if d.automacao.gatilho == "comentario" and d.automacao.responder_comentario %}{% if d.resposta_ok %}✓{% else %}✗{% endif %}{% else %}—{% endif %}</td>
+            <td>{% if d.dm_ok %}✓{% elif d.automacao.enviar_dm %}✗{% else %}—{% endif %}{% if d.erro %}<br><small class="ig-erro">{{ d.erro|truncatechars:90 }}</small>{% endif %}</td>
+          </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  {% if pagina.paginator.num_pages > 1 %}
+    <nav class="linha-botoes ig-paginas">
+      {% if pagina.has_previous %}<a class="botao botao-claro botao-pequeno" href="?{% if escolhida %}automacao={{ escolhida.pk }}&{% endif %}pagina={{ pagina.previous_page_number }}">← Mais novos</a>{% endif %}
+      <span class="suave">Página {{ pagina.number }} de {{ pagina.paginator.num_pages }}</span>
+      {% if pagina.has_next %}<a class="botao botao-claro botao-pequeno" href="?{% if escolhida %}automacao={{ escolhida.pk }}&{% endif %}pagina={{ pagina.next_page_number }}">Mais antigos →</a>{% endif %}
+    </nav>
+  {% endif %}
+{% else %}
+  <p class="suave">Ninguém foi respondido ainda{% if escolhida %} por esta automação{% endif %}.</p>
+{% endif %}
+</div>
+{% endblock %}

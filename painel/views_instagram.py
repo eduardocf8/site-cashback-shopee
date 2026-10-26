@@ -9,6 +9,7 @@ import secrets
 from django import forms
 from django.conf import settings
 from django.contrib import messages
+from django.core.paginator import Paginator
 from django.http import Http404, HttpResponse, JsonResponse
 from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import reverse
@@ -18,13 +19,14 @@ from django.views.decorators.http import require_POST
 from estudio import afiliados as A
 from estudio.models import PostInstagram
 from instagram_painel import api, conexao
-from instagram_painel.models import Automacao, AvisoRecebido, ContaInstagram
+from instagram_painel.models import Automacao, ContaInstagram, Disparo
 from instagram_painel.webhook import palavras
 
 from .views import _contexto
 from .views_estudio import SLUG, _beta
 
 SESSAO_STATE = "instagram_state"
+SESSAO_JANELA = "instagram_janela"  # o login abriu numa janela à parte: a volta fecha a janela
 MAX_AUTOMACOES = 50
 
 
@@ -46,12 +48,8 @@ def automacoes(request, conta):
             total = a.disparos.count()
             lista.append({"a": a, "total": total, "dms": a.disparos.filter(dm_ok=True).count(),
                           "palavras": ", ".join(palavras(a)).upper()})
-    ig = _ig(conta)
-    # Em teste: mostra se os avisos da Meta estão chegando (os desta conta e o último de qualquer conta).
-    avisos = list(AvisoRecebido.objects.filter(ig_id=ig.ig_id)[:15]) if ig else []
     return render(request, "painel/estudio_automacoes.html", _contexto(
-        request, SLUG, ig=ig, premium=premium, lista=lista, configurado=bool(api.app_id() and api.app_secret()),
-        avisos=avisos, ultimo_aviso=AvisoRecebido.objects.first(),
+        request, SLUG, ig=_ig(conta), premium=premium, lista=lista, configurado=bool(api.app_id() and api.app_secret()),
     ))
 
 
@@ -62,7 +60,15 @@ def conectar(request, conta):
         return redirect("painel_estudio_automacoes")
     state = secrets.token_urlsafe(24)
     request.session[SESSAO_STATE] = state
+    request.session[SESSAO_JANELA] = request.GET.get("janela") == "1"
     return redirect(api.url_de_autorizacao(_retorno_url(), state))
+
+
+def _voltar(request):
+    """Fim do login: na janela à parte, avisa a página do Appfiliado e fecha; senão, volta para ela."""
+    if request.session.pop(SESSAO_JANELA, False):
+        return render(request, "painel/instagram_retorno.html", {"destino": reverse("painel_estudio_automacoes")})
+    return redirect("painel_estudio_automacoes")
 
 
 @_beta
@@ -70,10 +76,10 @@ def retorno(request, conta):
     state = request.session.pop(SESSAO_STATE, None)
     if request.GET.get("error"):
         messages.info(request, "A conexão com o Instagram foi cancelada.")
-        return redirect("painel_estudio_automacoes")
+        return _voltar(request)
     if not state or not secrets.compare_digest(state, request.GET.get("state", "")) or not request.GET.get("code"):
         messages.error(request, "Não deu para confirmar a conexão. Tente conectar de novo.")
-        return redirect("painel_estudio_automacoes")
+        return _voltar(request)
     codigo = request.GET["code"].split("#")[0]
     try:
         ig = conexao.conectar(conta, codigo, _retorno_url())
@@ -81,7 +87,7 @@ def retorno(request, conta):
         messages.error(request, str(erro))
     else:
         messages.success(request, f"Instagram @{ig.username} conectado.")
-    return redirect("painel_estudio_automacoes")
+    return _voltar(request)
 
 
 @require_POST
@@ -153,15 +159,15 @@ def automacao_nova(request, conta):
     if request.method == "POST":
         form = AutomacaoForm(request.POST)
         if Automacao.objects.filter(conta=conta).count() >= MAX_AUTOMACOES:
-            form.add_error(None, f"Você chegou a {MAX_AUTOMACOES} automações. Apague alguma para criar outra.")
+            form.add_error(None, f"Você chegou a {MAX_AUTOMACOES} automações. Exclua alguma para criar outra.")
         elif form.is_valid():
             a = form.save(commit=False)
             a.conta = conta
             post = PostInstagram.objects.filter(conta=conta, pk=request.POST.get("post") or 0).first()
             a.post_estudio = post
             a.save()
-            messages.success(request, "Automação criada.")
-            return redirect("painel_estudio_automacao", pk=a.pk)
+            messages.success(request, f"Automação \"{a.nome}\" criada.")
+            return redirect("painel_estudio_automacoes")
     else:
         inicial = {"gatilho": Automacao.COMENTARIO, "palavras": "QUERO", "ativa": True,
                    "respostas": "Te mandei na DM! 📩\nEnviei o link na sua DM 😉\nCorre na DM que já te mandei!",
@@ -184,8 +190,8 @@ def automacao(request, conta, pk):
     form = AutomacaoForm(request.POST or None, instance=a)
     if request.method == "POST" and form.is_valid():
         form.save()
-        messages.success(request, "Automação salva.")
-        return redirect("painel_estudio_automacao", pk=a.pk)
+        messages.success(request, f"Automação \"{a.nome}\" salva.")
+        return redirect("painel_estudio_automacoes")
     return render(request, "painel/estudio_automacao.html", _form_contexto(request, conta, form, a))
 
 
@@ -202,10 +208,28 @@ def automacao_ligar(request, conta, pk):
 
 @require_POST
 @_beta
-def automacao_apagar(request, conta, pk):
-    get_object_or_404(Automacao, pk=pk, conta=conta).delete()
-    messages.info(request, "Automação apagada.")
+def automacao_excluir(request, conta, pk):
+    a = get_object_or_404(Automacao, pk=pk, conta=conta)
+    a.delete()
+    messages.info(request, f"Automação \"{a.nome}\" excluída.")
     return redirect("painel_estudio_automacoes")
+
+
+@_beta
+def historico(request, conta):
+    """Todas as respostas das automações, das mais novas para as mais antigas."""
+    if (r := _so_premium(request, conta)):
+        return r
+    automacoes_ = Automacao.objects.filter(conta=conta).order_by("nome")
+    disparos = Disparo.objects.filter(automacao__conta=conta).select_related("automacao")
+    escolhida = automacoes_.filter(pk=request.GET.get("automacao") or 0).first()
+    if escolhida:
+        disparos = disparos.filter(automacao=escolhida)
+    pagina = Paginator(disparos, 50).get_page(request.GET.get("pagina"))
+    return render(request, "painel/estudio_historico.html", _contexto(
+        request, SLUG, pagina=pagina, automacoes=automacoes_, escolhida=escolhida,
+        total=disparos.count(), dms=disparos.filter(dm_ok=True).count(), respostas=disparos.filter(resposta_ok=True).count(),
+    ))
 
 
 # --- avisos da Meta (sem login: quem chama é a Meta, a segurança é a assinatura) ------------------

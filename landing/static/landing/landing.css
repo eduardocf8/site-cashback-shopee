@@ -509,3 +509,11 @@ a.incluso:hover strong { text-decoration-color: var(--verde); }
   .tabela-planos thead th { font-size: 11px; letter-spacing: .04em; }
   .tabela-planos .sim { font-size: 18px; }
 }
+
+/* ---------- Páginas de texto (privacidade) ---------- */
+.pagina-texto { padding: 48px 0 72px; line-height: 1.65; }
+.pagina-texto h1 { font-size: clamp(28px, 5vw, 40px); letter-spacing: -.02em; margin: 0 0 6px; }
+.pagina-texto h2 { font-size: 20px; margin: 32px 0 8px; }
+.pagina-texto .atualizada { color: var(--suave, #5C6A61); margin-top: 0; }
+.pagina-texto ul { padding-left: 20px; }
+.pagina-texto li { margin: 6px 0; }

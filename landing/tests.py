@@ -63,6 +63,14 @@ class TestPagina(TestCase):
         self.assertEqual(self.abrir(caminho="/dashboard/").status_code, 404)  # nada da cash-b nesse domínio
         self.assertEqual(self.abrir(caminho="/admin/").status_code, 404)
 
+    def test_politica_de_privacidade_com_a_parte_do_instagram(self):
+        # A Meta exige a política no domínio do app, explicando os dados do Instagram e a exclusão.
+        pagina = self.abrir(caminho="/privacidade/")
+        self.assertContains(pagina, "Dados do Instagram")
+        self.assertContains(pagina, "Como pedir a exclusão dos dados")
+        self.assertContains(self.abrir(caminho="/sitemap.xml"), "/privacidade/")
+        self.assertContains(self.abrir(), 'href="/privacidade/"')
+
     def test_pagina_de_notas_com_planos_e_aviso_de_pessoa_juridica(self):
         resposta = self.abrir(caminho="/emissao-de-notas/")
         self.assertContains(resposta, "Serviço exclusivo para afiliados pessoa jurídica")

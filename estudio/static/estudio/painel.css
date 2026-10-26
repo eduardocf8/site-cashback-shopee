@@ -120,3 +120,12 @@
 .ig-avisos h2 { margin-bottom: 6px; }
 .ig-avisos ul { list-style: none; margin: 10px 0 0; padding: 0; display: grid; gap: 6px; font-size: 13.5px; }
 .ig-avisos li small { color: var(--suave); margin-right: 6px; }
+.ig-automacao .linha-botoes form { margin: 0; }
+.ig-filtro { display: flex; align-items: flex-end; justify-content: space-between; gap: 16px; flex-wrap: wrap; }
+.ig-filtro form { margin: 0; }
+.ig-filtro label { display: flex; flex-direction: column; gap: 4px; font-weight: 600; font-size: 14px; }
+.ig-filtro select { font: inherit; padding: 8px 10px; border: 1px solid var(--borda); border-radius: 10px; background: var(--campo); min-width: 220px; }
+.ig-numeros { display: flex; gap: 24px; }
+.ig-numeros strong { display: block; font-size: 22px; }
+.ig-numeros small { color: var(--suave); font-size: 12.5px; }
+.ig-paginas { align-items: center; justify-content: center; }

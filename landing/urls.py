@@ -15,6 +15,7 @@ urlpatterns = [
     path("radar-de-ofertas/", views.recursos, {"modulo": "radar"}, name="landing_radar"),
     path("conversor-de-links/", views.recursos, {"modulo": "conversor"}, name="landing_conversor"),
     path("resultados-e-metas/", views.recursos, {"modulo": "resultados"}, name="landing_resultados"),
+    path("privacidade/", views.privacidade, name="landing_privacidade"),
     path("healthz/", healthcheck),  # o Render confere a saúde pelo domínio personalizado
     path("robots.txt", views.robots, name="landing_robots"),
     path("sitemap.xml", views.sitemap, name="landing_sitemap"),

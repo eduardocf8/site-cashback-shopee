@@ -118,6 +118,11 @@ def notas(request):
 
 
 @require_GET
+def privacidade(request):
+    return render(request, "landing/privacidade.html", _comum(request))
+
+
+@require_GET
 def pagina(request):
     combos = planos.todos_os_combos()
     contexto = {
@@ -143,7 +148,7 @@ def robots(request):
 
 @require_GET
 def sitemap(request):
-    caminhos = ["/", "/emissao-de-notas/"] + [f"/{conteudo.PAGINAS[m]()['slug']}/" for m in list(planos.MODULOS) + [i[0] for i in INCLUIDOS_COM_PAGINA]]
+    caminhos = ["/", "/emissao-de-notas/", "/privacidade/"] + [f"/{conteudo.PAGINAS[m]()['slug']}/" for m in list(planos.MODULOS) + [i[0] for i in INCLUIDOS_COM_PAGINA]]
     xml = ('<?xml version="1.0" encoding="UTF-8"?><urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">'
            + "".join(f"<url><loc>https://{request.get_host()}{c}</loc></url>" for c in caminhos) + "</urlset>")
     return HttpResponse(xml, content_type="application/xml")

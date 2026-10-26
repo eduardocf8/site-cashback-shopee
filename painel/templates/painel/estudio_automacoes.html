@@ -10,7 +10,12 @@
     <h1>Automações <span class="es-selo-teste">Em teste</span></h1>
     <p>Quem comentar a palavra certa no seu post (ou responder o seu story) recebe o seu link por DM, na hora.</p>
   </div>
-  {% if premium and ig %}<a class="botao botao-principal" href="{% url 'painel_estudio_automacao_nova' %}">Nova automação</a>{% endif %}
+  {% if premium and ig %}
+    <div class="linha-botoes">
+      <a class="botao botao-claro" href="{% url 'painel_estudio_historico' %}">Histórico</a>
+      <a class="botao botao-principal" href="{% url 'painel_estudio_automacao_nova' %}">Nova automação</a>
+    </div>
+  {% endif %}
 </header>
 
 <section class="card ig-conexao">
@@ -28,23 +33,10 @@
       <h2>Conecte o seu Instagram</h2>
       <p class="suave">Precisa ser uma conta profissional (comercial ou de criador). Você entra pelo próprio Instagram e escolhe o que o Appfiliado pode fazer: ler os comentários e responder, mandar DMs e publicar posts.</p>
     </div>
-    {% if configurado %}<a class="botao botao-principal" href="{% url 'painel_instagram_conectar' %}">Conectar Instagram</a>
+    {% if configurado %}<a class="botao botao-principal" id="ig-conectar" href="{% url 'painel_instagram_conectar' %}">Conectar Instagram</a>
     {% else %}<p class="suave">A conexão com o Instagram ainda não está configurada no servidor.</p>{% endif %}
   {% endif %}
 </section>
-
-{% if ig %}
-  <section class="card ig-avisos">
-    <h2>Avisos do Instagram <span class="es-selo-teste">Teste</span></h2>
-    <p class="suave">O que a Meta mandou para o Appfiliado sobre @{{ ig.username }} na última semana.
-      {% if ultimo_aviso %}Último aviso de qualquer conta: {{ ultimo_aviso.recebido_em|date:"d/m H:i" }} ({{ ultimo_aviso.campo }}).{% else %}Nenhum aviso de nenhuma conta chegou ainda.{% endif %}</p>
-    {% if avisos %}
-      <ul>{% for a in avisos %}<li><small>{{ a.recebido_em|date:"d/m H:i:s" }} · {{ a.campo }}</small> {{ a.resumo }}</li>{% endfor %}</ul>
-    {% else %}
-      <p class="suave">Nenhum aviso desta conta ainda.</p>
-    {% endif %}
-  </section>
-{% endif %}
 
 {% if not premium %}
   <section class="card">
@@ -66,9 +58,14 @@
                 <small>{{ item.total }} pessoa{{ item.total|pluralize }} respondida{{ item.total|pluralize }} · {{ item.dms }} por DM</small>
               </div>
             </a>
-            <form method="post" action="{% url 'painel_estudio_automacao_ligar' item.a.pk %}">{% csrf_token %}<input type="hidden" name="voltar" value="lista">
-              <button class="botao botao-pequeno {% if item.a.ativa %}botao-claro{% else %}botao-principal{% endif %}" type="submit">{% if item.a.ativa %}Pausar{% else %}Ligar{% endif %}</button>
-            </form>
+            <div class="linha-botoes">
+              <form method="post" action="{% url 'painel_estudio_automacao_ligar' item.a.pk %}">{% csrf_token %}<input type="hidden" name="voltar" value="lista">
+                <button class="botao botao-pequeno {% if item.a.ativa %}botao-claro{% else %}botao-principal{% endif %}" type="submit">{% if item.a.ativa %}Pausar{% else %}Ligar{% endif %}</button>
+              </form>
+              <form method="post" action="{% url 'painel_estudio_automacao_excluir' item.a.pk %}" onsubmit="return confirm('Excluir a automação &quot;{{ item.a.nome|escapejs }}&quot;? O histórico dela também sai.')">{% csrf_token %}
+                <button class="botao botao-pequeno botao-claro" type="submit">Excluir</button>
+              </form>
+            </div>
           </article>
         {% endfor %}
       </div>
@@ -78,4 +75,15 @@
   </section>
 {% endif %}
 </div>
+<script>
+  // O login do Instagram abre numa janela menor, ao lado do painel. Se o navegador bloquear, abre aqui mesmo.
+  document.getElementById('ig-conectar')?.addEventListener('click', (e) => {
+    const l = 560, a = 760, x = window.screenX + Math.max(0, (window.outerWidth - l) / 2), y = window.screenY + Math.max(0, (window.outerHeight - a) / 2);
+    const janela = window.open(e.currentTarget.href + '?janela=1', 'conectar-instagram', `width=${l},height=${a},left=${x},top=${y}`);
+    if (!janela) return;
+    e.preventDefault();
+    e.currentTarget.textContent = 'Conectando… (termine na janela do Instagram)';
+    const espera = setInterval(() => { if (janela.closed) { clearInterval(espera); window.location.reload(); } }, 800);
+  });
+</script>
 {% endblock %}

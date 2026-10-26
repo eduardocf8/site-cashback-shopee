@@ -225,7 +225,7 @@ class TestTelas(TestCase):
             "respostas": "Te mandei!", "enviar_dm": "on", "texto_dm": "Aqui:", "link": "https://s.shopee.com.br/abc",
             "ativa": "on", "post": post.pk})
         a = Automacao.objects.get()
-        self.assertRedirects(r, f"/estudio/automacoes/{a.pk}/", fetch_redirect_response=False)
+        self.assertRedirects(r, "/estudio/automacoes/", fetch_redirect_response=False)  # volta para a lista
         self.assertEqual(a.post_estudio, post)
         self.assertContains(self.client.get("/estudio/automacoes/"), "Garrafa")
 
@@ -243,7 +243,7 @@ class TestTelas(TestCase):
         outra = Automacao.objects.create(conta=conta(email="outra@exemplo.com"), nome="x", respostas="ok")
         self.entrar(conta())
         self.assertEqual(self.client.get(f"/estudio/automacoes/{outra.pk}/").status_code, 404)
-        self.assertEqual(self.client.post(f"/estudio/automacoes/{outra.pk}/apagar/").status_code, 404)
+        self.assertEqual(self.client.post(f"/estudio/automacoes/{outra.pk}/excluir/").status_code, 404)
 
 
 class TestAvisosRecebidos(TestCase):
@@ -254,11 +254,49 @@ class TestAvisosRecebidos(TestCase):
         W.separar_e_processar(aviso_mensagem("🔥", story="s1", ig_id=IG_ID))
         self.assertEqual(AvisoRecebido.objects.get(ig_id="qualquer").resumo, "@maria comentou: quero muito")
         self.assertEqual(AvisoRecebido.objects.get(ig_id=IG_ID).resumo, "Resposta a story: 🔥")
-        c = conta()
-        conectada(c)
-        cliente = Client(HTTP_HOST=HOST)
-        with override_settings(APPFILIADO_PAINEL_HOSTS=[HOST], ALLOWED_HOSTS=[HOST, "testserver"]):
-            cliente.post("/entrar/", {"email": c.email, "senha": SENHA})
-            pagina = cliente.get("/estudio/automacoes/")
-        self.assertContains(pagina, "Resposta a story: 🔥")
-        self.assertNotContains(pagina, "quero muito")  # de outra conta: só a hora do último aviso
+
+
+@override_settings(APPFILIADO_PAINEL_HOSTS=[HOST], ALLOWED_HOSTS=[HOST, "testserver"], APPFILIADO_PAINEL_URL=f"https://{HOST}",
+                   APPFILIADO_INSTAGRAM_APP_ID="123", APPFILIADO_INSTAGRAM_APP_SECRET=SEGREDO)
+class TestJanelaHistoricoEExcluir(TestCase):
+    def setUp(self):
+        cache.clear()
+        self.client = Client(HTTP_HOST=HOST)
+        self.c = conta()
+        self.client.post("/entrar/", {"email": self.c.email, "senha": SENHA})
+
+    def test_login_na_janela_volta_fechando_a_janela(self):
+        self.client.get("/estudio/instagram/conectar/?janela=1")
+        state = self.client.session["instagram_state"]
+        with mock.patch.object(conexao, "conectar", return_value=ContaInstagram(username="bia")):
+            r = self.client.get(f"/estudio/instagram/retorno/?code=abc&state={state}")
+        self.assertContains(r, "window.opener.location.href = destino")
+        self.assertContains(r, "/estudio/automacoes/")
+        # sem a janela, continua voltando direto
+        self.client.get("/estudio/instagram/conectar/")
+        state = self.client.session["instagram_state"]
+        with mock.patch.object(conexao, "conectar", return_value=ContaInstagram(username="bia")):
+            r = self.client.get(f"/estudio/instagram/retorno/?code=abc&state={state}")
+        self.assertRedirects(r, "/estudio/automacoes/", fetch_redirect_response=False)
+
+    def test_historico_mostra_so_as_respostas_da_conta_e_filtra(self):
+        a = Automacao.objects.create(conta=self.c, nome="Garrafa", respostas="ok")
+        b = Automacao.objects.create(conta=self.c, nome="Story", gatilho=Automacao.STORY, texto_dm="oi")
+        Disparo.objects.create(automacao=a, evento_id="1", autor_username="maria", texto="quero", resposta_ok=True, dm_ok=True)
+        Disparo.objects.create(automacao=b, evento_id="2", autor_username="joao", texto="🔥", dm_ok=True)
+        outra = Automacao.objects.create(conta=conta(email="outra@exemplo.com"), nome="Dela", respostas="ok")
+        Disparo.objects.create(automacao=outra, evento_id="3", autor_username="intruso")
+        pagina = self.client.get("/estudio/automacoes/historico/")
+        self.assertContains(pagina, "@maria")
+        self.assertContains(pagina, "@joao")
+        self.assertNotContains(pagina, "@intruso")
+        filtrada = self.client.get(f"/estudio/automacoes/historico/?automacao={b.pk}")
+        self.assertNotContains(filtrada, "@maria")
+        self.assertContains(filtrada, "@joao")
+
+    def test_excluir_pela_lista(self):
+        a = Automacao.objects.create(conta=self.c, nome="Garrafa", respostas="ok")
+        conectada(self.c)
+        self.assertContains(self.client.get("/estudio/automacoes/"), f"/estudio/automacoes/{a.pk}/excluir/")
+        self.assertRedirects(self.client.post(f"/estudio/automacoes/{a.pk}/excluir/"), "/estudio/automacoes/", fetch_redirect_response=False)
+        self.assertFalse(Automacao.objects.exists())
