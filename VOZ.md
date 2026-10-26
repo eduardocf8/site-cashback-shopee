@@ -52,6 +52,9 @@ o dono da marca aponta o que soa diferente do jeito dele de falar.
 - **Appfiliado: o público é "afiliado Shopee", não quem "divulga a Shopee".**
   Use "para afiliados Shopee", "para quem é afiliado Shopee", "ser afiliado
   Shopee". Evite "divulgar a Shopee" e "feito para quem divulga a Shopee".
+- **Appfiliado: mensagem direta do Instagram é "DM", substantivo feminino.**
+  "a DM", "na DM", "por DM", "mandar uma DM". Nunca "mensagem no direto",
+  "no direct" ou "o DM".
 
 ## Onde essas regras já foram aplicadas
 

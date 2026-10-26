@@ -16,6 +16,7 @@ from notas.fila import tem_fila as notas_na_fila
 from notas.fila import uma_volta as emitir_notas
 from painel.relatorio import enviar_pendentes as enviar_relatorios
 from painel.resultados import contas_pendentes, processar
+from instagram_painel.conexao import renovar_tokens as renovar_instagram
 
 MINUTOS_ENTRE_LOGS_DE_MEMORIA = 10
 
@@ -71,6 +72,8 @@ class Command(BaseCommand):
                 for linha in enviar_primeiros_passos():  # e-mails do dia 1 e do dia 3 pra quem assinou
                     self.stdout.write(linha)
                 for linha in enviar_dicas():  # e-mails de dicas dos dias 2 a 21, às 10h
+                    self.stdout.write(linha)
+                for linha in renovar_instagram():  # Instagram dos afiliados: acesso de 60 dias renovado antes de vencer
                     self.stdout.write(linha)
                 for linha in enviar_resumo_semanal():  # painel do dono: domingo às 9h, pro e-mail de suporte
                     self.stdout.write(linha)

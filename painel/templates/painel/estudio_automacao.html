@@ -1,0 +1,148 @@
+{% extends "painel/base.html" %}
+{% load static %}
+{% block titulo %}{% if automacao %}{{ automacao.nome }}{% else %}Nova automação{% endif %} · Estúdio Instagram{% endblock %}
+{% block cabeca %}<link rel="stylesheet" href="{% static 'estudio/painel.css' %}">{% endblock %}
+{% block conteudo %}
+<div class="es-pagina">
+<header class="cabecalho">
+  <div>
+    <a class="suave" href="{% url 'painel_estudio_automacoes' %}">← Automações</a>
+    <h1>{% if automacao %}{{ automacao.nome }}{% else %}Nova automação{% endif %}</h1>
+    {% if ig %}<p>No Instagram @{{ ig.username }}.</p>{% else %}<p>Conecte o seu Instagram para a automação funcionar.</p>{% endif %}
+  </div>
+  {% if automacao %}
+    <div class="es-topo-editor"><div class="acoes">
+      <form method="post" action="{% url 'painel_estudio_automacao_ligar' automacao.pk %}">{% csrf_token %}<button class="botao {% if automacao.ativa %}botao-claro{% else %}botao-principal{% endif %}" type="submit">{% if automacao.ativa %}Pausar{% else %}Ligar{% endif %}</button></form>
+      <form method="post" action="{% url 'painel_estudio_automacao_apagar' automacao.pk %}" onsubmit="return confirm('Apagar esta automação?')">{% csrf_token %}<button class="botao botao-claro" type="submit">Apagar</button></form>
+    </div></div>
+  {% endif %}
+</header>
+
+<form method="post" class="card ig-form" id="ig-form">
+  {% csrf_token %}
+  {% if post_id %}<input type="hidden" name="post" value="{{ post_id }}">{% endif %}
+  {% if form.non_field_errors %}<p class="aviso aviso-error">{{ form.non_field_errors|join:" " }}</p>{% endif %}
+  {{ form.midia_id }}{{ form.midia_link }}{{ form.midia_imagem }}{{ form.midia_legenda }}
+
+  <label>Nome da automação<input type="text" name="nome" value="{{ form.nome.value|default:'' }}" maxlength="100" required placeholder="Ex.: Garrafa térmica (QUERO)">
+    {% for e in form.nome.errors %}<small class="ig-erro">{{ e }}</small>{% endfor %}</label>
+
+  <fieldset>
+    <legend>Quando responder</legend>
+    <div class="ig-gatilhos">
+      {% for valor, nome in form.fields.gatilho.choices %}
+        <label class="ig-gatilho"><input type="radio" name="gatilho" value="{{ valor }}"{% if form.gatilho.value == valor %} checked{% endif %}><span>{{ nome }}</span></label>
+      {% endfor %}
+    </div>
+  </fieldset>
+
+  <fieldset id="ig-onde">
+    <legend id="ig-onde-titulo">Em qual post</legend>
+    <div class="ig-escolhido" id="ig-escolhido"></div>
+    <div class="linha-botoes">
+      <button type="button" class="botao botao-claro" id="ig-escolher">Escolher no Instagram</button>
+      <button type="button" class="botao botao-claro" id="ig-todos">Todos</button>
+    </div>
+    <div class="ig-midias" id="ig-midias" hidden></div>
+    <p class="suave" id="ig-midias-aviso"></p>
+  </fieldset>
+
+  <label>Palavras que disparam
+    <textarea name="palavras" rows="2" placeholder="QUERO, LINK, EU QUERO">{{ form.palavras.value|default:'' }}</textarea>
+    <small class="suave" id="ig-palavras-dica">Uma por linha ou separadas por vírgula. Maiúsculas e acentos não importam. Em branco: qualquer comentário.</small>
+    {% for e in form.palavras.errors %}<small class="ig-erro">{{ e }}</small>{% endfor %}</label>
+
+  <fieldset id="ig-resposta">
+    <legend><label class="es-check"><input type="checkbox" name="responder_comentario"{% if form.responder_comentario.value %} checked{% endif %}> Responder o comentário</label></legend>
+    <textarea name="respostas" rows="3" placeholder="Uma resposta por linha">{{ form.respostas.value|default:'' }}</textarea>
+    <small class="suave">Uma por linha: sai uma delas, sorteada, para não parecer robô. Use {nome} para marcar a pessoa.</small>
+    {% for e in form.respostas.errors %}<small class="ig-erro">{{ e }}</small>{% endfor %}
+  </fieldset>
+
+  <fieldset>
+    <legend><label class="es-check"><input type="checkbox" name="enviar_dm"{% if form.enviar_dm.value %} checked{% endif %}> Mandar DM</label></legend>
+    <textarea name="texto_dm" rows="3" maxlength="900" placeholder="Oi! Aqui está o link que você pediu:">{{ form.texto_dm.value|default:'' }}</textarea>
+    {% for e in form.texto_dm.errors %}<small class="ig-erro">{{ e }}</small>{% endfor %}
+    <label>Link (vai no fim da DM)<input type="url" name="link" value="{{ form.link.value|default:'' }}" maxlength="600" placeholder="https://s.shopee.com.br/…"></label>
+    {% for e in form.link.errors %}<small class="ig-erro">{{ e }}</small>{% endfor %}
+  </fieldset>
+
+  <label class="es-check"><input type="checkbox" name="ativa"{% if form.ativa.value %} checked{% endif %}> Automação ligada</label>
+  <div><button class="botao botao-principal" type="submit">Salvar</button></div>
+</form>
+
+{% if automacao %}
+  <section>
+    <h2 class="titulo-secao">Quem recebeu</h2>
+    {% if disparos %}
+      <div class="card ig-historico">
+        <table>
+          <thead><tr><th>Quando</th><th>Pessoa</th><th>Escreveu</th><th>Comentário</th><th>DM</th></tr></thead>
+          <tbody>
+            {% for d in disparos %}
+              <tr>
+                <td>{{ d.criado_em|date:"d/m H:i" }}</td>
+                <td>{% if d.autor_username %}@{{ d.autor_username }}{% else %}—{% endif %}</td>
+                <td>{{ d.texto|truncatechars:60 }}</td>
+                <td>{% if automacao.gatilho == "comentario" and automacao.responder_comentario %}{% if d.resposta_ok %}✓{% else %}✗{% endif %}{% else %}—{% endif %}</td>
+                <td>{% if d.dm_ok %}✓{% elif automacao.enviar_dm %}✗{% else %}—{% endif %}{% if d.erro %} <small class="ig-erro" title="{{ d.erro }}">{{ d.erro|truncatechars:40 }}</small>{% endif %}</td>
+              </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    {% else %}
+      <p class="suave">Ninguém ainda. Quando alguém comentar a palavra, aparece aqui.</p>
+    {% endif %}
+  </section>
+{% endif %}
+</div>
+<script>
+(function () {
+  const $ = (id) => document.getElementById(id), form = $('ig-form');
+  const campo = (n) => form.querySelector(`[name=${n}]`);
+  const urlMidias = "{% url 'painel_instagram_midias' %}";
+  const esc = (s) => String(s || '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]);
+  const gatilho = () => (form.querySelector('[name=gatilho]:checked') || {}).value;
+  function mostrarEscolhido() {
+    const g = gatilho(), id = campo('midia_id').value, img = campo('midia_imagem').value, leg = campo('midia_legenda').value;
+    $('ig-escolhido').innerHTML = id
+      ? `${img ? `<img src="${esc(img)}" alt="" referrerpolicy="no-referrer">` : ''}<span>${esc(leg || (g === 'story' ? 'Story escolhido' : 'Post escolhido'))}</span>`
+      : `<span class="ig-todos">${g === 'story' ? 'Todos os stories' : 'Todos os posts'}</span>`;
+  }
+  function trocar() {
+    const g = gatilho();
+    $('ig-onde').hidden = g === 'direto';
+    $('ig-onde-titulo').textContent = g === 'story' ? 'Em qual story (precisa estar no ar)' : 'Em qual post';
+    $('ig-resposta').hidden = g !== 'comentario';
+    $('ig-palavras-dica').textContent = g === 'direto'
+      ? 'Uma por linha ou separadas por vírgula. Obrigatório para DM. Maiúsculas e acentos não importam.'
+      : 'Uma por linha ou separadas por vírgula. Maiúsculas e acentos não importam. Em branco: ' + (g === 'story' ? 'qualquer resposta ao story.' : 'qualquer comentário.');
+    $('ig-midias').hidden = true; mostrarEscolhido();
+  }
+  form.querySelectorAll('[name=gatilho]').forEach((r) => r.addEventListener('change', () => {
+    ['midia_id', 'midia_link', 'midia_imagem', 'midia_legenda'].forEach((n) => { campo(n).value = ''; }); trocar();
+  }));
+  $('ig-todos').addEventListener('click', () => { ['midia_id', 'midia_link', 'midia_imagem', 'midia_legenda'].forEach((n) => { campo(n).value = ''; }); $('ig-midias').hidden = true; mostrarEscolhido(); });
+  $('ig-escolher').addEventListener('click', async () => {
+    const caixa = $('ig-midias'), aviso = $('ig-midias-aviso'); aviso.textContent = 'Buscando no Instagram…';
+    try {
+      const r = await fetch(`${urlMidias}?tipo=${gatilho() === 'story' ? 'story' : 'post'}`, { credentials: 'same-origin' });
+      const j = await r.json(); if (!r.ok) throw new Error(j.erro || 'Não deu certo.');
+      aviso.textContent = j.itens.length ? '' : (gatilho() === 'story' ? 'Nenhum story no ar agora.' : 'Nenhum post encontrado.');
+      caixa.innerHTML = ''; caixa.hidden = !j.itens.length;
+      j.itens.forEach((m) => {
+        const b = document.createElement('button'); b.type = 'button'; b.className = 'ig-midia'; b.title = m.legenda;
+        b.innerHTML = m.imagem ? `<img src="${esc(m.imagem)}" alt="" referrerpolicy="no-referrer" loading="lazy">` : `<span>${esc(m.legenda || 'Sem imagem')}</span>`;
+        b.addEventListener('click', () => {
+          campo('midia_id').value = m.id; campo('midia_link').value = m.link || ''; campo('midia_imagem').value = m.imagem || '';
+          campo('midia_legenda').value = (m.legenda || '').slice(0, 190); caixa.hidden = true; mostrarEscolhido();
+        });
+        caixa.append(b);
+      });
+    } catch (e) { aviso.textContent = e.message; }
+  });
+  trocar();
+})();
+</script>
+{% endblock %}

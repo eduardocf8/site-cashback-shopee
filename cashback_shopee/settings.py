@@ -103,6 +103,7 @@ INSTALLED_APPS = [
     "landing",
     "atendimento",
     "estudio",
+    "instagram_painel",
 ]
 
 AUTH_USER_MODEL = "accounts.User"
@@ -299,6 +300,10 @@ INSTAGRAM_GRAPH_API_URL = os.environ.get("INSTAGRAM_GRAPH_API_URL", "https://gra
 # (esse assina cada entrega de evento, não o handshake). Ver instagram_bot/views.py,
 # webhook_instagram, e marketing/instagram/README.md.
 INSTAGRAM_WEBHOOK_VERIFY_TOKEN = os.environ.get("INSTAGRAM_WEBHOOK_VERIFY_TOKEN", "")
+# Login do Instagram para empresas dos afiliados (instagram_painel). É o mesmo app da Meta: sem as
+# variáveis próprias, usa o ID e o segredo do Instagram de cima ("Configuração da API com login do Instagram").
+APPFILIADO_INSTAGRAM_APP_ID = os.environ.get("APPFILIADO_INSTAGRAM_APP_ID") or INSTAGRAM_APP_ID
+APPFILIADO_INSTAGRAM_APP_SECRET = os.environ.get("APPFILIADO_INSTAGRAM_APP_SECRET") or INSTAGRAM_APP_SECRET
 
 # Interruptor mestre do bot: enquanto False, o bot gera o conteúdo do dia e
 # registra tudo (RegistroPublicacao) mas NÃO publica de verdade no Instagram

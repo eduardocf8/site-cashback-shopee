@@ -1,6 +1,7 @@
 from django.urls import include, path
 
-from . import views, views_carrosseis, views_conversor, views_estudio, views_radar, views_notas, views_site, views_whatsapp
+from . import (views, views_carrosseis, views_conversor, views_estudio, views_instagram, views_notas, views_radar, views_site,
+               views_whatsapp)
 
 urlpatterns = [
     path("", views.inicio, name="painel_inicio"),
@@ -55,6 +56,18 @@ urlpatterns = [
     path("estudio/imagens/<int:pk>/", views_estudio.imagem, name="painel_estudio_imagem"),
     path("estudio/minha-marca/", views_estudio.minha_marca, name="painel_estudio_marca"),
     path("estudio/minha-marca/logo/", views_estudio.logo, name="painel_estudio_logo"),
+    path("estudio/automacoes/", views_instagram.automacoes, name="painel_estudio_automacoes"),
+    path("estudio/automacoes/nova/", views_instagram.automacao_nova, name="painel_estudio_automacao_nova"),
+    path("estudio/automacoes/<int:pk>/", views_instagram.automacao, name="painel_estudio_automacao"),
+    path("estudio/automacoes/<int:pk>/ligar/", views_instagram.automacao_ligar, name="painel_estudio_automacao_ligar"),
+    path("estudio/automacoes/<int:pk>/apagar/", views_instagram.automacao_apagar, name="painel_estudio_automacao_apagar"),
+    path("estudio/instagram/conectar/", views_instagram.conectar, name="painel_instagram_conectar"),
+    path("estudio/instagram/retorno/", views_instagram.retorno, name="painel_instagram_retorno"),
+    path("estudio/instagram/desconectar/", views_instagram.desconectar, name="painel_instagram_desconectar"),
+    path("estudio/instagram/midias/", views_instagram.midias, name="painel_instagram_midias"),
+    path("instagram/desautorizar/", views_instagram.desautorizar, name="painel_instagram_desautorizar"),
+    path("instagram/apagar-dados/", views_instagram.apagar_dados, name="painel_instagram_apagar_dados"),
+    path("instagram/apagar-dados/<str:codigo>/", views_instagram.dados_apagados, name="painel_instagram_dados_apagados"),
     path("estudio/<int:pk>/", views_estudio.editor, name="painel_estudio_editor"),
     path("estudio/<int:pk>/salvar/", views_estudio.salvar, name="painel_estudio_salvar"),
     path("estudio/<int:pk>/ia/", views_estudio.ia, name="painel_estudio_ia"),
