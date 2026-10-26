@@ -60,10 +60,10 @@
   </fieldset>
 
   <fieldset>
-    <legend><label class="es-check"><input type="checkbox" name="enviar_dm"{% if form.enviar_dm.value %} checked{% endif %}> Mandar mensagem no direto</label></legend>
+    <legend><label class="es-check"><input type="checkbox" name="enviar_dm"{% if form.enviar_dm.value %} checked{% endif %}> Mandar DM</label></legend>
     <textarea name="texto_dm" rows="3" maxlength="900" placeholder="Oi! Aqui está o link que você pediu:">{{ form.texto_dm.value|default:'' }}</textarea>
     {% for e in form.texto_dm.errors %}<small class="ig-erro">{{ e }}</small>{% endfor %}
-    <label>Link (vai no fim da mensagem)<input type="url" name="link" value="{{ form.link.value|default:'' }}" maxlength="600" placeholder="https://s.shopee.com.br/…"></label>
+    <label>Link (vai no fim da DM)<input type="url" name="link" value="{{ form.link.value|default:'' }}" maxlength="600" placeholder="https://s.shopee.com.br/…"></label>
     {% for e in form.link.errors %}<small class="ig-erro">{{ e }}</small>{% endfor %}
   </fieldset>
 
@@ -77,7 +77,7 @@
     {% if disparos %}
       <div class="card ig-historico">
         <table>
-          <thead><tr><th>Quando</th><th>Pessoa</th><th>Escreveu</th><th>Comentário</th><th>Direto</th></tr></thead>
+          <thead><tr><th>Quando</th><th>Pessoa</th><th>Escreveu</th><th>Comentário</th><th>DM</th></tr></thead>
           <tbody>
             {% for d in disparos %}
               <tr>
@@ -116,7 +116,7 @@
     $('ig-onde-titulo').textContent = g === 'story' ? 'Em qual story (precisa estar no ar)' : 'Em qual post';
     $('ig-resposta').hidden = g !== 'comentario';
     $('ig-palavras-dica').textContent = g === 'direto'
-      ? 'Uma por linha ou separadas por vírgula. Obrigatório no direto. Maiúsculas e acentos não importam.'
+      ? 'Uma por linha ou separadas por vírgula. Obrigatório para DM. Maiúsculas e acentos não importam.'
       : 'Uma por linha ou separadas por vírgula. Maiúsculas e acentos não importam. Em branco: ' + (g === 'story' ? 'qualquer resposta ao story.' : 'qualquer comentário.');
     $('ig-midias').hidden = true; mostrarEscolhido();
   }

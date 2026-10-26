@@ -232,7 +232,7 @@ class TestTelas(TestCase):
         c = conta()
         self.entrar(c)
         r = self.client.post("/estudio/automacoes/nova/", {"nome": "x", "gatilho": "direto", "enviar_dm": "on", "texto_dm": "oi"})
-        self.assertContains(r, "No direto, escolha pelo menos uma palavra")
+        self.assertContains(r, "Para DM, escolha pelo menos uma palavra")
         self.client = Client(HTTP_HOST=HOST)
         self.entrar(conta(modulos="carrosseis", email="std@exemplo.com"))
         self.assertRedirects(self.client.get("/estudio/automacoes/nova/"), "/estudio/automacoes/", fetch_redirect_response=False)

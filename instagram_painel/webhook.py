@@ -1,4 +1,4 @@
-"""Os avisos da Meta (webhook) das contas dos afiliados: comentário, resposta a story e mensagem.
+"""Os avisos da Meta (webhook) das contas dos afiliados: comentário, resposta a story e DM.
 
 O endereço do webhook é um só para o app da Meta (automacao_instagram/views.webhook_instagram). Ele
 chama separar_e_processar() primeiro: os avisos de contas conectadas aqui são tratados aqui e o resto
@@ -36,7 +36,7 @@ def palavras(automacao: Automacao) -> list[str]:
 
 
 def bate(automacao: Automacao, texto: str) -> bool:
-    """Sem palavras: qualquer texto (menos no direto). Com palavras: alguma delas aparece como palavra inteira."""
+    """Sem palavras: qualquer texto (menos na DM). Com palavras: alguma delas aparece como palavra inteira."""
     lista = palavras(automacao)
     if not lista:
         return automacao.gatilho != Automacao.DIRETO
@@ -113,7 +113,7 @@ def _comentario(ig: ContaInstagram, valor: dict) -> None:
             api.resposta_privada(token, ig.ig_id, comentario_id, texto)
             d.dm_ok = True
         except api.ErroInstagram as erro:
-            erros.append(f"Direto: {erro}")
+            erros.append(f"DM: {erro}")
     d.erro = " · ".join(erros)[:400]
     d.save(update_fields=["resposta_ok", "dm_ok", "erro"])
 
@@ -140,7 +140,7 @@ def _mensagem(ig: ContaInstagram, evento: dict) -> None:
         api.mensagem(ig.token, ig.ig_id, autor_id, texto_da_dm(automacao))
         d.dm_ok = True
     except api.ErroInstagram as erro:
-        d.erro = f"Direto: {erro}"[:400]
+        d.erro = f"DM: {erro}"[:400]
     d.save(update_fields=["dm_ok", "erro"])
 
 

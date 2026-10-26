@@ -8,9 +8,9 @@ Instagram" marcado no admin (Contas do Appfiliado). As automações são do plan
 
 | Quando | O que sai |
 |---|---|
-| Alguém **comenta** num post (um post escolhido ou todos), com uma das palavras (ou qualquer texto) | Resposta pública no comentário (sorteada entre as opções, `{nome}` marca a pessoa) e/ou a mensagem no direto com o link |
-| Alguém **responde um story** (um story no ar ou todos) | Mensagem no direto |
-| Alguém **manda mensagem no direto** com uma das palavras (obrigatório ter palavra) | Mensagem no direto |
+| Alguém **comenta** num post (um post escolhido ou todos), com uma das palavras (ou qualquer texto) | Resposta pública no comentário (sorteada entre as opções, `{nome}` marca a pessoa) e/ou a DM com o link |
+| Alguém **responde um story** (um story no ar ou todos) | DM |
+| Alguém **manda uma DM** com uma das palavras (obrigatório ter palavra) | DM |
 
 Regras: cada pessoa recebe uma vez por automação; aviso repetido da Meta não responde de novo; a
 própria conta e resposta dentro de outro comentário ficam de fora; até 150 respostas por hora por
@@ -51,7 +51,7 @@ aqui (pelo `entry.id`) e o resto segue para a automação da cash-b.
   têm função no app (a sua, por exemplo).
 - **Avisos de comentário só chegam com Acesso Avançado de `instagram_business_manage_comments`**
   (documentação de webhooks, out/2026). Até a aprovação, a automação de comentário fica parada;
-  resposta a story e direto dependem de `instagram_business_manage_messages`.
-- A mensagem ligada a um comentário vale uma vez por comentário e até 7 dias depois dele. A mensagem
-  no direto só pode ir até 24 horas depois que a pessoa escreveu ou respondeu o story.
+  resposta a story e DM dependem de `instagram_business_manage_messages`.
+- A DM ligada a um comentário vale uma vez por comentário e até 7 dias depois dele. As outras DMs
+  só podem ir até 24 horas depois que a pessoa escreveu ou respondeu o story.
 - A conta precisa ser pública para receber avisos de comentário.

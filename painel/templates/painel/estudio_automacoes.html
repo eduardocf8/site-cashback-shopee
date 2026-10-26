@@ -8,7 +8,7 @@
   <div>
     <a class="suave" href="{% url 'painel_estudio' %}">← Estúdio Instagram</a>
     <h1>Automações <span class="es-selo-teste">Em teste</span></h1>
-    <p>Quem comentar a palavra certa no seu post (ou responder o seu story) recebe o seu link no direto, na hora.</p>
+    <p>Quem comentar a palavra certa no seu post (ou responder o seu story) recebe o seu link por DM, na hora.</p>
   </div>
   {% if premium and ig %}<a class="botao botao-principal" href="{% url 'painel_estudio_automacao_nova' %}">Nova automação</a>{% endif %}
 </header>
@@ -26,7 +26,7 @@
   {% else %}
     <div>
       <h2>Conecte o seu Instagram</h2>
-      <p class="suave">Precisa ser uma conta profissional (comercial ou de criador). Você entra pelo próprio Instagram e escolhe o que o Appfiliado pode fazer: ler os comentários e responder, mandar mensagens no direto e publicar posts.</p>
+      <p class="suave">Precisa ser uma conta profissional (comercial ou de criador). Você entra pelo próprio Instagram e escolhe o que o Appfiliado pode fazer: ler os comentários e responder, mandar DMs e publicar posts.</p>
     </div>
     {% if configurado %}<a class="botao botao-principal" href="{% url 'painel_instagram_conectar' %}">Conectar Instagram</a>
     {% else %}<p class="suave">A conexão com o Instagram ainda não está configurada no servidor.</p>{% endif %}
@@ -36,7 +36,7 @@
 {% if not premium %}
   <section class="card">
     <h2>Automações são do plano Premium</h2>
-    <p class="suave">Responda comentários e stories no automático, com o seu link de afiliado no direto. <a href="{{ url_planos }}" target="_blank" rel="noopener">Conhecer o Premium</a></p>
+    <p class="suave">Responda comentários e stories no automático, com o seu link de afiliado na DM. <a href="{{ url_planos }}" target="_blank" rel="noopener">Conhecer o Premium</a></p>
   </section>
 {% elif ig %}
   <section>
@@ -50,7 +50,7 @@
               <div>
                 <strong>{{ item.a.nome }}</strong>
                 <small>{{ item.a.get_gatilho_display }}{% if item.palavras %} · {{ item.palavras }}{% else %} · qualquer texto{% endif %}</small>
-                <small>{{ item.total }} pessoa{{ item.total|pluralize }} respondida{{ item.total|pluralize }} · {{ item.dms }} no direto</small>
+                <small>{{ item.total }} pessoa{{ item.total|pluralize }} respondida{{ item.total|pluralize }} · {{ item.dms }} por DM</small>
               </div>
             </a>
             <form method="post" action="{% url 'painel_estudio_automacao_ligar' item.a.pk %}">{% csrf_token %}<input type="hidden" name="voltar" value="lista">

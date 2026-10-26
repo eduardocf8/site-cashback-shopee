@@ -33,7 +33,7 @@ class Migration(migrations.Migration):
                         choices=[
                             ("comentario", "Comentou no post"),
                             ("story", "Respondeu o story"),
-                            ("direto", "Mandou mensagem no direto"),
+                            ("direto", "Mandou DM"),
                         ],
                         default="comentario",
                         max_length=20,

@@ -63,7 +63,7 @@
     "slides": [
       {"tipo": "produto", "fundo": {"modo": "cor", "cor": "claro"}, "chapeu": "Achado do dia", "titulo": "Olha o que eu achei", "texto": "", "foto": "", "selo": ""},
       {"tipo": "preco", "fundo": {"modo": "cor", "cor": "tema"}, "chapeu": "Preço de hoje", "titulo": "E o preço?", "de": "", "preco": "R$ 0,00", "desconto": "", "nota": "Pode mudar a qualquer momento."},
-      {"tipo": "cta", "fundo": {"modo": "arte", "arte": "canto", "tom": "escuro"}, "titulo": "Toque no *link* para ver", "texto": "Ou chama no direct que eu mando.", "botao": "Link aqui"}
+      {"tipo": "cta", "fundo": {"modo": "arte", "arte": "canto", "tom": "escuro"}, "titulo": "Toque no *link* para ver", "texto": "Ou me chama na DM que eu mando.", "botao": "Link aqui"}
     ]
   },
   {

@@ -115,15 +115,15 @@ class AutomacaoForm(forms.ModelForm):
         d = super().clean()
         gatilho = d.get("gatilho")
         if gatilho == Automacao.DIRETO and not (d.get("palavras") or "").strip():
-            self.add_error("palavras", "No direto, escolha pelo menos uma palavra (senão a automação responderia toda mensagem).")
+            self.add_error("palavras", "Para DM, escolha pelo menos uma palavra (senão a automação responderia toda DM).")
         if gatilho != Automacao.COMENTARIO:
             d["responder_comentario"] = False
         if not d.get("responder_comentario") and not d.get("enviar_dm"):
-            raise forms.ValidationError("Escolha pelo menos uma resposta: a do comentário ou a mensagem no direto.")
+            raise forms.ValidationError("Escolha pelo menos uma resposta: a do comentário ou a DM.")
         if d.get("responder_comentario") and not (d.get("respostas") or "").strip():
             self.add_error("respostas", "Escreva pelo menos uma resposta para o comentário.")
         if d.get("enviar_dm") and not (d.get("texto_dm") or "").strip():
-            self.add_error("texto_dm", "Escreva a mensagem que vai no direto.")
+            self.add_error("texto_dm", "Escreva o texto da DM.")
         for campo in ("midia_link", "midia_imagem"):
             if d.get(campo) and not str(d[campo]).startswith("https://"):
                 d[campo] = ""
@@ -160,7 +160,7 @@ def automacao_nova(request, conta):
             return redirect("painel_estudio_automacao", pk=a.pk)
     else:
         inicial = {"gatilho": Automacao.COMENTARIO, "palavras": "QUERO", "ativa": True,
-                   "respostas": "Te mandei no direto! 📩\nEnviei o link no seu direto 😉\nCorre no direto que já te mandei!",
+                   "respostas": "Te mandei na DM! 📩\nEnviei o link na sua DM 😉\nCorre na DM que já te mandei!",
                    "texto_dm": "Oi! Aqui está o link que você pediu:"}
         post = PostInstagram.objects.filter(conta=conta, pk=request.GET.get("post") or 0).first()
         if post:

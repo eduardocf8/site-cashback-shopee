@@ -1,5 +1,5 @@
 """Instagram dos afiliados do Appfiliado: a conta conectada (Login do Instagram para empresas) e as
-automações de resposta (comentário, resposta a story e mensagem no direto).
+automações de resposta (comentário, resposta a story e DM).
 
 É diferente do app automacao_instagram, que é a automação das contas da cash-b (login próprio,
 token colado à mão). Os dois recebem os avisos da Meta pelo mesmo webhook: cada aviso vem com o ID
@@ -49,7 +49,7 @@ class Automacao(models.Model):
     GATILHOS = [
         (COMENTARIO, "Comentou no post"),
         (STORY, "Respondeu o story"),
-        (DIRETO, "Mandou mensagem no direto"),
+        (DIRETO, "Mandou DM"),
     ]
 
     conta = models.ForeignKey(ContaAppfiliado, on_delete=models.CASCADE, related_name="automacoes_instagram")
@@ -60,7 +60,7 @@ class Automacao(models.Model):
     midia_link = models.URLField(max_length=600, blank=True)
     midia_imagem = models.URLField(max_length=1000, blank=True)
     midia_legenda = models.CharField(max_length=200, blank=True)
-    # Uma por linha (ou separadas por vírgula). Vazio: qualquer comentário ou resposta (no direto, nunca vazio).
+    # Uma por linha (ou separadas por vírgula). Vazio: qualquer comentário ou resposta (na DM, nunca vazio).
     palavras = models.TextField(blank=True)
     responder_comentario = models.BooleanField(default=True)
     respostas = models.TextField("respostas públicas", blank=True, help_text="Uma por linha. Sai uma delas, sorteada.")
