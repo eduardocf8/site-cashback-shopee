@@ -60,7 +60,7 @@ No painel da Meta for Developers, no app:
   - "testa o Estúdio Instagram" marcado.
 
   A senha vai só no formulário da Meta, nunca em arquivo.
-- [ ] **Selos "Em teste":** se quiser, eu tiro os selos antes de gravar. Não atrapalham, mas deixam o vídeo com cara de teste.
+- [x] **Selos "Em teste":** já saíram do Estúdio Instagram e das Automações Instagram.
 
 ---
 
@@ -368,7 +368,7 @@ No painel da Meta for Developers, no app:
 - **Se aprovar:**
   1. criar os produtos novos na Zouti e me mandar os links (`marketing/appfiliado/zouti-lancamento-instagram.md`);
   2. ligar `APPFILIADO_LANCAMENTO_INSTAGRAM=True` no Render (web e worker): o Estúdio e as Automações abrem para os clientes, o Carrosséis sai do menu e o site passa aos planos novos;
-  3. eu tiro os selos "Em teste" e a gente anuncia.
+  3. a gente anuncia.
 - **Se rejeitar:** me mande o texto exato da rejeição. A gente ajusta o ponto pedido e reenvia ("Solicitar novamente") com uma nota curta explicando o que mudou.
 
 ---
