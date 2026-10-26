@@ -52,13 +52,37 @@ def bate(automacao: Automacao, texto: str) -> bool:
     return any(re.search(rf"(?<!\w){re.escape(p)}(?!\w)", alvo) for p in lista)
 
 
-def texto_da_dm(automacao: Automacao) -> str:
+def link_da_dm(automacao: Automacao) -> str:
+    """O link com o Sub ID da automação (Premium), se foi gerado; senão, o link que a pessoa colou."""
+    return automacao.link_afiliado or automacao.link
+
+
+def texto_da_dm(automacao: Automacao, com_link: bool = True) -> str:
     texto = (automacao.texto_dm or "").strip()
-    if automacao.link and automacao.link not in texto:
-        texto = f"{texto}\n\n{automacao.link}".strip()
+    link = link_da_dm(automacao)
+    if com_link and link and link not in texto:
+        texto = f"{texto}\n\n{link}".strip()
     while len(texto.encode("utf-8")) > LIMITE_DM:
         texto = texto[:-10]
     return texto
+
+
+def _mandar_dm(ig: ContaInstagram, d: Disparo, plano: dict) -> None:
+    """A DM com o link num botão (Premium) e, se o Instagram não aceitar o botão, a mesma DM com o link no texto."""
+    automacao, link = d.automacao, link_da_dm(d.automacao)
+    if automacao.gatilho == Automacao.COMENTARIO:
+        def manda(texto, botao=None):
+            return api.resposta_privada(ig.token, ig.ig_id, d.evento_id, texto, botao)
+    else:
+        def manda(texto, botao=None):
+            return api.mensagem(ig.token, ig.ig_id, d.autor_id, texto, botao)
+    if plano.get("botao") and automacao.botao and link:
+        try:
+            manda(texto_da_dm(automacao, com_link=False) or "Aqui está o link:", ((automacao.texto_botao or "Ver produto"), link))
+            return
+        except api.ErroInstagram as erro:
+            logger.info("Instagram: DM com botão recusada para @%s, vai em texto: %s", ig.username, erro)
+    manda(texto_da_dm(automacao))
 
 
 def resposta_publica(automacao: Automacao, username: str) -> str:
@@ -91,9 +115,19 @@ def _vagas_na_hora(conta, agora=None) -> int:
     return LIMITE_POR_HORA - Disparo.objects.filter(automacao__conta=conta, enviado_em__gte=desde).count()
 
 
+def valendo(conta, plano: dict | None = None):
+    """As automações ligadas que o plano cobre: no Standard, só as mais recentes até o limite (quem
+    passou para o Standard com mais ligadas fica com as últimas criadas)."""
+    plano = plano or planos.automacoes(conta)
+    ligadas = Automacao.objects.filter(conta=conta, ativa=True).order_by("-criada_em")
+    if plano.get("ativas"):
+        return ligadas.filter(pk__in=list(ligadas.values_list("pk", flat=True)[:plano["ativas"]]))
+    return ligadas
+
+
 def _escolher(ig: ContaInstagram, gatilho: str, midia_id: str, texto: str) -> Automacao | None:
     """A automação do post/story específico vem antes da que vale para todos."""
-    ativas = Automacao.objects.filter(conta=ig.conta, gatilho=gatilho, ativa=True)
+    ativas = valendo(ig.conta).filter(gatilho=gatilho)
     especificas = [a for a in ativas if midia_id and a.midia_id == midia_id]
     gerais = [a for a in ativas if not a.midia_id]
     return next((a for a in especificas + gerais if bate(a, texto)), None)
@@ -113,23 +147,17 @@ def _registrar(automacao: Automacao, evento_id: str, autor_id: str, username: st
 
 def enviar(ig: ContaInstagram, d: Disparo) -> None:
     """Manda a resposta (comentário e/ou DM) de um registro e guarda o resultado."""
-    automacao, erros, token = d.automacao, [], ig.token
-    if automacao.gatilho == Automacao.COMENTARIO:
-        if automacao.responder_comentario and (texto := resposta_publica(automacao, d.autor_username)):
+    automacao, erros, plano = d.automacao, [], planos.automacoes(ig.conta)
+    if automacao.gatilho == Automacao.COMENTARIO and automacao.responder_comentario:
+        if (texto := resposta_publica(automacao, d.autor_username)):
             try:
-                api.responder_comentario(token, d.evento_id, texto)
+                api.responder_comentario(ig.token, d.evento_id, texto)
                 d.resposta_ok = True
             except api.ErroInstagram as erro:
                 erros.append(f"Resposta: {erro}")
-        if automacao.enviar_dm and (texto := texto_da_dm(automacao)):
-            try:
-                api.resposta_privada(token, ig.ig_id, d.evento_id, texto)
-                d.dm_ok = True
-            except api.ErroInstagram as erro:
-                erros.append(f"DM: {erro}")
-    else:
+    if automacao.enviar_dm and texto_da_dm(automacao):
         try:
-            api.mensagem(token, ig.ig_id, d.autor_id, texto_da_dm(automacao))
+            _mandar_dm(ig, d, plano)
             d.dm_ok = True
         except api.ErroInstagram as erro:
             erros.append(f"DM: {erro}")

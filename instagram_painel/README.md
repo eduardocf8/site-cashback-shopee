@@ -2,7 +2,10 @@
 
 O afiliado conecta o Instagram dele pelo **Login do Instagram para empresas** e cria automações de
 resposta, no estilo do ManyChat. As Automações são um módulo próprio (`instagram` e
-`instagram_premium`): o Standard responde comentários; o Premium, também stories e DMs. Até o
+`instagram_premium`): o Standard responde comentários, com até 5 automações ligadas; o Premium
+também responde stories e DMs, não tem limite de ligadas, manda o link num botão (modelo de botão da
+API; se o Instagram recusar, vai o link no texto) e gera o link com um Sub ID por automação
+(`link_afiliado`, pelo conversor do painel). Limites em `licencas/planos.py` (`AUTOMACOES`). Até o
 lançamento (`APPFILIADO_LANCAMENTO_INSTAGRAM`), só aparece para a conta com "testa o Estúdio
 Instagram" marcado no admin (Contas do Appfiliado).
 

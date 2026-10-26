@@ -67,6 +67,12 @@ class Automacao(models.Model):
     enviar_dm = models.BooleanField(default=True)
     texto_dm = models.TextField(blank=True)
     link = models.URLField(max_length=600, blank=True)
+    # Premium: o link vai num botão na DM (cai no texto se o Instagram não aceitar o botão).
+    botao = models.BooleanField("link num botão", default=True)
+    texto_botao = models.CharField(max_length=20, default="Ver produto", blank=True)
+    # Premium: Sub ID próprio. O link de afiliado é gerado de novo com ele (link_afiliado) e é esse que vai na DM.
+    sub_id = models.CharField("Sub ID", max_length=50, blank=True)
+    link_afiliado = models.URLField(max_length=600, blank=True)
     ativa = models.BooleanField(default=True)
     # O post do Estúdio que deu origem (atalho "Criar automação" no editor).
     post_estudio = models.ForeignKey("estudio.PostInstagram", null=True, blank=True, on_delete=models.SET_NULL, related_name="+")

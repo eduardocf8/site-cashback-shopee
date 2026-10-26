@@ -23,7 +23,7 @@
   <section class="card ig-uso">
     <div>
       <strong>{{ respondidas|floatformat:"0g" }} pessoa{{ respondidas|pluralize }} respondida{{ respondidas|pluralize }} este mês</strong>
-      <small>Sem limite por mês.{% if not plano.premium %} No Premium, as automações também respondem stories e DMs.{% endif %}</small>
+      <small>Sem limite por mês.{% if plano.ativas %} {{ ligadas }} de {{ plano.ativas }} automações ligadas (no Premium, sem limite, com stories, DMs, botão e Sub ID).{% endif %}</small>
     </div>
     {% if fila %}
       <div class="ig-fila">
@@ -43,7 +43,7 @@
               <div>
                 <strong>{{ item.a.nome }}</strong>
                 <small>{{ item.a.get_gatilho_display }}{% if item.palavras %} · {{ item.palavras }}{% else %} · qualquer texto{% endif %}</small>
-                {% if item.fora_do_plano %}<small class="ig-erro">Parada: responder stories e DMs é do plano Premium.</small>
+                {% if item.fora_do_plano %}<small class="ig-erro">{{ item.fora_do_plano }}</small>
                 {% else %}<small>{{ item.total }} pessoa{{ item.total|pluralize }} respondida{{ item.total|pluralize }} · {{ item.dms }} por DM</small>{% endif %}
               </div>
             </a>

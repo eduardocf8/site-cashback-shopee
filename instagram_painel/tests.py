@@ -58,7 +58,8 @@ class TestAvisos(TestCase):
     def test_comentario_com_palavra_responde_e_manda_dm(self, msg, privada, resposta):
         W.separar_e_processar(aviso_comentario("Eu QUÉRO muito!"))
         resposta.assert_called_once_with("tok", "c1", "Te mandei no direto, @maria!")
-        privada.assert_called_once_with("tok", IG_ID, "c1", "Aqui está:\n\nhttps://s.shopee.com.br/abc")
+        # Premium: o link vai num botão
+        privada.assert_called_once_with("tok", IG_ID, "c1", "Aqui está:", ("Ver produto", "https://s.shopee.com.br/abc"))
         d = Disparo.objects.get()
         self.assertTrue(d.resposta_ok and d.dm_ok)
 
@@ -95,12 +96,36 @@ class TestAvisos(TestCase):
         Automacao.objects.create(conta=self.c, nome="Story", gatilho=Automacao.STORY, texto_dm="Link do story")
         Automacao.objects.create(conta=self.c, nome="Direto", gatilho=Automacao.DIRETO, palavras="cupom", texto_dm="O cupom é X")
         W.separar_e_processar(aviso_mensagem("🔥", story="s1"))
-        msg.assert_called_with("tok", IG_ID, "888", "Link do story")
+        msg.assert_called_with("tok", IG_ID, "888", "Link do story", None)  # sem link: só o texto
         W.separar_e_processar(aviso_mensagem("tem cupom?", autor="777", mid="mid2"))
-        msg.assert_called_with("tok", IG_ID, "777", "O cupom é X")
+        msg.assert_called_with("tok", IG_ID, "777", "O cupom é X", None)
         W.separar_e_processar(aviso_mensagem("oi", autor="555", mid="mid3"))  # sem a palavra
         W.separar_e_processar(aviso_mensagem("cupom", autor="444", mid="mid4", is_echo=True))  # a própria conta
         self.assertEqual(msg.call_count, 2)
+
+    def test_botao_recusado_vai_em_texto_e_standard_vai_sem_botao(self, msg, privada, resposta):
+        privada.side_effect = [api.ErroInstagram("template não suportado"), "d1", "d2"]
+        W.separar_e_processar(aviso_comentario("quero"))
+        self.assertEqual(privada.call_args_list[1].args, ("tok", IG_ID, "c1", "Aqui está:\n\nhttps://s.shopee.com.br/abc", None))
+        self.assertTrue(Disparo.objects.get().dm_ok)
+        self.c.modulos_cortesia = "instagram"
+        self.c.save()
+        W.separar_e_processar(aviso_comentario("quero", autor="2", comentario="c2"))
+        self.assertEqual(privada.call_args_list[2].args, ("tok", IG_ID, "c2", "Aqui está:\n\nhttps://s.shopee.com.br/abc", None))
+
+    def test_link_com_sub_id_e_o_que_vai_na_dm(self, msg, privada, resposta):
+        self.a.link_afiliado = "https://s.shopee.com.br/comsubid"
+        self.a.save()
+        W.separar_e_processar(aviso_comentario("quero"))
+        self.assertEqual(privada.call_args.args[4], ("Ver produto", "https://s.shopee.com.br/comsubid"))
+
+    def test_standard_so_valem_as_5_ligadas_mais_recentes(self, msg, privada, resposta):
+        self.c.modulos_cortesia = "instagram"
+        self.c.save()
+        for i in range(5):  # 5 mais novas, para outros posts: a "Garrafa" (a mais antiga) fica de fora
+            Automacao.objects.create(conta=self.c, nome=f"a{i}", midia_id=f"outro{i}", respostas="ok", texto_dm="oi")
+        W.separar_e_processar(aviso_comentario("quero"))
+        resposta.assert_not_called()
 
     def test_plano_standard_so_responde_comentario(self, msg, privada, resposta):
         self.c.modulos_cortesia = "instagram"
@@ -289,6 +314,38 @@ class TestTelas(TestCase):
         r = self.client.post("/estudio/automacoes/nova/", {"nome": "y", "gatilho": "comentario", "palavras": "quero", "enviar_dm": "on", "texto_dm": "oi"})
         self.assertRedirects(r, "/estudio/automacoes/", fetch_redirect_response=False)
         self.assertContains(self.client.get("/estudio/automacoes/"), "Sem limite por mês")
+
+    def test_standard_ate_5_ligadas(self):
+        c = conta(modulos="instagram", email="cinco@exemplo.com")
+        conectada(c)
+        self.entrar(c)
+        for i in range(5):
+            Automacao.objects.create(conta=c, nome=f"a{i}", respostas="ok", texto_dm="oi")
+        dados = {"nome": "sexta", "gatilho": "comentario", "palavras": "quero", "enviar_dm": "on", "texto_dm": "oi", "ativa": "on"}
+        self.assertContains(self.client.post("/estudio/automacoes/nova/", dados), "até 5 automações ligadas")
+        del dados["ativa"]
+        self.assertEqual(self.client.post("/estudio/automacoes/nova/", dados).status_code, 302)  # desligada pode
+        sexta = Automacao.objects.get(nome="sexta")
+        self.client.post(f"/estudio/automacoes/{sexta.pk}/ligar/")
+        sexta.refresh_from_db()
+        self.assertFalse(sexta.ativa)
+        self.assertContains(self.client.get("/estudio/automacoes/"), "5 de 5 automações ligadas")
+
+    def test_premium_gera_o_link_com_o_sub_id(self):
+        c = conta(email="sub@exemplo.com")
+        conectada(c)
+        self.entrar(c)
+        dados = {"nome": "Garrafa", "gatilho": "comentario", "palavras": "quero", "enviar_dm": "on", "texto_dm": "oi",
+                 "link": "https://s.shopee.com.br/abc", "sub_id": "garrafa", "botao": "on", "texto_botao": "Quero!", "ativa": "on"}
+        with mock.patch("painel.conversor.converter", return_value={"texto": "https://s.shopee.com.br/novo"}) as conv:
+            self.client.post("/estudio/automacoes/nova/", dados)
+            a = Automacao.objects.get(nome="Garrafa")
+            self.assertEqual((a.link_afiliado, a.sub_id, a.texto_botao), ("https://s.shopee.com.br/novo", "garrafa", "Quero!"))
+            self.assertEqual(conv.call_args.args[3], "garrafa")
+            self.client.post(f"/estudio/automacoes/{a.pk}/", dados)  # nada mudou: não gera de novo
+            self.assertEqual(conv.call_count, 1)
+        r = self.client.post("/estudio/automacoes/nova/", {**dados, "nome": "x", "sub_id": "com espaço"})
+        self.assertContains(r, "só pode ter letras e números")
 
     def test_so_estudio_nao_abre_automacoes_mas_conecta_e_publica(self):
         self.entrar(conta(modulos="carrosseis_premium", email="estudio@exemplo.com"))

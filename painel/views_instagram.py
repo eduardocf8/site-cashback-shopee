@@ -6,7 +6,9 @@ Até o lançamento (settings.APPFILIADO_LANCAMENTO_INSTAGRAM), só para a conta 
 ligada; as outras recebem 404. As regras ficam em instagram_painel/ (conexao.py, webhook.py e publicar.py)."""
 
 import json
+import re
 import secrets
+import unicodedata
 
 from django import forms
 from django.conf import settings
@@ -23,9 +25,10 @@ from estudio.models import PostInstagram
 from instagram_painel import api, conexao
 from instagram_painel import publicar as P
 from instagram_painel.models import Automacao, ContaInstagram, Disparo, ImagemPublicacao, Publicacao
-from instagram_painel.webhook import na_fila, palavras, respondidas_no_mes
+from instagram_painel.webhook import na_fila, palavras, respondidas_no_mes, valendo
 from licencas import planos as planos_do_app
 
+from . import conversor
 from . import modulos as mod
 from .views import _contexto
 from .views_estudio import SLUG, _beta, exige
@@ -35,7 +38,7 @@ _automacoes = exige(SLUG_AUTOMACOES)
 _conexao = exige(SLUG_AUTOMACOES, SLUG)  # conectar o Instagram: serve a quem tem qualquer um dos dois
 SESSAO_STATE = "instagram_state"
 SESSAO_JANELA = "instagram_janela"  # o login abriu numa janela à parte: a volta fecha a janela
-MAX_AUTOMACOES = 50
+MAX_AUTOMACOES = 500  # trava de segurança; o Premium não tem limite de automações ligadas
 
 
 def _retorno_url() -> str:
@@ -59,13 +62,17 @@ def _pagina_da_conexao(conta) -> str:
 @_automacoes
 def automacoes(request, conta):
     plano = planos_do_app.automacoes(conta)
+    valem = set(valendo(conta, plano).values_list("pk", flat=True))
     lista = []
     for a in Automacao.objects.filter(conta=conta):
         total = a.disparos.count()
+        fora = ("Parada: responder stories e DMs é do plano Premium." if a.gatilho not in plano["gatilhos"]
+                else f"Parada: no Standard valem só as {plano['ativas']} ligadas mais recentes." if a.ativa and a.pk not in valem else "")
         lista.append({"a": a, "total": total, "dms": a.disparos.filter(dm_ok=True).count(),
-                      "palavras": ", ".join(palavras(a)).upper(), "fora_do_plano": a.gatilho not in plano["gatilhos"]})
+                      "palavras": ", ".join(palavras(a)).upper(), "fora_do_plano": fora})
     return render(request, "painel/estudio_automacoes.html", _contexto(
         request, SLUG_AUTOMACOES, ig=_ig(conta), plano=plano, lista=lista, respondidas=respondidas_no_mes(conta),
+        ligadas=Automacao.objects.filter(conta=conta, ativa=True).count(),
         fila=na_fila(conta), configurado=bool(api.app_id() and api.app_secret()),
     ))
 
@@ -139,15 +146,33 @@ class AutomacaoForm(forms.ModelForm):
     class Meta:
         model = Automacao
         fields = ["nome", "gatilho", "midia_id", "midia_link", "midia_imagem", "midia_legenda", "palavras",
-                  "responder_comentario", "respostas", "enviar_dm", "texto_dm", "link", "ativa"]
+                  "responder_comentario", "respostas", "enviar_dm", "texto_dm", "link", "botao", "texto_botao", "sub_id", "ativa"]
         widgets = {f: forms.HiddenInput for f in ("midia_id", "midia_link", "midia_imagem", "midia_legenda")}
 
-    def __init__(self, *args, gatilhos=None, **kwargs):
+    def __init__(self, *args, conta=None, **kwargs):
         super().__init__(*args, **kwargs)
-        self.gatilhos = gatilhos or [g for g, _ in Automacao.GATILHOS]
+        self.conta = conta
+        self.plano = planos_do_app.automacoes(conta) if conta else planos_do_app.AUTOMACOES[True]
+        self.gatilhos = self.plano["gatilhos"]
+        self.antes = (self.instance.link, self.instance.sub_id, self.instance.ativa) if self.instance.pk else ("", "", False)
+
+    def clean_sub_id(self):
+        sub_id = (self.cleaned_data.get("sub_id") or "").strip()
+        if sub_id and not re.fullmatch(r"[A-Za-z0-9]{1,50}", sub_id):
+            raise forms.ValidationError("O Sub ID só pode ter letras e números (sem espaço, hífen ou acento).")
+        return sub_id
 
     def clean(self):
         d = super().clean()
+        if not self.plano["botao"]:
+            d["botao"] = self.instance.botao if self.instance.pk else True
+        if not self.plano["sub_id"]:
+            d["sub_id"] = self.instance.sub_id
+        if self.plano["ativas"] and d.get("ativa") and not self.antes[2]:
+            ligadas = Automacao.objects.filter(conta=self.conta, ativa=True).exclude(pk=self.instance.pk).count()
+            if ligadas >= self.plano["ativas"]:
+                self.add_error("ativa", f"No plano Standard ficam até {self.plano['ativas']} automações ligadas ao mesmo tempo. "
+                                        "Pause outra ou salve esta desligada. No Premium não há limite.")
         gatilho = d.get("gatilho")
         if gatilho and gatilho not in self.gatilhos:
             self.add_error("gatilho", "Responder stories e DMs é do plano Premium das Automações.")
@@ -164,7 +189,33 @@ class AutomacaoForm(forms.ModelForm):
         for campo in ("midia_link", "midia_imagem"):
             if d.get(campo) and not str(d[campo]).startswith("https://"):
                 d[campo] = ""
+        if not self.errors:
+            self._link_com_sub_id(d)
         return d
+
+    def _link_com_sub_id(self, d):
+        """Premium: gera o link de afiliado de novo com o Sub ID da automação (só quando o link ou o Sub ID mudam)."""
+        link, sub_id = d.get("link") or "", d.get("sub_id") or ""
+        if not sub_id or not link:
+            self.instance.link_afiliado = ""
+            return
+        if (link, sub_id) == self.antes[:2] and self.instance.link_afiliado:
+            return
+        if not conversor.tem_link_da_shopee(link):
+            self.instance.link_afiliado = ""  # link de fora da Shopee: vai como está
+            return
+        try:
+            feito = conversor.converter(self.conta, link, conversor.MODO_LINKS, sub_id)
+        except conversor.ErroConversor as erro:
+            self.add_error("sub_id", f"Não consegui gerar o link com esse Sub ID: {erro}")
+            return
+        self.instance.link_afiliado = feito["texto"].splitlines()[0]
+
+
+def _sub_id_sugerido(nome: str) -> str:
+    """"Garrafa térmica (QUERO)" -> "garrafatermica"."""
+    sem_acento = unicodedata.normalize("NFD", nome or "").encode("ascii", "ignore").decode()
+    return re.sub(r"[^a-z0-9]", "", sem_acento.lower().split("(")[0])[:30]
 
 
 def _form_contexto(request, conta, form, automacao=None):
@@ -176,9 +227,8 @@ def _form_contexto(request, conta, form, automacao=None):
 
 @_automacoes
 def automacao_nova(request, conta):
-    gatilhos = planos_do_app.automacoes(conta)["gatilhos"]
     if request.method == "POST":
-        form = AutomacaoForm(request.POST, gatilhos=gatilhos)
+        form = AutomacaoForm(request.POST, conta=conta)
         if Automacao.objects.filter(conta=conta).count() >= MAX_AUTOMACOES:
             form.add_error(None, f"Você chegou a {MAX_AUTOMACOES} automações. Exclua alguma para criar outra.")
         elif form.is_valid():
@@ -198,7 +248,12 @@ def automacao_nova(request, conta):
             inicial.update(nome=post.nome[:100], link=(post.produto or {}).get("link", ""))
             if (post.produto or {}).get("nome"):
                 inicial["texto_dm"] = f"Oi! Aqui está o link do {post.produto['nome'][:80]}:"
-        form = AutomacaoForm(initial=inicial, gatilhos=gatilhos)
+            if planos_do_app.automacoes(conta)["sub_id"]:
+                inicial["sub_id"] = _sub_id_sugerido(post.nome)
+        plano = planos_do_app.automacoes(conta)
+        if plano["ativas"] and Automacao.objects.filter(conta=conta, ativa=True).count() >= plano["ativas"]:
+            inicial["ativa"] = False  # Standard com todas as vagas ocupadas: nasce desligada
+        form = AutomacaoForm(initial=inicial, conta=conta)
     return render(request, "painel/estudio_automacao.html", _form_contexto(request, conta, form) | {
         "post_id": request.GET.get("post") or request.POST.get("post") or ""})
 
@@ -206,7 +261,7 @@ def automacao_nova(request, conta):
 @_automacoes
 def automacao(request, conta, pk):
     a = get_object_or_404(Automacao, pk=pk, conta=conta)
-    form = AutomacaoForm(request.POST or None, instance=a, gatilhos=planos_do_app.automacoes(conta)["gatilhos"])
+    form = AutomacaoForm(request.POST or None, instance=a, conta=conta)
     if request.method == "POST" and form.is_valid():
         form.save()
         messages.success(request, f"Automação \"{a.nome}\" salva.")
@@ -218,8 +273,13 @@ def automacao(request, conta, pk):
 @_automacoes
 def automacao_ligar(request, conta, pk):
     a = get_object_or_404(Automacao, pk=pk, conta=conta)
-    a.ativa = not a.ativa
-    a.save(update_fields=["ativa", "atualizada_em"])
+    limite = planos_do_app.automacoes(conta)["ativas"]
+    if not a.ativa and limite and Automacao.objects.filter(conta=conta, ativa=True).count() >= limite:
+        messages.error(request, f"No plano Standard ficam até {limite} automações ligadas ao mesmo tempo. "
+                                "Pause outra para ligar esta. No Premium não há limite.")
+    else:
+        a.ativa = not a.ativa
+        a.save(update_fields=["ativa", "atualizada_em"])
     if request.POST.get("voltar") == "lista":
         return redirect("painel_estudio_automacoes")
     return redirect("painel_estudio_automacao", pk=a.pk)

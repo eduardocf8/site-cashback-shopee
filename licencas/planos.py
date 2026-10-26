@@ -15,11 +15,13 @@ CARROSSEIS = {
     True: {"geracoes": 10, "reescritas": 40},
 }
 
-# Automações do Instagram: quais gatilhos cada plano responde. Sem limite de pessoas por mês (a API da
-# Meta não cobra; o limite por hora do Instagram é tratado com uma fila, em instagram_painel/webhook.py).
+# Automações do Instagram. Sem limite de pessoas por mês nos dois planos (a API da Meta não cobra; o
+# limite por hora do Instagram é tratado com uma fila, em instagram_painel/webhook.py).
+# "ativas": quantas automações podem ficar ligadas ao mesmo tempo (None = sem limite).
+# "botao": o link vai num botão na DM. "sub_id": Sub ID próprio em cada automação.
 AUTOMACOES = {
-    False: {"gatilhos": ("comentario",)},
-    True: {"gatilhos": ("comentario", "story", "direto")},
+    False: {"gatilhos": ("comentario",), "ativas": 5, "botao": False, "sub_id": False},
+    True: {"gatilhos": ("comentario", "story", "direto"), "ativas": None, "botao": True, "sub_id": True},
 }
 
 # Bot de WhatsApp.

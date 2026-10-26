@@ -61,6 +61,7 @@ Tudo do Standard, com a cara da sua marca.
 Quem comentar a palavra certa no seu post recebe o seu link de afiliado por DM, na hora.
 - Respostas a comentários nos posts
 - Resposta no comentário e DM com o seu link
+- Até 5 automações ligadas ao mesmo tempo
 - Sem limite de pessoas respondidas por mês
 - Histórico de quem foi respondido
 
@@ -70,6 +71,9 @@ Precisa de: um Instagram profissional (comercial ou de criador).
 Tudo do Standard, também nos stories e nas DMs.
 - Respostas a quem responde os seus stories
 - Respostas a DMs com palavra-chave
+- Automações ligadas sem limite
+- Link num botão na DM
+- Sub ID por automação, para ver quanto cada post vendeu
 - Sem limite de pessoas respondidas por mês
 
 ### Pacote Ofertas (Standard / Premium)
