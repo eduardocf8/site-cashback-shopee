@@ -110,10 +110,11 @@ class TestAvisos(TestCase):
         self.assertFalse(d.dm_ok)
         self.assertIn("7 dias", d.erro)
 
-    def test_avisos_de_outras_contas_seguem_para_a_cash_b(self, msg, privada, resposta):
-        payload = aviso_comentario("quero", ig_id="outra")
-        self.assertEqual(W.separar_e_processar(payload)["entry"], payload["entry"])
-        self.assertEqual(W.separar_e_processar(aviso_comentario("quero", comentario="cx", autor="1"))["entry"], [])
+    def test_avisos_seguem_tambem_para_a_cash_b(self, msg, privada, resposta):
+        # A mesma conta pode estar no Appfiliado e na automação da cash-b: o aviso passa pelos dois.
+        for payload in (aviso_comentario("quero", ig_id="outra"), aviso_comentario("quero", comentario="cx", autor="1")):
+            self.assertEqual(W.separar_e_processar(payload)["entry"], payload["entry"])
+        self.assertEqual(Disparo.objects.count(), 1)
 
 
 @override_settings(INSTAGRAM_APP_SECRET=SEGREDO, APPFILIADO_INSTAGRAM_APP_SECRET=SEGREDO, APPFILIADO_INSTAGRAM_APP_ID="123")

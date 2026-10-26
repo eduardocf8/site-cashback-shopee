@@ -19,7 +19,7 @@
       {% if ig.foto %}<img src="{{ ig.foto }}" alt="" referrerpolicy="no-referrer">{% else %}<span class="ig-sem-foto">@</span>{% endif %}
       <div>
         <strong>@{{ ig.username }}</strong>{% if ig.nome %}<small>{{ ig.nome }}</small>{% endif %}
-        <small class="{% if ig.erro %}ig-erro{% else %}ig-ok{% endif %}">{% if ig.erro %}{{ ig.erro }}{% elif ig.avisos_ligados %}Conectado e recebendo os comentários e mensagens.{% else %}Conectado.{% endif %}</small>
+        <small class="{% if ig.erro %}ig-erro{% else %}ig-ok{% endif %}">{% if ig.erro %}{{ ig.erro }}{% elif ig.avisos_ligados %}Conectado e recebendo os comentários e as DMs.{% else %}Conectado.{% endif %}</small>
       </div>
     </div>
     <form method="post" action="{% url 'painel_instagram_desconectar' %}" onsubmit="return confirm('Desconectar o Instagram? As automações serão pausadas.')">{% csrf_token %}<button class="botao botao-claro" type="submit">Desconectar</button></form>

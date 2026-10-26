@@ -395,8 +395,8 @@ def webhook_instagram(request):
     except ValueError:
         return HttpResponseBadRequest()
 
-    # O app da Meta é o mesmo para a cash-b e para os afiliados do Appfiliado: primeiro saem os
-    # avisos das contas conectadas no painel (instagram_painel), o resto segue para cá.
+    # O app da Meta é o mesmo para a cash-b e para os afiliados do Appfiliado: primeiro o painel
+    # (instagram_painel) trata os avisos das contas conectadas lá, depois todos seguem para cá.
     from instagram_painel.webhook import separar_e_processar
 
     if isinstance(payload, dict):

@@ -145,15 +145,16 @@ def _mensagem(ig: ContaInstagram, evento: dict) -> None:
 
 
 def separar_e_processar(payload: dict) -> dict:
-    """Trata os avisos das contas dos afiliados e devolve o payload só com o resto (para a cash-b)."""
+    """Trata os avisos das contas conectadas no Appfiliado e devolve o payload para a automação da cash-b.
+
+    Os avisos de uma conta conectada também seguem para a cash-b: a mesma conta (a @usecashb, por
+    exemplo) pode estar nos dois lugares, e cada lado só responde onde tem automação configurada."""
     entradas = payload.get("entry") or []
     ids = {str(e.get("id")) for e in entradas if isinstance(e, dict)}
     contas = {ig.ig_id: ig for ig in ContaInstagram.objects.filter(ig_id__in=ids).select_related("conta")}
-    resto = []
     for entrada in entradas:
         ig = contas.get(str(entrada.get("id"))) if isinstance(entrada, dict) else None
         if not ig:
-            resto.append(entrada)
             continue
         for change in entrada.get("changes") or []:
             try:
@@ -168,4 +169,4 @@ def separar_e_processar(payload: dict) -> dict:
                 _mensagem(ig, evento)
             except Exception:
                 logger.exception("Instagram: falha ao tratar mensagem de @%s", ig.username)
-    return {**payload, "entry": resto}
+    return payload
