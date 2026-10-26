@@ -7,6 +7,8 @@ quando só o Premium tem, (nome, texto, "Premium")."""
 
 from licencas import planos as plano
 
+from . import planos as vendas
+
 
 def _t(nome, texto, so=""):
     return {"nome": nome, "texto": texto, "plano": so, "chips": [], "cores": []}
@@ -274,9 +276,9 @@ def estudio():
     return {
         "codigo": "estudio", "slug": "estudio-instagram", "url": "landing_estudio", "nome": "Estúdio Instagram",
         "titulo": "Estúdio Instagram para afiliado Shopee — Appfiliado",
-        "descricao": "Crie posts e stories com o seu link de afiliado a partir do link de um produto da Shopee, com textos por IA, e publique direto no seu Instagram, na hora ou agendado.",
+        "descricao": "Crie posts e stories com o seu link de afiliado a partir do link de um produto da Shopee com textos por IA e publique direto no seu Instagram na hora ou agendado.",
         "h1": "Do link da Shopee ao post publicado no seu Instagram.",
-        "texto": "Cole o link de um produto e a IA monta o post com a foto, o preço e a legenda. Você ajusta no editor e publica no feed ou nos stories, na hora ou no horário que escolher.",
+        "texto": "Cole o link de um produto e a IA monta o post com a foto, o preço e a legenda. Você ajusta no editor e publica no feed ou nos stories na hora ou no horário que escolher.",
         "resumo": [
             ("Criações com IA por dia", f"{s['geracoes']}", f"{p['geracoes']}"),
             ("Modelos prontos", "7", "7 + os seus"),
@@ -290,20 +292,20 @@ def estudio():
                    _t("De um modelo", "Escolha um dos 7 modelos prontos e troque os textos."),
                    _t("Com IA", "Descreva o post que você quer e a IA escreve os slides e a legenda."),
                    _t("Em branco", "Comece do zero. No Standard, o post começa com uma capa. No Premium, você monta slide por slide.")),
-            _grupo("A IA escreve com você", "Textos de afiliado, prontos para postar.",
-                   _t("Slides e legenda", "A IA escreve como afiliado, sem inventar medidas ou garantias e sem fazer conta de preço: o preço vem da Shopee."),
+            _grupo("A IA escreve com você", "Textos de afiliado prontos para postar.",
+                   _t("Slides e legenda", "A IA escreve como afiliado sem inventar medidas ou garantias e sem fazer conta de preço: o preço vem da Shopee."),
                    _t("Ajuste com IA", "Peça mudanças com as suas palavras, como \"deixe os textos mais curtos\", ou crie os slides de novo."),
-                   _t("Limite por dia", f"{s['geracoes']} criações com IA por dia no Standard e {p['geracoes']} no Premium. Quando acabam, o post de produto sai do modelo, com a foto e o preço.")),
+                   _t("Limite por dia", f"{s['geracoes']} criações com IA por dia no Standard e {p['geracoes']} no Premium. Quando acabam, o post de produto sai do modelo com a foto e o preço.")),
             _grupo("Posts e stories", "Três formatos no tamanho certo do Instagram.",
-                   _t("Post 1:1 e 4:5", "Carrossel de até 10 slides ou post de uma imagem, em 1080 × 1080 ou 1080 × 1350 pixels."),
+                   _t("Post 1:1 e 4:5", "Carrossel de até 10 slides ou post de uma imagem em 1080 × 1080 ou 1080 × 1350 pixels."),
                    _t("Story 9:16", "Sequência de stories em 1080 × 1920 pixels."),
                    _t("Tipos de slide", "Capa, produto, preço, lista, texto, cupom e chamada."),
                    _t("Margens de segurança", "O editor mostra as margens e avisa quando um texto fica pequeno demais ou sai da área segura.")),
             _grupo("O seu visual", "No Premium, o post fica com a cara da sua marca.",
                    _t("Seu @ nos posts", "O seu @ do Instagram aparece nos slides nos dois planos."),
-                   _t("5 temas de cor", "Verde, laranja, rosa, azul e preto, em qualquer post.", "Premium"),
+                   _t("5 temas de cor", "Verde, laranja, rosa, azul e preto em qualquer post.", "Premium"),
                    _t("Minha marca", "Logo, nome, cor principal, cor de destaque e uma de 6 fontes em todos os posts.", "Premium"),
-                   _t("Fundos e ajustes", "Fundo de cor, arte ou imagem, e o tamanho dos textos, as margens, o alinhamento e a posição de cada slide.", "Premium"),
+                   _t("Fundos e ajustes", "Fundo de cor, arte ou imagem e o tamanho dos textos, as margens, o alinhamento e a posição de cada slide.", "Premium"),
                    _t("Mais slides", "Adicione, duplique e troque o tipo dos slides.", "Premium"),
                    _t("Seus modelos", "Salve um post como modelo e comece os próximos por ele.", "Premium")),
             _grupo("Fotos", "Para o produto aparecer do jeito que você quer.",
@@ -311,18 +313,18 @@ def estudio():
                    _t("Suas fotos", "Envie fotos (JPG, PNG ou WebP, até 12 MB) e use nos slides."),
                    _t("Remoção de fundo", "Tire o fundo da foto com um clique e o produto aparece solto no slide. Funciona no seu navegador.", "Premium")),
             _grupo("Publicar no Instagram", "Sem baixar e subir imagem por imagem.",
-                   _t("Conecte o seu Instagram", "Conta profissional (comercial ou de criador), pelo login oficial do Instagram."),
-                   _t("Na hora ou agendado", "Publique agora ou escolha o dia e a hora, até 60 dias para frente."),
+                   _t("Conecte o seu Instagram", "Conta profissional (comercial ou de criador) pelo login oficial do Instagram."),
+                   _t("Na hora ou agendado", "Publique agora ou escolha o dia e a hora até 60 dias para frente."),
                    _t("Feed e stories", "Posts 1:1 e 4:5 vão para o feed com a legenda. Posts 9:16 viram stories, um por slide."),
-                   _t("Acompanhe tudo", "A página de Publicações mostra o que está agendado e o que já foi, com o link para ver no Instagram. Dá para cancelar um agendamento.")),
+                   _t("Acompanhe tudo", "A página de Publicações mostra o que está agendado e o que já foi com o link para ver no Instagram. Dá para cancelar um agendamento.")),
             _grupo("Baixar e copiar", "Para postar onde você quiser.",
-                   _t("PNG e ZIP", "Baixe um slide ou todos num ZIP, com a legenda junto."),
+                   _t("PNG e ZIP", "Baixe um slide ou todos num ZIP com a legenda junto."),
                    _t("Legenda e link", "Copie a legenda (até 2.200 caracteres) e o seu link de afiliado com um clique.")),
         ],
         "tabela": [
             ("Criações com IA por dia", f"{s['geracoes']}", f"{p['geracoes']}"),
             ("7 modelos prontos de post e story", True, True),
-            ("Publicar no feed e nos stories, na hora ou agendado", True, True),
+            ("Publicar no feed e nos stories na hora ou agendado", True, True),
             ("Editar os textos e a foto dos slides", True, True),
             ("Download em PNG e ZIP", True, True),
             ("Adicionar, duplicar e trocar o tipo dos slides", False, True),
@@ -333,7 +335,7 @@ def estudio():
         ],
         "perguntas": [
             ("Preciso de uma conta profissional no Instagram?", "Para publicar pelo Appfiliado, sim: comercial ou de criador. Para criar e baixar os posts, não precisa conectar nada."),
-            ("Dá para colocar o link no story?", "A Meta não deixa colocar o adesivo de link na publicação automática. Para mandar o link, use as Automações do Instagram: no Premium delas, quem responder o story recebe o link por DM."),
+            ("Dá para colocar o link no story?", "A Meta não deixa colocar o adesivo de link na publicação automática. Para mandar o link, use as Automações Instagram: no Premium delas, quem responder o story recebe o link por DM."),
             ("Preciso conectar a minha conta da Shopee?", "Para criar posts a partir do link de um produto, sim, com a API da Shopee liberada. Os modelos, a IA e o post em branco funcionam sem."),
             ("Os posts têm marca d'água?", "Não. As imagens saem limpas, só com o seu @ e, no Premium, a sua marca."),
             ("O limite diário reinicia quando?", "À meia-noite, no horário de Brasília."),
@@ -344,11 +346,11 @@ def estudio():
 
 def automacoes():
     return {
-        "codigo": "automacoes", "slug": "automacoes-instagram", "url": "landing_automacoes", "nome": "Automações do Instagram",
-        "titulo": "Automações do Instagram para afiliado Shopee — Appfiliado",
-        "descricao": "Quem comentar a palavra certa no seu post recebe o seu link de afiliado por DM, na hora. Respostas a comentários, stories e DMs no automático, sem limite por mês.",
-        "h1": "Comentou QUERO, recebeu o link na DM.",
-        "texto": "Escolha o post e a palavra. Quem comentar recebe uma resposta no comentário e o seu link de afiliado por DM, sem você responder um por um.",
+        "codigo": "automacoes", "slug": "automacoes-instagram", "url": "landing_automacoes", "nome": "Automações Instagram",
+        "titulo": "Automações Instagram para afiliado Shopee — Appfiliado",
+        "descricao": "Quem comentar a palavra certa no seu post recebe o seu link de afiliado por DM na hora. Respostas a comentários, stories e DMs no automático e sem limite por mês.",
+        "h1": "Comentou a palavra-chave correta, recebeu link na DM.",
+        "texto": "Escolha o post ou story e as palavras-chave que você quiser e pronto: quem comentar recebe o seu link de afiliado por DM, sem precisar responder um a um.",
         "resumo": [
             ("Pessoas respondidas por mês", "Sem limite", "Sem limite"),
             ("Automações ligadas", "Até 5", "Sem limite"),
@@ -357,8 +359,8 @@ def automacoes():
         ],
         "grupos": [
             _grupo("Como funciona", "Três passos e a automação fica ligada.",
-                   _t("Conecte o seu Instagram", "Conta profissional (comercial ou de criador), pelo login oficial do Instagram, sem passar a sua senha para o Appfiliado."),
-                   _t("Escolha o post e a palavra", "Um post específico ou todos os posts, e as palavras que disparam, como QUERO ou LINK. Maiúsculas e acentos não importam."),
+                   _t("Conecte o seu Instagram", "Conta profissional (comercial ou de criador) pelo login oficial do Instagram sem passar a sua senha para o Appfiliado."),
+                   _t("Escolha o post e a palavra", "Um post específico ou todos os posts e as palavras que disparam, como QUERO ou LINK. Maiúsculas e acentos não importam."),
                    _t("Escreva a resposta e a DM", "A resposta que aparece no comentário e a DM com o seu link de afiliado.")),
             _grupo("Comentários nos posts", "O jeito mais usado pelos afiliados.",
                    _t("Resposta no comentário", "Escreva algumas respostas: sai uma delas, sorteada, para não parecer robô. Use {nome} para marcar a pessoa."),
@@ -368,16 +370,16 @@ def automacoes():
                    _t("Respostas aos stories", "Quem responder o seu story recebe o link por DM. Vale para um story específico ou para todos.", "Premium"),
                    _t("DM com palavra-chave", "Quem mandar uma DM com a palavra, como CUPOM, recebe a resposta na hora.", "Premium"),
                    _t("Link num botão", "A DM chega com o seu texto e um botão, como \"Ver produto\", que abre o link.", "Premium"),
-                   _t("Sub ID por automação", "Cada automação gera o link com o seu próprio Sub ID, e em Resultados você vê quanto cada post vendeu.", "Premium"),
+                   _t("Sub ID por automação", "Cada automação gera o link com o seu próprio Sub ID e em Resultados você vê quanto cada post vendeu.", "Premium"),
                    _t("Automações sem limite", "Deixe ligadas quantas automações quiser, uma para cada post. No Standard, ficam até 5 ligadas ao mesmo tempo.", "Premium")),
             _grupo("Seguro para a sua conta", "Regras para não parecer spam.",
                    _t("Uma vez por pessoa", "Cada pessoa recebe a resposta uma vez só em cada automação, mesmo se comentar de novo."),
-                   _t("Post viralizou? Ninguém fica sem resposta", "Não há limite por mês. O Instagram aceita até 750 respostas por hora em cada conta: passando disso, as respostas entram numa fila e saem na hora seguinte, por ordem de chegada."),
+                   _t("Post viralizou? Ninguém fica sem resposta", "Não há limite por mês. O Instagram aceita até 750 respostas por hora em cada conta: passando disso, as respostas entram numa fila e saem na hora seguinte por ordem de chegada."),
                    _t("API oficial", "O Appfiliado usa a API oficial do Instagram (Meta). Nada de senha nem de extensão no navegador."),
                    _t("No seu controle", "Pause, edite ou exclua cada automação no painel quando quiser.")),
             _grupo("Histórico", "Veja quem foi respondido.",
                    _t("Quem recebeu", "Data, pessoa, o que ela escreveu e se a resposta e a DM saíram."),
-                   _t("Resumo do mês", "O painel mostra quantas pessoas foram respondidas no mês e quantas estão na fila, quando o post viraliza.")),
+                   _t("Resumo do mês", "O painel mostra quantas pessoas foram respondidas no mês e quantas estão na fila quando o post viraliza.")),
         ],
         "tabela": [
             ("Pessoas respondidas por mês", "Sem limite", "Sem limite"),
@@ -391,11 +393,11 @@ def automacoes():
             ("Sub ID por automação", False, True),
         ],
         "perguntas": [
-            ("Preciso de uma conta profissional no Instagram?", "Sim: comercial ou de criador. Você conecta pelo login oficial do Instagram, sem passar a sua senha para o Appfiliado."),
+            ("Preciso de uma conta profissional no Instagram?", "Sim: comercial ou de criador. Você conecta pelo login oficial do Instagram sem passar a sua senha para o Appfiliado."),
             ("A DM chega para quem não me segue?", "Chega. A DM em resposta a um comentário vai para quem comentou, mesmo que a pessoa não siga você. Nesse caso, ela aparece nas solicitações de mensagem."),
-            ("Tem limite de respostas?", "Não por mês. O Instagram aceita até 750 respostas por hora em cada conta: se um post viralizar e passar disso, as respostas entram numa fila e saem na hora seguinte, por ordem de chegada. A resposta a um comentário pode sair até 7 dias depois dele; a de uma DM ou resposta de story, até 24 horas depois."),
-            ("Preciso deixar o painel aberto?", "Não. As automações rodam no servidor do Appfiliado, 24 horas por dia."),
-            ("O que muda do Standard pro Premium?", "O Standard responde comentários nos posts, com até 5 automações ligadas ao mesmo tempo. O Premium também responde stories e DMs com palavra-chave, não tem limite de automações ligadas, manda o link num botão e gera um Sub ID para cada automação. Nos dois, sem limite de pessoas respondidas por mês."),
+            ("Tem limite de respostas?", "Não por mês. O Instagram aceita até 750 respostas por hora em cada conta: se um post viralizar e passar disso, as respostas entram numa fila e saem na hora seguinte por ordem de chegada. A resposta a um comentário pode sair até 7 dias depois dele; a de uma DM ou resposta de story, até 24 horas depois."),
+            ("Preciso deixar o painel aberto?", "Não. As automações rodam no servidor do Appfiliado 24 horas por dia."),
+            ("O que muda do Standard pro Premium?", "O Standard responde comentários nos posts com até 5 automações ligadas ao mesmo tempo. O Premium também responde stories e DMs com palavra-chave, não tem limite de automações ligadas, manda o link num botão e gera um Sub ID para cada automação. Nos dois, sem limite de pessoas respondidas por mês."),
         ],
     }
 
@@ -428,7 +430,8 @@ def radar():
                    _t("Copiar link", "Copia o seu link de afiliado, em todos os planos."),
                    _t("Mandar no grupo", "Envia o produto, com foto e texto, para um grupo ou canal de WhatsApp.", "Bot de WhatsApp"),
                    _t("Acompanhar o preço", "Coloca o produto no alerta de preço para você ser avisada quando ele cair.", "Bot de WhatsApp"),
-                   _t("Gerar carrossel", "Leva o produto pro gerador e já começa o carrossel do Instagram.", "Gerador de carrosséis")),
+                   _t("Criar post", "Leva o produto pro Estúdio Instagram e já começa o post, com a foto, o preço e o seu link.",
+                      "Estúdio Instagram" if vendas.lancado() else "Estúdio Instagram · em breve")),
             _grupo("Sempre atualizado", "O catálogo é renovado todo dia.",
                    _t("Atualização diária", "Uma rodada por dia e uma completa por semana, com até 30 mil produtos."),
                    _t("Preço de agora", "Ao mandar no grupo ou acompanhar o preço, o Radar consulta o preço de agora na Shopee."),
@@ -439,7 +442,7 @@ def radar():
             ("O Radar custa a mais?", "Não. O Radar de ofertas está incluso em todos os planos do Appfiliado."),
             ("De onde vêm os produtos?", "Do catálogo de produtos da Shopee que têm comissão de afiliado. O Appfiliado atualiza esse catálogo todo dia."),
             ("O preço que aparece é o de agora?", "O catálogo é atualizado todo dia. Na hora de mandar no grupo ou acompanhar o preço, o Radar consulta o preço de agora na Shopee."),
-            ("Preciso do Bot de WhatsApp?", "Não. Copiar o link de afiliado funciona em todos os planos. Mandar no grupo e acompanhar o preço precisam do Bot de WhatsApp, e gerar carrossel precisa do Gerador de carrosséis."),
+            ("Preciso do Bot de WhatsApp?", "Não. Copiar o link de afiliado funciona em todos os planos. Mandar no grupo e acompanhar o preço precisam do Bot de WhatsApp, e criar o post precisa do Estúdio Instagram" + ("." if vendas.lancado() else ", que chega em breve.")),
             ("Não achei um produto que está na Shopee. E agora?", "A Shopee limita quantos produtos libera para afiliados, então nem todo produto do site aparece no Radar. Cole o link dele no Conversor de links e gere o seu link do mesmo jeito."),
         ],
     }
@@ -593,12 +596,54 @@ APRESENTACAO = {
 }
 
 
+# Antes do lançamento, as páginas do Estúdio e das Automações ficam no ar sem falar de planos: sem os
+# selos de Premium, sem a tabela Standard × Premium e com os textos abaixo no lugar dos que citam plano.
+SEM_PLANOS = {
+    "estudio": {
+        "aviso": "O Estúdio Instagram será lançado em breve.",
+        "itens": {"Em branco": "Comece do zero e monte o post slide por slide.",
+                  "Limite por dia": "A IA tem um limite de criações por dia. Quando ele acaba, o post de produto sai do modelo com a foto e o preço.",
+                  "Seu @ nos posts": "O seu @ do Instagram aparece nos slides."},
+        "intros": {"O seu visual": "O post com a cara da sua marca."},
+        "perguntas": {"Dá para colocar o link no story?": "A Meta não deixa colocar o adesivo de link na publicação automática. Para mandar o link, use as Automações Instagram: quem responder o story recebe o link por DM.",
+                      "Os posts têm marca d'água?": "Não. As imagens saem limpas, só com o seu @ e a sua marca."},
+        "numeros": [("4", "jeitos de começar um post"), ("7", "modelos prontos"), ("3", "formatos: 1:1, 4:5 e 9:16"), ("60 dias", "para agendar")],
+    },
+    "automacoes": {
+        "aviso": "As Automações Instagram serão lançadas em breve.",
+        "fora": {"Automações sem limite"},
+        "grupos": {"Só no Premium": ("Stories, DMs e Sub ID", "Stories e DMs")},
+    },
+}
+
+
+def _sem_planos(modulo, pagina):
+    troca = SEM_PLANOS.get(modulo, {})
+    for g in pagina["grupos"]:
+        if g["titulo"] in troca.get("grupos", {}):
+            g["titulo"], g["curto_breve"] = troca["grupos"][g["titulo"]]
+        g["intro"] = troca.get("intros", {}).get(g["titulo"], g["intro"])
+        g["itens"] = [i for i in g["itens"] if i["nome"] not in troca.get("fora", set())]
+        for item in g["itens"]:
+            item["plano"] = ""
+            item["texto"] = troca.get("itens", {}).get(item["nome"], item["texto"])
+    pagina["perguntas"] = [(q, troca.get("perguntas", {}).get(q, r)) for q, r in pagina["perguntas"] if "Standard" not in q]
+    pagina["resumo"], pagina["tabela"], pagina["em_breve"] = [], [], True
+    pagina["aviso_breve"] = troca.get("aviso", f"{pagina['nome']}: lançamento em breve.")
+    return pagina
+
+
 def _apresentar(modulo, pagina):
     ap = APRESENTACAO[modulo]
+    breve = vendas.em_breve(modulo)
+    if breve:
+        pagina = _sem_planos(modulo, pagina)
     fundo = ""
     for n, (g, layout, curto) in enumerate(zip(pagina["grupos"], ap["layouts"], ap["curtos"])):
+        if breve and layout == "premium":
+            layout, curto = "cartoes", g.pop("curto_breve", curto)
         g["layout"], g["curto"] = layout, curto
-        g["prints"] = prints_de(modulo, n)
+        g["prints"] = [] if breve else prints_de(modulo, n)
         if layout == "premium":
             g["fundo"] = "verde"
         else:  # alterna branco e creme, para duas seções vizinhas nunca terem a mesma cor
@@ -607,7 +652,7 @@ def _apresentar(modulo, pagina):
         for item in g["itens"]:
             item["chips"] = ap.get("chips", {}).get(item["nome"], [])
             item["cores"] = ap.get("cores", {}).get(item["nome"], [])
-    pagina["numeros"] = ap["numeros"]()
+    pagina["numeros"] = (SEM_PLANOS.get(modulo, {}).get("numeros") if breve else None) or ap["numeros"]()
     pagina["print_do_topo"] = next((pr for g in pagina["grupos"] for pr in g["prints"] if not pr["celular"]), None)
     return pagina
 

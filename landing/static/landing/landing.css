@@ -550,3 +550,28 @@ a.incluso:hover strong { text-decoration-color: var(--verde); }
 }
 @media (max-width: 720px) { .grade-modulos-5 { grid-template-columns: minmax(0, 1fr); } }
 @media (max-width: 420px) { .pacote-niveis { grid-template-columns: minmax(0, 1fr); } }
+
+/* Pré-lançamento do Instagram: Estúdio e Automações "Em breve" (sem preço e sem Standard/Premium). */
+.selo-breve { display: inline-flex; align-items: center; align-self: flex-start; gap: 6px; padding: 4px 12px; border-radius: 999px; background: var(--amarelo); color: var(--verde); font-weight: 800; font-size: 12px; letter-spacing: .06em; text-transform: uppercase; white-space: nowrap; }
+.selo-breve::before { content: ""; width: 7px; height: 7px; border-radius: 50%; background: var(--verde); }
+.tag-breve { justify-self: start; padding: 2px 8px; border-radius: 999px; background: var(--amarelo); color: var(--verde); font-size: 10.5px; font-weight: 800; letter-spacing: .05em; text-transform: uppercase; }
+.modulo-breve { background: linear-gradient(160deg, #FFF8E1, var(--card) 60%); border-color: rgba(242,194,48,.6); }
+.bloco-breve .bloco-titulo { flex-wrap: wrap; }
+.plano-breve { border-style: dashed; border-color: rgba(31,58,46,.35); }
+.plano-breve-topo { display: flex; align-items: center; gap: 10px; }
+.plano-breve-topo svg { width: 30px; height: 30px; fill: none; stroke: var(--verde); stroke-width: 1.7; stroke-linecap: round; stroke-linejoin: round; flex: none; }
+.plano-breve h4 { font-size: 20px; letter-spacing: 0; text-transform: none; color: var(--verde); }
+.plano-breve-frase { color: var(--suave); font-size: 15px; margin: 0; }
+.plano-breve-nota { margin-top: 14px; color: var(--suave); font-size: 14px; }
+.pacote-breve { border-style: dashed; align-content: center; }
+.pacote-breve .selo-off { background: var(--amarelo); color: var(--verde); }
+.pacote-lancamento { margin: 4px 0 0; color: #E3EAE5; font-size: 15px; font-weight: 700; }
+.aviso-breve { background: var(--amarelo); color: var(--verde); }
+.aviso-breve-linha { display: flex; align-items: center; gap: 14px; padding-top: 14px; padding-bottom: 14px; }
+.aviso-breve .selo-breve { background: var(--verde); color: var(--amarelo); }
+.aviso-breve .selo-breve::before { background: var(--amarelo); }
+.aviso-breve p { margin: 0; font-size: 15px; line-height: 1.45; }
+.lista-breve { list-style: none; margin: 14px 0 0; padding: 0; display: grid; gap: 8px; }
+.lista-breve li { position: relative; padding: 11px 12px 11px 38px; background: #fff; border: 1px solid var(--borda); border-radius: 12px; font-weight: 700; font-size: 14px; line-height: 1.3; }
+.lista-breve li::before { content: ""; position: absolute; left: 12px; top: 12px; width: 16px; height: 16px; border-radius: 50%; background: var(--amarelo) url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%231F3A2E' stroke-width='3.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M6 12l4 4 8-9'/%3E%3C/svg%3E") center/11px no-repeat; }
+@media (max-width: 720px) { .aviso-breve-linha { flex-direction: column; align-items: flex-start; gap: 8px; } }

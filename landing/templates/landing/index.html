@@ -6,7 +6,7 @@
     <div>
       <p class="chapeu">Para afiliados da Shopee</p>
       <h1>Tudo o que o afiliado da Shopee precisa em um só lugar.</h1>
-      <p class="heroi-texto">{% if lancado %}Encontre as melhores ofertas, divulgue no WhatsApp no automático, crie e publique posts no Instagram, responda os comentários com o seu link na DM, tenha o seu site com vitrine, acompanhe seus resultados e emita suas notas fiscais de afiliado.{% else %}Encontre as melhores ofertas, divulgue no WhatsApp no automático, crie seu próprio site com conversor de links e vitrine, acompanhe seus resultados e metas e emita suas notas fiscais de afiliado.{% endif %}</p>
+      <p class="heroi-texto">{% if lancado %}Encontre as melhores ofertas, divulgue no WhatsApp no automático, crie e publique posts no Instagram, responda os comentários com o seu link na DM, tenha o seu site com vitrine, acompanhe seus resultados e emita suas notas fiscais de afiliado.{% else %}Encontre as melhores ofertas, divulgue no WhatsApp no automático, tenha o seu site com vitrine, acompanhe seus resultados e emita suas notas fiscais de afiliado. Em breve, 2 novos módulos para Instagram: criação de posts/stories e postagem automática; respostas a comentários e envio de DMs de forma automatizada.{% endif %}</p>
       <div class="heroi-botoes"><a class="botao botao-grande" href="#planos">Ver planos e preços</a><a class="botao botao-grande botao-vazado" href="#modulos">Conhecer os módulos</a></div>
       <p class="heroi-nota">Pagamento pela Zouti. 7 dias de garantia.</p>
     </div>
@@ -19,14 +19,10 @@
           <li><a href="{% url 'landing_conversor' %}"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="{{ icones.conversor }}"/></svg>Conversor de links</a></li>
           <li><a href="{% url 'landing_bot' %}"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="{{ icones.whatsapp }}"/></svg>Bot de WhatsApp</a></li>
           <li><a href="{% url 'landing_site' %}"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="{{ icones.site }}"/></svg>Meu site</a></li>
-          {% if lancado %}
-          <li><a href="{% url 'landing_estudio' %}"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="{{ icones.instagram }}"/></svg>Estúdio Instagram</a></li>
-          <li><a href="{% url 'landing_automacoes' %}"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="{{ icones.automacoes }}"/></svg>Automações do Instagram</a></li>
-          {% else %}
-          <li><a href="{% url 'landing_carrosseis' %}"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="{{ icones.carrosseis }}"/></svg>Gerador de carrosséis</a></li>
-          {% endif %}
+          <li><a href="{% url 'landing_estudio' %}"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="{{ icones.instagram }}"/></svg>Estúdio Instagram{% if not lancado %}<small class="tag-breve">Em breve</small>{% endif %}</a></li>
+          <li><a href="{% url 'landing_automacoes' %}"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="{{ icones.automacoes }}"/></svg>Automações Instagram{% if not lancado %}<small class="tag-breve">Em breve</small>{% endif %}</a></li>
           <li><a href="{% url 'landing_resultados' %}"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="{{ icones.resultados }}"/></svg>Resultados e metas</a></li>
-          <li{% if not lancado %} class="largo"{% endif %}><a href="{% url 'landing_notas' %}"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="{{ icones.notas }}"/></svg>Emissor NFS-e</a></li>
+          <li><a href="{% url 'landing_notas' %}"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="{{ icones.notas }}"/></svg>Emissor NFS-e</a></li>
         </ul>
       </div>
     </div>
@@ -45,15 +41,15 @@
   <div class="miolo">
     <p class="chapeu">Módulos</p>
     <h2>Do achar a oferta ao emitir a nota, tudo no mesmo lugar.</h2>
-    <p class="secao-texto">Use só o que precisa hoje e some módulos quando crescer. {% if lancado %}Nos pacotes, o preço cai.{% else %}Ao juntar dois ou mais, o preço cai.{% endif %}</p>
-    <div class="grade-modulos{% if lancado %} grade-modulos-5{% endif %}">
+    <p class="secao-texto">Use só o que precisa hoje e some módulos quando crescer. Nos pacotes, o preço cai.</p>
+    <div class="grade-modulos grade-modulos-5">
       {% for m in modulos %}
-        <article class="modulo">
+        <article class="modulo{% if m.em_breve %} modulo-breve{% endif %}">
           <svg viewBox="0 0 24 24" aria-hidden="true"><path d="{{ m.icone }}"/></svg>
           <h3>{{ m.nome }}</h3>
           <p>{{ m.frase }}</p>
-          <span class="a-partir">a partir de <b>{{ m.a_partir }}</b>/mês</span>
-          <a class="ver-recursos" href="{% url m.pagina %}">Ver todos os recursos →</a>
+          {% if m.em_breve %}<span class="selo-breve">Em breve</span>{% else %}<span class="a-partir">a partir de <b>{{ m.a_partir }}</b>/mês</span>{% endif %}
+          <a class="ver-recursos" href="{% url m.pagina %}">{% if m.em_breve %}Conhecer o que vem aí →{% else %}Ver todos os recursos →{% endif %}</a>
         </article>
       {% endfor %}
       <article class="modulo">
@@ -72,7 +68,7 @@
     <p class="chapeu">Como funciona</p>
     <h2>Do pagamento ao primeiro uso em três passos.</h2>
     <ol class="passos">
-      <li><span>1</span><h3>Escolha e pague</h3><p>Escolha os módulos{% if lancado %} ou um pacote{% else %} ou monte um combo{% endif %} e pague pelo checkout seguro da Zouti.</p></li>
+      <li><span>1</span><h3>Escolha e pague</h3><p>Escolha os módulos ou um pacote e pague pelo checkout seguro da Zouti.</p></li>
       <li><span>2</span><h3>Receba o acesso</h3><p>Assim que o pagamento é confirmado, você recebe no e-mail o link para criar a sua senha e entrar no painel.</p></li>
       <li><span>3</span><h3>Conecte e comece</h3><p>Entre no painel, conecte a sua conta da Shopee (com a API liberada) e use os módulos do seu plano.</p></li>
     </ol>
@@ -102,9 +98,25 @@
     <p class="chapeu">Planos</p>
     <h2>Standard para começar, Premium para crescer.</h2>
     <p class="secao-texto">Preços por mês. Plano anual com 17% de desconto disponível no checkout.</p>
-    {% for m in modulos %}
+    {% for m in a_venda %}
       {% include "landing/_bloco_plano.html" %}
     {% endfor %}
+    {% if em_breve %}
+    <div class="bloco-plano bloco-breve">
+      <div class="bloco-titulo"><span class="selo-breve">Em breve</span><h3>Chegando ao Appfiliado</h3></div>
+      <div class="par-planos">
+        {% for m in em_breve %}
+          <article class="plano plano-breve">
+            <div class="plano-breve-topo"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="{{ m.icone }}"/></svg><h4>{{ m.nome }}</h4></div>
+            <p class="plano-breve-frase">{{ m.breve_frase }}</p>
+            <ul>{% for item in m.breve_itens %}<li>{{ item }}</li>{% endfor %}</ul>
+            <a class="botao botao-vazado-escuro" href="{% url m.pagina %}">Conhecer os recursos</a>
+          </article>
+        {% endfor %}
+      </div>
+      <p class="plano-breve-nota">Planos e preços no dia do lançamento.</p>
+    </div>
+    {% endif %}
     <div class="bloco-plano">
       <div class="bloco-titulo"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="{{ icones.notas }}"/></svg><h3>Emissor NFS-e</h3></div>
       <div class="plano-notas">
@@ -118,7 +130,6 @@
   </div>
 </section>
 
-{% if lancado %}
 <section id="pacotes" class="secao secao-verde">
   <div class="miolo">
     <p class="chapeu chapeu-claro">Pacotes</p>
@@ -126,13 +137,16 @@
     <p class="secao-texto">Todos os módulos do pacote no mesmo plano, Standard ou Premium, numa assinatura só. Plano anual com 17% de desconto no checkout.</p>
     <div class="pacotes">
       {% for p in pacotes %}
-        <article class="combo-pronto pacote{% if p.codigo == 'completo' %} combo-pronto-premium pacote-completo{% endif %}">
+        <article class="combo-pronto pacote{% if p.codigo == 'completo' %} combo-pronto-premium pacote-completo{% endif %}{% if p.em_breve %} pacote-breve{% endif %}">
           <div class="pacote-cabeca">
-            <span class="selo-off">{{ p.desconto }}% off</span>
+            {% if p.em_breve %}<span class="selo-off">Em breve</span>{% else %}<span class="selo-off">{{ p.desconto }}% off</span>{% endif %}
             <h3>{{ p.nome }}</h3>
             <p class="pacote-frase">{{ p.frase }}</p>
             <ul>{% for m in p.modulos %}<li>{{ m }}</li>{% endfor %}</ul>
           </div>
+          {% if p.em_breve %}
+          <p class="pacote-lancamento">Chega com o lançamento do Estúdio Instagram e das Automações Instagram.</p>
+          {% else %}
           <div class="pacote-niveis">
             {% for n in p.niveis %}
               <div class="pacote-nivel">
@@ -143,75 +157,12 @@
               </div>
             {% endfor %}
           </div>
+          {% endif %}
         </article>
       {% endfor %}
     </div>
   </div>
 </section>
-{% else %}
-<section id="combo" class="secao secao-verde">
-  <div class="miolo">
-    <p class="chapeu chapeu-claro">Combos</p>
-    <h2>Monte o seu combo e pague menos.</h2>
-    <p class="secao-texto">Quanto mais módulos você junta, maior o desconto.</p>
-
-    <ol class="degraus" data-degraus aria-label="Desconto por quantidade de módulos">
-      <li data-n="1"><b>1 módulo</b><span>preço normal</span></li>
-      <li data-n="2"><b>2 módulos</b><span>10% de desconto</span></li>
-      <li data-n="3"><b>3 módulos</b><span>20% de desconto</span></li>
-    </ol>
-    <p class="dica-combo" data-dica aria-live="polite">Escolha um módulo para começar.</p>
-
-    <div class="montador" data-montador>
-      <div class="mod-cards">
-        {% for m in modulos %}
-          <fieldset class="mod-card" data-modulo="{{ m.codigo }}">
-            <legend class="sr">{{ m.nome }}</legend>
-            <div class="mod-topo"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="{{ m.icone }}"/></svg><h3>{{ m.nome }}</h3></div>
-            <p class="mod-frase">{{ m.curta }}</p>
-            <div class="niveis">
-              <label><input type="radio" name="{{ m.codigo }}" value="" checked><span>Não quero</span></label>
-              <label><input type="radio" name="{{ m.codigo }}" value="0"><span>Standard<small>{{ m.planos.0.preco }}</small></span></label>
-              <label><input type="radio" name="{{ m.codigo }}" value="1"><span>Premium<small>{{ m.planos.1.preco }}</small></span></label>
-            </div>
-          </fieldset>
-        {% endfor %}
-      </div>
-
-      <div class="conta" data-conta aria-live="polite">
-        <div class="conta-caixa" data-vazio><p class="conta-vazia">Escolha ao menos um módulo para ver o preço do seu combo.</p></div>
-        <div class="conta-caixa" data-resultado inert><div class="conta-grade">
-          <div class="conta-lista">
-            <p class="conta-titulo">Seu combo</p>
-            <ul data-linhas></ul>
-            <div class="conta-desconto" data-desconto hidden><span data-desc-rotulo></span><b data-desc-valor></b></div>
-          </div>
-          <div class="conta-total">
-            <span class="conta-rotulo">Total por mês</span>
-            <p class="montador-preco"><b data-preco></b><span>/mês</span></p>
-            <p class="montador-economia" data-economia></p>
-            <a class="botao botao-grande" href="#planos" data-assinar>Assinar este combo</a>
-          </div>
-        </div></div>
-      </div>
-    </div>
-    {{ montador|json_script:"dados-montador" }}
-    <noscript><p class="secao-texto">Ative o JavaScript para montar o combo, ou escolha um dos combos prontos abaixo.</p></noscript>
-
-    <h3 class="combos-titulo">Ou escolha um combo pronto</h3>
-    <div class="combos-prontos">
-      <article class="combo-pronto"><span class="selo-off">20% off</span><h3>Combo Standard</h3>
-        <ul><li>Bot de WhatsApp Standard</li><li>Meu site Standard</li><li>Gerador de carrosséis Standard</li></ul>
-        <p class="preco"><s>{{ combo_standard.separado }}</s> <b>{{ combo_standard.preco }}</b><span>/mês</span></p>
-        <a class="botao" href="{{ combo_standard.link }}">Assinar o Combo Standard</a></article>
-      <article class="combo-pronto combo-pronto-premium"><span class="selo-off">20% off</span><h3>Combo Premium</h3>
-        <ul><li>Bot de WhatsApp Premium</li><li>Meu site Premium</li><li>Gerador de carrosséis Premium</li></ul>
-        <p class="preco"><s>{{ combo_premium.separado }}</s> <b>{{ combo_premium.preco }}</b><span>/mês</span></p>
-        <a class="botao" href="{{ combo_premium.link }}">Assinar o Combo Premium</a></article>
-    </div>
-  </div>
-</section>
-{% endif %}
 
 <section id="notas" class="secao">
   <div class="miolo">

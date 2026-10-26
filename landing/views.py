@@ -42,7 +42,7 @@ RESUMOS = {
                    "Download de imagens", "SubID próprio"],
     },
     "estudio": {
-        "icone": "instagram", "frase": "Crie posts e stories com o seu link de afiliado e publique direto no seu Instagram, na hora ou agendado.",
+        "icone": "instagram", "frase": "Crie posts e stories com o seu link de afiliado e publique direto no seu Instagram na hora ou agendado.",
         "itens": (
             [f"{planos_do_app.CARROSSEIS[False]['geracoes']} criações com IA por dia", "7 modelos prontos de post e story",
              "Edite os textos e a foto de cada slide"],
@@ -50,11 +50,14 @@ RESUMOS = {
              "Minha marca: logo, cores e fonte em todos os posts", "Remoção de fundo da foto", "Seus próprios modelos",
              "Adicione e duplique slides"],
         ),
-        "comuns": ["Post a partir do link de um produto da Shopee, com foto e preço", "Publicar no feed e nos stories, na hora ou agendado",
+        "comuns": ["Post a partir do link de um produto da Shopee com foto e preço", "Publicar no feed e nos stories na hora ou agendado",
                    "Formatos 1:1, 4:5 e 9:16", "Legenda escrita por IA", "Download em PNG e ZIP", "SubID próprio"],
+        # Antes do lançamento: a lista do bloco "Chegando ao Appfiliado" e do quadro no topo da página.
+        "breve": {"itens": ["Posts/stories a partir de links de produtos", "Publicação direto pelo Appfiliado",
+                            "Formatos 1:1, 4:5 e 9:16", "Legenda escrita por IA", "Download em PNG e ZIP", "SubID próprio"]},
     },
     "automacoes": {
-        "icone": "automacoes", "frase": "Quem comentar a palavra certa no seu post recebe o seu link de afiliado por DM, na hora.",
+        "icone": "automacoes", "frase": "Respostas em posts e stories e envio de DMs de forma automatizada com seu link de afiliado.",
         "itens": (
             ["Respostas a comentários nos posts", "Até 5 automações ligadas ao mesmo tempo"],
             ["Respostas a comentários, stories e DMs com palavra-chave", "Automações ligadas sem limite",
@@ -63,6 +66,11 @@ RESUMOS = {
         "comuns": ["Sem limite de pessoas respondidas por mês", "Resposta no comentário e DM com o seu link",
                    "Um post específico ou todos os posts", "Palavras que disparam a resposta", "Cada pessoa recebe uma vez só",
                    "Histórico de quem foi respondido"],
+        "breve": {"frase": "Respostas a comentários/stories e envio de DMs de forma automatizada, de acordo com suas configurações.",
+                  "itens": ["Sem limite de respostas", "Envio do seu link de afiliado", "Escolha de post específico ou todos os posts",
+                            "Histórico de automações", "SubIDs próprios por automação"],
+                  "destaques": ["Sem limite de respostas", "Resposta por comentário e DM", "Um post específico ou todos os posts",
+                                "Escolha de palavras-chave", "Apenas uma resposta por comentário", "Histórico de automações"]},
     },
 }
 INCLUSOS = [
@@ -86,16 +94,21 @@ PERGUNTAS = [
 
 # No lançamento do Instagram: o texto que fala de carrosséis muda e entra a pergunta dos pacotes.
 NIVEIS_LANCAMENTO = ("Qual é a diferença entre Standard e Premium?", "O Premium libera mais volume e mais recursos em cada módulo (mais grupos e ofertas por dia no bot, mais botões no site, mais criações com IA e a sua marca no Estúdio, stories e DMs nas Automações). As listas completas estão nos cartões de cada plano.")
-PACOTES_LANCAMENTO = ("Posso assinar mais de um módulo?", "Pode. Assine cada módulo separado ou escolha um pacote: o Pacote Ofertas (Bot de WhatsApp e Meu site) e o Pacote Instagram (Estúdio e Automações) saem cerca de 10% mais baratos, e o Pacote Completo, com os 4 módulos, cerca de 15%. Os módulos de todas as suas assinaturas ficam liberados na mesma conta.")
+PACOTES_LANCAMENTO = ("Posso assinar mais de um módulo?", "Pode. Assine cada módulo separado ou escolha um pacote: o Pacote Ofertas (Bot de WhatsApp e Meu site) e o Pacote Instagram (Estúdio e Automações) saem cerca de 10% mais baratos e o Pacote Completo, com os 4 módulos, sai cerca de 15% mais barato. Os módulos de todas as suas assinaturas ficam liberados na mesma conta.")
+
+
+# Antes do lançamento: o Estúdio e as Automações aparecem como "Em breve", sem preço e sem planos.
+NIVEIS_PRE_LANCAMENTO = ("Qual é a diferença entre Standard e Premium?", "O Premium libera mais volume e mais recursos em cada módulo (mais grupos e ofertas por dia no bot e mais botões no site, por exemplo). As listas completas estão nos cartões de cada plano.")
+PACOTES_PRE_LANCAMENTO = ("Posso assinar mais de um módulo?", "Pode. Assine cada módulo separado ou escolha o Pacote Ofertas (Bot de WhatsApp e Meu site), que sai cerca de 10% mais barato. Os módulos de todas as suas assinaturas ficam liberados na mesma conta. Com o lançamento do Estúdio Instagram e das Automações Instagram, chegam também o Pacote Instagram e o Pacote Completo.")
+QUANDO_LANCA = ("Quando chegam o Estúdio Instagram e as Automações Instagram?", "Em breve. Os dois estão na reta final e os planos e preços aparecem aqui no site no dia do lançamento. Enquanto isso, conheça tudo o que eles vão fazer nas páginas de cada um.")
 
 
 def perguntas() -> list:
-    if not planos.lancado():
-        return PERGUNTAS
+    niveis, pacotes = (NIVEIS_LANCAMENTO, PACOTES_LANCAMENTO) if planos.lancado() else (NIVEIS_PRE_LANCAMENTO, PACOTES_PRE_LANCAMENTO)
     saida = []
     for q, r in PERGUNTAS:
-        if q == NIVEIS_LANCAMENTO[0]:
-            saida += [NIVEIS_LANCAMENTO, PACOTES_LANCAMENTO]
+        if q == niveis[0]:
+            saida += [niveis, pacotes] + ([] if planos.lancado() else [QUANDO_LANCA])
         else:
             saida.append((q, r))
     return saida
@@ -132,10 +145,17 @@ INCLUIDOS_COM_PAGINA = [("resultados", "Resultados e metas", "landing_resultados
 
 
 def _modulo(m):
-    """Os dados de um módulo para os cartões de plano (landing e páginas de recursos)."""
+    """Os dados de um módulo para os cartões de plano (landing e páginas de recursos). Módulo "Em breve"
+    vai sem preço e sem os cartões Standard/Premium."""
+    breve = planos.em_breve(m)
     return {"codigo": m, "nome": planos.NOMES[m], "icone": ICONES[RESUMOS[m]["icone"]], "frase": RESUMOS[m]["frase"], "curta": FRASE_CURTA[m],
-            "a_partir": planos.brl(planos.PRECOS[m][0]), "comuns": RESUMOS[m].get("comuns", []), "pagina": PAGINA_DO_MODULO[m],
-            "planos": [_cartao(m, 0), _cartao(m, 1)]}
+            "em_breve": breve, "a_partir": None if breve else planos.brl(planos.PRECOS[m][0]),
+            "breve_frase": RESUMOS[m].get("breve", {}).get("frase") or RESUMOS[m]["frase"],
+            "breve_itens": RESUMOS[m].get("breve", {}).get("itens") or RESUMOS[m].get("comuns", []),
+            "destaques": (RESUMOS[m].get("breve", {}).get("destaques") or RESUMOS[m].get("breve", {}).get("itens")
+                          or RESUMOS[m].get("comuns", [])),
+            "comuns": RESUMOS[m].get("comuns", []), "pagina": PAGINA_DO_MODULO[m],
+            "planos": [] if breve else [_cartao(m, 0), _cartao(m, 1)]}
 
 
 def _comum(request):
@@ -172,27 +192,13 @@ def _pacotes():
 
 @require_GET
 def pagina(request):
-    if planos.lancado():
-        return render(request, "landing/index.html", {
-            "lancado": True, "modulos": [_modulo(m) for m in planos.modulos()], "pacotes": _pacotes(),
-            "inclusos": [{"icone": ICONES[i], "nome": n, "frase": f, "url": URL_DO_INCLUSO[i]} for i, n, f in INCLUSOS],
-            "notas": _faixas_de_notas(), "perguntas": perguntas(), "api": api_shopee, **_comum(request),
-        })
-    combos = planos.todos_os_combos()
-    contexto = {
-        "modulos": [_modulo(m) for m in planos.MODULOS],
+    modulos = [_modulo(m) for m in planos.modulos()]
+    return render(request, "landing/index.html", {
+        "modulos": modulos, "a_venda": [m for m in modulos if not m["em_breve"]],
+        "em_breve": [m for m in modulos if m["em_breve"]], "pacotes": _pacotes(),
         "inclusos": [{"icone": ICONES[i], "nome": n, "frase": f, "url": URL_DO_INCLUSO[i]} for i, n, f in INCLUSOS],
-        "notas": _faixas_de_notas(),
-        "montador": {"combos": combos, "modulos": [{"codigo": m, "nome": planos.NOMES[m], "precos": list(planos.PRECOS[m])} for m in planos.MODULOS]},
-        "combo_standard": {"preco": planos.brl(combos["bot0+site0+carrosseis0"]["preco"]), "separado": planos.brl(combos["bot0+site0+carrosseis0"]["separado"]),
-                           "link": combos["bot0+site0+carrosseis0"]["link"]},
-        "combo_premium": {"preco": planos.brl(combos["bot1+site1+carrosseis1"]["preco"]), "separado": planos.brl(combos["bot1+site1+carrosseis1"]["separado"]),
-                          "link": combos["bot1+site1+carrosseis1"]["link"]},
-        "perguntas": PERGUNTAS,
-        "api": api_shopee,
-        **_comum(request),
-    }
-    return render(request, "landing/index.html", contexto)
+        "notas": _faixas_de_notas(), "perguntas": perguntas(), "api": api_shopee, **_comum(request),
+    })
 
 
 @require_GET
@@ -215,10 +221,9 @@ def nao_encontrada(request, exception=None):
 @require_GET
 def recursos(request, modulo):
     """Página com todos os recursos de uma ferramenta (conteúdo em landing/recursos.py)."""
-    if planos.lancado() and modulo == "carrosseis":
-        return redirect("landing_estudio", permanent=True)  # o Estúdio Instagram tomou o lugar do gerador
-    if not planos.lancado() and modulo in ("estudio", "automacoes"):
-        return nao_encontrada(request)
+    if modulo == "carrosseis":
+        # O Estúdio Instagram toma o lugar do gerador (definitivo só depois do lançamento).
+        return redirect("landing_estudio", permanent=planos.lancado())
     pagina = conteudo.PAGINAS[modulo]()
     outros = [{"nome": planos.NOMES[m], "url": PAGINA_DO_MODULO[m]} for m in planos.modulos() if m != modulo]
     outros += [{"nome": nome, "url": url} for chave, nome, url in INCLUIDOS_COM_PAGINA if chave != modulo]

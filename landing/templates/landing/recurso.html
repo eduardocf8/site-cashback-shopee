@@ -8,18 +8,35 @@
 {% block conteudo %}
 {% load static %}
 <main id="inicio" class="pagina-modulo">
+{% if m.em_breve %}
+<div class="aviso-breve" role="note">
+  <div class="miolo aviso-breve-linha"><span class="selo-breve">Em breve</span><p><strong>{{ r.aviso_breve }}</strong> Conheça abaixo tudo o que vem por aí. Os planos e preços saem no dia do lançamento.</p></div>
+</div>
+{% endif %}
 <section class="heroi">
   <div class="miolo heroi-grade">
     <div>
-      <p class="chapeu">{{ r.nome }} · Todos os recursos</p>
+      <p class="chapeu">{{ r.nome }} · {% if m.em_breve %}Em breve{% else %}Todos os recursos{% endif %}</p>
       <h1>{{ r.h1 }}</h1>
       <p class="heroi-texto">{{ r.texto }}</p>
+      {% if m.em_breve %}
+      <div class="heroi-botoes"><a class="botao botao-grande" href="#recursos">Ver todos os recursos</a><a class="botao botao-grande botao-vazado" href="{% url 'landing' %}#planos">Ver os módulos disponíveis</a></div>
+      <p class="heroi-nota">Lançamento em breve.</p>
+      {% else %}
       <div class="heroi-botoes"><a class="botao botao-grande" href="#planos">Ver planos e preços</a><a class="botao botao-grande botao-vazado" href="#recursos">Ver todos os recursos</a></div>
       <p class="heroi-nota">Pagamento pela Zouti. 7 dias de garantia.</p>
+      {% endif %}
     </div>
     {% if r.incluso %}
     <div class="heroi-arte heroi-print">
       <div class="prints-janela"><div class="prints-barra" aria-hidden="true"><i></i><i></i><i></i><span>app.appfiliado.com.br</span></div>{% with p=r.print_do_topo %}<img src="{% static p.arquivo %}" width="{{ p.largura }}" height="{{ p.altura }}" alt="{{ p.alt }}" decoding="async">{% endwith %}</div>
+    </div>
+    {% elif m.em_breve %}
+    <div class="heroi-arte" aria-hidden="true">
+      <div class="painel-amostra">
+        <span class="painel-titulo">{{ r.nome }} · Em breve</span>
+        <ul class="lista-breve">{% for item in m.destaques %}<li>{{ item }}</li>{% endfor %}</ul>
+      </div>
     </div>
     {% else %}
     <div class="heroi-arte" aria-hidden="true">
@@ -44,8 +61,8 @@
 <nav class="subnav" aria-label="Neste módulo" id="recursos">
   <div class="miolo subnav-linha">
     {% for g in r.grupos %}<a href="#g{{ forloop.counter }}" data-alvo="g{{ forloop.counter }}">{{ g.curto }}</a>{% endfor %}
-    {% if not r.incluso %}<a href="#comparar" data-alvo="comparar">Standard × Premium</a>{% endif %}
-    <a href="#planos" data-alvo="planos">{% if r.incluso %}Planos{% else %}Planos{% endif %}</a>
+    {% if not r.incluso and not m.em_breve %}<a href="#comparar" data-alvo="comparar">Standard × Premium</a>{% endif %}
+    <a href="#planos" data-alvo="planos">{% if m.em_breve %}Lançamento{% else %}Planos{% endif %}</a>
   </div>
 </nav>
 
@@ -149,7 +166,16 @@
     <p class="chapeu">Planos</p>
     <h2>Incluído em todos os planos.</h2>
     <p class="secao-texto">{{ r.nome }} vem junto com qualquer módulo do Appfiliado, sem custo extra. Escolha o módulo que faz sentido para você e use tudo no mesmo painel.</p>
-    <p class="heroi-botoes" style="margin-top:24px"><a class="botao botao-grande" href="{% url 'landing' %}#planos">Ver planos e preços</a>{% if lancado %}<a class="botao botao-grande botao-vazado-escuro" href="{% url 'landing' %}#pacotes">Ver os pacotes</a>{% else %}<a class="botao botao-grande botao-vazado-escuro" href="{% url 'landing' %}#combo">Monte o seu combo</a>{% endif %}</p>
+    <p class="heroi-botoes" style="margin-top:24px"><a class="botao botao-grande" href="{% url 'landing' %}#planos">Ver planos e preços</a><a class="botao botao-grande botao-vazado-escuro" href="{% url 'landing' %}#pacotes">Ver os pacotes</a></p>
+  </div>
+</section>
+{% elif m.em_breve %}
+<section id="planos" class="secao secao-verde">
+  <div class="miolo">
+    <p class="chapeu chapeu-claro">Lançamento</p>
+    <h2>{{ r.aviso_breve }}</h2>
+    <p class="secao-texto">Os planos e preços saem no dia do lançamento. Enquanto isso, você já pode usar os outros módulos do Appfiliado.</p>
+    <p class="heroi-botoes" style="margin-top:24px"><a class="botao botao-grande" href="{% url 'landing' %}#planos">Ver os módulos disponíveis</a></p>
   </div>
 </section>
 {% else %}
@@ -176,7 +202,7 @@
   <div class="miolo">
     <p class="chapeu">Planos</p>
     <h2>Escolha o seu plano.</h2>
-    <p class="secao-texto">Preços por mês. Plano anual com 17% de desconto disponível no checkout. {% if lancado %}Quer juntar com outros módulos? <a href="{% url 'landing' %}#pacotes" style="color:var(--verde);font-weight:700">Veja os pacotes</a> e pague menos.{% else %}Quer juntar com outros módulos? <a href="{% url 'landing' %}#combo" style="color:var(--verde);font-weight:700">Monte o seu combo</a> e pague menos.{% endif %}</p>
+    <p class="secao-texto">Preços por mês. Plano anual com 17% de desconto disponível no checkout. Quer juntar com outros módulos? <a href="{% url 'landing' %}#pacotes" style="color:var(--verde);font-weight:700">Veja os pacotes</a> e pague menos.</p>
     {% include "landing/_bloco_plano.html" %}
   </div>
 </section>

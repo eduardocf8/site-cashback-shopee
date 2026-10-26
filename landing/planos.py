@@ -12,7 +12,7 @@ MODULOS = ("bot", "site", "carrosseis")
 # Planos do lançamento (settings.APPFILIADO_LANCAMENTO_INSTAGRAM): 4 módulos avulsos e 3 pacotes.
 MODULOS_LANCAMENTO = ("bot", "site", "estudio", "automacoes")
 NOMES = {"bot": "Bot de WhatsApp", "site": "Meu site", "carrosseis": "Gerador de carrosséis",
-         "estudio": "Estúdio Instagram", "automacoes": "Automações do Instagram"}
+         "estudio": "Estúdio Instagram", "automacoes": "Automações Instagram"}
 NIVEIS = ("Standard", "Premium")
 PRECOS = {"bot": (49.90, 89.90), "site": (22.90, 35.90), "carrosseis": (19.90, 35.90),  # mensal (Standard, Premium)
           "estudio": (29.90, 49.90), "automacoes": (29.90, 54.90)}
@@ -28,13 +28,27 @@ CODIGOS_LICENCA = {"bot": ("whatsapp", "whatsapp_premium"), "site": ("site", "si
                    "automacoes": ("instagram", "instagram_premium")}
 
 
+# Antes do lançamento, o site já mostra os módulos do Instagram, mas como "Em breve": sem preço,
+# sem Standard/Premium e sem botão de assinar. O Gerador de carrosséis não aparece mais no site.
+EM_BREVE = ("estudio", "automacoes")
+
+
 def lancado() -> bool:
     return settings.APPFILIADO_LANCAMENTO_INSTAGRAM
 
 
 def modulos() -> tuple:
-    """Os módulos vendidos agora no site."""
-    return MODULOS_LANCAMENTO if lancado() else MODULOS
+    """Os módulos que aparecem no site (os do Instagram ficam "Em breve" até o lançamento)."""
+    return MODULOS_LANCAMENTO
+
+
+def em_breve(modulo: str) -> bool:
+    return not lancado() and modulo in EM_BREVE
+
+
+def a_venda() -> list:
+    """Os módulos que dá para assinar agora."""
+    return [m for m in modulos() if not em_breve(m)]
 DESCONTO_COMBO = {1: 1.0, 2: 0.90, 3: 0.80}  # 2 módulos: 10% a menos; 3 módulos: 20% a menos
 NOTAS = [("Até 100 notas", 17.90), ("Até 500 notas", 49.90), ("Até 2.000 notas", 89.90),
          ("Até 5.000 notas", 129.90), ("Até 10.000 notas", 169.90), ("Notas ilimitadas", 229.90)]
@@ -79,6 +93,15 @@ LINKS = {
     "pacote-completo0": "",
     "pacote-completo1": "",
 }
+
+# O Pacote Ofertas é o mesmo combo Bot de WhatsApp + Meu site (mesmo preço e mesma licença) que já
+# existe na Zouti: enquanto o produto próprio do pacote não for criado, o botão usa o do combo.
+LINKS_PROVISORIOS = {"pacote-ofertas0": LINKS["bot0+site0"], "pacote-ofertas1": LINKS["bot1+site1"]}
+
+
+def link(chave_do_produto: str) -> str:
+    return LINKS[chave_do_produto] or LINKS_PROVISORIOS.get(chave_do_produto, "")
+
 
 LINKS_NOTAS = {
     "até 100 notas": "https://pay.zouti.com.br/checkout?poi=prod_offer_qw00waurucori6nmj9bm03",
@@ -137,15 +160,19 @@ def anual(mensal: float) -> float:
 
 
 def pacotes() -> list[dict]:
+    """Os pacotes. O que tem módulo "Em breve" também fica em breve: sem preço e sem níveis."""
     saida = []
     for codigo, nome, frase, mods, fator in PACOTES:
+        breve = any(em_breve(m) for m in mods)
         niveis = []
         for nivel in (0, 1):
+            if breve:
+                break
             preco, separado = preco_do_pacote(mods, nivel, fator)
             niveis.append({"nivel": NIVEIS[nivel], "preco": preco, "separado": separado,
-                           "desconto": round((1 - preco / separado) * 100), "link": LINKS[f"pacote-{codigo}{nivel}"]})
+                           "desconto": round((1 - preco / separado) * 100), "link": link(f"pacote-{codigo}{nivel}")})
         saida.append({"codigo": codigo, "nome": nome, "frase": frase, "modulos": [NOMES[m] for m in mods],
-                      "desconto": round((1 - fator) * 100), "niveis": niveis})
+                      "desconto": round((1 - fator) * 100), "niveis": niveis, "em_breve": breve})
     return saida
 
 
@@ -161,6 +188,6 @@ def produtos_do_lancamento() -> list[dict]:
         for nivel in (0, 1):
             mensal, _ = preco_do_pacote(mods, nivel, fator)
             lista.append({"nome": f"{nome} {NIVEIS[nivel]}", "mensal": mensal, "anual": anual(mensal),
-                          "licenca": ", ".join(CODIGOS_LICENCA[m][nivel] for m in mods), "link": LINKS[f"pacote-{codigo}{nivel}"],
+                          "licenca": ", ".join(CODIGOS_LICENCA[m][nivel] for m in mods), "link": link(f"pacote-{codigo}{nivel}"),
                           "novo": True})
     return lista
