@@ -21,7 +21,7 @@ O passo a passo que a Meta pediu, e onde cada item está neste plano:
 | 2. Gravar o fluxo completo, de deslogado a logado: o usuário achando o botão de login do Instagram e passando pelo OAuth | Cenas 1.3, 1.4, 2.3 e 2.4 |
 | 3. Pausar na tela de consentimento com `instagram_business_manage_comments` legível e mostrar o usuário aceitando | Cenas 1.4 e 2.4 (pausa de 8 segundos e legenda com o nome de cada permissão) |
 | 4. Mostrar a ação de ponta a ponta: resposta pública disparada pelo app num comentário real de outra pessoa, com o resultado no Instagram, e legendas dizendo qual permissão está sendo mostrada | Cenas 1.5 e 1.6 (e 2.5 para publicar) |
-| 5. Incluir o login completo no vídeo de cada permissão pedida e mostrar só os fluxos dessas permissões | Um vídeo por permissão (vídeo 1 e vídeo 2), cada um começando deslogado; sem as cenas de DM |
+| 5. Incluir o login completo no vídeo de cada permissão pedida e mostrar só os fluxos dessas permissões | Um vídeo por permissão (vídeo 1 e vídeo 2), cada um começando deslogado. As duas permissões já aprovadas só aparecem dentro do mesmo fluxo, com legenda "already approved": o perfil conectado (`basic`) e a DM da mesma automação, 5 segundos no fim da cena 1.6 (`manage_messages`) |
 
 ---
 
@@ -29,8 +29,8 @@ O passo a passo que a Meta pediu, e onde cada item está neste plano:
 
 | Permissão | Status | Neste envio? |
 |---|---|---|
-| `instagram_business_basic` | Aprovada | Não (já tem) |
-| `instagram_business_manage_messages` | Aprovada | Não (já tem) |
+| `instagram_business_basic` | Aprovada (com a ferramenta da cash-b) | Não, mas aparece no vídeo 1 (perfil conectado) |
+| `instagram_business_manage_messages` | Aprovada (com a ferramenta da cash-b) | Não, mas aparece no vídeo 1 (DM da automação) |
 | `instagram_business_manage_comments` | Rejeitada pelo vídeo | **Sim: vídeo 1** |
 | `instagram_business_content_publish` | Ainda não pedida | **Sim: vídeo 2** |
 | `instagram_business_manage_insights` | Não usamos | Não |
@@ -141,12 +141,14 @@ depois, com o vídeo 2. As duas juntas também funcionam, porque cada uma tem o 
 2. Digite o usuário e a senha da **conta A** e entre. Se pedir código de verificação, digite.
 3. Na **tela de consentimento** (o Instagram mostra "Appfiliado" e a lista do que o app pede): **pare por 8 segundos**. Passe o mouse devagar sobre cada item da lista, principalmente o de **comentários**.
 4. Clique em **Permitir**. A janela fecha sozinha e a página do Appfiliado se atualiza.
-5. Mostre o cartão da conta conectada: foto, `@sejaappfiliado`, nome e "Conectado e recebendo os comentários e as DMs".
+5. Mostre o cartão da conta conectada: foto, `@sejaappfiliado`, nome e "Conectado e recebendo os comentários e as DMs". Pare 3 segundos nele.
 
 **Faixa na tela** (durante a pausa na tela de consentimento, ponha também uma seta ou um destaque apontando o item de comentários)
 > Step 2 — OAuth consent: Appfiliado requests instagram_business_manage_comments (manage comments)
 >
 > Also requested: instagram_business_basic, instagram_business_content_publish, instagram_business_manage_messages
+
+(durante o passo 5, troque para: `Profile info (picture, username, name) uses instagram_business_basic (already approved)`)
 
 **O que falar**
 > "I click 'Conectar Instagram'. The official Instagram Business Login opens in a new window. Since I'm
@@ -156,8 +158,9 @@ depois, com o vídeo 2. As duas juntas também funcionam, porque cada uma tem o 
 > permission to manage the comments on my account. This is instagram_business_manage_comments. The
 > same screen also lists access to the profile, publishing content and messages. I grant access by
 > clicking 'Allow'.
-> [back to Appfiliado] The window closes and Appfiliado now shows the connected account
-> sejaappfiliado, connected and receiving comments."
+> [back to Appfiliado] The window closes and Appfiliado now shows the connected account: profile
+> picture, username sejaappfiliado and name. This profile information comes from
+> instagram_business_basic, which is already approved."
 
 ### Cena 1.5. Criar a automação de comentário (2:30 a 3:30)
 
@@ -188,7 +191,7 @@ depois, com o vídeo 2. As duas juntas também funcionam, porque cada uma tem o 
 2. Comente **"QUERO"**. **Não corte.**
 3. Em poucos segundos, atualize os comentários: a **resposta pública** da conta A aparece embaixo do comentário da conta B. Pare 3 segundos nela (aproxime o zoom, se der).
 4. Comente também **"que lindo"**, sem a palavra. Espere uns 10 segundos e mostre que **não** sai resposta.
-5. Opcional, em 5 segundos: mostre a DM que chegou na conta B (é da `manage_messages`, já aprovada).
+5. **Obrigatório, em 5 segundos:** na conta B, abra as mensagens e mostre a DM que chegou da conta A, com o texto e o link. É da `manage_messages`, já aprovada, e sai da mesma automação.
 
 **Faixa na tela**
 > Demonstrating instagram_business_manage_comments — a real comment from another person triggers the public reply
@@ -202,7 +205,9 @@ depois, com o vídeo 2. As duas juntas também funcionam, porque cada uma tem o 
 > replied publicly to the comment, automatically. This public reply was posted by Appfiliado with
 > instagram_business_manage_comments, and it's visible on Instagram.
 > Now I comment 'que lindo', which means 'how nice', without the trigger word. As expected, there is no
-> reply: the automation only responds to the words the affiliate configured."
+> reply: the automation only responds to the words the affiliate configured.
+> [DM] The same automation also sent this private reply to the person who commented, here in their
+> Instagram messages. That uses instagram_business_manage_messages, which is already approved."
 
 ### Cena 1.7. Histórico dos comentários (4:40 a 5:10)
 
@@ -392,8 +397,14 @@ depois, com o vídeo 2. As duas juntas também funcionam, porque cada uma tem o 
 > end-to-end flow with on-screen captions naming the permission. There is one screencast per requested
 > permission: instagram_business_manage_comments (a real comment from another person triggers a public
 > reply, visible on Instagram) and instagram_business_content_publish (a post created in Appfiliado is
-> published and visible on Instagram). instagram_business_basic and instagram_business_manage_messages
-> are already approved, so the videos focus only on the requested permissions.
+> published and visible on Instagram).
+>
+> This app was first used as an internal tool (cash-b.com/automacao), which is how
+> instagram_business_basic and instagram_business_manage_messages were approved. It is now Appfiliado,
+> a web platform for Shopee affiliates, and the screencasts show the current product. Video 1 also shows,
+> briefly and labeled as already approved, the connected profile (instagram_business_basic) and the
+> private reply sent by the same automation (instagram_business_manage_messages), so the whole use of
+> the app is visible in one place.
 
 ---
 

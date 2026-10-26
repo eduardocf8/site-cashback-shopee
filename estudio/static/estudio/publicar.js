@@ -5,11 +5,21 @@
   'use strict';
   // Espera o fim do login do Instagram, aberto numa janela à parte. A página do Instagram corta a ligação entre as
   // duas janelas, então a janela do login avisa por BroadcastChannel (e localStorage, nos navegadores antigos).
-  window.esperarInstagram = function (pronto) {
-    let feito = false;
+  // `voltou` roda quando a pessoa volta pra esta página sem ter terminado (fechou a janela do login, por exemplo):
+  // como a ligação entre as janelas é cortada, não dá pra saber se ela fechou; o botão volta ao normal e o aviso
+  // de "pronto" continua valendo se ela terminar depois.
+  window.esperarInstagram = function (pronto, voltou) {
+    let feito = false, saiu = false;
     const fim = () => { if (feito) return; feito = true; pronto(); };
     try { const canal = new BroadcastChannel('appfiliado-instagram'); canal.onmessage = (e) => { if (e.data === 'pronto') fim(); }; } catch (e) { /* sem canal */ }
     window.addEventListener('storage', (e) => { if (e.key === 'appfiliado-instagram') fim(); });
+    if (!voltou) return;
+    window.addEventListener('blur', () => { saiu = true; });
+    window.addEventListener('focus', () => {
+      if (!saiu || feito) return;
+      saiu = false;
+      setTimeout(() => { if (!feito) voltou(); }, 700);  // dá tempo do aviso de "pronto" chegar antes
+    });
   };
 
   const $ = (id) => document.getElementById(id);
@@ -39,7 +49,9 @@
           const janela = window.open(b.href, 'conectar-instagram', `width=${l},height=${a},left=${x},top=${y}`);
           if (!janela) return; // bloqueou a janela: segue no link (o post já foi salvo ao abrir)
           e.preventDefault(); b.textContent = 'Conectando… (termine na janela do Instagram)';
-          esperarInstagram(carregar);
+          if (b.dataset.esperando) return;
+          b.dataset.esperando = '1';
+          esperarInstagram(carregar, () => { b.textContent = 'Conectar Instagram'; });
         });
         caixa.append(b);
       } else caixa.append(el('p', { class: 'es-quieto' }, 'A conexão com o Instagram ainda não está configurada.'));

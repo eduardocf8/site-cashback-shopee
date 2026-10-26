@@ -71,6 +71,16 @@ class TestPagina(TestCase):
         self.assertContains(self.abrir(caminho="/sitemap.xml"), "/privacidade/")
         self.assertContains(self.abrir(), 'href="/privacidade/"')
 
+    def test_termos_de_uso(self):
+        # A Meta pede a URL dos termos no cadastro do app.
+        pagina = self.abrir(caminho="/termos-de-uso/")
+        self.assertContains(pagina, "Termos de Uso")
+        self.assertContains(pagina, "7 dias")
+        self.assertContains(pagina, "63.842.267/0001-46")
+        self.assertContains(pagina, 'href="/privacidade/"')
+        self.assertContains(self.abrir(caminho="/sitemap.xml"), "/termos-de-uso/")
+        self.assertContains(self.abrir(), 'href="/termos-de-uso/"')
+
     def test_pagina_de_notas_com_planos_e_aviso_de_pessoa_juridica(self):
         resposta = self.abrir(caminho="/emissao-de-notas/")
         self.assertContains(resposta, "Serviço exclusivo para afiliados pessoa jurídica")
