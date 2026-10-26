@@ -509,3 +509,44 @@ a.incluso:hover strong { text-decoration-color: var(--verde); }
   .tabela-planos thead th { font-size: 11px; letter-spacing: .04em; }
   .tabela-planos .sim { font-size: 18px; }
 }
+
+/* ---------- Páginas de texto (privacidade) ---------- */
+.pagina-texto { padding: 48px 0 72px; line-height: 1.65; }
+.pagina-texto h1 { font-size: clamp(28px, 5vw, 40px); letter-spacing: -.02em; margin: 0 0 6px; }
+.pagina-texto h2 { font-size: 20px; margin: 32px 0 8px; }
+.pagina-texto .atualizada { color: var(--suave, #5C6A61); margin-top: 0; }
+.pagina-texto ul { padding-left: 20px; }
+.pagina-texto li { margin: 6px 0; }
+
+/* ---------- Pacotes (lançamento do Instagram) ---------- */
+/* Os dois pacotes de 2 módulos lado a lado; o Completo embaixo, na largura toda, com os preços à direita. */
+.grade-modulos-5 { grid-template-columns: repeat(3, 1fr); }
+.pacotes { display: grid; grid-template-columns: repeat(2, 1fr); gap: 20px; margin-top: 32px; }
+.pacote { align-content: start; }
+.pacote-cabeca { display: grid; gap: 10px; justify-items: center; }
+.pacote .selo-off { position: static; justify-self: center; }
+.pacote-frase { color: #E3EAE5; font-size: 15px; margin: 0; }
+.pacote ul { display: flex; flex-wrap: wrap; justify-content: center; gap: 4px 16px; }
+.pacote-niveis { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; width: 100%; margin-top: 8px; }
+.pacote-nivel { display: grid; gap: 8px; justify-items: center; align-content: start; padding: 16px 12px; border-radius: 16px; background: rgba(246,243,234,.07); }
+.pacote-rotulo { font-weight: 800; letter-spacing: .06em; text-transform: uppercase; font-size: 12px; color: var(--amarelo); }
+.pacote .preco { margin: 0; display: grid; justify-items: center; line-height: 1.1; }
+.pacote .preco s { margin: 0; font-size: 14px; }
+.pacote .preco b { font-size: 32px; }
+.pacote .preco span { font-size: 14px; }
+.pacote .botao { width: 100%; justify-content: center; }
+.pacote-completo { grid-column: 1 / -1; grid-template-columns: minmax(0, 1fr) minmax(0, 1.25fr); align-items: center; gap: 28px; text-align: left; }
+.pacote-completo .pacote-cabeca { justify-items: start; }
+.pacote-completo .selo-off { justify-self: start; }
+.pacote-completo ul { justify-content: flex-start; }
+.pacote-completo .pacote-niveis { margin-top: 0; }
+.botao-em-breve { opacity: .6; cursor: default; pointer-events: none; }
+@media (max-width: 1100px) { .grade-modulos-5 { grid-template-columns: repeat(2, 1fr); } }
+@media (max-width: 900px) {
+  .pacotes { grid-template-columns: minmax(0, 1fr); }
+  .pacote-completo { grid-template-columns: minmax(0, 1fr); text-align: center; }
+  .pacote-completo .pacote-cabeca, .pacote-completo .selo-off { justify-items: center; justify-self: center; }
+  .pacote-completo ul { justify-content: center; }
+}
+@media (max-width: 720px) { .grade-modulos-5 { grid-template-columns: minmax(0, 1fr); } }
+@media (max-width: 420px) { .pacote-niveis { grid-template-columns: minmax(0, 1fr); } }

@@ -1,6 +1,6 @@
 {% extends "painel/base.html" %}
 {% load static %}
-{% block titulo %}{% if automacao %}{{ automacao.nome }}{% else %}Nova automação{% endif %} · Estúdio Instagram{% endblock %}
+{% block titulo %}{% if automacao %}{{ automacao.nome }}{% else %}Nova automação{% endif %} · Automações{% endblock %}
 {% block cabeca %}<link rel="stylesheet" href="{% static 'estudio/painel.css' %}">{% endblock %}
 {% block conteudo %}
 <div class="es-pagina">
@@ -13,7 +13,7 @@
   {% if automacao %}
     <div class="es-topo-editor"><div class="acoes">
       <form method="post" action="{% url 'painel_estudio_automacao_ligar' automacao.pk %}">{% csrf_token %}<button class="botao {% if automacao.ativa %}botao-claro{% else %}botao-principal{% endif %}" type="submit">{% if automacao.ativa %}Pausar{% else %}Ligar{% endif %}</button></form>
-      <form method="post" action="{% url 'painel_estudio_automacao_apagar' automacao.pk %}" onsubmit="return confirm('Apagar esta automação?')">{% csrf_token %}<button class="botao botao-claro" type="submit">Apagar</button></form>
+      <form method="post" action="{% url 'painel_estudio_automacao_excluir' automacao.pk %}" onsubmit="return confirm('Excluir esta automação? O histórico dela também sai.')">{% csrf_token %}<button class="botao botao-claro" type="submit">Excluir</button></form>
     </div></div>
   {% endif %}
 </header>
@@ -30,10 +30,12 @@
   <fieldset>
     <legend>Quando responder</legend>
     <div class="ig-gatilhos">
-      {% for valor, nome in form.fields.gatilho.choices %}
-        <label class="ig-gatilho"><input type="radio" name="gatilho" value="{{ valor }}"{% if form.gatilho.value == valor %} checked{% endif %}><span>{{ nome }}</span></label>
+      {% for g in gatilhos %}
+        <label class="ig-gatilho{% if not g.livre %} ig-gatilho-premium{% endif %}"><input type="radio" name="gatilho" value="{{ g.valor }}"{% if form.gatilho.value == g.valor %} checked{% endif %}{% if not g.livre %} disabled{% endif %}><span>{{ g.nome }}</span>{% if not g.livre %}<small class="es-selo-teste">Premium</small>{% endif %}</label>
       {% endfor %}
     </div>
+    {% for e in form.gatilho.errors %}<small class="ig-erro">{{ e }}</small>{% endfor %}
+    {% if not plano.premium %}<small class="suave">No plano Standard, as automações respondem comentários. Responder stories e DMs é do Premium.</small>{% endif %}
   </fieldset>
 
   <fieldset id="ig-onde">
@@ -63,17 +65,27 @@
     <legend><label class="es-check"><input type="checkbox" name="enviar_dm"{% if form.enviar_dm.value %} checked{% endif %}> Mandar DM</label></legend>
     <textarea name="texto_dm" rows="3" maxlength="900" placeholder="Oi! Aqui está o link que você pediu:">{{ form.texto_dm.value|default:'' }}</textarea>
     {% for e in form.texto_dm.errors %}<small class="ig-erro">{{ e }}</small>{% endfor %}
-    <label>Link (vai no fim da DM)<input type="url" name="link" value="{{ form.link.value|default:'' }}" maxlength="600" placeholder="https://s.shopee.com.br/…"></label>
+    <label>Link {% if plano.premium %}(vai no botão ou no fim da DM){% else %}(vai no fim da DM){% endif %}<input type="url" name="link" value="{{ form.link.value|default:'' }}" maxlength="600" placeholder="https://s.shopee.com.br/…"></label>
     {% for e in form.link.errors %}<small class="ig-erro">{{ e }}</small>{% endfor %}
+    <div class="ig-premium{% if not plano.premium %} ig-premium-bloqueado{% endif %}">
+      <label class="es-check"><input type="checkbox" name="botao"{% if form.botao.value %} checked{% endif %}{% if not plano.premium %} disabled{% endif %}> Mandar o link num botão {% if not plano.premium %}<small class="es-selo-teste">Premium</small>{% endif %}</label>
+      <label>Texto do botão<input type="text" name="texto_botao" value="{{ form.texto_botao.value|default:'Ver produto' }}" maxlength="20"{% if not plano.premium %} disabled{% endif %}></label>
+      <small class="suave">A DM chega com o seu texto e um botão que abre o link. Se o Instagram não aceitar o botão, o link vai no texto.</small>
+      <label>Sub ID desta automação {% if not plano.premium %}<small class="es-selo-teste">Premium</small>{% endif %}<input type="text" name="sub_id" value="{{ form.sub_id.value|default:'' }}" maxlength="50" placeholder="garrafatermica"{% if not plano.premium %} disabled{% endif %}>
+        <small class="suave">O link da Shopee é gerado de novo com este Sub ID, para você ver em Resultados quanto esta automação vendeu. Só letras e números.</small>
+        {% for e in form.sub_id.errors %}<small class="ig-erro">{{ e }}</small>{% endfor %}</label>
+      {% if automacao.link_afiliado %}<small class="suave">Link que vai na DM: {{ automacao.link_afiliado }}</small>{% endif %}
+    </div>
   </fieldset>
 
   <label class="es-check"><input type="checkbox" name="ativa"{% if form.ativa.value %} checked{% endif %}> Automação ligada</label>
+  {% for e in form.ativa.errors %}<small class="ig-erro">{{ e }}</small>{% endfor %}
   <div><button class="botao botao-principal" type="submit">Salvar</button></div>
 </form>
 
 {% if automacao %}
   <section>
-    <h2 class="titulo-secao">Quem recebeu</h2>
+    <h2 class="titulo-secao">Quem recebeu <a class="suave" style="font-size:14px;font-weight:500" href="{% url 'painel_estudio_historico' %}?automacao={{ automacao.pk }}">Ver histórico completo</a></h2>
     {% if disparos %}
       <div class="card ig-historico">
         <table>
@@ -85,7 +97,7 @@
                 <td>{% if d.autor_username %}@{{ d.autor_username }}{% else %}—{% endif %}</td>
                 <td>{{ d.texto|truncatechars:60 }}</td>
                 <td>{% if automacao.gatilho == "comentario" and automacao.responder_comentario %}{% if d.resposta_ok %}✓{% else %}✗{% endif %}{% else %}—{% endif %}</td>
-                <td>{% if d.dm_ok %}✓{% elif automacao.enviar_dm %}✗{% else %}—{% endif %}{% if d.erro %} <small class="ig-erro" title="{{ d.erro }}">{{ d.erro|truncatechars:40 }}</small>{% endif %}</td>
+                <td>{% if d.na_fila %}Na fila{% elif d.dm_ok %}✓{% elif automacao.enviar_dm %}✗{% else %}—{% endif %}{% if d.erro %} <small class="ig-erro" title="{{ d.erro }}">{{ d.erro|truncatechars:40 }}</small>{% endif %}</td>
               </tr>
             {% endfor %}
           </tbody>

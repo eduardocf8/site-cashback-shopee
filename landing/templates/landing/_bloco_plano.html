@@ -6,7 +6,8 @@
         <h4>{{ p.nivel }}</h4>
         <p class="preco"><b>{{ p.preco }}</b><span>/mês</span></p>
         <ul>{% for item in p.itens %}<li{% if item.extra %} class="extra"{% endif %}>{{ item.texto }}</li>{% endfor %}</ul>
-        <a class="botao{% if p.nivel != 'Premium' %} botao-vazado-escuro{% endif %}" href="{{ p.link }}">Assinar {{ m.nome }} {{ p.nivel }}</a>
+        {% if p.link %}<a class="botao{% if p.nivel != 'Premium' %} botao-vazado-escuro{% endif %}" href="{{ p.link }}">Assinar {{ m.nome }} {{ p.nivel }}</a>
+        {% else %}<span class="botao botao-vazado-escuro botao-em-breve" aria-disabled="true">Em breve</span>{% endif %}
       </article>
     {% endfor %}
   </div>

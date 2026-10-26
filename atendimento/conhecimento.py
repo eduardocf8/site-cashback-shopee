@@ -13,7 +13,10 @@ from licencas import api_shopee
 
 def _paginas_das_ferramentas() -> str:
     partes = []
+    fora = {"estudio", "automacoes"} if not planos.lancado() else {"carrosseis"}
     for codigo, montar in paginas.PAGINAS.items():
+        if codigo in fora:
+            continue
         p = montar()
         linhas = [f"### {p['nome']} (página: https://appfiliado.com.br/{p['slug']}/)", p["h1"], p["texto"]]
         if p.get("incluso"):
@@ -36,22 +39,31 @@ def _valor(v) -> str:
 
 def _precos() -> str:
     linhas = ["Preços por mês (o plano anual sai com 17% de desconto, escolhido no checkout):"]
-    for m in planos.MODULOS:
+    for m in planos.modulos():
         resumo = site.RESUMOS[m]
         linhas.append(f"\n{planos.NOMES[m]}: {resumo['frase']}")
         for nivel in (0, 1):
             itens = "; ".join(resumo["itens"][nivel])
             linhas.append(f"- {planos.NIVEIS[nivel]}: {planos.brl(planos.PRECOS[m][nivel])}/mês. {itens}. "
-                          f"Checkout: {planos.LINKS[f'{m}{nivel}']}")
+                          f"Checkout: {_link(planos.LINKS[f'{m}{nivel}'])}")
         if resumo.get("comuns"):
             linhas.append("- Nos dois planos: " + "; ".join(resumo["comuns"]))
     linhas.append("\nIncluídos em todos os planos: " + "; ".join(f"{n} ({f})" for _, n, f in site.INCLUSOS))
-    linhas.append("\nCombos (2 módulos: 10% de desconto; 3 módulos: 20% de desconto). Todas as combinações e o link de cada uma:")
-    for combo in planos.todos_os_combos().values():
-        if "+" not in combo["nome"]:
-            continue  # módulo avulso, já listado acima
-        linhas.append(f"- {combo['nome']}: {planos.brl(combo['preco'])}/mês (separado sairia {planos.brl(combo['separado'])}). "
-                      f"Checkout: {combo['link']}")
+    if planos.lancado():
+        linhas.append("\nPacotes (todos os módulos do pacote no mesmo plano, Standard ou Premium, numa assinatura só). "
+                      "Fora dos pacotes não há desconto por juntar módulos: quem quiser outra combinação assina cada módulo separado.")
+        for p in planos.pacotes():
+            linhas.append(f"\n{p['nome']} ({' + '.join(p['modulos'])}): {p['frase']}")
+            for n in p["niveis"]:
+                linhas.append(f"- {n['nivel']}: {planos.brl(n['preco'])}/mês (separado sairia {planos.brl(n['separado'])}). "
+                              f"Checkout: {_link(n['link'])}")
+    else:
+        linhas.append("\nCombos (2 módulos: 10% de desconto; 3 módulos: 20% de desconto). Todas as combinações e o link de cada uma:")
+        for combo in planos.todos_os_combos().values():
+            if "+" not in combo["nome"]:
+                continue  # módulo avulso, já listado acima
+            linhas.append(f"- {combo['nome']}: {planos.brl(combo['preco'])}/mês (separado sairia {planos.brl(combo['separado'])}). "
+                          f"Checkout: {combo['link']}")
     linhas.append("\nEmissor NFS-e (só para afiliado pessoa jurídica, MEI ou Simples Nacional, com certificado digital A1). "
                   "Emite as notas fiscais dos vendedores que pagaram comissão extra, direto do relatório mensal da Shopee. "
                   "O plano é pela quantidade de notas emitidas no mês:")
@@ -61,6 +73,10 @@ def _precos() -> str:
     for pergunta, resposta in site.PERGUNTAS_NOTAS:
         linhas.append(f"P: {pergunta} R: {resposta}")
     return "\n".join(linhas)
+
+
+def _link(link: str) -> str:
+    return link or "ainda não está à venda (se a pessoa quiser assinar, chame o humano)"
 
 
 def _api_shopee() -> str:
@@ -73,7 +89,7 @@ def _api_shopee() -> str:
 
 @lru_cache(maxsize=1)
 def texto() -> str:
-    perguntas = "\n".join(f"P: {p} R: {r}" for p, r in site.PERGUNTAS)
+    perguntas = "\n".join(f"P: {p} R: {r}" for p, r in site.perguntas())
     return f"""# O que é o Appfiliado
 Ferramentas para afiliados da Shopee num painel só (app.appfiliado.com.br): encontrar ofertas, divulgar no WhatsApp,
 no link na bio e no Instagram, acompanhar os resultados e emitir notas fiscais. Site: https://appfiliado.com.br

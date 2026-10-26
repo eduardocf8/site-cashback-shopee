@@ -18,7 +18,10 @@ from accounts.ratelimit import _incrementar_contador, _obter_ip
 from bot_whatsapp import campanhas
 from bot_whatsapp.models import AlertaDisparado, ConexaoWhatsApp
 from licencas import api_shopee
-from licencas.models import INCLUI, MODULO_INSTAGRAM, MODULO_VIDEOS, MODULO_WHATSAPP, MODULOS, ContaAppfiliado
+from licencas.models import (
+    INCLUI, MODULO_CARROSSEIS, MODULO_CARROSSEIS_PREMIUM, MODULO_INSTAGRAM, MODULO_INSTAGRAM_PREMIUM, MODULO_VIDEOS,
+    MODULO_WHATSAPP, MODULOS, ContaAppfiliado,
+)
 from licencas.services import resposta_validacao
 
 from . import cripto
@@ -359,7 +362,10 @@ def modulo(request, slug):
 
 
 # Ainda não existem no produto; os códigos seguem na licença pra voltar depois sem migração.
-MODULOS_OCULTOS = {MODULO_VIDEOS, MODULO_INSTAGRAM}
+MODULOS_OCULTOS = {MODULO_VIDEOS}
+# Até o lançamento do Estúdio Instagram, quem não testa vê o nome antigo e não vê as Automações.
+ANTES_DO_LANCAMENTO = {MODULO_CARROSSEIS: "Gerador de carrosséis", MODULO_CARROSSEIS_PREMIUM: "Gerador de carrosséis (premium)"}
+SO_DEPOIS_DO_LANCAMENTO = {MODULO_INSTAGRAM, MODULO_INSTAGRAM_PREMIUM}
 
 
 @conta_requerida
@@ -370,10 +376,15 @@ def plano(request):
     cortesia = set(conta.cortesia_vigente(hoje))
     for codigo in list(cortesia):
         cortesia.update(INCLUI.get(codigo, []))  # o básico que vem junto com o premium da cortesia
+    novo = mod.lancado() or conta.beta_estudio_instagram
     linhas_modulos = []
     for codigo, nome in MODULOS:
-        if codigo in MODULOS_OCULTOS:
+        if codigo in MODULOS_OCULTOS or (not novo and codigo in SO_DEPOIS_DO_LANCAMENTO):
             continue
+        if not novo:
+            nome = ANTES_DO_LANCAMENTO.get(codigo, nome)
+        elif codigo == MODULO_CARROSSEIS:
+            nome = "Estúdio Instagram"
         if codigo in liberados:
             origem = "Cortesia" if codigo in cortesia else "Assinatura"
         else:

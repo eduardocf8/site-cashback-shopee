@@ -28,23 +28,30 @@ SLUG = "estudio_instagram"
 MAXIMO_JSON = 900_000  # slides + miniatura em base64
 
 
-def _beta(view):
-    """Conta logada, com o teste ligado (senão 404) e o módulo no plano (senão a tela de desbloquear)."""
-    @wraps(view)
-    @conta_requerida
-    def interna(request, *args, **kwargs):
-        conta = conta_logada(request)
-        item = mod.POR_SLUG[SLUG]
-        if not mod.ve_beta(item, conta):
-            raise Http404
-        situacao = mod.estado(item, conta.modulos_liberados())
-        if situacao != "liberado":
-            if request.method != "GET":
-                return JsonResponse({"erro": "O Estúdio Instagram não está no seu plano."}, status=403)
-            return render(request, "painel/modulo.html", _contexto(
-                request, SLUG, item={**item, "icone_path": mod.ICONES[item["icone"]]}, situacao=situacao))
-        return view(request, conta, *args, **kwargs)
-    return interna
+def exige(slug: str, *ou: str):
+    """Conta logada, módulo visível (até o lançamento, só com o teste ligado; senão 404) e no plano
+    (senão a tela de desbloquear do primeiro). Com `ou`, basta um dos módulos estar no plano."""
+    def decorador(view):
+        @wraps(view)
+        @conta_requerida
+        def interna(request, *args, **kwargs):
+            conta = conta_logada(request)
+            item = mod.POR_SLUG[slug]
+            if not mod.ve_beta(item, conta):
+                raise Http404
+            liberados = conta.modulos_liberados()
+            if not any(mod.estado(mod.POR_SLUG[s], liberados) == "liberado" for s in (slug, *ou)):
+                if request.method != "GET":
+                    return JsonResponse({"erro": f"{item['nome']} não está no seu plano."}, status=403)
+                return render(request, "painel/modulo.html", _contexto(
+                    request, slug, item={**item, "icone_path": mod.ICONES[item["icone"]]},
+                    situacao=mod.estado(item, liberados)))
+            return view(request, conta, *args, **kwargs)
+        return interna
+    return decorador
+
+
+_beta = exige(SLUG)
 
 
 def _do_dono(conta, pk) -> PostInstagram:
@@ -68,7 +75,7 @@ def _url_miniatura(post) -> str:
 
 @_beta
 def lista(request, conta):
-    posts = PostInstagram.objects.filter(conta=conta).only("pk", "nome", "formato", "atualizado_em", "miniatura")[:60]
+    posts = PostInstagram.objects.filter(conta=conta).only("pk", "nome", "formato", "estado", "atualizado_em", "miniatura")[:60]
     cartoes = [{"post": p, "miniatura": _url_miniatura(p), "formato": FORMATOS[p.formato][0]} for p in posts]
     modelos = [{k: m[k] for k in ("codigo", "nome", "descricao", "formato")} | {"formato_nome": FORMATOS[m["formato"]][0], "meu": m.get("meu")}
                for m in A.modelos(conta)]
@@ -139,6 +146,7 @@ def editor(request, conta, pk):
     return render(request, "painel/estudio_editor.html", _contexto(
         request, SLUG, post=post, config=_config(conta, post), projeto=projeto, modelos=A.modelos(conta), premium=premium, temas=temas,
         restantes=f"Restam {r['geracoes']} de {r['limite']} criações com IA hoje.",
+        tem_automacoes=mod.estado(mod.POR_SLUG["automacoes_instagram"], conta.modulos_liberados()) == "liberado",
     ))
 
 

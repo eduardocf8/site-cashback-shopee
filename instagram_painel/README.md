@@ -1,8 +1,13 @@
-# Instagram dos afiliados (Estúdio Instagram › Automações)
+# Instagram dos afiliados (Automações do Instagram e publicação do Estúdio)
 
 O afiliado conecta o Instagram dele pelo **Login do Instagram para empresas** e cria automações de
-resposta, no estilo do ManyChat. Está **em teste**: só aparece para a conta com "testa o Estúdio
-Instagram" marcado no admin (Contas do Appfiliado). As automações são do plano **Premium**.
+resposta, no estilo do ManyChat. As Automações são um módulo próprio (`instagram` e
+`instagram_premium`): o Standard responde comentários, com até 5 automações ligadas; o Premium
+também responde stories e DMs, não tem limite de ligadas, manda o link num botão (modelo de botão da
+API; se o Instagram recusar, vai o link no texto) e gera o link com um Sub ID por automação
+(`link_afiliado`, pelo conversor do painel). Limites em `licencas/planos.py` (`AUTOMACOES`). Até o
+lançamento (`APPFILIADO_LANCAMENTO_INSTAGRAM`), só aparece para a conta com "testa o Estúdio
+Instagram" marcado no admin (Contas do Appfiliado).
 
 ## O que faz
 
@@ -13,8 +18,11 @@ Instagram" marcado no admin (Contas do Appfiliado). As automações são do plan
 | Alguém **manda uma DM** com uma das palavras (obrigatório ter palavra) | DM |
 
 Regras: cada pessoa recebe uma vez por automação; aviso repetido da Meta não responde de novo; a
-própria conta e resposta dentro de outro comentário ficam de fora; até 150 respostas por hora por
-conta. O histórico ("Quem recebeu") mostra o que saiu e os erros do Instagram.
+própria conta e resposta dentro de outro comentário ficam de fora. Sem limite por mês. O Instagram
+aceita 750 DMs de resposta a comentário por hora em cada conta: passando de 600 na hora, as respostas
+entram na fila (`Disparo.na_fila`) e o worker manda na hora seguinte, em ordem (`webhook.enviar_fila`),
+dentro do prazo do Instagram (7 dias depois do comentário, 24 horas depois da DM). O histórico
+("Quem recebeu") mostra o que saiu, o que está na fila e os erros do Instagram.
 
 No editor de um post do Estúdio, "Criar automação" já abre com o nome e o link de afiliado do produto.
 
@@ -55,3 +63,17 @@ aqui (pelo `entry.id`) e o resto segue para a automação da cash-b.
 - A DM ligada a um comentário vale uma vez por comentário e até 7 dias depois dele. As outras DMs
   só podem ir até 24 horas depois que a pessoa escreveu ou respondeu o story.
 - A conta precisa ser pública para receber avisos de comentário.
+
+## Publicar no Instagram (todos os planos do Estúdio)
+
+- No editor, "Publicar no Instagram" salva o post, desenha cada slide em JPEG de 1080 px no navegador
+  e manda para `estudio/<pk>/publicar/`, para publicar agora ou num horário marcado (até 60 dias).
+- Post 1:1 ou 4:5 vai para o feed: uma imagem ou carrossel (até 10), com a legenda do editor.
+  Post 9:16 vira stories, um por slide, sem legenda (a API não coloca adesivo de link).
+- `publicar.py`: a fila. Uma thread do worker (`sincronizar_painel --loop`) confere a cada 15 s,
+  pega cada publicação com um update atômico e chama a API: container por imagem → espera o
+  `status_code` → `media_publish`. Nos stories, guarda cada um que saiu: numa nova tentativa, não repete.
+- A Meta baixa as imagens por `/instagram/midia/<token>.jpg` (sem login, token secreto). O endereço
+  só responde enquanto a publicação não saiu; depois as imagens são apagadas do banco.
+- Telas: a janela de publicar no editor e `estudio/publicacoes/` (agendadas, publicadas, cancelar,
+  tentar de novo). O selo do post no Estúdio (agendado, publicado, erro) segue a última publicação.

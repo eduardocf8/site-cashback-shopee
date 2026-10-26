@@ -403,13 +403,13 @@
     await Promise.all([...urls].map((u) => new Promise((ok) => { const im = new Image(); im.onload = im.onerror = ok; im.src = u; })));
     await document.fonts.ready;
   }
-  async function imagem(i, tipo, largura) {
+  async function imagem(i, tipo, largura, qualidade) {
     const b = M.base(est.formato), caixa = $('es-exportar');
     const no = montar(i, caixa); await carregarImagens(no);
     const fontes = imagem.fontes = imagem.fontes || {}, chave = est.tema || '-';
     const fontEmbedCSS = fontes[chave] || (fontes[chave] = await htmlToImage.getFontEmbedCSS(no));
     const op = { width: b.w, height: b.h, pixelRatio: largura ? largura / b.w : b.escala, fontEmbedCSS, cacheBust: false };
-    const url = tipo === 'jpg' ? await htmlToImage.toJpeg(no, Object.assign({ quality: 0.82, backgroundColor: '#ffffff' }, op)) : await htmlToImage.toPng(no, op);
+    const url = tipo === 'jpg' ? await htmlToImage.toJpeg(no, Object.assign({ quality: qualidade || 0.82, backgroundColor: '#ffffff' }, op)) : await htmlToImage.toPng(no, op);
     caixa.innerHTML = '';
     return url;
   }
@@ -512,6 +512,9 @@
       est.formato = formatoAtual; est.slides = slidesAtuais; est.tema = temaAtual;
     });
   });
+
+  // Para outras partes da página (publicar no Instagram): salvar e gerar as imagens.
+  window.Estudio = { est, salvar, imagem, ocupado };
 
   // começa
   if (!inicial.id && !inicial.slides.length) est.sujo = false;

@@ -1,0 +1,17 @@
+<article class="card pub-cartao pub-{{ p.estado }}">
+  {% if p.miniatura %}<img src="{% url 'painel_estudio_publicacao_miniatura' p.pk %}" alt="" loading="lazy">{% else %}<span class="ig-midia-vazia">{{ p.get_tipo_display }}</span>{% endif %}
+  <div class="pub-info">
+    <strong>{% if p.post_id %}<a href="{% url 'painel_estudio_editor' p.post_id %}">{{ p.nome }}</a>{% else %}{{ p.nome }}{% endif %}</strong>
+    <small>{{ p.get_tipo_display }} · {% if p.publicada_em %}publicada em {{ p.publicada_em|date:"d/m/Y \à\s H:i" }}{% elif p.estado == "pendente" and p.agora %}saindo agora{% else %}{{ p.agendada_para|date:"d/m/Y \à\s H:i" }}{% endif %}</small>
+    <span class="es-estado es-estado-{{ p.estado }}">{{ p.get_estado_display }}</span>
+    {% if p.erro %}<small class="ig-erro">{{ p.erro }}</small>{% endif %}
+  </div>
+  <div class="linha-botoes">
+    {% if p.permalink %}<a class="botao botao-claro botao-pequeno" href="{{ p.permalink }}" target="_blank" rel="noopener">Ver no Instagram</a>{% endif %}
+    {% if p.estado == "pendente" %}
+      <form method="post" action="{% url 'painel_estudio_publicacao_cancelar' p.pk %}" onsubmit="return confirm('Cancelar esta publicação?')">{% csrf_token %}<button class="botao botao-claro botao-pequeno" type="submit">Cancelar</button></form>
+    {% elif p.estado == "erro" %}
+      <form method="post" action="{% url 'painel_estudio_publicacao_tentar' p.pk %}">{% csrf_token %}<button class="botao botao-principal botao-pequeno" type="submit">Tentar de novo</button></form>
+    {% endif %}
+  </div>
+</article>

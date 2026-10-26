@@ -34,7 +34,7 @@
   <div class="miolo topo-linha">
     <a class="marca" href="{% url 'landing' %}" aria-label="Appfiliado"><span class="logo"><svg width="40" height="40"><use href="#logo"/></svg></span><strong>Appfiliado</strong></a>
     <nav class="topo-menu" id="menu-topo" aria-label="Seções">
-      <a href="{% url 'landing' %}#modulos">Módulos</a><a href="{% url 'landing' %}#planos">Planos</a><a href="{% url 'landing' %}#combo">Monte seu combo</a><a href="{% url 'landing_notas' %}">Notas fiscais</a><a href="{% url 'landing' %}#perguntas">Perguntas</a><a class="so-movel" href="{{ painel_url }}">Entrar</a>
+      <a href="{% url 'landing' %}#modulos">Módulos</a><a href="{% url 'landing' %}#planos">Planos</a>{% if lancado %}<a href="{% url 'landing' %}#pacotes">Pacotes</a>{% else %}<a href="{% url 'landing' %}#combo">Monte seu combo</a>{% endif %}<a href="{% url 'landing_notas' %}">Notas fiscais</a><a href="{% url 'landing' %}#perguntas">Perguntas</a><a class="so-movel" href="{{ painel_url }}">Entrar</a>
     </nav>
     <div class="topo-acoes"><a class="entrar" href="{{ painel_url }}">Entrar</a><a class="botao" href="{% url 'landing' %}#planos">Ver planos</a><button class="topo-botao" type="button" aria-label="Abrir o menu" aria-expanded="false" aria-controls="menu-topo"><span></span><span></span><span></span></button></div>
   </div>
@@ -46,7 +46,7 @@
   <div class="miolo">
     <a class="marca" href="{% url 'landing' %}" aria-label="Appfiliado"><span class="logo"><svg width="40" height="40"><use href="#logo"/></svg></span><strong>Appfiliado</strong></a>
     <p>Ferramentas para afiliados da Shopee.</p>
-    <p class="rodape-links"><a href="{% url 'landing_bot' %}">Bot de WhatsApp</a> · <a href="{% url 'landing_site' %}">Meu site</a> · <a href="{% url 'landing_carrosseis' %}">Gerador de carrosséis</a> · <a href="{% url 'landing_notas' %}">Emissor NFS-e</a> · <a href="{% url 'landing_radar' %}">Radar de ofertas</a> · <a href="{% url 'landing_conversor' %}">Conversor de links</a> · <a href="{% url 'landing_resultados' %}">Resultados e metas</a> · <a href="{{ painel_url }}">Entrar no painel</a></p>
+    <p class="rodape-links"><a href="{% url 'landing_bot' %}">Bot de WhatsApp</a> · <a href="{% url 'landing_site' %}">Meu site</a> · {% if lancado %}<a href="{% url 'landing_estudio' %}">Estúdio Instagram</a> · <a href="{% url 'landing_automacoes' %}">Automações do Instagram</a>{% else %}<a href="{% url 'landing_carrosseis' %}">Gerador de carrosséis</a>{% endif %} · <a href="{% url 'landing_notas' %}">Emissor NFS-e</a> · <a href="{% url 'landing_radar' %}">Radar de ofertas</a> · <a href="{% url 'landing_conversor' %}">Conversor de links</a> · <a href="{% url 'landing_resultados' %}">Resultados e metas</a> · <a href="{{ painel_url }}">Entrar no painel</a> · <a href="{% url 'landing_privacidade' %}">Privacidade</a></p>
     <p class="aviso">O Appfiliado é uma ferramenta independente e não tem vínculo com a Shopee. Shopee é marca de seus respectivos donos. Não garantimos vendas nem comissões.</p>
   </div>
 </footer>

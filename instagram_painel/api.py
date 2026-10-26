@@ -53,10 +53,11 @@ def _resposta(r: requests.Response) -> dict:
     return dados
 
 
-def _chamar(metodo: str, caminho: str, token: str, params: dict | None = None, corpo: dict | None = None) -> dict:
+def _chamar(metodo: str, caminho: str, token: str, params: dict | None = None, corpo: dict | None = None,
+            tempo: int = TEMPO) -> dict:
     url = caminho if caminho.startswith("http") else f"{GRAPH}/{VERSAO}/{caminho}"
     try:
-        r = requests.request(metodo, url, params=params, json=corpo, timeout=TEMPO,
+        r = requests.request(metodo, url, params=params, json=corpo, timeout=tempo,
                              headers={"Authorization": f"Bearer {token}"})
     except requests.RequestException as erro:
         raise ErroInstagram(f"Sem conexão com o Instagram: {erro.__class__.__name__}") from erro
@@ -137,16 +138,57 @@ def responder_comentario(token: str, comentario_id: str, texto: str) -> str:
     return _chamar("POST", f"{comentario_id}/replies", token, params={"message": texto}).get("id", "")
 
 
-def resposta_privada(token: str, ig_id: str, comentario_id: str, texto: str) -> str:
+def _corpo_da_mensagem(texto: str, botao: tuple[str, str] | None) -> dict:
+    """Texto simples, ou o texto com um botão que abre o link (modelo de botão: até 640 caracteres)."""
+    if not botao:
+        return {"text": texto}
+    titulo, url = botao
+    return {"attachment": {"type": "template", "payload": {
+        "template_type": "button", "text": texto[:640], "buttons": [{"type": "web_url", "url": url, "title": titulo[:20]}]}}}
+
+
+def resposta_privada(token: str, ig_id: str, comentario_id: str, texto: str, botao: tuple[str, str] | None = None) -> str:
     """A DM ligada a um comentário: uma vez por comentário e até 7 dias depois dele."""
-    corpo = {"recipient": {"comment_id": comentario_id}, "message": {"text": texto}}
+    corpo = {"recipient": {"comment_id": comentario_id}, "message": _corpo_da_mensagem(texto, botao)}
     return _chamar("POST", f"{ig_id}/messages", token, corpo=corpo).get("message_id", "")
 
 
-def mensagem(token: str, ig_id: str, destinatario: str, texto: str) -> str:
+def mensagem(token: str, ig_id: str, destinatario: str, texto: str, botao: tuple[str, str] | None = None) -> str:
     """DM para quem mandou mensagem ou respondeu um story (dentro da janela de 24 horas)."""
-    corpo = {"recipient": {"id": destinatario}, "message": {"text": texto}}
+    corpo = {"recipient": {"id": destinatario}, "message": _corpo_da_mensagem(texto, botao)}
     return _chamar("POST", f"{ig_id}/messages", token, corpo=corpo).get("message_id", "")
+
+
+# --- publicar (instagram_business_content_publish) ----------------------------------------------
+# A Meta baixa cada imagem pelo endereço (JPEG, endereço público). Um "container" por imagem; no
+# carrossel, um container a mais juntando os filhos; no story, um container por story.
+
+TEMPO_PUBLICAR = 60  # a Meta baixa a imagem antes de responder
+
+
+def criar_container(token: str, ig_id: str, **campos) -> str:
+    """campos: image_url, caption, media_type (CAROUSEL ou STORIES), is_carousel_item, children."""
+    corpo = {k: v for k, v in campos.items() if v not in (None, "")}
+    dados = _chamar("POST", f"{ig_id}/media", token, corpo=corpo, tempo=TEMPO_PUBLICAR)
+    if not dados.get("id"):
+        raise ErroInstagram("O Instagram não preparou a imagem.")
+    return str(dados["id"])
+
+
+def estado_container(token: str, container_id: str) -> str:
+    """FINISHED, IN_PROGRESS, ERROR, EXPIRED ou PUBLISHED."""
+    return str(_chamar("GET", container_id, token, params={"fields": "status_code"}).get("status_code") or "")
+
+
+def publicar_container(token: str, ig_id: str, container_id: str) -> str:
+    dados = _chamar("POST", f"{ig_id}/media_publish", token, corpo={"creation_id": container_id}, tempo=TEMPO_PUBLICAR)
+    if not dados.get("id"):
+        raise ErroInstagram("O Instagram não confirmou a publicação.")
+    return str(dados["id"])
+
+
+def link_da_midia(token: str, midia_id: str) -> str:
+    return str(_chamar("GET", midia_id, token, params={"fields": "permalink"}).get("permalink") or "")
 
 
 def corpo_json(dados) -> str:

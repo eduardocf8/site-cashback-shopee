@@ -11,11 +11,13 @@ MODULO_WHATSAPP = "whatsapp"
 MODULO_SITE = "site"
 MODULO_VITRINE = "vitrine"
 MODULO_VIDEOS = "videos"
+# Automações do Instagram (respostas a comentários, stories e DMs). O premium já inclui o básico.
 MODULO_INSTAGRAM = "instagram"
+MODULO_INSTAGRAM_PREMIUM = "instagram_premium"
 # Adicional do Meu site: tira o "Feito com Appfiliado" do rodapé (plano premium).
 MODULO_SITE_SEM_MARCA = "site_sem_marca"
-# Gerador de carrosséis para o Instagram. O premium libera o gerador inteiro e mais os
-# modelos, a edição avançada e a IA reescrevendo slides (não precisa do básico junto).
+# Estúdio Instagram (antes, Gerador de carrosséis: os códigos ficaram os mesmos, então quem já
+# assinava continua com o mesmo nível). O premium libera tudo e não precisa do básico junto.
 MODULO_CARROSSEIS = "carrosseis"
 MODULO_CARROSSEIS_PREMIUM = "carrosseis_premium"
 MODULO_NOTAS = "notas"
@@ -32,10 +34,10 @@ MODULOS = [
     (MODULO_SITE, "Meu site (conversor e vitrine)"),
     (MODULO_VITRINE, "Vitrine"),
     (MODULO_VIDEOS, "Gerador de vídeos"),
-    (MODULO_INSTAGRAM, "Automação do Instagram"),
+    (MODULO_INSTAGRAM, "Automações do Instagram"),
     (MODULO_SITE_SEM_MARCA, "Meu site premium (sem a marca Appfiliado)"),
-    (MODULO_CARROSSEIS, "Gerador de carrosséis"),
-    (MODULO_CARROSSEIS_PREMIUM, "Gerador de carrosséis (premium)"),
+    (MODULO_CARROSSEIS, "Estúdio Instagram (antigo Gerador de carrosséis)"),
+    (MODULO_CARROSSEIS_PREMIUM, "Estúdio Instagram (premium)"),
     (MODULO_NOTAS, "Emissor NFS-e (até 100 notas/mês)"),
     (MODULO_WHATSAPP_PREMIUM, "Bot de WhatsApp (premium)"),
     (MODULO_NOTAS_500, "Emissor NFS-e (até 500 notas/mês)"),
@@ -43,11 +45,13 @@ MODULOS = [
     (MODULO_NOTAS_5000, "Emissor NFS-e (até 5.000 notas/mês)"),
     (MODULO_NOTAS_10000, "Emissor NFS-e (até 10.000 notas/mês)"),
     (MODULO_NOTAS_ILIMITADO, "Emissor NFS-e (notas ilimitadas)"),
+    (MODULO_INSTAGRAM_PREMIUM, "Automações do Instagram (premium)"),
 ]
 # Módulo que já vem junto com outro (o plano maior inclui o básico).
 INCLUI = {
     MODULO_WHATSAPP_PREMIUM: [MODULO_WHATSAPP],
     MODULO_CARROSSEIS_PREMIUM: [MODULO_CARROSSEIS],
+    MODULO_INSTAGRAM_PREMIUM: [MODULO_INSTAGRAM],
     MODULO_SITE_SEM_MARCA: [MODULO_SITE],
     MODULO_NOTAS_500: [MODULO_NOTAS],
     MODULO_NOTAS_2000: [MODULO_NOTAS],

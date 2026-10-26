@@ -50,6 +50,9 @@ class Command(BaseCommand):
             from bot_whatsapp.mensagens import iniciar_em_segundo_plano as iniciar_mensagens
 
             iniciar_mensagens()  # mensagens avulsas agendadas nos grupos (thread própria)
+            from instagram_painel.publicar import iniciar_em_segundo_plano as iniciar_publicacoes
+
+            iniciar_publicacoes()  # posts do Estúdio publicados no Instagram, na hora ou agendados (thread própria)
         proximo_log_de_memoria = 0.0
         while True:
             if loop and time.monotonic() >= proximo_log_de_memoria:

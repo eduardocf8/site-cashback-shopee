@@ -11,7 +11,8 @@
   </div>
   <div class="acoes">
     {% if post.produto.link %}<button type="button" class="es-bt" id="es-copiar-link" data-link="{{ post.produto.link }}">Copiar link de afiliado</button>{% endif %}
-    {% if premium %}<a class="es-bt" href="{% url 'painel_estudio_automacao_nova' %}?post={{ post.pk }}">Criar automação</a>{% endif %}
+    {% if tem_automacoes %}<a class="es-bt" href="{% url 'painel_estudio_automacao_nova' %}?post={{ post.pk }}">Criar automação</a>{% endif %}
+    <button type="button" class="es-bt es-salvar" id="es-publicar" data-url="{% url 'painel_estudio_publicar' post.pk %}">Publicar no Instagram</button>
     <form method="post" action="{% url 'painel_estudio_duplicar' post.pk %}">{% csrf_token %}<button class="es-bt" type="submit">Duplicar</button></form>
     <form method="post" action="{% url 'painel_estudio_apagar' post.pk %}" onsubmit="return confirm('Apagar este post?')">{% csrf_token %}<button class="es-bt" type="submit">Apagar</button></form>
   </div>
@@ -78,6 +79,29 @@
   </form>
 </dialog>
 
+<dialog id="es-dialogo-publicar" class="es-dialogo">
+  <form method="dialog">
+    <h2>Publicar no Instagram</h2>
+    <div id="pub-conta" class="pub-conta"><p class="es-quieto">Conferindo o seu Instagram…</p></div>
+    <div id="pub-corpo" hidden>
+      <p id="pub-como" class="pub-como"></p>
+      <p id="pub-aviso-story" class="es-dica es-dica-plano" hidden>Stories saem sem legenda, e a Meta não deixa colocar o adesivo de link pelo Appfiliado. Para mandar o link, peça para responder o story: as automações mandam por DM.</p>
+      <p id="pub-aviso-legenda" class="es-dica es-dica-plano" hidden>Este post está sem legenda. Ela é escrita no campo "Legenda", embaixo do editor.</p>
+      <fieldset class="pub-quando">
+        <label class="es-radio"><input type="radio" name="pub-quando" value="agora" checked> Publicar agora</label>
+        <label class="es-radio"><input type="radio" name="pub-quando" value="agendar"> Agendar</label>
+        <input type="datetime-local" id="pub-data" aria-label="Dia e hora" hidden>
+      </fieldset>
+      <p class="es-quieto">O post é salvo antes de ir. Depois de publicado, só dá para apagar ou editar a legenda pelo app do Instagram.</p>
+    </div>
+    <p id="pub-erro" class="es-erro"></p>
+    <p id="pub-ok" class="pub-ok"></p>
+    <div id="pub-lista" class="pub-lista"></div>
+    <div class="es-dialogo-botoes"><button value="cancelar" class="es-bt">Fechar</button><button type="button" id="pub-enviar" class="es-bt es-salvar" disabled>Publicar</button></div>
+    <p class="es-quieto"><a href="{% url 'painel_estudio_publicacoes' %}">Ver todas as publicações e agendamentos</a></p>
+  </form>
+</dialog>
+
 {{ config|json_script:"es-config" }}
 {{ projeto|json_script:"es-projeto" }}
 {{ modelos|json_script:"es-modelos-dados" }}
@@ -85,6 +109,7 @@
 <script src="{% static 'estudio/vendor/jszip.min.js' %}"></script>
 <script src="{% static 'estudio/marca-afiliado.js' %}"></script>
 <script src="{% static 'estudio/estudio.js' %}"></script>
+<script src="{% static 'estudio/publicar.js' %}"></script>
 <script>
   document.getElementById('es-copiar-link')?.addEventListener('click', async (e) => {
     await navigator.clipboard.writeText(e.target.dataset.link); e.target.textContent = 'Link copiado ✓';

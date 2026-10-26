@@ -4,7 +4,7 @@ Os códigos vêm de ContaAppfiliado.modulos_liberados(); um plano maior já incl
 (licencas.models.INCLUI). Mudar um número aqui vale para todo mundo na hora."""
 
 from .models import (
-    MODULO_CARROSSEIS_PREMIUM, MODULO_NOTAS, MODULO_NOTAS_500, MODULO_NOTAS_2000, MODULO_NOTAS_5000,
+    MODULO_CARROSSEIS_PREMIUM, MODULO_INSTAGRAM, MODULO_INSTAGRAM_PREMIUM, MODULO_NOTAS, MODULO_NOTAS_500, MODULO_NOTAS_2000, MODULO_NOTAS_5000,
     MODULO_NOTAS_10000, MODULO_NOTAS_ILIMITADO,
     MODULO_SITE_SEM_MARCA, MODULO_WHATSAPP_PREMIUM,
 )
@@ -13,6 +13,15 @@ from .models import (
 CARROSSEIS = {
     False: {"geracoes": 3, "reescritas": 15},
     True: {"geracoes": 10, "reescritas": 40},
+}
+
+# Automações do Instagram. Sem limite de pessoas por mês nos dois planos (a API da Meta não cobra; o
+# limite por hora do Instagram é tratado com uma fila, em instagram_painel/webhook.py).
+# "ativas": quantas automações podem ficar ligadas ao mesmo tempo (None = sem limite).
+# "botao": o link vai num botão na DM. "sub_id": Sub ID próprio em cada automação.
+AUTOMACOES = {
+    False: {"gatilhos": ("comentario",), "ativas": 5, "botao": False, "sub_id": False},
+    True: {"gatilhos": ("comentario", "story", "direto"), "ativas": None, "botao": True, "sub_id": True},
 }
 
 # Bot de WhatsApp.
@@ -44,6 +53,12 @@ def _liberados(conta_ou_lista) -> list[str]:
 
 def carrosseis(conta) -> dict:
     return CARROSSEIS[MODULO_CARROSSEIS_PREMIUM in _liberados(conta)]
+
+
+def automacoes(conta) -> dict:
+    liberados = _liberados(conta)
+    premium = MODULO_INSTAGRAM_PREMIUM in liberados
+    return {**AUTOMACOES[premium], "premium": premium, "liberado": premium or MODULO_INSTAGRAM in liberados}
 
 
 def bot_premium(conta) -> bool:

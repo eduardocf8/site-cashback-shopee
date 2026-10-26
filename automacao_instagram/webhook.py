@@ -1,6 +1,5 @@
 import hashlib
 import hmac
-import json
 import logging
 
 from django.conf import settings
@@ -116,21 +115,6 @@ def processar_evento_webhook(payload: dict, request) -> None:
     evento: se for resposta a um story com AutomacaoStory ativa, manda a DM
     configurada (link do produto detectado ou mensagem personalizada) - no máximo 1
     por pessoa por automação (ver _ja_respondido)."""
-    # Log temporário (2026-10-13): investigando se o campo "comments" do webhook
-    # entrega comentário de terceiro mesmo com manage_comments em Standard Access -
-    # se sim, dá pra detectar comentário via webhook (push) em vez de GET /comments
-    # (bloqueado), contornando o problema que motiva a Análise do App. Remover
-    # depois de confirmado/descartado.
-    for entry in payload.get("entry", []):
-        for change in entry.get("changes", []) or []:
-            if change.get("field") != "messages":
-                # logger.warning (não .info) de propósito: o logger raiz só mostra WARNING+
-                # (ver settings.LOGGING) - isso é só um log de investigação temporário.
-                logger.warning(
-                    "[automacao_instagram] webhook: campo não tratado ainda - field=%s value=%s",
-                    change.get("field"), json.dumps(change.get("value"))[:2000],
-                )
-
     for evento in _extrair_eventos_de_mensagem(payload):
         try:
             _processar_um_evento(evento, request)

@@ -1,74 +1,60 @@
 {% extends "painel/base.html" %}
 {% load static %}
-{% block titulo %}Automações · Estúdio Instagram{% endblock %}
+{% block titulo %}Automações do Instagram{% endblock %}
 {% block cabeca %}<link rel="stylesheet" href="{% static 'estudio/painel.css' %}">{% endblock %}
 {% block conteudo %}
 <div class="es-pagina">
 <header class="cabecalho">
   <div>
-    <a class="suave" href="{% url 'painel_estudio' %}">← Estúdio Instagram</a>
-    <h1>Automações <span class="es-selo-teste">Em teste</span></h1>
-    <p>Quem comentar a palavra certa no seu post (ou responder o seu story) recebe o seu link por DM, na hora.</p>
+    <h1>Automações do Instagram <span class="es-selo-teste">Em teste</span></h1>
+    <p>Quem comentar a palavra certa no seu post{% if plano.premium %} (ou responder o seu story){% endif %} recebe o seu link por DM, na hora.</p>
   </div>
-  {% if premium and ig %}<a class="botao botao-principal" href="{% url 'painel_estudio_automacao_nova' %}">Nova automação</a>{% endif %}
+  {% if ig %}
+    <div class="linha-botoes">
+      <a class="botao botao-claro" href="{% url 'painel_estudio_historico' %}">Histórico</a>
+      <a class="botao botao-principal" href="{% url 'painel_estudio_automacao_nova' %}">Nova automação</a>
+    </div>
+  {% endif %}
 </header>
 
-<section class="card ig-conexao">
-  {% if ig %}
-    <div class="ig-perfil">
-      {% if ig.foto %}<img src="{{ ig.foto }}" alt="" referrerpolicy="no-referrer">{% else %}<span class="ig-sem-foto">@</span>{% endif %}
-      <div>
-        <strong>@{{ ig.username }}</strong>{% if ig.nome %}<small>{{ ig.nome }}</small>{% endif %}
-        <small class="{% if ig.erro %}ig-erro{% else %}ig-ok{% endif %}">{% if ig.erro %}{{ ig.erro }}{% elif ig.avisos_ligados %}Conectado e recebendo os comentários e as DMs.{% else %}Conectado.{% endif %}</small>
-      </div>
-    </div>
-    <form method="post" action="{% url 'painel_instagram_desconectar' %}" onsubmit="return confirm('Desconectar o Instagram? As automações serão pausadas.')">{% csrf_token %}<button class="botao botao-claro" type="submit">Desconectar</button></form>
-  {% else %}
-    <div>
-      <h2>Conecte o seu Instagram</h2>
-      <p class="suave">Precisa ser uma conta profissional (comercial ou de criador). Você entra pelo próprio Instagram e escolhe o que o Appfiliado pode fazer: ler os comentários e responder, mandar DMs e publicar posts.</p>
-    </div>
-    {% if configurado %}<a class="botao botao-principal" href="{% url 'painel_instagram_conectar' %}">Conectar Instagram</a>
-    {% else %}<p class="suave">A conexão com o Instagram ainda não está configurada no servidor.</p>{% endif %}
-  {% endif %}
-</section>
+{% include "painel/_instagram_conexao.html" %}
 
 {% if ig %}
-  <section class="card ig-avisos">
-    <h2>Avisos do Instagram <span class="es-selo-teste">Teste</span></h2>
-    <p class="suave">O que a Meta mandou para o Appfiliado sobre @{{ ig.username }} na última semana.
-      {% if ultimo_aviso %}Último aviso de qualquer conta: {{ ultimo_aviso.recebido_em|date:"d/m H:i" }} ({{ ultimo_aviso.campo }}).{% else %}Nenhum aviso de nenhuma conta chegou ainda.{% endif %}</p>
-    {% if avisos %}
-      <ul>{% for a in avisos %}<li><small>{{ a.recebido_em|date:"d/m H:i:s" }} · {{ a.campo }}</small> {{ a.resumo }}</li>{% endfor %}</ul>
-    {% else %}
-      <p class="suave">Nenhum aviso desta conta ainda.</p>
+  <section class="card ig-uso">
+    <div>
+      <strong>{{ respondidas|floatformat:"0g" }} pessoa{{ respondidas|pluralize }} respondida{{ respondidas|pluralize }} este mês</strong>
+      <small>Sem limite por mês.{% if plano.ativas %} {{ ligadas }} de {{ plano.ativas }} automações ligadas (no Premium, sem limite, com stories, DMs, botão e Sub ID).{% endif %}</small>
+    </div>
+    {% if fila %}
+      <div class="ig-fila">
+        <strong>{{ fila|floatformat:"0g" }} na fila</strong>
+        <small>O Instagram aceita até 750 respostas por hora. As que passam disso saem na hora seguinte, em ordem.</small>
+      </div>
     {% endif %}
   </section>
-{% endif %}
-
-{% if not premium %}
-  <section class="card">
-    <h2>Automações são do plano Premium</h2>
-    <p class="suave">Responda comentários e stories no automático, com o seu link de afiliado na DM. <a href="{{ url_planos }}" target="_blank" rel="noopener">Conhecer o Premium</a></p>
-  </section>
-{% elif ig %}
   <section>
     <h2 class="titulo-secao">Suas automações</h2>
     {% if lista %}
       <div class="ig-automacoes">
         {% for item in lista %}
-          <article class="card ig-automacao{% if not item.a.ativa %} pausada{% endif %}">
+          <article class="card ig-automacao{% if not item.a.ativa or item.fora_do_plano %} pausada{% endif %}">
             <a class="ig-automacao-link" href="{% url 'painel_estudio_automacao' item.a.pk %}">
               {% if item.a.midia_imagem %}<img src="{{ item.a.midia_imagem }}" alt="" referrerpolicy="no-referrer" loading="lazy">{% else %}<span class="ig-midia-vazia">{% if item.a.gatilho == "direto" %}✉️{% elif item.a.midia_id %}{% if item.a.gatilho == "story" %}Story{% else %}Post{% endif %}{% else %}Todos{% endif %}</span>{% endif %}
               <div>
                 <strong>{{ item.a.nome }}</strong>
                 <small>{{ item.a.get_gatilho_display }}{% if item.palavras %} · {{ item.palavras }}{% else %} · qualquer texto{% endif %}</small>
-                <small>{{ item.total }} pessoa{{ item.total|pluralize }} respondida{{ item.total|pluralize }} · {{ item.dms }} por DM</small>
+                {% if item.fora_do_plano %}<small class="ig-erro">{{ item.fora_do_plano }}</small>
+                {% else %}<small>{{ item.total }} pessoa{{ item.total|pluralize }} respondida{{ item.total|pluralize }} · {{ item.dms }} por DM</small>{% endif %}
               </div>
             </a>
-            <form method="post" action="{% url 'painel_estudio_automacao_ligar' item.a.pk %}">{% csrf_token %}<input type="hidden" name="voltar" value="lista">
-              <button class="botao botao-pequeno {% if item.a.ativa %}botao-claro{% else %}botao-principal{% endif %}" type="submit">{% if item.a.ativa %}Pausar{% else %}Ligar{% endif %}</button>
-            </form>
+            <div class="linha-botoes">
+              <form method="post" action="{% url 'painel_estudio_automacao_ligar' item.a.pk %}">{% csrf_token %}<input type="hidden" name="voltar" value="lista">
+                <button class="botao botao-pequeno {% if item.a.ativa %}botao-claro{% else %}botao-principal{% endif %}" type="submit">{% if item.a.ativa %}Pausar{% else %}Ligar{% endif %}</button>
+              </form>
+              <form method="post" action="{% url 'painel_estudio_automacao_excluir' item.a.pk %}" onsubmit="return confirm('Excluir a automação &quot;{{ item.a.nome|escapejs }}&quot;? O histórico dela também sai.')">{% csrf_token %}
+                <button class="botao botao-pequeno botao-claro" type="submit">Excluir</button>
+              </form>
+            </div>
           </article>
         {% endfor %}
       </div>

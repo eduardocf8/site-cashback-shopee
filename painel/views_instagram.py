@@ -1,31 +1,44 @@
-"""Estúdio Instagram: conectar o Instagram do afiliado e as automações de resposta (Premium).
+"""Instagram no painel: a conexão da conta (vale para o Estúdio Instagram e para as Automações), as
+Automações do Instagram (módulo próprio: Standard responde comentários; Premium também stories e
+DMs) e a publicação dos posts do Estúdio.
 
-Em teste, como o resto do Estúdio: só para a conta com a chave ligada (as outras recebem 404).
-As regras ficam em instagram_painel/ (conexao.py e webhook.py)."""
+Até o lançamento (settings.APPFILIADO_LANCAMENTO_INSTAGRAM), só para a conta com a chave de teste
+ligada; as outras recebem 404. As regras ficam em instagram_painel/ (conexao.py, webhook.py e publicar.py)."""
 
 import json
+import re
 import secrets
+import unicodedata
 
 from django import forms
 from django.conf import settings
 from django.contrib import messages
+from django.core.paginator import Paginator
 from django.http import Http404, HttpResponse, JsonResponse
 from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import reverse
+from django.utils import timezone
 from django.views.decorators.csrf import csrf_exempt
 from django.views.decorators.http import require_POST
 
-from estudio import afiliados as A
 from estudio.models import PostInstagram
 from instagram_painel import api, conexao
-from instagram_painel.models import Automacao, AvisoRecebido, ContaInstagram
-from instagram_painel.webhook import palavras
+from instagram_painel import publicar as P
+from instagram_painel.models import Automacao, ContaInstagram, Disparo, ImagemPublicacao, Publicacao
+from instagram_painel.webhook import na_fila, palavras, respondidas_no_mes, valendo
+from licencas import planos as planos_do_app
 
+from . import conversor
+from . import modulos as mod
 from .views import _contexto
-from .views_estudio import SLUG, _beta
+from .views_estudio import SLUG, _beta, exige
 
+SLUG_AUTOMACOES = "automacoes_instagram"
+_automacoes = exige(SLUG_AUTOMACOES)
+_conexao = exige(SLUG_AUTOMACOES, SLUG)  # conectar o Instagram: serve a quem tem qualquer um dos dois
 SESSAO_STATE = "instagram_state"
-MAX_AUTOMACOES = 50
+SESSAO_JANELA = "instagram_janela"  # o login abriu numa janela à parte: a volta fecha a janela
+MAX_AUTOMACOES = 500  # trava de segurança; o Premium não tem limite de automações ligadas
 
 
 def _retorno_url() -> str:
@@ -37,43 +50,64 @@ def _ig(conta) -> ContaInstagram | None:
     return ContaInstagram.objects.filter(conta=conta).first()
 
 
-@_beta
+def _tem_automacoes(conta) -> bool:
+    return mod.estado(mod.POR_SLUG[SLUG_AUTOMACOES], conta.modulos_liberados()) == "liberado"
+
+
+def _pagina_da_conexao(conta) -> str:
+    """Onde fica o cartão do Instagram conectado: nas Automações ou, só com o Estúdio, nas Publicações."""
+    return reverse("painel_estudio_automacoes" if _tem_automacoes(conta) else "painel_estudio_publicacoes")
+
+
+@_automacoes
 def automacoes(request, conta):
-    premium = A.eh_premium(conta)
+    plano = planos_do_app.automacoes(conta)
+    valem = set(valendo(conta, plano).values_list("pk", flat=True))
     lista = []
-    if premium:
-        for a in Automacao.objects.filter(conta=conta):
-            total = a.disparos.count()
-            lista.append({"a": a, "total": total, "dms": a.disparos.filter(dm_ok=True).count(),
-                          "palavras": ", ".join(palavras(a)).upper()})
-    ig = _ig(conta)
-    # Em teste: mostra se os avisos da Meta estão chegando (os desta conta e o último de qualquer conta).
-    avisos = list(AvisoRecebido.objects.filter(ig_id=ig.ig_id)[:15]) if ig else []
+    for a in Automacao.objects.filter(conta=conta):
+        total = a.disparos.count()
+        fora = ("Parada: responder stories e DMs é do plano Premium." if a.gatilho not in plano["gatilhos"]
+                else f"Parada: no Standard valem só as {plano['ativas']} ligadas mais recentes." if a.ativa and a.pk not in valem else "")
+        lista.append({"a": a, "total": total, "dms": a.disparos.filter(dm_ok=True).count(),
+                      "palavras": ", ".join(palavras(a)).upper(), "fora_do_plano": fora})
     return render(request, "painel/estudio_automacoes.html", _contexto(
-        request, SLUG, ig=ig, premium=premium, lista=lista, configurado=bool(api.app_id() and api.app_secret()),
-        avisos=avisos, ultimo_aviso=AvisoRecebido.objects.first(),
+        request, SLUG_AUTOMACOES, ig=_ig(conta), plano=plano, lista=lista, respondidas=respondidas_no_mes(conta),
+        ligadas=Automacao.objects.filter(conta=conta, ativa=True).count(),
+        fila=na_fila(conta), configurado=bool(api.app_id() and api.app_secret()),
     ))
 
 
-@_beta
+@_conexao
 def conectar(request, conta):
     if not (api.app_id() and api.app_secret()):
         messages.error(request, "A conexão com o Instagram ainda não está configurada.")
-        return redirect("painel_estudio_automacoes")
+        return redirect(_pagina_da_conexao(conta))
     state = secrets.token_urlsafe(24)
     request.session[SESSAO_STATE] = state
+    # "1": volta para a página do cartão do Instagram; "ficar": só fecha a janela (o editor confere sozinho).
+    janela = request.GET.get("janela")
+    request.session[SESSAO_JANELA] = janela if janela in ("1", "ficar") else ""
     return redirect(api.url_de_autorizacao(_retorno_url(), state))
 
 
-@_beta
+def _voltar(request, conta):
+    """Fim do login: na janela à parte, avisa a página do Appfiliado e fecha; senão, volta para ela."""
+    janela = request.session.pop(SESSAO_JANELA, "")
+    if janela:
+        return render(request, "painel/instagram_retorno.html",
+                      {"destino": _pagina_da_conexao(conta), "ficar": janela == "ficar"})
+    return redirect(_pagina_da_conexao(conta))
+
+
+@_conexao
 def retorno(request, conta):
     state = request.session.pop(SESSAO_STATE, None)
     if request.GET.get("error"):
         messages.info(request, "A conexão com o Instagram foi cancelada.")
-        return redirect("painel_estudio_automacoes")
+        return _voltar(request, conta)
     if not state or not secrets.compare_digest(state, request.GET.get("state", "")) or not request.GET.get("code"):
         messages.error(request, "Não deu para confirmar a conexão. Tente conectar de novo.")
-        return redirect("painel_estudio_automacoes")
+        return _voltar(request, conta)
     codigo = request.GET["code"].split("#")[0]
     try:
         ig = conexao.conectar(conta, codigo, _retorno_url())
@@ -81,18 +115,18 @@ def retorno(request, conta):
         messages.error(request, str(erro))
     else:
         messages.success(request, f"Instagram @{ig.username} conectado.")
-    return redirect("painel_estudio_automacoes")
+    return _voltar(request, conta)
 
 
 @require_POST
-@_beta
+@_conexao
 def desconectar(request, conta):
     conexao.desconectar(conta)
-    messages.info(request, "Instagram desconectado. As automações foram pausadas.")
-    return redirect("painel_estudio_automacoes")
+    messages.info(request, "Instagram desconectado. As automações e as publicações agendadas ficam paradas até conectar de novo.")
+    return redirect(_pagina_da_conexao(conta))
 
 
-@_beta
+@_automacoes
 def midias(request, conta):
     """Posts (ou stories no ar) do Instagram conectado, para escolher na automação."""
     ig = _ig(conta)
@@ -112,12 +146,36 @@ class AutomacaoForm(forms.ModelForm):
     class Meta:
         model = Automacao
         fields = ["nome", "gatilho", "midia_id", "midia_link", "midia_imagem", "midia_legenda", "palavras",
-                  "responder_comentario", "respostas", "enviar_dm", "texto_dm", "link", "ativa"]
+                  "responder_comentario", "respostas", "enviar_dm", "texto_dm", "link", "botao", "texto_botao", "sub_id", "ativa"]
         widgets = {f: forms.HiddenInput for f in ("midia_id", "midia_link", "midia_imagem", "midia_legenda")}
+
+    def __init__(self, *args, conta=None, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.conta = conta
+        self.plano = planos_do_app.automacoes(conta) if conta else planos_do_app.AUTOMACOES[True]
+        self.gatilhos = self.plano["gatilhos"]
+        self.antes = (self.instance.link, self.instance.sub_id, self.instance.ativa) if self.instance.pk else ("", "", False)
+
+    def clean_sub_id(self):
+        sub_id = (self.cleaned_data.get("sub_id") or "").strip()
+        if sub_id and not re.fullmatch(r"[A-Za-z0-9]{1,50}", sub_id):
+            raise forms.ValidationError("O Sub ID só pode ter letras e números (sem espaço, hífen ou acento).")
+        return sub_id
 
     def clean(self):
         d = super().clean()
+        if not self.plano["botao"]:
+            d["botao"] = self.instance.botao if self.instance.pk else True
+        if not self.plano["sub_id"]:
+            d["sub_id"] = self.instance.sub_id
+        if self.plano["ativas"] and d.get("ativa") and not self.antes[2]:
+            ligadas = Automacao.objects.filter(conta=self.conta, ativa=True).exclude(pk=self.instance.pk).count()
+            if ligadas >= self.plano["ativas"]:
+                self.add_error("ativa", f"No plano Standard ficam até {self.plano['ativas']} automações ligadas ao mesmo tempo. "
+                                        "Pause outra ou salve esta desligada. No Premium não há limite.")
         gatilho = d.get("gatilho")
+        if gatilho and gatilho not in self.gatilhos:
+            self.add_error("gatilho", "Responder stories e DMs é do plano Premium das Automações.")
         if gatilho == Automacao.DIRETO and not (d.get("palavras") or "").strip():
             self.add_error("palavras", "Para DM, escolha pelo menos uma palavra (senão a automação responderia toda DM).")
         if gatilho != Automacao.COMENTARIO:
@@ -131,37 +189,56 @@ class AutomacaoForm(forms.ModelForm):
         for campo in ("midia_link", "midia_imagem"):
             if d.get(campo) and not str(d[campo]).startswith("https://"):
                 d[campo] = ""
+        if not self.errors:
+            self._link_com_sub_id(d)
         return d
+
+    def _link_com_sub_id(self, d):
+        """Premium: gera o link de afiliado de novo com o Sub ID da automação (só quando o link ou o Sub ID mudam)."""
+        link, sub_id = d.get("link") or "", d.get("sub_id") or ""
+        if not sub_id or not link:
+            self.instance.link_afiliado = ""
+            return
+        if (link, sub_id) == self.antes[:2] and self.instance.link_afiliado:
+            return
+        if not conversor.tem_link_da_shopee(link):
+            self.instance.link_afiliado = ""  # link de fora da Shopee: vai como está
+            return
+        try:
+            feito = conversor.converter(self.conta, link, conversor.MODO_LINKS, sub_id)
+        except conversor.ErroConversor as erro:
+            self.add_error("sub_id", f"Não consegui gerar o link com esse Sub ID: {erro}")
+            return
+        self.instance.link_afiliado = feito["texto"].splitlines()[0]
+
+
+def _sub_id_sugerido(nome: str) -> str:
+    """"Garrafa térmica (QUERO)" -> "garrafatermica"."""
+    sem_acento = unicodedata.normalize("NFD", nome or "").encode("ascii", "ignore").decode()
+    return re.sub(r"[^a-z0-9]", "", sem_acento.lower().split("(")[0])[:30]
 
 
 def _form_contexto(request, conta, form, automacao=None):
-    return _contexto(request, SLUG, form=form, automacao=automacao, ig=_ig(conta),
+    plano = planos_do_app.automacoes(conta)
+    gatilhos = [{"valor": v, "nome": n, "livre": v in plano["gatilhos"]} for v, n in Automacao.GATILHOS]
+    return _contexto(request, SLUG_AUTOMACOES, form=form, automacao=automacao, ig=_ig(conta), gatilhos=gatilhos, plano=plano,
                      disparos=automacao.disparos.all()[:50] if automacao else [])
 
 
-def _so_premium(request, conta):
-    if not A.eh_premium(conta):
-        messages.info(request, "As automações de resposta são do plano Premium.")
-        return redirect("painel_estudio_automacoes")
-    return None
-
-
-@_beta
+@_automacoes
 def automacao_nova(request, conta):
-    if (r := _so_premium(request, conta)):
-        return r
     if request.method == "POST":
-        form = AutomacaoForm(request.POST)
+        form = AutomacaoForm(request.POST, conta=conta)
         if Automacao.objects.filter(conta=conta).count() >= MAX_AUTOMACOES:
-            form.add_error(None, f"Você chegou a {MAX_AUTOMACOES} automações. Apague alguma para criar outra.")
+            form.add_error(None, f"Você chegou a {MAX_AUTOMACOES} automações. Exclua alguma para criar outra.")
         elif form.is_valid():
             a = form.save(commit=False)
             a.conta = conta
             post = PostInstagram.objects.filter(conta=conta, pk=request.POST.get("post") or 0).first()
             a.post_estudio = post
             a.save()
-            messages.success(request, "Automação criada.")
-            return redirect("painel_estudio_automacao", pk=a.pk)
+            messages.success(request, f"Automação \"{a.nome}\" criada.")
+            return redirect("painel_estudio_automacoes")
     else:
         inicial = {"gatilho": Automacao.COMENTARIO, "palavras": "QUERO", "ativa": True,
                    "respostas": "Te mandei na DM! 📩\nEnviei o link na sua DM 😉\nCorre na DM que já te mandei!",
@@ -171,41 +248,161 @@ def automacao_nova(request, conta):
             inicial.update(nome=post.nome[:100], link=(post.produto or {}).get("link", ""))
             if (post.produto or {}).get("nome"):
                 inicial["texto_dm"] = f"Oi! Aqui está o link do {post.produto['nome'][:80]}:"
-        form = AutomacaoForm(initial=inicial)
+            if planos_do_app.automacoes(conta)["sub_id"]:
+                inicial["sub_id"] = _sub_id_sugerido(post.nome)
+        plano = planos_do_app.automacoes(conta)
+        if plano["ativas"] and Automacao.objects.filter(conta=conta, ativa=True).count() >= plano["ativas"]:
+            inicial["ativa"] = False  # Standard com todas as vagas ocupadas: nasce desligada
+        form = AutomacaoForm(initial=inicial, conta=conta)
     return render(request, "painel/estudio_automacao.html", _form_contexto(request, conta, form) | {
         "post_id": request.GET.get("post") or request.POST.get("post") or ""})
 
 
-@_beta
+@_automacoes
 def automacao(request, conta, pk):
-    if (r := _so_premium(request, conta)):
-        return r
     a = get_object_or_404(Automacao, pk=pk, conta=conta)
-    form = AutomacaoForm(request.POST or None, instance=a)
+    form = AutomacaoForm(request.POST or None, instance=a, conta=conta)
     if request.method == "POST" and form.is_valid():
         form.save()
-        messages.success(request, "Automação salva.")
-        return redirect("painel_estudio_automacao", pk=a.pk)
+        messages.success(request, f"Automação \"{a.nome}\" salva.")
+        return redirect("painel_estudio_automacoes")
     return render(request, "painel/estudio_automacao.html", _form_contexto(request, conta, form, a))
 
 
 @require_POST
-@_beta
+@_automacoes
 def automacao_ligar(request, conta, pk):
     a = get_object_or_404(Automacao, pk=pk, conta=conta)
-    a.ativa = not a.ativa
-    a.save(update_fields=["ativa", "atualizada_em"])
+    limite = planos_do_app.automacoes(conta)["ativas"]
+    if not a.ativa and limite and Automacao.objects.filter(conta=conta, ativa=True).count() >= limite:
+        messages.error(request, f"No plano Standard ficam até {limite} automações ligadas ao mesmo tempo. "
+                                "Pause outra para ligar esta. No Premium não há limite.")
+    else:
+        a.ativa = not a.ativa
+        a.save(update_fields=["ativa", "atualizada_em"])
     if request.POST.get("voltar") == "lista":
         return redirect("painel_estudio_automacoes")
     return redirect("painel_estudio_automacao", pk=a.pk)
 
 
 @require_POST
-@_beta
-def automacao_apagar(request, conta, pk):
-    get_object_or_404(Automacao, pk=pk, conta=conta).delete()
-    messages.info(request, "Automação apagada.")
+@_automacoes
+def automacao_excluir(request, conta, pk):
+    a = get_object_or_404(Automacao, pk=pk, conta=conta)
+    a.delete()
+    messages.info(request, f"Automação \"{a.nome}\" excluída.")
     return redirect("painel_estudio_automacoes")
+
+
+@_automacoes
+def historico(request, conta):
+    """Todas as respostas das automações, das mais novas para as mais antigas."""
+    automacoes_ = Automacao.objects.filter(conta=conta).order_by("nome")
+    disparos = Disparo.objects.filter(automacao__conta=conta).select_related("automacao")
+    escolhida = automacoes_.filter(pk=request.GET.get("automacao") or 0).first()
+    if escolhida:
+        disparos = disparos.filter(automacao=escolhida)
+    pagina = Paginator(disparos, 50).get_page(request.GET.get("pagina"))
+    return render(request, "painel/estudio_historico.html", _contexto(
+        request, SLUG_AUTOMACOES, pagina=pagina, automacoes=automacoes_, escolhida=escolhida,
+        total=disparos.count(), dms=disparos.filter(dm_ok=True).count(), respostas=disparos.filter(resposta_ok=True).count(),
+    ))
+
+
+# --- publicar no Instagram (todos os planos) -----------------------------------------------------
+
+def _publicacao_json(p: Publicacao) -> dict:
+    return {"id": p.pk, "tipo": p.get_tipo_display(), "estado": p.estado, "estado_nome": p.get_estado_display(),
+            "quando": timezone.localtime(p.publicada_em or p.agendada_para).strftime("%d/%m/%Y %H:%M"),
+            "link": p.permalink, "erro": p.erro, "agora": p.agora,
+            "cancelar": reverse("painel_estudio_publicacao_cancelar", args=[p.pk]) if p.estado == Publicacao.PENDENTE else "",
+            "tentar": reverse("painel_estudio_publicacao_tentar", args=[p.pk]) if p.estado == Publicacao.ERRO else ""}
+
+
+@_beta
+def publicar(request, conta, pk):
+    """GET: a conta conectada e as publicações deste post. POST: as imagens (JPEG) e quando publicar."""
+    post = get_object_or_404(PostInstagram, pk=pk, conta=conta)
+    if request.method == "POST":
+        try:
+            quando = None if request.POST.get("quando") != "agendar" else P.quando_de(request.POST.get("data", ""))
+            arquivos = [request.FILES[k] for k in sorted(request.FILES, key=lambda k: int(k.split("_")[-1]) if k.split("_")[-1].isdigit() else 99)
+                        if k.startswith("imagem_")]
+            pub = P.agendar(post, arquivos, quando)
+        except P.ErroPublicacao as erro:
+            return JsonResponse({"erro": str(erro)}, status=400)
+        msg = ("Enviado! O post sai no seu Instagram em instantes." if quando is None
+               else f"Agendado para {timezone.localtime(quando).strftime('%d/%m/%Y às %H:%M')}.")
+        return JsonResponse({"ok": True, "mensagem": msg, "publicacao": _publicacao_json(pub)})
+    ig = _ig(conta)
+    return JsonResponse({
+        "ig": {"username": ig.username, "foto": ig.foto} if ig else None,
+        "conectar": reverse("painel_instagram_conectar") + "?janela=ficar" if api.app_id() and api.app_secret() else "",
+        "tipo": P.tipo_do_post(post),
+        "publicacoes": [_publicacao_json(p) for p in Publicacao.objects.filter(post=post).exclude(estado=Publicacao.CANCELADA)[:10]],
+    })
+
+
+@_beta
+def publicacoes(request, conta):
+    """Publicações agendadas e as mais recentes, de todos os posts."""
+    agendadas = Publicacao.objects.filter(conta=conta, estado__in=[Publicacao.PENDENTE, Publicacao.PUBLICANDO]).order_by("agendada_para")
+    feitas = Publicacao.objects.filter(conta=conta, estado__in=[Publicacao.PUBLICADA, Publicacao.ERRO]).order_by("-agendada_para")
+    pagina = Paginator(feitas, 30).get_page(request.GET.get("pagina"))
+    return render(request, "painel/estudio_publicacoes.html", _contexto(
+        request, SLUG, agendadas=agendadas, pagina=pagina, ig=_ig(conta), configurado=bool(api.app_id() and api.app_secret())))
+
+
+@require_POST
+@_beta
+def publicacao_cancelar(request, conta, pk):
+    pub = get_object_or_404(Publicacao, pk=pk, conta=conta)
+    if P.cancelar(pub):
+        msg = "Publicação cancelada."
+    else:
+        msg = "Essa publicação já saiu ou está saindo agora."
+    if request.headers.get("Accept", "").startswith("application/json"):
+        return JsonResponse({"mensagem": msg})
+    messages.info(request, msg)
+    return redirect("painel_estudio_publicacoes")
+
+
+@require_POST
+@_beta
+def publicacao_tentar(request, conta, pk):
+    pub = get_object_or_404(Publicacao, pk=pk, conta=conta)
+    msg = ("Vamos tentar de novo. O post sai em instantes." if P.tentar_de_novo(pub)
+           else "Não dá para tentar de novo essa publicação. Publique outra vez pelo editor.")
+    if request.headers.get("Accept", "").startswith("application/json"):
+        return JsonResponse({"mensagem": msg})
+    messages.info(request, msg)
+    return redirect("painel_estudio_publicacoes")
+
+
+@_beta
+def publicacao_miniatura(request, conta, pk):
+    pub = get_object_or_404(Publicacao, pk=pk, conta=conta)
+    if not pub.miniatura:
+        raise Http404
+    resposta = HttpResponse(bytes(pub.miniatura), content_type="image/jpeg")
+    resposta["Cache-Control"] = "private, max-age=86400"
+    return resposta
+
+
+def midia_publica(request, token):
+    """A imagem que a Meta baixa para publicar. Sem login: o token secreto é a chave, e só vale
+    enquanto a publicação não saiu."""
+    if len(token) > 64:
+        raise Http404
+    imagem = (ImagemPublicacao.objects.filter(token=token, publicacao__estado__in=[Publicacao.PENDENTE, Publicacao.PUBLICANDO])
+              .only("dados").first())
+    if not imagem:
+        raise Http404
+    resposta = HttpResponse(bytes(imagem.dados), content_type="image/jpeg")
+    resposta["Cache-Control"] = "no-store"
+    resposta["X-Robots-Tag"] = "noindex"
+    resposta["X-Content-Type-Options"] = "nosniff"
+    return resposta
 
 
 # --- avisos da Meta (sem login: quem chama é a Meta, a segurança é a assinatura) ------------------

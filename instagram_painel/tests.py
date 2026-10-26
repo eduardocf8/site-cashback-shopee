@@ -20,7 +20,7 @@ SENHA = "uma-senha-boa-123"
 IG_ID = "17841400000000001"
 
 
-def conta(modulos="carrosseis_premium", email="bia@exemplo.com", beta=True):
+def conta(modulos="carrosseis_premium, instagram_premium", email="bia@exemplo.com", beta=True):
     c = ContaAppfiliado.objects.create(email=email, modulos_cortesia=modulos, beta_estudio_instagram=beta)
     c.definir_senha(SENHA)
     c.save()
@@ -58,7 +58,8 @@ class TestAvisos(TestCase):
     def test_comentario_com_palavra_responde_e_manda_dm(self, msg, privada, resposta):
         W.separar_e_processar(aviso_comentario("Eu QUÉRO muito!"))
         resposta.assert_called_once_with("tok", "c1", "Te mandei no direto, @maria!")
-        privada.assert_called_once_with("tok", IG_ID, "c1", "Aqui está:\n\nhttps://s.shopee.com.br/abc")
+        # Premium: o link vai num botão
+        privada.assert_called_once_with("tok", IG_ID, "c1", "Aqui está:", ("Ver produto", "https://s.shopee.com.br/abc"))
         d = Disparo.objects.get()
         self.assertTrue(d.resposta_ok and d.dm_ok)
 
@@ -95,12 +96,80 @@ class TestAvisos(TestCase):
         Automacao.objects.create(conta=self.c, nome="Story", gatilho=Automacao.STORY, texto_dm="Link do story")
         Automacao.objects.create(conta=self.c, nome="Direto", gatilho=Automacao.DIRETO, palavras="cupom", texto_dm="O cupom é X")
         W.separar_e_processar(aviso_mensagem("🔥", story="s1"))
-        msg.assert_called_with("tok", IG_ID, "888", "Link do story")
+        msg.assert_called_with("tok", IG_ID, "888", "Link do story", None)  # sem link: só o texto
         W.separar_e_processar(aviso_mensagem("tem cupom?", autor="777", mid="mid2"))
-        msg.assert_called_with("tok", IG_ID, "777", "O cupom é X")
+        msg.assert_called_with("tok", IG_ID, "777", "O cupom é X", None)
         W.separar_e_processar(aviso_mensagem("oi", autor="555", mid="mid3"))  # sem a palavra
         W.separar_e_processar(aviso_mensagem("cupom", autor="444", mid="mid4", is_echo=True))  # a própria conta
         self.assertEqual(msg.call_count, 2)
+
+    def test_botao_recusado_vai_em_texto_e_standard_vai_sem_botao(self, msg, privada, resposta):
+        privada.side_effect = [api.ErroInstagram("template não suportado"), "d1", "d2"]
+        W.separar_e_processar(aviso_comentario("quero"))
+        self.assertEqual(privada.call_args_list[1].args, ("tok", IG_ID, "c1", "Aqui está:\n\nhttps://s.shopee.com.br/abc", None))
+        self.assertTrue(Disparo.objects.get().dm_ok)
+        self.c.modulos_cortesia = "instagram"
+        self.c.save()
+        W.separar_e_processar(aviso_comentario("quero", autor="2", comentario="c2"))
+        self.assertEqual(privada.call_args_list[2].args, ("tok", IG_ID, "c2", "Aqui está:\n\nhttps://s.shopee.com.br/abc", None))
+
+    def test_link_com_sub_id_e_o_que_vai_na_dm(self, msg, privada, resposta):
+        self.a.link_afiliado = "https://s.shopee.com.br/comsubid"
+        self.a.save()
+        W.separar_e_processar(aviso_comentario("quero"))
+        self.assertEqual(privada.call_args.args[4], ("Ver produto", "https://s.shopee.com.br/comsubid"))
+
+    def test_standard_so_valem_as_5_ligadas_mais_recentes(self, msg, privada, resposta):
+        self.c.modulos_cortesia = "instagram"
+        self.c.save()
+        for i in range(5):  # 5 mais novas, para outros posts: a "Garrafa" (a mais antiga) fica de fora
+            Automacao.objects.create(conta=self.c, nome=f"a{i}", midia_id=f"outro{i}", respostas="ok", texto_dm="oi")
+        W.separar_e_processar(aviso_comentario("quero"))
+        resposta.assert_not_called()
+
+    def test_plano_standard_so_responde_comentario(self, msg, privada, resposta):
+        self.c.modulos_cortesia = "instagram"
+        self.c.save()
+        Automacao.objects.create(conta=self.c, nome="Story", gatilho=Automacao.STORY, texto_dm="Link do story")
+        W.separar_e_processar(aviso_mensagem("🔥", story="s1"))
+        msg.assert_not_called()  # resposta a story é do Premium
+        W.separar_e_processar(aviso_comentario("quero", autor="1", comentario="c1"))
+        self.assertEqual(resposta.call_count, 1)
+        self.c.modulos_cortesia = "carrosseis_premium"  # sem o módulo das Automações
+        self.c.save()
+        W.separar_e_processar(aviso_comentario("quero", autor="3", comentario="c3"))
+        self.assertEqual(resposta.call_count, 1)
+
+    def test_post_viral_passa_do_limite_da_hora_vai_para_a_fila_e_sai_depois(self, msg, privada, resposta):
+        from datetime import timedelta
+
+        from django.utils import timezone
+
+        with mock.patch.object(W, "LIMITE_POR_HORA", 2):
+            for i in range(4):
+                W.separar_e_processar(aviso_comentario("quero", autor=str(i), comentario=f"c{i}"))
+            self.assertEqual(privada.call_count, 2)
+            self.assertEqual(W.na_fila(self.c), 2)
+            self.assertEqual(W.enviar_fila(), [])  # a hora ainda está cheia
+            # uma hora depois: a fila sai, por ordem de chegada
+            Disparo.objects.filter(na_fila=False).update(enviado_em=timezone.now() - timedelta(hours=2))
+            self.assertIn("2 resposta(s) da fila", W.enviar_fila()[0])
+        self.assertEqual([c.args[2] for c in privada.call_args_list], ["c0", "c1", "c2", "c3"])
+        self.assertEqual(W.na_fila(self.c), 0)
+        self.assertEqual(Disparo.objects.filter(dm_ok=True).count(), 4)
+
+    def test_fila_respeita_o_prazo_do_instagram(self, msg, privada, resposta):
+        from datetime import timedelta
+
+        from django.utils import timezone
+
+        d = Disparo.objects.create(automacao=self.a, evento_id="velho", autor_id="9", na_fila=True)
+        Disparo.objects.filter(pk=d.pk).update(criado_em=timezone.now() - timedelta(days=8))
+        W.enviar_fila()
+        d.refresh_from_db()
+        self.assertFalse(d.na_fila)
+        self.assertIn("prazo", d.erro)
+        privada.assert_not_called()
 
     def test_erro_do_instagram_fica_no_historico(self, msg, privada, resposta):
         privada.side_effect = api.ErroInstagram("janela de 7 dias")
@@ -225,25 +294,72 @@ class TestTelas(TestCase):
             "respostas": "Te mandei!", "enviar_dm": "on", "texto_dm": "Aqui:", "link": "https://s.shopee.com.br/abc",
             "ativa": "on", "post": post.pk})
         a = Automacao.objects.get()
-        self.assertRedirects(r, f"/estudio/automacoes/{a.pk}/", fetch_redirect_response=False)
+        self.assertRedirects(r, "/estudio/automacoes/", fetch_redirect_response=False)  # volta para a lista
         self.assertEqual(a.post_estudio, post)
         self.assertContains(self.client.get("/estudio/automacoes/"), "Garrafa")
 
-    def test_direto_sem_palavra_nao_salva_e_standard_nao_cria(self):
-        c = conta()
-        self.entrar(c)
+    def test_direto_sem_palavra_nao_salva(self):
+        self.entrar(conta())
         r = self.client.post("/estudio/automacoes/nova/", {"nome": "x", "gatilho": "direto", "enviar_dm": "on", "texto_dm": "oi"})
         self.assertContains(r, "Para DM, escolha pelo menos uma palavra")
-        self.client = Client(HTTP_HOST=HOST)
-        self.entrar(conta(modulos="carrosseis", email="std@exemplo.com"))
-        self.assertRedirects(self.client.get("/estudio/automacoes/nova/"), "/estudio/automacoes/", fetch_redirect_response=False)
-        self.assertContains(self.client.get("/estudio/automacoes/"), "plano Premium")
+
+    def test_standard_so_cria_automacao_de_comentario(self):
+        c = conta(modulos="instagram", email="std@exemplo.com")
+        conectada(c)
+        self.entrar(c)
+        r = self.client.get("/estudio/automacoes/nova/")
+        self.assertContains(r, 'value="story" disabled')
+        r = self.client.post("/estudio/automacoes/nova/", {"nome": "x", "gatilho": "story", "palavras": "quero", "enviar_dm": "on", "texto_dm": "oi"})
+        self.assertContains(r, "do plano Premium das Automações")
+        r = self.client.post("/estudio/automacoes/nova/", {"nome": "y", "gatilho": "comentario", "palavras": "quero", "enviar_dm": "on", "texto_dm": "oi"})
+        self.assertRedirects(r, "/estudio/automacoes/", fetch_redirect_response=False)
+        self.assertContains(self.client.get("/estudio/automacoes/"), "Sem limite por mês")
+
+    def test_standard_ate_5_ligadas(self):
+        c = conta(modulos="instagram", email="cinco@exemplo.com")
+        conectada(c)
+        self.entrar(c)
+        for i in range(5):
+            Automacao.objects.create(conta=c, nome=f"a{i}", respostas="ok", texto_dm="oi")
+        dados = {"nome": "sexta", "gatilho": "comentario", "palavras": "quero", "enviar_dm": "on", "texto_dm": "oi", "ativa": "on"}
+        self.assertContains(self.client.post("/estudio/automacoes/nova/", dados), "até 5 automações ligadas")
+        del dados["ativa"]
+        self.assertEqual(self.client.post("/estudio/automacoes/nova/", dados).status_code, 302)  # desligada pode
+        sexta = Automacao.objects.get(nome="sexta")
+        self.client.post(f"/estudio/automacoes/{sexta.pk}/ligar/")
+        sexta.refresh_from_db()
+        self.assertFalse(sexta.ativa)
+        self.assertContains(self.client.get("/estudio/automacoes/"), "5 de 5 automações ligadas")
+
+    def test_premium_gera_o_link_com_o_sub_id(self):
+        c = conta(email="sub@exemplo.com")
+        conectada(c)
+        self.entrar(c)
+        dados = {"nome": "Garrafa", "gatilho": "comentario", "palavras": "quero", "enviar_dm": "on", "texto_dm": "oi",
+                 "link": "https://s.shopee.com.br/abc", "sub_id": "garrafa", "botao": "on", "texto_botao": "Quero!", "ativa": "on"}
+        with mock.patch("painel.conversor.converter", return_value={"texto": "https://s.shopee.com.br/novo"}) as conv:
+            self.client.post("/estudio/automacoes/nova/", dados)
+            a = Automacao.objects.get(nome="Garrafa")
+            self.assertEqual((a.link_afiliado, a.sub_id, a.texto_botao), ("https://s.shopee.com.br/novo", "garrafa", "Quero!"))
+            self.assertEqual(conv.call_args.args[3], "garrafa")
+            self.client.post(f"/estudio/automacoes/{a.pk}/", dados)  # nada mudou: não gera de novo
+            self.assertEqual(conv.call_count, 1)
+        r = self.client.post("/estudio/automacoes/nova/", {**dados, "nome": "x", "sub_id": "com espaço"})
+        self.assertContains(r, "só pode ter letras e números")
+
+    def test_so_estudio_nao_abre_automacoes_mas_conecta_e_publica(self):
+        self.entrar(conta(modulos="carrosseis_premium", email="estudio@exemplo.com"))
+        r = self.client.get("/estudio/automacoes/")
+        self.assertContains(r, "Não incluso no seu plano")
+        self.assertEqual(self.client.post("/estudio/automacoes/nova/").status_code, 403)
+        self.assertEqual(self.client.get("/estudio/instagram/conectar/").status_code, 302)
+        self.assertContains(self.client.get("/estudio/publicacoes/"), "Conecte o seu Instagram")
 
     def test_automacao_de_outra_conta_nao_abre(self):
         outra = Automacao.objects.create(conta=conta(email="outra@exemplo.com"), nome="x", respostas="ok")
         self.entrar(conta())
         self.assertEqual(self.client.get(f"/estudio/automacoes/{outra.pk}/").status_code, 404)
-        self.assertEqual(self.client.post(f"/estudio/automacoes/{outra.pk}/apagar/").status_code, 404)
+        self.assertEqual(self.client.post(f"/estudio/automacoes/{outra.pk}/excluir/").status_code, 404)
 
 
 class TestAvisosRecebidos(TestCase):
@@ -254,11 +370,49 @@ class TestAvisosRecebidos(TestCase):
         W.separar_e_processar(aviso_mensagem("🔥", story="s1", ig_id=IG_ID))
         self.assertEqual(AvisoRecebido.objects.get(ig_id="qualquer").resumo, "@maria comentou: quero muito")
         self.assertEqual(AvisoRecebido.objects.get(ig_id=IG_ID).resumo, "Resposta a story: 🔥")
-        c = conta()
-        conectada(c)
-        cliente = Client(HTTP_HOST=HOST)
-        with override_settings(APPFILIADO_PAINEL_HOSTS=[HOST], ALLOWED_HOSTS=[HOST, "testserver"]):
-            cliente.post("/entrar/", {"email": c.email, "senha": SENHA})
-            pagina = cliente.get("/estudio/automacoes/")
-        self.assertContains(pagina, "Resposta a story: 🔥")
-        self.assertNotContains(pagina, "quero muito")  # de outra conta: só a hora do último aviso
+
+
+@override_settings(APPFILIADO_PAINEL_HOSTS=[HOST], ALLOWED_HOSTS=[HOST, "testserver"], APPFILIADO_PAINEL_URL=f"https://{HOST}",
+                   APPFILIADO_INSTAGRAM_APP_ID="123", APPFILIADO_INSTAGRAM_APP_SECRET=SEGREDO)
+class TestJanelaHistoricoEExcluir(TestCase):
+    def setUp(self):
+        cache.clear()
+        self.client = Client(HTTP_HOST=HOST)
+        self.c = conta()
+        self.client.post("/entrar/", {"email": self.c.email, "senha": SENHA})
+
+    def test_login_na_janela_volta_fechando_a_janela(self):
+        self.client.get("/estudio/instagram/conectar/?janela=1")
+        state = self.client.session["instagram_state"]
+        with mock.patch.object(conexao, "conectar", return_value=ContaInstagram(username="bia")):
+            r = self.client.get(f"/estudio/instagram/retorno/?code=abc&state={state}")
+        self.assertContains(r, "window.opener.location.href = destino")
+        self.assertContains(r, "/estudio/automacoes/")
+        # sem a janela, continua voltando direto
+        self.client.get("/estudio/instagram/conectar/")
+        state = self.client.session["instagram_state"]
+        with mock.patch.object(conexao, "conectar", return_value=ContaInstagram(username="bia")):
+            r = self.client.get(f"/estudio/instagram/retorno/?code=abc&state={state}")
+        self.assertRedirects(r, "/estudio/automacoes/", fetch_redirect_response=False)
+
+    def test_historico_mostra_so_as_respostas_da_conta_e_filtra(self):
+        a = Automacao.objects.create(conta=self.c, nome="Garrafa", respostas="ok")
+        b = Automacao.objects.create(conta=self.c, nome="Story", gatilho=Automacao.STORY, texto_dm="oi")
+        Disparo.objects.create(automacao=a, evento_id="1", autor_username="maria", texto="quero", resposta_ok=True, dm_ok=True)
+        Disparo.objects.create(automacao=b, evento_id="2", autor_username="joao", texto="🔥", dm_ok=True)
+        outra = Automacao.objects.create(conta=conta(email="outra@exemplo.com"), nome="Dela", respostas="ok")
+        Disparo.objects.create(automacao=outra, evento_id="3", autor_username="intruso")
+        pagina = self.client.get("/estudio/automacoes/historico/")
+        self.assertContains(pagina, "@maria")
+        self.assertContains(pagina, "@joao")
+        self.assertNotContains(pagina, "@intruso")
+        filtrada = self.client.get(f"/estudio/automacoes/historico/?automacao={b.pk}")
+        self.assertNotContains(filtrada, "@maria")
+        self.assertContains(filtrada, "@joao")
+
+    def test_excluir_pela_lista(self):
+        a = Automacao.objects.create(conta=self.c, nome="Garrafa", respostas="ok")
+        conectada(self.c)
+        self.assertContains(self.client.get("/estudio/automacoes/"), f"/estudio/automacoes/{a.pk}/excluir/")
+        self.assertRedirects(self.client.post(f"/estudio/automacoes/{a.pk}/excluir/"), "/estudio/automacoes/", fetch_redirect_response=False)
+        self.assertFalse(Automacao.objects.exists())

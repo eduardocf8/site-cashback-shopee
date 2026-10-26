@@ -2,11 +2,14 @@
 liberado, "Em breve" (ainda não construído no painel) ou bloqueado (o plano
 não inclui - mostra cadeado e o convite para assinar)."""
 
+from django.conf import settings
 from django.urls import reverse
 
 from licencas.models import (
     MODULO_CARROSSEIS,
     MODULO_CARROSSEIS_PREMIUM,
+    MODULO_INSTAGRAM,
+    MODULO_INSTAGRAM_PREMIUM,
     MODULO_NOTAS,
     MODULO_SITE,
     MODULO_WHATSAPP,
@@ -37,6 +40,7 @@ ICONES = {
     "enviar": "M4 12l16-8-6 16-2-7z",
     "sino": "M6 16V11a6 6 0 0 1 12 0v5l2 2H4zM10 20a2 2 0 0 0 4 0",
     "imagens": "M7 5h10v14H7zM3 7v10M21 7v10",
+    "automacoes": "M13 3L5 14h6l-1 7 8-11h-6z",
 }
 
 # slug -> configuração. "modulo": código da licença que libera (None = todos
@@ -63,6 +67,7 @@ MODULOS_DO_MENU = [
     },
     {
         "slug": "carrosseis", "nome": "Carrosséis", "icone": "carrosseis", "modulo": MODULO_CARROSSEIS,
+        "sai_no_lancamento": True,  # o Estúdio Instagram toma o lugar (mesmos códigos de licença)
         # o premium libera o gerador inteiro, sem precisar do básico junto
         "modulos_que_liberam": [MODULO_CARROSSEIS, MODULO_CARROSSEIS_PREMIUM], "pronto": True,
         "texto_bloqueado": "Cole o link de um produto da Shopee e receba um carrossel pronto pro "
@@ -74,6 +79,12 @@ MODULOS_DO_MENU = [
         "modulos_que_liberam": [MODULO_CARROSSEIS, MODULO_CARROSSEIS_PREMIUM], "pronto": True,
         "beta": "beta_estudio_instagram",
         "texto_bloqueado": "Crie posts e stories com a sua marca e publique direto no seu Instagram.",
+    },
+    {
+        "slug": "automacoes_instagram", "nome": "Automações", "icone": "automacoes", "modulo": MODULO_INSTAGRAM,
+        "modulos_que_liberam": [MODULO_INSTAGRAM, MODULO_INSTAGRAM_PREMIUM], "pronto": True,
+        "beta": "beta_estudio_instagram",
+        "texto_bloqueado": "Quem comentar a palavra certa no seu post recebe o seu link de afiliado por DM, na hora.",
     },
     {
         "slug": "notas", "nome": "Emissor NFS-e", "icone": "notas", "modulo": MODULO_NOTAS, "pronto": True,
@@ -95,6 +106,7 @@ URL_DE_SLUG = {
     "site": "painel_meu_site",
     "carrosseis": "painel_carrosseis",
     "estudio_instagram": "painel_estudio",
+    "automacoes_instagram": "painel_estudio_automacoes",
     "notas": "painel_notas",
     "sugestoes": "painel_sugestoes",
     "configuracoes": "painel_configuracoes",
@@ -110,9 +122,17 @@ def estado(item: dict, liberados: list[str]) -> str:
     return "liberado" if item["pronto"] else "em_breve"
 
 
+def lancado() -> bool:
+    return settings.APPFILIADO_LANCAMENTO_INSTAGRAM
+
+
 def ve_beta(item: dict, conta) -> bool:
-    """Item em construção ("beta") só aparece para a conta com a chave ligada."""
-    return not item.get("beta") or bool(getattr(conta, item["beta"], False))
+    """Item em construção ("beta") só aparece para a conta com a chave ligada, até o lançamento.
+    O que sai no lançamento (o Carrosséis) some para essas contas antes, como vai ficar."""
+    testa = bool(getattr(conta, "beta_estudio_instagram", False))
+    if item.get("sai_no_lancamento"):
+        return not (lancado() or testa)
+    return not item.get("beta") or lancado() or bool(getattr(conta, item["beta"], False))
 
 
 def menu(liberados: list[str], ativo: str, conta=None) -> list[dict]:

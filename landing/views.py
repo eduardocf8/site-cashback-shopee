@@ -1,6 +1,6 @@
 from django.conf import settings
 from django.http import HttpResponse, HttpResponseNotFound
-from django.shortcuts import render
+from django.shortcuts import redirect, render
 from django.views.decorators.http import require_GET
 
 from licencas import api_shopee, planos as planos_do_app
@@ -41,6 +41,29 @@ RESUMOS = {
         "comuns": ["Roteiro, legendas e hashtags escritas por IA", "Ajuste manual dos textos gerados", "Edita, reordena e remove slides",
                    "Download de imagens", "SubID próprio"],
     },
+    "estudio": {
+        "icone": "instagram", "frase": "Crie posts e stories com o seu link de afiliado e publique direto no seu Instagram, na hora ou agendado.",
+        "itens": (
+            [f"{planos_do_app.CARROSSEIS[False]['geracoes']} criações com IA por dia", "7 modelos prontos de post e story",
+             "Edite os textos e a foto de cada slide"],
+            [f"{planos_do_app.CARROSSEIS[True]['geracoes']} criações com IA por dia", "Cores, fundos e ajustes livres em cada slide",
+             "Minha marca: logo, cores e fonte em todos os posts", "Remoção de fundo da foto", "Seus próprios modelos",
+             "Adicione e duplique slides"],
+        ),
+        "comuns": ["Post a partir do link de um produto da Shopee, com foto e preço", "Publicar no feed e nos stories, na hora ou agendado",
+                   "Formatos 1:1, 4:5 e 9:16", "Legenda escrita por IA", "Download em PNG e ZIP", "SubID próprio"],
+    },
+    "automacoes": {
+        "icone": "automacoes", "frase": "Quem comentar a palavra certa no seu post recebe o seu link de afiliado por DM, na hora.",
+        "itens": (
+            ["Respostas a comentários nos posts", "Até 5 automações ligadas ao mesmo tempo"],
+            ["Respostas a comentários, stories e DMs com palavra-chave", "Automações ligadas sem limite",
+             "Link num botão na DM", "Sub ID por automação, para ver quanto cada post vendeu"],
+        ),
+        "comuns": ["Sem limite de pessoas respondidas por mês", "Resposta no comentário e DM com o seu link",
+                   "Um post específico ou todos os posts", "Palavras que disparam a resposta", "Cada pessoa recebe uma vez só",
+                   "Histórico de quem foi respondido"],
+    },
 }
 INCLUSOS = [
     ("resultados", "Resultados e metas", "Vendas, comissões e ranking dos seus links num só lugar."),
@@ -61,6 +84,23 @@ PERGUNTAS = [
 ]
 
 
+# No lançamento do Instagram: o texto que fala de carrosséis muda e entra a pergunta dos pacotes.
+NIVEIS_LANCAMENTO = ("Qual é a diferença entre Standard e Premium?", "O Premium libera mais volume e mais recursos em cada módulo (mais grupos e ofertas por dia no bot, mais botões no site, mais criações com IA e a sua marca no Estúdio, stories e DMs nas Automações). As listas completas estão nos cartões de cada plano.")
+PACOTES_LANCAMENTO = ("Posso assinar mais de um módulo?", "Pode. Assine cada módulo separado ou escolha um pacote: o Pacote Ofertas (Bot de WhatsApp e Meu site) e o Pacote Instagram (Estúdio e Automações) saem cerca de 10% mais baratos, e o Pacote Completo, com os 4 módulos, cerca de 15%. Os módulos de todas as suas assinaturas ficam liberados na mesma conta.")
+
+
+def perguntas() -> list:
+    if not planos.lancado():
+        return PERGUNTAS
+    saida = []
+    for q, r in PERGUNTAS:
+        if q == NIVEIS_LANCAMENTO[0]:
+            saida += [NIVEIS_LANCAMENTO, PACOTES_LANCAMENTO]
+        else:
+            saida.append((q, r))
+    return saida
+
+
 PERGUNTAS_NOTAS = [
     ("Posso usar se sou afiliado pessoa física?", "Não. A emissão de notas é só para afiliados pessoa jurídica: é preciso ter uma empresa MEI ou do Simples Nacional (ME/EPP) com CNPJ e o certificado digital A1 dela. A nota sai sempre no CNPJ da empresa."),
     ("Para que serve essa nota?", "Quando a Shopee paga ao afiliado a comissão extra de um vendedor, o afiliado presta um serviço a esse vendedor e emite a nota fiscal dele. O Appfiliado monta e emite essas notas a partir do relatório mensal da Shopee."),
@@ -78,11 +118,13 @@ def _cartao(modulo, nivel):
     # No Premium todas as bolinhas são verdes.
     return {"nivel": planos.NIVEIS[nivel], "preco": planos.brl(planos.PRECOS[modulo][nivel]),
             "itens": [{"texto": t, "extra": bool(nivel)} for t in RESUMOS[modulo]["itens"][nivel]],
-            "link": planos.LINKS[f"{modulo}{nivel}"]}
+            "link": planos.LINKS[f"{modulo}{nivel}"]}  # vazio: produto ainda não criado na Zouti ("Em breve")
 
 
-FRASE_CURTA = {"bot": "Ofertas no automático nos seus grupos", "site": "Link na bio com vitrine e conversor", "carrosseis": "Carrosséis prontos pro Instagram"}
-PAGINA_DO_MODULO = {"bot": "landing_bot", "site": "landing_site", "carrosseis": "landing_carrosseis"}
+FRASE_CURTA = {"bot": "Ofertas no automático nos seus grupos", "site": "Link na bio com vitrine e conversor", "carrosseis": "Carrosséis prontos pro Instagram",
+               "estudio": "Posts e stories publicados no seu Instagram", "automacoes": "Comentou, recebeu o link na DM"}
+PAGINA_DO_MODULO = {"bot": "landing_bot", "site": "landing_site", "carrosseis": "landing_carrosseis",
+                    "estudio": "landing_estudio", "automacoes": "landing_automacoes"}
 URL_DO_INCLUSO = {"resultados": "landing_resultados", "conversor": "landing_conversor", "radar": "landing_radar"}
 # Ferramentas incluídas em todos os planos, que também têm página própria.
 INCLUIDOS_COM_PAGINA = [("resultados", "Resultados e metas", "landing_resultados"), ("radar", "Radar de ofertas", "landing_radar"),
@@ -103,6 +145,7 @@ def _comum(request):
         "email_suporte": settings.APPFILIADO_EMAIL_SUPORTE,
         "endereco": f"https://{request.get_host()}",
         "icones": ICONES,
+        "lancado": planos.lancado(),
     }
 
 
@@ -118,7 +161,23 @@ def notas(request):
 
 
 @require_GET
+def privacidade(request):
+    return render(request, "landing/privacidade.html", _comum(request))
+
+
+def _pacotes():
+    return [{**p, "niveis": [{**n, "preco": planos.brl(n["preco"]), "separado": planos.brl(n["separado"])} for n in p["niveis"]]}
+            for p in planos.pacotes()]
+
+
+@require_GET
 def pagina(request):
+    if planos.lancado():
+        return render(request, "landing/index.html", {
+            "lancado": True, "modulos": [_modulo(m) for m in planos.modulos()], "pacotes": _pacotes(),
+            "inclusos": [{"icone": ICONES[i], "nome": n, "frase": f, "url": URL_DO_INCLUSO[i]} for i, n, f in INCLUSOS],
+            "notas": _faixas_de_notas(), "perguntas": perguntas(), "api": api_shopee, **_comum(request),
+        })
     combos = planos.todos_os_combos()
     contexto = {
         "modulos": [_modulo(m) for m in planos.MODULOS],
@@ -143,7 +202,7 @@ def robots(request):
 
 @require_GET
 def sitemap(request):
-    caminhos = ["/", "/emissao-de-notas/"] + [f"/{conteudo.PAGINAS[m]()['slug']}/" for m in list(planos.MODULOS) + [i[0] for i in INCLUIDOS_COM_PAGINA]]
+    caminhos = ["/", "/emissao-de-notas/", "/privacidade/"] + [f"/{conteudo.PAGINAS[m]()['slug']}/" for m in list(planos.modulos()) + [i[0] for i in INCLUIDOS_COM_PAGINA]]
     xml = ('<?xml version="1.0" encoding="UTF-8"?><urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">'
            + "".join(f"<url><loc>https://{request.get_host()}{c}</loc></url>" for c in caminhos) + "</urlset>")
     return HttpResponse(xml, content_type="application/xml")
@@ -156,8 +215,12 @@ def nao_encontrada(request, exception=None):
 @require_GET
 def recursos(request, modulo):
     """Página com todos os recursos de uma ferramenta (conteúdo em landing/recursos.py)."""
+    if planos.lancado() and modulo == "carrosseis":
+        return redirect("landing_estudio", permanent=True)  # o Estúdio Instagram tomou o lugar do gerador
+    if not planos.lancado() and modulo in ("estudio", "automacoes"):
+        return nao_encontrada(request)
     pagina = conteudo.PAGINAS[modulo]()
-    outros = [{"nome": planos.NOMES[m], "url": PAGINA_DO_MODULO[m]} for m in planos.MODULOS if m != modulo]
+    outros = [{"nome": planos.NOMES[m], "url": PAGINA_DO_MODULO[m]} for m in planos.modulos() if m != modulo]
     outros += [{"nome": nome, "url": url} for chave, nome, url in INCLUIDOS_COM_PAGINA if chave != modulo]
     contexto = {**_comum(request), "r": pagina, "outros": outros,
                 "m": None if pagina.get("incluso") else _modulo(modulo), "notas": _faixas_de_notas()}

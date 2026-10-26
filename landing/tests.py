@@ -63,6 +63,14 @@ class TestPagina(TestCase):
         self.assertEqual(self.abrir(caminho="/dashboard/").status_code, 404)  # nada da cash-b nesse domínio
         self.assertEqual(self.abrir(caminho="/admin/").status_code, 404)
 
+    def test_politica_de_privacidade_com_a_parte_do_instagram(self):
+        # A Meta exige a política no domínio do app, explicando os dados do Instagram e a exclusão.
+        pagina = self.abrir(caminho="/privacidade/")
+        self.assertContains(pagina, "Dados do Instagram")
+        self.assertContains(pagina, "Como pedir a exclusão dos dados")
+        self.assertContains(self.abrir(caminho="/sitemap.xml"), "/privacidade/")
+        self.assertContains(self.abrir(), 'href="/privacidade/"')
+
     def test_pagina_de_notas_com_planos_e_aviso_de_pessoa_juridica(self):
         resposta = self.abrir(caminho="/emissao-de-notas/")
         self.assertContains(resposta, "Serviço exclusivo para afiliados pessoa jurídica")
@@ -134,3 +142,74 @@ class TestSemDominioConfigurado(TestCase):
     def test_sem_hosts_da_landing_o_site_da_cashb_segue_normal(self):
         self.assertEqual(self.client.get("/").status_code, 200)
         self.assertNotContains(self.client.get("/"), "Tudo o que o afiliado da Shopee precisa em um só lugar")
+
+
+class TestPlanosDoLancamento(SimpleTestCase):
+    def test_precos_dos_pacotes_e_dos_14_produtos(self):
+        precos = {p["nome"]: (p["mensal"], p["anual"]) for p in planos.produtos_do_lancamento()}
+        self.assertEqual(len(precos), 14)
+        self.assertEqual(precos["Estúdio Instagram Standard"], (29.90, 299.0))
+        self.assertEqual(precos["Automações do Instagram Premium"], (54.90, 549.0))
+        self.assertEqual(precos["Pacote Ofertas Standard"], (64.90, 649.0))
+        self.assertEqual(precos["Pacote Ofertas Premium"], (112.90, 1129.0))
+        self.assertEqual(precos["Pacote Instagram Standard"], (52.90, 529.0))
+        self.assertEqual(precos["Pacote Instagram Premium"], (93.90, 939.0))
+        self.assertEqual(precos["Pacote Completo Standard"], (111.90, 1119.0))
+        self.assertEqual(precos["Pacote Completo Premium"], (195.90, 1959.0))
+
+    def test_completo_sai_mais_barato_que_os_dois_pacotes_juntos(self):
+        p = {x["codigo"]: x for x in planos.pacotes()}
+        for nivel in (0, 1):
+            dois = p["ofertas"]["niveis"][nivel]["preco"] + p["instagram"]["niveis"][nivel]["preco"]
+            self.assertLess(p["completo"]["niveis"][nivel]["preco"], dois)
+            for pac in p.values():
+                self.assertLess(pac["niveis"][nivel]["preco"], pac["niveis"][nivel]["separado"])
+
+    def test_cada_produto_libera_os_modulos_certos(self):
+        licenca = {p["nome"]: p["licenca"] for p in planos.produtos_do_lancamento()}
+        self.assertEqual(licenca["Pacote Completo Premium"], "whatsapp_premium, site_sem_marca, carrosseis_premium, instagram_premium")
+        self.assertEqual(licenca["Estúdio Instagram Standard"], "carrosseis")
+
+
+@override_settings(**DOMINIO)
+class TestPaginaDoLancamento(TestCase):
+    def abrir(self, caminho="/"):
+        return self.client.get(caminho, HTTP_HOST="appfiliado.com.br")
+
+    def test_antes_do_lancamento_segue_com_os_combos(self):
+        r = self.abrir()
+        self.assertContains(r, 'id="combo"')
+        self.assertNotContains(r, "Pacote Completo")
+        self.assertEqual(self.abrir("/estudio-instagram/").status_code, 404)
+        self.assertEqual(self.abrir("/gerador-de-carrosseis/").status_code, 200)
+
+    @override_settings(APPFILIADO_LANCAMENTO_INSTAGRAM=True)
+    def test_lancado_mostra_4_modulos_e_3_pacotes(self):
+        r = self.abrir()
+        self.assertNotContains(r, 'id="combo"')
+        for texto in ("Pacote Ofertas", "Pacote Instagram", "Pacote Completo", "R$ 195,90", "R$ 230,60", "Estúdio Instagram",
+                      "Automações do Instagram", "Em breve", "Posso assinar mais de um módulo?"):
+            self.assertContains(r, texto)
+        self.assertContains(r, planos.LINKS["bot1"])  # Bot e Meu site seguem com os produtos de hoje
+        self.assertNotContains(r, "Gerador de carrosséis")
+
+    @override_settings(APPFILIADO_LANCAMENTO_INSTAGRAM=True)
+    def test_lancado_paginas_novas_e_carrosseis_redireciona(self):
+        self.assertContains(self.abrir("/estudio-instagram/"), "Do link da Shopee ao post publicado no seu Instagram.")
+        self.assertContains(self.abrir("/automacoes-instagram/"), "Comentou QUERO, recebeu o link na DM.")
+        r = self.abrir("/gerador-de-carrosseis/")
+        self.assertEqual((r.status_code, r["Location"]), (301, "/estudio-instagram/"))
+        self.assertContains(self.abrir("/sitemap.xml"), "/automacoes-instagram/")
+
+    @override_settings(APPFILIADO_LANCAMENTO_INSTAGRAM=True)
+    def test_agente_de_vendas_conhece_os_pacotes(self):
+        from atendimento import conhecimento
+
+        conhecimento.texto.cache_clear()
+        try:
+            texto = conhecimento.texto()
+        finally:
+            conhecimento.texto.cache_clear()
+        self.assertIn("Pacote Completo (Bot de WhatsApp + Meu site + Estúdio Instagram + Automações do Instagram)", texto)
+        self.assertIn("ainda não está à venda", texto)
+        self.assertNotIn("Combos (2 módulos", texto)

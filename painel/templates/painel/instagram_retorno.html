@@ -1,0 +1,32 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Instagram · Appfiliado</title>
+<style>
+  body { margin: 0; min-height: 100vh; display: grid; place-items: center; background: #F6F3EA; color: #1D2A23;
+    font-family: "DM Sans", "Segoe UI", system-ui, sans-serif; text-align: center; padding: 24px; box-sizing: border-box; }
+  a { color: #1F3A2E; font-weight: 700; }
+</style>
+</head>
+<body>
+<p>Pronto. Voltando para o Appfiliado…<br><a href="{{ destino }}">Continuar</a></p>
+<script>
+  // O login do Instagram abriu numa janela à parte: atualiza a página do Appfiliado e fecha esta.
+  (function () {
+    var destino = "{{ destino|escapejs }}";
+    {% if ficar %}// Aberta pelo editor do Estúdio: só fecha (o editor percebe e confere a conexão).
+    if (window.opener && !window.opener.closed) { window.close(); return; }
+    {% endif %}try {
+      if (window.opener && !window.opener.closed && window.opener.location.host === window.location.host) {
+        window.opener.location.href = destino;
+        window.close();
+        return;
+      }
+    } catch (e) { /* janela de outro endereço: segue abaixo */ }
+    window.location.replace(destino);
+  })();
+</script>
+</body>
+</html>

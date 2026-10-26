@@ -78,6 +78,15 @@ class TestSoParaQuemTesta(Base):
         self.assertTrue(mod.ve_beta(item, SimpleNamespace(beta_estudio_instagram=True)))
         self.assertFalse(mod.ve_beta(item, None))
 
+    def test_lancamento_troca_carrosseis_pelo_estudio_e_automacoes(self):
+        estudio, automacoes, carrosseis = (mod.POR_SLUG[s] for s in ("estudio_instagram", "automacoes_instagram", "carrosseis"))
+        testa, cliente = SimpleNamespace(beta_estudio_instagram=True), SimpleNamespace(beta_estudio_instagram=False)
+        # antes do lançamento: quem testa já vê como vai ficar; o cliente segue com o Carrosséis
+        self.assertEqual([mod.ve_beta(i, testa) for i in (estudio, automacoes, carrosseis)], [True, True, False])
+        self.assertEqual([mod.ve_beta(i, cliente) for i in (estudio, automacoes, carrosseis)], [False, False, True])
+        with self.settings(APPFILIADO_LANCAMENTO_INSTAGRAM=True):
+            self.assertEqual([mod.ve_beta(i, cliente) for i in (estudio, automacoes, carrosseis)], [True, True, False])
+
     def test_sem_o_modulo_mostra_o_convite(self):
         c = conta(modulos="whatsapp")
         self.entrar(c)
