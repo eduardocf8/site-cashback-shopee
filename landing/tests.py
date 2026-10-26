@@ -231,7 +231,7 @@ class TestPaginaDoLancamento(TestCase):
     @override_settings(APPFILIADO_LANCAMENTO_INSTAGRAM=True)
     def test_lancado_paginas_novas_e_carrosseis_redireciona(self):
         self.assertContains(self.abrir("/estudio-instagram/"), "Do link da Shopee ao post publicado no seu Instagram.")
-        self.assertContains(self.abrir("/automacoes-instagram/"), "Comentou QUERO, recebeu o link na DM.")
+        self.assertContains(self.abrir("/automacoes-instagram/"), "Comentou a palavra-chave correta, recebeu link na DM.")
         r = self.abrir("/gerador-de-carrosseis/")
         self.assertEqual((r.status_code, r["Location"]), (301, "/estudio-instagram/"))
         self.assertContains(self.abrir("/sitemap.xml"), "/automacoes-instagram/")

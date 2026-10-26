@@ -52,9 +52,12 @@ RESUMOS = {
         ),
         "comuns": ["Post a partir do link de um produto da Shopee com foto e preço", "Publicar no feed e nos stories na hora ou agendado",
                    "Formatos 1:1, 4:5 e 9:16", "Legenda escrita por IA", "Download em PNG e ZIP", "SubID próprio"],
+        # Antes do lançamento: a lista do bloco "Chegando ao Appfiliado" e do quadro no topo da página.
+        "breve": {"itens": ["Posts/stories a partir de links de produtos", "Publicação direto pelo Appfiliado",
+                            "Formatos 1:1, 4:5 e 9:16", "Legenda escrita por IA", "Download em PNG e ZIP", "SubID próprio"]},
     },
     "automacoes": {
-        "icone": "automacoes", "frase": "Quem comentar a palavra certa no seu post recebe o seu link de afiliado por DM na hora.",
+        "icone": "automacoes", "frase": "Respostas em posts e stories e envio de DMs de forma automatizada com seu link de afiliado.",
         "itens": (
             ["Respostas a comentários nos posts", "Até 5 automações ligadas ao mesmo tempo"],
             ["Respostas a comentários, stories e DMs com palavra-chave", "Automações ligadas sem limite",
@@ -63,6 +66,11 @@ RESUMOS = {
         "comuns": ["Sem limite de pessoas respondidas por mês", "Resposta no comentário e DM com o seu link",
                    "Um post específico ou todos os posts", "Palavras que disparam a resposta", "Cada pessoa recebe uma vez só",
                    "Histórico de quem foi respondido"],
+        "breve": {"frase": "Respostas a comentários/stories e envio de DMs de forma automatizada, de acordo com suas configurações.",
+                  "itens": ["Sem limite de respostas", "Envio do seu link de afiliado", "Escolha de post específico ou todos os posts",
+                            "Histórico de automações", "SubIDs próprios por automação"],
+                  "destaques": ["Sem limite de respostas", "Resposta por comentário e DM", "Um post específico ou todos os posts",
+                                "Escolha de palavras-chave", "Apenas uma resposta por comentário", "Histórico de automações"]},
     },
 }
 INCLUSOS = [
@@ -142,6 +150,10 @@ def _modulo(m):
     breve = planos.em_breve(m)
     return {"codigo": m, "nome": planos.NOMES[m], "icone": ICONES[RESUMOS[m]["icone"]], "frase": RESUMOS[m]["frase"], "curta": FRASE_CURTA[m],
             "em_breve": breve, "a_partir": None if breve else planos.brl(planos.PRECOS[m][0]),
+            "breve_frase": RESUMOS[m].get("breve", {}).get("frase") or RESUMOS[m]["frase"],
+            "breve_itens": RESUMOS[m].get("breve", {}).get("itens") or RESUMOS[m].get("comuns", []),
+            "destaques": (RESUMOS[m].get("breve", {}).get("destaques") or RESUMOS[m].get("breve", {}).get("itens")
+                          or RESUMOS[m].get("comuns", [])),
             "comuns": RESUMOS[m].get("comuns", []), "pagina": PAGINA_DO_MODULO[m],
             "planos": [] if breve else [_cartao(m, 0), _cartao(m, 1)]}
 

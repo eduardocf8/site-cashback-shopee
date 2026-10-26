@@ -349,8 +349,8 @@ def automacoes():
         "codigo": "automacoes", "slug": "automacoes-instagram", "url": "landing_automacoes", "nome": "Automações Instagram",
         "titulo": "Automações Instagram para afiliado Shopee — Appfiliado",
         "descricao": "Quem comentar a palavra certa no seu post recebe o seu link de afiliado por DM na hora. Respostas a comentários, stories e DMs no automático e sem limite por mês.",
-        "h1": "Comentou QUERO, recebeu o link na DM.",
-        "texto": "Escolha o post e a palavra. Quem comentar recebe uma resposta no comentário e o seu link de afiliado por DM sem você responder um por um.",
+        "h1": "Comentou a palavra-chave correta, recebeu link na DM.",
+        "texto": "Escolha o post ou story e as palavras-chave que você quiser e pronto: quem comentar recebe o seu link de afiliado por DM, sem precisar responder um a um.",
         "resumo": [
             ("Pessoas respondidas por mês", "Sem limite", "Sem limite"),
             ("Automações ligadas", "Até 5", "Sem limite"),

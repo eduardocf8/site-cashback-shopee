@@ -6,7 +6,7 @@
     <div>
       <p class="chapeu">Para afiliados da Shopee</p>
       <h1>Tudo o que o afiliado da Shopee precisa em um só lugar.</h1>
-      <p class="heroi-texto">{% if lancado %}Encontre as melhores ofertas, divulgue no WhatsApp no automático, crie e publique posts no Instagram, responda os comentários com o seu link na DM, tenha o seu site com vitrine, acompanhe seus resultados e emita suas notas fiscais de afiliado.{% else %}Encontre as melhores ofertas, divulgue no WhatsApp no automático, tenha o seu site com vitrine, acompanhe seus resultados e emita suas notas fiscais de afiliado. Em breve, também crie e publique posts no Instagram e responda os comentários com o seu link na DM.{% endif %}</p>
+      <p class="heroi-texto">{% if lancado %}Encontre as melhores ofertas, divulgue no WhatsApp no automático, crie e publique posts no Instagram, responda os comentários com o seu link na DM, tenha o seu site com vitrine, acompanhe seus resultados e emita suas notas fiscais de afiliado.{% else %}Encontre as melhores ofertas, divulgue no WhatsApp no automático, tenha o seu site com vitrine, acompanhe seus resultados e emita suas notas fiscais de afiliado. Em breve, 2 novos módulos para Instagram: criação de posts/stories e postagem automática; respostas a comentários e envio de DMs de forma automatizada.{% endif %}</p>
       <div class="heroi-botoes"><a class="botao botao-grande" href="#planos">Ver planos e preços</a><a class="botao botao-grande botao-vazado" href="#modulos">Conhecer os módulos</a></div>
       <p class="heroi-nota">Pagamento pela Zouti. 7 dias de garantia.</p>
     </div>
@@ -108,8 +108,8 @@
         {% for m in em_breve %}
           <article class="plano plano-breve">
             <div class="plano-breve-topo"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="{{ m.icone }}"/></svg><h4>{{ m.nome }}</h4></div>
-            <p class="plano-breve-frase">{{ m.frase }}</p>
-            <ul>{% for item in m.comuns %}<li>{{ item }}</li>{% endfor %}</ul>
+            <p class="plano-breve-frase">{{ m.breve_frase }}</p>
+            <ul>{% for item in m.breve_itens %}<li>{{ item }}</li>{% endfor %}</ul>
             <a class="botao botao-vazado-escuro" href="{% url m.pagina %}">Conhecer os recursos</a>
           </article>
         {% endfor %}
