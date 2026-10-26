@@ -117,3 +117,6 @@
 .ig-historico th, .ig-historico td { text-align: left; padding: 10px 14px; border-bottom: 1px solid var(--borda); }
 .ig-historico th { color: var(--suave); font-weight: 600; }
 .es-topo-editor a.es-bt { text-decoration: none; display: inline-flex; align-items: center; }
+.ig-avisos h2 { margin-bottom: 6px; }
+.ig-avisos ul { list-style: none; margin: 10px 0 0; padding: 0; display: grid; gap: 6px; font-size: 13.5px; }
+.ig-avisos li small { color: var(--suave); margin-right: 6px; }

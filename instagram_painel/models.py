@@ -99,3 +99,16 @@ class Disparo(models.Model):
     class Meta:
         ordering = ["-criado_em"]
         constraints = [models.UniqueConstraint(fields=["automacao", "evento_id"], name="disparo_unico_por_evento")]
+
+
+class AvisoRecebido(models.Model):
+    """Registro dos avisos (webhook) que a Meta mandou, de qualquer conta: mostra na tela de teste se
+    os avisos estão chegando. Fica só a última semana."""
+
+    ig_id = models.CharField(max_length=64, db_index=True)
+    campo = models.CharField(max_length=40)
+    resumo = models.TextField(blank=True)
+    recebido_em = models.DateTimeField(auto_now_add=True, db_index=True)
+
+    class Meta:
+        ordering = ["-recebido_em"]
