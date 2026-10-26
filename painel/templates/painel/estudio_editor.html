@@ -11,7 +11,7 @@
   </div>
   <div class="acoes">
     {% if post.produto.link %}<button type="button" class="es-bt" id="es-copiar-link" data-link="{{ post.produto.link }}">Copiar link de afiliado</button>{% endif %}
-    {% if premium %}<a class="es-bt" href="{% url 'painel_estudio_automacao_nova' %}?post={{ post.pk }}">Criar automação</a>{% endif %}
+    {% if tem_automacoes %}<a class="es-bt" href="{% url 'painel_estudio_automacao_nova' %}?post={{ post.pk }}">Criar automação</a>{% endif %}
     <button type="button" class="es-bt es-salvar" id="es-publicar" data-url="{% url 'painel_estudio_publicar' post.pk %}">Publicar no Instagram</button>
     <form method="post" action="{% url 'painel_estudio_duplicar' post.pk %}">{% csrf_token %}<button class="es-bt" type="submit">Duplicar</button></form>
     <form method="post" action="{% url 'painel_estudio_apagar' post.pk %}" onsubmit="return confirm('Apagar este post?')">{% csrf_token %}<button class="es-bt" type="submit">Apagar</button></form>

@@ -157,3 +157,10 @@
 .pub-info small { color: var(--suave); font-size: 12.5px; }
 .pub-cartao form { margin: 0; }
 .pub-cartao.pub-cancelada { opacity: .6; }
+.ig-uso { display: flex; align-items: center; justify-content: space-between; gap: 16px; flex-wrap: wrap; padding: 14px 18px; }
+.ig-uso strong { display: block; }
+.ig-uso small { display: block; color: var(--suave); font-size: 12.5px; }
+.ig-uso progress { width: min(260px, 100%); height: 10px; accent-color: var(--verde); }
+.ig-uso-cheio progress { accent-color: var(--perigo); }
+.ig-gatilho-premium { opacity: .6; cursor: not-allowed; }
+.ig-gatilho .es-selo-teste { margin-left: auto; }

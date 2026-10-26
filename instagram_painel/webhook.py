@@ -7,7 +7,8 @@ segue para a automação da cash-b.
 Regras:
 - nunca reage ao que a própria conta fez (as respostas dela também chegam como aviso);
 - responde cada pessoa uma vez por automação (e cada aviso uma vez só: a Meta repete avisos);
-- respeita um limite por hora por conta, para não cair nas regras de spam do Instagram."""
+- respeita um limite por hora por conta, para não cair nas regras de spam do Instagram;
+- respeita o plano: o Standard só responde comentários e tem menos respostas por mês (licencas/planos.py)."""
 
 import logging
 import random
@@ -17,6 +18,8 @@ from datetime import timedelta
 
 from django.db import IntegrityError, transaction
 from django.utils import timezone
+
+from licencas import planos
 
 from . import api
 from .models import Automacao, AvisoRecebido, ContaInstagram, Disparo
@@ -60,9 +63,23 @@ def resposta_publica(automacao: Automacao, username: str) -> str:
     return random.choice(opcoes).replace("{nome}", f"@{username}" if username else "").strip()[:300]
 
 
-def _no_limite(ig: ContaInstagram) -> bool:
+def inicio_do_mes():
+    return timezone.localtime().replace(day=1, hour=0, minute=0, second=0, microsecond=0)
+
+
+def respondidas_no_mes(conta) -> int:
+    return Disparo.objects.filter(automacao__conta=conta, criado_em__gte=inicio_do_mes()).count()
+
+
+def _pode_responder(ig: ContaInstagram, gatilho: str) -> bool:
+    """O plano da conta cobre este gatilho e ainda há respostas no mês e na hora."""
+    plano = planos.automacoes(ig.conta)
+    if not plano["liberado"] or gatilho not in plano["gatilhos"]:
+        return False
     desde = timezone.now() - timedelta(hours=1)
-    return Disparo.objects.filter(automacao__conta=ig.conta, criado_em__gte=desde).count() >= LIMITE_POR_HORA
+    if Disparo.objects.filter(automacao__conta=ig.conta, criado_em__gte=desde).count() >= LIMITE_POR_HORA:
+        return False
+    return respondidas_no_mes(ig.conta) < plano["pessoas_por_mes"]
 
 
 def _escolher(ig: ContaInstagram, gatilho: str, midia_id: str, texto: str) -> Automacao | None:
@@ -95,7 +112,7 @@ def _comentario(ig: ContaInstagram, valor: dict) -> None:
         return  # resposta dentro de outro comentário: fica de fora, como no ManyChat
     midia_id = str((valor.get("media") or {}).get("id") or "")
     automacao = _escolher(ig, Automacao.COMENTARIO, midia_id, valor.get("text", ""))
-    if not automacao or _no_limite(ig):
+    if not automacao or not _pode_responder(ig, Automacao.COMENTARIO):
         return
     d = _registrar(automacao, comentario_id, autor_id, username, valor.get("text", ""))
     if not d:
@@ -131,7 +148,7 @@ def _mensagem(ig: ContaInstagram, evento: dict) -> None:
         automacao = _escolher(ig, Automacao.STORY, str(story["id"]), msg.get("text", ""))
     else:
         automacao = _escolher(ig, Automacao.DIRETO, "", msg.get("text", ""))
-    if not automacao or not automacao.enviar_dm or _no_limite(ig):
+    if not automacao or not automacao.enviar_dm or not _pode_responder(ig, automacao.gatilho):
         return
     d = _registrar(automacao, mid, autor_id, "", msg.get("text", ""))
     if not d:

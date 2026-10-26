@@ -4,7 +4,7 @@ Os códigos vêm de ContaAppfiliado.modulos_liberados(); um plano maior já incl
 (licencas.models.INCLUI). Mudar um número aqui vale para todo mundo na hora."""
 
 from .models import (
-    MODULO_CARROSSEIS_PREMIUM, MODULO_NOTAS, MODULO_NOTAS_500, MODULO_NOTAS_2000, MODULO_NOTAS_5000,
+    MODULO_CARROSSEIS_PREMIUM, MODULO_INSTAGRAM, MODULO_INSTAGRAM_PREMIUM, MODULO_NOTAS, MODULO_NOTAS_500, MODULO_NOTAS_2000, MODULO_NOTAS_5000,
     MODULO_NOTAS_10000, MODULO_NOTAS_ILIMITADO,
     MODULO_SITE_SEM_MARCA, MODULO_WHATSAPP_PREMIUM,
 )
@@ -13,6 +13,13 @@ from .models import (
 CARROSSEIS = {
     False: {"geracoes": 3, "reescritas": 15},
     True: {"geracoes": 10, "reescritas": 40},
+}
+
+# Automações do Instagram: quais gatilhos e quantas pessoas respondidas por mês (cada pessoa conta
+# uma vez por automação, como no histórico).
+AUTOMACOES = {
+    False: {"gatilhos": ("comentario",), "pessoas_por_mes": 1000},
+    True: {"gatilhos": ("comentario", "story", "direto"), "pessoas_por_mes": 10000},
 }
 
 # Bot de WhatsApp.
@@ -44,6 +51,12 @@ def _liberados(conta_ou_lista) -> list[str]:
 
 def carrosseis(conta) -> dict:
     return CARROSSEIS[MODULO_CARROSSEIS_PREMIUM in _liberados(conta)]
+
+
+def automacoes(conta) -> dict:
+    liberados = _liberados(conta)
+    premium = MODULO_INSTAGRAM_PREMIUM in liberados
+    return {**AUTOMACOES[premium], "premium": premium, "liberado": premium or MODULO_INSTAGRAM in liberados}
 
 
 def bot_premium(conta) -> bool:

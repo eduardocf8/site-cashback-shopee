@@ -12,12 +12,7 @@
   </div>
 </header>
 
-{% if not ig %}
-  <section class="card">
-    <h2>Conecte o seu Instagram</h2>
-    <p class="suave">Para publicar daqui, conecte a sua conta profissional do Instagram em <a href="{% url 'painel_estudio_automacoes' %}">Automações</a> ou pelo botão "Publicar no Instagram" de qualquer post.</p>
-  </section>
-{% endif %}
+{% include "painel/_instagram_conexao.html" %}
 
 <section>
   <h2 class="titulo-secao">Agendadas</h2>

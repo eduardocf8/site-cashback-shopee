@@ -20,7 +20,7 @@ SENHA = "uma-senha-boa-123"
 IG_ID = "17841400000000001"
 
 
-def conta(modulos="carrosseis_premium", email="bia@exemplo.com", beta=True):
+def conta(modulos="carrosseis_premium, instagram_premium", email="bia@exemplo.com", beta=True):
     c = ContaAppfiliado.objects.create(email=email, modulos_cortesia=modulos, beta_estudio_instagram=beta)
     c.definir_senha(SENHA)
     c.save()
@@ -101,6 +101,21 @@ class TestAvisos(TestCase):
         W.separar_e_processar(aviso_mensagem("oi", autor="555", mid="mid3"))  # sem a palavra
         W.separar_e_processar(aviso_mensagem("cupom", autor="444", mid="mid4", is_echo=True))  # a própria conta
         self.assertEqual(msg.call_count, 2)
+
+    def test_plano_standard_so_comentario_e_limite_do_mes(self, msg, privada, resposta):
+        self.c.modulos_cortesia = "instagram"
+        self.c.save()
+        Automacao.objects.create(conta=self.c, nome="Story", gatilho=Automacao.STORY, texto_dm="Link do story")
+        W.separar_e_processar(aviso_mensagem("🔥", story="s1"))
+        msg.assert_not_called()  # resposta a story é do Premium
+        with mock.patch.dict("licencas.planos.AUTOMACOES", {False: {"gatilhos": ("comentario",), "pessoas_por_mes": 1}}):
+            W.separar_e_processar(aviso_comentario("quero", autor="1", comentario="c1"))
+            W.separar_e_processar(aviso_comentario("quero", autor="2", comentario="c2"))
+        self.assertEqual(resposta.call_count, 1)  # o segundo passou do limite do mês
+        self.c.modulos_cortesia = "carrosseis_premium"  # sem o módulo das Automações
+        self.c.save()
+        W.separar_e_processar(aviso_comentario("quero", autor="3", comentario="c3"))
+        self.assertEqual(resposta.call_count, 1)
 
     def test_erro_do_instagram_fica_no_historico(self, msg, privada, resposta):
         privada.side_effect = api.ErroInstagram("janela de 7 dias")
@@ -229,15 +244,30 @@ class TestTelas(TestCase):
         self.assertEqual(a.post_estudio, post)
         self.assertContains(self.client.get("/estudio/automacoes/"), "Garrafa")
 
-    def test_direto_sem_palavra_nao_salva_e_standard_nao_cria(self):
-        c = conta()
-        self.entrar(c)
+    def test_direto_sem_palavra_nao_salva(self):
+        self.entrar(conta())
         r = self.client.post("/estudio/automacoes/nova/", {"nome": "x", "gatilho": "direto", "enviar_dm": "on", "texto_dm": "oi"})
         self.assertContains(r, "Para DM, escolha pelo menos uma palavra")
-        self.client = Client(HTTP_HOST=HOST)
-        self.entrar(conta(modulos="carrosseis", email="std@exemplo.com"))
-        self.assertRedirects(self.client.get("/estudio/automacoes/nova/"), "/estudio/automacoes/", fetch_redirect_response=False)
-        self.assertContains(self.client.get("/estudio/automacoes/"), "plano Premium")
+
+    def test_standard_so_cria_automacao_de_comentario(self):
+        c = conta(modulos="instagram", email="std@exemplo.com")
+        conectada(c)
+        self.entrar(c)
+        r = self.client.get("/estudio/automacoes/nova/")
+        self.assertContains(r, 'value="story" disabled')
+        r = self.client.post("/estudio/automacoes/nova/", {"nome": "x", "gatilho": "story", "palavras": "quero", "enviar_dm": "on", "texto_dm": "oi"})
+        self.assertContains(r, "do plano Premium das Automações")
+        r = self.client.post("/estudio/automacoes/nova/", {"nome": "y", "gatilho": "comentario", "palavras": "quero", "enviar_dm": "on", "texto_dm": "oi"})
+        self.assertRedirects(r, "/estudio/automacoes/", fetch_redirect_response=False)
+        self.assertContains(self.client.get("/estudio/automacoes/"), "0 de 1.000 pessoas respondidas")
+
+    def test_so_estudio_nao_abre_automacoes_mas_conecta_e_publica(self):
+        self.entrar(conta(modulos="carrosseis_premium", email="estudio@exemplo.com"))
+        r = self.client.get("/estudio/automacoes/")
+        self.assertContains(r, "Não incluso no seu plano")
+        self.assertEqual(self.client.post("/estudio/automacoes/nova/").status_code, 403)
+        self.assertEqual(self.client.get("/estudio/instagram/conectar/").status_code, 302)
+        self.assertContains(self.client.get("/estudio/publicacoes/"), "Conecte o seu Instagram")
 
     def test_automacao_de_outra_conta_nao_abre(self):
         outra = Automacao.objects.create(conta=conta(email="outra@exemplo.com"), nome="x", respostas="ok")

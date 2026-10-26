@@ -304,6 +304,12 @@ INSTAGRAM_WEBHOOK_VERIFY_TOKEN = os.environ.get("INSTAGRAM_WEBHOOK_VERIFY_TOKEN"
 # variáveis próprias, usa o ID e o segredo do Instagram de cima ("Configuração da API com login do Instagram").
 APPFILIADO_INSTAGRAM_APP_ID = os.environ.get("APPFILIADO_INSTAGRAM_APP_ID") or INSTAGRAM_APP_ID
 APPFILIADO_INSTAGRAM_APP_SECRET = os.environ.get("APPFILIADO_INSTAGRAM_APP_SECRET") or INSTAGRAM_APP_SECRET
+# Lançamento do Estúdio Instagram e das Automações do Instagram (quando a Meta aprovar e os produtos
+# novos estiverem na Zouti). Desligado: os dois só aparecem no painel das contas de teste e o site
+# vende os planos antigos (Bot, Meu site e Carrosséis, com combos). Ligado: os dois entram no menu de
+# quem tem o módulo, o Carrosséis sai, e o site e o atendimento passam aos planos novos (4 módulos e
+# 3 pacotes, landing/planos.py).
+APPFILIADO_LANCAMENTO_INSTAGRAM = os.environ.get("APPFILIADO_LANCAMENTO_INSTAGRAM", "False") == "True"
 
 # Interruptor mestre do bot: enquanto False, o bot gera o conteúdo do dia e
 # registra tudo (RegistroPublicacao) mas NÃO publica de verdade no Instagram

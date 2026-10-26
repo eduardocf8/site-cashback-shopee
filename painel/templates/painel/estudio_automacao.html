@@ -1,6 +1,6 @@
 {% extends "painel/base.html" %}
 {% load static %}
-{% block titulo %}{% if automacao %}{{ automacao.nome }}{% else %}Nova automação{% endif %} · Estúdio Instagram{% endblock %}
+{% block titulo %}{% if automacao %}{{ automacao.nome }}{% else %}Nova automação{% endif %} · Automações{% endblock %}
 {% block cabeca %}<link rel="stylesheet" href="{% static 'estudio/painel.css' %}">{% endblock %}
 {% block conteudo %}
 <div class="es-pagina">
@@ -30,10 +30,12 @@
   <fieldset>
     <legend>Quando responder</legend>
     <div class="ig-gatilhos">
-      {% for valor, nome in form.fields.gatilho.choices %}
-        <label class="ig-gatilho"><input type="radio" name="gatilho" value="{{ valor }}"{% if form.gatilho.value == valor %} checked{% endif %}><span>{{ nome }}</span></label>
+      {% for g in gatilhos %}
+        <label class="ig-gatilho{% if not g.livre %} ig-gatilho-premium{% endif %}"><input type="radio" name="gatilho" value="{{ g.valor }}"{% if form.gatilho.value == g.valor %} checked{% endif %}{% if not g.livre %} disabled{% endif %}><span>{{ g.nome }}</span>{% if not g.livre %}<small class="es-selo-teste">Premium</small>{% endif %}</label>
       {% endfor %}
     </div>
+    {% for e in form.gatilho.errors %}<small class="ig-erro">{{ e }}</small>{% endfor %}
+    {% if not plano.premium %}<small class="suave">No plano Standard, as automações respondem comentários. Responder stories e DMs é do Premium.</small>{% endif %}
   </fieldset>
 
   <fieldset id="ig-onde">
