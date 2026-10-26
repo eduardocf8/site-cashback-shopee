@@ -4,6 +4,7 @@ from unittest.mock import MagicMock, patch
 
 from django.contrib.auth import get_user_model
 from django.core import mail
+from django.core.cache import cache
 from django.test import RequestFactory, TestCase, override_settings
 from django.urls import reverse
 from django.utils import timezone
@@ -596,10 +597,13 @@ class DiversidadeDaEscolhaDeOfertaTests(TestCase):
 
 
 class IrParaStoryDeOfertaTests(TestCase):
-    """Link enviado por DM - precisa exigir login (pra creditar o cashback à pessoa
-    certa, igual ofertas/views.py::ir_para_oferta) e gerar um Click TIPO_STORY_DM."""
+    """Link enviado por DM - credita cashback de verdade pra quem está logado (igual
+    ofertas/views.py::ir_para_oferta); sem login, cai na página de escolha e o clique
+    fica anônimo até a pessoa se cadastrar dentro de 7 dias (ROADMAP 13.11) - gera um
+    Click TIPO_STORY_DM nos dois casos."""
 
     def setUp(self):
+        cache.clear()  # evita herdar contador de rate limit de click_anonimo de outro teste
         self.usuario = get_user_model().objects.create_user(
             username="compradora", password="senha123", cpf="39053344705"
         )
@@ -613,10 +617,26 @@ class IrParaStoryDeOfertaTests(TestCase):
             link_produto_original="https://shopee.com.br/produto-i.1.555",
         )
 
-    def test_exige_login(self):
+    def test_sem_login_manda_pra_pagina_de_escolha(self):
         resposta = self.client.get(reverse("instagram_story_ir", args=[self.registro.pk]))
         self.assertEqual(resposta.status_code, 302)
-        self.assertIn(reverse("login"), resposta.url)
+        self.assertIn(reverse("continuar_sem_cadastro"), resposta.url)
+
+    @patch("links.services.gerar_link_curto")
+    def test_continuar_sem_cadastro_gera_click_anonimo_e_guarda_cookie(self, mock_gerar_link):
+        mock_gerar_link.return_value = "https://shope.ee/storylink789"
+
+        resposta = self.client.get(
+            reverse("instagram_story_ir", args=[self.registro.pk]) + "?continuar=sem_cadastro"
+        )
+
+        click = Click.objects.get()
+        self.assertIsNone(click.usuario_id)
+        self.assertEqual(click.tipo, Click.TIPO_STORY_DM)
+        self.assertRedirects(resposta, "https://shope.ee/storylink789", fetch_redirect_response=False)
+        cookie = resposta.cookies.get("cashb_clique_anonimo")
+        self.assertIsNotNone(cookie)
+        self.assertIn(click.id.hex, cookie.value)
 
     @override_settings(
         SHOPEE_AFFILIATE_APP_ID="app123",

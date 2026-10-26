@@ -3,7 +3,8 @@ from django.contrib import messages
 from django.http import HttpResponse
 from django.shortcuts import get_object_or_404, redirect
 
-from accounts.funil import exigir_login_medindo, registrar_primeiro_link
+from accounts.cliques_anonimos import salvar_click_anonimo
+from accounts.funil import exigir_login_ou_pagina_de_escolha, registrar_primeiro_link
 from links.models import Click
 from links.services import gerar_click
 from links.shopee_client import ShopeeAPIError, ShopeeConfigError, SubIdInvalidoError
@@ -21,14 +22,15 @@ def aprovar_publicacao(request, token):
     return HttpResponse(mensagem, content_type="text/plain; charset=utf-8")
 
 
-@exigir_login_medindo("story")
+@exigir_login_ou_pagina_de_escolha("story")
 def ir_para_story_de_oferta(request, registro_id):
     """Link enviado por DM pra quem responde um story de oferta (ver
     automacao_instagram/webhook.py, modo "link do produto") - mesmo fluxo de
-    clique/cashback rastreado que ofertas/views.py::ir_para_oferta usa (login exigido
-    pra creditar o cashback à pessoa certa), reimplementado aqui em vez de importado
-    de lá pra não criar uma dependência de ofertas -> instagram_bot (é o contrário
-    hoje) nem reusar uma função "privada" (_ir_com_click_ou_erro) de outro app."""
+    clique/cashback rastreado que ofertas/views.py::ir_para_oferta usa (login dá
+    cashback de verdade; sem login, página de escolha e clique anônimo - ROADMAP
+    13.11), reimplementado aqui em vez de importado de lá pra não criar uma
+    dependência de ofertas -> instagram_bot (é o contrário hoje) nem reusar uma
+    função "privada" (_ir_com_click_ou_erro) de outro app."""
     registro = get_object_or_404(RegistroPublicacao, pk=registro_id)
     if not registro.link_produto_original:
         messages.error(request, "Esse link não está mais disponível.")
@@ -57,4 +59,11 @@ def ir_para_story_de_oferta(request, registro_id):
     # sem página nossa pra disparar o Pixel do navegador).
     enviar_evento("GerouLinkCashback", request, gerar_event_id(), {"tipo_click": click.tipo})
     registrar_primeiro_link(request)
-    return redirect(click.link_gerado)
+    resposta = redirect(click.link_gerado)
+    if not request.user.is_authenticated:
+        # Clique anônimo (ROADMAP 13.11) - guarda no navegador pra ligar à conta se a
+        # pessoa se cadastrar dentro de 7 dias (ver accounts/cliques_anonimos.py).
+        # Aqui em particular, o navegador costuma ser o in-app do Instagram - ver
+        # aviso condicional em links/views.py::continuar_sem_cadastro.
+        salvar_click_anonimo(request, resposta, click.id.hex)
+    return resposta
