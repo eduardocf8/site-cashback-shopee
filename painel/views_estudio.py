@@ -68,7 +68,7 @@ def _url_miniatura(post) -> str:
 
 @_beta
 def lista(request, conta):
-    posts = PostInstagram.objects.filter(conta=conta).only("pk", "nome", "formato", "atualizado_em", "miniatura")[:60]
+    posts = PostInstagram.objects.filter(conta=conta).only("pk", "nome", "formato", "estado", "atualizado_em", "miniatura")[:60]
     cartoes = [{"post": p, "miniatura": _url_miniatura(p), "formato": FORMATOS[p.formato][0]} for p in posts]
     modelos = [{k: m[k] for k in ("codigo", "nome", "descricao", "formato")} | {"formato_nome": FORMATOS[m["formato"]][0], "meu": m.get("meu")}
                for m in A.modelos(conta)]

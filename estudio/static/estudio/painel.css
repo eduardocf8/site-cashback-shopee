@@ -129,3 +129,31 @@
 .ig-numeros strong { display: block; font-size: 22px; }
 .ig-numeros small { color: var(--suave); font-size: 12.5px; }
 .ig-paginas { align-items: center; justify-content: center; }
+
+/* ---------- Publicar no Instagram ---------- */
+.es-estado { align-self: flex-start; font-size: 11px; font-weight: 800; letter-spacing: .04em; text-transform: uppercase; border-radius: 999px; padding: 3px 9px; background: var(--chip); color: var(--suave); }
+.es-estado-agendado, .es-estado-pendente, .es-estado-publicando { background: var(--amarelo-suave); color: var(--amarelo-tinta); }
+.es-estado-publicado, .es-estado-publicada { background: var(--bom-suave); color: var(--bom-tinta); }
+.es-estado-erro { background: var(--perigo-suave); color: var(--perigo); }
+#es-dialogo-publicar { width: min(560px, calc(100vw - 32px)); }
+#es-dialogo-publicar h3 { font-size: 15px; margin: 14px 0 6px; }
+.pub-perfil { display: flex; align-items: center; gap: 12px; }
+.pub-perfil img, .pub-perfil .ig-sem-foto { width: 44px; height: 44px; border-radius: 50%; object-fit: cover; background: var(--chip); display: grid; place-items: center; font-weight: 800; }
+.pub-perfil small { display: block; color: var(--suave); font-size: 12.5px; }
+.pub-como { font-weight: 600; }
+.pub-quando { border: 1px solid var(--borda); border-radius: 12px; padding: 12px; display: flex; flex-wrap: wrap; gap: 10px 18px; align-items: center; margin: 10px 0; }
+.pub-quando input[type=datetime-local] { font: inherit; padding: 8px 10px; border: 1px solid var(--borda); border-radius: 10px; background: var(--campo); }
+.pub-quando input[hidden] { display: none; }
+.pub-ok { color: var(--bom-tinta); font-weight: 600; }
+.pub-lista ul { list-style: none; margin: 0; padding: 0; display: grid; gap: 8px; font-size: 13.5px; }
+.pub-lista li small { display: block; }
+.pub-selo { font-weight: 700; }
+.pub-acao { font-size: 12px !important; padding: 3px 8px !important; }
+.pub-cartoes { display: grid; gap: 10px; }
+.pub-cartao { display: flex; align-items: center; gap: 14px; padding: 12px 16px; }
+.pub-cartao > img, .pub-cartao > .ig-midia-vazia { width: 56px; height: 70px; border-radius: 8px; object-fit: cover; background: var(--chip); flex: none; display: grid; place-items: center; font-size: 11px; color: var(--suave); }
+.pub-info { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 3px; }
+.pub-info a { color: var(--texto); }
+.pub-info small { color: var(--suave); font-size: 12.5px; }
+.pub-cartao form { margin: 0; }
+.pub-cartao.pub-cancelada { opacity: .6; }

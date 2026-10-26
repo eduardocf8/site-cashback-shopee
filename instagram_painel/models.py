@@ -112,3 +112,58 @@ class AvisoRecebido(models.Model):
 
     class Meta:
         ordering = ["-recebido_em"]
+
+
+class Publicacao(models.Model):
+    """Um post do Estúdio mandado para o Instagram: agora ou num horário marcado.
+
+    As imagens (JPEG, já no tamanho final) vêm do navegador e ficam aqui até a publicação; a Meta
+    baixa cada uma por um endereço público e secreto (ImagemPublicacao.token). Quem publica é o
+    worker do painel (instagram_painel/publicar.py)."""
+
+    FEED, STORY = "feed", "story"
+    TIPOS = [(FEED, "Post no feed"), (STORY, "Stories")]
+    PENDENTE, PUBLICANDO, PUBLICADA, ERRO, CANCELADA = "pendente", "publicando", "publicada", "erro", "cancelada"
+    ESTADOS = [(PENDENTE, "Agendada"), (PUBLICANDO, "Publicando"), (PUBLICADA, "Publicada"),
+               (ERRO, "Não publicada"), (CANCELADA, "Cancelada")]
+
+    conta = models.ForeignKey(ContaAppfiliado, on_delete=models.CASCADE, related_name="publicacoes_instagram")
+    post = models.ForeignKey("estudio.PostInstagram", null=True, blank=True, on_delete=models.SET_NULL, related_name="publicacoes")
+    nome = models.CharField(max_length=120)
+    tipo = models.CharField(max_length=10, choices=TIPOS, default=FEED)
+    legenda = models.TextField(blank=True)
+    agendada_para = models.DateTimeField(db_index=True)
+    agora = models.BooleanField("pediu para publicar na hora", default=False)
+    estado = models.CharField(max_length=12, choices=ESTADOS, default=PENDENTE, db_index=True)
+    tentativas = models.PositiveSmallIntegerField(default=0)
+    iniciada_em = models.DateTimeField(null=True, blank=True)
+    publicada_em = models.DateTimeField(null=True, blank=True)
+    # IDs das mídias já publicadas (nos stories, um por story: se cair no meio, não repete os que já foram).
+    midias = models.JSONField(default=list, blank=True)
+    permalink = models.URLField(max_length=600, blank=True)
+    erro = models.CharField(max_length=400, blank=True)
+    miniatura = models.BinaryField(null=True, blank=True)  # JPEG pequeno da primeira imagem
+    criada_em = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ["-agendada_para"]
+        verbose_name = "publicação no Instagram"
+        verbose_name_plural = "publicações no Instagram"
+
+    def __str__(self):
+        return f"{self.nome} ({self.get_estado_display()})"
+
+    @property
+    def ativa(self) -> bool:
+        return self.estado in (self.PENDENTE, self.PUBLICANDO)
+
+
+class ImagemPublicacao(models.Model):
+    publicacao = models.ForeignKey(Publicacao, on_delete=models.CASCADE, related_name="imagens")
+    ordem = models.PositiveSmallIntegerField(default=0)
+    dados = models.BinaryField()
+    # Parte do endereço público que a Meta baixa: não dá para adivinhar e some depois de publicar.
+    token = models.CharField(max_length=64, unique=True)
+
+    class Meta:
+        ordering = ["ordem"]

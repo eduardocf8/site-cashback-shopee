@@ -53,10 +53,11 @@ def _resposta(r: requests.Response) -> dict:
     return dados
 
 
-def _chamar(metodo: str, caminho: str, token: str, params: dict | None = None, corpo: dict | None = None) -> dict:
+def _chamar(metodo: str, caminho: str, token: str, params: dict | None = None, corpo: dict | None = None,
+            tempo: int = TEMPO) -> dict:
     url = caminho if caminho.startswith("http") else f"{GRAPH}/{VERSAO}/{caminho}"
     try:
-        r = requests.request(metodo, url, params=params, json=corpo, timeout=TEMPO,
+        r = requests.request(metodo, url, params=params, json=corpo, timeout=tempo,
                              headers={"Authorization": f"Bearer {token}"})
     except requests.RequestException as erro:
         raise ErroInstagram(f"Sem conexão com o Instagram: {erro.__class__.__name__}") from erro
@@ -147,6 +148,38 @@ def mensagem(token: str, ig_id: str, destinatario: str, texto: str) -> str:
     """DM para quem mandou mensagem ou respondeu um story (dentro da janela de 24 horas)."""
     corpo = {"recipient": {"id": destinatario}, "message": {"text": texto}}
     return _chamar("POST", f"{ig_id}/messages", token, corpo=corpo).get("message_id", "")
+
+
+# --- publicar (instagram_business_content_publish) ----------------------------------------------
+# A Meta baixa cada imagem pelo endereço (JPEG, endereço público). Um "container" por imagem; no
+# carrossel, um container a mais juntando os filhos; no story, um container por story.
+
+TEMPO_PUBLICAR = 60  # a Meta baixa a imagem antes de responder
+
+
+def criar_container(token: str, ig_id: str, **campos) -> str:
+    """campos: image_url, caption, media_type (CAROUSEL ou STORIES), is_carousel_item, children."""
+    corpo = {k: v for k, v in campos.items() if v not in (None, "")}
+    dados = _chamar("POST", f"{ig_id}/media", token, corpo=corpo, tempo=TEMPO_PUBLICAR)
+    if not dados.get("id"):
+        raise ErroInstagram("O Instagram não preparou a imagem.")
+    return str(dados["id"])
+
+
+def estado_container(token: str, container_id: str) -> str:
+    """FINISHED, IN_PROGRESS, ERROR, EXPIRED ou PUBLISHED."""
+    return str(_chamar("GET", container_id, token, params={"fields": "status_code"}).get("status_code") or "")
+
+
+def publicar_container(token: str, ig_id: str, container_id: str) -> str:
+    dados = _chamar("POST", f"{ig_id}/media_publish", token, corpo={"creation_id": container_id}, tempo=TEMPO_PUBLICAR)
+    if not dados.get("id"):
+        raise ErroInstagram("O Instagram não confirmou a publicação.")
+    return str(dados["id"])
+
+
+def link_da_midia(token: str, midia_id: str) -> str:
+    return str(_chamar("GET", midia_id, token, params={"fields": "permalink"}).get("permalink") or "")
 
 
 def corpo_json(dados) -> str:

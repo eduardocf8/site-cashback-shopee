@@ -16,7 +16,9 @@
   // O login do Instagram abriu numa janela à parte: atualiza a página do Appfiliado e fecha esta.
   (function () {
     var destino = "{{ destino|escapejs }}";
-    try {
+    {% if ficar %}// Aberta pelo editor do Estúdio: só fecha (o editor percebe e confere a conexão).
+    if (window.opener && !window.opener.closed) { window.close(); return; }
+    {% endif %}try {
       if (window.opener && !window.opener.closed && window.opener.location.host === window.location.host) {
         window.opener.location.href = destino;
         window.close();

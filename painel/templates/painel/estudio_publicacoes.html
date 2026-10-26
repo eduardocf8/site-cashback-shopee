@@ -1,0 +1,51 @@
+{% extends "painel/base.html" %}
+{% load static %}
+{% block titulo %}Publicações · Estúdio Instagram{% endblock %}
+{% block cabeca %}<link rel="stylesheet" href="{% static 'estudio/painel.css' %}">{% endblock %}
+{% block conteudo %}
+<div class="es-pagina">
+<header class="cabecalho">
+  <div>
+    <a class="suave" href="{% url 'painel_estudio' %}">← Estúdio Instagram</a>
+    <h1>Publicações</h1>
+    <p>Os posts e stories que você mandou para o Instagram{% if ig %} (@{{ ig.username }}){% endif %}. Para publicar ou agendar, abra um post e use "Publicar no Instagram".</p>
+  </div>
+</header>
+
+{% if not ig %}
+  <section class="card">
+    <h2>Conecte o seu Instagram</h2>
+    <p class="suave">Para publicar daqui, conecte a sua conta profissional do Instagram em <a href="{% url 'painel_estudio_automacoes' %}">Automações</a> ou pelo botão "Publicar no Instagram" de qualquer post.</p>
+  </section>
+{% endif %}
+
+<section>
+  <h2 class="titulo-secao">Agendadas</h2>
+  {% if agendadas %}
+    <div class="pub-cartoes">
+      {% for p in agendadas %}{% include "painel/_publicacao.html" %}{% endfor %}
+    </div>
+  {% else %}
+    <p class="suave">Nada agendado agora.</p>
+  {% endif %}
+</section>
+
+<section>
+  <h2 class="titulo-secao">Já foram</h2>
+  {% if pagina.object_list %}
+    <div class="pub-cartoes">
+      {% for p in pagina %}{% include "painel/_publicacao.html" %}{% endfor %}
+    </div>
+    {% if pagina.paginator.num_pages > 1 %}
+      <nav class="linha-botoes ig-paginas">
+        {% if pagina.has_previous %}<a class="botao botao-claro botao-pequeno" href="?pagina={{ pagina.previous_page_number }}">← Mais novas</a>{% endif %}
+        <span class="suave">Página {{ pagina.number }} de {{ pagina.paginator.num_pages }}</span>
+        {% if pagina.has_next %}<a class="botao botao-claro botao-pequeno" href="?pagina={{ pagina.next_page_number }}">Mais antigas →</a>{% endif %}
+      </nav>
+    {% endif %}
+  {% else %}
+    <p class="suave">Nenhuma publicação ainda.</p>
+  {% endif %}
+</section>
+</div>
+{% endblock %}

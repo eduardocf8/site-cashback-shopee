@@ -13,13 +13,15 @@ from django.core.paginator import Paginator
 from django.http import Http404, HttpResponse, JsonResponse
 from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import reverse
+from django.utils import timezone
 from django.views.decorators.csrf import csrf_exempt
 from django.views.decorators.http import require_POST
 
 from estudio import afiliados as A
 from estudio.models import PostInstagram
 from instagram_painel import api, conexao
-from instagram_painel.models import Automacao, ContaInstagram, Disparo
+from instagram_painel import publicar as P
+from instagram_painel.models import Automacao, ContaInstagram, Disparo, ImagemPublicacao, Publicacao
 from instagram_painel.webhook import palavras
 
 from .views import _contexto
@@ -60,14 +62,18 @@ def conectar(request, conta):
         return redirect("painel_estudio_automacoes")
     state = secrets.token_urlsafe(24)
     request.session[SESSAO_STATE] = state
-    request.session[SESSAO_JANELA] = request.GET.get("janela") == "1"
+    # "1": volta para a tela de Automações; "ficar": só fecha a janela (o editor confere sozinho).
+    janela = request.GET.get("janela")
+    request.session[SESSAO_JANELA] = janela if janela in ("1", "ficar") else ""
     return redirect(api.url_de_autorizacao(_retorno_url(), state))
 
 
 def _voltar(request):
     """Fim do login: na janela à parte, avisa a página do Appfiliado e fecha; senão, volta para ela."""
-    if request.session.pop(SESSAO_JANELA, False):
-        return render(request, "painel/instagram_retorno.html", {"destino": reverse("painel_estudio_automacoes")})
+    janela = request.session.pop(SESSAO_JANELA, "")
+    if janela:
+        return render(request, "painel/instagram_retorno.html",
+                      {"destino": reverse("painel_estudio_automacoes"), "ficar": janela == "ficar"})
     return redirect("painel_estudio_automacoes")
 
 
@@ -230,6 +236,102 @@ def historico(request, conta):
         request, SLUG, pagina=pagina, automacoes=automacoes_, escolhida=escolhida,
         total=disparos.count(), dms=disparos.filter(dm_ok=True).count(), respostas=disparos.filter(resposta_ok=True).count(),
     ))
+
+
+# --- publicar no Instagram (todos os planos) -----------------------------------------------------
+
+def _publicacao_json(p: Publicacao) -> dict:
+    return {"id": p.pk, "tipo": p.get_tipo_display(), "estado": p.estado, "estado_nome": p.get_estado_display(),
+            "quando": timezone.localtime(p.publicada_em or p.agendada_para).strftime("%d/%m/%Y %H:%M"),
+            "link": p.permalink, "erro": p.erro, "agora": p.agora,
+            "cancelar": reverse("painel_estudio_publicacao_cancelar", args=[p.pk]) if p.estado == Publicacao.PENDENTE else "",
+            "tentar": reverse("painel_estudio_publicacao_tentar", args=[p.pk]) if p.estado == Publicacao.ERRO else ""}
+
+
+@_beta
+def publicar(request, conta, pk):
+    """GET: a conta conectada e as publicações deste post. POST: as imagens (JPEG) e quando publicar."""
+    post = get_object_or_404(PostInstagram, pk=pk, conta=conta)
+    if request.method == "POST":
+        try:
+            quando = None if request.POST.get("quando") != "agendar" else P.quando_de(request.POST.get("data", ""))
+            arquivos = [request.FILES[k] for k in sorted(request.FILES, key=lambda k: int(k.split("_")[-1]) if k.split("_")[-1].isdigit() else 99)
+                        if k.startswith("imagem_")]
+            pub = P.agendar(post, arquivos, quando)
+        except P.ErroPublicacao as erro:
+            return JsonResponse({"erro": str(erro)}, status=400)
+        msg = ("Enviado! O post sai no seu Instagram em instantes." if quando is None
+               else f"Agendado para {timezone.localtime(quando).strftime('%d/%m/%Y às %H:%M')}.")
+        return JsonResponse({"ok": True, "mensagem": msg, "publicacao": _publicacao_json(pub)})
+    ig = _ig(conta)
+    return JsonResponse({
+        "ig": {"username": ig.username, "foto": ig.foto} if ig else None,
+        "conectar": reverse("painel_instagram_conectar") + "?janela=ficar" if api.app_id() and api.app_secret() else "",
+        "tipo": P.tipo_do_post(post),
+        "publicacoes": [_publicacao_json(p) for p in Publicacao.objects.filter(post=post).exclude(estado=Publicacao.CANCELADA)[:10]],
+    })
+
+
+@_beta
+def publicacoes(request, conta):
+    """Publicações agendadas e as mais recentes, de todos os posts."""
+    agendadas = Publicacao.objects.filter(conta=conta, estado__in=[Publicacao.PENDENTE, Publicacao.PUBLICANDO]).order_by("agendada_para")
+    feitas = Publicacao.objects.filter(conta=conta, estado__in=[Publicacao.PUBLICADA, Publicacao.ERRO]).order_by("-agendada_para")
+    pagina = Paginator(feitas, 30).get_page(request.GET.get("pagina"))
+    return render(request, "painel/estudio_publicacoes.html", _contexto(
+        request, SLUG, agendadas=agendadas, pagina=pagina, ig=_ig(conta)))
+
+
+@require_POST
+@_beta
+def publicacao_cancelar(request, conta, pk):
+    pub = get_object_or_404(Publicacao, pk=pk, conta=conta)
+    if P.cancelar(pub):
+        msg = "Publicação cancelada."
+    else:
+        msg = "Essa publicação já saiu ou está saindo agora."
+    if request.headers.get("Accept", "").startswith("application/json"):
+        return JsonResponse({"mensagem": msg})
+    messages.info(request, msg)
+    return redirect("painel_estudio_publicacoes")
+
+
+@require_POST
+@_beta
+def publicacao_tentar(request, conta, pk):
+    pub = get_object_or_404(Publicacao, pk=pk, conta=conta)
+    msg = ("Vamos tentar de novo. O post sai em instantes." if P.tentar_de_novo(pub)
+           else "Não dá para tentar de novo essa publicação. Publique outra vez pelo editor.")
+    if request.headers.get("Accept", "").startswith("application/json"):
+        return JsonResponse({"mensagem": msg})
+    messages.info(request, msg)
+    return redirect("painel_estudio_publicacoes")
+
+
+@_beta
+def publicacao_miniatura(request, conta, pk):
+    pub = get_object_or_404(Publicacao, pk=pk, conta=conta)
+    if not pub.miniatura:
+        raise Http404
+    resposta = HttpResponse(bytes(pub.miniatura), content_type="image/jpeg")
+    resposta["Cache-Control"] = "private, max-age=86400"
+    return resposta
+
+
+def midia_publica(request, token):
+    """A imagem que a Meta baixa para publicar. Sem login: o token secreto é a chave, e só vale
+    enquanto a publicação não saiu."""
+    if len(token) > 64:
+        raise Http404
+    imagem = (ImagemPublicacao.objects.filter(token=token, publicacao__estado__in=[Publicacao.PENDENTE, Publicacao.PUBLICANDO])
+              .only("dados").first())
+    if not imagem:
+        raise Http404
+    resposta = HttpResponse(bytes(imagem.dados), content_type="image/jpeg")
+    resposta["Cache-Control"] = "no-store"
+    resposta["X-Robots-Tag"] = "noindex"
+    resposta["X-Content-Type-Options"] = "nosniff"
+    return resposta
 
 
 # --- avisos da Meta (sem login: quem chama é a Meta, a segurança é a assinatura) ------------------

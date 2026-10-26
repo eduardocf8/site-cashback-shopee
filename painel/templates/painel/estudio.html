@@ -7,9 +7,10 @@
 <header class="cabecalho">
   <div>
     <h1>Estúdio Instagram <span class="es-selo-teste">Em teste</span></h1>
-    <p>Crie posts e stories com o seu link de afiliado. Depois é só baixar e postar.</p>
+    <p>Crie posts e stories com o seu link de afiliado e publique direto no seu Instagram, na hora ou agendado.</p>
   </div>
   <div class="linha-botoes">
+    <a class="botao botao-claro" href="{% url 'painel_estudio_publicacoes' %}">Publicações</a>
     <a class="botao botao-claro" href="{% url 'painel_estudio_automacoes' %}">Automações</a>
     <a class="botao botao-claro" href="{% url 'painel_estudio_marca' %}">Minha marca</a>
   </div>
@@ -91,6 +92,7 @@
         <a class="es-post" href="{% url 'painel_estudio_editor' c.post.pk %}">
           {% if c.miniatura %}<img src="{{ c.miniatura }}" alt="" loading="lazy">{% else %}<span class="sem-miniatura">Sem prévia</span>{% endif %}
           <strong>{{ c.post.nome }}</strong><small>{{ c.formato }} · {{ c.post.atualizado_em|date:"d/m/Y H:i" }}</small>
+          {% if c.post.estado != "rascunho" %}<span class="es-estado es-estado-{{ c.post.estado }}">{{ c.post.get_estado_display }}</span>{% endif %}
         </a>
       {% endfor %}
     </div>

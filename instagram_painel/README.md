@@ -55,3 +55,17 @@ aqui (pelo `entry.id`) e o resto segue para a automação da cash-b.
 - A DM ligada a um comentário vale uma vez por comentário e até 7 dias depois dele. As outras DMs
   só podem ir até 24 horas depois que a pessoa escreveu ou respondeu o story.
 - A conta precisa ser pública para receber avisos de comentário.
+
+## Publicar no Instagram (todos os planos do Estúdio)
+
+- No editor, "Publicar no Instagram" salva o post, desenha cada slide em JPEG de 1080 px no navegador
+  e manda para `estudio/<pk>/publicar/`, para publicar agora ou num horário marcado (até 60 dias).
+- Post 1:1 ou 4:5 vai para o feed: uma imagem ou carrossel (até 10), com a legenda do editor.
+  Post 9:16 vira stories, um por slide, sem legenda (a API não coloca adesivo de link).
+- `publicar.py`: a fila. Uma thread do worker (`sincronizar_painel --loop`) confere a cada 15 s,
+  pega cada publicação com um update atômico e chama a API: container por imagem → espera o
+  `status_code` → `media_publish`. Nos stories, guarda cada um que saiu: numa nova tentativa, não repete.
+- A Meta baixa as imagens por `/instagram/midia/<token>.jpg` (sem login, token secreto). O endereço
+  só responde enquanto a publicação não saiu; depois as imagens são apagadas do banco.
+- Telas: a janela de publicar no editor e `estudio/publicacoes/` (agendadas, publicadas, cancelar,
+  tentar de novo). O selo do post no Estúdio (agendado, publicado, erro) segue a última publicação.
