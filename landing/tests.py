@@ -93,15 +93,13 @@ class TestPagina(TestCase):
         site = self.abrir(caminho="/meu-site/")
         self.assertContains(site, "seunome.appfiliado.com.br")
         self.assertContains(site, planos.LINKS["site1"])
-        car = self.abrir(caminho="/gerador-de-carrosseis/")
-        self.assertContains(car, "carrossel pronto pro Instagram")
-        self.assertContains(car, planos.LINKS["carrosseis0"])
-        for pagina in (bot, site, car):
+        for pagina in (bot, site):
             self.assertContains(pagina, "persistence.min.js")
             self.assertContains(pagina, "Todos os recursos")
         mapa = self.abrir(caminho="/sitemap.xml").content.decode()
-        for caminho in ("/bot-de-whatsapp/", "/meu-site/", "/gerador-de-carrosseis/"):
+        for caminho in ("/bot-de-whatsapp/", "/meu-site/", "/estudio-instagram/", "/automacoes-instagram/"):
             self.assertIn(caminho, mapa)
+        self.assertNotIn("/gerador-de-carrosseis/", mapa)
         self.assertContains(self.abrir(), "/bot-de-whatsapp/")  # a landing leva às páginas
 
     def test_paginas_das_ferramentas_incluidas_em_todos_os_planos(self):
@@ -119,7 +117,7 @@ class TestPagina(TestCase):
             self.assertContains(home, f'href="{caminho}"')  # a faixa "Em todos os planos" e o mock do hero levam até elas
 
     def test_telas_do_painel_ilustram_cada_ferramenta(self):
-        for caminho, arquivo in (("/bot-de-whatsapp/", "bot-ofertas"), ("/meu-site/", "site-editor"), ("/gerador-de-carrosseis/", "carrossel-editor"),
+        for caminho, arquivo in (("/bot-de-whatsapp/", "bot-ofertas"), ("/meu-site/", "site-editor"),
                                  ("/emissao-de-notas/", "notas-lote"), ("/radar-de-ofertas/", "radar-produtos"),
                                  ("/conversor-de-links/", "conversor"), ("/resultados-e-metas/", "metas")):
             pagina = self.abrir(caminho=caminho)
@@ -134,8 +132,14 @@ class TestPagina(TestCase):
         self.assertContains(resposta, "https://wa.me/5511912345678")
         self.assertContains(resposta, "mailto:ajuda@appfiliado.com.br")
 
-    def test_dados_do_montador_vao_para_a_pagina(self):
-        self.assertContains(self.abrir(), 'id="dados-montador"')
+    def test_pacote_ofertas_a_venda_com_o_link_do_combo(self):
+        # O Pacote Ofertas é o combo Bot de WhatsApp + Meu site que já existe na Zouti.
+        r = self.abrir()
+        self.assertContains(r, 'id="pacotes"')
+        self.assertNotContains(r, 'id="dados-montador"')
+        self.assertContains(r, planos.LINKS["bot0+site0"])
+        self.assertContains(r, planos.LINKS["bot1+site1"])
+        self.assertContains(r, "R$ 64,90")
 
 
 class TestSemDominioConfigurado(TestCase):
@@ -149,7 +153,7 @@ class TestPlanosDoLancamento(SimpleTestCase):
         precos = {p["nome"]: (p["mensal"], p["anual"]) for p in planos.produtos_do_lancamento()}
         self.assertEqual(len(precos), 14)
         self.assertEqual(precos["Estúdio Instagram Standard"], (29.90, 299.0))
-        self.assertEqual(precos["Automações do Instagram Premium"], (54.90, 549.0))
+        self.assertEqual(precos["Automações Instagram Premium"], (54.90, 549.0))
         self.assertEqual(precos["Pacote Ofertas Standard"], (64.90, 649.0))
         self.assertEqual(precos["Pacote Ofertas Premium"], (112.90, 1129.0))
         self.assertEqual(precos["Pacote Instagram Standard"], (52.90, 529.0))
@@ -157,6 +161,7 @@ class TestPlanosDoLancamento(SimpleTestCase):
         self.assertEqual(precos["Pacote Completo Standard"], (111.90, 1119.0))
         self.assertEqual(precos["Pacote Completo Premium"], (195.90, 1959.0))
 
+    @override_settings(APPFILIADO_LANCAMENTO_INSTAGRAM=True)
     def test_completo_sai_mais_barato_que_os_dois_pacotes_juntos(self):
         p = {x["codigo"]: x for x in planos.pacotes()}
         for nivel in (0, 1):
@@ -176,19 +181,49 @@ class TestPaginaDoLancamento(TestCase):
     def abrir(self, caminho="/"):
         return self.client.get(caminho, HTTP_HOST="appfiliado.com.br")
 
-    def test_antes_do_lancamento_segue_com_os_combos(self):
+    def test_antes_do_lancamento_estudio_e_automacoes_em_breve_sem_preco(self):
         r = self.abrir()
-        self.assertContains(r, 'id="combo"')
-        self.assertNotContains(r, "Pacote Completo")
-        self.assertEqual(self.abrir("/estudio-instagram/").status_code, 404)
-        self.assertEqual(self.abrir("/gerador-de-carrosseis/").status_code, 200)
+        for texto in ("Estúdio Instagram", "Automações Instagram", "Em breve", "Pacote Instagram", "Pacote Completo",
+                      "Chega com o lançamento", "Quando chegam o Estúdio Instagram e as Automações Instagram?"):
+            self.assertContains(r, texto)
+        self.assertNotContains(r, "Gerador de carrosséis")
+        self.assertNotContains(r, 'id="combo"')
+        for preco in ("R$ 29,90", "R$ 54,90", "R$ 52,90", "R$ 93,90", "R$ 111,90", "R$ 195,90"):  # Estúdio, Automações e os pacotes deles
+            self.assertNotContains(r, preco)
+        self.assertNotContains(r, planos.LINKS["carrosseis0"])
+
+    def test_antes_do_lancamento_paginas_novas_no_ar_com_aviso_e_sem_planos(self):
+        for caminho, aviso in (("/estudio-instagram/", "O Estúdio Instagram será lançado em breve."),
+                               ("/automacoes-instagram/", "As Automações Instagram serão lançadas em breve.")):
+            r = self.abrir(caminho)
+            self.assertContains(r, aviso)
+            self.assertContains(r, 'class="aviso-breve"')
+            for fora in ("Standard", "Premium", "R$ ", "/prints/", "Assinar"):
+                self.assertNotContains(r, fora)
+        r = self.abrir("/gerador-de-carrosseis/")
+        self.assertEqual((r.status_code, r["Location"]), (302, "/estudio-instagram/"))
+        self.assertContains(self.abrir("/radar-de-ofertas/"), "Estúdio Instagram · em breve")
+
+    def test_antes_do_lancamento_o_agente_sabe_que_e_em_breve(self):
+        from atendimento import conhecimento
+
+        conhecimento.texto.cache_clear()
+        try:
+            texto = conhecimento.texto()
+        finally:
+            conhecimento.texto.cache_clear()
+        self.assertIn("EM BREVE: ainda não está à venda", texto)
+        self.assertIn("Pacote Ofertas", texto)
+        self.assertIn(planos.LINKS["bot0+site0"], texto)
+        self.assertNotIn("R$ 29,90", texto)
+        self.assertNotIn("Gerador de carrosséis Standard", texto)
 
     @override_settings(APPFILIADO_LANCAMENTO_INSTAGRAM=True)
     def test_lancado_mostra_4_modulos_e_3_pacotes(self):
         r = self.abrir()
         self.assertNotContains(r, 'id="combo"')
         for texto in ("Pacote Ofertas", "Pacote Instagram", "Pacote Completo", "R$ 195,90", "R$ 230,60", "Estúdio Instagram",
-                      "Automações do Instagram", "Em breve", "Posso assinar mais de um módulo?"):
+                      "Automações Instagram", "Em breve", "Posso assinar mais de um módulo?"):
             self.assertContains(r, texto)
         self.assertContains(r, planos.LINKS["bot1"])  # Bot e Meu site seguem com os produtos de hoje
         self.assertNotContains(r, "Gerador de carrosséis")
@@ -210,6 +245,6 @@ class TestPaginaDoLancamento(TestCase):
             texto = conhecimento.texto()
         finally:
             conhecimento.texto.cache_clear()
-        self.assertIn("Pacote Completo (Bot de WhatsApp + Meu site + Estúdio Instagram + Automações do Instagram)", texto)
+        self.assertIn("Pacote Completo (Bot de WhatsApp + Meu site + Estúdio Instagram + Automações Instagram)", texto)
         self.assertIn("ainda não está à venda", texto)
         self.assertNotIn("Combos (2 módulos", texto)

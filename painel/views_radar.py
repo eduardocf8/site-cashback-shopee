@@ -1,6 +1,7 @@
 """Tela do Radar de ofertas (todos os planos). Os botões de cada produto dependem do
 plano: copiar o link de afiliado (todos), mandar no grupo e acompanhar o preço (Bot de
-WhatsApp) e gerar carrossel (Carrosséis). Fora do plano, o botão vem com cadeado."""
+WhatsApp) e criar o post (Estúdio Instagram; até o lançamento, o carrossel do gerador antigo).
+Fora do plano, o botão vem com cadeado."""
 
 import logging
 
@@ -16,6 +17,7 @@ from bot_whatsapp.models import ConexaoWhatsApp, ConfiguracaoOfertas, EnvioWhats
 from licencas.models import MODULO_CARROSSEIS, MODULO_CARROSSEIS_PREMIUM, MODULO_WHATSAPP
 from ofertas.services import eh_host_da_shopee
 
+from . import modulos as mod
 from . import radar
 from .autenticacao import conta_logada, conta_requerida
 from .views import _contexto
@@ -31,8 +33,11 @@ def _voltar(request) -> str:
 
 def _liberados(conta) -> dict:
     liberados = set(conta.modulos_liberados())
-    return {"bot": MODULO_WHATSAPP in liberados,
-            "carrosseis": bool({MODULO_CARROSSEIS, MODULO_CARROSSEIS_PREMIUM} & liberados)}
+    carrosseis = bool({MODULO_CARROSSEIS, MODULO_CARROSSEIS_PREMIUM} & liberados)
+    # O Estúdio usa a mesma licença do gerador e toma o lugar dele quando aparece para a conta.
+    estudio = mod.ve_beta(mod.POR_SLUG["estudio_instagram"], conta)
+    return {"bot": MODULO_WHATSAPP in liberados, "carrosseis": carrosseis and not estudio,
+            "estudio": carrosseis and estudio, "ve_estudio": estudio}
 
 
 @conta_requerida

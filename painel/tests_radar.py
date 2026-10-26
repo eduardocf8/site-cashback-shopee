@@ -109,6 +109,20 @@ class TestTelaDoRadar(BasePainel):
         self.assertContains(resposta, 'title="Mandar no grupo: do Bot de WhatsApp"')
         self.assertContains(resposta, "Carrossel</button>")
 
+    def test_depois_do_lancamento_o_botao_cria_o_post_no_estudio(self):
+        self.conta.modulos_cortesia = "carrosseis"
+        self.conta.save()
+        with self.settings(APPFILIADO_LANCAMENTO_INSTAGRAM=True):
+            resposta = self.client.get("/radar/")
+        self.assertContains(resposta, 'action="/estudio/novo/"')
+        self.assertContains(resposta, 'name="como" value="produto"')
+        self.assertContains(resposta, "Post</button>")
+        self.assertNotContains(resposta, "Carrossel</button>")
+        self.conta.modulos_cortesia = ""
+        self.conta.save()
+        with self.settings(APPFILIADO_LANCAMENTO_INSTAGRAM=True):
+            self.assertContains(self.client.get("/radar/"), 'title="Criar post: do Estúdio Instagram"')
+
     def test_copiar_link(self):
         with mock.patch.object(shopee_ofertas, "gerar_link_afiliado", return_value="https://s.shopee.com.br/x") as gerar:
             resposta = self.client.post("/radar/link/", {"link": "https://shopee.com.br/p-i.9.1"})

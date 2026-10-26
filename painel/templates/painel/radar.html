@@ -79,8 +79,12 @@
             <a class="botao botao-claro botao-pequeno travado" href="{{ url_planos }}" target="_blank" rel="noopener" title="Mandar no grupo: do Bot de WhatsApp">{% include "painel/_icone.html" with caminho=icones.cadeado %}Grupo</a>
             <a class="botao botao-claro botao-pequeno travado" href="{{ url_planos }}" target="_blank" rel="noopener" title="Alerta de preço: do Bot de WhatsApp">{% include "painel/_icone.html" with caminho=icones.cadeado %}Alerta</a>
           {% endif %}
-          {% if pode.carrosseis %}
+          {% if pode.estudio %}
+            <form method="post" action="{% url 'painel_estudio_novo' %}">{% csrf_token %}<input type="hidden" name="como" value="produto"><input type="hidden" name="link" value="{{ p.link }}"><button type="submit" class="botao botao-claro botao-pequeno" data-enviando="Criando…" title="Criar post no Estúdio Instagram">{% include "painel/_icone.html" with caminho=icones.imagens %}Post</button></form>
+          {% elif pode.carrosseis %}
             <form method="post" action="{% url 'painel_carrosseis' %}">{% csrf_token %}<input type="hidden" name="link" value="{{ p.link }}"><button type="submit" class="botao botao-claro botao-pequeno" data-enviando="Gerando…" title="Gerar carrossel">{% include "painel/_icone.html" with caminho=icones.imagens %}Carrossel</button></form>
+          {% elif pode.ve_estudio %}
+            <a class="botao botao-claro botao-pequeno travado" href="{{ url_planos }}" target="_blank" rel="noopener" title="Criar post: do Estúdio Instagram">{% include "painel/_icone.html" with caminho=icones.cadeado %}Post</a>
           {% else %}
             <a class="botao botao-claro botao-pequeno travado" href="{{ url_planos }}" target="_blank" rel="noopener" title="Gerar carrossel: dos Carrosséis">{% include "painel/_icone.html" with caminho=icones.cadeado %}Carrossel</a>
           {% endif %}

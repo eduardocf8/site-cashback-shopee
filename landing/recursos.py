@@ -7,6 +7,8 @@ quando só o Premium tem, (nome, texto, "Premium")."""
 
 from licencas import planos as plano
 
+from . import planos as vendas
+
 
 def _t(nome, texto, so=""):
     return {"nome": nome, "texto": texto, "plano": so, "chips": [], "cores": []}
@@ -333,7 +335,7 @@ def estudio():
         ],
         "perguntas": [
             ("Preciso de uma conta profissional no Instagram?", "Para publicar pelo Appfiliado, sim: comercial ou de criador. Para criar e baixar os posts, não precisa conectar nada."),
-            ("Dá para colocar o link no story?", "A Meta não deixa colocar o adesivo de link na publicação automática. Para mandar o link, use as Automações do Instagram: no Premium delas, quem responder o story recebe o link por DM."),
+            ("Dá para colocar o link no story?", "A Meta não deixa colocar o adesivo de link na publicação automática. Para mandar o link, use as Automações Instagram: no Premium delas, quem responder o story recebe o link por DM."),
             ("Preciso conectar a minha conta da Shopee?", "Para criar posts a partir do link de um produto, sim, com a API da Shopee liberada. Os modelos, a IA e o post em branco funcionam sem."),
             ("Os posts têm marca d'água?", "Não. As imagens saem limpas, só com o seu @ e, no Premium, a sua marca."),
             ("O limite diário reinicia quando?", "À meia-noite, no horário de Brasília."),
@@ -344,8 +346,8 @@ def estudio():
 
 def automacoes():
     return {
-        "codigo": "automacoes", "slug": "automacoes-instagram", "url": "landing_automacoes", "nome": "Automações do Instagram",
-        "titulo": "Automações do Instagram para afiliado Shopee — Appfiliado",
+        "codigo": "automacoes", "slug": "automacoes-instagram", "url": "landing_automacoes", "nome": "Automações Instagram",
+        "titulo": "Automações Instagram para afiliado Shopee — Appfiliado",
         "descricao": "Quem comentar a palavra certa no seu post recebe o seu link de afiliado por DM, na hora. Respostas a comentários, stories e DMs no automático, sem limite por mês.",
         "h1": "Comentou QUERO, recebeu o link na DM.",
         "texto": "Escolha o post e a palavra. Quem comentar recebe uma resposta no comentário e o seu link de afiliado por DM, sem você responder um por um.",
@@ -428,7 +430,8 @@ def radar():
                    _t("Copiar link", "Copia o seu link de afiliado, em todos os planos."),
                    _t("Mandar no grupo", "Envia o produto, com foto e texto, para um grupo ou canal de WhatsApp.", "Bot de WhatsApp"),
                    _t("Acompanhar o preço", "Coloca o produto no alerta de preço para você ser avisada quando ele cair.", "Bot de WhatsApp"),
-                   _t("Gerar carrossel", "Leva o produto pro gerador e já começa o carrossel do Instagram.", "Gerador de carrosséis")),
+                   _t("Criar post", "Leva o produto pro Estúdio Instagram e já começa o post, com a foto, o preço e o seu link.",
+                      "Estúdio Instagram" if vendas.lancado() else "Estúdio Instagram · em breve")),
             _grupo("Sempre atualizado", "O catálogo é renovado todo dia.",
                    _t("Atualização diária", "Uma rodada por dia e uma completa por semana, com até 30 mil produtos."),
                    _t("Preço de agora", "Ao mandar no grupo ou acompanhar o preço, o Radar consulta o preço de agora na Shopee."),
@@ -439,7 +442,7 @@ def radar():
             ("O Radar custa a mais?", "Não. O Radar de ofertas está incluso em todos os planos do Appfiliado."),
             ("De onde vêm os produtos?", "Do catálogo de produtos da Shopee que têm comissão de afiliado. O Appfiliado atualiza esse catálogo todo dia."),
             ("O preço que aparece é o de agora?", "O catálogo é atualizado todo dia. Na hora de mandar no grupo ou acompanhar o preço, o Radar consulta o preço de agora na Shopee."),
-            ("Preciso do Bot de WhatsApp?", "Não. Copiar o link de afiliado funciona em todos os planos. Mandar no grupo e acompanhar o preço precisam do Bot de WhatsApp, e gerar carrossel precisa do Gerador de carrosséis."),
+            ("Preciso do Bot de WhatsApp?", "Não. Copiar o link de afiliado funciona em todos os planos. Mandar no grupo e acompanhar o preço precisam do Bot de WhatsApp, e criar o post precisa do Estúdio Instagram" + ("." if vendas.lancado() else ", que chega em breve.")),
             ("Não achei um produto que está na Shopee. E agora?", "A Shopee limita quantos produtos libera para afiliados, então nem todo produto do site aparece no Radar. Cole o link dele no Conversor de links e gere o seu link do mesmo jeito."),
         ],
     }
@@ -593,12 +596,54 @@ APRESENTACAO = {
 }
 
 
+# Antes do lançamento, as páginas do Estúdio e das Automações ficam no ar sem falar de planos: sem os
+# selos de Premium, sem a tabela Standard × Premium e com os textos abaixo no lugar dos que citam plano.
+SEM_PLANOS = {
+    "estudio": {
+        "aviso": "O Estúdio Instagram será lançado em breve.",
+        "itens": {"Em branco": "Comece do zero e monte o post slide por slide.",
+                  "Limite por dia": "A IA tem um limite de criações por dia. Quando ele acaba, o post de produto sai do modelo, com a foto e o preço.",
+                  "Seu @ nos posts": "O seu @ do Instagram aparece nos slides."},
+        "intros": {"O seu visual": "O post com a cara da sua marca."},
+        "perguntas": {"Dá para colocar o link no story?": "A Meta não deixa colocar o adesivo de link na publicação automática. Para mandar o link, use as Automações Instagram: quem responder o story recebe o link por DM.",
+                      "Os posts têm marca d'água?": "Não. As imagens saem limpas, só com o seu @ e a sua marca."},
+        "numeros": [("4", "jeitos de começar um post"), ("7", "modelos prontos"), ("3", "formatos: 1:1, 4:5 e 9:16"), ("60 dias", "para agendar")],
+    },
+    "automacoes": {
+        "aviso": "As Automações Instagram serão lançadas em breve.",
+        "fora": {"Automações sem limite"},
+        "grupos": {"Só no Premium": ("Stories, DMs e Sub ID", "Stories e DMs")},
+    },
+}
+
+
+def _sem_planos(modulo, pagina):
+    troca = SEM_PLANOS.get(modulo, {})
+    for g in pagina["grupos"]:
+        if g["titulo"] in troca.get("grupos", {}):
+            g["titulo"], g["curto_breve"] = troca["grupos"][g["titulo"]]
+        g["intro"] = troca.get("intros", {}).get(g["titulo"], g["intro"])
+        g["itens"] = [i for i in g["itens"] if i["nome"] not in troca.get("fora", set())]
+        for item in g["itens"]:
+            item["plano"] = ""
+            item["texto"] = troca.get("itens", {}).get(item["nome"], item["texto"])
+    pagina["perguntas"] = [(q, troca.get("perguntas", {}).get(q, r)) for q, r in pagina["perguntas"] if "Standard" not in q]
+    pagina["resumo"], pagina["tabela"], pagina["em_breve"] = [], [], True
+    pagina["aviso_breve"] = troca.get("aviso", f"{pagina['nome']}: lançamento em breve.")
+    return pagina
+
+
 def _apresentar(modulo, pagina):
     ap = APRESENTACAO[modulo]
+    breve = vendas.em_breve(modulo)
+    if breve:
+        pagina = _sem_planos(modulo, pagina)
     fundo = ""
     for n, (g, layout, curto) in enumerate(zip(pagina["grupos"], ap["layouts"], ap["curtos"])):
+        if breve and layout == "premium":
+            layout, curto = "cartoes", g.pop("curto_breve", curto)
         g["layout"], g["curto"] = layout, curto
-        g["prints"] = prints_de(modulo, n)
+        g["prints"] = [] if breve else prints_de(modulo, n)
         if layout == "premium":
             g["fundo"] = "verde"
         else:  # alterna branco e creme, para duas seções vizinhas nunca terem a mesma cor
@@ -607,7 +652,7 @@ def _apresentar(modulo, pagina):
         for item in g["itens"]:
             item["chips"] = ap.get("chips", {}).get(item["nome"], [])
             item["cores"] = ap.get("cores", {}).get(item["nome"], [])
-    pagina["numeros"] = ap["numeros"]()
+    pagina["numeros"] = (SEM_PLANOS.get(modulo, {}).get("numeros") if breve else None) or ap["numeros"]()
     pagina["print_do_topo"] = next((pr for g in pagina["grupos"] for pr in g["prints"] if not pr["celular"]), None)
     return pagina
 
