@@ -373,6 +373,35 @@ tráfego real ainda, mesma cautela já registrada aqui pra
   estar coberta pelo Standard Access existente, já que
   `enviar_resposta_privada` usa a mesma API.
 
+## Stories de oferta do bot respondidos sozinhos (2026-10-26)
+
+Cada story de oferta que o `instagram_bot` publica (story de verdade, não
+simulado, com `RegistroPublicacao.link_produto_original` e
+`instagram_media_id`) ganha a própria `AutomacaoStory` sozinho, no modo
+"link do produto", marcada como `automatica=True` (selo "automática" na
+lista). Não precisa configurar nada por story.
+
+- **Onde acontece**: `padrao_story.py`, ligado num `post_save` de
+  `RegistroPublicacao` (conectado em `apps.py`). Como o link e o ID do
+  story são gravados em momentos diferentes (publicação direta grava o ID
+  primeiro; aprovação por e-mail grava o link primeiro), a cada gravação
+  ele confere se já tem os dois. Erro ali nunca atrapalha a publicação.
+- **De qual conta sai a DM**: a `ContaInstagramConectada` com o mesmo ID
+  de `INSTAGRAM_BUSINESS_ACCOUNT_ID` (a conta do bot). Se ela não estiver
+  em Contas conectadas, nada é criado (fica um aviso no log e na tela).
+- **A mensagem** (`PadraoRespostaStory`, uma linha só, tela em
+  `/automacao/story/padrao/`, menu "Resposta dos stories"): texto livre +
+  botão com o link rastreado (`/instagram/story/<id>/ir/`). Vale também
+  para automações criadas à mão no modo "link do produto". Se a Meta
+  recusar o botão, a DM sai só em texto com o link no fim.
+- **Desligar** na mesma tela: stories novos param de ganhar automação e
+  as automáticas já criadas param de responder. Dá pra pausar uma só pela
+  lista, como qualquer automação.
+- **Story postado antes disso** (ou com o padrão desligado na hora): a
+  primeira resposta a ele cria a automação na hora e a DM sai. Automação
+  pausada continua pausada.
+- Continua valendo 1 DM por pessoa por story.
+
 ## Limitações conhecidas / não implementado
 
 - **Não funciona com comentários de terceiros até a Análise do App ser

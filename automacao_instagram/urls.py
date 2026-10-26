@@ -21,6 +21,7 @@ urlpatterns = [
         name="automacao_processar_manual",
     ),
     path("automacao/<int:pk>/alternar-ativa/", views.automacao_alternar_ativa, name="automacao_alternar_ativa"),
+    path("automacao/story/padrao/", views.padrao_story_editar, name="automacao_padrao_story"),
     path(
         "automacao/story/<int:pk>/editar/", views.automacao_story_editar, name="automacao_story_editar"
     ),

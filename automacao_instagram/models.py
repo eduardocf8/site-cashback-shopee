@@ -105,6 +105,10 @@ class AutomacaoStory(models.Model):
         help_text="Usado quando o modo é \"Mensagem personalizada\" - ignorado no modo \"Link do produto\".",
     )
     ativa = models.BooleanField("Ativa", default=True)
+    automatica = models.BooleanField(
+        "Criada sozinha", default=False,
+        help_text="Criada pelo padrão de resposta quando o bot postou o story de oferta (ver PadraoRespostaStory).",
+    )
     criado_em = models.DateTimeField(auto_now_add=True)
     atualizado_em = models.DateTimeField(auto_now=True)
 
@@ -115,6 +119,35 @@ class AutomacaoStory(models.Model):
 
     def __str__(self):
         return f"{self.nome} ({self.conta.nome_exibicao})"
+
+
+class PadraoRespostaStory(models.Model):
+    """Uma linha só: a mensagem que vai por DM para quem responde um story de oferta postado
+    pelo instagram_bot. Ligado, cada story de oferta publicado ganha a própria AutomacaoStory
+    sozinho (ver padrao_story.py); a DM leva o texto daqui e um botão com o link do produto."""
+
+    TEXTO_PADRAO = "Oi! 😊 Aqui está o link da oferta com cashback garantido na cash-b 💸"
+    TEXTO_BOTAO_PADRAO = "Ver oferta 🛍️"
+
+    ativo = models.BooleanField(
+        "Responder sozinho os stories de oferta do bot", default=True,
+        help_text="Desligado, os stories novos não ganham automação e as automações criadas sozinhas param de responder.",
+    )
+    texto = models.TextField("Mensagem", max_length=600, default=TEXTO_PADRAO)
+    texto_botao = models.CharField("Texto do botão", max_length=20, default=TEXTO_BOTAO_PADRAO)
+    atualizado_em = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        verbose_name = "Padrão de resposta dos stories"
+        verbose_name_plural = "Padrão de resposta dos stories"
+
+    def __str__(self):
+        return "Padrão de resposta dos stories de oferta"
+
+    @classmethod
+    def carregar(cls) -> "PadraoRespostaStory":
+        padrao, _ = cls.objects.get_or_create(pk=1)
+        return padrao
 
 
 class RespostaStoryProcessada(models.Model):
