@@ -315,7 +315,7 @@ def gerar_imagem_oferta_story(oferta, tamanho=(1080, 1920)) -> Image.Image:
     fonte_preco = _fonte(58, mono=True, negrito=True)
     fonte_desconto = _fonte(30, negrito=True)
     fonte_marca = _fonte(42, negrito=True)
-    fonte_link_bio = _fonte(32, negrito=True)
+    fonte_cta = _fonte(32, negrito=True)
 
     largura_util = tamanho[0] - margem * 2
     nome = oferta.nome_curto or oferta.nome
@@ -401,12 +401,22 @@ def gerar_imagem_oferta_story(oferta, tamanho=(1080, 1920)) -> Image.Image:
     preco = f"R$ {oferta.preco_min:.2f}".replace(".", ",")
     draw.text((margem, y), preco, font=fonte_preco, fill=CORES["brand"])
 
+    # Chamada pra ação: pede resposta ao story (não "link na bio") porque é dali que a
+    # automação de DM pega o clique (ver automacao_instagram/webhook.py,
+    # MODO_LINK_PRODUTO) - manda um link do próprio cash-b, não direto pra Shopee
+    # (exige login antes de redirecionar, então o cashback já fica garantido no
+    # clique - ver instagram_bot/views.py::ir_para_story_de_oferta).
     # Centralizado na largura toda (não alinhado com o resto do bloco, que é à
-    # esquerda) e perto do limite inferior da área segura, não colado no preço.
-    draw.text(
-        (tamanho[0] / 2, tamanho[1] - rodape_seguro - 10),
-        "link na bio", font=fonte_link_bio, fill=CORES["ink-soft"], anchor="ms",
-    )
+    # esquerda), pode quebrar em 2 linhas (mais longo que "link na bio"), ancorado
+    # pela ÚLTIMA linha perto do limite inferior da área segura - linhas extras
+    # crescem pra cima, não empurram pra fora da área segura.
+    texto_cta = 'Comente "link" para receber o link da oferta'
+    linhas_cta = _quebrar_texto(draw, texto_cta, fonte_cta, largura_util)
+    altura_linha_cta = int(fonte_cta.size * 1.25)
+    y_cta = tamanho[1] - rodape_seguro - 10 - (len(linhas_cta) - 1) * altura_linha_cta
+    for linha in linhas_cta:
+        draw.text((tamanho[0] / 2, y_cta), linha, font=fonte_cta, fill=CORES["ink-soft"], anchor="ms")
+        y_cta += altura_linha_cta
 
     return img
 
