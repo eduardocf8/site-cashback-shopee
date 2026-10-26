@@ -107,11 +107,17 @@
 .ig-escolhido img { width: 64px; height: 64px; object-fit: cover; border-radius: 10px; }
 .ig-escolhido .ig-todos { font-weight: 700; }
 .linha-botoes { display: flex; gap: 8px; flex-wrap: wrap; }
-.ig-midias { display: grid; grid-template-columns: repeat(auto-fill, minmax(96px, 1fr)); gap: 8px; max-height: 360px; overflow: auto; }
-.ig-midias[hidden] { display: none; }
-.ig-midia { border: 1px solid var(--borda); border-radius: 10px; padding: 0; overflow: hidden; aspect-ratio: 1; background: var(--chip); cursor: pointer; }
-.ig-midia img { width: 100%; height: 100%; object-fit: cover; display: block; }
-.ig-midia span { font-size: 11px; padding: 6px; display: block; }
+/* Os posts do Instagram para escolher: 3 por linha, 9 por página, sempre quadrados. */
+.ig-midias { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; max-width: 480px; }
+.ig-midias[hidden], .ig-midias-paginas[hidden] { display: none; }
+.ig-midia { position: relative; border: 1px solid var(--borda); border-radius: 10px; padding: 0; overflow: hidden; aspect-ratio: 1; width: 100%; height: auto; background: var(--chip); cursor: pointer; }
+.ig-midia img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; display: block; }
+.ig-midia span { font-size: 11px; padding: 6px; display: block; overflow: hidden; max-height: 100%; }
+.ig-midias-paginas { display: flex; align-items: center; justify-content: space-between; gap: 8px; max-width: 480px; }
+.ig-midias-paginas button { min-width: 56px; justify-content: center; }
+.ig-midias-paginas button:disabled { opacity: .4; cursor: default; }
+.ig-midias-paginas span { white-space: nowrap; }
+.ig-escolhido span { display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; }
 .ig-historico { padding: 0; overflow-x: auto; }
 .ig-historico table { width: 100%; border-collapse: collapse; font-size: 13.5px; }
 .ig-historico th, .ig-historico td { text-align: left; padding: 10px 14px; border-bottom: 1px solid var(--borda); }
@@ -172,3 +178,55 @@
 .ig-escolhido { border: 1px solid var(--verde); background: var(--bom-suave); border-radius: 10px; padding: 8px 12px; }
 .ig-escolhido span { flex: 1; font-size: 13.5px; }
 .ig-midia.ativo { outline: 3px solid var(--verde); outline-offset: -3px; }
+
+/* ---------- Topo do editor: nome, Salvar, Publicar e "Mais" ---------- */
+.es-cabeca { display: grid; grid-template-columns: minmax(0, 1fr); justify-content: stretch; gap: 4px; }
+.es-cabeca-linha { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
+.es-titulo-campo { flex: 1 1 320px; min-width: 0; display: flex; align-items: center; gap: 6px; }
+.es-titulo { flex: 1; min-width: 0; font: inherit; font-size: 22px; font-weight: 800; letter-spacing: -.02em; color: var(--texto);
+  border: 1px solid transparent; border-radius: 10px; background: transparent; padding: 4px 8px; margin-left: -8px; text-overflow: ellipsis; }
+.es-titulo:hover { border-color: var(--borda); }
+.es-titulo:focus { border-color: var(--verde); background: var(--campo); outline: none; }
+.es-lapis { color: var(--suave); font-size: 16px; }
+.es-acoes-principais { display: flex; gap: 8px; align-items: center; flex: none; }
+.es-acoes-principais .es-bt { font: inherit; font-weight: 700; font-size: 14px; padding: 9px 14px; border-radius: 10px; white-space: nowrap; }
+.es-mais { position: relative; }
+.es-mais summary { list-style: none; cursor: pointer; }
+.es-mais summary::-webkit-details-marker { display: none; }
+.es-menu { position: absolute; right: 0; top: calc(100% + 6px); z-index: 30; min-width: 250px; background: #FFFFFF; border: 1px solid var(--borda);
+  border-radius: 12px; box-shadow: 0 12px 32px rgba(23,48,31,.16); padding: 6px; display: grid; }
+.es-menu form { margin: 0; }
+.es-menu button, .es-menu a { display: block; width: 100%; text-align: left; font: inherit; font-size: 14px; color: var(--texto); background: none; border: 0;
+  border-radius: 8px; padding: 9px 12px; cursor: pointer; text-decoration: none; }
+.es-menu button:hover, .es-menu a:hover { background: var(--chip); }
+.es-menu hr { border: 0; border-top: 1px solid var(--borda); margin: 4px 6px; }
+.es-menu .es-perigo { color: var(--perigo); }
+/* Ajustes do post: pílulas do mesmo tamanho (formato e cores mostram o que está escolhido). */
+.es-ajustes { display: flex; flex-wrap: wrap; gap: 8px; }
+.es-pilula { display: inline-flex; align-items: center; justify-content: center; gap: 6px; height: 40px; padding: 0 14px; border: 1px solid var(--borda);
+  border-radius: 999px; background: #FFFFFF; color: var(--texto); font: inherit; font-size: 14px; font-weight: 600; cursor: pointer; white-space: nowrap; }
+.es-pilula:hover { border-color: var(--borda-forte); }
+.es-pilula select { border: 0; background: transparent; font: inherit; font-weight: 700; color: var(--texto); padding: 0 2px; cursor: pointer; max-width: 100%; }
+.es-pilula select:focus { outline: none; }
+.es-pilula:focus-within { border-color: var(--verde); }
+.es-pilula-ia { background: var(--amarelo-suave); border-color: var(--amarelo); }
+.so-pequeno { display: none; }
+.es-guias-opcao { justify-content: center; margin-top: 8px; color: var(--suave); }
+.sr { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+@media (max-width: 760px) {
+  .es-titulo { font-size: 19px; }
+  .es-acoes-principais { width: 100%; }
+  .es-acoes-principais > button:nth-child(2) { flex: 1; }
+  .es-ajustes { display: grid; grid-template-columns: 1fr 1fr; }
+  .es-pilula { width: 100%; padding: 0 10px; }
+  .es-pilula select { flex: 1; min-width: 0; }
+  .so-grande { display: none; }
+  .so-pequeno { display: inline; }
+  .es-ajustes > :last-child:nth-child(odd) { grid-column: 1 / -1; }
+}
+}
+@media (min-width: 761px) { .es-cabeca-linha { flex-wrap: nowrap; } .es-titulo-campo { flex: 1 1 0; } }
+/* Miniatura do slide: o nome encurta, os botões ficam na mesma linha. */
+.es-mini-barra { gap: 4px; }
+.es-mini-barra > span:first-child { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.es-mini-barra > span:last-child { flex: none; white-space: nowrap; }

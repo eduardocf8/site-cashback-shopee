@@ -121,7 +121,7 @@ def ligar_avisos(token: str) -> None:
 
 # --- posts e stories ---------------------------------------------------------------------------
 
-def posts_recentes(token: str, limite: int = 24) -> list[dict]:
+def posts_recentes(token: str, limite: int = 45) -> list[dict]:
     dados = _chamar("GET", "me/media", token, params={
         "fields": "id,caption,media_type,media_url,thumbnail_url,permalink,timestamp", "limit": limite})
     return dados.get("data", [])

@@ -414,7 +414,7 @@
     return url;
   }
   function baixar(url, nome) { const a = el('a', { href: url, download: nome }); document.body.append(a); a.click(); a.remove(); }
-  async function ocupado(bt, fn) { bt.disabled = true; const t = bt.textContent; bt.textContent = 'Aguarde…'; try { await fn(); } catch (e) { alert(e.message || 'Não deu certo.'); } finally { bt.disabled = false; bt.textContent = t; } }
+  async function ocupado(bt, fn) { bt.disabled = true; const t = bt.textContent; bt.textContent = 'Aguarde…'; try { await fn(); } catch (e) { alert(e.message || 'Não deu certo.'); } finally { bt.disabled = false; if (bt.textContent === 'Aguarde…') bt.textContent = t; } }  // se a ação trocou o texto ("Salvo ✓"), fica o novo
 
   $('es-baixar').addEventListener('click', (e) => ocupado(e.target, async () => {
     baixar(await imagem(est.atual, 'png'), `${slug(est.nome)}-${String(est.atual + 1).padStart(2, '0')}.png`);
@@ -450,7 +450,7 @@
   // ---- barra de cima ----------------------------------------------------------------------------
   $('es-nome').value = est.nome;
   $('es-nome').addEventListener('input', (e) => { est.nome = e.target.value; mostrarNome(); marcarSujo(); });
-  Object.entries(cfg.formatos).forEach(([k, f]) => $('es-formato').append(el('option', { value: k, selected: k === est.formato }, `${f.nome} (${f.w}x${f.h})`)));
+  Object.entries(cfg.formatos).forEach(([k, f]) => $('es-formato').append(el('option', { value: k, selected: k === est.formato, title: `${f.w}x${f.h}` }, f.nome)));
   $('es-formato').addEventListener('change', (e) => { est.formato = e.target.value; marcarSujo(); tudo(); });
   Object.entries(cfg.tipos).forEach(([k, t]) => $('es-novo-tipo').append(el('option', { value: k }, t.nome)));
   $('es-adicionar').addEventListener('click', () => {
