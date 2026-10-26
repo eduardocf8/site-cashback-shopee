@@ -81,7 +81,7 @@ MODULOS_DO_MENU = [
         "texto_bloqueado": "Crie posts e stories com a sua marca e publique direto no seu Instagram.",
     },
     {
-        "slug": "automacoes_instagram", "nome": "Automações", "icone": "automacoes", "modulo": MODULO_INSTAGRAM,
+        "slug": "automacoes_instagram", "nome": "Automações Instagram", "icone": "automacoes", "modulo": MODULO_INSTAGRAM,
         "modulos_que_liberam": [MODULO_INSTAGRAM, MODULO_INSTAGRAM_PREMIUM], "pronto": True,
         "beta": "beta_estudio_instagram",
         "texto_bloqueado": "Quem comentar a palavra certa no seu post recebe o seu link de afiliado por DM, na hora.",

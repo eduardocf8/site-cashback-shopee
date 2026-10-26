@@ -106,13 +106,13 @@ No painel da Meta for Developers, no app:
 **O que fazer**
 1. Abra `https://app.appfiliado.com.br/entrar/`.
 2. Entre com a conta do afiliado.
-3. Mostre o painel por 2 segundos e o menu da esquerda, com **Estúdio Instagram** e **Automações**.
+3. Mostre o painel por 2 segundos e o menu da esquerda, com **Estúdio Instagram** e **Automações Instagram**.
 4. Clique em **Estúdio Instagram**.
 
 **O que falar**
 > "I'm logging in to the Appfiliado dashboard as an affiliate. In the menu there are two Instagram
-> tools: 'Estúdio Instagram', Instagram Studio, to create and publish posts, and 'Automações',
-> Automations, to reply automatically. I open the Instagram Studio."
+> tools: 'Estúdio Instagram', Instagram Studio, to create and publish posts, and 'Automações
+> Instagram', Instagram Automations, to reply automatically. I open the Instagram Studio."
 
 ### Cena 3. Conectar o Instagram: `instagram_business_basic` (1:00 a 2:20)
 
@@ -160,7 +160,7 @@ No painel da Meta for Developers, no app:
 ### Cena 5. Criar a automação de comentário: `basic` e `manage_comments` (4:00 a 5:15)
 
 **O que fazer**
-1. No menu, clique em **Automações**. Mostre que o cartão do Instagram conectado também está aqui.
+1. No menu, clique em **Automações Instagram**. Mostre que o cartão do Instagram conectado também está aqui.
 2. Clique em **Nova automação**. Nome: "Garrafa térmica (QUERO)".
 3. Em "Quando responder", deixe **Comentou no post**.
 4. Em "Em qual post", clique em **Um post específico**. Mostre a lista dos posts que veio do Instagram (`basic`) e clique no post publicado na cena 4. Ele aparece em destaque.
@@ -249,7 +249,7 @@ No painel da Meta for Developers, no app:
 ### Cena 10. Histórico (9:40 a 10:20)
 
 **O que fazer**
-1. Em **Automações**, clique em **Histórico**.
+1. Em **Automações Instagram**, clique em **Histórico**.
 2. Mostre as linhas: a pessoa (a conta B), o que ela escreveu, se a resposta e a DM saíram, a hora.
 3. Filtre por uma automação (o seletor "Automação").
 
@@ -345,7 +345,7 @@ No painel da Meta for Developers, no app:
 >    template) tab by clicking a template. Click "Publicar no Instagram" (Publish to Instagram), keep
 >    "Publicar agora" (Publish now) and click "Publicar". The post appears on the connected account
 >    within seconds. "Agendar" (Schedule) publishes at a chosen date and time.
-> 4. Automations: in the left menu, open "Automações" (Automations) and click "Nova automação" (New
+> 4. Automations: in the left menu, open "Automações Instagram" (Instagram Automations) and click "Nova automação" (New
 >    automation). Keep "Comentou no post" (Commented on the post), click "Um post específico" (A specific
 >    post) and select a post. Type QUERO in the keywords field, keep the public replies and the DM text,
 >    add any link and click "Salvar" (Save).
