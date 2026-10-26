@@ -138,7 +138,10 @@
 
   function render(s, ctx, cfg) {
     const b = base(ctx.formato), t = paleta(cfg, ctx.tema), f = fundo(s.fundo, b.w, b.h, t);
-    const tipo = TIPOS[s.tipo] ? s.tipo : 'capa', a = s.ajustes || {};
+    const tipo = TIPOS[s.tipo] ? s.tipo : 'capa';
+    // a arte "halo" tem os círculos no meio: o texto vai para o centro dela, a não ser que a pessoa escolha outro lugar
+    const halo = s.fundo && s.fundo.modo === 'arte' && s.fundo.arte === 'halo';
+    const a = Object.assign(halo ? { alinhar: 'centro', posicao: 'meio' } : {}, s.ajustes || {});
     const partes = TIPOS[tipo](s, ctx, cfg, b);
     const cls = ['af', 'slide', `t-${tipo}`, `f-${ctx.formato}`, lum(sobre(f.base, t)) > 0.5 ? 'escuro' : '', ctx.formato === 'story' ? 'story' : '', partes.extra || '',
       ehCapa(s, ctx) ? 'capa-grade' : '', a.posicao ? `v-${a.posicao}` : '', a.alinhar ? `al-${a.alinhar}` : ''].filter(Boolean).join(' ');

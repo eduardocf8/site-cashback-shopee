@@ -53,7 +53,7 @@
     "legenda": "Cupom novo na área 🎟️\n\nCopie o código e use no carrinho antes de pagar. Vale enquanto durar.\n\n#shopee #cupom #cupomshopee #desconto #achadinhos",
     "slides": [
       {"tipo": "cupom", "fundo": {"modo": "cor", "cor": "tema"}, "chapeu": "Cupom do dia", "titulo": "Desconto extra na *Shopee*", "codigo": "CUPOM10", "texto": "Use no carrinho antes de pagar.", "nota": "Vale enquanto durar."},
-      {"tipo": "cta", "fundo": {"modo": "arte", "arte": "halo", "tom": "escuro"}, "titulo": "Mais cupons *na bio.*", "texto": "Salve este post para usar depois.", "botao": "Link na bio"}
+      {"tipo": "cta", "fundo": {"modo": "arte", "arte": "canto", "tom": "escuro"}, "titulo": "Mais cupons *na bio.*", "texto": "Salve este post para usar depois.", "botao": "Link na bio"}
     ]
   },
   {
@@ -71,7 +71,7 @@
     "descricao": "Um story com o código do cupom em destaque.",
     "legenda": "",
     "slides": [
-      {"tipo": "cupom", "fundo": {"modo": "arte", "arte": "halo", "tom": "escuro"}, "chapeu": "Cupom do dia", "titulo": "Copie o código", "codigo": "CUPOM10", "texto": "Use no carrinho antes de pagar.", "nota": "Vale enquanto durar."}
+      {"tipo": "cupom", "fundo": {"modo": "arte", "arte": "ondas", "tom": "escuro"}, "chapeu": "Cupom do dia", "titulo": "Copie o código", "codigo": "CUPOM10", "texto": "Use no carrinho antes de pagar.", "nota": "Vale enquanto durar."}
     ]
   }
 ]

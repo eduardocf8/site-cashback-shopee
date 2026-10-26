@@ -54,7 +54,13 @@ GUIA_AFILIADO = """Posts de afiliado Shopee que funcionam:
 - Um slide de preço, quando há preço: o preço antigo riscado, o preço de agora e o selo de desconto.
 - Chamada final para o link na bio (feed) ou para o link do story (story).
 - Nada de promessa que o produto não faz, nada de "o mais barato do Brasil", nada de urgência falsa.
-- Quando não há produto (post de dicas, cupom, lista de achados), escreva só o que o pedido trouxe."""
+- Quando não há produto (post de dicas, cupom, lista de achados), escreva só o que o pedido trouxe.
+- Escreva na voz de quem achou o produto e está contando para os seguidores ("achei", "vi hoje", "eu indico"),
+  não como anúncio de loja.
+- Não repita a mesma informação no post: a nota, as vendas ou uma característica aparecem uma vez só (o selo da
+  foto também não repete o texto do slide), e cada slide traz algo novo. O chapéu diz do que o slide trata
+  ("Preço de hoje"), nunca repete o nome do produto.
+- Não faça contas com o preço ("metade", "economize R$ X", "quase de graça"): use só os números que vieram nos dados."""
 
 
 def _produto_em_texto(produto: dict) -> str:
@@ -116,6 +122,8 @@ baloes: [{{"texto", "meu"}}] (meu=true é a mensagem da pessoa, false é a respo
 Cada slide tem fundo: {{"modo": "cor", "cor": um de {list(m['cores'])}}} ou
 {{"modo": "arte", "arte": uma de {list(m['artes'])}, "tom": "escuro" ou "claro"}}.
 Alterne fundos escuros e claros para dar ritmo. Capa e chamada final costumam ficar no escuro.
+A arte "halo" (círculos no meio do slide) só serve para slide com pouquíssimo texto, centralizado no círculo: um
+título curto e no máximo uma frase, sem lista. Nos outros slides, use outra arte (na chamada final, "canto").
 {f"Ícones (campo icone da capa): {', '.join(m['icones'])}." if m['icones'] else ""}
 {f"Prints do painel (campo print do tipo tela): {', '.join(m['prints'])}. O campo recorte (0 a 1500) desce a tela do print." if m['prints'] else ""}
 
@@ -251,8 +259,29 @@ def limpar_slide(marca: str, s: dict) -> dict | None:
     return out
 
 
+LISTAS = ("itens", "pares", "linhas", "baloes")
+
+
+def texto_minimo(s: dict) -> bool:
+    """Pouco texto, sem lista nem foto: o único caso em que a arte "halo" (círculos no meio) combina."""
+    textos = sum(len(str(s.get(c) or "")) for c in ("chapeu", "titulo", "texto", "destaque", "nota", "codigo"))
+    return textos <= 90 and not any(s.get(c) for c in LISTAS) and not s.get("foto") and s["tipo"] in ("capa", "cta", "texto")
+
+
+def _ajustar_halo(s: dict) -> dict:
+    """Halo com texto demais vira "canto"; com pouco texto, o texto vai para o meio do círculo."""
+    if s["fundo"].get("arte") != "halo":
+        return s
+    if not texto_minimo(s):
+        s["fundo"]["arte"] = "canto"
+    else:
+        s["ajustes"] = {**s.get("ajustes", {}), "alinhar": "centro", "posicao": "meio"}
+    return s
+
+
 def limpar(marca: str, dados: dict) -> dict:
-    slides = [x for x in (limpar_slide(marca, s) for s in (dados.get("slides") or [])[:MAX_SLIDES]) if x]
+    """O que a IA devolveu (o que a pessoa salva passa só por limpar_slide)."""
+    slides = [_ajustar_halo(x) for x in (limpar_slide(marca, s) for s in (dados.get("slides") or [])[:MAX_SLIDES]) if x]
     if not slides:
         raise ErroIA("A IA não devolveu nenhum slide válido. Tente pedir de outro jeito.")
     return {"nome": _txt(dados.get("nome"), 120) or "Post da IA", "legenda": str(dados.get("legenda") or "").strip()[:2200],

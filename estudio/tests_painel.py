@@ -268,3 +268,26 @@ class TestModelosProprios(Base):
             slides = A.limpar_slides([{"tipo": "produto", "fundo": {"modo": "cor", "cor": "claro"}, "foto": "/estudio/imagens/1/", "sem_fundo": True}],
                                      A.eh_premium(c))
             self.assertEqual(slides[0].get("sem_fundo"), esperado)
+
+
+class TestHalo(TestCase):
+    """A arte "halo" (círculos no meio) só fica com pouquíssimo texto, centralizado."""
+
+    def test_texto_demais_vira_canto_e_pouco_texto_vai_para_o_meio(self):
+        halo = {"modo": "arte", "arte": "halo", "tom": "escuro"}
+        post = ia.limpar("afiliado", {"nome": "x", "legenda": "", "slides": [
+            {"tipo": "cta", "fundo": dict(halo), "titulo": "Quer a sua? *Link na bio*",
+             "texto": "Toque no link da bio para ver a garrafa e conferir o preço atualizado.", "botao": "Ver no link da bio"},
+            {"tipo": "cta", "fundo": dict(halo), "titulo": "Link na *bio*", "botao": "Ver agora"},
+            {"tipo": "lista", "fundo": dict(halo), "titulo": "Lista", "itens": [{"titulo": "a"}]}]})
+        longo, curto, lista = post["slides"]
+        self.assertEqual(longo["fundo"]["arte"], "canto")
+        self.assertEqual(lista["fundo"]["arte"], "canto")
+        self.assertEqual(curto["fundo"]["arte"], "halo")
+        self.assertEqual(curto["ajustes"], {"alinhar": "centro", "posicao": "meio"})
+
+    def test_regras_novas_no_prompt(self):
+        guia = ia.conhecimento("afiliado")
+        self.assertIn("voz de quem achou o produto", guia)
+        self.assertIn("Não repita a mesma informação", guia)
+        self.assertIn('A arte "halo"', ia._sistema("afiliado", "retrato"))
