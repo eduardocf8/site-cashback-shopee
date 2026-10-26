@@ -42,7 +42,7 @@ RESUMOS = {
                    "Download de imagens", "SubID próprio"],
     },
     "estudio": {
-        "icone": "instagram", "frase": "Crie posts e stories com o seu link de afiliado e publique direto no seu Instagram, na hora ou agendado.",
+        "icone": "instagram", "frase": "Crie posts e stories com o seu link de afiliado e publique direto no seu Instagram na hora ou agendado.",
         "itens": (
             [f"{planos_do_app.CARROSSEIS[False]['geracoes']} criações com IA por dia", "7 modelos prontos de post e story",
              "Edite os textos e a foto de cada slide"],
@@ -50,11 +50,11 @@ RESUMOS = {
              "Minha marca: logo, cores e fonte em todos os posts", "Remoção de fundo da foto", "Seus próprios modelos",
              "Adicione e duplique slides"],
         ),
-        "comuns": ["Post a partir do link de um produto da Shopee, com foto e preço", "Publicar no feed e nos stories, na hora ou agendado",
+        "comuns": ["Post a partir do link de um produto da Shopee com foto e preço", "Publicar no feed e nos stories na hora ou agendado",
                    "Formatos 1:1, 4:5 e 9:16", "Legenda escrita por IA", "Download em PNG e ZIP", "SubID próprio"],
     },
     "automacoes": {
-        "icone": "automacoes", "frase": "Quem comentar a palavra certa no seu post recebe o seu link de afiliado por DM, na hora.",
+        "icone": "automacoes", "frase": "Quem comentar a palavra certa no seu post recebe o seu link de afiliado por DM na hora.",
         "itens": (
             ["Respostas a comentários nos posts", "Até 5 automações ligadas ao mesmo tempo"],
             ["Respostas a comentários, stories e DMs com palavra-chave", "Automações ligadas sem limite",
@@ -86,7 +86,7 @@ PERGUNTAS = [
 
 # No lançamento do Instagram: o texto que fala de carrosséis muda e entra a pergunta dos pacotes.
 NIVEIS_LANCAMENTO = ("Qual é a diferença entre Standard e Premium?", "O Premium libera mais volume e mais recursos em cada módulo (mais grupos e ofertas por dia no bot, mais botões no site, mais criações com IA e a sua marca no Estúdio, stories e DMs nas Automações). As listas completas estão nos cartões de cada plano.")
-PACOTES_LANCAMENTO = ("Posso assinar mais de um módulo?", "Pode. Assine cada módulo separado ou escolha um pacote: o Pacote Ofertas (Bot de WhatsApp e Meu site) e o Pacote Instagram (Estúdio e Automações) saem cerca de 10% mais baratos, e o Pacote Completo, com os 4 módulos, cerca de 15%. Os módulos de todas as suas assinaturas ficam liberados na mesma conta.")
+PACOTES_LANCAMENTO = ("Posso assinar mais de um módulo?", "Pode. Assine cada módulo separado ou escolha um pacote: o Pacote Ofertas (Bot de WhatsApp e Meu site) e o Pacote Instagram (Estúdio e Automações) saem cerca de 10% mais baratos e o Pacote Completo, com os 4 módulos, sai cerca de 15% mais barato. Os módulos de todas as suas assinaturas ficam liberados na mesma conta.")
 
 
 # Antes do lançamento: o Estúdio e as Automações aparecem como "Em breve", sem preço e sem planos.
