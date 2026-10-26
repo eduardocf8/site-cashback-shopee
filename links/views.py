@@ -155,6 +155,15 @@ def ir_para_shopee(request):
     return resposta
 
 
+def _navegador_instagram(request) -> bool:
+    """O navegador interno do Instagram (abre links de DM/story sem sair do app) tem
+    o User-Agent normal do celular com "Instagram" no final (ver NAVEGADOR em
+    accounts/tests.py::FunilSemContaTests) - nem sempre mantém cookie entre sessões,
+    então "continuar sem cadastro" é menos confiável nele (ver aviso condicional em
+    continuar_sem_cadastro.html). Só muda o que é mostrado na tela, não bloqueia nada."""
+    return "instagram" in request.META.get("HTTP_USER_AGENT", "").lower()
+
+
 def continuar_sem_cadastro(request):
     """Página de escolha de quem esbarrou no login ao clicar sem conta (ROADMAP
     13.11, decisão de 24/10/2026): "Cadastrar e continuar" (ganha cashback) ou
@@ -172,6 +181,7 @@ def continuar_sem_cadastro(request):
     contexto = {
         "link_cadastrar": f"{reverse('registrar')}?{urlencode({'next': proximo})}",
         "link_continuar": f"{proximo}{separador}{urlencode({'continuar': 'sem_cadastro'})}",
+        "navegador_instagram": _navegador_instagram(request),
     }
     return render(request, "links/continuar_sem_cadastro.html", contexto)
 

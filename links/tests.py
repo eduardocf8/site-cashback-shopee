@@ -494,6 +494,26 @@ class ContinuarSemCadastroViewTests(TestCase):
 
         self.assertRedirects(resposta, reverse("home"))
 
+    def test_aviso_do_navegador_instagram_so_aparece_nesse_navegador(self):
+        navegador_instagram = (
+            "Mozilla/5.0 (iPhone; CPU iPhone OS 17_5 like Mac OS X) AppleWebKit/605.1.15 "
+            "(KHTML, like Gecko) Mobile/15E148 Instagram 330.0.0.0"
+        )
+        resposta = self.client.get(
+            reverse("continuar_sem_cadastro") + "?next=/ir-para-shopee/&origem=ir_shopee",
+            HTTP_USER_AGENT=navegador_instagram,
+        )
+
+        self.assertContains(resposta, "Você está no navegador do Instagram")
+
+    def test_sem_navegador_instagram_nao_mostra_o_aviso(self):
+        resposta = self.client.get(
+            reverse("continuar_sem_cadastro") + "?next=/ir-para-shopee/&origem=ir_shopee",
+            HTTP_USER_AGENT="Mozilla/5.0 (iPhone; CPU iPhone OS 17_5 like Mac OS X) AppleWebKit/605.1.15 Safari/604.1",
+        )
+
+        self.assertNotContains(resposta, "Você está no navegador do Instagram")
+
 
 @override_settings(SHOPEE_CASHBACK_PERCENTUAL=100)
 class HomeConversaoCashbackRealTests(TestCase):
