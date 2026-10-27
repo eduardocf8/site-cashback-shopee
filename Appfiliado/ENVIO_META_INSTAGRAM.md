@@ -57,7 +57,7 @@ depois, com o vídeo 2. As duas juntas também funcionam, porque cada uma tem o 
 - [ ] **Webhooks:** `https://cash-b.com/instagram/automacao/webhook/`, campos `comments` e `messages` assinados.
 - [x] **Modo do app: Publicado.**
 - [x] **Verificação da empresa:** aprovada.
-- [ ] **Testador do Instagram:** a conta A (`@sejaappfiliado`), com o convite aceito (instagram.com › Configurações › Apps e sites › Convites de testador).
+- [ ] **Testador do Instagram:** a conta A (`@usecashb`), com o convite aceito (instagram.com › Configurações › Apps e sites › Convites de testador).
 
 **No Appfiliado**
 - [x] **Conta para o revisor:** criada (`revisor.meta@appfiliado.com.br`), com a cortesia `carrosseis_premium, instagram_premium` e "testa o Estúdio Instagram" marcado. A senha vai só no formulário da Meta, nunca em arquivo.
@@ -71,8 +71,13 @@ depois, com o vídeo 2. As duas juntas também funcionam, porque cada uma tem o 
 ## 3. Preparação da gravação
 
 - **Contas do Instagram:**
-  - **Conta A (`@sejaappfiliado`):** a do afiliado. É ela que conecta no Appfiliado. Tenha a senha à mão: no vídeo você vai **digitar** o usuário e a senha na janela do Instagram (a senha aparece como pontinhos).
-  - **Conta B:** a de **outra pessoa**, que vai comentar (a Meta pediu "um comentário real de terceiro"). Use uma conta **sem função no app da Meta** e que não seja da empresa: o perfil pessoal de alguém da família ou de um amigo, no celular dele ou no seu. Evite o `@usecashb`, que é da empresa.
+  - **Conta A (`@usecashb`):** a do afiliado. É ela que conecta no Appfiliado. Tenha a senha à mão: no vídeo você vai **digitar** o usuário e a senha na janela do Instagram (a senha aparece como pontinhos).
+- **Atenção: a `@usecashb` também é usada pela cash-b, com o mesmo app da Meta.**
+  - **Tirar o app em "Apps e sites" corta os tokens da cash-b.** O bot de posts (`INSTAGRAM_ACCESS_TOKEN` no Render) e a automação da cash-b (`/automacao/contas/`) usam um token dessa conta gerado nesse mesmo app. Ao remover o app, esses tokens param de funcionar: o bot deixa de postar e as respostas automáticas dos stories de oferta param.
+  - **Depois de gravar os dois vídeos:** gere um token novo da `@usecashb` (como em `marketing/instagram/README.md`, "Fase 1") e troque nos dois lugares: a variável `INSTAGRAM_ACCESS_TOKEN` no Render (web e worker) e o token da conta em `/automacao/contas/`. No admin, marque o token como renovado hoje.
+  - **Comentários:** pause na cash-b (`/automacao/`) qualquer automação de comentário do post usado no vídeo 1, para a conta B não receber duas respostas.
+  - **Publicação do vídeo 2:** o post vai de verdade para o feed da `@usecashb`. Use uma oferta que faça sentido para a cash-b, ou apague o post depois da gravação.
+  - **Conta B:** a de **outra pessoa**, que vai comentar (a Meta pediu "um comentário real de terceiro"). Use uma conta **sem função no app da Meta** e que não seja da empresa: o perfil pessoal de alguém da família ou de um amigo, no celular dele ou no seu.
 - **Começar deslogado (o ponto da rejeição):**
   1. Desconecte a conta A no Appfiliado (cartão do Instagram › Desconectar).
   2. No Instagram da conta A, vá em **Configurações › Apps e sites** e **remova o Appfiliado** se ele aparecer. Assim a tela de consentimento aparece completa, como para um usuário novo.
@@ -144,7 +149,7 @@ depois, com o vídeo 2. As duas juntas também funcionam, porque cada uma tem o 
 2. Digite o usuário e a senha da **conta A** e entre. Se pedir código de verificação, digite.
 3. Na **tela de consentimento** (o Instagram mostra "Appfiliado" e a lista do que o app pede): **pare por 8 segundos**. Passe o mouse devagar sobre cada item da lista, principalmente o de **comentários**.
 4. Clique em **Permitir**. A janela fecha sozinha e a página do Appfiliado se atualiza.
-5. Mostre o cartão da conta conectada: foto, `@sejaappfiliado`, nome e "Conectado e recebendo os comentários e as DMs". Pare 3 segundos nele.
+5. Mostre o cartão da conta conectada: foto, `@usecashb`, nome e "Conectado e recebendo os comentários e as DMs". Pare 3 segundos nele.
 
 **Faixa na tela** (durante a pausa na tela de consentimento, ponha também uma seta ou um destaque apontando o item de comentários)
 > Step 2 — OAuth consent: Appfiliado requests instagram_business_manage_comments (manage comments)
@@ -156,13 +161,13 @@ depois, com o vídeo 2. As duas juntas também funcionam, porque cada uma tem o 
 **O que falar**
 > "I click 'Conectar Instagram'. The official Instagram Business Login opens in a new window. Since I'm
 > logged out, Instagram asks me to log in, so I type the username and password of the professional
-> account sejaappfiliado.
+> account usecashb.
 > [consent screen] This is the consent screen. Instagram shows that the app Appfiliado is requesting
 > permission to manage the comments on my account. This is instagram_business_manage_comments. The
 > same screen also lists access to the profile, publishing content and messages. I grant access by
 > clicking 'Allow'.
 > [back to Appfiliado] The window closes and Appfiliado now shows the connected account: profile
-> picture, username sejaappfiliado and name. This profile information comes from
+> picture, username usecashb and name. This profile information comes from
 > instagram_business_basic, which is already approved."
 
 ### Cena 1.5. Criar a automação de comentário (2:30 a 3:30)
@@ -174,7 +179,7 @@ depois, com o vídeo 2. As duas juntas também funcionam, porque cada uma tem o 
 4. Palavras: `QUERO`.
 5. **Responder o comentário** marcado, com as três respostas prontas. Passe o mouse sobre elas.
 6. Deixe **Mandar DM** como está (texto e link do produto).
-7. Clique em **Salvar**. Mostre a automação ligada na lista, com o `@sejaappfiliado`.
+7. Clique em **Salvar**. Mostre a automação ligada na lista, com o `@usecashb`.
 
 **Faixa na tela**
 > Demonstrating instagram_business_manage_comments — setting up the public reply to comments
@@ -204,7 +209,7 @@ depois, com o vídeo 2. As duas juntas também funcionam, porque cada uma tem o 
 **O que falar**
 > "This is a different person's Instagram account, on a phone. I open the affiliate's post and comment
 > 'QUERO'. Appfiliado receives this comment through the comments webhook, using
-> instagram_business_manage_comments. [wait] And here, a few seconds later, the account sejaappfiliado
+> instagram_business_manage_comments. [wait] And here, a few seconds later, the account usecashb
 > replied publicly to the comment, automatically. This public reply was posted by Appfiliado with
 > instagram_business_manage_comments, and it's visible on Instagram.
 > Now I comment 'que lindo', which means 'how nice', without the trigger word. As expected, there is no
@@ -288,16 +293,16 @@ depois, com o vídeo 2. As duas juntas também funcionam, porque cada uma tem o 
 
 **O que falar**
 > "I click 'Conectar Instagram'. The Instagram Business Login opens and, since I'm logged out, I type
-> the username and password of the professional account sejaappfiliado.
+> the username and password of the professional account usecashb.
 > [consent screen] On the consent screen, Instagram shows that Appfiliado is requesting permission to
 > publish content on my account. This is instagram_business_content_publish. I grant access by clicking
-> 'Allow'. [back] The window closes and the connected account sejaappfiliado is shown."
+> 'Allow'. [back] The window closes and the connected account usecashb is shown."
 
 ### Cena 2.5. Publicar o post e ver no Instagram (2:20 a 3:50)
 
 **O que fazer**
 1. Em **Seus posts**, abra o post de produto que você deixou pronto. Passe pelos slides e mostre a legenda.
-2. Clique em **Publicar no Instagram**. Mostre a janela: a conta `@sejaappfiliado` e "Vai como carrossel de N imagens no feed, com a legenda do editor".
+2. Clique em **Publicar no Instagram**. Mostre a janela: a conta `@usecashb` e "Vai como carrossel de N imagens no feed, com a legenda do editor".
 3. Clique em **Agendar** só para mostrar o campo de dia e hora. Volte para **Publicar agora**.
 4. Clique em **Publicar**. Espere "Enviado! O post sai no seu Instagram em instantes." e a linha virar **Publicada**, com **Ver no Instagram** (até uns 30 segundos; **não corte**).
 5. Clique em **Ver no Instagram** (ou abra o perfil no celular) e mostre o carrossel publicado, com as imagens e a legenda.
@@ -312,7 +317,7 @@ depois, com o vídeo 2. As duas juntas também funcionam, porque cada uma tem o 
 > now, 'Publicar agora', or schedule it, 'Agendar'. I'll publish it now.
 > Appfiliado uses instagram_business_content_publish to publish the post the affiliate created to their
 > own account, and only when they ask for it. [wait] It's published. [Instagram] And here is the
-> carousel on the sejaappfiliado profile, with the caption."
+> carousel on the usecashb profile, with the caption."
 
 ### Cena 2.6. Publicações (3:50 a 4:10)
 
