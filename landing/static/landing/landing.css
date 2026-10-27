@@ -554,7 +554,7 @@ a.incluso:hover strong { text-decoration-color: var(--verde); }
 /* Pré-lançamento do Instagram: Estúdio e Automações "Em breve" (sem preço e sem Standard/Premium). */
 .selo-breve { display: inline-flex; align-items: center; align-self: flex-start; gap: 6px; padding: 4px 12px; border-radius: 999px; background: var(--amarelo); color: var(--verde); font-weight: 800; font-size: 12px; letter-spacing: .06em; text-transform: uppercase; white-space: nowrap; }
 .selo-breve::before { content: ""; width: 7px; height: 7px; border-radius: 50%; background: var(--verde); }
-.tag-breve { justify-self: start; padding: 2px 8px; border-radius: 999px; background: var(--amarelo); color: var(--verde); font-size: 10.5px; font-weight: 800; letter-spacing: .05em; text-transform: uppercase; }
+.tag-breve { justify-self: start; align-self: start; display: inline-flex; align-items: center; line-height: 1.5; padding: 2px 8px; border-radius: 999px; background: var(--amarelo); color: var(--verde); font-size: 10.5px; font-weight: 800; letter-spacing: .05em; text-transform: uppercase; }
 .modulo-breve { background: linear-gradient(160deg, #FFF8E1, var(--card) 60%); border-color: rgba(242,194,48,.6); }
 .bloco-breve .bloco-titulo { flex-wrap: wrap; }
 .plano-breve { border-style: dashed; border-color: rgba(31,58,46,.35); }
