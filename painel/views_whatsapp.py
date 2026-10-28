@@ -20,7 +20,7 @@ from bot_whatsapp.models import (
     AlertaDisparado, AlertaPreco, CampanhaBot, ConexaoWhatsApp, ConfiguracaoOfertas, EnvioWhatsApp, EventoWhatsApp,
     MensagemAvulsa, OfertaRecebida, ProdutoAcompanhado,
 )
-from bot_whatsapp.ofertas import grupos_do_plano, intervalo_do_plano, montar_texto, ofertas_enviadas_hoje
+from bot_whatsapp.ofertas import grupos_do_plano, intervalo_do_plano, montar_texto, ofertas_enviadas_hoje, ritmo_com_muitos_grupos
 from licencas import planos
 
 from . import modulos as mod
@@ -185,6 +185,7 @@ def whatsapp_ofertas(request):
         request, "whatsapp",
         form=form, config=config, historico=historico, recebidas=recebidas, conexao=conexao, regras=regras, regras_premium=planos.BOT[True],
         grupos_fora_do_plano=max(0, len(config.grupos or []) - regras["grupos"]),
+        ritmo=ritmo_com_muitos_grupos(config, regras),
         versao=_versao_da_tela(conta, config),
         **_resumo_ofertas(conta, config),
     ))

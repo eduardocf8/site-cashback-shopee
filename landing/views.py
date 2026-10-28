@@ -13,8 +13,12 @@ RESUMOS = {
     "bot": {
         "icone": "whatsapp", "frase": "Ofertas da Shopee no automático nos seus grupos de WhatsApp sempre com o seu link de afiliado.",
         "itens": (
-            ["Até 10 grupos e canais", "Até 60 ofertas por dia em cada grupo/canal", "Alerta de preço para até 10 produtos"],
-            ["Até 50 grupos ou canais", "Até 300 ofertas por dia em cada grupo/canal", "Alerta de preço para até 50 produtos",
+            [f"Até {planos_do_app.BOT[False]['grupos']} grupos e canais",
+             f"Até {planos_do_app.BOT[False]['ofertas_por_grupo_dia']} ofertas por dia em cada grupo/canal",
+             f"Alerta de preço para até {planos_do_app.BOT[False]['alerta_produtos']} produtos"],
+            [f"Até {planos_do_app.BOT[True]['grupos']} grupos e canais",
+             f"Até {planos_do_app.BOT[True]['ofertas_por_grupo_dia']} ofertas por dia em cada grupo/canal",
+             f"Alerta de preço para até {planos_do_app.BOT[True]['alerta_produtos']} produtos",
              "Envio por nicho: cada grupo com as ofertas do seu tema",
              "Copia ofertas de outros grupos e troca pelo seu link", "Revisão de texto com IA"],
         ),

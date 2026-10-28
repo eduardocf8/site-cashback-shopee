@@ -26,6 +26,7 @@ from pathlib import Path
 
 from django.conf import settings
 from django.db import close_old_connections
+from django.db.models import Min
 from django.utils import timezone
 
 from atendimento import servico as atendimento
@@ -517,7 +518,7 @@ class Gerenciador:
 
     def enviar_pendentes(self):
         """No máximo uma mensagem por número a cada ESPACO_ENTRE_ENVIOS segundos
-        (várias contas se revezam): uma oferta para 10 grupos não sai de rajada."""
+        (várias contas se revezam): uma oferta para muitos grupos não sai de rajada."""
         from neonize.utils.jid import build_jid
 
         agora = time.monotonic()
@@ -528,8 +529,11 @@ class Gerenciador:
         EnvioWhatsApp.objects.filter(
             estado=EnvioWhatsApp.PENDENTE, enviado_em__lt=timezone.now() - ENVIO_TRAVADO_APOS,
         ).update(estado=EnvioWhatsApp.ERRO, erro="O envio foi interrompido (reinício do servidor). Não foi repetido, para não duplicar.")
-        for envio in EnvioWhatsApp.objects.filter(
-                estado=EnvioWhatsApp.PENDENTE, enviado_em__isnull=True).order_by("id")[:50]:
+        # A mensagem mais antiga da fila de cada conta: quem manda pra 200 grupos não segura a fila
+        # de quem vem depois (cada número tem o seu ritmo).
+        primeiras = (EnvioWhatsApp.objects.filter(estado=EnvioWhatsApp.PENDENTE, enviado_em__isnull=True)
+                     .values("conta_id").annotate(primeira=Min("id")).values_list("primeira", flat=True))
+        for envio in EnvioWhatsApp.objects.filter(pk__in=list(primeiras)).order_by("id"):
             if envio.conta_id in ja_enviou_nesta_volta:
                 continue
             if agora - self.ultimo_envio.get(envio.conta_id, 0) < ESPACO_ENTRE_ENVIOS:
@@ -537,9 +541,11 @@ class Gerenciador:
             sessao = self.sessoes.get(envio.conta_id)
             if not sessao or not sessao.conectada:
                 if timezone.now() - envio.criado_em > DESISTE_DO_ENVIO:
-                    envio.estado = EnvioWhatsApp.ERRO
-                    envio.erro = "O WhatsApp estava desconectado."
-                    envio.save(update_fields=["estado", "erro"])
+                    # Todas as velhas da conta de uma vez (com muitos grupos, a fila é grande).
+                    EnvioWhatsApp.objects.filter(
+                        conta_id=envio.conta_id, estado=EnvioWhatsApp.PENDENTE, enviado_em__isnull=True,
+                        criado_em__lt=timezone.now() - DESISTE_DO_ENVIO,
+                    ).update(estado=EnvioWhatsApp.ERRO, erro="O WhatsApp estava desconectado.")
                 continue
             # Dois workers (o antigo e o novo, durante um deploy) podem olhar a mesma mensagem:
             # só quem conseguir marcar primeiro envia.

@@ -54,6 +54,7 @@ def bot():
                    _t("Horário e dias de envio", "Defina a janela (o padrão é das 7h às 23h e vale janela que passa da meia-noite) e os dias da semana em que o bot trabalha."),
                    _t("Limite por dia", f"O plano libera até {s['ofertas_por_grupo_dia']} ofertas por dia em cada grupo no Standard e até {p['ofertas_por_grupo_dia']} no Premium. Você pode escolher um limite menor."),
                    _t("Grupos que recebem", f"Marque os grupos e canais de destino, até {s['grupos']} no Standard e até {p['grupos']} no Premium."),
+                   _t("Ritmo com muitos grupos", "Cada oferta leva alguns segundos por grupo para sair (com 200 grupos, uns 14 minutos para chegar em todos). A próxima espera a anterior terminar, e o painel mostra quantas ofertas cabem por dia no seu horário."),
                    _t("Sub IDs para medir", "Até 5 Sub IDs padrão e um Sub ID próprio por grupo. Em Resultados você vê quanto cada grupo vende."),
                    _t("Mensagens avulsas", f"Escreva um aviso, com foto se quiser, e mande para todos os grupos, pros de um nicho ou pros que escolher: na hora, num dia e hora marcados ou toda semana. Os links da Shopee viram o seu link de afiliado. Até {s['mensagens_agendadas']} mensagens agendadas no Standard e {p['mensagens_agendadas']} no Premium.")),
             _grupo("Teste antes de enviar", "Veja o que vai sair sem mandar nada.",
