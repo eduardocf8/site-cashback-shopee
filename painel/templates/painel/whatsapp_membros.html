@@ -43,7 +43,7 @@
     <label class="marcar"><input type="checkbox" name="so_admins" checked><span>Só administradores enviam mensagens</span></label>
     {% if criar.automacao.sem_automacao or not criar.automacao.vagas %}
     <label class="marcar travada"><input type="checkbox" name="incluir" disabled><span>Incluir na Automação para receber ofertas</span></label>
-    <p class="ajuda aviso-campo">{% if criar.automacao.sem_automacao %}Você ainda não configurou a <a href="{% url 'painel_whatsapp_ofertas' %}">Automação</a>. Depois de criar o grupo, é só marcá-lo por lá.{% else %}Sua Automação já está com {{ criar.automacao.limite }} grupos, o máximo do seu plano. Para o grupo novo receber ofertas, tire outro grupo na <a href="{% url 'painel_whatsapp_ofertas' %}">Automação</a>{% if not criar.automacao.premium %} ou passe pro <a href="{{ url_planos }}" target="_blank" rel="noopener">plano Premium</a>{% endif %}.{% endif %}</p>
+    <p class="suave pequeno aviso-campo">{% if criar.automacao.sem_automacao %}Você ainda não configurou a <a href="{% url 'painel_whatsapp_ofertas' %}">Automação</a>. Depois de criar o grupo, é só marcá-lo por lá.{% else %}Sua Automação já está com {{ criar.automacao.limite }} grupos, o máximo do seu plano. Para o grupo novo receber ofertas, tire outro grupo na <a href="{% url 'painel_whatsapp_ofertas' %}">Automação</a>{% if not criar.automacao.premium %} ou passe pro <a href="{{ url_planos }}" target="_blank" rel="noopener">plano Premium</a>{% endif %}.{% endif %}</p>
     {% else %}
     <label class="marcar"><input type="checkbox" name="incluir" checked><span>Incluir na Automação para receber ofertas</span></label>
     {% endif %}
