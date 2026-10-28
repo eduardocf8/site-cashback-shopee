@@ -178,11 +178,6 @@ def numero_vinculado(conta) -> Conversa | None:
     return Conversa.objects.filter(conta=conta).order_by("-vinculada_em").first()
 
 
-def disponiveis() -> bool:
-    """Os comandos chegam pelo agente de vendas: sem ele ligado, ninguém lê as mensagens."""
-    return bool(settings.ATENDIMENTO_CONTA_ID and settings.ANTHROPIC_API_KEY)
-
-
 def numero_do_appfiliado() -> str:
     """Só os dígitos do WhatsApp do Appfiliado (o número do agente de vendas)."""
     from bot_whatsapp.models import ConexaoWhatsApp

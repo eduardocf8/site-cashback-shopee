@@ -491,10 +491,10 @@ def configuracoes(request):
 
 
 def _whatsapp_resultados(conta) -> dict | None:
-    """Cartão "Resultados no WhatsApp": o número vinculado ou o código para vincular. Some quando o
-    WhatsApp do Appfiliado (agente de vendas) não está ligado."""
+    """Cartão "Resultados no WhatsApp": o número vinculado ou o código para vincular. Quem responde é o
+    worker (agente de vendas); aqui no web basta saber o número. Sem número conhecido, o cartão some."""
     numero = comandos_whatsapp.numero_do_appfiliado()
-    if not comandos_whatsapp.disponiveis() or not numero:
+    if not numero:
         return None
     vinculado = comandos_whatsapp.numero_vinculado(conta)
     codigo = None if vinculado else comandos_whatsapp.codigo_valido(conta)

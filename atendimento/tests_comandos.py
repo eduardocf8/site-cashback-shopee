@@ -282,9 +282,12 @@ class TestPainel(BaseComandos):
         self.client.post("/configuracoes/", {"formulario": "whatsapp_desvincular"})
         self.assertFalse(Conversa.objects.filter(conta=self.conta).exists())
 
-    def test_sem_agente_ligado_o_cartao_some(self):
-        with override_settings(ANTHROPIC_API_KEY=""):
+    def test_cartao_so_precisa_do_numero(self):
+        # No web, o agente (conta e chave da IA) pode não estar configurado: quem responde é o worker.
+        with override_settings(ANTHROPIC_API_KEY="", ATENDIMENTO_CONTA_ID=0):
+            html = self.client.get("/configuracoes/").content.decode()
+        self.assertIn("Resultados no WhatsApp", html)
+        self.assertIn("+55 (45) 99999-0000", html)  # sem a conexão do agente, usa o número de suporte
+        with override_settings(APPFILIADO_WHATSAPP_SUPORTE="", ATENDIMENTO_CONTA_ID=0):
             html = self.client.get("/configuracoes/").content.decode()
         self.assertNotIn("Resultados no WhatsApp", html)
-        html = self.client.get("/configuracoes/").content.decode()
-        self.assertIn("+55 (45) 99999-0000", html)  # sem a conexão, usa o número de suporte
