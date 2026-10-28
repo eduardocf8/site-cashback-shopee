@@ -50,6 +50,19 @@ def escolher(conta, jids: list[str], conexao) -> int:
     return len(escolhidos)
 
 
+def garantir(conta, jids: list[str], conexao) -> None:
+    """Acompanha também esses grupos (sem tirar os outros), até MAXIMO_GRUPOS."""
+    possiveis = {g["jid"]: g for g in grupos_possiveis(conexao)}
+    existentes = set(GrupoMonitorado.objects.filter(conta=conta).values_list("jid", flat=True))
+    vagas = MAXIMO_GRUPOS - len(existentes)
+    novos = [j for j in jids if j in possiveis and j not in existentes][:max(0, vagas)]
+    GrupoMonitorado.objects.bulk_create([
+        GrupoMonitorado(conta=conta, jid=j, nome=str(possiveis[j].get("nome", ""))[:200],
+                        admin=bool(possiveis[j].get("admin")), membros=possiveis[j].get("participantes"))
+        for j in novos
+    ])
+
+
 # --- Coleta (worker) ---------------------------------------------------------------------
 
 def contas_para_ler(agora) -> list[int]:

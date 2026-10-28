@@ -1,7 +1,7 @@
 from django.urls import include, path
 
-from . import (views, views_carrosseis, views_conversor, views_estudio, views_instagram, views_notas, views_radar, views_site,
-               views_whatsapp)
+from . import (views, views_carrosseis, views_conversor, views_entrada, views_estudio, views_instagram, views_notas, views_radar,
+               views_site, views_whatsapp)
 
 urlpatterns = [
     path("", views.inicio, name="painel_inicio"),
@@ -39,6 +39,8 @@ urlpatterns = [
     path("whatsapp/campanhas/", views_whatsapp.whatsapp_campanhas, name="painel_whatsapp_campanhas"),
     path("whatsapp/mensagens/", views_whatsapp.whatsapp_mensagens, name="painel_whatsapp_mensagens"),
     path("whatsapp/membros/", views_whatsapp.whatsapp_membros, name="painel_whatsapp_membros"),
+    path("whatsapp/entrada/", views_entrada.entrada_lista, name="painel_whatsapp_entrada"),
+    path("whatsapp/entrada/<int:pk>/", views_entrada.entrada_link, name="painel_whatsapp_entrada_link"),
     path("whatsapp/mensagens/<int:pk>/foto/", views_whatsapp.whatsapp_mensagem_foto, name="painel_whatsapp_mensagem_foto"),
     path("whatsapp/ofertas/estado/", views_whatsapp.whatsapp_ofertas_estado, name="painel_whatsapp_ofertas_estado"),
     path("meu-site/", views_site.meu_site, name="painel_meu_site"),

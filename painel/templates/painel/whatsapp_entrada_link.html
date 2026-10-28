@@ -1,0 +1,116 @@
+{% extends "painel/base.html" %}
+{% load static painel_extras %}
+{% block titulo %}Link de entrada · Bot de WhatsApp{% endblock %}
+{% block conteudo %}
+<header class="cabecalho">
+  <div>
+    <h1>Bot de WhatsApp</h1>
+    <p>Ofertas da Shopee enviadas com o seu link de afiliado no automático: buscadas pela API ou copiadas de outros grupos e canais.</p>
+  </div>
+</header>
+{% include "painel/_abas_whatsapp.html" with aba="entrada" %}
+<p class="pequeno" style="margin-top:12px"><a href="{% url 'painel_whatsapp_entrada' %}">← Links de entrada</a></p>
+
+<section class="card" aria-labelledby="titulo-link" style="margin-top:8px">
+  <h2 id="titulo-link">{{ link.titulo }}</h2>
+  {% if url %}
+  <div class="link-convite" style="margin-top:8px">
+    <input type="text" value="{{ url }}" readonly aria-label="Link para o anúncio">
+    <button type="button" class="botao botao-claro" data-copiar="{{ url }}">Copiar link</button>
+    <a class="botao botao-claro" href="{{ url }}" target="_blank" rel="noopener">Abrir</a>
+  </div>
+  <p class="suave pequeno" style="margin-top:8px">Coloque este link no anúncio. Para ver os números por campanha, use o parâmetro <code>utm_campaign</code> no link do anúncio.</p>
+  {% endif %}
+  {% if estado.da_vez %}<p class="pequeno" style="margin-top:8px">Agora mandando para <strong>{{ estado.da_vez.nome }}</strong>.</p>
+  {% elif link.grupos %}<p class="aviso aviso-warning pequeno" style="margin-top:8px">Nenhum grupo do link tem vaga e link de convite agora: quem clicar vê o aviso de grupos cheios.</p>{% endif %}
+</section>
+
+<div class="kpis kpis-membros" style="margin-top:16px">
+  <div class="card kpi"><span class="kpi-titulo">Hoje</span><strong class="kpi-valor">{{ numeros.hoje.cliques|numero }}</strong><span class="kpi-detalhe">clique{{ numeros.hoje.cliques|pluralize }} de {{ numeros.hoje.visitas|numero }} visita{{ numeros.hoje.visitas|pluralize }}</span></div>
+  <div class="card kpi"><span class="kpi-titulo">Últimos 7 dias</span><strong class="kpi-valor">{{ numeros.sete.cliques|numero }}</strong><span class="kpi-detalhe">clique{{ numeros.sete.cliques|pluralize }} de {{ numeros.sete.visitas|numero }} visita{{ numeros.sete.visitas|pluralize }}</span></div>
+  <div class="card kpi"><span class="kpi-titulo">Últimos 30 dias</span><strong class="kpi-valor">{{ numeros.trinta.cliques|numero }}</strong><span class="kpi-detalhe">clique{{ numeros.trinta.cliques|pluralize }} de {{ numeros.trinta.visitas|numero }} visita{{ numeros.trinta.visitas|pluralize }}</span></div>
+  <div class="card kpi"><span class="kpi-titulo">Quem clica no botão</span><strong class="kpi-valor">{% if numeros.trinta.taxa is None %}—{% else %}{{ numeros.trinta.taxa }}%{% endif %}</strong><span class="kpi-detalhe">das visitas, em 30 dias</span></div>
+</div>
+
+<section class="card" id="grupos-do-link" aria-labelledby="titulo-grupos-link" style="margin-top:16px">
+  <h2 id="titulo-grupos-link">Grupos do link</h2>
+  <p class="suave pequeno">Enchem na ordem do nome (#1, #2, #3…). Um grupo sai da vez quando chega em {{ link.limite_por_grupo|numero }} pessoas. O link de convite é lido sozinho quando o número do bot é administrador do grupo; se não for, cole o link à mão.</p>
+  {% for g in estado.grupos %}
+    <div class="linha-entrada">
+      <div class="le-nome">
+        <strong>{{ g.nome }}</strong>
+        {% if estado.da_vez.jid == g.jid %}<span class="selo-canal">Da vez</span>{% elif g.cheio %}<span class="selo-canal">Cheio</span>{% elif g.lotando %}<span class="selo-canal">Lotando</span>{% endif %}
+        <div class="suave pequeno"><span class="lotacao{% if g.lotando %} cheia{% endif %}"><i style="width:{{ g.ocupacao }}%"></i></span> {{ g.membros|numero }} de {{ link.limite_por_grupo|numero }}{% if not g.no_grupo %} · <span class="erro">o bot saiu desse grupo</span>{% endif %}</div>
+      </div>
+      <form method="post" class="link-convite">
+        {% csrf_token %}
+        <input type="hidden" name="acao" value="convite">
+        <input type="hidden" name="jid" value="{{ g.jid }}">
+        <input type="text" name="convite" value="{{ g.convite }}" placeholder="{% if g.erro_convite %}https://chat.whatsapp.com/...{% else %}Lendo o link de convite…{% endif %}" aria-label="Link de convite de {{ g.nome }}">
+        <button type="submit" class="botao botao-claro">Salvar</button>
+      </form>
+      {% if g.erro_convite and not g.manual %}<span class="erro pequeno">{{ g.erro_convite }}</span>{% elif g.manual %}<span class="suave pequeno">Link colado à mão. Apague e salve para o Appfiliado voltar a ler sozinho.</span>{% endif %}
+    </div>
+  {% empty %}
+    <p class="suave pequeno">Escolha os grupos do link logo abaixo, nas configurações.</p>
+  {% endfor %}
+  {% if numeros.por_campanha %}
+  <h3 style="margin-top:18px">Por campanha (30 dias)</h3>
+  <div class="tabela-rolagem"><table class="numeros">
+    <thead><tr><th>Campanha</th><th>Visitas</th><th>Cliques</th></tr></thead>
+    <tbody>{% for c in numeros.por_campanha %}<tr><td>{{ c.campanha }}</td><td>{{ c.visitas|numero }}</td><td>{{ c.cliques|numero }}</td></tr>{% endfor %}</tbody>
+  </table></div>
+  {% endif %}
+</section>
+
+<form method="post" class="formulario" style="margin-top:16px">
+  {% csrf_token %}
+  <input type="hidden" name="acao" value="salvar">
+  <section class="card" aria-labelledby="titulo-pagina">
+    <h2 id="titulo-pagina">Página</h2>
+    <label class="marcar"><input type="checkbox" name="ativo"{% if link.ativo %} checked{% endif %}><span>Link no ar</span></label>
+    <div class="campo"><label for="slug">Endereço do link</label><input type="text" name="slug" id="slug" value="{{ link.slug }}" maxlength="40" autocomplete="off" spellcheck="false" autocapitalize="none"><span class="ajuda">{{ site.endereco }}…/g/<strong>{{ link.slug }}</strong>/ · letras minúsculas, números e hífen. Trocar o endereço quebra o link que já está no anúncio.</span></div>
+    <div class="campo"><label for="titulo">Título</label><input type="text" name="titulo" id="titulo" value="{{ link.titulo }}" maxlength="80"></div>
+    <div class="campo"><label for="frase">Frase</label><input type="text" name="frase" id="frase" value="{{ link.frase }}" maxlength="200"></div>
+    <div class="campo"><label for="texto_botao">Texto do botão</label><input type="text" name="texto_botao" id="texto_botao" value="{{ link.texto_botao }}" maxlength="40"></div>
+    <p class="suave pequeno">A foto é a do Meu site.</p>
+    <div class="campo"><label for="pixel_id">ID do pixel do Meta (opcional)</label><input type="text" name="pixel_id" id="pixel_id" value="{{ link.pixel_id }}" inputmode="numeric" placeholder="Ex: 123456789012345"><span class="ajuda">Fica no Gerenciador de Eventos do Meta. A página registra a visita (PageView) e o toque no botão (Lead).</span></div>
+    <label class="marcar"><input type="checkbox" name="redirecionar"{% if link.redirecionar %} checked{% endif %}><span>Ir direto para o grupo, sem esperar o toque no botão</span></label>
+    <p class="suave pequeno aviso-campo">Cuidado: o Meta costuma barrar anúncios que levam a uma página que só redireciona. Com o botão é mais seguro.</p>
+  </section>
+
+  <section class="card" aria-labelledby="titulo-config-grupos" style="margin-top:16px">
+    <h2 id="titulo-config-grupos">Grupos</h2>
+    <div class="campo"><label for="limite">Limite de pessoas por grupo</label><input type="number" name="limite_por_grupo" id="limite" value="{{ link.limite_por_grupo }}" min="50" max="{{ limite_do_whatsapp }}"><span class="ajuda">O WhatsApp aceita até {{ limite_do_whatsapp|numero }}. Uma folga evita mandar gente pra grupo lotado.</span></div>
+    {% if possiveis %}
+    <div class="busca-grupos">
+      <input type="search" data-lista="lista-grupos-membros" data-maximo="500" placeholder="Buscar grupo" aria-label="Buscar grupo" autocomplete="off">
+      <span class="suave pequeno contador" aria-live="polite"></span>
+    </div>
+    <p class="pequeno"><a href="#" id="marcar-todos">Marcar todos</a> · <a href="#" id="desmarcar-todos">Desmarcar todos</a></p>
+    <div class="lista-grupos" id="lista-grupos-membros">
+      {% for g in possiveis %}
+        <div class="linha-grupo linha-origem" data-nome="{{ g.nome|lower }}"><label><input type="checkbox" name="grupos" value="{{ g.jid }}"{% if g.jid in escolhidos %} checked{% endif %}><span>{{ g.nome }}</span>{% if g.admin %}<span class="selo-canal">Admin</span>{% endif %}<span class="suave pequeno membros-do-grupo">{{ g.participantes|numero }} membro{{ g.participantes|pluralize }}</span></label></div>
+      {% endfor %}
+      <p class="suave pequeno nenhum-grupo" hidden>Nenhum grupo com esse nome.</p>
+    </div>
+    {% else %}
+    <p class="suave pequeno">Conecte o WhatsApp na aba <a href="{% url 'painel_whatsapp' %}">Conexão</a> para ver seus grupos.</p>
+    {% endif %}
+    <label class="marcar" style="margin-top:14px"><input type="checkbox" name="criar_sozinho"{% if link.criar_sozinho %} checked{% endif %}><span>Criar o próximo grupo sozinho quando todos estiverem lotando</span></label>
+    <p class="suave pequeno aviso-campo">Quando todos os grupos do link passarem de {{ folga }}% do limite, o Appfiliado cria o próximo da sequência (mesma foto, descrição e nicho do último), coloca no link e te avisa por e-mail. Até 5 grupos novos por dia.</p>
+    <div class="campo"><label for="admins">Administradores dos grupos novos (opcional)</label><input type="text" name="admins_dos_novos" id="admins" value="{{ admins }}" placeholder="Ex: (11) 98888-7777"><span class="ajuda">Até 5 números, separados por vírgula.</span></div>
+  </section>
+
+  <div class="botoes-linha" style="margin-top:16px">
+    <button type="submit" class="botao botao-principal">Salvar</button>
+  </div>
+</form>
+
+<form method="post" style="margin-top:24px" onsubmit="return confirm('Excluir este link de entrada? O link do anúncio para de funcionar.');">
+  {% csrf_token %}
+  <input type="hidden" name="acao" value="excluir">
+  <button type="submit" class="botao botao-claro">Excluir link</button>
+</form>
+<script src="{% static 'painel/membros.js' %}" defer></script>
+{% endblock %}

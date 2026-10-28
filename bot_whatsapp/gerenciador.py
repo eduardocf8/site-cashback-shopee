@@ -32,7 +32,7 @@ from django.utils import timezone
 
 from atendimento import servico as atendimento
 
-from . import avisos_de_queda, copia, grupos_novos, membros, rede
+from . import avisos_de_queda, copia, entrada, grupos_novos, membros, rede
 from .models import (ConexaoWhatsApp, ConfiguracaoOfertas, EnvioWhatsApp, GrupoMonitorado, MensagemAvulsa,
                      OfertaRecebida, PedidoGrupo)
 from .servico import registrar_evento
@@ -423,6 +423,25 @@ class Gerenciador:
                                          "nome": g.GroupName.Name, "admin": _sou_admin(g, numero)} for g in grupos}
             membros.atualizar(conta_id, dados, agora)
         membros.limpar(agora)
+        self.ler_convites(agora)
+        for linha in entrada.cuidar_dos_links(agora):
+            logger.info(linha)
+
+    def ler_convites(self, agora):
+        """Link de entrada: o link de convite de cada grupo (precisa ser administrador)."""
+        for convite in entrada.convites_para_ler(agora):
+            sessao = self.sessoes.get(convite.conta_id)
+            if not sessao or not sessao.conectada:
+                continue
+            try:
+                link = sessao.cliente.get_group_invite_link(_jid_de_texto(convite.jid))
+                entrada.registrar_convite(convite, link, "", agora)
+            except Exception as erro:  # noqa: BLE001
+                texto = str(erro).lower()
+                motivo = ("O número do bot não é administrador desse grupo: cole o link de convite à mão ou "
+                          "promova o bot." if "forbidden" in texto or "403" in texto or "not-authorized" in texto
+                          else f"Não deu para ler o link de convite: {str(erro)[:150]}")
+                entrada.registrar_convite(convite, "", motivo, agora)
 
     def _acompanhar_canais(self, sessao):
         """Canais só mandam as postagens novas para quem pediu "atualizações ao vivo",

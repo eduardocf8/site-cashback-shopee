@@ -1,0 +1,166 @@
+"""Aba "Link de entrada" do Bot de WhatsApp (bot_whatsapp/entrada.py). Em construção: só aparece
+para contas com a chave beta_link_entrada ligada no admin."""
+
+import re
+
+from django.conf import settings
+from django.contrib import messages
+from django.http import Http404
+from django.shortcuts import get_object_or_404, redirect, render
+from django.urls import reverse
+
+from bot_whatsapp import entrada, grupos_novos, membros
+from bot_whatsapp.models import ConviteGrupo, LinkEntrada
+from bot_whatsapp.servico import conexao_da
+from meusite.forms import PADRAO_ENDERECO
+from meusite.models import ENDERECOS_RESERVADOS, PEDACOS_RESERVADOS, SiteAfiliado
+
+from .autenticacao import conta_logada, conta_requerida
+from .views import _contexto
+
+MAXIMO_LINKS = 10
+
+
+def _conta_com_beta(request):
+    conta = conta_logada(request)
+    if not entrada.liberado(conta):
+        raise Http404
+    return conta
+
+
+def url_publica(site: SiteAfiliado | None, link: LinkEntrada) -> str:
+    if not site or not site.endereco:
+        return ""
+    if settings.APPFILIADO_SITES_DOMINIO:
+        return f"https://{site.endereco}.{settings.APPFILIADO_SITES_DOMINIO}/g/{link.slug}/"
+    return reverse("site_pagina", kwargs={"endereco": site.endereco}) + f"g/{link.slug}/"
+
+
+def _erro_do_endereco(endereco: str) -> str:
+    if not PADRAO_ENDERECO.match(endereco) or "--" in endereco:
+        return "Use de 3 a 40 letras minúsculas, números ou hífen (sem acento nem espaço)."
+    if endereco in ENDERECOS_RESERVADOS or any(p in endereco for p in PEDACOS_RESERVADOS):
+        return "Esse endereço é reservado. Escolha outro."
+    if SiteAfiliado.objects.filter(endereco=endereco).exists():
+        return "Esse endereço já está em uso. Escolha outro."
+    return ""
+
+
+@conta_requerida
+def entrada_lista(request):
+    conta = _conta_com_beta(request)
+    site = SiteAfiliado.objects.filter(conta=conta).first()
+    acao = request.POST.get("acao") if request.method == "POST" else ""
+    if acao == "endereco" and not (site and site.endereco):
+        endereco = str(request.POST.get("endereco") or "").strip().lower()
+        erro = _erro_do_endereco(endereco)
+        if erro:
+            messages.error(request, erro)
+        else:
+            site = site or SiteAfiliado(conta=conta, publicado=False)
+            site.endereco = endereco
+            site.save()
+            messages.success(request, "Endereço salvo.")
+        return redirect("painel_whatsapp_entrada")
+    if acao == "novo":
+        if not (site and site.endereco):
+            messages.error(request, "Escolha o endereço primeiro.")
+        elif conta.links_entrada.count() >= MAXIMO_LINKS:
+            messages.error(request, f"Dá para ter até {MAXIMO_LINKS} links de entrada.")
+        else:
+            base = "grupo-vip"
+            slug, n = base, 1
+            while conta.links_entrada.filter(slug=slug).exists():
+                n += 1
+                slug = f"{base}-{n}"
+            link = LinkEntrada.objects.create(conta=conta, slug=slug)
+            return redirect("painel_whatsapp_entrada_link", pk=link.pk)
+        return redirect("painel_whatsapp_entrada")
+    links = []
+    for link in conta.links_entrada.all():
+        estado = entrada.situacao(link)
+        links.append({"link": link, "url": url_publica(site, link), "estado": estado,
+                      "numeros": entrada.estatisticas(link)})
+    return render(request, "painel/whatsapp_entrada.html", _contexto(
+        request, "whatsapp", site=site, links=links, maximo=MAXIMO_LINKS,
+        dominio=settings.APPFILIADO_SITES_DOMINIO or "appfiliado.com.br",
+    ))
+
+
+def _salvar(request, conta, link) -> list[str]:
+    """Lê o formulário do link. Devolve os erros (vazio = salvou)."""
+    erros = []
+    dados = request.POST
+    slug = str(dados.get("slug") or "").strip().lower()
+    if not entrada.PADRAO_SLUG.match(slug) or "--" in slug:
+        erros.append("O endereço do link usa só letras minúsculas, números e hífen (até 40).")
+    elif conta.links_entrada.filter(slug=slug).exclude(pk=link.pk).exists():
+        erros.append("Você já tem um link com esse endereço.")
+    pixel = re.sub(r"\D", "", str(dados.get("pixel_id") or ""))
+    if dados.get("pixel_id", "").strip() and not 5 <= len(pixel) <= 20:
+        erros.append("O ID do pixel do Meta é só números (em Gerenciador de Eventos > Fontes de dados).")
+    try:
+        limite = int(dados.get("limite_por_grupo") or 1000)
+    except ValueError:
+        limite = 0
+    if not 50 <= limite <= membros.LIMITE_DO_WHATSAPP:
+        erros.append(f"O limite por grupo vai de 50 a {membros.LIMITE_DO_WHATSAPP} pessoas.")
+    admins, invalidos = grupos_novos.ler_numeros(dados.get("admins_dos_novos", ""))
+    if invalidos:
+        erros.append(f"Não entendi {', '.join(invalidos)} nos administradores. Use DDD e número, como (11) 98888-7777.")
+    titulo = " ".join(str(dados.get("titulo") or "").split())[:80]
+    if not titulo:
+        erros.append("Escreva o título da página.")
+    if erros:
+        return erros
+    link.slug, link.titulo, link.pixel_id, link.limite_por_grupo = slug, titulo, pixel, limite
+    link.frase = " ".join(str(dados.get("frase") or "").split())[:200]
+    link.texto_botao = " ".join(str(dados.get("texto_botao") or "").split())[:40] or "Entrar no grupo"
+    link.redirecionar = dados.get("redirecionar") == "on"
+    link.ativo = dados.get("ativo") == "on"
+    link.criar_sozinho = dados.get("criar_sozinho") == "on"
+    link.admins_dos_novos = admins[: grupos_novos.MAXIMO_ADMINS]
+    link.save()
+    entrada.salvar_grupos(link, dados.getlist("grupos"), conexao_da(conta))
+    return []
+
+
+@conta_requerida
+def entrada_link(request, pk):
+    conta = _conta_com_beta(request)
+    link = get_object_or_404(LinkEntrada, pk=pk, conta=conta)
+    site = SiteAfiliado.objects.filter(conta=conta).first()
+    conexao = conexao_da(conta)
+    erros = []
+    if request.method == "POST":
+        acao = request.POST.get("acao")
+        if acao == "excluir":
+            link.delete()
+            messages.info(request, "Link de entrada excluído.")
+            return redirect("painel_whatsapp_entrada")
+        if acao == "convite":
+            jid, texto = request.POST.get("jid", ""), str(request.POST.get("convite") or "").strip()
+            convite = ConviteGrupo.objects.filter(conta=conta, jid=jid, jid__in=link.grupos).first()
+            if convite and texto and not texto.startswith("https://chat.whatsapp.com/"):
+                messages.error(request, "Cole o link de convite do grupo, que começa com https://chat.whatsapp.com/")
+            elif convite:
+                convite.link, convite.manual, convite.erro = texto, bool(texto), ""
+                convite.lido_em = None if not texto else convite.lido_em
+                convite.save()
+                messages.success(request, "Link de convite salvo." if texto else "O Appfiliado volta a ler o link sozinho.")
+            return redirect(reverse("painel_whatsapp_entrada_link", args=[link.pk]) + "#grupos-do-link")
+        erros = _salvar(request, conta, link)
+        if not erros:
+            messages.success(request, "Link de entrada salvo.")
+            return redirect("painel_whatsapp_entrada_link", pk=link.pk)
+        for erro in erros:
+            messages.error(request, erro)
+    possiveis = sorted(membros.grupos_possiveis(conexao), key=lambda g: entrada.ordem_natural(str(g.get("nome", ""))))
+    estado = entrada.situacao(link)
+    return render(request, "painel/whatsapp_entrada_link.html", _contexto(
+        request, "whatsapp", link=link, site=site, url=url_publica(site, link), estado=estado,
+        numeros=entrada.estatisticas(link), possiveis=possiveis, escolhidos=set(link.grupos),
+        admins=", ".join(grupos_novos._telefone(n) for n in link.admins_dos_novos or []),
+        nomes={g["jid"]: g["nome"] for g in estado["grupos"]}, folga=entrada.FOLGA,
+        limite_do_whatsapp=membros.LIMITE_DO_WHATSAPP, conexao=conexao,
+    ))

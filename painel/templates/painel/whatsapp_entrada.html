@@ -1,0 +1,58 @@
+{% extends "painel/base.html" %}
+{% load static painel_extras %}
+{% block titulo %}Link de entrada · Bot de WhatsApp{% endblock %}
+{% block conteudo %}
+<header class="cabecalho">
+  <div>
+    <h1>Bot de WhatsApp</h1>
+    <p>Ofertas da Shopee enviadas com o seu link de afiliado no automático: buscadas pela API ou copiadas de outros grupos e canais.</p>
+  </div>
+</header>
+{% include "painel/_abas_whatsapp.html" with aba="entrada" %}
+
+<p class="aviso aviso-info pequeno" style="margin-top:16px">Em construção: só a sua conta vê esta aba.</p>
+
+<section class="card" style="margin-top:16px" aria-labelledby="titulo-entrada">
+  <h2 id="titulo-entrada">Link de entrada nos grupos</h2>
+  <p class="suave pequeno">Um link para colocar no anúncio. Ele abre uma página leve com o seu pixel do Meta e um botão que leva a pessoa pro primeiro grupo da lista que ainda tem vaga. Quando um grupo enche, o link passa sozinho pro próximo, sem você trocar nada no anúncio.</p>
+
+  {% if not site.endereco %}
+    <form method="post" class="formulario" style="margin-top:14px">
+      {% csrf_token %}
+      <input type="hidden" name="acao" value="endereco">
+      <div class="campo">
+        <label for="endereco">Escolha o seu endereço</label>
+        <input type="text" name="endereco" id="endereco" placeholder="achadinhosdabia" autocomplete="off" spellcheck="false" autocapitalize="none">
+        <span class="ajuda">O link fica assim: seunome.{{ dominio }}/g/grupo-vip/. É o mesmo endereço do Meu site.</span>
+      </div>
+      <button type="submit" class="botao botao-principal">Salvar endereço</button>
+    </form>
+  {% else %}
+    {% for item in links %}
+      <article class="cartao-entrada">
+        <div class="ce-topo">
+          <div>
+            <a href="{% url 'painel_whatsapp_entrada_link' item.link.pk %}"><strong>{{ item.link.titulo }}</strong></a>
+            {% if not item.link.ativo %}<span class="selo-canal">Pausado</span>{% endif %}
+            <div class="suave pequeno">{{ item.url }}</div>
+          </div>
+          <a class="botao botao-claro" href="{% url 'painel_whatsapp_entrada_link' item.link.pk %}">Editar</a>
+        </div>
+        <div class="suave pequeno">
+          {% if item.estado.da_vez %}Mandando para <strong>{{ item.estado.da_vez.nome }}</strong> ({{ item.estado.da_vez.membros|numero }} de {{ item.link.limite_por_grupo|numero }}).{% elif item.link.grupos %}<span class="erro">Nenhum grupo com vaga e link de convite.</span>{% else %}Escolha os grupos do link.{% endif %}
+          Últimos 7 dias: {{ item.numeros.sete.visitas|numero }} visita{{ item.numeros.sete.visitas|pluralize }} e {{ item.numeros.sete.cliques|numero }} clique{{ item.numeros.sete.cliques|pluralize }}.
+        </div>
+      </article>
+    {% empty %}
+      <p class="suave pequeno" style="margin-top:12px">Você ainda não tem nenhum link de entrada.</p>
+    {% endfor %}
+    {% if links|length < maximo %}
+    <form method="post" style="margin-top:14px">
+      {% csrf_token %}
+      <input type="hidden" name="acao" value="novo">
+      <button type="submit" class="botao botao-principal">Criar link de entrada</button>
+    </form>
+    {% endif %}
+  {% endif %}
+</section>
+{% endblock %}

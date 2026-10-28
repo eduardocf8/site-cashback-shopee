@@ -138,6 +138,10 @@ def concluir(pedido: PedidoGrupo, jid: str, link: str, membros: int, avisos: lis
                 if pedido.base_jid and (config.nichos or {}).get(pedido.base_jid):
                     config.nichos = {**config.nichos, jid: config.nichos[pedido.base_jid]}
                 config.save(update_fields=["grupos", "nichos", "atualizado_em"])
+        if pedido.link_entrada_id:
+            from .entrada import grupo_criado
+
+            grupo_criado(pedido, jid, link, agora)
         pedido.estado, pedido.jid, pedido.link_convite = PedidoGrupo.CRIADO, jid, link
         pedido.avisos, pedido.concluido_em = "\n".join(avisos), agora
         pedido.save(update_fields=["estado", "jid", "link_convite", "avisos", "concluido_em"])
