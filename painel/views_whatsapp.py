@@ -629,6 +629,31 @@ def _grafico_de_membros(serie: list[dict], desde) -> dict | None:
             "inicio": pontos[0]["dia"], "fim": pontos[-1]["dia"]}
 
 
+GRUPOS_POR_PAGINA = 10
+ORDENS_DE_MEMBROS = [
+    ("membros", "Mais membros"), ("var_24h", "Mais cresceram em 24 h"), ("var_7d", "Mais cresceram em 7 dias"),
+    ("perda_7d", "Mais perderam em 7 dias"), ("lotacao", "Mais cheios"), ("comissao", "Maior comissão do mês"),
+    ("nome", "Nome (A a Z)"),
+]
+
+
+def _grupos_filtrados(linhas: list[dict], busca: str, ordem: str) -> list[dict]:
+    """A busca pelo nome (sem acento e maiúscula) e a ordem escolhida. Quem não tem o número
+    (ex: variação de 7 dias antes de completar 7 dias) vai pro fim."""
+    import unicodedata
+
+    def sem_acento(texto):
+        return unicodedata.normalize("NFKD", texto or "").encode("ascii", "ignore").decode().lower()
+
+    if busca:
+        termo = sem_acento(busca)
+        linhas = [linha for linha in linhas if termo in sem_acento(linha["grupo"].nome)]
+    if ordem == "nome":
+        return sorted(linhas, key=lambda linha: sem_acento(linha["grupo"].nome))
+    campo, sinal = {"perda_7d": ("var_7d", 1)}.get(ordem, (ordem, -1))
+    return sorted(linhas, key=lambda linha: (linha[campo] is None, sinal * (linha[campo] or 0)))
+
+
 @conta_requerida
 def whatsapp_membros(request):
     from bot_whatsapp import membros
@@ -651,6 +676,10 @@ def whatsapp_membros(request):
             messages.info(request, "Nenhum grupo sendo acompanhado.")
         return redirect("painel_whatsapp_membros")
     dados = membros.painel(conta)
+    busca = str(request.GET.get("busca") or "").strip()[:80]
+    ordens = [o for o in ORDENS_DE_MEMBROS if o[0] != "comissao" or dados["tem_comissao"]]
+    ordem = request.GET.get("ordem") if request.GET.get("ordem") in dict(ordens) else "membros"
+    pagina = Paginator(_grupos_filtrados(dados["linhas"], busca, ordem), GRUPOS_POR_PAGINA).get_page(request.GET.get("pagina"))
     escolhidos = set(GrupoMonitorado.objects.filter(conta=conta).values_list("jid", flat=True))
     possiveis = sorted(membros.grupos_possiveis(conexao), key=lambda g: (g["jid"] not in escolhidos, str(g.get("nome", "")).lower()))
     return render(request, "painel/whatsapp_membros.html", _contexto(
@@ -658,4 +687,6 @@ def whatsapp_membros(request):
         escolhendo=request.GET.get("escolher") == "1" or not dados["quantos"],
         grafico=_grafico_de_membros(dados["serie"], dados["monitorando_desde"]),
         limite_do_whatsapp=membros.LIMITE_DO_WHATSAPP,
+        pagina=pagina, paginas=pagina.paginator.get_elided_page_range(pagina.number, on_each_side=1, on_ends=1),
+        busca=busca, ordem=ordem, ordens=ordens, por_pagina=GRUPOS_POR_PAGINA,
     ))

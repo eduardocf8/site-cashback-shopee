@@ -162,3 +162,34 @@ class TestTelaDeMembros(BasePainel):
         self.conta.modulos_cortesia = ""
         self.conta.save()
         self.assertNotContains(self.client.get("/whatsapp/membros/"), "Escolha os grupos para acompanhar")
+
+
+class TestListaComMuitosGrupos(BasePainel):
+    def setUp(self):
+        super().setUp()
+        self.entrar()
+        grupos = [{"jid": f"{i}@g.us", "nome": f"Grupo {i:02d}", "participantes": 100 + i, "tipo": "grupo"} for i in range(1, 26)]
+        grupos.append({"jid": "99@g.us", "nome": "Promoções da Bia", "participantes": 5, "tipo": "grupo"})
+        self.conexao = ConexaoWhatsApp.objects.create(conta=self.conta, estado="conectado", grupos=grupos)
+        membros.escolher(self.conta, [g["jid"] for g in grupos], self.conexao)
+
+    def test_10_por_pagina_com_busca_e_ordem(self):
+        html = self.client.get("/whatsapp/membros/").content.decode()
+        self.assertIn("Mostrando 1–10 de 26", html)
+        self.assertIn("Grupo 25", html)  # mais membros primeiro
+        self.assertNotIn("Grupo 01", html)
+        self.assertIn('class="cartao-grupo"', html)  # cartões pro celular
+        html = self.client.get("/whatsapp/membros/?pagina=3").content.decode()
+        self.assertIn("Mostrando 21–26 de 26", html)
+        self.assertIn("Promoções da Bia", html)
+
+        html = self.client.get("/whatsapp/membros/?busca=promocoes").content.decode()  # sem acento
+        self.assertIn("Promoções da Bia", html)
+        self.assertNotIn("Grupo 25", html)
+        self.assertNotIn("Mostrando", html)  # uma página só
+
+        html = self.client.get("/whatsapp/membros/?ordem=nome").content.decode()
+        self.assertIn("Grupo 01", html)
+        self.assertNotIn("Promoções da Bia", html)
+        self.assertNotIn('value="comissao"', html)  # sem Sub ID próprio, não ordena por comissão
+        self.assertContains(self.client.get("/whatsapp/membros/?busca=xyz"), "Nenhum grupo com “xyz”")

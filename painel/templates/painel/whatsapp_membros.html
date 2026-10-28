@@ -61,21 +61,33 @@
 </section>
 {% endif %}
 
-<section class="card" aria-labelledby="titulo-grupos-membros" style="margin-top:16px">
+<section class="card" id="grupos" aria-labelledby="titulo-grupos-membros" style="margin-top:16px">
   <div class="kpis-topo">
     <h2 id="titulo-grupos-membros">Grupos</h2>
     <a class="botao botao-claro" href="?escolher=1">Escolher grupos</a>
   </div>
-  <div class="tabela-rolagem">
+  {% if dados.quantos > por_pagina %}
+  <form method="get" action="#grupos" class="filtros-membros">
+    <input type="search" name="busca" value="{{ busca }}" placeholder="Buscar grupo" aria-label="Buscar grupo">
+    <select name="ordem" aria-label="Ordenar" onchange="this.form.submit()">
+      {% for valor, rotulo in ordens %}<option value="{{ valor }}"{% if valor == ordem %} selected{% endif %}>{{ rotulo }}</option>{% endfor %}
+    </select>
+    <button type="submit" class="botao botao-claro">Buscar</button>
+  </form>
+  {% endif %}
+  {% if not pagina.object_list %}
+  <p class="suave pequeno" style="margin-top:12px">Nenhum grupo com “{{ busca }}”. <a href="?#grupos">Ver todos</a></p>
+  {% else %}
+  <div class="tabela-rolagem so-computador">
     <table class="numeros tabela-membros">
       <thead><tr>
         <th>Grupo</th><th>Membros</th><th>24 h</th><th>7 dias</th><th>30 dias</th><th>Hoje</th><th>Lotação</th>
         {% if dados.tem_comissao %}<th title="Comissão estimada do mês até ontem, pelo Sub ID próprio do grupo">Comissão do mês</th><th>Por membro</th>{% endif %}
       </tr></thead>
       <tbody>
-      {% for l in dados.linhas %}
+      {% for l in pagina %}
         <tr>
-          <td><span class="nome-grupo">{{ l.grupo.nome|default:"(grupo sem nome)" }}</span>{% if l.grupo.admin %} <span class="selo-canal">Admin</span>{% endif %}{% if not l.grupo.no_grupo %}<br><span class="erro pequeno">O número do bot não está mais nesse grupo.</span>{% endif %}</td>
+          <td><span class="nome-grupo" title="{{ l.grupo.nome }}">{{ l.grupo.nome|default:"(grupo sem nome)" }}</span>{% if l.grupo.admin %} <span class="selo-canal">Admin</span>{% endif %}{% if not l.grupo.no_grupo %}<br><span class="erro pequeno">O número do bot não está mais nesse grupo.</span>{% endif %}</td>
           <td>{% if l.membros is None %}—{% else %}{{ l.membros|numero }}{% endif %}</td>
           <td class="{% if l.var_24h > 0 %}positivo{% elif l.var_24h < 0 %}negativo{% endif %}">{{ l.var_24h|variacao }}</td>
           <td class="{% if l.var_7d > 0 %}positivo{% elif l.var_7d < 0 %}negativo{% endif %}">{{ l.var_7d|variacao }}</td>
@@ -91,6 +103,45 @@
       </tbody>
     </table>
   </div>
+
+  <div class="cartoes-grupos so-celular">
+    {% for l in pagina %}
+      <article class="cartao-grupo">
+        <div class="cg-topo">
+          <strong class="cg-nome" title="{{ l.grupo.nome }}">{{ l.grupo.nome|default:"(grupo sem nome)" }}</strong>
+          {% if l.grupo.admin %}<span class="selo-canal">Admin</span>{% endif %}
+        </div>
+        {% if not l.grupo.no_grupo %}<p class="erro pequeno">O número do bot não está mais nesse grupo.</p>{% endif %}
+        <div class="cg-membros">
+          <span><b>{% if l.membros is None %}—{% else %}{{ l.membros|numero }}{% endif %}</b> membros</span>
+          <span class="cg-lotacao"><span class="lotacao{% if l.quase_cheio %} cheia{% endif %}"><i style="width:{{ l.lotacao }}%"></i></span> {{ l.lotacao }}% cheio</span>
+        </div>
+        <dl class="cg-numeros">
+          <div><dt>24 h</dt><dd class="{% if l.var_24h > 0 %}positivo{% elif l.var_24h < 0 %}negativo{% endif %}">{{ l.var_24h|variacao }}</dd></div>
+          <div><dt>7 dias</dt><dd class="{% if l.var_7d > 0 %}positivo{% elif l.var_7d < 0 %}negativo{% endif %}">{{ l.var_7d|variacao }}</dd></div>
+          <div><dt>30 dias</dt><dd class="{% if l.var_30d > 0 %}positivo{% elif l.var_30d < 0 %}negativo{% endif %}">{{ l.var_30d|variacao }}</dd></div>
+          <div><dt>Hoje</dt><dd><span class="positivo">+{{ l.entradas|numero }}</span> <span class="negativo">−{{ l.saidas|numero }}</span></dd></div>
+        </dl>
+        {% if l.comissao is not None %}<p class="cg-comissao pequeno">Comissão do mês: <b>{{ l.comissao|brl }}</b>{% if l.por_membro is not None %} · {{ l.por_membro|brl }} por membro{% endif %}</p>{% endif %}
+      </article>
+    {% endfor %}
+  </div>
+
+  {% if pagina.paginator.num_pages > 1 %}
+  <nav class="paginacao" aria-label="Páginas dos grupos">
+    <span>Mostrando {{ pagina.start_index }}–{{ pagina.end_index }} de {{ pagina.paginator.count }}</span>
+    <div>
+      {% if pagina.has_previous %}<a href="{% querystring pagina=pagina.previous_page_number %}#grupos" aria-label="Página anterior">‹</a>{% endif %}
+      {% for n in paginas %}
+        {% if n == pagina.paginator.ELLIPSIS %}<span>…</span>
+        {% elif n == pagina.number %}<span class="atual" aria-current="page">{{ n }}</span>
+        {% else %}<a href="{% querystring pagina=n %}#grupos">{{ n }}</a>{% endif %}
+      {% endfor %}
+      {% if pagina.has_next %}<a href="{% querystring pagina=pagina.next_page_number %}#grupos" aria-label="Próxima página">›</a>{% endif %}
+    </div>
+  </nav>
+  {% endif %}
+  {% endif %}
   <p class="suave pequeno" style="margin-top:12px">
     {% if dados.lido_em %}Contagem lida às {{ dados.lido_em|date:"H:i" }}, atualizada a cada hora. Entradas e saídas chegam na hora.{% else %}A primeira leitura sai em até 1 minuto.{% endif %}
     {% if dados.monitorando_desde %} Acompanhando desde {{ dados.monitorando_desde|date:"d/m/Y" }}.{% endif %}

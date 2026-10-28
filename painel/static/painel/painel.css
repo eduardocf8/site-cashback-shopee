@@ -976,3 +976,29 @@ form[data-metas] .grade-campos { display: grid; grid-template-columns: 1fr 1fr; 
   .kpis-membros { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
   .kpis-membros .kpi-valor { font-size: 22px; }
 }
+
+/* Aba Membros: lista de grupos (tabela no computador, cartões no celular) */
+.filtros-membros { display: flex; flex-wrap: wrap; gap: 8px; margin: 12px 0 4px; }
+.filtros-membros input, .filtros-membros select { min-height: 40px; padding: 0 12px; border-radius: 10px; border: 1px solid var(--borda); background: var(--campo); font: inherit; font-size: 14px; color: inherit; }
+.filtros-membros input { flex: 1 1 220px; min-width: 0; }
+.filtros-membros select { flex: 0 1 240px; }
+.tabela-membros .nome-grupo { display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; max-width: 260px; }
+.cartoes-grupos { display: none; flex-direction: column; gap: 10px; margin-top: 12px; }
+.cartao-grupo { border: 1px solid var(--borda); border-radius: 12px; padding: 12px 14px; display: flex; flex-direction: column; gap: 8px; }
+.cg-topo { display: flex; align-items: flex-start; justify-content: space-between; gap: 8px; }
+.cg-nome { display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; font-size: 15px; line-height: 1.3; overflow-wrap: anywhere; }
+.cg-topo .selo-canal { flex: none; margin: 1px 0 0; }
+.cg-membros { display: flex; align-items: center; justify-content: space-between; gap: 8px; flex-wrap: wrap; font-size: 14px; }
+.cg-membros b { font-size: 18px; }
+.cg-lotacao { color: var(--suave); font-size: 12px; white-space: nowrap; }
+.cg-numeros { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 6px; margin: 0; }
+.cg-numeros div { background: var(--chip, #F3F1EA); border-radius: 8px; padding: 6px 8px; min-width: 0; }
+.cg-numeros dt { color: var(--suave); font-size: 11px; }
+.cg-numeros dd { margin: 2px 0 0; font-weight: 700; font-size: 14px; white-space: nowrap; }
+.cg-comissao { margin: 0; color: var(--suave); }
+.cg-comissao b { color: var(--texto); }
+@media (max-width: 640px) {
+  .so-computador { display: none; }
+  .cartoes-grupos.so-celular { display: flex; }
+  .filtros-membros select { flex: 1 1 100%; }
+}
