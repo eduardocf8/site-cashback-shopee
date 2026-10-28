@@ -90,7 +90,7 @@ def bot():
                    _t("Resultados", "As vendas das ofertas aparecem em Resultados, separadas por Sub ID."),
                    _t("Relatório por e-mail", "O relatório diário diz quantas ofertas saíram ontem."),
                    _t("Vitrine do Meu site", "As ofertas que o bot envia podem alimentar a vitrine do seu site na bio."),
-                   _t("Membros dos grupos", "Acompanhe até 500 grupos: quantos membros cada um ganhou ou perdeu em 24 horas, 7 e 30 dias, quais estão perto de lotar e quanto cada grupo rende pela comissão do Sub ID próprio.")),
+                   _t("Membros dos grupos", "Acompanhe até 500 grupos: quantos membros cada um ganhou ou perdeu em 24 horas, 7 e 30 dias, quais estão perto de lotar e quanto cada grupo rende pela comissão do Sub ID próprio. Quando um lotar, crie o próximo pelo painel: mesma foto e descrição, só administradores enviando, já na Automação e com o link de convite pronto.")),
         ],
         "tabela": [
             ("Grupos e canais", f"até {s['grupos']}", f"até {p['grupos']}"),

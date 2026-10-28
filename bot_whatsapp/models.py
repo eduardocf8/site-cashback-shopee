@@ -515,3 +515,34 @@ class DiaMembros(models.Model):
     class Meta:
         ordering = ["-dia"]
         constraints = [models.UniqueConstraint(fields=["grupo", "dia"], name="dia_membros_unico")]
+
+
+class PedidoGrupo(models.Model):
+    """Pedido de grupo novo feito no painel (aba Membros). Quem cria é o worker, pelo número
+    conectado (bot_whatsapp/grupos_novos.py): o grupo nasce vazio, com o link de convite."""
+
+    PENDENTE, CRIADO, ERRO = "pendente", "criado", "erro"
+    ESTADOS = [(PENDENTE, "Criando"), (CRIADO, "Criado"), (ERRO, "Erro")]
+
+    conta = models.ForeignKey(ContaAppfiliado, on_delete=models.CASCADE, related_name="pedidos_de_grupo")
+    nome = models.CharField(max_length=100)
+    base_jid = models.CharField(max_length=80, blank=True, help_text="Grupo de onde copia foto, descrição, nicho e Sub ID.")
+    copiar_foto_e_descricao = models.BooleanField(default=True)
+    so_admins = models.BooleanField(default=True, help_text="Só administradores enviam mensagens.")
+    administradores = models.JSONField(default=list, blank=True)  # números (DDI + DDD + número)
+    incluir_na_automacao = models.BooleanField(default=True)
+    estado = models.CharField(max_length=10, choices=ESTADOS, default=PENDENTE)
+    jid = models.CharField(max_length=80, blank=True)
+    link_convite = models.CharField(max_length=200, blank=True)
+    avisos = models.TextField(blank=True)  # o que não deu certo, sem impedir o grupo (ex: um admin)
+    erro = models.TextField(blank=True)
+    criado_em = models.DateTimeField(auto_now_add=True)
+    concluido_em = models.DateTimeField(null=True, blank=True)
+
+    class Meta:
+        ordering = ["-criado_em"]
+        verbose_name = "pedido de grupo novo"
+        verbose_name_plural = "pedidos de grupo novo"
+
+    def __str__(self):
+        return f"{self.conta.email} - {self.nome} ({self.estado})"

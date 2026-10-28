@@ -51,3 +51,29 @@
   });
   contar();
 })();
+
+// Grupos criados: copiar o link de convite e, enquanto algum está sendo criado, recarregar.
+(function () {
+  document.querySelectorAll("[data-copiar]").forEach(function (botao) {
+    botao.addEventListener("click", function () {
+      var texto = botao.dataset.copiar;
+      var feito = function () { botao.textContent = "Copiado!"; setTimeout(function () { botao.textContent = "Copiar link"; }, 2000); };
+      if (navigator.clipboard) { navigator.clipboard.writeText(texto).then(feito); } else {
+        var campo = botao.previousElementSibling; campo.select(); document.execCommand("copy"); feito();
+      }
+    });
+  });
+  if (document.querySelector("[data-esperando]")) {
+    setTimeout(function () { window.location.reload(); }, 5000);
+  }
+})();
+
+// Criar grupo: ao trocar o grupo de base, sugere o próximo nome da sequência dele.
+(function () {
+  var base = document.getElementById("criar-base");
+  if (!base) return;
+  base.addEventListener("change", function () {
+    window.location.search = "?criar=" + encodeURIComponent(base.value || "1");
+    window.location.hash = "criar";
+  });
+})();

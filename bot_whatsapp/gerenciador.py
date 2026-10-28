@@ -32,9 +32,9 @@ from django.utils import timezone
 
 from atendimento import servico as atendimento
 
-from . import avisos_de_queda, copia, membros, rede
+from . import avisos_de_queda, copia, grupos_novos, membros, rede
 from .models import (ConexaoWhatsApp, ConfiguracaoOfertas, EnvioWhatsApp, GrupoMonitorado, MensagemAvulsa,
-                     OfertaRecebida)
+                     OfertaRecebida, PedidoGrupo)
 from .servico import registrar_evento
 
 logger = logging.getLogger(__name__)
@@ -250,6 +250,7 @@ class Gerenciador:
         self.atualizar_origens()
         self.enviar_pendentes()
         self.ler_membros()
+        self.criar_grupos()
         self.limpar_fotos_antigas()
         atendimento.uma_volta(self.sessoes)
 
@@ -450,6 +451,77 @@ class Gerenciador:
                     arquivo.unlink()
             except OSError:
                 pass
+
+    def criar_grupos(self):
+        """Pedidos de grupo novo (aba Membros): só com o WhatsApp conectado."""
+        for pedido in PedidoGrupo.objects.filter(estado=PedidoGrupo.PENDENTE).select_related("conta").order_by("id")[:5]:
+            sessao = self.sessoes.get(pedido.conta_id)
+            if not sessao or not sessao.conectada:
+                if timezone.now() - pedido.criado_em > DESISTE_DO_ENVIO:
+                    grupos_novos.falhou(pedido, "O WhatsApp estava desconectado. Conecte e peça de novo.")
+                continue
+            # Só um processo cria (durante um deploy rodam dois workers): vale quem marcar primeiro.
+            if not PedidoGrupo.objects.filter(pk=pedido.pk, estado=PedidoGrupo.PENDENTE, concluido_em__isnull=True).update(
+                    concluido_em=timezone.now()):
+                continue
+            try:
+                self._criar_grupo(sessao, pedido)
+            except Exception as erro:  # noqa: BLE001
+                logger.exception("WhatsApp: não deu para criar o grupo do pedido %s", pedido.pk)
+                grupos_novos.falhou(pedido, f"O WhatsApp não criou o grupo: {str(erro)[:300]}")
+
+    def _criar_grupo(self, sessao, pedido):
+        from neonize.utils.enum import ParticipantChange
+
+        cliente = sessao.cliente
+        info = cliente.create_group(pedido.nome)
+        jid = info.JID
+        avisos = []
+        if pedido.copiar_foto_e_descricao and pedido.base_jid:
+            base = _jid_de_texto(pedido.base_jid)
+            try:
+                descricao = cliente.get_group_info(base).GroupTopic.Topic
+                if descricao:
+                    cliente.set_group_topic(jid, "", "", descricao)
+            except Exception:  # noqa: BLE001
+                logger.warning("WhatsApp: descrição não copiada (pedido %s)", pedido.pk, exc_info=True)
+                avisos.append("Não deu para copiar a descrição do grupo de base.")
+            try:
+                foto = cliente.get_profile_picture(base)
+                arquivo = rede.baixar(foto.URL) if foto and foto.URL else None
+                if arquivo:
+                    cliente.set_group_photo(jid, arquivo)
+            except Exception:  # noqa: BLE001
+                logger.warning("WhatsApp: foto não copiada (pedido %s)", pedido.pk, exc_info=True)
+                avisos.append("Não deu para copiar a foto do grupo de base.")
+        for liga, texto in ((cliente.set_group_announce, "só administradores enviam"), (cliente.set_group_locked, "dados travados")):
+            if liga is cliente.set_group_announce and not pedido.so_admins:
+                continue
+            try:
+                liga(jid, True)
+            except Exception:  # noqa: BLE001
+                avisos.append(f"Não deu para ligar \"{texto}\": ajuste nas configurações do grupo pelo celular.")
+        membros_no_grupo = 1
+        if pedido.administradores:
+            pessoas = [_jid_de_texto(f"{n}@s.whatsapp.net") for n in pedido.administradores]
+            adicionados = []
+            try:
+                for participante in cliente.update_group_participants(jid, pessoas, ParticipantChange.ADD):
+                    if not participante.Error:
+                        adicionados.append(participante.JID)
+            except Exception:  # noqa: BLE001
+                logger.warning("WhatsApp: administradores não adicionados (pedido %s)", pedido.pk, exc_info=True)
+            if adicionados:
+                try:
+                    cliente.update_group_participants(jid, adicionados, ParticipantChange.PROMOTE)
+                except Exception:  # noqa: BLE001
+                    avisos.append("Os administradores entraram, mas não deu para promover: promova pelo celular.")
+            membros_no_grupo += len(adicionados)
+            if len(adicionados) < len(pessoas):
+                avisos.append("Alguns administradores não puderam ser adicionados (pode ser a privacidade do WhatsApp "
+                              "deles): mande o link de convite e promova pelo celular.")
+        link = cliente.get_group_invite_link(jid)
+        grupos_novos.concluir(pedido, _jid_texto(jid), link, membros_no_grupo, avisos)
 
     def _aviso_membros(self, conexao, detalhe):
         jid, entradas, saidas = detalhe

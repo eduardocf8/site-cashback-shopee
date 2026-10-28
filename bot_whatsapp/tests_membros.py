@@ -193,3 +193,75 @@ class TestListaComMuitosGrupos(BasePainel):
         self.assertNotIn("Promoções da Bia", html)
         self.assertNotIn('value="comissao"', html)  # sem Sub ID próprio, não ordena por comissão
         self.assertContains(self.client.get("/whatsapp/membros/?busca=xyz"), "Nenhum grupo com “xyz”")
+
+
+class TestCriarGrupo(BasePainel):
+    def setUp(self):
+        super().setUp()
+        self.entrar()
+        self.conexao = ConexaoWhatsApp.objects.create(conta=self.conta, estado="conectado", numero="5511988887777", grupos=GRUPOS)
+        self.config = ConfiguracaoOfertas.objects.create(conta=self.conta, grupos=[{"jid": "1@g.us", "nome": "Achadinhos 1"}],
+                                                         nichos={"1@g.us": "11"})
+
+    def test_proximo_nome_e_numeros(self):
+        from . import grupos_novos
+
+        self.assertEqual(grupos_novos.proximo_nome("Achadinhos #8", []), "Achadinhos #9")
+        self.assertEqual(grupos_novos.proximo_nome("Ofertas 07", ["Ofertas 08"]), "Ofertas 09")
+        self.assertEqual(grupos_novos.proximo_nome("Grupo VIP", []), "Grupo VIP 2")
+        self.assertEqual(grupos_novos.ler_numeros("(11) 98888-7777, 5545999990000; abc"),
+                         (["5511988887777", "5545999990000"], ["abc"]))
+
+    def test_tela_pede_e_o_worker_cria(self):
+        from . import gerenciador as g
+        from .models import PedidoGrupo
+
+        html = self.client.get("/whatsapp/membros/?criar=1@g.us").content.decode()
+        self.assertIn('id="criar-nome" value="Achadinhos 3"', html)  # "Achadinhos 2" já existe: pula
+        resposta = self.client.post("/whatsapp/membros/", {
+            "acao": "criar_grupo", "base": "1@g.us", "nome": "Achadinhos 3", "administradores": "(11) 97777-6666, 5511988887777",
+            "copiar": "on", "so_admins": "on", "incluir": "on"})
+        self.assertRedirects(resposta, "/whatsapp/membros/#criados", fetch_redirect_response=False)
+        pedido = PedidoGrupo.objects.get()
+        self.assertEqual(pedido.administradores, ["5511977776666"])  # o número do bot não precisa
+        self.assertIn("Criando…", self.client.get("/whatsapp/membros/").content.decode())
+
+        cliente = mock.Mock()
+        cliente.create_group.return_value = GroupInfo(JID=jid("777"))
+        cliente.get_group_info.return_value = GroupInfo(GroupTopic={"Topic": "Ofertas todo dia"})
+        cliente.get_profile_picture.return_value = mock.Mock(URL="")
+        cliente.update_group_participants.return_value = [GroupParticipant(JID=jid("5511977776666", "s.whatsapp.net"))]
+        cliente.get_group_invite_link.return_value = "https://chat.whatsapp.com/ABC"
+        ger = g.Gerenciador()
+        ger.sessoes[self.conta.pk] = mock.Mock(conectada=True, cliente=cliente)
+        ger.criar_grupos()
+
+        pedido.refresh_from_db()
+        self.assertEqual((pedido.estado, pedido.jid, pedido.link_convite), ("criado", "777@g.us", "https://chat.whatsapp.com/ABC"))
+        cliente.create_group.assert_called_once_with("Achadinhos 3")
+        cliente.set_group_topic.assert_called_once()
+        cliente.set_group_announce.assert_called_once()
+        cliente.set_group_locked.assert_called_once()
+        self.assertEqual(cliente.update_group_participants.call_count, 2)  # adiciona e promove
+        self.config.refresh_from_db()
+        self.assertEqual(self.config.grupos[-1], {"jid": "777@g.us", "nome": "Achadinhos 3"})
+        self.assertEqual(self.config.nichos["777@g.us"], "11")  # mesmo nicho do grupo de base
+        self.assertTrue(GrupoMonitorado.objects.filter(jid="777@g.us", membros=2).exists())
+        self.assertTrue(any(g["jid"] == "777@g.us" for g in ConexaoWhatsApp.objects.get(conta=self.conta).grupos))
+        html = self.client.get("/whatsapp/membros/").content.decode()
+        self.assertIn('data-copiar="https://chat.whatsapp.com/ABC"', html)
+
+    def test_limite_de_5_por_dia(self):
+        from .models import PedidoGrupo
+
+        for i in range(5):
+            PedidoGrupo.objects.create(conta=self.conta, nome=f"G{i}", estado="criado")
+        PedidoGrupo.objects.create(conta=self.conta, nome="falhou", estado="erro")  # erro não conta
+        resposta = self.client.post("/whatsapp/membros/", {"acao": "criar_grupo", "nome": "Mais um"}, follow=True)
+        self.assertContains(resposta, "Hoje você já criou 5 grupos")
+        self.assertEqual(PedidoGrupo.objects.filter(nome="Mais um").count(), 0)
+
+    def test_sem_whatsapp_conectado(self):
+        ConexaoWhatsApp.objects.filter(conta=self.conta).update(estado="desconectado")
+        resposta = self.client.post("/whatsapp/membros/", {"acao": "criar_grupo", "nome": "Novo"}, follow=True)
+        self.assertContains(resposta, "Conecte o WhatsApp na aba Conexão para criar grupos.")
