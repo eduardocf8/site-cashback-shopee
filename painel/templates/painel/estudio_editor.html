@@ -89,7 +89,8 @@
 </dialog>
 
 <dialog id="es-dialogo-publicar" class="es-dialogo">
-  <form method="dialog">
+  {# novalidate: o campo de data (escondido quando é "Publicar agora") não pode travar o botão Fechar. A data é conferida no publicar.js. #}
+  <form method="dialog" novalidate>
     <h2>Publicar no Instagram</h2>
     <div id="pub-conta" class="pub-conta"><p class="es-quieto">Conferindo o seu Instagram…</p></div>
     <div id="pub-corpo" hidden>

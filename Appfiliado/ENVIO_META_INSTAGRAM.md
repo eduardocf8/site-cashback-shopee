@@ -47,9 +47,12 @@ depois, com o vídeo 2. As duas juntas também funcionam, porque cada uma tem o 
 ## 2. Checklist antes de gravar
 
 **No painel da Meta for Developers (app)**
-- [ ] **Nome de exibição: Appfiliado** e **ícone do Appfiliado** (aparecem na tela de consentimento).
-- [ ] **URL da Política de Privacidade:** `https://appfiliado.com.br/privacidade/`
-- [ ] **Exclusão de dados:** `https://app.appfiliado.com.br/instagram/apagar-dados/`
+- [x] **Nome de exibição: Appfiliado** e **ícone do Appfiliado** (aparecem na tela de consentimento).
+- [x] **Nome do app do Instagram: "Appfiliado - IG".** A tela de consentimento usa esse nome, que é separado do nome de exibição: em Casos de uso › Configuração da API com login do Instagram, clique em **Sincronizar nome do app** depois de trocar o nome de exibição.
+- [x] **URL da Política de Privacidade:** `https://appfiliado.com.br/privacidade/`
+- [x] **URL dos Termos de Serviço:** `https://appfiliado.com.br/termos-de-uso/`
+- [x] **URL do site:** `https://app.appfiliado.com.br/entrar/`, com as instruções da seção 7 em "Fornecer instruções de teste".
+- [x] **Exclusão de dados:** `https://app.appfiliado.com.br/instagram/apagar-dados/`, no tipo **URL de retorno de chamada** (não "URL de instruções": o endereço não é uma página, a Meta recusa).
 - [ ] **Login comercial do Instagram:** redirecionamento `https://app.appfiliado.com.br/estudio/instagram/retorno/`, cancelar autorização `https://app.appfiliado.com.br/instagram/desautorizar/`.
 - [ ] **Webhooks:** `https://cash-b.com/instagram/automacao/webhook/`, campos `comments` e `messages` assinados.
 - [x] **Modo do app: Publicado.**
@@ -69,14 +72,17 @@ depois, com o vídeo 2. As duas juntas também funcionam, porque cada uma tem o 
 
 - **Contas do Instagram:**
   - **Conta A (`@sejaappfiliado`):** a do afiliado. É ela que conecta no Appfiliado. Tenha a senha à mão: no vídeo você vai **digitar** o usuário e a senha na janela do Instagram (a senha aparece como pontinhos).
-  - **Conta B:** a de **outra pessoa**, que vai comentar (a Meta pediu "um comentário real de terceiro"). Use uma conta **sem função no app da Meta** e que não seja da empresa: o perfil pessoal de alguém da família ou de um amigo, no celular dele ou no seu. Evite o `@usecashb`, que é da empresa.
+  - **Conta B:** a de **outra pessoa**, que vai comentar (a Meta pediu "um comentário real de terceiro"). Use uma conta **sem função no app da Meta** e que não seja da empresa: o perfil pessoal de alguém da família ou de um amigo (evite o `@usecashb`, que é da empresa). Ela fica logada no próprio computador, em outro navegador (veja "Duas janelas" abaixo).
 - **Começar deslogado (o ponto da rejeição):**
   1. Desconecte a conta A no Appfiliado (cartão do Instagram › Desconectar).
   2. No Instagram da conta A, vá em **Configurações › Apps e sites** e **remova o Appfiliado** se ele aparecer. Assim a tela de consentimento aparece completa, como para um usuário novo.
   3. Grave numa **janela anônima** nova (InPrivate no Edge). Ela abre sem nenhum login: nem no Instagram, nem no Appfiliado.
   4. Se o Instagram pedir código de verificação (dois fatores) durante o login, tudo bem: deixe aparecer no vídeo, faz parte do login.
 - **Tela:** 1920×1080, zoom do navegador entre 110% e 125%, barra de endereço visível, notificações do sistema desligadas, gerenciador de senhas fechado (para ele não preencher a senha sozinho). Libere as janelas (pop-ups) do `app.appfiliado.com.br` na janela anônima antes de começar.
-- **Conta B no celular:** espelhe o celular na tela do computador (Phone Link/Vincular ao Celular no Windows, scrcpy no Android ou QuickTime no iPhone) e deixe o painel do Appfiliado de um lado e o celular do outro.
+- **Duas janelas, sem celular** (o Vincular ao Celular não espelha iPhone, e juntar uma gravação do celular depois quebraria o "sem cortes"):
+  - **Edge, janela InPrivate (à esquerda):** o Appfiliado e o login da conta A (`@sejaappfiliado`).
+  - **Chrome, janela normal (à direita):** a conta B já logada em instagram.com, aberta no post que vai ser comentado. Confira que **não** é a `@sejaappfiliado` que está logada no Chrome.
+  - Encaixe uma janela de cada lado (Windows + seta para a esquerda e Windows + seta para a direita) e grave a tela toda. Se a tela ficar apertada, use zoom de 90% no Chrome.
 - **Legendas (obrigatórias):** depois de gravar, edite no Clipchamp (vem no Windows) ou no CapCut e coloque dois tipos de texto:
   - **Faixa da permissão:** um texto fixo no canto de cima, enquanto a cena mostra aquela permissão. O texto exato está em cada cena ("Faixa na tela").
   - **Legendas da narração:** o texto em inglês que você fala ("O que falar"), em legenda embaixo.
@@ -187,11 +193,11 @@ depois, com o vídeo 2. As duas juntas também funcionam, porque cada uma tem o 
 ### Cena 1.6. O comentário real e a resposta pública (3:30 a 4:40)
 
 **O que fazer**
-1. Mostre a **conta B** (o celular espelhado). Abra o post escolhido na cena 1.5.
+1. Mostre a **conta B** na janela do Chrome, com o nome de usuário dela visível. Abra o post escolhido na cena 1.5.
 2. Comente **"QUERO"**. **Não corte.**
-3. Em poucos segundos, atualize os comentários: a **resposta pública** da conta A aparece embaixo do comentário da conta B. Pare 3 segundos nela (aproxime o zoom, se der).
+3. Em poucos segundos, atualize a página (F5): a **resposta pública** da conta A aparece embaixo do comentário da conta B. Pare 3 segundos nela (aproxime o zoom, se der).
 4. Comente também **"que lindo"**, sem a palavra. Espere uns 10 segundos e mostre que **não** sai resposta.
-5. **Obrigatório, em 5 segundos:** na conta B, abra as mensagens e mostre a DM que chegou da conta A, com o texto e o link. É da `manage_messages`, já aprovada, e sai da mesma automação.
+5. **Obrigatório, em 5 segundos:** no Chrome da conta B, abra `instagram.com/direct` (ou a solicitação de mensagem, se a conta B não seguir a A) e mostre a DM que chegou da conta A, com o texto e o link. É da `manage_messages`, já aprovada, e sai da mesma automação.
 
 **Faixa na tela**
 > Demonstrating instagram_business_manage_comments — a real comment from another person triggers the public reply
@@ -199,7 +205,7 @@ depois, com o vídeo 2. As duas juntas também funcionam, porque cada uma tem o 
 (durante o passo 5, troque para: `Private reply uses instagram_business_manage_messages (already approved)`)
 
 **O que falar**
-> "This is a different person's Instagram account, on a phone. I open the affiliate's post and comment
+> "This is a different person's Instagram account, logged in on another browser. I open the affiliate's post and comment
 > 'QUERO'. Appfiliado receives this comment through the comments webhook, using
 > instagram_business_manage_comments. [wait] And here, a few seconds later, the account sejaappfiliado
 > replied publicly to the comment, automatically. This public reply was posted by Appfiliado with
@@ -297,7 +303,7 @@ depois, com o vídeo 2. As duas juntas também funcionam, porque cada uma tem o 
 2. Clique em **Publicar no Instagram**. Mostre a janela: a conta `@sejaappfiliado` e "Vai como carrossel de N imagens no feed, com a legenda do editor".
 3. Clique em **Agendar** só para mostrar o campo de dia e hora. Volte para **Publicar agora**.
 4. Clique em **Publicar**. Espere "Enviado! O post sai no seu Instagram em instantes." e a linha virar **Publicada**, com **Ver no Instagram** (até uns 30 segundos; **não corte**).
-5. Clique em **Ver no Instagram** (ou abra o perfil no celular) e mostre o carrossel publicado, com as imagens e a legenda.
+5. Clique em **Ver no Instagram** (ou abra o perfil da `@sejaappfiliado` no Chrome) e mostre o carrossel publicado, com as imagens e a legenda.
 
 **Faixa na tela**
 > Demonstrating instagram_business_content_publish — the affiliate publishes their post; result visible on Instagram

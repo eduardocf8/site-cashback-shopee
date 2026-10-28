@@ -110,7 +110,10 @@
     $('pub-erro').textContent = ''; $('pub-ok').textContent = '';
     const agora = new Date(Date.now() + 10 * 60000), max = new Date(Date.now() + 59 * 86400000);
     $('pub-data').min = local(agora); $('pub-data').max = local(max);
-    if (!$('pub-data').value) { const d = new Date(Date.now() + 60 * 60000); d.setMinutes(0); $('pub-data').value = local(d); }
+    // Sugere a próxima hora cheia que já passe do mínimo (daqui a 10 minutos).
+    if (!$('pub-data').value || new Date($('pub-data').value) < agora) {
+      const d = new Date(agora); d.setMinutes(0, 0, 0); d.setHours(d.getHours() + 1); $('pub-data').value = local(d);
+    }
     dialogo.showModal(); carregar();
   });
   dialogo.addEventListener('close', () => clearTimeout(carregar.t));
@@ -124,6 +127,11 @@
     const quando = dialogo.querySelector('[name=pub-quando]:checked').value;
     $('pub-erro').textContent = ''; $('pub-ok').textContent = '';
     if (quando === 'agendar' && !$('pub-data').value) { $('pub-erro').textContent = 'Escolha o dia e a hora.'; return; }
+    if (quando === 'agendar') {
+      const d = new Date($('pub-data').value);
+      if (d < new Date(Date.now() + 10 * 60000)) { $('pub-erro').textContent = 'Escolha um horário pelo menos 10 minutos à frente.'; return; }
+      if (d > new Date(Date.now() + 59 * 86400000)) { $('pub-erro').textContent = 'Dá para agendar até 59 dias à frente.'; return; }
+    }
     b.disabled = true;
     try {
       b.textContent = 'Salvando…';
