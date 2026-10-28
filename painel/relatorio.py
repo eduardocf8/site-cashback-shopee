@@ -2,10 +2,13 @@
 vendidos e, para quem tem o Bot de WhatsApp, as ofertas enviadas. Vai uma vez por dia
 por conta, no horário que a pessoa escolheu - mas só depois que a Shopee libera os números de
 ontem (costuma ser entre 7h e 8h). Na hora do envio o app busca as vendas na Shopee: se ontem
-ainda não apareceu, manda um aviso e tenta de novo a cada 30 minutos."""
+ainda não apareceu, manda um aviso e tenta de novo a cada 30 minutos. Como a Shopee às vezes
+libera ontem aos poucos, o e-mail só vai quando a comissão estimada de ontem se repete em duas buscas
+seguidas: uma 10 minutos antes do horário e outra no horário (e, se mudou, a cada 10 minutos)."""
 
 import logging
 from datetime import date, datetime, timedelta
+from decimal import Decimal
 
 from django.conf import settings
 from django.core.mail import EmailMultiAlternatives
@@ -80,6 +83,13 @@ def enviar(conta, hoje: date, destinatarios: list[str]) -> None:
 INTERVALO_ENTRE_TENTATIVAS = timedelta(minutes=30)
 HORA_DE_DESISTIR = 23  # se os números de ontem não saírem até aqui, o relatório do dia não vai
 ATUALIZACAO_RECENTE = timedelta(minutes=10)  # atualização com a Shopee mais nova que isso não é refeita
+# A Shopee às vezes libera os números de ontem aos poucos: o relatório só vai quando a comissão estimada
+# de ontem fica igual em duas buscas seguidas, com 10 minutos entre elas. A primeira é 10 minutos antes
+# do horário escolhido (a "prévia"); se mudou, busca de novo a cada 10 minutos.
+ANTECEDENCIA_DA_PREVIA = timedelta(minutes=10)
+INTERVALO_DA_CONFERENCIA = timedelta(minutes=10)
+MINIMO_ENTRE_BUSCAS = timedelta(minutes=5)  # a prévia atrasou (worker ocupado): a conferência espera
+LIMITE_DA_CONFERENCIA = timedelta(hours=2)  # continua mudando depois disso: vai com os números da hora
 
 
 def pronto_para_enviar(preferencia, agora: datetime) -> bool:
@@ -99,19 +109,51 @@ def numeros_de_ontem_sairam(conta, hoje: date) -> bool:
     return ResultadoDiario.objects.filter(conta=conta, dia=hoje - timedelta(days=1), pedidos__gt=0).exists()
 
 
-def atualizar_e_conferir(conta, hoje: date, agora: datetime) -> bool | None:
-    """Busca as vendas na Shopee agora (se a última atualização não for de poucos minutos atrás)
-    e diz se os números de ontem já saíram. None = não consegui falar com a Shopee."""
+def atualizar_e_conferir(conta, hoje: date, agora: datetime, forcar: bool = False) -> bool | None:
+    """Busca as vendas na Shopee agora (se a última atualização não for de poucos minutos atrás, ou
+    sempre com forcar) e diz se os números de ontem já saíram. None = não consegui falar com a Shopee."""
     from .models import SincronizacaoResultados
 
     estado = SincronizacaoResultados.objects.filter(conta=conta).first()
     recente = estado and estado.concluida_em and not estado.erro and agora - estado.concluida_em < ATUALIZACAO_RECENTE
-    if not recente:
+    if forcar or not recente:
         resultados.processar(conta, curta=True)  # só ontem e hoje: é o que o relatório precisa conferir
         estado = SincronizacaoResultados.objects.filter(conta=conta).first()
         if not estado or estado.erro:
             return None
     return numeros_de_ontem_sairam(conta, hoje)
+
+
+def estimada_de_ontem(conta, hoje: date) -> Decimal:
+    return resultados.totais(conta, hoje - timedelta(days=1), hoje - timedelta(days=1))["comissao_estimada"]
+
+
+def _horario(preferencia, local: datetime) -> datetime:
+    return local.replace(hour=preferencia.hora, minute=0, second=0, microsecond=0)
+
+
+def _busca_de_hoje(preferencia, horario: datetime) -> bool:
+    """Já buscou na Shopee para o relatório de hoje (a prévia ou uma conferência)?"""
+    return bool(preferencia.previa_em and preferencia.previa_em >= horario - ANTECEDENCIA_DA_PREVIA)
+
+
+def _fazer_previa(preferencia, agora: datetime, hoje: date, horario: datetime) -> str:
+    """10 minutos antes do horário: busca na Shopee e guarda a comissão estimada de ontem."""
+    from django.db.models import Q
+
+    from .models import RelatorioEmail
+
+    # Só um processo faz (vale quem marcar primeiro); a conferência fica para o horário escolhido.
+    antiga = Q(previa_em__isnull=True) | Q(previa_em__lt=horario - ANTECEDENCIA_DA_PREVIA)
+    if not RelatorioEmail.objects.filter(antiga, pk=preferencia.pk).update(
+            previa_em=agora, previa_comissao=None, proxima_tentativa_em=horario):
+        return ""
+    conta = preferencia.conta
+    saiu = atualizar_e_conferir(conta, hoje, agora, forcar=True)
+    if saiu:
+        RelatorioEmail.objects.filter(pk=preferencia.pk).update(previa_comissao=estimada_de_ontem(conta, hoje))
+        return f"Relatório por e-mail: prévia guardada para {conta.email}"
+    return f"Relatório por e-mail: prévia sem os números de ontem para {conta.email}"
 
 
 def enviar_aviso(conta, hoje: date, destinatarios: list[str], agora: datetime, motivo: str = "nao_saiu",
@@ -173,40 +215,72 @@ def enviar_pendentes(agora: datetime | None = None) -> list[str]:
     local = timezone.localtime(agora)
     hoje = local.date()
     logs = _enviar_agora_pedidos(agora, hoje)
-    if local.hour < HORA_MAIS_CEDO:
+    adiantado = local + ANTECEDENCIA_DA_PREVIA
+    if adiantado.date() != hoje or adiantado.hour < HORA_MAIS_CEDO:
         return logs
     preferencias = (
-        RelatorioEmail.objects.filter(ativo=True, conta__shopee_validado_em__isnull=False, hora__lte=local.hour)
+        RelatorioEmail.objects.filter(ativo=True, conta__shopee_validado_em__isnull=False, hora__lte=adiantado.hour)
         .exclude(ultimo_envio_dia=hoje).select_related("conta")
     )
     for preferencia in preferencias:
+        horario = _horario(preferencia, local)
+        if local < horario:
+            if not _busca_de_hoje(preferencia, horario):
+                try:
+                    if linha := _fazer_previa(preferencia, agora, hoje, horario):
+                        logs.append(linha)
+                except Exception as erro:  # noqa: BLE001 - a conferência do horário refaz a busca
+                    logger.exception("Painel: falha na prévia do relatório da conta %s", preferencia.conta_id)
+                    logs.append(f"Relatório por e-mail: prévia falhou para {preferencia.conta.email} - {erro}")
+            continue
         if not pronto_para_enviar(preferencia, agora):
             continue
-        if local.hour >= HORA_DE_DESISTIR:
+        conta = preferencia.conta
+        tem_previa = _busca_de_hoje(preferencia, horario) and preferencia.previa_comissao is not None
+        if local.hour >= HORA_DE_DESISTIR and not tem_previa:
             # Os números de ontem não saíram o dia todo (ou não teve venda): o dia fica sem relatório.
             RelatorioEmail.objects.filter(pk=preferencia.pk).update(ultimo_envio_dia=hoje, proxima_tentativa_em=None)
-            logs.append(f"Relatório por e-mail: os números de ontem não saíram hoje para {preferencia.conta.email}")
+            logs.append(f"Relatório por e-mail: os números de ontem não saíram hoje para {conta.email}")
+            continue
+        if tem_previa and agora - preferencia.previa_em < MINIMO_ENTRE_BUSCAS:
+            # A prévia atrasou: espera pelo menos alguns minutos para a comparação valer.
+            RelatorioEmail.objects.filter(pk=preferencia.pk).update(
+                proxima_tentativa_em=preferencia.previa_em + MINIMO_ENTRE_BUSCAS)
             continue
         # Uma tentativa por vez - e só um processo tenta (vale quem marcar a próxima primeiro).
         livre = Q(proxima_tentativa_em__isnull=True) | Q(proxima_tentativa_em__lte=agora)
         if not RelatorioEmail.objects.filter(livre, pk=preferencia.pk).exclude(ultimo_envio_dia=hoje).update(
                 proxima_tentativa_em=agora + INTERVALO_ENTRE_TENTATIVAS):
             continue
-        conta = preferencia.conta
         try:
-            saiu = atualizar_e_conferir(conta, hoje, agora)
+            saiu = atualizar_e_conferir(conta, hoje, agora, forcar=True)
             if saiu:
-                enviar(conta, hoje, preferencia.destinatarios())
-                RelatorioEmail.objects.filter(pk=preferencia.pk).update(
-                    ultimo_envio_dia=hoje, proxima_tentativa_em=None, ultimo_erro="")
-                logs.append(f"Relatório por e-mail enviado: {conta.email}")
-            elif saiu is False and preferencia.aviso_dia != hoje:
-                enviar_aviso(conta, hoje, preferencia.destinatarios(), agora)
-                RelatorioEmail.objects.filter(pk=preferencia.pk).update(aviso_dia=hoje)
-                logs.append(f"Relatório por e-mail: números de ontem ainda não saíram, aviso enviado para {conta.email}")
+                atual = estimada_de_ontem(conta, hoje)
+                parou = tem_previa and atual == preferencia.previa_comissao
+                passou_do_limite = tem_previa and (local - horario >= LIMITE_DA_CONFERENCIA
+                                                   or local.hour >= HORA_DE_DESISTIR)
+                if parou or passou_do_limite:
+                    enviar(conta, hoje, preferencia.destinatarios())
+                    RelatorioEmail.objects.filter(pk=preferencia.pk).update(
+                        ultimo_envio_dia=hoje, proxima_tentativa_em=None, ultimo_erro="")
+                    logs.append(f"Relatório por e-mail enviado: {conta.email}"
+                                + ("" if parou else " (a comissão de ontem ainda estava mudando)"))
+                else:
+                    # Primeira busca com os números ou a comissão mudou: guarda e confere de novo em 10 minutos.
+                    RelatorioEmail.objects.filter(pk=preferencia.pk).update(
+                        previa_comissao=atual, previa_em=agora, proxima_tentativa_em=agora + INTERVALO_DA_CONFERENCIA)
+                    logs.append(f"Relatório por e-mail: {conta.email} - comissão de ontem "
+                                f"{'mudou' if tem_previa else 'guardada'} ({atual}), confiro de novo em 10 minutos")
             else:
-                logs.append(f"Relatório por e-mail: {conta.email} - "
-                            f"{'ainda sem os números de ontem' if saiu is False else 'Shopee não respondeu'}, tento de novo")
+                if saiu is False:
+                    RelatorioEmail.objects.filter(pk=preferencia.pk).update(previa_comissao=None)
+                if saiu is False and preferencia.aviso_dia != hoje:
+                    enviar_aviso(conta, hoje, preferencia.destinatarios(), agora)
+                    RelatorioEmail.objects.filter(pk=preferencia.pk).update(aviso_dia=hoje)
+                    logs.append(f"Relatório por e-mail: números de ontem ainda não saíram, aviso enviado para {conta.email}")
+                else:
+                    logs.append(f"Relatório por e-mail: {conta.email} - "
+                                f"{'ainda sem os números de ontem' if saiu is False else 'Shopee não respondeu'}, tento de novo")
         except Exception as erro:  # noqa: BLE001 - tenta de novo na próxima vez
             logger.exception("Painel: falha no relatório por e-mail da conta %s", conta.pk)
             RelatorioEmail.objects.filter(pk=preferencia.pk).update(ultimo_erro=str(erro)[:500])

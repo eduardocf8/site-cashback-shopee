@@ -65,7 +65,9 @@ class TestRelatorioDiario(TestCase):
         self.assertEqual(len(relatorio.enviar_pendentes(as_(8, 41))), 1)  # ainda não saiu: sem outro aviso
         self.assertEqual(len(mail.outbox), 1)
         ResultadoDiario.objects.filter(dia=HOJE - timedelta(days=1)).update(pedidos=12)  # saiu
-        self.assertIn("enviado", relatorio.enviar_pendentes(as_(9, 12))[0])
+        self.assertIn("guardada", relatorio.enviar_pendentes(as_(9, 12))[0])  # confere de novo em 10 minutos
+        self.assertEqual(relatorio.enviar_pendentes(as_(9, 20)), [])
+        self.assertIn("enviado", relatorio.enviar_pendentes(as_(9, 22))[0])
         self.assertEqual(len(mail.outbox), 2)
         self.assertIn("seus resultados de 18/10", mail.outbox[1].subject)
         self.preferencia.refresh_from_db()
@@ -87,16 +89,74 @@ class TestRelatorioDiario(TestCase):
         self.assertEqual(len(mail.outbox), 0)
         self.processar.side_effect = None
         SincronizacaoResultados.objects.filter(conta=self.conta).update(erro="")
-        self.assertEqual(len(relatorio.enviar_pendentes(as_(8, 45))), 1)
+        self.assertIn("guardada", relatorio.enviar_pendentes(as_(8, 45))[0])
+        self.assertIn("enviado", relatorio.enviar_pendentes(as_(8, 55))[0])
         self.assertEqual(len(mail.outbox), 1)
 
-    def test_atualizacao_recente_nao_e_refeita(self):
-        SincronizacaoResultados.objects.filter(conta=self.conta).update(concluida_em=as_(8, 5))
-        relatorio.enviar_pendentes(as_(8, 10))
-        self.processar.assert_not_called()
+    def test_cada_conferencia_busca_na_shopee_mesmo_com_atualizacao_recente(self):
+        SincronizacaoResultados.objects.filter(conta=self.conta).update(concluida_em=as_(7, 49))
+        relatorio.enviar_pendentes(as_(7, 50))
+        relatorio.enviar_pendentes(as_(8))
+        self.assertEqual(self.processar.call_count, 2)
         self.assertEqual(len(mail.outbox), 1)
+
+    def test_previa_10_minutos_antes_e_envio_quando_a_comissao_nao_muda(self):
+        self.assertEqual(relatorio.enviar_pendentes(as_(7, 49)), [])  # ainda não é hora da prévia
+        self.assertIn("prévia guardada", relatorio.enviar_pendentes(as_(7, 50))[0])
+        self.processar.assert_called_once_with(self.conta, curta=True)
+        self.assertEqual(relatorio.enviar_pendentes(as_(7, 55)), [])  # prévia é uma só
+        self.preferencia.refresh_from_db()
+        self.assertEqual(self.preferencia.previa_comissao, Decimal("120.30"))
+        self.assertEqual(len(mail.outbox), 0)
+        self.assertIn("enviado", relatorio.enviar_pendentes(as_(8))[0])  # igual à prévia: vai
+        self.assertEqual(self.processar.call_count, 2)
+        self.assertEqual(len(mail.outbox), 1)
+
+    def test_comissao_mudando_espera_10_minutos_ate_parar(self):
+        ontem = HOJE - timedelta(days=1)
+        valores = iter(["80", "120.30", "120.30"])  # a Shopee liberou ontem pela metade na hora do envio
+
+        def buscar(conta, curta=None):
+            ResultadoDiario.objects.filter(conta=conta, dia=ontem).update(comissao_estimada=Decimal(next(valores)))
+        self.processar.side_effect = buscar
+        relatorio.enviar_pendentes(as_(7, 50))  # prévia: 80
+        self.assertIn("mudou", relatorio.enviar_pendentes(as_(8))[0])  # 120,30: espera
+        self.assertEqual(relatorio.enviar_pendentes(as_(8, 5)), [])
+        self.assertEqual(len(mail.outbox), 0)
+        self.assertIn("enviado", relatorio.enviar_pendentes(as_(8, 10))[0])  # 120,30 de novo: vai
+        self.assertIn("R$\u00a0120,30", mail.outbox[0].alternatives[0][0])
+
+    def test_comissao_que_nao_para_de_mudar_vai_depois_de_2_horas(self):
+        ontem = HOJE - timedelta(days=1)
+        valor = [Decimal("100")]
+
+        def buscar(conta, curta=None):
+            valor[0] += 1
+            ResultadoDiario.objects.filter(conta=conta, dia=ontem).update(comissao_estimada=valor[0])
+        self.processar.side_effect = buscar
+        relatorio.enviar_pendentes(as_(7, 50))
+        minuto = 0
+        while not mail.outbox and minuto <= 130:
+            logs = relatorio.enviar_pendentes(as_(8) + timedelta(minutes=minuto))
+            minuto += 10
+        self.assertEqual(minuto, 130)  # 10h00
+        self.assertIn("ainda estava mudando", logs[0])
+
+    def test_previa_atrasada_espera_um_pouco_antes_de_conferir(self):
+        relatorio.enviar_pendentes(as_(7, 58))  # o worker estava ocupado
+        self.assertEqual(relatorio.enviar_pendentes(as_(8)), [])
+        self.assertEqual(self.processar.call_count, 1)
+        self.assertIn("enviado", relatorio.enviar_pendentes(as_(8, 3))[0])
+
+    def test_previa_das_7h_sai_as_6h50(self):
+        self.preferencia.hora = 7
+        self.preferencia.save()
+        self.assertEqual(relatorio.enviar_pendentes(as_(6, 49)), [])
+        self.assertIn("prévia", relatorio.enviar_pendentes(as_(6, 50))[0])
+        self.assertIn("enviado", relatorio.enviar_pendentes(as_(7))[0])
 
     def test_envia_uma_vez_por_dia_com_os_numeros(self):
+        relatorio.enviar_pendentes(as_(7, 50))
         logs = relatorio.enviar_pendentes(as_(8, 10))
         self.assertEqual(len(logs), 1)
         self.assertEqual(len(mail.outbox), 1)
@@ -124,6 +184,7 @@ class TestRelatorioDiario(TestCase):
     def test_sem_bot_nao_mostra_o_bloco_do_bot(self):
         self.conta.modulos_cortesia = ""
         self.conta.save()
+        relatorio.enviar_pendentes(as_(7, 50))
         relatorio.enviar_pendentes(as_(9))
         self.assertNotIn("Bot de WhatsApp", mail.outbox[0].alternatives[0][0])
 
