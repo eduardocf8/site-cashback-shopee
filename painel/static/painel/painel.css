@@ -1007,3 +1007,6 @@ form[data-metas] .grade-campos { display: grid; grid-template-columns: 1fr 1fr; 
 .lista-criados li:first-child { border-top: 0; }
 .link-convite { display: flex; gap: 8px; flex-wrap: wrap; }
 .link-convite input { flex: 1 1 240px; min-width: 0; min-height: 40px; padding: 0 12px; border-radius: 10px; border: 1px solid var(--borda); background: var(--campo); font: inherit; font-size: 14px; color: inherit; }
+.marcar.travada { opacity: .5; cursor: not-allowed; }
+.marcar.travada input { cursor: not-allowed; }
+.aviso-campo { display: block; margin: -4px 0 8px 30px; }

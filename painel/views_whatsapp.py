@@ -700,6 +700,7 @@ def whatsapp_membros(request):
         base = request.GET["criar"] if request.GET["criar"] in nomes else ""
         criar = {"base": base, "nome": grupos_novos.proximo_nome(nomes.get(base, ""), grupos_novos.nomes_em_uso(conta, conexao)) if base else "",
                  "admins": grupos_novos.ultimos_admins(conta), "feitos_hoje": grupos_novos.criados_hoje(conta),
+                 "automacao": grupos_novos.vagas_na_automacao(conta),
                  "por_dia": grupos_novos.POR_DIA, "bases": sorted(membros.grupos_possiveis(conexao), key=lambda g: str(g.get("nome", "")).lower())}
     possiveis = sorted(membros.grupos_possiveis(conexao), key=lambda g: (g["jid"] not in escolhidos, str(g.get("nome", "")).lower()))
     return render(request, "painel/whatsapp_membros.html", _contexto(

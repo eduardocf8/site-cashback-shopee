@@ -73,6 +73,19 @@ def nomes_em_uso(conta, conexao) -> list[str]:
     return [g.get("nome", "") for g in (conexao.grupos if conexao else []) or []] + list(pedidos)
 
 
+def vagas_na_automacao(conta) -> dict:
+    """Quantos grupos ainda cabem na Automação (contando os que estão sendo criados para entrar
+    nela). sem_automacao = a pessoa ainda não configurou a Automação."""
+    from licencas import planos
+
+    regras = planos.bot(conta)
+    config = ConfiguracaoOfertas.objects.filter(conta=conta).first()
+    usados = len([g for g in (config.grupos if config else []) or [] if g.get("jid")])
+    a_caminho = PedidoGrupo.objects.filter(conta=conta, estado=PedidoGrupo.PENDENTE, incluir_na_automacao=True).count()
+    return {"vagas": max(0, regras["grupos"] - usados - a_caminho), "limite": regras["grupos"],
+            "premium": regras.get("premium", False), "sem_automacao": config is None}
+
+
 def pedir(conta, nome: str, base_jid: str, copiar: bool, so_admins: bool, admins_texto: str, incluir: bool) -> tuple[PedidoGrupo | None, str]:
     """Registra o pedido (o worker cria). Devolve (pedido, "") ou (None, motivo)."""
     nome = " ".join(str(nome or "").split())[:TAMANHO_DO_NOME]
@@ -89,6 +102,8 @@ def pedir(conta, nome: str, base_jid: str, copiar: bool, so_admins: bool, admins
         return None, f"Não entendi {'o número' if len(invalidos) == 1 else 'os números'} {', '.join(invalidos)}. Use DDD e número, como (11) 98888-7777."
     numeros = [n for n in numeros if n != conexao.numero][:MAXIMO_ADMINS]
     base_jid = base_jid if any(g.get("jid") == base_jid for g in conexao.grupos or []) else ""
+    automacao = vagas_na_automacao(conta)
+    incluir = incluir and automacao["vagas"] > 0 and not automacao["sem_automacao"]
     pedido = PedidoGrupo.objects.create(
         conta=conta, nome=nome, base_jid=base_jid, copiar_foto_e_descricao=copiar and bool(base_jid),
         so_admins=so_admins, administradores=numeros, incluir_na_automacao=incluir,

@@ -265,3 +265,26 @@ class TestCriarGrupo(BasePainel):
         ConexaoWhatsApp.objects.filter(conta=self.conta).update(estado="desconectado")
         resposta = self.client.post("/whatsapp/membros/", {"acao": "criar_grupo", "nome": "Novo"}, follow=True)
         self.assertContains(resposta, "Conecte o WhatsApp na aba Conexão para criar grupos.")
+
+    def test_automacao_no_limite_trava_a_opcao(self):
+        from .models import PedidoGrupo
+
+        self.config.grupos = [{"jid": f"{i}@g.us", "nome": f"G{i}"} for i in range(1, 30)]  # 29 de 30 no Standard
+        self.config.save()
+        html = self.client.get("/whatsapp/membros/?criar=1@g.us").content.decode()
+        self.assertIn('<input type="checkbox" name="incluir" checked>', html)  # ainda cabe 1
+
+        PedidoGrupo.objects.create(conta=self.conta, nome="A caminho", incluir_na_automacao=True)  # ocupa a última vaga
+        html = self.client.get("/whatsapp/membros/?criar=1@g.us").content.decode()
+        self.assertIn('<input type="checkbox" name="incluir" disabled>', html)
+        self.assertIn("Sua Automação já está com 30 grupos, o máximo do seu plano.", html)
+        self.assertIn("plano Premium", html)
+
+        self.client.post("/whatsapp/membros/", {"acao": "criar_grupo", "nome": "Novo", "incluir": "on"})
+        self.assertFalse(PedidoGrupo.objects.get(nome="Novo").incluir_na_automacao)  # mesmo forçando, não entra
+
+    def test_sem_automacao_configurada(self):
+        self.config.delete()
+        html = self.client.get("/whatsapp/membros/?criar=1").content.decode()
+        self.assertIn('<input type="checkbox" name="incluir" disabled>', html)
+        self.assertIn("Você ainda não configurou a", html)
