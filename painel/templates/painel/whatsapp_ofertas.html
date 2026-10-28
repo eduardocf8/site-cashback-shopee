@@ -174,6 +174,7 @@
         {% endif %}
         {% if grupos_fora_do_plano %}<p class="aviso aviso-warning pequeno">Seu plano envia para até {{ regras.grupos }} grupos e canais: os {{ grupos_fora_do_plano }} último{{ grupos_fora_do_plano|pluralize }} da lista não recebe{{ grupos_fora_do_plano|pluralize:"m" }} ofertas. Desmarque alguns e salve, ou passe pro <a href="{{ url_planos }}" target="_blank" rel="noopener">plano Premium</a>.</p>{% endif %}
         {% for e in form.grupos.errors %}<span class="erro">{{ e }}</span>{% endfor %}
+        {% if ritmo %}<p class="aviso aviso-info pequeno">Com {{ ritmo.grupos }} grupos e canais, cada oferta leva uns {{ ritmo.minutos }} minutos para chegar em todos. A próxima só sai depois que a anterior terminar{% if ritmo.limitado %}, então no seu horário de envio cabem umas {{ ritmo.por_dia }} ofertas por dia em cada grupo{% endif %}.</p>{% endif %}
       </fieldset>
       <div class="grade-campos">
         <div class="campo">{% include "painel/_campo.html" with campo=form.intervalo_minutos %}</div>

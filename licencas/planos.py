@@ -26,9 +26,9 @@ AUTOMACOES = {
 
 # Bot de WhatsApp.
 BOT = {
-    False: {"grupos": 10, "ofertas_por_grupo_dia": 60, "intervalo_minimo": 15, "copiar": False, "ia": False, "nicho": False, "mensagens_agendadas": 20,
+    False: {"grupos": 30, "ofertas_por_grupo_dia": 60, "intervalo_minimo": 15, "copiar": False, "ia": False, "nicho": False, "mensagens_agendadas": 20,
             "alerta_produtos": 10, "alerta_intervalo_minimo": 60},
-    True: {"grupos": 50, "ofertas_por_grupo_dia": 300, "intervalo_minimo": 3, "copiar": True, "ia": True, "nicho": True, "mensagens_agendadas": 50,
+    True: {"grupos": 200, "ofertas_por_grupo_dia": 300, "intervalo_minimo": 3, "copiar": True, "ia": True, "nicho": True, "mensagens_agendadas": 50,
            "alerta_produtos": 50, "alerta_intervalo_minimo": 15},
 }
 

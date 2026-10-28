@@ -23,6 +23,11 @@
       <figcaption>{{ p.legenda }}</figcaption>
     </figure>
     {% endwith %}
+    {% elif p.so_celular %}
+    <figure class="prints-painel prints-so-celular">
+      <img src="{% static p.arquivo %}" width="{{ p.largura }}" height="{{ p.altura }}" alt="{{ p.alt }}" loading="lazy" decoding="async">
+      <figcaption>{{ p.legenda }}</figcaption>
+    </figure>
     {% else %}
     <figure class="prints-painel">
       <div class="prints-janela">

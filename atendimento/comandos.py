@@ -25,6 +25,7 @@ from .models import CodigoVinculo, Conversa
 VALIDADE_DO_CODIGO = timedelta(minutes=30)
 COMANDOS_POR_DIA = 30  # por número: corta abuso e loop com outro robô
 TENTATIVAS_DE_VINCULO_POR_DIA = 5  # chute de código
+NUMEROS_POR_CONTA = 2
 MAXIMO_VENDAS = 10
 MAXIMO_TOP = 5
 TAMANHO_DO_NOME = 60
@@ -222,12 +223,18 @@ def codigo_valido(conta) -> CodigoVinculo | None:
     return None
 
 
-def desvincular(conta) -> int:
-    return Conversa.objects.filter(conta=conta).update(conta=None, vinculada_em=None)
+def desvincular(conta, conversa_id) -> int:
+    if not str(conversa_id or "").isdigit():
+        return 0
+    return Conversa.objects.filter(conta=conta, pk=conversa_id).update(conta=None, vinculada_em=None)
 
 
-def numero_vinculado(conta) -> Conversa | None:
-    return Conversa.objects.filter(conta=conta).order_by("-vinculada_em").first()
+def numeros_vinculados(conta) -> list[Conversa]:
+    return list(Conversa.objects.filter(conta=conta).order_by("vinculada_em", "pk"))
+
+
+def pode_vincular_outro(conta) -> bool:
+    return Conversa.objects.filter(conta=conta).count() < NUMEROS_POR_CONTA
 
 
 def numero_do_appfiliado() -> str:
@@ -255,7 +262,11 @@ def _vincular(conversa: Conversa, codigo: str) -> str:
             return ("Esse código não vale (errado ou vencido: cada código vale 30 minutos). "
                     f"Gere um novo em Configurações no painel: {_url('painel_configuracoes')}#whatsapp")
         conta = vinculo.conta
-        Conversa.objects.filter(conta=conta).exclude(pk=conversa.pk).update(conta=None, vinculada_em=None)
+        if conversa.conta_id != conta.pk and \
+                Conversa.objects.filter(conta=conta).exclude(pk=conversa.pk).count() >= NUMEROS_POR_CONTA:
+            # O código continua valendo: dá para desvincular um número no painel e mandar de novo.
+            return (f"Sua conta do Appfiliado já tem {NUMEROS_POR_CONTA} números vinculados, o máximo. Para vincular "
+                    f"este, desvincule um deles em Configurações no painel: {_url('painel_configuracoes')}#whatsapp")
         conversa.conta, conversa.vinculada_em = conta, timezone.now()
         conversa.save(update_fields=["conta", "vinculada_em", "atualizada_em"])
         vinculo.delete()
@@ -281,7 +292,7 @@ def _impedimento(conta) -> str:
 
 def ajuda(conta) -> str:
     primeiro = (conta.nome or "").split(" ")[0]
-    return (f"Oi{', ' + primeiro if primeiro else ''}! Comandos que eu entendo por aqui:\n\n"
+    return (f"Oi{', ' + primeiro if primeiro else ''}! Aqui é a Lia, a assistente do Appfiliado. Comandos que eu entendo por aqui:\n\n"
             "*resultados*: ontem, últimos 7 dias e o mês\n"
             "*metas*: como está a meta do mês\n"
             "*vendas*: os produtos vendidos ontem\n"
@@ -307,7 +318,7 @@ def resultados(conta) -> str:
     ]
     linhas = ["📊 *Seus resultados na Shopee*"]
     for titulo, t in blocos:
-        linhas += ["", titulo, f"Pedidos: {t['pedidos']}", f"Faturamento: {brl(t['faturamento'])}",
+        linhas += ["", titulo, f"Pedidos: {_inteiro(t['pedidos'])}", f"Faturamento: {brl(t['faturamento'])}",
                    f"Comissão estimada: {brl(t['comissao_estimada'])}", f"Comissão validada: {brl(t['comissao_validada'])}"]
     return _fechar(conta, linhas, "painel_resultados")
 
@@ -410,6 +421,10 @@ def top(conta) -> str:
 def brl(valor) -> str:
     texto = f"{float(valor or 0):,.2f}".replace(",", "_").replace(".", ",").replace("_", ".")
     return f"R$ {texto}"
+
+
+def _inteiro(n) -> str:
+    return f"{int(n or 0):,}".replace(",", ".")
 
 
 def _ontem():

@@ -466,3 +466,147 @@ class MensagemAvulsa(models.Model):
 
     def __str__(self):
         return f"{self.conta.email} - {self.texto[:40]}"
+
+
+class GrupoMonitorado(models.Model):
+    """Grupo que a pessoa escolheu acompanhar na aba Grupos (bot_whatsapp/membros.py). Guarda a
+    última contagem; o histórico fica em LeituraMembros (por hora) e DiaMembros (por dia).
+    Só números: nunca quem entrou ou saiu."""
+
+    conta = models.ForeignKey(ContaAppfiliado, on_delete=models.CASCADE, related_name="grupos_monitorados")
+    jid = models.CharField(max_length=80)
+    nome = models.CharField(max_length=200, blank=True)
+    admin = models.BooleanField(default=False)
+    no_grupo = models.BooleanField(default=True, help_text="Falso quando o número do bot saiu do grupo.")
+    membros = models.PositiveIntegerField(null=True, blank=True)
+    lido_em = models.DateTimeField(null=True, blank=True)
+    criado_em = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ["nome", "pk"]
+        constraints = [models.UniqueConstraint(fields=["conta", "jid"], name="grupo_monitorado_unico")]
+        verbose_name = "grupo monitorado"
+        verbose_name_plural = "grupos monitorados"
+
+    def __str__(self):
+        return f"{self.conta.email} - {self.nome or self.jid}"
+
+
+class LeituraMembros(models.Model):
+    """Uma contagem por hora, guardada por 2 dias (para a variação das últimas 24 horas)."""
+
+    grupo = models.ForeignKey(GrupoMonitorado, on_delete=models.CASCADE, related_name="leituras")
+    em = models.DateTimeField(db_index=True)
+    membros = models.PositiveIntegerField()
+
+    class Meta:
+        ordering = ["-em"]
+
+
+class DiaMembros(models.Model):
+    """Um dia de um grupo: a última contagem do dia e quantos entraram e saíram (13 meses)."""
+
+    grupo = models.ForeignKey(GrupoMonitorado, on_delete=models.CASCADE, related_name="dias")
+    dia = models.DateField()
+    membros = models.PositiveIntegerField(null=True, blank=True)
+    entradas = models.PositiveIntegerField(default=0)
+    saidas = models.PositiveIntegerField(default=0)
+
+    class Meta:
+        ordering = ["-dia"]
+        constraints = [models.UniqueConstraint(fields=["grupo", "dia"], name="dia_membros_unico")]
+
+
+class PedidoGrupo(models.Model):
+    """Pedido de grupo novo feito no painel (aba Grupos). Quem cria é o worker, pelo número
+    conectado (bot_whatsapp/grupos_novos.py): o grupo nasce vazio, com o link de convite."""
+
+    PENDENTE, CRIADO, ERRO = "pendente", "criado", "erro"
+    ESTADOS = [(PENDENTE, "Criando"), (CRIADO, "Criado"), (ERRO, "Erro")]
+
+    conta = models.ForeignKey(ContaAppfiliado, on_delete=models.CASCADE, related_name="pedidos_de_grupo")
+    nome = models.CharField(max_length=100)
+    base_jid = models.CharField(max_length=80, blank=True, help_text="Grupo de onde copia foto, descrição, nicho e Sub ID.")
+    copiar_foto_e_descricao = models.BooleanField(default=True)
+    so_admins = models.BooleanField(default=True, help_text="Só administradores enviam mensagens.")
+    administradores = models.JSONField(default=list, blank=True)  # números (DDI + DDD + número)
+    incluir_na_automacao = models.BooleanField(default=True)
+    estado = models.CharField(max_length=10, choices=ESTADOS, default=PENDENTE)
+    jid = models.CharField(max_length=80, blank=True)
+    link_convite = models.CharField(max_length=200, blank=True)
+    avisos = models.TextField(blank=True)  # o que não deu certo, sem impedir o grupo (ex: um admin)
+    erro = models.TextField(blank=True)
+    # Criado sozinho pelo link de entrada (os grupos dele lotaram): o grupo novo entra no link.
+    link_entrada = models.ForeignKey("LinkEntrada", null=True, blank=True, on_delete=models.SET_NULL, related_name="pedidos_de_grupo")
+    criado_em = models.DateTimeField(auto_now_add=True)
+    concluido_em = models.DateTimeField(null=True, blank=True)
+
+    class Meta:
+        ordering = ["-criado_em"]
+        verbose_name = "pedido de grupo novo"
+        verbose_name_plural = "pedidos de grupo novo"
+
+    def __str__(self):
+        return f"{self.conta.email} - {self.nome} ({self.estado})"
+
+
+class LinkEntrada(models.Model):
+    """Link de entrada nos grupos (bot_whatsapp/entrada.py): uma página leve no endereço do Meu site
+    (seunome.appfiliado.com.br/g/<slug>/) para colocar no anúncio. Registra a visita no pixel do
+    Meta e manda a pessoa pro primeiro grupo da lista que ainda tem vaga."""
+
+    conta = models.ForeignKey(ContaAppfiliado, on_delete=models.CASCADE, related_name="links_entrada")
+    slug = models.SlugField("endereço do link", max_length=40)
+    titulo = models.CharField(max_length=80, default="Grupo VIP de Achadinhos")
+    frase = models.CharField(max_length=200, blank=True, default="As melhores ofertas da Shopee todos os dias, direto no seu WhatsApp.")
+    texto_botao = models.CharField("texto do botão", max_length=40, default="Entrar no grupo")
+    foto = models.BinaryField(null=True, blank=True)  # JPEG pequeno; sem foto, usa a do Meu site
+    foto_versao = models.PositiveIntegerField(default=0)
+    pixel_id = models.CharField("ID do pixel do Meta", max_length=20, blank=True)
+    grupos = models.JSONField(default=list, blank=True)  # jids; enchem na ordem do nome (#1, #2...)
+    limite_por_grupo = models.PositiveIntegerField(default=1000, help_text="O WhatsApp aceita até 1.024 pessoas por grupo.")
+    redirecionar = models.BooleanField("ir direto para o grupo", default=False)
+    ativo = models.BooleanField(default=True)
+    criar_sozinho = models.BooleanField("criar o próximo grupo sozinho", default=False)
+    admins_dos_novos = models.JSONField(default=list, blank=True)
+    aviso_lotando_em = models.DateTimeField(null=True, blank=True)
+    criado_em = models.DateTimeField(auto_now_add=True)
+    atualizado_em = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ["-criado_em"]
+        constraints = [models.UniqueConstraint(fields=["conta", "slug"], name="link_entrada_unico")]
+        verbose_name = "link de entrada"
+        verbose_name_plural = "links de entrada"
+
+    def __str__(self):
+        return f"{self.conta.email} - /g/{self.slug}/"
+
+
+class ConviteGrupo(models.Model):
+    """Link de convite de um grupo (chat.whatsapp.com/...). O worker lê sozinho quando o número do bot
+    é administrador; senão, a pessoa cola à mão no painel."""
+
+    conta = models.ForeignKey(ContaAppfiliado, on_delete=models.CASCADE, related_name="convites_de_grupo")
+    jid = models.CharField(max_length=80)
+    link = models.CharField(max_length=200, blank=True)
+    manual = models.BooleanField(default=False)
+    lido_em = models.DateTimeField(null=True, blank=True)
+    erro = models.CharField(max_length=300, blank=True)
+
+    class Meta:
+        constraints = [models.UniqueConstraint(fields=["conta", "jid"], name="convite_grupo_unico")]
+
+
+class AcessoEntrada(models.Model):
+    """Visitas e cliques de um link de entrada por dia (e por grupo e campanha do anúncio)."""
+
+    link = models.ForeignKey(LinkEntrada, on_delete=models.CASCADE, related_name="acessos")
+    dia = models.DateField()
+    grupo_jid = models.CharField(max_length=80, blank=True)  # vazio nas visitas
+    campanha = models.CharField(max_length=80, blank=True)  # utm_campaign
+    visitas = models.PositiveIntegerField(default=0)
+    cliques = models.PositiveIntegerField(default=0)
+
+    class Meta:
+        constraints = [models.UniqueConstraint(fields=["link", "dia", "grupo_jid", "campanha"], name="acesso_entrada_unico")]

@@ -103,11 +103,16 @@ class TestComVinculo(BaseComandos):
         self.assertFalse(CodigoVinculo.objects.exists())
         self.assertIn("*resultados*", self.resposta("comandos"))
 
-    def test_outro_numero_toma_o_lugar(self):
-        self.vincular(chat="5511888880000@s.whatsapp.net")
-        self.assertEqual(list(Conversa.objects.filter(conta=self.conta).values_list("chat", flat=True)),
-                         ["5511888880000@s.whatsapp.net"])
-        self.assertIn("vincule", self.resposta("resultados"))
+    def test_ate_2_numeros_por_conta(self):
+        segundo, terceiro = "5511888880000@s.whatsapp.net", "5511777770000@s.whatsapp.net"
+        self.assertIn("Pronto!", self.vincular(chat=segundo))
+        self.assertEqual(Conversa.objects.filter(conta=self.conta).count(), 2)
+        self.assertIn("Pedidos:", self.resposta("resultados"))  # o primeiro continua vinculado
+        self.assertIn("Pedidos:", self.resposta("resultados", chat=segundo))
+        self.assertIn("já tem 2 números vinculados", self.vincular(chat=terceiro))
+        self.assertTrue(CodigoVinculo.objects.exists())  # o código continua valendo
+        self.assertIsNone(Conversa.objects.get(chat=terceiro).conta)
+        self.assertIn("Pronto!", self.vincular())  # o mesmo número de novo não conta como outro
 
     def test_resultados_de_ontem_7_dias_e_mes(self):
         ResultadoDiario.objects.create(conta=self.conta, dia=date(2026, 10, 27), pedidos=12, faturamento=Decimal("1234.56"),
@@ -277,7 +282,7 @@ class TestComVinculo(BaseComandos):
             servico.uma_volta({CONTA: sessao})
         agente.assert_not_called()
         self.assertEqual(sessao.enviadas[-1][0], CHAT)
-        self.assertIn("Oi, Bia! Comandos que eu entendo por aqui", sessao.enviadas[-1][1])
+        self.assertIn("Oi, Bia! Aqui é a Lia, a assistente do Appfiliado. Comandos que eu entendo por aqui", sessao.enviadas[-1][1])
 
 
 class TestPainel(BaseComandos):
@@ -294,7 +299,7 @@ class TestPainel(BaseComandos):
 
     def _gera_codigo_mostra_link_e_desvincula(self):
         html = self.client.get("/configuracoes/").content.decode()
-        self.assertIn("Resultados no WhatsApp", html)
+        self.assertIn("Lia no WhatsApp", html)
         self.assertIn("+55 (45) 98888-0000", html)
         self.assertIn("Vincular meu WhatsApp", html)
 
@@ -308,15 +313,37 @@ class TestPainel(BaseComandos):
         self.resposta(f"VINCULAR {codigo}")
         html = self.client.get("/configuracoes/").content.decode()
         self.assertIn("+55 (11) 99999-0000", html)
-        self.client.post("/configuracoes/", {"formulario": "whatsapp_desvincular"})
-        self.assertFalse(Conversa.objects.filter(conta=self.conta).exists())
+        self.assertIn("Números vinculados (1 de 2)", html)
+        self.assertIn("Vincular outro número", html)
+
+        # Segundo número: chega no limite.
+        self.client.post("/configuracoes/", {"formulario": "whatsapp_codigo"})
+        self.resposta(f"VINCULAR {CodigoVinculo.objects.get(conta=self.conta).codigo}", chat="5511888880000@s.whatsapp.net")
+        html = self.client.get("/configuracoes/").content.decode()
+        self.assertIn("Números vinculados (2 de 2)", html)
+        self.assertIn("+55 (11) 88888-0000", html)
+        self.assertIn("já tem 2 números vinculados, o máximo", html)
+        self.assertNotIn("Vincular outro número", html)
+        self.client.post("/configuracoes/", {"formulario": "whatsapp_codigo"})
+        self.assertFalse(CodigoVinculo.objects.filter(conta=self.conta).exists())  # no limite, não gera código
+
+        # Desvincula só o escolhido (e só da própria conta).
+        primeiro = Conversa.objects.get(chat=CHAT)
+        outra = ContaAppfiliado.objects.create(email="outra@exemplo.com")
+        alheia = Conversa.objects.create(chat="5511666660000@s.whatsapp.net", conta=outra)
+        self.client.post("/configuracoes/", {"formulario": "whatsapp_desvincular", "conversa": alheia.pk})
+        self.client.post("/configuracoes/", {"formulario": "whatsapp_desvincular", "conversa": "x"})
+        self.assertEqual(Conversa.objects.get(pk=alheia.pk).conta, outra)
+        self.client.post("/configuracoes/", {"formulario": "whatsapp_desvincular", "conversa": primeiro.pk})
+        self.assertEqual(list(Conversa.objects.filter(conta=self.conta).values_list("chat", flat=True)),
+                         ["5511888880000@s.whatsapp.net"])
 
     def test_cartao_so_precisa_do_numero(self):
         # No web, o agente (conta e chave da IA) pode não estar configurado: quem responde é o worker.
         with override_settings(ANTHROPIC_API_KEY="", ATENDIMENTO_CONTA_ID=0):
             html = self.client.get("/configuracoes/").content.decode()
-        self.assertIn("Resultados no WhatsApp", html)
+        self.assertIn("Lia no WhatsApp", html)
         self.assertIn("+55 (45) 99999-0000", html)  # sem a conexão do agente, usa o número de suporte
         with override_settings(APPFILIADO_WHATSAPP_SUPORTE="", ATENDIMENTO_CONTA_ID=0):
             html = self.client.get("/configuracoes/").content.decode()
-        self.assertNotIn("Resultados no WhatsApp", html)
+        self.assertNotIn("Lia no WhatsApp", html)

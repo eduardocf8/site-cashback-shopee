@@ -151,6 +151,39 @@ def config_do_nicho(config, nicho: dict, grupos: list[dict]):
     return do_nicho
 
 
+# Uma mensagem por número a cada ~4 s: o gerenciador dá uma volta a cada 2 s e espera 3 s entre duas
+# mensagens do mesmo número (gerenciador.INTERVALO e ESPACO_ENTRE_ENVIOS). Com 200 grupos, uma oferta
+# leva uns 13 minutos para chegar em todos.
+SEGUNDOS_POR_MENSAGEM = 4
+# Com mais que isso na fila (uns 2 minutos de envio), a próxima oferta espera a fila andar.
+LIMITE_DA_FILA = 30
+
+
+def minutos_por_rodada(quantos_grupos: int) -> int:
+    """Quanto tempo uma oferta leva para chegar em todos os grupos (arredondado pra cima)."""
+    return -(-quantos_grupos * SEGUNDOS_POR_MENSAGEM // 60)
+
+
+def ritmo_com_muitos_grupos(config, regras) -> dict | None:
+    """Pra tela: com muitos grupos, quanto tempo cada oferta leva para chegar em todos e quantas
+    cabem por dia em cada grupo no horário de envio. None quando são poucos grupos (não muda nada)."""
+    grupos = min(len([g for g in config.grupos or [] if g.get("jid")]), regras["grupos"])
+    rodada = minutos_por_rodada(grupos)
+    if rodada < 2:
+        return None
+    inicio, fim = config.horario_inicio, config.horario_fim
+    janela = (fim.hour * 60 + fim.minute) - (inicio.hour * 60 + inicio.minute)
+    janela = 24 * 60 if janela == 0 else janela % (24 * 60)
+    por_dia = janela // max(rodada, intervalo_do_plano(config) if config.modo != ConfiguracaoOfertas.MODO_COPIAR else 0, 1)
+    return {"grupos": grupos, "minutos": rodada, "por_dia": min(por_dia, regras["ofertas_por_grupo_dia"]),
+            "limitado": por_dia < regras["ofertas_por_grupo_dia"]}
+
+
+def mensagens_na_fila(conta) -> int:
+    """Mensagens desta conta que ainda não saíram (ofertas, página da campanha, avulsas)."""
+    return EnvioWhatsApp.objects.filter(conta=conta, estado=EnvioWhatsApp.PENDENTE).count()
+
+
 def intervalo_do_plano(config) -> int:
     """Minutos até a próxima oferta: o escolhido, mas nunca menos que o mínimo do plano
     (copiando de outros grupos, 0 = repassa assim que chegar)."""
@@ -185,6 +218,11 @@ def motivo_para_esperar(config, conexao, agora) -> str:
         return f"Todos os grupos já receberam as {regras['ofertas_por_grupo_dia']} ofertas de hoje (limite do plano por grupo)."
     if not dentro_do_horario(config, timezone.localtime(agora)):
         return "Fora do horário de envio."
+    # Ritmo automático: com muitos grupos, a oferta anterior pode ainda estar saindo. A próxima
+    # espera a fila esvaziar, senão a fila só cresceria (e o número mandaria mensagens sem parar).
+    na_fila = mensagens_na_fila(config.conta)
+    if na_fila > LIMITE_DA_FILA:
+        return f"Enviando a oferta anterior: faltam {na_fila} mensage{'ns' if na_fila > 1 else 'm'}. A próxima sai depois."
     if config.limite_diario and ofertas_enviadas_hoje(config.conta, agora, config.simulacao) >= config.limite_diario:
         return "Limite de ofertas de hoje atingido."
     return ""

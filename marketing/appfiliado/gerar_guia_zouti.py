@@ -21,8 +21,8 @@ CODIGOS = {
     ("carrosseis", 0): "carrosseis", ("carrosseis", 1): "carrosseis_premium",
 }
 LINHA = {
-    ("bot", 0): "até 10 grupos, 60 ofertas por dia em cada, modo campanha e alerta de preço (10 produtos)",
-    ("bot", 1): "até 50 grupos, 300 ofertas por dia em cada, copiar ofertas, IA e alerta de preço (50 produtos)",
+    ("bot", 0): "até 30 grupos, 60 ofertas por dia em cada, modo campanha e alerta de preço (10 produtos)",
+    ("bot", 1): "até 200 grupos, 300 ofertas por dia em cada, copiar ofertas, IA e alerta de preço (50 produtos)",
     ("site", 0): "até 3 botões, conversor e vitrine de ofertas",
     ("site", 1): "até 10 botões, produtos que você escolher e sem a nossa marca",
     ("carrosseis", 0): "3 por dia, com roteiro por IA",
@@ -30,14 +30,14 @@ LINHA = {
 }
 DESCRICOES = {
     ("bot", 0): ("Ofertas da Shopee enviadas no automático pros seus grupos, sempre com o seu link de afiliado.",
-                 ["Até 10 grupos e canais", "Até 60 ofertas por dia em cada grupo, com intervalo a partir de 15 minutos",
+                 ["Até 30 grupos e canais", "Até 60 ofertas por dia em cada grupo, com intervalo a partir de 15 minutos",
                   "Busca por palavra-chave, loja ou categoria, com filtros de comissão, desconto, preço e avaliação",
                   "Horário e dias de envio, Sub ID por grupo e modo simulação para testar antes",
                   "Modo campanha: no 11.11, na Black Friday e nas outras datas, o bot muda sozinho o ritmo, o texto e o cupom",
                   "Alerta de preço: acompanha até 10 produtos e avisa quando o preço cair, no painel, por e-mail e, se você quiser, nos grupos (conferência a partir de 1 hora)"],
                  "Precisa de: um número de WhatsApp (conecta pelo QR Code) e a conta de afiliado da Shopee."),
     ("bot", 1): ("Tudo do Standard, com mais alcance e mais automação.",
-                 ["Até 50 grupos e canais", "Até 300 ofertas por dia em cada grupo, com intervalo a partir de 3 minutos",
+                 ["Até 200 grupos e canais", "Até 300 ofertas por dia em cada grupo, com intervalo a partir de 3 minutos",
                   "Copia as ofertas de outros grupos e canais e troca pelo seu link de afiliado",
                   "Revisão do texto com IA (corrige o português sem mexer em link, preço ou cupom)",
                   "Alerta de preço com até 50 produtos, com conferência a partir de 15 minutos"],

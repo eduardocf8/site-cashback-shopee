@@ -311,7 +311,7 @@ FEED = {
         lista("Só no Premium", "Recursos que fazem diferença", [
             ("Copia ofertas de outros grupos", "E troca pelo seu link de afiliado.", True),
             ("Revisão do texto com IA", "Mensagens mais caprichadas, sem você reescrever.", True),
-            ("Até 50 grupos e 300 ofertas por dia", "Em cada grupo ou canal.", True),
+            ("Até 200 grupos e 300 ofertas por dia", "Em cada grupo ou canal.", True),
         ]),
         cta("Bot de WhatsApp a partir de <span style='color:#F2C230'>R$ 49,90/mês.</span>", "Comece com o modo simulação: ele faz tudo sem enviar nada."),
     ],

@@ -32,6 +32,18 @@ def numero(valor):
 
 
 @register.filter
+def variacao(valor):
+    """Ganho ou perda com sinal: 12 -> "+12", -3 -> "−3", None -> "—"."""
+    if valor is None:
+        return "—"
+    if valor > 0:
+        return f"+{_formatar(valor, 0)}"
+    if valor < 0:
+        return f"−{_formatar(-valor, 0)}"
+    return "0"
+
+
+@register.filter
 def porcento(valor):
     try:
         return f"{float(valor) * 100:.0f}%"

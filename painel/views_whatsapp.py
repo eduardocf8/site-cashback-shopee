@@ -20,7 +20,7 @@ from bot_whatsapp.models import (
     AlertaDisparado, AlertaPreco, CampanhaBot, ConexaoWhatsApp, ConfiguracaoOfertas, EnvioWhatsApp, EventoWhatsApp,
     MensagemAvulsa, OfertaRecebida, ProdutoAcompanhado,
 )
-from bot_whatsapp.ofertas import grupos_do_plano, intervalo_do_plano, montar_texto, ofertas_enviadas_hoje
+from bot_whatsapp.ofertas import grupos_do_plano, intervalo_do_plano, montar_texto, ofertas_enviadas_hoje, ritmo_com_muitos_grupos
 from licencas import planos
 
 from . import modulos as mod
@@ -185,6 +185,7 @@ def whatsapp_ofertas(request):
         request, "whatsapp",
         form=form, config=config, historico=historico, recebidas=recebidas, conexao=conexao, regras=regras, regras_premium=planos.BOT[True],
         grupos_fora_do_plano=max(0, len(config.grupos or []) - regras["grupos"]),
+        ritmo=ritmo_com_muitos_grupos(config, regras),
         versao=_versao_da_tela(conta, config),
         **_resumo_ofertas(conta, config),
     ))
@@ -606,3 +607,108 @@ def whatsapp_mensagem_foto(request, pk):
     if not foto:
         raise Http404
     return HttpResponse(bytes(foto), content_type="image/jpeg")
+
+
+# --- Membros dos grupos -----------------------------------------------------------------
+
+def _grafico_de_membros(serie: list[dict], desde) -> dict | None:
+    """Linha dos membros somados nos últimos 30 dias (só dos dias desde que começou a monitorar)."""
+    pontos = [p for p in serie if desde and p["dia"] >= timezone.localtime(desde).date()]
+    if len(pontos) < 2:
+        return None
+    valores = [p["membros"] for p in pontos]
+    menor, maior = min(valores), max(valores)
+    faixa = (maior - menor) or 1
+    largura, altura, margem = 600, 160, 8
+    coordenadas = []
+    for i, valor in enumerate(valores):
+        x = round(margem + i * (largura - 2 * margem) / (len(valores) - 1), 1)
+        y = round(altura - margem - (valor - menor) * (altura - 2 * margem) / faixa, 1)
+        coordenadas.append(f"{x},{y}")
+    return {"pontos": " ".join(coordenadas), "largura": largura, "altura": altura, "menor": menor, "maior": maior,
+            "inicio": pontos[0]["dia"], "fim": pontos[-1]["dia"]}
+
+
+GRUPOS_POR_PAGINA = 10
+ORDENS_DE_MEMBROS = [
+    ("membros", "Mais membros"), ("var_24h", "Mais cresceram em 24 h"), ("var_7d", "Mais cresceram em 7 dias"),
+    ("perda_7d", "Mais perderam em 7 dias"), ("lotacao", "Mais cheios"), ("comissao", "Maior comissão do mês"),
+    ("nome", "Nome (A a Z)"),
+]
+
+
+def _grupos_filtrados(linhas: list[dict], busca: str, ordem: str) -> list[dict]:
+    """A busca pelo nome (sem acento e maiúscula) e a ordem escolhida. Quem não tem o número
+    (ex: variação de 7 dias antes de completar 7 dias) vai pro fim."""
+    import unicodedata
+
+    def sem_acento(texto):
+        return unicodedata.normalize("NFKD", texto or "").encode("ascii", "ignore").decode().lower()
+
+    if busca:
+        termo = sem_acento(busca)
+        linhas = [linha for linha in linhas if termo in sem_acento(linha["grupo"].nome)]
+    if ordem == "nome":
+        return sorted(linhas, key=lambda linha: sem_acento(linha["grupo"].nome))
+    campo, sinal = {"perda_7d": ("var_7d", 1)}.get(ordem, (ordem, -1))
+    return sorted(linhas, key=lambda linha: (linha[campo] is None, sinal * (linha[campo] or 0)))
+
+
+@conta_requerida
+def whatsapp_membros(request):
+    from urllib.parse import quote
+
+    from bot_whatsapp import grupos_novos, membros
+    from bot_whatsapp.models import GrupoMonitorado, PedidoGrupo
+
+    conta = conta_logada(request)
+    if not _liberado(conta):
+        return _bloqueado(request)
+    conexao = servico.conexao_da(conta)
+    if request.method == "POST" and request.POST.get("acao") == "criar_grupo":
+        pedido, motivo = grupos_novos.pedir(
+            conta, request.POST.get("nome"), request.POST.get("base", ""), request.POST.get("copiar") == "on",
+            request.POST.get("so_admins") == "on", request.POST.get("administradores", ""),
+            request.POST.get("incluir") == "on",
+        )
+        if not pedido:
+            messages.error(request, motivo)
+            return redirect(reverse("painel_whatsapp_membros") + f"?criar={quote(request.POST.get('base', '') or '1')}#criar")
+        messages.success(request, f"Criando o grupo “{pedido.nome}”. Em até 1 minuto ele aparece aqui com o link de convite.")
+        return redirect(reverse("painel_whatsapp_membros") + "#criados")
+    if request.method == "POST":
+        jids = request.POST.getlist("grupos")
+        if len(set(jids)) > membros.MAXIMO_GRUPOS:
+            messages.error(request, f"Dá para acompanhar até {membros.MAXIMO_GRUPOS} grupos.")
+            return redirect(reverse("painel_whatsapp_membros") + "?escolher=1")
+        quantos = membros.escolher(conta, jids, conexao)
+        if quantos:
+            messages.success(request, f"Pronto! {quantos} grupo{'s' if quantos > 1 else ''} sendo acompanhado"
+                                      f"{'s' if quantos > 1 else ''}. A primeira leitura sai em até 1 minuto.")
+        else:
+            messages.info(request, "Nenhum grupo sendo acompanhado.")
+        return redirect("painel_whatsapp_membros")
+    dados = membros.painel(conta)
+    busca = str(request.GET.get("busca") or "").strip()[:80]
+    ordens = [o for o in ORDENS_DE_MEMBROS if o[0] != "comissao" or dados["tem_comissao"]]
+    ordem = request.GET.get("ordem") if request.GET.get("ordem") in dict(ordens) else "membros"
+    pagina = Paginator(_grupos_filtrados(dados["linhas"], busca, ordem), GRUPOS_POR_PAGINA).get_page(request.GET.get("pagina"))
+    escolhidos = set(GrupoMonitorado.objects.filter(conta=conta).values_list("jid", flat=True))
+    criar = None
+    if request.GET.get("criar"):
+        nomes = {g.get("jid"): g.get("nome", "") for g in conexao.grupos or []}
+        base = request.GET["criar"] if request.GET["criar"] in nomes else ""
+        criar = {"base": base, "nome": grupos_novos.proximo_nome(nomes.get(base, ""), grupos_novos.nomes_em_uso(conta, conexao)) if base else "",
+                 "admins": grupos_novos.ultimos_admins(conta), "feitos_hoje": grupos_novos.criados_hoje(conta),
+                 "automacao": grupos_novos.vagas_na_automacao(conta),
+                 "por_dia": grupos_novos.POR_DIA, "bases": sorted(membros.grupos_possiveis(conexao), key=lambda g: str(g.get("nome", "")).lower())}
+    possiveis = sorted(membros.grupos_possiveis(conexao), key=lambda g: (g["jid"] not in escolhidos, str(g.get("nome", "")).lower()))
+    return render(request, "painel/whatsapp_membros.html", _contexto(
+        request, "whatsapp", conexao=conexao, dados=dados, possiveis=possiveis, escolhidos=escolhidos,
+        escolhendo=(request.GET.get("escolher") == "1" or not dados["quantos"]) and not criar,
+        grafico=_grafico_de_membros(dados["serie"], dados["monitorando_desde"]),
+        limite_do_whatsapp=membros.LIMITE_DO_WHATSAPP,
+        pagina=pagina, paginas=pagina.paginator.get_elided_page_range(pagina.number, on_each_side=1, on_ends=1),
+        busca=busca, ordem=ordem, ordens=ordens, por_pagina=GRUPOS_POR_PAGINA,
+        criar=criar, pedidos=PedidoGrupo.objects.filter(conta=conta)[:5],
+    ))

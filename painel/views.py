@@ -469,11 +469,15 @@ def configuracoes(request):
             return redirect(f"{request.path}#sub-ids")
 
     elif request.method == "POST" and request.POST.get("formulario") == "whatsapp_codigo":
-        comandos_whatsapp.gerar_codigo(conta)
+        if comandos_whatsapp.pode_vincular_outro(conta):
+            comandos_whatsapp.gerar_codigo(conta)
+        else:
+            messages.error(request, f"Dá para vincular até {comandos_whatsapp.NUMEROS_POR_CONTA} números. "
+                                    "Desvincule um deles para vincular outro.")
         return redirect(f"{request.path}#whatsapp")
 
     elif request.method == "POST" and request.POST.get("formulario") == "whatsapp_desvincular":
-        comandos_whatsapp.desvincular(conta)
+        comandos_whatsapp.desvincular(conta, request.POST.get("conversa"))
         messages.info(request, "Número desvinculado. Ele não recebe mais os seus resultados pelo WhatsApp.")
         return redirect(f"{request.path}#whatsapp")
 
@@ -491,16 +495,19 @@ def configuracoes(request):
 
 
 def _whatsapp_resultados(conta) -> dict | None:
-    """Cartão "Resultados no WhatsApp": o número vinculado ou o código para vincular. Quem responde é o
-    worker (agente de vendas); aqui no web basta saber o número. Sem número conhecido, o cartão some."""
+    """Cartão "Lia no WhatsApp": os números vinculados e o código para vincular outro. Quem responde
+    é o worker (agente de vendas); aqui no web basta saber o número. Sem número conhecido, o cartão some."""
     numero = comandos_whatsapp.numero_do_appfiliado()
     if not numero:
         return None
-    vinculado = comandos_whatsapp.numero_vinculado(conta)
-    codigo = None if vinculado else comandos_whatsapp.codigo_valido(conta)
+    vinculados = comandos_whatsapp.numeros_vinculados(conta)
+    pode_vincular = len(vinculados) < comandos_whatsapp.NUMEROS_POR_CONTA
+    codigo = comandos_whatsapp.codigo_valido(conta) if pode_vincular else None
     return {
-        "vinculado": vinculado,
-        "telefone": _telefone_formatado(vinculado.telefone) if vinculado else "",
+        "vinculados": [{"pk": c.pk, "telefone": _telefone_formatado(c.telefone) or c.nome or "Seu WhatsApp",
+                        "desde": c.vinculada_em} for c in vinculados],
+        "pode_vincular": pode_vincular,
+        "maximo": comandos_whatsapp.NUMEROS_POR_CONTA,
         "codigo": codigo,
         "vence_em": codigo.criado_em + comandos_whatsapp.VALIDADE_DO_CODIGO if codigo else None,
         "link": f"https://wa.me/{numero}" + (f"?text={quote(f'VINCULAR {codigo.codigo}')}" if codigo else ""),
