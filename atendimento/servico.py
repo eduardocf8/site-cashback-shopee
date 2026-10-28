@@ -11,7 +11,7 @@ from django.conf import settings
 from django.db import close_old_connections
 from django.utils import timezone
 
-from . import agente, aprendizado
+from . import agente, aprendizado, comandos
 from .models import Conversa, Mensagem
 
 logger = logging.getLogger(__name__)
@@ -106,6 +106,15 @@ def registrar(ev, texto: str, tem_midia: bool) -> None:
     conversa.ultima_recebida_em = agora
     conversa.save()
     if texto:
+        resposta = comandos.tratar(conversa, texto)
+        if resposta is not None:
+            # Comando do assinante (resultados, metas...): resposta fixa, sem passar pelo agente. Sai
+            # na próxima volta, pelo mesmo caminho dos avisos prontos.
+            Mensagem.objects.create(conversa=conversa, autor=Mensagem.CLIENTE, texto=texto[:MAXIMO_DO_TEXTO],
+                                    whatsapp_id=msg_id, respondida=True)
+            if resposta:
+                Mensagem.objects.create(conversa=conversa, autor=Mensagem.AGENTE, texto=resposta, respondida=True)
+            return
         # Com a conversa com você, a mensagem já nasce tratada: ao voltar (#ia ou depois de 12 h), o agente
         # responde só o que chegar dali pra frente, e não o que você já respondeu.
         Mensagem.objects.create(conversa=conversa, autor=Mensagem.CLIENTE, texto=texto[:MAXIMO_DO_TEXTO], whatsapp_id=msg_id,
@@ -128,6 +137,8 @@ def uma_volta(sessoes: dict) -> None:
     Conversa.objects.filter(estado=Conversa.HUMANO, humano_desde__lt=agora - VOLTA_PRO_AGENTE).exclude(
         mensagens__autor=Mensagem.VOCE, mensagens__criada_em__gte=agora - VOLTA_PRO_AGENTE,
     ).update(estado=Conversa.IA, motivo_humano="", humano_desde=None)
+    for conversa, resposta in comandos.validadas_prontas(agora):
+        Mensagem.objects.create(conversa=conversa, autor=Mensagem.AGENTE, texto=resposta, respondida=True)
     _enviar_avisos_prontos(sessao)
     _enviar_sugestoes(sessao)
     for pk in aprendizado.conversas_prontas(agora):

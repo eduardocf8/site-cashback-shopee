@@ -15,10 +15,11 @@ class MensagemInline(admin.TabularInline):
 
 @admin.register(Conversa)
 class ConversaAdmin(admin.ModelAdmin):
-    list_display = ("__str__", "telefone", "estado", "motivo_humano", "ultima_recebida_em")
+    list_display = ("__str__", "telefone", "estado", "conta", "motivo_humano", "ultima_recebida_em")
     list_filter = ("estado",)
-    search_fields = ("nome", "telefone", "chat", "mensagens__texto")
-    readonly_fields = ("chat", "telefone", "criada_em", "ultima_recebida_em", "humano_desde")
+    search_fields = ("nome", "telefone", "chat", "mensagens__texto", "conta__email")
+    readonly_fields = ("chat", "telefone", "criada_em", "ultima_recebida_em", "humano_desde", "vinculada_em")
+    raw_id_fields = ("conta",)
     inlines = [MensagemInline]
     actions = ["devolver_ao_agente", "pausar_agente"]
 
