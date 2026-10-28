@@ -118,9 +118,11 @@ class TestComVinculo(BaseComandos):
                                        comissao_estimada=Decimal("5"), comissao_validada=Decimal("40"))
         ResultadoDiario.objects.create(conta=self.conta, dia=date(2026, 10, 28), pedidos=9, faturamento=Decimal("999"))
         texto = self.resposta("Resultados")
-        self.assertIn("*Ontem (27/10)*\nPedidos: 12\nFaturamento: R$ 1.234,56\nComissão estimada: R$ 98,76", texto)
+        self.assertIn("*Ontem (27/10)*\nPedidos: 12\nFaturamento: R$ 1.234,56\nComissão estimada: R$ 98,76\n"
+                      "Comissão validada: R$ 0,00", texto)
         self.assertIn("*Últimos 7 dias (21/10 a 27/10)*\nPedidos: 15\nFaturamento: R$ 1.334,56", texto)
         self.assertIn("*Outubro/2026 até ontem*\nPedidos: 16\nFaturamento: R$ 1.384,56", texto)
+        self.assertIn("Comissão estimada: R$ 108,76\nComissão validada: R$ 0,00\n\n*Outubro", texto)  # 7 dias
         self.assertIn("Comissão validada: R$ 40,00", texto)
         self.assertIn("Atualizado às 14:40.", texto)
         self.assertIn(f"https://{HOST}/resultados/", texto)
@@ -236,6 +238,33 @@ class TestComVinculo(BaseComandos):
         validadas = [t for t in self.volta(AGORA + timedelta(minutes=6)) if "✅" in t]
         self.assertEqual(len(validadas), 1)
         self.assertIn("A Shopee não respondeu agora", validadas[0])
+
+    def test_atualizar_pede_a_busca_e_avisa_quando_termina(self):
+        self.assertIn("Atualizando seus dados com a Shopee", self.resposta("Atualizar"))
+        estado = SincronizacaoResultados.objects.get(conta=self.conta)
+        self.assertTrue(estado.aguardando)
+        self.assertFalse(estado.pedido_curto)  # a de 30 dias, como o botão do painel
+        self.assertEqual([t for t in self.volta(AGORA + timedelta(seconds=20)) if "✅ Pronto" in t], [])
+        SincronizacaoResultados.objects.filter(conta=self.conta).update(
+            iniciada_em=AGORA + timedelta(seconds=30), concluida_em=AGORA + timedelta(seconds=50))
+        prontas = [t for t in self.volta(AGORA + timedelta(minutes=1)) if "✅ Pronto" in t]
+        self.assertEqual(prontas, ["✅ Pronto! Seus dados foram atualizados com a Shopee às 15:00. Mande *resultados*, "
+                                   "*vendas*, *top*, *metas* ou *validada* para ver os números."])
+        self.assertIsNone(Conversa.objects.get().atualizacao_pedida_em)
+        # Logo depois, não pede outra busca.
+        with mock.patch("django.utils.timezone.now", return_value=AGORA + timedelta(minutes=1)):
+            self.assertIn("já estão atualizados com a Shopee (às 15:00)", self.resposta("atualizar"))
+
+    def test_atualizar_com_erro_ou_demora_da_shopee(self):
+        self.resposta("atualizar")
+        SincronizacaoResultados.objects.filter(conta=self.conta).update(
+            iniciada_em=AGORA + timedelta(seconds=30), concluida_em=AGORA + timedelta(seconds=50), erro="fora")
+        self.assertIn("Não consegui atualizar com a Shopee agora", "".join(self.volta(AGORA + timedelta(minutes=1))))
+        SincronizacaoResultados.objects.filter(conta=self.conta).update(erro="", iniciada_em=None)
+        with mock.patch("django.utils.timezone.now", return_value=AGORA + timedelta(minutes=2)):
+            self.resposta("atualizar")
+        self.assertNotIn("demorando", "".join(self.volta(AGORA + timedelta(minutes=5))))
+        self.assertIn("A Shopee está demorando", "".join(self.volta(AGORA + timedelta(minutes=8))))
 
     def test_desvincular(self):
         self.assertIn("não está mais ligado", self.resposta("desvincular"))
