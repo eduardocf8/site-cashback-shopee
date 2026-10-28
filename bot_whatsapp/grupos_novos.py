@@ -1,4 +1,4 @@
-"""Criar o próximo grupo pelo Appfiliado (aba Membros).
+"""Criar o próximo grupo pelo Appfiliado (aba Grupos).
 
 O painel só registra o pedido (PedidoGrupo); quem cria é o worker, pelo número conectado
 (gerenciador.criar_grupos), porque só ele fala com o WhatsApp. O grupo nasce vazio: só o número do
@@ -114,7 +114,7 @@ def pedir(conta, nome: str, base_jid: str, copiar: bool, so_admins: bool, admins
 # --- Worker -----------------------------------------------------------------------------
 
 def concluir(pedido: PedidoGrupo, jid: str, link: str, membros: int, avisos: list[str], agora=None) -> None:
-    """O grupo foi criado: guarda o link e coloca o grupo na lista do bot, na aba Membros e (se
+    """O grupo foi criado: guarda o link e coloca o grupo na lista do bot, na aba Grupos e (se
     pediu) na Automação, com o mesmo nicho do grupo de base."""
     from .ofertas import regras_do_plano
 

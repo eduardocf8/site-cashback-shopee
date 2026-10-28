@@ -1,4 +1,4 @@
-"""Painel de membros dos grupos (aba Membros do Bot de WhatsApp).
+"""Painel de membros dos grupos (aba Grupos do Bot de WhatsApp).
 
 A pessoa escolhe até MAXIMO_GRUPOS grupos. O worker (gerenciador.py) lê a contagem de membros de
 todos de uma vez, uma vez por hora (get_joined_groups traz os participantes de cada grupo), e o
@@ -127,7 +127,7 @@ def _variacao(atual, antes):
 
 
 def painel(conta, agora=None) -> dict:
-    """Tudo o que a aba Membros mostra: os grupos (com variação, lotação e comissão por Sub ID
+    """Tudo o que a aba Grupos mostra: os grupos (com variação, lotação e comissão por Sub ID
     próprio), os totais e o gráfico dos últimos 30 dias."""
     from painel.models import ResultadoSubIdDiario
 

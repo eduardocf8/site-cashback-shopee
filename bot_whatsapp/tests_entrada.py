@@ -1,5 +1,9 @@
+import io
 from datetime import timedelta
 from unittest import mock
+
+from django.core.files.uploadedfile import SimpleUploadedFile
+from PIL import Image
 
 from django.core import mail
 from django.utils import timezone
@@ -59,7 +63,7 @@ class TestPainel(BaseEntrada):
         self.assertEqual(link.grupos, ["10@g.us", "1@g.us"])  # só os do número do bot
         self.assertEqual(link.admins_dos_novos, ["5511977776666"])
         self.assertEqual(set(ConviteGrupo.objects.values_list("jid", flat=True)), {"1@g.us", "10@g.us"})
-        self.assertEqual(set(GrupoMonitorado.objects.values_list("jid", flat=True)), {"1@g.us", "10@g.us"})  # vão pra aba Membros
+        self.assertEqual(set(GrupoMonitorado.objects.values_list("jid", flat=True)), {"1@g.us", "10@g.us"})  # vão pra aba Grupos
 
         html = self.client.get(f"/whatsapp/entrada/{link.pk}/").content.decode()
         self.assertIn("/g/vip/", html)
@@ -73,6 +77,44 @@ class TestPainel(BaseEntrada):
         self.client.post(f"/whatsapp/entrada/{link.pk}/", {"acao": "convite", "jid": "2@g.us", "convite": "https://chat.whatsapp.com/XYZ"})
         convite = ConviteGrupo.objects.get(jid="2@g.us")
         self.assertEqual((convite.link, convite.manual), ("https://chat.whatsapp.com/XYZ", True))
+
+
+    def test_aba_chama_grupos(self):
+        html = self.client.get("/whatsapp/membros/").content.decode()
+        self.assertIn(">Grupos</a>", html)
+        self.assertNotIn(">Membros</a>", html)
+
+    def test_foto_propria_ou_a_do_meu_site(self):
+        link = self.criar_link()
+        link.ativo = True
+        link.save()
+        SiteAfiliado.objects.filter(conta=self.conta).update(foto=b"foto-do-site")
+        publica, painel = "/s/achadinhosdabia/g/grupo-vip/foto.jpg", f"/whatsapp/entrada/{link.pk}/foto.jpg"
+        self.assertEqual(self.client.get(publica).content, b"foto-do-site")  # padrão: a do Meu site
+        self.assertContains(self.client.get(f"/whatsapp/entrada/{link.pk}/"), "Por enquanto é a foto do Meu site")
+
+        arquivo = io.BytesIO()
+        Image.new("RGB", (800, 500), "red").save(arquivo, "PNG")
+        resposta = self.client.post(f"/whatsapp/entrada/{link.pk}/", {
+            "acao": "foto", "foto": SimpleUploadedFile("f.png", arquivo.getvalue(), content_type="image/png")})
+        self.assertRedirects(resposta, f"/whatsapp/entrada/{link.pk}/#titulo-pagina", fetch_redirect_response=False)
+        link.refresh_from_db()
+        self.assertEqual((Image.open(io.BytesIO(bytes(link.foto))).size, link.foto_versao), ((320, 320), 1))
+        self.assertEqual(self.client.get(publica).content, bytes(link.foto))
+        self.assertEqual(self.client.get(painel).content, bytes(link.foto))
+        self.assertContains(self.client.get(f"/whatsapp/entrada/{link.pk}/"), "Usar a do Meu site")
+
+        self.client.post(f"/whatsapp/entrada/{link.pk}/", {"acao": "remover_foto"})
+        self.assertEqual(self.client.get(publica).content, b"foto-do-site")
+        SiteAfiliado.objects.filter(conta=self.conta).update(foto=None)
+        self.assertEqual(self.client.get(painel).status_code, 404)
+
+    def test_excluir(self):
+        link = self.criar_link()
+        html = self.client.get(f"/whatsapp/entrada/{link.pk}/").content.decode()
+        self.assertIn('form="form-excluir"', html)
+        self.client.post(f"/whatsapp/entrada/{link.pk}/", {"acao": "excluir"})
+        self.assertFalse(LinkEntrada.objects.exists())
 
 
 class TestPaginaPublica(BaseEntrada):

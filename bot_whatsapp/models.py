@@ -469,7 +469,7 @@ class MensagemAvulsa(models.Model):
 
 
 class GrupoMonitorado(models.Model):
-    """Grupo que a pessoa escolheu acompanhar na aba Membros (bot_whatsapp/membros.py). Guarda a
+    """Grupo que a pessoa escolheu acompanhar na aba Grupos (bot_whatsapp/membros.py). Guarda a
     última contagem; o histórico fica em LeituraMembros (por hora) e DiaMembros (por dia).
     Só números: nunca quem entrou ou saiu."""
 
@@ -518,7 +518,7 @@ class DiaMembros(models.Model):
 
 
 class PedidoGrupo(models.Model):
-    """Pedido de grupo novo feito no painel (aba Membros). Quem cria é o worker, pelo número
+    """Pedido de grupo novo feito no painel (aba Grupos). Quem cria é o worker, pelo número
     conectado (bot_whatsapp/grupos_novos.py): o grupo nasce vazio, com o link de convite."""
 
     PENDENTE, CRIADO, ERRO = "pendente", "criado", "erro"
@@ -560,6 +560,8 @@ class LinkEntrada(models.Model):
     titulo = models.CharField(max_length=80, default="Grupo VIP de Achadinhos")
     frase = models.CharField(max_length=200, blank=True, default="As melhores ofertas da Shopee todos os dias, direto no seu WhatsApp.")
     texto_botao = models.CharField("texto do botão", max_length=40, default="Entrar no grupo")
+    foto = models.BinaryField(null=True, blank=True)  # JPEG pequeno; sem foto, usa a do Meu site
+    foto_versao = models.PositiveIntegerField(default=0)
     pixel_id = models.CharField("ID do pixel do Meta", max_length=20, blank=True)
     grupos = models.JSONField(default=list, blank=True)  # jids; enchem na ordem do nome (#1, #2...)
     limite_por_grupo = models.PositiveIntegerField(default=1000, help_text="O WhatsApp aceita até 1.024 pessoas por grupo.")

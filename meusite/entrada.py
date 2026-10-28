@@ -52,7 +52,9 @@ def entrar(request, slug, endereco=None):
 
 
 def foto(request, slug, endereco=None):
-    _, site = _link(request, slug, endereco)
-    if not site.foto:
+    """A foto do link; sem ela, a do Meu site."""
+    link, site = _link(request, slug, endereco)
+    foto = link.foto or site.foto
+    if not foto:
         raise Http404
-    return HttpResponse(bytes(site.foto), content_type="image/jpeg")
+    return HttpResponse(bytes(foto), content_type="image/jpeg")

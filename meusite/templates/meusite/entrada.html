@@ -34,7 +34,7 @@
 </head>
 <body>
   <main class="cartao">
-    {% if site.foto %}<img class="foto" src="foto.jpg" alt="" width="96" height="96">{% endif %}
+    {% if link.foto or site.foto %}<img class="foto" src="foto.jpg?v={{ link.foto_versao }}-{{ site.foto_versao }}" alt="" width="96" height="96">{% endif %}
     <h1>{{ link.titulo }}</h1>
     {% if link.frase %}<p>{{ link.frase }}</p>{% endif %}
     {% if tem_vaga %}

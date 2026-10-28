@@ -3,7 +3,7 @@
 - Página: seunome.appfiliado.com.br/g/<slug>/ (meusite/entrada.py), com o pixel do Meta da pessoa.
 - Ordem: os grupos do link enchem na ordem do nome ("#1", "#2"... em ordem numérica). O da vez é
   o primeiro que ainda não chegou no limite e tem link de convite.
-- Membros: vêm da aba Membros (os grupos do link são acompanhados sozinhos).
+- Membros: vêm da aba Grupos (os grupos do link são acompanhados sozinhos).
 - Convites: o worker lê o link de convite de cada grupo (o número do bot precisa ser administrador);
   sem isso, a pessoa cola o link à mão.
 - Lotando: quando nenhum grupo tem vaga folgada, a pessoa recebe um aviso e, se pediu, o Appfiliado
@@ -49,7 +49,7 @@ def ordem_natural(nome: str):
 # --- Grupos do link --------------------------------------------------------------------------
 
 def salvar_grupos(link: LinkEntrada, jids: list[str], conexao) -> None:
-    """Guarda os grupos do link (só os do número do bot), acompanha os membros deles na aba Membros
+    """Guarda os grupos do link (só os do número do bot), acompanha os membros deles na aba Grupos
     e prepara o link de convite de cada um (o worker lê)."""
     possiveis = {g["jid"]: g for g in membros.grupos_possiveis(conexao)}
     escolhidos = [j for j in dict.fromkeys(jids) if j in possiveis]
@@ -138,7 +138,7 @@ def cuidar_dos_links(agora) -> list[str]:
     """Links ativos sem grupo folgado: avisa a pessoa (uma vez por dia) e, se ela pediu, cria o
     próximo grupo (até grupos_novos.POR_DIA por dia). Devolve uma linha de log por ação."""
     logs = []
-    for link in LinkEntrada.objects.filter(ativo=True, conta__beta_link_entrada=True).select_related("conta"):
+    for link in LinkEntrada.objects.filter(ativo=True, conta__beta_link_entrada=True).defer("foto").select_related("conta"):
         if not link.grupos:
             continue
         estado = situacao(link)

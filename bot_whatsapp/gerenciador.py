@@ -472,7 +472,7 @@ class Gerenciador:
                 pass
 
     def criar_grupos(self):
-        """Pedidos de grupo novo (aba Membros): só com o WhatsApp conectado."""
+        """Pedidos de grupo novo (aba Grupos): só com o WhatsApp conectado."""
         for pedido in PedidoGrupo.objects.filter(estado=PedidoGrupo.PENDENTE).select_related("conta").order_by("id")[:5]:
             sessao = self.sessoes.get(pedido.conta_id)
             if not sessao or not sessao.conectada:

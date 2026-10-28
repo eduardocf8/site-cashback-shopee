@@ -5,14 +5,14 @@ import re
 
 from django.conf import settings
 from django.contrib import messages
-from django.http import Http404
+from django.http import Http404, HttpResponse
 from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import reverse
 
 from bot_whatsapp import entrada, grupos_novos, membros
 from bot_whatsapp.models import ConviteGrupo, LinkEntrada
 from bot_whatsapp.servico import conexao_da
-from meusite.forms import PADRAO_ENDERECO
+from meusite.forms import PADRAO_ENDERECO, FotoForm
 from meusite.models import ENDERECOS_RESERVADOS, PEDACOS_RESERVADOS, SiteAfiliado
 
 from .autenticacao import conta_logada, conta_requerida
@@ -77,7 +77,7 @@ def entrada_lista(request):
             return redirect("painel_whatsapp_entrada_link", pk=link.pk)
         return redirect("painel_whatsapp_entrada")
     links = []
-    for link in conta.links_entrada.all():
+    for link in conta.links_entrada.defer("foto"):
         estado = entrada.situacao(link)
         links.append({"link": link, "url": url_publica(site, link), "estado": estado,
                       "numeros": entrada.estatisticas(link)})
@@ -125,6 +125,35 @@ def _salvar(request, conta, link) -> list[str]:
     return []
 
 
+def _trocar_foto(request, link, acao) -> None:
+    """Foto própria do link (mesmo recorte do Meu site). Sem ela, a página usa a foto do Meu site."""
+    if acao == "remover_foto":
+        link.foto, link.foto_versao = None, link.foto_versao + 1
+        link.save(update_fields=["foto", "foto_versao", "atualizado_em"])
+        messages.success(request, "A página voltou a usar a foto do Meu site.")
+        return
+    form = FotoForm(request.POST, request.FILES)
+    if form.is_valid():
+        link.foto, link.foto_versao = form.cleaned_data["foto"], link.foto_versao + 1
+        link.save(update_fields=["foto", "foto_versao", "atualizado_em"])
+        messages.success(request, "Foto trocada.")
+    else:
+        messages.error(request, " ".join(e for erros in form.errors.values() for e in erros)
+                       or "Não consegui abrir essa imagem. Use JPG ou PNG.")
+
+
+@conta_requerida
+def entrada_foto(request, pk):
+    """A foto que a página do link mostra (a dele ou a do Meu site), para a prévia no painel."""
+    conta = _conta_com_beta(request)
+    link = get_object_or_404(LinkEntrada, pk=pk, conta=conta)
+    site = SiteAfiliado.objects.filter(conta=conta).first()
+    foto = link.foto or (site.foto if site else None)
+    if not foto:
+        raise Http404
+    return HttpResponse(bytes(foto), content_type="image/jpeg")
+
+
 @conta_requerida
 def entrada_link(request, pk):
     conta = _conta_com_beta(request)
@@ -149,6 +178,9 @@ def entrada_link(request, pk):
                 convite.save()
                 messages.success(request, "Link de convite salvo." if texto else "O Appfiliado volta a ler o link sozinho.")
             return redirect(reverse("painel_whatsapp_entrada_link", args=[link.pk]) + "#grupos-do-link")
+        if acao in ("foto", "remover_foto"):
+            _trocar_foto(request, link, acao)
+            return redirect(reverse("painel_whatsapp_entrada_link", args=[link.pk]) + "#titulo-pagina")
         erros = _salvar(request, conta, link)
         if not erros:
             messages.success(request, "Link de entrada salvo.")

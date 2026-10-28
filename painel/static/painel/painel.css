@@ -1015,6 +1015,17 @@ form[data-metas] .grade-campos { display: grid; grid-template-columns: 1fr 1fr; 
 .cartao-entrada { border: 1px solid var(--borda); border-radius: 12px; padding: 12px 14px; margin-top: 12px; display: flex; flex-direction: column; gap: 6px; }
 .ce-topo { display: flex; justify-content: space-between; align-items: flex-start; gap: 10px; }
 .ce-topo a strong { font-size: 16px; }
-.linha-entrada { display: flex; flex-direction: column; gap: 6px; padding: 12px 0; border-top: 1px solid var(--borda); }
-.linha-entrada:first-of-type { border-top: 0; }
+.linha-entrada { display: flex; flex-direction: column; gap: 10px; padding-top: 16px; border-top: 1px solid var(--borda); }
+.linha-entrada .le-nome > .pequeno { margin-top: 6px; }
 .le-nome strong { margin-right: 4px; }
+/* Formulário em seções com respiro entre os campos (link de entrada) */
+.secao-form { display: flex; flex-direction: column; gap: 20px; }
+.secao-form > h2 { margin: 0; }
+.secao-form.secao-curta { gap: 14px; }
+.bloco-campo { display: flex; flex-direction: column; gap: 8px; }
+.bloco-campo .rotulo { font-weight: 700; font-size: 13px; }
+.bloco-campo .foto-editor { margin: 0; }
+.foto-acoes { display: flex; flex-direction: column; gap: 6px; }
+.foto-acoes .ajuda { font-size: 12px; color: var(--suave); }
+.sem-margem { margin: 0; }
+.acoes-form { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
