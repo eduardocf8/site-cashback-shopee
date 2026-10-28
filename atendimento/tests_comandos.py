@@ -118,9 +118,11 @@ class TestComVinculo(BaseComandos):
                                        comissao_estimada=Decimal("5"), comissao_validada=Decimal("40"))
         ResultadoDiario.objects.create(conta=self.conta, dia=date(2026, 10, 28), pedidos=9, faturamento=Decimal("999"))
         texto = self.resposta("Resultados")
-        self.assertIn("*Ontem (27/10)*\nPedidos: 12\nFaturamento: R$ 1.234,56\nComissão estimada: R$ 98,76", texto)
+        self.assertIn("*Ontem (27/10)*\nPedidos: 12\nFaturamento: R$ 1.234,56\nComissão estimada: R$ 98,76\n"
+                      "Comissão validada: R$ 0,00", texto)
         self.assertIn("*Últimos 7 dias (21/10 a 27/10)*\nPedidos: 15\nFaturamento: R$ 1.334,56", texto)
         self.assertIn("*Outubro/2026 até ontem*\nPedidos: 16\nFaturamento: R$ 1.384,56", texto)
+        self.assertIn("Comissão estimada: R$ 108,76\nComissão validada: R$ 0,00\n\n*Outubro", texto)  # 7 dias
         self.assertIn("Comissão validada: R$ 40,00", texto)
         self.assertIn("Atualizado às 14:40.", texto)
         self.assertIn(f"https://{HOST}/resultados/", texto)

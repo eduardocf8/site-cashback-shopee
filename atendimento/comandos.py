@@ -255,8 +255,7 @@ def resultados(conta) -> str:
     linhas = ["📊 *Seus resultados na Shopee*"]
     for titulo, t in blocos:
         linhas += ["", titulo, f"Pedidos: {t['pedidos']}", f"Faturamento: {brl(t['faturamento'])}",
-                   f"Comissão estimada: {brl(t['comissao_estimada'])}"]
-    linhas.append(f"Comissão validada: {brl(blocos[2][1]['comissao_validada'])}")
+                   f"Comissão estimada: {brl(t['comissao_estimada'])}", f"Comissão validada: {brl(t['comissao_validada'])}"]
     return _fechar(conta, linhas, "painel_resultados")
 
 
