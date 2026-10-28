@@ -21,6 +21,7 @@ import sys
 import tempfile
 import threading
 import time
+from collections import defaultdict
 from datetime import timedelta
 from pathlib import Path
 
@@ -31,8 +32,9 @@ from django.utils import timezone
 
 from atendimento import servico as atendimento
 
-from . import avisos_de_queda, copia, rede
-from .models import ConexaoWhatsApp, ConfiguracaoOfertas, EnvioWhatsApp, MensagemAvulsa, OfertaRecebida
+from . import avisos_de_queda, copia, membros, rede
+from .models import (ConexaoWhatsApp, ConfiguracaoOfertas, EnvioWhatsApp, GrupoMonitorado, MensagemAvulsa,
+                     OfertaRecebida)
 from .servico import registrar_evento
 
 logger = logging.getLogger(__name__)
@@ -80,6 +82,17 @@ def propriedades_do_aparelho():
     )
 
 
+def _sou_admin(grupo, numero: str) -> bool:
+    """O número do bot é administrador do grupo? (procura pelo número; nos grupos com LID, pelo
+    PhoneNumber de cada participante)."""
+    if not numero:
+        return False
+    for participante in getattr(grupo, "Participants", []) or []:
+        if numero in (participante.JID.User, participante.PhoneNumber.User):
+            return bool(participante.IsAdmin or participante.IsSuperAdmin)
+    return False
+
+
 def _jid_texto(jid) -> str:
     return f"{jid.User}@{jid.Server}"
 
@@ -100,6 +113,7 @@ class Sessao:
             ConnectedEv,
             ConnectFailureEv,
             DisconnectedEv,
+            GroupInfoEv,
             KeepAliveRestoredEv,
             KeepAliveTimeoutEv,
             LoggedOutEv,
@@ -115,6 +129,8 @@ class Sessao:
         # (o gerenciador atualiza a cada 30 s a partir da configuração das ofertas).
         self.origens: set[str] = set()
         self.canais_ao_vivo: dict[str, float] = {}  # canal -> até quando vale o "ao vivo"
+        # Aba Membros: grupos em que entradas e saídas interessam (o gerenciador atualiza a cada 30 s).
+        self.monitorados: set[str] = set()
         jid = JID.FromString(base64.b64decode(jid_b64)) if (jid_b64 and not novo) else None
         # Sem jid é sempre um aparelho novo: senão a biblioteca retomaria a primeira
         # sessão guardada no banco, que pode ser de outra conta.
@@ -156,6 +172,13 @@ class Sessao:
         @self.cliente.event(KeepAliveRestoredEv)
         def _estabilizou(_cliente, _ev):
             self.fila.put(("estabilizou", conta_id, "", self))
+
+        @self.cliente.event(GroupInfoEv)
+        def _mudou_o_grupo(_cliente, ev):
+            # Alguém entrou ou saiu: só a contagem vai para a fila (nunca quem foi).
+            entradas, saidas = len(ev.Join), len(ev.Leave)
+            if (entradas or saidas) and self.monitorados and _jid_texto(ev.JID) in self.monitorados:
+                self.fila.put(("membros", conta_id, (_jid_texto(ev.JID), entradas, saidas), self))
 
         @self.cliente.event(MessageEv)
         def _mensagem(_cliente, ev):
@@ -205,6 +228,7 @@ class Gerenciador:
         self.ultimo_envio: dict[int, float] = {}
         self.proxima_atualizacao_das_origens = 0.0
         self.proxima_limpeza_de_fotos = 0.0
+        self.proxima_leitura_de_membros = 0.0
 
     # --- Ciclo -----------------------------------------------------------------
 
@@ -225,6 +249,7 @@ class Gerenciador:
         self.reabrir_sessoes_paradas()
         self.atualizar_origens()
         self.enviar_pendentes()
+        self.ler_membros()
         self.limpar_fotos_antigas()
         atendimento.uma_volta(self.sessoes)
 
@@ -368,10 +393,35 @@ class Gerenciador:
                 conta_id__in=list(self.sessoes), ativo=True, modo=ConfiguracaoOfertas.MODO_COPIAR,
             )
         }
+        monitorados = defaultdict(set)
+        for conta_id, jid in GrupoMonitorado.objects.filter(conta_id__in=list(self.sessoes)).values_list("conta_id", "jid"):
+            monitorados[conta_id].add(jid)
         for conta_id, sessao in self.sessoes.items():
             config = configs.get(conta_id)
             sessao.origens = {o["jid"] for o in config.origens if o.get("jid")} if config else set()
+            sessao.monitorados = monitorados[conta_id]
             self._acompanhar_canais(sessao)
+
+    def ler_membros(self):
+        """Aba Membros: uma leitura por hora de cada conta (todos os grupos numa chamada só)."""
+        if time.monotonic() < self.proxima_leitura_de_membros:
+            return
+        self.proxima_leitura_de_membros = time.monotonic() + 60
+        agora = timezone.now()
+        for conta_id in membros.contas_para_ler(agora):
+            sessao = self.sessoes.get(conta_id)
+            if not sessao or not sessao.conectada:
+                continue
+            numero = ConexaoWhatsApp.objects.filter(conta_id=conta_id).values_list("numero", flat=True).first() or ""
+            try:
+                grupos = sessao.cliente.get_joined_groups()
+            except Exception:  # noqa: BLE001 - tenta de novo na próxima volta
+                logger.exception("WhatsApp: não deu para ler os membros dos grupos da conta %s", conta_id)
+                continue
+            dados = {_jid_texto(g.JID): {"membros": len(getattr(g, "Participants", []) or []),
+                                         "nome": g.GroupName.Name, "admin": _sou_admin(g, numero)} for g in grupos}
+            membros.atualizar(conta_id, dados, agora)
+        membros.limpar(agora)
 
     def _acompanhar_canais(self, sessao):
         """Canais só mandam as postagens novas para quem pediu "atualizações ao vivo",
@@ -400,6 +450,10 @@ class Gerenciador:
                     arquivo.unlink()
             except OSError:
                 pass
+
+    def _aviso_membros(self, conexao, detalhe):
+        jid, entradas, saidas = detalhe
+        membros.registrar_mudanca(conexao.conta_id, jid, entradas, saidas, timezone.now())
 
     def _aviso_estabilizou(self, conexao, _detalhe):
         registrar_evento(conexao.conta_id, "estabilizou", "O WhatsApp voltou a responder.")
@@ -472,6 +526,7 @@ class Gerenciador:
                 "jid": _jid_texto(grupo.JID),
                 "nome": grupo.GroupName.Name or "(grupo sem nome)",
                 "participantes": len(getattr(grupo, "Participants", []) or []),
+                "admin": _sou_admin(grupo, conexao.numero),
                 "tipo": "grupo",
             }
             for grupo in grupos

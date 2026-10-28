@@ -466,3 +466,52 @@ class MensagemAvulsa(models.Model):
 
     def __str__(self):
         return f"{self.conta.email} - {self.texto[:40]}"
+
+
+class GrupoMonitorado(models.Model):
+    """Grupo que a pessoa escolheu acompanhar na aba Membros (bot_whatsapp/membros.py). Guarda a
+    última contagem; o histórico fica em LeituraMembros (por hora) e DiaMembros (por dia).
+    Só números: nunca quem entrou ou saiu."""
+
+    conta = models.ForeignKey(ContaAppfiliado, on_delete=models.CASCADE, related_name="grupos_monitorados")
+    jid = models.CharField(max_length=80)
+    nome = models.CharField(max_length=200, blank=True)
+    admin = models.BooleanField(default=False)
+    no_grupo = models.BooleanField(default=True, help_text="Falso quando o número do bot saiu do grupo.")
+    membros = models.PositiveIntegerField(null=True, blank=True)
+    lido_em = models.DateTimeField(null=True, blank=True)
+    criado_em = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ["nome", "pk"]
+        constraints = [models.UniqueConstraint(fields=["conta", "jid"], name="grupo_monitorado_unico")]
+        verbose_name = "grupo monitorado"
+        verbose_name_plural = "grupos monitorados"
+
+    def __str__(self):
+        return f"{self.conta.email} - {self.nome or self.jid}"
+
+
+class LeituraMembros(models.Model):
+    """Uma contagem por hora, guardada por 2 dias (para a variação das últimas 24 horas)."""
+
+    grupo = models.ForeignKey(GrupoMonitorado, on_delete=models.CASCADE, related_name="leituras")
+    em = models.DateTimeField(db_index=True)
+    membros = models.PositiveIntegerField()
+
+    class Meta:
+        ordering = ["-em"]
+
+
+class DiaMembros(models.Model):
+    """Um dia de um grupo: a última contagem do dia e quantos entraram e saíram (13 meses)."""
+
+    grupo = models.ForeignKey(GrupoMonitorado, on_delete=models.CASCADE, related_name="dias")
+    dia = models.DateField()
+    membros = models.PositiveIntegerField(null=True, blank=True)
+    entradas = models.PositiveIntegerField(default=0)
+    saidas = models.PositiveIntegerField(default=0)
+
+    class Meta:
+        ordering = ["-dia"]
+        constraints = [models.UniqueConstraint(fields=["grupo", "dia"], name="dia_membros_unico")]

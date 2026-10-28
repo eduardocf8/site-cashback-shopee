@@ -89,7 +89,8 @@ def bot():
             _grupo("Tudo conectado ao resto do Appfiliado", "O bot trabalha junto com os outros módulos.",
                    _t("Resultados", "As vendas das ofertas aparecem em Resultados, separadas por Sub ID."),
                    _t("Relatório por e-mail", "O relatório diário diz quantas ofertas saíram ontem."),
-                   _t("Vitrine do Meu site", "As ofertas que o bot envia podem alimentar a vitrine do seu site na bio.")),
+                   _t("Vitrine do Meu site", "As ofertas que o bot envia podem alimentar a vitrine do seu site na bio."),
+                   _t("Membros dos grupos", "Acompanhe até 500 grupos: quantos membros cada um ganhou ou perdeu em 24 horas, 7 e 30 dias, quais estão perto de lotar e quanto cada grupo rende pela comissão do Sub ID próprio.")),
         ],
         "tabela": [
             ("Grupos e canais", f"até {s['grupos']}", f"até {p['grupos']}"),

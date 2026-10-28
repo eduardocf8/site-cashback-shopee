@@ -607,3 +607,55 @@ def whatsapp_mensagem_foto(request, pk):
     if not foto:
         raise Http404
     return HttpResponse(bytes(foto), content_type="image/jpeg")
+
+
+# --- Membros dos grupos -----------------------------------------------------------------
+
+def _grafico_de_membros(serie: list[dict], desde) -> dict | None:
+    """Linha dos membros somados nos últimos 30 dias (só dos dias desde que começou a monitorar)."""
+    pontos = [p for p in serie if desde and p["dia"] >= timezone.localtime(desde).date()]
+    if len(pontos) < 2:
+        return None
+    valores = [p["membros"] for p in pontos]
+    menor, maior = min(valores), max(valores)
+    faixa = (maior - menor) or 1
+    largura, altura, margem = 600, 160, 8
+    coordenadas = []
+    for i, valor in enumerate(valores):
+        x = round(margem + i * (largura - 2 * margem) / (len(valores) - 1), 1)
+        y = round(altura - margem - (valor - menor) * (altura - 2 * margem) / faixa, 1)
+        coordenadas.append(f"{x},{y}")
+    return {"pontos": " ".join(coordenadas), "largura": largura, "altura": altura, "menor": menor, "maior": maior,
+            "inicio": pontos[0]["dia"], "fim": pontos[-1]["dia"]}
+
+
+@conta_requerida
+def whatsapp_membros(request):
+    from bot_whatsapp import membros
+    from bot_whatsapp.models import GrupoMonitorado
+
+    conta = conta_logada(request)
+    if not _liberado(conta):
+        return _bloqueado(request)
+    conexao = servico.conexao_da(conta)
+    if request.method == "POST":
+        jids = request.POST.getlist("grupos")
+        if len(set(jids)) > membros.MAXIMO_GRUPOS:
+            messages.error(request, f"Dá para acompanhar até {membros.MAXIMO_GRUPOS} grupos.")
+            return redirect(reverse("painel_whatsapp_membros") + "?escolher=1")
+        quantos = membros.escolher(conta, jids, conexao)
+        if quantos:
+            messages.success(request, f"Pronto! {quantos} grupo{'s' if quantos > 1 else ''} sendo acompanhado"
+                                      f"{'s' if quantos > 1 else ''}. A primeira leitura sai em até 1 minuto.")
+        else:
+            messages.info(request, "Nenhum grupo sendo acompanhado.")
+        return redirect("painel_whatsapp_membros")
+    dados = membros.painel(conta)
+    escolhidos = set(GrupoMonitorado.objects.filter(conta=conta).values_list("jid", flat=True))
+    possiveis = sorted(membros.grupos_possiveis(conexao), key=lambda g: (g["jid"] not in escolhidos, str(g.get("nome", "")).lower()))
+    return render(request, "painel/whatsapp_membros.html", _contexto(
+        request, "whatsapp", conexao=conexao, dados=dados, possiveis=possiveis, escolhidos=escolhidos,
+        escolhendo=request.GET.get("escolher") == "1" or not dados["quantos"],
+        grafico=_grafico_de_membros(dados["serie"], dados["monitorando_desde"]),
+        limite_do_whatsapp=membros.LIMITE_DO_WHATSAPP,
+    ))

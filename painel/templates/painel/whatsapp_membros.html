@@ -1,0 +1,102 @@
+{% extends "painel/base.html" %}
+{% load static painel_extras %}
+{% block titulo %}Membros · Bot de WhatsApp{% endblock %}
+{% block conteudo %}
+<header class="cabecalho">
+  <div>
+    <h1>Bot de WhatsApp</h1>
+    <p>Ofertas da Shopee enviadas com o seu link de afiliado no automático: buscadas pela API ou copiadas de outros grupos e canais.</p>
+  </div>
+</header>
+{% include "painel/_abas_whatsapp.html" with aba="membros" %}
+
+{% if conexao.estado != "conectado" %}<p class="aviso aviso-warning pequeno">Seu WhatsApp não está conectado. As contagens ficam paradas até ele conectar de novo (na aba <a href="{% url 'painel_whatsapp' %}">Conexão</a>).</p>{% endif %}
+
+{% if escolhendo %}
+<section class="card" aria-labelledby="titulo-escolher" style="margin-top:16px">
+  <h2 id="titulo-escolher">Escolha os grupos para acompanhar</h2>
+  <p class="suave pequeno">Veja quantos membros cada grupo ganhou ou perdeu nas últimas 24 horas, 7 e 30 dias, quantos entraram e saíram hoje e quais estão perto de lotar. Marque até {{ dados.maximo }} grupos: o número do bot precisa estar no grupo, mas não precisa ser administrador. O histórico começa a contar quando você marca o grupo.</p>
+  {% if possiveis %}
+  <form method="post">
+    {% csrf_token %}
+    <div class="busca-grupos">
+      <input type="search" data-lista="lista-grupos-membros" data-maximo="{{ dados.maximo }}" placeholder="Buscar grupo" aria-label="Buscar grupo" autocomplete="off">
+      <span class="suave pequeno contador" aria-live="polite"></span>
+    </div>
+    <p class="pequeno"><a href="#" id="marcar-todos">Marcar todos</a> · <a href="#" id="desmarcar-todos">Desmarcar todos</a></p>
+    <div class="lista-grupos" id="lista-grupos-membros">
+      {% for g in possiveis %}
+        <div class="linha-grupo linha-origem" data-nome="{{ g.nome|lower }}"><label><input type="checkbox" name="grupos" value="{{ g.jid }}"{% if g.jid in escolhidos %} checked{% endif %}><span>{{ g.nome }}</span>{% if g.admin %}<span class="selo-canal">Admin</span>{% endif %}<span class="suave pequeno membros-do-grupo">{{ g.participantes|numero }} membro{{ g.participantes|pluralize }}</span></label></div>
+      {% endfor %}
+      <p class="suave pequeno nenhum-grupo" hidden>Nenhum grupo com esse nome.</p>
+    </div>
+    <div class="botoes-linha" style="margin-top:14px">
+      <button type="submit" class="botao botao-principal">Salvar</button>
+      {% if dados.quantos %}<a class="botao botao-claro" href="{% url 'painel_whatsapp_membros' %}">Cancelar</a>{% endif %}
+    </div>
+    <p class="suave pequeno" style="margin-top:10px">Tirar um grupo da lista apaga o histórico dele. A lista de grupos vem da aba <a href="{% url 'painel_whatsapp' %}">Conexão</a>: entrou num grupo novo? Atualize os grupos por lá.</p>
+  </form>
+  {% else %}
+  <p class="suave pequeno">Conecte o WhatsApp na aba <a href="{% url 'painel_whatsapp' %}">Conexão</a> para ver seus grupos.</p>
+  {% endif %}
+</section>
+{% else %}
+
+<div class="kpis kpis-membros" style="margin-top:16px">
+  <div class="card kpi"><span class="kpi-titulo">Membros</span><strong class="kpi-valor">{{ dados.total|numero }}</strong><span class="kpi-detalhe">em {{ dados.quantos }} grupo{{ dados.quantos|pluralize }}</span></div>
+  <div class="card kpi"><span class="kpi-titulo">Últimas 24 horas</span><strong class="kpi-valor{% if dados.var_24h > 0 %} positivo{% elif dados.var_24h < 0 %} negativo{% endif %}">{{ dados.var_24h|variacao }}</strong><span class="kpi-detalhe">hoje: {{ dados.entradas|numero }} {% if dados.entradas == 1 %}entrou{% else %}entraram{% endif %} e {{ dados.saidas|numero }} {% if dados.saidas == 1 %}saiu{% else %}saíram{% endif %}</span></div>
+  <div class="card kpi"><span class="kpi-titulo">Últimos 7 dias</span><strong class="kpi-valor{% if dados.var_7d > 0 %} positivo{% elif dados.var_7d < 0 %} negativo{% endif %}">{{ dados.var_7d|variacao }}</strong><span class="kpi-detalhe">{% if dados.var_7d is None %}aparece quando completar 7 dias{% else %}ganho ou perda de membros{% endif %}</span></div>
+  <div class="card kpi"><span class="kpi-titulo">Últimos 30 dias</span><strong class="kpi-valor{% if dados.var_30d > 0 %} positivo{% elif dados.var_30d < 0 %} negativo{% endif %}">{{ dados.var_30d|variacao }}</strong><span class="kpi-detalhe">{% if dados.var_30d is None %}aparece quando completar 30 dias{% else %}ganho ou perda de membros{% endif %}</span></div>
+</div>
+
+{% if dados.quase_cheios %}<p class="aviso aviso-warning pequeno" style="margin-top:16px">{{ dados.quase_cheios }} grupo{{ dados.quase_cheios|pluralize }} com mais de 95% da lotação. O WhatsApp aceita até {{ limite_do_whatsapp|numero }} pessoas por grupo: vale abrir o próximo grupo.</p>{% endif %}
+
+{% if grafico %}
+<section class="card" aria-labelledby="titulo-grafico-membros" style="margin-top:16px">
+  <h2 id="titulo-grafico-membros">Membros nos grupos acompanhados</h2>
+  <svg class="grafico-linha" viewBox="0 0 {{ grafico.largura }} {{ grafico.altura }}" preserveAspectRatio="none" role="img" aria-label="Membros de {{ grafico.inicio|date:'d/m' }} a {{ grafico.fim|date:'d/m' }}: de {{ grafico.menor|numero }} a {{ grafico.maior|numero }}">
+    <polyline points="{{ grafico.pontos }}" fill="none" stroke="var(--verde)" stroke-width="3" vector-effect="non-scaling-stroke" stroke-linejoin="round" stroke-linecap="round"/>
+  </svg>
+  <div class="grafico-linha-rotulos suave pequeno"><span>{{ grafico.inicio|date:"d/m" }}</span><span>menor: {{ grafico.menor|numero }} · maior: {{ grafico.maior|numero }}</span><span>{{ grafico.fim|date:"d/m" }}</span></div>
+</section>
+{% endif %}
+
+<section class="card" aria-labelledby="titulo-grupos-membros" style="margin-top:16px">
+  <div class="kpis-topo">
+    <h2 id="titulo-grupos-membros">Grupos</h2>
+    <a class="botao botao-claro" href="?escolher=1">Escolher grupos</a>
+  </div>
+  <div class="tabela-rolagem">
+    <table class="numeros tabela-membros">
+      <thead><tr>
+        <th>Grupo</th><th>Membros</th><th>24 h</th><th>7 dias</th><th>30 dias</th><th>Hoje</th><th>Lotação</th>
+        {% if dados.tem_comissao %}<th title="Comissão estimada do mês até ontem, pelo Sub ID próprio do grupo">Comissão do mês</th><th>Por membro</th>{% endif %}
+      </tr></thead>
+      <tbody>
+      {% for l in dados.linhas %}
+        <tr>
+          <td><span class="nome-grupo">{{ l.grupo.nome|default:"(grupo sem nome)" }}</span>{% if l.grupo.admin %} <span class="selo-canal">Admin</span>{% endif %}{% if not l.grupo.no_grupo %}<br><span class="erro pequeno">O número do bot não está mais nesse grupo.</span>{% endif %}</td>
+          <td>{% if l.membros is None %}—{% else %}{{ l.membros|numero }}{% endif %}</td>
+          <td class="{% if l.var_24h > 0 %}positivo{% elif l.var_24h < 0 %}negativo{% endif %}">{{ l.var_24h|variacao }}</td>
+          <td class="{% if l.var_7d > 0 %}positivo{% elif l.var_7d < 0 %}negativo{% endif %}">{{ l.var_7d|variacao }}</td>
+          <td class="{% if l.var_30d > 0 %}positivo{% elif l.var_30d < 0 %}negativo{% endif %}">{{ l.var_30d|variacao }}</td>
+          <td><span class="positivo">+{{ l.entradas|numero }}</span> <span class="negativo">−{{ l.saidas|numero }}</span></td>
+          <td><span class="lotacao{% if l.quase_cheio %} cheia{% endif %}" title="{{ l.membros|default:0|numero }} de {{ limite_do_whatsapp|numero }}"><i style="width:{{ l.lotacao }}%"></i></span> {{ l.lotacao }}%</td>
+          {% if dados.tem_comissao %}
+          <td>{% if l.comissao is None %}<span class="suave" title="Dê um Sub ID próprio a esse grupo na Automação para ver quanto ele rende">—</span>{% else %}{{ l.comissao|brl }}{% endif %}</td>
+          <td>{% if l.por_membro is None %}—{% else %}{{ l.por_membro|brl }}{% endif %}</td>
+          {% endif %}
+        </tr>
+      {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  <p class="suave pequeno" style="margin-top:12px">
+    {% if dados.lido_em %}Contagem lida às {{ dados.lido_em|date:"H:i" }}, atualizada a cada hora. Entradas e saídas chegam na hora.{% else %}A primeira leitura sai em até 1 minuto.{% endif %}
+    {% if dados.monitorando_desde %} Acompanhando desde {{ dados.monitorando_desde|date:"d/m/Y" }}.{% endif %}
+    {% if not dados.tem_comissao %} Quer saber quanto cada grupo rende? Dê um Sub ID próprio a ele na <a href="{% url 'painel_whatsapp_ofertas' %}">Automação</a> e a comissão do mês aparece aqui.{% endif %}
+  </p>
+</section>
+{% endif %}
+<script src="{% static 'painel/membros.js' %}" defer></script>
+{% endblock %}

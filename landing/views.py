@@ -25,7 +25,7 @@ RESUMOS = {
         # Ferramentas iguais nos dois planos, mostradas embaixo dos cartões.
         "comuns": ["Busca por palavra-chave, loja ou categoria, com filtros", "Modo campanha para datas específicas (como datas duplas)",
                    "Horário e dias de envio", "Sub ID por grupo", "Modo simulação para testar antes de enviar",
-                   "Mensagens avulsas nos grupos na hora ou agendadas"],
+                   "Mensagens avulsas nos grupos na hora ou agendadas", "Painel de membros de até 500 grupos"],
     },
     "site": {
         "icone": "site", "frase": "Seu link na bio (seunome.appfiliado.com.br) com vitrine de ofertas e conversor de links.",
