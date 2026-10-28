@@ -19,6 +19,14 @@ class Conversa(models.Model):
     dia_das_respostas = models.DateField(null=True, blank=True)
     # Até quando as suas respostas nesta conversa já viraram (ou não) sugestão de resposta aprendida.
     aprendizado_em = models.DateTimeField(null=True, blank=True)
+    # Assinante que vinculou este número no painel (Configurações) para pedir os resultados por aqui.
+    conta = models.ForeignKey("licencas.ContaAppfiliado", null=True, blank=True, on_delete=models.SET_NULL,
+                              related_name="conversas_whatsapp")
+    vinculada_em = models.DateTimeField(null=True, blank=True)
+    # Comandos (resultados, metas...) e tentativas de vínculo do dia: corta abuso e chute de código.
+    comandos_no_dia = models.PositiveIntegerField(default=0)
+    tentativas_vinculo = models.PositiveIntegerField(default=0)
+    dia_dos_comandos = models.DateField(null=True, blank=True)
     criada_em = models.DateTimeField(auto_now_add=True)
     atualizada_em = models.DateTimeField(auto_now=True)
 
@@ -80,3 +88,19 @@ class RespostaAprendida(models.Model):
 
     def __str__(self):
         return self.pergunta[:80]
+
+
+class CodigoVinculo(models.Model):
+    """Código que o assinante gera no painel e manda ("VINCULAR 123456") pro WhatsApp do Appfiliado,
+    para ligar o número dele à conta. Vale por pouco tempo e some quando é usado."""
+
+    conta = models.OneToOneField("licencas.ContaAppfiliado", on_delete=models.CASCADE, related_name="codigo_whatsapp")
+    codigo = models.CharField(max_length=6, db_index=True)
+    criado_em = models.DateTimeField()
+
+    class Meta:
+        verbose_name = "código de vínculo do WhatsApp"
+        verbose_name_plural = "códigos de vínculo do WhatsApp"
+
+    def __str__(self):
+        return f"{self.conta} ({self.criado_em:%d/%m %H:%M})"

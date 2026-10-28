@@ -11,7 +11,7 @@ from django.conf import settings
 from django.db import close_old_connections
 from django.utils import timezone
 
-from . import agente, aprendizado
+from . import agente, aprendizado, comandos
 from .models import Conversa, Mensagem
 
 logger = logging.getLogger(__name__)
@@ -106,6 +106,15 @@ def registrar(ev, texto: str, tem_midia: bool) -> None:
     conversa.ultima_recebida_em = agora
     conversa.save()
     if texto:
+        resposta = comandos.tratar(conversa, texto)
+        if resposta is not None:
+            # Comando do assinante (resultados, metas...): resposta fixa, sem passar pelo agente. Sai
+            # na próxima volta, pelo mesmo caminho dos avisos prontos.
+            Mensagem.objects.create(conversa=conversa, autor=Mensagem.CLIENTE, texto=texto[:MAXIMO_DO_TEXTO],
+                                    whatsapp_id=msg_id, respondida=True)
+            if resposta:
+                Mensagem.objects.create(conversa=conversa, autor=Mensagem.AGENTE, texto=resposta, respondida=True)
+            return
         # Com a conversa com você, a mensagem já nasce tratada: ao voltar (#ia ou depois de 12 h), o agente
         # responde só o que chegar dali pra frente, e não o que você já respondeu.
         Mensagem.objects.create(conversa=conversa, autor=Mensagem.CLIENTE, texto=texto[:MAXIMO_DO_TEXTO], whatsapp_id=msg_id,

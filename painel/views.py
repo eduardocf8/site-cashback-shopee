@@ -7,6 +7,7 @@ from django.core.paginator import Paginator
 from django.http import Http404, HttpResponse, JsonResponse
 from django.shortcuts import redirect, render
 from datetime import timedelta
+from urllib.parse import quote
 
 from django.utils import timezone
 from django.utils.encoding import force_str
@@ -15,6 +16,7 @@ from django.views.decorators.debug import sensitive_post_parameters
 from django.views.decorators.http import require_POST
 
 from accounts.ratelimit import _incrementar_contador, _obter_ip
+from atendimento import comandos as comandos_whatsapp
 from bot_whatsapp import campanhas
 from bot_whatsapp.models import AlertaDisparado, ConexaoWhatsApp
 from licencas import api_shopee
@@ -466,6 +468,15 @@ def configuracoes(request):
             messages.success(request, "Agrupamento criado.")
             return redirect(f"{request.path}#sub-ids")
 
+    elif request.method == "POST" and request.POST.get("formulario") == "whatsapp_codigo":
+        comandos_whatsapp.gerar_codigo(conta)
+        return redirect(f"{request.path}#whatsapp")
+
+    elif request.method == "POST" and request.POST.get("formulario") == "whatsapp_desvincular":
+        comandos_whatsapp.desvincular(conta)
+        messages.info(request, "Número desvinculado. Ele não recebe mais os seus resultados pelo WhatsApp.")
+        return redirect(f"{request.path}#whatsapp")
+
     elif request.method == "POST" and request.POST.get("formulario") == "apagar_regra_sub_id":
         RegraSubId.objects.filter(conta=conta, pk=request.POST.get("regra")).delete()
         messages.info(request, "Agrupamento apagado.")
@@ -475,7 +486,32 @@ def configuracoes(request):
         request, "configuracoes", form_shopee=form_shopee, form_senha=form_senha, form_regra=form_regra,
         form_relatorio=form_relatorio, preferencia_relatorio=preferencia, api=api_shopee,
         regras=resultados.resumo_das_regras(conta, telas.hoje()),
+        whatsapp=_whatsapp_resultados(conta),
     ))
+
+
+def _whatsapp_resultados(conta) -> dict | None:
+    """Cartão "Resultados no WhatsApp": o número vinculado ou o código para vincular. Some quando o
+    WhatsApp do Appfiliado (agente de vendas) não está ligado."""
+    numero = comandos_whatsapp.numero_do_appfiliado()
+    if not comandos_whatsapp.disponiveis() or not numero:
+        return None
+    vinculado = comandos_whatsapp.numero_vinculado(conta)
+    codigo = None if vinculado else comandos_whatsapp.codigo_valido(conta)
+    return {
+        "vinculado": vinculado,
+        "telefone": _telefone_formatado(vinculado.telefone) if vinculado else "",
+        "codigo": codigo,
+        "vence_em": codigo.criado_em + comandos_whatsapp.VALIDADE_DO_CODIGO if codigo else None,
+        "link": f"https://wa.me/{numero}" + (f"?text={quote(f'VINCULAR {codigo.codigo}')}" if codigo else ""),
+        "numero": _telefone_formatado(numero),
+    }
+
+
+def _telefone_formatado(numero: str) -> str:
+    if numero.startswith("55") and len(numero) in (12, 13):
+        return f"+55 ({numero[2:4]}) {numero[4:-4]}-{numero[-4:]}"
+    return f"+{numero}" if numero else ""
 
 
 # --- Erros ---------------------------------------------------------------------------
