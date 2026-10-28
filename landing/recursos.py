@@ -363,7 +363,7 @@ def automacoes():
                    _t("Escolha o post e a palavra", "Um post específico ou todos os posts e as palavras que disparam, como QUERO ou LINK. Maiúsculas e acentos não importam."),
                    _t("Escreva a resposta e a DM", "A resposta que aparece no comentário e a DM com o seu link de afiliado.")),
             _grupo("Comentários nos posts", "O jeito mais usado pelos afiliados.",
-                   _t("Resposta no comentário", "Escreva algumas respostas: sai uma delas, sorteada, para não parecer robô. Use {nome} para marcar a pessoa."),
+                   _t("Resposta no comentário", "Escolha uma ou mais respostas para responder quem comentou no seu post. Use {nome} para marcar a pessoa."),
                    _t("DM com o link", "A pessoa recebe o seu link na DM logo depois de comentar."),
                    _t("Do Estúdio para a automação", "Criou o post no Estúdio Instagram? Um clique cria a automação com o nome e o link do produto.")),
             _grupo("Só no Premium", "Mais lugares para responder e mais controle das vendas.",
