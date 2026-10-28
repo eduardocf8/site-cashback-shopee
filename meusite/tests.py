@@ -84,7 +84,7 @@ class TestVitrineEquilibrada(TestCase):
         return Counter(site.produtos.values_list("categoria", flat=True))
 
     def test_ofertas_em_geral_no_maximo_15_por_categoria(self):
-        conta, site = conta_com_site(vitrine=SiteAfiliado.VITRINE_BUSCA)
+        _, site = conta_com_site(vitrine=SiteAfiliado.VITRINE_BUSCA)
         # Os mais vendidos: as 3 primeiras páginas só de Beleza, depois de tudo um pouco.
         cats = ["100631", "100636", "100013", "100639", "100637", "100010", "100638", "100001"]
 
@@ -101,14 +101,14 @@ class TestVitrineEquilibrada(TestCase):
         self.assertEqual(max(contagem.values()), 15)
 
     def test_ofertas_em_geral_completa_com_o_que_passou_do_teto(self):
-        conta, site = conta_com_site(vitrine=SiteAfiliado.VITRINE_BUSCA)
+        _, site = conta_com_site(vitrine=SiteAfiliado.VITRINE_BUSCA)
         with mock.patch.object(shopee_ofertas, "buscar_produtos",
                                side_effect=lambda a, s, c, n: ([produto(n * 100 + i, categoria_id=100630) for i in range(50)], n < 2)):
             vitrine.atualizar_busca(site, timezone.now())
         self.assertEqual(site.produtos.count(), 100)  # só tinha Beleza: não deixa a vitrine com 15
 
     def test_categorias_buscadas_uma_a_uma_e_divididas_por_igual(self):
-        conta, site = conta_com_site(vitrine=SiteAfiliado.VITRINE_BUSCA, busca_tipo=SiteAfiliado.BUSCA_CATEGORIA,
+        _, site = conta_com_site(vitrine=SiteAfiliado.VITRINE_BUSCA, busca_tipo=SiteAfiliado.BUSCA_CATEGORIA,
                                      categorias=["beleza", "pet"])
         pedidas = []
 
@@ -129,7 +129,7 @@ class TestVitrineEquilibrada(TestCase):
         self.assertEqual(ordem, ["100630", "100631", "100630", "100631"])  # intercaladas
 
     def test_tres_categorias_com_bastante_dividem_por_igual(self):
-        conta, site = conta_com_site(vitrine=SiteAfiliado.VITRINE_BUSCA, busca_tipo=SiteAfiliado.BUSCA_CATEGORIA,
+        _, site = conta_com_site(vitrine=SiteAfiliado.VITRINE_BUSCA, busca_tipo=SiteAfiliado.BUSCA_CATEGORIA,
                                      categorias=["beleza", "pet", "casa"])
         with mock.patch.object(shopee_ofertas, "buscar_produtos", side_effect=lambda a, s_, c, n: (
                 [produto(int(c.categoria_shopee) * 1000 + n * 100 + i, categoria_id=int(c.categoria_shopee)) for i in range(50)], n < 2)):
