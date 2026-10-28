@@ -75,6 +75,81 @@ class TestVitrineDoBot(TestCase):
         self.assertFalse(site.produtos.filter(item_id="8").exists())
 
 
+class TestVitrineEquilibrada(TestCase):
+    """As categorias não podem ficar com 40 ofertas de uma e 1 de outra."""
+
+    def contagem(self, site):
+        from collections import Counter
+
+        return Counter(site.produtos.values_list("categoria", flat=True))
+
+    def test_ofertas_em_geral_no_maximo_15_por_categoria(self):
+        conta, site = conta_com_site(vitrine=SiteAfiliado.VITRINE_BUSCA)
+        # Os mais vendidos: as 3 primeiras páginas só de Beleza, depois de tudo um pouco.
+        cats = ["100631", "100636", "100013", "100639", "100637", "100010", "100638", "100001"]
+
+        def pagina(app_id, secret, config, n):
+            if n <= 3:
+                return [produto(n * 100 + i, categoria_id=100630) for i in range(50)], True
+            return [produto(n * 100 + i, categoria_id=int(cats[i % len(cats)])) for i in range(50)], n < 6
+
+        with mock.patch.object(shopee_ofertas, "buscar_produtos", side_effect=pagina):
+            vitrine.atualizar_busca(site, timezone.now())
+        contagem = self.contagem(site)
+        self.assertEqual(site.produtos.count(), 100)
+        self.assertEqual(contagem["100630"], 15)
+        self.assertEqual(max(contagem.values()), 15)
+
+    def test_ofertas_em_geral_completa_com_o_que_passou_do_teto(self):
+        conta, site = conta_com_site(vitrine=SiteAfiliado.VITRINE_BUSCA)
+        with mock.patch.object(shopee_ofertas, "buscar_produtos",
+                               side_effect=lambda a, s, c, n: ([produto(n * 100 + i, categoria_id=100630) for i in range(50)], n < 2)):
+            vitrine.atualizar_busca(site, timezone.now())
+        self.assertEqual(site.produtos.count(), 100)  # só tinha Beleza: não deixa a vitrine com 15
+
+    def test_categorias_buscadas_uma_a_uma_e_divididas_por_igual(self):
+        conta, site = conta_com_site(vitrine=SiteAfiliado.VITRINE_BUSCA, busca_tipo=SiteAfiliado.BUSCA_CATEGORIA,
+                                     categorias=["beleza", "pet"])
+        pedidas = []
+
+        def busca(app_id, secret, config, n):
+            pedidas.append((config.categoria_shopee, config.tipo_busca))
+            pet = config.categoria_shopee == "100631"  # Pet só tem 30
+            return [produto(int(config.categoria_shopee) * 1000 + n * 100 + i, categoria_id=int(config.categoria_shopee))
+                    for i in range(30 if pet else 50)], not pet and n < 2
+
+        with mock.patch.object(shopee_ofertas, "buscar_produtos", side_effect=busca):
+            vitrine.atualizar_busca(site, timezone.now())
+        self.assertEqual({c for c, _ in pedidas}, {"100630", "100631"})
+        self.assertEqual({t for _, t in pedidas}, {"geral"})  # sem o filtro pelo nome
+        contagem = self.contagem(site)
+        self.assertEqual(site.produtos.count(), 100)
+        self.assertEqual((contagem["100631"], contagem["100630"]), (30, 70))  # Pet só tinha 30: Beleza completa
+        ordem = list(site.produtos.order_by("-posicao_em").values_list("categoria", flat=True)[:4])
+        self.assertEqual(ordem, ["100630", "100631", "100630", "100631"])  # intercaladas
+
+    def test_tres_categorias_com_bastante_dividem_por_igual(self):
+        conta, site = conta_com_site(vitrine=SiteAfiliado.VITRINE_BUSCA, busca_tipo=SiteAfiliado.BUSCA_CATEGORIA,
+                                     categorias=["beleza", "pet", "casa"])
+        with mock.patch.object(shopee_ofertas, "buscar_produtos", side_effect=lambda a, s_, c, n: (
+                [produto(int(c.categoria_shopee) * 1000 + n * 100 + i, categoria_id=int(c.categoria_shopee)) for i in range(50)], n < 2)):
+            vitrine.atualizar_busca(site, timezone.now())
+        self.assertEqual(sorted(self.contagem(site).values()), [33, 33, 34])
+
+    def test_vitrine_do_bot_tira_da_categoria_com_mais(self):
+        conta, site = conta_com_site()
+        agora = timezone.now()
+        for i in range(10):
+            vitrine.registrar_do_bot(conta, produto(1000 + i, categoria_id=100631), agora + timedelta(seconds=i))
+        for i in range(120):  # depois, o bot só manda Beleza
+            vitrine.registrar_do_bot(conta, produto(i, categoria_id=100630), agora + timedelta(minutes=1, seconds=i))
+        contagem = self.contagem(site)
+        self.assertEqual(site.produtos.count(), 100)
+        self.assertEqual((contagem["100631"], contagem["100630"]), (10, 90))  # as 10 de Pet ficaram
+        self.assertFalse(site.produtos.filter(item_id__in=["0", "29"]).exists())  # saíram as de Beleza mais antigas
+        self.assertTrue(site.produtos.filter(item_id="30").exists())
+
+
 class TestVitrineDoWorker(TestCase):
     def test_busca_refaz_e_troca_os_produtos(self):
         conta, site = conta_com_site(vitrine=SiteAfiliado.VITRINE_BUSCA, pedido_vitrine_em=timezone.now())

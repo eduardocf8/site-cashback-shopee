@@ -2,7 +2,8 @@
 
 - "bot": cada oferta que o bot de WhatsApp põe na fila entra no topo; o mesmo produto
   não duplica (volta para o topo) e só ficam as LIMITE mais recentes;
-- "busca": o worker refaz a busca na Shopee de tempos em tempos (mesmos campos do bot);
+- "busca": o worker refaz a busca na Shopee de tempos em tempos (mesmos campos do bot), com as
+  categorias equilibradas (veja atualizar_busca);
 - "manual": os links que a pessoa colou, na ordem dela.
 Quem fala com a Shopee é o worker (comando sincronizar_painel); o site só lê o banco."""
 
@@ -27,6 +28,8 @@ logger = logging.getLogger(__name__)
 
 LIMITE = 100  # produtos por vitrine
 REFAZER_BUSCA_APOS = timedelta(hours=3)
+POR_CATEGORIA_NO_GERAL = 15  # "Ofertas em geral": no máximo isso de cada categoria...
+PAGINAS_NO_GERAL = 6  # ...procurando até 6 páginas de 50 para completar as 100
 LINKS_POR_VOLTA = 30  # links de afiliado gerados por volta do worker
 MAXIMO_MANUAIS = 60
 
@@ -103,8 +106,20 @@ def _guardar(site, fonte: str, produto: dict, quando) -> ProdutoSite | None:
 
 
 def _cortar(site, fonte: str, limite: int = LIMITE):
-    sobra = ProdutoSite.objects.filter(site=site, fonte=fonte).order_by("-posicao_em", "-id").values_list("id", flat=True)[limite:]
-    ProdutoSite.objects.filter(id__in=list(sobra)).delete()
+    """Passou do limite: sai a mais antiga da categoria com mais produtos (e não a mais antiga de
+    todas), para a vitrine não virar uma categoria só quando o bot manda muito de uma."""
+    produtos = list(ProdutoSite.objects.filter(site=site, fonte=fonte).order_by("posicao_em", "id").values_list("id", "categoria"))
+    excesso = len(produtos) - limite
+    if excesso <= 0:
+        return
+    por_categoria = {}
+    for pk, categoria in produtos:  # do mais antigo para o mais novo
+        por_categoria.setdefault(categoria, []).append(pk)
+    saem = []
+    for _ in range(excesso):
+        maior = max(por_categoria.values(), key=len)
+        saem.append(maior.pop(0))
+    ProdutoSite.objects.filter(id__in=saem).delete()
 
 
 def registrar_do_bot(conta, produto: dict | None, quando=None):
@@ -126,20 +141,126 @@ def _credenciais(site) -> tuple[str, str]:
     return site.conta.shopee_app_id, cripto.decifrar(site.conta.shopee_secret_cifrado)
 
 
-def atualizar_busca(site, agora):
-    app_id, secret = _credenciais(site)
-    # Mesma busca do bot (sem os filtros de número): uma configuração do bot só em memória.
+# Categorias do bot (busca "Categorias") -> categorias principais da Shopee onde buscar cada uma.
+# filtrar_nome: a categoria da Shopee é mais larga que a do bot (ex: Ferramentas dentro de Casa),
+# então confere também o nome. Sem categoria na Shopee (Alimentos): busca geral filtrada pelo nome.
+NICHO_NA_SHOPEE = {
+    "moda": {"ids": ["100017", "100011", "100532", "100012", "100016", "100533"]},
+    "beleza": {"ids": ["100630"]},
+    "casa": {"ids": ["100636"]},
+    "eletronicos": {"ids": ["100013", "100644", "100535", "100635"]},
+    "eletrodomesticos": {"ids": ["100010"]},
+    "bebes": {"ids": ["100632", "100633"]},
+    "brinquedos": {"ids": ["100639"]},
+    "esporte": {"ids": ["100637"]},
+    "automotivo": {"ids": ["100640", "100641"]},
+    "pet": {"ids": ["100631"]},
+    "papelaria": {"ids": ["100638"]},
+    "saude": {"ids": ["100001"]},
+    "joias": {"ids": ["100009", "100534"]},
+    "ferramentas": {"ids": ["100636"], "filtrar_nome": True},
+    "alimentos": {"ids": [], "filtrar_nome": True},
+}
+
+
+def _config_da_busca(site, categoria_shopee=None) -> ConfiguracaoOfertas:
+    """Mesma busca do bot (sem os filtros de número): uma configuração do bot só em memória."""
     config = ConfiguracaoOfertas(
         tipo_busca=site.busca_tipo, palavra_chave=site.palavra_chave, loja=site.loja,
         categorias=site.categorias, ordenacao=site.ordenacao, comissao_minima=0, desconto_minimo=0,
         preco_minimo=None, preco_maximo=None, vendas_minimas=0, avaliacao_minima=None,
     )
-    achados = []
-    for pagina in (1, 2):
+    if categoria_shopee:  # já é a categoria da Shopee: sem o filtro pelo nome das categorias do bot
+        config.tipo_busca, config.categoria_shopee = ConfiguracaoOfertas.BUSCA_GERAL, categoria_shopee
+    return config
+
+
+def _paginas(app_id, secret, config, paginas, filtro=None):
+    """Os produtos das páginas, uma de cada vez, até acabar (para quem precisa de mais)."""
+    for pagina in range(1, paginas + 1):
         produtos, tem_proxima = shopee_ofertas.buscar_produtos(app_id, secret, config, pagina)
-        achados += [p for p in produtos if shopee_ofertas.passa_nos_filtros(p, config)]
-        if not tem_proxima or len(achados) >= LIMITE:
+        yield [p for p in produtos if shopee_ofertas.passa_nos_filtros(p, config) and (not filtro or filtro(p))]
+        if not tem_proxima:
+            return
+
+
+def _busca_geral(site, app_id, secret) -> list[dict]:
+    """Uma busca só (geral, palavra-chave ou loja), na ordem da Shopee. Em "Ofertas em geral",
+    no máximo POR_CATEGORIA_NO_GERAL de cada categoria: os mais vendidos se concentram em poucas
+    categorias e a vitrine ficava com 40 de uma e 1 de outra. Se não der para completar, o que
+    passou do teto entra no fim."""
+    config = _config_da_busca(site)
+    equilibrar = site.busca_tipo == SiteAfiliado.BUSCA_GERAL
+    escolhidos, sobra, por_categoria, vistos = [], [], {}, set()
+    for produtos in _paginas(app_id, secret, config, PAGINAS_NO_GERAL if equilibrar else 2):
+        for p in produtos:
+            if str(p["item_id"]) in vistos:
+                continue
+            vistos.add(str(p["item_id"]))
+            categoria = categoria_do_produto(p)
+            if equilibrar and por_categoria.get(categoria, 0) >= POR_CATEGORIA_NO_GERAL:
+                sobra.append(p)
+                continue
+            por_categoria[categoria] = por_categoria.get(categoria, 0) + 1
+            escolhidos.append(p)
+        if len(escolhidos) >= LIMITE:
             break
+    return (escolhidos + sobra)[:LIMITE]
+
+
+def _busca_por_categoria(site, app_id, secret) -> list[dict]:
+    """Busca "Categorias": cada categoria escolhida é buscada na própria categoria da Shopee e
+    as 100 vagas são divididas por igual, intercaladas (uma de cada). Se uma categoria tiver
+    menos, as outras completam."""
+    nichos = [n for n in dict.fromkeys(site.categorias or []) if n in NICHO_NA_SHOPEE] or list(site.categorias or [])
+    if not nichos:
+        return _busca_geral(site, app_id, secret)
+    cota = -(-LIMITE // len(nichos))  # arredonda para cima
+    listas = []
+    for nicho in nichos:
+        regra = NICHO_NA_SHOPEE.get(nicho, {"ids": [], "filtrar_nome": True})
+        filtro = (lambda p, n=nicho: produto_pertence_as_categorias(p["nome"], [n])) if regra.get("filtrar_nome") else None
+        fontes = [_paginas(app_id, secret, _config_da_busca(site, cid), 2, filtro) for cid in regra["ids"]]
+        if not fontes:  # sem categoria na Shopee: busca geral filtrada pelo nome
+            geral = _config_da_busca(site)
+            geral.tipo_busca, geral.categorias = ConfiguracaoOfertas.BUSCA_CATEGORIA, [nicho]
+            fontes = [_paginas(app_id, secret, geral, 4)]
+        listas.append(_intercalar(_ate(fontes, cota * 2)))
+    vistos, saida = set(), []
+    for p in _intercalar(listas):
+        if str(p["item_id"]) not in vistos:
+            vistos.add(str(p["item_id"]))
+            saida.append(p)
+    return saida[:LIMITE]
+
+
+def _ate(fontes, quantos: int) -> list[list[dict]]:
+    """Lê as fontes (geradores de páginas) aos poucos, todas por igual, até juntar quantos."""
+    listas, ativas = [[] for _ in fontes], list(range(len(fontes)))
+    while ativas and sum(len(lista) for lista in listas) < quantos:
+        for i in list(ativas):
+            pagina = next(fontes[i], None)
+            if pagina is None:
+                ativas.remove(i)
+            else:
+                listas[i] += pagina
+    return listas
+
+
+def _intercalar(listas: list[list[dict]]) -> list[dict]:
+    """[[a1, a2], [b1]] -> [a1, b1, a2]."""
+    saida = []
+    for i in range(max((len(lista) for lista in listas), default=0)):
+        saida += [lista[i] for lista in listas if i < len(lista)]
+    return saida
+
+
+def atualizar_busca(site, agora):
+    app_id, secret = _credenciais(site)
+    if site.busca_tipo == SiteAfiliado.BUSCA_CATEGORIA:
+        achados = _busca_por_categoria(site, app_id, secret)
+    else:
+        achados = _busca_geral(site, app_id, secret)
     with transaction.atomic():
         vistos = set()
         for i, produto in enumerate(achados[:LIMITE]):
