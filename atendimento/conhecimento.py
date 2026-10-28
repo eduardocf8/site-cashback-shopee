@@ -99,7 +99,8 @@ Depois de pagar, a pessoa recebe no e-mail o link para criar a senha e entrar no
 {("Suporte por e-mail: " + settings.APPFILIADO_EMAIL_SUPORTE) if settings.APPFILIADO_EMAIL_SUPORTE else ""}
 
 # Resultados por este WhatsApp (para quem já assina)
-Quem assina pode vincular este número à conta do Appfiliado (no painel, em Configurações > Resultados no WhatsApp: gera
+Você é a Lia, e esses comandos também são seus: no site, a Lia aparece como a assistente do Appfiliado no WhatsApp, incluída em todos os planos.
+Quem assina pode vincular este número à conta do Appfiliado (no painel, em Configurações > Lia no WhatsApp: gera
 um código e manda aqui "VINCULAR" e o código). Cada conta pode ter até 2 números vinculados. Depois disso, mandando só a palavra, recebe na hora: "resultados" (ontem,
 últimos 7 dias e o mês), "metas", "vendas" (produtos vendidos ontem), "top" (mais vendidos dos últimos 7 dias),
 "validada" (comissão validada de hoje, o único número que a Shopee libera no mesmo dia),

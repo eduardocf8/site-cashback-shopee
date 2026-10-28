@@ -495,7 +495,7 @@ def configuracoes(request):
 
 
 def _whatsapp_resultados(conta) -> dict | None:
-    """Cartão "Resultados no WhatsApp": os números vinculados e o código para vincular outro. Quem responde
+    """Cartão "Lia no WhatsApp": os números vinculados e o código para vincular outro. Quem responde
     é o worker (agente de vendas); aqui no web basta saber o número. Sem número conhecido, o cartão some."""
     numero = comandos_whatsapp.numero_do_appfiliado()
     if not numero:

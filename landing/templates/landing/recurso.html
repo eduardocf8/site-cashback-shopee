@@ -60,14 +60,14 @@
 
 <nav class="subnav" aria-label="Neste módulo" id="recursos">
   <div class="miolo subnav-linha">
-    {% for g in r.grupos %}<a href="#g{{ forloop.counter }}" data-alvo="g{{ forloop.counter }}">{{ g.curto }}</a>{% endfor %}
+    {% for g in r.grupos %}<a href="#{{ g.id }}" data-alvo="{{ g.id }}">{{ g.curto }}</a>{% endfor %}
     {% if not r.incluso and not m.em_breve %}<a href="#comparar" data-alvo="comparar">Standard × Premium</a>{% endif %}
     <a href="#planos" data-alvo="planos">{% if m.em_breve %}Lançamento{% else %}Planos{% endif %}</a>
   </div>
 </nav>
 
 {% for g in r.grupos %}
-<section id="g{{ forloop.counter }}" class="bloco bloco-{{ g.layout }}{% if g.fundo %} fundo-{{ g.fundo }}{% endif %}">
+<section id="{{ g.id }}" class="bloco bloco-{{ g.layout }}{% if g.fundo %} fundo-{{ g.fundo }}{% endif %}">
   <div class="miolo">
     {% if g.layout == "passos" %}
       <p class="chapeu">{{ g.curto }}</p>

@@ -126,6 +126,20 @@ class TestPagina(TestCase):
             self.assertIn(caminho, mapa)
             self.assertContains(home, f'href="{caminho}"')  # a faixa "Em todos os planos" e o mock do hero levam até elas
 
+    def test_lia_aparece_como_beneficio_em_todos_os_planos(self):
+        home = self.abrir()
+        self.assertContains(home, "Lia, sua assistente no WhatsApp")
+        self.assertContains(home, 'href="/resultados-e-metas/#lia"')
+        self.assertContains(home, "Quem é a Lia?")
+        pagina = self.abrir(caminho="/resultados-e-metas/")
+        self.assertContains(pagina, '<section id="lia"')
+        self.assertContains(pagina, 'href="#lia"')  # no índice da página
+        self.assertContains(pagina, "lia-whatsapp")  # a conversa de exemplo, num celular
+        self.assertContains(pagina, "Como funciona a Lia?")
+        for comando in ("resultados", "metas", "vendas", "top", "validada", "atualizar"):
+            self.assertContains(pagina, f"<li>{comando}</li>")
+        self.assertContains(pagina, 'href="#g1"')  # as outras seções seguem com o id de sempre
+
     def test_telas_do_painel_ilustram_cada_ferramenta(self):
         for caminho, arquivo in (("/bot-de-whatsapp/", "bot-ofertas"), ("/meu-site/", "site-editor"),
                                  ("/emissao-de-notas/", "notas-lote"), ("/radar-de-ofertas/", "radar-produtos"),

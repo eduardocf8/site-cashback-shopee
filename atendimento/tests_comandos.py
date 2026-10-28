@@ -282,7 +282,7 @@ class TestComVinculo(BaseComandos):
             servico.uma_volta({CONTA: sessao})
         agente.assert_not_called()
         self.assertEqual(sessao.enviadas[-1][0], CHAT)
-        self.assertIn("Oi, Bia! Comandos que eu entendo por aqui", sessao.enviadas[-1][1])
+        self.assertIn("Oi, Bia! Aqui é a Lia, a assistente do Appfiliado. Comandos que eu entendo por aqui", sessao.enviadas[-1][1])
 
 
 class TestPainel(BaseComandos):
@@ -299,7 +299,7 @@ class TestPainel(BaseComandos):
 
     def _gera_codigo_mostra_link_e_desvincula(self):
         html = self.client.get("/configuracoes/").content.decode()
-        self.assertIn("Resultados no WhatsApp", html)
+        self.assertIn("Lia no WhatsApp", html)
         self.assertIn("+55 (45) 98888-0000", html)
         self.assertIn("Vincular meu WhatsApp", html)
 
@@ -342,8 +342,8 @@ class TestPainel(BaseComandos):
         # No web, o agente (conta e chave da IA) pode não estar configurado: quem responde é o worker.
         with override_settings(ANTHROPIC_API_KEY="", ATENDIMENTO_CONTA_ID=0):
             html = self.client.get("/configuracoes/").content.decode()
-        self.assertIn("Resultados no WhatsApp", html)
+        self.assertIn("Lia no WhatsApp", html)
         self.assertIn("+55 (45) 99999-0000", html)  # sem a conexão do agente, usa o número de suporte
         with override_settings(APPFILIADO_WHATSAPP_SUPORTE="", ATENDIMENTO_CONTA_ID=0):
             html = self.client.get("/configuracoes/").content.decode()
-        self.assertNotIn("Resultados no WhatsApp", html)
+        self.assertNotIn("Lia no WhatsApp", html)

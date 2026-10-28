@@ -292,7 +292,7 @@ def _impedimento(conta) -> str:
 
 def ajuda(conta) -> str:
     primeiro = (conta.nome or "").split(" ")[0]
-    return (f"Oi{', ' + primeiro if primeiro else ''}! Comandos que eu entendo por aqui:\n\n"
+    return (f"Oi{', ' + primeiro if primeiro else ''}! Aqui é a Lia, a assistente do Appfiliado. Comandos que eu entendo por aqui:\n\n"
             "*resultados*: ontem, últimos 7 dias e o mês\n"
             "*metas*: como está a meta do mês\n"
             "*vendas*: os produtos vendidos ontem\n"
@@ -318,7 +318,7 @@ def resultados(conta) -> str:
     ]
     linhas = ["📊 *Seus resultados na Shopee*"]
     for titulo, t in blocos:
-        linhas += ["", titulo, f"Pedidos: {t['pedidos']}", f"Faturamento: {brl(t['faturamento'])}",
+        linhas += ["", titulo, f"Pedidos: {_inteiro(t['pedidos'])}", f"Faturamento: {brl(t['faturamento'])}",
                    f"Comissão estimada: {brl(t['comissao_estimada'])}", f"Comissão validada: {brl(t['comissao_validada'])}"]
     return _fechar(conta, linhas, "painel_resultados")
 
@@ -421,6 +421,10 @@ def top(conta) -> str:
 def brl(valor) -> str:
     texto = f"{float(valor or 0):,.2f}".replace(",", "_").replace(".", ",").replace("_", ".")
     return f"R$ {texto}"
+
+
+def _inteiro(n) -> str:
+    return f"{int(n or 0):,}".replace(",", ".")
 
 
 def _ontem():

@@ -14,8 +14,8 @@ def _t(nome, texto, so=""):
     return {"nome": nome, "texto": texto, "plano": so, "chips": [], "cores": []}
 
 
-def _grupo(titulo, intro, *itens):
-    return {"titulo": titulo, "intro": intro, "itens": list(itens)}
+def _grupo(titulo, intro, *itens, ancora=""):
+    return {"titulo": titulo, "intro": intro, "itens": list(itens), "ancora": ancora}
 
 
 def bot():
@@ -517,6 +517,13 @@ def resultados():
                    _t("Relatório diário por e-mail", "No horário que você escolher, com resultados de ontem e do mês, Sub IDs e produtos mais vendidos."),
                    _t("Mesmas regras da Shopee", "Faturamento e pedidos pela data da compra, comissão validada pela data em que a Shopee confirmou o pedido."),
                    _t("Histórico guardado", "Os dias ficam guardados desde a conexão. A Shopee só deixa buscar uns 3 meses para trás.")),
+            _grupo("Lia, sua assistente no WhatsApp", "Seus números por mensagem, sem abrir o painel.",
+                   _t("Vincule o seu número", "Em Configurações, gere um código e mande para a Lia. Dá para vincular até 2 números por conta."),
+                   _t("Peça por mensagem", "Mande uma palavra e a resposta chega na hora."),
+                   _t("Comissão validada de hoje", "A única que a Shopee libera no mesmo dia. A Lia busca na Shopee e te responde em até 1 minuto."),
+                   _t("Atualize quando quiser", "Mande \"atualizar\" e a Lia busca os dados mais novos na Shopee e avisa quando terminar."),
+                   _t("Dúvidas a qualquer hora", "A Lia também responde sobre planos, módulos, a API da Shopee e como usar o painel."),
+                   ancora="lia"),
         ],
         "perguntas": [
             ("Resultados e metas custam a mais?", "Não. Estão inclusos em todos os planos do Appfiliado."),
@@ -524,6 +531,7 @@ def resultados():
             ("Por que de hoje só aparece a comissão validada?", "A Shopee libera faturamento, comissão estimada e pedidos no dia seguinte. A comissão validada vai entrando ao longo do dia."),
             ("Preciso cadastrar as metas?", "Não, é opcional. Se a Shopee te deu metas com bônus no mês, cadastre para acompanhar quanto falta."),
             ("Dá para exportar as vendas?", "Dá. As vendas do período saem em Excel, com os filtros que você aplicou."),
+            ("Como funciona a Lia?", "A Lia é a assistente do Appfiliado no WhatsApp, incluída em todos os planos. Em Configurações, você gera um código e manda para ela do número que vai pedir os resultados (até 2 números por conta). Depois, é só mandar resultados, metas, vendas, top, validada ou atualizar. Os números são os mesmos do painel, e as dúvidas sobre o Appfiliado ela responde com IA."),
         ],
     }
 
@@ -565,8 +573,9 @@ APRESENTACAO = {
         "numeros": lambda: [("20", "links por vez"), ("2", "jeitos de sair"), ("1 clique", "para copiar"), ("Sub ID", "para medir cada divulgação")],
     },
     "resultados": {
-        "layouts": ["passos", "split", "destaque", "cartoes", "faixa"],
-        "curtos": ["Conexão", "Resultados", "Sub IDs", "Metas", "No dia a dia"],
+        "layouts": ["passos", "split", "destaque", "cartoes", "faixa", "split"],
+        "curtos": ["Conexão", "Resultados", "Sub IDs", "Metas", "No dia a dia", "Lia no WhatsApp"],
+        "chips": {"Peça por mensagem": ["resultados", "metas", "vendas", "top", "validada", "atualizar"]},
         "numeros": lambda: [("8", "períodos prontos"), ("3", "faixas de meta"), ("Excel", "pras vendas do período"), ("1x ao dia", "relatório por e-mail")],
     },
     "estudio": {
@@ -642,7 +651,7 @@ def _apresentar(modulo, pagina):
     for n, (g, layout, curto) in enumerate(zip(pagina["grupos"], ap["layouts"], ap["curtos"])):
         if breve and layout == "premium":
             layout, curto = "cartoes", g.pop("curto_breve", curto)
-        g["layout"], g["curto"] = layout, curto
+        g["layout"], g["curto"], g["id"] = layout, curto, g.get("ancora") or f"g{n + 1}"
         g["prints"] = [] if breve else prints_de(modulo, n)
         if layout == "premium":
             g["fundo"] = "verde"
@@ -653,7 +662,8 @@ def _apresentar(modulo, pagina):
             item["chips"] = ap.get("chips", {}).get(item["nome"], [])
             item["cores"] = ap.get("cores", {}).get(item["nome"], [])
     pagina["numeros"] = (SEM_PLANOS.get(modulo, {}).get("numeros") if breve else None) or ap["numeros"]()
-    pagina["print_do_topo"] = next((pr for g in pagina["grupos"] for pr in g["prints"] if not pr["celular"]), None)
+    pagina["print_do_topo"] = next((pr for g in pagina["grupos"] for pr in g["prints"]
+                                    if not pr["celular"] and not pr["so_celular"]), None)
     return pagina
 
 
@@ -678,7 +688,9 @@ PRINTS = {
     "resultados": {1: [("resultados", "Faturamento, comissão e pedidos do período, com gráfico e meta do mês.", "Tela de resultados do mês"),
                        ("resultados-produtos", "O ranking de produtos e a lista de vendas, com filtros e Excel.", "Produtos mais vendidos e vendas do período")],
                    3: [("metas", "Quanto falta para cada faixa de bônus e a projeção do mês.", "Tela de metas da Shopee")],
-                   4: [("inicio", "A primeira tela do painel, com o mês, o dia anterior e a meta.", "Tela inicial do painel do Appfiliado")]},
+                   4: [("inicio", "A primeira tela do painel, com o mês, o dia anterior e a meta.", "Tela inicial do painel do Appfiliado")],
+                   5: [("lia-whatsapp", "Os resultados e a comissão validada de hoje, pedidos à Lia pelo WhatsApp.",
+                        "Conversa no WhatsApp com a Lia mostrando os resultados e a comissão validada do dia")]},
     "notas": {0: [("notas-lote", "Notas autorizadas e e-mails indo pros vendedores, com o andamento de cada etapa.", "Lote de notas fiscais do Emissor NFS-e")],
               1: [("notas", "Cadastro da empresa, certificado e o uso do seu plano no mês.", "Tela inicial do Emissor NFS-e")]},
 }
@@ -701,6 +713,7 @@ TAMANHOS = {
     "resultados": (1100, 861, 442, 2144),
     "resultados-produtos": (1100, 2044, 442, 2300),
     "site-pronto": (380, 1129, 300, 891),  # o site visto pelo visitante, num celular (marketing/appfiliado/prints/site_pronto.py)
+    "lia-whatsapp": (340, 856, 340, 856),  # conversa com a Lia num celular (marketing/appfiliado/prints/lia_whatsapp.py)
     "site-botoes": (1100, 1206, 420, 1387),
     "site-editor": (1100, 1249, 420, 2300),
     "site-editor-form": (712, 1159, 420, 1462),  # recorte do site-editor só com a coluna do formulário
@@ -715,10 +728,15 @@ AO_LADO_DO_EDITOR = {"site-pronto": ("site-editor-form",
                                      "No editor você escolhe o endereço, a foto, o nome, as cores e as redes sociais.")}
 
 
+# Prints que são só um celular (sem a janela do painel em volta).
+SO_CELULAR = {"lia-whatsapp"}
+
+
 def _print(a, leg, alt):
     w, h, wm, hm = TAMANHOS[a]
     p = {"arquivo": f"landing/prints/{a}.webp", "arquivo_m": f"landing/prints/{a}-m.webp",
-         "legenda": leg, "alt": alt, "largura": w, "altura": h, "largura_m": wm, "altura_m": hm, "celular": None}
+         "legenda": leg, "alt": alt, "largura": w, "altura": h, "largura_m": wm, "altura_m": hm, "celular": None,
+         "so_celular": a in SO_CELULAR}
     if a in AO_LADO_DO_EDITOR:
         e, leg_celular, leg_editor = AO_LADO_DO_EDITOR[a]
         p["celular"] = {"legenda": leg_celular, "editor": _print(e, leg_editor, "Editor do Meu site: endereço, perfil, cores e redes sociais")}

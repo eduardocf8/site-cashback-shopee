@@ -59,7 +59,8 @@ p { margin: 0; }
 
 /* faixa de inclusos */
 .faixa { background: var(--creme); border-bottom: 1px solid var(--borda); }
-.faixa-linha { display: grid; grid-template-columns: repeat(3, 1fr); gap: 24px; padding: 26px 0; }
+.faixa-linha { display: grid; grid-template-columns: repeat(4, 1fr); gap: 24px; padding: 26px 0; }
+@media (max-width: 1100px) { .faixa-linha { grid-template-columns: repeat(2, 1fr); } }
 .incluso { display: flex; gap: 14px; align-items: flex-start; }
 .incluso svg { width: 30px; height: 30px; flex: none; fill: none; stroke: var(--verde); stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; margin-top: 2px; }
 .incluso strong { display: block; font-size: 16px; }
@@ -432,6 +433,8 @@ p { margin: 0; }
 .prints { margin-top: 36px; }
 .prints-painel { margin: 0; }
 .prints-painel + .prints-painel { margin-top: 36px; }
+.prints-so-celular img { display: block; width: 340px; max-width: 86%; height: auto; margin: 0 auto; filter: drop-shadow(0 18px 30px rgba(31,58,46,.3)); }
+.prints .prints-so-celular figcaption { text-align: center; margin-left: auto; margin-right: auto; }
 .prints-janela { background: #fff; border-radius: 14px; overflow: hidden; box-shadow: 0 18px 44px rgba(31,58,46,.2); border: 1px solid var(--borda); }
 .prints-barra { display: flex; align-items: center; gap: 6px; padding: 10px 14px; background: #ECE7D8; }
 .prints-barra i { width: 10px; height: 10px; border-radius: 50%; background: #CFC8B2; display: block; }

@@ -32,7 +32,7 @@
 <section id="incluso" class="faixa" aria-label="Em todos os planos">
   <div class="miolo faixa-linha">
     {% for i in inclusos %}
-      <a class="incluso" href="{% url i.url %}"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="{{ i.icone }}"/></svg><div><strong>{{ i.nome }}</strong><span>{{ i.frase }}</span></div></a>
+      <a class="incluso" href="{% url i.url %}{{ i.ancora }}"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="{{ i.icone }}"/></svg><div><strong>{{ i.nome }}</strong><span>{{ i.frase }}</span></div></a>
     {% endfor %}
   </div>
 </section>

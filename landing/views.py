@@ -77,6 +77,7 @@ INCLUSOS = [
     ("resultados", "Resultados e metas", "Vendas, comissões e ranking dos seus links num só lugar."),
     ("conversor", "Conversor de links", "Cole textos de terceiros e receba eles já com os seus links de afiliado, prontos para compartilhar."),
     ("radar", "Radar de ofertas", "Mais de 30 mil produtos para filtrar por comissão, desconto e categoria."),
+    ("whatsapp", "Lia, sua assistente no WhatsApp", "Peça resultados, metas e vendas por mensagem e tire dúvidas sobre o Appfiliado a qualquer hora."),
 ]
 PERGUNTAS = [
     ("Preciso ter conta de afiliado da Shopee?", "Sim, e com a API da Shopee liberada. O Appfiliado usa a sua conta de afiliado para gerar os links e a comissão das vendas cai direto na sua conta da Shopee. Você pede a API à Shopee uma vez (a resposta leva até 5 dias úteis) e conecta a conta no painel."),
@@ -84,6 +85,7 @@ PERGUNTAS = [
     ("Como recebo o acesso depois de pagar?", "Logo após a confirmação do pagamento, você recebe um e-mail com o link para criar a sua senha. É só criar a senha, entrar no painel (app.appfiliado.com.br) e conectar a sua conta da Shopee com o AppID e o Secret da API."),
     ("Qual é a diferença entre Standard e Premium?", "O Premium libera mais volume e mais recursos em cada módulo (mais grupos e ofertas por dia no bot, mais botões no site, mais carrosséis por dia). As listas completas estão nos cartões de cada plano."),
     ("Preciso de um número de WhatsApp só pro bot?", "Você conecta pelo QR Code o número que quiser. Muita gente prefere um número separado do pessoal, só para divulgar as ofertas nos grupos."),
+    ("Quem é a Lia?", "É a assistente do Appfiliado no WhatsApp, incluída em todos os planos. Ela tira dúvidas sobre o Appfiliado a qualquer hora e, depois que você vincula o seu número no painel, manda os seus resultados, metas, vendas e a comissão validada do dia por mensagem."),
     ("Posso pagar por ano?", "Pode. No checkout você escolhe mensal ou anual e o plano anual tem 17% de desconto."),
     ("Posso cancelar quando quiser?", "Pode. O cancelamento é feito pela Zouti, a plataforma de pagamento. O acesso segue até o fim do período já pago."),
     ("E se eu não gostar?", "Você tem 7 dias, a partir da compra, para pedir o reembolso integral pela Zouti."),
@@ -138,7 +140,9 @@ FRASE_CURTA = {"bot": "Ofertas no automático nos seus grupos", "site": "Link na
                "estudio": "Posts e stories publicados no seu Instagram", "automacoes": "Comentou, recebeu o link na DM"}
 PAGINA_DO_MODULO = {"bot": "landing_bot", "site": "landing_site", "carrosseis": "landing_carrosseis",
                     "estudio": "landing_estudio", "automacoes": "landing_automacoes"}
-URL_DO_INCLUSO = {"resultados": "landing_resultados", "conversor": "landing_conversor", "radar": "landing_radar"}
+URL_DO_INCLUSO = {"resultados": "landing_resultados", "conversor": "landing_conversor", "radar": "landing_radar",
+                  "whatsapp": "landing_resultados"}
+ANCORA_DO_INCLUSO = {"whatsapp": "#lia"}  # a Lia é uma seção da página de Resultados e metas
 # Ferramentas incluídas em todos os planos, que também têm página própria.
 INCLUIDOS_COM_PAGINA = [("resultados", "Resultados e metas", "landing_resultados"), ("radar", "Radar de ofertas", "landing_radar"),
                         ("conversor", "Conversor de links", "landing_conversor")]
@@ -201,7 +205,8 @@ def pagina(request):
     return render(request, "landing/index.html", {
         "modulos": modulos, "a_venda": [m for m in modulos if not m["em_breve"]],
         "em_breve": [m for m in modulos if m["em_breve"]], "pacotes": _pacotes(),
-        "inclusos": [{"icone": ICONES[i], "nome": n, "frase": f, "url": URL_DO_INCLUSO[i]} for i, n, f in INCLUSOS],
+        "inclusos": [{"icone": ICONES[i], "nome": n, "frase": f, "url": URL_DO_INCLUSO[i], "ancora": ANCORA_DO_INCLUSO.get(i, "")}
+                     for i, n, f in INCLUSOS],
         "notas": _faixas_de_notas(), "perguntas": perguntas(), "api": api_shopee, **_comum(request),
     })
 
