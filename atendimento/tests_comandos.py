@@ -184,6 +184,59 @@ class TestComVinculo(BaseComandos):
         self.assertEqual(self.resposta("top"), "")  # depois do aviso, nada
         self.assertFalse(Mensagem.objects.filter(autor=Mensagem.CLIENTE, respondida=False).exists())
 
+    def volta(self, quando):
+        sessao = SessaoFalsa()
+        with mock.patch("django.utils.timezone.now", return_value=quando), \
+                mock.patch.object(servico.agente, "responder") as agente:
+            servico.uma_volta({CONTA: sessao})
+        agente.assert_not_called()
+        return [texto for _, texto in sessao.enviadas]
+
+    def test_validada_com_busca_recente_responde_na_hora(self):
+        SincronizacaoResultados.objects.filter(conta=self.conta).update(concluida_em=AGORA - timedelta(minutes=5))
+        ResultadoDiario.objects.create(conta=self.conta, dia=date(2026, 10, 28), comissao_validada=Decimal("55.50"))
+        ResultadoDiario.objects.create(conta=self.conta, dia=date(2026, 10, 27), comissao_validada=Decimal("40"))
+        ResultadoDiario.objects.create(conta=self.conta, dia=date(2026, 9, 30), comissao_validada=Decimal("999"))
+        texto = self.resposta("Comissão validada")
+        self.assertIn("✅ *Comissão validada hoje (28/10)*\nR$ 55,50", texto)
+        self.assertIn("Ontem (27/10): R$ 40,00", texto)
+        self.assertIn("Outubro/2026 até agora: R$ 95,50", texto)
+        self.assertIn("Atualizado às 14:55.", texto)
+        self.assertNotIn("ainda aparece zerado", texto)
+        self.assertFalse(SincronizacaoResultados.objects.get(conta=self.conta).aguardando)
+
+    def test_validada_pede_a_busca_e_responde_quando_termina(self):
+        self.assertIn("Buscando a comissão validada de hoje na Shopee", self.resposta("validada"))
+        estado = SincronizacaoResultados.objects.get(conta=self.conta)
+        self.assertTrue(estado.aguardando)
+        self.assertFalse(estado.pedido_curto)  # a de 30 dias: pega validação de compra antiga
+        self.assertIn("Buscando", self.resposta("hoje"))  # pediu de novo: uma resposta só no fim
+
+        enviadas = self.volta(AGORA + timedelta(seconds=20))
+        self.assertFalse(any("✅" in t for t in enviadas))  # a busca ainda não terminou
+
+        # O worker do painel busca na Shopee.
+        SincronizacaoResultados.objects.filter(conta=self.conta).update(
+            iniciada_em=AGORA + timedelta(seconds=30), concluida_em=AGORA + timedelta(seconds=50))
+        ResultadoDiario.objects.create(conta=self.conta, dia=date(2026, 10, 28), comissao_validada=Decimal("12.30"))
+        enviadas = self.volta(AGORA + timedelta(minutes=1))
+        validadas = [t for t in enviadas if "✅" in t]
+        self.assertEqual(len(validadas), 1)
+        self.assertIn("R$ 12,30", validadas[0])
+        self.assertNotIn("não respondeu", validadas[0])
+        self.assertIsNone(Conversa.objects.get().validada_pedida_em)
+        self.assertEqual([t for t in self.volta(AGORA + timedelta(minutes=2)) if "✅" in t], [])
+
+    def test_validada_sem_resposta_da_shopee_manda_o_que_tem(self):
+        SincronizacaoResultados.objects.filter(conta=self.conta).update(pedido_em=AGORA - timedelta(minutes=1),
+                                                                         pedido_curto=True)
+        self.resposta("validada")
+        self.assertFalse(SincronizacaoResultados.objects.get(conta=self.conta).pedido_curto)  # virou a de 30 dias
+        self.assertEqual([t for t in self.volta(AGORA + timedelta(minutes=4)) if "✅" in t], [])
+        validadas = [t for t in self.volta(AGORA + timedelta(minutes=6)) if "✅" in t]
+        self.assertEqual(len(validadas), 1)
+        self.assertIn("A Shopee não respondeu agora", validadas[0])
+
     def test_desvincular(self):
         self.assertIn("não está mais ligado", self.resposta("desvincular"))
         self.assertIsNone(Conversa.objects.get().conta)

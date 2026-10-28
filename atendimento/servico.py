@@ -137,6 +137,8 @@ def uma_volta(sessoes: dict) -> None:
     Conversa.objects.filter(estado=Conversa.HUMANO, humano_desde__lt=agora - VOLTA_PRO_AGENTE).exclude(
         mensagens__autor=Mensagem.VOCE, mensagens__criada_em__gte=agora - VOLTA_PRO_AGENTE,
     ).update(estado=Conversa.IA, motivo_humano="", humano_desde=None)
+    for conversa, resposta in comandos.validadas_prontas(agora):
+        Mensagem.objects.create(conversa=conversa, autor=Mensagem.AGENTE, texto=resposta, respondida=True)
     _enviar_avisos_prontos(sessao)
     _enviar_sugestoes(sessao)
     for pk in aprendizado.conversas_prontas(agora):

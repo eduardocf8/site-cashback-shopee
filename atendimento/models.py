@@ -27,6 +27,8 @@ class Conversa(models.Model):
     comandos_no_dia = models.PositiveIntegerField(default=0)
     tentativas_vinculo = models.PositiveIntegerField(default=0)
     dia_dos_comandos = models.DateField(null=True, blank=True)
+    # Pediu a comissão validada de hoje e espera a busca na Shopee terminar (ver comandos.validadas_prontas).
+    validada_pedida_em = models.DateTimeField(null=True, blank=True)
     criada_em = models.DateTimeField(auto_now_add=True)
     atualizada_em = models.DateTimeField(auto_now=True)
 

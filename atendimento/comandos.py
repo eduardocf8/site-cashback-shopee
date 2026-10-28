@@ -2,7 +2,10 @@
 (Configurações, "VINCULAR 123456") e pede por aqui os resultados, as metas, as vendas e os mais
 vendidos. Sem IA: o texto é montado com os mesmos números do painel.
 
-A Shopee só libera as vendas de um dia na manhã seguinte, então tudo vai até ontem.
+A Shopee só libera as vendas de um dia na manhã seguinte, então tudo vai até ontem. A exceção é a
+comissão validada (comando "validada"): sai no mesmo dia. Como o pedido que valida hoje pode ter
+sido comprado semanas atrás, o comando pede uma busca de 30 dias à Shopee (se a última tem mais de
+ATUALIZACAO_RECENTE) e a resposta sai quando ela termina (servico.uma_volta -> validadas_prontas).
 
 Uma mensagem que não é comando (ou de quem não tem o número vinculado) segue para o agente de
 vendas, como sempre."""
@@ -24,9 +27,11 @@ TENTATIVAS_DE_VINCULO_POR_DIA = 5  # chute de código
 MAXIMO_VENDAS = 10
 MAXIMO_TOP = 5
 TAMANHO_DO_NOME = 60
+ATUALIZACAO_RECENTE = timedelta(minutes=15)  # busca mais nova que isso: a validada responde na hora
+ESPERA_PELA_SHOPEE = timedelta(minutes=5)  # sem a busca terminar, responde com o que tem
 
-AJUDA, RESULTADOS, METAS, VENDAS, TOP, VINCULAR, DESVINCULAR = (
-    "ajuda", "resultados", "metas", "vendas", "top", "vincular", "desvincular")
+AJUDA, RESULTADOS, METAS, VENDAS, TOP, VALIDADA, VINCULAR, DESVINCULAR = (
+    "ajuda", "resultados", "metas", "vendas", "top", "validada", "vincular", "desvincular")
 # A mensagem inteira tem que ser o comando: "quero ver os resultados do bot" é conversa com o agente.
 APELIDOS = {
     "ajuda": AJUDA, "menu": AJUDA, "comandos": AJUDA, "comando": AJUDA,
@@ -34,6 +39,8 @@ APELIDOS = {
     "metas": METAS, "meta": METAS,
     "vendas": VENDAS, "venda": VENDAS, "pedidos": VENDAS,
     "top": TOP, "mais vendidos": TOP, "top 5": TOP, "top5": TOP,
+    "validada": VALIDADA, "validadas": VALIDADA, "comissao validada": VALIDADA, "validada hoje": VALIDADA,
+    "comissao": VALIDADA, "hoje": VALIDADA,
     "vincular": VINCULAR,
     "desvincular": DESVINCULAR,
 }
@@ -91,7 +98,55 @@ def tratar(conversa: Conversa, texto: str) -> str | None:
     impedimento = _impedimento(conversa.conta)
     if impedimento:
         return impedimento
+    if comando == VALIDADA:
+        return _pedir_validada(conversa)
     return {RESULTADOS: resultados, METAS: metas, VENDAS: vendas, TOP: top}[comando](conversa.conta)
+
+
+# --- Comissão validada de hoje -------------------------------------------------------------
+
+def _pedir_validada(conversa: Conversa) -> str:
+    """Responde na hora se a última busca na Shopee é recente; se não, pede uma e avisa que a
+    resposta vem quando ela terminar."""
+    from painel import resultados as res
+    from painel.models import SincronizacaoResultados
+
+    agora = timezone.now()
+    estado = SincronizacaoResultados.objects.filter(conta=conversa.conta).first()
+    if estado and estado.concluida_em and not estado.erro and not estado.aguardando \
+            and agora - estado.concluida_em < ATUALIZACAO_RECENTE:
+        return validada(conversa.conta)
+    if not (estado and estado.aguardando and not estado.pedido_curto):
+        res.pedir_atualizacao(conversa.conta)  # a de 30 dias: a curta não pega validação de compra antiga
+    if not conversa.validada_pedida_em:
+        conversa.validada_pedida_em = agora
+        conversa.save(update_fields=["validada_pedida_em", "atualizada_em"])
+    return "Buscando a comissão validada de hoje na Shopee ⏳ Em até 1 minuto te mando aqui."
+
+
+def validadas_prontas(agora=None) -> list[tuple[Conversa, str]]:
+    """Conversas esperando a validada cuja busca na Shopee terminou (ou passou da espera):
+    (conversa, resposta). Já limpa o pedido de cada uma."""
+    from painel.models import SincronizacaoResultados
+
+    agora = agora or timezone.now()
+    prontas = []
+    for conversa in Conversa.objects.filter(validada_pedida_em__isnull=False).select_related("conta")[:20]:
+        pedida = conversa.validada_pedida_em
+        estado = SincronizacaoResultados.objects.filter(conta_id=conversa.conta_id).first() if conversa.conta_id else None
+        terminou = bool(estado and estado.iniciada_em and estado.iniciada_em >= pedida
+                        and estado.concluida_em and estado.concluida_em >= estado.iniciada_em)
+        if not terminou and agora - pedida < ESPERA_PELA_SHOPEE and conversa.conta_id:
+            continue
+        conversa.validada_pedida_em = None
+        conversa.save(update_fields=["validada_pedida_em", "atualizada_em"])
+        if not conversa.conta_id:
+            continue  # desvinculou enquanto esperava
+        aviso = ""
+        if not terminou or (estado and estado.erro):
+            aviso = "A Shopee não respondeu agora, então esse é o número da última atualização."
+        prontas.append((conversa, validada(conversa.conta, aviso)))
+    return prontas
 
 
 # --- Vínculo -----------------------------------------------------------------------------
@@ -184,8 +239,10 @@ def ajuda(conta) -> str:
             "*metas*: como está a meta do mês\n"
             "*vendas*: os produtos vendidos ontem\n"
             "*top*: os mais vendidos dos últimos 7 dias\n"
+            "*validada*: a comissão validada de hoje\n"
             "*desvincular*: tira este número da sua conta\n\n"
-            "A Shopee libera as vendas de um dia na manhã seguinte, então os números vão até ontem.")
+            "A Shopee libera as vendas de um dia na manhã seguinte, então os números vão até ontem. "
+            "A exceção é a comissão validada, que sai no mesmo dia.")
 
 
 def resultados(conta) -> str:
@@ -206,6 +263,24 @@ def resultados(conta) -> str:
                    f"Comissão estimada: {brl(t['comissao_estimada'])}"]
     linhas.append(f"Comissão validada: {brl(blocos[2][1]['comissao_validada'])}")
     return _fechar(conta, linhas, "painel_resultados")
+
+
+def validada(conta, aviso: str = "") -> str:
+    from painel import resultados as res
+    from painel import telas
+
+    hoje = timezone.localdate()
+    ontem = hoje - timedelta(days=1)
+    linhas = [f"✅ *Comissão validada hoje ({hoje:%d/%m})*",
+              brl(res.totais(conta, hoje, hoje)["comissao_validada"]), "",
+              f"Ontem ({ontem:%d/%m}): {brl(res.totais(conta, ontem, ontem)['comissao_validada'])}",
+              f"{telas.nome_mes(hoje.year, hoje.month)} até agora: "
+              f"{brl(res.totais(conta, hoje.replace(day=1), hoje)['comissao_validada'])}", "",
+              "É o único número que a Shopee libera no mesmo dia: pedidos, faturamento e comissão estimada "
+              "de hoje saem amanhã de manhã."]
+    if aviso:
+        linhas += ["", aviso]
+    return _fechar(conta, linhas, "painel_resultados", aviso_de_ontem=False)
 
 
 def metas(conta) -> str:
@@ -305,14 +380,14 @@ def _url(nome: str) -> str:
     return url_do_painel(nome)
 
 
-def _fechar(conta, linhas: list[str], tela: str, sufixo: str = "") -> str:
+def _fechar(conta, linhas: list[str], tela: str, sufixo: str = "", aviso_de_ontem: bool = True) -> str:
     """Rodapé: quando os números foram buscados na Shopee, aviso de ontem ainda zerado e o link."""
     from painel import relatorio
     from painel.models import SincronizacaoResultados
 
     agora = timezone.localtime()
     rodape = []
-    if agora.hour < 12 and not relatorio.numeros_de_ontem_sairam(conta, agora.date()):
+    if aviso_de_ontem and agora.hour < 12 and not relatorio.numeros_de_ontem_sairam(conta, agora.date()):
         rodape.append("Ontem ainda aparece zerado? A Shopee costuma liberar as vendas do dia anterior entre 7h e 8h.")
     estado = SincronizacaoResultados.objects.filter(conta=conta).first()
     if estado and estado.concluida_em:
