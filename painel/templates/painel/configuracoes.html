@@ -60,16 +60,23 @@
 <section class="card" id="whatsapp" aria-labelledby="titulo-whatsapp" style="margin-top:16px">
   <h2 id="titulo-whatsapp">Resultados no WhatsApp</h2>
   <p class="suave pequeno" style="margin-bottom:14px">Peça seus números pelo WhatsApp do Appfiliado ({{ whatsapp.numero }}): mande <strong>resultados</strong>, <strong>metas</strong>, <strong>vendas</strong>, <strong>top</strong> ou <strong>validada</strong> e a resposta chega na hora. Como a Shopee libera as vendas de um dia na manhã seguinte, os números vão até ontem. A exceção é a comissão validada, que sai no mesmo dia. Para buscar os dados mais novos na Shopee, mande <strong>atualizar</strong>.</p>
-  {% if whatsapp.vinculado %}
-  <p>Vinculado ao número <strong>{{ whatsapp.telefone|default:whatsapp.vinculado.nome|default:"do seu WhatsApp" }}</strong>{% if whatsapp.vinculado.vinculada_em %} desde {{ whatsapp.vinculado.vinculada_em|date:"d/m/Y" }}{% endif %}.</p>
-  <form method="post" class="botoes-linha" style="margin-top:12px">
+  {% if whatsapp.vinculados %}
+  <p class="pequeno" style="margin-bottom:4px"><strong>Números vinculados ({{ whatsapp.vinculados|length }} de {{ whatsapp.maximo }})</strong></p>
+  {% for numero in whatsapp.vinculados %}
+  <form method="post" style="display:flex;flex-wrap:wrap;gap:8px 12px;align-items:center;justify-content:space-between;padding:10px 0;border-top:1px solid var(--borda)">
     {% csrf_token %}
     <input type="hidden" name="formulario" value="whatsapp_desvincular">
-    <a class="botao botao-principal" href="{{ whatsapp.link }}" target="_blank" rel="noopener">Abrir o WhatsApp</a>
+    <input type="hidden" name="conversa" value="{{ numero.pk }}">
+    <span><strong>{{ numero.telefone }}</strong>{% if numero.desde %} <span class="suave pequeno">desde {{ numero.desde|date:"d/m/Y" }}</span>{% endif %}</span>
     <button type="submit" class="botao botao-claro">Desvincular</button>
   </form>
+  {% endfor %}
+  {% endif %}
+  {% if not whatsapp.pode_vincular %}
+  <p class="suave pequeno" style="margin-top:8px">Sua conta já tem {{ whatsapp.maximo }} números vinculados, o máximo. Para vincular outro, desvincule um deles.</p>
+  <div class="botoes-linha" style="margin-top:12px"><a class="botao botao-principal" href="{{ whatsapp.link }}" target="_blank" rel="noopener">Abrir o WhatsApp</a></div>
   {% elif whatsapp.codigo %}
-  <p>Seu código: <strong style="font-size:1.4em;letter-spacing:.12em">{{ whatsapp.codigo.codigo }}</strong></p>
+  <p{% if whatsapp.vinculados %} style="margin-top:12px"{% endif %}>Seu código: <strong style="font-size:1.4em;letter-spacing:.12em">{{ whatsapp.codigo.codigo }}</strong></p>
   <p class="suave pequeno">Mande <strong>VINCULAR {{ whatsapp.codigo.codigo }}</strong> para o WhatsApp do Appfiliado, do número que vai pedir os resultados. O código vale até {{ whatsapp.vence_em|time:"H:i" }}.</p>
   <form method="post" class="botoes-linha" style="margin-top:12px">
     {% csrf_token %}
@@ -78,10 +85,10 @@
     <button type="submit" class="botao botao-claro">Gerar outro código</button>
   </form>
   {% else %}
-  <form method="post" class="botoes-linha">
+  <form method="post" class="botoes-linha"{% if whatsapp.vinculados %} style="margin-top:12px"{% endif %}>
     {% csrf_token %}
     <input type="hidden" name="formulario" value="whatsapp_codigo">
-    <button type="submit" class="botao botao-principal">Vincular meu WhatsApp</button>
+    <button type="submit" class="botao botao-principal">{% if whatsapp.vinculados %}Vincular outro número{% else %}Vincular meu WhatsApp{% endif %}</button>
   </form>
   {% endif %}
 </section>
