@@ -239,6 +239,33 @@ class TestComVinculo(BaseComandos):
         self.assertEqual(len(validadas), 1)
         self.assertIn("A Shopee não respondeu agora", validadas[0])
 
+    def test_atualizar_pede_a_busca_e_avisa_quando_termina(self):
+        self.assertIn("Atualizando seus dados com a Shopee", self.resposta("Atualizar"))
+        estado = SincronizacaoResultados.objects.get(conta=self.conta)
+        self.assertTrue(estado.aguardando)
+        self.assertFalse(estado.pedido_curto)  # a de 30 dias, como o botão do painel
+        self.assertEqual([t for t in self.volta(AGORA + timedelta(seconds=20)) if "✅ Pronto" in t], [])
+        SincronizacaoResultados.objects.filter(conta=self.conta).update(
+            iniciada_em=AGORA + timedelta(seconds=30), concluida_em=AGORA + timedelta(seconds=50))
+        prontas = [t for t in self.volta(AGORA + timedelta(minutes=1)) if "✅ Pronto" in t]
+        self.assertEqual(prontas, ["✅ Pronto! Seus dados foram atualizados com a Shopee às 15:00. Mande *resultados*, "
+                                   "*vendas*, *top*, *metas* ou *validada* para ver os números."])
+        self.assertIsNone(Conversa.objects.get().atualizacao_pedida_em)
+        # Logo depois, não pede outra busca.
+        with mock.patch("django.utils.timezone.now", return_value=AGORA + timedelta(minutes=1)):
+            self.assertIn("já estão atualizados com a Shopee (às 15:00)", self.resposta("atualizar"))
+
+    def test_atualizar_com_erro_ou_demora_da_shopee(self):
+        self.resposta("atualizar")
+        SincronizacaoResultados.objects.filter(conta=self.conta).update(
+            iniciada_em=AGORA + timedelta(seconds=30), concluida_em=AGORA + timedelta(seconds=50), erro="fora")
+        self.assertIn("Não consegui atualizar com a Shopee agora", "".join(self.volta(AGORA + timedelta(minutes=1))))
+        SincronizacaoResultados.objects.filter(conta=self.conta).update(erro="", iniciada_em=None)
+        with mock.patch("django.utils.timezone.now", return_value=AGORA + timedelta(minutes=2)):
+            self.resposta("atualizar")
+        self.assertNotIn("demorando", "".join(self.volta(AGORA + timedelta(minutes=5))))
+        self.assertIn("A Shopee está demorando", "".join(self.volta(AGORA + timedelta(minutes=8))))
+
     def test_desvincular(self):
         self.assertIn("não está mais ligado", self.resposta("desvincular"))
         self.assertIsNone(Conversa.objects.get().conta)
