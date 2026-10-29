@@ -28,7 +28,7 @@ O caminho tem três partes:
 
 1. Entre em **developers.facebook.com › Meus apps › Criar app**.
 2. **Detalhes do app**
-   - Nome do app: **Appfiliado Anúncios** (é o nome interno, só você vê).
+   - Nome do app: **Appfiliado Anúncios**.
    - E-mail de contato: o mesmo do app do Instagram.
 3. **Casos de uso:** marque **"Mensurar dados de desempenho do anúncio com a API de Marketing"** (em
    inglês, *Measure ad performance data with Marketing API*). É o caso de uso de leitura.
@@ -48,7 +48,8 @@ O caminho tem três partes:
 ## 3. Configurar o app
 
 **Configurações do app › Básico**
-- [ ] **Nome de exibição: Appfiliado** (é o que aparece na tela de consentimento do Facebook).
+- [ ] **Nome de exibição: Appfiliado Anúncios** (é o que aparece na tela de consentimento do Facebook;
+  fica diferente do app do Instagram e deixa claro para que é a conexão).
 - [ ] **Ícone:** o mesmo ícone do Appfiliado (1024×1024).
 - [ ] **Categoria:** Negócios e páginas.
 - [ ] **URL da Política de Privacidade:** `https://appfiliado.com.br/privacidade/`
@@ -223,7 +224,7 @@ dias.
 **O que fazer**
 1. Clique em **Conectar Meta Ads**. A janela do Facebook abre com a tela de login.
 2. Digite o e-mail e a senha do Facebook e entre (e o código, se pedir).
-3. Na tela que mostra **Appfiliado** e o que ele pede: **pare por 8 segundos** e passe o mouse sobre o
+3. Na tela que mostra **Appfiliado Anúncios** e o que ele pede: **pare por 8 segundos** e passe o mouse sobre o
    item dos **anúncios**.
 4. Na escolha de ativos, marque a **conta de anúncios** e mostre por 3 segundos.
 5. Clique em **Continuar** / **Salvar**. A janela fecha e o Appfiliado mostra a conta conectada.
@@ -234,7 +235,7 @@ dias.
 **O que falar**
 > "I click 'Conectar Meta Ads'. Facebook Login for Business opens in a new window. Since I'm logged
 > out, I log in with my Facebook account.
-> [consent screen] This is the consent screen. Facebook shows that Appfiliado is requesting access to
+> [consent screen] This is the consent screen. Facebook shows that Appfiliado Anúncios, our app for ads, is requesting access to
 > my ads and their performance. This is ads_read, read-only. Appfiliado does not request permission to
 > manage ads. [assets] I choose which ad account Appfiliado can read, and I continue.
 > [back] The window closes and Appfiliado shows the connected ad account."
