@@ -1,7 +1,8 @@
 import io
-from datetime import timedelta
+from datetime import datetime, timedelta
 from decimal import Decimal
 from unittest import mock
+from zoneinfo import ZoneInfo
 
 from django.core.cache import cache
 from django.core.files.uploadedfile import SimpleUploadedFile
@@ -64,14 +65,18 @@ class TestVitrineDoBot(TestCase):
         grupos = [{"jid": "1@g.us", "nome": "VIP"}, {"jid": "2@g.us", "nome": "Achados"}]
         ConexaoWhatsApp.objects.create(conta=conta, estado="conectado", grupos=grupos)
         config = ConfiguracaoOfertas.objects.create(conta=conta, ativo=True, grupos=grupos, intervalo_minutos=5)
+        # Hora fixa dentro da janela de envio (padrão 7h às 23h): com o relógio de verdade, falhava de madrugada.
+        agora = datetime(2026, 10, 28, 15, 0, tzinfo=ZoneInfo("America/Sao_Paulo"))
         with mock.patch.object(shopee_ofertas, "gerar_link_afiliado", return_value="https://s.shopee.com.br/x"), \
-                mock.patch.object(shopee_ofertas, "buscar_produtos", return_value=([produto(7)], False)):
-            ofertas.Motor().uma_volta()
+                mock.patch.object(shopee_ofertas, "buscar_produtos", return_value=([produto(7)], False)), \
+                mock.patch("django.utils.timezone.now", return_value=agora):
+            ofertas.Motor().uma_volta(agora)
         self.assertEqual(list(site.produtos.values_list("item_id", flat=True)), ["7"])  # 2 grupos, 1 produto
         ConfiguracaoOfertas.objects.filter(pk=config.pk).update(simulacao=True, proximo_envio_em=None)
         with mock.patch.object(shopee_ofertas, "gerar_link_afiliado", return_value="https://s.shopee.com.br/x"), \
-                mock.patch.object(shopee_ofertas, "buscar_produtos", return_value=([produto(8)], False)):
-            ofertas.Motor().uma_volta()
+                mock.patch.object(shopee_ofertas, "buscar_produtos", return_value=([produto(8)], False)), \
+                mock.patch("django.utils.timezone.now", return_value=agora):
+            ofertas.Motor().uma_volta(agora)
         self.assertFalse(site.produtos.filter(item_id="8").exists())
 
 
