@@ -550,6 +550,15 @@ class PedidoGrupo(models.Model):
         return f"{self.conta.email} - {self.nome} ({self.estado})"
 
 
+def beneficios_padrao():
+    return ["🏷️ Cupons e descontos de até 70%", "⚡ Ofertas relâmpago na hora em que saem",
+            "🔇 Grupo silencioso: só os administradores enviam", "🚪 Saia quando quiser, sem compromisso"]
+
+
+def selos_padrao():
+    return ["🔥 Ofertas todo dia", "🔇 Só admins enviam", "✅ Grátis"]
+
+
 class LinkEntrada(models.Model):
     """Link de entrada nos grupos (bot_whatsapp/entrada.py): uma página leve no endereço do Meu site
     (seunome.appfiliado.com.br/g/<slug>/) para colocar no anúncio. Registra a visita no pixel do
@@ -562,6 +571,23 @@ class LinkEntrada(models.Model):
     texto_botao = models.CharField("texto do botão", max_length=40, default="Entrar no grupo")
     foto = models.BinaryField(null=True, blank=True)  # JPEG pequeno; sem foto, usa a do Meu site
     foto_versao = models.PositiveIntegerField(default=0)
+    # Aparência (meusite/templates/meusite/entrada.html). cor vazia = a cor do Meu site.
+    MODELO_CLASSICO, MODELO_COLORIDO, MODELO_BENEFICIOS, MODELO_VITRINE = "classico", "colorido", "beneficios", "vitrine"
+    MODELOS = [(MODELO_CLASSICO, "Clássico"), (MODELO_COLORIDO, "Colorido"), (MODELO_BENEFICIOS, "Benefícios"),
+               (MODELO_VITRINE, "Vitrine")]
+    modelo = models.CharField(max_length=12, choices=MODELOS, default=MODELO_CLASSICO)
+    cor = models.CharField(max_length=7, blank=True)
+    nome_exibido = models.CharField("nome ou @", max_length=60, blank=True)
+    beneficios = models.JSONField(default=beneficios_padrao, blank=True)  # até 4 linhas, com emoji na frente
+    selos = models.JSONField(default=selos_padrao, blank=True)  # até 3
+    mostrar_selos = models.BooleanField(default=False)
+    mostrar_total = models.BooleanField("mostrar quantas pessoas estão nos grupos", default=False)
+    mostrar_vagas = models.BooleanField("mostrar as vagas do grupo da vez", default=False)
+    mostrar_ofertas = models.BooleanField("mostrar ofertas da vitrine", default=False)
+    mostrar_redes = models.BooleanField("mostrar as redes do Meu site", default=False)
+    mostrar_capa = models.BooleanField(default=False)
+    capa = models.BinaryField(null=True, blank=True)  # JPEG 1200x600; sem ela, a capa usa fotos das ofertas
+    capa_versao = models.PositiveIntegerField(default=0)
     pixel_id = models.CharField("ID do pixel do Meta", max_length=20, blank=True)
     grupos = models.JSONField(default=list, blank=True)  # jids; enchem na ordem do nome (#1, #2...)
     limite_por_grupo = models.PositiveIntegerField(default=1000, help_text="O WhatsApp aceita até 1.024 pessoas por grupo.")

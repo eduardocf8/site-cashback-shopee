@@ -16,6 +16,7 @@ urlpatterns = [
     path("g/<slug:slug>/", entrada.pagina, name="entrada_pagina"),
     path("g/<slug:slug>/entrar/", entrada.entrar, name="entrada_entrar"),
     path("g/<slug:slug>/foto.jpg", entrada.foto, name="entrada_foto"),
+    path("g/<slug:slug>/capa.jpg", entrada.capa, name="entrada_capa"),
 ]
 
 handler404 = "meusite.publico.nao_encontrado"

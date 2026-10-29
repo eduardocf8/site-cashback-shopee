@@ -207,7 +207,7 @@ class BotaoForm(forms.ModelForm):
 class FotoForm(forms.Form):
     foto = forms.ImageField(label="Foto")
 
-    TAMANHO = 320
+    TAMANHO = (320, 320)
     MAXIMO_MB = 5
 
     def clean_foto(self):
@@ -220,7 +220,13 @@ class FotoForm(forms.Form):
         if aberta.size[0] * aberta.size[1] > 30_000_000:  # "bomba" de pixels: estoura a memória ao abrir
             raise forms.ValidationError("Essa foto é grande demais. Use uma de até 30 megapixels.")
         imagem = ImageOps.exif_transpose(aberta).convert("RGB")
-        imagem = ImageOps.fit(imagem, (self.TAMANHO, self.TAMANHO), Image.LANCZOS)
+        imagem = ImageOps.fit(imagem, self.TAMANHO, Image.LANCZOS)
         saida = io.BytesIO()
         imagem.save(saida, "JPEG", quality=85, optimize=True)
         return saida.getvalue()
+
+
+class CapaForm(FotoForm):
+    """Capa do link de entrada: faixa larga (2 por 1) no topo da página."""
+
+    TAMANHO = (1200, 600)

@@ -117,6 +117,61 @@ class TestPainel(BaseEntrada):
         self.assertFalse(LinkEntrada.objects.exists())
 
 
+class TestAparencia(BaseEntrada):
+    def salvar(self, link, **extra):
+        dados = {"acao": "salvar", "ativo": "on", "slug": link.slug, "titulo": "Grupo VIP", "frase": "", "texto_botao": "Entrar",
+                 "pixel_id": "", "limite_por_grupo": "1000", "grupos": list(link.grupos), "modelo": "beneficios",
+                 "cor": "outra", "cor_outra": "#123abc", "nome_exibido": "@bia", "beneficios": ["🏷️ Cupons", "", "⚡ Relâmpago", ""],
+                 "selos": ["🔥 Todo dia", "", ""], "mostrar_selos": "on", "mostrar_total": "on"}
+        dados.update(extra)
+        return self.client.post(f"/whatsapp/entrada/{link.pk}/", dados)
+
+    def test_salva_modelo_cor_textos_e_blocos(self):
+        link = self.criar_link()
+        self.salvar(link)
+        link.refresh_from_db()
+        self.assertEqual((link.modelo, link.cor, link.nome_exibido, link.beneficios, link.selos),
+                         ("beneficios", "#123ABC", "@bia", ["🏷️ Cupons", "⚡ Relâmpago"], ["🔥 Todo dia"]))
+        self.assertEqual((link.mostrar_selos, link.mostrar_total, link.mostrar_vagas), (True, True, False))
+        self.salvar(link, cor="", modelo="invalido")  # a cor do Meu site; modelo desconhecido não muda
+        link.refresh_from_db()
+        self.assertEqual((link.modelo, link.cor), ("beneficios", ""))
+
+    def test_previa_mostra_sem_salvar(self):
+        link = self.criar_link()
+        html = self.client.get(f"/whatsapp/entrada/{link.pk}/previa/", {
+            "modelo": "colorido", "titulo": "Teste ao vivo", "cor": "#7048E8", "mostrar_selos": "on", "selos": ["Grátis"]}).content.decode()
+        self.assertIn('class="m-colorido', html)
+        self.assertIn("Teste ao vivo", html)
+        self.assertIn("<span>Grátis</span>", html)
+        self.assertNotIn("fbq(", html)  # a prévia não dispara o pixel
+        link.refresh_from_db()
+        self.assertEqual((link.modelo, link.titulo), ("classico", "Grupo VIP de Achadinhos"))
+
+    def test_capa_propria_ou_fotos_das_ofertas(self):
+        from meusite.models import ProdutoSite
+
+        link = self.criar_link(mostrar_capa=True, modelo="vitrine")
+        site = SiteAfiliado.objects.get(conta=self.conta)
+        site.vitrine = "bot"
+        site.save()
+        for i in range(5):
+            ProdutoSite.objects.create(site=site, fonte="bot", item_id=str(i), nome=f"Produto {i}", preco=10,
+                                       imagem_url=f"https://cf.shopee.com.br/file/{i}", link_produto="https://shopee.com.br/x",
+                                       posicao_em=timezone.now() - timedelta(minutes=i))
+        html = self.client.get(f"/whatsapp/entrada/{link.pk}/previa/").content.decode()
+        self.assertIn('<div class="capa">', html)  # sem capa própria: fotos das ofertas
+        self.assertEqual(html.count('class="oferta"'), 4)  # modelo Vitrine
+        arquivo = io.BytesIO()
+        Image.new("RGB", (1600, 900), "blue").save(arquivo, "PNG")
+        self.client.post(f"/whatsapp/entrada/{link.pk}/", {
+            "acao": "capa", "foto": SimpleUploadedFile("c.png", arquivo.getvalue(), content_type="image/png")})
+        link.refresh_from_db()
+        self.assertEqual(Image.open(io.BytesIO(bytes(link.capa))).size, (1200, 600))
+        self.assertIn('class="capa inteira"', self.client.get(f"/whatsapp/entrada/{link.pk}/previa/").content.decode())
+        self.assertEqual(self.client.get(f"/whatsapp/entrada/{link.pk}/capa.jpg").content, bytes(link.capa))
+
+
 class TestPaginaPublica(BaseEntrada):
     def setUp(self):
         super().setUp()
@@ -132,6 +187,24 @@ class TestPaginaPublica(BaseEntrada):
         self.client.get("/s/achadinhosdabia/g/grupo-vip/", HTTP_USER_AGENT="facebookexternalhit/1.1")  # prévia do Meta
         self.assertEqual(AcessoEntrada.objects.get(campanha="black").visitas, 1)
         self.assertEqual(sum(AcessoEntrada.objects.values_list("visitas", flat=True)), 1)
+
+    def test_blocos_de_total_e_vagas_com_os_numeros_reais(self):
+        self.membros("1@g.us", 1000)
+        self.membros("2@g.us", 870)
+        self.membros("10@g.us", 377)
+        self.link.mostrar_total = self.link.mostrar_vagas = True
+        self.link.save()
+        html = self.client.get("/s/achadinhosdabia/g/grupo-vip/", **NAVEGADOR).content.decode()
+        self.assertIn("Mais de 2.200 pessoas já estão nos grupos", html)  # 2.247, arredondado para baixo
+        self.assertIn("Vagas preenchidas no Achadinhos #2", html)
+        self.assertIn("870 de 1.000 pessoas", html)
+
+    def test_os_quatro_modelos_abrem(self):
+        for modelo in ("classico", "colorido", "beneficios", "vitrine"):
+            LinkEntrada.objects.filter(pk=self.link.pk).update(modelo=modelo)
+            resposta = self.client.get("/s/achadinhosdabia/g/grupo-vip/", **NAVEGADOR)
+            self.assertContains(resposta, f'class="m-{modelo}')
+            self.assertContains(resposta, 'href="entrar/"')
 
     def test_entrar_manda_pro_primeiro_com_vaga_na_ordem(self):
         self.membros("1@g.us", 1000)  # cheio

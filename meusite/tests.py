@@ -1,5 +1,5 @@
 import io
-from datetime import timedelta
+from datetime import time, timedelta
 from decimal import Decimal
 from unittest import mock
 
@@ -64,7 +64,8 @@ class TestVitrineDoBot(TestCase):
         conta, site = conta_com_site()
         grupos = [{"jid": "1@g.us", "nome": "VIP"}, {"jid": "2@g.us", "nome": "Achados"}]
         ConexaoWhatsApp.objects.create(conta=conta, estado="conectado", grupos=grupos)
-        config = ConfiguracaoOfertas.objects.create(conta=conta, ativo=True, grupos=grupos, intervalo_minutos=5)
+        config = ConfiguracaoOfertas.objects.create(conta=conta, ativo=True, grupos=grupos, intervalo_minutos=5,
+                                                    horario_inicio=time(0, 0), horario_fim=time(23, 59))  # roda a qualquer hora
         with mock.patch.object(shopee_ofertas, "gerar_link_afiliado", return_value="https://s.shopee.com.br/x"), \
                 mock.patch.object(shopee_ofertas, "buscar_produtos", return_value=([produto(7)], False)):
             ofertas.Motor().uma_volta()
