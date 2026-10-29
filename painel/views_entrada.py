@@ -8,12 +8,15 @@ from django.contrib import messages
 from django.http import Http404, HttpResponse
 from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import reverse
+from django.views.decorators.clickjacking import xframe_options_sameorigin
 
 from bot_whatsapp import entrada, grupos_novos, membros
 from bot_whatsapp.models import ConviteGrupo, LinkEntrada
 from bot_whatsapp.servico import conexao_da
-from meusite.forms import PADRAO_ENDERECO, FotoForm
-from meusite.models import ENDERECOS_RESERVADOS, PEDACOS_RESERVADOS, SiteAfiliado
+from meusite import cores
+from meusite import entrada as pagina_publica
+from meusite.forms import PADRAO_ENDERECO, CapaForm, FotoForm
+from meusite.models import CORES, ENDERECOS_RESERVADOS, PEDACOS_RESERVADOS, SiteAfiliado
 
 from .autenticacao import conta_logada, conta_requerida
 from .views import _contexto
@@ -87,6 +90,37 @@ def entrada_lista(request):
     ))
 
 
+COR_DO_SITE, OUTRA_COR = "", "outra"
+
+
+def _ler_aparencia(dados, link) -> list[str]:
+    """Modelo, cor, textos e blocos da página (o que a prévia ao vivo também usa). Muda o link
+    na memória; quem salva é quem chamou. Devolve os erros."""
+    erros = []
+    modelos = dict(LinkEntrada.MODELOS)
+    link.modelo = dados.get("modelo") if dados.get("modelo") in modelos else link.modelo
+    cor = str(dados.get("cor") or "")
+    if cor == OUTRA_COR:
+        cor = str(dados.get("cor_outra") or "").strip().upper()
+        if not cores.valida(cor):
+            erros.append("Escolha a outra cor no seletor.")
+            cor = link.cor
+    elif cor and cor not in dict(CORES):
+        cor = link.cor
+    link.cor = cor
+    link.titulo = " ".join(str(dados.get("titulo") or "").split())[:80]
+    if not link.titulo:
+        erros.append("Escreva o título da página.")
+    link.frase = " ".join(str(dados.get("frase") or "").split())[:200]
+    link.texto_botao = " ".join(str(dados.get("texto_botao") or "").split())[:40] or "Entrar no grupo"
+    link.nome_exibido = " ".join(str(dados.get("nome_exibido") or "").split())[:60]
+    link.beneficios = [t for t in (" ".join(str(b).split())[:80] for b in dados.getlist("beneficios")[:4]) if t]
+    link.selos = [t for t in (" ".join(str(b).split())[:30] for b in dados.getlist("selos")[:3]) if t]
+    for campo in ("mostrar_selos", "mostrar_total", "mostrar_vagas", "mostrar_ofertas", "mostrar_redes", "mostrar_capa"):
+        setattr(link, campo, dados.get(campo) == "on")
+    return erros
+
+
 def _salvar(request, conta, link) -> list[str]:
     """Lê o formulário do link. Devolve os erros (vazio = salvou)."""
     erros = []
@@ -108,14 +142,11 @@ def _salvar(request, conta, link) -> list[str]:
     admins, invalidos = grupos_novos.ler_numeros(dados.get("admins_dos_novos", ""))
     if invalidos:
         erros.append(f"Não entendi {', '.join(invalidos)} nos administradores. Use DDD e número, como (11) 98888-7777.")
-    titulo = " ".join(str(dados.get("titulo") or "").split())[:80]
-    if not titulo:
-        erros.append("Escreva o título da página.")
+    erros += _ler_aparencia(dados, link)
     if erros:
+        link.refresh_from_db()  # nada fica pela metade
         return erros
-    link.slug, link.titulo, link.pixel_id, link.limite_por_grupo = slug, titulo, pixel, limite
-    link.frase = " ".join(str(dados.get("frase") or "").split())[:200]
-    link.texto_botao = " ".join(str(dados.get("texto_botao") or "").split())[:40] or "Entrar no grupo"
+    link.slug, link.pixel_id, link.limite_por_grupo = slug, pixel, limite
     link.redirecionar = dados.get("redirecionar") == "on"
     link.ativo = dados.get("ativo") == "on"
     link.criar_sozinho = dados.get("criar_sozinho") == "on"
@@ -126,7 +157,11 @@ def _salvar(request, conta, link) -> list[str]:
 
 
 def _trocar_foto(request, link, acao) -> None:
-    """Foto própria do link (mesmo recorte do Meu site). Sem ela, a página usa a foto do Meu site."""
+    """Foto própria do link (mesmo recorte do Meu site; sem ela, a página usa a foto do Meu site)
+    e a capa (2 por 1; sem ela, a capa usa fotos das ofertas)."""
+    if acao in ("capa", "remover_capa"):
+        _trocar_capa(request, link, acao)
+        return
     if acao == "remover_foto":
         link.foto, link.foto_versao = None, link.foto_versao + 1
         link.save(update_fields=["foto", "foto_versao", "atualizado_em"])
@@ -140,6 +175,48 @@ def _trocar_foto(request, link, acao) -> None:
     else:
         messages.error(request, " ".join(e for erros in form.errors.values() for e in erros)
                        or "Não consegui abrir essa imagem. Use JPG ou PNG.")
+
+
+def _trocar_capa(request, link, acao) -> None:
+    if acao == "remover_capa":
+        link.capa, link.capa_versao = None, link.capa_versao + 1
+        link.save(update_fields=["capa", "capa_versao", "atualizado_em"])
+        messages.success(request, "Capa tirada. Com a capa ligada, ela usa fotos das ofertas.")
+        return
+    form = CapaForm(request.POST, request.FILES)
+    if form.is_valid():
+        link.capa, link.capa_versao, link.mostrar_capa = form.cleaned_data["foto"], link.capa_versao + 1, True
+        link.save(update_fields=["capa", "capa_versao", "mostrar_capa", "atualizado_em"])
+        messages.success(request, "Capa trocada.")
+    else:
+        messages.error(request, " ".join(e for erros in form.errors.values() for e in erros)
+                       or "Não consegui abrir essa imagem. Use JPG ou PNG.")
+
+
+@conta_requerida
+def entrada_capa(request, pk):
+    conta = _conta_com_beta(request)
+    link = get_object_or_404(LinkEntrada, pk=pk, conta=conta)
+    if not link.capa:
+        raise Http404
+    return HttpResponse(bytes(link.capa), content_type="image/jpeg")
+
+
+@conta_requerida
+@xframe_options_sameorigin
+def entrada_previa(request, pk):
+    """A página do link como fica, para a prévia ao vivo do painel. Com os campos do formulário
+    na URL, mostra o que a pessoa está editando (sem salvar)."""
+    conta = _conta_com_beta(request)
+    link = get_object_or_404(LinkEntrada, pk=pk, conta=conta)
+    site = SiteAfiliado.objects.filter(conta=conta).first() or SiteAfiliado(conta=conta)
+    if "modelo" in request.GET:
+        _ler_aparencia(request.GET, link)
+        link.titulo = link.titulo or "Título da página"
+    base = reverse("painel_whatsapp_entrada_link", args=[link.pk])
+    return render(request, "meusite/entrada.html", pagina_publica.montar(
+        link, site, previa=True, foto_url=f"{base}foto.jpg?v={link.foto_versao}-{site.foto_versao}",
+        capa_url=f"{base}capa.jpg?v={link.capa_versao}"))
 
 
 @conta_requerida
@@ -178,7 +255,7 @@ def entrada_link(request, pk):
                 convite.save()
                 messages.success(request, "Link de convite salvo." if texto else "O Appfiliado volta a ler o link sozinho.")
             return redirect(reverse("painel_whatsapp_entrada_link", args=[link.pk]) + "#grupos-do-link")
-        if acao in ("foto", "remover_foto"):
+        if acao in ("foto", "remover_foto", "capa", "remover_capa"):
             _trocar_foto(request, link, acao)
             return redirect(reverse("painel_whatsapp_entrada_link", args=[link.pk]) + "#titulo-pagina")
         erros = _salvar(request, conta, link)
@@ -195,4 +272,8 @@ def entrada_link(request, pk):
         admins=", ".join(grupos_novos._telefone(n) for n in link.admins_dos_novos or []),
         nomes={g["jid"]: g["nome"] for g in estado["grupos"]}, folga=entrada.FOLGA,
         limite_do_whatsapp=membros.LIMITE_DO_WHATSAPP, conexao=conexao,
+        cores=CORES, cor_do_site=(site.cor if site else "") or "#E8541E", modelos=LinkEntrada.MODELOS,
+        cor_outra=link.cor if link.cor and link.cor not in dict(CORES) else "",
+        beneficios=(link.beneficios + [""] * 4)[:4], selos=(link.selos + [""] * 3)[:3],
+        url_previa=reverse("painel_whatsapp_entrada_previa", args=[link.pk]),
     ))

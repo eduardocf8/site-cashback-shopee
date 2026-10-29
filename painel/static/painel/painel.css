@@ -1029,3 +1029,12 @@ form[data-metas] .grade-campos { display: grid; grid-template-columns: 1fr 1fr; 
 .foto-acoes .ajuda { font-size: 12px; color: var(--suave); }
 .sem-margem { margin: 0; }
 .acoes-form { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
+/* Editor do link de entrada: aparência e blocos */
+fieldset.sem-borda { border: 0; padding: 0; margin: 0; min-width: 0; }
+fieldset.sem-borda > legend { padding: 0; margin-bottom: 8px; }
+.campo-solto { width: 100%; min-height: 44px; padding: 0 14px; border-radius: 10px; border: 1px solid var(--borda); background: var(--campo); font: inherit; color: inherit; }
+.campo-solto:focus { outline: 2px solid var(--verde); outline-offset: 1px; background: #fff; }
+.recuo { margin: -10px 0 0 28px; }
+[data-modelo-ajuda] { display: none; }
+[data-modelo-ajuda].ativa { display: block; }
+.bloco-campo > .ajuda { font-size: 12px; color: var(--suave); }

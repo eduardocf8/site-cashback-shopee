@@ -1,5 +1,5 @@
 import io
-from datetime import timedelta
+from datetime import time, timedelta
 from decimal import Decimal
 from unittest import mock
 
@@ -10,6 +10,7 @@ from django.utils import timezone
 from PIL import Image
 
 from bot_whatsapp import shopee_ofertas
+from licencas import planos
 from licencas.models import ContaAppfiliado
 from painel import cripto
 from painel.tests import HOST, BasePainel
@@ -37,16 +38,16 @@ def conta_com_site(email="bia@exemplo.com", modulos="site,whatsapp", **campos):
 
 
 class TestVitrineDoBot(TestCase):
-    def test_entra_no_topo_sem_duplicar_e_fica_com_as_100_mais_recentes(self):
-        conta, site = conta_com_site()
+    def test_entra_no_topo_sem_duplicar_e_fica_com_as_200_mais_recentes(self):
+        conta, site = conta_com_site()  # Standard: até 200
         agora = timezone.now()
-        for i in range(105):
+        for i in range(205):
             vitrine.registrar_do_bot(conta, produto(i), agora + timedelta(seconds=i))
-        self.assertEqual(site.produtos.count(), 100)
+        self.assertEqual(site.produtos.count(), 200)
         self.assertFalse(site.produtos.filter(item_id__in=["0", "4"]).exists())  # as mais antigas saíram
-        self.assertEqual(site.produtos.first().item_id, "104")
+        self.assertEqual(site.produtos.first().item_id, "204")
         vitrine.registrar_do_bot(conta, produto(50, preco=49.9), agora + timedelta(minutes=10))  # reenviado
-        self.assertEqual(site.produtos.count(), 100)
+        self.assertEqual(site.produtos.count(), 200)
         topo = site.produtos.first()
         self.assertEqual((topo.item_id, topo.preco, topo.preco_original, topo.desconto), ("50", Decimal("49.90"), Decimal("166.33"), 70))
 
@@ -63,7 +64,8 @@ class TestVitrineDoBot(TestCase):
         conta, site = conta_com_site()
         grupos = [{"jid": "1@g.us", "nome": "VIP"}, {"jid": "2@g.us", "nome": "Achados"}]
         ConexaoWhatsApp.objects.create(conta=conta, estado="conectado", grupos=grupos)
-        config = ConfiguracaoOfertas.objects.create(conta=conta, ativo=True, grupos=grupos, intervalo_minutos=5)
+        config = ConfiguracaoOfertas.objects.create(conta=conta, ativo=True, grupos=grupos, intervalo_minutos=5,
+                                                    horario_inicio=time(0, 0), horario_fim=time(23, 59))  # roda a qualquer hora
         with mock.patch.object(shopee_ofertas, "gerar_link_afiliado", return_value="https://s.shopee.com.br/x"), \
                 mock.patch.object(shopee_ofertas, "buscar_produtos", return_value=([produto(7)], False)):
             ofertas.Motor().uma_volta()
@@ -73,6 +75,82 @@ class TestVitrineDoBot(TestCase):
                 mock.patch.object(shopee_ofertas, "buscar_produtos", return_value=([produto(8)], False)):
             ofertas.Motor().uma_volta()
         self.assertFalse(site.produtos.filter(item_id="8").exists())
+
+
+@mock.patch.dict(planos.SITE[False], {"ofertas": 100})  # contas mais fáceis de conferir
+class TestVitrineEquilibrada(TestCase):
+    """As categorias não podem ficar com 40 ofertas de uma e 1 de outra."""
+
+    def contagem(self, site):
+        from collections import Counter
+
+        return Counter(site.produtos.values_list("categoria", flat=True))
+
+    def test_ofertas_em_geral_no_maximo_15_por_categoria(self):
+        _, site = conta_com_site(vitrine=SiteAfiliado.VITRINE_BUSCA)
+        # Os mais vendidos: as 3 primeiras páginas só de Beleza, depois de tudo um pouco.
+        cats = ["100631", "100636", "100013", "100639", "100637", "100010", "100638", "100001"]
+
+        def pagina(app_id, secret, config, n):
+            if n <= 3:
+                return [produto(n * 100 + i, categoria_id=100630) for i in range(50)], True
+            return [produto(n * 100 + i, categoria_id=int(cats[i % len(cats)])) for i in range(50)], n < 6
+
+        with mock.patch.object(shopee_ofertas, "buscar_produtos", side_effect=pagina):
+            vitrine.atualizar_busca(site, timezone.now())
+        contagem = self.contagem(site)
+        self.assertEqual(site.produtos.count(), 100)
+        self.assertEqual(contagem["100630"], 15)
+        self.assertEqual(max(contagem.values()), 15)
+
+    def test_ofertas_em_geral_completa_com_o_que_passou_do_teto(self):
+        _, site = conta_com_site(vitrine=SiteAfiliado.VITRINE_BUSCA)
+        with mock.patch.object(shopee_ofertas, "buscar_produtos",
+                               side_effect=lambda a, s, c, n: ([produto(n * 100 + i, categoria_id=100630) for i in range(50)], n < 2)):
+            vitrine.atualizar_busca(site, timezone.now())
+        self.assertEqual(site.produtos.count(), 100)  # só tinha Beleza: não deixa a vitrine com 15
+
+    def test_categorias_buscadas_uma_a_uma_e_divididas_por_igual(self):
+        _, site = conta_com_site(vitrine=SiteAfiliado.VITRINE_BUSCA, busca_tipo=SiteAfiliado.BUSCA_CATEGORIA,
+                                     categorias=["beleza", "pet"])
+        pedidas = []
+
+        def busca(app_id, secret, config, n):
+            pedidas.append((config.categoria_shopee, config.tipo_busca))
+            pet = config.categoria_shopee == "100631"  # Pet só tem 30
+            return [produto(int(config.categoria_shopee) * 1000 + n * 100 + i, categoria_id=int(config.categoria_shopee))
+                    for i in range(30 if pet else 50)], not pet and n < 2
+
+        with mock.patch.object(shopee_ofertas, "buscar_produtos", side_effect=busca):
+            vitrine.atualizar_busca(site, timezone.now())
+        self.assertEqual({c for c, _ in pedidas}, {"100630", "100631"})
+        self.assertEqual({t for _, t in pedidas}, {"geral"})  # sem o filtro pelo nome
+        contagem = self.contagem(site)
+        self.assertEqual(site.produtos.count(), 100)
+        self.assertEqual((contagem["100631"], contagem["100630"]), (30, 70))  # Pet só tinha 30: Beleza completa
+        ordem = list(site.produtos.order_by("-posicao_em").values_list("categoria", flat=True)[:4])
+        self.assertEqual(ordem, ["100630", "100631", "100630", "100631"])  # intercaladas
+
+    def test_tres_categorias_com_bastante_dividem_por_igual(self):
+        _, site = conta_com_site(vitrine=SiteAfiliado.VITRINE_BUSCA, busca_tipo=SiteAfiliado.BUSCA_CATEGORIA,
+                                     categorias=["beleza", "pet", "casa"])
+        with mock.patch.object(shopee_ofertas, "buscar_produtos", side_effect=lambda a, s_, c, n: (
+                [produto(int(c.categoria_shopee) * 1000 + n * 100 + i, categoria_id=int(c.categoria_shopee)) for i in range(50)], n < 2)):
+            vitrine.atualizar_busca(site, timezone.now())
+        self.assertEqual(sorted(self.contagem(site).values()), [33, 33, 34])
+
+    def test_vitrine_do_bot_tira_da_categoria_com_mais(self):
+        conta, site = conta_com_site()
+        agora = timezone.now()
+        for i in range(10):
+            vitrine.registrar_do_bot(conta, produto(1000 + i, categoria_id=100631), agora + timedelta(seconds=i))
+        for i in range(120):  # depois, o bot só manda Beleza
+            vitrine.registrar_do_bot(conta, produto(i, categoria_id=100630), agora + timedelta(minutes=1, seconds=i))
+        contagem = self.contagem(site)
+        self.assertEqual(site.produtos.count(), 100)
+        self.assertEqual((contagem["100631"], contagem["100630"]), (10, 90))  # as 10 de Pet ficaram
+        self.assertFalse(site.produtos.filter(item_id__in=["0", "29"]).exists())  # saíram as de Beleza mais antigas
+        self.assertTrue(site.produtos.filter(item_id="30").exists())
 
 
 class TestVitrineDoWorker(TestCase):
@@ -103,6 +181,54 @@ class TestVitrineDoWorker(TestCase):
         self.assertEqual(list(site.produtos.values_list("item_id", flat=True)), ["11", "22"])
         site.refresh_from_db()
         self.assertIn("Não achei 1 produto", site.vitrine_erro)
+
+
+class TestLimitesPorPlano(TestCase):
+    def busca(self, a, s, config, n):
+        return [produto(n * 100 + i, categoria_id=100630 + i % 9) for i in range(50)], True
+
+    def test_busca_com_200_no_standard_e_1000_no_premium(self):
+        _, site = conta_com_site(vitrine=SiteAfiliado.VITRINE_BUSCA)
+        with mock.patch.object(shopee_ofertas, "buscar_produtos", side_effect=self.busca):
+            vitrine.atualizar_busca(site, timezone.now())
+        self.assertEqual(site.produtos.count(), 200)
+        _, premium = conta_com_site("leo@exemplo.com", "site,site_sem_marca", endereco="leo", vitrine=SiteAfiliado.VITRINE_BUSCA)
+        with mock.patch.object(shopee_ofertas, "buscar_produtos", side_effect=self.busca):
+            vitrine.atualizar_busca(premium, timezone.now())
+        self.assertEqual(premium.produtos.count(), 1000)
+
+    def test_escolhidos_aos_poucos_ate_terminar(self):
+        links = "\n".join(f"https://shopee.com.br/p-i.1.{i}" for i in range(1, 121)) + "\nhttps://amazon.com/x"
+        _, site = conta_com_site(modulos="site,site_sem_marca", vitrine=SiteAfiliado.VITRINE_MANUAL,
+                                 pedido_vitrine_em=timezone.now(), links_manuais=links)
+        ProdutoSite.objects.create(site=site, fonte=SiteAfiliado.VITRINE_MANUAL, item_id="999", nome="Saiu da lista",
+                                   link_produto="https://shopee.com.br/x", posicao_em=timezone.now())
+        with mock.patch("bot_whatsapp.copia.identificar_produto", side_effect=lambda l: l.rsplit(".", 1)[-1] if "shopee" in l else ""), \
+                mock.patch.object(shopee_ofertas, "buscar_produto_por_item", side_effect=lambda a, s, i: produto(i)), \
+                mock.patch.object(shopee_ofertas, "gerar_link_afiliado", return_value="x"):
+            agora = timezone.now()
+            for volta in range(1, 3):
+                vitrine.uma_volta(agora + timedelta(seconds=volta))
+                site.refresh_from_db()
+                self.assertTrue(site.vitrine_pedida)  # ainda montando
+                self.assertEqual(site.manuais_rodada["feitos"], 50 * volta)
+            self.assertTrue(ProdutoSite.objects.filter(item_id="999").exists())  # só sai no fim
+            vitrine.uma_volta(agora + timedelta(seconds=3))
+        site.refresh_from_db()
+        self.assertFalse(site.vitrine_pedida)
+        self.assertEqual(site.manuais_rodada, {})
+        self.assertIn("Não achei 1 produto", site.vitrine_erro)
+        itens = list(site.produtos.values_list("item_id", flat=True))
+        self.assertEqual((len(itens), itens[0], itens[-1]), (120, "1", "120"))  # na ordem dos links
+
+    def test_formulario_barra_mais_de_1000_links(self):
+        conta, site = conta_com_site(modulos="site,site_sem_marca")
+        form = SiteForm({"endereco": "achadinhos", "publicado": "on", "nome": "Bia", "cor": "#E8541E", "sub_id": "site",
+                         "vitrine": "manual", "busca_tipo": "geral", "ordenacao": "mais_vendidos",
+                         "links_manuais": "\n".join(f"https://shopee.com.br/p-i.1.{i}" for i in range(1001))},
+                        instance=site, tem_bot=False, regras=planos.site(conta))
+        self.assertFalse(form.is_valid())
+        self.assertIn("São até 1.000 produtos. Você colou 1.001.", form.errors["links_manuais"][0])
 
 
 class TestFormularios(TestCase):
@@ -322,6 +448,16 @@ class TestSitePublico(TestCase):
             categoria="eletronicos", link_produto="https://shopee.com.br/p-i.9.1", link_afiliado="https://s.shopee.com.br/fone",
             posicao_em=timezone.now(),
         )
+
+    def test_vitrine_grande_aparece_de_60_em_60(self):
+        agora = timezone.now()
+        ProdutoSite.objects.bulk_create([ProdutoSite(
+            site=self.site, fonte="bot", item_id=str(100 + i), nome=f"Produto {i}", link_produto="https://shopee.com.br/x",
+            posicao_em=agora - timedelta(minutes=i)) for i in range(250)])
+        html = self.client.get("/s/achadinhos/").content.decode()
+        self.assertEqual(html.count('class="produto"'), 200)  # Standard: até 200
+        self.assertEqual(html.count('class="produto"') - html.count('" hidden>'), 60)
+        self.assertIn('id="ver-mais" data-por-vez="60">Ver mais ofertas', html)
 
     def test_pagina_conta_a_visita_e_mostra_a_marca(self):
         html = self.client.get("/s/achadinhos/").content.decode()

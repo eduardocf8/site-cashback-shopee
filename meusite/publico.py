@@ -54,12 +54,15 @@ def contar(site, tipo, alvo_id=0, alvo_nome=""):
     CliqueSite.objects.filter(pk=registro.pk).update(total=F("total") + 1)
 
 
+OFERTAS_POR_VEZ = 60  # a vitrine pode ter 1.000: o visitante vê de 60 em 60 ("Ver mais")
+
+
 def produtos_da_vitrine(site):
     if site.vitrine == SiteAfiliado.VITRINE_NENHUMA:
         return ProdutoSite.objects.none()
     if site.vitrine == SiteAfiliado.VITRINE_MANUAL and not planos.site_premium(site.conta):
         return ProdutoSite.objects.none()  # produtos escolhidos são do Premium (ex: o plano mudou)
-    return site.produtos.filter(fonte=site.vitrine)[: vitrine.LIMITE]
+    return site.produtos.filter(fonte=site.vitrine)[: vitrine.limite_de_ofertas(site)]
 
 
 @xframe_options_sameorigin  # a prévia do editor mostra o site num quadro, no próprio painel
@@ -80,6 +83,7 @@ def pagina(request, endereco=None):
         "botoes": site.botoes.all()[: regras["botoes"]],  # se o plano diminuiu, aparecem os primeiros
         "redes": site.lista_de_redes(),
         "produtos": produtos,
+        "por_vez": OFERTAS_POR_VEZ,
         "categorias": [(c, vitrine.nome_curto_da_categoria(c)) for c in categorias],
         "atualizado_em": max((p.posicao_em for p in produtos), default=None),
         "com_marca": not regras["premium"],

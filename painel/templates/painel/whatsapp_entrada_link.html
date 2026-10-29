@@ -63,29 +63,74 @@
   {% endif %}
 </section>
 
-<form method="post" class="formulario" style="margin-top:16px">
+<div class="duas-colunas site-editor" style="margin-top:16px">
+<form method="post" class="formulario" id="form-entrada">
   {% csrf_token %}
   <input type="hidden" name="acao" value="salvar">
   <section class="card secao-form" aria-labelledby="titulo-pagina">
-    <h2 id="titulo-pagina">Página</h2>
-    <label class="marcar"><input type="checkbox" name="ativo"{% if link.ativo %} checked{% endif %}><span>Link no ar</span></label>
+    <h2 id="titulo-pagina">Aparência</h2>
+    <fieldset class="bloco-campo sem-borda">
+      <legend class="rotulo">Modelo</legend>
+      <div class="opcoes-chip">{% for valor, nome in modelos %}<label class="chip-opcao"><input type="radio" name="modelo" value="{{ valor }}"{% if link.modelo == valor %} checked{% endif %}><span>{{ nome }}</span></label>{% endfor %}</div>
+      <span class="ajuda" data-modelo-ajuda="classico">Cartão branco no meio, com foto, título, frase e o botão. O mais leve.</span>
+      <span class="ajuda" data-modelo-ajuda="colorido">Fundo na cor que você escolher, como no Meu site.</span>
+      <span class="ajuda" data-modelo-ajuda="beneficios">Título forte, a lista do que a pessoa ganha ao entrar e o botão fixo embaixo.</span>
+      <span class="ajuda" data-modelo-ajuda="vitrine">Mostra ofertas da vitrine do Meu site: a pessoa vê o que vai receber no grupo.</span>
+    </fieldset>
+    <fieldset class="bloco-campo sem-borda">
+      <legend class="rotulo">Cor</legend>
+      <div class="cores-site">
+        <label class="cor-site" title="A cor do Meu site"><input type="radio" name="cor" value=""{% if not link.cor %} checked{% endif %}><span style="background:{{ cor_do_site }}" class="cor-do-site"></span></label>
+        {% for valor, nome in cores %}<label class="cor-site" title="{{ nome }}"><input type="radio" name="cor" value="{{ valor }}"{% if link.cor == valor %} checked{% endif %}><span style="background:{{ valor }}"></span></label>{% endfor %}
+        <label class="cor-site cor-outra" title="Outra cor"><input type="radio" name="cor" value="outra"{% if cor_outra %} checked{% endif %}><span></span></label><input type="color" name="cor_outra" id="seletor-cor" value="{{ cor_outra|default:'#E8541E' }}" aria-label="Escolher outra cor">
+      </div>
+      <span class="ajuda">A primeira é a cor do Meu site. A última abre o seletor para escolher qualquer cor.</span>
+    </fieldset>
     <div class="bloco-campo">
       <span class="rotulo">Foto</span>
       <div class="foto-editor">
-        <div class="foto-site" style="background:{{ site.cor|default:'#1F3A2E' }}">{% if link.foto or site.foto %}<img src="{% url 'painel_whatsapp_entrada_foto' link.pk %}?v={{ link.foto_versao }}-{{ site.foto_versao }}" alt="">{% else %}{{ link.titulo|slice:":1"|upper }}{% endif %}</div>
+        <div class="foto-site" style="background:{{ cor_do_site }}">{% if link.foto or site.foto %}<img src="{% url 'painel_whatsapp_entrada_foto' link.pk %}?v={{ link.foto_versao }}-{{ site.foto_versao }}" alt="">{% else %}{{ link.titulo|slice:":1"|upper }}{% endif %}</div>
         <div class="foto-acoes">
           <div class="botoes-linha">
             <label class="botao botao-claro botao-pequeno" for="campo-foto">{% if link.foto or site.foto %}Trocar foto{% else %}Escolher foto{% endif %}</label>
             <input type="file" id="campo-foto" name="foto" accept="image/*" form="form-foto" hidden>
             {% if link.foto and site.foto %}<button type="submit" form="form-remover-foto" class="link-botao pequeno">Usar a do Meu site</button>{% elif link.foto %}<button type="submit" form="form-remover-foto" class="link-botao pequeno">Tirar a foto</button>{% endif %}
           </div>
-          <span class="ajuda">{% if link.foto %}Foto só deste link.{% elif site.foto %}Por enquanto é a foto do Meu site. Troque se quiser outra só neste link.{% else %}Sem foto, a página mostra só o título.{% endif %}</span>
+          <span class="ajuda">{% if link.foto %}Foto só deste link.{% elif site.foto %}Por enquanto é a foto do Meu site. Troque se quiser outra só neste link.{% else %}Sem foto, a página mostra a inicial do título.{% endif %}</span>
         </div>
       </div>
     </div>
+    <div class="campo" data-modelos="colorido beneficios"><label for="nome_exibido">Nome ou @ (opcional)</label><input type="text" name="nome_exibido" id="nome_exibido" value="{{ link.nome_exibido }}" maxlength="60" placeholder="{{ site.nome|default:'@seuperfil' }}"><span class="ajuda">Em branco, usa o nome do Meu site.</span></div>
     <div class="campo"><label for="titulo">Título</label><input type="text" name="titulo" id="titulo" value="{{ link.titulo }}" maxlength="80"></div>
     <div class="campo"><label for="frase">Frase</label><input type="text" name="frase" id="frase" value="{{ link.frase }}" maxlength="200"></div>
+    <div class="bloco-campo" data-modelos="beneficios">
+      <span class="rotulo">Benefícios (até 4)</span>
+      {% for b in beneficios %}<input class="campo-solto" type="text" name="beneficios" value="{{ b }}" maxlength="80" aria-label="Benefício {{ forloop.counter }}" placeholder="Ex: 🏷️ Cupons e descontos de até 70%">{% endfor %}
+      <span class="ajuda">Comece com um emoji: ele vira o ícone da linha.</span>
+    </div>
     <div class="campo"><label for="texto_botao">Texto do botão</label><input type="text" name="texto_botao" id="texto_botao" value="{{ link.texto_botao }}" maxlength="40"></div>
+  </section>
+
+  <section class="card secao-form" aria-labelledby="titulo-blocos">
+    <h2 id="titulo-blocos">Blocos</h2>
+    <p class="suave pequeno sem-margem">Ligue o que quiser mostrar na página. Vale para qualquer modelo.</p>
+    <label class="marcar"><input type="checkbox" name="mostrar_selos" data-abre="selos"{% if link.mostrar_selos %} checked{% endif %}><span>Selos<span class="ajuda">Frases curtas em destaque, como "Ofertas todo dia".</span></span></label>
+    <div class="bloco-campo recuo" data-aberto-por="selos">{% for t in selos %}<input class="campo-solto" type="text" name="selos" value="{{ t }}" maxlength="30" aria-label="Selo {{ forloop.counter }}">{% endfor %}</div>
+    <label class="marcar"><input type="checkbox" name="mostrar_total"{% if link.mostrar_total %} checked{% endif %}><span>Quantas pessoas estão nos grupos<span class="ajuda">"Mais de 3.200 pessoas já estão nos grupos", com o total real dos grupos do link (aparece a partir de 50).</span></span></label>
+    <label class="marcar"><input type="checkbox" name="mostrar_vagas"{% if link.mostrar_vagas %} checked{% endif %}><span>Vagas do grupo da vez<span class="ajuda">Uma barra com quanto o grupo da vez já encheu, com o número real.</span></span></label>
+    <label class="marcar" data-modelos="classico colorido beneficios"><input type="checkbox" name="mostrar_ofertas"{% if link.mostrar_ofertas %} checked{% endif %}><span>Ofertas da vitrine<span class="ajuda">4 ofertas da vitrine do Meu site. No modelo Vitrine elas sempre aparecem.</span></span></label>
+    <label class="marcar"><input type="checkbox" name="mostrar_redes"{% if link.mostrar_redes %} checked{% endif %}><span>Redes sociais<span class="ajuda">Os ícones das redes que você preencheu no Meu site.</span></span></label>
+    <label class="marcar"><input type="checkbox" name="mostrar_capa" data-abre="capa"{% if link.mostrar_capa %} checked{% endif %}><span>Capa no topo<span class="ajuda">Uma imagem larga no alto da página. Sem imagem sua, a capa usa fotos das ofertas da vitrine.</span></span></label>
+    <div class="botoes-linha recuo" data-aberto-por="capa">
+      <label class="botao botao-claro botao-pequeno" for="campo-capa">{% if link.capa %}Trocar a imagem da capa{% else %}Escolher imagem da capa{% endif %}</label>
+      <input type="file" id="campo-capa" name="foto" accept="image/*" form="form-capa" data-form="form-capa" data-proporcao="2" hidden>
+      {% if link.capa %}<button type="submit" form="form-remover-capa" class="link-botao pequeno">Usar fotos das ofertas</button>{% endif %}
+    </div>
+  </section>
+
+  <section class="card secao-form" aria-labelledby="titulo-anuncio">
+    <h2 id="titulo-anuncio">Link e anúncio</h2>
+    <label class="marcar"><input type="checkbox" name="ativo"{% if link.ativo %} checked{% endif %}><span>Link no ar</span></label>
     <div class="campo"><label for="slug">Endereço do link</label><input type="text" name="slug" id="slug" value="{{ link.slug }}" maxlength="40" autocomplete="off" spellcheck="false" autocapitalize="none"><span class="ajuda">{{ site.endereco }}…/g/<strong>{{ link.slug }}</strong>/ · letras minúsculas, números e hífen. Trocar o endereço quebra o link que já está no anúncio.</span></div>
     <div class="campo"><label for="pixel_id">ID do pixel do Meta (opcional)</label><input type="text" name="pixel_id" id="pixel_id" value="{{ link.pixel_id }}" inputmode="numeric" placeholder="Ex: 123456789012345"><span class="ajuda">Fica no Gerenciador de Eventos do Meta. A página registra a visita (PageView) e o toque no botão (Lead).</span></div>
     <label class="marcar"><input type="checkbox" name="redirecionar"{% if link.redirecionar %} checked{% endif %}><span>Ir direto para o grupo, sem esperar o toque no botão<span class="ajuda">Cuidado: o Meta costuma barrar anúncios que levam a uma página que só redireciona. Com o botão é mais seguro.</span></span></label>
@@ -122,9 +167,20 @@
   </div>
 </form>
 
+<div class="coluna-lateral">
+  <section class="card previa-site" aria-labelledby="titulo-previa">
+    <div class="card-topo"><h2 id="titulo-previa">Prévia</h2><span class="suave pequeno">Muda enquanto você edita</span></div>
+    <div class="celular"><iframe id="previa" src="{{ url_previa }}" data-url="{{ url_previa }}" title="Prévia da página do link"></iframe></div>
+  </section>
+</div>
+</div>
+
 <form method="post" id="form-excluir" hidden onsubmit="return confirm('Excluir este link de entrada? O link do anúncio para de funcionar.');">{% csrf_token %}<input type="hidden" name="acao" value="excluir"></form>
 <form method="post" id="form-remover-foto" hidden>{% csrf_token %}<input type="hidden" name="acao" value="remover_foto"></form>
+<form method="post" enctype="multipart/form-data" id="form-capa" hidden>{% csrf_token %}<input type="hidden" name="acao" value="capa"></form>
+<form method="post" id="form-remover-capa" hidden>{% csrf_token %}<input type="hidden" name="acao" value="remover_capa"></form>
 {% include "painel/_janela_foto.html" %}
 <script src="{% static 'painel/foto_recorte.js' %}" defer></script>
 <script src="{% static 'painel/membros.js' %}" defer></script>
+<script src="{% static 'painel/entrada_editor.js' %}" defer></script>
 {% endblock %}

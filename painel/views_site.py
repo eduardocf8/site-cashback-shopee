@@ -6,6 +6,7 @@ from datetime import timedelta
 
 from django.conf import settings
 from django.contrib import messages
+from django.core.paginator import Paginator
 from django.db.models import Sum
 from django.http import JsonResponse
 from django.shortcuts import get_object_or_404, redirect, render
@@ -22,6 +23,7 @@ from . import modulos as mod
 from .autenticacao import conta_logada, conta_requerida
 from .views import _contexto
 
+PRODUTOS_POR_PAGINA = 100  # lista "Ver os produtos e corrigir as categorias" (a vitrine pode ter 1.000)
 CAMPOS_DA_VITRINE = {"vitrine", "busca_tipo", "palavra_chave", "loja", "categorias", "ordenacao", "links_manuais"}
 
 
@@ -113,13 +115,17 @@ def meu_site(request):
     cliques = resumo_dos_cliques(site)
     for b in botoes:
         b.cliques_30 = cliques["por_botao"].get(b.pk, 0)
-    produtos = site.produtos.filter(fonte=site.vitrine)
+    produtos = site.produtos.filter(fonte=site.vitrine)[: vitrine.limite_de_ofertas(site)]
+    pagina_produtos = Paginator(list(produtos), PRODUTOS_POR_PAGINA).get_page(request.GET.get("produtos"))
+    andamento = site.manuais_rodada if site.vitrine == SiteAfiliado.VITRINE_MANUAL and site.vitrine_pedida else {}
     return render(request, "painel/meu_site.html", _contexto(
         request, "site",
         site=site, form=form, form_botao=BotaoForm(), botoes=botoes, maximo_botoes=regras["botoes"], regras=regras,
         url_publica=url_publica(site), url_previa=f"/s/{site.endereco}/?previa=1",
-        cliques=cliques, total_produtos=produtos.count(), tem_bot=tem_bot,
-        produtos_vitrine=list(produtos[:vitrine.LIMITE]),
+        cliques=cliques, total_produtos=pagina_produtos.paginator.count, tem_bot=tem_bot,
+        produtos_vitrine=pagina_produtos, abrir_produtos="produtos" in request.GET,
+        lidos=andamento.get("feitos", 0), total_links=len(vitrine.links_manuais(site)) if andamento else 0,
+        limite_ofertas=regras["ofertas"], limite_escolhidos=planos.SITE[True]["escolhidos"],
         opcoes_categoria=vitrine.opcoes_de_categoria(),
         sem_marca=regras["premium"],
         dominio_sites=settings.APPFILIADO_SITES_DOMINIO,
