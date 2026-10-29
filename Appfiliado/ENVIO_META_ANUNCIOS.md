@@ -32,6 +32,8 @@ O caminho tem três partes:
    - E-mail de contato: o mesmo do app do Instagram.
 3. **Casos de uso:** marque **"Medir dados de desempenho de anúncios com a API de Marketing"** (em
    inglês, *Measure ad performance data with Marketing API*). É o caso de uso de leitura.
+   - Ele **não aparece** na lista "Em destaque": clique no filtro **"Anúncios e monetização"** (ou
+     **"Tudo"**) na esquerda.
    - **Não** marque "Criar e gerenciar anúncios" nem "Capturar e gerenciar leads": o Appfiliado não
      mexe nas campanhas.
 4. **Empresa:** escolha o **mesmo portfólio empresarial** do app do Instagram (o que já está verificado).
