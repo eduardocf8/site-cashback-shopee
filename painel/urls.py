@@ -1,6 +1,6 @@
 from django.urls import include, path
 
-from . import (views, views_carrosseis, views_conversor, views_entrada, views_estudio, views_instagram, views_notas, views_radar,
+from . import (views, views_anuncios, views_carrosseis, views_conversor, views_entrada, views_estudio, views_instagram, views_notas, views_radar,
                views_site, views_whatsapp)
 
 urlpatterns = [
@@ -17,6 +17,13 @@ urlpatterns = [
     path("resultados/atualizar/", views.atualizar_resultados, name="painel_atualizar_resultados"),
     path("resultados/estado/", views.estado_resultados, name="painel_estado_resultados"),
     path("resultados/vendas.xlsx", views.exportar_vendas, name="painel_exportar_vendas"),
+    path("resultados/campanhas/", views_anuncios.campanhas, name="painel_campanhas_meta"),
+    path("anuncios/meta/conectar/", views_anuncios.conectar, name="painel_meta_conectar"),
+    path("anuncios/meta/retorno/", views_anuncios.retorno, name="painel_meta_retorno"),
+    path("anuncios/meta/desconectar/", views_anuncios.desconectar, name="painel_meta_desconectar"),
+    path("anuncios/meta/desautorizar/", views_anuncios.desautorizar, name="painel_meta_desautorizar"),
+    path("anuncios/meta/apagar-dados/", views_anuncios.apagar_dados, name="painel_meta_apagar_dados"),
+    path("anuncios/meta/apagar-dados/<str:codigo>/", views_anuncios.dados_apagados, name="painel_meta_dados_apagados"),
     path("metas/", views.metas_view, name="painel_metas"),
     path("radar/", views_radar.radar_view, name="painel_radar"),
     path("radar/link/", views_radar.radar_link, name="painel_radar_link"),

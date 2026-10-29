@@ -1,0 +1,129 @@
+{% extends "painel/base.html" %}
+{% load painel_extras %}
+{% block titulo %}Campanhas da Meta{% endblock %}
+{% block conteudo %}
+<header class="cabecalho">
+  <div>
+    <h1>Campanhas da Meta <small class="selo-canal">Beta</small></h1>
+    <p>Quanto cada campanha do Facebook e do Instagram gastou e quanto ela trouxe de comissão na Shopee.</p>
+  </div>
+</header>
+<p class="pequeno" style="margin-top:12px"><a href="{% url 'painel_resultados' %}">← Resultados</a></p>
+
+{% if not conexao %}
+<section class="card secao-form secao-curta" style="margin-top:8px" aria-labelledby="titulo-conectar">
+  <h2 id="titulo-conectar">Conecte a sua conta de anúncios</h2>
+  <p class="sem-margem">O Appfiliado lê o gasto das suas campanhas e coloca ao lado da comissão da Shopee: você vê a margem e o ROAS de cada campanha, dia a dia.</p>
+  <ul class="lista-simples pequeno">
+    <li><strong>Só leitura:</strong> o Appfiliado não cria, não muda e não pausa anúncios.</li>
+    <li><strong>Campanha e Sub ID:</strong> dê à campanha o mesmo nome do Sub ID do link do anúncio (ex.: FONEBT1011). Também dá para escolher o Sub ID de cada campanha aqui.</li>
+    <li><strong>Você escolhe as contas:</strong> no login do Facebook, marque só as contas de anúncios que quer acompanhar.</li>
+  </ul>
+  {% if configurado %}
+    <div class="botoes-linha"><a class="botao botao-principal" id="meta-conectar" href="{% url 'painel_meta_conectar' %}">Conectar Meta Ads</a></div>
+  {% else %}
+    <p class="aviso aviso-warning pequeno sem-margem">A conexão com a Meta ainda não está configurada no servidor.</p>
+  {% endif %}
+</section>
+{% else %}
+
+<section class="card secao-form secao-curta" style="margin-top:8px" aria-labelledby="titulo-conexao">
+  <div class="card-topo">
+    <h2 id="titulo-conexao">Conta de anúncios conectada</h2>
+    <div class="botoes-linha">
+      <form method="post">{% csrf_token %}<input type="hidden" name="acao" value="atualizar"><input type="hidden" name="dias" value="{{ dados.dias }}"><button type="submit" class="botao botao-claro botao-pequeno">Atualizar agora</button></form>
+      <form method="post" action="{% url 'painel_meta_desconectar' %}" onsubmit="return confirm('Desconectar a conta de anúncios? O acesso e os números das campanhas são apagados.');">{% csrf_token %}<button type="submit" class="link-botao perigo pequeno">Desconectar</button></form>
+    </div>
+  </div>
+  <p class="pequeno sem-margem">{{ conexao.nome|default:"Facebook" }} · {{ contas|length }} conta{{ contas|length|pluralize }} de anúncios{% if conexao.lido_em %} · atualizado {% if conexao.lido_em|date:"Ymd" == dados.fim|date:"Ymd" %}às {{ conexao.lido_em|date:"H:i" }}{% else %}em {{ conexao.lido_em|date:"d/m H:i" }}{% endif %}{% else %} · <span class="suave">buscando as campanhas…</span>{% endif %}</p>
+  {% if conexao.erro %}<p class="aviso aviso-warning pequeno sem-margem">{{ conexao.erro }}{% if configurado %} <a href="{% url 'painel_meta_conectar' %}" data-conectar-meta>Conectar de novo</a>{% endif %}</p>
+  {% elif dados.vence_logo %}<p class="aviso aviso-info pequeno sem-margem">O acesso à Meta vence em {{ conexao.token_expira_em|date:"d/m" }}. <a href="{% url 'painel_meta_conectar' %}" data-conectar-meta>Conectar de novo</a> para continuar vendo os números.</p>{% endif %}
+  {% if dados.outra_moeda %}<p class="aviso aviso-info pequeno sem-margem">Uma das contas usa {{ dados.outra_moeda|join:", " }}: o gasto aparece na moeda da conta, sem conversão para real.</p>{% endif %}
+</section>
+
+<nav class="chips" aria-label="Período" style="margin-top:16px">
+  {% for d, nome in periodos %}<a class="chip{% if dados.dias == d %} ativo{% endif %}" href="?dias={{ d }}"{% if dados.dias == d %} aria-current="true"{% endif %}>{{ nome }}</a>{% endfor %}
+</nav>
+
+<div class="kpis kpis-campanhas" style="margin-top:12px">
+  <div class="card kpi"><span class="kpi-titulo">Investimento</span><strong class="kpi-valor">{{ dados.total.investimento|brl }}</strong><span class="kpi-detalhe">com {{ conexao.imposto|floatformat:"-2" }}% de imposto</span></div>
+  <div class="card kpi"><span class="kpi-titulo">Comissão estimada</span><strong class="kpi-valor">{{ dados.total.comissao|brl }}</strong><span class="kpi-detalhe">{{ dados.total.vendas|numero }} venda{{ dados.total.vendas|pluralize }}</span></div>
+  <div class="card kpi"><span class="kpi-titulo">Margem</span><strong class="kpi-valor {% if dados.total.margem < 0 %}negativo{% else %}positivo{% endif %}">{{ dados.total.margem|brl }}</strong><span class="kpi-detalhe">comissão menos investimento</span></div>
+  <div class="card kpi"><span class="kpi-titulo">ROAS</span><strong class="kpi-valor">{% if dados.total.roas is None %}—{% else %}{{ dados.total.roas|floatformat:2 }}{% endif %}</strong><span class="kpi-detalhe">comissão ÷ investimento</span></div>
+</div>
+<p class="suave pequeno" style="margin-top:8px">A comissão de hoje aparece amanhã: a Shopee libera os números no dia seguinte.{% if dados.sem_sub_id %} {{ dados.sem_sub_id }} campanha{{ dados.sem_sub_id|pluralize }} sem Sub ID: dê à campanha o mesmo nome do Sub ID do link ou escolha o Sub ID logo abaixo.{% endif %}</p>
+
+{% for l in dados.linhas %}
+<section class="card cartao-campanha" aria-labelledby="campanha-{{ l.campanha.pk }}">
+  <div class="cc-topo">
+    <div>
+      <h2 id="campanha-{{ l.campanha.pk }}">{{ l.campanha.nome }}</h2>
+      <span class="suave pequeno">{{ l.campanha.conta_anuncios.nome }}{% if l.campanha.criada_na_meta %} · criada em {{ l.campanha.criada_na_meta|date:"d/m" }}{% endif %}</span>
+    </div>
+    <span class="selo-campanha{% if l.ativa %} ativa{% endif %}">{% if l.ativa %}Ativa{% elif l.campanha.situacao == "PAUSED" %}Pausada{% elif l.campanha.situacao == "DELETED" or l.campanha.situacao == "ARCHIVED" %}Encerrada{% else %}{{ l.campanha.situacao|lower|default:"—" }}{% endif %}</span>
+  </div>
+  <form method="post" class="cc-sub-id">
+    {% csrf_token %}<input type="hidden" name="acao" value="sub_id"><input type="hidden" name="campanha" value="{{ l.campanha.pk }}"><input type="hidden" name="dias" value="{{ dados.dias }}">
+    <label class="pequeno" for="sub-{{ l.campanha.pk }}">Sub ID</label>
+    <select name="sub_id" id="sub-{{ l.campanha.pk }}" onchange="this.form.submit()">
+      <option value="">{% if l.sub_id and not l.manual %}{{ l.sub_id }} (mesmo nome da campanha){% else %}Pelo nome da campanha{% endif %}</option>
+      {% for s in dados.sub_ids %}<option value="{{ s }}"{% if l.manual and l.sub_id == s %} selected{% endif %}>{{ s }}</option>{% endfor %}
+      {% if l.manual and l.sub_id not in dados.sub_ids %}<option value="{{ l.sub_id }}" selected>{{ l.sub_id }}</option>{% endif %}
+    </select>
+    {% if not l.sub_id %}<span class="aviso-sub pequeno">Sem Sub ID: a comissão não aparece</span>{% endif %}
+  </form>
+  <dl class="cc-numeros">
+    <div><dt>Investimento</dt><dd>{{ l.investimento|brl }}</dd></div>
+    <div><dt>Vendas</dt><dd>{{ l.vendas|numero }}</dd></div>
+    <div><dt>Comissão</dt><dd>{{ l.comissao|brl }}</dd></div>
+    <div><dt>Margem</dt><dd class="{% if l.margem < 0 %}negativo{% else %}positivo{% endif %}">{{ l.margem|brl }}</dd></div>
+    <div><dt>ROAS</dt><dd>{% if l.roas is None %}—{% else %}{{ l.roas|floatformat:2 }}{% endif %}</dd></div>
+    <div><dt>Cliques</dt><dd>{{ l.cliques|numero }}{% if l.cpc %} <small class="suave">· {{ l.cpc|brl }} cada</small>{% endif %}</dd></div>
+    {% if l.cliques_grupo %}<div><dt>Foram para o grupo</dt><dd>{{ l.cliques_grupo|numero }} <small class="suave">· {{ l.custo_grupo|brl }} cada</small></dd></div>{% endif %}
+  </dl>
+  <details class="cc-dias">
+    <summary class="pequeno"><strong>Dia a dia</strong></summary>
+    <div class="tabela-rolagem"><table class="numeros">
+      <thead><tr><th>Dia</th><th>Investimento</th><th>Vendas</th><th>Comissão</th><th>Margem</th><th>Cliques</th>{% if l.cliques_grupo %}<th>Grupo</th>{% endif %}<th>ROAS</th></tr></thead>
+      <tbody>{% for d in l.dias %}<tr><td>{{ d.dia|date:"d/m" }}</td><td>{{ d.investimento|brl }}</td><td>{{ d.vendas|numero }}</td><td>{{ d.comissao|brl }}</td><td class="{% if d.margem < 0 %}negativo{% else %}positivo{% endif %}">{{ d.margem|brl }}</td><td>{{ d.cliques|numero }}</td>{% if l.cliques_grupo %}<td>{{ d.cliques_grupo|numero }}</td>{% endif %}<td>{% if d.roas is None %}—{% else %}{{ d.roas|floatformat:2 }}{% endif %}</td></tr>{% endfor %}</tbody>
+    </table></div>
+  </details>
+</section>
+{% empty %}
+<section class="card" style="margin-top:16px"><p class="suave sem-margem">{% if conexao.lido_em %}Nenhuma campanha com gasto nos últimos {{ dados.dias }} dias nas contas acompanhadas.{% else %}Buscando as campanhas na Meta. Atualize a página em instantes.{% endif %}</p></section>
+{% endfor %}
+
+<section class="card secao-form" style="margin-top:16px" aria-labelledby="titulo-ajustes">
+  <h2 id="titulo-ajustes">Ajustes</h2>
+  <form method="post" class="bloco-campo">
+    {% csrf_token %}<input type="hidden" name="acao" value="contas">
+    <span class="rotulo">Contas de anúncios acompanhadas</span>
+    {% for c in contas %}<label class="marcar"><input type="checkbox" name="contas" value="{{ c.account_id }}"{% if c.acompanhar %} checked{% endif %}><span>{{ c.nome }}<span class="ajuda">ID {{ c.account_id }}{% if c.moeda %} · {{ c.moeda }}{% endif %}</span></span></label>{% endfor %}
+    <div><button type="submit" class="botao botao-claro botao-pequeno">Salvar contas</button></div>
+  </form>
+  <form method="post" class="campo campo-curto">
+    {% csrf_token %}<input type="hidden" name="acao" value="imposto">
+    <label for="imposto">Imposto da Meta sobre os anúncios (%)</label>
+    <div class="linha-imposto"><input type="text" name="imposto" id="imposto" value="{{ conexao.imposto|floatformat:'-2' }}" inputmode="decimal"><button type="submit" class="botao botao-claro">Salvar</button></div>
+    <span class="ajuda">A Meta cobra impostos por cima do valor gasto (no Brasil, costuma ser 12,15%). Confira na sua fatura e ajuste se for diferente.</span>
+  </form>
+</section>
+{% endif %}
+
+<script>
+  // O login do Facebook abre numa janela menor; quando ela termina, esta página se atualiza.
+  (function () {
+    function abrir(e) {
+      var l = 600, a = 760, x = window.screenX + Math.max(0, (window.outerWidth - l) / 2), y = window.screenY + Math.max(0, (window.outerHeight - a) / 2);
+      var janela = window.open(this.href + "?janela=1", "conectar-meta", "width=" + l + ",height=" + a + ",left=" + x + ",top=" + y);
+      if (!janela) return;  // navegador bloqueou: segue no link normal
+      e.preventDefault();
+      this.textContent = "Conectando… (termine na janela do Facebook)";
+      var vigia = setInterval(function () { if (janela.closed) { clearInterval(vigia); window.location.reload(); } }, 800);
+    }
+    document.querySelectorAll("#meta-conectar, [data-conectar-meta]").forEach(function (b) { b.addEventListener("click", abrir); });
+    try { new BroadcastChannel("appfiliado-meta").onmessage = function () { window.location.reload(); }; } catch (e) { /* navegador antigo */ }
+    window.addEventListener("storage", function (e) { if (e.key === "appfiliado-meta") window.location.reload(); });
+  })();
+</script>
+{% endblock %}
