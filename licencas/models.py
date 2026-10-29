@@ -131,6 +131,10 @@ class ContaAppfiliado(models.Model):
     beta_link_entrada = models.BooleanField(
         "testa o link de entrada nos grupos", default=False,
         help_text="Mostra a aba Link de entrada no Bot de WhatsApp desta conta (ainda em construção).")
+    beta_campanhas_meta = models.BooleanField(
+        "testa as campanhas da Meta", default=False,
+        help_text="Mostra Campanhas da Meta em Resultados (ainda em construção). A pessoa também precisa ser "
+                  "testadora no app Appfiliado Anúncios da Meta.")
     criada_em = models.DateTimeField(auto_now_add=True)
     atualizada_em = models.DateTimeField(auto_now=True)
 

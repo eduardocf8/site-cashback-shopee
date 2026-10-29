@@ -104,6 +104,7 @@ INSTALLED_APPS = [
     "atendimento",
     "estudio",
     "instagram_painel",
+    "anuncios",
 ]
 
 AUTH_USER_MODEL = "accounts.User"
@@ -304,6 +305,11 @@ INSTAGRAM_WEBHOOK_VERIFY_TOKEN = os.environ.get("INSTAGRAM_WEBHOOK_VERIFY_TOKEN"
 # variáveis próprias, usa o ID e o segredo do Instagram de cima ("Configuração da API com login do Instagram").
 APPFILIADO_INSTAGRAM_APP_ID = os.environ.get("APPFILIADO_INSTAGRAM_APP_ID") or INSTAGRAM_APP_ID
 APPFILIADO_INSTAGRAM_APP_SECRET = os.environ.get("APPFILIADO_INSTAGRAM_APP_SECRET") or INSTAGRAM_APP_SECRET
+# Campanhas da Meta dos afiliados (anuncios): app próprio da Meta, separado do Instagram, só com ads_read
+# (Appfiliado/ENVIO_META_ANUNCIOS.md). O ID da configuração é o do Login do Facebook para Empresas.
+APPFILIADO_META_ADS_APP_ID = os.environ.get("APPFILIADO_META_ADS_APP_ID", "")
+APPFILIADO_META_ADS_APP_SECRET = os.environ.get("APPFILIADO_META_ADS_APP_SECRET", "")
+APPFILIADO_META_ADS_CONFIG_ID = os.environ.get("APPFILIADO_META_ADS_CONFIG_ID", "")
 # Lançamento do Estúdio Instagram e das Automações do Instagram (quando a Meta aprovar e os produtos
 # novos estiverem na Zouti). Desligado: os dois só aparecem no painel das contas de teste e o site
 # vende os planos antigos (Bot, Meu site e Carrosséis, com combos). Ligado: os dois entram no menu de

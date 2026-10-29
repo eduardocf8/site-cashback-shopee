@@ -6,6 +6,7 @@
   <div><h1>Resultados</h1><p>{{ periodo.descricao }}</p></div>
   {% if shopee_conectada %}{% include "painel/_sincronizacao.html" %}{% endif %}
 </header>
+{% if conta.beta_campanhas_meta %}<p class="pequeno" style="margin:12px 0 0"><a href="{% url 'painel_campanhas_meta' %}"><strong>Campanhas da Meta</strong></a> <small class="selo-canal">Beta</small> · o lucro de cada campanha do Facebook e do Instagram</p>{% endif %}
 
 {% if not shopee_conectada %}
   {% include "painel/_conectar_shopee.html" %}

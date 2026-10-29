@@ -1038,3 +1038,24 @@ fieldset.sem-borda > legend { padding: 0; margin-bottom: 8px; }
 [data-modelo-ajuda] { display: none; }
 [data-modelo-ajuda].ativa { display: block; }
 .bloco-campo > .ajuda { font-size: 12px; color: var(--suave); }
+/* Campanhas da Meta */
+.kpis-campanhas { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+@media (max-width: 640px) { .kpis-campanhas { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+.lista-simples { margin: 0; padding-left: 18px; display: flex; flex-direction: column; gap: 6px; }
+.cartao-campanha { margin-top: 16px; display: flex; flex-direction: column; gap: 14px; }
+.cc-topo { display: flex; justify-content: space-between; align-items: flex-start; gap: 12px; }
+.cc-topo h2 { margin: 0 0 2px; overflow-wrap: anywhere; }
+.selo-campanha { flex: none; font-size: 12px; font-weight: 700; border-radius: 999px; padding: 4px 10px; background: #EFEBE2; color: var(--suave); }
+.selo-campanha.ativa { background: #DFF5E6; color: #1E7A3C; }
+.cc-sub-id { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+.cc-sub-id select { min-height: 38px; border-radius: 10px; border: 1px solid var(--borda); background: var(--campo); font: inherit; font-size: 14px; padding: 0 10px; max-width: 100%; }
+.aviso-sub { color: #9A5B00; }
+.cc-numeros { margin: 0; display: grid; grid-template-columns: repeat(auto-fill, minmax(130px, 1fr)); gap: 12px 16px; }
+.cc-numeros div { min-width: 0; }
+.cc-numeros dt { font-size: 12px; color: var(--suave); }
+.cc-numeros dd { margin: 2px 0 0; font-weight: 700; font-size: 16px; }
+.cc-dias summary { cursor: pointer; }
+.cc-dias .tabela-rolagem { margin-top: 10px; }
+@media (max-width: 640px) { .kpis-campanhas { gap: 10px; } .kpis-campanhas .kpi-valor { font-size: 20px; } }
+.linha-imposto { display: flex; gap: 8px; align-items: center; }
+.linha-imposto input { width: 110px; min-height: 40px; padding: 0 12px; border-radius: 10px; border: 1px solid var(--borda); background: var(--campo); font: inherit; color: inherit; }
