@@ -40,7 +40,7 @@ class SiteForm(forms.ModelForm):
             "sub_id_vitrine": "Para ver em Resultados as vendas da vitrine separadas das vendas do conversor. "
                               "Em branco, usa o mesmo Sub ID do conversor.",
             "links_manuais": "Cole o link de cada produto da Shopee, um por linha, na ordem em que devem aparecer "
-                             "(até 60). Depois de salvar, dá para corrigir a categoria de cada um na lista de produtos.",
+                             "(até 1.000). Depois de salvar, dá para corrigir a categoria de cada um na lista de produtos.",
             "frase": "Aparece embaixo do nome. Ex: As melhores ofertas da Shopee todo dia.",
             "conversor_botao": "Em branco, fica o texto padrão (aparece apagadinho no campo).",
         }
@@ -177,6 +177,10 @@ class SiteForm(forms.ModelForm):
             self.add_error("vitrine", "A vitrine com os produtos que você escolher é do plano Premium.")
         elif dados.get("vitrine") == SiteAfiliado.VITRINE_MANUAL and not (dados.get("links_manuais") or "").strip():
             self.add_error("links_manuais", "Cole pelo menos um link de produto.")
+        elif dados.get("vitrine") == SiteAfiliado.VITRINE_MANUAL:
+            quantos = len([l for l in (dados.get("links_manuais") or "").splitlines() if l.strip()])
+            if quantos > self.regras["escolhidos"]:
+                self.add_error("links_manuais", f"São até {self.regras['escolhidos']:,} produtos. Você colou {quantos:,}.".replace(",", "."))
         return dados
 
 

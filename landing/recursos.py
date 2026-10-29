@@ -10,6 +10,11 @@ from licencas import planos as plano
 from . import planos as vendas
 
 
+def _mil(n: int) -> str:
+    """1000 -> "1.000"."""
+    return f"{n:,}".replace(",", ".")
+
+
 def _t(nome, texto, so=""):
     return {"nome": nome, "texto": texto, "plano": so, "chips": [], "cores": []}
 
@@ -161,9 +166,9 @@ def site():
                    _t("Links curtos funcionam", "O Appfiliado abre links curtos da Shopee para achar o produto."),
                    _t("Proteção contra abuso", "Cada visitante converte até 20 links por hora.")),
             _grupo("Vitrine de ofertas", "Uma seção com as ofertas do dia com foto, preço e desconto.",
-                   _t("As últimas ofertas do bot", "Cada oferta que o bot enviar entra no topo da vitrine, sem repetir. Ficam as 100 mais recentes. Disponível para quem tem o Bot de WhatsApp."),
-                   _t("Uma busca na Shopee", "Ofertas em geral, por palavra-chave, de uma loja ou por categoria, ordenadas por mais vendidos, maior comissão ou maior desconto. A vitrine é atualizada a cada 3 horas com até 100 produtos."),
-                   _t("Produtos que você escolher", "Cole os links dos produtos, um por linha e na ordem que quiser, até 60. A vitrine mostra só o que você escolheu.", "Premium"),
+                   _t("As últimas ofertas do bot", f"Cada oferta que o bot enviar entra no topo da vitrine, sem repetir. Ficam as mais recentes: até {_mil(s['ofertas'])} no Standard e {_mil(p['ofertas'])} no Premium, sem deixar uma categoria tomar conta. Disponível para quem tem o Bot de WhatsApp."),
+                   _t("Uma busca na Shopee", f"Ofertas em geral, por palavra-chave, de uma loja ou por categoria, ordenadas por mais vendidos, maior comissão ou maior desconto, com as categorias equilibradas. A vitrine é atualizada a cada 3 horas com até {_mil(s['ofertas'])} produtos no Standard e {_mil(p['ofertas'])} no Premium."),
+                   _t("Produtos que você escolher", f"Cole os links dos produtos, um por linha e na ordem que quiser, até {_mil(p['escolhidos'])}. A vitrine mostra só o que você escolheu.", "Premium"),
                    _t("Categorias", "Quando há produtos de mais de uma categoria, o visitante filtra por elas. Você pode corrigir a categoria de cada produto."),
                    _t("Seu link em cada produto", "Cada produto leva o visitante à Shopee pelo seu link de afiliado.")),
             _grupo("Cliques e vendas", "Veja o que o seu site está gerando.",
@@ -175,8 +180,8 @@ def site():
         ],
         "tabela": [
             ("Botões de link", f"até {s['botoes']}", f"até {p['botoes']}"),
-            ("Vitrine com as ofertas do bot ou de uma busca", True, True),
-            ("Vitrine com produtos escolhidos por você (até 60)", False, True),
+            ("Ofertas na vitrine (do bot ou de uma busca)", f"até {_mil(s['ofertas'])}", f"até {_mil(p['ofertas'])}"),
+            (f"Vitrine com produtos escolhidos por você (até {_mil(p['escolhidos'])})", False, True),
             ("\"Feito com Appfiliado\" no rodapé", "Aparece", "Sem"),
             ("Redes sociais (7)", True, True),
             ("Conversor de links para visitantes", True, True),
@@ -188,8 +193,8 @@ def site():
             ("Preciso ter o Bot de WhatsApp?", "Não. A vitrine pode vir de uma busca na Shopee ou, no Premium, dos produtos que você escolher. A opção \"últimas ofertas que o bot enviou\" só aparece para quem tem o Bot."),
             ("O conversor de links gera comissão para mim?", "Sim. O visitante cola o link de um produto da Shopee e vai pra loja pelo seu link de afiliado com o Sub ID do seu site, para você acompanhar as vendas em Resultados."),
             ("A vitrine atualiza sozinha?", "A vitrine por busca é refeita a cada 3 horas e a das ofertas do bot, a cada oferta enviada. A vitrine com produtos escolhidos por você é refeita quando você salva."),
-            ("O que muda do Standard pro Premium?", f"O Premium tem até {p['botoes']} botões (no Standard, {s['botoes']}), permite escolher os produtos da vitrine e tira a assinatura \"Feito com Appfiliado\" do rodapé. Todo o resto é igual."),
-            ("O que acontece se eu voltar pro Standard?", f"O site continua no ar com os primeiros {s['botoes']} botões. A vitrine com produtos escolhidos fica vazia até você trocar a fonte."),
+            ("O que muda do Standard pro Premium?", f"O Premium tem até {p['botoes']} botões (no Standard, {s['botoes']}) e até {_mil(p['ofertas'])} ofertas na vitrine (no Standard, {_mil(s['ofertas'])}), permite escolher os produtos da vitrine e tira a assinatura \"Feito com Appfiliado\" do rodapé. Todo o resto é igual."),
+            ("O que acontece se eu voltar pro Standard?", f"O site continua no ar com os primeiros {s['botoes']} botões e as primeiras {_mil(s['ofertas'])} ofertas. A vitrine com produtos escolhidos fica vazia até você trocar a fonte."),
         ],
     }
 
@@ -562,7 +567,7 @@ APRESENTACAO = {
         "cores": {"Cores": ["#E8541E", "#D92D20", "#D6336C", "#F783AC", "#7048E8", "#B197FC", "#2F6FDE", "#1E3A8A", "#0E9AA7", "#2F9E44",
                             "#1F3A2E", "#F2B705", "#8B5E3C", "#5F6B7A", "#111111"]},
         "numeros": lambda: [(f"{plano.SITE[False]['botoes']} a {plano.SITE[True]['botoes']}", "botões de link"),
-                            ("7", "redes sociais"), ("100", "produtos na vitrine"), ("20/h", "conversões por visitante")],
+                            ("7", "redes sociais"), (f"{_mil(plano.SITE[False]['ofertas'])} a {_mil(plano.SITE[True]['ofertas'])}", "ofertas na vitrine"), ("20/h", "conversões por visitante")],
     },
     "radar": {
         "layouts": ["passos", "split", "cartoes", "lista", "faixa"],

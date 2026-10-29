@@ -82,6 +82,7 @@ class SiteAfiliado(models.Model):
     links_manuais = models.TextField(blank=True, help_text="Um link da Shopee por linha.")
     # O painel pede, o worker atualiza (busca na Shopee e links de afiliado).
     pedido_vitrine_em = models.DateTimeField(null=True, blank=True)
+    manuais_rodada = models.JSONField(default=dict, blank=True)  # andamento da busca dos produtos escolhidos
     vitrine_atualizada_em = models.DateTimeField(null=True, blank=True)
     vitrine_erro = models.TextField(blank=True)
 

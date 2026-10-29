@@ -1,10 +1,10 @@
 """Produtos da vitrine do Meu site e os links de afiliado (com o Sub ID do site).
 
 - "bot": cada oferta que o bot de WhatsApp põe na fila entra no topo; o mesmo produto
-  não duplica (volta para o topo) e só ficam as LIMITE mais recentes;
+  não duplica (volta para o topo) e só ficam as mais recentes, até o limite do plano;
 - "busca": o worker refaz a busca na Shopee de tempos em tempos (mesmos campos do bot), com as
   categorias equilibradas (veja atualizar_busca);
-- "manual": os links que a pessoa colou, na ordem dela.
+- "manual": os links que a pessoa colou, na ordem dela (buscados aos poucos, MANUAIS_POR_VOLTA por volta).
 Quem fala com a Shopee é o worker (comando sincronizar_painel); o site só lê o banco."""
 
 import json
@@ -26,12 +26,12 @@ from .models import CategoriaProdutoSite, ProdutoSite, SiteAfiliado
 
 logger = logging.getLogger(__name__)
 
-LIMITE = 100  # produtos por vitrine
 REFAZER_BUSCA_APOS = timedelta(hours=3)
-POR_CATEGORIA_NO_GERAL = 15  # "Ofertas em geral": no máximo isso de cada categoria...
-PAGINAS_NO_GERAL = 6  # ...procurando até 6 páginas de 50 para completar as 100
+TETO_POR_CATEGORIA = 15  # "Ofertas em geral": no máximo 15% da vitrine de cada categoria...
+PAGINAS_POR_VAGA = 3  # ...procurando até 3x mais produtos que as vagas para completar
+MAXIMO_DE_PAGINAS = 40  # páginas de 50 numa busca (1.000 vagas)
+MANUAIS_POR_VOLTA = 50  # links escolhidos buscados na Shopee por volta do worker
 LINKS_POR_VOLTA = 30  # links de afiliado gerados por volta do worker
-MAXIMO_MANUAIS = 60
 
 
 # Categorias da vitrine: as principais da Shopee Brasil (nível 1, os mesmos nomes do app),
@@ -105,7 +105,13 @@ def _guardar(site, fonte: str, produto: dict, quando) -> ProdutoSite | None:
     return ProdutoSite.objects.create(site=site, fonte=fonte, item_id=item_id, posicao_em=quando, **dados)
 
 
-def _cortar(site, fonte: str, limite: int = LIMITE):
+def limite_de_ofertas(site) -> int:
+    """Quantos produtos a vitrine mostra no plano da conta."""
+    regras = planos.site(site.conta)
+    return regras["escolhidos"] if site.vitrine == SiteAfiliado.VITRINE_MANUAL else regras["ofertas"]
+
+
+def _cortar(site, fonte: str, limite: int):
     """Passou do limite: sai a mais antiga da categoria com mais produtos (e não a mais antiga de
     todas), para a vitrine não virar uma categoria só quando o bot manda muito de uma."""
     produtos = list(ProdutoSite.objects.filter(site=site, fonte=fonte).order_by("posicao_em", "id").values_list("id", "categoria"))
@@ -132,7 +138,7 @@ def registrar_do_bot(conta, produto: dict | None, quando=None):
     try:
         with transaction.atomic():
             if _guardar(site, SiteAfiliado.VITRINE_BOT, produto, quando or timezone.now()):
-                _cortar(site, SiteAfiliado.VITRINE_BOT)
+                _cortar(site, SiteAfiliado.VITRINE_BOT, planos.site(conta)["ofertas"])
     except Exception:  # noqa: BLE001 - a vitrine nunca pode atrapalhar o envio da oferta
         logger.exception("Meu site: não deu para pôr a oferta na vitrine da conta %s", conta.pk)
 
@@ -184,54 +190,61 @@ def _paginas(app_id, secret, config, paginas, filtro=None):
             return
 
 
-def _busca_geral(site, app_id, secret) -> list[dict]:
+def _paginas_para(vagas: int, folga: int = 1) -> int:
+    return min(MAXIMO_DE_PAGINAS, -(-vagas * folga // shopee_ofertas.POR_PAGINA))
+
+
+def _busca_geral(site, app_id, secret, limite: int) -> list[dict]:
     """Uma busca só (geral, palavra-chave ou loja), na ordem da Shopee. Em "Ofertas em geral",
-    no máximo POR_CATEGORIA_NO_GERAL de cada categoria: os mais vendidos se concentram em poucas
-    categorias e a vitrine ficava com 40 de uma e 1 de outra. Se não der para completar, o que
-    passou do teto entra no fim."""
+    no máximo TETO_POR_CATEGORIA% das vagas para cada categoria: os mais vendidos se concentram
+    em poucas categorias e a vitrine ficava com 40 de uma e 1 de outra. Se não der para
+    completar, o que passou do teto entra no fim."""
     config = _config_da_busca(site)
     equilibrar = site.busca_tipo == SiteAfiliado.BUSCA_GERAL
+    teto = max(1, limite * TETO_POR_CATEGORIA // 100)
     escolhidos, sobra, por_categoria, vistos = [], [], {}, set()
-    for produtos in _paginas(app_id, secret, config, PAGINAS_NO_GERAL if equilibrar else 2):
+    for produtos in _paginas(app_id, secret, config, _paginas_para(limite, PAGINAS_POR_VAGA if equilibrar else 1)):
         for p in produtos:
             if str(p["item_id"]) in vistos:
                 continue
             vistos.add(str(p["item_id"]))
             categoria = categoria_do_produto(p)
-            if equilibrar and por_categoria.get(categoria, 0) >= POR_CATEGORIA_NO_GERAL:
+            if equilibrar and por_categoria.get(categoria, 0) >= teto:
                 sobra.append(p)
                 continue
             por_categoria[categoria] = por_categoria.get(categoria, 0) + 1
             escolhidos.append(p)
-        if len(escolhidos) >= LIMITE:
+        if len(escolhidos) >= limite:
             break
-    return (escolhidos + sobra)[:LIMITE]
+    return (escolhidos + sobra)[:limite]
 
 
-def _busca_por_categoria(site, app_id, secret) -> list[dict]:
+def _busca_por_categoria(site, app_id, secret, limite: int) -> list[dict]:
     """Busca "Categorias": cada categoria escolhida é buscada na própria categoria da Shopee e
-    as 100 vagas são divididas por igual, intercaladas (uma de cada). Se uma categoria tiver
+    as vagas são divididas por igual, intercaladas (uma de cada). Se uma categoria tiver
     menos, as outras completam."""
     nichos = [n for n in dict.fromkeys(site.categorias or []) if n in NICHO_NA_SHOPEE] or list(site.categorias or [])
     if not nichos:
-        return _busca_geral(site, app_id, secret)
-    cota = -(-LIMITE // len(nichos))  # arredonda para cima
+        return _busca_geral(site, app_id, secret, limite)
+    cota = -(-limite // len(nichos))  # arredonda para cima
+    quantos = cota + cota // 2  # a folga cobre a categoria que tiver menos
     listas = []
     for nicho in nichos:
         regra = NICHO_NA_SHOPEE.get(nicho, {"ids": [], "filtrar_nome": True})
         filtro = (lambda p, n=nicho: produto_pertence_as_categorias(p["nome"], [n])) if regra.get("filtrar_nome") else None
-        fontes = [_paginas(app_id, secret, _config_da_busca(site, cid), 2, filtro) for cid in regra["ids"]]
+        paginas = _paginas_para(quantos // max(1, len(regra["ids"])), 2 if filtro else 1) + 1
+        fontes = [_paginas(app_id, secret, _config_da_busca(site, cid), paginas, filtro) for cid in regra["ids"]]
         if not fontes:  # sem categoria na Shopee: busca geral filtrada pelo nome
             geral = _config_da_busca(site)
             geral.tipo_busca, geral.categorias = ConfiguracaoOfertas.BUSCA_CATEGORIA, [nicho]
-            fontes = [_paginas(app_id, secret, geral, 4)]
-        listas.append(_intercalar(_ate(fontes, cota * 2)))
+            fontes = [_paginas(app_id, secret, geral, _paginas_para(quantos, 4))]
+        listas.append(_intercalar(_ate(fontes, quantos)))
     vistos, saida = set(), []
     for p in _intercalar(listas):
         if str(p["item_id"]) not in vistos:
             vistos.add(str(p["item_id"]))
             saida.append(p)
-    return saida[:LIMITE]
+    return saida[:limite]
 
 
 def _ate(fontes, quantos: int) -> list[list[dict]]:
@@ -257,37 +270,60 @@ def _intercalar(listas: list[list[dict]]) -> list[dict]:
 
 def atualizar_busca(site, agora):
     app_id, secret = _credenciais(site)
+    limite = limite_de_ofertas(site)
     if site.busca_tipo == SiteAfiliado.BUSCA_CATEGORIA:
-        achados = _busca_por_categoria(site, app_id, secret)
+        achados = _busca_por_categoria(site, app_id, secret, limite)
     else:
-        achados = _busca_geral(site, app_id, secret)
+        achados = _busca_geral(site, app_id, secret, limite)
     with transaction.atomic():
         vistos = set()
-        for i, produto in enumerate(achados[:LIMITE]):
+        for i, produto in enumerate(achados[:limite]):
             if _guardar(site, SiteAfiliado.VITRINE_BUSCA, produto, agora - timedelta(seconds=i)):
                 vistos.add(str(produto["item_id"]))
         ProdutoSite.objects.filter(site=site, fonte=SiteAfiliado.VITRINE_BUSCA).exclude(item_id__in=vistos).delete()
 
 
 def links_manuais(site) -> list[str]:
-    return [l.strip() for l in (site.links_manuais or "").splitlines() if l.strip()][:MAXIMO_MANUAIS]
+    return [l.strip() for l in (site.links_manuais or "").splitlines() if l.strip()][: planos.site(site.conta)["escolhidos"]]
 
 
-def atualizar_manuais(site, agora):
+def atualizar_manuais(site, agora) -> bool:
+    """Busca os produtos dos links colados, MANUAIS_POR_VOLTA por volta (com 1.000 links, de
+    uma vez travaria o worker). O andamento fica em site.manuais_rodada; a rodada recomeça
+    quando a pessoa salva de novo. Devolve True quando terminou."""
     app_id, secret = _credenciais(site)
-    vistos, problemas = set(), []
-    for i, link in enumerate(links_manuais(site)):
-        links = copia.links_shopee(link)
-        item_id = copia.identificar_produto(links[0]) if links else ""
-        produto = shopee_ofertas.buscar_produto_por_item(app_id, secret, item_id) if item_id else None
+    links = links_manuais(site)
+    pedido = site.pedido_vitrine_em.isoformat() if site.pedido_vitrine_em else ""
+    rodada = site.manuais_rodada or {}
+    if rodada.get("pedido") != pedido:
+        rodada = {"pedido": pedido, "feitos": 0, "vistos": [], "problemas": 0, "exemplos": []}
+    base = site.pedido_vitrine_em or agora  # a mesma em todas as voltas: a ordem dos links vale
+    inicio = min(rodada["feitos"], len(links))
+    fim = min(len(links), inicio + MANUAIS_POR_VOLTA)
+    for i in range(inicio, fim):
+        link = links[i]
+        achados = copia.links_shopee(link)
+        try:
+            item_id = copia.identificar_produto(achados[0]) if achados else ""
+            produto = shopee_ofertas.buscar_produto_por_item(app_id, secret, item_id) if item_id else None
+        except Exception:  # noqa: BLE001 - um link com problema não para os outros
+            logger.exception("Meu site: produto escolhido %s", link[:80])
+            produto = None
         if not produto:
-            problemas.append(link[:60])
+            rodada["problemas"] += 1
+            rodada["exemplos"] = (rodada["exemplos"] + [link[:60]])[:3]
             continue
-        if _guardar(site, SiteAfiliado.VITRINE_MANUAL, produto, agora - timedelta(seconds=i)):
-            vistos.add(str(produto["item_id"]))
-    ProdutoSite.objects.filter(site=site, fonte=SiteAfiliado.VITRINE_MANUAL).exclude(item_id__in=vistos).delete()
-    if problemas:
-        raise ValueError(f"Não achei {len(problemas)} produto(s) na Shopee: {', '.join(problemas[:3])}")
+        if _guardar(site, SiteAfiliado.VITRINE_MANUAL, produto, base - timedelta(seconds=i)):
+            rodada["vistos"].append(str(produto["item_id"]))
+    rodada["feitos"] = fim
+    terminou = fim >= len(links)
+    site.manuais_rodada = {} if terminou else rodada
+    site.save(update_fields=["manuais_rodada"])
+    if terminou:
+        ProdutoSite.objects.filter(site=site, fonte=SiteAfiliado.VITRINE_MANUAL).exclude(item_id__in=rodada["vistos"]).delete()
+        if rodada["problemas"]:
+            raise ValueError(f"Não achei {rodada['problemas']} produto(s) na Shopee: {', '.join(rodada['exemplos'])}")
+    return terminou
 
 
 def link_do_site(site, link_produto: str, vitrine: bool = False) -> str:
@@ -328,8 +364,9 @@ def uma_volta(agora=None) -> list[str]:
                 atualizar_busca(site, agora)
             elif not planos.site_premium(site.conta):
                 raise ValueError("A vitrine com os produtos que você escolher é do plano Premium.")
-            else:
-                atualizar_manuais(site, agora)
+            elif not atualizar_manuais(site, agora):
+                logs.append(f"Meu site: vitrine de {site.endereco}, {site.manuais_rodada['feitos']} links lidos")
+                continue  # continua na próxima volta (a vitrine segue "pedida")
             logs.append(f"Meu site: vitrine de {site.endereco} atualizada")
         except Exception as erro:  # noqa: BLE001
             logger.exception("Meu site: vitrine do site %s", site.pk)

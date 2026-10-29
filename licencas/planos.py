@@ -33,9 +33,10 @@ BOT = {
 }
 
 # Meu site.
+# Meu site. ofertas = produtos na vitrine (do bot ou de uma busca); escolhidos = links colados à mão.
 SITE = {
-    False: {"botoes": 3, "produtos_escolhidos": False},
-    True: {"botoes": 10, "produtos_escolhidos": True},
+    False: {"botoes": 3, "produtos_escolhidos": False, "ofertas": 200, "escolhidos": 0},
+    True: {"botoes": 10, "produtos_escolhidos": True, "ofertas": 1000, "escolhidos": 1000},
 }
 
 # Emissor NFS-e: notas de verdade por mês (None = sem limite). Vale o maior plano que a conta tiver.

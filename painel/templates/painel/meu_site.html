@@ -1,5 +1,5 @@
 {% extends "painel/base.html" %}
-{% load static %}
+{% load static painel_extras %}
 {% block titulo %}Meu site{% endblock %}
 {% block conteudo %}
 <header class="cabecalho">
@@ -124,20 +124,20 @@
           <div class="opcoes-chip">{% for opcao in form.categorias %}<label class="chip-opcao">{{ opcao.tag }}<span>{{ opcao.choice_label }}</span></label>{% endfor %}</div>
           {% for e in form.categorias.errors %}<span class="erro">{{ e }}</span>{% endfor %}</fieldset>
         <div class="campo">{% include "painel/_campo.html" with campo=form.ordenacao %}</div>
-        <p class="suave pequeno">A busca é refeita sozinha a cada 3 horas (até 100 produtos).</p>
+        <p class="suave pequeno">A busca é refeita sozinha a cada 3 horas (até {{ limite_ofertas|numero }} produtos{% if not regras.premium %}; no Premium, até {{ limite_escolhidos|numero }}{% endif %}).</p>
       </div>
       <div data-vitrine="manual" class="bloco-modo">
         <div class="campo">{% include "painel/_campo.html" with campo=form.links_manuais %}</div>
       </div>
       <div class="campo" style="margin-top:12px" data-sem-vitrine-esconde>{% include "painel/_campo.html" with campo=form.sub_id_vitrine %}</div>
       <p class="pequeno" style="margin-top:10px" data-vitrine-status>
-        {% if site.vitrine == "nenhuma" %}{% elif site.vitrine_pedida %}<span class="suave">Montando a vitrine com a Shopee…</span>
-        {% else %}<strong>{{ total_produtos }}</strong> produto{{ total_produtos|pluralize }} na vitrine agora{% if site.vitrine_atualizada_em and site.vitrine != "bot" %} · atualizada em {{ site.vitrine_atualizada_em|date:"d/m H:i" }}{% endif %}.{% endif %}
+        {% if site.vitrine == "nenhuma" %}{% elif site.vitrine_pedida %}<span class="suave">Montando a vitrine com a Shopee…{% if total_links > 50 %} {{ lidos|numero }} de {{ total_links|numero }} produtos lidos.{% endif %}</span>
+        {% else %}<strong>{{ total_produtos|numero }}</strong> produto{{ total_produtos|pluralize }} na vitrine agora{% if site.vitrine_atualizada_em and site.vitrine != "bot" %} · atualizada em {{ site.vitrine_atualizada_em|date:"d/m H:i" }}{% endif %}.{% endif %}
       </p>
       {% if site.vitrine_erro %}<p class="aviso aviso-warning pequeno">{{ site.vitrine_erro }}</p>{% endif %}
       {% if produtos_vitrine and site.vitrine != "nenhuma" %}
-        <details class="produtos-vitrine" data-sem-vitrine-esconde>
-          <summary class="pequeno"><strong>Ver os produtos e corrigir as categorias</strong> ({{ produtos_vitrine|length }})</summary>
+        <details class="produtos-vitrine" id="produtos-vitrine" data-sem-vitrine-esconde{% if abrir_produtos %} open{% endif %}>
+          <summary class="pequeno"><strong>Ver os produtos e corrigir as categorias</strong> ({{ total_produtos|numero }})</summary>
           <p class="suave pequeno">A categoria vem da Shopee (a que o vendedor escolheu no cadastro) e às vezes está errada. Troque aqui: vale na hora e continua valendo quando a vitrine se atualizar.</p>
           <ul class="lista-produtos-vitrine" data-url-categoria="{% url 'painel_meu_site_categoria' 0 %}">
             {% for p in produtos_vitrine %}
@@ -151,6 +151,12 @@
               </li>
             {% endfor %}
           </ul>
+          {% if produtos_vitrine.paginator.num_pages > 1 %}
+          <nav class="paginacao" aria-label="Páginas dos produtos">
+            <span>{{ produtos_vitrine.start_index|numero }} a {{ produtos_vitrine.end_index|numero }}</span>
+            <div>{% for n in produtos_vitrine.paginator.page_range %}{% if n == produtos_vitrine.number %}<span class="atual" aria-current="page">{{ n }}</span>{% else %}<a href="?produtos={{ n }}#produtos-vitrine">{{ n }}</a>{% endif %}{% endfor %}</div>
+          </nav>
+          {% endif %}
         </details>
       {% endif %}
     </section>
