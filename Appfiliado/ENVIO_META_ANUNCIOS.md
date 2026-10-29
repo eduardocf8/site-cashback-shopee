@@ -30,7 +30,7 @@ O caminho tem três partes:
 2. **Detalhes do app**
    - Nome do app: **Appfiliado Anúncios** (é o nome interno, só você vê).
    - E-mail de contato: o mesmo do app do Instagram.
-3. **Casos de uso:** marque **"Medir dados de desempenho de anúncios com a API de Marketing"** (em
+3. **Casos de uso:** marque **"Mensurar dados de desempenho do anúncio com a API de Marketing"** (em
    inglês, *Measure ad performance data with Marketing API*). É o caso de uso de leitura.
    - Ele **não aparece** na lista "Em destaque": clique no filtro **"Anúncios e monetização"** (ou
      **"Tudo"**) na esquerda.
