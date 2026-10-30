@@ -561,7 +561,7 @@ def selos_padrao():
 
 class LinkEntrada(models.Model):
     """Link de entrada nos grupos (bot_whatsapp/entrada.py): uma página leve no endereço do Meu site
-    (seunome.appfiliado.com.br/g/<slug>/) para colocar no anúncio. Registra a visita no pixel do
+    (seunome.appfiliado.com.br/<slug>/) para colocar no anúncio. Registra a visita no pixel do
     Meta e manda a pessoa pro primeiro grupo da lista que ainda tem vaga."""
 
     conta = models.ForeignKey(ContaAppfiliado, on_delete=models.CASCADE, related_name="links_entrada")
@@ -606,7 +606,7 @@ class LinkEntrada(models.Model):
         verbose_name_plural = "links de entrada"
 
     def __str__(self):
-        return f"{self.conta.email} - /g/{self.slug}/"
+        return f"{self.conta.email} - /{self.slug}/"
 
 
 class ConviteGrupo(models.Model):

@@ -1014,6 +1014,9 @@ form[data-metas] .grade-campos { display: grid; grid-template-columns: 1fr 1fr; 
 /* Link de entrada (beta) */
 .cartao-entrada { border: 1px solid var(--borda); border-radius: 12px; padding: 12px 14px; margin-top: 12px; display: flex; flex-direction: column; gap: 6px; }
 .ce-topo { display: flex; justify-content: space-between; align-items: flex-start; gap: 10px; }
+.ce-topo > div { flex: 1; min-width: 0; }
+.ce-topo > div .suave { overflow-wrap: anywhere; }
+.ce-topo > .botao { flex: none; }
 .ce-topo a strong { font-size: 16px; }
 .linha-entrada { display: flex; flex-direction: column; gap: 10px; padding-top: 16px; border-top: 1px solid var(--borda); }
 .linha-entrada .le-nome > .pequeno { margin-top: 6px; }

@@ -1,6 +1,7 @@
 """Link de entrada nos grupos: a página do anúncio que manda a pessoa pro grupo com vaga.
 
-- Página: seunome.appfiliado.com.br/g/<slug>/ (meusite/entrada.py), com o pixel do Meta da pessoa.
+- Página: seunome.appfiliado.com.br/<slug>/ (meusite/entrada.py), com o pixel do Meta da pessoa. O
+  endereço antigo, com /g/<slug>/, continua valendo.
 - Ordem: os grupos do link enchem na ordem do nome ("#1", "#2"... em ordem numérica). O da vez é
   o primeiro que ainda não chegou no limite e tem link de convite.
 - Membros: vêm da aba Grupos (os grupos do link são acompanhados sozinhos).
@@ -31,6 +32,9 @@ FOLGA = 95  # % do limite: daí pra cima o grupo conta como "lotando"
 RELER_CONVITE = timedelta(hours=12)
 INTERVALO_DO_AVISO = timedelta(hours=24)
 PADRAO_SLUG = re.compile(r"^[a-z0-9](?:[a-z0-9-]{0,38}[a-z0-9])?$")
+# Os nomes das outras páginas do Meu site (meusite/urls_publico.py) e alguns que podem vir a ser usados.
+SLUGS_RESERVADOS = {"b", "p", "r", "g", "s", "ir", "foto", "capa", "entrar", "admin", "api", "static", "media",
+                    "favicon", "robots", "sitemap", "login", "sair", "painel", "www"}
 # Quem abre o link só para montar a prévia (o navegador do Instagram e do Facebook, de onde vem o
 # anúncio, não está aqui: esse é gente de verdade).
 ROBOS = ("facebookexternalhit", "facebot", "whatsapp/", "telegrambot", "twitterbot", "googlebot", "bingbot",
@@ -175,10 +179,10 @@ def _avisar(link: LinkEntrada, estado: dict, pedido: PedidoGrupo | None) -> None
     from painel.emails import url_do_painel
 
     if pedido:
-        texto = (f"Os grupos do seu link de entrada /g/{link.slug}/ estão quase cheios, então o Appfiliado está criando "
+        texto = (f"Os grupos do seu link de entrada /{link.slug}/ estão quase cheios, então o Appfiliado está criando "
                  f"o grupo \"{pedido.nome}\" e já vai colocá-lo no link.")
     else:
-        texto = (f"Os grupos do seu link de entrada /g/{link.slug}/ estão quase cheios (todos com mais de {FOLGA}% do "
+        texto = (f"Os grupos do seu link de entrada /{link.slug}/ estão quase cheios (todos com mais de {FOLGA}% do "
                  f"limite de {link.limite_por_grupo} pessoas). Crie o próximo grupo e coloque no link para não perder "
                  "quem clica no anúncio.")
     try:

@@ -1,7 +1,8 @@
-"""Página pública do link de entrada nos grupos (bot_whatsapp/entrada.py): seunome.appfiliado.com.br/g/<slug>/.
+"""Página pública do link de entrada nos grupos (bot_whatsapp/entrada.py): seunome.appfiliado.com.br/<slug>/
+(ou, nos links antigos, /g/<slug>/).
 
 Abre leve (sem nada do site da bio), registra a visita no pixel do Meta e, no botão, manda pro grupo
-da vez. O clique passa por /g/<slug>/entrar/, que conta e redireciona: assim o link do anúncio nunca
+da vez. O clique passa por <slug>/entrar/, que conta e redireciona: assim o link do anúncio nunca
 muda, mesmo trocando de grupo."""
 
 import re

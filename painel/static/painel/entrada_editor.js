@@ -62,3 +62,14 @@
   encaixar();
   if (window.ResizeObserver && celular) new ResizeObserver(encaixar).observe(celular);
 })();
+
+// "Mudar o endereço": leva até o campo e já deixa pronto para digitar.
+document.querySelectorAll("[data-ir-para-campo]").forEach(function (link) {
+  link.addEventListener("click", function (e) {
+    var campo = document.querySelector(link.getAttribute("href"));
+    if (!campo) return;
+    e.preventDefault();
+    campo.scrollIntoView({ behavior: "smooth", block: "center" });
+    setTimeout(function () { campo.focus(); campo.select(); }, 400);
+  });
+});

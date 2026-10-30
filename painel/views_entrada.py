@@ -35,8 +35,8 @@ def url_publica(site: SiteAfiliado | None, link: LinkEntrada) -> str:
     if not site or not site.endereco:
         return ""
     if settings.APPFILIADO_SITES_DOMINIO:
-        return f"https://{site.endereco}.{settings.APPFILIADO_SITES_DOMINIO}/g/{link.slug}/"
-    return reverse("site_pagina", kwargs={"endereco": site.endereco}) + f"g/{link.slug}/"
+        return f"https://{site.endereco}.{settings.APPFILIADO_SITES_DOMINIO}/{link.slug}/"
+    return reverse("site_pagina", kwargs={"endereco": site.endereco}) + f"{link.slug}/"
 
 
 def _erro_do_endereco(endereco: str) -> str:
@@ -128,6 +128,8 @@ def _salvar(request, conta, link) -> list[str]:
     slug = str(dados.get("slug") or "").strip().lower()
     if not entrada.PADRAO_SLUG.match(slug) or "--" in slug:
         erros.append("O endereço do link usa só letras minúsculas, números e hífen (até 40).")
+    elif slug in entrada.SLUGS_RESERVADOS:
+        erros.append("Esse endereço é usado por outra página do seu site. Escolha outro.")
     elif conta.links_entrada.filter(slug=slug).exclude(pk=link.pk).exists():
         erros.append("Você já tem um link com esse endereço.")
     pixel = re.sub(r"\D", "", str(dados.get("pixel_id") or ""))
