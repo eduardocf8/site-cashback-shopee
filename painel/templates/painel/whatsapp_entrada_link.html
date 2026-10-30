@@ -20,6 +20,7 @@
     <a class="botao botao-claro" href="{{ url }}" target="_blank" rel="noopener">Abrir</a>
   </div>
   <p class="suave pequeno sem-margem">Coloque este link no anúncio. Para ver os números por campanha, use o parâmetro <code>utm_campaign</code> no link do anúncio.</p>
+  <p class="pequeno sem-margem"><a href="#slug" data-ir-para-campo>Mudar o endereço</a> · o começo ({{ site.endereco }}) é o do <a href="{% url 'painel_meu_site' %}">Meu site</a>. Trocar o endereço quebra o link que já está no anúncio.</p>
   {% endif %}
   {% if estado.da_vez %}<p class="pequeno sem-margem">Agora mandando para <strong>{{ estado.da_vez.nome }}</strong>.</p>
   {% elif link.grupos %}<p class="aviso aviso-warning pequeno sem-margem">Nenhum grupo do link tem vaga e link de convite agora: quem clicar vê o aviso de grupos cheios.</p>{% endif %}
@@ -131,7 +132,7 @@
   <section class="card secao-form" aria-labelledby="titulo-anuncio">
     <h2 id="titulo-anuncio">Link e anúncio</h2>
     <label class="marcar"><input type="checkbox" name="ativo"{% if link.ativo %} checked{% endif %}><span>Link no ar</span></label>
-    <div class="campo"><label for="slug">Endereço do link</label><input type="text" name="slug" id="slug" value="{{ link.slug }}" maxlength="40" autocomplete="off" spellcheck="false" autocapitalize="none"><span class="ajuda">{{ site.endereco }}…/g/<strong>{{ link.slug }}</strong>/ · letras minúsculas, números e hífen. Trocar o endereço quebra o link que já está no anúncio.</span></div>
+    <div class="campo"><label for="slug">Endereço do link</label><input type="text" name="slug" id="slug" value="{{ link.slug }}" maxlength="40" autocomplete="off" spellcheck="false" autocapitalize="none"><span class="ajuda">{{ site.endereco }}…/<strong>{{ link.slug }}</strong>/ · letras minúsculas, números e hífen. Trocar o endereço quebra o link que já está no anúncio.</span></div>
     <div class="campo"><label for="pixel_id">ID do pixel do Meta (opcional)</label><input type="text" name="pixel_id" id="pixel_id" value="{{ link.pixel_id }}" inputmode="numeric" placeholder="Ex: 123456789012345"><span class="ajuda">Fica no Gerenciador de Eventos do Meta. A página registra a visita (PageView) e o toque no botão (Lead).</span></div>
     <label class="marcar"><input type="checkbox" name="redirecionar"{% if link.redirecionar %} checked{% endif %}><span>Ir direto para o grupo, sem esperar o toque no botão<span class="ajuda">Cuidado: o Meta costuma barrar anúncios que levam a uma página que só redireciona. Com o botão é mais seguro.</span></span></label>
   </section>

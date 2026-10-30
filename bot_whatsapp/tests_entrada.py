@@ -66,8 +66,16 @@ class TestPainel(BaseEntrada):
         self.assertEqual(set(GrupoMonitorado.objects.values_list("jid", flat=True)), {"1@g.us", "10@g.us"})  # vão pra aba Grupos
 
         html = self.client.get(f"/whatsapp/entrada/{link.pk}/").content.decode()
-        self.assertIn("/g/vip/", html)
+        self.assertIn("/s/achadinhosdabia/vip/", html)  # sem o "g/"
         self.assertLess(html.index("Achadinhos #1<"), html.index("Achadinhos #10<"))  # ordem do nome, numérica
+
+    def test_endereco_reservado_pelo_site_nao_vale(self):
+        link = self.criar_link()
+        self.client.post(f"/whatsapp/entrada/{link.pk}/", {
+            "acao": "salvar", "ativo": "on", "slug": "p", "titulo": "Grupo", "texto_botao": "Entrar",
+            "limite_por_grupo": "1000", "grupos": list(link.grupos)})
+        link.refresh_from_db()
+        self.assertEqual(link.slug, "grupo-vip")
 
     def test_colar_o_convite_a_mao(self):
         link = self.criar_link()
@@ -205,6 +213,14 @@ class TestPaginaPublica(BaseEntrada):
             resposta = self.client.get("/s/achadinhosdabia/g/grupo-vip/", **NAVEGADOR)
             self.assertContains(resposta, f'class="m-{modelo}')
             self.assertContains(resposta, 'href="entrar/"')
+
+    def test_endereco_sem_g_e_o_antigo_com_g(self):
+        curto = self.client.get("/s/achadinhosdabia/grupo-vip/?utm_campaign=x", **NAVEGADOR)
+        self.assertContains(curto, 'href="entrar/?utm_campaign=x"')
+        self.assertRedirects(self.client.get("/s/achadinhosdabia/grupo-vip/entrar/", **NAVEGADOR),
+                             "https://chat.whatsapp.com/1", fetch_redirect_response=False)
+        self.assertEqual(self.client.get("/s/achadinhosdabia/g/grupo-vip/", **NAVEGADOR).status_code, 200)  # links antigos
+        self.assertEqual(self.client.get("/s/achadinhosdabia/nao-existe/", **NAVEGADOR).status_code, 404)
 
     def test_entrar_manda_pro_primeiro_com_vaga_na_ordem(self):
         self.membros("1@g.us", 1000)  # cheio
