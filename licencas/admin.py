@@ -92,7 +92,7 @@ class ContaAppfiliadoAdmin(admin.ModelAdmin):
     fields = (
         "id", "email", "nome", "chave", "chave_enviada_em", "modulos_agora",
         "modulos_cortesia", "cortesia_ate", "beta_estudio_instagram", "beta_link_entrada", "beta_campanhas_meta",
-        "tem_senha_painel", "ultimo_login", "shopee_app_id", "shopee_validado_em",
+        "beta_conferir_faturamento", "tem_senha_painel", "ultimo_login", "shopee_app_id", "shopee_validado_em",
         "criada_em", "atualizada_em",
     )
     inlines = [AssinaturaInline]
