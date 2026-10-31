@@ -135,6 +135,10 @@ class ContaAppfiliado(models.Model):
         "testa as campanhas da Meta", default=False,
         help_text="Mostra Campanhas da Meta em Resultados (ainda em construção). A pessoa também precisa ser "
                   "testadora no app Appfiliado Anúncios da Meta.")
+    beta_conferir_faturamento = models.BooleanField(
+        "vê a conferência do faturamento", default=False,
+        help_text="Libera a página escondida /resultados/conferir/ (faturamento do mês contado de vários jeitos e "
+                  "buscado direto na Shopee, para comparar com o e-mail da meta mensal). Os outros recebem 404.")
     criada_em = models.DateTimeField(auto_now_add=True)
     atualizada_em = models.DateTimeField(auto_now=True)
 

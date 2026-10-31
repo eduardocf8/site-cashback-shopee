@@ -154,6 +154,9 @@ class TestConferenciaDoFaturamento(BaseFases):
         self.assertEqual(c["validados_no_mes_comprados_antes"]["valor"], 1000)
 
         self.entrar()
+        self.assertEqual(self.client.get("/resultados/conferir/?mes=2026-09").status_code, 404)  # escondida
+        self.conta.beta_conferir_faturamento = True
+        self.conta.save()
         with mock.patch("painel.telas.hoje", return_value=date(2026, 11, 3)):
             html = self.client.get("/resultados/conferir/?mes=2026-09").content.decode()
         self.assertIn("3. Pedidos validados em Setembro/2026", html)
@@ -164,6 +167,7 @@ class TestConferenciaDoFaturamento(BaseFases):
 
         self.conta.shopee_app_id = "123"
         self.conta.shopee_secret_cifrado = cripto.cifrar("segredo")
+        self.conta.beta_conferir_faturamento = True
         self.conta.save()
 
         def ts(*partes):

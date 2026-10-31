@@ -338,8 +338,11 @@ def _linhas_da_conferencia(ao_vivo: dict, nome_mes: str) -> list[dict]:
 
 @conta_requerida
 def conferir_faturamento(request):
-    """Página escondida: o faturamento de um mês contado de três jeitos, para conferir com a Shopee."""
+    """Página escondida: o faturamento de um mês contado de três jeitos, para conferir com a Shopee.
+    Só para contas com a chave beta_conferir_faturamento (admin); as outras recebem 404."""
     conta = conta_logada(request)
+    if not conta.beta_conferir_faturamento:
+        raise Http404
     hoje = telas.hoje()
     passado = (hoje.replace(day=1) - timedelta(days=1))
     escolhido = str(request.GET.get("mes") or f"{passado.year}-{passado.month:02d}")
