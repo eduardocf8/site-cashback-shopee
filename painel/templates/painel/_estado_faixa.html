@@ -1,0 +1,1 @@
+{% load painel_extras %}{% if f.estado == "batida" %}{% if meta.previa %}batida na prévia{% elif meta.em_fechamento %}garantida{% else %}batida{% endif %}{% elif f.estado == "possivel" %}possível: depende dos pendentes{% elif f.estado == "fora" %}{% if meta.em_fechamento %}fora de alcance{% else %}ficou a {{ f.falta|brl }}{% endif %}{% else %}faltam {{ f.falta|brl }}{% endif %}

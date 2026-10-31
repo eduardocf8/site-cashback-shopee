@@ -52,8 +52,9 @@
     </table>
 
     {% if meta %}
-      <h2 style="margin:26px 0 8px;font-size:16px;">Meta de {{ nome_mes }}</h2>
-      <p style="margin:0 0 8px;font-size:14px;"><strong style="font-size:18px;">{{ meta.faturamento|brl|sem_quebra }}</strong> <span style="color:#5C6A61;">faturados até ontem</span></p>
+      <h2 style="margin:26px 0 8px;font-size:16px;">Meta de {{ meta.nome_mes }} <span style="font-size:11px;font-weight:bold;letter-spacing:.03em;text-transform:uppercase;border-radius:999px;padding:3px 9px;{% if meta.previa %}background:#FFF4D6;color:#7A5A00;{% elif meta.fechada %}background:#DFF5E6;color:#1E7A3C;{% else %}background:#E3EEFF;color:#2457A6;{% endif %}">{% if meta.previa %}Prévia{% elif meta.fechada %}Fechada{% else %}Em fechamento até {{ meta.fecha_em|date:"d/m" }}{% endif %}</span></h2>
+      <p style="margin:0 0 8px;font-size:14px;"><strong style="font-size:18px;">{{ meta.faturamento|brl|sem_quebra }}</strong> <span style="color:#5C6A61;">{% if meta.em_fechamento %}garantidos (pedidos validados){% elif meta.previa %}faturados até ontem (estimado){% else %}faturados{% endif %}</span></p>
+      {% if meta.em_fechamento %}<p style="margin:0 0 8px;font-size:13px;color:#5C6A61;">Pendente: <strong>{{ meta.pendente|brl|sem_quebra }}</strong> · cancelado: {{ meta.cancelado|brl|sem_quebra }} · se todos os pendentes validarem: <strong>{{ meta.possivel|brl|sem_quebra }}</strong></p><p style="margin:0 0 8px;font-size:13px;color:#24426E;">{{ meta.frase_possivel }}</p>{% endif %}
       <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="width:100%;border-collapse:collapse;">
         <tr>
           {% if meta.porcentagem_barra %}<td width="{{ meta.porcentagem_barra }}%" style="height:10px;background:#F2C230;border-radius:999px 0 0 999px;font-size:0;line-height:0;{% if meta.porcentagem_barra >= 100 %}border-radius:999px;{% endif %}">&nbsp;</td>{% endif %}
@@ -67,22 +68,31 @@
             <td style="padding:7px 0;border-top:1px solid #EDE8D9;font-weight:bold;">{{ f.nome }}</td>
             <td align="right" style="padding:7px 0;border-top:1px solid #EDE8D9;white-space:nowrap;">{{ f.faturamento|brl0|sem_quebra }}</td>
             <td align="right" style="padding:7px 0;border-top:1px solid #EDE8D9;white-space:nowrap;">{% if f.gmv %}{{ f.gmv|floatformat:"-2" }}% do GMV{% elif f.bonus %}{{ f.bonus|brl0|sem_quebra }}{% else %}-{% endif %}</td>
-            <td align="right" style="padding:7px 0 7px 10px;border-top:1px solid #EDE8D9;white-space:nowrap;">{% if f.batida %}<span style="color:#1F6B3E;font-weight:bold;">✓ Batida</span>{% else %}<span style="color:#5C6A61;">faltam {{ f.falta|brl0|sem_quebra }}</span>{% endif %}</td>
+            <td align="right" style="padding:7px 0 7px 10px;border-top:1px solid #EDE8D9;white-space:nowrap;">{% if f.batida %}<span style="color:#1F6B3E;font-weight:bold;">✓ {% if meta.em_fechamento %}Garantida{% elif meta.previa %}Batida na prévia{% else %}Batida{% endif %}</span>{% elif f.estado == "possivel" %}<span style="color:#2457A6;font-weight:bold;">Depende dos pendentes</span>{% elif f.estado == "fora" %}<span style="color:#5C6A61;">{% if meta.em_fechamento %}fora de alcance{% else %}ficou a {{ f.falta|brl0|sem_quebra }}{% endif %}</span>{% else %}<span style="color:#5C6A61;">faltam {{ f.falta|brl0|sem_quebra }}</span>{% endif %}</td>
           </tr>
         {% endfor %}
       </table>
       <div style="margin-top:12px;padding:12px 14px;background:#FBF1CF;border-radius:10px;font-size:14px;color:#5C4400;line-height:1.5;">
-        {% if meta.modo_gmv %}
-          {% if meta.proxima %}Faltam <strong>{{ meta.falta|brl|sem_quebra }}</strong> pra meta: dá <strong>{{ meta.por_dia|brl|sem_quebra }} por dia</strong> nos {{ meta.dias_restantes }} dia{{ meta.dias_restantes|pluralize }} que faltam.{% else %}<strong>Meta batida! 🎉</strong>{% endif %}<br>
-          {% if meta.bonus_atual %}Bônus até agora: <strong>{{ meta.bonus_atual|brl|sem_quebra }}</strong> ({{ meta.gmv_percentual|floatformat:"-2" }}% do GMV). Cada R$ 1.000 a mais rende {{ meta.bonus_a_cada_mil|brl|sem_quebra }}.<br>{% endif %}
+        {% if not meta.previa %}
+          {% if meta.em_fechamento %}{% if meta.faixa_em_jogo %}Para garantir a faixa <strong>{{ meta.faixa_em_jogo.nome }}</strong>, faltam <strong>{{ meta.falta_validar|brl|sem_quebra }}</strong> serem validados. Dos pendentes, você pode perder até <strong>{{ meta.pode_perder|brl|sem_quebra }}</strong> em cancelamentos e ainda bater a faixa.{% elif meta.proxima %}Mesmo com todos os pendentes validados, a próxima faixa fica fora de alcance.{% else %}Todas as faixas já estão garantidas com os pedidos validados. 🎉{% endif %}<br>O resultado de {{ meta.nome_mes }} fecha em <strong>{{ meta.fecha_em|date:"d/m" }}</strong>, só com os pedidos validados.
+          {% else %}Resultado final de {{ meta.nome_mes }}, só com os pedidos validados.{% if meta.bonus_garantido %} Bônus: <strong>{{ meta.bonus_garantido|brl|sem_quebra }}</strong>.{% endif %}{% endif %}
+        {% elif meta.modo_gmv %}
+          {% if meta.proxima %}Faltam <strong>{{ meta.falta|brl|sem_quebra }}</strong> pra meta: dá <strong>{{ meta.por_dia|brl|sem_quebra }} por dia</strong> {% if meta.dias_restantes == 1 %}no último dia do mês{% else %}nos {{ meta.dias_restantes }} dias que faltam{% endif %}.{% else %}<strong>Meta batida na prévia! 🎉</strong>{% endif %}<br>
+          {% if meta.bonus_atual %}Bônus pela prévia: <strong>{{ meta.bonus_atual|brl|sem_quebra }}</strong> ({{ meta.gmv_percentual|floatformat:"-2" }}% do GMV). Cada R$ 1.000 a mais rende {{ meta.bonus_a_cada_mil|brl|sem_quebra }}.<br>{% endif %}
           No ritmo atual, o mês fecha em <strong>{{ meta.projecao|brl0|sem_quebra }}</strong>{% if meta.bonus_projetado %} e o bônus em <strong>{{ meta.bonus_projetado|brl0|sem_quebra }}</strong>{% else %}, abaixo da meta{% endif %}.
         {% elif meta.proxima %}
-          Faltam <strong>{{ meta.falta|brl|sem_quebra }}</strong> pra faixa <strong>{{ meta.nome_proxima }}</strong>{% if meta.proxima.bonus %} (bônus de {{ meta.proxima.bonus|brl0|sem_quebra }}){% endif %}: dá <strong>{{ meta.por_dia|brl|sem_quebra }} por dia</strong> nos {{ meta.dias_restantes }} dia{{ meta.dias_restantes|pluralize }} que faltam.<br>
+          Faltam <strong>{{ meta.falta|brl|sem_quebra }}</strong> pra faixa <strong>{{ meta.nome_proxima }}</strong>{% if meta.proxima.bonus %} (bônus de {{ meta.proxima.bonus|brl0|sem_quebra }}){% endif %}: dá <strong>{{ meta.por_dia|brl|sem_quebra }} por dia</strong> {% if meta.dias_restantes == 1 %}no último dia do mês{% else %}nos {{ meta.dias_restantes }} dias que faltam{% endif %}.<br>
           No ritmo atual, o mês fecha em <strong>{{ meta.projecao|brl0|sem_quebra }}</strong>{% if meta.nome_faixa_projetada %}, na faixa {{ meta.nome_faixa_projetada }}{% else %}, abaixo da primeira faixa{% endif %}.
         {% else %}
-          <strong>Todas as faixas do mês batidas! 🎉</strong>
+          <strong>Todas as faixas do mês batidas na prévia! 🎉</strong>
         {% endif %}
-        {% if meta.bonus_garantido and not meta.modo_gmv %}<br>Bônus garantido até agora: <strong>{{ meta.bonus_garantido|brl|sem_quebra }}</strong>.{% endif %}
+        {% if meta.previa %}{% if meta.bonus_garantido and not meta.modo_gmv %}<br>Bônus da faixa batida na prévia: <strong>{{ meta.bonus_garantido|brl|sem_quebra }}</strong>.{% endif %}
+        <br><span style="font-size:13px;">É uma prévia: o resultado oficial de {{ meta.nome_mes }} fecha em <strong>{{ meta.fecha_em|date:"d/m" }}</strong>, só com os pedidos validados.</span>{% endif %}
+      </div>
+    {% endif %}
+    {% if outros_meses %}
+      <div style="margin-top:12px;font-size:13.5px;line-height:1.55;color:#1C2B23;">
+        {% for m in outros_meses %}<div style="padding:6px 0;border-top:1px dashed #EDE8D9;">{% if m.fase == "fechamento" %}📌 <strong>{{ m.nome_mes }} em fechamento até {{ m.fecha_em|date:"d/m" }}:</strong> {% if m.em_fechamento %}garantido {{ m.faturamento|brl0|sem_quebra }}{% if m.faixa_em_jogo %} de {{ m.faixa_em_jogo.faturamento|brl0|sem_quebra }} (faixa {{ m.faixa_em_jogo.nome }}){% elif m.batidas %} (faixa {{ m.nome_faixa_batida }} garantida){% endif %}. Pendente: {{ m.pendente|brl0|sem_quebra }}. {{ m.frase_possivel }}{% else %}{{ m.faturamento|brl0|sem_quebra }} estimados.{% endif %}{% elif m.fechada %}✅ <strong>{{ m.nome_mes }} fechada:</strong> {{ m.faturamento|brl0|sem_quebra }}{% if m.batidas %}, faixa {{ m.nome_faixa_batida }}{% if m.bonus_garantido %}, bônus {{ m.bonus_garantido|brl0|sem_quebra }}{% endif %}{% else %}, nenhuma faixa batida{% endif %}.{% else %}<strong>{{ m.nome_mes }} (prévia):</strong> {{ m.faturamento|brl0|sem_quebra }}.{% endif %}</div>{% endfor %}
       </div>
     {% endif %}
 

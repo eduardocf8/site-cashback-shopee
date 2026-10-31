@@ -205,6 +205,9 @@ def inicio(request):
             "ontem": ontem,
             "do_ontem": resultados.totais(conta, ontem, ontem),
             "meta": telas.situacao_meta(conta, fim_mes.year, fim_mes.month, hoje),
+            # Os outros meses com meta (em fechamento e fechada), em linhas curtas embaixo do cartão.
+            "outros_meses": [m for m in telas.metas_dos_tres_meses(conta, hoje)
+                             if m["mes_valor"] != f"{fim_mes.year}-{fim_mes.month:02d}"],
         })
     return render(request, "painel/inicio.html", _contexto(request, "inicio", **contexto))
 
@@ -341,7 +344,13 @@ def metas_view(request):
     return render(request, "painel/metas.html", _contexto(
         request, "metas",
         em_gmv=em_gmv, meta_gmv=faixas[0] if em_gmv else {},
-        opcoes=[{"valor": f"{a}-{m:02d}", "nome": telas.nome_mes(a, m), "ativo": (a, m) == ano_mes} for a, m in opcoes],
+        opcoes=[{"valor": f"{a}-{m:02d}", "nome": telas.nome_mes(a, m), "ativo": (a, m) == ano_mes,
+                 "fase": ("Próximo mês" if (a, m) > (hoje.year, hoje.month) else telas.NOMES_FASES[telas.fase_da_meta(a, m, hoje)[0]])}
+                for a, m in opcoes],
+        tres_meses=list(reversed(telas.metas_dos_tres_meses(conta, hoje))) if conta.shopee_validado_em else [],
+        # O próximo mês não está entre os três detalhados: o cartão dele fica ao lado do formulário.
+        situacao_proximo=(telas.situacao_meta(conta, ano, mes, hoje)
+                          if faixas and (ano, mes) > (hoje.year, hoje.month) else None),
         mes_valor=f"{ano}-{mes:02d}",
         nome_mes=telas.nome_mes(ano, mes),
         linhas=linhas,

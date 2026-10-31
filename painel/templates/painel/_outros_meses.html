@@ -1,0 +1,8 @@
+{% load painel_extras %}
+{% if outros_meses %}
+    <div class="outros-meses">
+      {% for m in outros_meses %}
+        <span>{% if m.fase == "fechamento" %}📌 <strong>{{ m.nome_mes }} em fechamento até {{ m.fecha_em|date:"d/m" }}:</strong> {% if m.em_fechamento %}garantido {{ m.faturamento|brl0 }}{% if m.faixa_em_jogo %} de {{ m.faixa_em_jogo.faturamento|brl0 }} (faixa {{ m.faixa_em_jogo.nome }}){% elif m.batidas %} (faixa {{ m.nome_faixa_batida }} garantida){% endif %}. Pendente: {{ m.pendente|brl0 }}. {{ m.frase_possivel }}{% else %}{{ m.faturamento|brl0 }} estimados.{% endif %}{% elif m.fechada %}✅ <strong>{{ m.nome_mes }} fechada:</strong> {{ m.faturamento|brl0 }}{% if m.batidas %}, faixa {{ m.nome_faixa_batida }}{% if m.bonus_garantido %}, bônus {{ m.bonus_garantido|brl0 }}{% endif %}{% else %}, nenhuma faixa batida{% endif %}.{% else %}<strong>{{ m.nome_mes }} (prévia):</strong> {{ m.faturamento|brl0 }}.{% endif %}</span>
+      {% endfor %}
+    </div>
+  {% endif %}

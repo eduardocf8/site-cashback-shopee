@@ -146,11 +146,12 @@ class TestComVinculo(BaseComandos):
         ])
         ResultadoDiario.objects.create(conta=self.conta, dia=date(2026, 10, 20), faturamento=Decimal("3200"))
         texto = self.resposta("metas")
-        self.assertIn("🎯 *Meta de Outubro/2026*\nFaturamento até ontem: R$ 3.200,00", texto)
-        self.assertIn("✅ 100% (R$ 3.000,00, bônus de R$ 100,00): batida", texto)
+        self.assertIn("🟡 *Outubro/2026: prévia* (fecha em 30/11)\nFaturamento até ontem (estimado): R$ 3.200,00", texto)
+        self.assertIn("✅ 100% (R$ 3.000,00, bônus de R$ 100,00): batida na prévia", texto)
         self.assertIn("⬜ 125% (R$ 3.750,00, bônus de R$ 200,00): faltam R$ 550,00", texto)
         self.assertIn("Para a próxima faixa: R$ 137,50 por dia nos 4 dias que faltam.", texto)
-        self.assertIn("Bônus garantido: R$ 100,00", texto)
+        self.assertIn("Bônus da faixa batida na prévia: R$ 100,00", texto)
+        self.assertIn("conta só os pedidos validados", texto)
 
     def test_metas_sem_cadastro_manda_pro_painel(self):
         texto = self.resposta("meta")

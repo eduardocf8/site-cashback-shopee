@@ -1062,3 +1062,32 @@ fieldset.sem-borda > legend { padding: 0; margin-bottom: 8px; }
 @media (max-width: 640px) { .kpis-campanhas { gap: 10px; } .kpis-campanhas .kpi-valor { font-size: 20px; } }
 .linha-imposto { display: flex; gap: 8px; align-items: center; }
 .linha-imposto input { width: 110px; min-height: 40px; padding: 0 12px; border-radius: 10px; border: 1px solid var(--borda); background: var(--campo); font: inherit; color: inherit; }
+/* Metas em três fases: prévia, em fechamento e fechada (telas.situacao_meta) */
+.selo-fase { align-self: flex-start; font-size: 11.5px; font-weight: 800; letter-spacing: .03em; text-transform: uppercase; border-radius: 999px; padding: 3px 10px; }
+.fase-previa { background: #FFF4D6; color: #7A5A00; }
+.fase-fechamento { background: #E3EEFF; color: #2457A6; }
+.fase-fechada { background: #DFF5E6; color: #1E7A3C; }
+.meta-preenchido.com-pendente { border-radius: 999px 0 0 999px; }
+.meta-pendente { position: absolute; top: 0; height: 100%; border-radius: 0 999px 999px 0; background: repeating-linear-gradient(45deg, #8FC9A3, #8FC9A3 4px, #B9E0C6 4px, #B9E0C6 8px); }
+.legenda-meta { display: flex; gap: 14px; font-size: 12px; color: var(--suave); margin-top: -4px; }
+.legenda-meta span::before { content: ""; display: inline-block; width: 10px; height: 10px; border-radius: 3px; margin-right: 5px; vertical-align: -1px; }
+.lm-val::before { background: var(--verde); }
+.lm-pen::before { background: #8FC9A3; }
+.partes-meta { margin: 0; display: flex; flex-direction: column; gap: 4px; font-size: 13.5px; }
+.partes-meta div { display: flex; justify-content: space-between; gap: 12px; }
+.partes-meta dt { color: var(--suave); }
+.partes-meta dd { margin: 0; font-weight: 700; white-space: nowrap; }
+.faixa-falta.possivel { color: #2457A6; font-weight: 700; }
+.faixa-falta.bom { color: var(--bom-tinta); font-weight: 700; }
+.aviso-meta { margin: 0; font-size: 12.5px; line-height: 1.45; border-radius: 12px; padding: 10px 12px; }
+.aviso-meta.previa { background: #FFF8E1; color: #6B5300; }
+.aviso-meta.fechamento { background: #EEF4FF; color: #24426E; }
+.aviso-meta.fechada { background: #EAF7EE; color: #1E5C33; }
+.outros-meses { margin-top: 12px; padding-top: 12px; border-top: 1px dashed var(--borda); display: flex; flex-direction: column; gap: 6px; font-size: 13px; }
+.tres-meses { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 16px; align-items: start; margin-bottom: 16px; }
+@media (max-width: 1100px) { .tres-meses { grid-template-columns: 1fr; } }
+.form-metas { max-width: 720px; }
+.chip .fase-chip { margin-left: 6px; font-size: 11px; font-weight: 700; opacity: .7; }
+.form-metas.duas-colunas { max-width: none; }
+.faixas li > span.faixa-falta { white-space: normal; }
+.frase-possivel { margin: 0; color: #24426E; }
