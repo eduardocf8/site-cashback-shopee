@@ -1,0 +1,28 @@
+{% extends "painel/base.html" %}
+{% load painel_extras %}
+{% block titulo %}Conferir faturamento{% endblock %}
+{% block conteudo %}
+<header class="cabecalho">
+  <div><h1>Conferir faturamento</h1><p>O faturamento de {{ c.nome_mes }} contado de três jeitos, para comparar com o painel da Shopee.</p></div>
+</header>
+<nav class="chips" aria-label="Mês">
+  {% for m in meses %}<a class="chip{% if m.ativo %} ativo{% endif %}" href="?mes={{ m.valor }}"{% if m.ativo %} aria-current="true"{% endif %}>{{ m.nome }}</a>{% endfor %}
+</nav>
+
+<section class="card" style="margin-top:12px">
+  <div class="tabela-rolagem"><table class="numeros">
+    <thead><tr><th>Jeito de contar</th><th>Faturamento</th><th>Pedidos</th></tr></thead>
+    <tbody>
+      <tr><td><strong>1. Pedidos feitos em {{ c.nome_mes }}</strong><br><span class="suave pequeno">comprados de {{ c.inicio|date:"d/m" }} a {{ c.fim|date:"d/m" }}, sem os cancelados (é o que o Appfiliado usa hoje)</span></td><td><strong>{{ c.feitos.valor|brl }}</strong></td><td>{{ c.feitos.pedidos|numero }}</td></tr>
+      <tr><td>&nbsp;&nbsp;↳ já validados</td><td>{{ c.feitos_validados.valor|brl }}</td><td>{{ c.feitos_validados.pedidos|numero }}</td></tr>
+      <tr><td>&nbsp;&nbsp;↳ ainda pendentes</td><td>{{ c.feitos_pendentes.valor|brl }}</td><td>{{ c.feitos_pendentes.pedidos|numero }}</td></tr>
+      <tr><td>&nbsp;&nbsp;↳ cancelados (fora do total)</td><td>{{ c.feitos_cancelados.valor|brl }}</td><td>{{ c.feitos_cancelados.pedidos|numero }}</td></tr>
+      <tr><td><strong>2. Pedidos feitos em {{ c.nome_mes }} e já validados</strong><br><span class="suave pequeno">o "garantido" da meta em fechamento</span></td><td><strong>{{ c.feitos_validados.valor|brl }}</strong></td><td>{{ c.feitos_validados.pedidos|numero }}</td></tr>
+      <tr><td><strong>3. Pedidos validados em {{ c.nome_mes }}</strong><br><span class="suave pequeno">concluídos de {{ c.inicio|date:"d/m" }} a {{ c.fim|date:"d/m" }}, comprados em qualquer data</span></td><td><strong>{{ c.validados_no_mes.valor|brl }}</strong></td><td>{{ c.validados_no_mes.pedidos|numero }}</td></tr>
+      <tr><td>&nbsp;&nbsp;↳ comprados antes de {{ c.nome_mes }}</td><td>{{ c.validados_no_mes_comprados_antes.valor|brl }}</td><td>{{ c.validados_no_mes_comprados_antes.pedidos|numero }}</td></tr>
+    </tbody>
+  </table></div>
+  <p class="suave pequeno" style="margin-top:12px">Para referência, o faturamento que aparece em Resultados para {{ c.nome_mes }} é {{ c.painel|brl }} (somado dia a dia na última atualização). O valor de cada pedido é o preço vezes a quantidade de cada item.</p>
+  {% if c.cobertura_incompleta %}<p class="aviso aviso-warning pequeno">O Appfiliado só tem os seus pedidos desde {% if c.pedidos_desde %}{{ c.pedidos_desde|date:"d/m/Y" }}{% else %}a primeira atualização{% endif %}. Pedidos validados em {{ c.nome_mes }} mas comprados antes disso não entram no número 3.</p>{% endif %}
+</section>
+{% endblock %}

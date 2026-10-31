@@ -130,3 +130,29 @@ class TestTelasComTresMeses(BaseFases):
         self.assertIn("Outubro/2026 em fechamento até 30/11: garantido", texto)
         self.assertIn("É uma prévia: o resultado oficial de Novembro/2026 fecha em 31/12", texto)
 
+
+class TestConferenciaDoFaturamento(BaseFases):
+    def item(self, compra: date, valor: int, situacao: str, validado: date | None = None):
+        self.n += 1
+        VendaItem.objects.create(conta=self.conta, conversao_id=f"c{self.n}", pedido_id=f"p{self.n}", valor=Decimal(valor),
+                                 situacao=situacao, comprado_em=_aware(compra.year, compra.month, compra.day, 12),
+                                 concluido_em=_aware(validado.year, validado.month, validado.day, 12) if validado else None)
+
+    def test_tres_jeitos_de_contar_o_mes(self):
+        self.item(date(2026, 8, 25), 1000, VendaItem.CONCLUIDO, date(2026, 9, 5))  # comprado em agosto, validado em setembro
+        self.item(date(2026, 9, 3), 2000, VendaItem.CONCLUIDO, date(2026, 9, 20))
+        self.item(date(2026, 9, 25), 4000, VendaItem.CONCLUIDO, date(2026, 10, 8))  # comprado em setembro, validado em outubro
+        self.item(date(2026, 9, 28), 500, VendaItem.PENDENTE)
+        self.item(date(2026, 9, 29), 300, VendaItem.CANCELADO)
+        c = telas.conferencia_faturamento(self.conta, 2026, 9)
+        self.assertEqual(c["feitos"]["valor"], 6500)  # 2.000 + 4.000 + 500
+        self.assertEqual(c["feitos_validados"]["valor"], 6000)
+        self.assertEqual(c["feitos_cancelados"]["valor"], 300)
+        self.assertEqual((c["validados_no_mes"]["valor"], c["validados_no_mes"]["pedidos"]), (3000, 2))  # 1.000 + 2.000
+        self.assertEqual(c["validados_no_mes_comprados_antes"]["valor"], 1000)
+
+        self.entrar()
+        with mock.patch("painel.telas.hoje", return_value=date(2026, 11, 3)):
+            html = self.client.get("/resultados/conferir/?mes=2026-09").content.decode()
+        self.assertIn("3. Pedidos validados em Setembro/2026", html)
+        self.assertIn("R$ 3.000,00", html)

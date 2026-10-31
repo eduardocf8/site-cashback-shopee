@@ -294,3 +294,43 @@ def hoje() -> date:
 
 def decimal(valor) -> Decimal:
     return Decimal(str(valor or 0))
+
+
+# --- Conferência do faturamento (página escondida /resultados/conferir/) ---------------------------
+
+def conferencia_faturamento(conta, ano: int, mes: int) -> dict:
+    """O faturamento do mês contado de três jeitos, para comparar com o painel da Shopee:
+    - feitos: pedidos comprados no mês, sem os cancelados (o jeito do Appfiliado hoje);
+    - feitos e já validados: dos comprados no mês, só os concluídos;
+    - validados no mês: pedidos concluídos no mês, comprados em qualquer data.
+    Valor = preço x quantidade de cada item (VendaItem)."""
+    from django.db.models import Count, Q
+
+    inicio = date(ano, mes, 1)
+    fim = periodos.ultimo_dia_do_mes(inicio)
+    de = timezone.make_aware(datetime.combine(inicio, time.min))
+    ate = timezone.make_aware(datetime.combine(fim + timedelta(days=1), time.min))
+    itens = VendaItem.objects.filter(conta=conta).order_by()
+
+    def somar(filtro):
+        r = itens.filter(filtro).aggregate(valor=Sum("valor"), pedidos=Count("pedido_id", distinct=True))
+        return {"valor": r["valor"] or Decimal(0), "pedidos": r["pedidos"] or 0}
+
+    comprados = Q(comprado_em__gte=de, comprado_em__lt=ate)
+    validados_no_mes = Q(situacao=VendaItem.CONCLUIDO, concluido_em__gte=de, concluido_em__lt=ate)
+    estado = estado_sincronizacao(conta)
+    desde = timezone.localtime(estado.vendas_desde).date() if estado and estado.vendas_desde else None
+    return {
+        "nome_mes": nome_mes(ano, mes), "inicio": inicio, "fim": fim,
+        "painel": resultados.totais(conta, inicio, fim)["faturamento"],
+        "feitos": somar(comprados & ~Q(situacao=VendaItem.CANCELADO)),
+        "feitos_validados": somar(comprados & Q(situacao=VendaItem.CONCLUIDO)),
+        "feitos_pendentes": somar(comprados & Q(situacao=VendaItem.PENDENTE)),
+        "feitos_cancelados": somar(comprados & Q(situacao=VendaItem.CANCELADO)),
+        "validados_no_mes": somar(validados_no_mes),
+        "validados_no_mes_comprados_antes": somar(validados_no_mes & Q(comprado_em__lt=de)),
+        "pedidos_desde": desde,
+        # Pedido validado no mês pode ter sido comprado até uns 2 meses antes: sem os pedidos guardados
+        # desde então, o terceiro número fica menor do que é.
+        "cobertura_incompleta": not desde or desde > periodos.primeiro_dia_do_mes(inicio - timedelta(days=45)),
+    }
