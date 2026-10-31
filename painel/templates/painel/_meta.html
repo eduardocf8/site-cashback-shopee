@@ -23,6 +23,7 @@
   {% elif meta.fechada and meta.cancelado is not None %}
     <dl class="partes-meta">
       <div><dt>Validado</dt><dd>{{ meta.validado|brl }}</dd></div>
+      {% if meta.fechado_em and meta.pendente %}<div><dt>Ainda pendente no fechamento (ficou fora)</dt><dd>{{ meta.pendente|brl }}</dd></div>{% endif %}
       <div><dt>Cancelado</dt><dd>{{ meta.cancelado|brl }}</dd></div>
     </dl>
   {% endif %}
@@ -82,12 +83,12 @@
   {% endif %}
 
   {% if meta.previa %}
-    <p class="aviso-meta previa"><strong>É uma prévia.</strong> O resultado oficial de {{ meta.nome_mes }} fecha em {{ meta.fecha_em|date:"d/m" }} e conta só os pedidos validados. Cancelamentos até lá podem tirar você de uma faixa.</p>
+    <p class="aviso-meta previa"><strong>É uma prévia.</strong> O resultado oficial de {{ meta.nome_mes }} fecha em {{ meta.fecha_em|date:"d/m" }} às 11h e conta só os pedidos validados até lá. Cancelamentos até lá podem tirar você de uma faixa.</p>
   {% elif meta.sem_pedidos_guardados %}
-    <p class="aviso-meta previa">O Appfiliado não tem os pedidos de {{ meta.nome_mes }} desde o começo do mês, então este é o faturamento estimado. O resultado oficial {% if meta.fechada %}fechou{% else %}fecha{% endif %} em {{ meta.fecha_em|date:"d/m" }}, só com os pedidos validados.</p>
+    <p class="aviso-meta previa">O Appfiliado não tem os pedidos de {{ meta.nome_mes }} desde o começo do mês, então este é o faturamento estimado. O resultado oficial {% if meta.fechada %}fechou{% else %}fecha{% endif %} em {{ meta.fecha_em|date:"d/m" }} às 11h, só com os pedidos validados.</p>
   {% elif meta.em_fechamento %}
-    <p class="aviso-meta fechamento">{% if meta.faixa_em_jogo %}Para garantir a faixa {{ meta.faixa_em_jogo.nome }}, faltam <strong>{{ meta.falta_validar|brl }}</strong> serem validados. Dos pendentes, você pode perder até <strong>{{ meta.pode_perder|brl }}</strong> em cancelamentos e ainda bater a faixa.{% elif meta.proxima %}Mesmo com todos os pendentes validados, a próxima faixa fica fora de alcance.{% else %}Todas as faixas já estão garantidas com os pedidos validados.{% endif %} O resultado fecha em {{ meta.fecha_em|date:"d/m" }}.</p>
+    <p class="aviso-meta fechamento">{% if meta.faixa_em_jogo %}Para garantir a faixa {{ meta.faixa_em_jogo.nome }}, faltam <strong>{{ meta.falta_validar|brl }}</strong> serem validados. Dos pendentes, você pode perder até <strong>{{ meta.pode_perder|brl }}</strong> em cancelamentos e ainda bater a faixa.{% elif meta.proxima %}Mesmo com todos os pendentes validados, a próxima faixa fica fora de alcance.{% else %}Todas as faixas já estão garantidas com os pedidos validados.{% endif %} O resultado fecha em {{ meta.fecha_em|date:"d/m" }} às 11h e não muda mais depois disso.</p>
   {% else %}
-    <p class="aviso-meta fechada"><strong>Resultado final</strong>, só com os pedidos validados.</p>
+    <p class="aviso-meta fechada"><strong>Resultado final</strong>, {% if meta.fechado_em %}guardado em {{ meta.fechado_em|date:"d/m" }} às {{ meta.fechado_em|date:"H\hi" }} com os pedidos validados até ali. Não muda mais.{% else %}só com os pedidos validados.{% endif %}</p>
   {% endif %}
 </div>

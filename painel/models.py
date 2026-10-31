@@ -108,6 +108,30 @@ class MetaMensal(models.Model):
         return f"{self.conta.email} {self.mes:02d}/{self.ano}"
 
 
+class FechamentoMes(models.Model):
+    """O faturamento do mês guardado no fechamento da meta (30 dias depois do último dia do mês, às
+    11h - quando a Shopee manda o e-mail da meta mensal) e que não muda mais: os pedidos comprados no
+    mês e validados até ali, pelo valor pago menos reembolsos, buscados direto na Shopee (painel/fechamento.py)."""
+
+    conta = models.ForeignKey(ContaAppfiliado, on_delete=models.CASCADE, related_name="fechamentos")
+    ano = models.PositiveSmallIntegerField()
+    mes = models.PositiveSmallIntegerField()
+    validado = models.DecimalField(max_digits=14, decimal_places=2)
+    pendente = models.DecimalField(max_digits=14, decimal_places=2, default=0)  # ainda pendente no fechamento: ficou fora
+    cancelado = models.DecimalField(max_digits=14, decimal_places=2, default=0)
+    pedidos = models.PositiveIntegerField(default=0)  # pedidos validados
+    fechado_em = models.DateTimeField()
+
+    class Meta:
+        ordering = ["-ano", "-mes"]
+        verbose_name = "fechamento do mês"
+        verbose_name_plural = "fechamentos dos meses"
+        constraints = [models.UniqueConstraint(fields=["conta", "ano", "mes"], name="fechamento_mes_unico")]
+
+    def __str__(self):
+        return f"{self.conta.email} {self.mes:02d}/{self.ano}: {self.validado}"
+
+
 class VendaItem(models.Model):
     """Cada produto vendido (um item de um pedido de uma conversão), guardado a cada
     sincronização. A API só alcança ~3 meses; guardando aqui o histórico fica com a
@@ -126,7 +150,7 @@ class VendaItem(models.Model):
     loja = models.CharField(max_length=200, blank=True)
     quantidade = models.PositiveIntegerField(default=1)
     preco = models.DecimalField(max_digits=12, decimal_places=2, default=0)
-    valor = models.DecimalField(max_digits=12, decimal_places=2, default=0)  # preço x quantidade
+    valor = models.DecimalField(max_digits=12, decimal_places=2, default=0)  # valor pago menos reembolsos (resultados.valor_do_item)
     comissao = models.DecimalField(max_digits=12, decimal_places=2, default=0)
     status_shopee = models.CharField(max_length=20, blank=True)  # orderStatus como veio
     motivo_shopee = models.CharField(max_length=300, blank=True)  # por que foi cancelado, quando a Shopee diz

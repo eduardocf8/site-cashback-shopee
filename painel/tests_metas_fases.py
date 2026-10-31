@@ -34,12 +34,14 @@ class BaseFases(BasePainel):
 
 
 class TestFases(BaseFases):
-    def test_o_resultado_fecha_no_ultimo_dia_do_mes_seguinte(self):
+    def test_o_resultado_fecha_30_dias_depois_do_ultimo_dia(self):
         self.assertEqual(telas.fase_da_meta(2026, 10, date(2026, 10, 31)), (telas.PREVIA, date(2026, 11, 30)))
         self.assertEqual(telas.fase_da_meta(2026, 10, date(2026, 11, 1)), (telas.FECHAMENTO, date(2026, 11, 30)))
-        self.assertEqual(telas.fase_da_meta(2026, 10, date(2026, 11, 30))[0], telas.FECHAMENTO)
+        self.assertEqual(telas.fase_da_meta(2026, 10, date(2026, 11, 30))[0], telas.FECHAMENTO)  # fecha às 11h
         self.assertEqual(telas.fase_da_meta(2026, 10, date(2026, 12, 1))[0], telas.FECHADA)
-        self.assertEqual(telas.fase_da_meta(2026, 12, date(2027, 1, 5)), (telas.FECHAMENTO, date(2027, 1, 31)))  # virada do ano
+        self.assertEqual(telas.fase_da_meta(2026, 9, date(2026, 10, 31)), (telas.FECHADA, date(2026, 10, 30)))
+        self.assertEqual(telas.fase_da_meta(2026, 12, date(2027, 1, 5)), (telas.FECHAMENTO, date(2027, 1, 30)))  # virada do ano
+        self.assertEqual(telas.fase_da_meta(2027, 1, date(2027, 2, 5))[1], date(2027, 3, 2))
 
     def test_em_fechamento_separa_validado_pendente_e_cancelado(self):
         MetaMensal.objects.create(conta=self.conta, ano=2026, mes=10, faixas=FAIXAS)
@@ -83,7 +85,7 @@ class TestFases(BaseFases):
         ResultadoDiario.objects.create(conta=self.conta, dia=date(2026, 11, 2), faturamento=Decimal(53000))
         m = telas.situacao_meta(self.conta, 2026, 11, date(2026, 11, 10))
         self.assertTrue(m["previa"])
-        self.assertEqual((m["faturamento"], m["fecha_em"]), (53000.0, date(2026, 12, 31)))
+        self.assertEqual((m["faturamento"], m["fecha_em"]), (53000.0, date(2026, 12, 30)))
         self.assertEqual(m["faixas_tela"][0]["estado"], "batida")
 
     def test_sem_os_pedidos_desde_o_comeco_do_mes_avisa(self):
@@ -108,7 +110,7 @@ class TestTelasComTresMeses(BaseFases):
 
     def test_metas_detalha_os_tres_meses(self, _):
         html = self.client.get("/metas/").content.decode()
-        for texto in ("Setembro/2026", "Fechada em 31/10", "Outubro/2026", "Em fechamento até 30/11", "Novembro/2026",
+        for texto in ("Setembro/2026", "Fechada em 30/10", "Outubro/2026", "Em fechamento até 30/11", "Novembro/2026",
                       "Prévia", "possível: depende dos pendentes", "Bônus de Setembro/2026"):
             self.assertIn(texto, html)
         self.assertEqual(html.count('class="selo-fase'), 3)
@@ -128,7 +130,7 @@ class TestTelasComTresMeses(BaseFases):
 
         texto = render_to_string("painel/email_relatorio.txt", dados)
         self.assertIn("Outubro/2026 em fechamento até 30/11: garantido", texto)
-        self.assertIn("É uma prévia: o resultado oficial de Novembro/2026 fecha em 31/12", texto)
+        self.assertIn("É uma prévia: o resultado oficial de Novembro/2026 fecha em 30/12 às 11h", texto)
 
 
 class TestConferenciaDoFaturamento(BaseFases):
@@ -187,7 +189,7 @@ class TestConferenciaDoFaturamento(BaseFases):
 
         def paginas(app_id, secret, inicio, fim, data="purchaseTime", itens_extras=()):
             self.assertEqual((app_id, secret, inicio, fim), ("123", "segredo", ts(2026, 9, 1, 0), ts(2026, 10, 1, 0) - 1))
-            self.assertIn("actualAmount", itens_extras)
+            self.assertIn("channelType", itens_extras)
             yield validados if data == "completeTime" else feitos
 
         with mock.patch.object(resultados, "paginas_de_conversoes", side_effect=paginas):
@@ -225,3 +227,88 @@ class TestConferenciaDoFaturamento(BaseFases):
         with mock.patch.object(resultados, "paginas_de_conversoes", side_effect=ShopeeAPIError("Unknown argument completeTimeStart")):
             r = resultados.conferencia_na_shopee(self.conta, date(2026, 9, 1), date(2026, 9, 30))
         self.assertIn("completeTimeStart", r["por_validacao"]["erro"])
+
+
+class TestValorPago(BaseFases):
+    def test_valor_pago_menos_reembolso(self):
+        from . import resultados
+
+        self.assertEqual(resultados.valor_do_item({"itemPrice": "100", "qty": 2, "actualAmount": "180.50", "refundAmount": "30"}), 150.5)
+        self.assertEqual(resultados.valor_do_item({"itemPrice": "100", "qty": 2}), 200.0)  # sem o valor pago: preço x qtd
+        conversao = {"purchaseTime": int(_aware(2026, 9, 3, 12).timestamp()), "conversionId": "1", "orders": [
+            {"orderId": "A", "orderStatus": "COMPLETED", "items": [{"itemPrice": "100", "qty": 2, "actualAmount": "180.50",
+                                                                     "refundAmount": "30", "itemTotalCommission": "10"}]}]}
+        por_dia, _ = resultados.calcular_por_dia([conversao])
+        self.assertEqual(por_dia[date(2026, 9, 3)]["faturamento"], 150.5)
+        self.assertEqual(resultados.itens_vendidos(self.conta, [conversao])[0].valor, Decimal("150.50"))
+
+
+class TestFechamento(BaseFases):
+    def setUp(self):
+        super().setUp()
+        from . import cripto, fechamento
+
+        fechamento._ultimo_erro.clear()
+        self.conta.shopee_app_id = "123"
+        self.conta.shopee_secret_cifrado = cripto.cifrar("segredo")
+        self.conta.save()
+
+    def conversoes(self):
+        def item(pago, reembolso=0):
+            return {"itemPrice": str(pago + 10), "qty": 1, "actualAmount": str(pago), "refundAmount": str(reembolso)}
+
+        return [{"purchaseTime": int(_aware(2026, 9, 10, 12).timestamp()), "orders": [
+            {"orderId": "A", "orderStatus": "COMPLETED", "items": [item(50000), item(3000, reembolso=500)]},
+            {"orderId": "B", "orderStatus": "PENDING", "items": [item(1200)]},
+            {"orderId": "C", "orderStatus": "CANCELLED", "items": [item(700)]}]}]
+
+    def test_meses_que_fecham(self):
+        from . import fechamento
+
+        self.assertEqual(fechamento.meses_para_fechar(_aware(2026, 10, 30, 10, 59)), [])
+        self.assertEqual(fechamento.meses_para_fechar(_aware(2026, 10, 30, 11, 0)), [(2026, 9)])
+        self.assertEqual(fechamento.meses_para_fechar(_aware(2026, 11, 6, 10, 0)), [(2026, 9)])
+        self.assertEqual(fechamento.meses_para_fechar(_aware(2026, 11, 7, 11, 0)), [])  # atrasado demais
+        self.assertEqual(fechamento.meses_para_fechar(_aware(2026, 11, 30, 11, 5)), [(2026, 10)])
+
+    def test_guarda_o_fechamento_e_ele_nao_muda_mais(self):
+        from . import fechamento, resultados
+        from .models import FechamentoMes
+
+        MetaMensal.objects.create(conta=self.conta, ano=2026, mes=9, faixas=FAIXAS)
+        agora = _aware(2026, 10, 30, 11, 2)
+        self.assertEqual(fechamento.uma_volta(_aware(2026, 10, 30, 10, 30)), [])  # antes das 11h
+        with mock.patch.object(resultados, "paginas_de_conversoes", return_value=iter([self.conversoes()])) as buscar:
+            linhas = fechamento.uma_volta(agora)
+            self.assertEqual(fechamento.uma_volta(agora), [])  # já fechado: não busca de novo
+        self.assertEqual(buscar.call_count, 1)
+        self.assertEqual(buscar.call_args.kwargs["data"], "purchaseTime")
+        self.assertIn("09/2026 fechado em R$ 52500.00", linhas[0])
+        f = FechamentoMes.objects.get()
+        self.assertEqual((f.validado, f.pendente, f.cancelado, f.pedidos), (Decimal(52500), Decimal(1200), Decimal(700), 1))
+
+        # Pedidos validados depois do fechamento não mudam a meta.
+        self.venda(date(2026, 9, 12), "9999", VendaItem.CONCLUIDO)
+        m = telas.situacao_meta(self.conta, 2026, 9, date(2026, 10, 30))
+        self.assertTrue(m["fechada"])
+        self.assertEqual((m["faturamento"], m["pendente"], m["bonus_garantido"]), (52500.0, 1200.0, 300))
+        self.assertEqual(m["fechado_em"], agora)
+
+    def test_no_dia_do_fechamento_antes_de_guardar_continua_em_fechamento(self):
+        MetaMensal.objects.create(conta=self.conta, ano=2026, mes=9, faixas=FAIXAS)
+        self.venda(date(2026, 9, 12), "40000", VendaItem.CONCLUIDO)
+        m = telas.situacao_meta(self.conta, 2026, 9, date(2026, 10, 30))
+        self.assertTrue(m["em_fechamento"])
+
+    def test_falha_da_shopee_tenta_de_novo_depois(self):
+        from links.shopee_client import ShopeeAPIError
+
+        from . import fechamento, resultados
+        from .models import FechamentoMes
+
+        with mock.patch.object(resultados, "paginas_de_conversoes", side_effect=ShopeeAPIError("fora do ar")):
+            self.assertIn("falhou", fechamento.uma_volta(_aware(2026, 10, 30, 11, 0))[0])
+            self.assertEqual(fechamento.uma_volta(_aware(2026, 10, 30, 11, 10)), [])  # espera 30 min
+        self.assertFalse(FechamentoMes.objects.exists())
+        with mock.patch.object(resultados, "paginas_de_conversoes", return_value=iter([self.conversoes()])):
+            self.assertIn("fechado", fechamento.uma_volta(_aware(2026, 10, 30, 11, 31))[0])

@@ -1,7 +1,7 @@
 from django.conf import settings
 from django.contrib import admin
 
-from .models import MetaMensal, RegraSubId, RelatorioEmail, SincronizacaoResultados, VendaItem
+from .models import FechamentoMes, MetaMensal, RegraSubId, RelatorioEmail, SincronizacaoResultados, VendaItem
 
 
 @admin.register(SincronizacaoResultados)
@@ -25,6 +25,15 @@ class SincronizacaoResultadosAdmin(admin.ModelAdmin):
 @admin.register(MetaMensal)
 class MetaMensalAdmin(admin.ModelAdmin):
     list_display = ("conta", "ano", "mes")
+    list_filter = ("ano", "mes")
+    search_fields = ("conta__email",)
+
+
+@admin.register(FechamentoMes)
+class FechamentoMesAdmin(admin.ModelAdmin):
+    """Apagar um fechamento faz o worker buscar o mês de novo na próxima volta (se ainda estiver nos 7 dias)."""
+
+    list_display = ("conta", "ano", "mes", "validado", "pendente", "cancelado", "fechado_em")
     list_filter = ("ano", "mes")
     search_fields = ("conta__email",)
 

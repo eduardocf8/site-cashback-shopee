@@ -9,8 +9,8 @@ from django.db.models import Sum
 from django.utils import timezone
 
 from . import metas as regras_metas
-from . import periodos, resultados
-from .models import MetaMensal, SincronizacaoResultados, VendaItem
+from . import fechamento, periodos, resultados
+from .models import FechamentoMes, MetaMensal, SincronizacaoResultados, VendaItem
 
 METRICAS = [
     ("faturamento", "Faturamento"),
@@ -98,19 +98,23 @@ def faixas_do_mes(conta, ano: int, mes: int) -> list[dict]:
     return regras_metas.normalizar(meta.faixas if meta else [])
 
 
-# A meta de um mês só fecha no último dia do mês seguinte: até lá, pedidos do mês ainda podem ser
-# validados ou cancelados, e no fechamento conta só o validado. Por isso a meta tem três fases:
+# A meta de um mês fecha 30 dias depois do último dia do mês, às 11h (quando a Shopee manda o e-mail da
+# meta mensal - painel/fechamento.py): até lá, pedidos do mês ainda podem ser validados ou cancelados, e
+# no fechamento conta só o validado. Por isso a meta tem três fases:
 # - prévia: o mês em andamento, com o faturamento estimado (validado + pendente) e a projeção;
-# - em fechamento: no mês seguinte, separando o validado (garantido), o pendente e o cancelado;
-# - fechada: depois do último dia do mês seguinte, só o validado (é o que vale para o bônus).
+# - em fechamento: até o fechamento, separando o validado (garantido), o pendente e o cancelado;
+# - fechada: o validado guardado no fechamento (FechamentoMes), que não muda mais (é o que vale para o
+#   bônus). Sem fechamento guardado (mês antigo, worker parado), o validado dos pedidos guardados.
 PREVIA, FECHAMENTO, FECHADA = "previa", "fechamento", "fechada"
 NOMES_FASES = {PREVIA: "Prévia", FECHAMENTO: "Em fechamento", FECHADA: "Fechada"}
 
 
 def fase_da_meta(ano: int, mes: int, hoje: date) -> tuple[str, date]:
-    """(fase, dia em que o resultado fecha: o último dia do mês seguinte)."""
+    """(fase, dia em que o resultado fecha: 30 dias depois do último dia do mês). No próprio dia do
+    fechamento a fase é "em fechamento" - situacao_meta passa para "fechada" quando o fechamento das
+    11h já foi guardado."""
     fim = periodos.ultimo_dia_do_mes(date(ano, mes, 1))
-    fecha_em = periodos.ultimo_dia_do_mes(fim + timedelta(days=1))
+    fecha_em = fechamento.dia_do_fechamento(ano, mes)
     if hoje <= fim:
         return PREVIA, fecha_em
     return (FECHAMENTO if hoje <= fecha_em else FECHADA), fecha_em
@@ -134,7 +138,13 @@ def situacao_meta(conta, ano: int, mes: int, hoje: date) -> dict:
     inicio = date(ano, mes, 1)
     fim = periodos.ultimo_dia_do_mes(inicio)
     fase, fecha_em = fase_da_meta(ano, mes, hoje)
-    partes = faturamento_por_situacao(conta, inicio, fim) if fase != PREVIA else None
+    guardado = FechamentoMes.objects.filter(conta=conta, ano=ano, mes=mes).first() if fase != PREVIA else None
+    if guardado:
+        fase = FECHADA
+        partes = {"validado": float(guardado.validado), "pendente": float(guardado.pendente),
+                  "cancelado": float(guardado.cancelado)}
+    else:
+        partes = faturamento_por_situacao(conta, inicio, fim) if fase != PREVIA else None
     # Na prévia (ou sem os pedidos guardados), o faturamento estimado; depois do mês, só o validado.
     faturamento = partes["validado"] if partes else float(resultados.totais(conta, inicio, min(fim, hoje))["faturamento"])
     possivel = (partes["validado"] + partes["pendente"]) if partes else faturamento
@@ -177,6 +187,7 @@ def situacao_meta(conta, ano: int, mes: int, hoje: date) -> dict:
         "mes_valor": f"{ano}-{mes:02d}",
         "nome_faixa_batida": regras_metas.nome_faixa(situacao["batidas"][-1]) if situacao["batidas"] else "",
         "fase": fase, "nome_fase": NOMES_FASES[fase], "fecha_em": fecha_em, "previa": fase == PREVIA,
+        "fechado_em": guardado.fechado_em if guardado else None,
         "em_fechamento": em_fechamento, "fechada": fase == FECHADA,
         "sem_pedidos_guardados": fase != PREVIA and partes is None,
         "validado": partes["validado"] if partes else None,
@@ -303,7 +314,7 @@ def conferencia_faturamento(conta, ano: int, mes: int) -> dict:
     - feitos: pedidos comprados no mês, sem os cancelados (o jeito do Appfiliado hoje);
     - feitos e já validados: dos comprados no mês, só os concluídos;
     - validados no mês: pedidos concluídos no mês, comprados em qualquer data.
-    Valor = preço x quantidade de cada item (VendaItem)."""
+    Valor = o pago pelo comprador menos reembolsos de cada item (VendaItem.valor)."""
     from django.db.models import Count, Q
 
     inicio = date(ano, mes, 1)

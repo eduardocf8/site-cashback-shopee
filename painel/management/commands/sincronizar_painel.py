@@ -10,6 +10,7 @@ from bot_whatsapp.avisos_de_queda import uma_volta as avisar_bots_parados
 from licencas.dono import enviar_resumo_semanal
 from painel.memoria import memoria_em_uso_mb
 from painel.emails_valor import enviar_pendentes as enviar_dicas
+from painel.fechamento import uma_volta as fechar_meses
 from painel.primeiros_passos import enviar_pendentes as enviar_primeiros_passos
 from anuncios.servico import sincronizar as ler_campanhas_meta
 from meusite.vitrine import uma_volta as atualizar_vitrines
@@ -65,6 +66,8 @@ class Command(BaseCommand):
             try:
                 for conta in contas_pendentes():
                     self.stdout.write(processar(conta))
+                for linha in fechar_meses():  # metas: o mês fecha 30 dias depois do último dia, às 11h
+                    self.stdout.write(linha)
                 for linha in enviar_relatorios():  # relatório diário por e-mail (de manhã)
                     self.stdout.write(linha)
                 for linha in atualizar_vitrines():  # Meu site: busca/links da vitrine
