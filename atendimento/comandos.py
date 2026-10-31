@@ -350,7 +350,8 @@ def _linhas_da_meta(situacao) -> list[str]:
     elif situacao["em_fechamento"]:
         linhas = [f"🔵 *{nome}: em fechamento até {fecha}*",
                   (f"Garantido (validado): {brl(situacao['validado'])} · pendente: {brl(situacao['pendente'])} · "
-                   f"cancelado: {brl(situacao['cancelado'])}")]
+                   f"cancelado: {brl(situacao['cancelado'])}"),
+                  situacao["frase_possivel"]]
     elif situacao["fechada"] and not situacao["sem_pedidos_guardados"]:
         linhas = [f"🟢 *{nome}: fechada*", f"Validado (final): {brl(situacao['faturamento'])}"]
     else:

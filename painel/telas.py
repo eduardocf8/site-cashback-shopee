@@ -191,7 +191,33 @@ def situacao_meta(conta, ano: int, mes: int, hoje: date) -> dict:
     if situacao.get("modo_gmv") and em_fechamento:
         meta_gmv = faixas[0]
         situacao["bonus_possivel"] = round(possivel * meta_gmv["gmv"] / 100, 2) if possivel >= meta_gmv["faturamento"] else 0.0
+    situacao["frase_possivel"] = _frase_possivel(situacao) if em_fechamento else ""
     return situacao
+
+
+def _frase_possivel(m: dict) -> str:
+    """Mês em fechamento: até onde chega se todo o pendente for validado, e se bate alguma faixa."""
+    from .templatetags.painel_extras import brl, brl0
+
+    base = f"Se todo o pendente for validado, {m['nome_mes'].split('/')[0].lower()} chega a {brl(m['possivel'])}"
+    alcancadas = [f for f in m["faixas_tela"] if m["possivel"] >= f["faturamento"]]
+    if m.get("modo_gmv"):
+        meta = m["faixas_tela"][0]
+        if alcancadas:
+            ja = " (a meta já está garantida)" if meta["batida"] else ""
+            return f"{base} e bate a meta{ja}: bônus de {brl(m['bonus_possivel'])} ({m['gmv_percentual']:g}% do GMV)."
+        return f"{base}, ainda abaixo da meta (faltariam {brl(meta['faturamento'] - m['possivel'])})."
+    if not alcancadas:
+        primeira = m["faixas_tela"][0]
+        return (f"{base}, ainda abaixo da primeira faixa (faltariam {brl(primeira['faturamento'] - m['possivel'])} "
+                f"para a {primeira['nome']}).")
+    melhor = alcancadas[-1]
+    bonus = f" (bônus {brl0(melhor['bonus'])})" if melhor.get("bonus") else ""
+    proxima = next((f for f in m["faixas_tela"] if m["possivel"] < f["faturamento"]), None)
+    resto = f" A faixa {proxima['nome']} ficaria a {brl(proxima['faturamento'] - m['possivel'])}." if proxima else ""
+    if melhor["batida"]:
+        return f"{base} e continua na faixa {melhor['nome']}{bonus}, que já está garantida.{resto}"
+    return f"{base} e bate a faixa {melhor['nome']}{bonus}.{resto}"
 
 
 def metas_dos_tres_meses(conta, hoje: date) -> list[dict]:

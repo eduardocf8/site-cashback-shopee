@@ -19,6 +19,7 @@
       <div><dt>Cancelado (fora da conta)</dt><dd>{{ meta.cancelado|brl }}</dd></div>
       <div><dt>Se todos os pendentes validarem</dt><dd>{{ meta.possivel|brl }}</dd></div>
     </dl>
+    <p class="pequeno frase-possivel">{{ meta.frase_possivel }}</p>
   {% elif meta.fechada and meta.cancelado is not None %}
     <dl class="partes-meta">
       <div><dt>Validado</dt><dd>{{ meta.validado|brl }}</dd></div>

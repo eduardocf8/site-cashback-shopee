@@ -14,6 +14,7 @@
   {% if meta.em_fechamento %}
     <p class="pequeno">Pendente: <strong>{{ meta.pendente|brl }}</strong> · cancelado: {{ meta.cancelado|brl }}.
       {% if meta.faixa_em_jogo %}Faltam <strong>{{ meta.falta_validar|brl }}</strong> serem validados para garantir a faixa <strong>{{ meta.faixa_em_jogo.nome }}</strong>.{% elif meta.proxima %}A próxima faixa ficou fora de alcance.{% endif %}</p>
+    <p class="pequeno frase-possivel">{{ meta.frase_possivel }}</p>
     {% if meta.bonus_garantido %}<p class="pequeno bom">Bônus garantido até agora: <strong>{{ meta.bonus_garantido|brl }}</strong></p>{% endif %}
   {% elif meta.fechada %}
     {% if meta.batidas %}<p class="pequeno bom">Faixa <strong>{{ meta.nome_faixa_batida }}</strong> batida{% if meta.bonus_garantido %}: bônus de <strong>{{ meta.bonus_garantido|brl }}</strong>{% endif %}.</p>

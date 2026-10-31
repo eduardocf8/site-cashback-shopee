@@ -53,6 +53,20 @@ class TestFases(BaseFases):
         self.assertEqual([f["estado"] for f in m["faixas_tela"]], ["possivel", "fora"])
         self.assertEqual((m["faixa_em_jogo"]["nome"], m["falta_validar"], m["pode_perder"]), ("100%", 10770.0, 1150.0))
         self.assertEqual(m["bonus_garantido"], 0)  # nada garantido ainda
+        self.assertEqual(m["frase_possivel"], "Se todo o pendente for validado, outubro chega a R$ 53.150,00 e bate a "
+                                              "faixa 100% (bônus R$ 300). A faixa 125% ficaria a R$ 11.850,00.")
+
+    def test_frase_quando_nao_chega_ou_ja_esta_garantida(self):
+        MetaMensal.objects.create(conta=self.conta, ano=2026, mes=10, faixas=FAIXAS)
+        self.venda(date(2026, 10, 5), "30000", VendaItem.CONCLUIDO)
+        self.venda(date(2026, 10, 6), "5000", VendaItem.PENDENTE)
+        m = telas.situacao_meta(self.conta, 2026, 10, date(2026, 11, 10))
+        self.assertEqual(m["frase_possivel"], "Se todo o pendente for validado, outubro chega a R$ 35.000,00, ainda abaixo "
+                                              "da primeira faixa (faltariam R$ 17.000,00 para a 100%).")
+        self.venda(date(2026, 10, 7), "25000", VendaItem.CONCLUIDO)  # validado 55.000: a 100% já está garantida
+        m = telas.situacao_meta(self.conta, 2026, 10, date(2026, 11, 10))
+        self.assertEqual(m["frase_possivel"], "Se todo o pendente for validado, outubro chega a R$ 60.000,00 e continua "
+                                              "na faixa 100% (bônus R$ 300), que já está garantida. A faixa 125% ficaria a R$ 5.000,00.")
 
     def test_fechada_conta_so_o_validado(self):
         MetaMensal.objects.create(conta=self.conta, ano=2026, mes=9, faixas=FAIXAS)
