@@ -2,14 +2,15 @@
 ver painel/resultados.py)."""
 
 import re
-from datetime import date, timedelta
+from datetime import date, datetime, time, timedelta
 from decimal import Decimal
 
+from django.db.models import Sum
 from django.utils import timezone
 
 from . import metas as regras_metas
 from . import periodos, resultados
-from .models import MetaMensal, SincronizacaoResultados
+from .models import MetaMensal, SincronizacaoResultados, VendaItem
 
 METRICAS = [
     ("faturamento", "Faturamento"),
@@ -97,34 +98,113 @@ def faixas_do_mes(conta, ano: int, mes: int) -> list[dict]:
     return regras_metas.normalizar(meta.faixas if meta else [])
 
 
+# A meta de um mês só fecha no último dia do mês seguinte: até lá, pedidos do mês ainda podem ser
+# validados ou cancelados, e no fechamento conta só o validado. Por isso a meta tem três fases:
+# - prévia: o mês em andamento, com o faturamento estimado (validado + pendente) e a projeção;
+# - em fechamento: no mês seguinte, separando o validado (garantido), o pendente e o cancelado;
+# - fechada: depois do último dia do mês seguinte, só o validado (é o que vale para o bônus).
+PREVIA, FECHAMENTO, FECHADA = "previa", "fechamento", "fechada"
+NOMES_FASES = {PREVIA: "Prévia", FECHAMENTO: "Em fechamento", FECHADA: "Fechada"}
+
+
+def fase_da_meta(ano: int, mes: int, hoje: date) -> tuple[str, date]:
+    """(fase, dia em que o resultado fecha: o último dia do mês seguinte)."""
+    fim = periodos.ultimo_dia_do_mes(date(ano, mes, 1))
+    fecha_em = periodos.ultimo_dia_do_mes(fim + timedelta(days=1))
+    if hoje <= fim:
+        return PREVIA, fecha_em
+    return (FECHAMENTO if hoje <= fecha_em else FECHADA), fecha_em
+
+
+def faturamento_por_situacao(conta, inicio: date, fim: date) -> dict | None:
+    """Faturamento dos pedidos comprados no período, separado em validado, pendente e cancelado
+    (VendaItem). None se o Appfiliado não guarda os pedidos desde o começo do período."""
+    estado = estado_sincronizacao(conta)
+    if not estado or not estado.vendas_desde or timezone.localtime(estado.vendas_desde).date() > inicio:
+        return None
+    de = timezone.make_aware(datetime.combine(inicio, time.min))
+    ate = timezone.make_aware(datetime.combine(fim + timedelta(days=1), time.min))
+    somas = dict(VendaItem.objects.filter(conta=conta, comprado_em__gte=de, comprado_em__lt=ate).order_by()
+                 .values("situacao").annotate(total=Sum("valor")).values_list("situacao", "total"))
+    return {"validado": float(somas.get(VendaItem.CONCLUIDO) or 0), "pendente": float(somas.get(VendaItem.PENDENTE) or 0),
+            "cancelado": float(somas.get(VendaItem.CANCELADO) or 0)}
+
+
 def situacao_meta(conta, ano: int, mes: int, hoje: date) -> dict:
     inicio = date(ano, mes, 1)
     fim = periodos.ultimo_dia_do_mes(inicio)
-    faturamento = float(resultados.totais(conta, inicio, min(fim, hoje))["faturamento"])
+    fase, fecha_em = fase_da_meta(ano, mes, hoje)
+    partes = faturamento_por_situacao(conta, inicio, fim) if fase != PREVIA else None
+    # Na prévia (ou sem os pedidos guardados), o faturamento estimado; depois do mês, só o validado.
+    faturamento = partes["validado"] if partes else float(resultados.totais(conta, inicio, min(fim, hoje))["faturamento"])
+    possivel = (partes["validado"] + partes["pendente"]) if partes else faturamento
     faixas = faixas_do_mes(conta, ano, mes)
     situacao = regras_metas.situacao(faturamento, faixas, hoje, ano, mes)
     maior = faixas[-1]["faturamento"] if faixas else 0
+    em_fechamento = fase == FECHAMENTO and partes is not None
+
+    def estado(faixa):
+        if faturamento >= faixa["faturamento"]:
+            return "batida"
+        if em_fechamento:
+            return "possivel" if possivel >= faixa["faturamento"] else "fora"
+        return "fora" if fase == FECHADA else "falta"
+
+    faixas_tela = [
+        {
+            **faixa,
+            "nome": regras_metas.nome_faixa(faixa),
+            "batida": faturamento >= faixa["faturamento"],
+            "estado": estado(faixa),
+            "posicao": round(faixa["faturamento"] / maior * 100) if maior else 0,
+            "falta": max(0.0, faixa["faturamento"] - faturamento),
+            "gmv": faixa.get("gmv") or 0,
+        }
+        for faixa in faixas
+    ]
+    barra = min(100, round(situacao["fracao"] * 100))
+    # A faixa que ainda depende dos pendentes: quanto falta validar e quanto pode ser cancelado sem perdê-la.
+    em_jogo = next((f for f in faixas_tela if f["estado"] == "possivel"), None)
     situacao.update({
         "faturamento": faturamento,
         "nome_mes": nome_mes(ano, mes),
-        "faixas_tela": [
-            {
-                **faixa,
-                "nome": regras_metas.nome_faixa(faixa),
-                "batida": faturamento >= faixa["faturamento"],
-                "posicao": round(faixa["faturamento"] / maior * 100) if maior else 0,
-                "falta": max(0.0, faixa["faturamento"] - faturamento),
-                "gmv": faixa.get("gmv") or 0,
-            }
-            for faixa in faixas
-        ],
-        "porcentagem_barra": min(100, round(situacao["fracao"] * 100)),
+        "faixas_tela": faixas_tela,
+        "porcentagem_barra": barra,
         "nome_proxima": regras_metas.nome_faixa(situacao["proxima"]) if situacao.get("proxima") else "",
         "nome_faixa_projetada": (
             regras_metas.nome_faixa(situacao["faixa_projetada"]) if situacao.get("faixa_projetada") else ""
         ),
+        "mes_valor": f"{ano}-{mes:02d}",
+        "nome_faixa_batida": regras_metas.nome_faixa(situacao["batidas"][-1]) if situacao["batidas"] else "",
+        "fase": fase, "nome_fase": NOMES_FASES[fase], "fecha_em": fecha_em, "previa": fase == PREVIA,
+        "em_fechamento": em_fechamento, "fechada": fase == FECHADA,
+        "sem_pedidos_guardados": fase != PREVIA and partes is None,
+        "validado": partes["validado"] if partes else None,
+        "pendente": partes["pendente"] if partes else None,
+        "cancelado": partes["cancelado"] if partes else None,
+        "possivel": possivel,
+        "porcentagem_pendente": (min(100 - barra, round(partes["pendente"] / maior * 100)) if em_fechamento and maior else 0),
+        "faixa_em_jogo": em_jogo,
+        "falta_validar": (em_jogo["faturamento"] - faturamento) if em_jogo else 0.0,
+        "pode_perder": (possivel - em_jogo["faturamento"]) if em_jogo else 0.0,
     })
+    if situacao.get("modo_gmv") and em_fechamento:
+        meta_gmv = faixas[0]
+        situacao["bonus_possivel"] = round(possivel * meta_gmv["gmv"] / 100, 2) if possivel >= meta_gmv["faturamento"] else 0.0
     return situacao
+
+
+def metas_dos_tres_meses(conta, hoje: date) -> list[dict]:
+    """Dois meses atrás (fechada), o mês passado (em fechamento) e o atual (prévia), só os que têm meta.
+    Do mais recente para o mais antigo."""
+    atual = date(hoje.year, hoje.month, 1)
+    passado = periodos.primeiro_dia_do_mes(atual - timedelta(days=1))
+    retrasado = periodos.primeiro_dia_do_mes(passado - timedelta(days=1))
+    lista = []
+    for d in (atual, passado, retrasado):
+        if faixas_do_mes(conta, d.year, d.month):
+            lista.append(situacao_meta(conta, d.year, d.month, hoje))
+    return lista
 
 
 def ler_numero_br(texto: str) -> float | None:
@@ -174,11 +254,12 @@ def faixa_em_gmv_do_formulario(post) -> list[dict]:
 
 
 def meses_para_metas(hoje: date) -> list[tuple[int, int]]:
-    """Mês passado, este e o próximo."""
+    """Dois meses atrás (fechada), o mês passado (em fechamento), este (prévia) e o próximo (para cadastrar)."""
     atual = date(hoje.year, hoje.month, 1)
     anterior = periodos.primeiro_dia_do_mes(atual - timedelta(days=1))
+    retrasado = periodos.primeiro_dia_do_mes(anterior - timedelta(days=1))
     proximo = periodos.ultimo_dia_do_mes(atual) + timedelta(days=1)
-    return [(d.year, d.month) for d in (anterior, atual, proximo)]
+    return [(d.year, d.month) for d in (retrasado, anterior, atual, proximo)]
 
 
 def hoje() -> date:

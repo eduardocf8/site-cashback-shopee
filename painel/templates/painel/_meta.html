@@ -1,34 +1,59 @@
 {% load painel_extras %}
+{# Cartão completo da meta de um mês, na fase em que ele está (telas.situacao_meta): prévia, em fechamento ou fechada. #}
 <div class="meta">
+  <span class="selo-fase fase-{{ meta.fase }}">{% if meta.previa %}Prévia{% elif meta.fechada %}Fechada em {{ meta.fecha_em|date:"d/m" }}{% else %}Em fechamento até {{ meta.fecha_em|date:"d/m" }}{% endif %}</span>
   <div class="meta-topo">
-    <span class="suave pequeno">Faturamento de {{ meta.nome_mes }}</span>
+    <span class="suave pequeno">{% if meta.previa or meta.sem_pedidos_guardados %}Faturamento de {{ meta.nome_mes }}{% if meta.previa %} (estimado){% endif %}{% elif meta.em_fechamento %}Garantido (pedidos validados){% else %}Faturamento validado (final){% endif %}</span>
     <strong class="meta-valor">{{ meta.faturamento|brl }}</strong>
   </div>
   <div class="meta-trilho" aria-hidden="true">
-    <div class="meta-preenchido" style="width: {{ meta.porcentagem_barra }}%"></div>
+    <div class="meta-preenchido{% if meta.porcentagem_pendente %} com-pendente{% endif %}" style="width: {{ meta.porcentagem_barra }}%"></div>
+    {% if meta.porcentagem_pendente %}<div class="meta-pendente" style="left: {{ meta.porcentagem_barra }}%; width: {{ meta.porcentagem_pendente }}%"></div>{% endif %}
     {% for f in meta.faixas_tela %}<span class="meta-marca{% if f.batida %} batida{% endif %}" style="left: {{ f.posicao }}%"></span>{% endfor %}
   </div>
+  {% if meta.em_fechamento %}
+    <div class="legenda-meta"><span class="lm-val">Validado</span><span class="lm-pen">Pendente</span></div>
+    <dl class="partes-meta">
+      <div><dt>Validado</dt><dd>{{ meta.validado|brl }}</dd></div>
+      <div><dt>Pendente</dt><dd>{{ meta.pendente|brl }}</dd></div>
+      <div><dt>Cancelado (fora da conta)</dt><dd>{{ meta.cancelado|brl }}</dd></div>
+      <div><dt>Se todos os pendentes validarem</dt><dd>{{ meta.possivel|brl }}</dd></div>
+    </dl>
+  {% elif meta.fechada and meta.cancelado is not None %}
+    <dl class="partes-meta">
+      <div><dt>Validado</dt><dd>{{ meta.validado|brl }}</dd></div>
+      <div><dt>Cancelado</dt><dd>{{ meta.cancelado|brl }}</dd></div>
+    </dl>
+  {% endif %}
+
   {% if meta.modo_gmv %}
     {% with f=meta.faixas_tela.0 %}
     <ul class="faixas">
       <li class="{% if f.batida %}batida{% endif %}">
         <span class="faixa-nome">{% if f.batida %}{% include "painel/_icone.html" with caminho=icones.check %}{% endif %}Meta</span>
         <span class="faixa-valor">{{ f.faturamento|brl0 }}</span>
-        <span class="suave faixa-falta">{% if f.batida %}batida{% else %}faltam {{ f.falta|brl }}{% endif %}</span>
+        <span class="faixa-falta {% if f.estado == 'possivel' %}possivel{% elif f.batida %}bom{% else %}suave{% endif %}">{% include "painel/_estado_faixa.html" %}</span>
         <span class="faixa-bonus">bônus {{ meta.gmv_percentual|floatformat:"-2" }}% do GMV</span>
       </li>
     </ul>
     {% endwith %}
-    {% if meta.proxima and meta.dias_restantes %}
-      <p class="pequeno">Para chegar em <strong>{{ meta.proxima.faturamento|brl0 }}</strong>: <strong>{{ meta.por_dia|brl }} por dia</strong> nos {{ meta.dias_restantes }} dia{{ meta.dias_restantes|pluralize }} que faltam.</p>
-    {% endif %}
-    {% if meta.bonus_atual %}
-      <p class="pequeno bom">Bônus até agora: <strong>{{ meta.bonus_atual|brl }}</strong> ({{ meta.gmv_percentual|floatformat:"-2" }}% de {{ meta.faturamento|brl }}). Cada R$ 1.000 a mais rende {{ meta.bonus_a_cada_mil|brl }}.</p>
-    {% else %}
-      <p class="pequeno suave">Passando da meta, o bônus é {{ meta.gmv_percentual|floatformat:"-2" }}% sobre todo o GMV do mês.</p>
-    {% endif %}
-    {% if meta.dias_restantes %}
-      <p class="pequeno suave">No ritmo atual, o mês fecha em {{ meta.projecao|brl0 }}{% if meta.bonus_projetado %} e o bônus em {{ meta.bonus_projetado|brl0 }}{% else %}, abaixo da meta{% endif %}.</p>
+    {% if meta.previa %}
+      {% if meta.proxima and meta.dias_restantes %}
+        <p class="pequeno">Para chegar em <strong>{{ meta.proxima.faturamento|brl0 }}</strong>: <strong>{{ meta.por_dia|brl }} por dia</strong> {% if meta.dias_restantes == 1 %}no último dia do mês{% else %}nos {{ meta.dias_restantes }} dias que faltam{% endif %}.</p>
+      {% endif %}
+      {% if meta.bonus_atual %}
+        <p class="pequeno">Bônus pela prévia: <strong>{{ meta.bonus_atual|brl }}</strong> ({{ meta.gmv_percentual|floatformat:"-2" }}% de {{ meta.faturamento|brl }}). Cada R$ 1.000 a mais rende {{ meta.bonus_a_cada_mil|brl }}.</p>
+      {% else %}
+        <p class="pequeno suave">Passando da meta, o bônus é {{ meta.gmv_percentual|floatformat:"-2" }}% sobre todo o GMV do mês.</p>
+      {% endif %}
+      {% if meta.dias_restantes %}
+        <p class="pequeno suave">No ritmo atual, o mês fecha em {{ meta.projecao|brl0 }}{% if meta.bonus_projetado %} e o bônus em {{ meta.bonus_projetado|brl0 }}{% else %}, abaixo da meta{% endif %}.</p>
+      {% endif %}
+    {% elif meta.em_fechamento %}
+      {% if meta.bonus_atual %}<p class="pequeno bom">Bônus garantido até agora: <strong>{{ meta.bonus_atual|brl }}</strong>{% if meta.bonus_possivel > meta.bonus_atual %} · pode chegar a {{ meta.bonus_possivel|brl }} se os pendentes validarem{% endif %}.</p>
+      {% elif meta.bonus_possivel %}<p class="pequeno">Se os pendentes validarem, o bônus fica em <strong>{{ meta.bonus_possivel|brl }}</strong>.</p>{% endif %}
+    {% elif meta.bonus_atual %}
+      <p class="pequeno bom">Bônus de {{ meta.nome_mes }}: <strong>{{ meta.bonus_atual|brl }}</strong> ({{ meta.gmv_percentual|floatformat:"-2" }}% de {{ meta.faturamento|brl }}).</p>
     {% endif %}
   {% else %}
   <ul class="faixas">
@@ -36,17 +61,32 @@
       <li class="{% if f.batida %}batida{% endif %}">
         <span class="faixa-nome">{% if f.batida %}{% include "painel/_icone.html" with caminho=icones.check %}{% endif %}{{ f.nome }}</span>
         <span class="faixa-valor">{{ f.faturamento|brl0 }}</span>
-        <span class="suave faixa-falta">{% if f.batida %}batida{% else %}faltam {{ f.falta|brl }}{% endif %}</span>
+        <span class="faixa-falta {% if f.estado == 'possivel' %}possivel{% elif f.batida %}bom{% else %}suave{% endif %}">{% include "painel/_estado_faixa.html" %}</span>
         <span class="faixa-bonus">{% if f.bonus %}bônus {{ f.bonus|brl0 }}{% endif %}</span>
       </li>
     {% endfor %}
   </ul>
-  {% if meta.proxima and meta.dias_restantes %}
-    <p class="pequeno">Para chegar em <strong>{{ meta.proxima.faturamento|brl0 }}</strong>: <strong>{{ meta.por_dia|brl }} por dia</strong> nos {{ meta.dias_restantes }} dia{{ meta.dias_restantes|pluralize }} que faltam.</p>
+  {% if meta.previa %}
+    {% if meta.proxima and meta.dias_restantes %}
+      <p class="pequeno">Para chegar em <strong>{{ meta.proxima.faturamento|brl0 }}</strong>: <strong>{{ meta.por_dia|brl }} por dia</strong> {% if meta.dias_restantes == 1 %}no último dia do mês{% else %}nos {{ meta.dias_restantes }} dias que faltam{% endif %}.</p>
+    {% endif %}
+    {% if meta.dias_restantes %}
+      <p class="pequeno suave">No ritmo atual, o mês fecha em {{ meta.projecao|brl0 }}{% if meta.nome_faixa_projetada %}, batendo a faixa {{ meta.nome_faixa_projetada }}{% endif %}.</p>
+    {% endif %}
+  {% elif meta.em_fechamento and meta.bonus_garantido %}
+    <p class="pequeno bom">Bônus garantido até agora: <strong>{{ meta.bonus_garantido|brl }}</strong></p>
+  {% elif meta.fechada and meta.bonus_garantido %}
+    <p class="pequeno bom">Bônus de {{ meta.nome_mes }}: <strong>{{ meta.bonus_garantido|brl }}</strong></p>
   {% endif %}
-  {% if meta.dias_restantes %}
-    <p class="pequeno suave">No ritmo atual, o mês fecha em {{ meta.projecao|brl0 }}{% if meta.nome_faixa_projetada %}, batendo a faixa {{ meta.nome_faixa_projetada }}{% endif %}.</p>
   {% endif %}
-  {% if meta.bonus_garantido %}<p class="pequeno bom">Bônus garantido até agora: <strong>{{ meta.bonus_garantido|brl }}</strong></p>{% endif %}
+
+  {% if meta.previa %}
+    <p class="aviso-meta previa"><strong>É uma prévia.</strong> O resultado oficial de {{ meta.nome_mes }} fecha em {{ meta.fecha_em|date:"d/m" }} e conta só os pedidos validados. Cancelamentos até lá podem tirar você de uma faixa.</p>
+  {% elif meta.sem_pedidos_guardados %}
+    <p class="aviso-meta previa">O Appfiliado não tem os pedidos de {{ meta.nome_mes }} desde o começo do mês, então este é o faturamento estimado. O resultado oficial {% if meta.fechada %}fechou{% else %}fecha{% endif %} em {{ meta.fecha_em|date:"d/m" }}, só com os pedidos validados.</p>
+  {% elif meta.em_fechamento %}
+    <p class="aviso-meta fechamento">{% if meta.faixa_em_jogo %}Para garantir a faixa {{ meta.faixa_em_jogo.nome }}, faltam <strong>{{ meta.falta_validar|brl }}</strong> serem validados. Dos pendentes, você pode perder até <strong>{{ meta.pode_perder|brl }}</strong> em cancelamentos e ainda bater a faixa.{% elif meta.proxima %}Mesmo com todos os pendentes validados, a próxima faixa fica fora de alcance.{% else %}Todas as faixas já estão garantidas com os pedidos validados.{% endif %} O resultado fecha em {{ meta.fecha_em|date:"d/m" }}.</p>
+  {% else %}
+    <p class="aviso-meta fechada"><strong>Resultado final</strong>, só com os pedidos validados.</p>
   {% endif %}
 </div>

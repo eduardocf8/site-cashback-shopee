@@ -58,6 +58,8 @@ def montar(conta, hoje: date) -> dict:
         "dia_ontem": resultados.totais(conta, ontem, ontem),
         "mes": resultados.totais(conta, inicio_mes, ontem),
         "meta": meta if meta.get("faixas_tela") else None,
+        # Os outros meses com meta (em fechamento e fechada), em linhas curtas.
+        "outros_meses": [m for m in telas.metas_dos_tres_meses(conta, hoje) if m["mes_valor"] != meta["mes_valor"]],
         "sub_ids": resultados.por_sub_id(conta, ontem, ontem, limite=8),
         "produtos": resultados.ranking_produtos(resultados.vendas_do_periodo(conta, ontem, ontem), limite=3),
         "bot": _ofertas_do_bot(conta, ontem),

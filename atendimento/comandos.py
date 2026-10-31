@@ -341,39 +341,67 @@ def validada(conta, aviso: str = "") -> str:
     return _fechar(conta, linhas, "painel_resultados", aviso_de_ontem=False)
 
 
+def _linhas_da_meta(situacao) -> list[str]:
+    """Um mês da meta, na fase dele (painel.telas.situacao_meta)."""
+    nome = situacao["nome_mes"]
+    fecha = situacao["fecha_em"].strftime("%d/%m")
+    if situacao["previa"]:
+        linhas = [f"🟡 *{nome}: prévia* (fecha em {fecha})", f"Faturamento até ontem (estimado): {brl(situacao['faturamento'])}"]
+    elif situacao["em_fechamento"]:
+        linhas = [f"🔵 *{nome}: em fechamento até {fecha}*",
+                  (f"Garantido (validado): {brl(situacao['validado'])} · pendente: {brl(situacao['pendente'])} · "
+                   f"cancelado: {brl(situacao['cancelado'])}")]
+    elif situacao["fechada"] and not situacao["sem_pedidos_guardados"]:
+        linhas = [f"🟢 *{nome}: fechada*", f"Validado (final): {brl(situacao['faturamento'])}"]
+    else:
+        linhas = [f"*{nome}: {situacao['nome_fase'].lower()}*", f"Faturamento estimado: {brl(situacao['faturamento'])}"]
+    for faixa in situacao["faixas_tela"]:
+        bonus = (f", bônus de {situacao['gmv_percentual']:g}% do GMV" if situacao.get("modo_gmv")
+                 else f", bônus de {brl(faixa['bonus'])}" if faixa.get("bonus") else "")
+        estado = faixa["estado"]
+        if estado == "batida":
+            texto = "garantida" if situacao["em_fechamento"] else "batida na prévia" if situacao["previa"] else "batida"
+            linhas.append(f"✅ {faixa['nome']} ({brl(faixa['faturamento'])}{bonus}): {texto}")
+        elif estado == "possivel":
+            linhas.append(f"🔷 {faixa['nome']} ({brl(faixa['faturamento'])}{bonus}): depende dos pendentes")
+        elif estado == "fora":
+            texto = "fora de alcance" if situacao["em_fechamento"] else f"ficou a {brl(faixa['falta'])}"
+            linhas.append(f"⬜ {faixa['nome']} ({brl(faixa['faturamento'])}{bonus}): {texto}")
+        else:
+            linhas.append(f"⬜ {faixa['nome']} ({brl(faixa['faturamento'])}{bonus}): faltam {brl(faixa['falta'])}")
+    if situacao["previa"]:
+        if situacao["proxima"] and situacao["dias_restantes"] > 0:
+            dias = situacao["dias_restantes"]
+            quando = "no último dia do mês" if dias == 1 else f"nos {dias} dias que faltam"
+            linhas.append(f"Para a próxima faixa: {brl(situacao['por_dia'])} por dia {quando}.")
+        if situacao["dias_restantes"] > 0:
+            projetada = f" ({situacao['nome_faixa_projetada']})" if situacao["nome_faixa_projetada"] else ""
+            linhas.append(f"No ritmo atual, o mês fecha em {brl(situacao['projecao'])}{projetada}.")
+        if situacao["bonus_garantido"] and not situacao.get("modo_gmv"):
+            linhas.append(f"Bônus da faixa batida na prévia: {brl(situacao['bonus_garantido'])}")
+    elif situacao["em_fechamento"] and situacao["faixa_em_jogo"]:
+        linhas.append(f"Para garantir a faixa {situacao['faixa_em_jogo']['nome']}, faltam {brl(situacao['falta_validar'])} "
+                      f"serem validados (dá para perder até {brl(situacao['pode_perder'])} em cancelamentos).")
+    elif situacao["fechada"] and situacao["bonus_garantido"]:
+        linhas.append(f"Bônus de {nome}: {brl(situacao['bonus_garantido'])}")
+    return linhas
+
+
 def metas(conta) -> str:
+    """Os três meses da meta: o atual (prévia), o passado (em fechamento) e o retrasado (fechada). A meta
+    de um mês só fecha no último dia do mês seguinte, contando só os pedidos validados."""
     from painel import telas
 
-    ontem = _ontem()
-    situacao = telas.situacao_meta(conta, ontem.year, ontem.month, ontem + timedelta(days=1))
-    nome_mes = situacao["nome_mes"]
-    if not situacao["faixas_tela"]:
+    hoje = _ontem() + timedelta(days=1)
+    meses = telas.metas_dos_tres_meses(conta, hoje)
+    if not meses:
+        nome_mes = telas.nome_mes(hoje.year, hoje.month)
         return (f"Você ainda não cadastrou a meta de {nome_mes}. Cadastre em Metas no painel e peça de novo por aqui: "
                 f"{_url('painel_metas')}")
-    linhas = [f"🎯 *Meta de {nome_mes}*", f"Faturamento até ontem: {brl(situacao['faturamento'])}", ""]
-    if situacao.get("modo_gmv"):
-        faixa = situacao["faixas_tela"][0]
-        if faixa["batida"]:
-            linhas.append(f"✅ Meta de {brl(faixa['faturamento'])} batida! Bônus até agora: "
-                          f"{brl(situacao['bonus_atual'])} ({situacao['gmv_percentual']:g}% do GMV)")
-        else:
-            linhas.append(f"⬜ Meta de {brl(faixa['faturamento'])}: faltam {brl(faixa['falta'])}")
-    else:
-        for faixa in situacao["faixas_tela"]:
-            bonus = f", bônus de {brl(faixa['bonus'])}" if faixa.get("bonus") else ""
-            if faixa["batida"]:
-                linhas.append(f"✅ {faixa['nome']} ({brl(faixa['faturamento'])}{bonus}): batida")
-            else:
-                linhas.append(f"⬜ {faixa['nome']} ({brl(faixa['faturamento'])}{bonus}): faltam {brl(faixa['falta'])}")
-    linhas.append("")
-    if situacao["proxima"] and situacao["dias_restantes"] > 0:
-        dias = situacao["dias_restantes"]
-        linhas.append(f"Para a próxima faixa: {brl(situacao['por_dia'])} por dia nos {dias} dia{'s' if dias > 1 else ''} que faltam.")
-    if situacao["dias_restantes"] > 0:
-        projetada = f" ({situacao['nome_faixa_projetada']})" if situacao["nome_faixa_projetada"] else ""
-        linhas.append(f"No ritmo atual, o mês fecha em {brl(situacao['projecao'])}{projetada}.")
-    if situacao["bonus_garantido"] and not situacao.get("modo_gmv"):
-        linhas.append(f"Bônus garantido: {brl(situacao['bonus_garantido'])}")
+    linhas = ["🎯 *Metas da Shopee*", ""]
+    for situacao in meses:
+        linhas += _linhas_da_meta(situacao) + [""]
+    linhas.append("A meta de um mês fecha no último dia do mês seguinte e conta só os pedidos validados.")
     return _fechar(conta, linhas, "painel_metas")
 
 
