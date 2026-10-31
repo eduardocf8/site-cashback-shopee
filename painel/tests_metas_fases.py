@@ -156,3 +156,65 @@ class TestConferenciaDoFaturamento(BaseFases):
             html = self.client.get("/resultados/conferir/?mes=2026-09").content.decode()
         self.assertIn("3. Pedidos validados em Setembro/2026", html)
         self.assertIn("R$ 3.000,00", html)
+
+    def test_busca_direto_na_shopee_pela_data_de_validacao(self):
+        from . import cripto, resultados
+
+        self.conta.shopee_app_id = "123"
+        self.conta.shopee_secret_cifrado = cripto.cifrar("segredo")
+        self.conta.save()
+
+        def ts(*partes):
+            return int(_aware(*partes).timestamp())
+
+        def item(preco, pago, validado=None, reembolso=0):
+            return {"itemPrice": str(preco), "qty": 1, "actualAmount": str(pago), "refundAmount": str(reembolso),
+                    "completeTime": ts(*validado) if validado else None}
+
+        validados = [  # comprado em julho, validado em setembro; e um validado em outubro (fora)
+            {"purchaseTime": ts(2026, 7, 20), "orders": [{"orderId": "A", "orderStatus": "COMPLETED", "items": [
+                item(1000, 900, (2026, 9, 2)), item(500, 450, (2026, 10, 1))]}]},
+            {"purchaseTime": ts(2026, 9, 1), "orders": [{"orderId": "B", "orderStatus": "COMPLETED", "items": [
+                item(200, 200, (2026, 9, 15), reembolso=50)]}]},
+        ]
+        feitos = [
+            {"purchaseTime": ts(2026, 9, 1), "orders": [
+                {"orderId": "B", "orderStatus": "COMPLETED", "items": [item(200, 200, (2026, 9, 15))]},
+                {"orderId": "C", "orderStatus": "PENDING", "items": [item(300, 280)]},
+                {"orderId": "D", "orderStatus": "CANCELLED", "items": [item(90, 90)]}]},
+        ]
+
+        def paginas(app_id, secret, inicio, fim, data="purchaseTime", itens_extras=()):
+            self.assertEqual((app_id, secret, inicio, fim), ("123", "segredo", ts(2026, 9, 1, 0), ts(2026, 10, 1, 0) - 1))
+            self.assertIn("actualAmount", itens_extras)
+            yield validados if data == "completeTime" else feitos
+
+        with mock.patch.object(resultados, "paginas_de_conversoes", side_effect=paginas):
+            r = resultados.conferencia_na_shopee(self.conta, date(2026, 9, 1), date(2026, 9, 30))
+            v, f = r["validados"], r["feitos"]
+            self.assertEqual((v["preco"], v["pago"], v["pago_sem_reembolso"], v["pedidos"]),
+                             (Decimal(1200), Decimal(1100), Decimal(1050), 2))
+            self.assertEqual(v["compra_mais_antiga"], date(2026, 7, 20))
+            self.assertEqual((f["preco"], f["pago"], f["pendente"], f["cancelado"], f["pedidos"]),
+                             (Decimal(500), Decimal(480), Decimal(300), Decimal(90), 2))
+
+            self.entrar()
+            with mock.patch("painel.telas.hoje", return_value=date(2026, 10, 31)):
+                html = self.client.get("/resultados/conferir/?mes=2026-09").content.decode()
+                self.assertIn("Buscar Setembro/2026 na Shopee", html)
+                html = self.client.get("/resultados/conferir/?mes=2026-09&shopee=1").content.decode()
+        self.assertIn("Validados em Setembro/2026", html)
+        self.assertIn("R$ 1.200,00", html)
+        self.assertIn("compra mais antiga: 20/07/2026", html)
+
+    def test_erro_da_shopee_aparece_na_pagina(self):
+        from links.shopee_client import ShopeeAPIError
+
+        from . import cripto, resultados
+
+        self.conta.shopee_app_id = "123"
+        self.conta.shopee_secret_cifrado = cripto.cifrar("segredo")
+        self.conta.save()
+        with mock.patch.object(resultados, "paginas_de_conversoes", side_effect=ShopeeAPIError("Unknown argument completeTimeStart")):
+            r = resultados.conferencia_na_shopee(self.conta, date(2026, 9, 1), date(2026, 9, 30))
+        self.assertIn("completeTimeStart", r["validados"]["erro"])
