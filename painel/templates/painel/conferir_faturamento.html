@@ -29,18 +29,18 @@
 <section class="card" style="margin-top:12px" id="shopee">
   <h2>Direto na Shopee</h2>
   {% if not ao_vivo %}
-    <p class="suave pequeno">Busca {{ c.nome_mes }} agora na Shopee, sem depender dos pedidos guardados no Appfiliado: os validados no mês pela data de validação (comprados em qualquer data) e os feitos no mês. Também soma pelo valor que o comprador pagou, já com os descontos. Pode levar até 1 minuto.</p>
+    <p class="suave pequeno">Busca {{ c.nome_mes }} agora na Shopee, sem depender dos pedidos guardados no Appfiliado: os pedidos feitos no mês (separados em validados, pendentes e cancelados, e os validados por canal) e os validados no mês. Soma também pelo valor que o comprador pagou, já com os descontos. Pode levar até 1 minuto.</p>
     <p><a class="botao botao-principal" href="?mes={{ mes_escolhido }}&shopee=1#shopee">Buscar {{ c.nome_mes }} na Shopee</a></p>
   {% else %}
     <div class="tabela-rolagem"><table class="numeros">
       <thead><tr><th>Jeito de contar</th><th>Preço × quantidade</th><th>Valor pago</th><th>Pago menos reembolsos</th><th>Pedidos</th></tr></thead>
       <tbody>
-        {% for rotulo, r in linhas_ao_vivo %}
-          {% if r.erro %}
-            <tr><td><strong>{{ rotulo }}</strong></td><td colspan="4" class="perigo pequeno">{{ r.erro }}</td></tr>
+        {% for l in linhas_ao_vivo %}
+          {% if l.erro %}
+            <tr><td><strong>{{ l.rotulo }}</strong></td><td colspan="4" class="perigo pequeno">{{ l.erro }}</td></tr>
           {% else %}
-            <tr><td><strong>{{ rotulo }}</strong>{% if r.compra_mais_antiga %}<br><span class="suave pequeno">compra mais antiga: {{ r.compra_mais_antiga|date:"d/m/Y" }}</span>{% endif %}{% if r.pendente or r.cancelado %}<br><span class="suave pequeno">inclui {{ r.pendente|brl }} pendentes · fora: {{ r.cancelado|brl }} cancelados</span>{% endif %}{% if r.incompleto %}<br><span class="perigo pequeno">a busca parou no meio (demorou demais): o número está incompleto</span>{% endif %}</td>
-              <td><strong>{{ r.preco|brl }}</strong></td><td>{{ r.pago|brl }}</td><td>{{ r.pago_sem_reembolso|brl }}</td><td>{{ r.pedidos|numero }}</td></tr>
+            <tr><td style="min-width:180px">{% if l.sub %}&nbsp;&nbsp;↳ {{ l.rotulo }}{% elif l.destaque %}<strong>{{ l.rotulo }}</strong>{% else %}{{ l.rotulo }}{% endif %}{% if l.detalhe %}<br><span class="suave pequeno">{{ l.detalhe }}</span>{% endif %}{% if l.incompleto %}<br><span class="perigo pequeno">a busca parou no meio (demorou demais): o número está incompleto</span>{% endif %}</td>
+              <td>{{ l.r.preco|brl }}</td><td>{% if l.destaque %}<strong>{{ l.r.pago|brl }}</strong>{% else %}{{ l.r.pago|brl }}{% endif %}</td><td>{{ l.r.pago_sem_reembolso|brl }}</td><td>{{ l.r.pedidos|numero }}</td></tr>
           {% endif %}
         {% endfor %}
       </tbody>

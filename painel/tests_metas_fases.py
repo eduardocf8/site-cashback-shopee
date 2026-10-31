@@ -167,9 +167,9 @@ class TestConferenciaDoFaturamento(BaseFases):
         def ts(*partes):
             return int(_aware(*partes).timestamp())
 
-        def item(preco, pago, validado=None, reembolso=0):
+        def item(preco, pago, validado=None, reembolso=0, canal="Social Media"):
             return {"itemPrice": str(preco), "qty": 1, "actualAmount": str(pago), "refundAmount": str(reembolso),
-                    "completeTime": ts(*validado) if validado else None}
+                    "completeTime": ts(*validado) if validado else None, "channelType": canal}
 
         validados = [  # comprado em julho, validado em setembro; e um validado em outubro (fora)
             {"purchaseTime": ts(2026, 7, 20), "orders": [{"orderId": "A", "orderStatus": "COMPLETED", "items": [
@@ -179,7 +179,8 @@ class TestConferenciaDoFaturamento(BaseFases):
         ]
         feitos = [
             {"purchaseTime": ts(2026, 9, 1), "orders": [
-                {"orderId": "B", "orderStatus": "COMPLETED", "items": [item(200, 200, (2026, 9, 15))]},
+                {"orderId": "B", "orderStatus": "COMPLETED", "items": [item(200, 200, (2026, 9, 15), reembolso=50)]},
+                {"orderId": "E", "orderStatus": "COMPLETED", "items": [item(100, 80, (2026, 10, 2), canal="Shopee Video")]},
                 {"orderId": "C", "orderStatus": "PENDING", "items": [item(300, 280)]},
                 {"orderId": "D", "orderStatus": "CANCELLED", "items": [item(90, 90)]}]},
         ]
@@ -191,20 +192,26 @@ class TestConferenciaDoFaturamento(BaseFases):
 
         with mock.patch.object(resultados, "paginas_de_conversoes", side_effect=paginas):
             r = resultados.conferencia_na_shopee(self.conta, date(2026, 9, 1), date(2026, 9, 30))
-            v, f = r["validados"], r["feitos"]
-            self.assertEqual((v["preco"], v["pago"], v["pago_sem_reembolso"], v["pedidos"]),
+            v, f = r["por_validacao"], r["por_compra"]
+            self.assertEqual((v["total"]["preco"], v["total"]["pago"], v["total"]["pago_sem_reembolso"], v["total"]["pedidos"]),
                              (Decimal(1200), Decimal(1100), Decimal(1050), 2))
             self.assertEqual(v["compra_mais_antiga"], date(2026, 7, 20))
-            self.assertEqual((f["preco"], f["pago"], f["pendente"], f["cancelado"], f["pedidos"]),
-                             (Decimal(500), Decimal(480), Decimal(300), Decimal(90), 2))
+            # o jeito da meta da Shopee: comprados no mês e validados (mesmo que a validação seja em outubro)
+            self.assertEqual((f["validados"]["pago"], f["validados"]["pago_sem_reembolso"], f["validados"]["pedidos"]),
+                             (Decimal(280), Decimal(230), 2))
+            self.assertEqual([(canal, g["pago"]) for canal, g in f["canais"]],
+                             [("Social Media", Decimal(200)), ("Shopee Video", Decimal(80))])
+            self.assertEqual((f["pendentes"]["pago"], f["cancelados"]["preco"], f["total"]["pago"], f["total"]["pedidos"]),
+                             (Decimal(280), Decimal(90), Decimal(560), 3))
 
             self.entrar()
             with mock.patch("painel.telas.hoje", return_value=date(2026, 10, 31)):
                 html = self.client.get("/resultados/conferir/?mes=2026-09").content.decode()
                 self.assertIn("Buscar Setembro/2026 na Shopee", html)
                 html = self.client.get("/resultados/conferir/?mes=2026-09&shopee=1").content.decode()
-        self.assertIn("Validados em Setembro/2026", html)
-        self.assertIn("R$ 1.200,00", html)
+        self.assertIn("Feitos em Setembro/2026 e validados", html)
+        self.assertIn("<strong>R$ 280,00</strong>", html)
+        self.assertIn("canal: Shopee Video", html)
         self.assertIn("compra mais antiga: 20/07/2026", html)
 
     def test_erro_da_shopee_aparece_na_pagina(self):
@@ -217,4 +224,4 @@ class TestConferenciaDoFaturamento(BaseFases):
         self.conta.save()
         with mock.patch.object(resultados, "paginas_de_conversoes", side_effect=ShopeeAPIError("Unknown argument completeTimeStart")):
             r = resultados.conferencia_na_shopee(self.conta, date(2026, 9, 1), date(2026, 9, 30))
-        self.assertIn("completeTimeStart", r["validados"]["erro"])
+        self.assertIn("completeTimeStart", r["por_validacao"]["erro"])

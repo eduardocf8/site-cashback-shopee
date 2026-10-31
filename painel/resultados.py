@@ -608,11 +608,31 @@ def ranking_produtos(vendas, limite: int | None = 5) -> list[dict]:
 TEMPO_MAXIMO_CONFERENCIA = 45  # segundos por busca (o gunicorn derruba a página em 120)
 
 
+def _novo_grupo() -> dict:
+    return {"preco": 0.0, "pago": 0.0, "reembolso": 0.0, "pedidos": set()}
+
+
+def _somar_item(grupo: dict, pedido_id: str, item: dict) -> None:
+    grupo["preco"] += para_numero(item.get("itemPrice")) * max(int(para_numero(item.get("qty")) or 1), 1)
+    grupo["pago"] += para_numero(item.get("actualAmount"))
+    grupo["reembolso"] += para_numero(item.get("refundAmount"))
+    grupo["pedidos"].add(pedido_id)
+
+
+def _fechar_grupo(grupo: dict) -> dict:
+    fechado = {chave: _dinheiro(grupo[chave]) for chave in ("preco", "pago", "reembolso")}
+    fechado["pago_sem_reembolso"] = fechado["pago"] - fechado["reembolso"]
+    fechado["pedidos"] = len(grupo["pedidos"])
+    return fechado
+
+
 def conferencia_na_shopee(conta, inicio: date, fim: date) -> dict:
-    """O faturamento do mês buscado agora na API da Shopee, sem depender dos pedidos guardados:
-    - validados: pedidos com data de validação (completeTime) no mês, comprados em qualquer data;
-    - feitos: pedidos com data de compra no mês, sem os cancelados.
-    Cada um somado de dois jeitos: preço x quantidade e valor pago pelo comprador (actualAmount)."""
+    """O faturamento do mês buscado agora na API da Shopee, sem depender dos pedidos guardados.
+    - por_compra: pedidos comprados no mês, separados em validados, pendentes e cancelados, e os
+      validados por canal (channelType). É o jeito do e-mail da meta mensal da Shopee ("vendas
+      validadas 01 a 30/09" = comprados no mês e validados);
+    - por_validacao: pedidos com data de validação (completeTime) no mês, comprados em qualquer data.
+    Cada grupo somado por preço x quantidade, valor pago (actualAmount) e pago menos reembolsos."""
     import time as relogio
 
     import requests
@@ -625,46 +645,48 @@ def conferencia_na_shopee(conta, inicio: date, fim: date) -> dict:
     de, ate = _limites(inicio, fim)
 
     def buscar(data: str) -> dict:
-        soma = {"preco": 0.0, "pago": 0.0, "reembolso": 0.0, "pedidos": set(), "compra_mais_antiga": None,
-                "pendente": 0.0, "cancelado": 0.0, "incompleto": False}
+        grupos = defaultdict(_novo_grupo)
+        compra_mais_antiga, incompleto = None, False
         comeco = relogio.monotonic()
         paginas = paginas_de_conversoes(conta.shopee_app_id, secret, int(de.timestamp()), int(ate.timestamp()) - 1,
-                                        data=data, itens_extras=("actualAmount", "refundAmount"))
+                                        data=data, itens_extras=("actualAmount", "refundAmount", "channelType"))
         for pagina in paginas:
             for conversao in pagina:
                 compra = _momento(_inteiro((conversao or {}).get("purchaseTime")))
                 for pedido in (conversao or {}).get("orders") or []:
                     status = str(pedido.get("orderStatus") or "").strip().upper()
+                    pedido_id = str(pedido.get("orderId") or "")
                     for item in pedido.get("items") or []:
-                        preco = para_numero(item.get("itemPrice")) * max(int(para_numero(item.get("qty")) or 1), 1)
                         if data == "completeTime":
                             validado = _momento(_inteiro(item.get("completeTime")))
                             if status != "COMPLETED" or (validado and not de <= validado < ate):
                                 continue
-                        elif status in STATUS_CANCELADOS:
-                            soma["cancelado"] += preco
+                            _somar_item(grupos["total"], pedido_id, item)
+                            if compra and (not compra_mais_antiga or compra < compra_mais_antiga):
+                                compra_mais_antiga = compra
                             continue
-                        elif status != "COMPLETED":
-                            soma["pendente"] += preco
-                        soma["preco"] += preco
-                        soma["pago"] += para_numero(item.get("actualAmount"))
-                        soma["reembolso"] += para_numero(item.get("refundAmount"))
-                        soma["pedidos"].add(str(pedido.get("orderId") or ""))
-                        if compra and (not soma["compra_mais_antiga"] or compra < soma["compra_mais_antiga"]):
-                            soma["compra_mais_antiga"] = compra
+                        if status in STATUS_CANCELADOS:
+                            _somar_item(grupos["cancelados"], pedido_id, item)
+                            continue
+                        _somar_item(grupos["total"], pedido_id, item)
+                        if status == "COMPLETED":
+                            _somar_item(grupos["validados"], pedido_id, item)
+                            canal = str(item.get("channelType") or "").strip() or "sem canal informado"
+                            _somar_item(grupos[f"canal:{canal}"], pedido_id, item)
+                        else:
+                            _somar_item(grupos["pendentes"], pedido_id, item)
             if relogio.monotonic() - comeco > TEMPO_MAXIMO_CONFERENCIA:
-                soma["incompleto"] = True
+                incompleto = True
                 break
-        soma["pedidos"] = len(soma["pedidos"] - {""})
-        if soma["compra_mais_antiga"]:
-            soma["compra_mais_antiga"] = timezone.localtime(soma["compra_mais_antiga"]).date()
-        for chave in ("preco", "pago", "reembolso", "pendente", "cancelado"):
-            soma[chave] = _dinheiro(soma[chave])
-        soma["pago_sem_reembolso"] = soma["pago"] - soma["reembolso"]
-        return soma
+        fechados = {chave: _fechar_grupo(grupos[chave]) for chave in ("total", "validados", "pendentes", "cancelados")}
+        fechados["canais"] = sorted(((chave[6:], _fechar_grupo(g)) for chave, g in grupos.items() if chave.startswith("canal:")),
+                                    key=lambda par: -par[1]["pago"])
+        fechados["compra_mais_antiga"] = timezone.localtime(compra_mais_antiga).date() if compra_mais_antiga else None
+        fechados["incompleto"] = incompleto
+        return fechados
 
     resultado = {}
-    for chave, data in (("validados", "completeTime"), ("feitos", "purchaseTime")):
+    for chave, data in (("por_compra", "purchaseTime"), ("por_validacao", "completeTime")):
         try:
             resultado[chave] = buscar(data)
         except ShopeeAPIError as erro:
