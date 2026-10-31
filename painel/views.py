@@ -309,6 +309,33 @@ def estado_resultados(request):
     return JsonResponse({"atualizando": atualizando})
 
 
+def _linhas_da_conferencia(ao_vivo: dict, nome_mes: str) -> list[dict]:
+    """As linhas da tabela "Direto na Shopee" (resultados.conferencia_na_shopee)."""
+    if "erro" in ao_vivo:
+        return [{"rotulo": "Busca na Shopee", "erro": ao_vivo["erro"]}]
+    linhas = []
+    compra, validacao = ao_vivo["por_compra"], ao_vivo["por_validacao"]
+    if "erro" in compra:
+        linhas.append({"rotulo": f"Feitos em {nome_mes}", "erro": compra["erro"]})
+    else:
+        linhas.append({"rotulo": f"Feitos em {nome_mes} e validados", "destaque": True, "r": compra["validados"],
+                       "detalhe": "é o jeito do e-mail de meta mensal da Shopee", "incompleto": compra["incompleto"]})
+        if len(compra["canais"]) > 1 or (compra["canais"] and compra["canais"][0][0] != "sem canal informado"):
+            linhas += [{"rotulo": f"canal: {canal}", "sub": True, "r": r} for canal, r in compra["canais"]]
+        linhas.append({"rotulo": f"Feitos em {nome_mes}, ainda pendentes", "r": compra["pendentes"]})
+        linhas.append({"rotulo": f"Feitos em {nome_mes}, cancelados", "r": compra["cancelados"], "detalhe": "fora das contas"})
+        linhas.append({"rotulo": f"Feitos em {nome_mes}, sem os cancelados", "r": compra["total"], "detalhe": "validados + pendentes"})
+    if "erro" in validacao:
+        linhas.append({"rotulo": f"Validados em {nome_mes}", "erro": validacao["erro"]})
+    else:
+        detalhe = "comprados em qualquer data"
+        if validacao["compra_mais_antiga"]:
+            detalhe += f"; compra mais antiga: {validacao['compra_mais_antiga']:%d/%m/%Y}"
+        linhas.append({"rotulo": f"Validados em {nome_mes}", "r": validacao["total"], "detalhe": detalhe,
+                       "incompleto": validacao["incompleto"]})
+    return linhas
+
+
 @conta_requerida
 def conferir_faturamento(request):
     """Página escondida: o faturamento de um mês contado de três jeitos, para conferir com a Shopee."""
@@ -328,10 +355,7 @@ def conferir_faturamento(request):
         meses.append({"valor": f"{d.year}-{d.month:02d}", "nome": telas.nome_mes(d.year, d.month), "ativo": (d.year, d.month) == (ano, mes)})
     c = telas.conferencia_faturamento(conta, ano, mes)
     ao_vivo = resultados.conferencia_na_shopee(conta, c["inicio"], c["fim"]) if request.GET.get("shopee") else None
-    linhas = [(f"Validados em {c['nome_mes']}", ao_vivo["validados"]),
-              (f"Feitos em {c['nome_mes']}, sem os cancelados", ao_vivo["feitos"])] if ao_vivo and "erro" not in ao_vivo else []
-    if ao_vivo and "erro" in ao_vivo:
-        linhas = [("Busca na Shopee", ao_vivo)]
+    linhas = _linhas_da_conferencia(ao_vivo, c["nome_mes"]) if ao_vivo else []
     return render(request, "painel/conferir_faturamento.html", _contexto(
         request, "resultados", c=c, meses=meses, ao_vivo=ao_vivo, linhas_ao_vivo=linhas, mes_escolhido=f"{ano}-{mes:02d}"))
 
