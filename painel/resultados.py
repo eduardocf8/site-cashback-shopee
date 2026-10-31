@@ -601,3 +601,74 @@ def ranking_produtos(vendas, limite: int | None = 5) -> list[dict]:
     for linha in linhas:
         linha["barra"] = round(100 * linha["unidades"] / maior)
     return linhas
+
+
+# --- Conferência direto na Shopee (página escondida /resultados/conferir/) -------------
+
+TEMPO_MAXIMO_CONFERENCIA = 45  # segundos por busca (o gunicorn derruba a página em 120)
+
+
+def conferencia_na_shopee(conta, inicio: date, fim: date) -> dict:
+    """O faturamento do mês buscado agora na API da Shopee, sem depender dos pedidos guardados:
+    - validados: pedidos com data de validação (completeTime) no mês, comprados em qualquer data;
+    - feitos: pedidos com data de compra no mês, sem os cancelados.
+    Cada um somado de dois jeitos: preço x quantidade e valor pago pelo comprador (actualAmount)."""
+    import time as relogio
+
+    import requests
+
+    from links.shopee_client import ShopeeAPIError
+
+    secret = cripto.decifrar(conta.shopee_secret_cifrado)
+    if not conta.shopee_app_id or not secret:
+        return {"erro": "A conta não tem as credenciais da Shopee."}
+    de, ate = _limites(inicio, fim)
+
+    def buscar(data: str) -> dict:
+        soma = {"preco": 0.0, "pago": 0.0, "reembolso": 0.0, "pedidos": set(), "compra_mais_antiga": None,
+                "pendente": 0.0, "cancelado": 0.0, "incompleto": False}
+        comeco = relogio.monotonic()
+        paginas = paginas_de_conversoes(conta.shopee_app_id, secret, int(de.timestamp()), int(ate.timestamp()) - 1,
+                                        data=data, itens_extras=("actualAmount", "refundAmount"))
+        for pagina in paginas:
+            for conversao in pagina:
+                compra = _momento(_inteiro((conversao or {}).get("purchaseTime")))
+                for pedido in (conversao or {}).get("orders") or []:
+                    status = str(pedido.get("orderStatus") or "").strip().upper()
+                    for item in pedido.get("items") or []:
+                        preco = para_numero(item.get("itemPrice")) * max(int(para_numero(item.get("qty")) or 1), 1)
+                        if data == "completeTime":
+                            validado = _momento(_inteiro(item.get("completeTime")))
+                            if status != "COMPLETED" or (validado and not de <= validado < ate):
+                                continue
+                        elif status in STATUS_CANCELADOS:
+                            soma["cancelado"] += preco
+                            continue
+                        elif status != "COMPLETED":
+                            soma["pendente"] += preco
+                        soma["preco"] += preco
+                        soma["pago"] += para_numero(item.get("actualAmount"))
+                        soma["reembolso"] += para_numero(item.get("refundAmount"))
+                        soma["pedidos"].add(str(pedido.get("orderId") or ""))
+                        if compra and (not soma["compra_mais_antiga"] or compra < soma["compra_mais_antiga"]):
+                            soma["compra_mais_antiga"] = compra
+            if relogio.monotonic() - comeco > TEMPO_MAXIMO_CONFERENCIA:
+                soma["incompleto"] = True
+                break
+        soma["pedidos"] = len(soma["pedidos"] - {""})
+        if soma["compra_mais_antiga"]:
+            soma["compra_mais_antiga"] = timezone.localtime(soma["compra_mais_antiga"]).date()
+        for chave in ("preco", "pago", "reembolso", "pendente", "cancelado"):
+            soma[chave] = _dinheiro(soma[chave])
+        soma["pago_sem_reembolso"] = soma["pago"] - soma["reembolso"]
+        return soma
+
+    resultado = {}
+    for chave, data in (("validados", "completeTime"), ("feitos", "purchaseTime")):
+        try:
+            resultado[chave] = buscar(data)
+        except ShopeeAPIError as erro:
+            resultado[chave] = {"erro": f"A Shopee respondeu: {erro}"}
+        except requests.RequestException:
+            resultado[chave] = {"erro": "Não consegui falar com a Shopee agora. Tente de novo em alguns minutos."}
+    return resultado

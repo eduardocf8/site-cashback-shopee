@@ -326,8 +326,14 @@ def conferir_faturamento(request):
     for _ in range(4):
         d = (d - timedelta(days=1)).replace(day=1)
         meses.append({"valor": f"{d.year}-{d.month:02d}", "nome": telas.nome_mes(d.year, d.month), "ativo": (d.year, d.month) == (ano, mes)})
+    c = telas.conferencia_faturamento(conta, ano, mes)
+    ao_vivo = resultados.conferencia_na_shopee(conta, c["inicio"], c["fim"]) if request.GET.get("shopee") else None
+    linhas = [(f"Validados em {c['nome_mes']}", ao_vivo["validados"]),
+              (f"Feitos em {c['nome_mes']}, sem os cancelados", ao_vivo["feitos"])] if ao_vivo and "erro" not in ao_vivo else []
+    if ao_vivo and "erro" in ao_vivo:
+        linhas = [("Busca na Shopee", ao_vivo)]
     return render(request, "painel/conferir_faturamento.html", _contexto(
-        request, "resultados", c=telas.conferencia_faturamento(conta, ano, mes), meses=meses))
+        request, "resultados", c=c, meses=meses, ao_vivo=ao_vivo, linhas_ao_vivo=linhas, mes_escolhido=f"{ano}-{mes:02d}"))
 
 
 @conta_requerida

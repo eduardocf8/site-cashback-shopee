@@ -58,11 +58,11 @@ def _campo_invalido(mensagem: str) -> str:
     return achado.group(1) if achado else ""
 
 
-def _consultar_pagina(app_id, secret, inicio_ts, fim_ts, scroll_id, campos, itens):
+def _consultar_pagina(app_id, secret, inicio_ts, fim_ts, scroll_id, campos, itens, data="purchaseTime"):
     campos_atuais, itens_atuais = list(campos), list(itens)
     while True:
         parametros = (
-            f"purchaseTimeStart:{inicio_ts},purchaseTimeEnd:{fim_ts},limit:500,"
+            f"{data}Start:{inicio_ts},{data}End:{fim_ts},limit:500,"
             f"scrollId:{json.dumps(scroll_id, ensure_ascii=False)}"
         )
         query = (
@@ -81,17 +81,19 @@ def _consultar_pagina(app_id, secret, inicio_ts, fim_ts, scroll_id, campos, iten
                 raise
 
 
-def paginas_de_conversoes(app_id: str, secret: str, inicio_ts: int, fim_ts: int):
-    """As conversões com data de compra entre inicio_ts e fim_ts, uma página (até 500)
-    por vez - quem chama processa e descarta cada página, sem guardar tudo na memória."""
+def paginas_de_conversoes(app_id: str, secret: str, inicio_ts: int, fim_ts: int, data: str = "purchaseTime",
+                          itens_extras: tuple[str, ...] = ()):
+    """As conversões com data de compra (ou, com data="completeTime", de validação) entre
+    inicio_ts e fim_ts, uma página (até 500) por vez - quem chama processa e descarta cada
+    página, sem guardar tudo na memória."""
     scroll_id = ""
     vistos = set()
-    campos, itens = CAMPOS_CONVERSOES, CAMPOS_ITENS
+    campos, itens = CAMPOS_CONVERSOES, CAMPOS_ITENS + list(itens_extras)
     for _ in range(MAXIMO_PAGINAS):
         if scroll_id in vistos:
             break
         vistos.add(scroll_id)
-        dados, campos, itens = _consultar_pagina(app_id, secret, inicio_ts, fim_ts, scroll_id, campos, itens)
+        dados, campos, itens = _consultar_pagina(app_id, secret, inicio_ts, fim_ts, scroll_id, campos, itens, data)
         relatorio = dados.get("conversionReport") or {}
         nodes = relatorio.get("nodes") or []
         if isinstance(nodes, list) and nodes:

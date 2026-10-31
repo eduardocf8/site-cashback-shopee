@@ -25,4 +25,27 @@
   <p class="suave pequeno" style="margin-top:12px">Para referência, o faturamento que aparece em Resultados para {{ c.nome_mes }} é {{ c.painel|brl }} (somado dia a dia na última atualização). O valor de cada pedido é o preço vezes a quantidade de cada item.</p>
   {% if c.cobertura_incompleta %}<p class="aviso aviso-warning pequeno">O Appfiliado só tem os seus pedidos desde {% if c.pedidos_desde %}{{ c.pedidos_desde|date:"d/m/Y" }}{% else %}a primeira atualização{% endif %}. Pedidos validados em {{ c.nome_mes }} mas comprados antes disso não entram no número 3.</p>{% endif %}
 </section>
+
+<section class="card" style="margin-top:12px" id="shopee">
+  <h2>Direto na Shopee</h2>
+  {% if not ao_vivo %}
+    <p class="suave pequeno">Busca {{ c.nome_mes }} agora na Shopee, sem depender dos pedidos guardados no Appfiliado: os validados no mês pela data de validação (comprados em qualquer data) e os feitos no mês. Também soma pelo valor que o comprador pagou, já com os descontos. Pode levar até 1 minuto.</p>
+    <p><a class="botao botao-principal" href="?mes={{ mes_escolhido }}&shopee=1#shopee">Buscar {{ c.nome_mes }} na Shopee</a></p>
+  {% else %}
+    <div class="tabela-rolagem"><table class="numeros">
+      <thead><tr><th>Jeito de contar</th><th>Preço × quantidade</th><th>Valor pago</th><th>Pago menos reembolsos</th><th>Pedidos</th></tr></thead>
+      <tbody>
+        {% for rotulo, r in linhas_ao_vivo %}
+          {% if r.erro %}
+            <tr><td><strong>{{ rotulo }}</strong></td><td colspan="4" class="perigo pequeno">{{ r.erro }}</td></tr>
+          {% else %}
+            <tr><td><strong>{{ rotulo }}</strong>{% if r.compra_mais_antiga %}<br><span class="suave pequeno">compra mais antiga: {{ r.compra_mais_antiga|date:"d/m/Y" }}</span>{% endif %}{% if r.pendente or r.cancelado %}<br><span class="suave pequeno">inclui {{ r.pendente|brl }} pendentes · fora: {{ r.cancelado|brl }} cancelados</span>{% endif %}{% if r.incompleto %}<br><span class="perigo pequeno">a busca parou no meio (demorou demais): o número está incompleto</span>{% endif %}</td>
+              <td><strong>{{ r.preco|brl }}</strong></td><td>{{ r.pago|brl }}</td><td>{{ r.pago_sem_reembolso|brl }}</td><td>{{ r.pedidos|numero }}</td></tr>
+          {% endif %}
+        {% endfor %}
+      </tbody>
+    </table></div>
+    <p class="suave pequeno" style="margin-top:12px">"Preço × quantidade" é como o Appfiliado conta hoje. "Valor pago" é o que o comprador pagou pelo item, já com cupons e descontos.</p>
+  {% endif %}
+</section>
 {% endblock %}
