@@ -5,7 +5,9 @@ e responde às telas com somas do banco.
 As regras de cálculo são as mesmas do app do Appfiliado
 (ConversorAfiliados.obter_resultados_periodo), conferidas contra o relatório de vendas
 exportado da Shopee:
-- faturamento e pedidos pela data da compra, sem pedidos CANCELLED/UNPAID;
+- faturamento e pedidos pela data da compra, sem pedidos CANCELLED/UNPAID; o valor de cada item é o
+  que o comprador pagou (actualAmount) menos os reembolsos (refundAmount) - é como a Shopee conta as
+  vendas da meta mensal (conferido com o e-mail de setembro/2026). Sem actualAmount, preço x quantidade;
 - comissão estimada pela data da compra (a comissão da conversão, zerada se todos os
   pedidos dela foram cancelados);
 - comissão validada pela data de validação de cada item (completeTime), só de pedidos
@@ -179,9 +181,7 @@ def acumular(por_dia: dict, por_sub_id: dict, conversoes: list[dict]) -> None:
             itens = [i for i in pedido.get("items") or [] if isinstance(i, dict)]
 
             if dia_compra and status not in STATUS_PEDIDO_INVALIDOS:
-                por_dia[dia_compra]["faturamento"] += sum(
-                    para_numero(i.get("itemPrice")) * (para_numero(i.get("qty")) or 1) for i in itens
-                )
+                por_dia[dia_compra]["faturamento"] += sum(valor_do_item(i) for i in itens)
                 por_dia[dia_compra]["pedidos"].add(pedido.get("orderId"))
 
             if status == "COMPLETED":
@@ -191,6 +191,14 @@ def acumular(por_dia: dict, por_sub_id: dict, conversoes: list[dict]) -> None:
                         por_dia[_dia_local(validacao)]["comissao_validada"] += para_numero(
                             item.get("itemTotalCommission")
                         )
+
+
+def valor_do_item(item: dict) -> float:
+    """O que o comprador pagou pelo item (actualAmount, com cupons e descontos) menos os reembolsos -
+    a base das vendas da meta mensal da Shopee. Se a API não mandar o valor pago, preço x quantidade."""
+    if item.get("actualAmount") in (None, ""):
+        return para_numero(item.get("itemPrice")) * max(int(para_numero(item.get("qty")) or 1), 1)
+    return para_numero(item.get("actualAmount")) - para_numero(item.get("refundAmount"))
 
 
 def calcular_por_dia(conversoes: list[dict]) -> tuple[dict, dict]:
@@ -239,7 +247,7 @@ def itens_vendidos(conta, conversoes: list[dict]) -> list[VendaItem]:
                     posicao=posicao, item_id=_texto(item.get("itemId"), 30),
                     nome=_texto(item.get("itemName"), 300), imagem_url=_texto(item.get("imageUrl"), 500),
                     loja=_texto(item.get("shopName"), 200), quantidade=max(quantidade, 1),
-                    preco=_dinheiro(preco), valor=_dinheiro(preco * max(quantidade, 1)),
+                    preco=_dinheiro(preco), valor=_dinheiro(valor_do_item(item)),
                     comissao=_dinheiro(para_numero(item.get("itemTotalCommission"))),
                     status_shopee=status[:20], motivo_shopee=_motivo(item, situacao), situacao=situacao,
                     sub_id=rotulo, comprado_em=compra,
@@ -626,6 +634,56 @@ def _fechar_grupo(grupo: dict) -> dict:
     return fechado
 
 
+def somar_mes_na_shopee(conta, secret: str, de: datetime, ate: datetime, data: str = "purchaseTime",
+                        tempo_maximo: float | None = None) -> dict:
+    """Soma, direto na API, os pedidos com data de compra (data="purchaseTime") ou de validação
+    (data="completeTime") entre de e ate. Com purchaseTime: total (sem cancelados), validados, pendentes,
+    cancelados e os validados por canal; com completeTime: total dos itens validados no período.
+    Cada grupo tem preco (preço x quantidade), pago, reembolso, pago_sem_reembolso e pedidos.
+    tempo_maximo (segundos): para no meio e marca incompleto=True."""
+    import time as relogio
+
+    grupos = defaultdict(_novo_grupo)
+    compra_mais_antiga, incompleto = None, False
+    comeco = relogio.monotonic()
+    paginas = paginas_de_conversoes(conta.shopee_app_id, secret, int(de.timestamp()), int(ate.timestamp()) - 1,
+                                    data=data, itens_extras=("channelType",))
+    for pagina in paginas:
+        for conversao in pagina:
+            compra = _momento(_inteiro((conversao or {}).get("purchaseTime")))
+            for pedido in (conversao or {}).get("orders") or []:
+                status = str(pedido.get("orderStatus") or "").strip().upper()
+                pedido_id = str(pedido.get("orderId") or "")
+                for item in pedido.get("items") or []:
+                    if data == "completeTime":
+                        validado = _momento(_inteiro(item.get("completeTime")))
+                        if status != "COMPLETED" or (validado and not de <= validado < ate):
+                            continue
+                        _somar_item(grupos["total"], pedido_id, item)
+                        if compra and (not compra_mais_antiga or compra < compra_mais_antiga):
+                            compra_mais_antiga = compra
+                        continue
+                    if status in STATUS_CANCELADOS:
+                        _somar_item(grupos["cancelados"], pedido_id, item)
+                        continue
+                    _somar_item(grupos["total"], pedido_id, item)
+                    if status == "COMPLETED":
+                        _somar_item(grupos["validados"], pedido_id, item)
+                        canal = str(item.get("channelType") or "").strip() or "sem canal informado"
+                        _somar_item(grupos[f"canal:{canal}"], pedido_id, item)
+                    else:
+                        _somar_item(grupos["pendentes"], pedido_id, item)
+        if tempo_maximo and relogio.monotonic() - comeco > tempo_maximo:
+            incompleto = True
+            break
+    fechados = {chave: _fechar_grupo(grupos[chave]) for chave in ("total", "validados", "pendentes", "cancelados")}
+    fechados["canais"] = sorted(((chave[6:], _fechar_grupo(g)) for chave, g in grupos.items() if chave.startswith("canal:")),
+                                key=lambda par: -par[1]["pago"])
+    fechados["compra_mais_antiga"] = timezone.localtime(compra_mais_antiga).date() if compra_mais_antiga else None
+    fechados["incompleto"] = incompleto
+    return fechados
+
+
 def conferencia_na_shopee(conta, inicio: date, fim: date) -> dict:
     """O faturamento do mês buscado agora na API da Shopee, sem depender dos pedidos guardados.
     - por_compra: pedidos comprados no mês, separados em validados, pendentes e cancelados, e os
@@ -633,8 +691,6 @@ def conferencia_na_shopee(conta, inicio: date, fim: date) -> dict:
       validadas 01 a 30/09" = comprados no mês e validados);
     - por_validacao: pedidos com data de validação (completeTime) no mês, comprados em qualquer data.
     Cada grupo somado por preço x quantidade, valor pago (actualAmount) e pago menos reembolsos."""
-    import time as relogio
-
     import requests
 
     from links.shopee_client import ShopeeAPIError
@@ -643,52 +699,10 @@ def conferencia_na_shopee(conta, inicio: date, fim: date) -> dict:
     if not conta.shopee_app_id or not secret:
         return {"erro": "A conta não tem as credenciais da Shopee."}
     de, ate = _limites(inicio, fim)
-
-    def buscar(data: str) -> dict:
-        grupos = defaultdict(_novo_grupo)
-        compra_mais_antiga, incompleto = None, False
-        comeco = relogio.monotonic()
-        paginas = paginas_de_conversoes(conta.shopee_app_id, secret, int(de.timestamp()), int(ate.timestamp()) - 1,
-                                        data=data, itens_extras=("actualAmount", "refundAmount", "channelType"))
-        for pagina in paginas:
-            for conversao in pagina:
-                compra = _momento(_inteiro((conversao or {}).get("purchaseTime")))
-                for pedido in (conversao or {}).get("orders") or []:
-                    status = str(pedido.get("orderStatus") or "").strip().upper()
-                    pedido_id = str(pedido.get("orderId") or "")
-                    for item in pedido.get("items") or []:
-                        if data == "completeTime":
-                            validado = _momento(_inteiro(item.get("completeTime")))
-                            if status != "COMPLETED" or (validado and not de <= validado < ate):
-                                continue
-                            _somar_item(grupos["total"], pedido_id, item)
-                            if compra and (not compra_mais_antiga or compra < compra_mais_antiga):
-                                compra_mais_antiga = compra
-                            continue
-                        if status in STATUS_CANCELADOS:
-                            _somar_item(grupos["cancelados"], pedido_id, item)
-                            continue
-                        _somar_item(grupos["total"], pedido_id, item)
-                        if status == "COMPLETED":
-                            _somar_item(grupos["validados"], pedido_id, item)
-                            canal = str(item.get("channelType") or "").strip() or "sem canal informado"
-                            _somar_item(grupos[f"canal:{canal}"], pedido_id, item)
-                        else:
-                            _somar_item(grupos["pendentes"], pedido_id, item)
-            if relogio.monotonic() - comeco > TEMPO_MAXIMO_CONFERENCIA:
-                incompleto = True
-                break
-        fechados = {chave: _fechar_grupo(grupos[chave]) for chave in ("total", "validados", "pendentes", "cancelados")}
-        fechados["canais"] = sorted(((chave[6:], _fechar_grupo(g)) for chave, g in grupos.items() if chave.startswith("canal:")),
-                                    key=lambda par: -par[1]["pago"])
-        fechados["compra_mais_antiga"] = timezone.localtime(compra_mais_antiga).date() if compra_mais_antiga else None
-        fechados["incompleto"] = incompleto
-        return fechados
-
     resultado = {}
     for chave, data in (("por_compra", "purchaseTime"), ("por_validacao", "completeTime")):
         try:
-            resultado[chave] = buscar(data)
+            resultado[chave] = somar_mes_na_shopee(conta, secret, de, ate, data, tempo_maximo=TEMPO_MAXIMO_CONFERENCIA)
         except ShopeeAPIError as erro:
             resultado[chave] = {"erro": f"A Shopee respondeu: {erro}"}
         except requests.RequestException:

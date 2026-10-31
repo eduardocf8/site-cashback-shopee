@@ -43,8 +43,10 @@ CAMPOS_CONVERSOES = [
 # Campos de cada item vendido (lista de vendas e ranking de produtos). Se a API de
 # alguma conta não tiver um deles, ele sai e a consulta tenta de novo.
 # itemNotes, displayItemStatus e fraudStatus explicam, quando a Shopee informa, por que um pedido foi cancelado.
+# actualAmount (valor pago pelo comprador, com cupons e descontos) e refundAmount (reembolsos) são a base do
+# faturamento - é como a Shopee conta as vendas da meta mensal.
 CAMPOS_ITENS = ["itemId", "itemName", "shopName", "imageUrl", "itemPrice", "qty", "itemTotalCommission", "completeTime",
-                "itemNotes", "displayItemStatus", "fraudStatus"]
+                "actualAmount", "refundAmount", "itemNotes", "displayItemStatus", "fraudStatus"]
 ITENS_OBRIGATORIOS = {"itemPrice", "qty", "itemTotalCommission", "completeTime"}
 
 
@@ -88,7 +90,7 @@ def paginas_de_conversoes(app_id: str, secret: str, inicio_ts: int, fim_ts: int,
     página, sem guardar tudo na memória."""
     scroll_id = ""
     vistos = set()
-    campos, itens = CAMPOS_CONVERSOES, CAMPOS_ITENS + list(itens_extras)
+    campos, itens = CAMPOS_CONVERSOES, CAMPOS_ITENS + [i for i in itens_extras if i not in CAMPOS_ITENS]
     for _ in range(MAXIMO_PAGINAS):
         if scroll_id in vistos:
             break

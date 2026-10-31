@@ -22,7 +22,7 @@
       <tr><td>&nbsp;&nbsp;↳ comprados antes de {{ c.nome_mes }}</td><td>{{ c.validados_no_mes_comprados_antes.valor|brl }}</td><td>{{ c.validados_no_mes_comprados_antes.pedidos|numero }}</td></tr>
     </tbody>
   </table></div>
-  <p class="suave pequeno" style="margin-top:12px">Para referência, o faturamento que aparece em Resultados para {{ c.nome_mes }} é {{ c.painel|brl }} (somado dia a dia na última atualização). O valor de cada pedido é o preço vezes a quantidade de cada item.</p>
+  <p class="suave pequeno" style="margin-top:12px">Para referência, o faturamento que aparece em Resultados para {{ c.nome_mes }} é {{ c.painel|brl }} (somado dia a dia na última atualização). O valor de cada item é o que o comprador pagou menos os reembolsos (nos pedidos guardados antes dessa mudança, preço vezes quantidade).</p>
   {% if c.cobertura_incompleta %}<p class="aviso aviso-warning pequeno">O Appfiliado só tem os seus pedidos desde {% if c.pedidos_desde %}{{ c.pedidos_desde|date:"d/m/Y" }}{% else %}a primeira atualização{% endif %}. Pedidos validados em {{ c.nome_mes }} mas comprados antes disso não entram no número 3.</p>{% endif %}
 </section>
 
@@ -45,7 +45,7 @@
         {% endfor %}
       </tbody>
     </table></div>
-    <p class="suave pequeno" style="margin-top:12px">"Preço × quantidade" é como o Appfiliado conta hoje. "Valor pago" é o que o comprador pagou pelo item, já com cupons e descontos.</p>
+    <p class="suave pequeno" style="margin-top:12px">"Valor pago" é o que o comprador pagou pelo item, já com cupons e descontos. O Appfiliado e a meta mensal da Shopee contam o valor pago menos os reembolsos.</p>
   {% endif %}
 </section>
 {% endblock %}

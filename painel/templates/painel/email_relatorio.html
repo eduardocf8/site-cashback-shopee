@@ -74,7 +74,7 @@
       </table>
       <div style="margin-top:12px;padding:12px 14px;background:#FBF1CF;border-radius:10px;font-size:14px;color:#5C4400;line-height:1.5;">
         {% if not meta.previa %}
-          {% if meta.em_fechamento %}{% if meta.faixa_em_jogo %}Para garantir a faixa <strong>{{ meta.faixa_em_jogo.nome }}</strong>, faltam <strong>{{ meta.falta_validar|brl|sem_quebra }}</strong> serem validados. Dos pendentes, você pode perder até <strong>{{ meta.pode_perder|brl|sem_quebra }}</strong> em cancelamentos e ainda bater a faixa.{% elif meta.proxima %}Mesmo com todos os pendentes validados, a próxima faixa fica fora de alcance.{% else %}Todas as faixas já estão garantidas com os pedidos validados. 🎉{% endif %}<br>O resultado de {{ meta.nome_mes }} fecha em <strong>{{ meta.fecha_em|date:"d/m" }}</strong>, só com os pedidos validados.
+          {% if meta.em_fechamento %}{% if meta.faixa_em_jogo %}Para garantir a faixa <strong>{{ meta.faixa_em_jogo.nome }}</strong>, faltam <strong>{{ meta.falta_validar|brl|sem_quebra }}</strong> serem validados. Dos pendentes, você pode perder até <strong>{{ meta.pode_perder|brl|sem_quebra }}</strong> em cancelamentos e ainda bater a faixa.{% elif meta.proxima %}Mesmo com todos os pendentes validados, a próxima faixa fica fora de alcance.{% else %}Todas as faixas já estão garantidas com os pedidos validados. 🎉{% endif %}<br>O resultado de {{ meta.nome_mes }} fecha em <strong>{{ meta.fecha_em|date:"d/m" }} às 11h</strong>, só com os pedidos validados.
           {% else %}Resultado final de {{ meta.nome_mes }}, só com os pedidos validados.{% if meta.bonus_garantido %} Bônus: <strong>{{ meta.bonus_garantido|brl|sem_quebra }}</strong>.{% endif %}{% endif %}
         {% elif meta.modo_gmv %}
           {% if meta.proxima %}Faltam <strong>{{ meta.falta|brl|sem_quebra }}</strong> pra meta: dá <strong>{{ meta.por_dia|brl|sem_quebra }} por dia</strong> {% if meta.dias_restantes == 1 %}no último dia do mês{% else %}nos {{ meta.dias_restantes }} dias que faltam{% endif %}.{% else %}<strong>Meta batida na prévia! 🎉</strong>{% endif %}<br>
@@ -87,7 +87,7 @@
           <strong>Todas as faixas do mês batidas na prévia! 🎉</strong>
         {% endif %}
         {% if meta.previa %}{% if meta.bonus_garantido and not meta.modo_gmv %}<br>Bônus da faixa batida na prévia: <strong>{{ meta.bonus_garantido|brl|sem_quebra }}</strong>.{% endif %}
-        <br><span style="font-size:13px;">É uma prévia: o resultado oficial de {{ meta.nome_mes }} fecha em <strong>{{ meta.fecha_em|date:"d/m" }}</strong>, só com os pedidos validados.</span>{% endif %}
+        <br><span style="font-size:13px;">É uma prévia: o resultado oficial de {{ meta.nome_mes }} fecha em <strong>{{ meta.fecha_em|date:"d/m" }} às 11h</strong>, só com os pedidos validados.</span>{% endif %}
       </div>
     {% endif %}
     {% if outros_meses %}
