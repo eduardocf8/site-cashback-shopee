@@ -6,7 +6,7 @@ from django.contrib.auth.hashers import make_password
 from django.core.paginator import Paginator
 from django.http import Http404, HttpResponse, JsonResponse
 from django.shortcuts import redirect, render
-from datetime import timedelta
+from datetime import date, timedelta
 from urllib.parse import quote
 
 from django.utils import timezone
@@ -307,6 +307,27 @@ def estado_resultados(request):
     estado = telas.estado_sincronizacao(conta)
     atualizando = bool(conta.shopee_validado_em) and (not estado or estado.atualizando)
     return JsonResponse({"atualizando": atualizando})
+
+
+@conta_requerida
+def conferir_faturamento(request):
+    """Página escondida: o faturamento de um mês contado de três jeitos, para conferir com a Shopee."""
+    conta = conta_logada(request)
+    hoje = telas.hoje()
+    passado = (hoje.replace(day=1) - timedelta(days=1))
+    escolhido = str(request.GET.get("mes") or f"{passado.year}-{passado.month:02d}")
+    try:
+        ano, mes = (int(x) for x in escolhido.split("-"))
+        date(ano, mes, 1)
+    except (ValueError, TypeError):
+        ano, mes = passado.year, passado.month
+    meses = []
+    d = hoje.replace(day=1)
+    for _ in range(4):
+        d = (d - timedelta(days=1)).replace(day=1)
+        meses.append({"valor": f"{d.year}-{d.month:02d}", "nome": telas.nome_mes(d.year, d.month), "ativo": (d.year, d.month) == (ano, mes)})
+    return render(request, "painel/conferir_faturamento.html", _contexto(
+        request, "resultados", c=telas.conferencia_faturamento(conta, ano, mes), meses=meses))
 
 
 @conta_requerida
