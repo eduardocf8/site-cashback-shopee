@@ -397,6 +397,19 @@ def _acao_do_alerta(request, conta, alerta, regras_da_conta):
             alerta.pedido_conferir_em = timezone.now()
             alerta.save(update_fields=["pedido_conferir_em", "atualizado_em"])
             messages.success(request, "Conferindo os preços agora. Recarregue a página em um minuto.")
+    elif acao == "aviso":
+        produto = ProdutoAcompanhado.objects.filter(conta=conta, pk=request.POST.get("produto")).first()
+        pagina = request.POST.get("pagina", "")
+        voltar += f"?pagina={pagina}" if pagina.isdigit() and pagina != "1" else ""
+        if produto:
+            tipo = request.POST.get("tipo", "")
+            valor = request.POST.get("valor_reais" if tipo == ProdutoAcompanhado.PRECO else "valor_pct", "")
+            erro = alertas.definir_aviso(produto, tipo, valor)
+            if erro:
+                messages.error(request, erro)
+            else:
+                messages.success(request, f"Aviso de “{produto.nome[:50]}” salvo.")
+            voltar += f"#produto-{produto.pk}"
     elif acao == "remover":
         ProdutoAcompanhado.objects.filter(conta=conta, pk=request.POST.get("produto")).delete()
         messages.info(request, "Produto removido do alerta.")
@@ -460,6 +473,8 @@ def whatsapp_alertas(request):
     todos = ProdutoAcompanhado.objects.filter(conta=conta)
     total = todos.count()
     pagina = Paginator(todos, PRODUTOS_POR_PAGINA).get_page(request.GET.get("pagina"))
+    for produto in pagina:
+        produto.aviso = alertas.resumo_do_aviso(produto, alerta.queda_minima)
     acompanhados = set(todos.values_list("item_id", flat=True))
     do_bot = []
     for envio in EnvioWhatsApp.objects.filter(conta=conta, origem=EnvioWhatsApp.OFERTA).exclude(item_id="").exclude(

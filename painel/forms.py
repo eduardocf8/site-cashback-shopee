@@ -531,7 +531,7 @@ class AlertaPrecoForm(forms.ModelForm):
     class Meta:
         model = AlertaPreco
         fields = ["intervalo_minutos", "queda_minima", "avisar_email", "enviar_grupos", "modelo_mensagem"]
-        labels = {"intervalo_minutos": "Conferir os preços a cada", "queda_minima": "Avisar quando cair pelo menos (%)",
+        labels = {"intervalo_minutos": "Conferir os preços a cada", "queda_minima": "Queda padrão (%)",
                   "modelo_mensagem": "Mensagem"}
         widgets = {"modelo_mensagem": forms.Textarea(attrs={"rows": 9, "data-emoji": ""})}
 

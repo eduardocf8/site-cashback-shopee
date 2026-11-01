@@ -125,3 +125,37 @@ class TestTelaDoAlerta(BasePainel):
         self.conta.modulos_cortesia = ""
         self.conta.save()
         self.assertContains(self.client.get("/whatsapp/alertas/"), "Não incluso no seu plano")
+
+
+class TestAvisoDeCadaProduto(BasePainel):
+    def setUp(self):
+        super().setUp()
+        self.conta.shopee_app_id, self.conta.shopee_secret_cifrado = "123", cifrar("s")
+        self.conta.shopee_validado_em = timezone.now()
+        self.conta.save()
+        self.entrar()
+        self.produto, _ = alertas.adicionar(self.conta, produto(1, preco=100.0))
+
+    def test_escolher_preco_em_reais_ou_queda_em_porcentagem(self):
+        html = self.client.get("/whatsapp/alertas/").content.decode()
+        self.assertIn("Avisa com queda de 10%", html)
+        self.assertIn("chegar a R$", html)
+        resposta = self.client.post("/whatsapp/alertas/", {"acao": "aviso", "produto": self.produto.pk, "tipo": "reais",
+                                                            "valor_reais": "89,90", "valor_pct": "10"})
+        self.assertRedirects(resposta, f"/whatsapp/alertas/#produto-{self.produto.pk}", fetch_redirect_response=False)
+        self.produto.refresh_from_db()
+        self.assertEqual((self.produto.tipo_aviso, self.produto.preco_alvo), ("reais", Decimal("89.90")))
+        html = self.client.get("/whatsapp/alertas/").content.decode()
+        self.assertIn("Avisa quando chegar a R$ 89,90", html)
+        self.assertIn('value="89,90"', html)  # o campo já vem com o preço escolhido
+        self.assertIn("Usar o padrão (10%)", html)
+
+        self.client.post("/whatsapp/alertas/", {"acao": "aviso", "produto": self.produto.pk, "tipo": "pct", "valor_pct": "25"})
+        self.produto.refresh_from_db()
+        self.assertEqual((self.produto.tipo_aviso, self.produto.queda_propria), ("pct", 25))
+        resposta = self.client.post("/whatsapp/alertas/", {"acao": "aviso", "produto": self.produto.pk, "tipo": "pct",
+                                                            "valor_pct": "0"}, follow=True)
+        self.assertContains(resposta, "Digite uma queda entre 1% e 90%")
+        self.client.post("/whatsapp/alertas/", {"acao": "aviso", "produto": self.produto.pk, "tipo": "padrao"})
+        self.produto.refresh_from_db()
+        self.assertEqual(self.produto.tipo_aviso, "padrao")
