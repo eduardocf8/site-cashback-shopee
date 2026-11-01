@@ -90,7 +90,7 @@ def produto_do_link(conta, texto: str) -> dict:
     if not achado:
         raise ErroGerador("A Shopee não liberou esse produto para afiliados agora (sem comissão). Tente outro produto.")
     try:
-        link_afiliado = shopee_ofertas.gerar_link_afiliado(app_id, secret, achado["link"], [SUB_ID])
+        link_afiliado = shopee_ofertas.gerar_link_afiliado(app_id, secret, achado["link"], [SUB_ID], "carrossel")
     except ShopeeAPIError as erro:
         raise ErroGerador(f"Não consegui gerar o seu link de afiliado ({str(erro)[:120]}).") from erro
     preco, desconto = float(achado["preco"] or 0), float(achado["desconto"] or 0)

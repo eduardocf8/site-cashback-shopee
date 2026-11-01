@@ -151,6 +151,8 @@ class VendaItem(models.Model):
     quantidade = models.PositiveIntegerField(default=1)
     preco = models.DecimalField(max_digits=12, decimal_places=2, default=0)
     valor = models.DecimalField(max_digits=12, decimal_places=2, default=0)  # valor pago menos reembolsos (resultados.valor_do_item)
+    # De onde veio a venda (painel/origens.py): bot, site, conversor, outras ou fora.
+    origem = models.CharField(max_length=10, default="fora", db_index=True)
     comissao = models.DecimalField(max_digits=12, decimal_places=2, default=0)
     status_shopee = models.CharField(max_length=20, blank=True)  # orderStatus como veio
     motivo_shopee = models.CharField(max_length=300, blank=True)  # por que foi cancelado, quando a Shopee diz

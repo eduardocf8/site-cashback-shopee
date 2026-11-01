@@ -7,6 +7,8 @@ from openpyxl import Workbook
 from openpyxl.styles import Font, PatternFill
 from openpyxl.utils import get_column_letter
 
+from .origens import NOMES as NOMES_DAS_ORIGENS
+
 FORMATO_REAIS = '"R$" #,##0.00'
 FORMATO_DATA = "dd/mm/yyyy hh:mm"
 CABECALHO = Font(bold=True, color="FFFFFF")
@@ -68,11 +70,12 @@ def planilha_de_vendas(vendas, produtos, nome_do_grupo) -> bytes:
         ("ID do produto", 14, None), ("Loja", 28, None), ("Quantidade", 11, "0"),
         ("Preço", 12, FORMATO_REAIS), ("Valor", 12, FORMATO_REAIS), ("Comissão", 12, FORMATO_REAIS),
         ("Status", 12, None), ("Status na Shopee", 16, None), ("Sub ID", 24, None), ("Grupo", 20, None),
-        ("Validada em", 17, FORMATO_DATA), ("Motivo do cancelamento (Shopee)", 40, None),
+        ("Origem", 20, None), ("Validada em", 17, FORMATO_DATA), ("Motivo do cancelamento (Shopee)", 40, None),
     ], (
         (_local(v.comprado_em), v.pedido_id, v.nome, v.item_id, v.loja, v.quantidade, v.preco, v.valor,
          v.comissao, situacoes.get(v.situacao, v.situacao), v.status_shopee,
-         "" if v.sub_id == "sem_subid" else v.sub_id, nome_do_grupo(v.sub_id), _local(v.concluido_em),
+         "" if v.sub_id == "sem_subid" else v.sub_id, nome_do_grupo(v.sub_id), NOMES_DAS_ORIGENS.get(v.origem, ""),
+         _local(v.concluido_em),
          v.motivo_shopee)
         for v in vendas.iterator(chunk_size=2000)
     ))

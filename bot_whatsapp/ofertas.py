@@ -296,7 +296,7 @@ def enfileirar(config, grupos, modelo: str, link_origem: str, *, item_id: str, n
     for grupo in grupos:
         sub_ids = tuple(config.lista_sub_ids(grupo["jid"]))
         if sub_ids not in links:
-            links[sub_ids] = shopee_ofertas.gerar_link_afiliado(app_id, secret, link_origem, list(sub_ids))
+            links[sub_ids] = shopee_ofertas.gerar_link_afiliado(app_id, secret, link_origem, list(sub_ids), "bot")
         link = links[sub_ids]
         envios.append(EnvioWhatsApp(
             conta=config.conta, destino=grupo["jid"], destino_nome=grupo.get("nome", ""),

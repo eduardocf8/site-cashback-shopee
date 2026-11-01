@@ -331,7 +331,7 @@ def link_do_site(site, link_produto: str, vitrine: bool = False) -> str:
     app_id, secret = _credenciais(site)
     sub_id = (site.sub_id_vitrine or site.sub_id) if vitrine else site.sub_id
     sub_ids = [sub_id] if sub_id else []
-    return shopee_ofertas.gerar_link_afiliado(app_id, secret, link_produto, sub_ids)
+    return shopee_ofertas.gerar_link_afiliado(app_id, secret, link_produto, sub_ids, "site")
 
 
 def gerar_links_pendentes():
