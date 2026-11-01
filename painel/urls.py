@@ -47,6 +47,7 @@ urlpatterns = [
     path("whatsapp/campanhas/", views_whatsapp.whatsapp_campanhas, name="painel_whatsapp_campanhas"),
     path("whatsapp/mensagens/", views_whatsapp.whatsapp_mensagens, name="painel_whatsapp_mensagens"),
     path("whatsapp/membros/", views_whatsapp.whatsapp_membros, name="painel_whatsapp_membros"),
+    path("whatsapp/resultados/", views_whatsapp.whatsapp_resultados, name="painel_whatsapp_resultados"),
     path("whatsapp/entrada/", views_entrada.entrada_lista, name="painel_whatsapp_entrada"),
     path("whatsapp/entrada/<int:pk>/", views_entrada.entrada_link, name="painel_whatsapp_entrada_link"),
     path("whatsapp/entrada/<int:pk>/foto.jpg", views_entrada.entrada_foto, name="painel_whatsapp_entrada_foto"),
