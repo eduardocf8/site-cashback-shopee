@@ -3079,6 +3079,19 @@ saindo. Ver `marketing/instagram/README.md`, seção "Revisão do calendário
 - [x] `python manage.py postar_carrossel_tematico` - testa o carrossel da vez fora
       do calendário automático (mesmo padrão de `postar_ofertas_semana`).
 
+**6 carrosséis novos** (mesma conversa, pra reduzir a repetição da rotação - menos
+de 1x/mês com só 10 temas numa cadência semanal):
+- [x] `13-nao-e-desconto`, `14-linha-do-tempo`, `15-shopee-ganha-voce-ganha`,
+      `16-erros-saque-pix`, `17-indicacao-conta-real` - entraram no fim de
+      `TEMAS_CARROSSEL`. `14-linha-do-tempo` usa a data de **validação** do pedido
+      pra contar o prazo (não a data da compra, confirmado com o dono);
+      `15-shopee-ganha-voce-ganha` não cita o percentual exato do repasse
+      (`SHOPEE_CASHBACK_PERCENTUAL`); `16-erros-saque-pix` usa R$ 20,00 de saque
+      mínimo - os dois últimos, confirmados com o dono antes de entrar na rotação.
+- [x] `12-black-friday` - mesmo esquema do `11-datas-duplas` (condicional à
+      campanha de cashback aumentado ativa). Fica fora de `TEMAS_CARROSSEL` pelo
+      mesmo motivo do 11 - ver `marketing/instagram/README.md`.
+
 ---
 
 Pra continuar esse roadmap numa conversa nova, basta apontar esse arquivo

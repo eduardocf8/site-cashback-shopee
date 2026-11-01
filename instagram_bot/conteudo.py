@@ -218,10 +218,15 @@ PASTA_CARROSSEIS = Path(__file__).resolve().parent.parent / "marketing" / "insta
 # Ordem da rotação: primeiro os que você ainda não tinha postado manualmente (01, 03,
 # 05, 10), depois os 6 que já foram ao ar entre agosto e outubro de 2026 (conferido
 # contra o grid do perfil em 01/11/2026) - assim ninguém vê repetido antes de ver
-# tudo pelo menos uma vez. "11-datas-duplas" fica de fora de propósito: só é verdade
-# com campanha de cashback em dobro ativa (ver ROADMAP.md) - publicar fora disso
-# afirmaria um benefício que não existe naquele momento. Pra crescer a rotação,
-# acrescente um carrossel novo no fim da lista.
+# tudo pelo menos uma vez. Os 5 últimos (13 a 17) entraram depois, na mesma conversa,
+# e ficam no fim da lista por isso - mesma regra de sempre, novo carrossel entra no fim.
+#
+# "11-datas-duplas" e "12-black-friday" ficam de fora de propósito: só são verdade com
+# campanha de cashback aumentado de fato ativa (ver ROADMAP.md) - publicar fora disso
+# afirmaria um benefício que não existe naquele momento. Esses dois são postados na mão
+# (via Shell do Render, chamando publicar_carrossel_tematico com data/request manuais -
+# não existe comando dedicado pra pular a rotação e postar um tema específico) só
+# quando a campanha estiver no ar.
 TEMAS_CARROSSEL = [
     ("carrossel-01-beneficios", 7),
     ("carrossel-03-cupom-frete-cashback", 7),
@@ -233,6 +238,11 @@ TEMAS_CARROSSEL = [
     ("carrossel-07-direta-indireta", 6),
     ("carrossel-08-perder-cashback", 9),
     ("carrossel-09-site-confiavel", 9),
+    ("carrossel-13-nao-e-desconto", 7),
+    ("carrossel-14-linha-do-tempo", 8),
+    ("carrossel-15-shopee-ganha-voce-ganha", 6),
+    ("carrossel-16-erros-saque-pix", 9),
+    ("carrossel-17-indicacao-conta-real", 6),
 ]
 
 

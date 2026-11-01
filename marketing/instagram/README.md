@@ -998,6 +998,32 @@ temas, numa cadência semanal): criar um `gerar_carrossel_<tema>.py` novo (ver s
 "Carrosséis" abaixo), exportar, e acrescentar a pasta no fim de `TEMAS_CARROSSEL`
 em `conteudo.py`.
 
+### 6 carrosséis novos (mesma conversa, 01/11/2026)
+
+Pedido do dono pra reduzir a repetição da rotação (acima dizia menos de 1x/mês com
+10 temas): mais 6 temas, com um deles condicional:
+
+- `12-black-friday` — mesmo esquema do `11-datas-duplas` (cupom/frete/preço de
+  campanha da Shopee + cashback aumentado da cash-b, sem número fixo). **Também
+  fica fora da rotação automática**, pelo mesmo motivo do 11: só é verdade com a
+  campanha de cashback aumentado de fato ativa (ver nota mais abaixo, "só pode ser
+  postado com a campanha ativa", que agora vale pros dois).
+- `13-nao-e-desconto`, `14-linha-do-tempo`, `15-shopee-ganha-voce-ganha`,
+  `16-erros-saque-pix`, `17-indicacao-conta-real` — entraram em `TEMAS_CARROSSEL`,
+  no fim da lista (ordem normal, sem furar fila).
+
+Dois pontos que foram confirmados com o dono antes de entrar na rotação:
+- `14-linha-do-tempo`: o exemplo usa a data de **validação** do pedido pra contar
+  o prazo de liberação, não a data da compra (`calcular_data_prevista_liberacao`
+  em `pedidos/services.py`) - por isso o exemplo usa compra e validação em meses
+  diferentes (28/10 comprado, 3/11 validado), senão o ponto não ficava claro.
+- `15-shopee-ganha-voce-ganha`: explica que existe uma comissão e que ela é
+  dividida entre a cash-b e o usuário, **sem citar o percentual exato do repasse**
+  (`SHOPEE_CASHBACK_PERCENTUAL` em `settings.py`) - número interno configurável,
+  nunca divulgado em nenhum carrossel anterior. Confirmado esse ângulo com o dono.
+- `16-erros-saque-pix`: usa R$ 20,00 como valor mínimo de saque
+  (`SAQUE_VALOR_MINIMO`) - confirmado com o dono que é o valor real em produção.
+
 ## Carrosséis (`carrossel_base.py` + `gerar_carrossel_*.py`)
 
 Cada carrossel é um script `gerar_carrossel_<tema>.py` que só descreve o
@@ -1195,12 +1221,13 @@ recorte por croma comeria junto com o fundo.
   ligado o tempo todo** (`ConfiguracaoIndicacao.esta_ativa()`), e dizer
   isso num slide próprio, não em nota de rodapé. Post que promete um
   programa desligado gera decepção e comentário irritado.
-- **`carrossel-11-datas-duplas` só pode ser postado com a campanha de
-  cashback aumentado de fato ligada** — hoje uma linha em
-  `pedidos.CampanhaCashback`, cadastrada no admin — ou às vésperas dela: o
-  carrossel afirma que a cash-b aumenta o cashback nessas datas. O valor do
-  aumento não aparece na arte de propósito — número fixo vira promessa que
-  amarra a próxima data.
+- **`carrossel-11-datas-duplas` e `carrossel-12-black-friday` só podem ser
+  postados com a campanha de cashback aumentado de fato ligada** — hoje uma
+  linha em `pedidos.CampanhaCashback`, cadastrada no admin — ou às vésperas
+  dela: os dois afirmam que a cash-b aumenta o cashback na data/semana. O
+  valor do aumento não aparece na arte de propósito — número fixo vira
+  promessa que amarra a próxima campanha. Por isso os dois ficam fora de
+  `TEMAS_CARROSSEL` (a rotação automática) e são postados na mão.
   - **O cuidado operacional que existia aqui não vale mais** (Fase 44).
     Antes, o multiplicador era carimbado no pedido na primeira
     sincronização dele, e não na hora da compra: como a sincronização roda
