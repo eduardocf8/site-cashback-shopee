@@ -159,3 +159,31 @@ class TestAvisoDeCadaProduto(BasePainel):
         self.client.post("/whatsapp/alertas/", {"acao": "aviso", "produto": self.produto.pk, "tipo": "padrao"})
         self.produto.refresh_from_db()
         self.assertEqual(self.produto.tipo_aviso, "padrao")
+
+
+class TestConferirProduto(BasePainel):
+    """Página escondida /resultados/conferir/produto/: o que a API devolve de um produto."""
+
+    def setUp(self):
+        super().setUp()
+        self.conta.shopee_app_id, self.conta.shopee_secret_cifrado = "123", cifrar("s")
+        self.conta.shopee_validado_em = timezone.now()
+        self.conta.save()
+        self.entrar()
+
+    def test_so_com_a_chave_e_mostra_os_precos_da_api(self):
+        self.assertEqual(self.client.get("/resultados/conferir/produto/").status_code, 404)
+        self.conta.beta_conferir_faturamento = True
+        self.conta.save()
+        no = {"itemId": 23098821384, "shopId": 1409811653, "productName": "Fone", "price": "59.9", "priceMin": "49.9",
+              "priceMax": "79.9", "priceDiscountRate": 0.3, "commissionRate": "0.12", "productLink": "https://shopee.com.br/p"}
+        with mock.patch("bot_whatsapp.copia.identificar_produto", return_value="23098821384"), \
+                mock.patch.object(shopee_ofertas, "_consultar_produtos", return_value={"nodes": [no]}) as api:
+            html = self.client.get("/resultados/conferir/produto/", {"link": "https://s.shopee.com.br/qkjroLGbj"}).content.decode()
+        self.assertIn("itemId:23098821384", api.call_args.args[2])
+        for texto in ("Menor preço (priceMin) - o que o alerta usa", "49.9", "Maior preço (priceMax)", "79.9", "R$ 49,90"):
+            self.assertIn(texto, html)
+        with mock.patch("bot_whatsapp.copia.identificar_produto", return_value="1"), \
+                mock.patch.object(shopee_ofertas, "_consultar_produtos", return_value={"nodes": []}):
+            html = self.client.get("/resultados/conferir/produto/", {"link": "https://s.shopee.com.br/x"}).content.decode()
+        self.assertIn("A API de afiliados não devolveu o produto 1", html)
