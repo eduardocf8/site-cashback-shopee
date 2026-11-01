@@ -21,7 +21,7 @@ SEGUNDA_14H = datetime(2026, 10, 19, 14, 0, tzinfo=SP)
 GRUPOS = [{"jid": "1@g.us", "nome": "Grupo VIP"}, {"jid": "2@g.us", "nome": "Achadinhos"}]
 
 
-def link_falso(app_id, secret, url, sub_ids):
+def link_falso(app_id, secret, url, sub_ids, ferramenta=""):
     return "https://s.shopee.com.br/afiliado-" + "-".join(sub_ids or ["sem"])
 
 

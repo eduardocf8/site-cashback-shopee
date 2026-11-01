@@ -1,0 +1,21 @@
+{% load painel_extras %}
+{# Topo de Resultados: de onde vieram as vendas (painel/origens.py) - filtra a aba inteira. #}
+<section class="card origem-card" aria-labelledby="titulo-origem">
+  <div class="card-topo"><h2 id="titulo-origem">De onde vieram as vendas</h2><span class="suave pequeno">filtra a aba inteira</span></div>
+  <nav class="chips chips-origem" aria-label="Origem">
+    <a class="chip{% if not origem %} ativo{% endif %}" href="{% querystring origem=None pagina=None sub=None %}"{% if not origem %} aria-current="true"{% endif %}>Todas</a>
+    {% for o in resumo_origens.linhas %}<a class="chip{% if origem == o.chave %} ativo{% endif %}" href="{% querystring origem=o.chave pagina=None sub=None %}"{% if origem == o.chave %} aria-current="true"{% endif %}><span class="ponto" style="background:{{ o.cor }}"></span>{{ o.nome }}</a>{% endfor %}
+  </nav>
+  {% if resumo_origens.total %}
+    <div class="barra-origem" aria-hidden="true">{% for o in resumo_origens.linhas %}{% if o.largura %}<span style="width:{{ o.largura|stringformat:'.2f' }}%;background:{{ o.cor }}"></span>{% endif %}{% endfor %}</div>
+    <div class="leg-origem">
+      {% for o in resumo_origens.linhas %}<span{% if origem and origem != o.chave %} class="apagada"{% endif %}><i style="background:{{ o.cor }}"></i>{{ o.nome_curto }} <b>{{ o.percentual }}%</b> · {{ o.comissao|brl }}</span>{% endfor %}
+    </div>
+    <p class="nota-origem">Comissão estimada do período, por origem. Os links novos do Appfiliado levam uma marca de origem; as vendas de links antigos (sem a marca) são separadas pelo Sub ID.</p>
+  {% else %}
+    <p class="nota-origem">Nenhuma venda guardada nesse período ainda.</p>
+  {% endif %}
+  {% if origem_sem_historico %}
+    <p class="aviso aviso-warning pequeno" style="margin-top:12px">Com uma origem escolhida, os números saem dos pedidos guardados um a um, e o Appfiliado tem os seus {% if vendas_desde %}desde {{ vendas_desde|date:"d/m/Y" }}{% else %}só depois da primeira busca completa{% endif %}. O começo do período pode ficar faltando.</p>
+  {% endif %}
+</section>

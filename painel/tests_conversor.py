@@ -21,7 +21,7 @@ TEXTO_DA_SHOPEE = (
 )
 
 
-def gerar(app_id, secret, url, sub_ids):
+def gerar(app_id, secret, url, sub_ids, ferramenta=""):
     return f"https://s.shopee.com.br/meu?de={url}&sub={','.join(sub_ids)}"
 
 
@@ -70,7 +70,7 @@ class TestConversor(BasePainel):
         self.assertIn("de=https://shopee.com.br/m/11-11?keyword=fone&", r["texto"])
 
     def test_link_que_a_shopee_recusa_fica_e_avisa(self):
-        def as_vezes(app_id, secret, url, sub_ids):
+        def as_vezes(app_id, secret, url, sub_ids, ferramenta=""):
             if "456" in url:
                 raise RuntimeError("recusado")
             return gerar(app_id, secret, url, sub_ids)

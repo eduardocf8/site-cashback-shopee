@@ -218,7 +218,7 @@ class AutomacaoForm(forms.ModelForm):
             self.instance.link_afiliado = ""  # link de fora da Shopee: vai como está
             return
         try:
-            feito = conversor.converter(self.conta, link, conversor.MODO_LINKS, sub_id)
+            feito = conversor.converter(self.conta, link, conversor.MODO_LINKS, sub_id, ferramenta="instagram")
         except conversor.ErroConversor as erro:
             self.add_error("sub_id", f"Não consegui gerar o link com esse Sub ID: {erro}")
             return

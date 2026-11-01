@@ -74,7 +74,7 @@ def radar_link(request):
 
     try:
         app_id, secret = credenciais(conta)
-        return JsonResponse({"link": shopee_ofertas.gerar_link_afiliado(app_id, secret, link, [radar.SUB_ID])})
+        return JsonResponse({"link": shopee_ofertas.gerar_link_afiliado(app_id, secret, link, [radar.SUB_ID], "radar")})
     except Exception:  # noqa: BLE001
         logger.warning("Radar: link de afiliado falhou", exc_info=True)
         return JsonResponse({"erro": "A Shopee não gerou o link agora. Tente de novo."}, status=502)

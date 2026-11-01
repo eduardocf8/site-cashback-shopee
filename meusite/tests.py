@@ -543,7 +543,7 @@ class TestSitePublico(TestCase):
                 mock.patch.object(shopee_ofertas, "gerar_link_afiliado", return_value="https://s.shopee.com.br/meu") as gerar:
             resposta = self.client.get("/s/achadinhos/ir/", {"link": "https://s.shopee.com.br/deOutroAfiliado"})
         self.assertRedirects(resposta, "https://s.shopee.com.br/meu", fetch_redirect_response=False)
-        self.assertEqual(gerar.call_args.args[2:], ("https://shopee.com.br/p-i.9.22", ["site"]))  # link limpo + Sub ID
+        self.assertEqual(gerar.call_args.args[2:], ("https://shopee.com.br/p-i.9.22", ["site"], "site"))  # link limpo + Sub ID + marca
         self.assertEqual(CliqueSite.objects.get(tipo="conversor").total, 1)
 
     def test_conversor_tem_limite_por_visitante(self):
