@@ -35,7 +35,7 @@ from carrossel_base import (
 SLIDES = [
     Slide(LIGHT_BG, f"""
     {tag_label("indique e ganhe", BRAND_PRIMARY)}
-    {titulo("Indicou 3 amigas. Veja a conta real.", 29, DARK_BG)}
+    {titulo("Indicou 3 amigos. Veja a conta real.", 29, DARK_BG)}
     """, True, capa=True),
 
     Slide(DARK_BG, f"""
@@ -60,9 +60,9 @@ SLIDES = [
     {tag_label("e indicando mais gente", BRAND_PRIMARY)}
     {titulo("O dobro multiplica junto", 27, DARK_BG)}
     <div style="margin-top:14px;">
-        {linha_valor("1 amiga indicada", "1 compra sua em dobro")}
-        {linha_valor("3 amigas indicadas", "3 compras suas em dobro")}
-        {linha_valor("5 amigas indicadas", "5 compras suas em dobro")}
+        {linha_valor("1 amigo indicado", "1 compra sua em dobro")}
+        {linha_valor("3 amigos indicados", "3 compras suas em dobro")}
+        {linha_valor("5 amigos indicados", "5 compras suas em dobro")}
     </div>
     <div style="font-family:Familjen; font-size:12.5px; color:{MUTED}; margin-top:14px; line-height:1.45;">
         Uma por vez, guardada pra próxima compra validada — sem limite de quantas pessoas você indica.
@@ -85,9 +85,9 @@ SLIDES = [
     """, False, seta=False),
 ]
 
-LEGENDA = """Indicou 3 amigas. Quanto isso significa de verdade? Vamos fazer a conta. 🧮
+LEGENDA = """Indicou 3 amigos. Quanto isso significa de verdade? Vamos fazer a conta. 🧮
 
-Cada indicação guarda um dobro pra uma das suas próximas compras — não é na hora, é reservado. Pelo piso de 1,6% já divulgado por aqui, uma compra de R$ 150 que renderia R$ 2,40 de cashback passa a render R$ 4,80 com o dobro. Indicou 3 amigas? São 3 das suas próximas compras em dobro, uma por vez — sem limite de quantas pessoas você indica.
+Cada indicação guarda um dobro pra uma das suas próximas compras — não é na hora, é reservado. Pelo piso de 1,6% já divulgado por aqui, uma compra de R$ 150 que renderia R$ 2,40 de cashback passa a render R$ 4,80 com o dobro. Indicou 3 amigos? São 3 das suas próximas compras em dobro, uma por vez — sem limite de quantas pessoas você indica.
 
 ⚠️ O programa não fica ligado o tempo todo: ele abre em períodos específicos, e avisamos aqui e no site quando estiver no ar.
 
