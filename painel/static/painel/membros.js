@@ -68,8 +68,22 @@
   }
 })();
 
-// Criar grupo: ao trocar o grupo de base, sugere o próximo nome da sequência dele.
+// Criar grupo: ao trocar o grupo de base, sugere o próximo nome da sequência dele. Ao mudar o número
+// do nome, o Sub ID sugerido acompanha (enquanto a pessoa não mexer nele).
 (function () {
+  var nome = document.getElementById("criar-nome"), subid = document.getElementById("criar-subid");
+  if (nome && subid) {
+    var mexeu = false;
+    subid.addEventListener("input", function () { mexeu = true; });
+    nome.addEventListener("input", function () {
+      var numero = (nome.value.match(/(\d+)\s*$/) || [])[1];
+      if (mexeu || !numero || !subid.value) return;
+      var partes = subid.value.split(",");
+      var ultimo = partes[partes.length - 1].trim();
+      partes[partes.length - 1] = (partes.length > 1 ? " " : "") + ultimo.replace(/\d*$/, numero);
+      subid.value = partes.join(",");
+    });
+  }
   var base = document.getElementById("criar-base");
   if (!base) return;
   base.addEventListener("change", function () {

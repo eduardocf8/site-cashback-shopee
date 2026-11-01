@@ -669,7 +669,7 @@ def whatsapp_membros(request):
         pedido, motivo = grupos_novos.pedir(
             conta, request.POST.get("nome"), request.POST.get("base", ""), request.POST.get("copiar") == "on",
             request.POST.get("so_admins") == "on", request.POST.get("administradores", ""),
-            request.POST.get("incluir") == "on",
+            request.POST.get("incluir") == "on", request.POST.get("sub_ids", ""),
         )
         if not pedido:
             messages.error(request, motivo)
@@ -698,7 +698,9 @@ def whatsapp_membros(request):
     if request.GET.get("criar"):
         nomes = {g.get("jid"): g.get("nome", "") for g in conexao.grupos or []}
         base = request.GET["criar"] if request.GET["criar"] in nomes else ""
-        criar = {"base": base, "nome": grupos_novos.proximo_nome(nomes.get(base, ""), grupos_novos.nomes_em_uso(conta, conexao)) if base else "",
+        nome_novo = grupos_novos.proximo_nome(nomes.get(base, ""), grupos_novos.nomes_em_uso(conta, conexao)) if base else ""
+        config = ConfiguracaoOfertas.objects.filter(conta=conta).first()
+        criar = {"base": base, "nome": nome_novo, "sub_ids": grupos_novos.sugerir_sub_ids(config, base, nome_novo),
                  "admins": grupos_novos.ultimos_admins(conta), "feitos_hoje": grupos_novos.criados_hoje(conta),
                  "automacao": grupos_novos.vagas_na_automacao(conta),
                  "por_dia": grupos_novos.POR_DIA, "bases": sorted(membros.grupos_possiveis(conexao), key=lambda g: str(g.get("nome", "")).lower())}
