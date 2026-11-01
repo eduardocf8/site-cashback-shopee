@@ -90,7 +90,7 @@ class TestMotorPorNicho(TestCase):
         self.assertFalse(self.config.por_nicho)
 
     def test_um_nicho_com_erro_nao_segura_os_outros(self, _link):
-        def link(app_id, secret, url, sub_ids):
+        def link(app_id, secret, url, sub_ids, ferramenta=""):
             if url.endswith("101") and sub_ids == ["vip"]:
                 raise RuntimeError("link recusado")
             return link_falso(app_id, secret, url, sub_ids)

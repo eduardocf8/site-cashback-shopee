@@ -105,7 +105,7 @@ class TestShopeeOfertas(TestCase):
         self.assertIn("🛒 Compre aqui:\nhttps://s.shopee.com.br/abc", texto)
 
 
-def link_falso(app_id, secret, url, sub_ids):
+def link_falso(app_id, secret, url, sub_ids, ferramenta=""):
     return f"https://s.shopee.com.br/{url[-1]}" + (f"-{'-'.join(sub_ids)}" if sub_ids else "")
 
 
