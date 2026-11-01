@@ -1170,3 +1170,35 @@ fieldset.sem-borda > legend { padding: 0; margin-bottom: 8px; }
   .melhor-h strong { display: inline; font-size: 15px; }
   .melhor-h .t { display: block; margin-top: 2px; }
 }
+
+/* Alerta de preço > como cada produto avisa (queda em % ou preço em R$) */
+.lista-acompanhados li { flex-wrap: wrap; }
+.aviso-produto { flex-basis: 100%; padding-left: 68px; min-width: 0; }
+.resumo-aviso { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 10px; font-size: 12.5px; }
+.resumo-aviso[hidden] { display: none; }
+.selo-aviso { display: inline-flex; flex-wrap: wrap; align-items: baseline; gap: 4px; border-radius: 999px; padding: 3px 10px; font-weight: 700; background: #EEF3EF; color: var(--verde-2, #2D4B3D); }
+.selo-aviso small { font-weight: 500; opacity: .85; }
+.selo-aviso.reais { background: #FFF6D9; color: #6B5300; }
+.selo-aviso.chegou { background: var(--bom-suave); color: #1E5C33; }
+.editor-aviso { display: grid; gap: 10px; margin-top: 2px; background: var(--campo, #F6F3EA); border: 1px solid var(--borda); border-radius: 14px; padding: 12px 14px; }
+.editor-aviso[hidden] { display: none; }
+.editor-aviso .pergunta { font-weight: 700; font-size: 13px; }
+.segmento-aviso { display: inline-flex; justify-self: start; width: max-content; max-width: 100%; background: #fff; border: 1px solid var(--borda); border-radius: 999px; padding: 3px; gap: 3px; }
+.segmento-aviso label { cursor: pointer; }
+.segmento-aviso input { position: absolute; opacity: 0; pointer-events: none; }
+.segmento-aviso span { display: block; padding: 6px 16px; border-radius: 999px; font-weight: 700; font-size: 13px; color: var(--suave); }
+.segmento-aviso input:checked + span { background: var(--verde); color: #fff; }
+.segmento-aviso input:focus-visible + span { outline: 2px solid var(--amarelo); outline-offset: 1px; }
+.valor-aviso { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 12px; }
+.valor-aviso[hidden] { display: none; }
+.caixa-aviso { display: inline-flex; align-items: center; border: 1px solid var(--borda); border-radius: 10px; background: #fff; padding: 0 10px; }
+.caixa-aviso span { color: var(--suave); font-weight: 700; }
+.caixa-aviso input { border: 0; width: 84px; padding: 8px 4px; font: inherit; font-weight: 700; background: transparent; outline: none; }
+.conta-aviso { font-size: 12.5px; color: var(--suave); }
+.conta-aviso strong { color: var(--texto); }
+.botoes-aviso { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 14px; }
+@media (max-width: 700px) {
+  .aviso-produto { padding-left: 0; }
+  .segmento-aviso { display: grid; grid-template-columns: 1fr 1fr; width: 100%; border-radius: 14px; }
+  .segmento-aviso span { text-align: center; border-radius: 11px; }
+}

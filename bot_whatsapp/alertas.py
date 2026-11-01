@@ -6,7 +6,11 @@ nos grupos do WhatsApp com o link de afiliado.
 
 A queda é medida contra a "referência" de cada produto: começa no preço de quando ele
 foi adicionado, sobe junto se o preço subir e vira o preço novo a cada alerta - assim o
-mesmo desconto não avisa duas vezes, e um produto que subiu e voltou a cair avisa."""
+mesmo desconto não avisa duas vezes, e um produto que subiu e voltou a cair avisa.
+
+Cada produto pode trocar a queda padrão por uma queda própria em %, ou por um preço em R$:
+aí avisa uma vez quando o preço chegar ao valor (ou ficar abaixo), e de novo só se subir
+acima dele e voltar a cair."""
 
 import logging
 import threading
@@ -138,8 +142,70 @@ def buscar_na_vitrine(conta, palavra: str) -> list[dict]:
 
 # --- Conferência ---------------------------------------------------------------------
 
+def queda_do_produto(produto: ProdutoAcompanhado, queda_padrao: int) -> int:
+    if produto.tipo_aviso == ProdutoAcompanhado.PERCENTUAL and produto.queda_propria:
+        return produto.queda_propria
+    return queda_padrao
+
+
+def _avisa(produto: ProdutoAcompanhado, preco: Decimal, referencia: Decimal, queda_minima: int) -> bool:
+    """Se o preço novo dispara o alerta (e, no preço em R$, marca/desmarca que já avisou)."""
+    if produto.tipo_aviso == ProdutoAcompanhado.PRECO and produto.preco_alvo:
+        if preco > produto.preco_alvo:
+            produto.alvo_avisado = False
+            return False
+        if produto.alvo_avisado:
+            return False
+        produto.alvo_avisado = True
+        return True
+    queda = queda_do_produto(produto, queda_minima)
+    return preco < referencia and (referencia - preco) / referencia * 100 >= max(1, queda)
+
+
+MAXIMO_QUEDA = 90
+
+
+def definir_aviso(produto: ProdutoAcompanhado, tipo: str, valor: str) -> str:
+    """Grava como o produto avisa (padrão, queda em % ou preço em R$). Devolve "" ou o motivo do erro."""
+    from painel.telas import ler_numero_br
+
+    if tipo == ProdutoAcompanhado.PERCENTUAL:
+        numero = ler_numero_br(valor)
+        if numero is None or not 1 <= numero <= MAXIMO_QUEDA or numero != int(numero):
+            return f"Digite uma queda entre 1% e {MAXIMO_QUEDA}%, sem casas decimais."
+        produto.tipo_aviso, produto.queda_propria = tipo, int(numero)
+    elif tipo == ProdutoAcompanhado.PRECO:
+        numero = ler_numero_br(valor)
+        if not numero or numero <= 0:
+            return "Digite o preço que o produto precisa chegar, como 89,90."
+        produto.tipo_aviso, produto.preco_alvo = tipo, _dinheiro(numero)
+        produto.alvo_avisado = False  # preço novo: avisa de novo quando chegar
+    else:
+        produto.tipo_aviso = ProdutoAcompanhado.PADRAO
+    produto.save(update_fields=["tipo_aviso", "queda_propria", "preco_alvo", "alvo_avisado"])
+    return ""
+
+
+def resumo_do_aviso(produto: ProdutoAcompanhado, queda_padrao: int) -> dict:
+    """O que a lista mostra de cada produto: {"tipo", "texto", "detalhe"}."""
+    atual = produto.preco_atual
+    if produto.tipo_aviso == ProdutoAcompanhado.PRECO and produto.preco_alvo:
+        alvo = produto.preco_alvo
+        if atual is not None and atual <= alvo:
+            quando = f" · avisado {timezone.localtime(produto.ultimo_alerta_em):%d/%m %H:%M}" if produto.alvo_avisado and produto.ultimo_alerta_em else ""
+            return {"tipo": "chegou", "texto": f"✓ Chegou a {moeda(atual)} (seu preço: {moeda(alvo)})", "detalhe": quando.lstrip(" ·")}
+        falta = f"faltam {moeda(atual - alvo)} ({float((atual - alvo) / atual * 100):.0f}%)" if atual else ""
+        return {"tipo": "reais", "texto": f"🎯 Avisa quando chegar a {moeda(alvo)}", "detalhe": falta}
+    queda = queda_do_produto(produto, queda_padrao)
+    base = max(produto.referencia or atual or 0, atual or 0)
+    limite = f"{moeda(base * (100 - queda) / 100)} ou menos" if base else ""
+    if produto.tipo_aviso == ProdutoAcompanhado.PERCENTUAL and produto.queda_propria:
+        return {"tipo": "pct", "texto": f"📉 Avisa com queda de {queda}%", "detalhe": limite}
+    return {"tipo": "padrao", "texto": f"📉 Avisa com queda de {queda}%", "detalhe": "padrão" + (f" · {limite}" if limite else "")}
+
+
 def registrar_preco(produto: ProdutoAcompanhado, preco: Decimal, agora, queda_minima: int) -> AlertaDisparado | None:
-    """Guarda o preço novo e devolve o alerta, se a queda chegou à mínima."""
+    """Guarda o preço novo e devolve o alerta, se chegou ao que o produto pede (queda em % ou preço em R$)."""
     preco = _dinheiro(preco)
     if produto.preco_atual != preco:
         produto.historico = (list(produto.historico or []) + [[agora.isoformat(timespec="minutes"), float(preco)]])[-PONTOS_NO_HISTORICO:]
@@ -147,11 +213,14 @@ def registrar_preco(produto: ProdutoAcompanhado, preco: Decimal, agora, queda_mi
     produto.menor_preco = min(produto.menor_preco, preco) if produto.menor_preco is not None else preco
     referencia = max(produto.referencia or preco, preco)  # subiu: a referência acompanha
     alerta = None
-    if preco < referencia and (referencia - preco) / referencia * 100 >= max(1, queda_minima):
-        queda = ((referencia - preco) / referencia * 100).quantize(Decimal("0.1"))
+    if _avisa(produto, preco, referencia, queda_minima):
+        por_preco = produto.tipo_aviso == ProdutoAcompanhado.PRECO and produto.preco_alvo
+        # No preço em R$, "antes" é o maior entre a referência e o preço de quando entrou no alerta.
+        antes = max(referencia, produto.preco_inicial or referencia) if por_preco else referencia
+        queda = max(Decimal(0), (antes - preco) / antes * 100).quantize(Decimal("0.1"))
         alerta = AlertaDisparado.objects.create(
             conta=produto.conta, produto=produto, nome=produto.nome, imagem=produto.imagem,
-            preco_antes=referencia, preco_agora=preco, queda=queda,
+            preco_antes=antes, preco_agora=preco, queda=queda, preco_alvo=produto.preco_alvo if por_preco else None,
         )
         referencia = preco
         produto.ultimo_alerta_em = agora
@@ -241,8 +310,13 @@ def enviar_email(conta, disparados: list[AlertaDisparado]) -> None:
     from painel.relatorio import url_do_logo
 
     total = len(disparados)
-    assunto = (f"Appfiliado — {disparados[0].nome[:60]} baixou {float(disparados[0].queda):g}%".replace(".", ",")
-               if total == 1 else f"Appfiliado — {total} produtos baixaram de preço")
+    primeiro = disparados[0]
+    if total > 1:
+        assunto = f"Appfiliado — {total} produtos baixaram de preço"
+    elif primeiro.preco_alvo:
+        assunto = f"Appfiliado — {primeiro.nome[:60]} chegou a {moeda(primeiro.preco_agora)}"
+    else:
+        assunto = f"Appfiliado — {primeiro.nome[:60]} baixou {float(primeiro.queda):g}%".replace(".", ",")
     dados = {"alertas": disparados, "url_alertas": url_do_painel("painel_whatsapp_alertas"), "url_logo": url_do_logo()}
     mensagem = EmailMultiAlternatives(
         subject=assunto, body=render_to_string("painel/email_alerta_preco.txt", dados), to=[conta.email],

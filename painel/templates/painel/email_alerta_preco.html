@@ -21,7 +21,7 @@
         <td width="72" valign="top" style="width:72px;padding:12px 12px 12px 0;border-top:1px solid #EDE8D9;">{% if a.imagem %}<img src="{{ a.imagem }}" width="64" height="64" alt="" style="display:block;width:64px;height:64px;border-radius:8px;border:0;object-fit:cover;">{% endif %}</td>
         <td valign="top" style="padding:12px 0;border-top:1px solid #EDE8D9;line-height:1.4;">
           <div>{{ a.nome|truncatechars:90 }}</div>
-          <div style="margin-top:4px;"><span style="color:#5C6A61;text-decoration:line-through;">{{ a.preco_antes|brl|sem_quebra }}</span>&nbsp; <strong style="font-size:16px;">{{ a.preco_agora|brl|sem_quebra }}</strong>&nbsp; <span style="display:inline-block;padding:1px 8px;border-radius:999px;background:#E3F1E7;color:#1F6B3E;font-weight:bold;font-size:12px;">−{{ a.queda|floatformat:"-1" }}%</span></div>
+          <div style="margin-top:4px;"><span style="color:#5C6A61;text-decoration:line-through;">{{ a.preco_antes|brl|sem_quebra }}</span>&nbsp; <strong style="font-size:16px;">{{ a.preco_agora|brl|sem_quebra }}</strong>&nbsp; <span style="display:inline-block;padding:1px 8px;border-radius:999px;background:#E3F1E7;color:#1F6B3E;font-weight:bold;font-size:12px;">−{{ a.queda|floatformat:"-1" }}%</span></div>{% if a.preco_alvo %}<div style="margin-top:4px;font-size:13px;color:#6B5300;">🎯 Chegou ao seu preço de {{ a.preco_alvo|brl|sem_quebra }}</div>{% endif %}
           {% if a.link_afiliado %}<div style="margin-top:6px;"><a href="{{ a.link_afiliado }}" style="color:#1F3A2E;font-weight:bold;">Ver na Shopee com o seu link</a></div>{% endif %}
         </td>
       </tr>{% endfor %}

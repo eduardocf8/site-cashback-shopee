@@ -67,6 +67,54 @@ class TestRegraDaQueda(TestCase):
         self.assertIn("📉 BAIXOU DE PREÇO!", alertas.montar_mensagem("", "Fone", 10, 9, 10, "L"))
 
 
+class TestAvisoPorProduto(TestCase):
+    """Cada produto pode trocar a queda padrão por uma queda própria em % ou por um preço em R$."""
+
+    def setUp(self):
+        self.conta = criar_conta()
+        self.produto, _ = alertas.adicionar(self.conta, produto(1, preco=100.0))
+
+    def preco(self, valor, queda_minima=10):
+        return alertas.registrar_preco(self.produto, Decimal(str(valor)), AGORA, queda_minima)
+
+    def test_queda_propria_em_porcentagem(self):
+        self.assertEqual(alertas.definir_aviso(self.produto, "pct", "20"), "")
+        self.assertIsNone(self.preco(85))  # caiu 15%: o padrão (10%) avisaria, mas este pede 20%
+        self.assertIsNotNone(self.preco(79.9))
+        self.assertIn("Digite uma queda", alertas.definir_aviso(self.produto, "pct", "95"))
+        self.assertIn("Digite uma queda", alertas.definir_aviso(self.produto, "pct", "abc"))
+
+    def test_preco_em_reais_avisa_uma_vez_e_de_novo_so_depois_de_subir(self):
+        self.assertEqual(alertas.definir_aviso(self.produto, "reais", "89,90"), "")
+        self.assertEqual(self.produto.preco_alvo, Decimal("89.90"))
+        self.assertIsNone(self.preco(92))  # caiu 8%, mas não chegou nos 89,90
+        alerta = self.preco(89.9)
+        self.assertEqual((alerta.preco_alvo, alerta.preco_antes, alerta.preco_agora), (Decimal("89.90"), Decimal("100.00"), Decimal("89.90")))
+        self.assertIsNone(self.preco(85))  # continua abaixo: não repete
+        self.assertIsNone(self.preco(95))  # subiu acima do alvo: rearma
+        self.assertIsNotNone(self.preco(88))
+        resumo = alertas.resumo_do_aviso(self.produto, 10)
+        self.assertEqual(resumo["tipo"], "chegou")
+        self.assertIn("seu preço: R$ 89,90", resumo["texto"])
+
+    def test_alvo_que_o_preco_ja_atingiu_avisa_na_proxima_conferencia(self):
+        self.preco(70)  # padrão 10%: avisa e a referência vira 70
+        alertas.definir_aviso(self.produto, "reais", "75")
+        self.assertIsNotNone(self.preco(70))
+        self.assertIsNone(self.preco(70))
+
+    def test_resumo_e_volta_ao_padrao(self):
+        self.assertEqual(alertas.resumo_do_aviso(self.produto, 10)["texto"], "📉 Avisa com queda de 10%")
+        self.assertIn("padrão · R$ 90,00 ou menos", alertas.resumo_do_aviso(self.produto, 10)["detalhe"])
+        alertas.definir_aviso(self.produto, "reais", "79,90")
+        resumo = alertas.resumo_do_aviso(self.produto, 10)
+        self.assertEqual((resumo["texto"], resumo["detalhe"]), ("🎯 Avisa quando chegar a R$ 79,90", "faltam R$ 20,10 (20%)"))
+        self.assertIn("Digite o preço", alertas.definir_aviso(self.produto, "reais", "0"))
+        alertas.definir_aviso(self.produto, "padrao", "")
+        self.assertEqual(self.produto.tipo_aviso, "padrao")
+        self.assertIsNotNone(self.preco(89))  # de volta aos 10%
+
+
 @mock.patch.object(shopee_ofertas, "gerar_link_afiliado", side_effect=link_falso)
 class TestMotorDeAlertas(TestCase):
     def setUp(self):
@@ -97,6 +145,15 @@ class TestMotorDeAlertas(TestCase):
         self.assertIn("R$ 80,00", mail.outbox[0].alternatives[0][0])
         self.assertEqual(self.alerta.proxima_conferencia_em, AGORA + timedelta(minutes=15))
         self.assertFalse(EnvioWhatsApp.objects.exists())  # postar nos grupos está desligado
+
+    def test_preco_em_reais_no_email(self, _link):
+        fone = ProdutoAcompanhado.objects.get(item_id="1")
+        alertas.definir_aviso(fone, "reais", "85")
+        self.rodar({"1": 84.0, "2": 50.0})
+        disparado = AlertaDisparado.objects.get()
+        self.assertEqual(disparado.preco_alvo, Decimal("85.00"))
+        self.assertIn("Fone chegou a R$ 84,00", mail.outbox[0].subject)
+        self.assertIn("Chegou ao seu preço de R$\xa085,00", mail.outbox[0].alternatives[0][0])
 
     def test_espera_o_intervalo_e_respeita_o_minimo_do_plano(self, _link):
         self.rodar({"1": 100.0, "2": 50.0})

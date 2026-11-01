@@ -389,6 +389,14 @@ class ProdutoAcompanhado(models.Model):
     referencia = models.DecimalField(max_digits=10, decimal_places=2, null=True, blank=True)
     historico = models.JSONField(default=list, blank=True, help_text='[["2026-10-21T10:00", 49.9], ...] (só mudanças)')
     indisponivel = models.BooleanField(default=False, help_text="A Shopee parou de devolver o produto (sem estoque ou sem comissão).")
+    # Quando avisar deste produto: a queda padrão do alerta, uma queda própria em %, ou um preço em R$.
+    PADRAO, PERCENTUAL, PRECO = "padrao", "pct", "reais"
+    TIPOS_DE_AVISO = [(PADRAO, "Queda padrão"), (PERCENTUAL, "Queda em %"), (PRECO, "Preço em R$")]
+    tipo_aviso = models.CharField(max_length=6, choices=TIPOS_DE_AVISO, default=PADRAO)
+    queda_propria = models.PositiveSmallIntegerField(null=True, blank=True)
+    preco_alvo = models.DecimalField(max_digits=10, decimal_places=2, null=True, blank=True)
+    # Preço em R$: já avisou desta vez que o preço chegou ao alvo (volta a False quando o preço sobe acima dele).
+    alvo_avisado = models.BooleanField(default=False)
     adicionado_em = models.DateTimeField(auto_now_add=True)
     conferido_em = models.DateTimeField(null=True, blank=True)
     ultimo_alerta_em = models.DateTimeField(null=True, blank=True)
@@ -422,6 +430,8 @@ class AlertaDisparado(models.Model):
     preco_antes = models.DecimalField(max_digits=10, decimal_places=2)
     preco_agora = models.DecimalField(max_digits=10, decimal_places=2)
     queda = models.DecimalField(max_digits=5, decimal_places=1, help_text="Em %.")
+    preco_alvo = models.DecimalField(max_digits=10, decimal_places=2, null=True, blank=True,
+                                     help_text="O preço em R$ que o produto precisava chegar (vazio = alerta por queda em %).")
     enviado_email = models.BooleanField(default=False)
     postado_grupos = models.BooleanField(default=False)
     visto = models.BooleanField(default=False)
