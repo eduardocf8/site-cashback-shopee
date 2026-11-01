@@ -1,6 +1,7 @@
 <nav class="chips abas-zap" aria-label="Bot de WhatsApp">
   <a class="chip{% if aba == 'conexao' %} ativo{% endif %}" href="{% url 'painel_whatsapp' %}"{% if aba == 'conexao' %} aria-current="page"{% endif %}>Conexão</a>
   <a class="chip{% if aba == 'ofertas' %} ativo{% endif %}" href="{% url 'painel_whatsapp_ofertas' %}"{% if aba == 'ofertas' %} aria-current="page"{% endif %}>Automação</a>
+  <a class="chip{% if aba == 'resultados' %} ativo{% endif %}" href="{% url 'painel_whatsapp_resultados' %}"{% if aba == 'resultados' %} aria-current="page"{% endif %}>Resultados</a>
   <a class="chip{% if aba == 'campanhas' %} ativo{% endif %}" href="{% url 'painel_whatsapp_campanhas' %}"{% if aba == 'campanhas' %} aria-current="page"{% endif %}>Campanhas</a>
   <a class="chip{% if aba == 'alertas' %} ativo{% endif %}" href="{% url 'painel_whatsapp_alertas' %}"{% if aba == 'alertas' %} aria-current="page"{% endif %}>Alerta de preço</a>
   <a class="chip{% if aba == 'mensagens' %} ativo{% endif %}" href="{% url 'painel_whatsapp_mensagens' %}"{% if aba == 'mensagens' %} aria-current="page"{% endif %}>Mensagens</a>

@@ -35,6 +35,11 @@
       <input type="text" name="nome" id="criar-nome" value="{{ criar.nome }}" maxlength="100" required placeholder="Ex: Achadinhos da Bia #9">
     </div>
     <div class="campo">
+      <label for="criar-subid">Sub ID do grupo (opcional)</label>
+      <input type="text" name="sub_ids" id="criar-subid" value="{{ criar.sub_ids }}" maxlength="300" placeholder="Ex: achadinhos9" autocomplete="off">
+      <span class="ajuda">Vai nos links das ofertas deste grupo, para você ver em Resultados quanto cada grupo vendeu. Até 5, separados por vírgula, só letras sem acento e números.</span>
+    </div>
+    <div class="campo">
       <label for="criar-admins">Administradores (opcional)</label>
       <input type="text" name="administradores" id="criar-admins" value="{{ criar.admins }}" placeholder="Ex: (11) 98888-7777, (11) 97777-6666">
       <span class="ajuda">Até 5 números, separados por vírgula: o seu pessoal ou de quem ajuda a cuidar dos grupos. O número do bot já é administrador.</span>

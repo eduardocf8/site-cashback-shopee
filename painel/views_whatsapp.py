@@ -654,6 +654,39 @@ def _grupos_filtrados(linhas: list[dict], busca: str, ordem: str) -> list[dict]:
     return sorted(linhas, key=lambda linha: (linha[campo] is None, sinal * (linha[campo] or 0)))
 
 
+PERIODOS_DO_BOT = [("ontem", "Ontem"), ("7dias", "7 dias"), ("30dias", "30 dias"), ("mes", "Este mês"),
+                   ("mes_passado", "Mês passado")]
+
+
+@conta_requerida
+def whatsapp_resultados(request):
+    """Quanto as ofertas do bot venderam no período (bot_whatsapp/desempenho.py)."""
+    from bot_whatsapp import desempenho
+    from painel import periodos, telas
+
+    conta = conta_logada(request)
+    if not _liberado(conta):
+        return _bloqueado(request)
+    hoje = timezone.localdate()
+    chave = request.GET.get("periodo") or "30dias"
+    if chave == "personalizado":
+        inicio, fim = telas._data(request.GET.get("de")), telas._data(request.GET.get("ate"))
+        if not inicio or not fim:
+            chave, (inicio, fim) = "30dias", periodos.intervalo_do_preset("30dias", hoje)
+        else:
+            inicio, fim = min(inicio, fim), min(max(inicio, fim), hoje)
+            inicio = max(min(inicio, fim), fim - timedelta(days=desempenho.MAXIMO_DE_DIAS - 1))
+    else:
+        chave = chave if chave in dict(PERIODOS_DO_BOT) else "30dias"
+        inicio, fim = periodos.intervalo_do_preset(chave, hoje)
+    dados = desempenho.calcular(conta, inicio, fim)
+    return render(request, "painel/whatsapp_resultados.html", _contexto(
+        request, "whatsapp", d=dados, periodos=PERIODOS_DO_BOT, chave=chave,
+        descricao=periodos.descrever_periodo(inicio, fim), janela=desempenho.JANELA.days,
+        maximo_de_dias=desempenho.MAXIMO_DE_DIAS,
+    ))
+
+
 @conta_requerida
 def whatsapp_membros(request):
     from urllib.parse import quote
@@ -669,7 +702,7 @@ def whatsapp_membros(request):
         pedido, motivo = grupos_novos.pedir(
             conta, request.POST.get("nome"), request.POST.get("base", ""), request.POST.get("copiar") == "on",
             request.POST.get("so_admins") == "on", request.POST.get("administradores", ""),
-            request.POST.get("incluir") == "on",
+            request.POST.get("incluir") == "on", request.POST.get("sub_ids", ""),
         )
         if not pedido:
             messages.error(request, motivo)
@@ -698,7 +731,9 @@ def whatsapp_membros(request):
     if request.GET.get("criar"):
         nomes = {g.get("jid"): g.get("nome", "") for g in conexao.grupos or []}
         base = request.GET["criar"] if request.GET["criar"] in nomes else ""
-        criar = {"base": base, "nome": grupos_novos.proximo_nome(nomes.get(base, ""), grupos_novos.nomes_em_uso(conta, conexao)) if base else "",
+        nome_novo = grupos_novos.proximo_nome(nomes.get(base, ""), grupos_novos.nomes_em_uso(conta, conexao)) if base else ""
+        config = ConfiguracaoOfertas.objects.filter(conta=conta).first()
+        criar = {"base": base, "nome": nome_novo, "sub_ids": grupos_novos.sugerir_sub_ids(config, base, nome_novo),
                  "admins": grupos_novos.ultimos_admins(conta), "feitos_hoje": grupos_novos.criados_hoje(conta),
                  "automacao": grupos_novos.vagas_na_automacao(conta),
                  "por_dia": grupos_novos.POR_DIA, "bases": sorted(membros.grupos_possiveis(conexao), key=lambda g: str(g.get("nome", "")).lower())}

@@ -531,6 +531,8 @@ class PedidoGrupo(models.Model):
     so_admins = models.BooleanField(default=True, help_text="Só administradores enviam mensagens.")
     administradores = models.JSONField(default=list, blank=True)  # números (DDI + DDD + número)
     incluir_na_automacao = models.BooleanField(default=True)
+    # Sub IDs próprios do grupo novo (vão para ConfiguracaoOfertas.sub_ids_por_grupo quando ele é criado).
+    sub_ids = models.CharField(max_length=300, blank=True)
     estado = models.CharField(max_length=10, choices=ESTADOS, default=PENDENTE)
     jid = models.CharField(max_length=80, blank=True)
     link_convite = models.CharField(max_length=200, blank=True)

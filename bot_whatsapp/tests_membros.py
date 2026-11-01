@@ -212,15 +212,32 @@ class TestCriarGrupo(BasePainel):
         self.assertEqual(grupos_novos.ler_numeros("(11) 98888-7777, 5545999990000; abc"),
                          (["5511988887777", "5545999990000"], ["abc"]))
 
+    def test_sugere_o_sub_id_do_grupo_novo(self):
+        from . import grupos_novos
+
+        # Sem Sub ID próprio no grupo de base: os padrão da Automação + a 1ª palavra do nome com o número.
+        self.assertEqual(grupos_novos.sugerir_sub_ids(self.config, "1@g.us", "Achadinhos da Bia #9"), "achadinhos9")
+        self.config.sub_ids = "bot"
+        self.assertEqual(grupos_novos.sugerir_sub_ids(self.config, "1@g.us", "Promoções Já 03"), "bot, promocoes03")
+        self.assertEqual(grupos_novos.sugerir_sub_ids(None, "", "Ofertas VIP"), "ofertas")
+        # Com Sub ID próprio no grupo de base: o mesmo, com o número do grupo novo.
+        self.config.sub_ids_por_grupo = {"1@g.us": "bot, achadinhos8"}
+        self.assertEqual(grupos_novos.sugerir_sub_ids(self.config, "1@g.us", "Achadinhos #9"), "bot, achadinhos9")
+        self.config.sub_ids_por_grupo = {"1@g.us": "vip"}
+        self.assertEqual(grupos_novos.sugerir_sub_ids(self.config, "1@g.us", "Achadinhos #12"), "vip12")
+        self.assertEqual(grupos_novos.ler_sub_ids(" bot ,g9,"), ("bot, g9", ""))
+        self.assertIn("letras e números", grupos_novos.ler_sub_ids("grupo-9")[1])
+
     def test_tela_pede_e_o_worker_cria(self):
         from . import gerenciador as g
         from .models import PedidoGrupo
 
         html = self.client.get("/whatsapp/membros/?criar=1@g.us").content.decode()
         self.assertIn('id="criar-nome" value="Achadinhos 3"', html)  # "Achadinhos 2" já existe: pula
+        self.assertIn('id="criar-subid" value="achadinhos3"', html)
         resposta = self.client.post("/whatsapp/membros/", {
             "acao": "criar_grupo", "base": "1@g.us", "nome": "Achadinhos 3", "administradores": "(11) 97777-6666, 5511988887777",
-            "copiar": "on", "so_admins": "on", "incluir": "on"})
+            "copiar": "on", "so_admins": "on", "incluir": "on", "sub_ids": "bot, achadinhos3"})
         self.assertRedirects(resposta, "/whatsapp/membros/#criados", fetch_redirect_response=False)
         pedido = PedidoGrupo.objects.get()
         self.assertEqual(pedido.administradores, ["5511977776666"])  # o número do bot não precisa
@@ -246,6 +263,8 @@ class TestCriarGrupo(BasePainel):
         self.config.refresh_from_db()
         self.assertEqual(self.config.grupos[-1], {"jid": "777@g.us", "nome": "Achadinhos 3"})
         self.assertEqual(self.config.nichos["777@g.us"], "11")  # mesmo nicho do grupo de base
+        self.assertEqual(self.config.sub_ids_por_grupo["777@g.us"], "bot, achadinhos3")
+        self.assertEqual(self.config.lista_sub_ids("777@g.us"), ["bot", "achadinhos3"])
         self.assertTrue(GrupoMonitorado.objects.filter(jid="777@g.us", membros=2).exists())
         self.assertTrue(any(g["jid"] == "777@g.us" for g in ConexaoWhatsApp.objects.get(conta=self.conta).grupos))
         html = self.client.get("/whatsapp/membros/").content.decode()
@@ -260,6 +279,13 @@ class TestCriarGrupo(BasePainel):
         resposta = self.client.post("/whatsapp/membros/", {"acao": "criar_grupo", "nome": "Mais um"}, follow=True)
         self.assertContains(resposta, "Hoje você já criou 5 grupos")
         self.assertEqual(PedidoGrupo.objects.filter(nome="Mais um").count(), 0)
+
+    def test_sub_id_invalido_nao_cria(self):
+        from .models import PedidoGrupo
+
+        resposta = self.client.post("/whatsapp/membros/", {"acao": "criar_grupo", "nome": "Novo", "sub_ids": "grupo-novo"}, follow=True)
+        self.assertContains(resposta, "Sub ID")
+        self.assertFalse(PedidoGrupo.objects.exists())
 
     def test_sem_whatsapp_conectado(self):
         ConexaoWhatsApp.objects.filter(conta=self.conta).update(estado="desconectado")

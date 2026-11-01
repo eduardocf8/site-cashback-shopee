@@ -268,6 +268,7 @@ class TestWorker(BaseEntrada):
         pedido = PedidoGrupo.objects.get()
         self.assertEqual((pedido.nome, pedido.base_jid, pedido.link_entrada, pedido.administradores),
                          ("Achadinhos #11", "10@g.us", link, ["5511977776666"]))
+        self.assertEqual(pedido.sub_ids, "achadinhos11")  # Sub ID próprio do grupo novo, sugerido sozinho
         self.assertEqual(len(mail.outbox), 1)
         self.assertIn("Achadinhos #11", mail.outbox[0].body)
 

@@ -165,11 +165,15 @@ def _pedir_o_proximo(link: LinkEntrada, estado: dict, agora) -> PedidoGrupo | No
     conexao = ConexaoWhatsApp.objects.filter(conta=link.conta).first()
     if not conexao or conexao.estado != ConexaoWhatsApp.CONECTADO:
         return None
+    from .models import ConfiguracaoOfertas
+
     ultimo = estado["grupos"][-1]
     automacao = grupos_novos.vagas_na_automacao(link.conta)
+    nome = grupos_novos.proximo_nome(ultimo["nome"], grupos_novos.nomes_em_uso(link.conta, conexao))
+    config = ConfiguracaoOfertas.objects.filter(conta=link.conta).first()
     return PedidoGrupo.objects.create(
         conta=link.conta, link_entrada=link, base_jid=ultimo["jid"], copiar_foto_e_descricao=True, so_admins=True,
-        nome=grupos_novos.proximo_nome(ultimo["nome"], grupos_novos.nomes_em_uso(link.conta, conexao)),
+        nome=nome, sub_ids=grupos_novos.sugerir_sub_ids(config, ultimo["jid"], nome),
         administradores=list(link.admins_dos_novos or [])[: grupos_novos.MAXIMO_ADMINS],
         incluir_na_automacao=automacao["vagas"] > 0 and not automacao["sem_automacao"],
     )
