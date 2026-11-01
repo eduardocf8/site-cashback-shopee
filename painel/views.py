@@ -294,7 +294,7 @@ def atualizar_resultados(request):
         # Pedido recente igual (ou um de 30 dias, que já cobre o curto): não pede de novo.
         if not recente or (not curta and estado.pedido_curto and estado.aguardando):
             resultados.pedir_atualizacao(conta, curta=curta)
-        messages.info(request, ("Pedimos os números de ontem e de hoje à Shopee." if curta else
+        messages.info(request, ("Pedimos à Shopee os pedidos de ontem e o que foi validado ontem e hoje." if curta else
                                 "Pedimos os números dos últimos 30 dias à Shopee.") + " Em até 1 minuto eles aparecem aqui.")
     return redirect(destino_seguro(request, request.POST.get("voltar", "")))
 

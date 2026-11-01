@@ -123,8 +123,8 @@ def _pedir_validada(conversa: Conversa) -> str:
     if estado and estado.concluida_em and not estado.erro and not estado.aguardando \
             and agora - estado.concluida_em < ATUALIZACAO_RECENTE:
         return validada(conversa.conta)
-    if not (estado and estado.aguardando and not estado.pedido_curto):
-        res.pedir_atualizacao(conversa.conta)  # a de 30 dias: a curta não pega validação de compra antiga
+    if not (estado and estado.aguardando):
+        res.pedir_atualizacao(conversa.conta, curta=True)  # a curta já busca o que foi validado hoje
     _esperar(conversa, "validada_pedida_em", agora)
     return "Buscando a comissão validada de hoje na Shopee ⏳ Em até 1 minuto te mando aqui."
 

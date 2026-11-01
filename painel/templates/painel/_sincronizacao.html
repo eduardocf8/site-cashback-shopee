@@ -12,7 +12,7 @@
   <form method="post" action="{% url 'painel_atualizar_resultados' %}">
     {% csrf_token %}
     <input type="hidden" name="voltar" value="{{ request.get_full_path }}">
-    <button type="submit" name="periodo" value="curto" class="botao botao-tom botao-pequeno" title="Mais rápido: só ontem e hoje">{% include "painel/_icone.html" with caminho=icones.atualizar %}Atualizar dia anterior e atual</button>
+    <button type="submit" name="periodo" value="curto" class="botao botao-tom botao-pequeno" title="Mais rápido: os pedidos de ontem e o que a Shopee validou ontem e hoje">{% include "painel/_icone.html" with caminho=icones.atualizar %}Atualizar dia anterior e atual</button>
     <button type="submit" name="periodo" value="30" class="botao botao-claro botao-pequeno">{% include "painel/_icone.html" with caminho=icones.atualizar %}Atualizar 30 dias</button>
   </form>
 </div>

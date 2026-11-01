@@ -408,7 +408,8 @@ class TestSincronizacao(TestCase):
         self.assertEqual(sinc.call_args.kwargs["curta"], False)
         resultados.pedir_atualizacao(self.conta, curta=True)
         with mock.patch.object(resultados, "sincronizar_conta", return_value={"conversoes": 0, "dias": 2, "completa": False, "curta": True}) as sinc:
-            self.assertIn("ontem e hoje", resultados.processar(self.conta))
+            texto = resultados.processar(self.conta)
+        self.assertRegex(texto, r"busca ontem \+ validações em \d+\.\d s - 0 conversões, 2 dias, 0 itens validados")
         self.assertEqual(sinc.call_args.kwargs["curta"], True)
         self.assertFalse(SincronizacaoResultados.objects.get(conta=self.conta).pedido_curto)
 
@@ -672,7 +673,7 @@ class TestTelasDeResultados(BasePainel):
         self.assertIn("Atualizar 30 dias", html)
         self.assertNotIn("Atualizar agora", html)
         resposta = self.client.post("/resultados/atualizar/", {"voltar": "/resultados/", "periodo": "curto"}, follow=True)
-        self.assertContains(resposta, "números de ontem e de hoje")
+        self.assertContains(resposta, "os pedidos de ontem e o que foi validado ontem e hoje")
         self.assertTrue(SincronizacaoResultados.objects.get(conta=self.conta).pedido_curto)
         # Logo depois, pedir 30 dias vale (cobre o curto).
         self.client.post("/resultados/atualizar/", {"voltar": "/resultados/", "periodo": "30"})
