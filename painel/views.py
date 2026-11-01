@@ -386,6 +386,53 @@ def conferir_faturamento(request):
         request, "resultados", c=c, meses=meses, ao_vivo=ao_vivo, linhas_ao_vivo=linhas, mes_escolhido=f"{ano}-{mes:02d}"))
 
 
+CAMPOS_DO_PRODUTO = [
+    ("price", "Preço (price)"), ("priceMin", "Menor preço (priceMin) - o que o alerta usa"),
+    ("priceMax", "Maior preço (priceMax)"), ("priceDiscountRate", "Desconto (priceDiscountRate)"),
+    ("commissionRate", "Comissão (commissionRate)"), ("sellerCommissionRate", "Comissão extra da loja (sellerCommissionRate)"),
+    ("sales", "Vendas (sales)"), ("ratingStar", "Avaliação (ratingStar)"), ("shopName", "Loja (shopName)"),
+    ("itemId", "Produto (itemId)"), ("shopId", "Loja (shopId)"), ("productLink", "Link do produto (productLink)"),
+]
+
+
+@conta_requerida
+def conferir_produto(request):
+    """Página escondida: o que a API de afiliados da Shopee devolve de um produto (os preços que o
+    alerta de preço usa). Só para contas com a chave beta_conferir_faturamento (admin)."""
+    from bot_whatsapp import copia, shopee_ofertas
+    from bot_whatsapp.models import ProdutoAcompanhado
+    from bot_whatsapp.ofertas import credenciais
+
+    conta = conta_logada(request)
+    if not conta.beta_conferir_faturamento:
+        raise Http404
+    link = str(request.GET.get("link") or "").strip()[:1000]
+    contexto = {"link": link}
+    if link:
+        try:
+            item_id = link if link.isdigit() else copia.identificar_produto(link)
+            if not item_id:
+                raise ValueError("Não achei o produto nesse link. Cole o link de um produto da Shopee.")
+            app_id, secret = credenciais(conta)
+            if not app_id or not secret:
+                raise ValueError("Conecte a sua conta da Shopee em Configurações.")
+            relatorio = shopee_ofertas._consultar_produtos(app_id, secret, ["listType:0", f"itemId:{int(item_id)}", "page:1", "limit:1"])
+            no = next((n for n in relatorio.get("nodes") or [] if isinstance(n, dict)), None)
+            contexto["item_id"] = item_id
+            if not no:
+                raise ValueError(f"A API de afiliados não devolveu o produto {item_id}. Ele pode estar sem comissão de "
+                                 "afiliado agora, ou fora do programa de afiliados.")
+            contexto.update({
+                "produto": shopee_ofertas.normalizar_produto(no),
+                "campos": [(rotulo, no.get(chave), chave) for chave, rotulo in CAMPOS_DO_PRODUTO if chave in no],
+                "outros": sorted((k, v) for k, v in no.items() if k not in dict(CAMPOS_DO_PRODUTO) and k != "productName"),
+                "no_alerta": ProdutoAcompanhado.objects.filter(conta=conta, item_id=str(item_id)).first(),
+            })
+        except Exception as erro:  # noqa: BLE001 - mostra o motivo na tela
+            contexto["erro"] = str(erro) or "Não consegui falar com a Shopee agora."
+    return render(request, "painel/conferir_produto.html", _contexto(request, "resultados", **contexto))
+
+
 @conta_requerida
 def metas_view(request):
     conta = conta_logada(request)

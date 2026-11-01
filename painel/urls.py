@@ -18,6 +18,7 @@ urlpatterns = [
     path("resultados/estado/", views.estado_resultados, name="painel_estado_resultados"),
     path("resultados/vendas.xlsx", views.exportar_vendas, name="painel_exportar_vendas"),
     path("resultados/conferir/", views.conferir_faturamento, name="painel_conferir_faturamento"),
+    path("resultados/conferir/produto/", views.conferir_produto, name="painel_conferir_produto"),
     path("resultados/campanhas/", views_anuncios.campanhas, name="painel_campanhas_meta"),
     path("anuncios/meta/conectar/", views_anuncios.conectar, name="painel_meta_conectar"),
     path("anuncios/meta/retorno/", views_anuncios.retorno, name="painel_meta_retorno"),

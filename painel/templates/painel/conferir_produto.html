@@ -1,0 +1,42 @@
+{% extends "painel/base.html" %}
+{% load painel_extras %}
+{% block titulo %}Conferir produto{% endblock %}
+{% block conteudo %}
+<header class="cabecalho">
+  <div><h1>Conferir produto</h1><p>O que a API de afiliados da Shopee devolve de um produto, como o Alerta de preço vê.</p></div>
+</header>
+
+<section class="card" style="margin-top:16px">
+  <form method="get" class="formulario" style="display:flex;gap:10px;flex-wrap:wrap;align-items:flex-end">
+    <div class="campo" style="flex:1 1 320px;margin:0">
+      <label for="link">Link do produto (ou o número dele)</label>
+      <input type="text" id="link" name="link" value="{{ link }}" placeholder="https://s.shopee.com.br/…" required>
+    </div>
+    <button type="submit" class="botao botao-escuro">Conferir</button>
+  </form>
+</section>
+
+{% if erro %}
+  <p class="aviso aviso-warning" style="margin-top:16px">{{ erro }}</p>
+{% elif produto %}
+<section class="card" style="margin-top:16px">
+  <div style="display:flex;gap:14px;align-items:center;margin-bottom:12px">
+    {% if produto.imagem %}<img src="{{ produto.imagem }}" alt="" width="64" height="64" style="border-radius:10px;object-fit:cover" referrerpolicy="no-referrer">{% endif %}
+    <div><strong>{{ produto.nome }}</strong><br><span class="suave pequeno">{{ produto.loja }} · produto {{ item_id }}</span></div>
+  </div>
+  <p class="aviso aviso-info pequeno">O Alerta de preço usa o <strong>menor preço</strong>: <strong>{{ produto.preco|brl }}</strong>. É o preço da variação mais barata, já com o desconto da loja, sem cupons, moedas e frete.{% if no_alerta %} No seu alerta, o último preço guardado é {{ no_alerta.preco_atual|brl }}{% if no_alerta.conferido_em %} (conferido em {{ no_alerta.conferido_em|date:"d/m H:i" }}){% endif %}.{% endif %}</p>
+  <div class="tabela-rolagem"><table class="numeros" style="margin-top:12px">
+    <thead><tr><th>Campo da API</th><th>Valor que veio</th></tr></thead>
+    <tbody>
+      {% for rotulo, valor, chave in campos %}
+        <tr><td>{{ rotulo }}</td><td style="text-align:left;word-break:break-all">{% if valor is None or valor == "" %}<span class="suave">(vazio)</span>{% else %}{{ valor }}{% endif %}</td></tr>
+      {% endfor %}
+      {% for chave, valor in outros %}
+        <tr><td>{{ chave }}</td><td style="text-align:left;word-break:break-all">{{ valor }}</td></tr>
+      {% endfor %}
+    </tbody>
+  </table></div>
+  <p class="suave pequeno" style="margin-top:10px">Comissão e desconto vêm da API como fração (ex: 0.12 = 12%). Os preços vêm em reais.</p>
+</section>
+{% endif %}
+{% endblock %}
