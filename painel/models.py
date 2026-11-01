@@ -50,7 +50,7 @@ class SincronizacaoResultados(models.Model):
 
     conta = models.OneToOneField(ContaAppfiliado, on_delete=models.CASCADE, related_name="sincronizacao_resultados")
     pedido_em = models.DateTimeField(null=True, blank=True)
-    # O pedido é só do dia anterior e do atual (botão "Atualizar dia anterior e atual"): mais rápido.
+    # O pedido é só de ontem e das validações de hoje (botão "Atualizar dia anterior e atual"): mais rápido.
     pedido_curto = models.BooleanField(default=False)
     iniciada_em = models.DateTimeField(null=True, blank=True)
     concluida_em = models.DateTimeField(null=True, blank=True)
@@ -108,6 +108,30 @@ class MetaMensal(models.Model):
         return f"{self.conta.email} {self.mes:02d}/{self.ano}"
 
 
+class FechamentoMes(models.Model):
+    """O faturamento do mês guardado no fechamento da meta (30 dias depois do último dia do mês, às
+    11h - quando a Shopee manda o e-mail da meta mensal) e que não muda mais: os pedidos comprados no
+    mês e validados até ali, pelo valor pago menos reembolsos, buscados direto na Shopee (painel/fechamento.py)."""
+
+    conta = models.ForeignKey(ContaAppfiliado, on_delete=models.CASCADE, related_name="fechamentos")
+    ano = models.PositiveSmallIntegerField()
+    mes = models.PositiveSmallIntegerField()
+    validado = models.DecimalField(max_digits=14, decimal_places=2)
+    pendente = models.DecimalField(max_digits=14, decimal_places=2, default=0)  # ainda pendente no fechamento: ficou fora
+    cancelado = models.DecimalField(max_digits=14, decimal_places=2, default=0)
+    pedidos = models.PositiveIntegerField(default=0)  # pedidos validados
+    fechado_em = models.DateTimeField()
+
+    class Meta:
+        ordering = ["-ano", "-mes"]
+        verbose_name = "fechamento do mês"
+        verbose_name_plural = "fechamentos dos meses"
+        constraints = [models.UniqueConstraint(fields=["conta", "ano", "mes"], name="fechamento_mes_unico")]
+
+    def __str__(self):
+        return f"{self.conta.email} {self.mes:02d}/{self.ano}: {self.validado}"
+
+
 class VendaItem(models.Model):
     """Cada produto vendido (um item de um pedido de uma conversão), guardado a cada
     sincronização. A API só alcança ~3 meses; guardando aqui o histórico fica com a
@@ -126,7 +150,7 @@ class VendaItem(models.Model):
     loja = models.CharField(max_length=200, blank=True)
     quantidade = models.PositiveIntegerField(default=1)
     preco = models.DecimalField(max_digits=12, decimal_places=2, default=0)
-    valor = models.DecimalField(max_digits=12, decimal_places=2, default=0)  # preço x quantidade
+    valor = models.DecimalField(max_digits=12, decimal_places=2, default=0)  # valor pago menos reembolsos (resultados.valor_do_item)
     comissao = models.DecimalField(max_digits=12, decimal_places=2, default=0)
     status_shopee = models.CharField(max_length=20, blank=True)  # orderStatus como veio
     motivo_shopee = models.CharField(max_length=300, blank=True)  # por que foi cancelado, quando a Shopee diz
@@ -206,13 +230,19 @@ class RelatorioEmail(models.Model):
     hora = models.PositiveSmallIntegerField(
         "horário do envio", default=8, choices=[(h, f"{h:02d}:00") for h in range(7, 23)],
         help_text="Horário de Brasília. A Shopee costuma liberar os números de ontem entre 7h e 8h: se na hora "
-                  "eles ainda não tiverem saído, você recebe um aviso e o relatório vai assim que saírem.",
+                  "eles ainda não tiverem saído, você recebe um aviso e o relatório vai assim que saírem. Antes de "
+                  "enviar, o Appfiliado confere se os números pararam de mudar, então o e-mail pode chegar alguns "
+                  "minutos depois do horário.",
     )
     ultimo_envio_dia = models.DateField(null=True, blank=True)
     # Os números de ontem ainda não tinham saído na Shopee: o aviso já foi neste dia e o worker
     # tenta de novo a partir de proxima_tentativa_em.
     aviso_dia = models.DateField(null=True, blank=True)
     proxima_tentativa_em = models.DateTimeField(null=True, blank=True)
+    # Comissão estimada de ontem na última busca (a prévia, 10 minutos antes do horário, ou a última
+    # conferência): o relatório só vai quando ela se repete na busca seguinte (ver relatorio.py).
+    previa_comissao = models.DecimalField(max_digits=12, decimal_places=2, null=True, blank=True)
+    previa_em = models.DateTimeField(null=True, blank=True)
     envio_agora_pedido_em = models.DateTimeField(null=True, blank=True)  # "Enviar e-mail agora"
     ultimo_erro = models.TextField(blank=True)
     atualizado_em = models.DateTimeField(auto_now=True)

@@ -6,7 +6,8 @@ from django.contrib.auth.hashers import make_password
 from django.core.paginator import Paginator
 from django.http import Http404, HttpResponse, JsonResponse
 from django.shortcuts import redirect, render
-from datetime import timedelta
+from datetime import date, timedelta
+from urllib.parse import quote
 
 from django.utils import timezone
 from django.utils.encoding import force_str
@@ -15,6 +16,7 @@ from django.views.decorators.debug import sensitive_post_parameters
 from django.views.decorators.http import require_POST
 
 from accounts.ratelimit import _incrementar_contador, _obter_ip
+from atendimento import comandos as comandos_whatsapp
 from bot_whatsapp import campanhas
 from bot_whatsapp.models import AlertaDisparado, ConexaoWhatsApp
 from licencas import api_shopee
@@ -203,6 +205,9 @@ def inicio(request):
             "ontem": ontem,
             "do_ontem": resultados.totais(conta, ontem, ontem),
             "meta": telas.situacao_meta(conta, fim_mes.year, fim_mes.month, hoje),
+            # Os outros meses com meta (em fechamento e fechada), em linhas curtas embaixo do cartão.
+            "outros_meses": [m for m in telas.metas_dos_tres_meses(conta, hoje)
+                             if m["mes_valor"] != f"{fim_mes.year}-{fim_mes.month:02d}"],
         })
     return render(request, "painel/inicio.html", _contexto(request, "inicio", **contexto))
 
@@ -289,7 +294,7 @@ def atualizar_resultados(request):
         # Pedido recente igual (ou um de 30 dias, que já cobre o curto): não pede de novo.
         if not recente or (not curta and estado.pedido_curto and estado.aguardando):
             resultados.pedir_atualizacao(conta, curta=curta)
-        messages.info(request, ("Pedimos os números de ontem e de hoje à Shopee." if curta else
+        messages.info(request, ("Pedimos à Shopee os pedidos de ontem e o que foi validado ontem e hoje." if curta else
                                 "Pedimos os números dos últimos 30 dias à Shopee.") + " Em até 1 minuto eles aparecem aqui.")
     return redirect(destino_seguro(request, request.POST.get("voltar", "")))
 
@@ -302,6 +307,60 @@ def estado_resultados(request):
     estado = telas.estado_sincronizacao(conta)
     atualizando = bool(conta.shopee_validado_em) and (not estado or estado.atualizando)
     return JsonResponse({"atualizando": atualizando})
+
+
+def _linhas_da_conferencia(ao_vivo: dict, nome_mes: str) -> list[dict]:
+    """As linhas da tabela "Direto na Shopee" (resultados.conferencia_na_shopee)."""
+    if "erro" in ao_vivo:
+        return [{"rotulo": "Busca na Shopee", "erro": ao_vivo["erro"]}]
+    linhas = []
+    compra, validacao = ao_vivo["por_compra"], ao_vivo["por_validacao"]
+    if "erro" in compra:
+        linhas.append({"rotulo": f"Feitos em {nome_mes}", "erro": compra["erro"]})
+    else:
+        linhas.append({"rotulo": f"Feitos em {nome_mes} e validados", "destaque": True, "r": compra["validados"],
+                       "detalhe": "é o jeito do e-mail de meta mensal da Shopee", "incompleto": compra["incompleto"]})
+        if len(compra["canais"]) > 1 or (compra["canais"] and compra["canais"][0][0] != "sem canal informado"):
+            linhas += [{"rotulo": f"canal: {canal}", "sub": True, "r": r} for canal, r in compra["canais"]]
+        linhas.append({"rotulo": f"Feitos em {nome_mes}, ainda pendentes", "r": compra["pendentes"]})
+        linhas.append({"rotulo": f"Feitos em {nome_mes}, cancelados", "r": compra["cancelados"], "detalhe": "fora das contas"})
+        linhas.append({"rotulo": f"Feitos em {nome_mes}, sem os cancelados", "r": compra["total"], "detalhe": "validados + pendentes"})
+    if "erro" in validacao:
+        linhas.append({"rotulo": f"Validados em {nome_mes}", "erro": validacao["erro"]})
+    else:
+        detalhe = "comprados em qualquer data"
+        if validacao["compra_mais_antiga"]:
+            detalhe += f"; compra mais antiga: {validacao['compra_mais_antiga']:%d/%m/%Y}"
+        linhas.append({"rotulo": f"Validados em {nome_mes}", "r": validacao["total"], "detalhe": detalhe,
+                       "incompleto": validacao["incompleto"]})
+    return linhas
+
+
+@conta_requerida
+def conferir_faturamento(request):
+    """Página escondida: o faturamento de um mês contado de três jeitos, para conferir com a Shopee.
+    Só para contas com a chave beta_conferir_faturamento (admin); as outras recebem 404."""
+    conta = conta_logada(request)
+    if not conta.beta_conferir_faturamento:
+        raise Http404
+    hoje = telas.hoje()
+    passado = (hoje.replace(day=1) - timedelta(days=1))
+    escolhido = str(request.GET.get("mes") or f"{passado.year}-{passado.month:02d}")
+    try:
+        ano, mes = (int(x) for x in escolhido.split("-"))
+        date(ano, mes, 1)
+    except (ValueError, TypeError):
+        ano, mes = passado.year, passado.month
+    meses = []
+    d = hoje.replace(day=1)
+    for _ in range(4):
+        d = (d - timedelta(days=1)).replace(day=1)
+        meses.append({"valor": f"{d.year}-{d.month:02d}", "nome": telas.nome_mes(d.year, d.month), "ativo": (d.year, d.month) == (ano, mes)})
+    c = telas.conferencia_faturamento(conta, ano, mes)
+    ao_vivo = resultados.conferencia_na_shopee(conta, c["inicio"], c["fim"]) if request.GET.get("shopee") else None
+    linhas = _linhas_da_conferencia(ao_vivo, c["nome_mes"]) if ao_vivo else []
+    return render(request, "painel/conferir_faturamento.html", _contexto(
+        request, "resultados", c=c, meses=meses, ao_vivo=ao_vivo, linhas_ao_vivo=linhas, mes_escolhido=f"{ano}-{mes:02d}"))
 
 
 @conta_requerida
@@ -339,7 +398,13 @@ def metas_view(request):
     return render(request, "painel/metas.html", _contexto(
         request, "metas",
         em_gmv=em_gmv, meta_gmv=faixas[0] if em_gmv else {},
-        opcoes=[{"valor": f"{a}-{m:02d}", "nome": telas.nome_mes(a, m), "ativo": (a, m) == ano_mes} for a, m in opcoes],
+        opcoes=[{"valor": f"{a}-{m:02d}", "nome": telas.nome_mes(a, m), "ativo": (a, m) == ano_mes,
+                 "fase": ("Próximo mês" if (a, m) > (hoje.year, hoje.month) else telas.NOMES_FASES[telas.fase_da_meta(a, m, hoje)[0]])}
+                for a, m in opcoes],
+        tres_meses=list(reversed(telas.metas_dos_tres_meses(conta, hoje))) if conta.shopee_validado_em else [],
+        # O próximo mês não está entre os três detalhados: o cartão dele fica ao lado do formulário.
+        situacao_proximo=(telas.situacao_meta(conta, ano, mes, hoje)
+                          if faixas and (ano, mes) > (hoje.year, hoje.month) else None),
         mes_valor=f"{ano}-{mes:02d}",
         nome_mes=telas.nome_mes(ano, mes),
         linhas=linhas,
@@ -466,6 +531,19 @@ def configuracoes(request):
             messages.success(request, "Agrupamento criado.")
             return redirect(f"{request.path}#sub-ids")
 
+    elif request.method == "POST" and request.POST.get("formulario") == "whatsapp_codigo":
+        if comandos_whatsapp.pode_vincular_outro(conta):
+            comandos_whatsapp.gerar_codigo(conta)
+        else:
+            messages.error(request, f"Dá para vincular até {comandos_whatsapp.NUMEROS_POR_CONTA} números. "
+                                    "Desvincule um deles para vincular outro.")
+        return redirect(f"{request.path}#whatsapp")
+
+    elif request.method == "POST" and request.POST.get("formulario") == "whatsapp_desvincular":
+        comandos_whatsapp.desvincular(conta, request.POST.get("conversa"))
+        messages.info(request, "Número desvinculado. Ele não recebe mais os seus resultados pelo WhatsApp.")
+        return redirect(f"{request.path}#whatsapp")
+
     elif request.method == "POST" and request.POST.get("formulario") == "apagar_regra_sub_id":
         RegraSubId.objects.filter(conta=conta, pk=request.POST.get("regra")).delete()
         messages.info(request, "Agrupamento apagado.")
@@ -475,7 +553,35 @@ def configuracoes(request):
         request, "configuracoes", form_shopee=form_shopee, form_senha=form_senha, form_regra=form_regra,
         form_relatorio=form_relatorio, preferencia_relatorio=preferencia, api=api_shopee,
         regras=resultados.resumo_das_regras(conta, telas.hoje()),
+        whatsapp=_whatsapp_resultados(conta),
     ))
+
+
+def _whatsapp_resultados(conta) -> dict | None:
+    """Cartão "Lia no WhatsApp": os números vinculados e o código para vincular outro. Quem responde
+    é o worker (agente de vendas); aqui no web basta saber o número. Sem número conhecido, o cartão some."""
+    numero = comandos_whatsapp.numero_do_appfiliado()
+    if not numero:
+        return None
+    vinculados = comandos_whatsapp.numeros_vinculados(conta)
+    pode_vincular = len(vinculados) < comandos_whatsapp.NUMEROS_POR_CONTA
+    codigo = comandos_whatsapp.codigo_valido(conta) if pode_vincular else None
+    return {
+        "vinculados": [{"pk": c.pk, "telefone": _telefone_formatado(c.telefone) or c.nome or "Seu WhatsApp",
+                        "desde": c.vinculada_em} for c in vinculados],
+        "pode_vincular": pode_vincular,
+        "maximo": comandos_whatsapp.NUMEROS_POR_CONTA,
+        "codigo": codigo,
+        "vence_em": codigo.criado_em + comandos_whatsapp.VALIDADE_DO_CODIGO if codigo else None,
+        "link": f"https://wa.me/{numero}" + (f"?text={quote(f'VINCULAR {codigo.codigo}')}" if codigo else ""),
+        "numero": _telefone_formatado(numero),
+    }
+
+
+def _telefone_formatado(numero: str) -> str:
+    if numero.startswith("55") and len(numero) in (12, 13):
+        return f"+55 ({numero[2:4]}) {numero[4:-4]}-{numero[-4:]}"
+    return f"+{numero}" if numero else ""
 
 
 # --- Erros ---------------------------------------------------------------------------

@@ -1,0 +1,1 @@
+{% if tem_foto %}<img class="foto" src="{{ foto_url }}" alt="">{% else %}<div class="inicial" aria-hidden="true">{{ nome|default:link.titulo|slice:":1"|upper }}</div>{% endif %}

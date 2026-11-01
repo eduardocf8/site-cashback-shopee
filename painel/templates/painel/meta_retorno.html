@@ -1,0 +1,38 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Meta · Appfiliado</title>
+<style>
+  body { margin: 0; min-height: 100vh; display: grid; place-items: center; background: #F6F3EA; color: #1D2A23;
+    font-family: "DM Sans", "Segoe UI", system-ui, sans-serif; text-align: center; padding: 24px; box-sizing: border-box; }
+  a { color: #1F3A2E; font-weight: 700; }
+  button { font: inherit; font-weight: 700; border: 0; border-radius: 999px; padding: 10px 20px; background: #F2C230; color: #1F3A2E; cursor: pointer; }
+</style>
+</head>
+<body>
+<div id="msg" hidden>
+  <p><strong>Conta de anúncios conectada.</strong><br>Pode fechar esta janela: a página do Appfiliado já foi atualizada.</p>
+  <p><button type="button" onclick="window.close()">Fechar esta janela</button></p>
+</div>
+<script>
+  // Fim do login do Facebook, na janela à parte. A página do Facebook corta a ligação desta janela com a do
+  // Appfiliado (window.opener fica vazio), então o aviso vai por um canal do próprio navegador (BroadcastChannel):
+  // a página principal recebe "pronto" e se atualiza sozinha. Depois esta janela se fecha.
+  (function () {
+    try { new BroadcastChannel("appfiliado-meta").postMessage("pronto"); } catch (e) { /* navegador antigo */ }
+    try { localStorage.setItem("appfiliado-meta", String(Date.now())); } catch (e) { /* sem armazenamento */ }
+    {% if not ficar %}try {
+      if (window.opener && !window.opener.closed && window.opener.location.host === window.location.host) {
+        window.opener.location.href = "{{ destino|escapejs }}";
+      }
+    } catch (e) { /* sem ligação com a página principal: o aviso acima já basta */ }
+    {% endif %}window.close();
+    // Se o navegador não deixar fechar sozinha, mostra o aviso com o botão.
+    setTimeout(function () { document.getElementById("msg").hidden = false; }, 500);
+  })();
+</script>
+<noscript><p>Conta de anúncios conectada. <a href="{{ destino }}">Voltar para o Appfiliado</a></p></noscript>
+</body>
+</html>

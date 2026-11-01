@@ -40,7 +40,7 @@ class SiteForm(forms.ModelForm):
             "sub_id_vitrine": "Para ver em Resultados as vendas da vitrine separadas das vendas do conversor. "
                               "Em branco, usa o mesmo Sub ID do conversor.",
             "links_manuais": "Cole o link de cada produto da Shopee, um por linha, na ordem em que devem aparecer "
-                             "(até 60). Depois de salvar, dá para corrigir a categoria de cada um na lista de produtos.",
+                             "(até 1.000). Depois de salvar, dá para corrigir a categoria de cada um na lista de produtos.",
             "frase": "Aparece embaixo do nome. Ex: As melhores ofertas da Shopee todo dia.",
             "conversor_botao": "Em branco, fica o texto padrão (aparece apagadinho no campo).",
         }
@@ -177,6 +177,10 @@ class SiteForm(forms.ModelForm):
             self.add_error("vitrine", "A vitrine com os produtos que você escolher é do plano Premium.")
         elif dados.get("vitrine") == SiteAfiliado.VITRINE_MANUAL and not (dados.get("links_manuais") or "").strip():
             self.add_error("links_manuais", "Cole pelo menos um link de produto.")
+        elif dados.get("vitrine") == SiteAfiliado.VITRINE_MANUAL:
+            quantos = len([l for l in (dados.get("links_manuais") or "").splitlines() if l.strip()])
+            if quantos > self.regras["escolhidos"]:
+                self.add_error("links_manuais", f"São até {self.regras['escolhidos']:,} produtos. Você colou {quantos:,}.".replace(",", "."))
         return dados
 
 
@@ -203,7 +207,7 @@ class BotaoForm(forms.ModelForm):
 class FotoForm(forms.Form):
     foto = forms.ImageField(label="Foto")
 
-    TAMANHO = 320
+    TAMANHO = (320, 320)
     MAXIMO_MB = 5
 
     def clean_foto(self):
@@ -216,7 +220,13 @@ class FotoForm(forms.Form):
         if aberta.size[0] * aberta.size[1] > 30_000_000:  # "bomba" de pixels: estoura a memória ao abrir
             raise forms.ValidationError("Essa foto é grande demais. Use uma de até 30 megapixels.")
         imagem = ImageOps.exif_transpose(aberta).convert("RGB")
-        imagem = ImageOps.fit(imagem, (self.TAMANHO, self.TAMANHO), Image.LANCZOS)
+        imagem = ImageOps.fit(imagem, self.TAMANHO, Image.LANCZOS)
         saida = io.BytesIO()
         imagem.save(saida, "JPEG", quality=85, optimize=True)
         return saida.getvalue()
+
+
+class CapaForm(FotoForm):
+    """Capa do link de entrada: faixa larga (2 por 1) no topo da página."""
+
+    TAMANHO = (1200, 600)

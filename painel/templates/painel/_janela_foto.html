@@ -1,0 +1,12 @@
+{# Foto redonda com ajuste (foto_recorte.js): o formulário que envia e a janela de recorte. #}
+<form method="post" enctype="multipart/form-data" id="form-foto" hidden>{% csrf_token %}<input type="hidden" name="acao" value="foto"></form>
+<dialog id="ajustar-foto" class="janela-foto" aria-labelledby="titulo-ajustar-foto">
+  <h2 id="titulo-ajustar-foto">Ajustar foto</h2>
+  <p class="suave pequeno">Arraste para posicionar e use o controle para dar zoom.</p>
+  <canvas class="area-recorte" width="600" height="600" tabindex="-1" autofocus></canvas>
+  <label class="controle-zoom"><span aria-hidden="true">−</span><input type="range" min="1" max="4" step="0.01" value="1" aria-label="Zoom"><span aria-hidden="true">+</span></label>
+  <div class="botoes-janela">
+    <button type="button" class="botao botao-claro" data-fechar>Cancelar</button>
+    <button type="button" class="botao botao-principal" data-usar>Usar esta foto</button>
+  </div>
+</dialog>

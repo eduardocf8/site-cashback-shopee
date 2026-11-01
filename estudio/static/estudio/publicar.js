@@ -5,11 +5,21 @@
   'use strict';
   // Espera o fim do login do Instagram, aberto numa janela à parte. A página do Instagram corta a ligação entre as
   // duas janelas, então a janela do login avisa por BroadcastChannel (e localStorage, nos navegadores antigos).
-  window.esperarInstagram = function (pronto) {
-    let feito = false;
+  // `voltou` roda quando a pessoa volta pra esta página sem ter terminado (fechou a janela do login, por exemplo):
+  // como a ligação entre as janelas é cortada, não dá pra saber se ela fechou; o botão volta ao normal e o aviso
+  // de "pronto" continua valendo se ela terminar depois.
+  window.esperarInstagram = function (pronto, voltou) {
+    let feito = false, saiu = false;
     const fim = () => { if (feito) return; feito = true; pronto(); };
     try { const canal = new BroadcastChannel('appfiliado-instagram'); canal.onmessage = (e) => { if (e.data === 'pronto') fim(); }; } catch (e) { /* sem canal */ }
     window.addEventListener('storage', (e) => { if (e.key === 'appfiliado-instagram') fim(); });
+    if (!voltou) return;
+    window.addEventListener('blur', () => { saiu = true; });
+    window.addEventListener('focus', () => {
+      if (!saiu || feito) return;
+      saiu = false;
+      setTimeout(() => { if (!feito) voltou(); }, 700);  // dá tempo do aviso de "pronto" chegar antes
+    });
   };
 
   const $ = (id) => document.getElementById(id);
@@ -39,7 +49,9 @@
           const janela = window.open(b.href, 'conectar-instagram', `width=${l},height=${a},left=${x},top=${y}`);
           if (!janela) return; // bloqueou a janela: segue no link (o post já foi salvo ao abrir)
           e.preventDefault(); b.textContent = 'Conectando… (termine na janela do Instagram)';
-          esperarInstagram(carregar);
+          if (b.dataset.esperando) return;
+          b.dataset.esperando = '1';
+          esperarInstagram(carregar, () => { b.textContent = 'Conectar Instagram'; });
         });
         caixa.append(b);
       } else caixa.append(el('p', { class: 'es-quieto' }, 'A conexão com o Instagram ainda não está configurada.'));
@@ -98,7 +110,10 @@
     $('pub-erro').textContent = ''; $('pub-ok').textContent = '';
     const agora = new Date(Date.now() + 10 * 60000), max = new Date(Date.now() + 59 * 86400000);
     $('pub-data').min = local(agora); $('pub-data').max = local(max);
-    if (!$('pub-data').value) { const d = new Date(Date.now() + 60 * 60000); d.setMinutes(0); $('pub-data').value = local(d); }
+    // Sugere a próxima hora cheia que já passe do mínimo (daqui a 10 minutos).
+    if (!$('pub-data').value || new Date($('pub-data').value) < agora) {
+      const d = new Date(agora); d.setMinutes(0, 0, 0); d.setHours(d.getHours() + 1); $('pub-data').value = local(d);
+    }
     dialogo.showModal(); carregar();
   });
   dialogo.addEventListener('close', () => clearTimeout(carregar.t));
@@ -112,6 +127,11 @@
     const quando = dialogo.querySelector('[name=pub-quando]:checked').value;
     $('pub-erro').textContent = ''; $('pub-ok').textContent = '';
     if (quando === 'agendar' && !$('pub-data').value) { $('pub-erro').textContent = 'Escolha o dia e a hora.'; return; }
+    if (quando === 'agendar') {
+      const d = new Date($('pub-data').value);
+      if (d < new Date(Date.now() + 10 * 60000)) { $('pub-erro').textContent = 'Escolha um horário pelo menos 10 minutos à frente.'; return; }
+      if (d > new Date(Date.now() + 59 * 86400000)) { $('pub-erro').textContent = 'Dá para agendar até 59 dias à frente.'; return; }
+    }
     b.disabled = true;
     try {
       b.textContent = 'Salvando…';

@@ -43,8 +43,10 @@ CAMPOS_CONVERSOES = [
 # Campos de cada item vendido (lista de vendas e ranking de produtos). Se a API de
 # alguma conta não tiver um deles, ele sai e a consulta tenta de novo.
 # itemNotes, displayItemStatus e fraudStatus explicam, quando a Shopee informa, por que um pedido foi cancelado.
+# actualAmount (valor pago pelo comprador, com cupons e descontos) e refundAmount (reembolsos) são a base do
+# faturamento - é como a Shopee conta as vendas da meta mensal.
 CAMPOS_ITENS = ["itemId", "itemName", "shopName", "imageUrl", "itemPrice", "qty", "itemTotalCommission", "completeTime",
-                "itemNotes", "displayItemStatus", "fraudStatus"]
+                "actualAmount", "refundAmount", "itemNotes", "displayItemStatus", "fraudStatus"]
 ITENS_OBRIGATORIOS = {"itemPrice", "qty", "itemTotalCommission", "completeTime"}
 
 
@@ -58,11 +60,11 @@ def _campo_invalido(mensagem: str) -> str:
     return achado.group(1) if achado else ""
 
 
-def _consultar_pagina(app_id, secret, inicio_ts, fim_ts, scroll_id, campos, itens):
+def _consultar_pagina(app_id, secret, inicio_ts, fim_ts, scroll_id, campos, itens, data="purchaseTime"):
     campos_atuais, itens_atuais = list(campos), list(itens)
     while True:
         parametros = (
-            f"purchaseTimeStart:{inicio_ts},purchaseTimeEnd:{fim_ts},limit:500,"
+            f"{data}Start:{inicio_ts},{data}End:{fim_ts},limit:500,"
             f"scrollId:{json.dumps(scroll_id, ensure_ascii=False)}"
         )
         query = (
@@ -81,17 +83,19 @@ def _consultar_pagina(app_id, secret, inicio_ts, fim_ts, scroll_id, campos, iten
                 raise
 
 
-def paginas_de_conversoes(app_id: str, secret: str, inicio_ts: int, fim_ts: int):
-    """As conversões com data de compra entre inicio_ts e fim_ts, uma página (até 500)
-    por vez - quem chama processa e descarta cada página, sem guardar tudo na memória."""
+def paginas_de_conversoes(app_id: str, secret: str, inicio_ts: int, fim_ts: int, data: str = "purchaseTime",
+                          itens_extras: tuple[str, ...] = ()):
+    """As conversões com data de compra (ou, com data="completeTime", de validação) entre
+    inicio_ts e fim_ts, uma página (até 500) por vez - quem chama processa e descarta cada
+    página, sem guardar tudo na memória."""
     scroll_id = ""
     vistos = set()
-    campos, itens = CAMPOS_CONVERSOES, CAMPOS_ITENS
+    campos, itens = CAMPOS_CONVERSOES, CAMPOS_ITENS + [i for i in itens_extras if i not in CAMPOS_ITENS]
     for _ in range(MAXIMO_PAGINAS):
         if scroll_id in vistos:
             break
         vistos.add(scroll_id)
-        dados, campos, itens = _consultar_pagina(app_id, secret, inicio_ts, fim_ts, scroll_id, campos, itens)
+        dados, campos, itens = _consultar_pagina(app_id, secret, inicio_ts, fim_ts, scroll_id, campos, itens, data)
         relatorio = dados.get("conversionReport") or {}
         nodes = relatorio.get("nodes") or []
         if isinstance(nodes, list) and nodes:

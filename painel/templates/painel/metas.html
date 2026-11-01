@@ -8,12 +8,25 @@
 </header>
 
 <nav class="chips" aria-label="Mês">
-  {% for o in opcoes %}<a class="chip{% if o.ativo %} ativo{% endif %}" href="?mes={{ o.valor }}"{% if o.ativo %} aria-current="true"{% endif %}>{{ o.nome }}</a>{% endfor %}
+  {% for o in opcoes %}<a class="chip{% if o.ativo %} ativo{% endif %}" href="?mes={{ o.valor }}"{% if o.ativo %} aria-current="true"{% endif %}>{{ o.nome }}<span class="fase-chip">{{ o.fase }}</span></a>{% endfor %}
 </nav>
 
-<div class="duas-colunas">
-  <section class="card">
-    <h2>Metas de {{ nome_mes }}</h2>
+{% if tres_meses %}
+<section class="tres-meses" aria-label="Os últimos três meses">
+  {% for m in tres_meses %}
+    <section class="card">
+      <div class="card-topo"><h2>{{ m.nome_mes }}</h2><a class="pequeno" href="?mes={{ m.mes_valor }}#form-metas">Editar faixas</a></div>
+      {% include "painel/_meta.html" with meta=m %}
+    </section>
+  {% endfor %}
+</section>
+{% elif shopee_conectada %}
+<p class="suave pequeno">Cadastre a meta de um mês para acompanhar aqui a prévia, o fechamento e o resultado final de cada um.</p>
+{% endif %}
+
+<div class="form-metas{% if situacao_proximo %} duas-colunas{% endif %}">
+  <section class="card" id="form-metas">
+    <h2>Faixas de {{ nome_mes }}</h2>
     <form method="post" class="formulario" data-metas>
       {% csrf_token %}
       <input type="hidden" name="mes" value="{{ mes_valor }}">
@@ -53,15 +66,11 @@
       <div><button type="submit" class="botao botao-principal">Salvar metas</button></div>
     </form>
   </section>
-
+  {% if situacao_proximo %}
   <section class="card">
-    <h2>Como está {{ nome_mes }}</h2>
-    {% if situacao %}
-      {% include "painel/_meta.html" with meta=situacao %}
-      {% if not shopee_conectada %}<p class="suave pequeno" style="margin-top:8px">Conecte sua conta da Shopee em <a href="{% url 'painel_configuracoes' %}">Configurações</a> para ver o faturamento.</p>{% endif %}
-    {% else %}
-      <p class="suave">Cadastre as faixas ao lado para acompanhar quanto falta para cada bônus e a projeção do mês.</p>
-    {% endif %}
+    <h2>Como fica {{ nome_mes }}</h2>
+    {% include "painel/_meta.html" with meta=situacao_proximo %}
   </section>
+  {% endif %}
 </div>
 {% endblock %}

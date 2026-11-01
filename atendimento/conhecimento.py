@@ -13,12 +13,14 @@ from licencas import api_shopee
 
 def _paginas_das_ferramentas() -> str:
     partes = []
-    fora = {"estudio", "automacoes"} if not planos.lancado() else {"carrosseis"}
     for codigo, montar in paginas.PAGINAS.items():
-        if codigo in fora:
-            continue
+        if codigo == "carrosseis":
+            continue  # saiu do site: o Estúdio Instagram toma o lugar
         p = montar()
         linhas = [f"### {p['nome']} (página: https://appfiliado.com.br/{p['slug']}/)", p["h1"], p["texto"]]
+        if planos.em_breve(codigo):
+            linhas.append("EM BREVE: ainda não está à venda. Não tem preço nem planos definidos ainda: não invente preço, "
+                          "data de lançamento nem diferença entre planos.")
         if p.get("incluso"):
             linhas.append("Incluído em todos os planos (não é vendido à parte).")
         for g in p["grupos"]:
@@ -39,7 +41,7 @@ def _valor(v) -> str:
 
 def _precos() -> str:
     linhas = ["Preços por mês (o plano anual sai com 17% de desconto, escolhido no checkout):"]
-    for m in planos.modulos():
+    for m in planos.a_venda():
         resumo = site.RESUMOS[m]
         linhas.append(f"\n{planos.NOMES[m]}: {resumo['frase']}")
         for nivel in (0, 1):
@@ -49,21 +51,20 @@ def _precos() -> str:
         if resumo.get("comuns"):
             linhas.append("- Nos dois planos: " + "; ".join(resumo["comuns"]))
     linhas.append("\nIncluídos em todos os planos: " + "; ".join(f"{n} ({f})" for _, n, f in site.INCLUSOS))
-    if planos.lancado():
-        linhas.append("\nPacotes (todos os módulos do pacote no mesmo plano, Standard ou Premium, numa assinatura só). "
-                      "Fora dos pacotes não há desconto por juntar módulos: quem quiser outra combinação assina cada módulo separado.")
-        for p in planos.pacotes():
-            linhas.append(f"\n{p['nome']} ({' + '.join(p['modulos'])}): {p['frase']}")
-            for n in p["niveis"]:
-                linhas.append(f"- {n['nivel']}: {planos.brl(n['preco'])}/mês (separado sairia {planos.brl(n['separado'])}). "
-                              f"Checkout: {_link(n['link'])}")
-    else:
-        linhas.append("\nCombos (2 módulos: 10% de desconto; 3 módulos: 20% de desconto). Todas as combinações e o link de cada uma:")
-        for combo in planos.todos_os_combos().values():
-            if "+" not in combo["nome"]:
-                continue  # módulo avulso, já listado acima
-            linhas.append(f"- {combo['nome']}: {planos.brl(combo['preco'])}/mês (separado sairia {planos.brl(combo['separado'])}). "
-                          f"Checkout: {combo['link']}")
+    breves = [m for m in planos.modulos() if planos.em_breve(m)]
+    if breves:
+        linhas.append("\nEm breve (ainda não estão à venda, sem preço e sem planos definidos; quem perguntar pode conhecer "
+                      "os recursos na página de cada um): " + "; ".join(f"{planos.NOMES[m]} ({site.RESUMOS[m]['frase']})" for m in breves)
+                      + ". O antigo Gerador de carrosséis não é mais vendido: o Estúdio Instagram toma o lugar dele.")
+    linhas.append("\nPacotes (todos os módulos do pacote no mesmo plano, Standard ou Premium, numa assinatura só). "
+                  "Fora dos pacotes não há desconto por juntar módulos: quem quiser outra combinação assina cada módulo separado.")
+    for p in planos.pacotes():
+        linhas.append(f"\n{p['nome']} ({' + '.join(p['modulos'])}): {p['frase']}")
+        if p["em_breve"]:
+            linhas.append("- Em breve: chega com o lançamento do Estúdio Instagram e das Automações Instagram (sem preço ainda).")
+        for n in p["niveis"]:
+            linhas.append(f"- {n['nivel']}: {planos.brl(n['preco'])}/mês (separado sairia {planos.brl(n['separado'])}). "
+                          f"Checkout: {_link(n['link'])}")
     linhas.append("\nEmissor NFS-e (só para afiliado pessoa jurídica, MEI ou Simples Nacional, com certificado digital A1). "
                   "Emite as notas fiscais dos vendedores que pagaram comissão extra, direto do relatório mensal da Shopee. "
                   "O plano é pela quantidade de notas emitidas no mês:")
@@ -96,6 +97,15 @@ no link na bio e no Instagram, acompanhar os resultados e emitir notas fiscais. 
 O Appfiliado é independente e não tem vínculo oficial com a Shopee. Pagamento pelo checkout seguro da Zouti, com Pix, boleto ou cartão de crédito (as condições de parcelamento aparecem no próprio checkout).
 Depois de pagar, a pessoa recebe no e-mail o link para criar a senha e entrar no painel.
 {("Suporte por e-mail: " + settings.APPFILIADO_EMAIL_SUPORTE) if settings.APPFILIADO_EMAIL_SUPORTE else ""}
+
+# Resultados por este WhatsApp (para quem já assina)
+Você é a Lia, e esses comandos também são seus: no site, a Lia aparece como a assistente do Appfiliado no WhatsApp, incluída em todos os planos.
+Quem assina pode vincular este número à conta do Appfiliado (no painel, em Configurações > Lia no WhatsApp: gera
+um código e manda aqui "VINCULAR" e o código). Cada conta pode ter até 2 números vinculados. Depois disso, mandando só a palavra, recebe na hora: "resultados" (ontem,
+últimos 7 dias e o mês), "metas", "vendas" (produtos vendidos ontem), "top" (mais vendidos dos últimos 7 dias),
+"validada" (comissão validada de hoje, o único número que a Shopee libera no mesmo dia),
+"atualizar" (busca agora os dados mais novos na Shopee), "desvincular" e "comandos" (a lista). Esses comandos são respondidos sozinhos pelo sistema, não por você: se a pessoa
+perguntar dos números dela, explique como vincular e quais comandos mandar. Nunca invente números de vendas.
 
 # Antes de tudo: a API da Shopee
 {_api_shopee()}

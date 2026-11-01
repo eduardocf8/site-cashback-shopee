@@ -7,13 +7,20 @@ quando só o Premium tem, (nome, texto, "Premium")."""
 
 from licencas import planos as plano
 
+from . import planos as vendas
+
+
+def _mil(n: int) -> str:
+    """1000 -> "1.000"."""
+    return f"{n:,}".replace(",", ".")
+
 
 def _t(nome, texto, so=""):
     return {"nome": nome, "texto": texto, "plano": so, "chips": [], "cores": []}
 
 
-def _grupo(titulo, intro, *itens):
-    return {"titulo": titulo, "intro": intro, "itens": list(itens)}
+def _grupo(titulo, intro, *itens, ancora=""):
+    return {"titulo": titulo, "intro": intro, "itens": list(itens), "ancora": ancora}
 
 
 def bot():
@@ -52,6 +59,7 @@ def bot():
                    _t("Horário e dias de envio", "Defina a janela (o padrão é das 7h às 23h e vale janela que passa da meia-noite) e os dias da semana em que o bot trabalha."),
                    _t("Limite por dia", f"O plano libera até {s['ofertas_por_grupo_dia']} ofertas por dia em cada grupo no Standard e até {p['ofertas_por_grupo_dia']} no Premium. Você pode escolher um limite menor."),
                    _t("Grupos que recebem", f"Marque os grupos e canais de destino, até {s['grupos']} no Standard e até {p['grupos']} no Premium."),
+                   _t("Ritmo com muitos grupos", "Cada oferta leva alguns segundos por grupo para sair (com 200 grupos, uns 14 minutos para chegar em todos). A próxima espera a anterior terminar, e o painel mostra quantas ofertas cabem por dia no seu horário."),
                    _t("Sub IDs para medir", "Até 5 Sub IDs padrão e um Sub ID próprio por grupo. Em Resultados você vê quanto cada grupo vende."),
                    _t("Mensagens avulsas", f"Escreva um aviso, com foto se quiser, e mande para todos os grupos, pros de um nicho ou pros que escolher: na hora, num dia e hora marcados ou toda semana. Os links da Shopee viram o seu link de afiliado. Até {s['mensagens_agendadas']} mensagens agendadas no Standard e {p['mensagens_agendadas']} no Premium.")),
             _grupo("Teste antes de enviar", "Veja o que vai sair sem mandar nada.",
@@ -77,7 +85,7 @@ def bot():
             _grupo("Recursos que só o Premium tem", "Para quem quer mais alcance e mais automação.",
                    _t("Envio por nicho", "Escolha o nicho de cada grupo, como beleza, moda ou casa, ou “Todos” para ofertas em geral. A cada intervalo sai uma oferta em cada nicho, só pros grupos dele. Os filtros e o texto da mensagem valem para todos.", "Premium"),
                    _t("Copiar ofertas de outros grupos e canais", "Marque os grupos e canais que você quer copiar. Toda mensagem com link da Shopee que chegar vira uma oferta sua, com o seu link de afiliado. Os links de quem postou são removidos e só o seu entra. Mensagem sem link da Shopee é ignorada.", "Premium"),
-                   _t("Revisão do texto com IA", "A IA revisa o texto das ofertas antes de enviar: só o português, corrigir frases que não combinam com o produto, ou deixar a chamada mais atraente. Link, preço e cupom nunca são alterados. Se algo der errado, a oferta sai com o texto original.", "Premium")),
+                   _t("Revisão do texto com IA", "A IA revisa o texto das ofertas antes de enviar: só o português, corrigir frases que não combinam com o produto ou deixar a chamada mais atraente. Link, preço e cupom nunca são alterados. Se algo der errado, a oferta sai com o texto original.", "Premium")),
             _grupo("Cuidado com o seu número", "O bot foi feito para enviar sem exagero.",
                    _t("Ritmo controlado", "No máximo uma mensagem a cada 3 segundos por número, para não sair em rajada."),
                    _t("Sem duplicar", "Mensagem presa durante um reinício do servidor não é reenviada, para ninguém receber duas vezes."),
@@ -86,7 +94,8 @@ def bot():
             _grupo("Tudo conectado ao resto do Appfiliado", "O bot trabalha junto com os outros módulos.",
                    _t("Resultados", "As vendas das ofertas aparecem em Resultados, separadas por Sub ID."),
                    _t("Relatório por e-mail", "O relatório diário diz quantas ofertas saíram ontem."),
-                   _t("Vitrine do Meu site", "As ofertas que o bot envia podem alimentar a vitrine do seu site na bio.")),
+                   _t("Vitrine do Meu site", "As ofertas que o bot envia podem alimentar a vitrine do seu site na bio."),
+                   _t("Membros dos grupos", "Acompanhe até 500 grupos: quantos membros cada um ganhou ou perdeu em 24 horas, 7 e 30 dias, quais estão perto de lotar e quanto cada grupo rende pela comissão do Sub ID próprio. Quando um lotar, crie o próximo pelo painel: mesma foto e descrição, só administradores enviando, já na Automação e com o link de convite pronto.")),
         ],
         "tabela": [
             ("Grupos e canais", f"até {s['grupos']}", f"até {p['grupos']}"),
@@ -153,13 +162,13 @@ def site():
                    _t("Sem limite", "Você pode preencher todas as redes nos dois planos. Só aparece o ícone da rede que você preencher e os cliques são contados.")),
             _grupo("Conversor de links pros seus visitantes", "Quem chega no seu site cola um link da Shopee e compra pelo seu link de afiliado.",
                    _t("Cole e compre", "O visitante cola o link de um produto da Shopee e o botão leva à Shopee pelo seu link com o Sub ID do seu site."),
-                   _t("Textos seus", "Você escreve o título, o texto e o texto do botão do conversor, ou usa os que já vêm prontos. Também pode desligar o conversor."),
+                   _t("Textos seus", "Você escreve o título, o texto e o texto do botão do conversor ou usa os que já vêm prontos. Também pode desligar o conversor."),
                    _t("Links curtos funcionam", "O Appfiliado abre links curtos da Shopee para achar o produto."),
                    _t("Proteção contra abuso", "Cada visitante converte até 20 links por hora.")),
             _grupo("Vitrine de ofertas", "Uma seção com as ofertas do dia com foto, preço e desconto.",
-                   _t("As últimas ofertas do bot", "Cada oferta que o bot enviar entra no topo da vitrine, sem repetir. Ficam as 100 mais recentes. Disponível para quem tem o Bot de WhatsApp."),
-                   _t("Uma busca na Shopee", "Ofertas em geral, por palavra-chave, de uma loja ou por categoria, ordenadas por mais vendidos, maior comissão ou maior desconto. A vitrine é atualizada a cada 3 horas com até 100 produtos."),
-                   _t("Produtos que você escolher", "Cole os links dos produtos, um por linha e na ordem que quiser, até 60. A vitrine mostra só o que você escolheu.", "Premium"),
+                   _t("As últimas ofertas do bot", f"Cada oferta que o bot enviar entra no topo da vitrine, sem repetir. Ficam as mais recentes: até {_mil(s['ofertas'])} no Standard e {_mil(p['ofertas'])} no Premium, sem deixar uma categoria tomar conta. Disponível para quem tem o Bot de WhatsApp."),
+                   _t("Uma busca na Shopee", f"Ofertas em geral, por palavra-chave, de uma loja ou por categoria, ordenadas por mais vendidos, maior comissão ou maior desconto, com as categorias equilibradas. A vitrine é atualizada a cada 3 horas com até {_mil(s['ofertas'])} produtos no Standard e {_mil(p['ofertas'])} no Premium."),
+                   _t("Produtos que você escolher", f"Cole os links dos produtos, um por linha e na ordem que quiser, até {_mil(p['escolhidos'])}. A vitrine mostra só o que você escolheu.", "Premium"),
                    _t("Categorias", "Quando há produtos de mais de uma categoria, o visitante filtra por elas. Você pode corrigir a categoria de cada produto."),
                    _t("Seu link em cada produto", "Cada produto leva o visitante à Shopee pelo seu link de afiliado.")),
             _grupo("Cliques e vendas", "Veja o que o seu site está gerando.",
@@ -171,8 +180,8 @@ def site():
         ],
         "tabela": [
             ("Botões de link", f"até {s['botoes']}", f"até {p['botoes']}"),
-            ("Vitrine com as ofertas do bot ou de uma busca", True, True),
-            ("Vitrine com produtos escolhidos por você (até 60)", False, True),
+            ("Ofertas na vitrine (do bot ou de uma busca)", f"até {_mil(s['ofertas'])}", f"até {_mil(p['ofertas'])}"),
+            (f"Vitrine com produtos escolhidos por você (até {_mil(p['escolhidos'])})", False, True),
             ("\"Feito com Appfiliado\" no rodapé", "Aparece", "Sem"),
             ("Redes sociais (7)", True, True),
             ("Conversor de links para visitantes", True, True),
@@ -184,8 +193,8 @@ def site():
             ("Preciso ter o Bot de WhatsApp?", "Não. A vitrine pode vir de uma busca na Shopee ou, no Premium, dos produtos que você escolher. A opção \"últimas ofertas que o bot enviou\" só aparece para quem tem o Bot."),
             ("O conversor de links gera comissão para mim?", "Sim. O visitante cola o link de um produto da Shopee e vai pra loja pelo seu link de afiliado com o Sub ID do seu site, para você acompanhar as vendas em Resultados."),
             ("A vitrine atualiza sozinha?", "A vitrine por busca é refeita a cada 3 horas e a das ofertas do bot, a cada oferta enviada. A vitrine com produtos escolhidos por você é refeita quando você salva."),
-            ("O que muda do Standard pro Premium?", f"O Premium tem até {p['botoes']} botões (no Standard, {s['botoes']}), permite escolher os produtos da vitrine e tira a assinatura \"Feito com Appfiliado\" do rodapé. Todo o resto é igual."),
-            ("O que acontece se eu voltar pro Standard?", f"O site continua no ar com os primeiros {s['botoes']} botões. A vitrine com produtos escolhidos fica vazia até você trocar a fonte."),
+            ("O que muda do Standard pro Premium?", f"O Premium tem até {p['botoes']} botões (no Standard, {s['botoes']}) e até {_mil(p['ofertas'])} ofertas na vitrine (no Standard, {_mil(s['ofertas'])}), permite escolher os produtos da vitrine e tira a assinatura \"Feito com Appfiliado\" do rodapé. Todo o resto é igual."),
+            ("O que acontece se eu voltar pro Standard?", f"O site continua no ar com os primeiros {s['botoes']} botões e as primeiras {_mil(s['ofertas'])} ofertas. A vitrine com produtos escolhidos fica vazia até você trocar a fonte."),
         ],
     }
 
@@ -274,9 +283,9 @@ def estudio():
     return {
         "codigo": "estudio", "slug": "estudio-instagram", "url": "landing_estudio", "nome": "Estúdio Instagram",
         "titulo": "Estúdio Instagram para afiliado Shopee — Appfiliado",
-        "descricao": "Crie posts e stories com o seu link de afiliado a partir do link de um produto da Shopee, com textos por IA, e publique direto no seu Instagram, na hora ou agendado.",
+        "descricao": "Crie posts e stories com o seu link de afiliado a partir do link de um produto da Shopee com textos por IA e publique direto no seu Instagram na hora ou agendado.",
         "h1": "Do link da Shopee ao post publicado no seu Instagram.",
-        "texto": "Cole o link de um produto e a IA monta o post com a foto, o preço e a legenda. Você ajusta no editor e publica no feed ou nos stories, na hora ou no horário que escolher.",
+        "texto": "Cole o link de um produto e a IA monta o post com a foto, o preço e a legenda. Você ajusta no editor e publica no feed ou nos stories na hora ou no horário que escolher.",
         "resumo": [
             ("Criações com IA por dia", f"{s['geracoes']}", f"{p['geracoes']}"),
             ("Modelos prontos", "7", "7 + os seus"),
@@ -290,20 +299,20 @@ def estudio():
                    _t("De um modelo", "Escolha um dos 7 modelos prontos e troque os textos."),
                    _t("Com IA", "Descreva o post que você quer e a IA escreve os slides e a legenda."),
                    _t("Em branco", "Comece do zero. No Standard, o post começa com uma capa. No Premium, você monta slide por slide.")),
-            _grupo("A IA escreve com você", "Textos de afiliado, prontos para postar.",
-                   _t("Slides e legenda", "A IA escreve como afiliado, sem inventar medidas ou garantias e sem fazer conta de preço: o preço vem da Shopee."),
+            _grupo("A IA escreve com você", "Textos de afiliado prontos para postar.",
+                   _t("Slides e legenda", "A IA escreve como afiliado sem inventar medidas ou garantias e sem fazer conta de preço: o preço vem da Shopee."),
                    _t("Ajuste com IA", "Peça mudanças com as suas palavras, como \"deixe os textos mais curtos\", ou crie os slides de novo."),
-                   _t("Limite por dia", f"{s['geracoes']} criações com IA por dia no Standard e {p['geracoes']} no Premium. Quando acabam, o post de produto sai do modelo, com a foto e o preço.")),
+                   _t("Limite por dia", f"{s['geracoes']} criações com IA por dia no Standard e {p['geracoes']} no Premium. Quando acabam, o post de produto sai do modelo com a foto e o preço.")),
             _grupo("Posts e stories", "Três formatos no tamanho certo do Instagram.",
-                   _t("Post 1:1 e 4:5", "Carrossel de até 10 slides ou post de uma imagem, em 1080 × 1080 ou 1080 × 1350 pixels."),
+                   _t("Post 1:1 e 4:5", "Carrossel de até 10 slides ou post de uma imagem em 1080 × 1080 ou 1080 × 1350 pixels."),
                    _t("Story 9:16", "Sequência de stories em 1080 × 1920 pixels."),
                    _t("Tipos de slide", "Capa, produto, preço, lista, texto, cupom e chamada."),
                    _t("Margens de segurança", "O editor mostra as margens e avisa quando um texto fica pequeno demais ou sai da área segura.")),
             _grupo("O seu visual", "No Premium, o post fica com a cara da sua marca.",
                    _t("Seu @ nos posts", "O seu @ do Instagram aparece nos slides nos dois planos."),
-                   _t("5 temas de cor", "Verde, laranja, rosa, azul e preto, em qualquer post.", "Premium"),
+                   _t("5 temas de cor", "Verde, laranja, rosa, azul e preto em qualquer post.", "Premium"),
                    _t("Minha marca", "Logo, nome, cor principal, cor de destaque e uma de 6 fontes em todos os posts.", "Premium"),
-                   _t("Fundos e ajustes", "Fundo de cor, arte ou imagem, e o tamanho dos textos, as margens, o alinhamento e a posição de cada slide.", "Premium"),
+                   _t("Fundos e ajustes", "Fundo de cor, arte ou imagem e o tamanho dos textos, as margens, o alinhamento e a posição de cada slide.", "Premium"),
                    _t("Mais slides", "Adicione, duplique e troque o tipo dos slides.", "Premium"),
                    _t("Seus modelos", "Salve um post como modelo e comece os próximos por ele.", "Premium")),
             _grupo("Fotos", "Para o produto aparecer do jeito que você quer.",
@@ -311,18 +320,18 @@ def estudio():
                    _t("Suas fotos", "Envie fotos (JPG, PNG ou WebP, até 12 MB) e use nos slides."),
                    _t("Remoção de fundo", "Tire o fundo da foto com um clique e o produto aparece solto no slide. Funciona no seu navegador.", "Premium")),
             _grupo("Publicar no Instagram", "Sem baixar e subir imagem por imagem.",
-                   _t("Conecte o seu Instagram", "Conta profissional (comercial ou de criador), pelo login oficial do Instagram."),
-                   _t("Na hora ou agendado", "Publique agora ou escolha o dia e a hora, até 60 dias para frente."),
+                   _t("Conecte o seu Instagram", "Conta profissional (comercial ou de criador) pelo login oficial do Instagram."),
+                   _t("Na hora ou agendado", "Publique agora ou escolha o dia e a hora até 60 dias para frente."),
                    _t("Feed e stories", "Posts 1:1 e 4:5 vão para o feed com a legenda. Posts 9:16 viram stories, um por slide."),
-                   _t("Acompanhe tudo", "A página de Publicações mostra o que está agendado e o que já foi, com o link para ver no Instagram. Dá para cancelar um agendamento.")),
+                   _t("Acompanhe tudo", "A página de Publicações mostra o que está agendado e o que já foi com o link para ver no Instagram. Dá para cancelar um agendamento.")),
             _grupo("Baixar e copiar", "Para postar onde você quiser.",
-                   _t("PNG e ZIP", "Baixe um slide ou todos num ZIP, com a legenda junto."),
+                   _t("PNG e ZIP", "Baixe um slide ou todos num ZIP com a legenda junto."),
                    _t("Legenda e link", "Copie a legenda (até 2.200 caracteres) e o seu link de afiliado com um clique.")),
         ],
         "tabela": [
             ("Criações com IA por dia", f"{s['geracoes']}", f"{p['geracoes']}"),
             ("7 modelos prontos de post e story", True, True),
-            ("Publicar no feed e nos stories, na hora ou agendado", True, True),
+            ("Publicar no feed e nos stories na hora ou agendado", True, True),
             ("Editar os textos e a foto dos slides", True, True),
             ("Download em PNG e ZIP", True, True),
             ("Adicionar, duplicar e trocar o tipo dos slides", False, True),
@@ -333,7 +342,7 @@ def estudio():
         ],
         "perguntas": [
             ("Preciso de uma conta profissional no Instagram?", "Para publicar pelo Appfiliado, sim: comercial ou de criador. Para criar e baixar os posts, não precisa conectar nada."),
-            ("Dá para colocar o link no story?", "A Meta não deixa colocar o adesivo de link na publicação automática. Para mandar o link, use as Automações do Instagram: no Premium delas, quem responder o story recebe o link por DM."),
+            ("Dá para colocar o link no story?", "A Meta não deixa colocar o adesivo de link na publicação automática. Para mandar o link, use as Automações Instagram: no Premium delas, quem responder o story recebe o link por DM."),
             ("Preciso conectar a minha conta da Shopee?", "Para criar posts a partir do link de um produto, sim, com a API da Shopee liberada. Os modelos, a IA e o post em branco funcionam sem."),
             ("Os posts têm marca d'água?", "Não. As imagens saem limpas, só com o seu @ e, no Premium, a sua marca."),
             ("O limite diário reinicia quando?", "À meia-noite, no horário de Brasília."),
@@ -344,11 +353,11 @@ def estudio():
 
 def automacoes():
     return {
-        "codigo": "automacoes", "slug": "automacoes-instagram", "url": "landing_automacoes", "nome": "Automações do Instagram",
-        "titulo": "Automações do Instagram para afiliado Shopee — Appfiliado",
-        "descricao": "Quem comentar a palavra certa no seu post recebe o seu link de afiliado por DM, na hora. Respostas a comentários, stories e DMs no automático, sem limite por mês.",
-        "h1": "Comentou QUERO, recebeu o link na DM.",
-        "texto": "Escolha o post e a palavra. Quem comentar recebe uma resposta no comentário e o seu link de afiliado por DM, sem você responder um por um.",
+        "codigo": "automacoes", "slug": "automacoes-instagram", "url": "landing_automacoes", "nome": "Automações Instagram",
+        "titulo": "Automações Instagram para afiliado Shopee — Appfiliado",
+        "descricao": "Quem comentar a palavra certa no seu post recebe o seu link de afiliado por DM na hora. Respostas a comentários, stories e DMs no automático e sem limite por mês.",
+        "h1": "Comentou a palavra-chave correta, recebeu link na DM.",
+        "texto": "Escolha o post ou story e as palavras-chave que você quiser e pronto: quem comentar recebe o seu link de afiliado por DM, sem precisar responder um a um.",
         "resumo": [
             ("Pessoas respondidas por mês", "Sem limite", "Sem limite"),
             ("Automações ligadas", "Até 5", "Sem limite"),
@@ -357,27 +366,27 @@ def automacoes():
         ],
         "grupos": [
             _grupo("Como funciona", "Três passos e a automação fica ligada.",
-                   _t("Conecte o seu Instagram", "Conta profissional (comercial ou de criador), pelo login oficial do Instagram, sem passar a sua senha para o Appfiliado."),
-                   _t("Escolha o post e a palavra", "Um post específico ou todos os posts, e as palavras que disparam, como QUERO ou LINK. Maiúsculas e acentos não importam."),
+                   _t("Conecte o seu Instagram", "Conta profissional (comercial ou de criador) pelo login oficial do Instagram sem passar a sua senha para o Appfiliado."),
+                   _t("Escolha o post e a palavra", "Um post específico ou todos os posts e as palavras que disparam, como QUERO ou LINK. Maiúsculas e acentos não importam."),
                    _t("Escreva a resposta e a DM", "A resposta que aparece no comentário e a DM com o seu link de afiliado.")),
             _grupo("Comentários nos posts", "O jeito mais usado pelos afiliados.",
-                   _t("Resposta no comentário", "Escreva algumas respostas: sai uma delas, sorteada, para não parecer robô. Use {nome} para marcar a pessoa."),
+                   _t("Resposta no comentário", "Escolha uma ou mais respostas para responder quem comentou no seu post. Use {nome} para marcar a pessoa."),
                    _t("DM com o link", "A pessoa recebe o seu link na DM logo depois de comentar."),
                    _t("Do Estúdio para a automação", "Criou o post no Estúdio Instagram? Um clique cria a automação com o nome e o link do produto.")),
             _grupo("Só no Premium", "Mais lugares para responder e mais controle das vendas.",
                    _t("Respostas aos stories", "Quem responder o seu story recebe o link por DM. Vale para um story específico ou para todos.", "Premium"),
                    _t("DM com palavra-chave", "Quem mandar uma DM com a palavra, como CUPOM, recebe a resposta na hora.", "Premium"),
                    _t("Link num botão", "A DM chega com o seu texto e um botão, como \"Ver produto\", que abre o link.", "Premium"),
-                   _t("Sub ID por automação", "Cada automação gera o link com o seu próprio Sub ID, e em Resultados você vê quanto cada post vendeu.", "Premium"),
+                   _t("Sub ID por automação", "Cada automação gera o link com o seu próprio Sub ID e em Resultados você vê quanto cada post vendeu.", "Premium"),
                    _t("Automações sem limite", "Deixe ligadas quantas automações quiser, uma para cada post. No Standard, ficam até 5 ligadas ao mesmo tempo.", "Premium")),
             _grupo("Seguro para a sua conta", "Regras para não parecer spam.",
                    _t("Uma vez por pessoa", "Cada pessoa recebe a resposta uma vez só em cada automação, mesmo se comentar de novo."),
-                   _t("Post viralizou? Ninguém fica sem resposta", "Não há limite por mês. O Instagram aceita até 750 respostas por hora em cada conta: passando disso, as respostas entram numa fila e saem na hora seguinte, por ordem de chegada."),
+                   _t("Post viralizou? Ninguém fica sem resposta", "Não há limite por mês. O Instagram aceita até 750 respostas por hora em cada conta: passando disso, as respostas entram numa fila e saem na hora seguinte por ordem de chegada."),
                    _t("API oficial", "O Appfiliado usa a API oficial do Instagram (Meta). Nada de senha nem de extensão no navegador."),
                    _t("No seu controle", "Pause, edite ou exclua cada automação no painel quando quiser.")),
             _grupo("Histórico", "Veja quem foi respondido.",
                    _t("Quem recebeu", "Data, pessoa, o que ela escreveu e se a resposta e a DM saíram."),
-                   _t("Resumo do mês", "O painel mostra quantas pessoas foram respondidas no mês e quantas estão na fila, quando o post viraliza.")),
+                   _t("Resumo do mês", "O painel mostra quantas pessoas foram respondidas no mês e quantas estão na fila quando o post viraliza.")),
         ],
         "tabela": [
             ("Pessoas respondidas por mês", "Sem limite", "Sem limite"),
@@ -391,11 +400,11 @@ def automacoes():
             ("Sub ID por automação", False, True),
         ],
         "perguntas": [
-            ("Preciso de uma conta profissional no Instagram?", "Sim: comercial ou de criador. Você conecta pelo login oficial do Instagram, sem passar a sua senha para o Appfiliado."),
+            ("Preciso de uma conta profissional no Instagram?", "Sim: comercial ou de criador. Você conecta pelo login oficial do Instagram sem passar a sua senha para o Appfiliado."),
             ("A DM chega para quem não me segue?", "Chega. A DM em resposta a um comentário vai para quem comentou, mesmo que a pessoa não siga você. Nesse caso, ela aparece nas solicitações de mensagem."),
-            ("Tem limite de respostas?", "Não por mês. O Instagram aceita até 750 respostas por hora em cada conta: se um post viralizar e passar disso, as respostas entram numa fila e saem na hora seguinte, por ordem de chegada. A resposta a um comentário pode sair até 7 dias depois dele; a de uma DM ou resposta de story, até 24 horas depois."),
-            ("Preciso deixar o painel aberto?", "Não. As automações rodam no servidor do Appfiliado, 24 horas por dia."),
-            ("O que muda do Standard pro Premium?", "O Standard responde comentários nos posts, com até 5 automações ligadas ao mesmo tempo. O Premium também responde stories e DMs com palavra-chave, não tem limite de automações ligadas, manda o link num botão e gera um Sub ID para cada automação. Nos dois, sem limite de pessoas respondidas por mês."),
+            ("Tem limite de respostas?", "Não por mês. O Instagram aceita até 750 respostas por hora em cada conta: se um post viralizar e passar disso, as respostas entram numa fila e saem na hora seguinte por ordem de chegada. A resposta a um comentário pode sair até 7 dias depois dele; a de uma DM ou resposta de story, até 24 horas depois."),
+            ("Preciso deixar o painel aberto?", "Não. As automações rodam no servidor do Appfiliado 24 horas por dia."),
+            ("O que muda do Standard pro Premium?", "O Standard responde comentários nos posts com até 5 automações ligadas ao mesmo tempo. O Premium também responde stories e DMs com palavra-chave, não tem limite de automações ligadas, manda o link num botão e gera um Sub ID para cada automação. Nos dois, sem limite de pessoas respondidas por mês."),
         ],
     }
 
@@ -428,7 +437,8 @@ def radar():
                    _t("Copiar link", "Copia o seu link de afiliado, em todos os planos."),
                    _t("Mandar no grupo", "Envia o produto, com foto e texto, para um grupo ou canal de WhatsApp.", "Bot de WhatsApp"),
                    _t("Acompanhar o preço", "Coloca o produto no alerta de preço para você ser avisada quando ele cair.", "Bot de WhatsApp"),
-                   _t("Gerar carrossel", "Leva o produto pro gerador e já começa o carrossel do Instagram.", "Gerador de carrosséis")),
+                   _t("Criar post", "Leva o produto pro Estúdio Instagram e já começa o post, com a foto, o preço e o seu link.",
+                      "Estúdio Instagram" if vendas.lancado() else "Estúdio Instagram · em breve")),
             _grupo("Sempre atualizado", "O catálogo é renovado todo dia.",
                    _t("Atualização diária", "Uma rodada por dia e uma completa por semana, com até 30 mil produtos."),
                    _t("Preço de agora", "Ao mandar no grupo ou acompanhar o preço, o Radar consulta o preço de agora na Shopee."),
@@ -439,7 +449,7 @@ def radar():
             ("O Radar custa a mais?", "Não. O Radar de ofertas está incluso em todos os planos do Appfiliado."),
             ("De onde vêm os produtos?", "Do catálogo de produtos da Shopee que têm comissão de afiliado. O Appfiliado atualiza esse catálogo todo dia."),
             ("O preço que aparece é o de agora?", "O catálogo é atualizado todo dia. Na hora de mandar no grupo ou acompanhar o preço, o Radar consulta o preço de agora na Shopee."),
-            ("Preciso do Bot de WhatsApp?", "Não. Copiar o link de afiliado funciona em todos os planos. Mandar no grupo e acompanhar o preço precisam do Bot de WhatsApp, e gerar carrossel precisa do Gerador de carrosséis."),
+            ("Preciso do Bot de WhatsApp?", "Não. Copiar o link de afiliado funciona em todos os planos. Mandar no grupo e acompanhar o preço precisam do Bot de WhatsApp, e criar o post precisa do Estúdio Instagram" + ("." if vendas.lancado() else ", que chega em breve.")),
             ("Não achei um produto que está na Shopee. E agora?", "A Shopee limita quantos produtos libera para afiliados, então nem todo produto do site aparece no Radar. Cole o link dele no Conversor de links e gere o seu link do mesmo jeito."),
         ],
     }
@@ -455,7 +465,7 @@ def conversor():
         "grupos": [
             _grupo("Cole, converta, encaminhe", "Menos de um minuto do texto original ao texto com o seu link.",
                    _t("Cole o texto", "Pode ser a mensagem que a Shopee mandou no canal dela ou uma lista de links de qualquer lugar."),
-                   _t("Escolha como sai", "Mantenha o texto e troque só os links, ou receba só a lista dos links convertidos."),
+                   _t("Escolha como sai", "Mantenha o texto e troque só os links ou receba só a lista dos links convertidos."),
                    _t("Converta e copie", "Clique em Converter, ajuste o texto se quiser e copie o resultado.")),
             _grupo("Dois jeitos de sair", "O mesmo texto, no formato que você precisar.",
                    _t("Manter o texto e trocar os links", "O texto fica igual e só os links da Shopee são trocados. Links que não são da Shopee, como convite de grupo, saem do texto."),
@@ -514,6 +524,13 @@ def resultados():
                    _t("Relatório diário por e-mail", "No horário que você escolher, com resultados de ontem e do mês, Sub IDs e produtos mais vendidos."),
                    _t("Mesmas regras da Shopee", "Faturamento e pedidos pela data da compra, comissão validada pela data em que a Shopee confirmou o pedido."),
                    _t("Histórico guardado", "Os dias ficam guardados desde a conexão. A Shopee só deixa buscar uns 3 meses para trás.")),
+            _grupo("Lia, sua assistente no WhatsApp", "Seus números por mensagem, sem abrir o painel.",
+                   _t("Vincule o seu número", "Em Configurações, gere um código e mande para a Lia. Dá para vincular até 2 números por conta."),
+                   _t("Peça por mensagem", "Mande uma palavra e a resposta chega na hora."),
+                   _t("Comissão validada de hoje", "A única que a Shopee libera no mesmo dia. A Lia busca na Shopee e te responde em até 1 minuto."),
+                   _t("Atualize quando quiser", "Mande \"atualizar\" e a Lia busca os dados mais novos na Shopee e avisa quando terminar."),
+                   _t("Dúvidas a qualquer hora", "A Lia também responde sobre planos, módulos, a API da Shopee e como usar o painel."),
+                   ancora="lia"),
         ],
         "perguntas": [
             ("Resultados e metas custam a mais?", "Não. Estão inclusos em todos os planos do Appfiliado."),
@@ -521,6 +538,7 @@ def resultados():
             ("Por que de hoje só aparece a comissão validada?", "A Shopee libera faturamento, comissão estimada e pedidos no dia seguinte. A comissão validada vai entrando ao longo do dia."),
             ("Preciso cadastrar as metas?", "Não, é opcional. Se a Shopee te deu metas com bônus no mês, cadastre para acompanhar quanto falta."),
             ("Dá para exportar as vendas?", "Dá. As vendas do período saem em Excel, com os filtros que você aplicou."),
+            ("Como funciona a Lia?", "A Lia é a assistente do Appfiliado no WhatsApp, incluída em todos os planos. Em Configurações, você gera um código e manda para ela do número que vai pedir os resultados (até 2 números por conta). Depois, é só mandar resultados, metas, vendas, top, validada ou atualizar. Os números são os mesmos do painel, e as dúvidas sobre o Appfiliado ela responde com IA."),
         ],
     }
 
@@ -549,7 +567,7 @@ APRESENTACAO = {
         "cores": {"Cores": ["#E8541E", "#D92D20", "#D6336C", "#F783AC", "#7048E8", "#B197FC", "#2F6FDE", "#1E3A8A", "#0E9AA7", "#2F9E44",
                             "#1F3A2E", "#F2B705", "#8B5E3C", "#5F6B7A", "#111111"]},
         "numeros": lambda: [(f"{plano.SITE[False]['botoes']} a {plano.SITE[True]['botoes']}", "botões de link"),
-                            ("7", "redes sociais"), ("100", "produtos na vitrine"), ("20/h", "conversões por visitante")],
+                            ("7", "redes sociais"), (f"{_mil(plano.SITE[False]['ofertas'])} a {_mil(plano.SITE[True]['ofertas'])}", "ofertas na vitrine"), ("20/h", "conversões por visitante")],
     },
     "radar": {
         "layouts": ["passos", "split", "cartoes", "lista", "faixa"],
@@ -562,8 +580,9 @@ APRESENTACAO = {
         "numeros": lambda: [("20", "links por vez"), ("2", "jeitos de sair"), ("1 clique", "para copiar"), ("Sub ID", "para medir cada divulgação")],
     },
     "resultados": {
-        "layouts": ["passos", "split", "destaque", "cartoes", "faixa"],
-        "curtos": ["Conexão", "Resultados", "Sub IDs", "Metas", "No dia a dia"],
+        "layouts": ["passos", "split", "destaque", "cartoes", "faixa", "split"],
+        "curtos": ["Conexão", "Resultados", "Sub IDs", "Metas", "No dia a dia", "Lia no WhatsApp"],
+        "chips": {"Peça por mensagem": ["resultados", "metas", "vendas", "top", "validada", "atualizar"]},
         "numeros": lambda: [("8", "períodos prontos"), ("3", "faixas de meta"), ("Excel", "pras vendas do período"), ("1x ao dia", "relatório por e-mail")],
     },
     "estudio": {
@@ -593,12 +612,54 @@ APRESENTACAO = {
 }
 
 
+# Antes do lançamento, as páginas do Estúdio e das Automações ficam no ar sem falar de planos: sem os
+# selos de Premium, sem a tabela Standard × Premium e com os textos abaixo no lugar dos que citam plano.
+SEM_PLANOS = {
+    "estudio": {
+        "aviso": "O Estúdio Instagram será lançado em breve.",
+        "itens": {"Em branco": "Comece do zero e monte o post slide por slide.",
+                  "Limite por dia": "A IA tem um limite de criações por dia. Quando ele acaba, o post de produto sai do modelo com a foto e o preço.",
+                  "Seu @ nos posts": "O seu @ do Instagram aparece nos slides."},
+        "intros": {"O seu visual": "O post com a cara da sua marca."},
+        "perguntas": {"Dá para colocar o link no story?": "A Meta não deixa colocar o adesivo de link na publicação automática. Para mandar o link, use as Automações Instagram: quem responder o story recebe o link por DM.",
+                      "Os posts têm marca d'água?": "Não. As imagens saem limpas, só com o seu @ e a sua marca."},
+        "numeros": [("4", "jeitos de começar um post"), ("7", "modelos prontos"), ("3", "formatos: 1:1, 4:5 e 9:16"), ("60 dias", "para agendar")],
+    },
+    "automacoes": {
+        "aviso": "As Automações Instagram serão lançadas em breve.",
+        "fora": {"Automações sem limite"},
+        "grupos": {"Só no Premium": ("Stories, DMs e Sub ID", "Stories e DMs")},
+    },
+}
+
+
+def _sem_planos(modulo, pagina):
+    troca = SEM_PLANOS.get(modulo, {})
+    for g in pagina["grupos"]:
+        if g["titulo"] in troca.get("grupos", {}):
+            g["titulo"], g["curto_breve"] = troca["grupos"][g["titulo"]]
+        g["intro"] = troca.get("intros", {}).get(g["titulo"], g["intro"])
+        g["itens"] = [i for i in g["itens"] if i["nome"] not in troca.get("fora", set())]
+        for item in g["itens"]:
+            item["plano"] = ""
+            item["texto"] = troca.get("itens", {}).get(item["nome"], item["texto"])
+    pagina["perguntas"] = [(q, troca.get("perguntas", {}).get(q, r)) for q, r in pagina["perguntas"] if "Standard" not in q]
+    pagina["resumo"], pagina["tabela"], pagina["em_breve"] = [], [], True
+    pagina["aviso_breve"] = troca.get("aviso", f"{pagina['nome']}: lançamento em breve.")
+    return pagina
+
+
 def _apresentar(modulo, pagina):
     ap = APRESENTACAO[modulo]
+    breve = vendas.em_breve(modulo)
+    if breve:
+        pagina = _sem_planos(modulo, pagina)
     fundo = ""
     for n, (g, layout, curto) in enumerate(zip(pagina["grupos"], ap["layouts"], ap["curtos"])):
-        g["layout"], g["curto"] = layout, curto
-        g["prints"] = prints_de(modulo, n)
+        if breve and layout == "premium":
+            layout, curto = "cartoes", g.pop("curto_breve", curto)
+        g["layout"], g["curto"], g["id"] = layout, curto, g.get("ancora") or f"g{n + 1}"
+        g["prints"] = [] if breve else prints_de(modulo, n)
         if layout == "premium":
             g["fundo"] = "verde"
         else:  # alterna branco e creme, para duas seções vizinhas nunca terem a mesma cor
@@ -607,8 +668,9 @@ def _apresentar(modulo, pagina):
         for item in g["itens"]:
             item["chips"] = ap.get("chips", {}).get(item["nome"], [])
             item["cores"] = ap.get("cores", {}).get(item["nome"], [])
-    pagina["numeros"] = ap["numeros"]()
-    pagina["print_do_topo"] = next((pr for g in pagina["grupos"] for pr in g["prints"] if not pr["celular"]), None)
+    pagina["numeros"] = (SEM_PLANOS.get(modulo, {}).get("numeros") if breve else None) or ap["numeros"]()
+    pagina["print_do_topo"] = next((pr for g in pagina["grupos"] for pr in g["prints"]
+                                    if not pr["celular"] and not pr["so_celular"]), None)
     return pagina
 
 
@@ -633,7 +695,9 @@ PRINTS = {
     "resultados": {1: [("resultados", "Faturamento, comissão e pedidos do período, com gráfico e meta do mês.", "Tela de resultados do mês"),
                        ("resultados-produtos", "O ranking de produtos e a lista de vendas, com filtros e Excel.", "Produtos mais vendidos e vendas do período")],
                    3: [("metas", "Quanto falta para cada faixa de bônus e a projeção do mês.", "Tela de metas da Shopee")],
-                   4: [("inicio", "A primeira tela do painel, com o mês, o dia anterior e a meta.", "Tela inicial do painel do Appfiliado")]},
+                   4: [("inicio", "A primeira tela do painel, com o mês, o dia anterior e a meta.", "Tela inicial do painel do Appfiliado")],
+                   5: [("lia-whatsapp", "Os resultados e a comissão validada de hoje, pedidos à Lia pelo WhatsApp.",
+                        "Conversa no WhatsApp com a Lia mostrando os resultados e a comissão validada do dia")]},
     "notas": {0: [("notas-lote", "Notas autorizadas e e-mails indo pros vendedores, com o andamento de cada etapa.", "Lote de notas fiscais do Emissor NFS-e")],
               1: [("notas", "Cadastro da empresa, certificado e o uso do seu plano no mês.", "Tela inicial do Emissor NFS-e")]},
 }
@@ -656,6 +720,7 @@ TAMANHOS = {
     "resultados": (1100, 861, 442, 2144),
     "resultados-produtos": (1100, 2044, 442, 2300),
     "site-pronto": (380, 1129, 300, 891),  # o site visto pelo visitante, num celular (marketing/appfiliado/prints/site_pronto.py)
+    "lia-whatsapp": (340, 856, 340, 856),  # conversa com a Lia num celular (marketing/appfiliado/prints/lia_whatsapp.py)
     "site-botoes": (1100, 1206, 420, 1387),
     "site-editor": (1100, 1249, 420, 2300),
     "site-editor-form": (712, 1159, 420, 1462),  # recorte do site-editor só com a coluna do formulário
@@ -670,10 +735,15 @@ AO_LADO_DO_EDITOR = {"site-pronto": ("site-editor-form",
                                      "No editor você escolhe o endereço, a foto, o nome, as cores e as redes sociais.")}
 
 
+# Prints que são só um celular (sem a janela do painel em volta).
+SO_CELULAR = {"lia-whatsapp"}
+
+
 def _print(a, leg, alt):
     w, h, wm, hm = TAMANHOS[a]
     p = {"arquivo": f"landing/prints/{a}.webp", "arquivo_m": f"landing/prints/{a}-m.webp",
-         "legenda": leg, "alt": alt, "largura": w, "altura": h, "largura_m": wm, "altura_m": hm, "celular": None}
+         "legenda": leg, "alt": alt, "largura": w, "altura": h, "largura_m": wm, "altura_m": hm, "celular": None,
+         "so_celular": a in SO_CELULAR}
     if a in AO_LADO_DO_EDITOR:
         e, leg_celular, leg_editor = AO_LADO_DO_EDITOR[a]
         p["celular"] = {"legenda": leg_celular, "editor": _print(e, leg_editor, "Editor do Meu site: endereço, perfil, cores e redes sociais")}

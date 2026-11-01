@@ -21,17 +21,20 @@ import sys
 import tempfile
 import threading
 import time
+from collections import defaultdict
 from datetime import timedelta
 from pathlib import Path
 
 from django.conf import settings
 from django.db import close_old_connections
+from django.db.models import Min
 from django.utils import timezone
 
 from atendimento import servico as atendimento
 
-from . import avisos_de_queda, copia, rede
-from .models import ConexaoWhatsApp, ConfiguracaoOfertas, EnvioWhatsApp, MensagemAvulsa, OfertaRecebida
+from . import avisos_de_queda, copia, entrada, grupos_novos, membros, rede
+from .models import (ConexaoWhatsApp, ConfiguracaoOfertas, EnvioWhatsApp, GrupoMonitorado, MensagemAvulsa,
+                     OfertaRecebida, PedidoGrupo)
 from .servico import registrar_evento
 
 logger = logging.getLogger(__name__)
@@ -79,6 +82,17 @@ def propriedades_do_aparelho():
     )
 
 
+def _sou_admin(grupo, numero: str) -> bool:
+    """O número do bot é administrador do grupo? (procura pelo número; nos grupos com LID, pelo
+    PhoneNumber de cada participante)."""
+    if not numero:
+        return False
+    for participante in getattr(grupo, "Participants", []) or []:
+        if numero in (participante.JID.User, participante.PhoneNumber.User):
+            return bool(participante.IsAdmin or participante.IsSuperAdmin)
+    return False
+
+
 def _jid_texto(jid) -> str:
     return f"{jid.User}@{jid.Server}"
 
@@ -99,6 +113,7 @@ class Sessao:
             ConnectedEv,
             ConnectFailureEv,
             DisconnectedEv,
+            GroupInfoEv,
             KeepAliveRestoredEv,
             KeepAliveTimeoutEv,
             LoggedOutEv,
@@ -114,6 +129,8 @@ class Sessao:
         # (o gerenciador atualiza a cada 30 s a partir da configuração das ofertas).
         self.origens: set[str] = set()
         self.canais_ao_vivo: dict[str, float] = {}  # canal -> até quando vale o "ao vivo"
+        # Aba Membros: grupos em que entradas e saídas interessam (o gerenciador atualiza a cada 30 s).
+        self.monitorados: set[str] = set()
         jid = JID.FromString(base64.b64decode(jid_b64)) if (jid_b64 and not novo) else None
         # Sem jid é sempre um aparelho novo: senão a biblioteca retomaria a primeira
         # sessão guardada no banco, que pode ser de outra conta.
@@ -155,6 +172,13 @@ class Sessao:
         @self.cliente.event(KeepAliveRestoredEv)
         def _estabilizou(_cliente, _ev):
             self.fila.put(("estabilizou", conta_id, "", self))
+
+        @self.cliente.event(GroupInfoEv)
+        def _mudou_o_grupo(_cliente, ev):
+            # Alguém entrou ou saiu: só a contagem vai para a fila (nunca quem foi).
+            entradas, saidas = len(ev.Join), len(ev.Leave)
+            if (entradas or saidas) and self.monitorados and _jid_texto(ev.JID) in self.monitorados:
+                self.fila.put(("membros", conta_id, (_jid_texto(ev.JID), entradas, saidas), self))
 
         @self.cliente.event(MessageEv)
         def _mensagem(_cliente, ev):
@@ -204,6 +228,7 @@ class Gerenciador:
         self.ultimo_envio: dict[int, float] = {}
         self.proxima_atualizacao_das_origens = 0.0
         self.proxima_limpeza_de_fotos = 0.0
+        self.proxima_leitura_de_membros = 0.0
 
     # --- Ciclo -----------------------------------------------------------------
 
@@ -224,6 +249,8 @@ class Gerenciador:
         self.reabrir_sessoes_paradas()
         self.atualizar_origens()
         self.enviar_pendentes()
+        self.ler_membros()
+        self.criar_grupos()
         self.limpar_fotos_antigas()
         atendimento.uma_volta(self.sessoes)
 
@@ -367,10 +394,54 @@ class Gerenciador:
                 conta_id__in=list(self.sessoes), ativo=True, modo=ConfiguracaoOfertas.MODO_COPIAR,
             )
         }
+        monitorados = defaultdict(set)
+        for conta_id, jid in GrupoMonitorado.objects.filter(conta_id__in=list(self.sessoes)).values_list("conta_id", "jid"):
+            monitorados[conta_id].add(jid)
         for conta_id, sessao in self.sessoes.items():
             config = configs.get(conta_id)
             sessao.origens = {o["jid"] for o in config.origens if o.get("jid")} if config else set()
+            sessao.monitorados = monitorados[conta_id]
             self._acompanhar_canais(sessao)
+
+    def ler_membros(self):
+        """Aba Membros: uma leitura por hora de cada conta (todos os grupos numa chamada só)."""
+        if time.monotonic() < self.proxima_leitura_de_membros:
+            return
+        self.proxima_leitura_de_membros = time.monotonic() + 60
+        agora = timezone.now()
+        for conta_id in membros.contas_para_ler(agora):
+            sessao = self.sessoes.get(conta_id)
+            if not sessao or not sessao.conectada:
+                continue
+            numero = ConexaoWhatsApp.objects.filter(conta_id=conta_id).values_list("numero", flat=True).first() or ""
+            try:
+                grupos = sessao.cliente.get_joined_groups()
+            except Exception:  # noqa: BLE001 - tenta de novo na próxima volta
+                logger.exception("WhatsApp: não deu para ler os membros dos grupos da conta %s", conta_id)
+                continue
+            dados = {_jid_texto(g.JID): {"membros": len(getattr(g, "Participants", []) or []),
+                                         "nome": g.GroupName.Name, "admin": _sou_admin(g, numero)} for g in grupos}
+            membros.atualizar(conta_id, dados, agora)
+        membros.limpar(agora)
+        self.ler_convites(agora)
+        for linha in entrada.cuidar_dos_links(agora):
+            logger.info(linha)
+
+    def ler_convites(self, agora):
+        """Link de entrada: o link de convite de cada grupo (precisa ser administrador)."""
+        for convite in entrada.convites_para_ler(agora):
+            sessao = self.sessoes.get(convite.conta_id)
+            if not sessao or not sessao.conectada:
+                continue
+            try:
+                link = sessao.cliente.get_group_invite_link(_jid_de_texto(convite.jid))
+                entrada.registrar_convite(convite, link, "", agora)
+            except Exception as erro:  # noqa: BLE001
+                texto = str(erro).lower()
+                motivo = ("O número do bot não é administrador desse grupo: cole o link de convite à mão ou "
+                          "promova o bot." if "forbidden" in texto or "403" in texto or "not-authorized" in texto
+                          else f"Não deu para ler o link de convite: {str(erro)[:150]}")
+                entrada.registrar_convite(convite, "", motivo, agora)
 
     def _acompanhar_canais(self, sessao):
         """Canais só mandam as postagens novas para quem pediu "atualizações ao vivo",
@@ -399,6 +470,81 @@ class Gerenciador:
                     arquivo.unlink()
             except OSError:
                 pass
+
+    def criar_grupos(self):
+        """Pedidos de grupo novo (aba Grupos): só com o WhatsApp conectado."""
+        for pedido in PedidoGrupo.objects.filter(estado=PedidoGrupo.PENDENTE).select_related("conta").order_by("id")[:5]:
+            sessao = self.sessoes.get(pedido.conta_id)
+            if not sessao or not sessao.conectada:
+                if timezone.now() - pedido.criado_em > DESISTE_DO_ENVIO:
+                    grupos_novos.falhou(pedido, "O WhatsApp estava desconectado. Conecte e peça de novo.")
+                continue
+            # Só um processo cria (durante um deploy rodam dois workers): vale quem marcar primeiro.
+            if not PedidoGrupo.objects.filter(pk=pedido.pk, estado=PedidoGrupo.PENDENTE, concluido_em__isnull=True).update(
+                    concluido_em=timezone.now()):
+                continue
+            try:
+                self._criar_grupo(sessao, pedido)
+            except Exception as erro:  # noqa: BLE001
+                logger.exception("WhatsApp: não deu para criar o grupo do pedido %s", pedido.pk)
+                grupos_novos.falhou(pedido, f"O WhatsApp não criou o grupo: {str(erro)[:300]}")
+
+    def _criar_grupo(self, sessao, pedido):
+        from neonize.utils.enum import ParticipantChange
+
+        cliente = sessao.cliente
+        info = cliente.create_group(pedido.nome)
+        jid = info.JID
+        avisos = []
+        if pedido.copiar_foto_e_descricao and pedido.base_jid:
+            base = _jid_de_texto(pedido.base_jid)
+            try:
+                descricao = cliente.get_group_info(base).GroupTopic.Topic
+                if descricao:
+                    cliente.set_group_topic(jid, "", "", descricao)
+            except Exception:  # noqa: BLE001
+                logger.warning("WhatsApp: descrição não copiada (pedido %s)", pedido.pk, exc_info=True)
+                avisos.append("Não deu para copiar a descrição do grupo de base.")
+            try:
+                foto = cliente.get_profile_picture(base)
+                arquivo = rede.baixar(foto.URL) if foto and foto.URL else None
+                if arquivo:
+                    cliente.set_group_photo(jid, arquivo)
+            except Exception:  # noqa: BLE001
+                logger.warning("WhatsApp: foto não copiada (pedido %s)", pedido.pk, exc_info=True)
+                avisos.append("Não deu para copiar a foto do grupo de base.")
+        for liga, texto in ((cliente.set_group_announce, "só administradores enviam"), (cliente.set_group_locked, "dados travados")):
+            if liga is cliente.set_group_announce and not pedido.so_admins:
+                continue
+            try:
+                liga(jid, True)
+            except Exception:  # noqa: BLE001
+                avisos.append(f"Não deu para ligar \"{texto}\": ajuste nas configurações do grupo pelo celular.")
+        membros_no_grupo = 1
+        if pedido.administradores:
+            pessoas = [_jid_de_texto(f"{n}@s.whatsapp.net") for n in pedido.administradores]
+            adicionados = []
+            try:
+                for participante in cliente.update_group_participants(jid, pessoas, ParticipantChange.ADD):
+                    if not participante.Error:
+                        adicionados.append(participante.JID)
+            except Exception:  # noqa: BLE001
+                logger.warning("WhatsApp: administradores não adicionados (pedido %s)", pedido.pk, exc_info=True)
+            if adicionados:
+                try:
+                    cliente.update_group_participants(jid, adicionados, ParticipantChange.PROMOTE)
+                except Exception:  # noqa: BLE001
+                    avisos.append("Os administradores entraram, mas não deu para promover: promova pelo celular.")
+            membros_no_grupo += len(adicionados)
+            if len(adicionados) < len(pessoas):
+                avisos.append("Alguns administradores não puderam ser adicionados (pode ser a privacidade do WhatsApp "
+                              "deles): mande o link de convite e promova pelo celular.")
+        link = cliente.get_group_invite_link(jid)
+        grupos_novos.concluir(pedido, _jid_texto(jid), link, membros_no_grupo, avisos)
+
+    def _aviso_membros(self, conexao, detalhe):
+        jid, entradas, saidas = detalhe
+        membros.registrar_mudanca(conexao.conta_id, jid, entradas, saidas, timezone.now())
 
     def _aviso_estabilizou(self, conexao, _detalhe):
         registrar_evento(conexao.conta_id, "estabilizou", "O WhatsApp voltou a responder.")
@@ -471,6 +617,7 @@ class Gerenciador:
                 "jid": _jid_texto(grupo.JID),
                 "nome": grupo.GroupName.Name or "(grupo sem nome)",
                 "participantes": len(getattr(grupo, "Participants", []) or []),
+                "admin": _sou_admin(grupo, conexao.numero),
                 "tipo": "grupo",
             }
             for grupo in grupos
@@ -517,7 +664,7 @@ class Gerenciador:
 
     def enviar_pendentes(self):
         """No máximo uma mensagem por número a cada ESPACO_ENTRE_ENVIOS segundos
-        (várias contas se revezam): uma oferta para 10 grupos não sai de rajada."""
+        (várias contas se revezam): uma oferta para muitos grupos não sai de rajada."""
         from neonize.utils.jid import build_jid
 
         agora = time.monotonic()
@@ -528,8 +675,11 @@ class Gerenciador:
         EnvioWhatsApp.objects.filter(
             estado=EnvioWhatsApp.PENDENTE, enviado_em__lt=timezone.now() - ENVIO_TRAVADO_APOS,
         ).update(estado=EnvioWhatsApp.ERRO, erro="O envio foi interrompido (reinício do servidor). Não foi repetido, para não duplicar.")
-        for envio in EnvioWhatsApp.objects.filter(
-                estado=EnvioWhatsApp.PENDENTE, enviado_em__isnull=True).order_by("id")[:50]:
+        # A mensagem mais antiga da fila de cada conta: quem manda pra 200 grupos não segura a fila
+        # de quem vem depois (cada número tem o seu ritmo).
+        primeiras = (EnvioWhatsApp.objects.filter(estado=EnvioWhatsApp.PENDENTE, enviado_em__isnull=True)
+                     .values("conta_id").annotate(primeira=Min("id")).values_list("primeira", flat=True))
+        for envio in EnvioWhatsApp.objects.filter(pk__in=list(primeiras)).order_by("id"):
             if envio.conta_id in ja_enviou_nesta_volta:
                 continue
             if agora - self.ultimo_envio.get(envio.conta_id, 0) < ESPACO_ENTRE_ENVIOS:
@@ -537,9 +687,11 @@ class Gerenciador:
             sessao = self.sessoes.get(envio.conta_id)
             if not sessao or not sessao.conectada:
                 if timezone.now() - envio.criado_em > DESISTE_DO_ENVIO:
-                    envio.estado = EnvioWhatsApp.ERRO
-                    envio.erro = "O WhatsApp estava desconectado."
-                    envio.save(update_fields=["estado", "erro"])
+                    # Todas as velhas da conta de uma vez (com muitos grupos, a fila é grande).
+                    EnvioWhatsApp.objects.filter(
+                        conta_id=envio.conta_id, estado=EnvioWhatsApp.PENDENTE, enviado_em__isnull=True,
+                        criado_em__lt=timezone.now() - DESISTE_DO_ENVIO,
+                    ).update(estado=EnvioWhatsApp.ERRO, erro="O WhatsApp estava desconectado.")
                 continue
             # Dois workers (o antigo e o novo, durante um deploy) podem olhar a mesma mensagem:
             # só quem conseguir marcar primeiro envia.

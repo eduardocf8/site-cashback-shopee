@@ -1,0 +1,222 @@
+{% extends "painel/base.html" %}
+{% load static painel_extras %}
+{% block titulo %}Grupos · Bot de WhatsApp{% endblock %}
+{% block conteudo %}
+<header class="cabecalho">
+  <div>
+    <h1>Bot de WhatsApp</h1>
+    <p>Ofertas da Shopee enviadas com o seu link de afiliado no automático: buscadas pela API ou copiadas de outros grupos e canais.</p>
+  </div>
+</header>
+{% include "painel/_abas_whatsapp.html" with aba="membros" %}
+
+{% if conexao.estado != "conectado" %}<p class="aviso aviso-warning pequeno">Seu WhatsApp não está conectado. As contagens ficam paradas até ele conectar de novo (na aba <a href="{% url 'painel_whatsapp' %}">Conexão</a>).</p>{% endif %}
+
+{% if criar %}
+<section class="card" id="criar" aria-labelledby="titulo-criar" style="margin-top:16px">
+  <h2 id="titulo-criar">Criar grupo</h2>
+  <p class="suave pequeno" style="margin-bottom:14px">O número do bot cria o grupo e vira o dono. O grupo nasce vazio, só com os administradores que você escolher: quem entra depois é quem clicar no link de convite. Você pode criar até {{ criar.por_dia }} grupos por dia (hoje: {{ criar.feitos_hoje }}), porque o WhatsApp desconfia de número que cria muitos grupos de uma vez.</p>
+  {% if criar.feitos_hoje >= criar.por_dia %}
+  <p class="aviso aviso-warning pequeno">Hoje você já criou {{ criar.por_dia }} grupos. Amanhã libera de novo.</p>
+  {% else %}
+  <form method="post" class="formulario">
+    {% csrf_token %}
+    <input type="hidden" name="acao" value="criar_grupo">
+    <div class="campo">
+      <label for="criar-base">Baseado no grupo</label>
+      <select name="base" id="criar-base">
+        <option value="">Nenhum (grupo do zero)</option>
+        {% for g in criar.bases %}<option value="{{ g.jid }}"{% if g.jid == criar.base %} selected{% endif %}>{{ g.nome }}</option>{% endfor %}
+      </select>
+      <span class="ajuda">Dele vêm a foto, a descrição e o nicho da Automação.</span>
+    </div>
+    <div class="campo">
+      <label for="criar-nome">Nome do grupo novo</label>
+      <input type="text" name="nome" id="criar-nome" value="{{ criar.nome }}" maxlength="100" required placeholder="Ex: Achadinhos da Bia #9">
+    </div>
+    <div class="campo">
+      <label for="criar-subid">Sub ID do grupo (opcional)</label>
+      <input type="text" name="sub_ids" id="criar-subid" value="{{ criar.sub_ids }}" maxlength="300" placeholder="Ex: achadinhos9" autocomplete="off">
+      <span class="ajuda">Vai nos links das ofertas deste grupo, para você ver em Resultados quanto cada grupo vendeu. Até 5, separados por vírgula, só letras sem acento e números.</span>
+    </div>
+    <div class="campo">
+      <label for="criar-admins">Administradores (opcional)</label>
+      <input type="text" name="administradores" id="criar-admins" value="{{ criar.admins }}" placeholder="Ex: (11) 98888-7777, (11) 97777-6666">
+      <span class="ajuda">Até 5 números, separados por vírgula: o seu pessoal ou de quem ajuda a cuidar dos grupos. O número do bot já é administrador.</span>
+    </div>
+    <label class="marcar"><input type="checkbox" name="copiar" checked><span>Usar a mesma foto e descrição do grupo de base</span></label>
+    <label class="marcar"><input type="checkbox" name="so_admins" checked><span>Só administradores enviam mensagens</span></label>
+    {% if criar.automacao.sem_automacao or not criar.automacao.vagas %}
+    <label class="marcar travada"><input type="checkbox" name="incluir" disabled><span>Incluir na Automação para receber ofertas</span></label>
+    <p class="suave pequeno aviso-campo">{% if criar.automacao.sem_automacao %}Você ainda não configurou a <a href="{% url 'painel_whatsapp_ofertas' %}">Automação</a>. Depois de criar o grupo, é só marcá-lo por lá.{% else %}Sua Automação já está com {{ criar.automacao.limite }} grupos, o máximo do seu plano. Para o grupo novo receber ofertas, tire outro grupo na <a href="{% url 'painel_whatsapp_ofertas' %}">Automação</a>{% if not criar.automacao.premium %} ou passe pro <a href="{{ url_planos }}" target="_blank" rel="noopener">plano Premium</a>{% endif %}.{% endif %}</p>
+    {% else %}
+    <label class="marcar"><input type="checkbox" name="incluir" checked><span>Incluir na Automação para receber ofertas</span></label>
+    {% endif %}
+    <div class="botoes-linha" style="margin-top:14px">
+      <button type="submit" class="botao botao-principal">Criar grupo</button>
+      <a class="botao botao-claro" href="{% url 'painel_whatsapp_membros' %}">Cancelar</a>
+    </div>
+  </form>
+  {% endif %}
+</section>
+{% endif %}
+
+{% if pedidos %}
+<section class="card" id="criados" aria-labelledby="titulo-criados" style="margin-top:16px"{% for p in pedidos %}{% if p.estado == "pendente" %} data-esperando{% endif %}{% endfor %}>
+  <h2 id="titulo-criados">Grupos criados pelo Appfiliado</h2>
+  <ul class="lista-criados">
+    {% for p in pedidos %}
+      <li>
+        <div><strong>{{ p.nome }}</strong> <span class="suave pequeno">{{ p.criado_em|date:"d/m H:i" }}</span></div>
+        {% if p.estado == "pendente" %}<span class="suave pequeno">Criando…</span>
+        {% elif p.estado == "erro" %}<span class="erro pequeno">{{ p.erro }}</span>
+        {% else %}
+          <div class="link-convite"><input type="text" value="{{ p.link_convite }}" readonly aria-label="Link de convite de {{ p.nome }}"><button type="button" class="botao botao-claro" data-copiar="{{ p.link_convite }}">Copiar link</button></div>
+          {% if p.avisos %}<span class="suave pequeno">{{ p.avisos|linebreaksbr }}</span>{% endif %}
+        {% endif %}
+      </li>
+    {% endfor %}
+  </ul>
+</section>
+{% endif %}
+
+{% if escolhendo %}
+<section class="card" aria-labelledby="titulo-escolher" style="margin-top:16px">
+  <h2 id="titulo-escolher">Escolha os grupos para acompanhar</h2>
+  <p class="suave pequeno">Veja quantos membros cada grupo ganhou ou perdeu nas últimas 24 horas, 7 e 30 dias, quantos entraram e saíram hoje e quais estão perto de lotar. Marque até {{ dados.maximo }} grupos: o número do bot precisa estar no grupo, mas não precisa ser administrador. O histórico começa a contar quando você marca o grupo.</p>
+  {% if possiveis %}
+  <form method="post">
+    {% csrf_token %}
+    <div class="busca-grupos">
+      <input type="search" data-lista="lista-grupos-membros" data-maximo="{{ dados.maximo }}" placeholder="Buscar grupo" aria-label="Buscar grupo" autocomplete="off">
+      <span class="suave pequeno contador" aria-live="polite"></span>
+    </div>
+    <p class="pequeno"><a href="#" id="marcar-todos">Marcar todos</a> · <a href="#" id="desmarcar-todos">Desmarcar todos</a></p>
+    <div class="lista-grupos" id="lista-grupos-membros">
+      {% for g in possiveis %}
+        <div class="linha-grupo linha-origem" data-nome="{{ g.nome|lower }}"><label><input type="checkbox" name="grupos" value="{{ g.jid }}"{% if g.jid in escolhidos %} checked{% endif %}><span>{{ g.nome }}</span>{% if g.admin %}<span class="selo-canal">Admin</span>{% endif %}<span class="suave pequeno membros-do-grupo">{{ g.participantes|numero }} membro{{ g.participantes|pluralize }}</span></label></div>
+      {% endfor %}
+      <p class="suave pequeno nenhum-grupo" hidden>Nenhum grupo com esse nome.</p>
+    </div>
+    <div class="botoes-linha" style="margin-top:14px">
+      <button type="submit" class="botao botao-principal">Salvar</button>
+      {% if dados.quantos %}<a class="botao botao-claro" href="{% url 'painel_whatsapp_membros' %}">Cancelar</a>{% endif %}
+    </div>
+    <p class="suave pequeno" style="margin-top:10px">Tirar um grupo da lista apaga o histórico dele. A lista de grupos vem da aba <a href="{% url 'painel_whatsapp' %}">Conexão</a>: entrou num grupo novo? Atualize os grupos por lá.</p>
+  </form>
+  {% else %}
+  <p class="suave pequeno">Conecte o WhatsApp na aba <a href="{% url 'painel_whatsapp' %}">Conexão</a> para ver seus grupos.</p>
+  {% endif %}
+</section>
+{% elif dados.quantos %}
+
+<div class="kpis kpis-membros" style="margin-top:16px">
+  <div class="card kpi"><span class="kpi-titulo">Membros</span><strong class="kpi-valor">{{ dados.total|numero }}</strong><span class="kpi-detalhe">em {{ dados.quantos }} grupo{{ dados.quantos|pluralize }}</span></div>
+  <div class="card kpi"><span class="kpi-titulo">Últimas 24 horas</span><strong class="kpi-valor{% if dados.var_24h > 0 %} positivo{% elif dados.var_24h < 0 %} negativo{% endif %}">{{ dados.var_24h|variacao }}</strong><span class="kpi-detalhe">hoje: {{ dados.entradas|numero }} {% if dados.entradas == 1 %}entrou{% else %}entraram{% endif %} e {{ dados.saidas|numero }} {% if dados.saidas == 1 %}saiu{% else %}saíram{% endif %}</span></div>
+  <div class="card kpi"><span class="kpi-titulo">Últimos 7 dias</span><strong class="kpi-valor{% if dados.var_7d > 0 %} positivo{% elif dados.var_7d < 0 %} negativo{% endif %}">{{ dados.var_7d|variacao }}</strong><span class="kpi-detalhe">{% if dados.var_7d is None %}aparece quando completar 7 dias{% else %}ganho ou perda de membros{% endif %}</span></div>
+  <div class="card kpi"><span class="kpi-titulo">Últimos 30 dias</span><strong class="kpi-valor{% if dados.var_30d > 0 %} positivo{% elif dados.var_30d < 0 %} negativo{% endif %}">{{ dados.var_30d|variacao }}</strong><span class="kpi-detalhe">{% if dados.var_30d is None %}aparece quando completar 30 dias{% else %}ganho ou perda de membros{% endif %}</span></div>
+</div>
+
+{% if dados.quase_cheios %}<p class="aviso aviso-warning pequeno" style="margin-top:16px">{{ dados.quase_cheios }} grupo{{ dados.quase_cheios|pluralize }} com mais de 95% da lotação. O WhatsApp aceita até {{ limite_do_whatsapp|numero }} pessoas por grupo: vale abrir o próximo grupo. <a href="?ordem=lotacao#grupos">Ver os mais cheios</a></p>{% endif %}
+
+{% if grafico %}
+<section class="card" aria-labelledby="titulo-grafico-membros" style="margin-top:16px">
+  <h2 id="titulo-grafico-membros">Membros nos grupos acompanhados</h2>
+  <svg class="grafico-linha" viewBox="0 0 {{ grafico.largura }} {{ grafico.altura }}" preserveAspectRatio="none" role="img" aria-label="Membros de {{ grafico.inicio|date:'d/m' }} a {{ grafico.fim|date:'d/m' }}: de {{ grafico.menor|numero }} a {{ grafico.maior|numero }}">
+    <polyline points="{{ grafico.pontos }}" fill="none" stroke="var(--verde)" stroke-width="3" vector-effect="non-scaling-stroke" stroke-linejoin="round" stroke-linecap="round"/>
+  </svg>
+  <div class="grafico-linha-rotulos suave pequeno"><span>{{ grafico.inicio|date:"d/m" }}</span><span>menor: {{ grafico.menor|numero }} · maior: {{ grafico.maior|numero }}</span><span>{{ grafico.fim|date:"d/m" }}</span></div>
+</section>
+{% endif %}
+
+<section class="card" id="grupos" aria-labelledby="titulo-grupos-membros" style="margin-top:16px">
+  <div class="kpis-topo">
+    <h2 id="titulo-grupos-membros">Grupos</h2>
+    <div class="botoes-linha"><a class="botao botao-claro" href="?criar=1#criar">Criar grupo</a><a class="botao botao-claro" href="?escolher=1">Escolher grupos</a></div>
+  </div>
+  {% if dados.quantos > por_pagina %}
+  <form method="get" action="#grupos" class="filtros-membros">
+    <input type="search" name="busca" value="{{ busca }}" placeholder="Buscar grupo" aria-label="Buscar grupo">
+    <select name="ordem" aria-label="Ordenar" onchange="this.form.submit()">
+      {% for valor, rotulo in ordens %}<option value="{{ valor }}"{% if valor == ordem %} selected{% endif %}>{{ rotulo }}</option>{% endfor %}
+    </select>
+    <button type="submit" class="botao botao-claro">Buscar</button>
+  </form>
+  {% endif %}
+  {% if not pagina.object_list %}
+  <p class="suave pequeno" style="margin-top:12px">Nenhum grupo com “{{ busca }}”. <a href="?#grupos">Ver todos</a></p>
+  {% else %}
+  <div class="tabela-rolagem so-computador">
+    <table class="numeros tabela-membros">
+      <thead><tr>
+        <th>Grupo</th><th>Membros</th><th>24 h</th><th>7 dias</th><th>30 dias</th><th>Hoje</th><th>Lotação</th>
+        {% if dados.tem_comissao %}<th title="Comissão estimada do mês até ontem, pelo Sub ID próprio do grupo">Comissão do mês</th><th>Por membro</th>{% endif %}
+      </tr></thead>
+      <tbody>
+      {% for l in pagina %}
+        <tr>
+          <td><span class="nome-grupo" title="{{ l.grupo.nome }}">{{ l.grupo.nome|default:"(grupo sem nome)" }}</span>{% if l.grupo.admin %} <span class="selo-canal">Admin</span>{% endif %}{% if not l.grupo.no_grupo %}<br><span class="erro pequeno">O número do bot não está mais nesse grupo.</span>{% endif %}</td>
+          <td>{% if l.membros is None %}—{% else %}{{ l.membros|numero }}{% endif %}</td>
+          <td class="{% if l.var_24h > 0 %}positivo{% elif l.var_24h < 0 %}negativo{% endif %}">{{ l.var_24h|variacao }}</td>
+          <td class="{% if l.var_7d > 0 %}positivo{% elif l.var_7d < 0 %}negativo{% endif %}">{{ l.var_7d|variacao }}</td>
+          <td class="{% if l.var_30d > 0 %}positivo{% elif l.var_30d < 0 %}negativo{% endif %}">{{ l.var_30d|variacao }}</td>
+          <td><span class="positivo">+{{ l.entradas|numero }}</span> <span class="negativo">−{{ l.saidas|numero }}</span></td>
+          <td><span class="lotacao{% if l.quase_cheio %} cheia{% endif %}" title="{{ l.membros|default:0|numero }} de {{ limite_do_whatsapp|numero }}"><i style="width:{{ l.lotacao }}%"></i></span> {{ l.lotacao }}%{% if l.quase_cheio %}<br><a class="pequeno" href="?criar={{ l.grupo.jid|urlencode }}#criar">Criar o próximo</a>{% endif %}</td>
+          {% if dados.tem_comissao %}
+          <td>{% if l.comissao is None %}<span class="suave" title="Dê um Sub ID próprio a esse grupo na Automação para ver quanto ele rende">—</span>{% else %}{{ l.comissao|brl }}{% endif %}</td>
+          <td>{% if l.por_membro is None %}—{% else %}{{ l.por_membro|brl }}{% endif %}</td>
+          {% endif %}
+        </tr>
+      {% endfor %}
+      </tbody>
+    </table>
+  </div>
+
+  <div class="cartoes-grupos so-celular">
+    {% for l in pagina %}
+      <article class="cartao-grupo">
+        <div class="cg-topo">
+          <strong class="cg-nome" title="{{ l.grupo.nome }}">{{ l.grupo.nome|default:"(grupo sem nome)" }}</strong>
+          {% if l.grupo.admin %}<span class="selo-canal">Admin</span>{% endif %}
+        </div>
+        {% if not l.grupo.no_grupo %}<p class="erro pequeno">O número do bot não está mais nesse grupo.</p>{% endif %}
+        <div class="cg-membros">
+          <span><b>{% if l.membros is None %}—{% else %}{{ l.membros|numero }}{% endif %}</b> membros</span>
+          <span class="cg-lotacao"><span class="lotacao{% if l.quase_cheio %} cheia{% endif %}"><i style="width:{{ l.lotacao }}%"></i></span> {{ l.lotacao }}% cheio</span>
+        </div>
+        <dl class="cg-numeros">
+          <div><dt>24 h</dt><dd class="{% if l.var_24h > 0 %}positivo{% elif l.var_24h < 0 %}negativo{% endif %}">{{ l.var_24h|variacao }}</dd></div>
+          <div><dt>7 dias</dt><dd class="{% if l.var_7d > 0 %}positivo{% elif l.var_7d < 0 %}negativo{% endif %}">{{ l.var_7d|variacao }}</dd></div>
+          <div><dt>30 dias</dt><dd class="{% if l.var_30d > 0 %}positivo{% elif l.var_30d < 0 %}negativo{% endif %}">{{ l.var_30d|variacao }}</dd></div>
+          <div><dt>Hoje</dt><dd><span class="positivo">+{{ l.entradas|numero }}</span> <span class="negativo">−{{ l.saidas|numero }}</span></dd></div>
+        </dl>
+        {% if l.quase_cheio %}<a class="pequeno" href="?criar={{ l.grupo.jid|urlencode }}#criar">Quase cheio: criar o próximo grupo</a>{% endif %}
+        {% if l.comissao is not None %}<p class="cg-comissao pequeno">Comissão do mês: <b>{{ l.comissao|brl }}</b>{% if l.por_membro is not None %} · {{ l.por_membro|brl }} por membro{% endif %}</p>{% endif %}
+      </article>
+    {% endfor %}
+  </div>
+
+  {% if pagina.paginator.num_pages > 1 %}
+  <nav class="paginacao" aria-label="Páginas dos grupos">
+    <span>Mostrando {{ pagina.start_index }}–{{ pagina.end_index }} de {{ pagina.paginator.count }}</span>
+    <div>
+      {% if pagina.has_previous %}<a href="{% querystring pagina=pagina.previous_page_number %}#grupos" aria-label="Página anterior">‹</a>{% endif %}
+      {% for n in paginas %}
+        {% if n == pagina.paginator.ELLIPSIS %}<span>…</span>
+        {% elif n == pagina.number %}<span class="atual" aria-current="page">{{ n }}</span>
+        {% else %}<a href="{% querystring pagina=n %}#grupos">{{ n }}</a>{% endif %}
+      {% endfor %}
+      {% if pagina.has_next %}<a href="{% querystring pagina=pagina.next_page_number %}#grupos" aria-label="Próxima página">›</a>{% endif %}
+    </div>
+  </nav>
+  {% endif %}
+  {% endif %}
+  <p class="suave pequeno" style="margin-top:12px">
+    {% if dados.lido_em %}Contagem lida às {{ dados.lido_em|date:"H:i" }}, atualizada a cada hora. Entradas e saídas chegam na hora.{% else %}A primeira leitura sai em até 1 minuto.{% endif %}
+    {% if dados.monitorando_desde %} Acompanhando desde {{ dados.monitorando_desde|date:"d/m/Y" }}.{% endif %}
+    {% if not dados.tem_comissao %} Quer saber quanto cada grupo rende? Dê um Sub ID próprio a ele na <a href="{% url 'painel_whatsapp_ofertas' %}">Automação</a> e a comissão do mês aparece aqui.{% endif %}
+  </p>
+</section>
+{% endif %}
+<script src="{% static 'painel/membros.js' %}" defer></script>
+{% endblock %}

@@ -62,6 +62,7 @@
         <h2>{% if mes_fechado %}Meta de {{ nome_mes }}{% else %}Meta do mês{% endif %}</h2>
         <p class="suave pequeno" style="margin-bottom:14px">Se a Shopee te deu metas com bônus este mês, cadastre aqui e acompanhe quanto falta para cada faixa.</p>
         <a class="botao botao-claro botao-pequeno" href="{% url 'painel_metas' %}">{% include "painel/_icone.html" with caminho=icones.mais %}Cadastrar metas</a>
+        {% include "painel/_outros_meses.html" %}
       {% endif %}
     </section>
     <section class="card hoje">

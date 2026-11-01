@@ -1,0 +1,51 @@
+{% extends "painel/base.html" %}
+{% load painel_extras %}
+{% block titulo %}Conferir faturamento{% endblock %}
+{% block conteudo %}
+<header class="cabecalho">
+  <div><h1>Conferir faturamento</h1><p>O faturamento de {{ c.nome_mes }} contado de três jeitos, para comparar com o painel da Shopee.</p></div>
+</header>
+<nav class="chips" aria-label="Mês">
+  {% for m in meses %}<a class="chip{% if m.ativo %} ativo{% endif %}" href="?mes={{ m.valor }}"{% if m.ativo %} aria-current="true"{% endif %}>{{ m.nome }}</a>{% endfor %}
+</nav>
+
+<section class="card" style="margin-top:12px">
+  <div class="tabela-rolagem"><table class="numeros">
+    <thead><tr><th>Jeito de contar</th><th>Faturamento</th><th>Pedidos</th></tr></thead>
+    <tbody>
+      <tr><td><strong>1. Pedidos feitos em {{ c.nome_mes }}</strong><br><span class="suave pequeno">comprados de {{ c.inicio|date:"d/m" }} a {{ c.fim|date:"d/m" }}, sem os cancelados (é o que o Appfiliado usa hoje)</span></td><td><strong>{{ c.feitos.valor|brl }}</strong></td><td>{{ c.feitos.pedidos|numero }}</td></tr>
+      <tr><td>&nbsp;&nbsp;↳ já validados</td><td>{{ c.feitos_validados.valor|brl }}</td><td>{{ c.feitos_validados.pedidos|numero }}</td></tr>
+      <tr><td>&nbsp;&nbsp;↳ ainda pendentes</td><td>{{ c.feitos_pendentes.valor|brl }}</td><td>{{ c.feitos_pendentes.pedidos|numero }}</td></tr>
+      <tr><td>&nbsp;&nbsp;↳ cancelados (fora do total)</td><td>{{ c.feitos_cancelados.valor|brl }}</td><td>{{ c.feitos_cancelados.pedidos|numero }}</td></tr>
+      <tr><td><strong>2. Pedidos feitos em {{ c.nome_mes }} e já validados</strong><br><span class="suave pequeno">o "garantido" da meta em fechamento</span></td><td><strong>{{ c.feitos_validados.valor|brl }}</strong></td><td>{{ c.feitos_validados.pedidos|numero }}</td></tr>
+      <tr><td><strong>3. Pedidos validados em {{ c.nome_mes }}</strong><br><span class="suave pequeno">concluídos de {{ c.inicio|date:"d/m" }} a {{ c.fim|date:"d/m" }}, comprados em qualquer data</span></td><td><strong>{{ c.validados_no_mes.valor|brl }}</strong></td><td>{{ c.validados_no_mes.pedidos|numero }}</td></tr>
+      <tr><td>&nbsp;&nbsp;↳ comprados antes de {{ c.nome_mes }}</td><td>{{ c.validados_no_mes_comprados_antes.valor|brl }}</td><td>{{ c.validados_no_mes_comprados_antes.pedidos|numero }}</td></tr>
+    </tbody>
+  </table></div>
+  <p class="suave pequeno" style="margin-top:12px">Para referência, o faturamento que aparece em Resultados para {{ c.nome_mes }} é {{ c.painel|brl }} (somado dia a dia na última atualização). O valor de cada item é o que o comprador pagou menos os reembolsos (nos pedidos guardados antes dessa mudança, preço vezes quantidade).</p>
+  {% if c.cobertura_incompleta %}<p class="aviso aviso-warning pequeno">O Appfiliado só tem os seus pedidos desde {% if c.pedidos_desde %}{{ c.pedidos_desde|date:"d/m/Y" }}{% else %}a primeira atualização{% endif %}. Pedidos validados em {{ c.nome_mes }} mas comprados antes disso não entram no número 3.</p>{% endif %}
+</section>
+
+<section class="card" style="margin-top:12px" id="shopee">
+  <h2>Direto na Shopee</h2>
+  {% if not ao_vivo %}
+    <p class="suave pequeno">Busca {{ c.nome_mes }} agora na Shopee, sem depender dos pedidos guardados no Appfiliado: os pedidos feitos no mês (separados em validados, pendentes e cancelados, e os validados por canal) e os validados no mês. Soma também pelo valor que o comprador pagou, já com os descontos. Pode levar até 1 minuto.</p>
+    <p><a class="botao botao-principal" href="?mes={{ mes_escolhido }}&shopee=1#shopee">Buscar {{ c.nome_mes }} na Shopee</a></p>
+  {% else %}
+    <div class="tabela-rolagem"><table class="numeros">
+      <thead><tr><th>Jeito de contar</th><th>Preço × quantidade</th><th>Valor pago</th><th>Pago menos reembolsos</th><th>Pedidos</th></tr></thead>
+      <tbody>
+        {% for l in linhas_ao_vivo %}
+          {% if l.erro %}
+            <tr><td><strong>{{ l.rotulo }}</strong></td><td colspan="4" class="perigo pequeno">{{ l.erro }}</td></tr>
+          {% else %}
+            <tr><td style="min-width:180px">{% if l.sub %}&nbsp;&nbsp;↳ {{ l.rotulo }}{% elif l.destaque %}<strong>{{ l.rotulo }}</strong>{% else %}{{ l.rotulo }}{% endif %}{% if l.detalhe %}<br><span class="suave pequeno">{{ l.detalhe }}</span>{% endif %}{% if l.incompleto %}<br><span class="perigo pequeno">a busca parou no meio (demorou demais): o número está incompleto</span>{% endif %}</td>
+              <td>{{ l.r.preco|brl }}</td><td>{% if l.destaque %}<strong>{{ l.r.pago|brl }}</strong>{% else %}{{ l.r.pago|brl }}{% endif %}</td><td>{{ l.r.pago_sem_reembolso|brl }}</td><td>{{ l.r.pedidos|numero }}</td></tr>
+          {% endif %}
+        {% endfor %}
+      </tbody>
+    </table></div>
+    <p class="suave pequeno" style="margin-top:12px">"Valor pago" é o que o comprador pagou pelo item, já com cupons e descontos. O Appfiliado e a meta mensal da Shopee contam o valor pago menos os reembolsos.</p>
+  {% endif %}
+</section>
+{% endblock %}

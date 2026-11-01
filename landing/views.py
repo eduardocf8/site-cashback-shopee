@@ -13,15 +13,19 @@ RESUMOS = {
     "bot": {
         "icone": "whatsapp", "frase": "Ofertas da Shopee no automático nos seus grupos de WhatsApp sempre com o seu link de afiliado.",
         "itens": (
-            ["Até 10 grupos e canais", "Até 60 ofertas por dia em cada grupo/canal", "Alerta de preço para até 10 produtos"],
-            ["Até 50 grupos ou canais", "Até 300 ofertas por dia em cada grupo/canal", "Alerta de preço para até 50 produtos",
+            [f"Até {planos_do_app.BOT[False]['grupos']} grupos e canais",
+             f"Até {planos_do_app.BOT[False]['ofertas_por_grupo_dia']} ofertas por dia em cada grupo/canal",
+             f"Alerta de preço para até {planos_do_app.BOT[False]['alerta_produtos']} produtos"],
+            [f"Até {planos_do_app.BOT[True]['grupos']} grupos e canais",
+             f"Até {planos_do_app.BOT[True]['ofertas_por_grupo_dia']} ofertas por dia em cada grupo/canal",
+             f"Alerta de preço para até {planos_do_app.BOT[True]['alerta_produtos']} produtos",
              "Envio por nicho: cada grupo com as ofertas do seu tema",
              "Copia ofertas de outros grupos e troca pelo seu link", "Revisão de texto com IA"],
         ),
         # Ferramentas iguais nos dois planos, mostradas embaixo dos cartões.
         "comuns": ["Busca por palavra-chave, loja ou categoria, com filtros", "Modo campanha para datas específicas (como datas duplas)",
                    "Horário e dias de envio", "Sub ID por grupo", "Modo simulação para testar antes de enviar",
-                   "Mensagens avulsas nos grupos, na hora ou agendadas"],
+                   "Mensagens avulsas nos grupos na hora ou agendadas", "Painel de membros de até 500 grupos"],
     },
     "site": {
         "icone": "site", "frase": "Seu link na bio (seunome.appfiliado.com.br) com vitrine de ofertas e conversor de links.",
@@ -42,7 +46,7 @@ RESUMOS = {
                    "Download de imagens", "SubID próprio"],
     },
     "estudio": {
-        "icone": "instagram", "frase": "Crie posts e stories com o seu link de afiliado e publique direto no seu Instagram, na hora ou agendado.",
+        "icone": "instagram", "frase": "Crie posts e stories com o seu link de afiliado e publique direto no seu Instagram na hora ou agendado.",
         "itens": (
             [f"{planos_do_app.CARROSSEIS[False]['geracoes']} criações com IA por dia", "7 modelos prontos de post e story",
              "Edite os textos e a foto de cada slide"],
@@ -50,11 +54,14 @@ RESUMOS = {
              "Minha marca: logo, cores e fonte em todos os posts", "Remoção de fundo da foto", "Seus próprios modelos",
              "Adicione e duplique slides"],
         ),
-        "comuns": ["Post a partir do link de um produto da Shopee, com foto e preço", "Publicar no feed e nos stories, na hora ou agendado",
+        "comuns": ["Post a partir do link de um produto da Shopee com foto e preço", "Publicar no feed e nos stories na hora ou agendado",
                    "Formatos 1:1, 4:5 e 9:16", "Legenda escrita por IA", "Download em PNG e ZIP", "SubID próprio"],
+        # Antes do lançamento: a lista do bloco "Chegando ao Appfiliado" e do quadro no topo da página.
+        "breve": {"itens": ["Posts/stories a partir de links de produtos", "Publicação direto pelo Appfiliado",
+                            "Formatos 1:1, 4:5 e 9:16", "Legenda escrita por IA", "Download em PNG e ZIP", "SubID próprio"]},
     },
     "automacoes": {
-        "icone": "automacoes", "frase": "Quem comentar a palavra certa no seu post recebe o seu link de afiliado por DM, na hora.",
+        "icone": "automacoes", "frase": "Respostas em posts e stories e envio de DMs de forma automatizada com seu link de afiliado.",
         "itens": (
             ["Respostas a comentários nos posts", "Até 5 automações ligadas ao mesmo tempo"],
             ["Respostas a comentários, stories e DMs com palavra-chave", "Automações ligadas sem limite",
@@ -63,12 +70,18 @@ RESUMOS = {
         "comuns": ["Sem limite de pessoas respondidas por mês", "Resposta no comentário e DM com o seu link",
                    "Um post específico ou todos os posts", "Palavras que disparam a resposta", "Cada pessoa recebe uma vez só",
                    "Histórico de quem foi respondido"],
+        "breve": {"frase": "Respostas a comentários/stories e envio de DMs de forma automatizada, de acordo com suas configurações.",
+                  "itens": ["Sem limite de respostas", "Envio do seu link de afiliado", "Escolha de post específico ou todos os posts",
+                            "Histórico de automações", "SubIDs próprios por automação"],
+                  "destaques": ["Sem limite de respostas", "Resposta por comentário e DM", "Um post específico ou todos os posts",
+                                "Escolha de palavras-chave", "Apenas uma resposta por comentário", "Histórico de automações"]},
     },
 }
 INCLUSOS = [
     ("resultados", "Resultados e metas", "Vendas, comissões e ranking dos seus links num só lugar."),
     ("conversor", "Conversor de links", "Cole textos de terceiros e receba eles já com os seus links de afiliado, prontos para compartilhar."),
     ("radar", "Radar de ofertas", "Mais de 30 mil produtos para filtrar por comissão, desconto e categoria."),
+    ("whatsapp", "Lia, sua assistente no WhatsApp", "Peça resultados, metas e vendas por mensagem e tire dúvidas sobre o Appfiliado a qualquer hora."),
 ]
 PERGUNTAS = [
     ("Preciso ter conta de afiliado da Shopee?", "Sim, e com a API da Shopee liberada. O Appfiliado usa a sua conta de afiliado para gerar os links e a comissão das vendas cai direto na sua conta da Shopee. Você pede a API à Shopee uma vez (a resposta leva até 5 dias úteis) e conecta a conta no painel."),
@@ -76,6 +89,7 @@ PERGUNTAS = [
     ("Como recebo o acesso depois de pagar?", "Logo após a confirmação do pagamento, você recebe um e-mail com o link para criar a sua senha. É só criar a senha, entrar no painel (app.appfiliado.com.br) e conectar a sua conta da Shopee com o AppID e o Secret da API."),
     ("Qual é a diferença entre Standard e Premium?", "O Premium libera mais volume e mais recursos em cada módulo (mais grupos e ofertas por dia no bot, mais botões no site, mais carrosséis por dia). As listas completas estão nos cartões de cada plano."),
     ("Preciso de um número de WhatsApp só pro bot?", "Você conecta pelo QR Code o número que quiser. Muita gente prefere um número separado do pessoal, só para divulgar as ofertas nos grupos."),
+    ("Quem é a Lia?", "É a assistente do Appfiliado no WhatsApp, incluída em todos os planos. Ela tira dúvidas sobre o Appfiliado a qualquer hora e, depois que você vincula o seu número no painel, manda os seus resultados, metas, vendas e a comissão validada do dia por mensagem."),
     ("Posso pagar por ano?", "Pode. No checkout você escolhe mensal ou anual e o plano anual tem 17% de desconto."),
     ("Posso cancelar quando quiser?", "Pode. O cancelamento é feito pela Zouti, a plataforma de pagamento. O acesso segue até o fim do período já pago."),
     ("E se eu não gostar?", "Você tem 7 dias, a partir da compra, para pedir o reembolso integral pela Zouti."),
@@ -86,16 +100,21 @@ PERGUNTAS = [
 
 # No lançamento do Instagram: o texto que fala de carrosséis muda e entra a pergunta dos pacotes.
 NIVEIS_LANCAMENTO = ("Qual é a diferença entre Standard e Premium?", "O Premium libera mais volume e mais recursos em cada módulo (mais grupos e ofertas por dia no bot, mais botões no site, mais criações com IA e a sua marca no Estúdio, stories e DMs nas Automações). As listas completas estão nos cartões de cada plano.")
-PACOTES_LANCAMENTO = ("Posso assinar mais de um módulo?", "Pode. Assine cada módulo separado ou escolha um pacote: o Pacote Ofertas (Bot de WhatsApp e Meu site) e o Pacote Instagram (Estúdio e Automações) saem cerca de 10% mais baratos, e o Pacote Completo, com os 4 módulos, cerca de 15%. Os módulos de todas as suas assinaturas ficam liberados na mesma conta.")
+PACOTES_LANCAMENTO = ("Posso assinar mais de um módulo?", "Pode. Assine cada módulo separado ou escolha um pacote: o Pacote Ofertas (Bot de WhatsApp e Meu site) e o Pacote Instagram (Estúdio e Automações) saem cerca de 10% mais baratos e o Pacote Completo, com os 4 módulos, sai cerca de 15% mais barato. Os módulos de todas as suas assinaturas ficam liberados na mesma conta.")
+
+
+# Antes do lançamento: o Estúdio e as Automações aparecem como "Em breve", sem preço e sem planos.
+NIVEIS_PRE_LANCAMENTO = ("Qual é a diferença entre Standard e Premium?", "O Premium libera mais volume e mais recursos em cada módulo (mais grupos e ofertas por dia no bot e mais botões no site, por exemplo). As listas completas estão nos cartões de cada plano.")
+PACOTES_PRE_LANCAMENTO = ("Posso assinar mais de um módulo?", "Pode. Assine cada módulo separado ou escolha o Pacote Ofertas (Bot de WhatsApp e Meu site), que sai cerca de 10% mais barato. Os módulos de todas as suas assinaturas ficam liberados na mesma conta. Com o lançamento do Estúdio Instagram e das Automações Instagram, chegam também o Pacote Instagram e o Pacote Completo.")
+QUANDO_LANCA = ("Quando chegam o Estúdio Instagram e as Automações Instagram?", "Em breve. Os dois estão na reta final e os planos e preços aparecem aqui no site no dia do lançamento. Enquanto isso, conheça tudo o que eles vão fazer nas páginas de cada um.")
 
 
 def perguntas() -> list:
-    if not planos.lancado():
-        return PERGUNTAS
+    niveis, pacotes = (NIVEIS_LANCAMENTO, PACOTES_LANCAMENTO) if planos.lancado() else (NIVEIS_PRE_LANCAMENTO, PACOTES_PRE_LANCAMENTO)
     saida = []
     for q, r in PERGUNTAS:
-        if q == NIVEIS_LANCAMENTO[0]:
-            saida += [NIVEIS_LANCAMENTO, PACOTES_LANCAMENTO]
+        if q == niveis[0]:
+            saida += [niveis, pacotes] + ([] if planos.lancado() else [QUANDO_LANCA])
         else:
             saida.append((q, r))
     return saida
@@ -125,17 +144,26 @@ FRASE_CURTA = {"bot": "Ofertas no automático nos seus grupos", "site": "Link na
                "estudio": "Posts e stories publicados no seu Instagram", "automacoes": "Comentou, recebeu o link na DM"}
 PAGINA_DO_MODULO = {"bot": "landing_bot", "site": "landing_site", "carrosseis": "landing_carrosseis",
                     "estudio": "landing_estudio", "automacoes": "landing_automacoes"}
-URL_DO_INCLUSO = {"resultados": "landing_resultados", "conversor": "landing_conversor", "radar": "landing_radar"}
+URL_DO_INCLUSO = {"resultados": "landing_resultados", "conversor": "landing_conversor", "radar": "landing_radar",
+                  "whatsapp": "landing_resultados"}
+ANCORA_DO_INCLUSO = {"whatsapp": "#lia"}  # a Lia é uma seção da página de Resultados e metas
 # Ferramentas incluídas em todos os planos, que também têm página própria.
 INCLUIDOS_COM_PAGINA = [("resultados", "Resultados e metas", "landing_resultados"), ("radar", "Radar de ofertas", "landing_radar"),
                         ("conversor", "Conversor de links", "landing_conversor")]
 
 
 def _modulo(m):
-    """Os dados de um módulo para os cartões de plano (landing e páginas de recursos)."""
+    """Os dados de um módulo para os cartões de plano (landing e páginas de recursos). Módulo "Em breve"
+    vai sem preço e sem os cartões Standard/Premium."""
+    breve = planos.em_breve(m)
     return {"codigo": m, "nome": planos.NOMES[m], "icone": ICONES[RESUMOS[m]["icone"]], "frase": RESUMOS[m]["frase"], "curta": FRASE_CURTA[m],
-            "a_partir": planos.brl(planos.PRECOS[m][0]), "comuns": RESUMOS[m].get("comuns", []), "pagina": PAGINA_DO_MODULO[m],
-            "planos": [_cartao(m, 0), _cartao(m, 1)]}
+            "em_breve": breve, "a_partir": None if breve else planos.brl(planos.PRECOS[m][0]),
+            "breve_frase": RESUMOS[m].get("breve", {}).get("frase") or RESUMOS[m]["frase"],
+            "breve_itens": RESUMOS[m].get("breve", {}).get("itens") or RESUMOS[m].get("comuns", []),
+            "destaques": (RESUMOS[m].get("breve", {}).get("destaques") or RESUMOS[m].get("breve", {}).get("itens")
+                          or RESUMOS[m].get("comuns", [])),
+            "comuns": RESUMOS[m].get("comuns", []), "pagina": PAGINA_DO_MODULO[m],
+            "planos": [] if breve else [_cartao(m, 0), _cartao(m, 1)]}
 
 
 def _comum(request):
@@ -165,6 +193,11 @@ def privacidade(request):
     return render(request, "landing/privacidade.html", _comum(request))
 
 
+@require_GET
+def termos(request):
+    return render(request, "landing/termos.html", _comum(request))
+
+
 def _pacotes():
     return [{**p, "niveis": [{**n, "preco": planos.brl(n["preco"]), "separado": planos.brl(n["separado"])} for n in p["niveis"]]}
             for p in planos.pacotes()]
@@ -172,27 +205,14 @@ def _pacotes():
 
 @require_GET
 def pagina(request):
-    if planos.lancado():
-        return render(request, "landing/index.html", {
-            "lancado": True, "modulos": [_modulo(m) for m in planos.modulos()], "pacotes": _pacotes(),
-            "inclusos": [{"icone": ICONES[i], "nome": n, "frase": f, "url": URL_DO_INCLUSO[i]} for i, n, f in INCLUSOS],
-            "notas": _faixas_de_notas(), "perguntas": perguntas(), "api": api_shopee, **_comum(request),
-        })
-    combos = planos.todos_os_combos()
-    contexto = {
-        "modulos": [_modulo(m) for m in planos.MODULOS],
-        "inclusos": [{"icone": ICONES[i], "nome": n, "frase": f, "url": URL_DO_INCLUSO[i]} for i, n, f in INCLUSOS],
-        "notas": _faixas_de_notas(),
-        "montador": {"combos": combos, "modulos": [{"codigo": m, "nome": planos.NOMES[m], "precos": list(planos.PRECOS[m])} for m in planos.MODULOS]},
-        "combo_standard": {"preco": planos.brl(combos["bot0+site0+carrosseis0"]["preco"]), "separado": planos.brl(combos["bot0+site0+carrosseis0"]["separado"]),
-                           "link": combos["bot0+site0+carrosseis0"]["link"]},
-        "combo_premium": {"preco": planos.brl(combos["bot1+site1+carrosseis1"]["preco"]), "separado": planos.brl(combos["bot1+site1+carrosseis1"]["separado"]),
-                          "link": combos["bot1+site1+carrosseis1"]["link"]},
-        "perguntas": PERGUNTAS,
-        "api": api_shopee,
-        **_comum(request),
-    }
-    return render(request, "landing/index.html", contexto)
+    modulos = [_modulo(m) for m in planos.modulos()]
+    return render(request, "landing/index.html", {
+        "modulos": modulos, "a_venda": [m for m in modulos if not m["em_breve"]],
+        "em_breve": [m for m in modulos if m["em_breve"]], "pacotes": _pacotes(),
+        "inclusos": [{"icone": ICONES[i], "nome": n, "frase": f, "url": URL_DO_INCLUSO[i], "ancora": ANCORA_DO_INCLUSO.get(i, "")}
+                     for i, n, f in INCLUSOS],
+        "notas": _faixas_de_notas(), "perguntas": perguntas(), "api": api_shopee, **_comum(request),
+    })
 
 
 @require_GET
@@ -202,7 +222,7 @@ def robots(request):
 
 @require_GET
 def sitemap(request):
-    caminhos = ["/", "/emissao-de-notas/", "/privacidade/"] + [f"/{conteudo.PAGINAS[m]()['slug']}/" for m in list(planos.modulos()) + [i[0] for i in INCLUIDOS_COM_PAGINA]]
+    caminhos = ["/", "/emissao-de-notas/", "/privacidade/", "/termos-de-uso/"] + [f"/{conteudo.PAGINAS[m]()['slug']}/" for m in list(planos.modulos()) + [i[0] for i in INCLUIDOS_COM_PAGINA]]
     xml = ('<?xml version="1.0" encoding="UTF-8"?><urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">'
            + "".join(f"<url><loc>https://{request.get_host()}{c}</loc></url>" for c in caminhos) + "</urlset>")
     return HttpResponse(xml, content_type="application/xml")
@@ -215,10 +235,9 @@ def nao_encontrada(request, exception=None):
 @require_GET
 def recursos(request, modulo):
     """Página com todos os recursos de uma ferramenta (conteúdo em landing/recursos.py)."""
-    if planos.lancado() and modulo == "carrosseis":
-        return redirect("landing_estudio", permanent=True)  # o Estúdio Instagram tomou o lugar do gerador
-    if not planos.lancado() and modulo in ("estudio", "automacoes"):
-        return nao_encontrada(request)
+    if modulo == "carrosseis":
+        # O Estúdio Instagram toma o lugar do gerador (definitivo só depois do lançamento).
+        return redirect("landing_estudio", permanent=planos.lancado())
     pagina = conteudo.PAGINAS[modulo]()
     outros = [{"nome": planos.NOMES[m], "url": PAGINA_DO_MODULO[m]} for m in planos.modulos() if m != modulo]
     outros += [{"nome": nome, "url": url} for chave, nome, url in INCLUIDOS_COM_PAGINA if chave != modulo]

@@ -1,0 +1,204 @@
+{% load painel_extras %}<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex">
+<title>{{ link.titulo }}</title>
+<meta property="og:title" content="{{ link.titulo }}">
+{% if link.frase %}<meta property="og:description" content="{{ link.frase }}">{% endif %}
+<meta name="theme-color" content="{% if modelo == 'colorido' %}{{ tema.fundo }}{% elif modelo == 'vitrine' %}{{ tema.cor }}{% else %}#FFFFFF{% endif %}">
+{% if previa %}<base target="_blank">{% endif %}
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;700;800&display=swap" rel="stylesheet">
+<style>
+  :root { --cor: {{ tema.cor }}; --fundo: {{ tema.fundo }}; --tinta: {{ tema.tinta }}; --tinta-suave: {{ tema.tinta_suave }}; --vidro: {{ tema.vidro }};
+          --sobre-cor: {{ tema.sobre_cor }}; --cor-texto: {{ tema.cor_texto }}; --cor-suave: color-mix(in srgb, var(--cor) 13%, white);
+          --texto: #1C2B23; --suave: #5B6660; --borda: #EEE6DD; --zap: #25D366; }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; }
+  body { min-height: 100vh; font-family: "DM Sans", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; color: var(--texto);
+         -webkit-font-smoothing: antialiased; }
+  main { width: 100%; max-width: 440px; margin: 0 auto; }
+  h1 { margin: 0; line-height: 1.18; overflow-wrap: anywhere; }
+  .frase { margin: 0; line-height: 1.5; overflow-wrap: anywhere; }
+  .foto { border-radius: 50%; object-fit: cover; display: block; background: var(--cor-suave); }
+  .inicial { border-radius: 50%; display: grid; place-items: center; font-weight: 800; background: var(--cor); color: var(--sobre-cor); }
+  .botao { display: flex; align-items: center; justify-content: center; gap: 10px; width: 100%; min-height: 56px; padding: 0 20px;
+           border-radius: 16px; background: var(--zap); color: #fff; font-size: 17.5px; font-weight: 800; text-decoration: none; }
+  .botao svg { width: 24px; height: 24px; fill: currentColor; flex: none; }
+  .cheio { font-size: 15px; color: #7A4D00; background: #FFF4E0; border-radius: 12px; padding: 14px; margin: 0; text-align: center; }
+  .rodape { font-size: 12px; text-align: center; opacity: .65; }
+  .nome { font-size: 14px; font-weight: 700; }
+
+  /* Blocos (valem para qualquer modelo) */
+  .selos { display: flex; flex-wrap: wrap; gap: 8px; justify-content: center; }
+  .selos span { border-radius: 999px; padding: 7px 12px; font-size: 13px; font-weight: 700; background: var(--cor-suave); color: var(--cor-texto); }
+  .total { font-size: 13.5px; font-weight: 700; text-align: center; }
+  .vagas { border-radius: 16px; padding: 14px 16px; text-align: left; background: #fff; border: 1px solid var(--borda); }
+  .vagas .l1 { display: flex; justify-content: space-between; gap: 10px; font-weight: 700; font-size: 14px; margin-bottom: 10px; }
+  .vagas .l1 span:last-child { color: var(--cor-texto); }
+  .vagas .barra { height: 12px; border-radius: 999px; background: #EDE8E0; overflow: hidden; }
+  .vagas .barra i { display: block; height: 100%; border-radius: 999px; background: linear-gradient(90deg, var(--zap), #F2B705); }
+  .vagas small { display: block; margin-top: 8px; font-size: 12.5px; color: var(--suave); }
+  .ofertas { background: #fff; border-radius: 16px; padding: 12px; box-shadow: 0 10px 26px rgba(0,0,0,.08); text-align: left; }
+  .ofertas .rotulo { font-size: 13px; font-weight: 700; color: var(--cor-texto); margin: 0 2px 8px; }
+  .ofertas .grade { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+  .oferta img { width: 100%; aspect-ratio: 1; object-fit: cover; border-radius: 10px; display: block; background: #F1ECE4; }
+  .oferta .n { font-size: 11.5px; line-height: 1.25; margin: 6px 0 2px; height: 29px; overflow: hidden; color: var(--texto); }
+  .oferta s { display: block; font-size: 10.5px; color: #8A8A8A; min-height: 13px; }
+  .oferta b { font-size: 15px; color: var(--cor-texto); }
+  .oferta em { font-style: normal; font-size: 10px; font-weight: 800; background: var(--cor-suave); color: var(--cor-texto); border-radius: 5px; padding: 1px 5px; margin-left: 4px; vertical-align: 2px; }
+  .redes { display: flex; justify-content: center; gap: 14px; flex-wrap: wrap; }
+  .redes a { width: 42px; height: 42px; border-radius: 50%; display: grid; place-items: center; color: inherit; background: var(--vidro-claro, rgba(0,0,0,.06)); }
+  .redes svg { width: 22px; height: 22px; }
+  .capa { height: 200px; display: grid; grid-template-columns: 1fr 1fr 1fr; grid-template-rows: 1fr 1fr; gap: 3px; overflow: hidden; }
+  .capa img { width: 100%; height: 100%; object-fit: cover; display: block; }
+  .capa img:first-child { grid-row: span 2; }
+  .capa.inteira { display: block; height: auto; }
+  .capa.inteira img { aspect-ratio: 2 / 1; height: auto; }
+  .com-capa .topo-foto { margin-top: -52px; position: relative; }
+  .com-capa .topo-foto .foto, .com-capa .topo-foto .inicial { border: 5px solid #fff; }
+  .m-classico.com-capa .conteudo { padding-top: 0; }
+  .m-vitrine.com-capa .topo-foto { margin-top: -36px; }
+  .m-beneficios.com-capa .topo-foto { margin-top: 0; }
+  .m-beneficios.com-capa .topo-foto .foto, .m-beneficios.com-capa .topo-foto .inicial { border: 0; }
+
+  /* 1. Clássico: cartão branco no meio */
+  .m-classico { background: #F6F3EA; display: flex; align-items: center; padding: 24px 16px; }
+  .m-classico main { background: #fff; border-radius: 22px; overflow: hidden; box-shadow: 0 12px 40px rgba(31,58,46,.12); }
+  .m-classico .conteudo { padding: 32px 24px 22px; text-align: center; display: flex; flex-direction: column; gap: 18px; }
+  .m-classico .foto, .m-classico .inicial { width: 96px; height: 96px; margin: 0 auto; font-size: 38px; }
+  .m-classico h1 { font-size: 24px; }
+  .m-classico .frase { color: #4A564F; margin-top: -8px; }
+
+  /* 2. Colorido: fundo na cor, como o Meu site */
+  .m-colorido { background: var(--fundo); color: var(--tinta); }
+  .m-colorido .conteudo { padding: 52px 22px 26px; text-align: center; display: flex; flex-direction: column; gap: 18px; min-height: 100vh; }
+  .m-colorido.com-capa .conteudo { padding-top: 0; min-height: 0; }
+  .m-colorido .foto, .m-colorido .inicial { width: 104px; height: 104px; margin: 0 auto; border: 4px solid rgba(255,255,255,.9); font-size: 40px; }
+  .m-colorido .nome { margin-top: -6px; opacity: .9; }
+  .m-colorido h1 { font-size: 28px; margin-top: -6px; }
+  .m-colorido .frase { color: var(--tinta-suave); margin-top: -6px; }
+  .m-colorido .selos span { background: var(--vidro); color: var(--tinta); }
+  .m-colorido .botao { background: #fff; color: #128C4A; box-shadow: 0 8px 22px rgba(0,0,0,.18); }
+  .m-colorido .botao svg { fill: var(--zap); }
+  .m-colorido .redes a { background: var(--vidro); }
+  .m-colorido .vagas { background: var(--vidro); border-color: transparent; color: var(--tinta); }
+  .m-colorido .vagas .l1 span:last-child { color: var(--tinta); }
+  .m-colorido .vagas small { color: var(--tinta-suave); }
+  .m-colorido .vagas .barra { background: rgba(255,255,255,.22); }
+  .m-colorido .rodape { margin-top: auto; }
+
+  /* 3. Benefícios: título forte, lista e o botão fixo embaixo */
+  .m-beneficios { background: #FFFDF8; }
+  .m-beneficios .conteudo { padding: 40px 20px 150px; display: flex; flex-direction: column; gap: 18px; }
+  .m-beneficios.com-capa .conteudo { padding-top: 18px; }
+  .m-beneficios .cabeca { display: flex; align-items: center; gap: 10px; }
+  .m-beneficios .cabeca .foto, .m-beneficios .cabeca .inicial { width: 46px; height: 46px; font-size: 20px; }
+  .m-beneficios .cabeca small { display: block; color: var(--suave); font-size: 12.5px; }
+  .m-beneficios h1 { font-size: 28px; }
+  .m-beneficios .frase { color: var(--suave); margin-top: -8px; }
+  .m-beneficios ul { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 10px; }
+  .m-beneficios li { display: flex; gap: 12px; align-items: center; background: #fff; border: 1px solid var(--borda); border-radius: 14px; padding: 12px 14px; font-size: 15px; }
+  .m-beneficios li span { width: 38px; height: 38px; border-radius: 10px; background: var(--cor-suave); color: var(--cor-texto); display: grid; place-items: center; font-size: 18px; flex: none; }
+  .barra-fixa { position: fixed; left: 0; right: 0; bottom: 0; background: #fff; border-top: 1px solid var(--borda); padding: 12px 16px calc(16px + env(safe-area-inset-bottom)); }
+  .barra-fixa > div { max-width: 440px; margin: 0 auto; display: flex; flex-direction: column; gap: 8px; }
+
+  /* 4. Vitrine: ofertas que passaram no grupo */
+  .m-vitrine { background: color-mix(in srgb, var(--cor) 7%, #F7F5F2); }
+  .m-vitrine .faixa { background: var(--fundo); color: var(--tinta); padding: 38px 22px 52px; text-align: center; display: flex; flex-direction: column; gap: 8px; align-items: center; }
+  .m-vitrine.com-capa .faixa { padding-top: 0; }
+  .m-vitrine .faixa .foto, .m-vitrine .faixa .inicial { width: 64px; height: 64px; border: 3px solid #fff; font-size: 26px; }
+  .m-vitrine h1 { font-size: 23px; }
+  .m-vitrine .frase { color: var(--tinta-suave); font-size: 14.5px; }
+  .m-vitrine .conteudo { margin-top: -34px; padding: 0 16px 150px; display: flex; flex-direction: column; gap: 16px; }
+  .m-vitrine .com-capa-topo { margin-top: 0; }
+</style>
+{% if link.pixel_id and not previa %}
+<script>
+  !function(f,b,e,v,n,t,s){if(f.fbq)return;n=f.fbq=function(){n.callMethod?n.callMethod.apply(n,arguments):n.queue.push(arguments)};
+  if(!f._fbq)f._fbq=n;n.push=n;n.loaded=!0;n.version='2.0';n.queue=[];t=b.createElement(e);t.async=!0;
+  t.src=v;s=b.getElementsByTagName(e)[0];s.parentNode.insertBefore(t,s)}(window,document,'script','https://connect.facebook.net/en_US/fbevents.js');
+  fbq('init', '{{ link.pixel_id|escapejs }}');
+  fbq('track', 'PageView');
+</script>
+{% endif %}
+</head>
+<body class="m-{{ modelo }}{% if capa_url or capa_fotos %} com-capa{% endif %}">
+<main>
+  {# Capa (bloco) #}
+  {% if capa_url %}<div class="capa inteira"><img src="{{ capa_url }}" alt=""></div>
+  {% elif capa_fotos %}<div class="capa">{% for f in capa_fotos %}<img src="{{ f }}" alt="" referrerpolicy="no-referrer">{% endfor %}</div>{% endif %}
+
+  {% if modelo == "vitrine" %}
+  <div class="faixa">
+    <div class="topo-foto">{% include "meusite/_entrada_foto.html" %}</div>
+    <h1>{{ link.titulo }}</h1>
+    {% if link.frase %}<p class="frase">{{ link.frase }}</p>{% endif %}
+  </div>
+  {% endif %}
+
+  <div class="conteudo">
+    {% if modelo == "beneficios" %}
+      <div class="cabeca topo-foto">{% include "meusite/_entrada_foto.html" %}<div><span class="nome">{{ nome|default:link.titulo }}</span><small>Grupo de ofertas no WhatsApp</small></div></div>
+    {% elif modelo != "vitrine" %}
+      <div class="topo-foto">{% include "meusite/_entrada_foto.html" %}</div>
+      {% if modelo == "colorido" and nome %}<div class="nome">{{ nome }}</div>{% endif %}
+    {% endif %}
+    {% if modelo != "vitrine" %}
+      <h1>{{ link.titulo }}</h1>
+      {% if link.frase %}<p class="frase">{{ link.frase }}</p>{% endif %}
+    {% endif %}
+
+    {% if selos %}<div class="selos">{% for s in selos %}<span>{{ s }}</span>{% endfor %}</div>{% endif %}
+
+    {% if ofertas %}
+    <div class="ofertas">
+      <div class="rotulo">🔥 Ofertas que passaram no grupo</div>
+      <div class="grade">{% for p in ofertas %}<div class="oferta"><img src="{{ p.imagem_url }}" alt="" loading="lazy" referrerpolicy="no-referrer"><div class="n">{{ p.nome }}</div><s>{% if p.preco_original %}{{ p.preco_original|brl }}{% endif %}</s><b>{{ p.preco|brl }}</b>{% if p.desconto %}<em>-{{ p.desconto }}%</em>{% endif %}</div>{% endfor %}</div>
+    </div>
+    {% endif %}
+
+    {% if beneficios %}<ul>{% for b in beneficios %}<li><span>{{ b.icone }}</span>{{ b.texto }}</li>{% endfor %}</ul>{% endif %}
+
+    {% if vagas %}
+    <div class="vagas"><div class="l1"><span>Vagas preenchidas no {{ vagas.nome }}</span><span>{{ vagas.porcento }}%</span></div>
+      <div class="barra"><i style="width:{{ vagas.porcento }}%"></i></div><small>{{ vagas.membros|numero }} de {{ vagas.limite|numero }} pessoas. Quando ele enche, quem chega entra no próximo.</small></div>
+    {% endif %}
+
+    {% if not fixo %}
+      {% include "meusite/_entrada_botao.html" %}
+      {% if total %}<div class="total">Mais de {{ total|numero }} pessoas já estão nos grupos</div>{% endif %}
+    {% endif %}
+
+    {% if redes %}<nav class="redes" aria-label="Redes sociais">{% for r in redes %}<a href="{{ r.url }}" target="_blank" rel="nofollow noopener" title="{{ r.nome }}" aria-label="{{ r.nome }}">{% include "meusite/_icone_rede.html" with rede=r.rede %}</a>{% endfor %}</nav>{% endif %}
+    {% if not fixo %}<div class="rodape">Grupo de ofertas no WhatsApp</div>{% endif %}
+  </div>
+</main>
+{% if fixo %}
+<div class="barra-fixa"><div>
+  {% if total %}<div class="total">Mais de {{ total|numero }} pessoas já estão nos grupos</div>{% endif %}
+  {% include "meusite/_entrada_botao.html" %}
+  <div class="rodape">Grupo de ofertas no WhatsApp</div>
+</div></div>
+{% endif %}
+{% if tem_vaga and not previa %}
+<script>
+  (function () {
+    var botao = document.getElementById("entrar");
+    function ir() { window.location.href = botao.href; }
+    botao.addEventListener("click", function (e) {
+      if (!window.fbq) return;
+      e.preventDefault();
+      fbq("track", "Lead");
+      setTimeout(ir, 300);  // dá tempo do pixel registrar antes de sair da página
+    });
+    {% if link.redirecionar %}
+    setTimeout(function () { if (window.fbq) fbq("track", "Lead"); setTimeout(ir, 300); }, 600);
+    {% endif %}
+  })();
+</script>
+{% endif %}
+</body>
+</html>

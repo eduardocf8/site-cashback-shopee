@@ -21,19 +21,34 @@
 <script>
   // Espera o fim do login do Instagram, aberto numa janela à parte. A página do Instagram corta a ligação entre as
   // duas janelas, então a janela do login avisa por BroadcastChannel (e localStorage, nos navegadores antigos).
-  window.esperarInstagram = function (pronto) {
-    let feito = false;
+  // `voltou` roda quando a pessoa volta pra esta página sem ter terminado (fechou a janela do login, por exemplo):
+  // como a ligação entre as janelas é cortada, não dá pra saber se ela fechou; o botão volta ao normal e o aviso
+  // de "pronto" continua valendo se ela terminar depois.
+  window.esperarInstagram = function (pronto, voltou) {
+    let feito = false, saiu = false;
     const fim = () => { if (feito) return; feito = true; pronto(); };
     try { const canal = new BroadcastChannel('appfiliado-instagram'); canal.onmessage = (e) => { if (e.data === 'pronto') fim(); }; } catch (e) { /* sem canal */ }
     window.addEventListener('storage', (e) => { if (e.key === 'appfiliado-instagram') fim(); });
+    if (!voltou) return;
+    window.addEventListener('blur', () => { saiu = true; });
+    window.addEventListener('focus', () => {
+      if (!saiu || feito) return;
+      saiu = false;
+      setTimeout(() => { if (!feito) voltou(); }, 700);  // dá tempo do aviso de "pronto" chegar antes
+    });
   };
   // O login do Instagram abre numa janela menor, ao lado do painel. Se o navegador bloquear, abre aqui mesmo.
-  document.getElementById('ig-conectar')?.addEventListener('click', (e) => {
+  const botaoIg = document.getElementById('ig-conectar');
+  const textoIg = botaoIg ? botaoIg.textContent : '';
+  let esperandoIg = false;
+  botaoIg?.addEventListener('click', (e) => {
     const l = 560, a = 760, x = window.screenX + Math.max(0, (window.outerWidth - l) / 2), y = window.screenY + Math.max(0, (window.outerHeight - a) / 2);
-    const janela = window.open(e.currentTarget.href + '?janela=1', 'conectar-instagram', `width=${l},height=${a},left=${x},top=${y}`);
+    const janela = window.open(botaoIg.href + '?janela=1', 'conectar-instagram', `width=${l},height=${a},left=${x},top=${y}`);
     if (!janela) return;
     e.preventDefault();
-    e.currentTarget.textContent = 'Conectando… (termine na janela do Instagram)';
-    esperarInstagram(() => window.location.reload());
+    botaoIg.textContent = 'Conectando… (termine na janela do Instagram)';
+    if (esperandoIg) return;
+    esperandoIg = true;
+    esperarInstagram(() => window.location.reload(), () => { botaoIg.textContent = textoIg; });
   });
 </script>

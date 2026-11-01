@@ -1,0 +1,117 @@
+{% extends "painel/base.html" %}
+{% load painel_extras %}
+{% block titulo %}Resultados · Bot de WhatsApp{% endblock %}
+{% block conteudo %}
+<header class="cabecalho">
+  <div>
+    <h1>Bot de WhatsApp</h1>
+    <p>Ofertas da Shopee enviadas com o seu link de afiliado no automático: buscadas pela API ou copiadas de outros grupos e canais.</p>
+  </div>
+</header>
+{% include "painel/_abas_whatsapp.html" with aba="resultados" %}
+
+<section class="card filtros" aria-label="Período" style="margin-top:16px">
+  <nav class="chips" aria-label="Período">
+    {% for valor, nome in periodos %}<a class="chip{% if chave == valor %} ativo{% endif %}" href="?periodo={{ valor }}"{% if chave == valor %} aria-current="true"{% endif %}>{{ nome }}</a>{% endfor %}
+  </nav>
+  <form method="get" class="filtro-datas">
+    <input type="hidden" name="periodo" value="personalizado">
+    <label>De <input type="date" name="de" value="{{ d.inicio|date:'Y-m-d' }}"></label>
+    <label>Até <input type="date" name="ate" value="{{ d.fim|date:'Y-m-d' }}"></label>
+    <button type="submit" class="botao botao-escuro botao-pequeno">Ver período</button>
+  </form>
+</section>
+
+{% if not d.ofertas %}
+<section class="card" style="margin-top:16px">
+  <p class="suave">Nenhuma oferta enviada pelo bot em {{ descricao }}.</p>
+</section>
+{% else %}
+<div class="kpis" style="margin-top:16px">
+  <div class="card kpi"><span class="kpi-titulo">Ofertas enviadas</span><strong class="kpi-valor">{{ d.ofertas|numero }}</strong><span class="kpi-detalhe">em {{ d.grupos|numero }} grupo{{ d.grupos|pluralize }} · {{ descricao }}</span></div>
+  <div class="card kpi"><span class="kpi-titulo">Ofertas que venderam</span><strong class="kpi-valor">{{ d.venderam|numero }} <span class="kpi-percentual">({{ d.percentual_venderam }}%)</span></strong><span class="kpi-detalhe">{{ d.pedidos|numero }} pedido{{ d.pedidos|pluralize }}</span></div>
+  <div class="card kpi"><span class="kpi-titulo">Comissão das ofertas</span><strong class="kpi-valor">{{ d.comissao|brl }}</strong><span class="kpi-detalhe">estimada, sem os cancelados</span></div>
+  <div class="card kpi"><span class="kpi-titulo">Comissão por oferta</span><strong class="kpi-valor">{{ d.por_oferta|brl }}</strong><span class="kpi-detalhe">média de cada oferta</span></div>
+</div>
+{% if d.sem_sub_id %}
+<p class="aviso aviso-warning pequeno" style="margin-top:12px"><strong>Grupo sem Sub ID próprio:</strong> as vendas do mesmo produto vindas de outros lugares (Instagram, Meu site) também entram na conta. Configure um Sub ID em cada grupo na aba <a href="{% url 'painel_whatsapp_ofertas' %}">Automação</a> para ficar mais preciso.</p>
+{% endif %}
+<p class="nota-bot">Conta como venda da oferta a compra do mesmo produto até <strong>{{ janela }} dias</strong> depois do envio{% if d.exemplo_sub_id %}, com o Sub ID do grupo{% endif %}. Se o produto foi enviado mais de uma vez, a venda fica com o envio mais recente. As vendas chegam junto com a atualização dos resultados da Shopee.</p>
+
+{% if d.por_dia|length > 1 %}
+<section class="card" style="margin-top:16px">
+  <div class="card-topo"><h2>Comissão das ofertas por dia</h2><span class="suave pequeno">pela data do envio</span></div>
+  <div class="grafico-bot" role="img" aria-label="Comissão das ofertas em cada dia do período">
+    {% for p in d.por_dia %}<span style="height:{{ p.altura }}%" title="{{ p.dia|date:'d/m' }}: {{ p.comissao|brl }}"></span>{% endfor %}
+  </div>
+  <div class="eixo-bot"><span>{{ d.inicio|date:"d/m" }}</span><span>{{ d.fim|date:"d/m" }}</span></div>
+</section>
+{% endif %}
+
+<section class="card" style="margin-top:16px" aria-labelledby="titulo-campeas">
+  <div class="card-topo"><h2 id="titulo-campeas">Ofertas campeãs</h2><span class="suave pequeno">as que mais renderam no período</span></div>
+  {% if d.campeas %}
+  <div class="tabela-rolagem">
+    <table class="tabela-vendas tabela-ranking tabela-campeas">
+      <thead><tr><th scope="col"><span class="sr">Posição</span></th><th scope="col">Produto</th><th scope="col" class="n">Enviada</th><th scope="col" class="n">Pedidos</th><th scope="col" class="n">Comissão</th><th scope="col" class="n">Por envio</th></tr></thead>
+      <tbody>
+        {% for p in d.campeas %}
+          <tr>
+            <td class="posicao">{{ forloop.counter }}</td>
+            <td><div class="produto-venda">{% include "painel/_foto_produto.html" with url=p.imagem_url %}<div class="produto-nome"><span>{{ p.produto|default:"Produto sem nome" }}</span><div class="barra-ranking" aria-hidden="true"><span style="width:{{ p.barra }}%"></span></div></div></div></td>
+            <td class="n" data-rotulo="Enviada">{{ p.vezes }}x<small class="sub-n">último: {{ p.ultimo|date:"d/m" }}</small></td>
+            <td class="n" data-rotulo="Pedidos">{{ p.pedidos|numero }}</td>
+            <td class="n" data-rotulo="Comissão"><strong>{{ p.comissao|brl }}</strong></td>
+            <td class="n" data-rotulo="Por envio">{{ p.por_envio|brl }}</td>
+          </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  {% else %}
+  <p class="suave pequeno">Nenhuma oferta desse período vendeu ainda.</p>
+  {% endif %}
+</section>
+
+<div class="grade-bot">
+  <section class="card" aria-labelledby="titulo-por-grupo">
+    <div class="card-topo"><h2 id="titulo-por-grupo">Por grupo</h2><span class="suave pequeno">pelo Sub ID de cada grupo</span></div>
+    <div class="tabela-rolagem">
+      <table class="tabela-vendas">
+        <thead><tr><th scope="col">Grupo</th><th scope="col" class="n">Ofertas</th><th scope="col" class="n">Venderam</th><th scope="col" class="n">Comissão</th><th scope="col" class="n">Por oferta</th></tr></thead>
+        <tbody>
+          {% for g in d.por_grupo %}
+            <tr>
+              <td class="nome-grupo">{{ g.nome }}{% if not g.separavel %}<small class="sub-n">{% if g.rotulo %}Sub ID repetido: {{ g.rotulo }}{% else %}sem Sub ID{% endif %}</small>{% endif %}</td>
+              <td class="n" data-rotulo="Ofertas">{{ g.ofertas|numero }}</td>
+              {% if g.separavel %}
+                <td class="n" data-rotulo="Venderam">{{ g.venderam }}%</td>
+                <td class="n" data-rotulo="Comissão"><strong>{{ g.comissao|brl }}</strong></td>
+                <td class="n" data-rotulo="Por oferta">{{ g.por_oferta|brl }}</td>
+              {% else %}
+                <td class="n suave" data-rotulo="Venderam">—</td><td class="n suave" data-rotulo="Comissão">—</td><td class="n suave" data-rotulo="Por oferta">—</td>
+              {% endif %}
+            </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+    {% if d.sem_sub_id or d.sub_id_repetido %}
+    <p class="aviso aviso-warning pequeno" style="margin-top:12px">Grupos sem Sub ID ou com o mesmo Sub ID de outro grupo não têm como separar as vendas: aparecem só as ofertas. Dê um Sub ID diferente para cada grupo na aba <a href="{% url 'painel_whatsapp_ofertas' %}">Automação</a>.</p>
+    {% endif %}
+  </section>
+
+  <section class="card" aria-labelledby="titulo-horario">
+    <div class="card-topo"><h2 id="titulo-horario">Por horário de envio</h2><span class="suave pequeno">comissão por oferta</span></div>
+    <div class="horas-bot">
+      {% for f in d.por_horario.faixas %}
+        <div class="hora-bot{% if f.melhor %} melhor{% endif %}"><span>{{ f.nome }}</span><div class="trilho" aria-hidden="true"><span style="width:{{ f.barra }}%"></span></div><span class="v">{{ f.por_oferta|brl }}<small>{{ f.ofertas|numero }} oferta{{ f.ofertas|pluralize }}</small></span></div>
+      {% endfor %}
+    </div>
+    {% if d.por_horario.melhor %}
+    <p class="nota-bot">Melhor horário no período: <strong>{{ d.por_horario.melhor.nome }}</strong> <span class="selo-bot">{{ d.por_horario.melhor.por_oferta|brl }} por oferta</span></p>
+    {% endif %}
+  </section>
+</div>
+{% endif %}
+{% endblock %}

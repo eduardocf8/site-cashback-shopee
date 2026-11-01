@@ -5,7 +5,9 @@ e responde às telas com somas do banco.
 As regras de cálculo são as mesmas do app do Appfiliado
 (ConversorAfiliados.obter_resultados_periodo), conferidas contra o relatório de vendas
 exportado da Shopee:
-- faturamento e pedidos pela data da compra, sem pedidos CANCELLED/UNPAID;
+- faturamento e pedidos pela data da compra, sem pedidos CANCELLED/UNPAID; o valor de cada item é o
+  que o comprador pagou (actualAmount) menos os reembolsos (refundAmount) - é como a Shopee conta as
+  vendas da meta mensal (conferido com o e-mail de setembro/2026). Sem actualAmount, preço x quantidade;
 - comissão estimada pela data da compra (a comissão da conversão, zerada se todos os
   pedidos dela foram cancelados);
 - comissão validada pela data de validação de cada item (completeTime), só de pedidos
@@ -14,6 +16,7 @@ exportado da Shopee:
 
 import logging
 import re
+import time
 from collections import defaultdict
 from datetime import date, datetime, timedelta
 from datetime import timezone as dt_timezone
@@ -179,9 +182,7 @@ def acumular(por_dia: dict, por_sub_id: dict, conversoes: list[dict]) -> None:
             itens = [i for i in pedido.get("items") or [] if isinstance(i, dict)]
 
             if dia_compra and status not in STATUS_PEDIDO_INVALIDOS:
-                por_dia[dia_compra]["faturamento"] += sum(
-                    para_numero(i.get("itemPrice")) * (para_numero(i.get("qty")) or 1) for i in itens
-                )
+                por_dia[dia_compra]["faturamento"] += sum(valor_do_item(i) for i in itens)
                 por_dia[dia_compra]["pedidos"].add(pedido.get("orderId"))
 
             if status == "COMPLETED":
@@ -191,6 +192,14 @@ def acumular(por_dia: dict, por_sub_id: dict, conversoes: list[dict]) -> None:
                         por_dia[_dia_local(validacao)]["comissao_validada"] += para_numero(
                             item.get("itemTotalCommission")
                         )
+
+
+def valor_do_item(item: dict) -> float:
+    """O que o comprador pagou pelo item (actualAmount, com cupons e descontos) menos os reembolsos -
+    a base das vendas da meta mensal da Shopee. Se a API não mandar o valor pago, preço x quantidade."""
+    if item.get("actualAmount") in (None, ""):
+        return para_numero(item.get("itemPrice")) * max(int(para_numero(item.get("qty")) or 1), 1)
+    return para_numero(item.get("actualAmount")) - para_numero(item.get("refundAmount"))
 
 
 def calcular_por_dia(conversoes: list[dict]) -> tuple[dict, dict]:
@@ -239,7 +248,7 @@ def itens_vendidos(conta, conversoes: list[dict]) -> list[VendaItem]:
                     posicao=posicao, item_id=_texto(item.get("itemId"), 30),
                     nome=_texto(item.get("itemName"), 300), imagem_url=_texto(item.get("imageUrl"), 500),
                     loja=_texto(item.get("shopName"), 200), quantidade=max(quantidade, 1),
-                    preco=_dinheiro(preco), valor=_dinheiro(preco * max(quantidade, 1)),
+                    preco=_dinheiro(preco), valor=_dinheiro(valor_do_item(item)),
                     comissao=_dinheiro(para_numero(item.get("itemTotalCommission"))),
                     status_shopee=status[:20], motivo_shopee=_motivo(item, situacao), situacao=situacao,
                     sub_id=rotulo, comprado_em=compra,
@@ -299,8 +308,10 @@ def sincronizar_conta(conta, agora: datetime | None = None, completa: bool | Non
       antigo quase não muda (só pedido que ainda estava no prazo de cancelamento);
     - completa (1x por dia, de madrugada): os ~3 meses que a API alcança, para pegar as
       validações atrasadas (pedido de mais de 30 dias que só agora foi concluído);
-    - curta (botão "Atualizar dia anterior e atual" e conferência do relatório diário): só
-      ontem e hoje.
+    - curta (botão "Atualizar dia anterior e atual", comando do WhatsApp e conferência do
+      relatório diário): as compras de ontem e hoje (a Shopee só libera as de hoje no dia
+      seguinte) e, numa segunda busca pela data de validação, os itens validados ontem e hoje
+      de compras mais antigas - que é o que muda a comissão validada desses dias.
     Faturamento, pedidos, comissão estimada e Sub IDs: recalculados nos dias da janela.
     Comissão validada (pela data em que a Shopee validou): somada dos itens guardados nos
     últimos DIAS_RECALCULO_VALIDADA dias. O que fica fora da janela continua guardado."""
@@ -334,6 +345,7 @@ def sincronizar_conta(conta, agora: datetime | None = None, completa: bool | Non
             conversoes += len(pagina)
             acumular(por_dia, por_sub_id, pagina)
             VendaItem.objects.bulk_create(itens_vendidos(conta, pagina), batch_size=1000, ignore_conflicts=True)
+        validacoes = _atualizar_validados(conta, secret, inicio_janela, agora) if curta else 0
 
         if completa and (not estado.vendas_desde or inicio_janela < estado.vendas_desde):
             estado.vendas_desde = inicio_janela
@@ -382,10 +394,32 @@ def sincronizar_conta(conta, agora: datetime | None = None, completa: bool | Non
                 estado.cobertura_inicio = primeiro_dia_completo
         estado.save(update_fields=["completa_em", "cobertura_inicio", "vendas_desde"])
 
-    resumo = {"conversoes": conversoes, "dias": len(dias_compra), "completa": completa, "curta": curta}
+    resumo = {"conversoes": conversoes, "dias": len(dias_compra), "completa": completa, "curta": curta,
+              "validacoes": validacoes}
     if completa:
         resumo["validadas_tarde"] = validacoes_depois_de(conta, agora, JANELA_RAPIDA_DIAS)
     return resumo
+
+
+def _atualizar_validados(conta, secret: str, desde: datetime, agora: datetime) -> int:
+    """Busca curta: os itens que a Shopee validou de desde até agora, de compras de antes de desde
+    (as de depois já vieram na busca pela compra). Atualiza o item guardado (situação, data de
+    validação, valor e comissão) ou guarda o que ainda não estava. Devolve quantos itens vieram."""
+    total = 0
+    for pagina in paginas_de_conversoes(conta.shopee_app_id, secret, int(desde.timestamp()), int(agora.timestamp()),
+                                        data="completeTime"):
+        antigas = [c for c in pagina if isinstance(c, dict) and (_momento(_inteiro(c.get("purchaseTime"))) or agora) < desde]
+        novos = []
+        for item in itens_vendidos(conta, antigas):
+            total += 1
+            atualizados = VendaItem.objects.filter(
+                conta=conta, conversao_id=item.conversao_id, pedido_id=item.pedido_id, item_id=item.item_id,
+            ).update(situacao=item.situacao, status_shopee=item.status_shopee, concluido_em=item.concluido_em,
+                     valor=item.valor, comissao=item.comissao, motivo_shopee=item.motivo_shopee)
+            if not atualizados:
+                novos.append(item)
+        VendaItem.objects.bulk_create(novos, batch_size=1000, ignore_conflicts=True)
+    return total
 
 
 def validacoes_depois_de(conta, agora: datetime, dias: int) -> tuple[int, int]:
@@ -428,7 +462,8 @@ def contas_pendentes(agora: datetime | None = None):
 
 
 def processar(conta, curta: bool | None = None) -> str:
-    """curta=None: curta só se a pessoa pediu o dia anterior e o atual."""
+    """curta=None: curta só se a pessoa pediu ontem e as validações de hoje. O log diz quanto
+    tempo a busca levou."""
     estado, _ = SincronizacaoResultados.objects.get_or_create(conta=conta)
     if curta is None:
         curta = estado.aguardando and estado.pedido_curto
@@ -436,6 +471,7 @@ def processar(conta, curta: bool | None = None) -> str:
     estado.pedido_curto = False
     estado.save(update_fields=["iniciada_em", "pedido_curto"])
     memoria_antes = memoria_em_uso_mb()
+    comeco = time.monotonic()
     try:
         resumo = sincronizar_conta(conta, curta=curta)
     except Exception as erro:
@@ -443,14 +479,15 @@ def processar(conta, curta: bool | None = None) -> str:
         estado.erro = str(erro)[:500]
         estado.concluida_em = timezone.now()
         estado.save(update_fields=["erro", "concluida_em"])
-        return f"{conta.email}: erro - {erro}"
+        return f"{conta.email}: erro em {time.monotonic() - comeco:.1f} s - {erro}"
     estado.erro = ""
     estado.concluida_em = timezone.now()
     estado.save(update_fields=["erro", "concluida_em"])
-    texto = (
-        f"{conta.email}: {resumo['conversoes']} conversões, {resumo['dias']} dias"
-        f" ({'completa' if resumo['completa'] else 'ontem e hoje' if resumo.get('curta') else 'rápida'}) - memória {memoria_antes} -> {memoria_em_uso_mb()} MB"
-    )
+    tipo = "completa" if resumo["completa"] else "ontem + validações" if resumo.get("curta") else "rápida"
+    texto = f"{conta.email}: busca {tipo} em {time.monotonic() - comeco:.1f} s - {resumo['conversoes']} conversões, {resumo['dias']} dias"
+    if resumo.get("curta"):
+        texto += f", {resumo.get('validacoes', 0)} itens validados de compras antigas"
+    texto += f" - memória {memoria_antes} -> {memoria_em_uso_mb()} MB"
     if resumo.get("validadas_tarde"):
         tarde, total = resumo["validadas_tarde"]
         texto += f" - validadas mais de {JANELA_RAPIDA_DIAS} dias depois da compra: {tarde} de {total}"
@@ -601,3 +638,102 @@ def ranking_produtos(vendas, limite: int | None = 5) -> list[dict]:
     for linha in linhas:
         linha["barra"] = round(100 * linha["unidades"] / maior)
     return linhas
+
+
+# --- Conferência direto na Shopee (página escondida /resultados/conferir/) -------------
+
+TEMPO_MAXIMO_CONFERENCIA = 45  # segundos por busca (o gunicorn derruba a página em 120)
+
+
+def _novo_grupo() -> dict:
+    return {"preco": 0.0, "pago": 0.0, "reembolso": 0.0, "pedidos": set()}
+
+
+def _somar_item(grupo: dict, pedido_id: str, item: dict) -> None:
+    grupo["preco"] += para_numero(item.get("itemPrice")) * max(int(para_numero(item.get("qty")) or 1), 1)
+    grupo["pago"] += para_numero(item.get("actualAmount"))
+    grupo["reembolso"] += para_numero(item.get("refundAmount"))
+    grupo["pedidos"].add(pedido_id)
+
+
+def _fechar_grupo(grupo: dict) -> dict:
+    fechado = {chave: _dinheiro(grupo[chave]) for chave in ("preco", "pago", "reembolso")}
+    fechado["pago_sem_reembolso"] = fechado["pago"] - fechado["reembolso"]
+    fechado["pedidos"] = len(grupo["pedidos"])
+    return fechado
+
+
+def somar_mes_na_shopee(conta, secret: str, de: datetime, ate: datetime, data: str = "purchaseTime",
+                        tempo_maximo: float | None = None) -> dict:
+    """Soma, direto na API, os pedidos com data de compra (data="purchaseTime") ou de validação
+    (data="completeTime") entre de e ate. Com purchaseTime: total (sem cancelados), validados, pendentes,
+    cancelados e os validados por canal; com completeTime: total dos itens validados no período.
+    Cada grupo tem preco (preço x quantidade), pago, reembolso, pago_sem_reembolso e pedidos.
+    tempo_maximo (segundos): para no meio e marca incompleto=True."""
+    import time as relogio
+
+    grupos = defaultdict(_novo_grupo)
+    compra_mais_antiga, incompleto = None, False
+    comeco = relogio.monotonic()
+    paginas = paginas_de_conversoes(conta.shopee_app_id, secret, int(de.timestamp()), int(ate.timestamp()) - 1,
+                                    data=data, itens_extras=("channelType",))
+    for pagina in paginas:
+        for conversao in pagina:
+            compra = _momento(_inteiro((conversao or {}).get("purchaseTime")))
+            for pedido in (conversao or {}).get("orders") or []:
+                status = str(pedido.get("orderStatus") or "").strip().upper()
+                pedido_id = str(pedido.get("orderId") or "")
+                for item in pedido.get("items") or []:
+                    if data == "completeTime":
+                        validado = _momento(_inteiro(item.get("completeTime")))
+                        if status != "COMPLETED" or (validado and not de <= validado < ate):
+                            continue
+                        _somar_item(grupos["total"], pedido_id, item)
+                        if compra and (not compra_mais_antiga or compra < compra_mais_antiga):
+                            compra_mais_antiga = compra
+                        continue
+                    if status in STATUS_CANCELADOS:
+                        _somar_item(grupos["cancelados"], pedido_id, item)
+                        continue
+                    _somar_item(grupos["total"], pedido_id, item)
+                    if status == "COMPLETED":
+                        _somar_item(grupos["validados"], pedido_id, item)
+                        canal = str(item.get("channelType") or "").strip() or "sem canal informado"
+                        _somar_item(grupos[f"canal:{canal}"], pedido_id, item)
+                    else:
+                        _somar_item(grupos["pendentes"], pedido_id, item)
+        if tempo_maximo and relogio.monotonic() - comeco > tempo_maximo:
+            incompleto = True
+            break
+    fechados = {chave: _fechar_grupo(grupos[chave]) for chave in ("total", "validados", "pendentes", "cancelados")}
+    fechados["canais"] = sorted(((chave[6:], _fechar_grupo(g)) for chave, g in grupos.items() if chave.startswith("canal:")),
+                                key=lambda par: -par[1]["pago"])
+    fechados["compra_mais_antiga"] = timezone.localtime(compra_mais_antiga).date() if compra_mais_antiga else None
+    fechados["incompleto"] = incompleto
+    return fechados
+
+
+def conferencia_na_shopee(conta, inicio: date, fim: date) -> dict:
+    """O faturamento do mês buscado agora na API da Shopee, sem depender dos pedidos guardados.
+    - por_compra: pedidos comprados no mês, separados em validados, pendentes e cancelados, e os
+      validados por canal (channelType). É o jeito do e-mail da meta mensal da Shopee ("vendas
+      validadas 01 a 30/09" = comprados no mês e validados);
+    - por_validacao: pedidos com data de validação (completeTime) no mês, comprados em qualquer data.
+    Cada grupo somado por preço x quantidade, valor pago (actualAmount) e pago menos reembolsos."""
+    import requests
+
+    from links.shopee_client import ShopeeAPIError
+
+    secret = cripto.decifrar(conta.shopee_secret_cifrado)
+    if not conta.shopee_app_id or not secret:
+        return {"erro": "A conta não tem as credenciais da Shopee."}
+    de, ate = _limites(inicio, fim)
+    resultado = {}
+    for chave, data in (("por_compra", "purchaseTime"), ("por_validacao", "completeTime")):
+        try:
+            resultado[chave] = somar_mes_na_shopee(conta, secret, de, ate, data, tempo_maximo=TEMPO_MAXIMO_CONFERENCIA)
+        except ShopeeAPIError as erro:
+            resultado[chave] = {"erro": f"A Shopee respondeu: {erro}"}
+        except requests.RequestException:
+            resultado[chave] = {"erro": "Não consegui falar com a Shopee agora. Tente de novo em alguns minutos."}
+    return resultado

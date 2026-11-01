@@ -70,6 +70,8 @@ h1 { font-size: 22px; font-weight: 700; margin: 0; overflow-wrap: anywhere; }
   .em-carrossel .seta-esq { left: -8px; }
   .em-carrossel .seta-dir { right: -8px; }
 }
+.ver-mais { display: block; width: 100%; margin-top: 14px; font: inherit; font-size: 14px; font-weight: 700; padding: 12px; border-radius: 999px; border: 0; background: var(--vidro); color: var(--tinta); cursor: pointer; }
+.ver-mais[hidden], .em-carrossel + .ver-mais { display: none; }
 .vazio { color: var(--tinta-suave); font-size: 14px; text-align: center; padding: 20px 0; }
 .rodape { text-align: center; font-size: 11.5px; color: var(--tinta-suave); margin-top: 32px; line-height: 1.6; }
 .rodape a { color: var(--tinta); font-weight: 700; }
@@ -86,6 +88,7 @@ h1 { font-size: 22px; font-weight: 700; margin: 0; overflow-wrap: anywhere; }
 .tema-claro .redes a { width: 46px; height: 46px; border-radius: 50%; background: #fff; border: 1px solid var(--borda); color: var(--cor-texto); }
 .tema-claro .redes svg { width: 22px; height: 22px; }
 .tema-claro .card { border: 1px solid var(--borda); }
+.tema-claro .ver-mais { background: #fff; border: 1px solid var(--borda); color: var(--texto); }
 .tema-claro .chip { background: #fff; border: 1px solid var(--borda); color: var(--texto); }
 .tema-claro .chip.ativo { background: var(--cor); border-color: var(--cor); color: var(--sobre-cor); }
 .tema-claro .produto { border: 1px solid var(--borda); }
@@ -135,7 +138,7 @@ h1 { font-size: 22px; font-weight: 700; margin: 0; overflow-wrap: anywhere; }
       <button type="button" class="seta seta-esq" aria-label="Ofertas anteriores">‹</button>
       <div class="grade{% if site.vitrine_formato == 'carrossel' %} carrossel{% endif %}" id="lista-vitrine">
         {% for p in produtos %}
-          <a class="produto" href="{{ base }}p/{{ p.pk }}/" rel="nofollow noopener" data-categoria="{{ p.categoria }}">
+          <a class="produto" href="{{ base }}p/{{ p.pk }}/" rel="nofollow noopener" data-categoria="{{ p.categoria }}"{% if forloop.counter > por_vez %} hidden{% endif %}>
             <div class="img">{% if p.imagem_url %}<img src="{{ p.imagem_url }}" alt="" loading="lazy" referrerpolicy="no-referrer">{% endif %}</div>
             <div class="t">
               <span class="nome">{{ p.nome }}</span>
@@ -147,6 +150,7 @@ h1 { font-size: 22px; font-weight: 700; margin: 0; overflow-wrap: anywhere; }
       </div>
       <button type="button" class="seta seta-dir" aria-label="Próximas ofertas">›</button>
       </div>
+      <button type="button" class="ver-mais" id="ver-mais" data-por-vez="{{ por_vez }}"{% if produtos|length <= por_vez %} hidden{% endif %}>Ver mais ofertas</button>
     {% else %}
       <p class="vazio">As ofertas aparecem aqui em breve.</p>
     {% endif %}
@@ -166,16 +170,36 @@ document.querySelectorAll(".seta").forEach(function (seta) {
     lista.scrollBy({ left: (seta.classList.contains("seta-dir") ? 1 : -1) * lista.clientWidth * 0.85, behavior: "smooth" });
   });
 });
-// Filtro por categoria da vitrine.
-document.querySelectorAll(".chip[data-categoria]").forEach(function (chip) {
-  chip.addEventListener("click", function () {
-    document.querySelectorAll(".chip").forEach(function (c) { c.classList.toggle("ativo", c === chip); });
-    var cat = chip.dataset.categoria;
-    document.querySelectorAll(".produto").forEach(function (p) { p.hidden = cat && p.dataset.categoria !== cat; });
-    var lista = document.getElementById("lista-vitrine");
-    if (lista) lista.scrollLeft = 0;
+// Vitrine: mostra as ofertas aos poucos ("Ver mais" ou, no carrossel, ao chegar no fim) e
+// filtra por categoria.
+(function () {
+  var mais = document.getElementById("ver-mais"), lista = document.getElementById("lista-vitrine");
+  if (!lista) return;
+  var porVez = parseInt(mais.dataset.porVez, 10), mostrando = porVez, categoria = "", sobrando = false;
+  function aplicar() {
+    var n = 0;
+    lista.querySelectorAll(".produto").forEach(function (p) {
+      if (categoria && p.dataset.categoria !== categoria) { p.hidden = true; return; }
+      n += 1;
+      p.hidden = n > mostrando;
+    });
+    sobrando = n > mostrando;
+    mais.hidden = !sobrando;
+  }
+  mais.addEventListener("click", function () { mostrando += porVez; aplicar(); });
+  lista.addEventListener("scroll", function () {
+    if (sobrando && lista.scrollLeft + lista.clientWidth > lista.scrollWidth - lista.clientWidth) { mostrando += porVez; aplicar(); }
+  }, { passive: true });
+  document.querySelectorAll(".chip[data-categoria]").forEach(function (chip) {
+    chip.addEventListener("click", function () {
+      document.querySelectorAll(".chip").forEach(function (c) { c.classList.toggle("ativo", c === chip); });
+      categoria = chip.dataset.categoria;
+      mostrando = porVez;
+      aplicar();
+      lista.scrollLeft = 0;
+    });
   });
-});
+})();
 </script>
 </body>
 </html>
