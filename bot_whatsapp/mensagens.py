@@ -90,7 +90,7 @@ def _textos_por_grupo(mensagem, grupos, config) -> dict[str, str]:
         sub_ids = tuple(config.lista_sub_ids(grupo["jid"]) if config else [])
         if sub_ids not in por_sub_ids:
             resultado = conversor.converter(mensagem.conta, mensagem.texto, conversor.MODO_TEXTO,
-                                            sub_ids=list(sub_ids), manter_outros_links=True)
+                                            sub_ids=list(sub_ids), manter_outros_links=True, ferramenta="bot")
             por_sub_ids[sub_ids] = resultado["texto"]
         textos[grupo["jid"]] = por_sub_ids[sub_ids]
     return textos

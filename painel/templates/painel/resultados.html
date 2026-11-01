@@ -11,6 +11,7 @@
 {% if not shopee_conectada %}
   {% include "painel/_conectar_shopee.html" %}
 {% else %}
+{% include "painel/_origens.html" %}
 <section class="card filtros" aria-label="Período">
   <nav class="chips" aria-label="Período">
     {% for chave, nome in presets %}{% if chave != "personalizado" %}
@@ -20,6 +21,7 @@
   <form method="get" class="filtro-datas">
     <input type="hidden" name="periodo" value="personalizado">
     <input type="hidden" name="metrica" value="{{ periodo.metrica }}">
+    {% if origem %}<input type="hidden" name="origem" value="{{ origem }}">{% endif %}
     <label>De <input type="date" name="de" value="{{ periodo.inicio|date:'Y-m-d' }}"></label>
     <label>Até <input type="date" name="ate" value="{{ periodo.fim|date:'Y-m-d' }}"></label>
     <button type="submit" class="botao botao-escuro botao-pequeno">Ver período</button>
@@ -75,12 +77,15 @@
     {% else %}
       <section class="card ordem-4">
         <h2>Como os números são contados</h2>
+        {% if origem %}<p class="suave pequeno" style="margin-bottom:8px">Mostrando só <strong>{{ nome_origem }}</strong>: os números somam os itens vendidos dessa origem (a comissão estimada é a de cada item).</p>{% endif %}
         <p class="suave pequeno"><strong>Faturamento</strong> e <strong>pedidos</strong> contam pela data da compra, sem os cancelados - o mesmo critério das metas da Shopee. A <strong>comissão estimada</strong> também conta pela compra e ainda pode mudar. A <strong>validada</strong> conta pela data em que a Shopee confirmou o pedido.</p>
         {% if sincronizacao.cobertura_inicio %}<p class="suave pequeno" style="margin-top:8px">Dados guardados desde {{ sincronizacao.cobertura_inicio|date:"d/m/Y" }} - a API da Shopee só alcança uns 3 meses para trás.</p>{% endif %}
       </section>
     {% endif %}
   </div>
 </div>
+
+{% include "painel/_horarios.html" %}
 
 <section class="card" id="produtos" aria-labelledby="titulo-produtos">
   <div class="card-topo"><h2 id="titulo-produtos">Produtos mais vendidos</h2><span class="suave pequeno">Lista completa no Excel</span></div>

@@ -220,7 +220,7 @@ def avisar(alerta: AlertaPreco, disparados: list[AlertaDisparado]) -> None:
     app_id, secret = credenciais(conta)
     for d in disparados:  # link de afiliado do painel e do e-mail (Sub ID "alerta")
         try:
-            d.link_afiliado = shopee_ofertas.gerar_link_afiliado(app_id, secret, d.produto.link, [SUB_ID])[:500]
+            d.link_afiliado = shopee_ofertas.gerar_link_afiliado(app_id, secret, d.produto.link, [SUB_ID], "alerta")[:500]
         except Exception:  # noqa: BLE001
             logger.warning("Alerta de preço: sem link de afiliado para %s", d.produto_id, exc_info=True)
             d.link_afiliado = (d.produto.link or "")[:500]

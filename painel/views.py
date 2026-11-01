@@ -28,7 +28,7 @@ from licencas.services import resposta_validacao
 
 from . import cripto
 from . import modulos as mod
-from . import exportar, periodos, primeiros_passos, relatorio, resultados, telas
+from . import exportar, origens, periodos, por_origem, primeiros_passos, relatorio, resultados, telas
 from .models import MetaMensal, RegraSubId, RelatorioEmail
 from .autenticacao import (
     conta_logada,
@@ -227,15 +227,36 @@ def resultados_view(request):
         "sincronizacao": telas.estado_sincronizacao(conta),
     }
     if conta.shopee_validado_em:
-        linhas = resultados.serie(conta, periodo["inicio"], periodo["fim"], periodo["agrupar"])
-        mesmo_mes = (periodo["inicio"].year, periodo["inicio"].month) == (periodo["fim"].year, periodo["fim"].month)
+        inicio, fim = periodo["inicio"], periodo["fim"]
+        origem = por_origem.origem_da_requisicao(request.GET)
+        if origem:  # só a origem escolhida: tudo sai dos itens vendidos guardados
+            linhas = por_origem.serie(conta, inicio, fim, periodo["agrupar"], origem)
+            totais = por_origem.totais(linhas)
+            sub_ids = por_origem.por_sub_id(conta, inicio, fim, origem)
+        else:
+            linhas = resultados.serie(conta, inicio, fim, periodo["agrupar"])
+            totais = resultados.totais(conta, inicio, fim)
+            sub_ids = resultados.por_sub_id(conta, inicio, fim)
+        mesmo_mes = (inicio.year, inicio.month) == (fim.year, fim.month)
+        estado = contexto["sincronizacao"]
+        desde = timezone.localtime(estado.vendas_desde).date() if estado and estado.vendas_desde else None
+        metrica_mapa = "comissao" if request.GET.get("mapa") == "comissao" else "pedidos"
+        from bot_whatsapp.models import ConfiguracaoOfertas
+
+        config_bot = ConfiguracaoOfertas.objects.filter(conta=conta, ativo=True).first()
         contexto.update({
-            "totais": resultados.totais(conta, periodo["inicio"], periodo["fim"]),
-            "inclui_hoje": periodo["fim"] >= hoje,
+            "totais": totais,
+            "inclui_hoje": fim >= hoje,
             "linhas": list(reversed(linhas)),
             "grafico": telas.barras(linhas, periodo["metrica"]),
-            "sub_ids": resultados.por_sub_id(conta, periodo["inicio"], periodo["fim"]),
-            "meta": telas.situacao_meta(conta, periodo["fim"].year, periodo["fim"].month, hoje) if mesmo_mes else None,
+            "sub_ids": sub_ids,
+            "meta": telas.situacao_meta(conta, fim.year, fim.month, hoje) if mesmo_mes else None,
+            "origem": origem,
+            "nome_origem": origens.NOMES.get(origem, ""),
+            "resumo_origens": por_origem.resumo(conta, inicio, fim),
+            "origem_sem_historico": bool(origem) and (not desde or desde > inicio),
+            "vendas_desde": desde,
+            "mapa": por_origem.mapa_de_horarios(conta, inicio, fim, origem, metrica_mapa, config_bot),
         })
         celular = request.COOKIES.get(resultados.COOKIE_TELA) == "celular"
         contexto.update(_vendas_da_tela(conta, periodo, request.GET, celular))
@@ -245,13 +266,14 @@ def resultados_view(request):
 def _vendas_da_tela(conta, periodo, parametros, celular=False) -> dict:
     """Produtos mais vendidos e a lista de vendas do período (20 por página; 10 no celular)."""
     filtradas = resultados.filtrar_vendas(conta, periodo["inicio"], periodo["fim"], parametros)
+    origem = por_origem.origem_da_requisicao(parametros)
     por_pagina = resultados.VENDAS_POR_PAGINA_CELULAR if celular else resultados.VENDAS_POR_PAGINA
     pagina = Paginator(filtradas["vendas"], por_pagina).get_page(parametros.get("pagina"))
     nome_do_grupo = filtradas["nome_do_grupo"]
     for venda in pagina:
         venda.grupo = nome_do_grupo(venda.sub_id)
     return {
-        "ranking": resultados.ranking_produtos(resultados.vendas_do_periodo(conta, periodo["inicio"], periodo["fim"])),
+        "ranking": resultados.ranking_produtos(por_origem.itens(conta, periodo["inicio"], periodo["fim"], origem)),
         "pagina_vendas": pagina,
         "paginas_vendas": pagina.paginator.get_elided_page_range(pagina.number, on_each_side=1, on_ends=1),
         "grupos_vendas": filtradas["grupos"],
@@ -260,7 +282,8 @@ def _vendas_da_tela(conta, periodo, parametros, celular=False) -> dict:
         "situacoes_vendas": resultados.FILTROS_SITUACAO,
         "tem_vendas_guardadas": resultados.VendaItem.objects.filter(conta=conta).exists(),
         # o formulário dos filtros das vendas mantém o período escolhido no topo
-        "parametros_periodo": [(c, parametros[c]) for c in ("periodo", "de", "ate", "agrupar", "metrica") if parametros.get(c)],
+        "parametros_periodo": [(c, parametros[c]) for c in ("periodo", "de", "ate", "agrupar", "metrica", "origem", "mapa")
+                               if parametros.get(c)],
     }
 
 

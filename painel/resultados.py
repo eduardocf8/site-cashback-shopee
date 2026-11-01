@@ -26,7 +26,7 @@ from django.db import transaction
 from django.db.models import F, Sum
 from django.utils import timezone
 
-from . import cripto
+from . import cripto, origens
 from .models import RegraSubId, ResultadoDiario, ResultadoSubIdDiario, SincronizacaoResultados, VendaItem
 from .memoria import memoria_em_uso_mb
 from .periodos import agrupar
@@ -122,18 +122,25 @@ def _textos(valor) -> list[str]:
     return [texto] if texto else []
 
 
-def sub_id(conversao: dict) -> str:
+def sub_id_e_marca(conversao: dict) -> tuple[str, str]:
     """O utmContent da Shopee traz os 5 Sub IDs do link juntos, separados por "-"
     (ex: "grupoA-story---", ou "----" quando não tem nenhum). Sub ID só aceita
     letras e números, então o "-" não aparece dentro deles. Cada venda fica com um
-    rótulo só, com os campos preenchidos: "grupoA-story"."""
+    rótulo só, com os campos preenchidos: "grupoA-story". A marca de origem que o
+    Appfiliado põe nos links (origens.py) sai do rótulo e volta à parte.
+    Devolve (rótulo, origem da marca ou "")."""
     partes = [
         parte.strip()
         for texto in _textos(conversao.get("utmContent"))
         for parte in re.split(r"[-|;,]", texto)
         if parte.strip()
     ]
-    return "-".join(partes)[:120] or SEM_SUB_ID
+    partes, marca = origens.separar_marca(partes)
+    return "-".join(partes)[:120] or SEM_SUB_ID, marca
+
+
+def sub_id(conversao: dict) -> str:
+    return sub_id_e_marca(conversao)[0]
 
 
 def _dia_local(ts: int) -> date:
@@ -217,8 +224,9 @@ def _texto(valor, tamanho: int) -> str:
     return str(valor or "").strip()[:tamanho]
 
 
-def itens_vendidos(conta, conversoes: list[dict]) -> list[VendaItem]:
-    """Um VendaItem por produto de cada pedido (ainda não salvos)."""
+def itens_vendidos(conta, conversoes: list[dict], classificador=None) -> list[VendaItem]:
+    """Um VendaItem por produto de cada pedido (ainda não salvos), com a origem (origens.py)."""
+    classificador = classificador or origens.classificador_da_conta(conta)
     itens = []
     for conversao in conversoes:
         if not isinstance(conversao, dict):
@@ -226,7 +234,8 @@ def itens_vendidos(conta, conversoes: list[dict]) -> list[VendaItem]:
         compra = _momento(_inteiro(conversao.get("purchaseTime")))
         if not compra:
             continue
-        rotulo = sub_id(conversao)
+        rotulo, marca = sub_id_e_marca(conversao)
+        origem = classificador.origem(rotulo, marca)
         conversao_id = _texto(conversao.get("conversionId"), 40)
         pedidos = conversao.get("orders")
         for pedido in pedidos if isinstance(pedidos, list) else []:
@@ -251,7 +260,7 @@ def itens_vendidos(conta, conversoes: list[dict]) -> list[VendaItem]:
                     preco=_dinheiro(preco), valor=_dinheiro(valor_do_item(item)),
                     comissao=_dinheiro(para_numero(item.get("itemTotalCommission"))),
                     status_shopee=status[:20], motivo_shopee=_motivo(item, situacao), situacao=situacao,
-                    sub_id=rotulo, comprado_em=compra,
+                    sub_id=rotulo, origem=origem, comprado_em=compra,
                     concluido_em=_momento(_inteiro(item.get("completeTime"))) if situacao == VendaItem.CONCLUIDO else None,
                 ))
     return itens
@@ -339,12 +348,13 @@ def sincronizar_conta(conta, agora: datetime | None = None, completa: bool | Non
     conversoes = 0
 
     # Tudo numa transação: se a Shopee falhar no meio, nada do que estava guardado se perde.
+    classificador = origens.classificador_da_conta(conta)
     with transaction.atomic():
         VendaItem.objects.filter(conta=conta, comprado_em__gte=inicio_janela).delete()
         for pagina in paginas_de_conversoes(conta.shopee_app_id, secret, int(inicio_janela.timestamp()), int(agora.timestamp())):
             conversoes += len(pagina)
             acumular(por_dia, por_sub_id, pagina)
-            VendaItem.objects.bulk_create(itens_vendidos(conta, pagina), batch_size=1000, ignore_conflicts=True)
+            VendaItem.objects.bulk_create(itens_vendidos(conta, pagina, classificador), batch_size=1000, ignore_conflicts=True)
         validacoes = _atualizar_validados(conta, secret, inicio_janela, agora) if curta else 0
 
         if completa and (not estado.vendas_desde or inicio_janela < estado.vendas_desde):
@@ -406,16 +416,17 @@ def _atualizar_validados(conta, secret: str, desde: datetime, agora: datetime) -
     (as de depois já vieram na busca pela compra). Atualiza o item guardado (situação, data de
     validação, valor e comissão) ou guarda o que ainda não estava. Devolve quantos itens vieram."""
     total = 0
+    classificador = origens.classificador_da_conta(conta)
     for pagina in paginas_de_conversoes(conta.shopee_app_id, secret, int(desde.timestamp()), int(agora.timestamp()),
                                         data="completeTime"):
         antigas = [c for c in pagina if isinstance(c, dict) and (_momento(_inteiro(c.get("purchaseTime"))) or agora) < desde]
         novos = []
-        for item in itens_vendidos(conta, antigas):
+        for item in itens_vendidos(conta, antigas, classificador):
             total += 1
             atualizados = VendaItem.objects.filter(
                 conta=conta, conversao_id=item.conversao_id, pedido_id=item.pedido_id, item_id=item.item_id,
             ).update(situacao=item.situacao, status_shopee=item.status_shopee, concluido_em=item.concluido_em,
-                     valor=item.valor, comissao=item.comissao, motivo_shopee=item.motivo_shopee)
+                     valor=item.valor, comissao=item.comissao, motivo_shopee=item.motivo_shopee, origem=item.origem)
             if not atualizados:
                 novos.append(item)
         VendaItem.objects.bulk_create(novos, batch_size=1000, ignore_conflicts=True)
@@ -596,8 +607,10 @@ def grupos_das_vendas(conta, vendas) -> dict[str, list[str]]:
 
 
 def filtrar_vendas(conta, inicio: date, fim: date, parametros) -> dict:
-    """Vendas do período com os filtros da tela (busca, Sub ID/grupo, situação e ordem)."""
+    """Vendas do período com os filtros da tela (origem, busca, Sub ID/grupo, situação e ordem)."""
     vendas = vendas_do_periodo(conta, inicio, fim)
+    if str(parametros.get("origem") or "") in origens.NOMES:
+        vendas = vendas.filter(origem=parametros["origem"])
     grupos = grupos_das_vendas(conta, vendas)
     busca = str(parametros.get("busca") or "").strip()[:100]
     grupo = str(parametros.get("sub") or "")

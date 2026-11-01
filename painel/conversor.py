@@ -70,10 +70,10 @@ def _origem(app_id: str, secret: str, link: str) -> str:
     return link
 
 
-def _gerar(app_id: str, secret: str, origem: str, sub_ids: list[str]) -> str:
+def _gerar(app_id: str, secret: str, origem: str, sub_ids: list[str], ferramenta: str = "conversor") -> str:
     """O link de afiliado, ou "" se a Shopee recusou."""
     try:
-        return shopee_ofertas.gerar_link_afiliado(app_id, secret, origem, sub_ids)
+        return shopee_ofertas.gerar_link_afiliado(app_id, secret, origem, sub_ids, ferramenta)
     except Exception:  # noqa: BLE001
         logger.warning("Conversor: a Shopee não converteu %s", origem, exc_info=True)
         return ""
@@ -100,7 +100,7 @@ def _pedacos(texto: str):
 
 
 def converter(conta, texto: str, modo: str, sub_id: str = "", *, sub_ids: list[str] | None = None,
-              manter_outros_links: bool = False) -> dict:
+              manter_outros_links: bool = False, ferramenta: str = "conversor") -> dict:
     """{"texto", "convertidos", "falharam", "removidos"}. Levanta ErroConversor.
     sub_ids: a lista inteira (mensagem avulsa do bot, com os Sub IDs de cada grupo).
     manter_outros_links: os links que não são da Shopee ficam no texto (mensagem avulsa)."""
@@ -132,7 +132,7 @@ def converter(conta, texto: str, modo: str, sub_id: str = "", *, sub_ids: list[s
         origens = dict(zip(unicos, fila.map(lambda link: _origem(app_id, secret, link), unicos)))
         destinos = list(dict.fromkeys(origens.values()))
         # 2) um link de afiliado por produto.
-        gerados = dict(zip(destinos, fila.map(lambda origem: _gerar(app_id, secret, origem, sub_ids), destinos)))
+        gerados = dict(zip(destinos, fila.map(lambda origem: _gerar(app_id, secret, origem, sub_ids, ferramenta), destinos)))
     novo = {link: gerados[origens[link]] for link in unicos}
     convertidos = [gerados[o] for o in destinos if gerados[o]]
     falharam = [l for l in unicos if not novo[l]]

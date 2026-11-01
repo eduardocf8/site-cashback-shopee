@@ -1,0 +1,34 @@
+{% load painel_extras %}
+{# Quando suas vendas acontecem: pedidos (ou comissão) por dia da semana e hora da compra (por_origem.mapa_de_horarios). #}
+<section class="card" id="horarios" aria-labelledby="titulo-horarios">
+  <div class="card-topo">
+    <h2 id="titulo-horarios">Quando suas vendas acontecem</h2>
+    <nav class="chips chips-pequenos" aria-label="O que mostrar no mapa">
+      <a class="chip{% if mapa.metrica == 'pedidos' %} ativo{% endif %}" href="{% querystring mapa=None %}#horarios">Pedidos</a><a class="chip{% if mapa.metrica == 'comissao' %} ativo{% endif %}" href="{% querystring mapa='comissao' %}#horarios">Comissão</a>
+    </nav>
+  </div>
+  {% if not mapa.total %}
+    <p class="suave pequeno">Nenhuma venda guardada nesse período{% if nome_origem %} vinda de {{ nome_origem }}{% endif %}.</p>
+  {% else %}
+    <p class="suave pequeno" style="margin:0">Pela hora da compra, {{ periodo.descricao }}{% if nome_origem %} · só {{ nome_origem }}{% endif %} · {{ mapa.pedidos|numero }} pedido{{ mapa.pedidos|pluralize }}. Cada quadradinho é um dia da semana numa hora.</p>
+    {% if mapa.poucos %}<p class="aviso aviso-info pequeno" style="margin-top:10px">São poucos pedidos para o mapa dizer muita coisa. Escolha um período maior, como os últimos 30 dias.</p>{% endif %}
+    <div class="mapa-h" role="img" aria-label="Vendas por dia da semana e hora">
+      <span></span>{% for h in mapa.por_hora %}<span class="hora">{{ h.hora }}</span>{% endfor %}
+      {% for linha in mapa.linhas %}
+        <span class="rot">{{ linha.dia }}</span>{% for c in linha.celulas %}<span class="c n{{ c.nivel }}{% if c.forte %} forte{% endif %}" title="{{ linha.dia }} {{ c.hora }}h: {% if mapa.metrica == 'comissao' %}{{ c.valor|brl }}{% else %}{{ c.valor|numero }} pedido{{ c.valor|pluralize }}{% endif %}"></span>{% endfor %}
+      {% endfor %}
+    </div>
+    <div class="legenda-h"><span>menos</span><i></i><i class="n1"></i><i class="n2"></i><i class="n3"></i><i class="n4"></i><span>mais</span><span class="legenda-forte"><i class="forte"></i>horários mais fortes</span></div>
+    <p class="suave pequeno" style="margin:16px 0 0"><strong>Somando todos os dias</strong> · {% if mapa.metrica == 'comissao' %}comissão{% else %}pedidos{% endif %} por hora</p>
+    <div class="total-h" aria-hidden="true">{% for h in mapa.por_hora %}<span class="{% if h.melhor %}melhor{% endif %}" style="height:{{ h.altura }}%" title="{{ h.hora }}h"></span>{% endfor %}</div>
+    <div class="eixo-h" aria-hidden="true">{% for h in mapa.por_hora %}<span>{{ h.hora }}h</span>{% endfor %}</div>
+    <div class="rodape-h">
+      <div class="melhores-h">
+        {% for d in mapa.destaques %}<div class="melhor-h"><span class="n">{{ forloop.counter }}º</span><strong>{{ d.titulo }}</strong><span class="t">{{ d.texto }}</span></div>{% endfor %}
+      </div>
+      {% if mapa.dica_bot %}
+        <p class="dica-bot"><strong>Para o bot:</strong> {% if mapa.dica_bot.ok %}seus clientes compram mais entre <strong>{{ mapa.dica_bot.de }} e {{ mapa.dica_bot.ate }}</strong>, e o bot já envia nesse horário (das {{ mapa.dica_bot.bot }}).{% else %}seus clientes compram mais entre <strong>{{ mapa.dica_bot.de }} e {{ mapa.dica_bot.ate }}</strong>. Hoje o bot envia das <strong>{{ mapa.dica_bot.bot }}</strong>, então {{ mapa.dica_bot.situacao }}. <a href="{% url 'painel_whatsapp_ofertas' %}#titulo-quando">Ajustar o horário do bot</a>{% endif %}</p>
+      {% endif %}
+    </div>
+  {% endif %}
+</section>

@@ -163,8 +163,12 @@ def validar_sub_ids(sub_ids: list[str]) -> list[str]:
     return sub_ids
 
 
-def gerar_link_afiliado(app_id: str, secret: str, url: str, sub_ids: list[str]) -> str:
-    sub_ids = validar_sub_ids(sub_ids)
+def gerar_link_afiliado(app_id: str, secret: str, url: str, sub_ids: list[str], ferramenta: str = "") -> str:
+    """ferramenta ("bot", "site", "conversor"...): põe a marca de origem num Sub ID livre
+    (painel/origens.py), para a tela de Resultados saber de onde veio a venda."""
+    from painel.origens import com_marca
+
+    sub_ids = validar_sub_ids(com_marca(sub_ids, ferramenta))
     extra = f",subIds:{json.dumps(sub_ids, ensure_ascii=False)}" if sub_ids else ""
     query = (
         f"mutation{{generateShortLink(input:{{originUrl:{json.dumps(url, ensure_ascii=False)}{extra}}})"

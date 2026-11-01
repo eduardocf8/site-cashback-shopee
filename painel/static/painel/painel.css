@@ -1111,3 +1111,62 @@ fieldset.sem-borda > legend { padding: 0; margin-bottom: 8px; }
 .hora-bot .v { text-align: right; font-weight: 700; }
 .hora-bot small, td small.sub-n { display: block; font-weight: 400; color: var(--suave); font-size: 11.5px; }
 .selo-bot { display: inline-block; font-size: 11px; font-weight: 800; border-radius: 999px; padding: 2px 8px; background: #FFF1CC; color: #7A5A00; margin-left: 4px; }
+
+/* Resultados > De onde vieram as vendas (filtro de origem) */
+.origem-card { margin-top: 16px; }
+.origem-card .chips { margin-bottom: 14px; }
+.chip .ponto { display: inline-block; width: 9px; height: 9px; border-radius: 50%; margin-right: 6px; }
+.chip.ativo .ponto { box-shadow: 0 0 0 2px #fff; }
+.barra-origem { display: flex; height: 14px; border-radius: 999px; overflow: hidden; background: var(--trilho); }
+.barra-origem span { display: block; height: 100%; }
+.leg-origem { display: flex; flex-wrap: wrap; gap: 6px 18px; margin-top: 10px; font-size: 12.5px; color: var(--suave); }
+.leg-origem b { color: var(--texto); }
+.leg-origem i { display: inline-block; width: 10px; height: 10px; border-radius: 3px; margin-right: 6px; vertical-align: -1px; }
+.leg-origem .apagada { opacity: .45; }
+.nota-origem { margin: 12px 0 0; font-size: 12.5px; color: var(--suave); }
+@media (max-width: 700px) {
+  .chips-origem { flex-wrap: nowrap; overflow-x: auto; margin-right: -20px; padding: 0 20px 4px 0; scrollbar-width: none; }
+  .chips-origem .chip { flex: none; }
+  .leg-origem { display: grid; grid-template-columns: 1fr; gap: 6px; }
+  .nota-origem { margin-top: 14px; font-size: 12px; }
+}
+
+/* Resultados > Quando suas vendas acontecem */
+#horarios { margin-top: 16px; }
+.mapa-h { display: grid; grid-template-columns: 40px repeat(24, 1fr); gap: 3px; margin-top: 12px; }
+.mapa-h .rot { font-size: 11.5px; color: var(--suave); display: flex; align-items: center; }
+.mapa-h .hora { font-size: 10.5px; color: var(--suave); text-align: center; }
+.mapa-h .c, .legenda-h i { aspect-ratio: 1 / 1; border-radius: 4px; background: var(--trilho); }
+.mapa-h .n1, .legenda-h .n1 { background: rgba(31, 58, 46, .22); }
+.mapa-h .n2, .legenda-h .n2 { background: rgba(31, 58, 46, .45); }
+.mapa-h .n3, .legenda-h .n3 { background: rgba(31, 58, 46, .7); }
+.mapa-h .n4, .legenda-h .n4 { background: var(--verde); }
+.mapa-h .forte, .legenda-h .forte { outline: 2px solid var(--amarelo); outline-offset: -2px; }
+.legenda-h { display: flex; align-items: center; flex-wrap: wrap; gap: 6px; font-size: 11.5px; color: var(--suave); margin-top: 10px; }
+.legenda-h i { width: 14px; height: 14px; display: inline-block; }
+.legenda-h .forte { background: transparent; vertical-align: -3px; margin-right: 6px; }
+.legenda-forte { margin-left: 14px; white-space: nowrap; }
+.total-h, .eixo-h { display: grid; grid-template-columns: repeat(24, minmax(0, 1fr)); gap: 3px; }
+.eixo-h span { min-width: 0; white-space: nowrap; overflow: visible; }
+.total-h { align-items: end; height: 64px; margin-top: 6px; }
+.total-h span { background: var(--verde); border-radius: 3px 3px 0 0; min-height: 2px; }
+.total-h span.melhor { background: var(--amarelo); }
+.eixo-h { margin-top: 4px; font-size: 10.5px; color: var(--suave); text-align: center; }
+.rodape-h { display: grid; gap: 14px; margin-top: 16px; }
+.melhores-h { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; }
+.melhor-h { border: 1px solid var(--borda); border-radius: 14px; padding: 12px 14px; }
+.melhor-h strong { display: block; font-size: 16px; }
+.melhor-h .t { font-size: 12.5px; color: var(--suave); }
+.melhor-h .n { font-size: 11px; font-weight: 800; color: #7A5A00; background: #FFF1CC; border-radius: 999px; padding: 2px 8px; display: inline-block; margin-bottom: 6px; }
+.dica-bot { margin: 0; font-size: 13px; background: var(--bom-suave); border-radius: 12px; padding: 10px 14px; color: #1E5C33; }
+@media (max-width: 700px) {
+  .mapa-h { grid-template-columns: 30px repeat(24, minmax(9px, 1fr)); gap: 2px; }
+  .mapa-h .hora:nth-child(odd) { visibility: hidden; }
+  .total-h, .eixo-h { gap: 2px; }
+  .eixo-h span:nth-child(even) { visibility: hidden; }
+  .melhores-h { grid-template-columns: 1fr; gap: 8px; }
+  .melhor-h { padding: 10px 12px; }
+  .melhor-h .n { margin: 0 6px 0 0; }
+  .melhor-h strong { display: inline; font-size: 15px; }
+  .melhor-h .t { display: block; margin-top: 2px; }
+}
