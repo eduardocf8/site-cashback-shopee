@@ -16,6 +16,7 @@ exportado da Shopee:
 
 import logging
 import re
+import time
 from collections import defaultdict
 from datetime import date, datetime, timedelta
 from datetime import timezone as dt_timezone
@@ -307,8 +308,10 @@ def sincronizar_conta(conta, agora: datetime | None = None, completa: bool | Non
       antigo quase não muda (só pedido que ainda estava no prazo de cancelamento);
     - completa (1x por dia, de madrugada): os ~3 meses que a API alcança, para pegar as
       validações atrasadas (pedido de mais de 30 dias que só agora foi concluído);
-    - curta (botão "Atualizar dia anterior e atual" e conferência do relatório diário): só
-      ontem e hoje.
+    - curta (botão "Atualizar ontem e validações de hoje", comando do WhatsApp e conferência do
+      relatório diário): as compras de ontem e hoje (a Shopee só libera as de hoje no dia
+      seguinte) e, numa segunda busca pela data de validação, os itens validados ontem e hoje
+      de compras mais antigas - que é o que muda a comissão validada desses dias.
     Faturamento, pedidos, comissão estimada e Sub IDs: recalculados nos dias da janela.
     Comissão validada (pela data em que a Shopee validou): somada dos itens guardados nos
     últimos DIAS_RECALCULO_VALIDADA dias. O que fica fora da janela continua guardado."""
@@ -342,6 +345,7 @@ def sincronizar_conta(conta, agora: datetime | None = None, completa: bool | Non
             conversoes += len(pagina)
             acumular(por_dia, por_sub_id, pagina)
             VendaItem.objects.bulk_create(itens_vendidos(conta, pagina), batch_size=1000, ignore_conflicts=True)
+        validacoes = _atualizar_validados(conta, secret, inicio_janela, agora) if curta else 0
 
         if completa and (not estado.vendas_desde or inicio_janela < estado.vendas_desde):
             estado.vendas_desde = inicio_janela
@@ -390,10 +394,32 @@ def sincronizar_conta(conta, agora: datetime | None = None, completa: bool | Non
                 estado.cobertura_inicio = primeiro_dia_completo
         estado.save(update_fields=["completa_em", "cobertura_inicio", "vendas_desde"])
 
-    resumo = {"conversoes": conversoes, "dias": len(dias_compra), "completa": completa, "curta": curta}
+    resumo = {"conversoes": conversoes, "dias": len(dias_compra), "completa": completa, "curta": curta,
+              "validacoes": validacoes}
     if completa:
         resumo["validadas_tarde"] = validacoes_depois_de(conta, agora, JANELA_RAPIDA_DIAS)
     return resumo
+
+
+def _atualizar_validados(conta, secret: str, desde: datetime, agora: datetime) -> int:
+    """Busca curta: os itens que a Shopee validou de desde até agora, de compras de antes de desde
+    (as de depois já vieram na busca pela compra). Atualiza o item guardado (situação, data de
+    validação, valor e comissão) ou guarda o que ainda não estava. Devolve quantos itens vieram."""
+    total = 0
+    for pagina in paginas_de_conversoes(conta.shopee_app_id, secret, int(desde.timestamp()), int(agora.timestamp()),
+                                        data="completeTime"):
+        antigas = [c for c in pagina if isinstance(c, dict) and (_momento(_inteiro(c.get("purchaseTime"))) or agora) < desde]
+        novos = []
+        for item in itens_vendidos(conta, antigas):
+            total += 1
+            atualizados = VendaItem.objects.filter(
+                conta=conta, conversao_id=item.conversao_id, pedido_id=item.pedido_id, item_id=item.item_id,
+            ).update(situacao=item.situacao, status_shopee=item.status_shopee, concluido_em=item.concluido_em,
+                     valor=item.valor, comissao=item.comissao, motivo_shopee=item.motivo_shopee)
+            if not atualizados:
+                novos.append(item)
+        VendaItem.objects.bulk_create(novos, batch_size=1000, ignore_conflicts=True)
+    return total
 
 
 def validacoes_depois_de(conta, agora: datetime, dias: int) -> tuple[int, int]:
@@ -436,7 +462,8 @@ def contas_pendentes(agora: datetime | None = None):
 
 
 def processar(conta, curta: bool | None = None) -> str:
-    """curta=None: curta só se a pessoa pediu o dia anterior e o atual."""
+    """curta=None: curta só se a pessoa pediu ontem e as validações de hoje. O log diz quanto
+    tempo a busca levou."""
     estado, _ = SincronizacaoResultados.objects.get_or_create(conta=conta)
     if curta is None:
         curta = estado.aguardando and estado.pedido_curto
@@ -444,6 +471,7 @@ def processar(conta, curta: bool | None = None) -> str:
     estado.pedido_curto = False
     estado.save(update_fields=["iniciada_em", "pedido_curto"])
     memoria_antes = memoria_em_uso_mb()
+    comeco = time.monotonic()
     try:
         resumo = sincronizar_conta(conta, curta=curta)
     except Exception as erro:
@@ -451,14 +479,15 @@ def processar(conta, curta: bool | None = None) -> str:
         estado.erro = str(erro)[:500]
         estado.concluida_em = timezone.now()
         estado.save(update_fields=["erro", "concluida_em"])
-        return f"{conta.email}: erro - {erro}"
+        return f"{conta.email}: erro em {time.monotonic() - comeco:.1f} s - {erro}"
     estado.erro = ""
     estado.concluida_em = timezone.now()
     estado.save(update_fields=["erro", "concluida_em"])
-    texto = (
-        f"{conta.email}: {resumo['conversoes']} conversões, {resumo['dias']} dias"
-        f" ({'completa' if resumo['completa'] else 'ontem e hoje' if resumo.get('curta') else 'rápida'}) - memória {memoria_antes} -> {memoria_em_uso_mb()} MB"
-    )
+    tipo = "completa" if resumo["completa"] else "ontem + validações" if resumo.get("curta") else "rápida"
+    texto = f"{conta.email}: busca {tipo} em {time.monotonic() - comeco:.1f} s - {resumo['conversoes']} conversões, {resumo['dias']} dias"
+    if resumo.get("curta"):
+        texto += f", {resumo.get('validacoes', 0)} itens validados de compras antigas"
+    texto += f" - memória {memoria_antes} -> {memoria_em_uso_mb()} MB"
     if resumo.get("validadas_tarde"):
         tarde, total = resumo["validadas_tarde"]
         texto += f" - validadas mais de {JANELA_RAPIDA_DIAS} dias depois da compra: {tarde} de {total}"

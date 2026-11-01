@@ -217,7 +217,7 @@ class TestComVinculo(BaseComandos):
         self.assertIn("Buscando a comissão validada de hoje na Shopee", self.resposta("validada"))
         estado = SincronizacaoResultados.objects.get(conta=self.conta)
         self.assertTrue(estado.aguardando)
-        self.assertFalse(estado.pedido_curto)  # a de 30 dias: pega validação de compra antiga
+        self.assertTrue(estado.pedido_curto)  # a curta: ontem + o que foi validado hoje
         self.assertIn("Buscando", self.resposta("hoje"))  # pediu de novo: uma resposta só no fim
 
         enviadas = self.volta(AGORA + timedelta(seconds=20))
@@ -239,7 +239,7 @@ class TestComVinculo(BaseComandos):
         SincronizacaoResultados.objects.filter(conta=self.conta).update(pedido_em=AGORA - timedelta(minutes=1),
                                                                          pedido_curto=True)
         self.resposta("validada")
-        self.assertFalse(SincronizacaoResultados.objects.get(conta=self.conta).pedido_curto)  # virou a de 30 dias
+        self.assertTrue(SincronizacaoResultados.objects.get(conta=self.conta).pedido_curto)  # a curta já pega a validada
         self.assertEqual([t for t in self.volta(AGORA + timedelta(minutes=4)) if "✅" in t], [])
         validadas = [t for t in self.volta(AGORA + timedelta(minutes=6)) if "✅" in t]
         self.assertEqual(len(validadas), 1)

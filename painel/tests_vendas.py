@@ -1,5 +1,5 @@
 import io
-from datetime import datetime, timedelta
+from datetime import date, datetime, timedelta
 from decimal import Decimal
 from unittest import mock
 
@@ -307,6 +307,53 @@ class TestSincronizacaoRapidaECompleta(TestCase):
             conversao(ts(2026, 10, 1), [pedido("p2", "COMPLETED", [item("B", "10", 1, "1", ts(2026, 10, 10))])], conversion_id="c2"),
         ]])), mock.patch("painel.resultados.timezone.now", return_value=self.AGORA):
             texto = resultados.processar(self.conta)
-        self.assertIn("(completa)", texto)
+        self.assertIn("busca completa em ", texto)
         self.assertIn("memória", texto)
         self.assertIn("validadas mais de 30 dias depois da compra: 1 de 2", texto)
+
+
+class TestAtualizarOntemEValidacoes(TestCase):
+    """O botão "Atualizar ontem e validações de hoje": compras de ontem + o que a Shopee validou."""
+
+    AGORA = datetime(2026, 10, 18, 15, 0, tzinfo=SP)
+
+    def setUp(self):
+        self.conta = ContaAppfiliado.objects.create(
+            email="bia@exemplo.com", shopee_app_id="123", shopee_secret_cifrado=cripto.cifrar("segredo"),
+            shopee_validado_em=timezone.now(),
+        )
+        # Pedido de 05/10 guardado como pendente (a Shopee validou hoje).
+        VendaItem.objects.create(conta=self.conta, conversao_id="antiga", pedido_id="P1", posicao=0, item_id="X1", nome="Fone",
+                                 valor=Decimal(50), comissao=Decimal("4.00"), situacao=VendaItem.PENDENTE, sub_id="grupoA",
+                                 comprado_em=datetime(2026, 10, 5, 12, tzinfo=SP))
+        from .models import SincronizacaoResultados
+        SincronizacaoResultados.objects.create(conta=self.conta, vendas_desde=datetime(2026, 7, 20, tzinfo=SP))
+
+    def test_busca_as_compras_de_ontem_e_as_validacoes_de_compras_antigas(self):
+        validado_hoje = ts(2026, 10, 18, 9)
+
+        def item_(item_id, preco, comissao, validado=None):
+            return {"itemId": item_id, "itemName": item_id, "itemPrice": preco, "qty": 1, "itemTotalCommission": comissao,
+                    "completeTime": validado}
+
+        de_ontem = conversao(ts(2026, 10, 17), [pedido("P9", "PENDING", [item_("Y1", "30", "2")])], conversion_id="nova")
+        validadas = [
+            conversao(ts(2026, 10, 5), [pedido("P1", "COMPLETED", [item_("X1", "50", "4.20", validado_hoje)])], conversion_id="antiga"),
+            conversao(ts(2026, 9, 28), [pedido("P2", "COMPLETED", [item_("Z1", "80", "6", validado_hoje)])], conversion_id="nao-guardada"),
+            de_ontem,  # comprada ontem: já vem na busca pela compra
+        ]
+
+        def paginas(app_id, secret, inicio, fim, data="purchaseTime", itens_extras=()):
+            return iter([validadas] if data == "completeTime" else [[de_ontem]])
+
+        with mock.patch("painel.resultados.paginas_de_conversoes", side_effect=paginas) as buscar:
+            resumo = resultados.sincronizar_conta(self.conta, agora=self.AGORA, curta=True)
+        self.assertEqual([c.kwargs.get("data", "purchaseTime") for c in buscar.call_args_list], ["purchaseTime", "completeTime"])
+        self.assertEqual(resumo["validacoes"], 2)
+        antiga = VendaItem.objects.get(conversao_id="antiga")
+        self.assertEqual((antiga.situacao, antiga.comissao, antiga.sub_id), (VendaItem.CONCLUIDO, Decimal("4.20"), "grupoA"))
+        self.assertEqual(timezone.localtime(antiga.concluido_em).date(), date(2026, 10, 18))
+        self.assertTrue(VendaItem.objects.filter(conversao_id="nao-guardada", situacao=VendaItem.CONCLUIDO).exists())
+        self.assertEqual(VendaItem.objects.filter(conversao_id="nova").count(), 1)  # sem duplicar
+        from .models import ResultadoDiario
+        self.assertEqual(ResultadoDiario.objects.get(conta=self.conta, dia=date(2026, 10, 18)).comissao_validada, Decimal("10.20"))
