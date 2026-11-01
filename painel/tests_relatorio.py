@@ -190,7 +190,14 @@ class TestRelatorioDiario(TestCase):
 
 
 class TestTelaDoRelatorio(BasePainel):
+    # Relógio parado às 10h: mais tarde (depois do horário do envio diário escolhido no teste), o envio
+    # normal do dia também sai e os testes falhavam.
+    AGORA = datetime(2026, 10, 15, 10, 0, tzinfo=SP)
+
     def setUp(self):
+        relogio = mock.patch("django.utils.timezone.now", return_value=self.AGORA)
+        relogio.start()
+        self.addCleanup(relogio.stop)
         super().setUp()
         self.entrar()
         self.conta.shopee_validado_em = timezone.now()

@@ -103,7 +103,14 @@ class TestBuscaDosItens(TestCase):
 
 
 class TestTelaDeVendas(BasePainel):
+    # Relógio parado no meio do mês: as vendas de "ontem" caem em "Este mês" (no dia 1º, ontem é o
+    # mês passado e os testes falhavam).
+    AGORA = datetime(2026, 10, 15, 15, 0, tzinfo=SP)
+
     def setUp(self):
+        relogio = mock.patch("django.utils.timezone.now", return_value=self.AGORA)
+        relogio.start()
+        self.addCleanup(relogio.stop)
         super().setUp()
         self.entrar()
         self.conta.shopee_app_id = "123"
