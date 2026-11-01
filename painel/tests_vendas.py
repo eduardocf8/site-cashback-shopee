@@ -313,7 +313,7 @@ class TestSincronizacaoRapidaECompleta(TestCase):
 
 
 class TestAtualizarOntemEValidacoes(TestCase):
-    """O botão "Atualizar ontem e validações de hoje": compras de ontem + o que a Shopee validou."""
+    """O botão "Atualizar dia anterior e atual": compras de ontem + o que a Shopee validou."""
 
     AGORA = datetime(2026, 10, 18, 15, 0, tzinfo=SP)
 

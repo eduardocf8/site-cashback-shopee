@@ -669,7 +669,7 @@ class TestTelasDeResultados(BasePainel):
     def test_botoes_de_atualizar(self, _):
         self.conectar_shopee()
         html = self.client.get("/resultados/").content.decode()
-        self.assertIn("Atualizar ontem e validações de hoje", html)
+        self.assertIn("Atualizar dia anterior e atual", html)
         self.assertIn("Atualizar 30 dias", html)
         self.assertNotIn("Atualizar agora", html)
         resposta = self.client.post("/resultados/atualizar/", {"voltar": "/resultados/", "periodo": "curto"}, follow=True)

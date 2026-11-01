@@ -50,7 +50,7 @@ class SincronizacaoResultados(models.Model):
 
     conta = models.OneToOneField(ContaAppfiliado, on_delete=models.CASCADE, related_name="sincronizacao_resultados")
     pedido_em = models.DateTimeField(null=True, blank=True)
-    # O pedido é só de ontem e das validações de hoje (botão "Atualizar ontem e validações de hoje"): mais rápido.
+    # O pedido é só de ontem e das validações de hoje (botão "Atualizar dia anterior e atual"): mais rápido.
     pedido_curto = models.BooleanField(default=False)
     iniciada_em = models.DateTimeField(null=True, blank=True)
     concluida_em = models.DateTimeField(null=True, blank=True)

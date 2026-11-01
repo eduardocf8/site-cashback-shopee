@@ -308,7 +308,7 @@ def sincronizar_conta(conta, agora: datetime | None = None, completa: bool | Non
       antigo quase não muda (só pedido que ainda estava no prazo de cancelamento);
     - completa (1x por dia, de madrugada): os ~3 meses que a API alcança, para pegar as
       validações atrasadas (pedido de mais de 30 dias que só agora foi concluído);
-    - curta (botão "Atualizar ontem e validações de hoje", comando do WhatsApp e conferência do
+    - curta (botão "Atualizar dia anterior e atual", comando do WhatsApp e conferência do
       relatório diário): as compras de ontem e hoje (a Shopee só libera as de hoje no dia
       seguinte) e, numa segunda busca pela data de validação, os itens validados ontem e hoje
       de compras mais antigas - que é o que muda a comissão validada desses dias.
