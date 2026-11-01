@@ -1,17 +1,29 @@
 """Bancos de conteúdo e decisão do que publicar em cada dia.
 
-Calendário (ver marketing/instagram/README.md para o histórico da decisão):
+Calendário (ver marketing/instagram/README.md para o histórico da decisão, e a
+conversa de 01/11/2026 pela última revisão - menos fricção de aprovação, mais
+variedade de story, 1 carrossel por semana em vez de institucional + ofertas da
+semana):
     - Stories:
-        todo dia -> NUMERO_STORIES_OFERTAS_POR_DIA stories de oferta ao longo do dia
-                    (1 categoria mais vendida por story - ver instagram_bot/services.py,
-                    chamado várias vezes ao dia por um cron dedicado, não pela tarefa
-                    diária única)
-        sábado    -> além das ofertas, 1 dica de economia (banco DICAS, rotativo)
-        domingo   -> além das ofertas, 1 lembrete de cashback (banco LEMBRETES, rotativo)
-    - Posts no feed, 2x por semana:
-        quarta -> institucional (banco POSTS_INSTITUCIONAIS, rotativo)
-        sexta  -> melhores ofertas da semana
+        todo dia         -> NUMERO_STORIES_OFERTAS_POR_DIA stories de oferta ao longo
+                             do dia (1 categoria mais vendida por story - ver
+                             instagram_bot/services.py, chamado várias vezes ao dia por
+                             um cron dedicado, não pela tarefa diária única)
+        terça e sábado    -> além das ofertas, 1 dica de economia (banco DICAS, rotativo)
+        quinta e domingo  -> além das ofertas, 1 lembrete de cashback (banco LEMBRETES,
+                             rotativo)
+    - Posts no feed, 1x por semana:
+        quarta -> carrossel temático em rotação (TEMAS_CARROSSEL, pré-desenhado à mão
+                  em marketing/instagram/carrossel-NN-*) - substitui o banco
+                  institucional (genérico demais, nunca aprovado) e o post de
+                  "melhores ofertas da semana" (virou 2 posts por semana sem necessidade)
+    - Tudo acima publica direto, sem e-mail de aprovação (INSTAGRAM_REQUER_APROVACAO
+      não se aplica a esse conteúdo - ver pular_aprovacao em instagram_bot/services.py):
+      é conteúdo fixo, revisado antes de entrar no banco/na pasta, não dado dinâmico
+      que possa sair errado.
 """
+from pathlib import Path
+
 from .models import RegistroPublicacao
 
 SEGUNDA, TERCA, QUARTA, QUINTA, SEXTA, SABADO, DOMINGO = range(7)
@@ -197,6 +209,48 @@ def escolher_post_institucional(data) -> dict:
     return {**post, "estilo": estilo}
 
 
+# Pasta onde moram os carrosséis feitos à mão (ver marketing/instagram/README.md,
+# seção "Carrosséis") - cada um em marketing/instagram/<pasta>/, com slide_1.png,
+# slide_2.png... e legenda.txt. Esse módulo só lê o que já foi exportado - gerar um
+# carrossel novo continua sendo manual (python3 gerar_carrossel_<tema>.py --export).
+PASTA_CARROSSEIS = Path(__file__).resolve().parent.parent / "marketing" / "instagram"
+
+# Ordem da rotação: primeiro os que você ainda não tinha postado manualmente (01, 03,
+# 05, 10), depois os 6 que já foram ao ar entre agosto e outubro de 2026 (conferido
+# contra o grid do perfil em 01/11/2026) - assim ninguém vê repetido antes de ver
+# tudo pelo menos uma vez. "11-datas-duplas" fica de fora de propósito: só é verdade
+# com campanha de cashback em dobro ativa (ver ROADMAP.md) - publicar fora disso
+# afirmaria um benefício que não existe naquele momento. Pra crescer a rotação,
+# acrescente um carrossel novo no fim da lista.
+TEMAS_CARROSSEL = [
+    ("carrossel-01-beneficios", 7),
+    ("carrossel-03-cupom-frete-cashback", 7),
+    ("carrossel-05-melhores-compras", 8),
+    ("carrossel-10-indique-e-ganhe", 7),
+    ("carrossel-02-comissao-invisivel", 7),
+    ("carrossel-04-gasto-anual", 7),
+    ("carrossel-06-nao-e-motivo", 6),
+    ("carrossel-07-direta-indireta", 6),
+    ("carrossel-08-perder-cashback", 9),
+    ("carrossel-09-site-confiavel", 9),
+]
+
+
+def escolher_carrossel_tematico() -> dict:
+    """Próximo carrossel da rotação. Pela quantidade já publicada (nunca com erro),
+    não pelo dia do ano como escolher_dica/escolher_lembrete: aqui a ordem de
+    TEMAS_CARROSSEL importa (os inéditos primeiro), e um post por semana já muda o
+    número a cada vez que roda, sem precisar de aleatoriedade nem do dia como pivô."""
+    publicados = RegistroPublicacao.objects.filter(
+        conteudo_tipo=RegistroPublicacao.CONTEUDO_CARROSSEL_TEMATICO,
+    ).exclude(status=RegistroPublicacao.STATUS_ERRO).count()
+    pasta, numero_slides = TEMAS_CARROSSEL[publicados % len(TEMAS_CARROSSEL)]
+    caminho = PASTA_CARROSSEIS / pasta
+    legenda = (caminho / "legenda.txt").read_text(encoding="utf-8").strip()
+    slides = [caminho / f"slide_{i}.png" for i in range(1, numero_slides + 1)]
+    return {"legenda": legenda, "slides": slides}
+
+
 def tipo_de_conteudo_do_dia(data) -> list[str]:
     """Retorna os tipos de conteúdo previstos pro calendário nesse dia (pode ter mais de um)."""
     dia_semana = data.weekday()
@@ -213,15 +267,13 @@ def tipo_de_conteudo_do_dia(data) -> list[str]:
     # simplesmente não tem combo.
     tipos.append(RegistroPublicacao.CONTEUDO_COMBO_DIARIO)
 
-    if dia_semana == SABADO:
+    if dia_semana in (TERCA, SABADO):
         tipos.append(RegistroPublicacao.CONTEUDO_DICA)
-    elif dia_semana == DOMINGO:
+    elif dia_semana in (QUINTA, DOMINGO):
         tipos.append(RegistroPublicacao.CONTEUDO_LEMBRETE)
 
     if dia_semana == QUARTA:
-        tipos.append(RegistroPublicacao.CONTEUDO_INSTITUCIONAL)
-    elif dia_semana == SEXTA:
-        tipos.append(RegistroPublicacao.CONTEUDO_OFERTAS_SEMANA)
+        tipos.append(RegistroPublicacao.CONTEUDO_CARROSSEL_TEMATICO)
 
     return tipos
 

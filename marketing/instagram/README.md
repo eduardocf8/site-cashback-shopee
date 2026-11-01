@@ -115,6 +115,10 @@ pasta, pra não ficar vazio quando a automação for ligada de verdade — ver
    - **Posts no feed (2x por semana)**: quarta = post institucional
      (benefícios, curiosidades, como funciona, como usar); sexta = resumo
      das melhores ofertas da semana.
+     **Revisado em 01/11/2026** - ver seção "Revisão do calendário
+     (01/11/2026)" mais abaixo: virou 1 post por semana (carrossel
+     temático em rotação, quarta), dica/lembrete espalhados em mais dias,
+     e esse conteúdo todo passou a publicar direto, sem e-mail de aprovação.
 2.5. **Semear o perfil (manual, antes do bot)** — ✅ concluído (esta pasta).
    8 posts institucionais criados e aprovados pra postar manualmente antes
    de ligar a automação, pra o perfil não começar vazio. **Em andamento**:
@@ -264,7 +268,17 @@ Chama `publicar_post_ofertas_semana` direto, sem o filtro de dia da
 semana nem a checagem de "já processado hoje" - sempre gera um carrossel
 novo na hora. Segue o fluxo normal de aprovação por e-mail
 (`INSTAGRAM_REQUER_APROVACAO`) - não publica direto, mesmo rodando fora
-do dia certo.
+do dia certo. **Não entra mais no calendário automático desde 01/11/2026**
+(ver "Revisão do calendário" acima) - esse comando continua funcionando
+pra quem quiser rodar na mão.
+
+O carrossel temático (quarta, ver "Revisão do calendário" acima) tem o
+mesmo tipo de comando, publicando direto (sem e-mail, como o resto do
+conteúdo revisado em 01/11/2026):
+
+```bash
+python manage.py postar_carrossel_tematico
+```
 
 ### Botão "Criar story" nas ofertas curadas à mão (2026-08-29)
 
@@ -931,6 +945,58 @@ python3 marketing/instagram/gerar_posts_semeadura.py
 Gera os 8 PNGs em `posts-semeadura/`, sobrescrevendo os existentes. Esse
 script é a base que a Fase 3 (templates parametrizados com dados reais de
 ofertas) vai estender.
+
+## Revisão do calendário (01/11/2026)
+
+O dono não estava tendo tempo de postar (trabalho CLT + Appfiliado + Instagram da
+esposa) nem de aprovar os e-mails - a última postagem no feed tinha sido a campanha
+do 10.10, e só os stories de oferta (que já publicam direto, sem aprovação) seguiam
+saindo. Banco institucional (genérico, "sem pegadinha"/"sem mensalidade") nunca era
+aprovado de propósito - soava "cara de IA" pro dono, com razão.
+
+**Diagnóstico**: o conteúdo bom já existia, só que 100% manual - os 11 carrosséis
+temáticos desta pasta (`carrossel-01` a `carrossel-11`), com gancho de verdade
+("Uma marca de cashback falando para você não comprar por causa do cashback"),
+precisavam ser exportados e postados à mão. Cruzando os títulos com o grid do perfil,
+6 dos 11 já tinham ido ao ar manualmente entre agosto e outubro de 2026:
+`02-comissao-invisivel`, `04-gasto-anual`, `06-nao-e-motivo`, `07-direta-indireta`,
+`08-perder-cashback`, `09-site-confiavel`. Ficaram inéditos: `01-beneficios`,
+`03-cupom-frete-cashback`, `05-melhores-compras`, `10-indique-e-ganhe`.
+`11-datas-duplas` é condicional (só com campanha de cashback em dobro ativa) e fica
+fora da rotação automática.
+
+**Mudanças**:
+- **1 post no feed por semana** (não mais 2): o carrossel temático
+  (`CONTEUDO_CARROSSEL_TEMATICO`) substitui tanto o institucional (quarta) quanto
+  "melhores ofertas da semana" (sexta). Rotaciona pelos 10 temas acima, inéditos
+  primeiro (`instagram_bot/conteudo.py`, `TEMAS_CARROSSEL`/`escolher_carrossel_tematico`)
+  - a ordem é pela quantidade já publicada desse tipo, não pelo dia do ano, pra não
+  pular nem repetir fora de hora. As imagens já existem como PNG nesta pasta
+  (exportadas com `--export`); o publicador só lê e reaproveita a conversão pra
+  JPEG/URL pública que já existia (`instagram_bot/services.py`,
+  `publicar_carrossel_tematico`). `publicar_post_institucional` e
+  `publicar_post_ofertas_semana` continuam existindo (a segunda ainda dá pra rodar
+  na mão, `python manage.py postar_ofertas_semana`), só saíram do calendário
+  automático.
+- **Dica e lembrete espalhados pra mais dias**: terça e sábado (dica), quinta e
+  domingo (lembrete) - antes só sábado/domingo tinham algo além de oferta.
+- **Esse conteúdo todo passa a publicar direto, sem e-mail de aprovação**
+  (carrossel temático, dica, lembrete - juntando a decisão de 2026-09-02 que já
+  valia pra story de oferta e combo diário): é conteúdo fixo, revisado antes de
+  entrar no banco/na pasta, não dado dinâmico que possa sair errado. `tentar
+  aprovar 1 e-mail por vez` era exatamente o gargalo que travou tudo - sem
+  aprovação nenhuma nesse conteúdo, a fila não volta a acumular.
+- **Fila antiga descartada**: migração de dados
+  `instagram_bot/migrations/0012_descartar_fila_de_aprovacao_parada.py` rejeita
+  tudo que estava em "aguardando aprovação" desde agosto/setembro, automaticamente
+  no próximo deploy (roda junto com `migrate` no Build Command do Render - ver
+  README.md da raiz). Pra descartes futuros, ação "Rejeitar selecionados" no Admin
+  de Publicações no Instagram (`instagram_bot/admin.py`).
+
+**Pra crescer a rotação de carrosséis** (menos de 1x por mês de repetição com só 10
+temas, numa cadência semanal): criar um `gerar_carrossel_<tema>.py` novo (ver seção
+"Carrosséis" abaixo), exportar, e acrescentar a pasta no fim de `TEMAS_CARROSSEL`
+em `conteudo.py`.
 
 ## Carrosséis (`carrossel_base.py` + `gerar_carrossel_*.py`)
 

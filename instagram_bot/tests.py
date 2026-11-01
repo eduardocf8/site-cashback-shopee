@@ -437,8 +437,10 @@ class PublicacaoDoComboTests(TestCase):
 class PublicacaoDiretaSemAprovacaoTests(TestCase):
     """Story de oferta e combo diário postam direto, sem passar pelo e-mail de
     aprovação - mesmo com INSTAGRAM_REQUER_APROVACAO=True (decisão de 2026-09-02, ver
-    services.CONTEUDO_TIPOS_SEM_APROVACAO). O resto do conteúdo (dica de economia,
-    lembrete, institucional) continua exigindo aprovação normalmente."""
+    services.CONTEUDO_TIPOS_SEM_APROVACAO). Dica de economia e lembrete também passaram
+    a publicar direto a partir de 01/11/2026 (conteúdo fixo, revisado de antemão - sem
+    necessidade de aprovar 1 a 1 por e-mail). Só conteúdo com dado digitado/escolhido
+    na hora (ex: story de oferta curado à mão) continua pedindo aprovação."""
 
     def setUp(self):
         Oferta.objects.create(
@@ -471,13 +473,23 @@ class PublicacaoDiretaSemAprovacaoTests(TestCase):
         self.assertTrue(all(r.status == RegistroPublicacao.STATUS_PUBLICADO for r in registros))
         self.assertEqual(len(mail.outbox), 0)
 
-    def test_dica_de_economia_continua_exigindo_aprovacao(self):
-        """Confirma que a mudança é específica pra oferta/combo, não desliga a
-        aprovação pra tudo por engano."""
+    @patch("instagram_bot.instagram_client.publicar_imagem")
+    def test_dica_de_economia_publica_direto_sem_email(self, mock_publicar):
+        mock_publicar.return_value = "media123"
+
         registro = services.publicar_story_dica(timezone.localdate(), self.request)
 
-        self.assertEqual(registro.status, RegistroPublicacao.STATUS_PENDENTE_APROVACAO)
-        self.assertEqual(len(mail.outbox), 1)
+        self.assertEqual(registro.status, RegistroPublicacao.STATUS_PUBLICADO)
+        self.assertEqual(len(mail.outbox), 0)
+
+    @patch("instagram_bot.instagram_client.publicar_imagem")
+    def test_lembrete_publica_direto_sem_email(self, mock_publicar):
+        mock_publicar.return_value = "media123"
+
+        registro = services.publicar_story_lembrete(timezone.localdate(), self.request)
+
+        self.assertEqual(registro.status, RegistroPublicacao.STATUS_PUBLICADO)
+        self.assertEqual(len(mail.outbox), 0)
 
     def test_story_de_oferta_curado_a_mao_continua_exigindo_aprovacao(self):
         """Só o story ESCOLHIDO PELO BOT (publicar_story_oferta_do_momento) pula
@@ -498,6 +510,83 @@ class PublicacaoDiretaSemAprovacaoTests(TestCase):
 
         self.assertEqual(registro.status, RegistroPublicacao.STATUS_PENDENTE_APROVACAO)
         self.assertEqual(len(mail.outbox), 1)
+
+
+class CalendarioDoCarrosselTematicoTests(TestCase):
+    """Revisão de 01/11/2026: 1 carrossel por semana (quarta), em rotação pelos temas
+    de marketing/instagram/carrossel-NN-*, no lugar do institucional (genérico demais,
+    nunca aprovado) e de "melhores ofertas da semana" (virava 2 posts por semana)."""
+
+    def test_quarta_pede_carrossel_tematico_nao_institucional(self):
+        from datetime import date
+
+        tipos = conteudo.tipo_de_conteudo_do_dia(date(2026, 11, 4))  # quarta-feira
+
+        self.assertIn(RegistroPublicacao.CONTEUDO_CARROSSEL_TEMATICO, tipos)
+        self.assertNotIn(RegistroPublicacao.CONTEUDO_INSTITUCIONAL, tipos)
+
+    def test_sexta_nao_pede_mais_ofertas_da_semana(self):
+        from datetime import date
+
+        tipos = conteudo.tipo_de_conteudo_do_dia(date(2026, 11, 6))  # sexta-feira
+
+        self.assertNotIn(RegistroPublicacao.CONTEUDO_OFERTAS_SEMANA, tipos)
+
+    def test_dica_e_lembrete_em_dois_dias_cada(self):
+        from datetime import date
+
+        semana = [date(2026, 11, 2) + timedelta(days=i) for i in range(7)]  # segunda a domingo
+        dicas = [d for d in semana if RegistroPublicacao.CONTEUDO_DICA in conteudo.tipo_de_conteudo_do_dia(d)]
+        lembretes = [
+            d for d in semana if RegistroPublicacao.CONTEUDO_LEMBRETE in conteudo.tipo_de_conteudo_do_dia(d)
+        ]
+
+        self.assertEqual(len(dicas), 2)
+        self.assertEqual(len(lembretes), 2)
+
+    def test_escolher_carrossel_tematico_comeca_pelo_primeiro_inedito(self):
+        tema = conteudo.escolher_carrossel_tematico()
+
+        pasta_esperada, slides_esperados = conteudo.TEMAS_CARROSSEL[0]
+        self.assertIn(pasta_esperada, str(tema["slides"][0]))
+        self.assertEqual(len(tema["slides"]), slides_esperados)
+        self.assertTrue(tema["legenda"])
+
+    def test_escolher_carrossel_tematico_avanca_na_rotacao_apos_publicar(self):
+        RegistroPublicacao.objects.create(
+            data=timezone.localdate(), tipo=RegistroPublicacao.TIPO_FEED,
+            conteudo_tipo=RegistroPublicacao.CONTEUDO_CARROSSEL_TEMATICO,
+            status=RegistroPublicacao.STATUS_PUBLICADO,
+        )
+
+        tema = conteudo.escolher_carrossel_tematico()
+
+        pasta_esperada, _ = conteudo.TEMAS_CARROSSEL[1]
+        self.assertIn(pasta_esperada, str(tema["slides"][0]))
+
+    def test_registro_com_erro_nao_consome_posicao_na_rotacao(self):
+        RegistroPublicacao.objects.create(
+            data=timezone.localdate(), tipo=RegistroPublicacao.TIPO_FEED,
+            conteudo_tipo=RegistroPublicacao.CONTEUDO_CARROSSEL_TEMATICO,
+            status=RegistroPublicacao.STATUS_ERRO,
+        )
+
+        tema = conteudo.escolher_carrossel_tematico()
+
+        pasta_esperada, _ = conteudo.TEMAS_CARROSSEL[0]
+        self.assertIn(pasta_esperada, str(tema["slides"][0]))
+
+    @override_settings(INSTAGRAM_BOT_ATIVO=True, INSTAGRAM_REQUER_APROVACAO=True)
+    @patch("instagram_bot.instagram_client.publicar_carrossel")
+    def test_publicar_carrossel_tematico_publica_direto_sem_email(self, mock_publicar):
+        mock_publicar.return_value = "media123"
+        request = RequestFactory().get("/")
+
+        registro = services.publicar_carrossel_tematico(timezone.localdate(), request)
+
+        self.assertEqual(registro.status, RegistroPublicacao.STATUS_PUBLICADO)
+        self.assertEqual(registro.conteudo_tipo, RegistroPublicacao.CONTEUDO_CARROSSEL_TEMATICO)
+        self.assertEqual(len(mail.outbox), 0)
 
 
 class EspacamentoDosStoriesDeOfertaTests(TestCase):

@@ -3049,6 +3049,38 @@ dias de dados do funil, sem esperar as 2-3 semanas originais).
 
 ---
 
+## Fase 77 — Instagram: carrossel temático semanal e menos fricção de aprovação
+
+Pedido do dono em 01/11/2026: sem tempo pra postar (CLT + Appfiliado + Instagram da
+esposa) nem pra aprovar e-mail dos posts agendados - a última postagem no feed tinha
+sido a campanha do 10.10, e só os stories de oferta (que já publicam direto) seguiam
+saindo. Ver `marketing/instagram/README.md`, seção "Revisão do calendário
+(01/11/2026)" pro histórico completo da decisão.
+
+- [x] **1 post no feed por semana** (`instagram_bot/conteudo.py`,
+      `CONTEUDO_CARROSSEL_TEMATICO`): no lugar do banco institucional (genérico,
+      nunca aprovado) e de "melhores ofertas da semana" (virava 2 posts/semana),
+      quarta-feira posta o próximo carrossel pré-desenhado à mão da rotação
+      (`TEMAS_CARROSSEL`) - os 11 carrosséis já existentes em
+      `marketing/instagram/carrossel-NN-*`, inéditos primeiro (conferido contra o
+      grid do perfil: 6 dos 11 já tinham ido ao ar manualmente).
+      `publicar_carrossel_tematico` só lê os PNGs já exportados e reaproveita a
+      conversão JPEG/URL pública que já existia - sem Playwright em produção.
+- [x] **Dica e lembrete em mais dias**: terça e sábado (dica), quinta e domingo
+      (lembrete) - antes só sábado/domingo tinham algo além de oferta.
+- [x] **Carrossel temático, dica e lembrete publicam direto**, sem e-mail de
+      aprovação (`pular_aprovacao=True`) - mesma lógica que já valia pro story de
+      oferta e pro combo diário (Fase 56-60): é conteúdo fixo, revisado antes de
+      entrar no banco/na pasta.
+- [x] **Fila antiga descartada**: migração de dados
+      (`instagram_bot/migrations/0012`) rejeita tudo que estava "aguardando
+      aprovação" desde agosto/setembro, automática no próximo deploy. Ação
+      "Rejeitar selecionados" nova no Admin, pra descartes futuros em lote.
+- [x] `python manage.py postar_carrossel_tematico` - testa o carrossel da vez fora
+      do calendário automático (mesmo padrão de `postar_ofertas_semana`).
+
+---
+
 Pra continuar esse roadmap numa conversa nova, basta apontar esse arquivo
 (`ROADMAP.md`) e o `BRAND.md` — juntos eles dão o contexto de identidade
 visual e do que falta implementar, sem precisar reconstruir o histórico da

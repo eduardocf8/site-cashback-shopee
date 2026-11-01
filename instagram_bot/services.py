@@ -189,10 +189,12 @@ def _aguardar_aprovacao(imagem, legenda, tipo, conteudo_tipo, data, request) -> 
     return registro
 
 
-def _publicar_ou_simular_carrossel(imagens, legenda, tipo, conteudo_tipo, data, request) -> RegistroPublicacao:
+def _publicar_ou_simular_carrossel(
+    imagens, legenda, tipo, conteudo_tipo, data, request, pular_aprovacao: bool = False
+) -> RegistroPublicacao:
     if not settings.INSTAGRAM_BOT_ATIVO:
         return _simular_carrossel(imagens, legenda, tipo, conteudo_tipo, data, request)
-    if settings.INSTAGRAM_REQUER_APROVACAO:
+    if settings.INSTAGRAM_REQUER_APROVACAO and not pular_aprovacao:
         return _aguardar_aprovacao_carrossel(imagens, legenda, tipo, conteudo_tipo, data, request)
     return _publicar_direto_carrossel(imagens, legenda, tipo, conteudo_tipo, data, request)
 
@@ -395,9 +397,11 @@ def publicar_story_dica(data, request) -> RegistroPublicacao:
     imagem = gerar_imagem_texto_simples(
         texto, bg=CORES["highlight"], cor_texto=CORES["ink"], tamanho=(1080, 1920),
     )
+    # pular_aprovacao=True (conversa de 01/11/2026): texto fixo, revisado de antemão -
+    # sem necessidade de aprovar 1 a 1 por e-mail, mesma lógica do combo diário.
     return _publicar_ou_simular(
         imagem, texto, RegistroPublicacao.TIPO_STORY, RegistroPublicacao.CONTEUDO_DICA,
-        data, request, story=True,
+        data, request, story=True, pular_aprovacao=True,
     )
 
 
@@ -408,7 +412,7 @@ def publicar_story_lembrete(data, request) -> RegistroPublicacao:
     )
     return _publicar_ou_simular(
         imagem, texto, RegistroPublicacao.TIPO_STORY, RegistroPublicacao.CONTEUDO_LEMBRETE,
-        data, request, story=True,
+        data, request, story=True, pular_aprovacao=True,
     )
 
 
@@ -428,7 +432,13 @@ def publicar_post_institucional(data, request) -> RegistroPublicacao:
 
 def publicar_post_ofertas_semana(data, request) -> RegistroPublicacao | None:
     """Carrossel com uma capa + 8 ofertas (uma por slide) - carrossel tende a gerar mais
-    salvamentos que um post único, o que ajuda o alcance pra quem ainda não segue."""
+    salvamentos que um post único, o que ajuda o alcance pra quem ainda não segue.
+
+    Fora do calendário automático desde 01/11/2026 (ver tipo_de_conteudo_do_dia) -
+    virou "2 carrosséis por semana" sem necessidade, ao lado do carrossel temático
+    (publicar_carrossel_tematico). Continua disponível pra rodar na mão (`python
+    manage.py postar_ofertas_semana`, ver marketing/instagram/README.md) se um dia
+    fizer sentido voltar."""
     ofertas = ofertas_services.selecionar_top_ofertas_sem_duplicar(8)
     if not ofertas:
         logger.warning("[instagram_bot] sem ofertas sincronizadas, pulando post semanal")
@@ -450,6 +460,24 @@ def publicar_post_ofertas_semana(data, request) -> RegistroPublicacao | None:
     return _publicar_ou_simular_carrossel(
         [capa, *slides], legenda, RegistroPublicacao.TIPO_FEED, RegistroPublicacao.CONTEUDO_OFERTAS_SEMANA,
         data, request,
+    )
+
+
+def publicar_carrossel_tematico(data, request) -> RegistroPublicacao:
+    """Post único da semana (quarta) - próximo carrossel pré-desenhado à mão da
+    rotação (ver conteudo.TEMAS_CARROSSEL). As imagens já existem como PNG no
+    repositório (marketing/instagram/carrossel-NN-*/slide_N.png); só abre e repassa -
+    _salvar_e_montar_urls cuida de converter pra JPEG (exigência da Graph API) e
+    montar a URL pública, igual qualquer outra imagem gerada pelo bot.
+
+    pular_aprovacao=True (conversa de 01/11/2026): são carrosséis já revisados antes
+    de entrar na pasta, não conteúdo novo gerado na hora - sem necessidade de aprovar
+    por e-mail toda semana."""
+    tema = conteudo.escolher_carrossel_tematico()
+    imagens = [Image.open(caminho).convert("RGB") for caminho in tema["slides"]]
+    return _publicar_ou_simular_carrossel(
+        imagens, tema["legenda"], RegistroPublicacao.TIPO_FEED, RegistroPublicacao.CONTEUDO_CARROSSEL_TEMATICO,
+        data, request, pular_aprovacao=True,
     )
 
 
@@ -501,6 +529,7 @@ DESPACHANTES = {
     RegistroPublicacao.CONTEUDO_INSTITUCIONAL: publicar_post_institucional,
     RegistroPublicacao.CONTEUDO_OFERTAS_SEMANA: publicar_post_ofertas_semana,
     RegistroPublicacao.CONTEUDO_COMBO_DIARIO: publicar_combo_de_stories,
+    RegistroPublicacao.CONTEUDO_CARROSSEL_TEMATICO: publicar_carrossel_tematico,
 }
 
 

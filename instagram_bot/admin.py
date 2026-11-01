@@ -49,7 +49,7 @@ class RegistroPublicacaoAdmin(admin.ModelAdmin):
         "erro",
         "criado_em",
     )
-    actions = ["tentar_publicar_de_novo"]
+    actions = ["tentar_publicar_de_novo", "rejeitar_selecionados"]
 
     @admin.action(description="Tentar publicar de novo (converte a arte para JPEG se precisar)")
     def tentar_publicar_de_novo(self, request, queryset):
@@ -68,3 +68,14 @@ class RegistroPublicacaoAdmin(admin.ModelAdmin):
                 self.message_user(
                     request, f"Registro {registro.pk}: falhou de novo - {erro}", level="error"
                 )
+
+    @admin.action(description="Rejeitar selecionados")
+    def rejeitar_selecionados(self, request, queryset):
+        """Descarta em lote - pensado pra esvaziar a fila de "aguardando aprovação" de
+        uma vez (filtra por status, seleciona tudo, aplica a ação), em vez de abrir
+        e-mail por e-mail. Ver migração 0012 pra conversa de 01/11/2026 que limpou a
+        fila que já tinha acumulado."""
+        total = queryset.exclude(status=RegistroPublicacao.STATUS_REJEITADO).update(
+            status=RegistroPublicacao.STATUS_REJEITADO
+        )
+        self.message_user(request, f"{total} registro(s) rejeitado(s).")

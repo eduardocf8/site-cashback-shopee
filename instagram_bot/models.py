@@ -40,6 +40,7 @@ class RegistroPublicacao(models.Model):
     CONTEUDO_INSTITUCIONAL = "institucional"
     CONTEUDO_OFERTAS_SEMANA = "ofertas_semana"
     CONTEUDO_COMBO_DIARIO = "combo_diario"
+    CONTEUDO_CARROSSEL_TEMATICO = "carrossel_tematico"
     CONTEUDO_CHOICES = [
         (CONTEUDO_OFERTA_DIARIA, "Destaque de ofertas do dia"),
         (CONTEUDO_DICA, "Dica de economia"),
@@ -49,6 +50,10 @@ class RegistroPublicacao(models.Model):
         # Sem o "(3 stories)" que tinha antes: o assunto do e-mail de aprovação já traz
         # a posição ("1/3"), e as duas informações juntas ficavam redundantes.
         (CONTEUDO_COMBO_DIARIO, "Combo do dia"),
+        # Carrossel semanal pré-desenhado à mão (marketing/instagram/carrossel-NN-*),
+        # em rotação - substitui CONTEUDO_INSTITUCIONAL (genérico demais, nunca
+        # aprovado - ver conversa de 01/11/2026) como post único da semana.
+        (CONTEUDO_CARROSSEL_TEMATICO, "Carrossel temático semanal"),
     ]
 
     STATUS_SIMULADO = "simulado"
