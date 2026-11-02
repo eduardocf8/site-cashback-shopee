@@ -1222,3 +1222,9 @@ fieldset.sem-borda > legend { padding: 0; margin-bottom: 8px; }
 .situacao-capi.ok { color: var(--bom-tinta); }
 .situacao-capi.ok::before { content: "✓ "; font-weight: 700; }
 .situacao-capi.com-erro { color: var(--perigo); }
+
+/* Opção do Premium travada (checkbox com texto de ajuda embaixo) */
+.marcar.premium-travado { cursor: default; }
+.marcar.premium-travado input { cursor: not-allowed; }
+.marcar.premium-travado .titulo-travado { opacity: .6; }
+.marcar .selo-premium { margin-left: 6px; padding: 1px 7px; border-radius: 999px; background: var(--amarelo); color: #3a2a00; font-size: 11px; font-weight: 700; white-space: nowrap; }

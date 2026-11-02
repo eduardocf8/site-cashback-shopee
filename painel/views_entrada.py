@@ -13,6 +13,7 @@ from django.views.decorators.clickjacking import xframe_options_sameorigin
 from bot_whatsapp import entrada, grupos_novos, membros
 from bot_whatsapp.models import ConviteGrupo, LinkEntrada
 from bot_whatsapp.servico import conexao_da
+from licencas import planos
 from meusite import cores
 from meusite import entrada as pagina_publica
 from meusite.forms import PADRAO_ENDERECO, CapaForm, FotoForm
@@ -149,7 +150,8 @@ def _salvar(request, conta, link) -> list[str]:
         limite = 0
     if not 50 <= limite <= membros.LIMITE_DO_WHATSAPP:
         erros.append(f"O limite por grupo vai de 50 a {membros.LIMITE_DO_WHATSAPP} pessoas.")
-    admins, invalidos = grupos_novos.ler_numeros(dados.get("admins_dos_novos", ""))
+    premium = planos.bot_premium(conta)  # criar o próximo grupo sozinho é do Premium
+    admins, invalidos = grupos_novos.ler_numeros(dados.get("admins_dos_novos", "") if premium else "")
     if invalidos:
         erros.append(f"Não entendi {', '.join(invalidos)} nos administradores. Use DDD e número, como (11) 98888-7777.")
     erros += _ler_aparencia(dados, link)
@@ -159,8 +161,9 @@ def _salvar(request, conta, link) -> list[str]:
     link.slug, link.pixel_id, link.limite_por_grupo = slug, pixel, limite
     link.redirecionar = dados.get("redirecionar") == "on"
     link.ativo = dados.get("ativo") == "on"
-    link.criar_sozinho = dados.get("criar_sozinho") == "on"
-    link.admins_dos_novos = admins[: grupos_novos.MAXIMO_ADMINS]
+    if premium:  # fora do Premium os campos nem aparecem: fica o que estava
+        link.criar_sozinho = dados.get("criar_sozinho") == "on"
+        link.admins_dos_novos = admins[: grupos_novos.MAXIMO_ADMINS]
     if token or apagar_token:
         link.capi_token_cifrado = cripto.cifrar(token)
         link.capi_enviado_em, link.capi_erro = None, ""
@@ -284,7 +287,7 @@ def entrada_link(request, pk):
         numeros=entrada.estatisticas(link), possiveis=possiveis, escolhidos=set(link.grupos),
         admins=", ".join(grupos_novos._telefone(n) for n in link.admins_dos_novos or []),
         nomes={g["jid"]: g["nome"] for g in estado["grupos"]}, folga=entrada.FOLGA,
-        limite_do_whatsapp=membros.LIMITE_DO_WHATSAPP, conexao=conexao,
+        limite_do_whatsapp=membros.LIMITE_DO_WHATSAPP, conexao=conexao, premium=planos.bot_premium(conta),
         cores=CORES, cor_do_site=(site.cor if site else "") or "#E8541E", modelos=LinkEntrada.MODELOS,
         cor_outra=link.cor if link.cor and link.cor not in dict(CORES) else "",
         beneficios=(link.beneficios + [""] * 4)[:4], selos=(link.selos + [""] * 3)[:3],
