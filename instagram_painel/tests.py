@@ -59,7 +59,7 @@ class TestAvisos(TestCase):
         W.separar_e_processar(aviso_comentario("Eu QUÉRO muito!"))
         resposta.assert_called_once_with("tok", "c1", "Te mandei no direto, @maria!")
         # Premium: o link vai num botão
-        privada.assert_called_once_with("tok", IG_ID, "c1", "Aqui está:", ("Ver produto", "https://s.shopee.com.br/abc"))
+        privada.assert_called_once_with("tok", IG_ID, "c1", "Aqui está:", [("Ver produto", "https://s.shopee.com.br/abc")])
         d = Disparo.objects.get()
         self.assertTrue(d.resposta_ok and d.dm_ok)
 
@@ -117,7 +117,31 @@ class TestAvisos(TestCase):
         self.a.link_afiliado = "https://s.shopee.com.br/comsubid"
         self.a.save()
         W.separar_e_processar(aviso_comentario("quero"))
-        self.assertEqual(privada.call_args.args[4], ("Ver produto", "https://s.shopee.com.br/comsubid"))
+        self.assertEqual(privada.call_args.args[4], [("Ver produto", "https://s.shopee.com.br/comsubid")])
+
+    def test_ate_3_botoes_e_sem_botao(self, msg, privada, resposta):
+        self.a.botoes, self.a.texto_botao = 3, "Ver garrafa"
+        self.a.botoes_extras = [
+            {"texto": "Entrar no grupo", "link": "https://appfiliado.com.br/bia/grupo-vip/", "link_afiliado": ""},
+            {"texto": "Mais achadinhos", "link": "https://s.shopee.com.br/xyz", "link_afiliado": "https://s.shopee.com.br/comsubid"}]
+        self.a.save()
+        privada.side_effect = ["d1", api.ErroInstagram("template não suportado"), "d3", "d4", "d5"]
+        W.separar_e_processar(aviso_comentario("quero"))
+        botoes = [("Ver garrafa", "https://s.shopee.com.br/abc"), ("Entrar no grupo", "https://appfiliado.com.br/bia/grupo-vip/"),
+                  ("Mais achadinhos", "https://s.shopee.com.br/comsubid")]  # o link com o Sub ID
+        self.assertEqual(privada.call_args.args[3:], ("Aqui está:", botoes))
+
+        W.separar_e_processar(aviso_comentario("quero", autor="2", comentario="c2"))  # Instagram recusou: links no texto
+        texto = ("Aqui está:\n\nVer garrafa: https://s.shopee.com.br/abc\nEntrar no grupo: https://appfiliado.com.br/bia/grupo-vip/"
+                 "\nMais achadinhos: https://s.shopee.com.br/comsubid")
+        self.assertEqual(privada.call_args.args[3:], (texto, None))
+
+        Automacao.objects.filter(pk=self.a.pk).update(botoes=2)  # só os 2 primeiros
+        W.separar_e_processar(aviso_comentario("quero", autor="3", comentario="c3"))
+        self.assertEqual(privada.call_args.args[4], botoes[:2])
+        Automacao.objects.filter(pk=self.a.pk).update(botoes=0)  # sem botão: o link no texto
+        W.separar_e_processar(aviso_comentario("quero", autor="4", comentario="c4"))
+        self.assertEqual(privada.call_args.args[3:], ("Aqui está:\n\nhttps://s.shopee.com.br/abc", None))
 
     def test_standard_so_valem_as_5_ligadas_mais_recentes(self, msg, privada, resposta):
         self.c.modulos_cortesia = "instagram"
@@ -373,6 +397,60 @@ class TestTelas(TestCase):
             self.assertEqual(conv.call_count, 1)
         r = self.client.post("/estudio/automacoes/nova/", {**dados, "nome": "x", "sub_id": "com espaço"})
         self.assertContains(r, "só pode ter letras e números")
+
+    def test_contador_de_botoes(self):
+        c = conta(email="botoes@exemplo.com")
+        conectada(c)
+        self.entrar(c)
+        dados = {"nome": "Garrafa", "gatilho": "comentario", "palavras": "quero", "enviar_dm": "on", "texto_dm": "oi",
+                 "link": "https://s.shopee.com.br/abc", "sub_id": "garrafa", "botoes": "2", "texto_botao": "Ver garrafa",
+                 "texto_botao_2": "  Mais   ofertas ", "link_botao_2": "https://s.shopee.com.br/dois",
+                 "texto_botao_3": "Grupo", "link_botao_3": "https://chat.whatsapp.com/x", "ativa": "on"}
+        def convertido(conta_, link, modo, sub_id, ferramenta):
+            return {"texto": link + "-" + sub_id}
+
+        with mock.patch("painel.conversor.converter", side_effect=convertido) as conv:
+            self.client.post("/estudio/automacoes/nova/", dados)
+            a = Automacao.objects.get(nome="Garrafa")
+            self.assertEqual((a.botoes, a.texto_botao, a.link_afiliado), (2, "Ver garrafa", "https://s.shopee.com.br/abc-garrafa"))
+            self.assertEqual(a.botoes_extras, [  # o 3º fica guardado para quando voltar a 3
+                {"texto": "Mais ofertas", "link": "https://s.shopee.com.br/dois", "link_afiliado": "https://s.shopee.com.br/dois-garrafa"},
+                {"texto": "Grupo", "link": "https://chat.whatsapp.com/x", "link_afiliado": ""}])
+            self.assertEqual(conv.call_count, 2)
+            self.client.post(f"/estudio/automacoes/{a.pk}/", {**dados, "botoes": "3"})  # 3º fora da Shopee: vai como está
+            self.assertEqual(conv.call_count, 2)  # nada mudou nos outros: não gera de novo
+        a.refresh_from_db()
+        self.assertEqual(a.botoes, 3)
+
+        html = self.client.get(f"/estudio/automacoes/{a.pk}/").content.decode()
+        self.assertIn('<output id="ig-botoes-num" aria-live="polite">3</output>', html)
+        self.assertIn('value="Mais ofertas"', html)
+        self.assertIn('name="link_botao_3" value="https://chat.whatsapp.com/x"', html)
+
+        r = self.client.post(f"/estudio/automacoes/{a.pk}/", {**dados, "texto_botao_2": "", "link_botao_3": "grupo"})
+        self.assertContains(r, "Botão 2: escreva o texto.")
+        r = self.client.post(f"/estudio/automacoes/{a.pk}/", {**dados, "botoes": "3", "link_botao_3": "grupo"})
+        self.assertContains(r, "Botão 3: coloque um link completo")
+        r = self.client.post(f"/estudio/automacoes/{a.pk}/", {**dados, "link": ""})
+        self.assertContains(r, "Coloque o link do botão 1")
+        self.client.post(f"/estudio/automacoes/{a.pk}/", {**dados, "botoes": "9"})
+        a.refresh_from_db()
+        self.assertEqual(a.botoes, 3)  # o Instagram aceita até 3
+
+    def test_standard_ve_o_contador_travado(self):
+        c = conta(modulos="instagram", email="std@exemplo.com")
+        conectada(c)
+        self.entrar(c)
+        a = Automacao.objects.create(conta=c, nome="a", ig_id=IG_ID, respostas="ok", texto_dm="oi", link="https://s.shopee.com.br/a")
+        html = self.client.get(f"/estudio/automacoes/{a.pk}/").content.decode()
+        self.assertIn('<output id="ig-botoes-num" aria-live="polite">0</output>', html)
+        self.assertNotIn('name="botoes"', html)
+        self.assertNotIn('name="texto_botao_2"', html)
+        self.client.post(f"/estudio/automacoes/{a.pk}/", {"nome": "a", "gatilho": "comentario", "responder_comentario": "on",
+                                                           "respostas": "ok", "enviar_dm": "on", "texto_dm": "oi",
+                                                           "link": "https://s.shopee.com.br/a", "botoes": "3"})
+        a.refresh_from_db()
+        self.assertEqual(a.botoes, 1)  # fica o que estava
 
     def test_so_estudio_nao_abre_automacoes_mas_conecta_e_publica(self):
         self.entrar(conta(modulos="carrosseis_premium", email="estudio@exemplo.com"))

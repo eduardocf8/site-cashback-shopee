@@ -138,22 +138,25 @@ def responder_comentario(token: str, comentario_id: str, texto: str) -> str:
     return _chamar("POST", f"{comentario_id}/replies", token, params={"message": texto}).get("id", "")
 
 
-def _corpo_da_mensagem(texto: str, botao: tuple[str, str] | None) -> dict:
-    """Texto simples, ou o texto com um botão que abre o link (modelo de botão: até 640 caracteres)."""
-    if not botao:
+def _corpo_da_mensagem(texto: str, botoes) -> dict:
+    """Texto simples, ou o texto com até 3 botões que abrem links (modelo de botão: até 640 caracteres).
+    botoes: um (título, url) ou uma lista deles."""
+    if isinstance(botoes, tuple):
+        botoes = [botoes]
+    if not botoes:
         return {"text": texto}
-    titulo, url = botao
     return {"attachment": {"type": "template", "payload": {
-        "template_type": "button", "text": texto[:640], "buttons": [{"type": "web_url", "url": url, "title": titulo[:20]}]}}}
+        "template_type": "button", "text": texto[:640],
+        "buttons": [{"type": "web_url", "url": url, "title": titulo[:20]} for titulo, url in botoes[:3]]}}}
 
 
-def resposta_privada(token: str, ig_id: str, comentario_id: str, texto: str, botao: tuple[str, str] | None = None) -> str:
+def resposta_privada(token: str, ig_id: str, comentario_id: str, texto: str, botao=None) -> str:
     """A DM ligada a um comentário: uma vez por comentário e até 7 dias depois dele."""
     corpo = {"recipient": {"comment_id": comentario_id}, "message": _corpo_da_mensagem(texto, botao)}
     return _chamar("POST", f"{ig_id}/messages", token, corpo=corpo).get("message_id", "")
 
 
-def mensagem(token: str, ig_id: str, destinatario: str, texto: str, botao: tuple[str, str] | None = None) -> str:
+def mensagem(token: str, ig_id: str, destinatario: str, texto: str, botao=None) -> str:
     """DM para quem mandou mensagem ou respondeu um story (dentro da janela de 24 horas)."""
     corpo = {"recipient": {"id": destinatario}, "message": _corpo_da_mensagem(texto, botao)}
     return _chamar("POST", f"{ig_id}/messages", token, corpo=corpo).get("message_id", "")

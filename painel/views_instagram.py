@@ -14,6 +14,7 @@ from django import forms
 from django.conf import settings
 from django.contrib import messages
 from django.core.paginator import Paginator
+from django.core.validators import URLValidator
 from django.http import Http404, HttpResponse, JsonResponse
 from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import reverse
@@ -159,8 +160,8 @@ class AutomacaoForm(forms.ModelForm):
     class Meta:
         model = Automacao
         fields = ["nome", "gatilho", "midia_id", "midia_link", "midia_imagem", "midia_legenda", "palavras",
-                  "responder_comentario", "respostas", "enviar_dm", "texto_dm", "link", "botao", "texto_botao", "sub_id", "ativa"]
-        widgets = {f: forms.HiddenInput for f in ("midia_id", "midia_link", "midia_imagem", "midia_legenda")}
+                  "responder_comentario", "respostas", "enviar_dm", "texto_dm", "link", "botoes", "texto_botao", "sub_id", "ativa"]
+        widgets = {f: forms.HiddenInput for f in ("midia_id", "midia_link", "midia_imagem", "midia_legenda", "botoes")}
 
     def __init__(self, *args, conta=None, **kwargs):
         super().__init__(*args, **kwargs)
@@ -168,6 +169,52 @@ class AutomacaoForm(forms.ModelForm):
         self.plano = planos_do_app.automacoes(conta) if conta else planos_do_app.AUTOMACOES[True]
         self.gatilhos = self.plano["gatilhos"]
         self.antes = (self.instance.link, self.instance.sub_id, self.instance.ativa) if self.instance.pk else ("", "", False)
+        self.extras_antes = list(self.instance.botoes_extras or []) if self.instance.pk else []
+        self.fields["botoes"].required = False  # fora do Premium o contador vem travado (não é enviado)
+        self._extras = None
+
+    def extras_na_tela(self) -> list[dict]:
+        """O 2º e o 3º botão como aparecem no formulário (o que a pessoa mandou, ou o que está salvo)."""
+        if self.is_bound:
+            return [{"texto": self.data.get(f"texto_botao_{n}", ""), "link": self.data.get(f"link_botao_{n}", "")} for n in (2, 3)]
+        return [{"texto": "", "link": "", **(self.extras_antes[i] if i < len(self.extras_antes) else {})} for i in range(2)]
+
+    def quantos_botoes(self) -> int:
+        """O número no contador: fora do Premium, 0 (o link vai no texto)."""
+        if not self.plano["botao"]:
+            return 0
+        if self.is_bound:  # sem o contador no envio: 1 botão se tem link
+            valor = self.data.get("botoes", 1 if (self.data.get("link") or "").strip() else 0)
+        else:
+            valor = self.initial.get("botoes", self.instance.botoes)
+        try:
+            return max(0, min(Automacao.MAXIMO_BOTOES, int(valor)))
+        except (TypeError, ValueError):
+            return 1
+
+    def _ler_botoes(self, d) -> None:
+        """Premium: quantos botões (0 a 3) e o texto e o link de cada um. O 1º abre o link principal."""
+        quantos = self.quantos_botoes()
+        d["botoes"] = quantos
+        if quantos >= 1:
+            d["texto_botao"] = (d.get("texto_botao") or "").strip() or "Ver produto"
+            if not d.get("link") and "link" not in self.errors:
+                self.add_error("link", "Coloque o link do botão 1 (ou deixe 0 botões: aí a DM vai sem link).")
+        validar = URLValidator(schemes=["http", "https"])
+        self._extras = []
+        for numero in (2, 3):
+            texto = " ".join(str(self.data.get(f"texto_botao_{numero}") or "").split())
+            link = str(self.data.get(f"link_botao_{numero}") or "").strip()
+            if quantos >= numero:
+                if not texto:
+                    self.add_error("botoes", f"Botão {numero}: escreva o texto.")
+                elif len(texto) > 20:
+                    self.add_error("botoes", f"Botão {numero}: o texto vai até 20 caracteres.")
+                try:
+                    validar(link)
+                except forms.ValidationError:
+                    self.add_error("botoes", f"Botão {numero}: coloque um link completo, começando com https://")
+            self._extras.append({"texto": texto[:20], "link": link[:600], "link_afiliado": ""})
 
     def clean_sub_id(self):
         sub_id = (self.cleaned_data.get("sub_id") or "").strip()
@@ -177,8 +224,10 @@ class AutomacaoForm(forms.ModelForm):
 
     def clean(self):
         d = super().clean()
-        if not self.plano["botao"]:
-            d["botao"] = self.instance.botao if self.instance.pk else True
+        if self.plano["botao"]:
+            self._ler_botoes(d)
+        else:  # fica o que estava (no Standard, o link vai no texto)
+            d["botoes"] = self.instance.botoes if self.instance.pk else 1
         if not self.plano["sub_id"]:
             d["sub_id"] = self.instance.sub_id
         if self.plano["ativas"] and d.get("ativa") and not self.antes[2]:
@@ -207,22 +256,30 @@ class AutomacaoForm(forms.ModelForm):
         return d
 
     def _link_com_sub_id(self, d):
-        """Premium: gera o link de afiliado de novo com o Sub ID da automação (só quando o link ou o Sub ID mudam)."""
-        link, sub_id = d.get("link") or "", d.get("sub_id") or ""
-        if not sub_id or not link:
-            self.instance.link_afiliado = ""
+        """Premium: gera o link de afiliado de novo com o Sub ID da automação, no link principal e no de cada
+        botão (só quando o link ou o Sub ID mudam). Link de fora da Shopee vai como está."""
+        sub_id = d.get("sub_id") or ""
+        self.instance.link_afiliado = self._com_sub_id(d.get("link") or "", sub_id, self.antes[0], self.instance.link_afiliado)
+        if self._extras is None:
             return
-        if (link, sub_id) == self.antes[:2] and self.instance.link_afiliado:
-            return
-        if not conversor.tem_link_da_shopee(link):
-            self.instance.link_afiliado = ""  # link de fora da Shopee: vai como está
-            return
+        for i, extra in enumerate(self._extras):
+            if i + 2 > d.get("botoes", 0):
+                continue  # botão que não vai: guarda o texto e o link, gera o link quando voltar
+            antes = self.extras_antes[i] if i < len(self.extras_antes) else {}
+            extra["link_afiliado"] = self._com_sub_id(extra["link"], sub_id, antes.get("link", ""), antes.get("link_afiliado", ""))
+        self.instance.botoes_extras = self._extras
+
+    def _com_sub_id(self, link: str, sub_id: str, link_antes: str, afiliado_antes: str) -> str:
+        if not sub_id or not link or not conversor.tem_link_da_shopee(link):
+            return ""
+        if (link, sub_id) == (link_antes, self.antes[1]) and afiliado_antes:
+            return afiliado_antes
         try:
             feito = conversor.converter(self.conta, link, conversor.MODO_LINKS, sub_id, ferramenta="instagram")
         except conversor.ErroConversor as erro:
             self.add_error("sub_id", f"Não consegui gerar o link com esse Sub ID: {erro}")
-            return
-        self.instance.link_afiliado = feito["texto"].splitlines()[0]
+            return ""
+        return feito["texto"].splitlines()[0]
 
 
 def _sub_id_sugerido(nome: str) -> str:

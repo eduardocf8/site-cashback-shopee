@@ -230,3 +230,15 @@
 .es-mini-barra { gap: 4px; }
 .es-mini-barra > span:first-child { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .es-mini-barra > span:last-child { flex: none; white-space: nowrap; }
+
+/* Automação: botões na DM (contador de 0 a 3) */
+.ig-botoes-topo { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
+.ig-botoes-rotulo { font-weight: 600; }
+.ig-contador { display: inline-flex; align-items: center; border: 1px solid var(--borda-forte); border-radius: 999px; background: var(--card); overflow: hidden; }
+.ig-contador button { width: 40px; height: 36px; border: 0; background: none; font-size: 20px; line-height: 1; color: var(--texto); cursor: pointer; }
+.ig-contador button:hover:not(:disabled) { background: var(--chip); }
+.ig-contador button:disabled { opacity: .35; cursor: not-allowed; }
+.ig-contador output { min-width: 28px; text-align: center; font-weight: 700; font-size: 16px; }
+.ig-botao { display: grid; gap: 6px; padding: 10px 12px; border: 1px solid var(--borda); border-radius: 12px; background: var(--campo); }
+.ig-botao[hidden] { display: none; }
+.ig-botao-num { font-size: 12px; font-weight: 700; text-transform: uppercase; letter-spacing: .04em; color: var(--suave); }
