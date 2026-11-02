@@ -150,6 +150,15 @@ class TestAvisoDeCadaProduto(BasePainel):
         self.assertIn('value="89,90"', html)  # o campo já vem com o preço escolhido
         self.assertIn("Usar o padrão (10%)", html)
 
+        self.client.post("/whatsapp/alertas/", {"acao": "aviso", "produto": self.produto.pk, "tipo": "reais",
+                                                "valor_reais": "89,90", "desconto_pix": "8"})
+        self.produto.refresh_from_db()
+        self.assertEqual(self.produto.desconto_pix, 8)
+        html = self.client.get("/whatsapp/alertas/").content.decode()
+        self.assertIn("no Pix (−8%): R$ 92,00", html)
+        self.assertIn("Avisa quando chegar a R$ 89,90 no Pix", html)
+        self.assertIn('class="barra-salvar no-fim"', html)  # o Salvar do formulário não flutua aqui
+
         self.client.post("/whatsapp/alertas/", {"acao": "aviso", "produto": self.produto.pk, "tipo": "pct", "valor_pct": "25"})
         self.produto.refresh_from_db()
         self.assertEqual((self.produto.tipo_aviso, self.produto.queda_propria), ("pct", 25))

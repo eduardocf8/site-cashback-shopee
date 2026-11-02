@@ -6,6 +6,7 @@ sessão do WhatsApp em si (chaves de criptografia) fica nas tabelas whatsmeow_* 
 a biblioteca cria no mesmo banco."""
 
 from datetime import time
+from decimal import Decimal
 
 from django.db import models
 
@@ -397,6 +398,9 @@ class ProdutoAcompanhado(models.Model):
     preco_alvo = models.DecimalField(max_digits=10, decimal_places=2, null=True, blank=True)
     # Preço em R$: já avisou desta vez que o preço chegou ao alvo (volta a False quando o preço sobe acima dele).
     alvo_avisado = models.BooleanField(default=False)
+    # Preço em R$: desconto do Pix que a pessoa vê no app (%). O alvo passa a ser o preço no Pix (a API só
+    # tem o preço do anúncio; cupons não entram porque mudam de pessoa para pessoa).
+    desconto_pix = models.PositiveSmallIntegerField(null=True, blank=True)
     adicionado_em = models.DateTimeField(auto_now_add=True)
     conferido_em = models.DateTimeField(null=True, blank=True)
     ultimo_alerta_em = models.DateTimeField(null=True, blank=True)
@@ -432,10 +436,17 @@ class AlertaDisparado(models.Model):
     queda = models.DecimalField(max_digits=5, decimal_places=1, help_text="Em %.")
     preco_alvo = models.DecimalField(max_digits=10, decimal_places=2, null=True, blank=True,
                                      help_text="O preço em R$ que o produto precisava chegar (vazio = alerta por queda em %).")
+    desconto_pix = models.PositiveSmallIntegerField(null=True, blank=True, help_text="Com ele, o preço-alvo é o preço no Pix.")
     enviado_email = models.BooleanField(default=False)
     postado_grupos = models.BooleanField(default=False)
     visto = models.BooleanField(default=False)
     criado_em = models.DateTimeField(auto_now_add=True)
+
+    @property
+    def preco_no_pix(self):
+        if not self.desconto_pix or self.preco_agora is None:
+            return None
+        return (self.preco_agora * (100 - self.desconto_pix) / 100).quantize(Decimal("0.01"))
 
     class Meta:
         ordering = ["-criado_em"]

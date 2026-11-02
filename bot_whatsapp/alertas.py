@@ -148,10 +148,25 @@ def queda_do_produto(produto: ProdutoAcompanhado, queda_padrao: int) -> int:
     return queda_padrao
 
 
+MAXIMO_DESCONTO_PIX = 50
+
+
+def no_pix(preco, desconto_pix) -> Decimal | None:
+    """O preço com o desconto do Pix (None sem desconto ou sem preço)."""
+    if preco is None or not desconto_pix:
+        return None
+    return _dinheiro(Decimal(preco) * (100 - desconto_pix) / 100)
+
+
+def preco_comparado(produto: ProdutoAcompanhado, preco: Decimal) -> Decimal:
+    """No preço em R$ com desconto do Pix, o alvo é o preço no Pix; senão, o preço do anúncio."""
+    return no_pix(preco, produto.desconto_pix) or preco
+
+
 def _avisa(produto: ProdutoAcompanhado, preco: Decimal, referencia: Decimal, queda_minima: int) -> bool:
     """Se o preço novo dispara o alerta (e, no preço em R$, marca/desmarca que já avisou)."""
     if produto.tipo_aviso == ProdutoAcompanhado.PRECO and produto.preco_alvo:
-        if preco > produto.preco_alvo:
+        if preco_comparado(produto, preco) > produto.preco_alvo:
             produto.alvo_avisado = False
             return False
         if produto.alvo_avisado:
@@ -165,9 +180,17 @@ def _avisa(produto: ProdutoAcompanhado, preco: Decimal, referencia: Decimal, que
 MAXIMO_QUEDA = 90
 
 
-def definir_aviso(produto: ProdutoAcompanhado, tipo: str, valor: str) -> str:
-    """Grava como o produto avisa (padrão, queda em % ou preço em R$). Devolve "" ou o motivo do erro."""
+def definir_aviso(produto: ProdutoAcompanhado, tipo: str, valor: str, pix: str = "") -> str:
+    """Grava como o produto avisa (padrão, queda em % ou preço em R$, este com o desconto do Pix opcional).
+    Devolve "" ou o motivo do erro."""
     from painel.telas import ler_numero_br
+
+    produto.desconto_pix = None
+    if tipo == ProdutoAcompanhado.PRECO and str(pix or "").strip():
+        desconto = ler_numero_br(pix)
+        if desconto is None or not 0 <= desconto <= MAXIMO_DESCONTO_PIX or desconto != int(desconto):
+            return f"O desconto no Pix vai de 0% a {MAXIMO_DESCONTO_PIX}%, sem casas decimais (ou deixe em branco)."
+        produto.desconto_pix = int(desconto) or None
 
     if tipo == ProdutoAcompanhado.PERCENTUAL:
         numero = ler_numero_br(valor)
@@ -182,7 +205,7 @@ def definir_aviso(produto: ProdutoAcompanhado, tipo: str, valor: str) -> str:
         produto.alvo_avisado = False  # preço novo: avisa de novo quando chegar
     else:
         produto.tipo_aviso = ProdutoAcompanhado.PADRAO
-    produto.save(update_fields=["tipo_aviso", "queda_propria", "preco_alvo", "alvo_avisado"])
+    produto.save(update_fields=["tipo_aviso", "queda_propria", "preco_alvo", "alvo_avisado", "desconto_pix"])
     return ""
 
 
@@ -191,11 +214,13 @@ def resumo_do_aviso(produto: ProdutoAcompanhado, queda_padrao: int) -> dict:
     atual = produto.preco_atual
     if produto.tipo_aviso == ProdutoAcompanhado.PRECO and produto.preco_alvo:
         alvo = produto.preco_alvo
-        if atual is not None and atual <= alvo:
+        pix = " no Pix" if produto.desconto_pix else ""
+        comparado = preco_comparado(produto, atual) if atual is not None else None
+        if comparado is not None and comparado <= alvo:
             quando = f" · avisado {timezone.localtime(produto.ultimo_alerta_em):%d/%m %H:%M}" if produto.alvo_avisado and produto.ultimo_alerta_em else ""
-            return {"tipo": "chegou", "texto": f"✓ Chegou a {moeda(atual)} (seu preço: {moeda(alvo)})", "detalhe": quando.lstrip(" ·")}
-        falta = f"faltam {moeda(atual - alvo)} ({float((atual - alvo) / atual * 100):.0f}%)" if atual else ""
-        return {"tipo": "reais", "texto": f"🎯 Avisa quando chegar a {moeda(alvo)}", "detalhe": falta}
+            return {"tipo": "chegou", "texto": f"✓ Chegou a {moeda(comparado)}{pix} (seu preço: {moeda(alvo)})", "detalhe": quando.lstrip(" ·")}
+        falta = f"faltam {moeda(comparado - alvo)} ({float((comparado - alvo) / comparado * 100):.0f}%)" if comparado else ""
+        return {"tipo": "reais", "texto": f"🎯 Avisa quando chegar a {moeda(alvo)}{pix}", "detalhe": falta}
     queda = queda_do_produto(produto, queda_padrao)
     base = max(produto.referencia or atual or 0, atual or 0)
     limite = f"{moeda(base * (100 - queda) / 100)} ou menos" if base else ""
@@ -221,6 +246,7 @@ def registrar_preco(produto: ProdutoAcompanhado, preco: Decimal, agora, queda_mi
         alerta = AlertaDisparado.objects.create(
             conta=produto.conta, produto=produto, nome=produto.nome, imagem=produto.imagem,
             preco_antes=antes, preco_agora=preco, queda=queda, preco_alvo=produto.preco_alvo if por_preco else None,
+            desconto_pix=produto.desconto_pix if por_preco else None,
         )
         referencia = preco
         produto.ultimo_alerta_em = agora
@@ -265,15 +291,17 @@ def conferir(alerta: AlertaPreco, agora) -> list[AlertaDisparado]:
 
 # --- Avisos --------------------------------------------------------------------------
 
-def montar_mensagem(modelo: str, nome: str, antes, agora_, queda, link: str) -> str:
+def montar_mensagem(modelo: str, nome: str, antes, agora_, queda, link: str, desconto_pix=None) -> str:
     """Troca os campos do modelo ({produto}, {preco_antes}, {preco_agora}, {queda}, {link}).
-    Sem {link} no modelo, o link vai no fim (a mensagem precisa dele)."""
+    Sem {link} no modelo, o link vai no fim (a mensagem precisa dele). Com desconto do Pix,
+    {preco_agora} sai com o preço no Pix junto: "R$ 640,00 (R$ 588,80 no Pix)"."""
     texto = (modelo or "").strip() or ""
     if not texto:
         from .models import MODELO_ALERTA_PADRAO
 
         texto = MODELO_ALERTA_PADRAO
-    campos = {"{produto}": nome, "{preco_antes}": moeda(antes), "{preco_agora}": moeda(agora_),
+    agora_texto = moeda(agora_) + (f" ({moeda(no_pix(agora_, desconto_pix))} no Pix)" if desconto_pix else "")
+    campos = {"{produto}": nome, "{preco_antes}": moeda(antes), "{preco_agora}": agora_texto,
               "{queda}": f"{float(queda):g}%".replace(".", ","), "{link}": link}
     if "{link}" not in texto:
         texto += "\n\n{link}"
@@ -314,7 +342,8 @@ def enviar_email(conta, disparados: list[AlertaDisparado]) -> None:
     if total > 1:
         assunto = f"Appfiliado — {total} produtos baixaram de preço"
     elif primeiro.preco_alvo:
-        assunto = f"Appfiliado — {primeiro.nome[:60]} chegou a {moeda(primeiro.preco_agora)}"
+        assunto = f"Appfiliado — {primeiro.nome[:60]} chegou a {moeda(no_pix(primeiro.preco_agora, primeiro.desconto_pix) or primeiro.preco_agora)}"
+        assunto += " no Pix" if primeiro.desconto_pix else ""
     else:
         assunto = f"Appfiliado — {primeiro.nome[:60]} baixou {float(primeiro.queda):g}%".replace(".", ",")
     dados = {"alertas": disparados, "url_alertas": url_do_painel("painel_whatsapp_alertas"), "url_logo": url_do_logo()}
@@ -343,7 +372,8 @@ def postar_nos_grupos(alerta: AlertaPreco, disparados: list[AlertaDisparado]) ->
         alerta.ultimo_erro = "Não postei nos grupos: escolha os grupos na aba Automação."
         return
     for d in disparados:
-        texto = montar_mensagem(alerta.modelo_mensagem, d.nome, d.preco_antes, d.preco_agora, d.queda, MARCADOR_DO_LINK)
+        texto = montar_mensagem(alerta.modelo_mensagem, d.nome, d.preco_antes, d.preco_agora, d.queda, MARCADOR_DO_LINK,
+                                d.desconto_pix)
         try:
             enfileirar(config, grupos, texto, d.produto.link, item_id=d.produto.item_id, nome=d.nome,
                        imagem_url=d.imagem, origem=EnvioWhatsApp.ALERTA)
