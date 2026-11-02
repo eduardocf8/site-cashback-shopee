@@ -1216,3 +1216,9 @@ fieldset.sem-borda > legend { padding: 0; margin-bottom: 8px; }
   .barra-salvar.no-fim { position: static; padding: 0; background: none; border: 0; box-shadow: none; }
   .conteudo:has(.barra-salvar.no-fim) { padding-bottom: 0; }
 }
+
+/* Link de entrada: situação do token da API de Conversões */
+.situacao-capi { margin: 8px 0 6px; font-size: 13px; color: var(--suave); }
+.situacao-capi.ok { color: var(--bom-tinta); }
+.situacao-capi.ok::before { content: "✓ "; font-weight: 700; }
+.situacao-capi.com-erro { color: var(--perigo); }

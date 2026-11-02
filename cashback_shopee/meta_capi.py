@@ -83,34 +83,43 @@ def enviar_evento(nome_evento: str, request, event_id: str, dados_customizados: 
     if not tem_consentimento_de_marketing(request):
         return
 
-    payload = {
-        "data": [
-            {
-                "event_name": nome_evento,
-                "event_time": int(time.time()),
-                "event_id": event_id,
-                "action_source": "website",
-                "event_source_url": request.build_absolute_uri(),
-                "user_data": _dados_do_usuario(request),
-                **({"custom_data": dados_customizados} if dados_customizados else {}),
-            }
-        ],
+    evento = {
+        "event_name": nome_evento,
+        "event_time": int(time.time()),
+        "event_id": event_id,
+        "action_source": "website",
+        "event_source_url": request.build_absolute_uri(),
+        "user_data": _dados_do_usuario(request),
+        **({"custom_data": dados_customizados} if dados_customizados else {}),
     }
     # Só preenchido durante o teste no Gerenciador de Eventos da Meta (aba "Testar
     # eventos") - etiqueta os eventos como teste, sem misturar com dado real de
     # campanha. Tirar a variável de ambiente depois de confirmar que está tudo certo.
-    if settings.META_CAPI_TEST_EVENT_CODE:
-        payload["test_event_code"] = settings.META_CAPI_TEST_EVENT_CODE
+    erro = mandar(settings.META_PIXEL_ID, settings.META_CAPI_ACCESS_TOKEN, [evento], settings.META_CAPI_TEST_EVENT_CODE)
+    if erro:
+        logger.warning("[meta_capi] evento %s não foi: %s", nome_evento, erro)
 
+
+def mandar(pixel_id: str, token: str, eventos: list[dict], codigo_teste: str = "") -> str:
+    """Manda eventos a um pixel pela Conversions API. Devolve "" quando a Meta recebeu, ou o motivo
+    quando não. Nunca levanta. O motivo não traz o texto da exceção de rede: ele pode ter a URL da
+    chamada, com o token."""
+    payload: dict = {"data": eventos}
+    if codigo_teste:
+        payload["test_event_code"] = codigo_teste
     try:
         resposta = requests.post(
-            f"https://graph.facebook.com/{API_VERSAO}/{settings.META_PIXEL_ID}/events",
-            params={"access_token": settings.META_CAPI_ACCESS_TOKEN},
+            f"https://graph.facebook.com/{API_VERSAO}/{pixel_id}/events",
+            params={"access_token": token},
             json=payload,
             timeout=TIMEOUT_SEGUNDOS,
         )
         dados = resposta.json()
-        if "error" in dados:
-            logger.warning("[meta_capi] erro ao mandar evento %s: %s", nome_evento, dados["error"])
-    except (requests.RequestException, ValueError) as erro:
-        logger.warning("[meta_capi] falha ao mandar evento %s: %s", nome_evento, erro)
+    except requests.RequestException as erro:
+        return f"sem resposta da Meta ({erro.__class__.__name__})"
+    except ValueError:
+        return "resposta da Meta ilegível"
+    if isinstance(dados, dict) and dados.get("error"):
+        erro = dados["error"]
+        return str(erro.get("message") if isinstance(erro, dict) else erro)[:300] or "recusado pela Meta"
+    return ""

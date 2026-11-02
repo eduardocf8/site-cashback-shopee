@@ -612,6 +612,11 @@ class LinkEntrada(models.Model):
     capa = models.BinaryField(null=True, blank=True)  # JPEG 1200x600; sem ela, a capa usa fotos das ofertas
     capa_versao = models.PositiveIntegerField(default=0)
     pixel_id = models.CharField("ID do pixel do Meta", max_length=20, blank=True)
+    # Token da API de Conversões do pixel, cifrado (painel/cripto.py). Com ele, a visita e o toque no
+    # botão também saem pelo servidor (entrada.evento_no_servidor). Nunca volta para a tela.
+    capi_token_cifrado = models.TextField(blank=True)
+    capi_enviado_em = models.DateTimeField(null=True, blank=True)  # último evento mandado pelo servidor
+    capi_erro = models.CharField(max_length=300, blank=True)  # "" = o Meta aceitou o último
     grupos = models.JSONField(default=list, blank=True)  # jids; enchem na ordem do nome (#1, #2...)
     limite_por_grupo = models.PositiveIntegerField(default=1000, help_text="O WhatsApp aceita até 1.024 pessoas por grupo.")
     redirecionar = models.BooleanField("ir direto para o grupo", default=False)

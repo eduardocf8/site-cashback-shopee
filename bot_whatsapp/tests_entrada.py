@@ -3,12 +3,14 @@ from datetime import timedelta
 from unittest import mock
 
 from django.core.files.uploadedfile import SimpleUploadedFile
+import requests
 from PIL import Image
 
 from django.core import mail
 from django.utils import timezone
 
 from meusite.models import SiteAfiliado
+from painel import cripto
 from painel.tests import BasePainel
 
 from . import entrada, grupos_novos
@@ -292,3 +294,93 @@ class TestWorker(BaseEntrada):
         self.assertIn("Crie o próximo grupo", mail.outbox[0].body)
         entrada.cuidar_dos_links(agora + timedelta(hours=25))
         self.assertEqual(len(mail.outbox), 2)
+
+
+TOKEN = "EAAB" + "x7" * 40
+
+
+@mock.patch.object(entrada, "_em_segundo_plano", lambda funcao: funcao())  # nos testes, na hora
+class TestApiDeConversoes(BaseEntrada):
+    def setUp(self):
+        super().setUp()
+        self.link = self.criar_link()
+        for g_ in GRUPOS:
+            self.convite(g_["jid"], f"https://chat.whatsapp.com/{g_['jid'].split('@')[0]}")
+
+    def salvar(self, **extra):
+        dados = {"acao": "salvar", "ativo": "on", "slug": "grupo-vip", "titulo": "Grupo VIP", "texto_botao": "Entrar",
+                 "pixel_id": "123456789", "limite_por_grupo": "1000", "grupos": ["1@g.us"], **extra}
+        return self.client.post(f"/whatsapp/entrada/{self.link.pk}/", dados, follow=True)
+
+    def com_token(self):
+        self.link.capi_token_cifrado = cripto.cifrar(TOKEN)
+        self.link.save()
+
+    def test_token_fica_cifrado_e_nunca_volta_pra_tela(self):
+        self.assertContains(self.salvar(capi_token=f" {TOKEN[:40]}\n{TOKEN[40:]} "), "Link de entrada salvo.")
+        self.link.refresh_from_db()
+        self.assertNotIn(TOKEN, self.link.capi_token_cifrado)
+        self.assertEqual(cripto.decifrar(self.link.capi_token_cifrado), TOKEN)  # sem a quebra de linha da cópia
+        html = self.client.get(f"/whatsapp/entrada/{self.link.pk}/").content.decode()
+        self.assertNotIn(TOKEN, html)
+        self.assertIn("Salvo. Cole outro para trocar", html)
+        self.assertIn("Os eventos começam a ir na próxima visita", html)
+
+        self.salvar()  # em branco: mantém
+        self.link.refresh_from_db()
+        self.assertEqual(cripto.decifrar(self.link.capi_token_cifrado), TOKEN)
+        self.assertContains(self.salvar(capi_token="abc"), "Esse token parece incompleto")
+        self.assertContains(self.salvar(pixel_id=""), "preencha também o ID do pixel")
+        self.link.refresh_from_db()
+        self.assertEqual((cripto.decifrar(self.link.capi_token_cifrado), self.link.pixel_id), (TOKEN, "123456789"))
+
+        self.salvar(apagar_capi_token="on")
+        self.link.refresh_from_db()
+        self.assertEqual(self.link.capi_token_cifrado, "")
+
+    @mock.patch("cashback_shopee.meta_capi.requests.post")
+    def test_visita_e_toque_vao_pelo_servidor_com_o_mesmo_id_do_pixel(self, post):
+        post.return_value = mock.Mock(json=lambda: {"events_received": 1})
+        self.client.get("/s/achadinhosdabia/g/grupo-vip/", **NAVEGADOR)
+        post.assert_not_called()  # sem token, só o pixel
+
+        self.com_token()
+        resposta = self.client.get("/s/achadinhosdabia/g/grupo-vip/?fbclid=AbC123", **NAVEGADOR)
+        eid = resposta.context["eid"]
+        self.assertContains(resposta, f"eventID: '{eid}-v'")
+        self.assertIn("123456789/events", post.call_args.args[0])
+        self.assertEqual(post.call_args.kwargs["params"], {"access_token": TOKEN})
+        evento = post.call_args.kwargs["json"]["data"][0]
+        self.assertEqual((evento["event_name"], evento["event_id"], evento["action_source"]), ("PageView", f"{eid}-v", "website"))
+        self.assertTrue(evento["user_data"]["fbc"].startswith("fb.1.") and evento["user_data"]["fbc"].endswith(".AbC123"))
+        self.assertEqual(evento["user_data"]["client_ip_address"], "127.0.0.1")
+
+        self.client.cookies["_fbp"] = "fb.1.111.222"
+        resposta = self.client.get(f"/s/achadinhosdabia/g/grupo-vip/entrar/?eid={eid}", **NAVEGADOR)
+        self.assertRedirects(resposta, "https://chat.whatsapp.com/1", fetch_redirect_response=False)
+        evento = post.call_args.kwargs["json"]["data"][0]
+        self.assertEqual((evento["event_name"], evento["event_id"]), ("Lead", f"{eid}-l"))
+        self.assertTrue(evento["event_source_url"].endswith("/g/grupo-vip/"))
+        self.assertEqual(evento["user_data"]["fbp"], "fb.1.111.222")
+        self.link.refresh_from_db()
+        self.assertIsNotNone(self.link.capi_enviado_em)
+        self.assertEqual(self.link.capi_erro, "")
+        self.assertContains(self.client.get(f"/whatsapp/entrada/{self.link.pk}/"), "Último evento aceito pelo Meta")
+
+        self.client.get("/s/achadinhosdabia/g/grupo-vip/entrar/?eid=<script>", **NAVEGADOR)  # id inválido: gera outro
+        self.assertNotIn("script", post.call_args.kwargs["json"]["data"][0]["event_id"])
+        chamadas = post.call_count
+        self.client.get("/s/achadinhosdabia/g/grupo-vip/", HTTP_USER_AGENT="facebookexternalhit/1.1")  # prévia do Meta
+        self.assertEqual(post.call_count, chamadas)
+
+    @mock.patch("cashback_shopee.meta_capi.requests.post")
+    def test_erro_do_meta_aparece_no_painel_sem_o_token(self, post):
+        self.com_token()
+        post.return_value = mock.Mock(json=lambda: {"error": {"message": "Invalid OAuth access token."}})
+        self.client.get("/s/achadinhosdabia/g/grupo-vip/", **NAVEGADOR)
+        self.assertContains(self.client.get(f"/whatsapp/entrada/{self.link.pk}/"),
+                            "O Meta recusou o último evento")
+        post.side_effect = requests.ConnectionError(f"Max retries exceeded with url: /events?access_token={TOKEN}")
+        self.client.get("/s/achadinhosdabia/g/grupo-vip/", **NAVEGADOR)
+        self.link.refresh_from_db()
+        self.assertEqual(self.link.capi_erro, "sem resposta da Meta (ConnectionError)")
