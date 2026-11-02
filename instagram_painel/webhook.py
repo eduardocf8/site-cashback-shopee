@@ -58,32 +58,50 @@ def link_da_dm(automacao: Automacao) -> str:
     return automacao.link_afiliado or automacao.link
 
 
-def texto_da_dm(automacao: Automacao, com_link: bool = True) -> str:
+def botoes_da_dm(automacao: Automacao) -> list[tuple[str, str]]:
+    """Os botões da DM, na ordem: o 1º abre o link principal; o 2º e o 3º, o link de cada um."""
+    if automacao.botoes < 1 or not link_da_dm(automacao):
+        return []
+    botoes = [((automacao.texto_botao or "Ver produto"), link_da_dm(automacao))]
+    for extra in (automacao.botoes_extras or [])[: automacao.botoes - 1]:
+        link = extra.get("link_afiliado") or extra.get("link")
+        if link and extra.get("texto"):
+            botoes.append((extra["texto"], link))
+    return botoes[: Automacao.MAXIMO_BOTOES]
+
+
+def texto_da_dm(automacao: Automacao, com_link: bool = True, botoes: list | None = None) -> str:
+    """O texto da DM. com_link: o link vai no fim (sem botão, ou quando o Instagram não aceita os botões);
+    com mais de um botão, vai cada link com o texto do seu botão."""
     texto = (automacao.texto_dm or "").strip()
     link = link_da_dm(automacao)
-    if com_link and link and link not in texto:
-        texto = f"{texto}\n\n{link}".strip()
+    if com_link and botoes and len(botoes) > 1:
+        texto = f"{texto}\n\n" + "\n".join(f"{titulo}: {url}" for titulo, url in botoes)
+    elif com_link and link and link not in texto:
+        texto = f"{texto}\n\n{link}"
+    texto = texto.strip()
     while len(texto.encode("utf-8")) > LIMITE_DM:
         texto = texto[:-10]
     return texto
 
 
 def _mandar_dm(ig: ContaInstagram, d: Disparo, plano: dict) -> None:
-    """A DM com o link num botão (Premium) e, se o Instagram não aceitar o botão, a mesma DM com o link no texto."""
-    automacao, link = d.automacao, link_da_dm(d.automacao)
+    """A DM com os links em botões (Premium) e, se o Instagram não aceitar os botões, a mesma DM com os links no texto."""
+    automacao = d.automacao
     if automacao.gatilho == Automacao.COMENTARIO:
-        def manda(texto, botao=None):
-            return api.resposta_privada(ig.token, ig.ig_id, d.evento_id, texto, botao)
+        def manda(texto, botoes=None):
+            return api.resposta_privada(ig.token, ig.ig_id, d.evento_id, texto, botoes)
     else:
-        def manda(texto, botao=None):
-            return api.mensagem(ig.token, ig.ig_id, d.autor_id, texto, botao)
-    if plano.get("botao") and automacao.botao and link:
+        def manda(texto, botoes=None):
+            return api.mensagem(ig.token, ig.ig_id, d.autor_id, texto, botoes)
+    botoes = botoes_da_dm(automacao) if plano.get("botao") else []
+    if botoes:
         try:
-            manda(texto_da_dm(automacao, com_link=False) or "Aqui está o link:", ((automacao.texto_botao or "Ver produto"), link))
+            manda(texto_da_dm(automacao, com_link=False) or "Aqui está o link:", botoes)
             return
         except api.ErroInstagram as erro:
-            logger.info("Instagram: DM com botão recusada para @%s, vai em texto: %s", ig.username, erro)
-    manda(texto_da_dm(automacao))
+            logger.info("Instagram: DM com botões recusada para @%s, vai em texto: %s", ig.username, erro)
+    manda(texto_da_dm(automacao, botoes=botoes))
 
 
 def resposta_publica(automacao: Automacao, username: str) -> str:

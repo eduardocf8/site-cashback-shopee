@@ -71,9 +71,13 @@ class Automacao(models.Model):
     enviar_dm = models.BooleanField(default=True)
     texto_dm = models.TextField(blank=True)
     link = models.URLField(max_length=600, blank=True)
-    # Premium: o link vai num botão na DM (cai no texto se o Instagram não aceitar o botão).
-    botao = models.BooleanField("link num botão", default=True)
+    # Premium: botões na DM, de 0 a 3 (o Instagram aceita até 3). O 1º abre o link acima; o 2º e o 3º têm
+    # texto e link próprios em botoes_extras: [{"texto", "link", "link_afiliado"}]. Se o Instagram não
+    # aceitar os botões, os links vão no texto.
+    MAXIMO_BOTOES = 3
+    botoes = models.PositiveSmallIntegerField(default=1)
     texto_botao = models.CharField(max_length=20, default="Ver produto", blank=True)
+    botoes_extras = models.JSONField(default=list, blank=True)
     # Premium: Sub ID próprio. O link de afiliado é gerado de novo com ele (link_afiliado) e é esse que vai na DM.
     sub_id = models.CharField("Sub ID", max_length=50, blank=True)
     link_afiliado = models.URLField(max_length=600, blank=True)
