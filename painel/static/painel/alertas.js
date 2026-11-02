@@ -10,7 +10,7 @@
 })();
 
 // Alerta de preço: em cada produto, "Mudar" abre o quadro para escolher se avisa quando o preço
-// cair uma % ou chegar a um valor em R$ - e mostra a conta (em quanto dá a % / quanto abaixo de hoje).
+// cair uma % ou chegar a um valor em R$ (com o desconto do Pix opcional) - e mostra a conta.
 (function () {
   function reais(v) {
     return "R$ " + v.toFixed(2).replace(".", ",").replace(/\B(?=(\d{3})+(?!\d))/g, ".");
@@ -25,24 +25,30 @@
     var botao = caixa.querySelector("[data-mudar-aviso]");
     var resumo = caixa.querySelector(".resumo-aviso");
     var preco = parseFloat(form.getAttribute("data-preco")) || 0;
+    var menor = parseFloat(form.getAttribute("data-menor")) || 0;
     var base = parseFloat(form.getAttribute("data-base")) || preco;
     function atualizar() {
       var tipo = (form.querySelector("input[name=tipo]:checked") || {}).value || "pct";
-      form.querySelectorAll(".valor-aviso").forEach(function (v) { v.hidden = v.getAttribute("data-tipo") !== tipo; });
+      form.querySelectorAll("[data-tipo]").forEach(function (v) { v.hidden = v.getAttribute("data-tipo") !== tipo; });
       var pct = numero(form.querySelector("[name=valor_pct]").value);
-      var contaPct = form.querySelector("[data-conta-pct]");
-      contaPct.innerHTML = base && pct > 0 && pct < 100
+      form.querySelector("[data-conta-pct]").innerHTML = base && pct > 0 && pct < 100
         ? "avisa em <strong>" + reais(base * (100 - pct) / 100) + "</strong> ou menos" + (preco ? " (hoje " + reais(preco) + ")" : "")
         : "";
+      var pix = numero(form.querySelector("[name=desconto_pix]").value) || 0;
+      if (pix < 0 || pix > 50) pix = 0;
+      var hoje = preco * (100 - pix) / 100;
       var alvo = numero(form.querySelector("[name=valor_reais]").value);
-      var contaReais = form.querySelector("[data-conta-reais]");
-      if (!contaReais.getAttribute("data-original")) contaReais.setAttribute("data-original", contaReais.innerHTML);
-      var extra = "";
+      var texto = preco ? (pix ? "no Pix hoje: <strong>" + reais(hoje) + "</strong> · anúncio " + reais(preco)
+                               : "hoje <strong>" + reais(preco) + "</strong>") : "";
+      if (menor) texto += " · menor já visto " + reais(menor);
       if (alvo > 0 && preco) {
-        extra = alvo >= preco ? " · <strong>já está nesse preço</strong> (avisa na próxima conferência)"
-          : " · <strong>" + Math.round((preco - alvo) / preco * 100) + "% abaixo</strong> de hoje";
+        texto += alvo >= hoje ? " · <strong>já está nesse preço</strong> (avisa na próxima conferência)"
+          : " · <strong>" + Math.round((hoje - alvo) / hoje * 100) + "% abaixo</strong> de hoje";
       }
-      contaReais.innerHTML = contaReais.getAttribute("data-original") + extra;
+      form.querySelector("[data-conta-reais]").innerHTML = texto;
+      form.querySelector("[data-conta-pix]").innerHTML = pix && alvo > 0
+        ? "avisa quando o anúncio chegar a <strong>" + reais(alvo * 100 / (100 - pix)) + "</strong> (" + reais(alvo) + " no Pix)"
+        : "";
     }
     botao.addEventListener("click", function () {
       form.hidden = false;

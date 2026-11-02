@@ -103,6 +103,20 @@ class TestAvisoPorProduto(TestCase):
         self.assertIsNotNone(self.preco(70))
         self.assertIsNone(self.preco(70))
 
+    def test_preco_em_reais_no_pix(self):
+        self.assertEqual(alertas.definir_aviso(self.produto, "reais", "89,90", "8"), "")
+        self.assertEqual(self.produto.desconto_pix, 8)
+        self.assertIsNone(self.preco(98))  # no Pix: 90,16 - ainda acima dos 89,90
+        alerta = self.preco(97.7)  # no Pix: 89,88
+        self.assertEqual((alerta.desconto_pix, alerta.preco_no_pix), (8, Decimal("89.88")))
+        resumo = alertas.resumo_do_aviso(self.produto, 10)
+        self.assertIn("Chegou a R$ 89,88 no Pix", resumo["texto"])
+        texto = alertas.montar_mensagem("{produto}: {preco_agora}", "Fone", 100, 97.7, 2.3, "L", 8)
+        self.assertEqual(texto, "Fone: R$ 97,70 (R$ 89,88 no Pix)\n\nL")
+        self.assertIn("desconto no Pix vai de 0% a 50%", alertas.definir_aviso(self.produto, "reais", "80", "60"))
+        alertas.definir_aviso(self.produto, "pct", "15", "8")  # o Pix só vale para o preço em R$
+        self.assertIsNone(self.produto.desconto_pix)
+
     def test_resumo_e_volta_ao_padrao(self):
         self.assertEqual(alertas.resumo_do_aviso(self.produto, 10)["texto"], "📉 Avisa com queda de 10%")
         self.assertIn("padrão · R$ 90,00 ou menos", alertas.resumo_do_aviso(self.produto, 10)["detalhe"])

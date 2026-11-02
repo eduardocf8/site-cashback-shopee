@@ -121,7 +121,7 @@
   if(!f._fbq)f._fbq=n;n.push=n;n.loaded=!0;n.version='2.0';n.queue=[];t=b.createElement(e);t.async=!0;
   t.src=v;s=b.getElementsByTagName(e)[0];s.parentNode.insertBefore(t,s)}(window,document,'script','https://connect.facebook.net/en_US/fbevents.js');
   fbq('init', '{{ link.pixel_id|escapejs }}');
-  fbq('track', 'PageView');
+  fbq('track', 'PageView', {}, {eventID: '{{ eid }}-v'});
 </script>
 {% endif %}
 </head>
@@ -186,16 +186,18 @@
 {% if tem_vaga and not previa %}
 <script>
   (function () {
-    var botao = document.getElementById("entrar");
-    function ir() { window.location.href = botao.href; }
+    var botao = document.getElementById("entrar"), eid = "{{ eid }}";
+    // eid: o mesmo id do Lead no pixel e no servidor (o Meta junta os dois e não conta duas vezes)
+    function ir() { window.location.href = botao.href + (botao.href.indexOf("?") < 0 ? "?" : "&") + "eid=" + eid; }
+    function lead() { fbq("track", "Lead", {}, {eventID: eid + "-l"}); }
     botao.addEventListener("click", function (e) {
       if (!window.fbq) return;
       e.preventDefault();
-      fbq("track", "Lead");
+      lead();
       setTimeout(ir, 300);  // dá tempo do pixel registrar antes de sair da página
     });
     {% if link.redirecionar %}
-    setTimeout(function () { if (window.fbq) fbq("track", "Lead"); setTimeout(ir, 300); }, 600);
+    setTimeout(function () { if (window.fbq) { lead(); setTimeout(ir, 300); } else { window.location.href = botao.href; } }, 600);
     {% endif %}
   })();
 </script>

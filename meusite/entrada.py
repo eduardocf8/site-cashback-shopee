@@ -83,11 +83,13 @@ def _campanha(request) -> str:
 @never_cache
 def pagina(request, slug, endereco=None):
     link, site = _link(request, slug, endereco)
+    eid = entrada.id_do_evento()  # o mesmo no pixel e no servidor (o Meta junta os dois)
     if request.method == "GET" and not entrada.e_robo(request):
         entrada.contar(link, _campanha(request))
+        entrada.evento_no_servidor(link, request, "PageView", f"{eid}-v", request.build_absolute_uri())
     consulta = request.META.get("QUERY_STRING", "")
     return render(request, "meusite/entrada.html", {
-        **montar(link, site), "destino": "entrar/" + (f"?{consulta}" if consulta else ""),
+        **montar(link, site), "destino": "entrar/" + (f"?{consulta}" if consulta else ""), "eid": eid,
     })
 
 
@@ -99,6 +101,9 @@ def entrar(request, slug, endereco=None):
         return render(request, "meusite/entrada.html", {**montar(link, site), "tem_vaga": False, "destino": ""}, status=503)
     if not entrada.e_robo(request):
         entrada.contar(link, _campanha(request), grupo["jid"], clique=True)
+        # eid vem do toque no botão, para bater com o Lead do pixel; sem ele, o pixel não mandou o Lead.
+        entrada.evento_no_servidor(link, request, "Lead", f"{entrada.id_do_evento(request.GET.get('eid'))}-l",
+                                   request.build_absolute_uri("../"))
     return redirect(grupo["convite"])
 
 

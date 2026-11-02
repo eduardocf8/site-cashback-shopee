@@ -134,6 +134,19 @@
     <label class="marcar"><input type="checkbox" name="ativo"{% if link.ativo %} checked{% endif %}><span>Link no ar</span></label>
     <div class="campo"><label for="slug">Endereço do link</label><input type="text" name="slug" id="slug" value="{{ link.slug }}" maxlength="40" autocomplete="off" spellcheck="false" autocapitalize="none"><span class="ajuda">{{ site.endereco }}…/<strong>{{ link.slug }}</strong>/ · letras minúsculas, números e hífen. Trocar o endereço quebra o link que já está no anúncio.</span></div>
     <div class="campo"><label for="pixel_id">ID do pixel do Meta (opcional)</label><input type="text" name="pixel_id" id="pixel_id" value="{{ link.pixel_id }}" inputmode="numeric" placeholder="Ex: 123456789012345"><span class="ajuda">Fica no Gerenciador de Eventos do Meta. A página registra a visita (PageView) e o toque no botão (Lead).</span></div>
+    <div class="campo">
+      <label for="capi_token">Token da API de Conversões (opcional)</label>
+      <input type="password" name="capi_token" id="capi_token" autocomplete="new-password" spellcheck="false" autocapitalize="none" placeholder="{% if link.capi_token_cifrado %}Salvo. Cole outro para trocar{% else %}Cole o token do pixel{% endif %}">
+      <span class="ajuda">Com o token, a visita e o toque no botão também vão pelo servidor do Appfiliado. Isso recupera eventos que o navegador perde (bloqueador de anúncio, iPhone). O Meta junta os dois lados e não conta duas vezes. Onde gerar: Gerenciador de Eventos &gt; o pixel &gt; Configurações &gt; API de Conversões &gt; Gerar token de acesso.</span>
+      {% if link.capi_token_cifrado %}
+        <p class="situacao-capi{% if link.capi_erro %} com-erro{% elif link.capi_enviado_em %} ok{% endif %}">
+          {% if link.capi_erro %}O Meta recusou o último evento ({{ link.capi_enviado_em|date:"d/m H:i" }}): {{ link.capi_erro }}
+          {% elif link.capi_enviado_em %}Último evento aceito pelo Meta em {{ link.capi_enviado_em|date:"d/m \à\s H:i" }}.
+          {% else %}Token salvo. Os eventos começam a ir na próxima visita ao link.{% endif %}
+        </p>
+      {% endif %}
+    </div>
+    {% if link.capi_token_cifrado %}<label class="marcar"><input type="checkbox" name="apagar_capi_token"><span>Apagar o token salvo</span></label>{% endif %}
     <label class="marcar"><input type="checkbox" name="redirecionar"{% if link.redirecionar %} checked{% endif %}><span>Ir direto para o grupo, sem esperar o toque no botão<span class="ajuda">Cuidado: o Meta costuma barrar anúncios que levam a uma página que só redireciona. Com o botão é mais seguro.</span></span></label>
   </section>
 

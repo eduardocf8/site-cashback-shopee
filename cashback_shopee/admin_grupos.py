@@ -55,6 +55,7 @@ GRUPOS = [
             ("painel.sincronizacaoresultados", "Sincronizações de resultados"),
             ("painel.vendaitem", "Itens vendidos"),
             ("painel.metamensal", "Metas mensais"),
+            ("painel.fechamentomes", "Fechamentos do mês (metas)"),
             ("painel.regrasubid", "Regras de Sub ID"),
             ("painel.relatorioemail", "Relatórios por e-mail"),
             ("painel.textoemaildica", "E-mails de dicas (novos assinantes)"),

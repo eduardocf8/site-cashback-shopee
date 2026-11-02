@@ -404,7 +404,7 @@ def _acao_do_alerta(request, conta, alerta, regras_da_conta):
         if produto:
             tipo = request.POST.get("tipo", "")
             valor = request.POST.get("valor_reais" if tipo == ProdutoAcompanhado.PRECO else "valor_pct", "")
-            erro = alertas.definir_aviso(produto, tipo, valor)
+            erro = alertas.definir_aviso(produto, tipo, valor, request.POST.get("desconto_pix", ""))
             if erro:
                 messages.error(request, erro)
             else:
@@ -475,6 +475,7 @@ def whatsapp_alertas(request):
     pagina = Paginator(todos, PRODUTOS_POR_PAGINA).get_page(request.GET.get("pagina"))
     for produto in pagina:
         produto.aviso = alertas.resumo_do_aviso(produto, alerta.queda_minima)
+        produto.preco_pix = alertas.no_pix(produto.preco_atual, produto.desconto_pix) if produto.tipo_aviso == "reais" else None
     acompanhados = set(todos.values_list("item_id", flat=True))
     do_bot = []
     for envio in EnvioWhatsApp.objects.filter(conta=conta, origem=EnvioWhatsApp.OFERTA).exclude(item_id="").exclude(

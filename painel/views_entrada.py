@@ -18,6 +18,7 @@ from meusite import entrada as pagina_publica
 from meusite.forms import PADRAO_ENDERECO, CapaForm, FotoForm
 from meusite.models import CORES, ENDERECOS_RESERVADOS, PEDACOS_RESERVADOS, SiteAfiliado
 
+from . import cripto
 from .autenticacao import conta_logada, conta_requerida
 from .views import _contexto
 
@@ -135,6 +136,13 @@ def _salvar(request, conta, link) -> list[str]:
     pixel = re.sub(r"\D", "", str(dados.get("pixel_id") or ""))
     if dados.get("pixel_id", "").strip() and not 5 <= len(pixel) <= 20:
         erros.append("O ID do pixel do Meta é só números (em Gerenciador de Eventos > Fontes de dados).")
+    token = "".join(str(dados.get("capi_token") or "").split())  # tira quebras de linha da cópia
+    apagar_token = dados.get("apagar_capi_token") == "on"
+    if token and not entrada.PADRAO_TOKEN.match(token):
+        erros.append("Esse token parece incompleto. Copie de novo no Gerenciador de Eventos: é um texto longo, "
+                     "que costuma começar com EAA.")
+    elif (token or (link.capi_token_cifrado and not apagar_token)) and not pixel:
+        erros.append("Para usar o token da API de Conversões, preencha também o ID do pixel.")
     try:
         limite = int(dados.get("limite_por_grupo") or 1000)
     except ValueError:
@@ -153,6 +161,9 @@ def _salvar(request, conta, link) -> list[str]:
     link.ativo = dados.get("ativo") == "on"
     link.criar_sozinho = dados.get("criar_sozinho") == "on"
     link.admins_dos_novos = admins[: grupos_novos.MAXIMO_ADMINS]
+    if token or apagar_token:
+        link.capi_token_cifrado = cripto.cifrar(token)
+        link.capi_enviado_em, link.capi_erro = None, ""
     link.save()
     entrada.salvar_grupos(link, dados.getlist("grupos"), conexao_da(conta))
     return []

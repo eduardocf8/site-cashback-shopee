@@ -14,14 +14,21 @@ Em construção: só para contas com a chave beta_link_entrada (admin)."""
 
 import logging
 import re
+import threading
+import time
+import uuid
 from datetime import timedelta
 
 from django.conf import settings
 from django.core.mail import send_mail
+from django.db import connection
 from django.db.models import F, Sum
 from django.utils import timezone
 
+from accounts.ratelimit import _obter_ip
+from cashback_shopee import meta_capi
 from licencas.models import MODULO_WHATSAPP
+from painel import cripto
 
 from . import grupos_novos, membros
 from .models import AcessoEntrada, ConexaoWhatsApp, ConviteGrupo, GrupoMonitorado, LinkEntrada, PedidoGrupo
@@ -87,6 +94,73 @@ def situacao(link: LinkEntrada) -> dict:
 
 def grupo_da_vez(link: LinkEntrada) -> dict | None:
     return situacao(link)["da_vez"]
+
+
+# --- API de Conversões do Meta ------------------------------------------------------------------
+# A página manda PageView e Lead pelo pixel (navegador). Com o token salvo, os mesmos eventos também
+# saem pelo servidor, com o mesmo event_id: o Meta junta os dois e não conta duas vezes. O id nasce
+# na página (id_do_evento) e vai no toque do botão (?eid=) para o Lead dos dois lados bater.
+
+PADRAO_EID = re.compile(r"^[0-9a-f]{32}$")
+PADRAO_TOKEN = re.compile(r"^[A-Za-z0-9_|-]{30,1000}$")
+
+
+def id_do_evento(valor: str = "") -> str:
+    valor = str(valor or "")
+    return valor if PADRAO_EID.match(valor) else uuid.uuid4().hex
+
+
+def tem_api_de_conversoes(link: LinkEntrada) -> bool:
+    return bool(link.pixel_id and link.capi_token_cifrado)
+
+
+def _dados_da_pessoa(request) -> dict:
+    """IP, navegador e os identificadores do clique no anúncio (fbp, fbc): é com eles que o Meta
+    liga o evento a quem viu o anúncio. Na primeira visita o cookie _fbc ainda não existe, mas o
+    fbclid do anúncio vem na URL."""
+    dados = {"client_user_agent": request.META.get("HTTP_USER_AGENT", "")}
+    ip = _obter_ip(request)
+    if ip and ip != "desconhecido":
+        dados["client_ip_address"] = ip
+    if request.COOKIES.get("_fbp"):
+        dados["fbp"] = request.COOKIES["_fbp"]
+    fbclid = str(request.GET.get("fbclid") or "").strip()[:500]
+    if request.COOKIES.get("_fbc"):
+        dados["fbc"] = request.COOKIES["_fbc"]
+    elif fbclid:
+        dados["fbc"] = f"fb.1.{int(time.time() * 1000)}.{fbclid}"
+    return dados
+
+
+def evento_no_servidor(link: LinkEntrada, request, nome: str, event_id: str, url: str) -> None:
+    """Manda o evento pela API de Conversões, sem segurar a página (em segundo plano), e guarda no
+    link se o Meta aceitou (o painel mostra)."""
+    if not tem_api_de_conversoes(link):
+        return
+    token = cripto.decifrar(link.capi_token_cifrado)
+    if not token:
+        return
+    evento = {"event_name": nome, "event_time": int(time.time()), "event_id": event_id,
+              "action_source": "website", "event_source_url": url, "user_data": _dados_da_pessoa(request)}
+    pk, pixel = link.pk, link.pixel_id
+
+    def enviar():
+        erro = meta_capi.mandar(pixel, token, [evento])
+        LinkEntrada.objects.filter(pk=pk).update(capi_enviado_em=timezone.now(), capi_erro=erro)
+
+    _em_segundo_plano(enviar)
+
+
+def _em_segundo_plano(funcao) -> None:
+    def rodar():
+        try:
+            funcao()
+        except Exception:
+            logger.exception("Link de entrada: falha ao mandar evento pela API de Conversões")
+        finally:
+            connection.close()  # a conexão é desta thread
+
+    threading.Thread(target=rodar, daemon=True).start()
 
 
 # --- Contagem ---------------------------------------------------------------------------------

@@ -55,7 +55,7 @@
               <div class="acompanhado-info">
                 <a href="{{ p.link }}" target="_blank" rel="noopener" class="acompanhado-nome">{{ p.nome|truncatechars:80 }}</a>
                 <span class="pequeno">
-                  <strong class="preco-atual">{{ p.preco_atual|brl }}</strong>
+                  <strong class="preco-atual">{{ p.preco_atual|brl }}</strong>{% if p.preco_pix %} <span class="preco-pix">no Pix (−{{ p.desconto_pix }}%): {{ p.preco_pix|brl }}</span>{% endif %}
                   {% if p.variacao is not None and p.variacao != 0 %}<span class="variacao {% if p.variacao < 0 %}desceu{% else %}subiu{% endif %}">{% if p.variacao > 0 %}+{% endif %}{{ p.variacao|floatformat:"-1" }}%</span>{% endif %}
                   {% if p.indisponivel %}<span class="selo-indisponivel">Indisponível</span>{% endif %}
                 </span>
@@ -64,7 +64,7 @@
               <form method="post">{% csrf_token %}<input type="hidden" name="acao" value="remover"><input type="hidden" name="produto" value="{{ p.pk }}"><input type="hidden" name="pagina" value="{{ pagina.number }}"><button type="submit" class="link-botao pequeno">Remover</button></form>
               <div class="aviso-produto" data-aviso>
                 <div class="resumo-aviso"><span class="selo-aviso {{ p.aviso.tipo }}">{{ p.aviso.texto }}{% if p.aviso.detalhe %} <small>· {{ p.aviso.detalhe }}</small>{% endif %}</span><button type="button" class="link-botao pequeno" data-mudar-aviso aria-expanded="false" aria-controls="aviso-{{ p.pk }}">Mudar</button></div>
-                <form method="post" class="editor-aviso" id="aviso-{{ p.pk }}" hidden data-preco="{{ p.preco_atual|default:''|stringformat:'s' }}" data-base="{{ p.referencia|default:p.preco_atual|default:''|stringformat:'s' }}">
+                <form method="post" class="editor-aviso" id="aviso-{{ p.pk }}" hidden data-preco="{{ p.preco_atual|default:''|stringformat:'s' }}" data-menor="{{ p.menor_preco|default:''|stringformat:'s' }}" data-base="{{ p.referencia|default:p.preco_atual|default:''|stringformat:'s' }}">
                   {% csrf_token %}<input type="hidden" name="acao" value="aviso"><input type="hidden" name="produto" value="{{ p.pk }}"><input type="hidden" name="pagina" value="{{ pagina.number }}">
                   <span class="pergunta">Avisar quando o preço…</span>
                   <div class="segmento-aviso" role="radiogroup" aria-label="Tipo de aviso">
@@ -77,7 +77,13 @@
                   </div>
                   <div class="valor-aviso" data-tipo="reais">
                     <span class="caixa-aviso"><span>R$</span><input type="text" inputmode="decimal" name="valor_reais" value="{% if p.preco_alvo %}{{ p.preco_alvo|floatformat:2 }}{% endif %}" aria-label="Preço em R$" maxlength="12" placeholder="0,00"></span>
-                    <span class="conta-aviso" data-conta-reais>hoje <strong>{{ p.preco_atual|brl }}</strong> · menor já visto {{ p.menor_preco|brl }}</span>
+                    <span class="conta-aviso" data-conta-reais></span>
+                  </div>
+                  <div class="linha-pix" data-tipo="reais">
+                    <label class="rot" for="pix-{{ p.pk }}">Desconto no Pix <small>(opcional)</small></label>
+                    <span class="caixa-aviso"><input type="text" inputmode="numeric" id="pix-{{ p.pk }}" name="desconto_pix" value="{{ p.desconto_pix|default:'' }}" maxlength="2" placeholder="0" class="campo-pix"><span>%</span></span>
+                    <span class="conta-aviso" data-conta-pix></span>
+                    <span class="nota-pix">Veja o desconto do Pix na página do produto no app. Cupons não entram na conta: mudam de pessoa para pessoa e vencem rápido.</span>
                   </div>
                   <div class="botoes-aviso">
                     <button type="submit" class="botao botao-escuro botao-pequeno">Salvar</button>
@@ -172,7 +178,7 @@
           </div>
         </div>
       </section>
-      <div class="barra-salvar"><button type="submit" class="botao botao-principal">Salvar</button></div>
+      <div class="barra-salvar no-fim"><button type="submit" class="botao botao-principal">Salvar</button></div>
     </form>
   </div>
 
