@@ -27,6 +27,7 @@ from django.utils import timezone
 
 from accounts.ratelimit import _obter_ip
 from cashback_shopee import meta_capi
+from licencas import planos
 from licencas.models import MODULO_WHATSAPP
 from painel import cripto
 
@@ -224,12 +225,14 @@ def cuidar_dos_links(agora) -> list[str]:
             continue
         criando = PedidoGrupo.objects.filter(link_entrada=link, estado=PedidoGrupo.PENDENTE).exists()
         pedido = None
-        if link.criar_sozinho and not criando and grupos_novos.criados_hoje(link.conta, agora) < grupos_novos.POR_DIA:
+        premium = planos.bot_premium(link.conta)  # criar sozinho é do Premium; os outros planos só recebem o aviso
+        if (link.criar_sozinho and premium and not criando
+                and grupos_novos.criados_hoje(link.conta, agora) < grupos_novos.POR_DIA):
             pedido = _pedir_o_proximo(link, estado, agora)
             if pedido:
                 logs.append(f"Link de entrada {link.pk}: pedindo o grupo {pedido.nome}")
         if not criando and (not link.aviso_lotando_em or agora - link.aviso_lotando_em > INTERVALO_DO_AVISO):
-            _avisar(link, estado, pedido)
+            _avisar(link, estado, pedido, premium)
             link.aviso_lotando_em = agora
             link.save(update_fields=["aviso_lotando_em"])
     return logs
@@ -253,7 +256,7 @@ def _pedir_o_proximo(link: LinkEntrada, estado: dict, agora) -> PedidoGrupo | No
     )
 
 
-def _avisar(link: LinkEntrada, estado: dict, pedido: PedidoGrupo | None) -> None:
+def _avisar(link: LinkEntrada, estado: dict, pedido: PedidoGrupo | None, premium: bool = True) -> None:
     from painel.emails import url_do_painel
 
     if pedido:
@@ -263,6 +266,8 @@ def _avisar(link: LinkEntrada, estado: dict, pedido: PedidoGrupo | None) -> None
         texto = (f"Os grupos do seu link de entrada /{link.slug}/ estão quase cheios (todos com mais de {FOLGA}% do "
                  f"limite de {link.limite_por_grupo} pessoas). Crie o próximo grupo e coloque no link para não perder "
                  "quem clica no anúncio.")
+        if not premium:
+            texto += " No plano Premium, o Appfiliado cria o próximo grupo sozinho e já coloca no link."
     try:
         send_mail("Appfiliado: os grupos do seu link de entrada estão lotando",
                   f"{texto}\n\nVeja no painel: {url_do_painel('painel_whatsapp_entrada')}",

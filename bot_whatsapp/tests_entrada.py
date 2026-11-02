@@ -36,6 +36,10 @@ class BaseEntrada(BasePainel):
         entrada.salvar_grupos(link, [g["jid"] for g in GRUPOS], self.conexao)
         return link
 
+    def premium(self):
+        self.conta.modulos_cortesia = "whatsapp_premium"
+        self.conta.save()
+
     def membros(self, jid, quantos):
         GrupoMonitorado.objects.filter(conta=self.conta, jid=jid).update(membros=quantos)
 
@@ -52,6 +56,7 @@ class TestPainel(BaseEntrada):
         self.assertEqual(self.client.get("/whatsapp/entrada/").status_code, 404)
 
     def test_criar_e_configurar_um_link(self):
+        self.premium()
         resposta = self.client.post("/whatsapp/entrada/", {"acao": "novo"})
         link = LinkEntrada.objects.get()
         self.assertRedirects(resposta, f"/whatsapp/entrada/{link.pk}/", fetch_redirect_response=False)
@@ -262,6 +267,7 @@ class TestWorker(BaseEntrada):
         self.assertEqual(entrada.convites_para_ler(timezone.now()), [])  # só daqui a 12 h
 
     def test_tudo_lotando_avisa_e_cria_o_proximo(self):
+        self.premium()
         link = self.criar_link(criar_sozinho=True, admins_dos_novos=["5511977776666"])
         for g_ in GRUPOS:
             self.membros(g_["jid"], 990)
@@ -294,6 +300,31 @@ class TestWorker(BaseEntrada):
         self.assertIn("Crie o próximo grupo", mail.outbox[0].body)
         entrada.cuidar_dos_links(agora + timedelta(hours=25))
         self.assertEqual(len(mail.outbox), 2)
+
+    def test_criar_sozinho_e_so_do_premium(self):
+        link = self.criar_link(criar_sozinho=True, admins_dos_novos=["5511977776666"])  # ligado antes da regra
+        for g_ in GRUPOS:
+            self.membros(g_["jid"], 1000)
+        entrada.cuidar_dos_links(timezone.now())
+        self.assertEqual(PedidoGrupo.objects.count(), 0)  # no Standard, só o aviso
+        self.assertIn("No plano Premium, o Appfiliado cria o próximo grupo sozinho", mail.outbox[0].body)
+
+        html = self.client.get(f"/whatsapp/entrada/{link.pk}/").content.decode()
+        self.assertIn('class="marcar premium-travado"', html)
+        self.assertNotIn('name="criar_sozinho"', html)
+        self.assertNotIn('name="admins_dos_novos"', html)
+        self.client.post(f"/whatsapp/entrada/{link.pk}/", {"acao": "salvar", "ativo": "on", "slug": "grupo-vip",
+                                                          "titulo": "Grupo VIP", "limite_por_grupo": "1000",
+                                                          "grupos": [g_["jid"] for g_ in GRUPOS]})
+        link.refresh_from_db()
+        self.assertEqual((link.criar_sozinho, link.admins_dos_novos), (True, ["5511977776666"]))  # fica o que estava
+
+        self.premium()  # ao virar Premium, volta a funcionar sem mexer em nada
+        mail.outbox.clear()
+        entrada.cuidar_dos_links(timezone.now() + timedelta(hours=25))
+        self.assertEqual(PedidoGrupo.objects.count(), 1)
+        self.assertNotIn("No plano Premium", mail.outbox[0].body)
+        self.assertContains(self.client.get(f"/whatsapp/entrada/{link.pk}/"), 'name="criar_sozinho" checked')
 
 
 TOKEN = "EAAB" + "x7" * 40

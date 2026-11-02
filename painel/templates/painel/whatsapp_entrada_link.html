@@ -171,8 +171,12 @@
       <p class="suave pequeno sem-margem">Conecte o WhatsApp na aba <a href="{% url 'painel_whatsapp' %}">Conexão</a> para ver seus grupos.</p>
       {% endif %}
     </div>
+    {% if premium %}
     <label class="marcar"><input type="checkbox" name="criar_sozinho"{% if link.criar_sozinho %} checked{% endif %}><span>Criar o próximo grupo sozinho quando todos estiverem lotando<span class="ajuda">Quando todos os grupos do link passarem de {{ folga }}% do limite, o Appfiliado cria o próximo da sequência (mesma foto, descrição e nicho do último), coloca no link e te avisa por e-mail. Até 5 grupos novos por dia.</span></span></label>
     <div class="campo"><label for="admins">Administradores dos grupos novos (opcional)</label><input type="text" name="admins_dos_novos" id="admins" value="{{ admins }}" placeholder="Ex: (11) 98888-7777"><span class="ajuda">Até 5 números, separados por vírgula.</span></div>
+    {% else %}
+    <div class="marcar premium-travado" title="Disponível no plano Premium"><input type="checkbox" disabled aria-label="Criar o próximo grupo sozinho (plano Premium)"><span><span class="titulo-travado">Criar o próximo grupo sozinho quando todos estiverem lotando <small class="selo-premium">Premium</small></span><span class="ajuda">No seu plano, o Appfiliado te avisa por e-mail quando os grupos do link estiverem lotando. No <a href="{{ url_planos }}" target="_blank" rel="noopener">plano Premium</a>, ele também cria o próximo grupo e já coloca no link.</span></span></div>
+    {% endif %}
   </section>
 
   <div class="acoes-form">
