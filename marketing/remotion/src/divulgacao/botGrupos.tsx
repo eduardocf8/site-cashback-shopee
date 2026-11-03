@@ -96,7 +96,7 @@ const LinkDeEntrada: React.FC = () => {
 const Lotacao: React.FC = () => (
   <AbsoluteFill style={{fontFamily: FONTE}}>
     <Fundo tom="escuro" />
-    <Cabecalho chapeu="Membros dos grupos" titulo={'Veja quem\n*está lotando.*'} inicio={-4} escuro tamanho={86} />
+    <Cabecalho chapeu="Membros dos grupos" titulo={'Veja quais grupos\n*estão lotando.*'} inicio={-4} escuro tamanho={86} />
     <Painel centro inicio={2}>
       <Membros inicio={12} aviso={104} grupos={[
         {nome: 'Achadinhos da Bia #1', de: 1006, ate: 1019, dia: '+13'},
@@ -118,7 +118,7 @@ const Lotacao: React.FC = () => (
 const ProximoGrupo: React.FC = () => (
   <AbsoluteFill style={{fontFamily: FONTE}}>
     <Fundo tom="amarelo" />
-    <Cabecalho chapeu="Criação automática · Premium" titulo={'Lotou? O próximo\n*nasce sozinho.*'} inicio={-4} amarelo tamanho={86} />
+    <Cabecalho chapeu="Criação automática · Premium" titulo={'Lotou? Ele cria\n*o próximo sozinho.*'} inicio={-4} amarelo tamanho={86} />
     <Painel centro inicio={2}>
       <CriandoGrupo inicio={40} intervalo={20} />
     </Painel>

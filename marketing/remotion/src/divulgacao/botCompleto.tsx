@@ -1,4 +1,4 @@
-/** Bot de WhatsApp: o vídeo completo. Abertura, 12 capítulos (um recurso cada, com a barra de progresso no
+/** Bot de WhatsApp: o vídeo completo. Abertura, 13 capítulos (um recurso cada, com a barra de progresso no
  * topo, como nos stories) e o encerramento com o preço e as ferramentas inclusas. Os capítulos se empurram
  * de lado (o que sai e o que entra se cruzam), então nunca fica tela vazia entre eles.
  *
@@ -8,7 +8,7 @@ import {AbsoluteFill, Easing, Img, Sequence, useCurrentFrame, useVideoConfig} fr
 import {C, FONTE} from '../appfiliado/marca';
 import {Interruptor, produto} from '../appfiliado/ui';
 import {CelularNaCena, ConversaZap, Cortina, DURACAO_FINAL, Final, Fundo, Legendas, type Fala, type Mensagem, Titulo, Toque, mola, vai} from './comum';
-import {AMARELO_TEXTO, Centro, FotoGrupo, GruposDoLink, Membros, Painel, Rotulo, Selo} from './botTelas';
+import {AMARELO_TEXTO, Centro, ConviteGrupo, FotoGrupo, GruposDoLink, Membros, PaginaEntrada, Painel, Rotulo, Selo} from './botTelas';
 import {CTA, GRUPO, INCLUSOS, OFERTAS} from './textos';
 
 const TOPO_TITULO = 346;
@@ -315,6 +315,19 @@ const Premium: React.FC = () => {
   );
 };
 
+/** O link de entrada: a página que vai no anúncio ou na bio; quem toca cai no grupo que tem vaga. */
+const LinkDeEntrada: React.FC = () => {
+  const f = useCurrentFrame();
+  const convite = vai(f, 50, 66);
+  return (
+    <CelularNaCena inicio={-6} hora="20:14">
+      <PaginaEntrada toque={44} />
+      <Toque x={280} y={708} f={44} />
+      {convite > 0 && <ConviteGrupo nome="Achadinhos da Bia #2" membros="987 participantes" t={convite} />}
+    </CelularNaCena>
+  );
+};
+
 const MembrosCap: React.FC = () => (
   <Painel centro inicio={0}>
     <Membros inicio={4} aviso={58} duracao={50} grupos={[
@@ -342,7 +355,7 @@ const Lotou: React.FC = () => {
       <div style={{marginTop: 16, display: 'flex', alignItems: 'center', gap: 16, background: '#FFF6D6', borderRadius: 22, padding: '16px 20px', opacity: novo,
         transform: `translateY(${(1 - novo) * 24}px)`}}>
         <FotoGrupo tamanho={58} />
-        <div style={{flex: 1, fontSize: 27, fontWeight: 800, lineHeight: 1.25}}>Achadinhos da Bia #4 criado sozinho e já no link</div>
+        <div style={{flex: 1, fontSize: 27, fontWeight: 800, lineHeight: 1.25}}>Achadinhos da Bia #4 criado sozinho e já no link de entrada</div>
         <Selo texto="Premium" tom="amarelo" tamanho={20} />
       </div>
     </Painel>
@@ -399,10 +412,13 @@ const CAPITULOS: Capitulo[] = [
   {nome: 'Premium', titulo: 'No Premium\n*tem ainda mais.*', duracao: 138, Tela: Premium, falas: [
     {f: 6, texto: 'Cada grupo com o seu tema', icone: '🎯'}, {f: 46, texto: 'Ofertas copiadas com o seu link', icone: '📋', tom: 'amarelo'},
     {f: 86, texto: 'A IA revisa o texto antes', icone: '✨'}]},
-  {nome: 'Membros', titulo: 'Veja quem\n*está lotando.*', duracao: 110, Tela: MembrosCap, falas: [
+  {nome: 'Link de entrada', titulo: 'Um link só\npra *todos os grupos.*', duracao: 132, Tela: LinkDeEntrada, falas: [
+    {f: 6, texto: 'Um link só no anúncio ou na bio', icone: '📣'}, {f: 48, texto: 'A pessoa toca e cai num grupo com vaga', icone: '👉', tom: 'amarelo'},
+    {f: 92, texto: 'Encheu? Ele manda pro próximo', icone: '🔁'}]},
+  {nome: 'Membros', titulo: 'Veja quais grupos\n*estão lotando.*', duracao: 110, Tela: MembrosCap, falas: [
     {f: 8, texto: 'Entradas e saídas de cada grupo', icone: '📈'}, {f: 60, texto: 'Aviso quando passa de 95%', icone: '⚠️', tom: 'amarelo'}]},
-  {nome: 'Grupos cheios', titulo: 'Grupo lotou?\n*Já tem o próximo.*', duracao: 128, Tela: Lotou, falas: [
-    {f: 8, texto: 'O link manda pro grupo com vaga', icone: '👉'}, {f: 70, texto: 'Premium: o próximo nasce sozinho', icone: '✨', tom: 'amarelo'}]},
+  {nome: 'Grupo novo', titulo: 'Lotou? Ele cria\n*o próximo sozinho.*', duracao: 128, Tela: Lotou, falas: [
+    {f: 8, texto: 'Quando todos estão quase cheios', icone: '🤖'}, {f: 70, texto: 'Premium: já entra no link de entrada', icone: '✨', tom: 'amarelo'}]},
   {nome: 'Resultados', titulo: 'Saiba quanto\n*cada grupo vende.*', duracao: 112, Tela: PorGrupo, falas: [
     {f: 8, texto: 'Um Sub ID próprio por grupo', icone: '🏷️'}, {f: 62, texto: 'A comissão de cada um no painel', icone: '📊', tom: 'amarelo'}]},
 ];
@@ -455,7 +471,7 @@ const Abertura: React.FC = () => {
       <Fundo tom="escuro" />
       <Titulo texto={'Tudo o que o\n*Bot de WhatsApp*\nfaz por você'} inicio={-12} tamanho={104} alinhar="center" cor={C.creme} />
       <div style={{marginTop: 56, background: C.amarelo, color: C.verde, fontSize: 40, fontWeight: 800, borderRadius: 999, padding: '20px 40px',
-        opacity: Math.min(1, pilula * 1.4), transform: `scale(${0.85 + 0.15 * pilula})`}}>12 recursos em menos de 1 minuto</div>
+        opacity: Math.min(1, pilula * 1.4), transform: `scale(${0.85 + 0.15 * pilula})`}}>13 recursos em menos de 1 minuto</div>
     </AbsoluteFill>
   );
 };

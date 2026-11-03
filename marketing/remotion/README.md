@@ -137,7 +137,7 @@ coisa só, mais um completo do Bot. São 4 temas com 2 a 5 versões:
 | | `Bot-UmDiaNoAutomatico` | O relógio vai das 8h às 22h; o grupo recebe ofertas enquanto você vive o seu dia |
 | | `Bot-DatasDaShopee` | O modo campanha: as datas já marcadas, o ritmo e o texto que mudam sozinhos |
 | | `Bot-GruposCheios` | O link de entrada (um link só pra todos os grupos), a lotação dos grupos e o próximo grupo criado sozinho (Premium) |
-| | `Bot-Completo` | Os 12 recursos do Bot em menos de 1 minuto, com a barra de progresso no topo |
+| | `Bot-Completo` | Os 13 recursos do Bot em menos de 1 minuto, com a barra de progresso no topo |
 | Meu site | `Site-MonteOSeu` | O link na bio se montando no celular na ordem real da página: perfil, botões, redes, conversor e vitrine |
 | | `Site-DoStoryAoClique` | O caminho do seguidor, do story até a compra pelo seu link (pela vitrine e pelo conversor) |
 | Resultados e metas | `Resultados-QuantoFalta` | A meta do mês, quanto falta pra faixa do bônus e a Lia respondendo "metas" |
@@ -173,7 +173,7 @@ Regras de layout destes vídeos:
   tela vazia e nunca duas cenas misturadas.
 - O encerramento dos módulos pagos mostra o preço e as ferramentas que vêm em todos os planos (`INCLUSOS`).
 
-Os vídeos só mostram o que já está no ar, com uma exceção: o `Bot-GruposCheios` (e o capítulo 11 do completo)
+Os vídeos só mostram o que já está no ar, com uma exceção: o `Bot-GruposCheios` (e os capítulos 10 e 12 do completo)
 mostra o link de entrada, que ainda está liberado só para contas de teste (`beta_link_entrada`). Publique esses
 dois depois de liberar o link de entrada para todos. O Estúdio e as Automações do Instagram ficam de fora até o
 lançamento. Quando o preço mudar em `landing/planos.py`, mude também em `textos.ts` e renderize de novo.

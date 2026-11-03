@@ -107,7 +107,7 @@ TikTok). Fonte em `../src/divulgacao/` (ver o README da pasta remotion).
 | `Bot-UmDiaNoAutomatico.mp4` | 21,2 s | Bot de WhatsApp: das 8h às 22h no automático |
 | `Bot-DatasDaShopee.mp4` | 21,0 s | Bot de WhatsApp: o modo campanha |
 | `Bot-GruposCheios.mp4` | 36,4 s | Bot de WhatsApp: link de entrada, lotação e o próximo grupo criado sozinho |
-| `Bot-Completo.mp4` | 54,1 s | Bot de WhatsApp: os 12 recursos em menos de 1 minuto |
+| `Bot-Completo.mp4` | 58,5 s | Bot de WhatsApp: os 13 recursos em menos de 1 minuto |
 | `Site-MonteOSeu.mp4` | 24,6 s | Meu site: o link na bio se montando na ordem real da página |
 | `Site-DoStoryAoClique.mp4` | 21,8 s | Meu site: do story até a compra pelo seu link |
 | `Resultados-QuantoFalta.mp4` | 22,3 s | Resultados e metas: quanto falta pro bônus |
@@ -115,5 +115,5 @@ TikTok). Fonte em `../src/divulgacao/` (ver o README da pasta remotion).
 | `Radar-AcheOProduto.mp4` | 19,4 s | Radar de ofertas |
 | `Conversor-ColeEConverta.mp4` | 21,3 s | Conversor de links |
 
-O `Bot-GruposCheios.mp4` e o capítulo 11 do `Bot-Completo.mp4` mostram o link de entrada, que ainda está só
+O `Bot-GruposCheios.mp4` e os capítulos 10 e 12 do `Bot-Completo.mp4` mostram o link de entrada, que ainda está só
 nas contas de teste: publique os dois depois de liberar o link de entrada para todos.
