@@ -12,8 +12,18 @@ export const PRECO = {
 export const CTA = {
   bot: `Bot de WhatsApp · a partir de ${PRECO.bot}/mês`,
   site: `Meu site · a partir de ${PRECO.site}/mês`,
-  incluso: 'Incluso em todos os planos do Appfiliado',
+  incluso: `Incluso em todos os planos, a partir de ${PRECO.site}/mês`,
+  planos: `Planos a partir de ${PRECO.site}/mês`,
 };
+
+/** As ferramentas que vêm em todos os planos (as mesmas da faixa "Em todos os planos" da landing,
+ * landing/views.py INCLUSOS). Vão no encerramento dos vídeos. */
+export const INCLUSOS = [
+  {icone: 'resultados', nome: 'Resultados e metas'},
+  {icone: 'radar', nome: 'Radar de ofertas'},
+  {icone: 'conversor', nome: 'Conversor de links'},
+  {icone: 'bot', nome: 'Lia no WhatsApp'},
+];
 
 export const GRUPO = {nome: 'Achadinhos da Bia', membros: '1.248 participantes'};
 export const ENDERECO = 'achadinhosdabia.appfiliado.com.br';

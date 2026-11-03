@@ -6,8 +6,8 @@ import React from 'react';
 import {AbsoluteFill, Sequence, useCurrentFrame, useVideoConfig} from 'remotion';
 import {C, FONTE} from '../appfiliado/marca';
 import {Interruptor} from '../appfiliado/ui';
-import {Apoio, Celular, Cena, Chapeu, Conta, ConversaZap, Cortina, Etiqueta, Final, Fundo, type Mensagem, Titulo, Toque, mola, s, vai} from './comum';
-import {CTA, GRUPO, OFERTAS} from './textos';
+import {Apoio, Cabecalho, Celular, CelularNaCena, Cena, Chapeu, Conta, ConversaZap, Cortina, DURACAO_FINAL, Etiqueta, Final, Fundo, Legendas, type Mensagem, POS, Titulo, Toque, mola, s, vai} from './comum';
+import {CTA, GRUPO, INCLUSOS, OFERTAS} from './textos';
 
 const ESCURO_AMARELO = '#8A6A00';
 
@@ -68,11 +68,8 @@ const NoAutomatico: React.FC<{duracao: number}> = ({duracao}) => {
   return (
     <AbsoluteFill style={{fontFamily: FONTE, color: C.creme}}>
       <Fundo tom="escuro" />
-      <div style={{position: 'absolute', left: 90, right: 90, top: 330}}>
-        <Chapeu texto="Com o Appfiliado" cor={C.amarelo} />
-        <Titulo texto={'Um botão\ne *pronto.*'} inicio={4} tamanho={100} cor={C.creme} style={{marginTop: 26}} />
-      </div>
-      <div style={{position: 'absolute', right: 90, top: 400, width: 330, background: C.branco, color: C.tinta, borderRadius: 30, padding: '22px 26px',
+      <Cabecalho chapeu="Com o Appfiliado" titulo={'Um botão\ne *pronto.*'} inicio={4} escuro tamanho={96} />
+      <div style={{position: 'absolute', right: 90, top: POS.titulo + 70, width: 330, background: C.branco, color: C.tinta, borderRadius: 30, padding: '22px 26px',
         boxShadow: '0 24px 50px rgba(0,0,0,.25)', opacity: vai(f, 14, 28), transform: `translateY(${(1 - vai(f, 14, 28)) * 30}px)`}}>
         <div style={{fontSize: 22, fontWeight: 800, letterSpacing: '.1em', color: ESCURO_AMARELO, textTransform: 'uppercase'}}>Automação</div>
         <div style={{display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginTop: 10}}>
@@ -81,20 +78,19 @@ const NoAutomatico: React.FC<{duracao: number}> = ({duracao}) => {
         </div>
         <Toque x={260} y={76} f={46} />
       </div>
-      <div style={{position: 'absolute', left: 0, right: 0, top: 690, display: 'flex', justifyContent: 'center'}}>
-        <Celular escala={0.79} hora="8:00">
-          <ConversaZap nome={GRUPO.nome} membros={GRUPO.membros} mensagens={NO_AUTOMATICO} />
-        </Celular>
-      </div>
-      <div style={{position: 'absolute', left: 60, top: 1060}}><Etiqueta texto="✓ Com o seu link de afiliado" inicio={100} tom="amarelo" /></div>
-      <div style={{position: 'absolute', right: 60, top: 1420}}>
-        <Etiqueta inicio={150} texto={<span>📤 <Conta de={1} ate={24} inicio={150} duracao={duracao - 170} /> ofertas hoje</span>} />
-      </div>
+      <CelularNaCena hora="8:00" inicio={6}>
+        <ConversaZap nome={GRUPO.nome} membros={GRUPO.membros} mensagens={NO_AUTOMATICO} />
+      </CelularNaCena>
+      <Legendas falas={[
+        {f: 70, texto: 'Ofertas chegando no grupo', icone: '📲'},
+        {f: 130, texto: 'Com o seu link de afiliado', icone: '🔗', tom: 'amarelo'},
+        {f: 200, texto: <span><Conta de={8} ate={24} inicio={205} duracao={duracao - 215} /> ofertas hoje, no automático</span>, icone: '📤'},
+      ]} />
     </AbsoluteFill>
   );
 };
 
-const AD = {naMao: s(5.5), automatico: s(10), final: s(3.6)};
+const AD = {naMao: s(5.5), automatico: s(10), final: DURACAO_FINAL.comInclusos};
 export const DURACAO_BOT_ANTES_DEPOIS = AD.naMao + AD.automatico + AD.final;
 
 export const BotAntesDepois: React.FC = () => (
@@ -102,7 +98,7 @@ export const BotAntesDepois: React.FC = () => (
     <Sequence durationInFrames={AD.naMao}><Cena duracao={AD.naMao} entrada={false} saida={false}><NaMao /></Cena></Sequence>
     <Sequence from={AD.naMao} durationInFrames={AD.automatico}><Cena duracao={AD.automatico} entrada={false} saida={false}><NoAutomatico duracao={AD.automatico} /></Cena></Sequence>
     <Sequence from={AD.naMao - 9} durationInFrames={18}><Cortina /></Sequence>
-    <Sequence from={AD.naMao + AD.automatico} durationInFrames={AD.final}><Final frase={'Seus grupos\n*no automático.*'} linha={CTA.bot} /></Sequence>
+    <Sequence from={AD.naMao + AD.automatico} durationInFrames={AD.final}><Final frase={'Seus grupos\n*no automático.*'} linha={CTA.bot} inclusos={INCLUSOS} /></Sequence>
     <Sequence from={AD.naMao + AD.automatico - 9} durationInFrames={18}><Cortina /></Sequence>
   </AbsoluteFill>
 );

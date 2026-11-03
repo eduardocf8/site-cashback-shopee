@@ -7,7 +7,7 @@
 import React from 'react';
 import {AbsoluteFill, Easing, Img, interpolate, useCurrentFrame, useVideoConfig} from 'remotion';
 import {C, FONTE} from '../appfiliado/marca';
-import {Logo, entra, mola, produto} from '../appfiliado/ui';
+import {Icone, Logo, entra, mola, produto} from '../appfiliado/ui';
 import type {Oferta} from './textos';
 import {SITE} from './textos';
 
@@ -15,6 +15,11 @@ export const FPS = 30;
 export const LARGURA = 1080;
 export const ALTURA = 1920;
 export const FAIXA = {topo: 300, base: 1620};
+
+/** Onde fica cada coisa nas cenas com celular, de cima pra baixo: o chapéu e o título (2 linhas), o
+ * celular no centro e a legenda (um balão por vez) embaixo dele. Tudo dentro da FAIXA. */
+export const POS = {titulo: 330, celular: 640, legenda: 1500};
+export const ESCALA_CELULAR = 0.72; // 640 + 1152 x 0,72 = 1469: o celular termina antes da legenda
 
 export const s = (segundos: number) => Math.round(segundos * FPS);
 
@@ -122,6 +127,73 @@ export const Etiqueta: React.FC<{texto: React.ReactNode; inicio: number; tom?: '
       borderRadius: 999, padding: '14px 26px', fontSize: tamanho, fontWeight: 800, whiteSpace: 'nowrap', boxShadow: '0 14px 30px rgba(23,48,31,.14)',
       opacity: Math.min(1, t * 1.4), transform: `translateY(${(1 - t) * 30}px) scale(${0.85 + 0.15 * t})`, ...style}}>
       {texto}
+    </div>
+  );
+};
+
+/** Chapéu e título no lugar padrão (POS.titulo), alinhados à esquerda. */
+export const Cabecalho: React.FC<{chapeu: string; titulo: string; inicio?: number; escuro?: boolean; amarelo?: boolean; tamanho?: number}> = ({
+  chapeu, titulo, inicio = 0, escuro, amarelo, tamanho = 88,
+}) => (
+  <div style={{position: 'absolute', left: 90, right: 90, top: POS.titulo}}>
+    <Chapeu texto={chapeu} inicio={inicio - 8} cor={escuro ? C.amarelo : amarelo ? C.verde : '#8A6A00'} />
+    <Titulo texto={titulo} inicio={inicio} tamanho={tamanho} cor={escuro ? C.creme : amarelo ? C.verde : C.tinta}
+      destaque={escuro ? C.amarelo : amarelo ? C.branco : '#8A6A00'} style={{marginTop: 22}} />
+  </div>
+);
+
+/** O celular centralizado no lugar padrão (POS.celular), entrando de baixo. */
+export const CelularNaCena: React.FC<{children: React.ReactNode; inicio?: number; hora?: string; fundoTela?: string; barraClara?: boolean; escala?: number; top?: number}> = ({
+  children, inicio = 0, hora, fundoTela, barraClara, escala = ESCALA_CELULAR, top = POS.celular,
+}) => {
+  const f = useCurrentFrame();
+  const t = vai(f, inicio, inicio + 18);
+  return (
+    <div style={{position: 'absolute', left: 0, right: 0, top, display: 'flex', justifyContent: 'center', opacity: Math.min(1, t * 1.6), transform: `translateY(${(1 - t) * 120}px)`}}>
+      <Celular escala={escala} hora={hora} fundoTela={fundoTela} barraClara={barraClara}>{children}</Celular>
+    </div>
+  );
+};
+
+// --- legenda: um balão por vez, no centro ---------------------------------------------------------
+
+export type Fala = {f: number; texto: React.ReactNode; icone?: string; tom?: 'claro' | 'escuro' | 'amarelo'};
+
+export const Balao: React.FC<{texto: React.ReactNode; icone?: string; tom?: 'claro' | 'escuro' | 'amarelo'; tamanho?: number}> = ({texto, icone, tom = 'claro', tamanho = 40}) => {
+  const cores = tom === 'escuro' ? {bg: C.verde, fg: C.creme, bola: C.amarelo, bolaFg: C.verde}
+    : tom === 'amarelo' ? {bg: C.amarelo, fg: C.verde, bola: C.verde, bolaFg: C.amarelo}
+      : {bg: C.branco, fg: C.tinta, bola: C.amarelo, bolaFg: C.verde};
+  return (
+    <div style={{fontFamily: FONTE, display: 'inline-flex', alignItems: 'center', gap: 20, background: cores.bg, color: cores.fg, borderRadius: 999,
+      padding: icone ? '20px 40px 20px 20px' : '24px 44px', fontSize: tamanho, fontWeight: 800, letterSpacing: '-.01em', lineHeight: 1.15, maxWidth: 940,
+      boxShadow: '0 22px 48px rgba(10,25,16,.24)', textAlign: 'left'}}>
+      {icone && <span style={{width: 62, height: 62, borderRadius: '50%', background: cores.bola, color: cores.bolaFg, display: 'grid', placeItems: 'center',
+        fontSize: 32, flex: 'none'}}>{icone}</span>}
+      <span>{texto}</span>
+    </div>
+  );
+};
+
+/** Legendas da cena: um balão por vez, centralizado em `y`. Cada um entra no seu frame e sai (subindo
+ * e sumindo) quando o próximo entra; o último fica até `ate` (ou até o fim da cena). */
+export const Legendas: React.FC<{falas: Fala[]; y?: number; ate?: number; tamanho?: number}> = ({falas, y = POS.legenda, ate, tamanho = 40}) => {
+  const f = useCurrentFrame();
+  const {fps} = useVideoConfig();
+  return (
+    <div style={{position: 'absolute', left: 0, right: 0, top: y, zIndex: 70}}>
+      {falas.map((fala, i) => {
+        const proxima = i + 1 < falas.length ? falas[i + 1].f : ate;
+        const comeca = fala.f + (i > 0 ? 5 : 0); // espera o anterior sair
+        if (f < comeca || (proxima !== undefined && f > proxima + 9)) return null;
+        const entra_ = mola(f, comeca, fps, 14);
+        const sai = proxima === undefined ? 0 : vai(f, proxima, proxima + 9, 0, 1, Easing.in(Easing.cubic));
+        return (
+          <div key={i} style={{position: 'absolute', left: 0, right: 0, top: 0, display: 'flex', justifyContent: 'center',
+            opacity: Math.min(1, entra_ * 1.4) * (1 - sai), transform: `translateY(${(1 - entra_) * 46 - sai * 34}px) scale(${0.9 + 0.1 * entra_ - 0.05 * sai})`}}>
+            <Balao texto={fala.texto} icone={fala.icone} tom={fala.tom} tamanho={tamanho} />
+          </div>
+        );
+      })}
     </div>
   );
 };
@@ -261,28 +333,61 @@ export const Conta: React.FC<{de?: number; ate: number; inicio: number; duracao?
 
 // --- encerramento --------------------------------------------------------------------------------
 
-/** Encerramento: a marca, a frase do vídeo, o que é e o endereço. */
-export const Final: React.FC<{frase: string; linha: string; tom?: 'escuro' | 'creme'}> = ({frase, linha, tom = 'escuro'}) => {
+export type Incluso = {icone: string; nome: string};
+
+/** Encerramento: a marca, a frase do vídeo, o preço (ou "incluso") e, se vier `inclusos`, as ferramentas
+ * que já vêm em todos os planos, uma a uma, antes do endereço. `destaque` marca a ferramenta do vídeo. */
+export const Final: React.FC<{frase: string; linha: string; tom?: 'escuro' | 'creme'; inclusos?: Incluso[]; rotulo?: string; destaque?: string}> = ({
+  frase, linha, tom = 'escuro', inclusos, rotulo = 'Incluso em todos os planos:', destaque,
+}) => {
   const f = useCurrentFrame();
   const {fps} = useVideoConfig();
   const escuro = tom === 'escuro';
   const logo = mola(f, 0, fps, 11);
-  const url = mola(f, 30, fps, 13);
+  const lista = inclusos ?? [];
+  const chipsDe = 38;
+  const urlEm = lista.length ? chipsDe + lista.length * 6 + 10 : 30;
+  const url = mola(f, urlEm, fps, 13);
   return (
-    <AbsoluteFill style={{alignItems: 'center', justifyContent: 'center', textAlign: 'center', padding: '0 90px', fontFamily: FONTE}}>
+    <AbsoluteFill style={{alignItems: 'center', justifyContent: 'center', textAlign: 'center', padding: '0 80px', fontFamily: FONTE}}>
       <Fundo tom={escuro ? 'escuro' : 'creme'} />
-      <div style={{display: 'flex', alignItems: 'center', gap: 24, transform: `scale(${0.6 + 0.4 * logo})`, opacity: logo}}>
-        <Logo tamanho={116} fundo={C.amarelo} cor={C.verde} />
-        <div style={{fontSize: 76, fontWeight: 800, letterSpacing: '-.03em', color: escuro ? C.creme : C.verde}}>Appfiliado</div>
+      <div style={{display: 'flex', alignItems: 'center', gap: 22, transform: `scale(${0.6 + 0.4 * logo})`, opacity: logo}}>
+        <Logo tamanho={lista.length ? 100 : 116} fundo={C.amarelo} cor={C.verde} />
+        <div style={{fontSize: lista.length ? 66 : 76, fontWeight: 800, letterSpacing: '-.03em', color: escuro ? C.creme : C.verde}}>Appfiliado</div>
       </div>
-      <Titulo texto={frase} inicio={10} tamanho={92} alinhar="center" cor={escuro ? C.creme : C.tinta} destaque={escuro ? C.amarelo : '#8A6A00'} style={{marginTop: 70}} />
-      <Apoio texto={linha} inicio={26} alinhar="center" cor={escuro ? C.suave : C.cinza} tamanho={36} style={{marginTop: 30}} />
-      <div style={{marginTop: 64, background: C.amarelo, color: C.verde, fontSize: 52, fontWeight: 800, borderRadius: 999, padding: '26px 56px',
+      <Titulo texto={frase} inicio={8} tamanho={lista.length ? 80 : 92} alinhar="center" cor={escuro ? C.creme : C.tinta} destaque={escuro ? C.amarelo : '#8A6A00'}
+        style={{marginTop: lista.length ? 48 : 70}} />
+      <Apoio texto={linha} inicio={22} alinhar="center" cor={escuro ? C.creme : C.tinta} tamanho={38} style={{marginTop: 26, fontWeight: 800}} />
+      {lista.length > 0 && (
+        <>
+          <Apoio texto={rotulo} inicio={chipsDe - 6} alinhar="center" cor={escuro ? C.suave : C.cinza} tamanho={30} style={{marginTop: 44}} />
+          <div style={{display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16, marginTop: 18, width: 920}}>
+            {lista.map((item, k) => {
+              const t = mola(f, chipsDe + k * 6, fps, 13);
+              const atual = item.nome === destaque;
+              return (
+                <div key={item.nome} style={{display: 'flex', alignItems: 'center', gap: 16, padding: '16px 20px', borderRadius: 24, textAlign: 'left',
+                  background: atual ? C.amarelo : escuro ? 'rgba(246,243,234,.09)' : C.branco, border: `2px solid ${atual ? C.amarelo : escuro ? 'rgba(246,243,234,.16)' : C.borda}`,
+                  color: atual ? C.verde : escuro ? C.creme : C.tinta, opacity: Math.min(1, t * 1.4), transform: `translateY(${(1 - t) * 26}px) scale(${0.9 + 0.1 * t})`}}>
+                  <span style={{width: 54, height: 54, borderRadius: 16, background: atual ? C.verde : escuro ? C.verde3 : C.verde, display: 'grid', placeItems: 'center', flex: 'none'}}>
+                    <Icone nome={item.icone} tamanho={32} />
+                  </span>
+                  <span style={{fontSize: 29, fontWeight: 800, lineHeight: 1.1}}>{item.nome}</span>
+                </div>
+              );
+            })}
+          </div>
+        </>
+      )}
+      <div style={{marginTop: lista.length ? 44 : 64, background: C.amarelo, color: C.verde, fontSize: lista.length ? 48 : 52, fontWeight: 800, borderRadius: 999, padding: '24px 54px',
         transform: `translateY(${(1 - url) * 40}px) scale(${0.9 + 0.1 * url})`, opacity: Math.min(1, url * 1.4), boxShadow: '0 24px 50px rgba(0,0,0,.25)'}}>
         {SITE}
       </div>
     </AbsoluteFill>
   );
 };
+
+/** Duração do encerramento: mais tempo quando ele lista as ferramentas inclusas. */
+export const DURACAO_FINAL = {simples: 114, comInclusos: 156};
 
 export {entra, mola};
