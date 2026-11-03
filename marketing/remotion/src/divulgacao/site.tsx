@@ -35,9 +35,10 @@ const PaginaSite: React.FC<{p: Partes; cor: string; rolagem?: number; toqueProdu
   const f = useCurrentFrame();
   const sobe = (t: number) => ({opacity: Math.min(1, t * 1.3), transform: `translateY(${(1 - t) * 26}px) scale(${0.94 + 0.06 * t})`});
   return (
-    <div style={{position: 'absolute', inset: 0, background: cor, color: C.branco, fontFamily: FONTE}}>
-      <div style={{position: 'absolute', top: 60, left: 22, right: 22, height: 48, borderRadius: 24, background: 'rgba(255,255,255,.92)', zIndex: 5, display: 'flex', alignItems: 'center',
-        gap: 8, padding: '0 18px', fontSize: 17, fontWeight: 500, color: C.tinta, whiteSpace: 'nowrap', overflow: 'hidden'}}>
+    <div style={{position: 'absolute', inset: 0, background: cor, color: C.branco, fontFamily: FONTE, overflow: 'hidden'}}>
+      <div style={{position: 'absolute', top: 0, left: 0, right: 0, height: 120, background: cor, zIndex: 4}} />
+      <div style={{position: 'absolute', top: 60, left: 18, right: 18, height: 50, borderRadius: 25, background: 'rgba(255,255,255,.94)', zIndex: 5, display: 'flex', alignItems: 'center',
+        gap: 8, padding: '0 16px', fontSize: 19, fontWeight: 800, color: C.tinta, whiteSpace: 'nowrap', overflow: 'hidden', letterSpacing: '-.01em'}}>
         <span style={{fontSize: 15}}>🔒</span>{p.endereco}
       </div>
       <div style={{position: 'absolute', left: 30, right: 30, top: 136, textAlign: 'center', transform: `translateY(${-rolagem}px)`}}>
@@ -59,7 +60,7 @@ const PaginaSite: React.FC<{p: Partes; cor: string; rolagem?: number; toqueProdu
           ))}
         </div>
         <div style={{textAlign: 'left', fontSize: 22, fontWeight: 800, marginTop: 28, opacity: p.vitrine}}>Ofertas de hoje</div>
-        <div style={{display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginTop: 12}}>
+        <div style={{display: 'grid', gridTemplateColumns: 'repeat(2, minmax(0, 1fr))', gap: 12, marginTop: 12}}>
           {VITRINE.map((o, i) => {
             const t = Math.min(1, Math.max(0, p.vitrine * 6 - i));
             return (
@@ -114,14 +115,14 @@ const Montagem: React.FC = () => {
       <Fundo tom="creme" />
       <div style={{position: 'absolute', left: 90, right: 90, top: 330}}>
         <Chapeu texto="Meu site" />
-        <Titulo texto={'Seu link na bio\n*pronto em segundos.*'} inicio={4} tamanho={92} destaque={ESCURO_AMARELO} style={{marginTop: 26}} />
+        <Titulo texto={'Seu link na bio\n*pronto em segundos.*'} inicio={4} tamanho={80} destaque={ESCURO_AMARELO} style={{marginTop: 26}} />
       </div>
       <div style={{position: 'absolute', left: 0, right: 0, top: 690, display: 'flex', justifyContent: 'center', opacity: vai(f, 8, 22), transform: `translateY(${(1 - vai(f, 8, 26)) * 60}px)`}}>
         <Celular escala={0.79} barraClara fundoTela={cor}>
           <PaginaSite p={partes} cor={cor} rolagem={rolagem} />
         </Celular>
       </div>
-      <Janela de={28} ate={78} style={{left: 60, top: 720}}><Etiqueta texto="🌐 Um endereço só seu" inicio={28} tom="escuro" /></Janela>
+      <Janela de={28} ate={78} style={{left: 60, top: 900}}><Etiqueta texto="🌐 Um endereço só seu" inicio={28} tom="escuro" /></Janela>
       <Janela de={80} ate={140} style={{right: 60, top: 820}}><Etiqueta texto="📷 Sua foto e o seu nome" inicio={80} /></Janela>
       <Janela de={148} ate={200} style={{left: 60, top: 1080}}><Etiqueta texto="🔗 Botões com os seus links" inicio={148} tom="amarelo" /></Janela>
       <Janela de={192} ate={244} style={{right: 60, top: 1240}}><Etiqueta texto="📱 Suas redes" inicio={192} /></Janela>
@@ -301,11 +302,11 @@ const Caminho: React.FC = () => {
           <Toque x={150} y={560} f={300} />
         </Celular>
       </div>
-      <Janela de={20} ate={96} style={{left: 60, top: 1300}}><Etiqueta texto="Seu story chama pra bio" inicio={20} /></Janela>
+      <Janela de={20} ate={96} style={{right: 60, top: 860}}><Etiqueta texto="📲 Seu story chama pra bio" inicio={20} /></Janela>
       <Janela de={120} ate={192} style={{right: 60, top: 1020}}><Etiqueta texto="🔗 Seu endereço na bio" inicio={120} tom="amarelo" /></Janela>
       <Janela de={214} ate={300} style={{left: 60, top: 1150}}><Etiqueta texto="🛍️ Vitrine com o seu link" inicio={214} /></Janela>
       <Janela de={262} ate={348} style={{right: 60, top: 1420}}><Etiqueta texto="🔄 E um conversor de links" inicio={262} tom="escuro" /></Janela>
-      <div style={{position: 'absolute', left: 60, top: 1160}}><Etiqueta texto="✓ A comissão é sua" inicio={TROCAS[2] + 40} tom="amarelo" tamanho={34} /></div>
+      <div style={{position: 'absolute', left: 60, top: 1520}}><Etiqueta texto="✓ A comissão é sua" inicio={TROCAS[2] + 40} tom="amarelo" tamanho={34} /></div>
       <div style={{position: 'absolute', right: 60, top: 1420}}>
         <Etiqueta inicio={TROCAS[2] + 54} texto={<span>👆 <Conta ate={1389} inicio={TROCAS[2] + 54} duracao={40} /> cliques em 30 dias</span>} />
       </div>
