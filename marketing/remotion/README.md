@@ -125,3 +125,37 @@ npm run render:appfiliado-horizontal  # 16:9 (YouTube, site)          -> saida/a
 
 Textos e duração de cada cena ficam em `FERRAMENTAS` (`src/appfiliado/Video.tsx`); as demonstrações, em
 `src/appfiliado/cenas.tsx`. As fotos de produto são as mesmas dos prints do site (`public/appfiliado/produtos/`).
+
+## Appfiliado: vídeos de divulgação por tema
+
+Em `src/divulgacao/`: vídeos curtos (9:16, 15 a 20 s, sem áudio) para Reels, TikTok e Status, cada um
+mostrando uma coisa só. São 4 temas com 2 ou 3 versões cada, para testar qual chama mais atenção:
+
+| Tema | Composição | A ideia |
+|---|---|---|
+| Bot de WhatsApp | `Bot-AntesDepois` | Os 5 passos de postar na mão (e o tempo indo embora) contra um botão que liga tudo |
+| | `Bot-UmDiaNoAutomatico` | O relógio vai das 8h às 22h; o grupo recebe ofertas enquanto você vive o seu dia |
+| | `Bot-DatasDaShopee` | O modo campanha: as datas já marcadas, o ritmo e o texto que mudam sozinhos |
+| Meu site | `Site-MonteOSeu` | O link na bio se montando no celular, peça por peça |
+| | `Site-DoStoryAoClique` | O caminho do seguidor, do story até a oferta com o seu link |
+| Resultados e metas | `Resultados-QuantoFalta` | A meta do mês e quanto falta pra faixa do bônus |
+| | `Resultados-QualGrupoVende` | O grupo que mais vende, o horário mais forte e de onde veio cada venda |
+| Radar e Conversor | `Radar-AcheOProduto` | Da busca ao "copiar meu link" |
+| | `Conversor-ColeEConverta` | A mensagem de outro grupo com os links trocados pelos seus |
+
+```bash
+npx remotion render src/index.ts Bot-AntesDepois saida/Bot-AntesDepois.mp4 \
+  --browser-executable=/opt/pw-browsers/chromium_headless_shell-1194/chrome-linux/headless_shell
+```
+
+Onde mexer:
+
+| Arquivo | O que é |
+|---|---|
+| `src/divulgacao/textos.ts` | Preços (do plano Standard, iguais a `landing/planos.py`), endereço do site e as ofertas fictícias |
+| `src/divulgacao/comum.tsx` | As peças: fundo, título que entra palavra por palavra, celular, conversa do WhatsApp, etiquetas, toque na tela, cortina e encerramento |
+| `src/divulgacao/bot.tsx`, `site.tsx`, `resultados.tsx`, `ferramentas.tsx` | Um arquivo por tema, com o roteiro e o tempo de cada versão |
+| `src/divulgacao/Composicoes.tsx` | A lista dos vídeos registrados |
+
+Os vídeos só mostram o que já está no ar. O Estúdio e as Automações do Instagram ficam de fora até o
+lançamento. Quando o preço mudar em `landing/planos.py`, mude também em `textos.ts` e renderize de novo.
