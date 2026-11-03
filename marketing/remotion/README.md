@@ -173,7 +173,5 @@ Regras de layout destes vídeos:
   tela vazia e nunca duas cenas misturadas.
 - O encerramento dos módulos pagos mostra o preço e as ferramentas que vêm em todos os planos (`INCLUSOS`).
 
-Os vídeos só mostram o que já está no ar, com uma exceção: o `Bot-GruposCheios` (e os capítulos 10 e 12 do completo)
-mostra o link de entrada, que ainda está liberado só para contas de teste (`beta_link_entrada`). Publique esses
-dois depois de liberar o link de entrada para todos. O Estúdio e as Automações do Instagram ficam de fora até o
+Os vídeos só mostram o que já está no ar. O Estúdio e as Automações do Instagram ficam de fora até o
 lançamento. Quando o preço mudar em `landing/planos.py`, mude também em `textos.ts` e renderize de novo.

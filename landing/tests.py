@@ -112,6 +112,26 @@ class TestPagina(TestCase):
         self.assertNotIn("/gerador-de-carrosseis/", mapa)
         self.assertContains(self.abrir(), "/bot-de-whatsapp/")  # a landing leva às páginas
 
+    def test_cada_secao_tem_formato_e_rotulo_proprios(self):
+        """O formato, o rótulo do índice e os prints vão por posição: uma seção nova sem formato e rótulo
+        faria as de depois ganharem o rótulo da vizinha e a última sumir da página."""
+        from . import recursos
+
+        for codigo, montar in recursos.PAGINAS.items():
+            ap = recursos.APRESENTACAO[codigo]
+            n = len(montar()["grupos"])
+            self.assertEqual((len(ap["layouts"]), len(ap["curtos"])), (n, n), codigo)
+
+    def test_bot_com_link_de_entrada_alerta_em_reais_e_resultados(self):
+        bot = self.abrir(caminho="/bot-de-whatsapp/")
+        self.assertContains(bot, "Link de entrada nos grupos")
+        self.assertContains(bot, "Próximo grupo criado sozinho")
+        self.assertContains(bot, "Queda em % ou preço em R$")
+        self.assertContains(bot, "Desconto no Pix")
+        self.assertContains(bot, "Ofertas que venderam")
+        self.assertContains(bot, "Integrações")  # a última seção continua na página
+        self.assertNotContains(bot, "mande para todos os grupos, pros de um nicho")  # o nicho é do Premium
+
     def test_paginas_das_ferramentas_incluidas_em_todos_os_planos(self):
         mapa = self.abrir(caminho="/sitemap.xml").content.decode()
         home = self.abrir()

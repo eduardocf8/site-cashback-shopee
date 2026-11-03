@@ -20,12 +20,16 @@ RESUMOS = {
              f"Até {planos_do_app.BOT[True]['ofertas_por_grupo_dia']} ofertas por dia em cada grupo/canal",
              f"Alerta de preço para até {planos_do_app.BOT[True]['alerta_produtos']} produtos",
              "Envio por nicho: cada grupo com as ofertas do seu tema",
-             "Copia ofertas de outros grupos e troca pelo seu link", "Revisão de texto com IA"],
+             "Copia ofertas de outros grupos e troca pelo seu link", "Revisão de texto com IA",
+             "Cria o próximo grupo sozinho quando os grupos lotam"],
         ),
         # Ferramentas iguais nos dois planos, mostradas embaixo dos cartões.
         "comuns": ["Busca por palavra-chave, loja ou categoria, com filtros", "Modo campanha para datas específicas (como datas duplas)",
                    "Horário e dias de envio", "Sub ID por grupo", "Modo simulação para testar antes de enviar",
-                   "Mensagens avulsas nos grupos na hora ou agendadas", "Painel de membros de até 500 grupos"],
+                   "Mensagens avulsas nos grupos na hora ou agendadas", "Painel de membros de até 500 grupos",
+                   "Link de entrada: um link só que manda cada pessoa pro grupo com vaga",
+                   "Alerta de preço por queda em % ou por preço em R$ (com desconto no Pix)",
+                   "Resultados das ofertas: quais venderam e quanto cada grupo vendeu"],
     },
     "site": {
         "icone": "site", "frase": "Seu link na bio (seunome.appfiliado.com.br) com vitrine de ofertas e conversor de links.",

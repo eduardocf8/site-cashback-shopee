@@ -114,6 +114,3 @@ TikTok). Fonte em `../src/divulgacao/` (ver o README da pasta remotion).
 | `Resultados-QualGrupoVende.mp4` | 22,0 s | Resultados e metas: grupo, horário e origem das vendas |
 | `Radar-AcheOProduto.mp4` | 19,4 s | Radar de ofertas |
 | `Conversor-ColeEConverta.mp4` | 21,3 s | Conversor de links |
-
-O `Bot-GruposCheios.mp4` e os capítulos 10 e 12 do `Bot-Completo.mp4` mostram o link de entrada, que ainda está só
-nas contas de teste: publique os dois depois de liberar o link de entrada para todos.
