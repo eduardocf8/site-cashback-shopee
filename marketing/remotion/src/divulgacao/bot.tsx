@@ -276,7 +276,7 @@ export const BotCampanha: React.FC = () => (
     <Sequence durationInFrames={CP.datas}><Cena duracao={CP.datas} entrada={false} saida={false}><Datas /></Cena></Sequence>
     <Sequence from={CP.datas} durationInFrames={CP.campanha}><Campanha /></Sequence>
     <Sequence from={CP.datas - 9} durationInFrames={18}><Cortina cor={C.verde} /></Sequence>
-    <Sequence from={CP.datas + CP.campanha} durationInFrames={CP.final}><Final frase={'Configure uma vez\n*e vale todo ano.*'} linha={CTA.bot} inclusos={INCLUSOS} /></Sequence>
+    <Sequence from={CP.datas + CP.campanha} durationInFrames={CP.final}><Final frase={'Configure uma vez\n*e vale o ano todo.*'} linha={CTA.bot} inclusos={INCLUSOS} /></Sequence>
     <Sequence from={CP.datas + CP.campanha - 9} durationInFrames={18}><Cortina /></Sequence>
   </AbsoluteFill>
 );
