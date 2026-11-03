@@ -98,17 +98,22 @@ Cerca de 70 s, texto na tela e sem áudio (pra gravar a fala e pôr a música no
 
 ## Divulgação do Appfiliado (`divulgacao/`)
 
-Nove vídeos curtos em 1080×1920, 30 fps, H.264, sem áudio (para pôr a música por cima no
-Instagram ou no TikTok). Fonte em `../src/divulgacao/` (ver o README da pasta remotion).
+Onze vídeos em 1080×1920, 30 fps, H.264, sem áudio (para pôr a música por cima no Instagram ou no
+TikTok). Fonte em `../src/divulgacao/` (ver o README da pasta remotion).
 
 | Arquivo | Duração | Tema |
 |---|---|---|
-| `Bot-AntesDepois.mp4` | 19,1 s | Bot de WhatsApp: postar na mão contra um botão |
-| `Bot-UmDiaNoAutomatico.mp4` | 20,0 s | Bot de WhatsApp: das 8h às 22h no automático |
-| `Bot-DatasDaShopee.mp4` | 18,5 s | Bot de WhatsApp: o modo campanha |
-| `Site-MonteOSeu.mp4` | 19,8 s | Meu site: o link na bio se montando |
-| `Site-DoStoryAoClique.mp4` | 18,6 s | Meu site: do story até a oferta com o seu link |
-| `Resultados-QuantoFalta.mp4` | 20,0 s | Resultados e metas: quanto falta pro bônus |
-| `Resultados-QualGrupoVende.mp4` | 20,3 s | Resultados e metas: grupo, horário e origem das vendas |
-| `Radar-AcheOProduto.mp4` | 17,8 s | Radar de ofertas |
-| `Conversor-ColeEConverta.mp4` | 19,7 s | Conversor de links |
+| `Bot-AntesDepois.mp4` | 20,7 s | Bot de WhatsApp: postar na mão contra um botão |
+| `Bot-UmDiaNoAutomatico.mp4` | 21,2 s | Bot de WhatsApp: das 8h às 22h no automático |
+| `Bot-DatasDaShopee.mp4` | 21,0 s | Bot de WhatsApp: o modo campanha |
+| `Bot-GruposCheios.mp4` | 36,4 s | Bot de WhatsApp: link de entrada, lotação e o próximo grupo criado sozinho |
+| `Bot-Completo.mp4` | 54,1 s | Bot de WhatsApp: os 12 recursos em menos de 1 minuto |
+| `Site-MonteOSeu.mp4` | 24,6 s | Meu site: o link na bio se montando na ordem real da página |
+| `Site-DoStoryAoClique.mp4` | 21,8 s | Meu site: do story até a compra pelo seu link |
+| `Resultados-QuantoFalta.mp4` | 22,3 s | Resultados e metas: quanto falta pro bônus |
+| `Resultados-QualGrupoVende.mp4` | 22,0 s | Resultados e metas: grupo, horário e origem das vendas |
+| `Radar-AcheOProduto.mp4` | 19,4 s | Radar de ofertas |
+| `Conversor-ColeEConverta.mp4` | 21,3 s | Conversor de links |
+
+O `Bot-GruposCheios.mp4` e o capítulo 11 do `Bot-Completo.mp4` mostram o link de entrada, que ainda está só
+nas contas de teste: publique os dois depois de liberar o link de entrada para todos.

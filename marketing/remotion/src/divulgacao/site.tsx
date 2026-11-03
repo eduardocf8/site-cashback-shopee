@@ -205,8 +205,9 @@ const Montagem: React.FC = () => {
     conversor: mola(f, M.conversor + 6, fps, 13),
     colado: f < M.colar + 6 ? undefined : <Digitando texto={LINK_COLADO} inicio={M.colar + 6} fim={M.colar + 30} cursor={false} />,
     apertado: f >= M.aperta && f < M.aperta + 8,
-    vitrine: vai(f, M.vitrine + 10, M.vitrine + 44),
-    rodape: vai(f, M.vitrine + 30, M.vitrine + 44),
+    // a vitrine aparece antes de a página rolar até ela (senão a rolagem passa por um espaço vazio)
+    vitrine: vai(f, M.vitrine - 8, M.vitrine + 12),
+    rodape: vai(f, M.vitrine + 4, M.vitrine + 20),
   };
   const rolagem = vai(f, M.conversor, M.conversor + 22, 0, ROLAGEM.conversor) + vai(f, M.vitrine, M.vitrine + 26, 0, ROLAGEM.vitrine - ROLAGEM.conversor)
     - vai(f, M.topo, M.topo + 30, 0, ROLAGEM.vitrine);

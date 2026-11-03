@@ -5,7 +5,7 @@
  *   seu (o texto fica igual) e a mensagem chegando no seu grupo.
  * Os fatos saem de landing/recursos.py (radar() e conversor()). */
 import React from 'react';
-import {AbsoluteFill, Img, Sequence, useCurrentFrame, useVideoConfig} from 'remotion';
+import {AbsoluteFill, Easing, Img, Sequence, useCurrentFrame, useVideoConfig} from 'remotion';
 import {C, FONTE} from '../appfiliado/marca';
 import {Chip, Digitando, produto} from '../appfiliado/ui';
 import {Apoio, Cabecalho, CelularNaCena, Cena, Conta, Cortina, DURACAO_FINAL, Final, Fundo, Legendas, POS, Titulo, Toque, mola, s, vai} from './comum';
@@ -169,6 +169,12 @@ const MENSAGEM: Linha[] = [
 ];
 const N_LINKS = MENSAGEM.filter((l) => l.novo).length;
 
+/** "1 link trocado pelo seu", "2 links trocados pelo seu"...: conta até N_LINKS com o singular certo. */
+const LinksTrocados: React.FC<{inicio: number; duracao: number}> = ({inicio, duracao}) => {
+  const n = Math.round(vai(useCurrentFrame(), inicio, inicio + duracao, 0, N_LINKS, Easing.out(Easing.cubic)));
+  return <span><span style={{fontVariantNumeric: 'tabular-nums'}}>{n}</span> {n === 1 ? 'link trocado' : 'links trocados'} pelo seu</span>;
+};
+
 /** Conversa de grupo com uma mensagem de várias linhas (o ConversaZap só tem oferta com foto e texto curto). */
 const GrupoComMensagem: React.FC<{nome: string; membros: string; emoji: string; chega: number; hora: string; meus: boolean; autor?: string; segurando?: number; antes?: string}> = ({
   nome, membros, emoji, chega, hora, meus, autor, segurando, antes,
@@ -307,7 +313,7 @@ const Converte: React.FC = () => {
       <Toque x={870} y={1186} f={C2.converte} />
       <Toque x={870} y={1186} f={C2.copia} />
       <Legendas y={1300} falas={[
-        {f: C2.troca + 2, icone: '✓', tom: 'amarelo', texto: <span><Conta ate={N_LINKS} inicio={C2.troca} duracao={fimDasTrocas - C2.troca} /> links trocados pelo seu</span>},
+        {f: C2.troca + 2, icone: '✓', tom: 'amarelo', texto: <LinksTrocados inicio={C2.troca} duracao={fimDasTrocas - C2.troca} />},
         {f: fimDasTrocas + 14, icone: '🔗', texto: 'Até 20 links de uma vez'},
         {f: C2.copia + 6, icone: '📋', tom: 'escuro', texto: 'Copiado: é só encaminhar'},
       ]} />
