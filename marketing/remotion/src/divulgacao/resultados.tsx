@@ -197,17 +197,21 @@ const PergunteALia: React.FC = () => (
 const QF = {gancho: s(3), metas: s(8.5), lia: s(5), final: s(3.5)};
 export const DURACAO_RESULTADOS_FALTA = QF.gancho + QF.metas + QF.lia + QF.final;
 
-export const ResultadosQuantoFalta: React.FC = () => (
-  <AbsoluteFill style={{background: C.verde}}>
-    <Sequence durationInFrames={QF.gancho}><Cena duracao={QF.gancho} entrada={false} saida={false}><GanchoMeta /></Cena></Sequence>
-    <Sequence from={QF.gancho} durationInFrames={QF.metas}><Cena duracao={QF.metas} entrada={false}><TelaMetas /></Cena></Sequence>
-    <Sequence from={QF.gancho - 9} durationInFrames={18}><Cortina /></Sequence>
-    <Sequence from={QF.gancho + QF.metas} durationInFrames={QF.lia}><Cena duracao={QF.lia}><PergunteALia /></Cena></Sequence>
-    <Sequence from={QF.gancho + QF.metas + QF.lia} durationInFrames={QF.final}>
-      <Cena duracao={QF.final} saida={false}><Final frase={'Saiba quanto falta\n*pro bônus.*'} linha={CTA.incluso} /></Cena>
-    </Sequence>
-  </AbsoluteFill>
-);
+export const ResultadosQuantoFalta: React.FC = () => {
+  const lia = QF.gancho + QF.metas;
+  const fim = lia + QF.lia;
+  return (
+    <AbsoluteFill style={{background: C.verde}}>
+      <Sequence durationInFrames={QF.gancho}><Cena duracao={QF.gancho} entrada={false} saida={false}><GanchoMeta /></Cena></Sequence>
+      <Sequence from={QF.gancho} durationInFrames={QF.metas}><Cena duracao={QF.metas} entrada={false} saida={false}><TelaMetas /></Cena></Sequence>
+      <Sequence from={lia} durationInFrames={QF.lia}><Cena duracao={QF.lia} entrada={false} saida={false}><PergunteALia /></Cena></Sequence>
+      <Sequence from={fim} durationInFrames={QF.final}><Cena duracao={QF.final} entrada={false} saida={false}><Final frase={'Saiba quanto falta\n*pro bônus.*'} linha={CTA.incluso} /></Cena></Sequence>
+      <Sequence from={QF.gancho - 9} durationInFrames={18}><Cortina /></Sequence>
+      <Sequence from={lia - 9} durationInFrames={18}><Cortina cor={C.verde} /></Sequence>
+      <Sequence from={fim - 9} durationInFrames={18}><Cortina /></Sequence>
+    </AbsoluteFill>
+  );
+};
 
 // --- Resultados-QualGrupoVende -------------------------------------------------------------------
 
@@ -396,15 +400,18 @@ const Origens: React.FC = () => {
 const QG = {corrida: s(6.2), horarios: s(6), origens: s(4.6), final: s(3.5)};
 export const DURACAO_RESULTADOS_GRUPO = QG.corrida + QG.horarios + QG.origens + QG.final;
 
-export const ResultadosQualGrupo: React.FC = () => (
-  <AbsoluteFill style={{background: C.verde}}>
-    <Sequence durationInFrames={QG.corrida}><Cena duracao={QG.corrida} entrada={false} saida={false}><Corrida /></Cena></Sequence>
-    <Sequence from={QG.corrida} durationInFrames={QG.horarios}><Cena duracao={QG.horarios} entrada={false} saida={false}><Horarios /></Cena></Sequence>
-    <Sequence from={QG.corrida - 9} durationInFrames={18}><Cortina /></Sequence>
-    <Sequence from={QG.corrida + QG.horarios} durationInFrames={QG.origens}><Cena duracao={QG.origens} entrada={false}><Origens /></Cena></Sequence>
-    <Sequence from={QG.corrida + QG.horarios - 9} durationInFrames={18}><Cortina cor={C.creme} /></Sequence>
-    <Sequence from={QG.corrida + QG.horarios + QG.origens} durationInFrames={QG.final}>
-      <Cena duracao={QG.final} saida={false}><Final frase={'Saiba *o que vende*\ne quando vende.'} linha={CTA.incluso} /></Cena>
-    </Sequence>
-  </AbsoluteFill>
-);
+export const ResultadosQualGrupo: React.FC = () => {
+  const origens = QG.corrida + QG.horarios;
+  const fim = origens + QG.origens;
+  return (
+    <AbsoluteFill style={{background: C.verde}}>
+      <Sequence durationInFrames={QG.corrida}><Cena duracao={QG.corrida} entrada={false} saida={false}><Corrida /></Cena></Sequence>
+      <Sequence from={QG.corrida} durationInFrames={QG.horarios}><Cena duracao={QG.horarios} entrada={false} saida={false}><Horarios /></Cena></Sequence>
+      <Sequence from={origens} durationInFrames={QG.origens}><Cena duracao={QG.origens} entrada={false} saida={false}><Origens /></Cena></Sequence>
+      <Sequence from={fim} durationInFrames={QG.final}><Cena duracao={QG.final} entrada={false} saida={false}><Final frase={'Saiba *o que vende*\ne quando vende.'} linha={CTA.incluso} /></Cena></Sequence>
+      <Sequence from={QG.corrida - 9} durationInFrames={18}><Cortina /></Sequence>
+      <Sequence from={origens - 9} durationInFrames={18}><Cortina cor={C.verde} /></Sequence>
+      <Sequence from={fim - 9} durationInFrames={18}><Cortina /></Sequence>
+    </AbsoluteFill>
+  );
+};

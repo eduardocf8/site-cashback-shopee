@@ -175,9 +175,10 @@ const Numeros: React.FC = () => {
 export const SiteMonteOSeu: React.FC = () => (
   <AbsoluteFill style={{background: C.verde}}>
     <Sequence durationInFrames={MONTE.montagem}><Cena duracao={MONTE.montagem} entrada={false} saida={false}><Montagem /></Cena></Sequence>
-    <Sequence from={MONTE.montagem} durationInFrames={MONTE.numeros}><Cena duracao={MONTE.numeros} entrada={false}><Numeros /></Cena></Sequence>
+    <Sequence from={MONTE.montagem} durationInFrames={MONTE.numeros}><Cena duracao={MONTE.numeros} entrada={false} saida={false}><Numeros /></Cena></Sequence>
+    <Sequence from={MONTE.montagem + MONTE.numeros} durationInFrames={MONTE.final}><Cena duracao={MONTE.final} entrada={false} saida={false}><Final frase={'Seu link na bio\n*que vende.*'} linha={CTA.site} /></Cena></Sequence>
     <Sequence from={MONTE.montagem - 9} durationInFrames={18}><Cortina /></Sequence>
-    <Sequence from={MONTE.montagem + MONTE.numeros} durationInFrames={MONTE.final}><Cena duracao={MONTE.final} saida={false}><Final frase={'Seu link na bio\n*que vende.*'} linha={CTA.site} /></Cena></Sequence>
+    <Sequence from={MONTE.montagem + MONTE.numeros - 9} durationInFrames={18}><Cortina cor={C.verde} /></Sequence>
   </AbsoluteFill>
 );
 
@@ -314,7 +315,8 @@ const Caminho: React.FC = () => {
 
 export const SiteDoStoryAoClique: React.FC = () => (
   <AbsoluteFill style={{background: C.verde}}>
-    <Sequence durationInFrames={STORY.caminho}><Cena duracao={STORY.caminho} entrada={false}><Caminho /></Cena></Sequence>
-    <Sequence from={STORY.caminho} durationInFrames={STORY.final}><Cena duracao={STORY.final} saida={false}><Final frase={'Da bio pro produto,\n*com o seu link.*'} linha={CTA.site} /></Cena></Sequence>
+    <Sequence durationInFrames={STORY.caminho}><Cena duracao={STORY.caminho} entrada={false} saida={false}><Caminho /></Cena></Sequence>
+    <Sequence from={STORY.caminho} durationInFrames={STORY.final}><Cena duracao={STORY.final} entrada={false} saida={false}><Final frase={'Da bio pro produto\n*com o seu link.*'} linha={CTA.site} /></Cena></Sequence>
+    <Sequence from={STORY.caminho - 9} durationInFrames={18}><Cortina /></Sequence>
   </AbsoluteFill>
 );

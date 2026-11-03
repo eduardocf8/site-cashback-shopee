@@ -149,11 +149,12 @@ export const DURACAO_RADAR = RADAR.pergunta + RADAR.busca + RADAR.final;
 export const RadarAcheOProduto: React.FC = () => (
   <AbsoluteFill style={{background: C.verde}}>
     <Sequence durationInFrames={RADAR.pergunta}><Pergunta /></Sequence>
-    <Sequence from={RADAR.pergunta} durationInFrames={RADAR.busca}><Cena duracao={RADAR.busca} entrada={false}><Busca /></Cena></Sequence>
+    <Sequence from={RADAR.pergunta} durationInFrames={RADAR.busca}><Cena duracao={RADAR.busca} entrada={false} saida={false}><Busca /></Cena></Sequence>
     <Sequence from={RADAR.pergunta - 9} durationInFrames={18}><Cortina /></Sequence>
     <Sequence from={RADAR.pergunta + RADAR.busca} durationInFrames={RADAR.final}>
-      <Cena duracao={RADAR.final} saida={false}><Final frase={'O produto certo,\n*com o seu link.*'} linha={CTA.incluso} /></Cena>
+      <Cena duracao={RADAR.final} entrada={false} saida={false}><Final frase={'O produto certo,\n*com o seu link.*'} linha={CTA.incluso} /></Cena>
     </Sequence>
+    <Sequence from={RADAR.pergunta + RADAR.busca - 9} durationInFrames={18}><Cortina cor={C.verde} /></Sequence>
   </AbsoluteFill>
 );
 
@@ -357,11 +358,12 @@ export const ConversorColeEConverta: React.FC = () => {
       <Sequence durationInFrames={CONV.outro}><OutroGrupo /></Sequence>
       <Sequence from={b} durationInFrames={CONV.converte}><Cena duracao={CONV.converte} entrada={false} saida={false}><Converte /></Cena></Sequence>
       <Sequence from={b - 9} durationInFrames={18}><Cortina /></Sequence>
-      <Sequence from={c} durationInFrames={CONV.seu}><Cena duracao={CONV.seu} entrada={false}><NoSeuGrupo /></Cena></Sequence>
-      <Sequence from={c - 9} durationInFrames={18}><Cortina cor={C.creme} /></Sequence>
+      <Sequence from={c} durationInFrames={CONV.seu}><Cena duracao={CONV.seu} entrada={false} saida={false}><NoSeuGrupo /></Cena></Sequence>
+      <Sequence from={c - 9} durationInFrames={18}><Cortina cor={C.verde} /></Sequence>
       <Sequence from={d} durationInFrames={CONV.final}>
-        <Cena duracao={CONV.final} saida={false}><Final frase={'Qualquer oferta,\n*com o seu link.*'} linha={CTA.incluso} /></Cena>
+        <Cena duracao={CONV.final} entrada={false} saida={false}><Final frase={'Qualquer oferta,\n*com o seu link.*'} linha={CTA.incluso} /></Cena>
       </Sequence>
+      <Sequence from={d - 9} durationInFrames={18}><Cortina /></Sequence>
     </AbsoluteFill>
   );
 };
