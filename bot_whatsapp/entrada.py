@@ -10,7 +10,7 @@
 - Lotando: quando nenhum grupo tem vaga folgada, a pessoa recebe um aviso e, se pediu, o Appfiliado
   cria o próximo grupo sozinho (grupos_novos.py) e coloca no link.
 
-Em construção: só para contas com a chave beta_link_entrada (admin)."""
+Faz parte do Bot de WhatsApp (Standard e Premium). Criar o próximo grupo sozinho é do Premium."""
 
 import logging
 import re
@@ -50,7 +50,7 @@ ROBOS = ("facebookexternalhit", "facebot", "whatsapp/", "telegrambot", "twitterb
 
 
 def liberado(conta) -> bool:
-    return bool(getattr(conta, "beta_link_entrada", False)) and MODULO_WHATSAPP in conta.modulos_liberados()
+    return MODULO_WHATSAPP in conta.modulos_liberados()
 
 
 def ordem_natural(nome: str):
@@ -200,12 +200,13 @@ def estatisticas(link: LinkEntrada, hoje=None) -> dict:
 # --- Worker -----------------------------------------------------------------------------------
 
 def convites_para_ler(agora) -> list[ConviteGrupo]:
-    """Convites que o worker precisa ler (novos ou com mais de 12 h), das contas com o beta."""
+    """Convites que o worker precisa ler (novos ou com mais de 12 h), dos links ativos de quem tem o Bot."""
     from django.db.models import Q
 
     vencidos = Q(lido_em__isnull=True) | Q(lido_em__lt=agora - RELER_CONVITE)
-    return list(ConviteGrupo.objects.filter(vencidos, manual=False, conta__beta_link_entrada=True)
-                .order_by("lido_em")[:20])
+    convites = (ConviteGrupo.objects.filter(vencidos, manual=False, conta__links_entrada__ativo=True).distinct()
+                .select_related("conta").order_by("lido_em")[:20])
+    return [c for c in convites if liberado(c.conta)]
 
 
 def registrar_convite(convite: ConviteGrupo, link: str, erro: str, agora) -> None:
@@ -217,8 +218,8 @@ def cuidar_dos_links(agora) -> list[str]:
     """Links ativos sem grupo folgado: avisa a pessoa (uma vez por dia) e, se ela pediu, cria o
     próximo grupo (até grupos_novos.POR_DIA por dia). Devolve uma linha de log por ação."""
     logs = []
-    for link in LinkEntrada.objects.filter(ativo=True, conta__beta_link_entrada=True).defer("foto").select_related("conta"):
-        if not link.grupos:
+    for link in LinkEntrada.objects.filter(ativo=True).defer("foto").select_related("conta"):
+        if not link.grupos or not liberado(link.conta):  # sem o Bot (assinatura acabou): não avisa nem cria
             continue
         estado = situacao(link)
         if estado["folgados"]:

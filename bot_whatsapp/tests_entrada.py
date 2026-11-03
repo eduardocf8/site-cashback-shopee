@@ -26,8 +26,6 @@ class BaseEntrada(BasePainel):
     def setUp(self):
         super().setUp()
         self.entrar()
-        self.conta.beta_link_entrada = True
-        self.conta.save()
         self.conexao = ConexaoWhatsApp.objects.create(conta=self.conta, estado="conectado", numero="5511988887777", grupos=GRUPOS)
         SiteAfiliado.objects.create(conta=self.conta, endereco="achadinhosdabia", publicado=False)
 
@@ -48,11 +46,13 @@ class BaseEntrada(BasePainel):
 
 
 class TestPainel(BaseEntrada):
-    def test_so_aparece_com_a_chave_beta(self):
-        self.assertContains(self.client.get("/whatsapp/membros/"), "Link de entrada")
-        self.conta.beta_link_entrada = False
+    def test_aparece_pra_quem_tem_o_bot(self):
+        resposta = self.client.get("/whatsapp/membros/")
+        self.assertContains(resposta, "Link de entrada")
+        self.assertNotContains(resposta, "Beta")
+        self.assertEqual(self.client.get("/whatsapp/entrada/").status_code, 200)
+        self.conta.modulos_cortesia = ""  # sem o Bot de WhatsApp
         self.conta.save()
-        self.assertNotContains(self.client.get("/whatsapp/membros/"), "Link de entrada")
         self.assertEqual(self.client.get("/whatsapp/entrada/").status_code, 404)
 
     def test_criar_e_configurar_um_link(self):
@@ -242,13 +242,13 @@ class TestPaginaPublica(BaseEntrada):
         self.assertEqual(resposta.status_code, 503)
         self.assertContains(resposta, "Os grupos estão cheios neste momento", status_code=503)
 
-    def test_sem_a_chave_ou_pausado_nao_abre(self):
+    def test_sem_o_bot_ou_pausado_nao_abre(self):
         self.link.ativo = False
         self.link.save()
         self.assertEqual(self.client.get("/s/achadinhosdabia/g/grupo-vip/").status_code, 404)
         self.link.ativo = True
         self.link.save()
-        self.conta.beta_link_entrada = False
+        self.conta.modulos_cortesia = ""  # a assinatura do Bot acabou
         self.conta.save()
         self.assertEqual(self.client.get("/s/achadinhosdabia/g/grupo-vip/").status_code, 404)
 
@@ -300,6 +300,16 @@ class TestWorker(BaseEntrada):
         self.assertIn("Crie o próximo grupo", mail.outbox[0].body)
         entrada.cuidar_dos_links(agora + timedelta(hours=25))
         self.assertEqual(len(mail.outbox), 2)
+
+    def test_sem_o_bot_nao_avisa_nem_le_convites(self):
+        self.criar_link()
+        for g_ in GRUPOS:
+            self.membros(g_["jid"], 1000)
+        self.conta.modulos_cortesia = ""  # a assinatura do Bot acabou
+        self.conta.save()
+        entrada.cuidar_dos_links(timezone.now())
+        self.assertEqual(len(mail.outbox), 0)
+        self.assertEqual(entrada.convites_para_ler(timezone.now()), [])
 
     def test_criar_sozinho_e_so_do_premium(self):
         link = self.criar_link(criar_sozinho=True, admins_dos_novos=["5511977776666"])  # ligado antes da regra

@@ -6,6 +6,7 @@ import {DURACAO_DINAMICA, Dinamica} from './Dinamica';
 import {DURACAO_ANIMADA, EsperaAnimada} from './animada/EsperaAnimada';
 import {DURACAO_GANCHO_TESTE, GanchoExplosaoA, GanchoExplosaoB} from './animada/GanchoTeste';
 import {DURACAO_APPFILIADO, VideoAppfiliado} from './appfiliado/Video';
+import {ComposicoesDivulgacao} from './divulgacao/Composicoes';
 
 /** Quatro composições, mesma informação.
  *
@@ -76,5 +77,7 @@ export const RemotionRoot: React.FC = () => (
     <Composition id="AppfiliadoVertical" component={VideoAppfiliado} durationInFrames={DURACAO_APPFILIADO} fps={FPS} width={1080} height={1920} />
     <Composition id="AppfiliadoHorizontal" component={VideoAppfiliado} durationInFrames={DURACAO_APPFILIADO} fps={FPS} width={1920} height={1080} />
     <Composition id="AppfiliadoRetrato" component={VideoAppfiliado} durationInFrames={DURACAO_APPFILIADO} fps={FPS} width={1080} height={1350} />
+    {/* Appfiliado: vídeos de divulgação por tema (ver src/divulgacao/). */}
+    <ComposicoesDivulgacao />
   </>
 );

@@ -128,9 +128,6 @@ class ContaAppfiliado(models.Model):
     beta_estudio_instagram = models.BooleanField(
         "testa o Estúdio Instagram", default=False,
         help_text="Mostra o Estúdio Instagram (ainda em construção) no painel desta conta. Os outros não veem nada.")
-    beta_link_entrada = models.BooleanField(
-        "testa o link de entrada nos grupos", default=False,
-        help_text="Mostra a aba Link de entrada no Bot de WhatsApp desta conta (ainda em construção).")
     beta_campanhas_meta = models.BooleanField(
         "testa as campanhas da Meta", default=False,
         help_text="Mostra Campanhas da Meta em Resultados (ainda em construção). A pessoa também precisa ser "

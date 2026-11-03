@@ -125,3 +125,54 @@ npm run render:appfiliado-horizontal  # 16:9 (YouTube, site)          -> saida/a
 
 Textos e duração de cada cena ficam em `FERRAMENTAS` (`src/appfiliado/Video.tsx`); as demonstrações, em
 `src/appfiliado/cenas.tsx`. As fotos de produto são as mesmas dos prints do site (`public/appfiliado/produtos/`).
+
+## Appfiliado: vídeos de divulgação por tema
+
+Em `src/divulgacao/`: vídeos curtos (9:16, sem áudio) para Reels, TikTok e Status, cada um mostrando uma
+coisa só, mais um completo do Bot (este já com narração: `public/narracao/bot-completo.mp3`, gravada no
+ElevenLabs e acelerada; cada capítulo entra quando a fala dele começa). São 4 temas com 2 a 5 versões:
+
+| Tema | Composição | A ideia |
+|---|---|---|
+| Bot de WhatsApp | `Bot-AntesDepois` | Os 5 passos de postar na mão (e o tempo indo embora) contra um botão que liga tudo |
+| | `Bot-UmDiaNoAutomatico` | O relógio vai das 8h às 22h; o grupo recebe ofertas enquanto você vive o seu dia |
+| | `Bot-DatasDaShopee` | O modo campanha: as datas já marcadas, o ritmo e o texto que mudam sozinhos |
+| | `Bot-GruposCheios` | O link de entrada (um link só pra todos os grupos), a lotação dos grupos e o próximo grupo criado sozinho (Premium) |
+| | `Bot-Completo` | Os 13 recursos do Bot em menos de 1 minuto, com a barra de progresso no topo |
+| Meu site | `Site-MonteOSeu` | O link na bio se montando no celular na ordem real da página: perfil, botões, redes, conversor e vitrine |
+| | `Site-DoStoryAoClique` | O caminho do seguidor, do story até a compra pelo seu link (pela vitrine e pelo conversor) |
+| Resultados e metas | `Resultados-QuantoFalta` | A meta do mês, quanto falta pra faixa do bônus e a Lia respondendo "metas" |
+| | `Resultados-QualGrupoVende` | O grupo que mais vende, o horário mais forte e de onde veio cada venda |
+| Radar e Conversor | `Radar-AcheOProduto` | Da busca ao "copiar link" |
+| | `Conversor-ColeEConverta` | A mensagem de outro grupo com os links trocados pelos seus |
+
+```bash
+npx remotion render src/index.ts Bot-AntesDepois saida/Bot-AntesDepois.mp4 \
+  --browser-executable=/opt/pw-browsers/chromium_headless_shell-1194/chrome-linux/headless_shell
+```
+
+Para revisar sem renderizar o vídeo inteiro, `node qa-quadros.mjs <pasta> <id>:todos` salva um quadro por
+segundo (ou `<id>:30,90,150` para quadros escolhidos) em PNG.
+
+Onde mexer:
+
+| Arquivo | O que é |
+|---|---|
+| `src/divulgacao/textos.ts` | Preços (do plano Standard, iguais a `landing/planos.py`), as ferramentas inclusas, o endereço e as ofertas fictícias |
+| `src/divulgacao/comum.tsx` | As peças: fundo, título palavra por palavra, cabeçalho, celular, conversa do WhatsApp, legendas, toque na tela, cortina e encerramento |
+| `src/divulgacao/botTelas.tsx` | As telas do Bot: página do link de entrada, convite, grupos do link, membros, criação do próximo grupo |
+| `src/divulgacao/bot.tsx`, `botGrupos.tsx`, `botCompleto.tsx`, `site.tsx`, `resultados.tsx`, `ferramentas.tsx` | Um arquivo por vídeo ou tema, com o roteiro e o tempo de cada versão |
+| `src/divulgacao/Composicoes.tsx` | A lista dos vídeos registrados |
+
+Regras de layout destes vídeos:
+
+- **Legenda é um balão por vez, centralizado** (`Legendas`): cada um sai antes do próximo entrar. Nada de
+  etiqueta solta em cima do celular ou de lado.
+- Cena com celular: título em `POS.titulo`, celular em `POS.celular` e legenda em `POS.legenda`. Cena com
+  cartão: o cartão no meio da área (`Painel centro`) e a legenda embaixo.
+- Toda troca de cena passa pela cortina (ou, no completo, um capítulo sai antes do outro entrar): nunca
+  tela vazia e nunca duas cenas misturadas.
+- O encerramento dos módulos pagos mostra o preço e as ferramentas que vêm em todos os planos (`INCLUSOS`).
+
+Os vídeos só mostram o que já está no ar. O Estúdio e as Automações do Instagram ficam de fora até o
+lançamento. Quando o preço mudar em `landing/planos.py`, mude também em `textos.ts` e renderize de novo.

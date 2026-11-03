@@ -1,5 +1,5 @@
-"""Aba "Link de entrada" do Bot de WhatsApp (bot_whatsapp/entrada.py). Em construção: só aparece
-para contas com a chave beta_link_entrada ligada no admin."""
+"""Aba "Link de entrada" do Bot de WhatsApp (bot_whatsapp/entrada.py), para quem tem o Bot de WhatsApp
+(Standard e Premium)."""
 
 import re
 
@@ -26,7 +26,7 @@ from .views import _contexto
 MAXIMO_LINKS = 10
 
 
-def _conta_com_beta(request):
+def _conta_liberada(request):
     conta = conta_logada(request)
     if not entrada.liberado(conta):
         raise Http404
@@ -53,7 +53,7 @@ def _erro_do_endereco(endereco: str) -> str:
 
 @conta_requerida
 def entrada_lista(request):
-    conta = _conta_com_beta(request)
+    conta = _conta_liberada(request)
     site = SiteAfiliado.objects.filter(conta=conta).first()
     acao = request.POST.get("acao") if request.method == "POST" else ""
     if acao == "endereco" and not (site and site.endereco):
@@ -211,7 +211,7 @@ def _trocar_capa(request, link, acao) -> None:
 
 @conta_requerida
 def entrada_capa(request, pk):
-    conta = _conta_com_beta(request)
+    conta = _conta_liberada(request)
     link = get_object_or_404(LinkEntrada, pk=pk, conta=conta)
     if not link.capa:
         raise Http404
@@ -223,7 +223,7 @@ def entrada_capa(request, pk):
 def entrada_previa(request, pk):
     """A página do link como fica, para a prévia ao vivo do painel. Com os campos do formulário
     na URL, mostra o que a pessoa está editando (sem salvar)."""
-    conta = _conta_com_beta(request)
+    conta = _conta_liberada(request)
     link = get_object_or_404(LinkEntrada, pk=pk, conta=conta)
     site = SiteAfiliado.objects.filter(conta=conta).first() or SiteAfiliado(conta=conta)
     if "modelo" in request.GET:
@@ -238,7 +238,7 @@ def entrada_previa(request, pk):
 @conta_requerida
 def entrada_foto(request, pk):
     """A foto que a página do link mostra (a dele ou a do Meu site), para a prévia no painel."""
-    conta = _conta_com_beta(request)
+    conta = _conta_liberada(request)
     link = get_object_or_404(LinkEntrada, pk=pk, conta=conta)
     site = SiteAfiliado.objects.filter(conta=conta).first()
     foto = link.foto or (site.foto if site else None)
@@ -249,7 +249,7 @@ def entrada_foto(request, pk):
 
 @conta_requerida
 def entrada_link(request, pk):
-    conta = _conta_com_beta(request)
+    conta = _conta_liberada(request)
     link = get_object_or_404(LinkEntrada, pk=pk, conta=conta)
     site = SiteAfiliado.objects.filter(conta=conta).first()
     conexao = conexao_da(conta)
