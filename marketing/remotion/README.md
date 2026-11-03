@@ -129,7 +129,8 @@ Textos e duração de cada cena ficam em `FERRAMENTAS` (`src/appfiliado/Video.ts
 ## Appfiliado: vídeos de divulgação por tema
 
 Em `src/divulgacao/`: vídeos curtos (9:16, sem áudio) para Reels, TikTok e Status, cada um mostrando uma
-coisa só, mais um completo do Bot. São 4 temas com 2 a 5 versões:
+coisa só, mais um completo do Bot (este já com narração: `public/narracao/bot-completo.mp3`, gravada no
+ElevenLabs e acelerada; cada capítulo entra quando a fala dele começa). São 4 temas com 2 a 5 versões:
 
 | Tema | Composição | A ideia |
 |---|---|---|

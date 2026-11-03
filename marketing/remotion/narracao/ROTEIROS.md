@@ -36,35 +36,38 @@ O Bot de WhatsApp sai a partir de quarenta e nove e noventa por mês, com Result
 
 ## Bot-Completo
 
+<!-- Texto como foi gravado (public/narracao/bot-completo.mp3). Se regravar, os capítulos do vídeo
+     estão acertados com estas falas: mudou o texto, confira os tempos em src/divulgacao/botCompleto.tsx. -->
+
 Se você é afiliado Shopee e tem grupo de ofertas no WhatsApp, olha tudo o que o Bot do Appfiliado faz por você.
 
 Primeiro, você conecta o seu WhatsApp pelo QR Code, igual no WhatsApp Web.
 
-Aí ele começa a postar ofertas nos seus grupos, todas com o seu link de afiliado.
+Ele começa a postar ofertas nos seus grupos, todas com o seu link de afiliado.
 
 Você escolhe o que vai pro grupo: categoria, comissão, desconto...
 
 ...e o ritmo: de quanto em quanto tempo, em que horário e em quais dias.
 
-Dá para ver as próximas ofertas antes, sem enviar nada.
+Dá pra ver as próximas ofertas antes, sem enviar nada.
 
-Na Black Friday e nas outras datas da Shopee, ele entra sozinho no modo campanha.
+Você pode configurar o modo campanha. Em datas especiais, como a Black Friday e as datas duplas, ele muda a forma de trabalhar conforme a sua vontade e no dia seguinte volta à configuração inicial.
 
 Se o preço de um produto cai, ele avisa o grupo.
 
-Você manda recados pra todos os grupos, na hora ou agendados.
+Você pode mandar recados para todos os grupos na mesma hora ou agendados.
 
-No Premium tem ainda mais: cada grupo com o seu tema, cópia de ofertas de outros grupos e texto revisado com IA.
+No plano Premium tem ainda mais: envios por nicho, cópia de ofertas de outros grupos e texto revisado com IA.
 
-Tem também o link de entrada: um link só no anúncio, que manda cada pessoa para um grupo com vaga.
+Tem também o link de entrada: uma página só sua, que manda as pessoas para os seus grupos no WhatsApp.
 
 Você acompanha quais grupos estão lotando...
 
-...e quando lota, ele cria o próximo sozinho e já coloca no link de entrada.
+...e quando lota, ele cria o próximo sozinho e já troca o link de entrada.
 
 E no fim do mês você sabe quanto cada grupo vendeu.
 
-O Bot de WhatsApp sai a partir de quarenta e nove e noventa por mês, com Resultados, Radar e Conversor inclusos.
+Planos a partir de R$ 49,90 por mês, com página de resultados, Radar de ofertas e Conversor de links inclusos.
 
 ## Site-MonteOSeu
 
