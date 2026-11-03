@@ -32,8 +32,8 @@ const GanchoMeta: React.FC = () => {
     <AbsoluteFill style={{fontFamily: FONTE, color: C.creme}}>
       <Fundo tom="escuro" />
       <div style={{position: 'absolute', left: 90, right: 90, top: 380}}>
-        <Chapeu texto="Metas da Shopee" cor={C.amarelo} />
-        <Titulo texto={'Quanto falta\npro seu *bônus*\neste mês?'} inicio={4} tamanho={110} cor={C.creme} style={{marginTop: 30}} />
+        <Chapeu texto="Metas da Shopee" cor={C.amarelo} inicio={-14} />
+        <Titulo texto={'Quanto falta\npro seu *bônus*\neste mês?'} inicio={-12} tamanho={110} cor={C.creme} style={{marginTop: 30}} />
       </div>
       <div style={{position: 'absolute', left: 90, right: 90, top: 1060, opacity: t, transform: `translateY(${(1 - t) * 30}px)`}}>
         <div style={{display: 'inline-flex', alignItems: 'baseline', gap: 18, border: '4px dashed rgba(246,243,234,.35)', borderRadius: 34, padding: '26px 40px'}}>
@@ -242,8 +242,8 @@ const Corrida: React.FC = () => {
     <AbsoluteFill style={{fontFamily: FONTE, color: C.tinta}}>
       <Fundo tom="creme" />
       <div style={{position: 'absolute', left: 90, right: 90, top: 330}}>
-        <Chapeu texto="Resultados e metas" />
-        <Titulo texto={'Qual dos seus\ngrupos *vende mais?*'} inicio={4} tamanho={86} destaque={ESCURO_AMARELO} style={{marginTop: 26}} />
+        <Chapeu texto="Resultados e metas" inicio={-14} />
+        <Titulo texto={'Qual dos seus\ngrupos *vende mais?*'} inicio={-12} tamanho={86} destaque={ESCURO_AMARELO} style={{marginTop: 26}} />
       </div>
       <Cartao style={{position: 'absolute', left: 70, right: 70, top: 650, opacity: entrada, transform: `translateY(${(1 - entrada) * 50}px)`}}>
         <div style={{display: 'flex', justifyContent: 'space-between', alignItems: 'baseline'}}>

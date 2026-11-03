@@ -24,8 +24,8 @@ const NaMao: React.FC = () => {
     <AbsoluteFill style={{fontFamily: FONTE, color: C.tinta}}>
       <Fundo tom="creme" />
       <div style={{position: 'absolute', left: 90, right: 90, top: 330}}>
-        <Chapeu texto="Bot de WhatsApp" />
-        <Titulo texto={'Postar oferta\n*na mão* é assim:'} inicio={4} tamanho={100} destaque={ESCURO_AMARELO} style={{marginTop: 26}} />
+        <Chapeu texto="Bot de WhatsApp" inicio={-14} />
+        <Titulo texto={'Postar oferta\n*na mão* é assim:'} inicio={-12} tamanho={100} destaque={ESCURO_AMARELO} style={{marginTop: 26}} />
       </div>
       <div style={{position: 'absolute', left: 90, right: 90, top: 690, display: 'grid', gap: 22}}>
         {PASSOS.map((p, i) => {
@@ -146,7 +146,7 @@ const UmDia: React.FC = () => {
       <Fundo tom="creme" />
       <AbsoluteFill style={{opacity: noite}}><Fundo tom="escuro" /></AbsoluteFill>
       <div style={{position: 'absolute', left: 80, right: 80, top: 320, background: C.branco, borderRadius: 44, padding: '34px 40px', display: 'flex', alignItems: 'center', gap: 34,
-        boxShadow: '0 24px 50px rgba(23,48,31,.14)', opacity: vai(f, 0, 14), transform: `translateY(${(1 - vai(f, 0, 14)) * 30}px)`}}>
+        boxShadow: '0 24px 50px rgba(23,48,31,.14)', opacity: vai(f, -8, 6), transform: `translateY(${(1 - vai(f, -8, 6)) * 30}px)`}}>
         <div style={{flex: 'none'}}>
           <div style={{fontSize: 26, fontWeight: 800, letterSpacing: '.12em', color: ESCURO_AMARELO, textTransform: 'uppercase'}}>{noite > 0.5 ? '🌙 Hoje' : '☀️ Hoje'}</div>
           <div style={{fontSize: 150, fontWeight: 800, letterSpacing: '-.05em', lineHeight: 1, fontVariantNumeric: 'tabular-nums', marginTop: 6}}>{hhmm(minuto)}</div>
@@ -190,8 +190,8 @@ const Datas: React.FC = () => {
     <AbsoluteFill style={{fontFamily: FONTE, color: C.verde}}>
       <Fundo tom="amarelo" />
       <div style={{position: 'absolute', left: 90, right: 90, top: 330}}>
-        <Chapeu texto="Modo campanha" cor={C.verde} />
-        <Titulo texto={'As datas da Shopee\nvêm *marcadas.*'} inicio={4} tamanho={96} cor={C.verde} destaque={C.branco} style={{marginTop: 26}} />
+        <Chapeu texto="Modo campanha" cor={C.verde} inicio={-14} />
+        <Titulo texto={'As datas da Shopee\nvêm *marcadas.*'} inicio={-12} tamanho={96} cor={C.verde} destaque={C.branco} style={{marginTop: 26}} />
       </div>
       <div style={{position: 'absolute', left: 90, right: 90, top: 700, display: 'flex', flexWrap: 'wrap', gap: 22}}>
         {DATAS.map((d, i) => {
@@ -209,7 +209,7 @@ const Datas: React.FC = () => {
         })}
       </div>
       <Apoio texto="E você ainda soma as suas datas, até 20." inicio={120} cor={C.verde} tamanho={40} style={{position: 'absolute', left: 90, right: 90, top: 1240, fontWeight: 800}} />
-      <Apoio texto="O painel avisa 7 dias antes de cada uma." inicio={134} cor={C.verde} tamanho={36} style={{position: 'absolute', left: 90, right: 90, top: 1310, opacity: 0.8}} />
+      <Apoio texto="O painel avisa 7 dias antes de cada uma." inicio={134} cor="rgba(31,58,46,.8)" tamanho={36} style={{position: 'absolute', left: 90, right: 90, top: 1310}} />
     </AbsoluteFill>
   );
 };

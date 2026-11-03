@@ -90,7 +90,9 @@ export const Apoio: React.FC<{texto: React.ReactNode; inicio?: number; tamanho?:
 }) => {
   const f = useCurrentFrame();
   const t = vai(f, inicio, inicio + 16);
-  return <div style={{fontFamily: FONTE, fontSize: tamanho, fontWeight: 500, color: cor, lineHeight: 1.3, textAlign: alinhar, opacity: t, transform: `translateY(${(1 - t) * 18}px)`, ...style}}>{texto}</div>;
+  // a opacidade de `style` multiplica a da entrada (senão a linha apareceria desde o primeiro quadro)
+  const opacidade = typeof style?.opacity === 'number' ? style.opacity : 1;
+  return <div style={{fontFamily: FONTE, fontSize: tamanho, fontWeight: 500, color: cor, lineHeight: 1.3, textAlign: alinhar, ...style, opacity: t * opacidade, transform: `translateY(${(1 - t) * 18}px)`}}>{texto}</div>;
 };
 
 /** Chapéu: o nome do módulo em caixa alta, com um ícone opcional. */

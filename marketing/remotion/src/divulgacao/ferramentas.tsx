@@ -42,7 +42,7 @@ const Pergunta: React.FC = () => {
         );
       })}
       <div style={{position: 'absolute', left: 90, right: 90, top: 760}}>
-        <Titulo texto={'O que divulgar\n*hoje?*'} inicio={2} tamanho={124} cor={C.creme} alinhar="center" />
+        <Titulo texto={'O que divulgar\n*hoje?*'} inicio={-12} tamanho={124} cor={C.creme} alinhar="center" />
         <Apoio texto="Com tanto produto, por onde começar?" inicio={22} alinhar="center" cor={C.suave} tamanho={40} style={{marginTop: 30}} />
       </div>
     </AbsoluteFill>
@@ -241,8 +241,8 @@ const OutroGrupo: React.FC = () => {
     <AbsoluteFill style={{fontFamily: FONTE, color: C.tinta}}>
       <Fundo tom="creme" />
       <div style={{position: 'absolute', left: 90, right: 90, top: 330}}>
-        <Chapeu texto="Conversor de links" />
-        <Titulo texto={'Achou uma oferta\nboa em *outro grupo?*'} inicio={4} tamanho={84} destaque={ESCURO_AMARELO} style={{marginTop: 24}} />
+        <Chapeu texto="Conversor de links" inicio={-14} />
+        <Titulo texto={'Achou uma oferta\nboa em *outro grupo?*'} inicio={-12} tamanho={84} destaque={ESCURO_AMARELO} style={{marginTop: 24}} />
       </div>
       <div style={{position: 'absolute', left: 0, right: 0, top: 640, display: 'flex', justifyContent: 'center'}}>
         <div style={{position: 'relative'}}>

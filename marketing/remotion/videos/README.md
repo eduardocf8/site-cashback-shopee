@@ -95,3 +95,20 @@ propósito, para a narração e o som ficarem no editor.
 
 Cerca de 70 s, texto na tela e sem áudio (pra gravar a fala e pôr a música no editor). Refazer:
 `npm run render:appfiliado-vertical` (e `-retrato`, `-horizontal`) e copiar de `saida/` pra cá.
+
+## Divulgação do Appfiliado (`divulgacao/`)
+
+Nove vídeos curtos em 1080×1920, 30 fps, H.264, sem áudio (para pôr a música por cima no
+Instagram ou no TikTok). Fonte em `../src/divulgacao/` (ver o README da pasta remotion).
+
+| Arquivo | Duração | Tema |
+|---|---|---|
+| `Bot-AntesDepois.mp4` | 19,1 s | Bot de WhatsApp: postar na mão contra um botão |
+| `Bot-UmDiaNoAutomatico.mp4` | 20,0 s | Bot de WhatsApp: das 8h às 22h no automático |
+| `Bot-DatasDaShopee.mp4` | 18,5 s | Bot de WhatsApp: o modo campanha |
+| `Site-MonteOSeu.mp4` | 19,8 s | Meu site: o link na bio se montando |
+| `Site-DoStoryAoClique.mp4` | 18,6 s | Meu site: do story até a oferta com o seu link |
+| `Resultados-QuantoFalta.mp4` | 20,0 s | Resultados e metas: quanto falta pro bônus |
+| `Resultados-QualGrupoVende.mp4` | 20,3 s | Resultados e metas: grupo, horário e origem das vendas |
+| `Radar-AcheOProduto.mp4` | 17,8 s | Radar de ofertas |
+| `Conversor-ColeEConverta.mp4` | 19,7 s | Conversor de links |

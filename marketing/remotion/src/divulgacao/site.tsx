@@ -114,8 +114,8 @@ const Montagem: React.FC = () => {
     <AbsoluteFill style={{fontFamily: FONTE, color: C.tinta}}>
       <Fundo tom="creme" />
       <div style={{position: 'absolute', left: 90, right: 90, top: 330}}>
-        <Chapeu texto="Meu site" />
-        <Titulo texto={'Seu link na bio\n*pronto em segundos.*'} inicio={4} tamanho={80} destaque={ESCURO_AMARELO} style={{marginTop: 26}} />
+        <Chapeu texto="Meu site" inicio={-14} />
+        <Titulo texto={'Seu link na bio\n*pronto em segundos.*'} inicio={-12} tamanho={80} destaque={ESCURO_AMARELO} style={{marginTop: 26}} />
       </div>
       <div style={{position: 'absolute', left: 0, right: 0, top: 690, display: 'flex', justifyContent: 'center', opacity: vai(f, 8, 22), transform: `translateY(${(1 - vai(f, 8, 26)) * 60}px)`}}>
         <Celular escala={0.79} barraClara fundoTela={cor}>
@@ -281,8 +281,8 @@ const Caminho: React.FC = () => {
     <AbsoluteFill style={{fontFamily: FONTE, color: C.creme}}>
       <Fundo tom="escuro" />
       <div style={{position: 'absolute', left: 90, right: 90, top: 330}}>
-        <Chapeu texto="Meu site" cor={C.amarelo} />
-        <Titulo texto={'Do story\n*ao clique.*'} inicio={4} tamanho={96} cor={C.creme} style={{marginTop: 26}} />
+        <Chapeu texto="Meu site" cor={C.amarelo} inicio={-14} />
+        <Titulo texto={'Do story\n*ao clique.*'} inicio={-12} tamanho={96} cor={C.creme} style={{marginTop: 26}} />
       </div>
       <div style={{position: 'absolute', right: 90, top: 440, display: 'grid', gap: 10, justifyItems: 'end', opacity: vai(f, 12, 26)}}>
         {PASSOS.map((p, i) => (
