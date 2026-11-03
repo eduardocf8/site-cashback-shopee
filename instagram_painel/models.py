@@ -95,6 +95,11 @@ class Automacao(models.Model):
     def __str__(self):
         return self.nome
 
+    @property
+    def e_anuncio(self) -> bool:
+        """Presa a um anúncio (ver AnuncioVisto), e não a um story do perfil."""
+        return self.gatilho == self.STORY and self.midia_id.startswith(("ad:", "post:", "story:"))
+
 
 class Disparo(models.Model):
     """Cada vez que uma automação respondeu alguém (ou tentou). Também evita responder duas vezes."""
@@ -116,6 +121,40 @@ class Disparo(models.Model):
     class Meta:
         ordering = ["-criado_em"]
         constraints = [models.UniqueConstraint(fields=["automacao", "evento_id"], name="disparo_unico_por_evento")]
+
+
+class AnuncioVisto(models.Model):
+    """Um anúncio (ou story que não está no perfil) de onde já chegou resposta por DM.
+
+    Os anúncios de reels que também rodam nos stories não aparecem na lista de stories da conta: o
+    Instagram só conta deles quando alguém responde. Cada resposta guarda aqui o que veio junto (o ID do
+    anúncio, o reels de origem, o story de onde a pessoa respondeu) e a tela da automação lista isso na
+    opção "Um anúncio". A `chave` é o que fica em Automacao.midia_id:
+    - "ad:<id>" quando o Instagram mandou o ID do anúncio (o mais estável);
+    - "post:<id>" quando só mandou o post/reels de origem;
+    - "story:<id>" quando é uma resposta a story sem nada do anúncio (e o story não está no perfil)."""
+
+    ig_id = models.CharField(max_length=64, db_index=True)
+    chave = models.CharField(max_length=80)
+    anuncio_id = models.CharField(max_length=64, blank=True)
+    post_id = models.CharField(max_length=64, blank=True)
+    story_id = models.CharField(max_length=64, blank=True, db_index=True)
+    titulo = models.CharField(max_length=200, blank=True)
+    imagem = models.URLField(max_length=1000, blank=True)
+    # O story respondido é um story de verdade do perfil (aí não é anúncio e não aparece na lista).
+    do_perfil = models.BooleanField(default=False)
+    respostas = models.PositiveIntegerField(default=0)
+    ultimo_texto = models.CharField(max_length=200, blank=True)
+    bruto = models.JSONField("o que veio do anúncio (referral e reply_to)", default=dict, blank=True)
+    primeira_em = models.DateTimeField(auto_now_add=True)
+    ultima_em = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ["-ultima_em"]
+        constraints = [models.UniqueConstraint(fields=["ig_id", "chave"], name="anuncio_visto_por_chave")]
+
+    def __str__(self):
+        return self.titulo or self.chave
 
 
 class AvisoRecebido(models.Model):
