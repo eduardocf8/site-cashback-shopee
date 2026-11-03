@@ -7,10 +7,11 @@
 import React from 'react';
 import {AbsoluteFill, Easing, Sequence, interpolate, useCurrentFrame, useVideoConfig} from 'remotion';
 import {C, FONTE} from '../appfiliado/marca';
-import {Apoio, Celular, Cena, Chapeu, Conta, Cortina, Etiqueta, Final, Fundo, Titulo, mola, s, vai} from './comum';
-import {CTA} from './textos';
+import {Apoio, Cabecalho, CelularNaCena, Cena, Chapeu, Conta, Cortina, DURACAO_FINAL, Final, Fundo, Legendas, Titulo, mola, s, vai} from './comum';
+import {CTA, INCLUSOS} from './textos';
 
 const ESCURO_AMARELO = '#8A6A00';
+const POS_TITULO = 330; // o mesmo de POS.titulo (comum.tsx), sem chapéu
 const brl = (v: number) => 'R$ ' + v.toLocaleString('pt-BR', {minimumFractionDigits: 2, maximumFractionDigits: 2});
 const brl0 = (v: number) => 'R$ ' + Math.round(v).toLocaleString('pt-BR');
 
@@ -58,25 +59,22 @@ const TelaMetas: React.FC = () => {
   const f = useCurrentFrame();
   const {fps} = useVideoConfig();
   const primeiro = vai(f, 24, 88, 0, ATE_ONTEM, Easing.out(Easing.cubic));
-  const depois = vai(f, 168, 218, ATE_ONTEM, DIA_28, Easing.inOut(Easing.cubic));
-  const faturamento = f < 168 ? primeiro : depois;
+  const depois = vai(f, 148, 192, ATE_ONTEM, DIA_28, Easing.inOut(Easing.cubic));
+  const faturamento = f < 148 ? primeiro : depois;
   const largura = (faturamento / 78000) * 100;
-  const batida = f >= 214;
-  const festa = mola(f, 214, fps, 10);
-  const dia = f < 158 ? 'Dia 20 · prévia' : 'Dia 28 · prévia';
-  const trocaDia = mola(f, 158, fps, 14);
+  const batida = f >= 188;
+  const festa = mola(f, 188, fps, 10);
+  const dia = f < 140 ? 'Dia 20 · prévia' : 'Dia 28 · prévia';
+  const trocaDia = mola(f, 140, fps, 14);
   return (
     <AbsoluteFill style={{fontFamily: FONTE, color: C.tinta}}>
       <Fundo tom="creme" />
-      <div style={{position: 'absolute', left: 90, right: 90, top: 330}}>
-        <Chapeu texto="Resultados e metas" />
-        <Titulo texto={'Agora você *sabe.*'} inicio={4} tamanho={100} destaque={ESCURO_AMARELO} style={{marginTop: 26}} />
-      </div>
-      <Cartao style={{position: 'absolute', left: 70, right: 70, top: 600, opacity: vai(f, 10, 24), transform: `translateY(${(1 - vai(f, 10, 24)) * 50}px)`}}>
+      <Cabecalho chapeu="Resultados e metas" titulo={'Agora você *sabe.*'} inicio={4} tamanho={100} />
+      <Cartao style={{position: 'absolute', left: 90, right: 90, top: 560, opacity: vai(f, 10, 24), transform: `translateY(${(1 - vai(f, 10, 24)) * 50}px)`}}>
         <div style={{display: 'flex', justifyContent: 'space-between', alignItems: 'center'}}>
           <div style={{fontSize: 40, fontWeight: 800}}>Meta de Novembro</div>
           <div style={{fontSize: 26, fontWeight: 800, background: '#FBF1CF', color: '#7A5B00', borderRadius: 999, padding: '10px 20px',
-            transform: f >= 158 ? `scale(${0.85 + 0.15 * trocaDia})` : undefined}}>{dia}</div>
+            transform: f >= 140 ? `scale(${0.85 + 0.15 * trocaDia})` : undefined}}>{dia}</div>
         </div>
         <div style={{fontSize: 28, color: C.cinza, marginTop: 26}}>Faturamento até ontem</div>
         <div style={{fontSize: 92, fontWeight: 800, letterSpacing: '-.04em', fontVariantNumeric: 'tabular-nums', color: batida ? C.ok : C.tinta}}>{brl(faturamento)}</div>
@@ -99,7 +97,7 @@ const TelaMetas: React.FC = () => {
         <div style={{display: 'grid', gap: 16, marginTop: 20}}>
           {FAIXAS.map((x, i) => {
             const ok = faturamento >= x.meta;
-            const aparece = vai(f, 92 + i * 8, 106 + i * 8);
+            const aparece = vai(f, 40 + i * 8, 54 + i * 8);
             const pulo = ok && i === 0 ? 1 + 0.05 * Math.sin(Math.min(1, festa) * Math.PI) : 1;
             return (
               <div key={x.nome} style={{display: 'flex', alignItems: 'center', gap: 20, fontSize: 32, opacity: aparece, transform: `translateX(${(1 - aparece) * -30}px) scale(${pulo})`,
@@ -116,13 +114,10 @@ const TelaMetas: React.FC = () => {
           })}
         </div>
       </Cartao>
-      <div style={{position: 'absolute', left: 70, top: 1400}}>
-        {f < 158 ? (
-          <Etiqueta inicio={120} tom="escuro" texto="📅 R$ 1.062 por dia nos 10 dias que faltam" />
-        ) : (
-          <Etiqueta inicio={222} tom="amarelo" texto="🎉 Faixa 100% batida: bônus de R$ 300" />
-        )}
-      </div>
+      <Legendas y={1380} tamanho={38} falas={[
+        {f: 96, icone: '📅', tom: 'escuro', texto: 'R$ 1.062 por dia nos 10 dias que faltam'},
+        {f: 192, icone: '🎉', tom: 'amarelo', texto: 'Faixa 100% batida: bônus de R$ 300'},
+      ]} />
     </AbsoluteFill>
   );
 };
@@ -155,7 +150,7 @@ const ConversaLia: React.FC = () => {
       </div>
       <div style={{flex: 1, padding: '24px 22px', display: 'flex', flexDirection: 'column', gap: 18, color: C.tinta}}>
         {f >= 18 && (
-          <div style={{alignSelf: 'flex-end', background: '#D9FDD3', borderRadius: '24px 8px 24px 24px', padding: '12px 20px', fontSize: 30, fontWeight: 500,
+          <div style={{alignSelf: 'flex-end', background: '#D9FDD3', borderRadius: '24px 8px 24px 24px', padding: '14px 22px', fontSize: 36, fontWeight: 500,
             opacity: Math.min(1, minha * 1.5), transform: `scale(${0.9 + 0.1 * minha})`, transformOrigin: 'right top'}}>
             metas <span style={{fontSize: 18, color: '#8C978F'}}>20:14 <span style={{color: '#4FA3E0'}}>✓✓</span></span>
           </div>
@@ -166,7 +161,7 @@ const ConversaLia: React.FC = () => {
           </div>
         )}
         {f >= 52 && (
-          <div style={{alignSelf: 'flex-start', background: C.balao, borderRadius: '8px 24px 24px 24px', padding: '18px 22px', width: 500, fontSize: 27, lineHeight: 1.36,
+          <div style={{alignSelf: 'flex-start', background: C.balao, borderRadius: '8px 24px 24px 24px', padding: '18px 22px', width: 510, fontSize: 31, lineHeight: 1.34,
             boxShadow: '0 4px 10px rgba(0,0,0,.07)', opacity: Math.min(1, resposta * 1.5), transform: `scale(${0.92 + 0.08 * resposta})`, transformOrigin: 'left top'}}>
             {LINHAS_LIA.map((l, i) => (
               <div key={i} style={{fontWeight: l.b ? 800 : 500, marginTop: i === 2 ? 8 : i > 2 ? 6 : 0, opacity: vai(f, 54 + i * 4, 62 + i * 4)}}>{l.t}</div>
@@ -182,19 +177,18 @@ const ConversaLia: React.FC = () => {
 const PergunteALia: React.FC = () => (
   <AbsoluteFill style={{fontFamily: FONTE, color: C.creme}}>
     <Fundo tom="escuro" />
-    <div style={{position: 'absolute', left: 90, right: 90, top: 330}}>
-      <Chapeu texto="Lia no WhatsApp" cor={C.amarelo} />
-      <Titulo texto={'Ou mande *metas*\npra Lia.'} inicio={2} tamanho={92} cor={C.creme} style={{marginTop: 24}} />
-    </div>
-    <div style={{position: 'absolute', left: 0, right: 0, top: 620, display: 'flex', justifyContent: 'center'}}>
-      <Celular escala={0.95} hora="20:14">
-        <ConversaLia />
-      </Celular>
-    </div>
+    <Cabecalho chapeu="Lia no WhatsApp" titulo={'Ou mande *metas*\npra Lia.'} inicio={2} escuro tamanho={92} />
+    <CelularNaCena hora="20:14">
+      <ConversaLia />
+    </CelularNaCena>
+    <Legendas falas={[
+      {f: 62, icone: '⏱️', texto: 'Na hora com os números do painel'},
+      {f: 114, icone: '💬', tom: 'amarelo', texto: 'Também resultados, vendas e top'},
+    ]} />
   </AbsoluteFill>
 );
 
-const QF = {gancho: s(3), metas: s(8.5), lia: s(5), final: s(3.5)};
+const QF = {gancho: s(3), metas: s(8.5), lia: s(5.6), final: DURACAO_FINAL.comInclusos};
 export const DURACAO_RESULTADOS_FALTA = QF.gancho + QF.metas + QF.lia + QF.final;
 
 export const ResultadosQuantoFalta: React.FC = () => {
@@ -205,7 +199,7 @@ export const ResultadosQuantoFalta: React.FC = () => {
       <Sequence durationInFrames={QF.gancho}><Cena duracao={QF.gancho} entrada={false} saida={false}><GanchoMeta /></Cena></Sequence>
       <Sequence from={QF.gancho} durationInFrames={QF.metas}><Cena duracao={QF.metas} entrada={false} saida={false}><TelaMetas /></Cena></Sequence>
       <Sequence from={lia} durationInFrames={QF.lia}><Cena duracao={QF.lia} entrada={false} saida={false}><PergunteALia /></Cena></Sequence>
-      <Sequence from={fim} durationInFrames={QF.final}><Cena duracao={QF.final} entrada={false} saida={false}><Final frase={'Saiba quanto falta\n*pro bônus.*'} linha={CTA.incluso} /></Cena></Sequence>
+      <Sequence from={fim} durationInFrames={QF.final}><Cena duracao={QF.final} entrada={false} saida={false}><Final frase={'Saiba quanto falta\n*pro bônus.*'} linha={CTA.planos} inclusos={INCLUSOS} destaque="Resultados e metas" /></Cena></Sequence>
       <Sequence from={QF.gancho - 9} durationInFrames={18}><Cortina /></Sequence>
       <Sequence from={lia - 9} durationInFrames={18}><Cortina cor={C.verde} /></Sequence>
       <Sequence from={fim - 9} durationInFrames={18}><Cortina /></Sequence>
@@ -229,23 +223,25 @@ const Corrida: React.FC = () => {
   const f = useCurrentFrame();
   const {fps} = useVideoConfig();
   const marcos = [40, 70, 100, 130];
-  const valor = (v: number[]) => interpolate(f, marcos, v, {extrapolateLeft: 'clamp', extrapolateRight: 'clamp', easing: Easing.inOut(Easing.quad)});
-  const valores = SUB_IDS.map((x) => valor(x.v));
+  const valorNo = (q: number, v: number[]) => interpolate(q, marcos, v, {extrapolateLeft: 'clamp', extrapolateRight: 'clamp', easing: Easing.inOut(Easing.quad)});
+  const valores = SUB_IDS.map((x) => valorNo(f, x.v));
   const maior = Math.max(...valores, 1);
   const dia = Math.round(interpolate(f, marcos, DIAS_DA_CORRIDA, {extrapolateLeft: 'clamp', extrapolateRight: 'clamp'}));
-  // posição contínua: cada barra desce uma "casa" por barra maior que ela (suave quando elas se cruzam)
-  const posicao = valores.map((v, i) => valores.reduce((p, w, j) => (j === i ? p : p + 1 / (1 + Math.exp(-(w - v) / 18))), 0));
+  // posição: a colocação de cada barra (1ª, 2ª…) em cada um dos últimos 10 quadros, em média. Parada, fica numa casa
+  // inteira (nunca meio em cima da outra); quando a ordem muda, desliza em 10 quadros até a casa nova.
+  const colocacao = (q: number) => {
+    const vs = SUB_IDS.map((x) => valorNo(q, x.v));
+    return vs.map((v, i) => vs.filter((w, j) => w > v || (w === v && j < i)).length);
+  };
+  const posicao = SUB_IDS.map((_, i) => Array.from({length: 10}, (_, k) => colocacao(f - k)[i]).reduce((a, b) => a + b, 0) / 10);
   const lider = valores.indexOf(maior);
   const ALT = 118;
   const entrada = vai(f, 12, 30);
   return (
     <AbsoluteFill style={{fontFamily: FONTE, color: C.tinta}}>
       <Fundo tom="creme" />
-      <div style={{position: 'absolute', left: 90, right: 90, top: 330}}>
-        <Chapeu texto="Resultados e metas" inicio={-14} />
-        <Titulo texto={'Qual dos seus\ngrupos *vende mais?*'} inicio={-12} tamanho={86} destaque={ESCURO_AMARELO} style={{marginTop: 26}} />
-      </div>
-      <Cartao style={{position: 'absolute', left: 70, right: 70, top: 650, opacity: entrada, transform: `translateY(${(1 - entrada) * 50}px)`}}>
+      <Cabecalho chapeu="Resultados e metas" titulo={'Qual dos seus\ngrupos *vende mais?*'} inicio={-12} tamanho={86} />
+      <Cartao style={{position: 'absolute', left: 90, right: 90, top: 630, opacity: entrada, transform: `translateY(${(1 - entrada) * 50}px)`}}>
         <div style={{display: 'flex', justifyContent: 'space-between', alignItems: 'baseline'}}>
           <div style={{fontSize: 36, fontWeight: 800}}>Comissão por Sub ID</div>
           <div style={{fontSize: 28, color: C.cinza, fontVariantNumeric: 'tabular-nums'}}>Novembro · dia {dia}</div>
@@ -255,7 +251,9 @@ const Corrida: React.FC = () => {
             const v = valores[i];
             const frente = i === lider && f >= 128;
             return (
-              <div key={x.nome} style={{position: 'absolute', left: 0, right: 0, top: posicao[i] * ALT, height: ALT - 18, display: 'flex', alignItems: 'center', gap: 20}}>
+              // fundo branco e a que vale mais por cima: na ultrapassagem, uma linha cobre a outra em vez de os textos se misturarem
+              <div key={x.nome} style={{position: 'absolute', left: 0, right: 0, top: posicao[i] * ALT, height: ALT - 18, display: 'flex', alignItems: 'center', gap: 20,
+                background: C.branco, zIndex: 10 + Math.round(v), boxShadow: '0 -9px 0 #fff, 0 9px 0 #fff'}}>
                 <div style={{width: 230, flex: 'none'}}>
                   <div style={{fontSize: 30, fontWeight: 800, whiteSpace: 'nowrap'}}>{x.rotulo}</div>
                   <div style={{fontSize: 22, color: C.cinza}}>{x.nome}</div>
@@ -271,12 +269,10 @@ const Corrida: React.FC = () => {
           })}
         </div>
       </Cartao>
-      <div style={{position: 'absolute', left: 70, top: 1430}}>
-        <Etiqueta inicio={138} tom="amarelo" texto={<span>🏆 Grupo VIP na frente</span>} />
-      </div>
-      <div style={{position: 'absolute', left: 70, top: 1530, opacity: mola(f, 150, fps) > 0.01 ? 1 : 0}}>
-        <Etiqueta inicio={150} texto="Cada grupo com o seu Sub ID" />
-      </div>
+      <Legendas y={1430} falas={[
+        {f: 44, icone: '🔗', texto: 'Cada grupo com o seu Sub ID'},
+        {f: 130, icone: '🏆', tom: 'amarelo', texto: 'Grupo VIP passou na frente'},
+      ]} />
     </AbsoluteFill>
   );
 };
@@ -301,10 +297,10 @@ const Horarios: React.FC = () => {
   return (
     <AbsoluteFill style={{fontFamily: FONTE, color: C.creme}}>
       <Fundo tom="escuro" />
-      <div style={{position: 'absolute', left: 90, right: 90, top: 330}}>
-        <Titulo texto={'E em que\n*horário?*'} inicio={2} tamanho={104} cor={C.creme} />
+      <div style={{position: 'absolute', left: 90, right: 90, top: POS_TITULO}}>
+        <Titulo texto={'E em que\n*horário?*'} inicio={2} tamanho={100} cor={C.creme} />
       </div>
-      <Cartao style={{position: 'absolute', left: 70, right: 70, top: 630, padding: '34px 34px 30px', opacity: entrada, transform: `translateY(${(1 - entrada) * 50}px)`}}>
+      <Cartao style={{position: 'absolute', left: 90, right: 90, top: 600, padding: '34px 34px 30px', opacity: entrada, transform: `translateY(${(1 - entrada) * 50}px)`}}>
         <div style={{fontSize: 34, fontWeight: 800}}>Quando suas vendas acontecem</div>
         <div style={{fontSize: 24, color: C.cinza, marginTop: 4}}>pedidos por dia da semana e hora</div>
         <div style={{marginTop: 22, display: 'grid', gap: 5}}>
@@ -339,9 +335,10 @@ const Horarios: React.FC = () => {
           })}
         </div>
       </Cartao>
-      <div style={{position: 'absolute', left: 70, right: 70, top: 1380}}>
-        <Etiqueta inicio={122} tom="amarelo" tamanho={27} texto="💡 Seu bot para às 20h, antes do horário mais forte" />
-      </div>
+      <Legendas y={1330} tamanho={36} falas={[
+        {f: 84, icone: '🔥', texto: 'Os horários mais fortes em destaque'},
+        {f: 132, icone: '💡', tom: 'amarelo', texto: 'Seu bot para antes do horário mais forte'},
+      ]} />
     </AbsoluteFill>
   );
 };
@@ -360,10 +357,10 @@ const Origens: React.FC = () => {
   return (
     <AbsoluteFill style={{fontFamily: FONTE, color: C.tinta}}>
       <Fundo tom="creme" />
-      <div style={{position: 'absolute', left: 90, right: 90, top: 330}}>
+      <div style={{position: 'absolute', left: 90, right: 90, top: POS_TITULO}}>
         <Titulo texto={'E de onde veio\n*cada venda.*'} inicio={2} tamanho={100} destaque={ESCURO_AMARELO} />
       </div>
-      <Cartao style={{position: 'absolute', left: 70, right: 70, top: 650, opacity: entrada, transform: `translateY(${(1 - entrada) * 50}px)`}}>
+      <Cartao style={{position: 'absolute', left: 90, right: 90, top: 600, opacity: entrada, transform: `translateY(${(1 - entrada) * 50}px)`}}>
         <div style={{display: 'flex', justifyContent: 'space-between', alignItems: 'baseline'}}>
           <div style={{fontSize: 36, fontWeight: 800}}>De onde vieram as vendas</div>
           <div style={{fontSize: 26, color: C.cinza}}>comissão do mês</div>
@@ -390,14 +387,14 @@ const Origens: React.FC = () => {
           })}
         </div>
       </Cartao>
-      <div style={{position: 'absolute', left: 70, top: 1330}}>
-        <Etiqueta inicio={84} tom="escuro" texto="Filtre a aba Resultados por origem" />
-      </div>
+      <Legendas y={1250} falas={[
+        {f: 58, icone: '🔎', tom: 'escuro', texto: 'Filtre a aba Resultados por origem'},
+      ]} />
     </AbsoluteFill>
   );
 };
 
-const QG = {corrida: s(6.2), horarios: s(6), origens: s(4.6), final: s(3.5)};
+const QG = {corrida: s(6.2), horarios: s(6), origens: s(4.6), final: DURACAO_FINAL.comInclusos};
 export const DURACAO_RESULTADOS_GRUPO = QG.corrida + QG.horarios + QG.origens + QG.final;
 
 export const ResultadosQualGrupo: React.FC = () => {
@@ -408,7 +405,7 @@ export const ResultadosQualGrupo: React.FC = () => {
       <Sequence durationInFrames={QG.corrida}><Cena duracao={QG.corrida} entrada={false} saida={false}><Corrida /></Cena></Sequence>
       <Sequence from={QG.corrida} durationInFrames={QG.horarios}><Cena duracao={QG.horarios} entrada={false} saida={false}><Horarios /></Cena></Sequence>
       <Sequence from={origens} durationInFrames={QG.origens}><Cena duracao={QG.origens} entrada={false} saida={false}><Origens /></Cena></Sequence>
-      <Sequence from={fim} durationInFrames={QG.final}><Cena duracao={QG.final} entrada={false} saida={false}><Final frase={'Saiba *o que vende*\ne quando vende.'} linha={CTA.incluso} /></Cena></Sequence>
+      <Sequence from={fim} durationInFrames={QG.final}><Cena duracao={QG.final} entrada={false} saida={false}><Final frase={'Saiba *o que vende*\ne quando vende.'} linha={CTA.planos} inclusos={INCLUSOS} destaque="Resultados e metas" /></Cena></Sequence>
       <Sequence from={QG.corrida - 9} durationInFrames={18}><Cortina /></Sequence>
       <Sequence from={origens - 9} durationInFrames={18}><Cortina cor={C.verde} /></Sequence>
       <Sequence from={fim - 9} durationInFrames={18}><Cortina /></Sequence>

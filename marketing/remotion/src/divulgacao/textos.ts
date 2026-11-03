@@ -12,7 +12,6 @@ export const PRECO = {
 export const CTA = {
   bot: `Bot de WhatsApp · a partir de ${PRECO.bot}/mês`,
   site: `Meu site · a partir de ${PRECO.site}/mês`,
-  incluso: `Incluso em todos os planos, a partir de ${PRECO.site}/mês`,
   planos: `Planos a partir de ${PRECO.site}/mês`,
 };
 

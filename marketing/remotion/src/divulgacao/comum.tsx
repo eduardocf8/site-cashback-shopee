@@ -160,9 +160,10 @@ export const CelularNaCena: React.FC<{children: React.ReactNode; inicio?: number
 export type Fala = {f: number; texto: React.ReactNode; icone?: string; tom?: 'claro' | 'escuro' | 'amarelo'};
 
 export const Balao: React.FC<{texto: React.ReactNode; icone?: string; tom?: 'claro' | 'escuro' | 'amarelo'; tamanho?: number}> = ({texto, icone, tom = 'claro', tamanho = 40}) => {
-  const cores = tom === 'escuro' ? {bg: C.verde, fg: C.creme, bola: C.amarelo, bolaFg: C.verde}
+  // o círculo do ícone nunca é amarelo: emoji amarelo (✨ ⚡ ⚠️ 🔔) sumiria dentro dele
+  const cores = tom === 'escuro' ? {bg: C.verde, fg: C.creme, bola: C.creme, bolaFg: C.verde}
     : tom === 'amarelo' ? {bg: C.amarelo, fg: C.verde, bola: C.verde, bolaFg: C.amarelo}
-      : {bg: C.branco, fg: C.tinta, bola: C.amarelo, bolaFg: C.verde};
+      : {bg: C.branco, fg: C.tinta, bola: C.verde, bolaFg: C.amarelo};
   return (
     <div style={{fontFamily: FONTE, display: 'inline-flex', alignItems: 'center', gap: 20, background: cores.bg, color: cores.fg, borderRadius: 999,
       padding: icone ? '20px 40px 20px 20px' : '24px 44px', fontSize: tamanho, fontWeight: 800, letterSpacing: '-.01em', lineHeight: 1.15, maxWidth: 940,
@@ -176,6 +177,8 @@ export const Balao: React.FC<{texto: React.ReactNode; icone?: string; tom?: 'cla
 
 /** Legendas da cena: um balão por vez, centralizado em `y`. Cada um entra no seu frame e sai (subindo
  * e sumindo) quando o próximo entra; o último fica até `ate` (ou até o fim da cena). */
+const SAIDA_DA_FALA = 8;
+
 export const Legendas: React.FC<{falas: Fala[]; y?: number; ate?: number; tamanho?: number}> = ({falas, y = POS.legenda, ate, tamanho = 40}) => {
   const f = useCurrentFrame();
   const {fps} = useVideoConfig();
@@ -183,10 +186,10 @@ export const Legendas: React.FC<{falas: Fala[]; y?: number; ate?: number; tamanh
     <div style={{position: 'absolute', left: 0, right: 0, top: y, zIndex: 70}}>
       {falas.map((fala, i) => {
         const proxima = i + 1 < falas.length ? falas[i + 1].f : ate;
-        const comeca = fala.f + (i > 0 ? 5 : 0); // espera o anterior sair
-        if (f < comeca || (proxima !== undefined && f > proxima + 9)) return null;
+        const comeca = fala.f + (i > 0 ? SAIDA_DA_FALA : 0); // só entra depois que o anterior saiu: nunca dois balões juntos
+        if (f < comeca || (proxima !== undefined && f > proxima + SAIDA_DA_FALA)) return null;
         const entra_ = mola(f, comeca, fps, 14);
-        const sai = proxima === undefined ? 0 : vai(f, proxima, proxima + 9, 0, 1, Easing.in(Easing.cubic));
+        const sai = proxima === undefined ? 0 : vai(f, proxima, proxima + SAIDA_DA_FALA, 0, 1, Easing.in(Easing.cubic));
         return (
           <div key={i} style={{position: 'absolute', left: 0, right: 0, top: 0, display: 'flex', justifyContent: 'center',
             opacity: Math.min(1, entra_ * 1.4) * (1 - sai), transform: `translateY(${(1 - entra_) * 46 - sai * 34}px) scale(${0.9 + 0.1 * entra_ - 0.05 * sai})`}}>

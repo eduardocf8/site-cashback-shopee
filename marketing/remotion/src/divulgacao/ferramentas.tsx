@@ -8,8 +8,8 @@ import React from 'react';
 import {AbsoluteFill, Img, Sequence, useCurrentFrame, useVideoConfig} from 'remotion';
 import {C, FONTE} from '../appfiliado/marca';
 import {Chip, Digitando, produto} from '../appfiliado/ui';
-import {Apoio, Celular, Cena, Chapeu, Conta, Cortina, Etiqueta, Final, Fundo, Titulo, Toque, mola, s, vai} from './comum';
-import {CTA, GRUPO, OFERTAS} from './textos';
+import {Apoio, Cabecalho, CelularNaCena, Cena, Conta, Cortina, DURACAO_FINAL, Final, Fundo, Legendas, POS, Titulo, Toque, mola, s, vai} from './comum';
+import {CTA, GRUPO, INCLUSOS, OFERTAS} from './textos';
 
 const ESCURO_AMARELO = '#8A6A00';
 
@@ -20,11 +20,11 @@ const Pergunta: React.FC = () => {
   const {fps} = useVideoConfig();
   // cartões de produto soltos em volta da pergunta, entrando devagar (a dúvida de qual escolher)
   const soltos = [
-    {foto: 'fone', x: 90, y: 330, giro: -8},
-    {foto: 'airfryer', x: 760, y: 360, giro: 7},
-    {foto: 'tenis', x: 120, y: 1290, giro: 6},
-    {foto: 'relogio', x: 740, y: 1250, giro: -6},
-    {foto: 'secador', x: 430, y: 1400, giro: 3},
+    {foto: 'fone', x: 120, y: 360, giro: -7},
+    {foto: 'airfryer', x: 730, y: 360, giro: 7},
+    {foto: 'tenis', x: 90, y: 1220, giro: 6},
+    {foto: 'secador', x: 425, y: 1270, giro: 0},
+    {foto: 'relogio', x: 760, y: 1220, giro: -6},
   ];
   return (
     <AbsoluteFill style={{fontFamily: FONTE, color: C.creme}}>
@@ -43,7 +43,7 @@ const Pergunta: React.FC = () => {
       })}
       <div style={{position: 'absolute', left: 90, right: 90, top: 760}}>
         <Titulo texto={'O que divulgar\n*hoje?*'} inicio={-12} tamanho={124} cor={C.creme} alinhar="center" />
-        <Apoio texto="Com tanto produto, por onde começar?" inicio={22} alinhar="center" cor={C.suave} tamanho={40} style={{marginTop: 30}} />
+        <Apoio texto="Tanto produto. Por onde começar?" inicio={22} alinhar="center" cor={C.suave} tamanho={40} style={{marginTop: 30}} />
       </div>
     </AbsoluteFill>
   );
@@ -97,10 +97,7 @@ const Busca: React.FC = () => {
   return (
     <AbsoluteFill style={{fontFamily: FONTE, color: C.tinta}}>
       <Fundo tom="creme" />
-      <div style={{position: 'absolute', left: 90, right: 90, top: 330}}>
-        <Chapeu texto="Radar de ofertas" />
-        <Titulo texto={'Ache o produto certo\n*em segundos.*'} inicio={4} tamanho={84} destaque={ESCURO_AMARELO} style={{marginTop: 24}} />
-      </div>
+      <Cabecalho chapeu="Radar de ofertas" titulo={'Ache o produto certo\n*em segundos.*'} inicio={4} tamanho={84} />
       <div style={{position: 'absolute', left: PAINEL.x, top: PAINEL.y, width: PAINEL.largura, height: 960}}>
         <div style={{background: C.branco, border: `3px solid ${C.borda}`, borderRadius: 26, padding: '22px 26px', display: 'flex', alignItems: 'center', gap: 16,
           opacity: vai(f, 6, 18)}}>
@@ -133,17 +130,18 @@ const Busca: React.FC = () => {
       {/* "Maior comissão" (2º chip) e o "Copiar link" do 1º cartão, em coordenadas da tela */}
       <Toque x={PAINEL.x + 340} y={PAINEL.y + 156} f={QUANDO.ordem} />
       <Toque x={PAINEL.x + CARTAO.largura / 2} y={PAINEL.y + CARTAO.topo + CARTAO.altura - 34} f={QUANDO.copiar} />
-      <div style={{position: 'absolute', left: 0, right: 0, top: 1470, zIndex: 10, display: 'flex', justifyContent: 'center'}}>
-        <Etiqueta texto="✓ Seu link de afiliado foi copiado" inicio={QUANDO.copiar + 6} tom="escuro" />
-      </div>
-      <div style={{position: 'absolute', left: 0, right: 0, top: 1554, zIndex: 10, display: 'flex', justifyContent: 'center'}}>
-        <Etiqueta texto={<span>📦 Mais de <Conta de={10000} ate={30000} inicio={QUANDO.copiar + 30} duracao={22} /> produtos · atualizados todo dia</span>} inicio={QUANDO.copiar + 30} tom="amarelo" tamanho={28} />
-      </div>
+      <Legendas y={1490} falas={[
+        {f: 48, icone: '🔎', texto: 'Busque por palavra ou categoria'},
+        {f: QUANDO.ordem + 6, icone: '📈', texto: 'Ordene por maior comissão'},
+        {f: QUANDO.copiar + 4, icone: '✓', tom: 'escuro', texto: 'Seu link de afiliado foi copiado'},
+        {f: QUANDO.copiar + 54, icone: '📦', tom: 'amarelo', texto: <span>Mais de <Conta de={10000} ate={30000} inicio={QUANDO.copiar + 60} duracao={24} /> produtos</span>},
+        {f: QUANDO.copiar + 104, icone: '🔄', texto: 'Atualizados todo dia'},
+      ]} />
     </AbsoluteFill>
   );
 };
 
-const RADAR = {pergunta: s(2.6), busca: s(11.6), final: s(3.6)};
+const RADAR = {pergunta: s(2.6), busca: s(11.6), final: DURACAO_FINAL.comInclusos};
 export const DURACAO_RADAR = RADAR.pergunta + RADAR.busca + RADAR.final;
 
 export const RadarAcheOProduto: React.FC = () => (
@@ -152,7 +150,7 @@ export const RadarAcheOProduto: React.FC = () => (
     <Sequence from={RADAR.pergunta} durationInFrames={RADAR.busca}><Cena duracao={RADAR.busca} entrada={false} saida={false}><Busca /></Cena></Sequence>
     <Sequence from={RADAR.pergunta - 9} durationInFrames={18}><Cortina /></Sequence>
     <Sequence from={RADAR.pergunta + RADAR.busca} durationInFrames={RADAR.final}>
-      <Cena duracao={RADAR.final} entrada={false} saida={false}><Final frase={'O produto certo,\n*com o seu link.*'} linha={CTA.incluso} /></Cena>
+      <Cena duracao={RADAR.final} entrada={false} saida={false}><Final frase={'O produto certo\n*com o seu link.*'} linha={CTA.planos} inclusos={INCLUSOS} destaque="Radar de ofertas" /></Cena>
     </Sequence>
     <Sequence from={RADAR.pergunta + RADAR.busca - 9} durationInFrames={18}><Cortina cor={C.verde} /></Sequence>
   </AbsoluteFill>
@@ -240,25 +238,16 @@ const OutroGrupo: React.FC = () => {
   return (
     <AbsoluteFill style={{fontFamily: FONTE, color: C.tinta}}>
       <Fundo tom="creme" />
-      <div style={{position: 'absolute', left: 90, right: 90, top: 330}}>
-        <Chapeu texto="Conversor de links" inicio={-14} />
-        <Titulo texto={'Achou uma oferta\nboa em *outro grupo?*'} inicio={-12} tamanho={84} destaque={ESCURO_AMARELO} style={{marginTop: 24}} />
-      </div>
-      <div style={{position: 'absolute', left: 0, right: 0, top: 640, display: 'flex', justifyContent: 'center'}}>
-        <div style={{position: 'relative'}}>
-          <Celular escala={0.78} hora="10:12">
-            <GrupoComMensagem nome="Promoções Relâmpago" membros="842 participantes" emoji="⚡" chega={10} hora="10:12" meus={false} autor="~ Carlos" segurando={C1.segura} antes="Bom dia, pessoal! ☀️" />
-            <MenuCopiar inicio={C1.menu} copiou={C1.copia} />
-          </Celular>
-        </div>
-      </div>
-      <Toque x={520} y={1330} f={C1.segura} />
-      <div style={{position: 'absolute', left: 50, top: 850}}>
-        <Etiqueta texto="⚠️ Com o link de outro afiliado" inicio={30} tom="claro" tamanho={28} />
-      </div>
-      <div style={{position: 'absolute', right: 60, top: 1460, opacity: vai(f, C1.copia, C1.copia + 8)}}>
-        <Etiqueta texto="📋 Mensagem copiada" inicio={C1.copia + 2} tom="escuro" tamanho={28} />
-      </div>
+      <Cabecalho chapeu="Conversor de links" titulo={'Achou uma oferta\nboa em *outro grupo?*'} inicio={-12} tamanho={84} />
+      <CelularNaCena hora="10:12">
+        <GrupoComMensagem nome="Promoções Relâmpago" membros="842 participantes" emoji="⚡" chega={10} hora="10:12" meus={false} autor="~ Carlos" segurando={C1.segura} antes="Bom dia, pessoal! ☀️" />
+        <MenuCopiar inicio={C1.menu} copiou={C1.copia} />
+      </CelularNaCena>
+      <Toque x={522} y={1277} f={C1.segura} />
+      <Legendas falas={[
+        {f: 28, icone: '⛔', texto: 'Com o link de outro afiliado'},
+        {f: C1.copia + 2, icone: '📋', tom: 'escuro', texto: 'Mensagem copiada'},
+      ]} />
     </AbsoluteFill>
   );
 };
@@ -289,10 +278,7 @@ const Converte: React.FC = () => {
   return (
     <AbsoluteFill style={{fontFamily: FONTE, color: C.creme}}>
       <Fundo tom="escuro" />
-      <div style={{position: 'absolute', left: 90, right: 90, top: 330}}>
-        <Chapeu texto="Conversor de links" cor={C.amarelo} />
-        <Titulo texto={'Cole, converta\ne *encaminhe.*'} inicio={4} tamanho={92} cor={C.creme} style={{marginTop: 24}} />
-      </div>
+      <Cabecalho chapeu="Conversor de links" titulo={'Cole, converta\ne *encaminhe.*'} inicio={4} escuro tamanho={92} />
       <div style={{position: 'absolute', left: 90, width: 900, top: 650, background: C.branco, color: C.tinta, borderRadius: 34, padding: 30,
         boxShadow: '0 30px 60px rgba(0,0,0,.3)', opacity: vai(f, 2, 14)}}>
         <div style={{fontSize: 24, fontWeight: 800, color: C.cinza}}>{convertido ? 'Pronto pra encaminhar' : 'Cole o texto ou os links'}</div>
@@ -320,11 +306,11 @@ const Converte: React.FC = () => {
       </div>
       <Toque x={870} y={1186} f={C2.converte} />
       <Toque x={870} y={1186} f={C2.copia} />
-      <div style={{position: 'absolute', left: 0, right: 0, top: 1320, display: 'flex', justifyContent: 'center'}}>
-        <Etiqueta texto={<span>✓ <Conta ate={N_LINKS} inicio={C2.troca} duracao={fimDasTrocas - C2.troca} /> links trocados pelo seu · o texto fica igual</span>} inicio={C2.troca + 4} tom="amarelo" tamanho={28} />
-      </div>
-      <Apoio texto="Até 20 links por texto. Com o Bot de WhatsApp, dá para enviar direto no grupo." inicio={fimDasTrocas + 10} alinhar="center" cor={C.suave} tamanho={30}
-        style={{position: 'absolute', left: 110, right: 110, top: 1430}} />
+      <Legendas y={1300} falas={[
+        {f: C2.troca + 2, icone: '✓', tom: 'amarelo', texto: <span><Conta ate={N_LINKS} inicio={C2.troca} duracao={fimDasTrocas - C2.troca} /> links trocados pelo seu</span>},
+        {f: fimDasTrocas + 14, icone: '🔗', texto: 'Até 20 links de uma vez'},
+        {f: C2.copia + 6, icone: '📋', tom: 'escuro', texto: 'Copiado: é só encaminhar'},
+      ]} />
     </AbsoluteFill>
   );
 };
@@ -332,21 +318,19 @@ const Converte: React.FC = () => {
 const NoSeuGrupo: React.FC = () => (
   <AbsoluteFill style={{fontFamily: FONTE, color: C.tinta}}>
     <Fundo tom="creme" />
-    <div style={{position: 'absolute', left: 90, right: 90, top: 330}}>
-      <Titulo texto={'No seu grupo,\n*com o seu link.*'} inicio={2} tamanho={92} destaque={ESCURO_AMARELO} />
+    <div style={{position: 'absolute', left: 90, right: 90, top: POS.titulo}}>
+      <Titulo texto={'No seu grupo\n*com o seu link.*'} inicio={2} tamanho={92} destaque={ESCURO_AMARELO} />
     </div>
-    <div style={{position: 'absolute', left: 0, right: 0, top: 620, display: 'flex', justifyContent: 'center'}}>
-      <Celular escala={0.8} hora="10:13">
-        <GrupoComMensagem nome={GRUPO.nome} membros={GRUPO.membros} emoji="🛍️" chega={8} hora="10:13" meus antes="Achadinhos de hoje 👇" />
-      </Celular>
-    </div>
-    <div style={{position: 'absolute', right: 60, top: 860}}>
-      <Etiqueta texto="✓ Comissão na sua conta" inicio={34} tom="amarelo" tamanho={28} />
-    </div>
+    <CelularNaCena hora="10:13">
+      <GrupoComMensagem nome={GRUPO.nome} membros={GRUPO.membros} emoji="🛍️" chega={8} hora="10:13" meus antes="Achadinhos de hoje 👇" />
+    </CelularNaCena>
+    <Legendas falas={[
+      {f: 30, icone: '✓', tom: 'amarelo', texto: 'A comissão cai na sua conta'},
+    ]} />
   </AbsoluteFill>
 );
 
-const CONV = {outro: s(4.5), converte: s(8.4), seu: s(3.2), final: s(3.6)};
+const CONV = {outro: s(4.5), converte: s(8.4), seu: s(3.2), final: DURACAO_FINAL.comInclusos};
 export const DURACAO_CONVERSOR = CONV.outro + CONV.converte + CONV.seu + CONV.final;
 
 export const ConversorColeEConverta: React.FC = () => {
@@ -361,7 +345,7 @@ export const ConversorColeEConverta: React.FC = () => {
       <Sequence from={c} durationInFrames={CONV.seu}><Cena duracao={CONV.seu} entrada={false} saida={false}><NoSeuGrupo /></Cena></Sequence>
       <Sequence from={c - 9} durationInFrames={18}><Cortina cor={C.verde} /></Sequence>
       <Sequence from={d} durationInFrames={CONV.final}>
-        <Cena duracao={CONV.final} entrada={false} saida={false}><Final frase={'Qualquer oferta,\n*com o seu link.*'} linha={CTA.incluso} /></Cena>
+        <Cena duracao={CONV.final} entrada={false} saida={false}><Final frase={'Qualquer oferta\n*com o seu link.*'} linha={CTA.planos} inclusos={INCLUSOS} destaque="Conversor de links" /></Cena>
       </Sequence>
       <Sequence from={d - 9} durationInFrames={18}><Cortina /></Sequence>
     </AbsoluteFill>

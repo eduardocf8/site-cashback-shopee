@@ -3,6 +3,8 @@
 import React from 'react';
 import {Composition} from 'remotion';
 import {BotAntesDepois, BotCampanha, BotUmDia, DURACAO_BOT_ANTES_DEPOIS, DURACAO_BOT_CAMPANHA, DURACAO_BOT_UM_DIA} from './bot';
+import {BotCompleto, DURACAO_BOT_COMPLETO} from './botCompleto';
+import {BotGruposCheios, DURACAO_BOT_GRUPOS} from './botGrupos';
 import {ALTURA, FPS, LARGURA} from './comum';
 import {ConversorColeEConverta, DURACAO_CONVERSOR, DURACAO_RADAR, RadarAcheOProduto} from './ferramentas';
 import {DURACAO_RESULTADOS_FALTA, DURACAO_RESULTADOS_GRUPO, ResultadosQualGrupo, ResultadosQuantoFalta} from './resultados';
@@ -12,6 +14,8 @@ const VIDEOS: {id: string; componente: React.FC; duracao: number}[] = [
   {id: 'Bot-AntesDepois', componente: BotAntesDepois, duracao: DURACAO_BOT_ANTES_DEPOIS},
   {id: 'Bot-UmDiaNoAutomatico', componente: BotUmDia, duracao: DURACAO_BOT_UM_DIA},
   {id: 'Bot-DatasDaShopee', componente: BotCampanha, duracao: DURACAO_BOT_CAMPANHA},
+  {id: 'Bot-GruposCheios', componente: BotGruposCheios, duracao: DURACAO_BOT_GRUPOS},
+  {id: 'Bot-Completo', componente: BotCompleto, duracao: DURACAO_BOT_COMPLETO},
   {id: 'Site-MonteOSeu', componente: SiteMonteOSeu, duracao: DURACAO_SITE_MONTE},
   {id: 'Site-DoStoryAoClique', componente: SiteDoStoryAoClique, duracao: DURACAO_SITE_STORY},
   {id: 'Resultados-QuantoFalta', componente: ResultadosQuantoFalta, duracao: DURACAO_RESULTADOS_FALTA},
