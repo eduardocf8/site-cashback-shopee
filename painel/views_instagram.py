@@ -66,6 +66,18 @@ def _pagina_da_conexao(conta) -> str:
     return reverse("painel_estudio_automacoes" if _tem_automacoes(conta) else "painel_estudio_publicacoes")
 
 
+MOSTRAR_PALAVRAS = 4  # no cartão da lista; o resto vira "+2"
+
+
+def _quando(a: Automacao) -> str:
+    """O gatilho e onde ele vale, numa frase curta para o cartão da lista."""
+    if a.gatilho == Automacao.DIRETO:
+        return "Mandou DM com a palavra"
+    if a.gatilho == Automacao.STORY:
+        return "Respondeu o anúncio" if a.e_anuncio else "Respondeu este story" if a.midia_id else "Respondeu qualquer story"
+    return "Comentou neste post" if a.midia_id else "Comentou em qualquer post"
+
+
 @_automacoes
 def automacoes(request, conta):
     plano, ig = planos_do_app.automacoes(conta), _ig(conta)
@@ -78,8 +90,10 @@ def automacoes(request, conta):
         fora = (f"Parada: é do @{a.ig_username}, que não está conectado." if outra
                 else "Parada: responder stories e DMs é do plano Premium." if a.gatilho not in plano["gatilhos"]
                 else f"Parada: no Standard valem só as {plano['ativas']} ligadas mais recentes." if a.ativa and a.pk not in valem else "")
+        todas = [p.upper() for p in palavras(a)]
         lista.append({"a": a, "total": total, "dms": a.disparos.filter(dm_ok=True).count(), "outra_conta": outra,
-                      "palavras": ", ".join(palavras(a)).upper(), "fora_do_plano": fora})
+                      "palavras": todas[:MOSTRAR_PALAVRAS], "mais_palavras": max(0, len(todas) - MOSTRAR_PALAVRAS),
+                      "quando": _quando(a), "fora_do_plano": fora})
     lista.sort(key=lambda item: item["outra_conta"])  # as do Instagram conectado primeiro
     return render(request, "painel/estudio_automacoes.html", _contexto(
         request, SLUG_AUTOMACOES, ig=_ig(conta), plano=plano, lista=lista, respondidas=respondidas_no_mes(conta),

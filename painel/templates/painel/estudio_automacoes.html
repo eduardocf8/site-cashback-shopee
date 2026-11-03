@@ -40,14 +40,19 @@
           <article class="card ig-automacao{% if not item.a.ativa or item.fora_do_plano %} pausada{% endif %}">
             <a class="ig-automacao-link" href="{% url 'painel_estudio_automacao' item.a.pk %}">
               {% if item.a.midia_imagem %}<img src="{{ item.a.midia_imagem }}" alt="" referrerpolicy="no-referrer" loading="lazy">{% else %}<span class="ig-midia-vazia">{% if item.a.gatilho == "direto" %}✉️{% elif item.a.e_anuncio %}📣{% elif item.a.midia_id %}{% if item.a.gatilho == "story" %}Story{% else %}Post{% endif %}{% else %}Todos{% endif %}</span>{% endif %}
-              <div>
-                <strong>{{ item.a.nome }} <span class="ig-conta{% if item.outra_conta or not item.a.ig_username %} ig-conta-outra{% endif %}" title="{% if item.a.ig_username %}Criada no Instagram @{{ item.a.ig_username }}{% else %}Criada antes de o Appfiliado guardar a conta: responde no Instagram que estiver conectado{% endif %}">{% if item.a.ig_username %}@{{ item.a.ig_username }}{% else %}Instagram não registrado{% endif %}</span></strong>
-                <small>{% if item.a.e_anuncio %}Respondeu o anúncio{% else %}{{ item.a.get_gatilho_display }}{% endif %}{% if item.palavras %} · {{ item.palavras }}{% else %} · qualquer texto{% endif %}</small>
+              <div class="ig-automacao-info">
+                <strong class="ig-automacao-nome">{{ item.a.nome }}</strong>
+                <span class="ig-automacao-selos">
+                  <span class="ig-conta{% if item.outra_conta or not item.a.ig_username %} ig-conta-outra{% endif %}" title="{% if item.a.ig_username %}Criada no Instagram @{{ item.a.ig_username }}{% else %}Criada antes de o Appfiliado guardar a conta: responde no Instagram que estiver conectado{% endif %}">{% if item.a.ig_username %}@{{ item.a.ig_username }}{% else %}Instagram não registrado{% endif %}</span>
+                  <span class="ig-estado{% if not item.a.ativa or item.fora_do_plano %} ig-estado-parada{% endif %}">{% if item.fora_do_plano %}Parada{% elif item.a.ativa %}Ligada{% else %}Pausada{% endif %}</span>
+                </span>
+                <span class="ig-automacao-quando">{{ item.quando }}</span>
+                <span class="ig-palavras">{% for p in item.palavras %}<span>{{ p }}</span>{% empty %}<span class="ig-palavra-livre">qualquer texto</span>{% endfor %}{% if item.mais_palavras %}<span class="ig-palavra-mais">+{{ item.mais_palavras }}</span>{% endif %}</span>
                 {% if item.fora_do_plano %}<small class="ig-erro">{{ item.fora_do_plano }}</small>
-                {% else %}<small>{{ item.total }} pessoa{{ item.total|pluralize }} respondida{{ item.total|pluralize }} · {{ item.dms }} por DM</small>{% endif %}
+                {% else %}<small class="ig-automacao-numeros"><span><b>{{ item.total }}</b> pessoa{{ item.total|pluralize }} respondida{{ item.total|pluralize }}</span><span><b>{{ item.dms }}</b> por DM</span></small>{% endif %}
               </div>
             </a>
-            <div class="linha-botoes">
+            <div class="ig-automacao-botoes">
               <form method="post" action="{% url 'painel_estudio_automacao_ligar' item.a.pk %}">{% csrf_token %}<input type="hidden" name="voltar" value="lista">
                 <button class="botao botao-pequeno {% if item.a.ativa %}botao-claro{% else %}botao-principal{% endif %}" type="submit">{% if item.a.ativa %}Pausar{% else %}Ligar{% endif %}</button>
               </form>
