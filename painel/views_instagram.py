@@ -26,7 +26,7 @@ from django.views.decorators.http import require_POST
 from estudio.models import PostInstagram
 from instagram_painel import api, conexao
 from instagram_painel import publicar as P
-from instagram_painel.models import Automacao, ContaInstagram, Disparo, ImagemPublicacao, Publicacao
+from instagram_painel.models import AnuncioVisto, Automacao, ContaInstagram, Disparo, ImagemPublicacao, Publicacao
 from instagram_painel.webhook import ligadas, na_fila, palavras, respondidas_no_mes, valendo
 from licencas import planos as planos_do_app
 
@@ -142,10 +142,12 @@ def desconectar(request, conta):
 
 @_automacoes
 def midias(request, conta):
-    """Posts (ou stories no ar) do Instagram conectado, para escolher na automação."""
+    """Posts, stories no ar ou anúncios (de onde já chegou resposta) do Instagram conectado, para escolher na automação."""
     ig = _ig(conta)
     if not ig:
         return JsonResponse({"erro": "Conecte o seu Instagram primeiro."}, status=400)
+    if request.GET.get("tipo") == "anuncio":
+        return JsonResponse({"itens": [_anuncio_na_lista(v) for v in AnuncioVisto.objects.filter(ig_id=ig.ig_id, do_perfil=False)[:60]]})
     try:
         itens = api.stories_no_ar(ig.token) if request.GET.get("tipo") == "story" else api.posts_recentes(ig.token)
     except api.ErroInstagram as erro:
@@ -154,6 +156,18 @@ def midias(request, conta):
         "id": m.get("id"), "link": m.get("permalink", ""), "legenda": (m.get("caption") or "")[:120],
         "imagem": m.get("thumbnail_url") or m.get("media_url") or "", "data": m.get("timestamp", ""),
     } for m in itens]})
+
+
+def _anuncio_na_lista(v: AnuncioVisto) -> dict:
+    nome = v.titulo or ("Anúncio " + v.anuncio_id if v.anuncio_id else "Story que não está no seu perfil")
+    respostas = f"{v.respostas} resposta" + ("s" if v.respostas != 1 else "")
+    return {"id": v.chave, "link": "", "legenda": nome[:120], "imagem": v.imagem, "data": v.ultima_em.isoformat(),
+            "detalhe": f"{respostas} · última: \"{v.ultimo_texto[:40]}\"" if v.ultimo_texto else respostas}
+
+
+def anuncio_escolhido(midia_id: str) -> bool:
+    """A automação está presa a um anúncio (e não a um story do perfil)."""
+    return midia_id.startswith(("ad:", "post:", "story:"))
 
 
 class AutomacaoForm(forms.ModelForm):
@@ -248,6 +262,16 @@ class AutomacaoForm(forms.ModelForm):
             self.add_error("respostas", "Escreva pelo menos uma resposta para o comentário.")
         if d.get("enviar_dm") and not (d.get("texto_dm") or "").strip():
             self.add_error("texto_dm", "Escreva o texto da DM.")
+        if gatilho == Automacao.STORY and (colado := re.sub(r"\D", "", str(self.data.get("anuncio_colado") or ""))):
+            if len(colado) < 6:
+                self.add_error(None, "O ID do anúncio tem só números e é bem comprido (copie do Gerenciador de Anúncios).")
+            else:  # o ID do anúncio colado à mão vale mais que um escolhido na lista
+                visto = AnuncioVisto.objects.filter(ig_id=_ig_id(self.conta), chave=f"ad:{colado}").first()
+                d["midia_id"], d["midia_link"] = f"ad:{colado}"[:64], ""
+                d["midia_imagem"] = visto.imagem if visto else ""
+                d["midia_legenda"] = (visto.titulo if visto and visto.titulo else f"Anúncio {colado}")[:190]
+        if gatilho != Automacao.STORY and anuncio_escolhido(d.get("midia_id") or ""):
+            d["midia_id"] = d["midia_link"] = d["midia_imagem"] = d["midia_legenda"] = ""
         for campo in ("midia_link", "midia_imagem"):
             if d.get(campo) and not str(d[campo]).startswith("https://"):
                 d[campo] = ""

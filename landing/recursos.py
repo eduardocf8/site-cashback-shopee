@@ -391,6 +391,7 @@ def automacoes():
                    _t("Do Estúdio para a automação", "Criou o post no Estúdio Instagram? Um clique cria a automação com o nome e o link do produto.")),
             _grupo("Só no Premium", "Mais lugares para responder e mais controle das vendas.",
                    _t("Respostas aos stories", "Quem responder o seu story recebe o link por DM. Vale para um story específico ou para todos.", "Premium"),
+                   _t("Respostas aos anúncios", "Quem responder o seu anúncio de reels ou de story recebe o link daquele anúncio por DM. Cada anúncio tem a sua resposta, mesmo com a mesma palavra.", "Premium"),
                    _t("DM com palavra-chave", "Quem mandar uma DM com a palavra, como CUPOM, recebe a resposta na hora.", "Premium"),
                    _t("Link num botão", "A DM chega com o seu texto e um botão, como \"Ver produto\", que abre o link.", "Premium"),
                    _t("Sub ID por automação", "Cada automação gera o link com o seu próprio Sub ID e em Resultados você vê quanto cada post vendeu.", "Premium"),

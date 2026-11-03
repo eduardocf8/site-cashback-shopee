@@ -178,6 +178,15 @@
 .ig-escolhido { border: 1px solid var(--verde); background: var(--bom-suave); border-radius: 10px; padding: 8px 12px; }
 .ig-escolhido span { flex: 1; font-size: 13.5px; }
 .ig-midia.ativo { outline: 3px solid var(--verde); outline-offset: -3px; }
+/* Os anúncios de onde já chegou resposta: em lista, com a foto, o nome e quantas respostas. */
+.ig-midias.ig-anuncios { grid-template-columns: minmax(0, 1fr); max-width: 560px; }
+.ig-anuncios .ig-midia { aspect-ratio: auto; display: flex; align-items: center; gap: 12px; padding: 8px 10px; text-align: left; color: var(--texto); }
+.ig-anuncios .ig-midia img, .ig-anuncios .ig-midia .ig-midia-vazia { position: static; width: 52px; height: 52px; border-radius: 8px; font-style: normal; font-size: 22px; }
+.ig-anuncios .ig-midia span { padding: 0; font-size: 14px; min-width: 0; }
+.ig-anuncios .ig-midia small { display: block; color: var(--suave); font-size: 12.5px; margin-top: 2px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.ig-anuncio-ajuda { display: grid; gap: 10px; max-width: 560px; }
+.ig-anuncio-ajuda[hidden] { display: none; }
+.ig-anuncio-ajuda p { margin: 0; }
 
 /* ---------- Topo do editor: nome, Salvar, Publicar e "Mais" ---------- */
 .es-cabeca { display: grid; grid-template-columns: minmax(0, 1fr); justify-content: stretch; gap: 4px; }

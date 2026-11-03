@@ -12,7 +12,7 @@ from painel import cripto
 
 from . import api, conexao
 from . import webhook as W
-from .models import Automacao, ContaInstagram, Disparo
+from .models import AnuncioVisto, Automacao, ContaInstagram, Disparo
 
 SEGREDO = "segredo-de-teste"
 HOST = "app.appfiliado.com.br"
@@ -49,6 +49,9 @@ def aviso_mensagem(texto="", autor="888", mid="mid1", story=None, ig_id=IG_ID, *
 @mock.patch.object(api, "mensagem", return_value="d2")
 class TestAvisos(TestCase):
     def setUp(self):
+        patcher = mock.patch.object(api, "stories_no_ar", return_value=[])
+        patcher.start()
+        self.addCleanup(patcher.stop)
         self.c = conta()
         self.ig = conectada(self.c)
         self.a = Automacao.objects.create(conta=self.c, nome="Garrafa", gatilho=Automacao.COMENTARIO, midia_id="m1",
@@ -523,3 +526,103 @@ class TestJanelaHistoricoEExcluir(TestCase):
         self.assertContains(self.client.get("/estudio/automacoes/"), f"/estudio/automacoes/{a.pk}/excluir/")
         self.assertRedirects(self.client.post(f"/estudio/automacoes/{a.pk}/excluir/"), "/estudio/automacoes/", fetch_redirect_response=False)
         self.assertFalse(Automacao.objects.exists())
+
+
+def aviso_de_anuncio(texto="", autor="888", mid="mid1", anuncio="120200000000000001", titulo="Garrafa térmica", story=None, post=None):
+    """Mensagem que veio de um anúncio: o Instagram manda o ID do anúncio no referral."""
+    contexto = {"ad_title": titulo, "photo_url": "https://cdn.exemplo/garrafa.jpg"}
+    if post:
+        contexto["post_id"] = post
+    referral = {"ref": "", "ad_id": anuncio, "source": "ADS", "type": "OPEN_THREAD", "ads_context_data": contexto}
+    return aviso_mensagem(texto, autor=autor, mid=mid, story=story, referral=referral)
+
+
+@override_settings(APPFILIADO_PAINEL_HOSTS=[HOST], ALLOWED_HOSTS=[HOST, "testserver"], APPFILIADO_PAINEL_URL=f"https://{HOST}",
+                   APPFILIADO_INSTAGRAM_APP_ID="123", APPFILIADO_INSTAGRAM_APP_SECRET=SEGREDO)
+@mock.patch.object(api, "mensagem", return_value="d2")
+class TestRespostaDeAnuncio(TestCase):
+    """Dois anúncios de reels (que também rodam nos stories) com a mesma palavra: cada um com a sua resposta."""
+
+    def setUp(self):
+        self.c = conta()
+        self.ig = conectada(self.c)
+        patcher = mock.patch.object(api, "stories_no_ar", return_value=[{"id": "s-do-perfil"}])
+        self.stories = patcher.start()
+        self.addCleanup(patcher.stop)
+
+    def automacao(self, nome, midia_id="", texto="Link", palavras="quero"):
+        return Automacao.objects.create(conta=self.c, nome=nome, gatilho=Automacao.STORY, midia_id=midia_id,
+                                        palavras=palavras, texto_dm=texto)
+
+    def test_cada_anuncio_responde_com_a_sua_automacao_e_fica_na_lista(self, msg):
+        garrafa = self.automacao("Garrafa", "ad:111", "Link da garrafa")
+        fone = self.automacao("Fone", "ad:222", "Link do fone")
+        W.separar_e_processar(aviso_de_anuncio("quero", anuncio="111", titulo="Garrafa térmica"))
+        W.separar_e_processar(aviso_de_anuncio("QUERO!", autor="777", mid="mid2", anuncio="222", titulo="Fone sem fio"))
+        self.assertEqual(msg.call_args_list[0].args[3], "Link da garrafa")
+        self.assertEqual(msg.call_args_list[1].args[3], "Link do fone")
+        self.assertEqual({d.automacao for d in Disparo.objects.all()}, {garrafa, fone})
+        vistos = {v.chave: v for v in AnuncioVisto.objects.all()}
+        self.assertEqual(set(vistos), {"ad:111", "ad:222"})
+        self.assertEqual(vistos["ad:111"].titulo, "Garrafa térmica")
+        self.assertEqual(vistos["ad:111"].imagem, "https://cdn.exemplo/garrafa.jpg")
+        self.stories.assert_not_called()  # com o ID do anúncio não precisa perguntar ao Instagram
+
+    def test_anuncio_vem_antes_de_todos_os_stories_e_outro_anuncio_fica_de_fora(self, msg):
+        self.automacao("Garrafa", "ad:111", "Link da garrafa")
+        self.automacao("Todos", "", "Link geral")
+        # resposta ao story do anúncio da garrafa
+        W.separar_e_processar(aviso_de_anuncio("quero", anuncio="111", story="s-anuncio"))
+        self.assertEqual(msg.call_args.args[3], "Link da garrafa")
+        # outro anúncio, mandado como DM (anúncio de mensagem): nem a da garrafa nem a de todos os stories
+        W.separar_e_processar(aviso_de_anuncio("quero", autor="777", mid="mid2", anuncio="333"))
+        self.assertEqual(msg.call_count, 1)
+        # resposta a um story do perfil: a de todos os stories
+        W.separar_e_processar(aviso_mensagem("quero", autor="666", mid="mid3", story="s-do-perfil"))
+        self.assertEqual(msg.call_args.args[3], "Link geral")
+
+    def test_story_do_anuncio_sem_o_id_reconhece_pelo_que_ja_veio_antes(self, msg):
+        self.automacao("Garrafa", "ad:111", "Link da garrafa")
+        W.separar_e_processar(aviso_de_anuncio("oi", anuncio="111", story="s-anuncio"))  # sem a palavra: só guarda
+        W.separar_e_processar(aviso_mensagem("quero", autor="777", mid="mid2", story="s-anuncio"))  # sem referral
+        self.assertEqual(msg.call_args.args[3], "Link da garrafa")
+
+    def test_story_fora_do_perfil_sem_nada_do_anuncio_tambem_entra_na_lista(self, msg):
+        W.separar_e_processar(aviso_mensagem("quero", story="s-anuncio"))
+        W.separar_e_processar(aviso_mensagem("quero", autor="777", mid="mid2", story="s-do-perfil"))
+        fora, do_perfil = AnuncioVisto.objects.get(chave="story:s-anuncio"), AnuncioVisto.objects.get(chave="story:s-do-perfil")
+        self.assertFalse(fora.do_perfil)
+        self.assertTrue(do_perfil.do_perfil)
+        self.automacao("Garrafa", "story:s-anuncio", "Link da garrafa")
+        W.separar_e_processar(aviso_mensagem("quero", autor="555", mid="mid3", story="s-anuncio"))
+        self.assertEqual(msg.call_args.args[3], "Link da garrafa")
+        self.assertEqual(AnuncioVisto.objects.get(chave="story:s-anuncio").respostas, 2)
+        self.assertEqual(self.stories.call_count, 2)  # uma vez por story novo
+
+    def test_dm_de_anuncio_sem_automacao_do_anuncio_cai_na_de_dm(self, msg):
+        Automacao.objects.create(conta=self.c, nome="DM", gatilho=Automacao.DIRETO, palavras="quero", texto_dm="Link da DM")
+        W.separar_e_processar(aviso_de_anuncio("quero", anuncio="999"))
+        self.assertEqual(msg.call_args.args[3], "Link da DM")
+
+    def test_tela_lista_os_anuncios_e_aceita_o_id_colado(self, msg):
+        AnuncioVisto.objects.create(ig_id=IG_ID, chave="ad:111", anuncio_id="111", titulo="Garrafa térmica", respostas=3, ultimo_texto="quero")
+        AnuncioVisto.objects.create(ig_id=IG_ID, chave="story:s-do-perfil", story_id="s-do-perfil", do_perfil=True)
+        AnuncioVisto.objects.create(ig_id="outra", chave="ad:555", anuncio_id="555")
+        cache.clear()
+        client = Client(HTTP_HOST=HOST)
+        client.post("/entrar/", {"email": self.c.email, "senha": SENHA})
+        r = client.get("/estudio/instagram/midias/?tipo=anuncio")
+        self.assertEqual(r.status_code, 200, r.content[:300])
+        itens = r.json()["itens"]
+        self.assertEqual([i["id"] for i in itens], ["ad:111"])
+        self.assertEqual(itens[0]["legenda"], "Garrafa térmica")
+        self.assertIn("3 respostas", itens[0]["detalhe"])
+        self.assertContains(client.get("/estudio/automacoes/nova/"), "Um anúncio")
+        dados = {"nome": "Fone", "gatilho": "story", "palavras": "", "enviar_dm": "on", "texto_dm": "Aqui:",
+                 "link": "https://s.shopee.com.br/abc", "ativa": "on", "anuncio_colado": " 120 2120 0000 01 "}
+        r = client.post("/estudio/automacoes/nova/", dados)
+        self.assertEqual(r.status_code, 302)
+        a = Automacao.objects.get()
+        self.assertEqual((a.midia_id, a.midia_legenda), ("ad:1202120000001", "Anúncio 1202120000001"))
+        self.assertTrue(a.e_anuncio)
+        self.assertContains(client.get("/estudio/automacoes/"), "Respondeu o anúncio")

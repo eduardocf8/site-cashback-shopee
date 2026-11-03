@@ -24,7 +24,7 @@ from django.utils import timezone
 from licencas import planos
 
 from . import api
-from .models import Automacao, AvisoRecebido, ContaInstagram, Disparo
+from .models import AnuncioVisto, Automacao, AvisoRecebido, ContaInstagram, Disparo
 
 logger = logging.getLogger(__name__)
 # A Meta aceita 750 DMs de resposta a comentário por hora em cada conta. Fica uma folga; o que passar
@@ -153,12 +153,87 @@ def valendo(conta, ig_id: str, plano: dict | None = None):
     return ligadas_
 
 
-def _escolher(ig: ContaInstagram, gatilho: str, midia_id: str, texto: str) -> Automacao | None:
-    """A automação do post/story específico vem antes da que vale para todos."""
+def _escolher(ig: ContaInstagram, gatilho: str, midia_id: str | set, texto: str, com_gerais: bool = True) -> Automacao | None:
+    """A automação do post/story/anúncio específico vem antes da que vale para todos. `midia_id` pode ser
+    um conjunto: uma resposta de anúncio chega com mais de um jeito de reconhecer o anúncio."""
+    ids = {midia_id} if isinstance(midia_id, str) else set(midia_id)
+    ids.discard("")
     ativas = valendo(ig.conta, ig.ig_id).filter(gatilho=gatilho)
-    especificas = [a for a in ativas if midia_id and a.midia_id == midia_id]
-    gerais = [a for a in ativas if not a.midia_id]
+    especificas = [a for a in ativas if a.midia_id and a.midia_id in ids]
+    gerais = [a for a in ativas if not a.midia_id] if com_gerais else []
     return next((a for a in especificas + gerais if bate(a, texto)), None)
+
+
+# --- respostas que vêm de anúncio ------------------------------------------------------------------
+
+def do_anuncio(evento: dict) -> dict:
+    """O que a mensagem traz sobre a origem: o anúncio (referral, quando a pessoa veio de um anúncio) e o
+    story respondido (reply_to). Anúncio de reels que também roda nos stories não é um story do perfil:
+    o Instagram só conta dele aqui, na resposta."""
+    msg = evento.get("message") or {}
+    ref = msg.get("referral") or evento.get("referral") or {}
+    ref = ref if isinstance(ref, dict) else {}
+    ctx = ref.get("ads_context_data") if isinstance(ref.get("ads_context_data"), dict) else {}
+    story = (msg.get("reply_to") or {}).get("story") or {}
+    story = story if isinstance(story, dict) else {}
+    imagem = str(ctx.get("photo_url") or story.get("url") or "")
+    return {
+        "anuncio_id": str(ref.get("ad_id") or "")[:64], "post_id": str(ctx.get("post_id") or "")[:64],
+        "story_id": str(story.get("id") or "")[:64], "titulo": str(ctx.get("ad_title") or "")[:200],
+        "imagem": imagem[:1000] if imagem.startswith("https://") else "",
+        "bruto": {k: v for k, v in (("referral", ref), ("reply_to", msg.get("reply_to"))) if v},
+    }
+
+
+def chave_principal(info: dict) -> str:
+    if info["anuncio_id"]:
+        return f"ad:{info['anuncio_id']}"
+    if info["post_id"]:
+        return f"post:{info['post_id']}"
+    return f"story:{info['story_id']}" if info["story_id"] else ""
+
+
+def chaves_da_origem(ig: ContaInstagram, info: dict) -> set[str]:
+    """Todos os jeitos de reconhecer de onde veio a mensagem (o que pode estar em Automacao.midia_id)."""
+    story = info["story_id"]
+    # o story vale cru (escolhido na lista de stories do perfil) e com "story:" (escolhido como anúncio)
+    chaves = {f"ad:{info['anuncio_id']}" if info["anuncio_id"] else "", f"post:{info['post_id']}" if info["post_id"] else "",
+              story, f"story:{story}" if story else ""}
+    if info["story_id"]:  # o mesmo story já chegou antes junto com o ID do anúncio
+        chaves |= set(AnuncioVisto.objects.filter(ig_id=ig.ig_id, story_id=info["story_id"]).values_list("chave", flat=True))
+    chaves.discard("")
+    return chaves
+
+
+def _story_do_perfil(ig: ContaInstagram, story_id: str) -> bool:
+    try:
+        return any(str(m.get("id")) == story_id for m in api.stories_no_ar(ig.token))
+    except api.ErroInstagram:
+        return False
+
+
+def registrar_anuncio(ig: ContaInstagram, info: dict, texto: str) -> None:
+    """Guarda o anúncio (ou o story fora do perfil) de onde veio a resposta, para a opção "Um anúncio"."""
+    chave = chave_principal(info)
+    if not chave:
+        return
+    visto = AnuncioVisto.objects.filter(ig_id=ig.ig_id, chave=chave).first()
+    if not visto:
+        so_story = not (info["anuncio_id"] or info["post_id"])
+        try:
+            with transaction.atomic():
+                visto = AnuncioVisto.objects.create(
+                    ig_id=ig.ig_id, chave=chave, anuncio_id=info["anuncio_id"], post_id=info["post_id"], story_id=info["story_id"],
+                    do_perfil=so_story and _story_do_perfil(ig, info["story_id"]))
+        except IntegrityError:  # chegou junto com outro aviso do mesmo anúncio
+            visto = AnuncioVisto.objects.get(ig_id=ig.ig_id, chave=chave)
+    for campo in ("titulo", "imagem", "story_id", "post_id"):
+        if info[campo] and (campo in ("titulo", "imagem") or not getattr(visto, campo)):
+            setattr(visto, campo, info[campo])
+    visto.respostas += 1
+    visto.ultimo_texto = str(texto or "")[:200]
+    visto.bruto = info["bruto"]
+    visto.save()
 
 
 def _registrar(automacao: Automacao, evento_id: str, autor_id: str, username: str, texto: str) -> Disparo | None:
@@ -225,11 +300,19 @@ def _mensagem(ig: ContaInstagram, evento: dict) -> None:
     mid = str(msg.get("mid") or "")
     if not autor_id or autor_id == ig.ig_id or not mid:
         return
-    story = (msg.get("reply_to") or {}).get("story") or {}
-    if story.get("id"):
-        automacao = _escolher(ig, Automacao.STORY, str(story["id"]), msg.get("text", ""))
-    else:
-        automacao = _escolher(ig, Automacao.DIRETO, "", msg.get("text", ""))
+    texto = msg.get("text", "")
+    info = do_anuncio(evento)
+    try:
+        registrar_anuncio(ig, info, texto)
+    except Exception:  # guardar a origem nunca impede a resposta
+        logger.exception("Instagram: falha ao guardar o anúncio de @%s", ig.username)
+    automacao = None
+    if (chaves := chaves_da_origem(ig, info)):
+        # Resposta a story ou mensagem de anúncio: primeiro a automação daquele anúncio/story; as de
+        # "Todos os stories" só valem para resposta a story mesmo.
+        automacao = _escolher(ig, Automacao.STORY, chaves, texto, com_gerais=bool(info["story_id"]))
+    if not automacao and not info["story_id"]:
+        automacao = _escolher(ig, Automacao.DIRETO, "", texto)
     if not automacao or not automacao.enviar_dm or not _plano_cobre(ig, automacao.gatilho):
         return
     if (d := _registrar(automacao, mid, autor_id, "", msg.get("text", ""))):
@@ -276,6 +359,8 @@ def _resumo(campo: str, valor: dict) -> str:
     msg = valor.get("message") or {}
     if msg.get("is_echo"):
         return "Mensagem enviada pela própria conta"
+    if (ref := msg.get("referral") or valor.get("referral")) and isinstance(ref, dict) and ref.get("ad_id"):
+        return f"Mensagem de anúncio ({ref['ad_id']}): {str(msg.get('text', ''))[:200]}"
     if (msg.get("reply_to") or {}).get("story"):
         return f"Resposta a story: {str(msg.get('text', ''))[:200]}"
     if msg:
