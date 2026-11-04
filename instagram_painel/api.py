@@ -190,6 +190,12 @@ def publicar_container(token: str, ig_id: str, container_id: str) -> str:
     return str(dados["id"])
 
 
+def detalhes_da_midia(token: str, midia_id: str) -> dict:
+    """Tipo (media_product_type: AD, FEED, REELS ou STORY), foto e legenda de uma mídia da conta. Serve para
+    reconhecer anúncio: reels subido direto no Gerenciador de Anúncios não aparece nos posts do perfil."""
+    return _chamar("GET", midia_id, token, params={"fields": "id,media_product_type,media_type,media_url,thumbnail_url,caption,permalink"})
+
+
 def link_da_midia(token: str, midia_id: str) -> str:
     return str(_chamar("GET", midia_id, token, params={"fields": "permalink"}).get("permalink") or "")
 

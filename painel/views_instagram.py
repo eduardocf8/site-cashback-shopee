@@ -75,7 +75,7 @@ def _quando(a: Automacao) -> str:
         return "Mandou DM com a palavra"
     if a.gatilho == Automacao.STORY:
         return "Respondeu o anúncio" if a.e_anuncio else "Respondeu este story" if a.midia_id else "Respondeu qualquer story"
-    return "Comentou neste post" if a.midia_id else "Comentou em qualquer post"
+    return "Comentou no anúncio" if a.e_anuncio else "Comentou neste post" if a.midia_id else "Comentou em qualquer post"
 
 
 @_automacoes
@@ -160,8 +160,10 @@ def midias(request, conta):
     ig = _ig(conta)
     if not ig:
         return JsonResponse({"erro": "Conecte o seu Instagram primeiro."}, status=400)
-    if request.GET.get("tipo") == "anuncio":
-        return JsonResponse({"itens": [_anuncio_na_lista(v) for v in AnuncioVisto.objects.filter(ig_id=ig.ig_id, do_perfil=False)[:60]]})
+    if request.GET.get("tipo") == "anuncio":  # comentário: as mídias comentadas; story: as respostas por DM
+        origem = AnuncioVisto.COMENTARIO if request.GET.get("gatilho") == Automacao.COMENTARIO else AnuncioVisto.MENSAGEM
+        vistos = AnuncioVisto.objects.filter(ig_id=ig.ig_id, origem=origem, do_perfil=False)[:60]
+        return JsonResponse({"itens": [_anuncio_na_lista(v) for v in vistos]})
     try:
         itens = api.stories_no_ar(ig.token) if request.GET.get("tipo") == "story" else api.posts_recentes(ig.token)
     except api.ErroInstagram as erro:
@@ -173,11 +175,13 @@ def midias(request, conta):
 
 
 def _anuncio_na_lista(v: AnuncioVisto) -> dict:
-    """Um item da opção "Um anúncio". A resposta a um anúncio de reels que também roda nos stories pode chegar
-    só como resposta a um story que não é do perfil (sem o ID do anúncio): aí o nome diz isso e a hora da
-    última resposta ajuda a achar o anúncio (responda de outra conta e veja qual item mudou)."""
-    nome = v.titulo or ("Anúncio " + v.anuncio_id if v.anuncio_id else "Resposta a um story que não está no seu perfil (anúncio)")
-    respostas = f"{v.respostas} resposta" + ("s" if v.respostas != 1 else "")
+    """Um item da opção "Um anúncio". A resposta a um anúncio de reels que também roda nos stories chega só
+    como resposta a um story que não é do perfil (sem o ID do anúncio), igual à resposta a um story seu que
+    já saiu do ar: a hora da última resposta ajuda a achar o anúncio (responda de outra conta e veja qual
+    item subiu para o topo)."""
+    comentario = v.origem == AnuncioVisto.COMENTARIO
+    nome = v.titulo or ("Anúncio " + v.anuncio_id if v.anuncio_id else "Anúncio sem legenda" if comentario else "Story que não está no seu perfil")
+    respostas = f"{v.respostas} " + ("comentário" if comentario else "resposta") + ("s" if v.respostas != 1 else "")
     quando = timezone.localtime(v.ultima_em)
     dia = "hoje" if quando.date() == timezone.localdate() else quando.strftime("%d/%m")
     ultima = f"última {dia} às {quando:%H:%M}" + (f": \"{v.ultimo_texto[:40]}\"" if v.ultimo_texto else "")
@@ -186,8 +190,15 @@ def _anuncio_na_lista(v: AnuncioVisto) -> dict:
 
 
 def anuncio_escolhido(midia_id: str) -> bool:
-    """A automação está presa a um anúncio (e não a um story do perfil)."""
+    """A automação está presa a um anúncio (e não a um post ou story do perfil)."""
     return midia_id.startswith(("ad:", "post:", "story:"))
+
+
+def anuncio_cabe(gatilho: str, midia_id: str) -> bool:
+    """No comentário, só a mídia comentada (post:); na resposta a story, qualquer jeito de achar o anúncio."""
+    if gatilho == Automacao.COMENTARIO:
+        return midia_id.startswith("post:")
+    return gatilho == Automacao.STORY
 
 
 class AutomacaoForm(forms.ModelForm):
@@ -290,7 +301,7 @@ class AutomacaoForm(forms.ModelForm):
                 d["midia_id"], d["midia_link"] = f"ad:{colado}"[:64], ""
                 d["midia_imagem"] = visto.imagem if visto else ""
                 d["midia_legenda"] = (visto.titulo if visto and visto.titulo else f"Anúncio {colado}")[:190]
-        if gatilho != Automacao.STORY and anuncio_escolhido(d.get("midia_id") or ""):
+        if anuncio_escolhido(d.get("midia_id") or "") and not anuncio_cabe(gatilho, d.get("midia_id") or ""):
             d["midia_id"] = d["midia_link"] = d["midia_imagem"] = d["midia_legenda"] = ""
         for campo in ("midia_link", "midia_imagem"):
             if d.get(campo) and not str(d[campo]).startswith("https://"):

@@ -201,9 +201,10 @@
 /* Os anúncios de onde já chegou resposta: em lista, com a foto, o nome e quantas respostas. */
 .ig-midias.ig-anuncios { grid-template-columns: minmax(0, 1fr); max-width: 560px; }
 .ig-anuncios .ig-midia { aspect-ratio: auto; display: flex; align-items: center; gap: 12px; padding: 8px 10px; text-align: left; color: var(--texto); }
-.ig-anuncios .ig-midia img, .ig-anuncios .ig-midia .ig-midia-vazia { position: static; width: 52px; height: 52px; border-radius: 8px; font-style: normal; font-size: 22px; }
+.ig-anuncios .ig-midia .ig-midia-vazia { position: relative; width: 52px; height: 52px; border-radius: 8px; font-style: normal; font-size: 22px; overflow: hidden; }
+.ig-anuncios .ig-midia .ig-midia-vazia img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
 .ig-anuncios .ig-midia span { padding: 0; font-size: 14px; min-width: 0; }
-.ig-anuncios .ig-midia small { display: block; color: var(--suave); font-size: 12.5px; margin-top: 2px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.ig-anuncios .ig-midia small { display: block; color: var(--suave); font-size: 12.5px; margin-top: 2px; overflow-wrap: anywhere; }
 .ig-anuncio-ajuda { display: grid; gap: 10px; max-width: 560px; }
 .ig-anuncio-ajuda[hidden] { display: none; }
 .ig-anuncio-ajuda p { margin: 0; }

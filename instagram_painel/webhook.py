@@ -11,6 +11,7 @@ Regras:
   passando disso (post viralizando), as respostas entram numa fila e saem na hora seguinte, em ordem;
 - respeita o plano: o Standard só responde comentários; o Premium, também stories e DMs (licencas/planos.py)."""
 
+import json
 import logging
 import random
 import re
@@ -200,7 +201,8 @@ def chaves_da_origem(ig: ContaInstagram, info: dict) -> set[str]:
     chaves = {f"ad:{info['anuncio_id']}" if info["anuncio_id"] else "", f"post:{info['post_id']}" if info["post_id"] else "",
               story, f"story:{story}" if story else ""}
     if info["story_id"]:  # o mesmo story já chegou antes junto com o ID do anúncio
-        chaves |= set(AnuncioVisto.objects.filter(ig_id=ig.ig_id, story_id=info["story_id"]).values_list("chave", flat=True))
+        chaves |= set(AnuncioVisto.objects.filter(ig_id=ig.ig_id, origem=AnuncioVisto.MENSAGEM, story_id=info["story_id"])
+                      .values_list("chave", flat=True))
     chaves.discard("")
     return chaves
 
@@ -212,23 +214,45 @@ def _story_do_perfil(ig: ContaInstagram, story_id: str) -> bool:
         return False
 
 
-def registrar_anuncio(ig: ContaInstagram, info: dict, texto: str) -> None:
-    """Guarda o anúncio (ou o story fora do perfil) de onde veio a resposta, para a opção "Um anúncio"."""
+def _tipo_da_midia(ig: ContaInstagram, midia_id: str) -> tuple[bool | None, dict]:
+    """(é do perfil?, detalhes) pelo media_product_type que o Instagram devolve: AD é anúncio (inclusive o
+    reels subido direto no Gerenciador); FEED, REELS e STORY são do perfil. Sem resposta: (None, {})."""
+    try:
+        d = api.detalhes_da_midia(ig.token, midia_id)
+    except api.ErroInstagram:
+        return None, {}
+    tipo = str(d.get("media_product_type") or "").upper()
+    return (tipo != "AD") if tipo else None, d
+
+
+def registrar_anuncio(ig: ContaInstagram, info: dict, texto: str, origem: str = AnuncioVisto.MENSAGEM) -> None:
+    """Guarda o anúncio (ou o story/post fora do perfil) de onde veio a resposta, para a opção "Um anúncio".
+    Na primeira vez de cada um, pergunta ao Instagram o tipo da mídia (e pega a foto e a legenda)."""
     chave = chave_principal(info)
     if not chave:
         return
-    visto = AnuncioVisto.objects.filter(ig_id=ig.ig_id, chave=chave).first()
+    visto = AnuncioVisto.objects.filter(ig_id=ig.ig_id, origem=origem, chave=chave).first()
     if not visto:
-        so_story = not (info["anuncio_id"] or info["post_id"])
+        do_perfil, d = False, {}
+        if origem == AnuncioVisto.COMENTARIO:  # comentário: a mídia comentada é anúncio ou post do perfil?
+            perfil, d = _tipo_da_midia(ig, info["post_id"])
+            do_perfil = bool(perfil)
+        elif not (info["anuncio_id"] or info["post_id"]):  # resposta a story sem nada do anúncio
+            perfil, d = _tipo_da_midia(ig, info["story_id"])
+            do_perfil = perfil if perfil is not None else _story_do_perfil(ig, info["story_id"])
+        imagem = str(d.get("thumbnail_url") or d.get("media_url") or "")
         try:
             with transaction.atomic():
                 visto = AnuncioVisto.objects.create(
-                    ig_id=ig.ig_id, chave=chave, anuncio_id=info["anuncio_id"], post_id=info["post_id"], story_id=info["story_id"],
-                    do_perfil=so_story and _story_do_perfil(ig, info["story_id"]))
+                    ig_id=ig.ig_id, origem=origem, chave=chave, anuncio_id=info["anuncio_id"], post_id=info["post_id"],
+                    story_id=info["story_id"], do_perfil=do_perfil, titulo=" ".join(str(d.get("caption") or "").split())[:80],
+                    imagem=imagem[:1000] if imagem.startswith("https://") else "")
         except IntegrityError:  # chegou junto com outro aviso do mesmo anúncio
-            visto = AnuncioVisto.objects.get(ig_id=ig.ig_id, chave=chave)
+            visto = AnuncioVisto.objects.get(ig_id=ig.ig_id, origem=origem, chave=chave)
+    # o título do anúncio (ad_title) vale mais que a legenda; a foto que veio na mensagem só entra se não
+    # tiver outra (a do story expira em poucas horas)
     for campo in ("titulo", "imagem", "story_id", "post_id"):
-        if info[campo] and (campo in ("titulo", "imagem") or not getattr(visto, campo)):
+        if info[campo] and (campo == "titulo" or not getattr(visto, campo)):
             setattr(visto, campo, info[campo])
     visto.respostas += 1
     visto.ultimo_texto = str(texto or "")[:200]
@@ -284,8 +308,16 @@ def _comentario(ig: ContaInstagram, valor: dict) -> None:
         return  # sem dados ou é a própria conta (inclusive as respostas que a automação publica)
     if valor.get("parent_id"):
         return  # resposta dentro de outro comentário: fica de fora, como no ManyChat
-    midia_id = str((valor.get("media") or {}).get("id") or "")
-    automacao = _escolher(ig, Automacao.COMENTARIO, midia_id, valor.get("text", ""))
+    midia = valor.get("media") if isinstance(valor.get("media"), dict) else {}
+    midia_id = str(midia.get("id") or "")[:64]
+    if midia_id:
+        try:  # o reels subido direto no Gerenciador de Anúncios não está nos posts: guarda para "Um anúncio"
+            registrar_anuncio(ig, {"anuncio_id": "", "post_id": midia_id, "story_id": "", "titulo": "", "imagem": "",
+                                   "bruto": {"media": midia}}, valor.get("text", ""), origem=AnuncioVisto.COMENTARIO)
+        except Exception:
+            logger.exception("Instagram: falha ao guardar a mídia comentada de @%s", ig.username)
+    # o post escolhido na lista vale cru; o anúncio escolhido em "Um anúncio", com "post:"
+    automacao = _escolher(ig, Automacao.COMENTARIO, {midia_id, f"post:{midia_id}" if midia_id else ""}, valor.get("text", ""))
     if not automacao or not _plano_cobre(ig, Automacao.COMENTARIO):
         return
     if (d := _registrar(automacao, comentario_id, autor_id, username, valor.get("text", ""))):
@@ -375,7 +407,7 @@ def _bruto(evento) -> dict:
     """O aviso de mensagem como veio, para o admin. Grande demais: só o começo, como texto."""
     if not isinstance(evento, dict):
         return {}
-    texto = api.corpo_json(evento)
+    texto = json.dumps(evento, ensure_ascii=False)
     return evento if len(texto) <= BRUTO_ATE else {"cortado": texto[:BRUTO_ATE]}
 
 
@@ -389,7 +421,8 @@ def registrar_avisos(payload: dict) -> None:
             ig_id = str(entrada.get("id") or "")[:64]
             for change in entrada.get("changes") or []:
                 valor = change.get("value") if isinstance(change.get("value"), dict) else {}
-                novos.append(AvisoRecebido(ig_id=ig_id, campo=str(change.get("field") or "?")[:40], resumo=_resumo(change.get("field"), valor)))
+                novos.append(AvisoRecebido(ig_id=ig_id, campo=str(change.get("field") or "?")[:40], resumo=_resumo(change.get("field"), valor),
+                                           bruto=_bruto(valor)))
             for evento in entrada.get("messaging") or []:
                 novos.append(AvisoRecebido(ig_id=ig_id, campo="messaging", resumo=_resumo("messages", evento), bruto=_bruto(evento)))
         AvisoRecebido.objects.bulk_create(novos)

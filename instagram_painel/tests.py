@@ -49,9 +49,10 @@ def aviso_mensagem(texto="", autor="888", mid="mid1", story=None, ig_id=IG_ID, *
 @mock.patch.object(api, "mensagem", return_value="d2")
 class TestAvisos(TestCase):
     def setUp(self):
-        patcher = mock.patch.object(api, "stories_no_ar", return_value=[])
-        patcher.start()
-        self.addCleanup(patcher.stop)
+        for nome, valor in (("stories_no_ar", []), ("detalhes_da_midia", {"media_product_type": "FEED"})):
+            patcher = mock.patch.object(api, nome, return_value=valor)
+            patcher.start()
+            self.addCleanup(patcher.stop)
         self.c = conta()
         self.ig = conectada(self.c)
         self.a = Automacao.objects.create(conta=self.c, nome="Garrafa", gatilho=Automacao.COMENTARIO, midia_id="m1",
@@ -568,6 +569,10 @@ class TestRespostaDeAnuncio(TestCase):
         patcher = mock.patch.object(api, "stories_no_ar", return_value=[{"id": "s-do-perfil"}])
         self.stories = patcher.start()
         self.addCleanup(patcher.stop)
+        # sem resposta do Instagram sobre o tipo da mídia: confere na lista de stories no ar
+        patcher = mock.patch.object(api, "detalhes_da_midia", side_effect=api.ErroInstagram("sem acesso"))
+        self.detalhes = patcher.start()
+        self.addCleanup(patcher.stop)
 
     def automacao(self, nome, midia_id="", texto="Link", palavras="quero"):
         return Automacao.objects.create(conta=self.c, nome=nome, gatilho=Automacao.STORY, midia_id=midia_id,
@@ -645,3 +650,81 @@ class TestRespostaDeAnuncio(TestCase):
         self.assertEqual((a.midia_id, a.midia_legenda), ("ad:1202120000001", "Anúncio 1202120000001"))
         self.assertTrue(a.e_anuncio)
         self.assertContains(client.get("/estudio/automacoes/"), "Respondeu o anúncio")
+
+
+@override_settings(APPFILIADO_PAINEL_HOSTS=[HOST], ALLOWED_HOSTS=[HOST, "testserver"], APPFILIADO_PAINEL_URL=f"https://{HOST}",
+                   APPFILIADO_INSTAGRAM_APP_ID="123", APPFILIADO_INSTAGRAM_APP_SECRET=SEGREDO)
+@mock.patch.object(api, "responder_comentario", return_value="r1")
+@mock.patch.object(api, "resposta_privada", return_value="d1")
+@mock.patch.object(api, "mensagem", return_value="d2")
+class TestAnuncioPeloTipoDaMidia(TestCase):
+    """Reels subido direto no Gerenciador de Anúncios: não está nos posts, mas o Instagram diz que é AD."""
+
+    TIPOS = {
+        "reels-anuncio": {"media_product_type": "AD", "caption": "Bolsa de praia  que cabe tudo", "thumbnail_url": "https://cdn.exemplo/bolsa.jpg"},
+        "reels-do-perfil": {"media_product_type": "REELS", "caption": "Meu reels"},
+        "story-anuncio": {"media_product_type": "AD", "caption": "Body splash", "media_url": "https://cdn.exemplo/body.jpg"},
+        "story-do-perfil": {"media_product_type": "STORY"},
+    }
+
+    def setUp(self):
+        self.c = conta()
+        self.ig = conectada(self.c)
+        patcher = mock.patch.object(api, "detalhes_da_midia", side_effect=lambda token, midia: self.TIPOS[midia])
+        self.detalhes = patcher.start()
+        self.addCleanup(patcher.stop)
+        patcher = mock.patch.object(api, "stories_no_ar", return_value=[])
+        self.stories = patcher.start()
+        self.addCleanup(patcher.stop)
+
+    def test_comentario_no_anuncio_fica_na_lista_e_responde_so_ele(self, msg, privada, resposta):
+        a = Automacao.objects.create(conta=self.c, nome="Bolsa", gatilho=Automacao.COMENTARIO, midia_id="post:reels-anuncio",
+                                     palavras="quero", respostas="Te mandei!", texto_dm="Link da bolsa")
+        self.assertTrue(a.e_anuncio)
+        W.separar_e_processar(aviso_comentario("quero", midia="reels-anuncio"))
+        W.separar_e_processar(aviso_comentario("quero", comentario="c2", autor="777", midia="reels-do-perfil"))
+        W.separar_e_processar(aviso_comentario("lindo", comentario="c3", autor="666", midia="reels-anuncio"))
+        self.assertEqual(Disparo.objects.get().automacao, a)
+        privada.assert_called_once()
+        visto = AnuncioVisto.objects.get(origem=AnuncioVisto.COMENTARIO, chave="post:reels-anuncio")
+        self.assertEqual((visto.do_perfil, visto.titulo, visto.imagem, visto.respostas),
+                         (False, "Bolsa de praia que cabe tudo", "https://cdn.exemplo/bolsa.jpg", 2))
+        self.assertTrue(AnuncioVisto.objects.get(chave="post:reels-do-perfil").do_perfil)
+        self.assertEqual(self.detalhes.call_count, 2)  # uma vez por mídia nova
+
+    def test_post_escolhido_na_lista_continua_valendo(self, msg, privada, resposta):
+        Automacao.objects.create(conta=self.c, nome="Reels", gatilho=Automacao.COMENTARIO, midia_id="reels-do-perfil",
+                                 respostas="Oi", enviar_dm=False)
+        W.separar_e_processar(aviso_comentario("quero", midia="reels-do-perfil"))
+        resposta.assert_called_once()
+
+    def test_story_do_anuncio_e_story_do_perfil_pelo_tipo(self, msg, privada, resposta):
+        W.separar_e_processar(aviso_mensagem("quero", story="story-anuncio"))
+        W.separar_e_processar(aviso_mensagem("quero", autor="777", mid="mid2", story="story-do-perfil"))
+        anuncio = AnuncioVisto.objects.get(chave="story:story-anuncio")
+        self.assertEqual((anuncio.do_perfil, anuncio.titulo, anuncio.imagem), (False, "Body splash", "https://cdn.exemplo/body.jpg"))
+        self.assertTrue(AnuncioVisto.objects.get(chave="story:story-do-perfil").do_perfil)
+        self.stories.assert_not_called()  # o tipo já respondeu
+
+    def test_tela_separa_comentarios_de_respostas_e_salva_o_anuncio_do_comentario(self, msg, privada, resposta):
+        W.separar_e_processar(aviso_comentario("quero", midia="reels-anuncio"))
+        W.separar_e_processar(aviso_mensagem("quero", story="story-anuncio"))
+        cache.clear()
+        client = Client(HTTP_HOST=HOST)
+        client.post("/entrar/", {"email": self.c.email, "senha": SENHA})
+        itens = client.get("/estudio/instagram/midias/?tipo=anuncio&gatilho=comentario").json()["itens"]
+        self.assertEqual([(i["id"], i["legenda"]) for i in itens], [("post:reels-anuncio", "Bolsa de praia que cabe tudo")])
+        self.assertIn("1 comentário", itens[0]["detalhe"])
+        itens = client.get("/estudio/instagram/midias/?tipo=anuncio&gatilho=story").json()["itens"]
+        self.assertEqual([i["id"] for i in itens], ["story:story-anuncio"])
+        dados = {"nome": "Bolsa", "gatilho": "comentario", "palavras": "quero", "responder_comentario": "on", "respostas": "Te mandei!",
+                 "enviar_dm": "on", "texto_dm": "Aqui:", "link": "https://s.shopee.com.br/abc", "ativa": "on",
+                 "midia_id": "post:reels-anuncio", "midia_legenda": "Bolsa de praia"}
+        self.assertEqual(client.post("/estudio/automacoes/nova/", dados).status_code, 302)
+        a = Automacao.objects.get()
+        self.assertEqual(a.midia_id, "post:reels-anuncio")
+        self.assertContains(client.get("/estudio/automacoes/"), "Comentou no anúncio")
+        # o anúncio de story não vale num gatilho de comentário
+        dados.update(nome="Outra", midia_id="story:story-anuncio")
+        client.post("/estudio/automacoes/nova/", dados)
+        self.assertEqual(Automacao.objects.get(nome="Outra").midia_id, "")
