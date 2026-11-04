@@ -33,11 +33,11 @@ class AvisoRecebidoAdmin(admin.ModelAdmin):
 
 @admin.register(AnuncioVisto)
 class AnuncioVistoAdmin(admin.ModelAdmin):
-    list_display = ("ultima_em", "ig_id", "chave", "titulo", "do_perfil", "respostas", "ultimo_texto")
-    list_filter = ("do_perfil",)
+    list_display = ("ultima_em", "ig_id", "origem", "chave", "titulo", "do_perfil", "consulta", "respostas", "ultimo_texto")
+    list_filter = ("origem", "do_perfil")
     search_fields = ("ig_id", "chave", "anuncio_id", "story_id", "titulo")
     readonly_fields = ("ig_id", "chave", "anuncio_id", "post_id", "story_id", "titulo", "imagem", "do_perfil", "respostas",
-                       "ultimo_texto", "primeira_em", "ultima_em", "o_que_veio")
+                       "ultimo_texto", "consulta", "conferido_em", "primeira_em", "ultima_em", "o_que_veio")
     exclude = ("bruto",)
 
     @admin.display(description="o que veio do Instagram (última resposta)")

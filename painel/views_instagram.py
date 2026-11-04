@@ -27,7 +27,7 @@ from estudio.models import PostInstagram
 from instagram_painel import api, conexao
 from instagram_painel import publicar as P
 from instagram_painel.models import AnuncioVisto, Automacao, ContaInstagram, Disparo, ImagemPublicacao, Publicacao
-from instagram_painel.webhook import ligadas, na_fila, palavras, respondidas_no_mes, valendo
+from instagram_painel.webhook import conferir_os_antigos, ligadas, na_fila, palavras, respondidas_no_mes, valendo
 from licencas import planos as planos_do_app
 
 from . import conversor
@@ -162,6 +162,9 @@ def midias(request, conta):
         return JsonResponse({"erro": "Conecte o seu Instagram primeiro."}, status=400)
     if request.GET.get("tipo") == "anuncio":  # comentário: as mídias comentadas; story: as respostas por DM
         origem = AnuncioVisto.COMENTARIO if request.GET.get("gatilho") == Automacao.COMENTARIO else AnuncioVisto.MENSAGEM
+        # os antigos (sem foto, ou com a foto já vencida) são conferidos de novo no Instagram, poucos por vez;
+        # os que forem stories do perfil saem da lista
+        conferir_os_antigos(ig, list(AnuncioVisto.objects.filter(ig_id=ig.ig_id, origem=origem, do_perfil=False)[:60]))
         vistos = AnuncioVisto.objects.filter(ig_id=ig.ig_id, origem=origem, do_perfil=False)[:60]
         return JsonResponse({"itens": [_anuncio_na_lista(v) for v in vistos]})
     try:

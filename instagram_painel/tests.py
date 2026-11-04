@@ -728,3 +728,49 @@ class TestAnuncioPeloTipoDaMidia(TestCase):
         dados.update(nome="Outra", midia_id="story:story-anuncio")
         client.post("/estudio/automacoes/nova/", dados)
         self.assertEqual(Automacao.objects.get(nome="Outra").midia_id, "")
+
+
+@override_settings(APPFILIADO_PAINEL_HOSTS=[HOST], ALLOWED_HOSTS=[HOST, "testserver"], APPFILIADO_PAINEL_URL=f"https://{HOST}",
+                   APPFILIADO_INSTAGRAM_APP_ID="123", APPFILIADO_INSTAGRAM_APP_SECRET=SEGREDO)
+class TestConferirAnunciosAntigos(TestCase):
+    """Os itens guardados antes de perguntar o tipo ao Instagram (sem foto e sem legenda) são conferidos na tela."""
+
+    def setUp(self):
+        self.c = conta()
+        self.ig = conectada(self.c)
+        cache.clear()
+        self.client = Client(HTTP_HOST=HOST)
+        self.client.post("/entrar/", {"email": self.c.email, "senha": SENHA})
+
+    def lista(self):
+        return self.client.get("/estudio/instagram/midias/?tipo=anuncio&gatilho=story").json()["itens"]
+
+    def test_confere_na_tela_tira_os_do_perfil_e_nao_muda_a_ordem(self):
+        from datetime import timedelta
+
+        from django.utils import timezone
+
+        antes = timezone.now() - timedelta(hours=1)
+        for chave, story in (("story:ad", "ad"), ("story:meu", "meu"), ("story:sumiu", "sumiu")):
+            AnuncioVisto.objects.create(ig_id=IG_ID, chave=chave, story_id=story, respostas=1, imagem="https://vencida.jpg")
+        AnuncioVisto.objects.filter(chave="story:sumiu").update(ultima_em=antes)
+        tipos = {"ad": {"media_product_type": "AD", "caption": "Bolsa de praia", "thumbnail_url": "https://cdn.exemplo/bolsa.jpg"},
+                 "meu": {"media_product_type": "STORY"}}
+
+        def detalhes(token, midia):
+            if midia not in tipos:
+                raise api.ErroInstagram("Object does not exist")
+            return tipos[midia]
+
+        with mock.patch.object(api, "detalhes_da_midia", side_effect=detalhes) as chamada:
+            itens = self.lista()
+            self.assertEqual([(i["id"], i["legenda"], i["imagem"]) for i in itens],
+                             [("story:ad", "Bolsa de praia", "https://cdn.exemplo/bolsa.jpg"),
+                              ("story:sumiu", "Story que não está no seu perfil", "https://vencida.jpg")])
+            self.assertEqual(chamada.call_count, 3)
+            self.lista()  # conferidos há pouco: não pergunta de novo
+            self.assertEqual(chamada.call_count, 3)
+        sumiu = AnuncioVisto.objects.get(chave="story:sumiu")
+        self.assertEqual(sumiu.consulta, "erro: Object does not exist")
+        self.assertEqual(sumiu.ultima_em, antes)  # conferir não mexe na hora da última resposta
+        self.assertEqual(AnuncioVisto.objects.get(chave="story:ad").consulta, "AD")
