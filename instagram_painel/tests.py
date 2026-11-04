@@ -477,7 +477,26 @@ class TestAvisosRecebidos(TestCase):
         W.separar_e_processar(aviso_comentario("quero muito", ig_id="qualquer"))
         W.separar_e_processar(aviso_mensagem("🔥", story="s1", ig_id=IG_ID))
         self.assertEqual(AvisoRecebido.objects.get(ig_id="qualquer").resumo, "@maria comentou: quero muito")
-        self.assertEqual(AvisoRecebido.objects.get(ig_id=IG_ID).resumo, "Resposta a story: 🔥")
+        aviso = AvisoRecebido.objects.get(ig_id=IG_ID)
+        self.assertEqual(aviso.resumo, "Resposta a story (s1): 🔥")
+        # a mensagem fica como veio, para conferir no admin o que o Instagram manda
+        self.assertEqual(aviso.bruto["message"]["reply_to"]["story"]["id"], "s1")
+
+    def test_admin_mostra_o_que_veio(self):
+        from django.contrib.auth import get_user_model
+
+        from .models import AvisoRecebido
+
+        W.separar_e_processar(aviso_de_anuncio("quero", anuncio="120252364231080096", story="s-anuncio", ig_id="qualquer"))
+        dono = get_user_model().objects.create_superuser("dono", "dono@exemplo.com", "senha-boa-123")
+        client = Client()
+        client.force_login(dono)
+        aviso = AvisoRecebido.objects.get()
+        self.assertEqual(aviso.resumo, "Mensagem de anúncio (120252364231080096): quero")
+        r = client.get(f"/admin/instagram_painel/avisorecebido/{aviso.pk}/change/")
+        self.assertContains(r, "120252364231080096")
+        self.assertContains(r, "s-anuncio")
+        self.assertEqual(client.get("/admin/instagram_painel/anunciovisto/").status_code, 200)
 
 
 @override_settings(APPFILIADO_PAINEL_HOSTS=[HOST], ALLOWED_HOSTS=[HOST, "testserver"], APPFILIADO_PAINEL_URL=f"https://{HOST}",
@@ -528,13 +547,13 @@ class TestJanelaHistoricoEExcluir(TestCase):
         self.assertFalse(Automacao.objects.exists())
 
 
-def aviso_de_anuncio(texto="", autor="888", mid="mid1", anuncio="120200000000000001", titulo="Garrafa térmica", story=None, post=None):
+def aviso_de_anuncio(texto="", autor="888", mid="mid1", anuncio="120200000000000001", titulo="Garrafa térmica", story=None, post=None, ig_id=IG_ID):
     """Mensagem que veio de um anúncio: o Instagram manda o ID do anúncio no referral."""
     contexto = {"ad_title": titulo, "photo_url": "https://cdn.exemplo/garrafa.jpg"}
     if post:
         contexto["post_id"] = post
     referral = {"ref": "", "ad_id": anuncio, "source": "ADS", "type": "OPEN_THREAD", "ads_context_data": contexto}
-    return aviso_mensagem(texto, autor=autor, mid=mid, story=story, referral=referral)
+    return aviso_mensagem(texto, autor=autor, mid=mid, story=story, ig_id=ig_id, referral=referral)
 
 
 @override_settings(APPFILIADO_PAINEL_HOSTS=[HOST], ALLOWED_HOSTS=[HOST, "testserver"], APPFILIADO_PAINEL_URL=f"https://{HOST}",

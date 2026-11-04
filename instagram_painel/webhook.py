@@ -361,11 +361,22 @@ def _resumo(campo: str, valor: dict) -> str:
         return "Mensagem enviada pela própria conta"
     if (ref := msg.get("referral") or valor.get("referral")) and isinstance(ref, dict) and ref.get("ad_id"):
         return f"Mensagem de anúncio ({ref['ad_id']}): {str(msg.get('text', ''))[:200]}"
-    if (msg.get("reply_to") or {}).get("story"):
-        return f"Resposta a story: {str(msg.get('text', ''))[:200]}"
+    if (story := (msg.get("reply_to") or {}).get("story")):
+        return f"Resposta a story ({(story or {}).get('id', '?')}): {str(msg.get('text', ''))[:200]}"
     if msg:
         return f"DM: {str(msg.get('text', ''))[:200]}"
     return api.corpo_json(valor)[:300]
+
+
+BRUTO_ATE = 6000  # caracteres do aviso guardados para conferir no admin
+
+
+def _bruto(evento) -> dict:
+    """O aviso de mensagem como veio, para o admin. Grande demais: só o começo, como texto."""
+    if not isinstance(evento, dict):
+        return {}
+    texto = api.corpo_json(evento)
+    return evento if len(texto) <= BRUTO_ATE else {"cortado": texto[:BRUTO_ATE]}
 
 
 def registrar_avisos(payload: dict) -> None:
@@ -380,7 +391,7 @@ def registrar_avisos(payload: dict) -> None:
                 valor = change.get("value") if isinstance(change.get("value"), dict) else {}
                 novos.append(AvisoRecebido(ig_id=ig_id, campo=str(change.get("field") or "?")[:40], resumo=_resumo(change.get("field"), valor)))
             for evento in entrada.get("messaging") or []:
-                novos.append(AvisoRecebido(ig_id=ig_id, campo="messaging", resumo=_resumo("messages", evento)))
+                novos.append(AvisoRecebido(ig_id=ig_id, campo="messaging", resumo=_resumo("messages", evento), bruto=_bruto(evento)))
         AvisoRecebido.objects.bulk_create(novos)
         AvisoRecebido.objects.filter(recebido_em__lt=timezone.now() - GUARDAR_AVISOS_POR).delete()
     except Exception:

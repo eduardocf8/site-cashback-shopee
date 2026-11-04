@@ -164,6 +164,9 @@ class AvisoRecebido(models.Model):
     ig_id = models.CharField(max_length=64, db_index=True)
     campo = models.CharField(max_length=40)
     resumo = models.TextField(blank=True)
+    # O aviso como veio (só as mensagens, cortado): mostra no admin o que o Instagram manda de verdade,
+    # por exemplo numa resposta a um anúncio de reels que também roda nos stories.
+    bruto = models.JSONField(default=dict, blank=True)
     recebido_em = models.DateTimeField(auto_now_add=True, db_index=True)
 
     class Meta:

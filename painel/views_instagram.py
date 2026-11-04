@@ -173,10 +173,16 @@ def midias(request, conta):
 
 
 def _anuncio_na_lista(v: AnuncioVisto) -> dict:
-    nome = v.titulo or ("Anúncio " + v.anuncio_id if v.anuncio_id else "Story que não está no seu perfil")
+    """Um item da opção "Um anúncio". A resposta a um anúncio de reels que também roda nos stories pode chegar
+    só como resposta a um story que não é do perfil (sem o ID do anúncio): aí o nome diz isso e a hora da
+    última resposta ajuda a achar o anúncio (responda de outra conta e veja qual item mudou)."""
+    nome = v.titulo or ("Anúncio " + v.anuncio_id if v.anuncio_id else "Resposta a um story que não está no seu perfil (anúncio)")
     respostas = f"{v.respostas} resposta" + ("s" if v.respostas != 1 else "")
+    quando = timezone.localtime(v.ultima_em)
+    dia = "hoje" if quando.date() == timezone.localdate() else quando.strftime("%d/%m")
+    ultima = f"última {dia} às {quando:%H:%M}" + (f": \"{v.ultimo_texto[:40]}\"" if v.ultimo_texto else "")
     return {"id": v.chave, "link": "", "legenda": nome[:120], "imagem": v.imagem, "data": v.ultima_em.isoformat(),
-            "detalhe": f"{respostas} · última: \"{v.ultimo_texto[:40]}\"" if v.ultimo_texto else respostas}
+            "detalhe": f"{respostas} · {ultima}"}
 
 
 def anuncio_escolhido(midia_id: str) -> bool:
