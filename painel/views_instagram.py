@@ -23,6 +23,8 @@ from django.utils.http import url_has_allowed_host_and_scheme
 from django.views.decorators.csrf import csrf_exempt
 from django.views.decorators.http import require_POST
 
+from anuncios import servico as servico_anuncios
+from anuncios.models import ConexaoMeta
 from estudio.models import PostInstagram
 from instagram_painel import api, conexao
 from instagram_painel import publicar as P
@@ -160,13 +162,8 @@ def midias(request, conta):
     ig = _ig(conta)
     if not ig:
         return JsonResponse({"erro": "Conecte o seu Instagram primeiro."}, status=400)
-    if request.GET.get("tipo") == "anuncio":  # comentário: as mídias comentadas; story: as respostas por DM
-        origem = AnuncioVisto.COMENTARIO if request.GET.get("gatilho") == Automacao.COMENTARIO else AnuncioVisto.MENSAGEM
-        # os antigos (sem foto, ou com a foto já vencida) são conferidos de novo no Instagram, poucos por vez;
-        # os que forem stories do perfil saem da lista
-        conferir_os_antigos(ig, list(AnuncioVisto.objects.filter(ig_id=ig.ig_id, origem=origem, do_perfil=False)[:60]))
-        vistos = AnuncioVisto.objects.filter(ig_id=ig.ig_id, origem=origem, do_perfil=False)[:60]
-        return JsonResponse({"itens": [_anuncio_na_lista(v) for v in vistos]})
+    if request.GET.get("tipo") == "anuncio":
+        return JsonResponse(_lista_de_anuncios(conta, ig, request.GET.get("gatilho", "")))
     try:
         itens = api.stories_no_ar(ig.token) if request.GET.get("tipo") == "story" else api.posts_recentes(ig.token)
     except api.ErroInstagram as erro:
@@ -190,6 +187,43 @@ def _anuncio_na_lista(v: AnuncioVisto) -> dict:
     ultima = f"última {dia} às {quando:%H:%M}" + (f": \"{v.ultimo_texto[:40]}\"" if v.ultimo_texto else "")
     return {"id": v.chave, "link": "", "legenda": nome[:120], "imagem": v.imagem, "data": v.ultima_em.isoformat(),
             "detalhe": f"{respostas} · {ultima}"}
+
+
+def _lista_de_anuncios(conta, ig, gatilho: str) -> dict:
+    """A opção "Um anúncio": os anúncios de onde já chegou comentário (ou resposta a story) e, com a conta de
+    anúncios conectada (Campanhas da Meta), os anúncios dela, com o nome e a foto, antes de qualquer comentário.
+
+    Nos comentários, o anúncio da Meta é a mídia dele no Instagram (post:<effective_instagram_media_id>). Nas
+    respostas a story, a Meta só dá nome ao item quando o story respondido é essa mesma mídia."""
+    origem = AnuncioVisto.COMENTARIO if gatilho == Automacao.COMENTARIO else AnuncioVisto.MENSAGEM
+    # os antigos (sem foto, ou com a foto já vencida) são conferidos de novo no Instagram, poucos por vez;
+    # os que forem stories do perfil saem da lista
+    conferir_os_antigos(ig, list(AnuncioVisto.objects.filter(ig_id=ig.ig_id, origem=origem, do_perfil=False)[:60]))
+    vistos = list(AnuncioVisto.objects.filter(ig_id=ig.ig_id, origem=origem, do_perfil=False)[:60])
+    da_meta, erro = servico_anuncios.anuncios_com_instagram(conta)
+    por_midia = {a["midia_id"]: a for a in da_meta}
+    itens = []
+    for v in vistos:
+        item, anuncio = _anuncio_na_lista(v), por_midia.get(v.post_id if origem == AnuncioVisto.COMENTARIO else v.story_id)
+        if anuncio:
+            item["legenda"] = anuncio["nome"] or item["legenda"]
+            item["imagem"] = item["imagem"] or anuncio["imagem"]
+            item["detalhe"] = f"{_situacao(anuncio)} · {item['detalhe']}"
+        itens.append(item)
+    if origem == AnuncioVisto.COMENTARIO:  # os da Meta que ainda não tiveram comentário
+        ja = {v.post_id for v in vistos}
+        itens += [{"id": f"post:{a['midia_id']}", "link": a["link"], "legenda": a["nome"] or "Anúncio sem nome", "imagem": a["imagem"],
+                   "data": "", "detalhe": f"{_situacao(a)} · nenhum comentário ainda"} for a in da_meta if a["midia_id"] not in ja]
+    conectada = ConexaoMeta.objects.filter(conta=conta).exists()
+    return {"itens": itens, "meta": {
+        "conectada": conectada, "erro": erro,
+        "pode_conectar": not conectada and servico_anuncios.liberado(conta),
+        "url": reverse("painel_campanhas_meta") if servico_anuncios.liberado(conta) else "",
+    }}
+
+
+def _situacao(anuncio: dict) -> str:
+    return "Ativo" if anuncio["situacao"] == "ACTIVE" else "Pausado" if "PAUSED" in anuncio["situacao"] else "Anúncio"
 
 
 def anuncio_escolhido(midia_id: str) -> bool:

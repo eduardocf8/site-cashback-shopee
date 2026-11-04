@@ -48,6 +48,42 @@ def liberado(conta) -> bool:
     return bool(getattr(conta, "beta_campanhas_meta", False))
 
 
+GUARDAR_ANUNCIOS = 10 * 60  # segundos: a lista de anúncios da Meta, para a tela das Automações
+SITUACOES_FORA = {"DELETED", "ARCHIVED"}
+
+
+def anuncios_com_instagram(conta) -> tuple[list[dict], str]:
+    """Os anúncios das contas de anúncios conectadas que têm mídia no Instagram, para a opção "Um anúncio"
+    das Automações: [{ad_id, nome, situacao, midia_id, imagem, link}] e a mensagem de erro (ou "").
+    Sem conexão: ([], ""). Fica guardado 10 minutos."""
+    from django.core.cache import cache
+
+    conexao = ConexaoMeta.objects.filter(conta=conta).first()
+    if not conexao:
+        return [], ""
+    chave_cache = f"anuncios_ig:{conexao.pk}:{conexao.atualizada_em.timestamp():.0f}"
+    if (guardado := cache.get(chave_cache)) is not None:
+        return guardado, ""
+    itens = []
+    try:
+        for conta_anuncios in conexao.contas.filter(acompanhar=True):
+            for a in meta.anuncios(conexao.token, conta_anuncios.account_id):
+                criativo = a.get("creative") or {}
+                midia = str(criativo.get("effective_instagram_media_id") or "")
+                if not midia or str(a.get("effective_status") or "") in SITUACOES_FORA:
+                    continue
+                imagem = str(criativo.get("thumbnail_url") or "")
+                itens.append({"ad_id": str(a.get("id") or ""), "nome": str(a.get("name") or "")[:120], "midia_id": midia,
+                              "situacao": str(a.get("effective_status") or ""), "imagem": imagem if imagem.startswith("https://") else "",
+                              "link": str(criativo.get("instagram_permalink_url") or "")})
+    except meta.ErroMeta as erro:
+        logger.warning("Meta: não deu para ler os anúncios de %s: %s", conta, erro)
+        return [], f"Não consegui ler os anúncios na Meta ({erro})."
+    itens.sort(key=lambda a: (a["situacao"] != "ACTIVE", a["nome"].lower()))
+    cache.set(chave_cache, itens, GUARDAR_ANUNCIOS)
+    return itens, ""
+
+
 def chave(texto: str) -> str:
     """Para comparar nome de campanha com Sub ID: só letras e números, sem maiúsculas."""
     return re.sub(r"[^0-9a-z]", "", str(texto or "").lower())

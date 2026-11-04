@@ -112,6 +112,15 @@ def campanhas(token: str, account_id: str) -> list[dict]:
                              {"fields": "id,name,effective_status,created_time", "limit": 500})
 
 
+def anuncios(token: str, account_id: str) -> list[dict]:
+    """Os anúncios da conta com a mídia do Instagram de cada um: o effective_instagram_media_id do criativo é
+    a mídia onde ficam os comentários do anúncio (inclusive o reels subido direto no Gerenciador, que não
+    aparece nos posts do perfil)."""
+    return _todas_as_paginas(f"act_{account_id}/ads", token, {
+        "fields": "id,name,effective_status,creative{effective_instagram_media_id,instagram_permalink_url,thumbnail_url}",
+        "limit": 200}, limite_paginas=5)
+
+
 def gastos_por_dia(token: str, account_id: str, desde, ate) -> list[dict]:
     """Uma linha por campanha e por dia: campaign_id, campaign_name, date_start, spend, impressions,
     inline_link_clicks (Insights, nível de campanha)."""

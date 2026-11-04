@@ -6,6 +6,7 @@ from unittest import mock
 
 from django.core.cache import cache
 from django.test import Client, TestCase, override_settings
+from django.utils import timezone
 
 from licencas.models import ContaAppfiliado
 from painel import cripto
@@ -774,3 +775,70 @@ class TestConferirAnunciosAntigos(TestCase):
         self.assertEqual(sumiu.consulta, "erro: Object does not exist")
         self.assertEqual(sumiu.ultima_em, antes)  # conferir não mexe na hora da última resposta
         self.assertEqual(AnuncioVisto.objects.get(chave="story:ad").consulta, "AD")
+
+
+@override_settings(APPFILIADO_PAINEL_HOSTS=[HOST], ALLOWED_HOSTS=[HOST, "testserver"], APPFILIADO_PAINEL_URL=f"https://{HOST}",
+                   APPFILIADO_INSTAGRAM_APP_ID="123", APPFILIADO_INSTAGRAM_APP_SECRET=SEGREDO)
+@mock.patch.object(api, "mensagem", return_value="d2")
+class TestAnunciosDaContaDeAnuncios(TestCase):
+    """Com a conta de anúncios conectada (Campanhas da Meta), os anúncios aparecem antes do primeiro comentário."""
+
+    ANUNCIOS = [
+        {"id": "120001", "name": "AD1 Bolsa", "effective_status": "ACTIVE",
+         "creative": {"effective_instagram_media_id": "midia-bolsa", "thumbnail_url": "https://cdn.exemplo/bolsa.jpg"}},
+        {"id": "120002", "name": "AD2 Body splash", "effective_status": "ACTIVE", "creative": {"effective_instagram_media_id": "midia-body"}},
+        {"id": "120003", "name": "Velho", "effective_status": "DELETED", "creative": {"effective_instagram_media_id": "midia-velha"}},
+        {"id": "120004", "name": "Sem Instagram", "effective_status": "ACTIVE", "creative": {}},
+    ]
+
+    def setUp(self):
+        from anuncios.models import ConexaoMeta, ContaAnuncios
+
+        self.c = conta()
+        self.c.beta_campanhas_meta = True
+        self.c.save()
+        self.ig = conectada(self.c)
+        self.conexao = ConexaoMeta.objects.create(conta=self.c, usuario_id="fb1", token_cifrado=cripto.cifrar("tok-meta"))
+        ContaAnuncios.objects.create(conexao=self.conexao, account_id="999", nome="Conta da Bia")
+        for alvo, valor in ((api, "detalhes_da_midia"), (api, "stories_no_ar")):
+            patcher = mock.patch.object(alvo, valor, side_effect=api.ErroInstagram("sem acesso"))
+            patcher.start()
+            self.addCleanup(patcher.stop)
+        cache.clear()
+        self.client = Client(HTTP_HOST=HOST)
+        self.client.post("/entrar/", {"email": self.c.email, "senha": SENHA})
+
+    def lista(self, gatilho):
+        from anuncios import meta
+
+        with mock.patch.object(meta, "anuncios", return_value=self.ANUNCIOS) as chamada:
+            j = self.client.get(f"/estudio/instagram/midias/?tipo=anuncio&gatilho={gatilho}").json()
+        return j, chamada
+
+    def test_comentario_lista_os_anuncios_da_meta_antes_do_primeiro_comentario(self, msg):
+        AnuncioVisto.objects.create(ig_id=IG_ID, origem=AnuncioVisto.COMENTARIO, chave="post:midia-bolsa", post_id="midia-bolsa",
+                                    respostas=3, ultimo_texto="quero", conferido_em=timezone.now())
+        j, chamada = self.lista("comentario")
+        chamada.assert_called_once_with("tok-meta", "999")
+        self.assertEqual([(i["id"], i["legenda"]) for i in j["itens"]],
+                         [("post:midia-bolsa", "AD1 Bolsa"), ("post:midia-body", "AD2 Body splash")])
+        self.assertTrue(j["itens"][0]["detalhe"].startswith("Ativo · 3 comentários"))
+        self.assertEqual(j["itens"][0]["imagem"], "https://cdn.exemplo/bolsa.jpg")
+        self.assertEqual(j["itens"][1]["detalhe"], "Ativo · nenhum comentário ainda")
+        self.assertTrue(j["meta"]["conectada"])
+        _, chamada = self.lista("comentario")  # guardado por 10 minutos
+        chamada.assert_not_called()
+
+    def test_story_do_anuncio_ganha_o_nome_e_responde_pela_midia_do_anuncio(self, msg):
+        Automacao.objects.create(conta=self.c, nome="Bolsa", gatilho=Automacao.STORY, midia_id="post:midia-bolsa",
+                                 palavras="quero", texto_dm="Link da bolsa")
+        W.separar_e_processar(aviso_mensagem("quero", story="midia-bolsa"))
+        self.assertEqual(msg.call_args.args[3], "Link da bolsa")
+        j, _ = self.lista("story")
+        self.assertEqual([(i["id"], i["legenda"]) for i in j["itens"]], [("story:midia-bolsa", "AD1 Bolsa")])
+
+    def test_sem_conexao_convida_a_conectar(self, msg):
+        self.conexao.delete()
+        j, chamada = self.lista("comentario")
+        chamada.assert_not_called()
+        self.assertEqual((j["meta"]["conectada"], j["meta"]["pode_conectar"]), (False, True))

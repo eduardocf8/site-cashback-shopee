@@ -197,9 +197,13 @@ def chave_principal(info: dict) -> str:
 def chaves_da_origem(ig: ContaInstagram, info: dict) -> set[str]:
     """Todos os jeitos de reconhecer de onde veio a mensagem (o que pode estar em Automacao.midia_id)."""
     story = info["story_id"]
-    # o story vale cru (escolhido na lista de stories do perfil) e com "story:" (escolhido como anúncio)
+    # o story vale cru (escolhido na lista de stories do perfil), com "story:" (escolhido como anúncio) e com
+    # "post:" (o anúncio da lista da Meta)
     chaves = {f"ad:{info['anuncio_id']}" if info["anuncio_id"] else "", f"post:{info['post_id']}" if info["post_id"] else "",
-              story, f"story:{story}" if story else ""}
+              story, f"story:{story}" if story else "",
+              # o anúncio escolhido da lista da Meta (post:<mídia do anúncio>) vale também quando o story
+              # respondido é a mesma mídia
+              f"post:{story}" if story else ""}
     if info["story_id"]:  # o mesmo story já chegou antes junto com o ID do anúncio
         chaves |= set(AnuncioVisto.objects.filter(ig_id=ig.ig_id, origem=AnuncioVisto.MENSAGEM, story_id=info["story_id"])
                       .values_list("chave", flat=True))

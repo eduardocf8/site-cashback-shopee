@@ -48,6 +48,7 @@
     </div>
     <div class="ig-anuncio-ajuda" id="ig-anuncio-ajuda" hidden>
       <p class="suave" id="ig-anuncio-texto"></p>
+      <p class="suave" id="ig-anuncio-meta" hidden></p>
       <div class="linha-botoes">
         <button type="button" class="botao botao-claro botao-pequeno" id="ig-anuncio-atualizar">Atualizar a lista</button>
       </div>
@@ -202,6 +203,16 @@
   }
   $('ig-pag-ant').addEventListener('click', () => { pagina = Math.max(0, pagina - 1); desenharPagina(); });
   $('ig-pag-prox').addEventListener('click', () => { pagina += 1; desenharPagina(); });
+  // A conta de anúncios conectada (Campanhas da Meta) põe os anúncios na lista antes do primeiro comentário.
+  function mostrarMeta(m) {
+    const caixa = $('ig-anuncio-meta');
+    caixa.hidden = !(m.erro || m.pode_conectar || m.conectada);
+    if (m.erro) caixa.textContent = m.erro;
+    else if (m.pode_conectar) caixa.innerHTML = `Quer ver os anúncios aqui antes do primeiro comentário? <a href="${esc(m.url)}">Conecte a sua conta de anúncios</a> em Resultados › Campanhas da Meta.`;
+    else if (m.conectada) caixa.textContent = gatilho() === 'comentario'
+      ? 'Os anúncios da sua conta de anúncios aparecem aqui, mesmo sem comentário.'
+      : 'Quando o story respondido é a mesma mídia de um anúncio da sua conta de anúncios, o item mostra o nome do anúncio.';
+  }
   async function buscar() {
     const aviso = $('ig-midias-aviso');
     aviso.textContent = 'Buscando no Instagram…'; esconderLista();
@@ -209,6 +220,7 @@
       const r = await fetch(`${urlMidias}?tipo=${tipo()}&gatilho=${gatilho()}`, { credentials: 'same-origin' });
       const j = await r.json(); if (!r.ok) throw new Error(j.erro || 'Não deu certo.');
       itens = j.itens; pagina = 0;
+      if (tipo() === 'anuncio') mostrarMeta(j.meta || {});
       aviso.textContent = tipo() === 'anuncio'
         ? (itens.length ? 'Toque no anúncio que vai ter a automação. O mais recente fica em cima.'
           : gatilho() === 'comentario' ? 'Ainda não chegou comentário em nenhum anúncio. Comente no anúncio de outra conta e toque em Atualizar.'
