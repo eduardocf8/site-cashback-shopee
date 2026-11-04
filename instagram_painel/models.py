@@ -97,7 +97,9 @@ class Automacao(models.Model):
 
     @property
     def e_anuncio(self) -> bool:
-        """Presa a um anúncio (ver AnuncioVisto), e não a um story do perfil."""
+        """Presa a um anúncio (ver AnuncioVisto), e não a um post ou story do perfil."""
+        if self.gatilho == self.COMENTARIO:
+            return self.midia_id.startswith("post:")
         return self.gatilho == self.STORY and self.midia_id.startswith(("ad:", "post:", "story:"))
 
 
@@ -124,7 +126,7 @@ class Disparo(models.Model):
 
 
 class AnuncioVisto(models.Model):
-    """Um anúncio (ou story que não está no perfil) de onde já chegou resposta por DM.
+    """Um anúncio (ou story/post que não está no perfil) de onde já chegou resposta por DM ou comentário.
 
     Os anúncios de reels que também rodam nos stories não aparecem na lista de stories da conta: o
     Instagram só conta deles quando alguém responde. Cada resposta guarda aqui o que veio junto (o ID do
@@ -132,9 +134,14 @@ class AnuncioVisto(models.Model):
     opção "Um anúncio". A `chave` é o que fica em Automacao.midia_id:
     - "ad:<id>" quando o Instagram mandou o ID do anúncio (o mais estável);
     - "post:<id>" quando só mandou o post/reels de origem;
-    - "story:<id>" quando é uma resposta a story sem nada do anúncio (e o story não está no perfil)."""
+    - "story:<id>" quando é uma resposta a story sem nada do anúncio (e o story não está no perfil).
+    Nos comentários (origem "comentario"), a chave é "post:<id da mídia>": o reels subido direto no
+    Gerenciador de Anúncios recebe comentário, mas não está na lista de posts do perfil."""
+
+    MENSAGEM, COMENTARIO = "mensagem", "comentario"
 
     ig_id = models.CharField(max_length=64, db_index=True)
+    origem = models.CharField(max_length=20, default=MENSAGEM)  # de onde veio: DM/resposta a story ou comentário
     chave = models.CharField(max_length=80)
     anuncio_id = models.CharField(max_length=64, blank=True)
     post_id = models.CharField(max_length=64, blank=True)
@@ -151,7 +158,7 @@ class AnuncioVisto(models.Model):
 
     class Meta:
         ordering = ["-ultima_em"]
-        constraints = [models.UniqueConstraint(fields=["ig_id", "chave"], name="anuncio_visto_por_chave")]
+        constraints = [models.UniqueConstraint(fields=["ig_id", "origem", "chave"], name="anuncio_visto_por_origem_e_chave")]
 
     def __str__(self):
         return self.titulo or self.chave
@@ -164,6 +171,9 @@ class AvisoRecebido(models.Model):
     ig_id = models.CharField(max_length=64, db_index=True)
     campo = models.CharField(max_length=40)
     resumo = models.TextField(blank=True)
+    # O aviso como veio (cortado): mostra no admin o que o Instagram manda de verdade,
+    # por exemplo numa resposta a um anúncio de reels que também roda nos stories.
+    bruto = models.JSONField(default=dict, blank=True)
     recebido_em = models.DateTimeField(auto_now_add=True, db_index=True)
 
     class Meta:

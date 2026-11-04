@@ -66,6 +66,18 @@ def _pagina_da_conexao(conta) -> str:
     return reverse("painel_estudio_automacoes" if _tem_automacoes(conta) else "painel_estudio_publicacoes")
 
 
+MOSTRAR_PALAVRAS = 4  # no cartão da lista; o resto vira "+2"
+
+
+def _quando(a: Automacao) -> str:
+    """O gatilho e onde ele vale, numa frase curta para o cartão da lista."""
+    if a.gatilho == Automacao.DIRETO:
+        return "Mandou DM com a palavra"
+    if a.gatilho == Automacao.STORY:
+        return "Respondeu o anúncio" if a.e_anuncio else "Respondeu este story" if a.midia_id else "Respondeu qualquer story"
+    return "Comentou no anúncio" if a.e_anuncio else "Comentou neste post" if a.midia_id else "Comentou em qualquer post"
+
+
 @_automacoes
 def automacoes(request, conta):
     plano, ig = planos_do_app.automacoes(conta), _ig(conta)
@@ -78,8 +90,10 @@ def automacoes(request, conta):
         fora = (f"Parada: é do @{a.ig_username}, que não está conectado." if outra
                 else "Parada: responder stories e DMs é do plano Premium." if a.gatilho not in plano["gatilhos"]
                 else f"Parada: no Standard valem só as {plano['ativas']} ligadas mais recentes." if a.ativa and a.pk not in valem else "")
+        todas = [p.upper() for p in palavras(a)]
         lista.append({"a": a, "total": total, "dms": a.disparos.filter(dm_ok=True).count(), "outra_conta": outra,
-                      "palavras": ", ".join(palavras(a)).upper(), "fora_do_plano": fora})
+                      "palavras": todas[:MOSTRAR_PALAVRAS], "mais_palavras": max(0, len(todas) - MOSTRAR_PALAVRAS),
+                      "quando": _quando(a), "fora_do_plano": fora})
     lista.sort(key=lambda item: item["outra_conta"])  # as do Instagram conectado primeiro
     return render(request, "painel/estudio_automacoes.html", _contexto(
         request, SLUG_AUTOMACOES, ig=_ig(conta), plano=plano, lista=lista, respondidas=respondidas_no_mes(conta),
@@ -146,8 +160,10 @@ def midias(request, conta):
     ig = _ig(conta)
     if not ig:
         return JsonResponse({"erro": "Conecte o seu Instagram primeiro."}, status=400)
-    if request.GET.get("tipo") == "anuncio":
-        return JsonResponse({"itens": [_anuncio_na_lista(v) for v in AnuncioVisto.objects.filter(ig_id=ig.ig_id, do_perfil=False)[:60]]})
+    if request.GET.get("tipo") == "anuncio":  # comentário: as mídias comentadas; story: as respostas por DM
+        origem = AnuncioVisto.COMENTARIO if request.GET.get("gatilho") == Automacao.COMENTARIO else AnuncioVisto.MENSAGEM
+        vistos = AnuncioVisto.objects.filter(ig_id=ig.ig_id, origem=origem, do_perfil=False)[:60]
+        return JsonResponse({"itens": [_anuncio_na_lista(v) for v in vistos]})
     try:
         itens = api.stories_no_ar(ig.token) if request.GET.get("tipo") == "story" else api.posts_recentes(ig.token)
     except api.ErroInstagram as erro:
@@ -159,15 +175,30 @@ def midias(request, conta):
 
 
 def _anuncio_na_lista(v: AnuncioVisto) -> dict:
-    nome = v.titulo or ("Anúncio " + v.anuncio_id if v.anuncio_id else "Story que não está no seu perfil")
-    respostas = f"{v.respostas} resposta" + ("s" if v.respostas != 1 else "")
+    """Um item da opção "Um anúncio". A resposta a um anúncio de reels que também roda nos stories chega só
+    como resposta a um story que não é do perfil (sem o ID do anúncio), igual à resposta a um story seu que
+    já saiu do ar: a hora da última resposta ajuda a achar o anúncio (responda de outra conta e veja qual
+    item subiu para o topo)."""
+    comentario = v.origem == AnuncioVisto.COMENTARIO
+    nome = v.titulo or ("Anúncio " + v.anuncio_id if v.anuncio_id else "Anúncio sem legenda" if comentario else "Story que não está no seu perfil")
+    respostas = f"{v.respostas} " + ("comentário" if comentario else "resposta") + ("s" if v.respostas != 1 else "")
+    quando = timezone.localtime(v.ultima_em)
+    dia = "hoje" if quando.date() == timezone.localdate() else quando.strftime("%d/%m")
+    ultima = f"última {dia} às {quando:%H:%M}" + (f": \"{v.ultimo_texto[:40]}\"" if v.ultimo_texto else "")
     return {"id": v.chave, "link": "", "legenda": nome[:120], "imagem": v.imagem, "data": v.ultima_em.isoformat(),
-            "detalhe": f"{respostas} · última: \"{v.ultimo_texto[:40]}\"" if v.ultimo_texto else respostas}
+            "detalhe": f"{respostas} · {ultima}"}
 
 
 def anuncio_escolhido(midia_id: str) -> bool:
-    """A automação está presa a um anúncio (e não a um story do perfil)."""
+    """A automação está presa a um anúncio (e não a um post ou story do perfil)."""
     return midia_id.startswith(("ad:", "post:", "story:"))
+
+
+def anuncio_cabe(gatilho: str, midia_id: str) -> bool:
+    """No comentário, só a mídia comentada (post:); na resposta a story, qualquer jeito de achar o anúncio."""
+    if gatilho == Automacao.COMENTARIO:
+        return midia_id.startswith("post:")
+    return gatilho == Automacao.STORY
 
 
 class AutomacaoForm(forms.ModelForm):
@@ -270,7 +301,7 @@ class AutomacaoForm(forms.ModelForm):
                 d["midia_id"], d["midia_link"] = f"ad:{colado}"[:64], ""
                 d["midia_imagem"] = visto.imagem if visto else ""
                 d["midia_legenda"] = (visto.titulo if visto and visto.titulo else f"Anúncio {colado}")[:190]
-        if gatilho != Automacao.STORY and anuncio_escolhido(d.get("midia_id") or ""):
+        if anuncio_escolhido(d.get("midia_id") or "") and not anuncio_cabe(gatilho, d.get("midia_id") or ""):
             d["midia_id"] = d["midia_link"] = d["midia_imagem"] = d["midia_legenda"] = ""
         for campo in ("midia_link", "midia_imagem"):
             if d.get(campo) and not str(d[campo]).startswith("https://"):
