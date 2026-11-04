@@ -84,16 +84,21 @@
 .ig-ok { color: var(--bom-tinta) !important; }
 .ig-erro { color: var(--perigo) !important; font-size: 12px; }
 .ig-automacoes { display: grid; gap: 10px; }
-.ig-automacao { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; padding: 14px 16px; }
-.ig-automacao.pausada .ig-automacao-link { opacity: .6; } /* os botões ficam com a cor cheia: "Ligar" é o que chama */
+/* Grade: a foto à esquerda, o nome na linha de cima inteira e os botões embaixo, à direita das outras linhas. */
+.ig-automacao { display: grid; grid-template-columns: 52px minmax(0, 1fr) auto; column-gap: 14px; row-gap: 6px; align-items: start; padding: 14px 16px; }
+/* pausada: só o texto e a foto ficam apagados; os botões ficam com a cor cheia ("Ligar" é o que chama) */
+.ig-automacao.pausada .ig-automacao-link > img, .ig-automacao.pausada .ig-automacao-link > .ig-midia-vazia, .ig-automacao.pausada .ig-automacao-info > * { opacity: .6; }
 .ig-automacao form { margin: 0; }
-.ig-automacao-link { display: flex; align-items: flex-start; gap: 14px; text-decoration: none; color: var(--texto); min-width: 0; flex: 1; }
+/* o link e o bloco de texto não têm caixa própria: os pedaços entram direto na grade do cartão */
+.ig-automacao-link { display: contents; text-decoration: none; color: var(--texto); }
+.ig-automacao-link > img, .ig-automacao-link > .ig-midia-vazia { grid-column: 1; grid-row: 1 / span 5; }
 .ig-automacao-link:hover { color: var(--texto); }
 .ig-automacao-link img, .ig-midia-vazia { width: 52px; height: 52px; border-radius: 10px; object-fit: cover; background: var(--chip); flex: none; display: grid; place-items: center; font-size: 12px; color: var(--suave); }
 .ig-automacao-link small { display: block; color: var(--suave); font-size: 12.5px; }
 /* O cartão da automação: nome, conta e estado, quando responde, as palavras e os números, cada um na sua linha. */
-.ig-automacao-info { display: grid; gap: 6px; min-width: 0; }
-.ig-automacao-nome { font-size: 16px; line-height: 1.25; overflow-wrap: anywhere; }
+.ig-automacao-info { display: contents; }
+.ig-automacao-info > * { grid-column: 2; min-width: 0; }
+.ig-automacao-info > .ig-automacao-nome { grid-column: 2 / 4; grid-row: 1; font-size: 16px; line-height: 1.25; overflow-wrap: anywhere; }
 .ig-automacao-selos { display: flex; flex-wrap: wrap; gap: 6px; }
 .ig-automacao-selos .ig-conta { margin-left: 0; }
 .ig-estado { font-size: 12px; font-weight: 700; padding: 2px 8px; border-radius: 999px; background: var(--bom-suave); color: var(--bom-tinta); }
@@ -105,7 +110,7 @@
 .ig-automacao-numeros b { color: var(--texto); }
 .ig-automacao-link .ig-automacao-numeros { display: flex; flex-wrap: wrap; gap: 2px 14px; }
 .ig-automacao-numeros span { white-space: nowrap; }
-.ig-automacao-botoes { display: grid; gap: 8px; flex: none; }
+.ig-automacao-botoes { grid-column: 3; grid-row: 2 / span 4; align-self: end; display: grid; gap: 8px; }
 .ig-automacao-botoes .botao { width: 100%; justify-content: center; }
 .ig-form { display: grid; gap: 16px; max-width: 760px; }
 .ig-form label { display: flex; flex-direction: column; gap: 4px; font-weight: 600; font-size: 14px; }
