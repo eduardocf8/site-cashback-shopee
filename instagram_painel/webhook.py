@@ -214,15 +214,54 @@ def _story_do_perfil(ig: ContaInstagram, story_id: str) -> bool:
         return False
 
 
-def _tipo_da_midia(ig: ContaInstagram, midia_id: str) -> tuple[bool | None, dict]:
-    """(é do perfil?, detalhes) pelo media_product_type que o Instagram devolve: AD é anúncio (inclusive o
-    reels subido direto no Gerenciador); FEED, REELS e STORY são do perfil. Sem resposta: (None, {})."""
+def _tipo_da_midia(ig: ContaInstagram, midia_id: str) -> tuple[bool | None, dict, str]:
+    """(é do perfil?, detalhes, o que o Instagram respondeu) pelo media_product_type: AD é anúncio (inclusive
+    o reels subido direto no Gerenciador); FEED, REELS e STORY são do perfil. Sem resposta: (None, {}, erro)."""
     try:
         d = api.detalhes_da_midia(ig.token, midia_id)
-    except api.ErroInstagram:
-        return None, {}
+    except api.ErroInstagram as erro:
+        return None, {}, f"erro: {erro}"[:300]
     tipo = str(d.get("media_product_type") or "").upper()
-    return (tipo != "AD") if tipo else None, d
+    return (tipo != "AD") if tipo else None, d, (tipo or "sem tipo")
+
+
+def _foto(d: dict) -> str:
+    foto = str(d.get("thumbnail_url") or d.get("media_url") or "")
+    return foto[:1000] if foto.startswith("https://") else ""
+
+
+def _legenda(d: dict) -> str:
+    return " ".join(str(d.get("caption") or "").split())[:80]
+
+
+CONFERIR_DE_NOVO = timedelta(hours=12)  # a foto que o Instagram devolve expira
+
+
+def conferir_midia(ig: ContaInstagram, visto: AnuncioVisto) -> None:
+    """Pergunta de novo ao Instagram o tipo, a foto e a legenda de um anúncio visto (a tela da automação
+    chama para os que estão sem foto ou com a foto velha)."""
+    midia = visto.story_id or visto.post_id
+    if not midia:
+        return
+    perfil, d, consulta = _tipo_da_midia(ig, midia)
+    if perfil is not None:
+        visto.do_perfil = perfil
+    if (foto := _foto(d)):
+        visto.imagem = foto
+    if (legenda := _legenda(d)) and not visto.titulo:
+        visto.titulo = legenda
+    visto.consulta, visto.conferido_em = consulta, timezone.now()
+    visto.save(update_fields=["do_perfil", "imagem", "titulo", "consulta", "conferido_em"])  # sem mexer na hora da última resposta
+
+
+def conferir_os_antigos(ig: ContaInstagram, vistos, ate: int = 8) -> None:
+    """Os que nunca foram conferidos ou foram há mais de 12 horas, poucos por vez."""
+    limite = timezone.now() - CONFERIR_DE_NOVO
+    for visto in [v for v in vistos if not v.conferido_em or v.conferido_em < limite][:ate]:
+        try:
+            conferir_midia(ig, visto)
+        except Exception:
+            logger.exception("Instagram: falha ao conferir a mídia %s de @%s", visto.chave, ig.username)
 
 
 def registrar_anuncio(ig: ContaInstagram, info: dict, texto: str, origem: str = AnuncioVisto.MENSAGEM) -> None:
@@ -233,20 +272,19 @@ def registrar_anuncio(ig: ContaInstagram, info: dict, texto: str, origem: str = 
         return
     visto = AnuncioVisto.objects.filter(ig_id=ig.ig_id, origem=origem, chave=chave).first()
     if not visto:
-        do_perfil, d = False, {}
+        do_perfil, d, consulta = False, {}, ""
         if origem == AnuncioVisto.COMENTARIO:  # comentário: a mídia comentada é anúncio ou post do perfil?
-            perfil, d = _tipo_da_midia(ig, info["post_id"])
+            perfil, d, consulta = _tipo_da_midia(ig, info["post_id"])
             do_perfil = bool(perfil)
         elif not (info["anuncio_id"] or info["post_id"]):  # resposta a story sem nada do anúncio
-            perfil, d = _tipo_da_midia(ig, info["story_id"])
+            perfil, d, consulta = _tipo_da_midia(ig, info["story_id"])
             do_perfil = perfil if perfil is not None else _story_do_perfil(ig, info["story_id"])
-        imagem = str(d.get("thumbnail_url") or d.get("media_url") or "")
         try:
             with transaction.atomic():
                 visto = AnuncioVisto.objects.create(
                     ig_id=ig.ig_id, origem=origem, chave=chave, anuncio_id=info["anuncio_id"], post_id=info["post_id"],
-                    story_id=info["story_id"], do_perfil=do_perfil, titulo=" ".join(str(d.get("caption") or "").split())[:80],
-                    imagem=imagem[:1000] if imagem.startswith("https://") else "")
+                    story_id=info["story_id"], do_perfil=do_perfil, titulo=_legenda(d), imagem=_foto(d),
+                    consulta=consulta, conferido_em=timezone.now() if consulta else None)
         except IntegrityError:  # chegou junto com outro aviso do mesmo anúncio
             visto = AnuncioVisto.objects.get(ig_id=ig.ig_id, origem=origem, chave=chave)
     # o título do anúncio (ad_title) vale mais que a legenda; a foto que veio na mensagem só entra se não

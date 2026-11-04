@@ -153,6 +153,10 @@ class AnuncioVisto(models.Model):
     respostas = models.PositiveIntegerField(default=0)
     ultimo_texto = models.CharField(max_length=200, blank=True)
     bruto = models.JSONField("o que veio do anúncio (referral e reply_to)", default=dict, blank=True)
+    # A última vez que o Appfiliado perguntou ao Instagram o tipo, a foto e a legenda da mídia, e o que ele
+    # respondeu ("AD", "STORY"... ou o erro). A foto expira: a tela pergunta de novo de tempos em tempos.
+    conferido_em = models.DateTimeField(null=True, blank=True)
+    consulta = models.CharField("resposta do Instagram", max_length=300, blank=True)
     primeira_em = models.DateTimeField(auto_now_add=True)
     ultima_em = models.DateTimeField(auto_now=True)
 
