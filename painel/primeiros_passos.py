@@ -25,47 +25,66 @@ JANELA = timedelta(days=7)  # depois disso (ou de clientes antigos), nada de e-m
 
 
 def passos(conta, liberados=None) -> list[dict]:
-    """Cada passo: chave, titulo, detalhe (pro e-mail), feito, acao e href (nome da URL do painel)."""
+    """Cada passo: chave, titulo, detalhe (pro e-mail), ajuda (uma linha, no Início), feito, acao e href
+    (nome da URL do painel)."""
     from bot_whatsapp.models import ConexaoWhatsApp, ConfiguracaoOfertas
     from carrosseis.models import Carrossel
+    from estudio.models import PostInstagram
     from meusite.models import SiteAfiliado
     from notas.models import EmpresaNotas
 
+    from . import modulos
+
     liberados = set(conta.modulos_liberados() if liberados is None else liberados)
-    lista = [{"chave": "senha", "titulo": "Criar a senha do painel", "detalhe": "",
+    lista = [{"chave": "senha", "titulo": "Criar a senha do painel", "detalhe": "", "ajuda": "",
               "feito": conta.tem_senha, "acao": "Criar senha", "href": ""}]
     # Só quem tem apenas o Emissor de notas não precisa da API da Shopee.
     if not liberados or liberados & {MODULO_WHATSAPP, MODULO_SITE, MODULO_CARROSSEIS} or not liberados & {MODULO_NOTAS}:
         lista.append({"chave": "shopee", "titulo": "Conectar sua conta de afiliado da Shopee",
-                      "detalhe": "a API da Shopee, em Configurações", "feito": bool(conta.shopee_validado_em),
-                      "acao": "Conectar", "href": "painel_configuracoes"})
+                      "detalhe": "a API da Shopee, em Configurações",
+                      "ajuda": "É ela que traz os seus números e as ofertas com o seu link.",
+                      "feito": bool(conta.shopee_validado_em), "acao": "Conectar", "href": "painel_configuracoes"})
     if MODULO_WHATSAPP in liberados:
         conexao = ConexaoWhatsApp.objects.filter(conta=conta).first()
         config = ConfiguracaoOfertas.objects.filter(conta=conta).first()
         lista += [
             {"chave": "whatsapp", "titulo": "Conectar seu WhatsApp pelo QR Code", "detalhe": "como no WhatsApp Web",
+             "ajuda": "Igual ao WhatsApp Web: aponte a câmera do celular pro código.",
              "feito": bool(conexao and (conexao.conectado_em or conexao.estado == ConexaoWhatsApp.CONECTADO)),
              "acao": "Conectar", "href": "painel_whatsapp"},
             {"chave": "ofertas", "titulo": "Ligar as ofertas automáticas",
              "detalhe": "escolha os grupos e clique em Ligar ofertas",
+             "ajuda": "Escolha os grupos e clique em Ligar ofertas.",
              "feito": bool(config and (config.ativo or config.ultimo_envio_em)),
              "acao": "Configurar", "href": "painel_whatsapp_ofertas"},
         ]
     if MODULO_SITE in liberados:
         site = SiteAfiliado.objects.filter(conta=conta).first()
         lista.append({"chave": "site", "titulo": "Publicar seu site", "detalhe": "escolha o endereço e o nome",
+                      "ajuda": "Escolha o endereço e o nome do seu link na bio.",
                       "feito": bool(site and site.endereco and site.nome and site.publicado),
                       "acao": "Montar o site", "href": "painel_meu_site"})
-    if MODULO_CARROSSEIS in liberados:
-        lista.append({"chave": "carrossel", "titulo": "Gerar seu primeiro carrossel",
+    # Os códigos do antigo gerador de carrosséis liberam o Estúdio Instagram: o passo aparece quando ele abre
+    # para a conta (antes do lançamento, só com a chave de teste).
+    if MODULO_CARROSSEIS in liberados and modulos.ve_beta(modulos.POR_SLUG["estudio_instagram"], conta):
+        lista.append({"chave": "estudio", "titulo": "Criar seu primeiro post no Estúdio",
                       "detalhe": "cole o link de um produto da Shopee",
-                      "feito": Carrossel.objects.filter(conta=conta).exists(),
-                      "acao": "Gerar", "href": "painel_carrosseis"})
+                      "ajuda": "Cole o link de um produto da Shopee e o post sai pronto.",
+                      "feito": (PostInstagram.objects.filter(conta=conta).exists()
+                                or Carrossel.objects.filter(conta=conta).exists()),
+                      "acao": "Criar", "href": "painel_estudio"})
     if MODULO_NOTAS in liberados:
         lista.append({"chave": "notas", "titulo": "Cadastrar a empresa e o certificado digital",
-                      "detalhe": "para emitir as notas", "acao": "Cadastrar", "href": "painel_notas",
+                      "detalhe": "para emitir as notas", "ajuda": "Para emitir as notas da Shopee e dos vendedores.",
+                      "acao": "Cadastrar", "href": "painel_notas",
                       "feito": EmpresaNotas.objects.filter(conta=conta).exclude(certificado_cifrado="").exists()})
     return lista
+
+
+def link_suporte() -> str:
+    """O WhatsApp de suporte (o mesmo dos e-mails de primeiros passos) ou "" se não estiver configurado."""
+    whatsapp = re.sub(r"\D", "", settings.APPFILIADO_WHATSAPP_SUPORTE or "")
+    return f"https://wa.me/{whatsapp}" if whatsapp else ""
 
 
 ADIAR_POR = timedelta(hours=12)
@@ -134,9 +153,8 @@ def montar_email(conta, lista: list[dict], segundo: bool = False) -> tuple[str, 
     for passo in lista:
         detalhe = f" ({passo['detalhe']})" if passo["detalhe"] and not passo["feito"] else ""
         linhas.append(f"{'✅' if passo['feito'] else '⬜'} {passo['titulo']}{detalhe}")
-    whatsapp = re.sub(r"\D", "", settings.APPFILIADO_WHATSAPP_SUPORTE or "")
-    link_whatsapp = f"https://wa.me/{whatsapp}" if whatsapp else ""
-    nome = f", {conta.nome.split(' ')[0]}" if conta.nome else ""
+    link_whatsapp = link_suporte()
+    nome =f", {conta.nome.split(' ')[0]}" if conta.nome else ""
     quantos = f"{len(faltam)} passo{'s' if len(faltam) > 1 else ''}"
     if segundo:
         assunto = "Precisa de ajuda para configurar o Appfiliado?"

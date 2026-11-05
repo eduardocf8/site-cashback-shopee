@@ -110,8 +110,9 @@ class TestTelasComTresMeses(BaseFases):
 
     def test_metas_detalha_os_tres_meses(self, _):
         html = self.client.get("/metas/").content.decode()
-        for texto in ("Setembro/2026", "Fechada em 30/10", "Outubro/2026", "Em fechamento até 30/11", "Novembro/2026",
-                      "Prévia", "possível: depende dos pendentes", "Bônus de Setembro/2026"):
+        for texto in ("Setembro/2026", "Fechada", "fechou em <strong>30/10 às 11h</strong>", "Outubro/2026", "Em fechamento",
+                      "O resultado oficial sai em <strong>30/11 às 11h</strong>", "Novembro/2026", "Prévia",
+                      "possível com os pendentes", "Faixa <strong>100%</strong> batida: bônus de <strong>R$ 300,00</strong>"):
             self.assertIn(texto, html)
         self.assertEqual(html.count('class="selo-fase'), 3)
 

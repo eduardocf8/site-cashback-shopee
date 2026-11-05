@@ -6,13 +6,14 @@
 <div class="es-pagina">
 <header class="cabecalho">
   <div>
-    <a class="suave" href="{% url 'painel_estudio' %}">← Estúdio Instagram</a>
-    <h1>Publicações</h1>
-    <p>Os posts e stories que você mandou para o Instagram{% if ig %} (@{{ ig.username }}){% endif %}. Para publicar ou agendar, abra um post e use "Publicar no Instagram".</p>
+    <h1>Estúdio Instagram</h1>
+    <p>Crie posts e stories com o seu link de afiliado e publique direto no seu Instagram, na hora ou agendado.</p>
   </div>
+  {% if ig %}{% include "painel/_instagram_conexao.html" %}{% endif %}
 </header>
-
-{% include "painel/_instagram_conexao.html" %}
+{% include "painel/_abas_instagram.html" with modulo="estudio" aba="publicacoes" %}
+<p class="ig-sub suave">Os posts e stories que você mandou pro Instagram. Para publicar ou agendar, abra um post e use "Publicar no Instagram".</p>
+{% if not ig %}{% include "painel/_instagram_conexao.html" %}{% endif %}
 
 <section>
   <h2 class="titulo-secao">Agendadas</h2>

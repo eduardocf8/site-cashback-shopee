@@ -1,10 +1,22 @@
-<nav class="chips abas-zap" aria-label="Bot de WhatsApp">
-  <a class="chip{% if aba == 'conexao' %} ativo{% endif %}" href="{% url 'painel_whatsapp' %}"{% if aba == 'conexao' %} aria-current="page"{% endif %}>Conexão</a>
-  <a class="chip{% if aba == 'ofertas' %} ativo{% endif %}" href="{% url 'painel_whatsapp_ofertas' %}"{% if aba == 'ofertas' %} aria-current="page"{% endif %}>Automação</a>
-  <a class="chip{% if aba == 'resultados' %} ativo{% endif %}" href="{% url 'painel_whatsapp_resultados' %}"{% if aba == 'resultados' %} aria-current="page"{% endif %}>Resultados</a>
-  <a class="chip{% if aba == 'campanhas' %} ativo{% endif %}" href="{% url 'painel_whatsapp_campanhas' %}"{% if aba == 'campanhas' %} aria-current="page"{% endif %}>Campanhas</a>
-  <a class="chip{% if aba == 'alertas' %} ativo{% endif %}" href="{% url 'painel_whatsapp_alertas' %}"{% if aba == 'alertas' %} aria-current="page"{% endif %}>Alerta de preço</a>
-  <a class="chip{% if aba == 'mensagens' %} ativo{% endif %}" href="{% url 'painel_whatsapp_mensagens' %}"{% if aba == 'mensagens' %} aria-current="page"{% endif %}>Mensagens</a>
-  <a class="chip{% if aba == 'membros' %} ativo{% endif %}" href="{% url 'painel_whatsapp_membros' %}"{% if aba == 'membros' %} aria-current="page"{% endif %}>Grupos</a>
-  <a class="chip{% if aba == 'entrada' %} ativo{% endif %}" href="{% url 'painel_whatsapp_entrada' %}"{% if aba == 'entrada' %} aria-current="page"{% endif %}>Link de entrada</a>
+{# Abas do Bot em famílias: conexão | envio | grupos | resultados. O pontinho mostra o que está ligado. #}
+{% with pt=bot.pontos %}
+<nav class="abas abas-bot" aria-label="Bot de WhatsApp">
+  <a class="aba{% if aba == 'conexao' %} ativo{% endif %}" href="{% url 'painel_whatsapp' %}"{% if aba == 'conexao' %} aria-current="page"{% endif %}><i class="pt {{ pt.conexao }}" aria-hidden="true"></i>Conexão{% if pt.conexao == "ok" %}<span class="sr"> (conectado)</span>{% endif %}</a>
+  <span class="abas-sep" aria-hidden="true"></span>
+  <a class="aba{% if aba == 'ofertas' %} ativo{% endif %}" href="{% url 'painel_whatsapp_ofertas' %}"{% if aba == 'ofertas' %} aria-current="page"{% endif %}><i class="pt {{ pt.ofertas }}" aria-hidden="true"></i>Automação{% if pt.ofertas == "ok" %}<span class="sr"> (ligada)</span>{% endif %}</a>
+  <a class="aba{% if aba == 'campanhas' %} ativo{% endif %}" href="{% url 'painel_whatsapp_campanhas' %}"{% if aba == 'campanhas' %} aria-current="page"{% endif %}><i class="pt {{ pt.campanhas }}" aria-hidden="true"></i>Campanhas{% if pt.campanhas == "ok" %}<span class="sr"> (ligado)</span>{% endif %}</a>
+  <a class="aba{% if aba == 'alertas' %} ativo{% endif %}" href="{% url 'painel_whatsapp_alertas' %}"{% if aba == 'alertas' %} aria-current="page"{% endif %}><i class="pt {{ pt.alertas }}" aria-hidden="true"></i>Alerta de preço{% if pt.alertas == "ok" %}<span class="sr"> (ligado)</span>{% endif %}</a>
+  <a class="aba{% if aba == 'mensagens' %} ativo{% endif %}" href="{% url 'painel_whatsapp_mensagens' %}"{% if aba == 'mensagens' %} aria-current="page"{% endif %}>Mensagens</a>
+  <span class="abas-sep" aria-hidden="true"></span>
+  <a class="aba{% if aba == 'membros' %} ativo{% endif %}" href="{% url 'painel_whatsapp_membros' %}"{% if aba == 'membros' %} aria-current="page"{% endif %}>Grupos</a>
+  <a class="aba{% if aba == 'entrada' %} ativo{% endif %}" href="{% url 'painel_whatsapp_entrada' %}"{% if aba == 'entrada' %} aria-current="page"{% endif %}>Link de entrada</a>
+  <span class="abas-sep" aria-hidden="true"></span>
+  <a class="aba{% if aba == 'resultados' %} ativo{% endif %}" href="{% url 'painel_whatsapp_resultados' %}"{% if aba == 'resultados' %} aria-current="page"{% endif %}>Resultados</a>
 </nav>
+{% endwith %}
+{# No celular as abas rolam de lado: já abre com a aba atual à vista; no fim da rolagem, sem o degradê. #}
+<script>(function () { var a = document.querySelector(".abas-bot .aba.ativo"), n = a && a.parentNode;
+  if (!n || n.scrollWidth <= n.clientWidth) return;
+  n.scrollLeft = a.offsetLeft - n.offsetLeft - (n.clientWidth - a.offsetWidth) / 2;
+  function noFim() { n.classList.toggle("no-fim", n.scrollLeft + n.clientWidth >= n.scrollWidth - 2); }
+  n.addEventListener("scroll", noFim, { passive: true }); noFim(); })();</script>

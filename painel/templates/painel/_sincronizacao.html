@@ -12,8 +12,8 @@
   <form method="post" action="{% url 'painel_atualizar_resultados' %}">
     {% csrf_token %}
     <input type="hidden" name="voltar" value="{{ request.get_full_path }}">
-    <button type="submit" name="periodo" value="curto" class="botao botao-tom botao-pequeno" title="Mais rápido: os pedidos de ontem e o que a Shopee validou ontem e hoje">{% include "painel/_icone.html" with caminho=icones.atualizar %}Atualizar dia anterior e atual</button>
-    <button type="submit" name="periodo" value="30" class="botao botao-claro botao-pequeno">{% include "painel/_icone.html" with caminho=icones.atualizar %}Atualizar 30 dias</button>
+    <button type="submit" name="periodo" value="curto" class="botao botao-tom botao-pequeno" title="Mais rápido: os pedidos de ontem e o que a Shopee validou ontem e hoje">{% include "painel/_icone.html" with caminho=icones.atualizar %}<span class="rotulo-longo">Atualizar ontem e hoje</span><span class="rotulo-curto">Ontem e hoje</span></button>
+    <button type="submit" name="periodo" value="30" class="botao botao-claro botao-pequeno">{% include "painel/_icone.html" with caminho=icones.atualizar %}<span class="rotulo-longo">Atualizar 30 dias</span><span class="rotulo-curto">30 dias</span></button>
   </form>
 </div>
 {% if not sincronizacao or sincronizacao.atualizando %}<script src="{% static 'painel/sincronizacao.js' %}" defer></script>{% endif %}

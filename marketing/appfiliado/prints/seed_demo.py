@@ -86,6 +86,28 @@ for n in range(70):
         quantidade=q, preco=D(str(pr[2])), valor=valor, comissao=(valor * D(pr[4]) / 100).quantize(D("0.01")), status_shopee=s, situacao=sit,
         sub_id=random.choice(["grupo_ofertas", "grupo_vip", "instagram", "site", "sem_subid"]), comprado_em=comp, concluido_em=comp + dt.timedelta(days=3) if s == "COMPLETED" else None)
 
+# ---- mês passado em fechamento: os pedidos guardados com o validado, o pendente e o cancelado ----
+ini_ant = (hoje.replace(day=1) - dt.timedelta(days=1)).replace(day=1)
+MetaMensal.objects.update_or_create(conta=c, ano=ini_ant.year, mes=ini_ant.month, defaults={"faixas": [
+    {"percentual": 100, "faturamento": 52000, "bonus": 300}, {"percentual": 125, "faturamento": 65000, "bonus": 500}, {"percentual": 150, "faturamento": 78000, "bonus": 800}]})
+dias_ant = (hoje.replace(day=1) - ini_ant).days
+for n in range(130):
+    k = random.choices(range(len(P)), weights=[w[6] for w in P])[0]; pr = P[k]
+    sit = random.choices(["concluido", "pendente", "cancelado"], weights=[72, 21, 7])[0]
+    s = {"concluido": "COMPLETED", "pendente": "PENDING", "cancelado": "CANCELLED"}[sit]
+    valor = D(random.randint(300, 640))
+    comp = timezone.make_aware(dt.datetime.combine(ini_ant + dt.timedelta(days=random.randrange(dias_ant)), dt.time(random.randint(8, 23), random.randint(0, 59))))
+    VendaItem.objects.create(conta=c, conversao_id=f"M{n}", pedido_id=f"M{n}", item_id=str(900000 + k), nome=pr[1], imagem_url=IMG.format(pr[0]), loja=pr[10],
+        quantidade=1, preco=valor, valor=valor, comissao=(valor * D(pr[4]) / 100).quantize(D("0.01")), status_shopee=s, situacao=sit,
+        sub_id=random.choice(["grupo_ofertas", "grupo_vip", "instagram", "site", "sem_subid"]), comprado_em=comp,
+        concluido_em=comp + dt.timedelta(days=12) if sit == "concluido" else None)
+SincronizacaoResultados.objects.filter(conta=c).update(vendas_desde=agora - dt.timedelta(days=87))
+# de onde veio cada venda (o campo que a marca de origem do link preenche)
+for sub, origem in (("grupo_ofertas", "bot"), ("grupo_vip", "bot"), ("site", "site"), ("instagram", "outras"), ("sem_subid", "fora")):
+    VendaItem.objects.filter(conta=c, sub_id=sub).update(origem=origem)
+for v in VendaItem.objects.filter(conta=c, sub_id="sem_subid")[::3]:
+    VendaItem.objects.filter(pk=v.pk).update(origem="conversor", sub_id="conversor")
+
 # ---- bot ----
 GRUPOS = [{"jid": "1@g.us", "nome": "Achadinhos da Bia VIP", "tipo": "grupo", "participantes": 912}, {"jid": "2@g.us", "nome": "Ofertas do Dia 🔥", "tipo": "grupo", "participantes": 640},
           {"jid": "3@newsletter", "nome": "Achadinhos da Bia", "tipo": "canal", "participantes": 2310}]

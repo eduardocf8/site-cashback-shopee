@@ -390,7 +390,7 @@ def _linhas_da_meta(situacao) -> list[str]:
 
 def metas(conta) -> str:
     """Os três meses da meta: o atual (prévia), o passado (em fechamento) e o retrasado (fechada). A meta
-    de um mês só fecha no último dia do mês seguinte, contando só os pedidos validados."""
+    de um mês só fecha 30 dias depois do último dia, às 11h, contando só os pedidos validados."""
     from painel import telas
 
     hoje = _ontem() + timedelta(days=1)
@@ -402,7 +402,7 @@ def metas(conta) -> str:
     linhas = ["🎯 *Metas da Shopee*", ""]
     for situacao in meses:
         linhas += _linhas_da_meta(situacao) + [""]
-    linhas.append("A meta de um mês fecha no último dia do mês seguinte e conta só os pedidos validados.")
+    linhas.append("A meta de um mês fecha 30 dias depois do último dia, às 11h, e conta só os pedidos validados.")
     return _fechar(conta, linhas, "painel_metas")
 
 

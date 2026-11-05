@@ -40,20 +40,112 @@ def _bloqueado(request):
     return render(request, "painel/modulo.html", _contexto(request, "whatsapp", item=item, situacao="bloqueado"))
 
 
+# --- Cabeçalho de todas as abas (_cabecalho_bot.html) -------------------------------------
+
+def _passos_do_bot(conta, conexao, config, aba: str) -> dict | None:
+    """ "Configure o bot em 4 passos": aparece até as ofertas serem ligadas pela primeira vez (a
+    mesma conta dos Primeiros passos do Início). O passo da aba aberta fica em destaque quando já
+    dá para fazer; senão, o primeiro que falta."""
+    if config and (config.ativo or config.ultimo_envio_em):
+        return None
+    shopee = bool(conta.shopee_validado_em)
+    zap = bool(conexao.conectado_em or conexao.estado == ConexaoWhatsApp.CONECTADO)
+    grupos = bool(config and config.grupos)
+    lendo_qr = conexao.estado == ConexaoWhatsApp.AGUARDANDO_QR
+    automacao = reverse("painel_whatsapp_ofertas")
+    passos = [
+        {"chave": "shopee", "titulo": "Conectar sua conta de afiliado da Shopee", "feito": shopee,
+         "ajuda": "É com ela que o bot busca as ofertas e gera o seu link de afiliado.",
+         "acao": "Conectar", "href": reverse("painel_configuracoes")},
+        {"chave": "whatsapp", "titulo": "Conectar o WhatsApp pelo QR Code", "feito": zap,
+         # Com o QR Code já na tela da Conexão, o passo só lembra de ler o código (sem botão).
+         "ajuda": ("Leia o QR Code da aba Conexão com o celular." if lendo_qr else
+                   "O Appfiliado entra como mais um aparelho conectado do seu WhatsApp, igual ao WhatsApp Web. "
+                   "Depois não precisa deixar computador nem navegador aberto."),
+         "sem_botao": lendo_qr and aba == "conexao",
+         "acao": "Conectar WhatsApp", "href": reverse("painel_whatsapp")},
+        {"chave": "grupos", "titulo": "Escolher os grupos que recebem as ofertas", "feito": grupos,
+         "espera": "" if zap else "conectar o WhatsApp",
+         "ajuda": "Na Automação, marque os grupos em “Onde enviar” e salve.",
+         "acao": "Escolher", "href": automacao + "#onde-enviar"},
+        {"chave": "ligar", "titulo": "Testar a busca e ligar as ofertas", "feito": False,
+         "espera": "escolher os grupos" if not grupos else ("conectar a Shopee" if not shopee else ""),
+         "ajuda": "Veja as próximas ofertas em “Testar busca” e ligue quando gostar.",
+         "acao": "Ligar", "href": automacao + "#cartao-status"},
+    ]
+    da_aba = {"conexao": "whatsapp", "ofertas": "ligar" if grupos else "grupos"}.get(aba)
+    livres = [p for p in passos if not p["feito"] and not p.get("espera")]
+    atual = next((p for p in livres if p["chave"] == da_aba), livres[0] if livres else None)
+    if atual:
+        atual["atual"] = True
+    feitos = sum(1 for p in passos if p["feito"])
+    return {"lista": passos, "feitos": feitos, "total": len(passos), "pct": round(feitos * 100 / len(passos)),
+            "zap_feito": zap}
+
+
+def _estado_do_bot(conta, aba: str) -> dict:
+    """O que o cabeçalho de todas as abas do Bot mostra: as pílulas do WhatsApp e das ofertas, o
+    pontinho das abas que ligam e desligam e a lista da primeira configuração. Só exibição."""
+    from bot_whatsapp.avisos_de_queda import esta_parado
+
+    conexao = servico.conexao_da(conta)
+    config = ConfiguracaoOfertas.objects.filter(conta=conta).first()
+    conectado = conexao.estado == ConexaoWhatsApp.CONECTADO
+    caiu = esta_parado(conexao)
+    if conectado:
+        zap = {"estado": "ok", "texto": "WhatsApp conectado"}
+    elif caiu:
+        zap = {"estado": "erro", "texto": "WhatsApp desconectado"}
+    elif conexao.estado == ConexaoWhatsApp.RECONECTANDO:
+        zap = {"estado": "parado", "texto": "WhatsApp reconectando…"}
+    elif conexao.estado == ConexaoWhatsApp.AGUARDANDO_QR:
+        zap = {"estado": "parado", "texto": "Conectando o WhatsApp"}
+    else:
+        zap = {"estado": "parado", "texto": "WhatsApp desconectado"}
+    if not config or not config.ativo:
+        ofertas = {"estado": "parado", "texto": "Ofertas pausadas"}
+    elif not config.simulacao and not conectado:
+        ofertas = {"estado": "erro", "texto": "Ofertas paradas", "detalhe": "· sem WhatsApp"}
+    else:
+        hoje = ofertas_enviadas_hoje(conta, timezone.now(), config.simulacao)
+        ofertas = {"estado": "ok", "texto": "Simulação ligada" if config.simulacao else "Ofertas ligadas",
+                   "detalhe": f"· {hoje} hoje"}
+    campanha = CampanhaBot.objects.filter(conta=conta).values_list("ativo", flat=True).first()
+    alerta = AlertaPreco.objects.filter(conta=conta).values_list("ativo", flat=True).first()
+    return {
+        "zap": zap, "ofertas": ofertas,
+        "pontos": {"conexao": "ok" if conectado else ("erro" if caiu else ""),
+                   "ofertas": "ok" if config and config.ativo else "",
+                   "campanhas": "ok" if campanha else "", "alertas": "ok" if alerta else ""},
+        "passos": _passos_do_bot(conta, conexao, config, aba),
+    }
+
+
+def _contexto_bot(request, aba: str, **extra) -> dict:
+    """O _contexto das telas do Bot, com o estado que o cabeçalho de todas as abas mostra."""
+    return _contexto(request, "whatsapp", aba=aba, bot=_estado_do_bot(conta_logada(request), aba), **extra)
+
+
 @conta_requerida
 def whatsapp(request):
     conta = conta_logada(request)
     if not _liberado(conta):
         return _bloqueado(request)
     conexao = servico.conexao_da(conta)
-    return render(request, "painel/whatsapp.html", _contexto(
-        request, "whatsapp",
+    tela = servico.estado_para_tela(conta)
+    contexto = _contexto_bot(
+        request, "conexao",
         conexao=conexao,
-        tela=servico.estado_para_tela(conta),
+        tela=tela,
         destinos=servico.destinos_possiveis(conexao),
         eventos=EventoWhatsApp.objects.filter(conta=conta)[:15],
         ConexaoWhatsApp=ConexaoWhatsApp,
-    ))
+    )
+    # Conta nova (nunca conectou): a lista de passos fica no lugar do "Desconectado" e do histórico vazio.
+    passos = contexto["bot"]["passos"]
+    contexto["primeiro_acesso"] = bool(passos and not passos["zap_feito"] and conexao.estado == ConexaoWhatsApp.DESCONECTADO
+                                       and not tela.get("desconectando"))
+    return render(request, "painel/whatsapp.html", contexto)
 
 
 @conta_requerida
@@ -157,6 +249,104 @@ def _versao_da_tela(conta, config) -> str:
     return hashlib.sha1(repr(partes).encode()).hexdigest()[:16]
 
 
+def _lista_curta(nomes: list[str], quantos: int = 4) -> str:
+    """ "A, B, C, D e mais 2" """
+    if len(nomes) <= quantos:
+        return ", ".join(nomes[:-1]) + (" e " if len(nomes) > 1 else "") + nomes[-1] if nomes else ""
+    return ", ".join(nomes[:quantos]) + f" e mais {len(nomes) - quantos}"
+
+
+def _numero_br(valor) -> str:
+    texto = f"{valor:.2f}".rstrip("0").rstrip(".") if valor is not None else ""
+    return texto.replace(".", ",")
+
+
+# Em que passo da Automação fica cada campo (pra abrir o passo que tem erro).
+CAMPOS_DAS_ETAPAS = {
+    "onde": ["grupos", "sub_ids"],
+    "quais": ["modo", "modo_envio", "origens", "tipo_busca", "palavra_chave", "loja", "categorias", "ordenacao",
+              "comissao_minima", "desconto_minimo", "preco_minimo", "preco_maximo", "vendas_minimas", "avaliacao_minima"],
+    "mensagem": ["cupom", "formato_envio", "ia_ativa", "ia_tipo"],
+    "quando": ["intervalo_minutos", "horario_inicio", "horario_fim", "dias_semana", "limite_diario", "repetir_apos_dias"],
+    "simulacao": ["simulacao"],
+}
+
+
+def _etapas_da_automacao(config, form, regras) -> dict:
+    """A linha de resumo de cada passo da Automação (o que está salvo) e quais passos já abrem."""
+    from .forms import DIAS_DA_SEMANA
+
+    grupos = [g.get("nome") or "Grupo sem nome" for g in config.grupos or [] if g.get("jid")][: regras["grupos"]]
+    resumo = {"grupos": len(grupos), "nomes": _lista_curta(grupos)}
+    if config.modo == ConfiguracaoOfertas.MODO_COPIAR:
+        n = len(config.origens or [])
+        resumo["quais"] = (f"Copiando de {n} grupo{'s' if n > 1 else ''} ou cana{'is' if n > 1 else 'l'}" if n
+                           else "Copiar de grupos e canais: escolha de quais")
+    else:
+        partes = ["Busca na Shopee"]
+        if config.por_nicho:
+            partes.append("por nicho")
+        elif config.tipo_busca == ConfiguracaoOfertas.BUSCA_PALAVRA and config.palavra_chave:
+            partes.append(f"“{config.palavra_chave}”")
+        elif config.tipo_busca == ConfiguracaoOfertas.BUSCA_CATEGORIA and config.categorias:
+            partes.append(f"{len(config.categorias)} categoria{'s' if len(config.categorias) > 1 else ''}")
+        else:
+            partes.append(config.get_tipo_busca_display().lower())
+        partes.append(config.get_ordenacao_display().lower())
+        filtros = []
+        if config.comissao_minima:
+            filtros.append(f"comissão {config.comissao_minima}%+")
+        if config.desconto_minimo:
+            filtros.append(f"desconto {config.desconto_minimo}%+")
+        if config.preco_minimo is not None or config.preco_maximo is not None:
+            filtros.append("R$ " + " a ".join(_numero_br(v) for v in (config.preco_minimo, config.preco_maximo) if v is not None))
+        if config.vendas_minimas:
+            filtros.append(f"{config.vendas_minimas}+ vendas")
+        if config.avaliacao_minima is not None:
+            filtros.append(f"nota {_numero_br(config.avaliacao_minima)}+")
+        resumo["quais"] = " · ".join(partes) + (" · " + ", ".join(filtros) if filtros else "")
+    mensagem = [config.get_formato_envio_display()]
+    if config.modo == ConfiguracaoOfertas.MODO_SHOPEE:
+        mensagem.append(f"cupom {config.cupom}" if config.cupom else "sem cupom")
+    if config.ia_ativa and regras["ia"]:
+        mensagem.append("revisada com IA")
+    resumo["mensagem"] = " · ".join(mensagem)
+    if config.modo == ConfiguracaoOfertas.MODO_COPIAR and not config.intervalo_minutos:
+        ritmo = "repassa assim que chegar"
+    else:
+        ritmo = f"1 oferta a cada {intervalo_do_plano(config)} min"
+    dias = sorted(config.dias_semana or [])
+    nomes_dias = dict(DIAS_DA_SEMANA)
+    quando_dias = ("todos os dias" if len(dias) == 7 else
+                   ", ".join(nomes_dias[d].lower() for d in dias if d in nomes_dias) or "nenhum dia")
+    resumo["quando"] = " · ".join([
+        ritmo, f"até {config.limite_diario} por dia" if config.limite_diario else "sem limite por dia",
+        f"das {config.horario_inicio:%H:%M} às {config.horario_fim:%H:%M}, {quando_dias}",
+        f"não repete produto por {config.repetir_apos_dias} dia{'s' if config.repetir_apos_dias != 1 else ''}",
+    ])
+    resumo["simulacao"] = ("Ligado: as ofertas aparecem aqui, mas nada vai pro WhatsApp" if config.simulacao
+                           else "Desligado: as ofertas vão de verdade pros grupos")
+    com_erro = [etapa for etapa, campos in CAMPOS_DAS_ETAPAS.items() if any(c in form.errors for c in campos)]
+    # Primeira vez (WhatsApp conectado e nenhum grupo salvo): já abre a escolha dos grupos.
+    if not config.grupos and form.fields["grupos"].choices:
+        com_erro.append("onde")
+    return {"resumo": resumo, "abertas": com_erro, "feitas": bool(config.grupos)}
+
+
+def _falta_para_ligar(conta, config, conectado: bool) -> list[str]:
+    """O que ainda impede "Ligar ofertas" (as mesmas conferências de whatsapp_ofertas_ligar)."""
+    if config.ativo:
+        return []
+    falta = []
+    if not conta.shopee_validado_em:
+        falta.append("conectar a sua conta da Shopee")
+    if not config.grupos:
+        falta.append("escolher os grupos" if conectado else "conectar o WhatsApp e escolher os grupos")
+    elif config.modo == ConfiguracaoOfertas.MODO_COPIAR and not config.origens:
+        falta.append("escolher de quais grupos copiar as ofertas")
+    return falta
+
+
 @conta_requerida
 def whatsapp_ofertas(request):
     conta = conta_logada(request)
@@ -181,13 +371,16 @@ def whatsapp_ofertas(request):
     historico = EnvioWhatsApp.objects.filter(
         conta=conta, origem__in=[EnvioWhatsApp.OFERTA, EnvioWhatsApp.CAMPANHA])[:ULTIMAS_OFERTAS]
     recebidas = OfertaRecebida.objects.filter(conta=conta)[:15]
-    return render(request, "painel/whatsapp_ofertas.html", _contexto(
-        request, "whatsapp",
+    resumo = _resumo_ofertas(conta, config)
+    return render(request, "painel/whatsapp_ofertas.html", _contexto_bot(
+        request, "ofertas",
         form=form, config=config, historico=historico, recebidas=recebidas, conexao=conexao, regras=regras, regras_premium=planos.BOT[True],
         grupos_fora_do_plano=max(0, len(config.grupos or []) - regras["grupos"]),
         ritmo=ritmo_com_muitos_grupos(config, regras),
         versao=_versao_da_tela(conta, config),
-        **_resumo_ofertas(conta, config),
+        etapas=_etapas_da_automacao(config, form, regras),
+        falta=_falta_para_ligar(conta, config, resumo["whatsapp_conectado"]),
+        **resumo,
     ))
 
 
@@ -318,6 +511,45 @@ def _marcar_data(request, campanha, hoje):
     })
 
 
+CAMPOS_DAS_ETAPAS_DA_CAMPANHA = {
+    "datas": ["datas_ligadas"],
+    "ritmo": ["intervalo_minutos", "limite_diario", "horario_inicio", "horario_fim"],
+    "busca": ["palavra_chave", "comissao_minima", "desconto_minimo"],
+    "texto": ["mensagem_ativa", "frase_abertura", "cupom"],
+    "pagina": ["pagina_ativa", "link_campanha", "titulo_pagina", "texto_pagina", "link_campanha_a_cada"],
+}
+
+
+def _etapas_da_campanha(campanha, form, datas, proxima, quando) -> dict:
+    """A linha de resumo de cada passo da aba Campanhas (o que está salvo) e quais já abrem."""
+    marcadas = sum(1 for d in datas if d["ligada"])
+    contagem = f"{marcadas} data{'s' if marcadas != 1 else ''} marcada{'s' if marcadas != 1 else ''}" if marcadas else ""
+    resumo = {"datas": " · ".join(p for p in [
+        f"Próxima: {proxima['nome']}, {proxima['data']:%d/%m} ({quando})" if proxima else "", contagem,
+    ] if p) or "Nenhuma data marcada"}
+    resumo["ritmo"] = " · ".join([
+        f"1 oferta a cada {campanha.intervalo_minutos} min" if campanha.intervalo_minutos else "intervalo da Automação",
+        f"até {campanha.limite_diario} no dia" if campanha.limite_diario else "limite da Automação",
+        f"das {campanha.horario_inicio:%H:%M} às {campanha.horario_fim:%H:%M}",
+    ])
+    busca = [f"“{campanha.palavra_chave}”"] if campanha.palavra_chave else []
+    if campanha.desconto_minimo:
+        busca.append(f"desconto {campanha.desconto_minimo}%+")
+    if campanha.comissao_minima:
+        busca.append(f"comissão {campanha.comissao_minima}%+")
+    resumo["busca"] = " · ".join(busca) or "Como na Automação"
+    if campanha.mensagem_ativa:
+        texto = [f"Frase: {campanha.frase_abertura}" if campanha.frase_abertura else "sem frase de abertura",
+                 f"cupom {campanha.cupom}" if campanha.cupom else "cupom da Automação"]
+        resumo["texto"] = " · ".join(texto)
+    else:
+        resumo["texto"] = "Como na Automação"
+    resumo["pagina"] = (f"Ligada: a cada {campanha.link_campanha_a_cada} ofertas" if campanha.pagina_ativa
+                        else "Desligada: no dia da campanha vão só as ofertas")
+    abertas = [etapa for etapa, campos in CAMPOS_DAS_ETAPAS_DA_CAMPANHA.items() if any(c in form.errors for c in campos)]
+    return {"resumo": resumo, "abertas": abertas}
+
+
 @conta_requerida
 def whatsapp_campanhas(request):
     conta = conta_logada(request)
@@ -357,12 +589,13 @@ def whatsapp_campanhas(request):
         messages.error(request, "Confira os campos marcados.")
     hoje_campanha = campanhas.campanha_do_dia(campanha, hoje)
     proxima = campanhas.proxima_ligada(campanha, hoje)
-    return render(request, "painel/whatsapp_campanhas.html", _contexto(
-        request, "whatsapp",
+    datas = campanhas.proximas_datas(campanha, hoje)
+    quando = campanhas.quando(proxima["faltam"]) if proxima else ""
+    return render(request, "painel/whatsapp_campanhas.html", _contexto_bot(
+        request, "campanhas",
         campanha=campanha, config=config, form=form, regras=regras,
-        datas=campanhas.proximas_datas(campanha, hoje),
-        hoje_campanha=hoje_campanha, proxima=proxima,
-        quando=campanhas.quando(proxima["faltam"]) if proxima else "",
+        datas=datas, hoje_campanha=hoje_campanha, proxima=proxima, quando=quando,
+        etapas=_etapas_da_campanha(campanha, form, datas, proxima, quando),
         previa=_previa(campanha, config),
         previa_pagina=_previa_da_pagina(campanha, hoje_campanha or proxima),
     ))
@@ -448,6 +681,34 @@ def _acao_do_alerta(request, conta, alerta, regras_da_conta):
     return voltar
 
 
+def _aviso_na_lista(produto, queda_padrao: int) -> dict:
+    """O selo de cada produto começa pelo que importa: o preço que dispara o alerta
+    ("📉 Avisa em R$ 89,91 ou menos · queda de 10%, padrão"). Só muda a ordem do texto."""
+    resumo = alertas.resumo_do_aviso(produto, queda_padrao)
+    if resumo["tipo"] not in ("pct", "padrao") or "ou menos" not in resumo["detalhe"]:
+        return resumo
+    limite = resumo["detalhe"].split(" · ")[-1]
+    queda = alertas.queda_do_produto(produto, queda_padrao)
+    return {**resumo, "texto": f"📉 Avisa em {limite}",
+            "detalhe": f"queda de {queda}%" + (", padrão" if resumo["tipo"] == "padrao" else "")}
+
+
+def _como_avisar(alerta, intervalo: int, grupos: int) -> str:
+    """O resumo do cartão "Como avisar" (o que está salvo)."""
+    if intervalo < 60:
+        cada = f"{intervalo} minutos"
+    else:
+        horas = intervalo // 60
+        cada = "1 hora" if horas == 1 else f"{horas} horas"
+    onde = ["no painel"]
+    if alerta.avisar_email:
+        onde.append("por e-mail")
+    if alerta.enviar_grupos:
+        onde.append(f"no{'s' if grupos != 1 else ''} {grupos} grupo{'s' if grupos != 1 else ''}" if grupos else "nos grupos")
+    return " · ".join([f"Confere a cada {cada}", f"avisa com queda de {alerta.queda_minima}% ou mais",
+                       ", ".join(onde[:-1]) + " e " + onde[-1] if len(onde) > 1 else onde[0]])
+
+
 @conta_requerida
 def whatsapp_alertas(request):
     conta = conta_logada(request)
@@ -474,7 +735,7 @@ def whatsapp_alertas(request):
     total = todos.count()
     pagina = Paginator(todos, PRODUTOS_POR_PAGINA).get_page(request.GET.get("pagina"))
     for produto in pagina:
-        produto.aviso = alertas.resumo_do_aviso(produto, alerta.queda_minima)
+        produto.aviso = _aviso_na_lista(produto, alerta.queda_minima)
         produto.preco_pix = alertas.no_pix(produto.preco_atual, produto.desconto_pix) if produto.tipo_aviso == "reais" else None
     acompanhados = set(todos.values_list("item_id", flat=True))
     do_bot = []
@@ -489,15 +750,17 @@ def whatsapp_alertas(request):
     AlertaDisparado.objects.filter(conta=conta, visto=False).update(visto=True)  # quem abriu a tela já viu
     exemplo = alertas.montar_mensagem(alerta.modelo_mensagem, EXEMPLO_DE_PRODUTO["nome"], 129.9, 99.9, 23.1,
                                       "https://s.shopee.com.br/seu-link")
-    return render(request, "painel/whatsapp_alertas.html", _contexto(
-        request, "whatsapp",
+    grupos_da_automacao = grupos_do_plano(_config_ofertas(conta))
+    intervalo = alertas.intervalo_efetivo(alerta, regras_da_conta)
+    return render(request, "painel/whatsapp_alertas.html", _contexto_bot(
+        request, "alertas",
         alerta=alerta, form=form, regras=regras_da_conta, pagina=pagina, total=total,
         paginas=pagina.paginator.get_elided_page_range(pagina.number, on_each_side=1, on_ends=1),
         limite=regras_da_conta["alerta_produtos"], cheio=total >= regras_da_conta["alerta_produtos"],
-        grupos_da_automacao=grupos_do_plano(_config_ofertas(conta)),
+        grupos_da_automacao=grupos_da_automacao,
         busca=busca, resultados=[{**r, "acompanhado": r["item_id"] in acompanhados} for r in resultados or []],
         erro_busca=erro_busca, do_bot=do_bot, disparados=disparados, exemplo=exemplo,
-        intervalo=alertas.intervalo_efetivo(alerta, regras_da_conta),
+        intervalo=intervalo, como_avisar=_como_avisar(alerta, intervalo, len(grupos_da_automacao)),
         whatsapp_conectado=conexao.estado == ConexaoWhatsApp.CONECTADO,
         shopee_conectada=bool(conta.shopee_validado_em),
     ))
@@ -608,10 +871,10 @@ def whatsapp_mensagens(request):
     for item in lista:
         if item["m"].destino == MensagemAvulsa.DESTINO_NICHO:
             item["pra_quem"] = "Nicho " + nomes_nicho.get(item["m"].nicho, "que não está mais em uso").split(" (")[0]
-    return render(request, "painel/whatsapp_mensagens.html", _contexto(
-        request, "whatsapp", form=form, editando=editando, agendadas=lista, disparos=_disparos(conta),
+    return render(request, "painel/whatsapp_mensagens.html", _contexto_bot(
+        request, "mensagens", form=form, editando=editando, agendadas=lista, disparos=_disparos(conta),
         conexao=conexao, regras=regras, maximo=regras["mensagens_agendadas"], grupos_por_nicho=_grupos_por_nicho(config),
-        tem_grupos_no_bot=bool(config and config.grupos),
+        tem_grupos_no_bot=bool(config and config.grupos), total_grupos_bot=len(grupos_do_plano(config)) if config else 0,
     ))
 
 
@@ -696,8 +959,8 @@ def whatsapp_resultados(request):
         chave = chave if chave in dict(PERIODOS_DO_BOT) else "30dias"
         inicio, fim = periodos.intervalo_do_preset(chave, hoje)
     dados = desempenho.calcular(conta, inicio, fim)
-    return render(request, "painel/whatsapp_resultados.html", _contexto(
-        request, "whatsapp", d=dados, periodos=PERIODOS_DO_BOT, chave=chave,
+    return render(request, "painel/whatsapp_resultados.html", _contexto_bot(
+        request, "resultados", d=dados, periodos=PERIODOS_DO_BOT, chave=chave,
         descricao=periodos.descrever_periodo(inicio, fim), janela=desempenho.JANELA.days,
         maximo_de_dias=desempenho.MAXIMO_DE_DIAS,
     ))
@@ -754,8 +1017,14 @@ def whatsapp_membros(request):
                  "automacao": grupos_novos.vagas_na_automacao(conta),
                  "por_dia": grupos_novos.POR_DIA, "bases": sorted(membros.grupos_possiveis(conexao), key=lambda g: str(g.get("nome", "")).lower())}
     possiveis = sorted(membros.grupos_possiveis(conexao), key=lambda g: (g["jid"] not in escolhidos, str(g.get("nome", "")).lower()))
-    return render(request, "painel/whatsapp_membros.html", _contexto(
-        request, "whatsapp", conexao=conexao, dados=dados, possiveis=possiveis, escolhidos=escolhidos,
+    # Enquanto não há dias suficientes de contagem, os cartões dizem quando o número aparece.
+    desde = timezone.localtime(dados["monitorando_desde"]).date() if dados["monitorando_desde"] else None
+    mais_cheio = max((linha for linha in dados["linhas"] if linha["quase_cheio"]), key=lambda linha: linha["lotacao"], default=None)
+    return render(request, "painel/whatsapp_membros.html", _contexto_bot(
+        request, "membros", conexao=conexao, dados=dados, possiveis=possiveis, escolhidos=escolhidos,
+        desde=desde, a_partir_7d=desde + timedelta(days=7) if desde else None,
+        a_partir_30d=desde + timedelta(days=30) if desde else None,
+        saldo_hoje=dados["entradas"] - dados["saidas"], mais_cheio=mais_cheio,
         escolhendo=(request.GET.get("escolher") == "1" or not dados["quantos"]) and not criar,
         grafico=_grafico_de_membros(dados["serie"], dados["monitorando_desde"]),
         limite_do_whatsapp=membros.LIMITE_DO_WHATSAPP,

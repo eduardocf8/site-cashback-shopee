@@ -217,6 +217,115 @@ class TestPaginas(BasePainel):
         self.assertEqual(len(re.findall(r"estado-liberado", html)), 2)  # whatsapp (cortesia) e site
         self.assertNotIn("Gerador de vídeos", html)
         self.assertNotIn("Automação do Instagram", html)
+        self.assertIn("Standard · Cortesia", html)  # o Bot
+        self.assertIn("Standard · Assinatura", html)  # o Meu site
+        self.assertNotIn("Vitrine", html)
+
+
+class TestFerramentasNasListas(BasePainel):
+    """Menu, Início, Plano e páginas das ferramentas: nomes do produto de hoje (sem o antigo Carrosséis)."""
+
+    def setUp(self):
+        super().setUp()
+        self.entrar()
+
+    def mudar(self, modulos, beta=False):
+        self.conta.modulos_cortesia = modulos
+        self.conta.beta_estudio_instagram = beta
+        self.conta.save()
+
+    def test_menu_por_assunto_com_a_conta_no_rodape(self):
+        html = self.client.get("/").content.decode()
+        for secao in ("Seus números", "Ofertas", "Divulgação", "Empresa"):
+            self.assertIn(f'<span class="menu-secao">{secao}</span>', html)
+        rodape = html[html.index('class="menu-extra"'):]
+        self.assertIn("Configurações", rodape)
+        self.assertIn("Sugerir melhoria", rodape)
+        self.assertIn("1 de 3 ferramentas liberadas", html)  # Bot, Meu site e Emissor (sem os códigos internos)
+        self.assertIn("data-abrir-menu", html)  # botão Menu do celular
+
+    def test_carrosseis_nunca_aparece_como_ferramenta(self):
+        for modulos, beta in (("whatsapp", False), ("carrosseis_premium", False), ("carrosseis_premium", True)):
+            self.mudar(modulos, beta)
+            for url in ("/", "/plano/", "/whatsapp/"):
+                html = self.client.get(url).content.decode()
+                self.assertNotIn("Carrosséis", html, (modulos, beta, url))
+                self.assertNotIn("Gerador de carrosséis", html, (modulos, beta, url))
+
+    def test_quem_tem_os_codigos_ve_o_estudio(self):
+        self.mudar("carrosseis_premium", beta=True)
+        html = self.client.get("/").content.decode()
+        self.assertIn("Estúdio Instagram", html)
+        self.assertIn('href="/estudio/"', html)
+        self.assertIn("Premium · Cortesia", self.client.get("/plano/").content.decode())
+
+    def test_antes_do_lancamento_quem_tem_os_codigos_ve_o_estudio_em_breve(self):
+        self.mudar("carrosseis", beta=False)
+        html = self.client.get("/").content.decode()
+        self.assertIn("Estúdio Instagram", html)
+        self.assertIn("Em breve", html)
+        self.assertNotIn("Automações Instagram", html)
+        self.assertEqual(self.client.get("/estudio/").status_code, 404)  # o Estúdio segue fechado até o lançamento
+        pagina = self.client.get("/m/estudio_instagram/")
+        self.assertContains(pagina, "já faz parte do seu plano")
+        self.assertContains(pagina, 'href="/carrosseis/"')  # os carrosséis salvos continuam
+        self.assertEqual(self.client.get("/carrosseis/").status_code, 200)
+        self.assertRedirects(self.client.get("/m/carrosseis/"), "/carrosseis/", fetch_redirect_response=False)
+        self.assertIn("0 de 3 ferramentas liberadas", html)  # o que ainda não chegou não conta
+        with self.settings(APPFILIADO_LANCAMENTO_INSTAGRAM=True):
+            self.assertIn("Automações Instagram", self.client.get("/").content.decode())
+
+    def test_sem_os_codigos_o_estudio_continua_escondido_antes_do_lancamento(self):
+        self.assertNotIn("Estúdio Instagram", self.client.get("/").content.decode())
+        self.assertEqual(self.client.get("/m/estudio_instagram/").status_code, 404)
+
+    def test_ferramenta_fora_do_plano_mostra_o_que_ela_faz(self):
+        self.mudar("site")
+        pagina = self.client.get("/whatsapp/")
+        self.assertContains(pagina, "Não faz parte do seu plano")
+        self.assertContains(pagina, "O que o Bot de WhatsApp faz por você")
+        for funcao in ("Ofertas no automático", "Alerta de preço", "Gestão dos grupos", "Link de entrada"):
+            self.assertContains(pagina, funcao)
+        self.assertContains(pagina, "Você continua com o Meu site.")
+        self.assertContains(pagina, "/bot-de-whatsapp/")
+        self.assertContains(self.client.get("/notas/"), "O que o Emissor NFS-e faz por você")
+
+    def test_inicio_mostra_o_que_cada_ferramenta_faz(self):
+        html = self.client.get("/").content.decode()
+        self.assertIn("Suas ferramentas", html)
+        self.assertIn("Ofertas no automático nos seus grupos.", html)
+        self.assertIn("Não incluso", html)  # o Meu site e o Emissor, fora do plano
+        self.assertNotIn(">Liberado<", html)  # o selo some quando está liberado
+
+
+class TestConfiguracoesEEntrar(BasePainel):
+    def test_shopee_conectada_fica_resumida(self):
+        self.conta.shopee_app_id = "18300000001"
+        self.conta.shopee_secret_cifrado = cripto.cifrar("segredo")
+        self.conta.shopee_validado_em = timezone.now()
+        self.conta.save()
+        self.entrar()
+        html = self.client.get("/configuracoes/").content.decode()
+        self.assertIn("AppID 18300000001", html)
+        self.assertIn("Trocar AppID e Secret", html)
+        self.assertIn("Deixe em branco para manter o que já está salvo.", html)
+        self.assertNotIn("Ainda não tem o AppID", html)
+        self.assertLess(html.index("Relatório diário"), html.index("Senha do painel"))
+
+    def test_shopee_nao_conectada_mostra_os_campos_e_o_guia(self):
+        self.entrar()
+        html = self.client.get("/configuracoes/").content.decode()
+        self.assertIn("Não conectada", html)
+        self.assertNotIn("Deixe em branco", html)  # ainda não tem nada salvo
+        self.assertIn("No formulário da Shopee (passo 2), responda assim:", html)
+        self.assertIn("Cole o AppID e o Secret nos campos acima", html)
+        self.assertLess(html.index('name="app_id"'), html.index("Ainda não tem o AppID"))
+
+    def test_entrar_mostra_o_primeiro_acesso(self):
+        html = self.client.get("/entrar/").content.decode()
+        self.assertIn("Esqueci a senha", html)
+        self.assertIn("Criar minha senha", html)
+        self.assertIn("O mesmo e-mail que você usou na compra.", html)
 
 
 @override_settings(APPFILIADO_PAINEL_URL=f"https://{HOST}")
@@ -669,7 +778,7 @@ class TestTelasDeResultados(BasePainel):
     def test_botoes_de_atualizar(self, _):
         self.conectar_shopee()
         html = self.client.get("/resultados/").content.decode()
-        self.assertIn("Atualizar dia anterior e atual", html)
+        self.assertIn("Atualizar ontem e hoje", html)
         self.assertIn("Atualizar 30 dias", html)
         self.assertNotIn("Atualizar agora", html)
         resposta = self.client.post("/resultados/atualizar/", {"voltar": "/resultados/", "periodo": "curto"}, follow=True)

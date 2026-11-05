@@ -1,0 +1,18 @@
+{# Cabeçalho de todas as abas do Bot: título com o estado geral (leva pra aba certa), subtítulo único, #}
+{# abas e, até o bot ser ligado pela primeira vez, a lista "Configure o bot em 4 passos". #}
+<header class="cabecalho cabecalho-bot">
+  <div>
+    <div class="linha-titulo-bot">
+      <h1>Bot de WhatsApp</h1>
+      {% if bot and not bot.passos %}
+      <div class="status-bot">
+        <a class="pilula-estado {{ bot.zap.estado }}" href="{% url 'painel_whatsapp' %}"><i class="ponto" aria-hidden="true"></i>{{ bot.zap.texto }}</a>
+        <a class="pilula-estado {{ bot.ofertas.estado }}" href="{% url 'painel_whatsapp_ofertas' %}"><i class="ponto" aria-hidden="true"></i>{{ bot.ofertas.texto }}{% if bot.ofertas.detalhe %} <small>{{ bot.ofertas.detalhe }}</small>{% endif %}</a>
+      </div>
+      {% endif %}
+    </div>
+    <p>O bot posta sozinho ofertas da Shopee com o seu link de afiliado nos seus grupos.</p>
+  </div>
+</header>
+{% include "painel/_abas_whatsapp.html" %}
+{% if bot.passos and not esconder_passos %}{% include "painel/_config_bot.html" %}{% endif %}

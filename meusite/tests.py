@@ -333,7 +333,11 @@ class TestEditor(BasePainel):
         self.assertIn('data-botao-texto="novo"', html)
         self.assertIn("painel/emojis", html)
         self.assertIn("data-emoji", html)
-        self.assertLess(html.index('id="titulo-cliques"'), html.index('id="titulo-previa"'))  # prévia embaixo, presa na tela
+        # Os números (sem visitas ainda, os passos pra deixar o site pronto) ficam no topo; do lado, só a prévia,
+        # que no celular abre pelo "Ver prévia" da faixa do Salvar.
+        self.assertLess(html.index('id="titulo-passos-site"'), html.index('id="form-site"'))
+        self.assertLess(html.index('id="form-site"'), html.index('id="titulo-previa"'))
+        self.assertIn("data-abrir-previa", html)
         previa = self.client.get(f"/s/{site.endereco}/?previa=1").content.decode()
         self.assertIn('data-botao="novo" hidden', previa)
         self.assertIn('data-rede="instagram"', previa)
@@ -341,6 +345,20 @@ class TestEditor(BasePainel):
         self.assertIn('id="conversor" hidden', previa)
         publico = self.client.get(f"/s/{site.endereco}/").content.decode()
         self.assertNotIn('data-rede="tiktok"', publico)
+
+    def test_passos_ate_o_site_ficar_pronto(self):
+        html = self.client.get("/meu-site/").content.decode()
+        self.assertIn("Deixe seu site pronto", html)
+        self.assertIn("1 de 4", html)
+        self.assertIn("Colocar foto", html)  # sem foto ainda
+        self.assertIn("o seu bot ainda não enviou ofertas", html)  # vitrine vazia explica o porquê
+        site = SiteAfiliado.objects.get(conta=self.conta)
+        BotaoSite.objects.create(site=site, texto="Grupo", url="https://chat.whatsapp.com/x")
+        self.assertContains(self.client.get("/meu-site/"), "2 de 4")
+        CliqueSite.objects.create(site=site, dia=timezone.localdate(), tipo="visita", total=1234)
+        html = self.client.get("/meu-site/").content.decode()
+        self.assertNotIn("Deixe seu site pronto", html)  # depois da primeira visita, voltam os números
+        self.assertIn('<strong class="kpi-valor">1.234</strong>', html)
 
     def test_corrigir_categoria_do_produto(self):
         self.client.get("/meu-site/")
@@ -465,6 +483,12 @@ class TestSitePublico(TestCase):
                        'href="/s/achadinhos/b/', 'action="/s/achadinhos/ir/"'):
             self.assertIn(trecho, html)
         self.assertEqual(CliqueSite.objects.get(tipo="visita").total, 1)
+
+    def test_vitrine_vazia_nao_aparece_pros_seguidores(self):
+        self.assertContains(self.client.get("/s/achadinhos/"), "Ofertas de hoje")
+        self.produto.delete()
+        self.assertNotContains(self.client.get("/s/achadinhos/"), "Ofertas de hoje")
+        self.assertContains(self.client.get("/s/achadinhos/?previa=1"), "Ofertas de hoje")  # na prévia do editor, sim
 
     def test_formato_da_vitrine(self):
         html = self.client.get("/s/achadinhos/").content.decode()

@@ -2,10 +2,14 @@
 {% load painel_extras %}
 {% block titulo %}Início{% endblock %}
 {% block conteudo %}
-<header class="cabecalho">
+<header class="cabecalho cabecalho-inicio">
   <div>
     <h1>Olá{% if primeiro_nome %}, {{ primeiro_nome }}{% endif %}!</h1>
-    <p>{{ hoje }}</p>
+    {% if passos_pendentes %}
+      <p>Boas-vindas ao Appfiliado! {% if passos_faltam == 1 %}Falta só 1 passo{% else %}Faltam {{ passos_faltam }} passos{% endif %} para tudo funcionar no automático.</p>
+    {% else %}
+      <p>{{ hoje }}</p>
+    {% endif %}
   </div>
   {% if shopee_conectada %}{% include "painel/_sincronizacao.html" %}{% endif %}
 </header>
@@ -18,23 +22,33 @@
 {% endif %}
 
 {% if passos_pendentes %}
-  <section class="card" aria-labelledby="titulo-passos">
-    <h2 id="titulo-passos">Primeiros passos</h2>
-    <ul class="passos">
+  {# Primeiros passos: o progresso, um passo de cada vez em destaque e uma linha de ajuda em cada um. #}
+  <section class="card cartao-passos" aria-labelledby="titulo-passos">
+    <div class="passos-topo">
+      <h2 id="titulo-passos">Vamos deixar tudo pronto</h2>
+      <p class="suave pequeno">{{ passos_feitos }} de {{ passos|length }} feitos.{% if proximo_passo.chave == "shopee" %} Comece pela Shopee: sem ela, os números e as ofertas não aparecem.{% endif %}</p>
+      <div class="passos-barra" role="progressbar" aria-label="Passos feitos" aria-valuemin="0" aria-valuemax="{{ passos|length }}" aria-valuenow="{{ passos_feitos }}"><div style="width:{{ passos_progresso }}%"></div></div>
+    </div>
+    <ol class="passos-lista">
       {% for passo in passos %}
-        <li>
-          <span class="marcador {% if passo.feito %}feito{% endif %}">{% include "painel/_icone.html" with caminho=icones.check %}</span>
-          <span class="titulo {% if passo.feito %}feito-texto{% endif %}">{{ passo.titulo }}</span>
+        <li class="passo{% if passo.feito %} feito{% elif passo.atual %} atual{% endif %}">
+          <span class="passo-num">{{ passo.numero }}{% if passo.feito %}<span class="sr"> (feito)</span>{% endif %}</span>
+          <div class="passo-texto">
+            {% if passo.atual %}<span class="passo-selo">Comece por aqui</span>{% endif %}
+            <strong>{{ passo.titulo }}</strong>
+            {% if passo.ajuda %}<small>{{ passo.ajuda }}</small>{% endif %}
+          </div>
           {% if passo.feito %}<span class="estado estado-liberado">Feito</span>
           {% elif passo.em_breve %}<span class="estado estado-em_breve">Em breve</span>
-          {% elif passo.href %}<a class="botao botao-escuro botao-pequeno" href="{% url passo.href %}">{{ passo.acao }}</a>{% endif %}
+          {% elif passo.href %}<a class="botao {% if passo.atual %}botao-principal{% else %}botao-claro{% endif %} botao-pequeno" href="{% url passo.href %}">{{ passo.acao }}</a>{% endif %}
         </li>
       {% endfor %}
-    </ul>
+    </ol>
     <form method="post" action="{% url 'painel_ocultar_passos' %}" class="passos-ocultar">
       {% csrf_token %}
-      <button type="submit" name="acao" value="depois" class="botao botao-claro botao-pequeno">Me lembre mais tarde</button>
-      <button type="submit" name="acao" value="nunca" class="botao botao-claro botao-pequeno">Não mostrar novamente</button>
+      {% if link_suporte %}<span class="pequeno suave passos-ajuda">Travou em algum passo? <a href="{{ link_suporte }}" target="_blank" rel="noopener">Fale com a gente</a></span>{% endif %}
+      <button type="submit" name="acao" value="depois" class="link-botao pequeno">Esconder por hoje</button>
+      <button type="submit" name="acao" value="nunca" class="link-botao pequeno">Não mostrar mais</button>
     </form>
   </section>
 {% endif %}
@@ -82,16 +96,18 @@
   </div>
 {% endif %}
 
-<section aria-labelledby="titulo-modulos">
-  <h2 id="titulo-modulos" style="font-size:16px;margin:4px 0 12px">Seus módulos</h2>
-  <div class="grade">
+<section class="ferramentas-inicio" aria-labelledby="titulo-modulos">
+  <h2 id="titulo-modulos">Suas ferramentas</h2>
+  {# Computador: cartões com o que cada uma faz. Celular: uma linha por ferramenta. #}
+  <div class="grade grade-modulos">
     {% for m in cartoes_modulos %}
-      <a class="card modulo-card" href="{{ m.href }}">
+      <a class="card modulo-card{% if m.estado != 'liberado' %} modulo-card-fora{% endif %}" href="{{ m.href }}">
         <div class="topo">
           <span class="icone-redondo">{% include "painel/_icone.html" with caminho=m.icone_path %}</span>
-          <span class="estado estado-{{ m.estado }}">{% if m.estado == "liberado" %}Liberado{% elif m.estado == "bloqueado" %}Não incluso{% else %}Em breve{% endif %}</span>
+          {% if m.estado == "bloqueado" %}<span class="estado estado-bloqueado">Não incluso</span>{% elif m.estado == "em_breve" %}<span class="estado estado-em_breve">Em breve</span>{% endif %}
         </div>
-        <strong>{{ m.nome }}</strong>
+        <div class="modulo-texto"><strong>{{ m.nome }}</strong><span class="suave pequeno">{{ m.resumo }}</span></div>
+        <span class="modulo-acao">{% if m.estado == "liberado" %}Abrir{% elif m.estado == "bloqueado" %}Conhecer{% else %}Ver{% endif %}{% include "painel/_icone.html" with caminho=icones.seta_direita %}</span>
       </a>
     {% endfor %}
   </div>

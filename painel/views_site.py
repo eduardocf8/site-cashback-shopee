@@ -117,12 +117,16 @@ def meu_site(request):
         b.cliques_30 = cliques["por_botao"].get(b.pk, 0)
     produtos = site.produtos.filter(fonte=site.vitrine)[: vitrine.limite_de_ofertas(site)]
     pagina_produtos = Paginator(list(produtos), PRODUTOS_POR_PAGINA).get_page(request.GET.get("produtos"))
+    total_produtos = pagina_produtos.paginator.count
     andamento = site.manuais_rodada if site.vitrine == SiteAfiliado.VITRINE_MANUAL and site.vitrine_pedida else {}
+    link = url_publica(site)
     return render(request, "painel/meu_site.html", _contexto(
         request, "site",
         site=site, form=form, form_botao=BotaoForm(), botoes=botoes, maximo_botoes=regras["botoes"], regras=regras,
-        url_publica=url_publica(site), url_previa=f"/s/{site.endereco}/?previa=1",
-        cliques=cliques, total_produtos=pagina_produtos.paginator.count, tem_bot=tem_bot,
+        url_publica=link, link_curto=link.split("://")[-1], url_previa=f"/s/{site.endereco}/?previa=1",
+        passos_site=_passos_do_site(site, botoes, cliques, total_produtos),
+        vitrine_vazia_do_bot=site.vitrine == SiteAfiliado.VITRINE_BOT and not total_produtos and not site.vitrine_pedida,
+        cliques=cliques, total_produtos=total_produtos, tem_bot=tem_bot,
         produtos_vitrine=pagina_produtos, abrir_produtos="produtos" in request.GET,
         lidos=andamento.get("feitos", 0), total_links=len(vitrine.links_manuais(site)) if andamento else 0,
         limite_ofertas=regras["ofertas"], limite_escolhidos=planos.SITE[True]["escolhidos"],
@@ -131,6 +135,21 @@ def meu_site(request):
         dominio_sites=settings.APPFILIADO_SITES_DOMINIO,
         prefixo_sem_dominio=settings.APPFILIADO_PAINEL_URL.split("://")[-1].rstrip("/") + "/s/",
     ))
+
+
+def _passos_do_site(site, botoes, cliques, total_produtos):
+    """Enquanto o site não tem visitas, o topo do editor mostra o que falta pra deixar o site pronto
+    (no lugar dos números zerados). Com tudo feito, ou depois da primeira visita, volta aos números."""
+    feitos = {
+        "perfil": bool(site.foto and site.frase),
+        "botao": bool(botoes),
+        "vitrine": site.vitrine == SiteAfiliado.VITRINE_NENHUMA or total_produtos > 0,
+    }
+    if cliques["visitas"] or all(feitos.values()):
+        return None
+    atual = next(n for n, chave in ((2, "perfil"), (3, "botao"), (4, "vitrine")) if not feitos[chave])
+    quantos = 1 + sum(feitos.values())  # o 1º (nome e endereço) já vem feito
+    return {**feitos, "atual": atual, "feitos": quantos, "progresso": quantos * 25}
 
 
 def _acao(request, site, acao, regras):

@@ -52,15 +52,25 @@
   contar();
 })();
 
-// Grupos criados: copiar o link de convite e, enquanto algum está sendo criado, recarregar.
+// Botões "Copiar link" (convite dos grupos criados, links de entrada) e, enquanto algum grupo está
+// sendo criado, recarregar.
 (function () {
   document.querySelectorAll("[data-copiar]").forEach(function (botao) {
+    var original = botao.textContent;
     botao.addEventListener("click", function () {
       var texto = botao.dataset.copiar;
-      var feito = function () { botao.textContent = "Copiado!"; setTimeout(function () { botao.textContent = "Copiar link"; }, 2000); };
-      if (navigator.clipboard) { navigator.clipboard.writeText(texto).then(feito); } else {
-        var campo = botao.previousElementSibling; campo.select(); document.execCommand("copy"); feito();
-      }
+      var feito = function () { botao.textContent = "Copiado!"; setTimeout(function () { botao.textContent = original; }, 2000); };
+      if (navigator.clipboard && window.isSecureContext) { navigator.clipboard.writeText(texto).then(feito); return; }
+      var campo = document.createElement("textarea");
+      campo.value = texto;
+      campo.setAttribute("readonly", "");
+      campo.style.position = "fixed";
+      campo.style.opacity = "0";
+      document.body.appendChild(campo);
+      campo.select();
+      document.execCommand("copy");
+      campo.remove();
+      feito();
     });
   });
   if (document.querySelector("[data-esperando]")) {

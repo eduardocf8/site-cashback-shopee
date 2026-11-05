@@ -2,18 +2,12 @@
 {% load static painel_extras %}
 {% block titulo %}Grupos · Bot de WhatsApp{% endblock %}
 {% block conteudo %}
-<header class="cabecalho">
-  <div>
-    <h1>Bot de WhatsApp</h1>
-    <p>Ofertas da Shopee enviadas com o seu link de afiliado no automático: buscadas pela API ou copiadas de outros grupos e canais.</p>
-  </div>
-</header>
-{% include "painel/_abas_whatsapp.html" with aba="membros" %}
+{% include "painel/_cabecalho_bot.html" with aba="membros" %}
 
-{% if conexao.estado != "conectado" %}<p class="aviso aviso-warning pequeno">Seu WhatsApp não está conectado. As contagens ficam paradas até ele conectar de novo (na aba <a href="{% url 'painel_whatsapp' %}">Conexão</a>).</p>{% endif %}
+{% if conexao.estado != "conectado" and conexao.conectado_em %}<p class="aviso aviso-warning pequeno">Seu WhatsApp não está conectado. As contagens ficam paradas até ele conectar de novo (na aba <a href="{% url 'painel_whatsapp' %}">Conexão</a>).</p>{% endif %}
 
 {% if criar %}
-<section class="card" id="criar" aria-labelledby="titulo-criar" style="margin-top:16px">
+<section class="card" id="criar" aria-labelledby="titulo-criar">
   <h2 id="titulo-criar">Criar grupo</h2>
   <p class="suave pequeno" style="margin-bottom:14px">O número do bot cria o grupo e vira o dono. O grupo nasce vazio, só com os administradores que você escolher: quem entra depois é quem clicar no link de convite. Você pode criar até {{ criar.por_dia }} grupos por dia (hoje: {{ criar.feitos_hoje }}), porque o WhatsApp desconfia de número que cria muitos grupos de uma vez.</p>
   {% if criar.feitos_hoje >= criar.por_dia %}
@@ -61,27 +55,8 @@
 </section>
 {% endif %}
 
-{% if pedidos %}
-<section class="card" id="criados" aria-labelledby="titulo-criados" style="margin-top:16px"{% for p in pedidos %}{% if p.estado == "pendente" %} data-esperando{% endif %}{% endfor %}>
-  <h2 id="titulo-criados">Grupos criados pelo Appfiliado</h2>
-  <ul class="lista-criados">
-    {% for p in pedidos %}
-      <li>
-        <div><strong>{{ p.nome }}</strong> <span class="suave pequeno">{{ p.criado_em|date:"d/m H:i" }}</span></div>
-        {% if p.estado == "pendente" %}<span class="suave pequeno">Criando…</span>
-        {% elif p.estado == "erro" %}<span class="erro pequeno">{{ p.erro }}</span>
-        {% else %}
-          <div class="link-convite"><input type="text" value="{{ p.link_convite }}" readonly aria-label="Link de convite de {{ p.nome }}"><button type="button" class="botao botao-claro" data-copiar="{{ p.link_convite }}">Copiar link</button></div>
-          {% if p.avisos %}<span class="suave pequeno">{{ p.avisos|linebreaksbr }}</span>{% endif %}
-        {% endif %}
-      </li>
-    {% endfor %}
-  </ul>
-</section>
-{% endif %}
-
 {% if escolhendo %}
-<section class="card" aria-labelledby="titulo-escolher" style="margin-top:16px">
+<section class="card" aria-labelledby="titulo-escolher">
   <h2 id="titulo-escolher">Escolha os grupos para acompanhar</h2>
   <p class="suave pequeno">Veja quantos membros cada grupo ganhou ou perdeu nas últimas 24 horas, 7 e 30 dias, quantos entraram e saíram hoje e quais estão perto de lotar. Marque até {{ dados.maximo }} grupos: o número do bot precisa estar no grupo, mas não precisa ser administrador. O histórico começa a contar quando você marca o grupo.</p>
   {% if possiveis %}
@@ -110,17 +85,21 @@
 </section>
 {% elif dados.quantos %}
 
-<div class="kpis kpis-membros" style="margin-top:16px">
+<div class="kpis kpis-membros">
   <div class="card kpi"><span class="kpi-titulo">Membros</span><strong class="kpi-valor">{{ dados.total|numero }}</strong><span class="kpi-detalhe">em {{ dados.quantos }} grupo{{ dados.quantos|pluralize }}</span></div>
+  {% if dados.var_24h is None %}
+  <div class="card kpi"><span class="kpi-titulo">Hoje</span><strong class="kpi-valor{% if saldo_hoje > 0 %} positivo{% elif saldo_hoje < 0 %} negativo{% endif %}">{{ saldo_hoje|variacao }}</strong><span class="kpi-detalhe">{{ dados.entradas|numero }} {% if dados.entradas == 1 %}entrou{% else %}entraram{% endif %} e {{ dados.saidas|numero }} {% if dados.saidas == 1 %}saiu{% else %}saíram{% endif %}</span></div>
+  {% else %}
   <div class="card kpi"><span class="kpi-titulo">Últimas 24 horas</span><strong class="kpi-valor{% if dados.var_24h > 0 %} positivo{% elif dados.var_24h < 0 %} negativo{% endif %}">{{ dados.var_24h|variacao }}</strong><span class="kpi-detalhe">hoje: {{ dados.entradas|numero }} {% if dados.entradas == 1 %}entrou{% else %}entraram{% endif %} e {{ dados.saidas|numero }} {% if dados.saidas == 1 %}saiu{% else %}saíram{% endif %}</span></div>
-  <div class="card kpi"><span class="kpi-titulo">Últimos 7 dias</span><strong class="kpi-valor{% if dados.var_7d > 0 %} positivo{% elif dados.var_7d < 0 %} negativo{% endif %}">{{ dados.var_7d|variacao }}</strong><span class="kpi-detalhe">{% if dados.var_7d is None %}aparece quando completar 7 dias{% else %}ganho ou perda de membros{% endif %}</span></div>
-  <div class="card kpi"><span class="kpi-titulo">Últimos 30 dias</span><strong class="kpi-valor{% if dados.var_30d > 0 %} positivo{% elif dados.var_30d < 0 %} negativo{% endif %}">{{ dados.var_30d|variacao }}</strong><span class="kpi-detalhe">{% if dados.var_30d is None %}aparece quando completar 30 dias{% else %}ganho ou perda de membros{% endif %}</span></div>
+  {% endif %}
+  <div class="card kpi"><span class="kpi-titulo">Últimos 7 dias</span>{% if dados.var_7d is None %}<strong class="kpi-valor ainda">a partir de {{ a_partir_7d|date:"d/m" }}</strong><span class="kpi-detalhe">a contagem começou em {{ desde|date:"d/m" }}</span>{% else %}<strong class="kpi-valor{% if dados.var_7d > 0 %} positivo{% elif dados.var_7d < 0 %} negativo{% endif %}">{{ dados.var_7d|variacao }}</strong><span class="kpi-detalhe">ganho ou perda de membros</span>{% endif %}</div>
+  <div class="card kpi"><span class="kpi-titulo">Últimos 30 dias</span>{% if dados.var_30d is None %}<strong class="kpi-valor ainda">a partir de {{ a_partir_30d|date:"d/m" }}</strong><span class="kpi-detalhe">a contagem começou em {{ desde|date:"d/m" }}</span>{% else %}<strong class="kpi-valor{% if dados.var_30d > 0 %} positivo{% elif dados.var_30d < 0 %} negativo{% endif %}">{{ dados.var_30d|variacao }}</strong><span class="kpi-detalhe">ganho ou perda de membros</span>{% endif %}</div>
 </div>
 
-{% if dados.quase_cheios %}<p class="aviso aviso-warning pequeno" style="margin-top:16px">{{ dados.quase_cheios }} grupo{{ dados.quase_cheios|pluralize }} com mais de 95% da lotação. O WhatsApp aceita até {{ limite_do_whatsapp|numero }} pessoas por grupo: vale abrir o próximo grupo. <a href="?ordem=lotacao#grupos">Ver os mais cheios</a></p>{% endif %}
+{% if dados.quase_cheios %}<div class="aviso aviso-warning pequeno aviso-lotacao"><span><strong>{{ dados.quase_cheios }} grupo{{ dados.quase_cheios|pluralize }} quase che{{ dados.quase_cheios|pluralize:"io,ios" }}</strong> (mais de 95%). O WhatsApp aceita até {{ limite_do_whatsapp|numero }} pessoas por grupo: vale abrir o próximo.</span>{% if mais_cheio %}<a class="botao botao-claro botao-pequeno" href="?criar={{ mais_cheio.grupo.jid|urlencode }}#criar">Criar o próximo grupo</a>{% endif %}</div>{% endif %}
 
 {% if grafico %}
-<section class="card" aria-labelledby="titulo-grafico-membros" style="margin-top:16px">
+<section class="card" aria-labelledby="titulo-grafico-membros">
   <h2 id="titulo-grafico-membros">Membros nos grupos acompanhados</h2>
   <svg class="grafico-linha" viewBox="0 0 {{ grafico.largura }} {{ grafico.altura }}" preserveAspectRatio="none" role="img" aria-label="Membros de {{ grafico.inicio|date:'d/m' }} a {{ grafico.fim|date:'d/m' }}: de {{ grafico.menor|numero }} a {{ grafico.maior|numero }}">
     <polyline points="{{ grafico.pontos }}" fill="none" stroke="var(--verde)" stroke-width="3" vector-effect="non-scaling-stroke" stroke-linejoin="round" stroke-linecap="round"/>
@@ -129,7 +108,7 @@
 </section>
 {% endif %}
 
-<section class="card" id="grupos" aria-labelledby="titulo-grupos-membros" style="margin-top:16px">
+<section class="card" id="grupos" aria-labelledby="titulo-grupos-membros">
   <div class="kpis-topo">
     <h2 id="titulo-grupos-membros">Grupos</h2>
     <div class="botoes-linha"><a class="botao botao-claro" href="?criar=1#criar">Criar grupo</a><a class="botao botao-claro" href="?escolher=1">Escolher grupos</a></div>
@@ -149,7 +128,7 @@
   <div class="tabela-rolagem so-computador">
     <table class="numeros tabela-membros">
       <thead><tr>
-        <th>Grupo</th><th>Membros</th><th>24 h</th><th>7 dias</th><th>30 dias</th><th>Hoje</th><th>Lotação</th>
+        <th>Grupo</th><th>Membros</th>{% if dados.var_24h is not None %}<th>24 h</th>{% endif %}{% if dados.var_7d is not None %}<th>7 dias</th>{% endif %}{% if dados.var_30d is not None %}<th>30 dias</th>{% endif %}<th>Hoje</th><th>Lotação</th>
         {% if dados.tem_comissao %}<th title="Comissão estimada do mês até ontem, pelo Sub ID próprio do grupo">Comissão do mês</th><th>Por membro</th>{% endif %}
       </tr></thead>
       <tbody>
@@ -157,9 +136,9 @@
         <tr>
           <td><span class="nome-grupo" title="{{ l.grupo.nome }}">{{ l.grupo.nome|default:"(grupo sem nome)" }}</span>{% if l.grupo.admin %} <span class="selo-canal">Admin</span>{% endif %}{% if not l.grupo.no_grupo %}<br><span class="erro pequeno">O número do bot não está mais nesse grupo.</span>{% endif %}</td>
           <td>{% if l.membros is None %}—{% else %}{{ l.membros|numero }}{% endif %}</td>
-          <td class="{% if l.var_24h > 0 %}positivo{% elif l.var_24h < 0 %}negativo{% endif %}">{{ l.var_24h|variacao }}</td>
-          <td class="{% if l.var_7d > 0 %}positivo{% elif l.var_7d < 0 %}negativo{% endif %}">{{ l.var_7d|variacao }}</td>
-          <td class="{% if l.var_30d > 0 %}positivo{% elif l.var_30d < 0 %}negativo{% endif %}">{{ l.var_30d|variacao }}</td>
+          {% if dados.var_24h is not None %}<td class="{% if l.var_24h > 0 %}positivo{% elif l.var_24h < 0 %}negativo{% endif %}">{{ l.var_24h|variacao }}</td>{% endif %}
+          {% if dados.var_7d is not None %}<td class="{% if l.var_7d > 0 %}positivo{% elif l.var_7d < 0 %}negativo{% endif %}">{{ l.var_7d|variacao }}</td>{% endif %}
+          {% if dados.var_30d is not None %}<td class="{% if l.var_30d > 0 %}positivo{% elif l.var_30d < 0 %}negativo{% endif %}">{{ l.var_30d|variacao }}</td>{% endif %}
           <td><span class="positivo">+{{ l.entradas|numero }}</span> <span class="negativo">−{{ l.saidas|numero }}</span></td>
           <td><span class="lotacao{% if l.quase_cheio %} cheia{% endif %}" title="{{ l.membros|default:0|numero }} de {{ limite_do_whatsapp|numero }}"><i style="width:{{ l.lotacao }}%"></i></span> {{ l.lotacao }}%{% if l.quase_cheio %}<br><a class="pequeno" href="?criar={{ l.grupo.jid|urlencode }}#criar">Criar o próximo</a>{% endif %}</td>
           {% if dados.tem_comissao %}
@@ -185,9 +164,9 @@
           <span class="cg-lotacao"><span class="lotacao{% if l.quase_cheio %} cheia{% endif %}"><i style="width:{{ l.lotacao }}%"></i></span> {{ l.lotacao }}% cheio</span>
         </div>
         <dl class="cg-numeros">
-          <div><dt>24 h</dt><dd class="{% if l.var_24h > 0 %}positivo{% elif l.var_24h < 0 %}negativo{% endif %}">{{ l.var_24h|variacao }}</dd></div>
-          <div><dt>7 dias</dt><dd class="{% if l.var_7d > 0 %}positivo{% elif l.var_7d < 0 %}negativo{% endif %}">{{ l.var_7d|variacao }}</dd></div>
-          <div><dt>30 dias</dt><dd class="{% if l.var_30d > 0 %}positivo{% elif l.var_30d < 0 %}negativo{% endif %}">{{ l.var_30d|variacao }}</dd></div>
+          {% if dados.var_24h is not None %}<div><dt>24 h</dt><dd class="{% if l.var_24h > 0 %}positivo{% elif l.var_24h < 0 %}negativo{% endif %}">{{ l.var_24h|variacao }}</dd></div>{% endif %}
+          {% if dados.var_7d is not None %}<div><dt>7 dias</dt><dd class="{% if l.var_7d > 0 %}positivo{% elif l.var_7d < 0 %}negativo{% endif %}">{{ l.var_7d|variacao }}</dd></div>{% endif %}
+          {% if dados.var_30d is not None %}<div><dt>30 dias</dt><dd class="{% if l.var_30d > 0 %}positivo{% elif l.var_30d < 0 %}negativo{% endif %}">{{ l.var_30d|variacao }}</dd></div>{% endif %}
           <div><dt>Hoje</dt><dd><span class="positivo">+{{ l.entradas|numero }}</span> <span class="negativo">−{{ l.saidas|numero }}</span></dd></div>
         </dl>
         {% if l.quase_cheio %}<a class="pequeno" href="?criar={{ l.grupo.jid|urlencode }}#criar">Quase cheio: criar o próximo grupo</a>{% endif %}
@@ -212,10 +191,29 @@
   {% endif %}
   {% endif %}
   <p class="suave pequeno" style="margin-top:12px">
-    {% if dados.lido_em %}Contagem lida às {{ dados.lido_em|date:"H:i" }}, atualizada a cada hora. Entradas e saídas chegam na hora.{% else %}A primeira leitura sai em até 1 minuto.{% endif %}
-    {% if dados.monitorando_desde %} Acompanhando desde {{ dados.monitorando_desde|date:"d/m/Y" }}.{% endif %}
+    {% if dados.lido_em %}Contagem das {{ dados.lido_em|date:"H:i" }}, atualizada a cada hora. Entradas e saídas chegam na hora.{% else %}A primeira leitura sai em até 1 minuto.{% endif %}
+    {% if dados.monitorando_desde %} Acompanhando desde {{ dados.monitorando_desde|date:"d/m/Y" }}.{% endif %}{% if dados.var_24h is None or dados.var_7d is None or dados.var_30d is None %} As colunas que faltam (24 h, 7 e 30 dias) aparecem quando houver dias suficientes de contagem.{% endif %}
     {% if not dados.tem_comissao %} Quer saber quanto cada grupo rende? Dê um Sub ID próprio a ele na <a href="{% url 'painel_whatsapp_ofertas' %}">Automação</a> e a comissão do mês aparece aqui.{% endif %}
   </p>
+</section>
+{% endif %}
+{% if pedidos %}
+<section class="card criados-compacto" id="criados" aria-labelledby="titulo-criados"{% for p in pedidos %}{% if p.estado == "pendente" %} data-esperando{% endif %}{% endfor %}>
+  <h2 id="titulo-criados">Criados pelo Appfiliado</h2>
+  <ul class="lista-criados">
+    {% for p in pedidos %}
+      <li>
+        <span class="criado-nome">{{ p.nome }}</span> <span class="suave pequeno">{{ p.criado_em|date:"d/m H:i" }}</span>
+        {% if p.estado == "pendente" %}<span class="suave pequeno">Criando…</span>
+        {% elif p.estado == "erro" %}<span class="erro pequeno">{{ p.erro }}</span>
+        {% else %}
+          <code class="link-curto">{{ p.link_convite|cut:"https://" }}</code>
+          <button type="button" class="botao botao-claro botao-pequeno" data-copiar="{{ p.link_convite }}">Copiar link de convite</button>
+          {% if p.avisos %}<span class="suave pequeno criado-avisos">{{ p.avisos|linebreaksbr }}</span>{% endif %}
+        {% endif %}
+      </li>
+    {% endfor %}
+  </ul>
 </section>
 {% endif %}
 <script src="{% static 'painel/membros.js' %}" defer></script>

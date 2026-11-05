@@ -40,7 +40,7 @@ def _bloqueio(request, conta):
 
 class CertificadoForm(forms.Form):
     arquivo = forms.FileField(label="Arquivo do certificado (.pfx ou .p12)",
-                              widget=forms.ClearableFileInput(attrs={"accept": ".pfx,.p12"}))
+                              widget=forms.ClearableFileInput(attrs={"accept": ".pfx,.p12", "data-arquivo": ""}))
     senha = forms.CharField(label="Senha do certificado", strip=False,
                             widget=forms.PasswordInput(attrs={"autocomplete": "new-password"}))
 
@@ -213,7 +213,8 @@ def notas(request):
                 return redirect("painel_notas")
 
     contexto = {"empresa": empresa, "form_cert": form_cert, "form_servico": form_servico, "form_horario": form_horario,
-                "form_contabilidade": form_contabilidade, "meses_contabilidade": _meses_para_enviar()}
+                "form_contabilidade": form_contabilidade, "meses_contabilidade": _meses_para_enviar(),
+                "passo_atual": 1, "passos_feitos": 0}
     if empresa:
         contexto["falta"] = servicos.pronta_para_emitir(empresa)
         contexto["ultimas"] = empresa.notas.filter(lote__isnull=True).exclude(tipo=NotaFiscal.TIPO_ASSINATURA)[:10]
@@ -223,7 +224,23 @@ def notas(request):
         contexto["lotes"] = empresa.lotes.all()[:12]
         contexto["teste_ok"] = empresa.notas.filter(tipo=NotaFiscal.TIPO_TESTE, situacao=NotaFiscal.AUTORIZADA).exists()
         contexto["plano"] = servicos.uso_do_plano(empresa)
+        contexto.update(_passos(empresa, contexto["teste_ok"]))
+        hora = empresa.email_horario
+        contexto["horario_emails"] = "Logo depois que as notas saírem" if hora is None else f"Às {hora:02d}:00"
+        codigo = empresa.codigo_tributacao or ""
+        contexto["codigo_servico"] = f"{codigo[:2]}.{codigo[2:4]}.{codigo[4:]}" if len(codigo) == 6 else codigo
     return render(request, "painel/notas.html", _contexto(request, "notas", **contexto))
+
+
+def _passos(empresa, teste_ok) -> dict:
+    """Os 4 passos do primeiro uso (empresa, certificado, serviço e nota de teste): qual é o da vez
+    (o formulário dele aparece aberto no cartão de passos) e quantos já foram. Tudo feito: passo_atual = None."""
+    vencido = bool(empresa.tem_certificado and empresa.certificado_validade
+                   and empresa.certificado_validade <= timezone.now())
+    feitos = [True, empresa.tem_certificado and not vencido,
+              bool(empresa.codigo_tributacao and empresa.descricao_servico), teste_ok]
+    return {"passo_atual": None if all(feitos) else feitos.index(False) + 1, "passos_feitos": sum(feitos),
+            "certificado_vencido": vencido, "servico_ok": feitos[2]}
 
 
 def _nbs_formatado(nbs: str) -> str:
@@ -298,8 +315,13 @@ def lote(request, pk):
     resumo = servicos.resumo(lote.notas.all())
     if lote.estado == LoteNotas.PREVIA and lote.ambiente == AMBIENTE_PRODUCAO and plano["restam"] is not None:
         plano["sobram"] = plano["restam"] - resumo["total"]  # negativo: o lote passa do plano
+    por = resumo["por"]
+    contagem = {"todas": resumo["total"], **{chave: sum(por[s]["qtd"] for s in situacoes)
+                                             for chave, situacoes in FILTROS.items() if situacoes}}
+    filtros = [(chave, nome, contagem[chave]) for chave, nome in
+               (("todas", "Todas"), ("autorizadas", "Autorizadas"), ("problemas", "Com problema"), ("fila", "Na fila"))]
     return render(request, "painel/notas_lote.html", _contexto(
-        request, "notas", lote=lote, empresa=lote.empresa, resumo=resumo,
+        request, "notas", lote=lote, empresa=lote.empresa, resumo=resumo, filtros=filtros,
         pagina=pagina, filtro=filtro, busca=busca, falta=servicos.pronta_para_emitir(lote.empresa),
         email=email, atualizar=_acompanhar(lote, email), plano=plano,
     ))

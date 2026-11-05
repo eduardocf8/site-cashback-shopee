@@ -21,6 +21,9 @@ PASSOS = [
     ("Clique em Aplicar", "Entre na página Open API do portal de afiliados. Quando o botão \"Aplicar\" aparecer, a API foi liberada: clique nele e a Shopee cria o seu AppID e o seu Secret."),
     ("Informe no Appfiliado", "Em Configurações do painel, cole o AppID e o Secret. Pronto: as ferramentas passam a funcionar."),
 ]
+# No painel (Configurações), o último passo fala dos campos que estão logo acima do guia.
+PASSOS_PAINEL = PASSOS[:-1] + [("Volte aqui", "Cole o AppID e o Secret nos campos acima e clique em Salvar e testar.")]
+TITULO_CAMPOS_FORMULARIO = "No formulário da Shopee (passo 2), responda assim:"
 
 RESUMO = ("Para usar as ferramentas do Appfiliado, a sua conta de afiliado precisa ter a API da Shopee liberada. "
           "É um pedido simples feito à Shopee, que responde em até 5 dias úteis.")

@@ -6,25 +6,29 @@
   <a class="botao botao-principal" href="{{ url_planos }}" target="_blank" rel="noopener">Ver todos os planos</a>
 </header>
 
-<div>
-  <section class="card">
-    <h2>Módulos</h2>
-    <div class="tabela-rolagem">
-      <table>
-        <thead><tr><th scope="col">Módulo</th><th scope="col">Situação</th><th scope="col">Por quê</th></tr></thead>
-        <tbody>
-          {% for linha in linhas_modulos %}
-            <tr>
-              <td>{{ linha.nome }}</td>
-              <td>{% if linha.liberado %}<span class="estado estado-liberado">Liberado</span>{% else %}<span class="estado estado-bloqueado">Não incluso</span>{% endif %}</td>
-              <td class="suave">{{ linha.origem|default:"—" }}</td>
-            </tr>
-          {% endfor %}
-        </tbody>
-      </table>
-    </div>
-  </section>
-</div>
+{# Uma linha por ferramenta, com os mesmos nomes e ícones do menu: o que você tem vem primeiro. #}
+<section class="card" aria-labelledby="titulo-ferramentas">
+  <div class="card-topo"><h2 id="titulo-ferramentas">Suas ferramentas</h2><span class="suave pequeno">O que você pode usar hoje</span></div>
+  <ul class="lista-plano">
+    {% for linha in ferramentas_do_plano %}
+      <li class="{% if linha.estado == 'bloqueado' %}plano-fora{% elif linha.estado == 'em_breve' %}plano-breve{% endif %}">
+        <span class="icone-redondo">{% include "painel/_icone.html" with caminho=linha.item.icone_path %}</span>
+        <div class="plano-texto">
+          <strong>{{ linha.item.nome }}</strong>
+          {% if linha.estado == "bloqueado" %}
+            <span class="pequeno suave">Não faz parte do seu plano</span>
+          {% else %}
+            <span class="pequeno suave">{{ linha.nivel }}{% if linha.origem %} · {{ linha.origem }}{% endif %}{% if linha.estado == "em_breve" %} · Chega em breve{% endif %}</span>
+            {% if linha.mais %}<span class="pequeno suave">Precisa de mais? {{ linha.mais }}</span>{% endif %}
+          {% endif %}
+        </div>
+        {% if linha.estado == "liberado" %}<span class="estado estado-liberado">Liberado</span>
+        {% elif linha.estado == "em_breve" %}<span class="estado estado-em_breve">Em breve</span>
+        {% else %}<a class="plano-conhecer" href="{{ linha.item.href }}">Conhecer{% include "painel/_icone.html" with caminho=icones.seta_direita %}</a>{% endif %}
+      </li>
+    {% endfor %}
+  </ul>
+</section>
 
 <section class="card">
   <h2>Assinaturas</h2>
@@ -43,8 +47,10 @@
         </tbody>
       </table>
     </div>
+  {% elif modulos_liberados %}
+    <p class="suave">Nenhuma cobrança nesta conta: suas ferramentas estão liberadas como cortesia.</p>
   {% else %}
-    <p class="suave">Nenhuma assinatura paga nesta conta{% if modulos_liberados %} - seus módulos estão liberados como cortesia{% endif %}.</p>
+    <p class="suave">Nenhuma assinatura paga nesta conta.</p>
   {% endif %}
 </section>
 {% endblock %}

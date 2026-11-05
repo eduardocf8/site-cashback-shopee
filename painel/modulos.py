@@ -33,6 +33,9 @@ ICONES = {
     "notas": "M6 3h9l4 4v14H6zM14 3v5h5M9 12h7M9 16h7",
     "email": "M3 6h18v12H3zM3 7l9 6 9-6",
     "seta_cima": "M6 15l6-6 6 6",
+    "seta_direita": "M9 6l6 6-6 6",
+    "menu": "M4 7h16M4 12h16M4 17h16",
+    "fechar": "M6 6l12 12M18 6L6 18",
     "ideia": "M9 18h6M10 21h4M12 3a6 6 0 0 0-3.5 10.9c.6.5 1 1.2 1 2.1h5c0-.9.4-1.6 1-2.1A6 6 0 0 0 12 3z",
     "conversor": "M10 14a4 4 0 0 0 5.7 0l3-3a4 4 0 0 0-5.7-5.7l-1 1M14 10a4 4 0 0 0-5.7 0l-3 3a4 4 0 0 0 5.7 5.7l1-1",
     "copiar": "M8 8h11v11H8zM5 16V5h11",
@@ -45,54 +48,120 @@ ICONES = {
 
 # slug -> configuração. "modulo": código da licença que libera (None = todos
 # têm). "pronto": já existe no painel. "teste": já funciona, mas em versão de teste. "so_em_breve": ainda não dá para vender
-# para ninguém (ex: Instagram, esperando a Meta).
+# para ninguém (ex: Instagram, esperando a Meta). "grupo": título do bloco no menu ("" = sem título; "conta" = vai
+# pro rodapé do menu, junto da conta). Nas ferramentas do plano: "resumo" (uma linha, nos cartões do Início),
+# "frase" (subtítulo da página da ferramenta), "beneficios" e "exemplo" (o que ela faz, na página de quem não tem),
+# "ao_assinar" e "pagina_site" (a página dela em appfiliado.com.br).
 MODULOS_DO_MENU = [
-    {"slug": "inicio", "nome": "Início", "icone": "inicio", "modulo": None, "pronto": True},
-    {"slug": "resultados", "nome": "Resultados", "icone": "resultados", "modulo": None, "pronto": True},
-    {"slug": "metas", "nome": "Metas", "icone": "metas", "modulo": None, "pronto": True},
-    {"slug": "radar", "nome": "Radar de ofertas", "icone": "radar", "modulo": None, "pronto": True},
-    {"slug": "conversor", "nome": "Conversor de links", "icone": "conversor", "modulo": None, "pronto": True},
+    {"slug": "inicio", "nome": "Início", "icone": "inicio", "modulo": None, "pronto": True, "grupo": ""},
+    {"slug": "resultados", "nome": "Resultados", "icone": "resultados", "modulo": None, "pronto": True, "grupo": "Seus números"},
+    {"slug": "metas", "nome": "Metas", "icone": "metas", "modulo": None, "pronto": True, "grupo": "Seus números"},
+    {"slug": "radar", "nome": "Radar de ofertas", "icone": "radar", "modulo": None, "pronto": True, "grupo": "Ofertas"},
+    {"slug": "conversor", "nome": "Conversor de links", "icone": "conversor", "modulo": None, "pronto": True, "grupo": "Ofertas"},
     {
         "slug": "whatsapp", "nome": "Bot de WhatsApp", "icone": "whatsapp", "modulo": MODULO_WHATSAPP,
-        "pronto": True,
+        "pronto": True, "grupo": "Divulgação",
+        "resumo": "Ofertas no automático nos seus grupos.",
+        "frase": "Ofertas da Shopee com o seu link de afiliado nos seus grupos e canais no automático.",
         "texto_bloqueado": "Envie ofertas com seu link de afiliado nos seus grupos e canais do WhatsApp "
                            "no automático.",
+        "beneficios": [
+            ("Ofertas no automático", "O bot busca na Shopee por palavra-chave, loja ou categoria e manda com o seu link."),
+            ("Do seu jeito", "Você escolhe os grupos, os horários e quantas ofertas saem por dia."),
+            ("Datas da Shopee", "Modo campanha pro 11.11 e pras outras datas, com o cupom e a frase da campanha."),
+            ("Alerta de preço", "Confere os preços dos produtos que você escolher e avisa quando algum baixar."),
+            ("Gestão dos grupos", "Os membros que cada grupo ganhou ou perdeu, os que estão perto de lotar e o "
+                                  "próximo grupo criado pelo painel."),
+            ("Link de entrada", "Um link só no anúncio, na bio ou no story, que manda cada pessoa pro grupo que "
+                                "ainda tem vaga."),
+        ],
+        "exemplo": "Exemplo de oferta no grupo",
+        "ao_assinar": "Ao assinar, o bot é liberado nesta mesma conta.",
+        "pagina_site": "bot-de-whatsapp/",
     },
     {
-        "slug": "site", "nome": "Meu site", "icone": "site", "modulo": MODULO_SITE, "pronto": True,
+        "slug": "site", "nome": "Meu site", "icone": "site", "modulo": MODULO_SITE, "pronto": True, "grupo": "Divulgação",
+        "resumo": "Seu link na bio com conversor e vitrine.",
+        "frase": "Seu link na bio com vitrine de ofertas e conversor de links.",
         "texto_em_breve": "Você vai editar aqui o seu site com conversor de links e vitrine "
                           "de produtos no endereço seunome.appfiliado.com.br.",
         "texto_bloqueado": "Tenha seu próprio site com conversor de links e vitrine de produtos, pronto "
                            "para usar como link na bio.",
+        "beneficios": [
+            ("Seu endereço", "Um site seu em seunome.appfiliado.com.br para colocar na bio do Instagram e do TikTok."),
+            ("Botões e redes", "Os seus links em botões e as suas redes sociais, com os cliques de cada um."),
+            ("Vitrine de ofertas", "As ofertas da Shopee com foto, preço e desconto, todas com o seu link de afiliado."),
+            ("Conversor de links", "Quem visita cola o link de um produto da Shopee e compra pelo seu link."),
+        ],
+        "exemplo": "Exemplo de site",
+        "ao_assinar": "Ao assinar, o site é liberado nesta mesma conta.",
+        "pagina_site": "meu-site/",
     },
     {
+        # O antigo gerador saiu do produto: os mesmos códigos de licença liberam o Estúdio Instagram, que toma o
+        # lugar dele em todas as listas. A página e os carrosséis já salvos continuam em /carrosseis/.
         "slug": "carrosseis", "nome": "Carrosséis", "icone": "carrosseis", "modulo": MODULO_CARROSSEIS,
-        "sai_no_lancamento": True,  # o Estúdio Instagram toma o lugar (mesmos códigos de licença)
+        "fora_das_listas": True,
         # o premium libera o gerador inteiro, sem precisar do básico junto
         "modulos_que_liberam": [MODULO_CARROSSEIS, MODULO_CARROSSEIS_PREMIUM], "pronto": True,
         "texto_bloqueado": "Cole o link de um produto da Shopee e receba um carrossel pronto pro "
                            "Instagram com textos feitos por IA e o seu link de afiliado.",
     },
     {
-        # Em construção: só aparece para contas com a chave "beta" ligada no admin.
+        # Em construção: só abre para contas com a chave "beta" ligada no admin, até o lançamento. Antes dele,
+        # quem já tem os códigos (os mesmos do antigo gerador) vê o Estúdio como "Em breve" ("breve_para_quem_tem").
         "slug": "estudio_instagram", "nome": "Estúdio Instagram", "icone": "instagram", "modulo": MODULO_CARROSSEIS,
         "modulos_que_liberam": [MODULO_CARROSSEIS, MODULO_CARROSSEIS_PREMIUM], "pronto": True,
-        "beta": "beta_estudio_instagram",
+        "beta": "beta_estudio_instagram", "breve_para_quem_tem": True, "grupo": "Divulgação",
+        "resumo": "Posts e stories com o seu link.",
+        "frase": "Posts e stories com o seu link de afiliado, publicados direto no seu Instagram.",
         "texto_bloqueado": "Crie posts e stories com a sua marca e publique direto no seu Instagram.",
+        "texto_em_breve": "O Estúdio Instagram já faz parte do seu plano e é liberado nesta conta assim que chegar.",
+        "beneficios": [
+            ("Do link ao post", "Cole o link de um produto da Shopee e a IA monta o post com a foto, o preço e a legenda."),
+            ("Posts e stories", "Carrossel, post de uma imagem e sequência de stories no tamanho certo do Instagram."),
+            ("Do seu jeito", "Troque os textos e as fotos no editor. No Premium, também as cores, os fundos e a sua marca."),
+            ("Publicar ou agendar", "Publique no feed ou nos stories na hora ou no dia e na hora que você escolher."),
+        ],
+        "exemplo": "Exemplo de post",
+        "ao_assinar": "Ao assinar, o Estúdio é liberado nesta mesma conta.",
+        "pagina_site": "estudio-instagram/",
     },
     {
         "slug": "automacoes_instagram", "nome": "Automações Instagram", "icone": "automacoes", "modulo": MODULO_INSTAGRAM,
         "modulos_que_liberam": [MODULO_INSTAGRAM, MODULO_INSTAGRAM_PREMIUM], "pronto": True,
-        "beta": "beta_estudio_instagram",
+        "beta": "beta_estudio_instagram", "grupo": "Divulgação",
+        "resumo": "Link por DM para quem comentar.",
+        "frase": "Quem comentar a palavra certa no seu post recebe o seu link de afiliado por DM.",
         "texto_bloqueado": "Quem comentar a palavra certa no seu post recebe o seu link de afiliado por DM, na hora.",
+        "beneficios": [
+            ("Comentou, recebeu", "Quem comentar a palavra certa, como QUERO, recebe o seu link por DM na hora."),
+            ("Posts e anúncios", "Vale para um post, para todos os posts ou para os comentários de um anúncio."),
+            ("Stories e DMs", "No Premium, também quem responder o seu story ou mandar a palavra por DM."),
+            ("Histórico", "Quem foi respondido, o que a pessoa escreveu e se a resposta e a DM saíram."),
+        ],
+        "exemplo": "Exemplo de resposta",
+        "ao_assinar": "Ao assinar, as automações são liberadas nesta mesma conta.",
+        "pagina_site": "automacoes-instagram/",
     },
     {
-        "slug": "notas", "nome": "Emissor NFS-e", "icone": "notas", "modulo": MODULO_NOTAS, "pronto": True,
+        "slug": "notas", "nome": "Emissor NFS-e", "icone": "notas", "modulo": MODULO_NOTAS, "pronto": True, "grupo": "Empresa",
+        "resumo": "Notas da Shopee e dos vendedores.",
+        "frase": "As notas fiscais das suas comissões direto do relatório da Shopee. Para afiliados pessoa jurídica.",
         "texto_bloqueado": "Emita no automático a nota da Shopee e as notas de cada vendedor que pagou "
                            "comissão extra e mande cada uma por e-mail pro vendedor.",
+        "beneficios": [
+            ("Sem digitar nada", "Envie o relatório mensal da Shopee e o Appfiliado emite uma nota por loja e a da Shopee."),
+            ("Emissor Nacional", "As notas saem direto no Emissor Nacional do governo, no CNPJ da sua empresa."),
+            ("E-mail pro vendedor", "Cada vendedor recebe a nota por e-mail com o PDF e o XML."),
+            ("Teste antes", "Ensaie no ambiente de testes do governo, sem valor fiscal e sem contar no seu plano."),
+        ],
+        "exemplo": "Exemplo de lote emitido",
+        "ao_assinar": "Ao assinar, o Emissor é liberado nesta mesma conta.",
+        "pagina_site": "emissao-de-notas/",
     },
-    {"slug": "sugestoes", "nome": "Sugerir melhoria", "icone": "ideia", "modulo": None, "pronto": True},
-    {"slug": "configuracoes", "nome": "Configurações", "icone": "configuracoes", "modulo": None, "pronto": True},
+    {"slug": "configuracoes", "nome": "Configurações", "icone": "configuracoes", "modulo": None, "pronto": True, "grupo": "conta"},
+    {"slug": "sugestoes", "nome": "Sugerir melhoria", "icone": "ideia", "modulo": None, "pronto": True, "grupo": "conta"},
 ]
 
 POR_SLUG = {item["slug"]: item for item in MODULOS_DO_MENU}
@@ -127,32 +196,54 @@ def lancado() -> bool:
 
 
 def ve_beta(item: dict, conta) -> bool:
-    """Item em construção ("beta") só aparece para a conta com a chave ligada, até o lançamento.
-    O que sai no lançamento (o Carrosséis) some para essas contas antes, como vai ficar."""
-    testa = bool(getattr(conta, "beta_estudio_instagram", False))
-    if item.get("sai_no_lancamento"):
-        return not (lancado() or testa)
+    """A página do item abre para a conta? O que está em construção ("beta") só abre para a conta com a chave
+    ligada, até o lançamento. O que saiu das listas (o antigo Carrosséis) não aparece mais em lugar nenhum."""
+    if item.get("fora_das_listas"):
+        return False
     return not item.get("beta") or lancado() or bool(getattr(conta, item["beta"], False))
+
+
+def situacao(item: dict, liberados: list[str], conta) -> str | None:
+    """Como o item aparece nas listas do painel (menu, Início, Plano): "liberado", "bloqueado", "em_breve" ou
+    None (não aparece). Antes do lançamento, quem tem os códigos do Estúdio sem a chave de teste vê "Em breve"."""
+    if item.get("fora_das_listas"):
+        return None
+    if ve_beta(item, conta):
+        return estado(item, liberados)
+    if item.get("breve_para_quem_tem") and estado(item, liberados) == "liberado":
+        return "em_breve"
+    return None
 
 
 def menu(liberados: list[str], ativo: str, conta=None) -> list[dict]:
     itens = []
+    grupo_anterior = ""
     for item in MODULOS_DO_MENU:
-        if not ve_beta(item, conta):
+        situacao_item = situacao(item, liberados, conta)
+        if situacao_item is None:
             continue
-        situacao = estado(item, liberados)
         url_name = URL_DE_SLUG.get(item["slug"])
-        href = reverse(url_name) if url_name else reverse("painel_modulo", args=[item["slug"]])
-        selo = {"bloqueado": ("Desbloquear", "bloqueado"), "em_breve": ("Em breve", "breve")}.get(situacao)
-        if situacao == "liberado" and item.get("teste"):
+        href = reverse(url_name) if url_name and ve_beta(item, conta) else reverse("painel_modulo", args=[item["slug"]])
+        selo = {"bloqueado": ("Desbloquear", "bloqueado"), "em_breve": ("Em breve", "breve")}.get(situacao_item)
+        if situacao_item == "liberado" and item.get("teste"):
             selo = ("Teste", "breve")
+        grupo = item.get("grupo", "")
         itens.append({
             **item,
             "href": href,
             "ativo": item["slug"] == ativo,
-            "estado": situacao,
+            "estado": situacao_item,
             "selo_texto": selo[0] if selo else "",
             "selo_tipo": selo[1] if selo else "",
             "icone_path": ICONES[item["icone"]],
+            # Título do bloco no menu, só no primeiro item de cada grupo.
+            "secao": grupo if grupo not in ("", "conta") and grupo != grupo_anterior else "",
         })
+        grupo_anterior = grupo
     return itens
+
+
+def ferramentas(itens: list[dict]) -> dict:
+    """Quantas ferramentas do plano (as que pedem licença) a conta tem liberadas, pro cartão "Seu plano"."""
+    do_plano = [i for i in itens if i["modulo"] and i["estado"] != "em_breve"]
+    return {"liberadas": sum(i["estado"] == "liberado" for i in do_plano), "total": len(do_plano)}

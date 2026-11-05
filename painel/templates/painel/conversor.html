@@ -7,7 +7,7 @@
 </header>
 
 {% if not shopee_conectada %}
-  {% include "painel/_conectar_shopee.html" %}
+  {% include "painel/_conectar_shopee.html" with tela="conversor" %}
 {% else %}
 <div class="duas-colunas conversor">
   <section class="card" aria-labelledby="titulo-colar">
@@ -21,7 +21,7 @@
       </div>
       <fieldset class="campo">
         <legend>Como sair</legend>
-        <div class="opcoes-chip">{% for valor, nome in modos %}<label class="chip-opcao"><input type="radio" name="modo" value="{{ valor }}"{% if dados.modo == valor %} checked{% endif %}><span>{{ nome }}</span></label>{% endfor %}</div>
+        <div class="segmentado" role="radiogroup">{% for valor, nome in modos %}<label><input type="radio" name="modo" value="{{ valor }}"{% if dados.modo == valor %} checked{% endif %}><span>{{ nome }}</span></label>{% endfor %}</div>
         <span class="ajuda" data-modo="texto">O texto fica igual. Links que não são da Shopee, como convite de grupo, saem do texto.</span>
         <span class="ajuda" data-modo="links">Sai só a lista dos links convertidos, um por linha.</span>
       </fieldset>
@@ -34,8 +34,8 @@
     </form>
   </section>
 
-  <section class="card" aria-labelledby="titulo-resultado">
-    <h2 id="titulo-resultado">Pronto para encaminhar</h2>
+  <section class="card{% if not resultado %} como-funciona{% endif %}" aria-labelledby="titulo-resultado">
+    <h2 id="titulo-resultado">{% if resultado %}Pronto para encaminhar{% else %}Como funciona{% endif %}</h2>
     {% if resultado %}
       <p class="suave pequeno">{{ resultado.convertidos }} link{{ resultado.convertidos|pluralize }} convertido{{ resultado.convertidos|pluralize }}{% if resultado.removidos %} · {{ resultado.removidos }} link{{ resultado.removidos|pluralize }} de fora da Shopee removido{{ resultado.removidos|pluralize }}{% endif %}.</p>
       {% if resultado.falharam %}
@@ -74,7 +74,7 @@
     {% else %}
       <ol class="passos-conversor">
         <li>Copie a mensagem que a Shopee mandou no canal dela, ou de qualquer lugar.</li>
-        <li>Cole ao lado, escolha como quer que saia e clique em <strong>Converter</strong>.</li>
+        <li>Cole no campo <strong>Cole aqui</strong>, escolha como quer que saia e toque em <strong>Converter</strong>.</li>
         <li>Copie o resultado e encaminhe{% if bot.liberado %}, ou mande direto num grupo pelo bot{% endif %}.</li>
       </ol>
       <p class="suave pequeno">Os links saem com o seu link de afiliado e o Sub ID escolhido, para você ver as vendas em Resultados.</p>

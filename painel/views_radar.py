@@ -36,8 +36,9 @@ def _liberados(conta) -> dict:
     carrosseis = bool({MODULO_CARROSSEIS, MODULO_CARROSSEIS_PREMIUM} & liberados)
     # O Estúdio usa a mesma licença do gerador e toma o lugar dele quando aparece para a conta.
     estudio = mod.ve_beta(mod.POR_SLUG["estudio_instagram"], conta)
+    # Sem os códigos, o cadeado sempre aponta pro Estúdio: o gerador de carrosséis não é mais vendido.
     return {"bot": MODULO_WHATSAPP in liberados, "carrosseis": carrosseis and not estudio,
-            "estudio": carrosseis and estudio, "ve_estudio": estudio}
+            "estudio": carrosseis and estudio, "ve_estudio": True}
 
 
 @conta_requerida

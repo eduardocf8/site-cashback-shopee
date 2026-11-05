@@ -2,53 +2,59 @@
 {% load painel_extras %}
 {% block titulo %}Resultados · Bot de WhatsApp{% endblock %}
 {% block conteudo %}
-<header class="cabecalho">
-  <div>
-    <h1>Bot de WhatsApp</h1>
-    <p>Ofertas da Shopee enviadas com o seu link de afiliado no automático: buscadas pela API ou copiadas de outros grupos e canais.</p>
-  </div>
-</header>
-{% include "painel/_abas_whatsapp.html" with aba="resultados" %}
+{% include "painel/_cabecalho_bot.html" with aba="resultados" %}
 
-<section class="card filtros" aria-label="Período" style="margin-top:16px">
+<div class="periodo-bot">
   <nav class="chips" aria-label="Período">
     {% for valor, nome in periodos %}<a class="chip{% if chave == valor %} ativo{% endif %}" href="?periodo={{ valor }}"{% if chave == valor %} aria-current="true"{% endif %}>{{ nome }}</a>{% endfor %}
   </nav>
-  <form method="get" class="filtro-datas">
-    <input type="hidden" name="periodo" value="personalizado">
-    <label>De <input type="date" name="de" value="{{ d.inicio|date:'Y-m-d' }}"></label>
-    <label>Até <input type="date" name="ate" value="{{ d.fim|date:'Y-m-d' }}"></label>
-    <button type="submit" class="botao botao-escuro botao-pequeno">Ver período</button>
-  </form>
-</section>
+  <details class="outro-periodo"{% if chave == "personalizado" %} open{% endif %}>
+    <summary class="{% if chave == 'personalizado' %}ativo{% endif %}">Outro período</summary>
+    <form method="get" class="filtro-datas">
+      <input type="hidden" name="periodo" value="personalizado">
+      <label>De <input type="date" name="de" value="{{ d.inicio|date:'Y-m-d' }}"></label>
+      <label>Até <input type="date" name="ate" value="{{ d.fim|date:'Y-m-d' }}"></label>
+      <button type="submit" class="botao botao-escuro botao-pequeno">Ver período</button>
+    </form>
+  </details>
+  <span class="periodo-texto suave pequeno">{{ descricao }}</span>
+</div>
 
 {% if not d.ofertas %}
-<section class="card" style="margin-top:16px">
+<section class="card">
   <p class="suave">Nenhuma oferta enviada pelo bot em {{ descricao }}.</p>
 </section>
 {% else %}
-<div class="kpis" style="margin-top:16px">
-  <div class="card kpi"><span class="kpi-titulo">Ofertas enviadas</span><strong class="kpi-valor">{{ d.ofertas|numero }}</strong><span class="kpi-detalhe">em {{ d.grupos|numero }} grupo{{ d.grupos|pluralize }} · {{ descricao }}</span></div>
-  <div class="card kpi"><span class="kpi-titulo">Ofertas que venderam</span><strong class="kpi-valor">{{ d.venderam|numero }} <span class="kpi-percentual">({{ d.percentual_venderam }}%)</span></strong><span class="kpi-detalhe">{{ d.pedidos|numero }} pedido{{ d.pedidos|pluralize }}</span></div>
+<div class="kpis numeros-mes kpis-resultados-bot">
+  <div class="card kpi"><span class="kpi-titulo">Ofertas enviadas</span><strong class="kpi-valor">{{ d.ofertas|numero }}</strong><span class="kpi-detalhe">em {{ d.grupos|numero }} grupo{{ d.grupos|pluralize }}</span></div>
+  <div class="card kpi"><span class="kpi-titulo">Ofertas que venderam</span><strong class="kpi-valor">{{ d.venderam|numero }} <span class="kpi-percentual{% if not d.venderam %} zero{% endif %}">({{ d.percentual_venderam }}%)</span></strong><span class="kpi-detalhe">{{ d.pedidos|numero }} pedido{{ d.pedidos|pluralize }}</span></div>
   <div class="card kpi"><span class="kpi-titulo">Comissão das ofertas</span><strong class="kpi-valor">{{ d.comissao|brl }}</strong><span class="kpi-detalhe">estimada, sem os cancelados</span></div>
   <div class="card kpi"><span class="kpi-titulo">Comissão por oferta</span><strong class="kpi-valor">{{ d.por_oferta|brl }}</strong><span class="kpi-detalhe">média de cada oferta</span></div>
 </div>
 {% if d.sem_sub_id %}
-<p class="aviso aviso-warning pequeno" style="margin-top:12px"><strong>Grupo sem Sub ID próprio:</strong> as vendas do mesmo produto vindas de outros lugares (Instagram, Meu site) também entram na conta. Configure um Sub ID em cada grupo na aba <a href="{% url 'painel_whatsapp_ofertas' %}">Automação</a> para ficar mais preciso.</p>
+<p class="aviso aviso-warning pequeno"><strong>Grupo sem Sub ID próprio:</strong> as vendas do mesmo produto vindas de outros lugares (Instagram, Meu site) também entram na conta. Configure um Sub ID em cada grupo na aba <a href="{% url 'painel_whatsapp_ofertas' %}">Automação</a> para ficar mais preciso.</p>
 {% endif %}
-<p class="nota-bot">Conta como venda da oferta a compra do mesmo produto até <strong>{{ janela }} dias</strong> depois do envio{% if d.exemplo_sub_id %}, com o Sub ID do grupo{% endif %}. Se o produto foi enviado mais de uma vez, a venda fica com o envio mais recente. As vendas chegam junto com a atualização dos resultados da Shopee.</p>
+<details class="como-conta">
+  <summary>Como contamos as vendas das ofertas</summary>
+  <p class="nota-bot">Conta como venda da oferta a compra do mesmo produto até <strong>{{ janela }} dias</strong> depois do envio{% if d.exemplo_sub_id %}, com o Sub ID do grupo{% endif %}. Se o produto foi enviado mais de uma vez, a venda fica com o envio mais recente. As vendas chegam junto com a atualização dos resultados da Shopee.</p>
+  <p class="nota-bot">Aqui entra só a venda do <strong>mesmo produto</strong> da oferta. Na tela <a href="{% url 'painel_resultados' %}">Resultados</a>, em “De onde vieram as vendas”, o Bot de WhatsApp soma todas as vendas que vieram dos links do bot, inclusive de outros produtos.</p>
+</details>
 
 {% if d.por_dia|length > 1 %}
-<section class="card" style="margin-top:16px">
+<section class="card">
   <div class="card-topo"><h2>Comissão das ofertas por dia</h2><span class="suave pequeno">pela data do envio</span></div>
+  {% if d.comissao %}
   <div class="grafico-bot" role="img" aria-label="Comissão das ofertas em cada dia do período">
     {% for p in d.por_dia %}<span style="height:{{ p.altura }}%" title="{{ p.dia|date:'d/m' }}: {{ p.comissao|brl }}"></span>{% endfor %}
   </div>
   <div class="eixo-bot"><span>{{ d.inicio|date:"d/m" }}</span><span>{{ d.fim|date:"d/m" }}</span></div>
+  {% else %}
+  <div class="grafico-vazio grafico-vazio-bot"><span><strong>Nenhuma oferta vendeu nesse período ainda</strong>As vendas chegam junto com a atualização dos resultados da Shopee. Cada oferta tem até {{ janela }} dias para vender.</span></div>
+  {% endif %}
 </section>
 {% endif %}
 
-<section class="card" style="margin-top:16px" aria-labelledby="titulo-campeas">
+<section class="card" aria-labelledby="titulo-campeas">
   <div class="card-topo"><h2 id="titulo-campeas">Ofertas campeãs</h2><span class="suave pequeno">as que mais renderam no período</span></div>
   {% if d.campeas %}
   <div class="tabela-rolagem">
@@ -73,7 +79,7 @@
   {% endif %}
 </section>
 
-<div class="grade-bot">
+<div class="grade-bot grade-bot-resultados">
   <section class="card" aria-labelledby="titulo-por-grupo">
     <div class="card-topo"><h2 id="titulo-por-grupo">Por grupo</h2><span class="suave pequeno">pelo Sub ID de cada grupo</span></div>
     <div class="tabela-rolagem">

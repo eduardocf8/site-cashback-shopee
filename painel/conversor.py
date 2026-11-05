@@ -21,7 +21,7 @@ from bot_whatsapp.formatador import PADRAO_LINK_QUALQUER
 logger = logging.getLogger(__name__)
 
 MODO_TEXTO, MODO_LINKS = "texto", "links"
-MODOS = [(MODO_TEXTO, "Manter o texto e trocar os links"), (MODO_LINKS, "Só os links convertidos")]
+MODOS = [(MODO_TEXTO, "Texto completo"), (MODO_LINKS, "Só os links")]
 MAXIMO_LINKS = 20
 MAXIMO_CARACTERES = 6000
 SUB_ID_PADRAO = "conversor"

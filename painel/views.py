@@ -21,8 +21,9 @@ from bot_whatsapp import campanhas
 from bot_whatsapp.models import AlertaDisparado, ConexaoWhatsApp
 from licencas import api_shopee
 from licencas.models import (
-    INCLUI, MODULO_CARROSSEIS, MODULO_CARROSSEIS_PREMIUM, MODULO_INSTAGRAM, MODULO_INSTAGRAM_PREMIUM, MODULO_VIDEOS,
-    MODULO_WHATSAPP, MODULOS, ContaAppfiliado,
+    INCLUI, MODULO_CARROSSEIS, MODULO_CARROSSEIS_PREMIUM, MODULO_INSTAGRAM, MODULO_INSTAGRAM_PREMIUM, MODULO_NOTAS,
+    MODULO_NOTAS_500, MODULO_NOTAS_2000, MODULO_NOTAS_5000, MODULO_NOTAS_10000, MODULO_NOTAS_ILIMITADO, MODULO_SITE,
+    MODULO_SITE_SEM_MARCA, MODULO_WHATSAPP, MODULO_WHATSAPP_PREMIUM, MODULOS, ContaAppfiliado,
 )
 from licencas.services import resposta_validacao
 
@@ -58,9 +59,11 @@ logger = logging.getLogger(__name__)
 def _contexto(request, ativo: str, **extra) -> dict:
     conta = conta_logada(request)
     liberados = conta.modulos_liberados() if conta else []
+    menu = mod.menu(liberados, ativo, conta)
     return {
         "conta": conta,
-        "menu": mod.menu(liberados, ativo, conta),
+        "menu": menu,
+        "ferramentas": mod.ferramentas(menu),
         "modulos_liberados": liberados,
         "url_planos": settings.APPFILIADO_URL_PLANOS,
         "icones": mod.ICONES,
@@ -99,7 +102,7 @@ def entrar(request):
         ip = _obter_ip(request)
         email = form.cleaned_data["email"].strip().lower()
         if login_bloqueado(ip, email):
-            form.add_error(None, "Muitas tentativas. Espere 15 minutos ou use \"Esqueci minha senha\".")
+            form.add_error(None, "Muitas tentativas. Espere 15 minutos ou use \"Esqueci a senha\".")
         else:
             conta = ContaAppfiliado.objects.filter(email__iexact=email).first()
             if conta and conta.tem_senha and conta.confere_senha(form.cleaned_data["senha"]):
@@ -111,7 +114,7 @@ def entrar(request):
             # Mesma mensagem com ou sem conta (e com ou sem senha criada): não dá para
             # descobrir quem é cliente testando e-mails.
             form.add_error(None, "E-mail ou senha incorretos. Se ainda não criou sua senha, use "
-                                 "\"Criar ou recuperar senha\" abaixo.")
+                                 "\"Criar minha senha\" abaixo.")
     return render(request, "painel/entrar.html", {"form": form})
 
 
@@ -181,9 +184,19 @@ def inicio(request):
     cartoes_modulos = [item for item in mod.menu(liberados, "", conta) if item["modulo"]]
     # O mesmo checklist dos e-mails de primeiros passos (a senha já foi criada: a pessoa entrou).
     passos = [p for p in primeiros_passos.passos(conta, liberados) if p["chave"] != "senha"]
+    # Numerados, com o próximo a fazer em destaque ("Comece por aqui").
+    proximo = next((p for p in passos if not p["feito"] and p["href"]), None)
+    for numero, passo in enumerate(passos, 1):
+        passo.update(numero=numero, atual=passo is proximo)
+    feitos = sum(1 for p in passos if p["feito"])
     contexto = {
         "hoje": _hoje_por_extenso(),
         "passos": passos,
+        "passos_feitos": feitos,
+        "passos_faltam": len(passos) - feitos,
+        "passos_progresso": round(100 * feitos / len(passos)) if passos else 0,
+        "proximo_passo": proximo,
+        "link_suporte": primeiros_passos.link_suporte(),
         "passos_pendentes": bool(primeiros_passos.pendentes(passos)) and primeiros_passos.cartao_visivel(conta),
         "cartoes_modulos": cartoes_modulos,
         "primeiro_nome": (conta.nome or "").split(" ")[0],
@@ -485,22 +498,36 @@ def metas_view(request):
 
 @conta_requerida
 def modulo(request, slug):
-    item = mod.POR_SLUG.get(slug)
-    if not item or not mod.ve_beta(item, conta_logada(request)):
-        raise Http404
-    if slug in mod.URL_DE_SLUG:  # módulo com página própria (ex: /m/site/ -> /meu-site/)
-        return redirect(mod.URL_DE_SLUG[slug])
     conta = conta_logada(request)
-    situacao = mod.estado(item, conta.modulos_liberados())
+    item = mod.POR_SLUG.get(slug)
+    if item and item.get("fora_das_listas") and slug in mod.URL_DE_SLUG:
+        return redirect(mod.URL_DE_SLUG[slug])  # saiu das listas, mas a página continua (ex: /carrosseis/)
+    situacao = mod.situacao(item, conta.modulos_liberados(), conta) if item else None
+    if situacao is None:
+        raise Http404
+    if slug in mod.URL_DE_SLUG and mod.ve_beta(item, conta):  # módulo com página própria (ex: /m/site/ -> /meu-site/)
+        return redirect(mod.URL_DE_SLUG[slug])
     item = {**item, "icone_path": mod.ICONES[item["icone"]]}
     return render(request, "painel/modulo.html", _contexto(request, slug, item=item, situacao=situacao))
 
 
-# Ainda não existem no produto; os códigos seguem na licença pra voltar depois sem migração.
-MODULOS_OCULTOS = {MODULO_VIDEOS}
-# Até o lançamento do Estúdio Instagram, quem não testa vê o nome antigo e não vê as Automações.
-ANTES_DO_LANCAMENTO = {MODULO_CARROSSEIS: "Gerador de carrosséis", MODULO_CARROSSEIS_PREMIUM: "Gerador de carrosséis (premium)"}
-SO_DEPOIS_DO_LANCAMENTO = {MODULO_INSTAGRAM, MODULO_INSTAGRAM_PREMIUM}
+# Plano e assinatura: uma linha por ferramenta, com o nível mais alto que a conta tem (do maior pro menor).
+# Os códigos que não são ferramenta do painel (vídeos, vitrine) ficam de fora; os do antigo gerador de
+# carrosséis aparecem como Estúdio Instagram.
+NIVEIS_DO_PLANO = {
+    "whatsapp": [(MODULO_WHATSAPP_PREMIUM, "Premium"), (MODULO_WHATSAPP, "Standard")],
+    "site": [(MODULO_SITE_SEM_MARCA, "Premium, sem a marca Appfiliado"), (MODULO_SITE, "Standard")],
+    "estudio_instagram": [(MODULO_CARROSSEIS_PREMIUM, "Premium"), (MODULO_CARROSSEIS, "Standard")],
+    "automacoes_instagram": [(MODULO_INSTAGRAM_PREMIUM, "Premium"), (MODULO_INSTAGRAM, "Standard")],
+    "notas": [(MODULO_NOTAS_ILIMITADO, "Notas ilimitadas"), (MODULO_NOTAS_10000, "Até 10.000 notas por mês"),
+              (MODULO_NOTAS_5000, "Até 5.000 notas por mês"), (MODULO_NOTAS_2000, "Até 2.000 notas por mês"),
+              (MODULO_NOTAS_500, "Até 500 notas por mês"), (MODULO_NOTAS, "Até 100 notas por mês")],
+}
+# Emissor NFS-e: o próximo plano de notas, pra frase "Precisa de mais?".
+MAIS_NOTAS = {MODULO_NOTAS: "Há planos de 500 notas até ilimitadas.", MODULO_NOTAS_500: "Há planos de 2.000 notas até ilimitadas.",
+              MODULO_NOTAS_2000: "Há planos de 5.000 notas até ilimitadas.",
+              MODULO_NOTAS_5000: "Há planos de 10.000 notas até ilimitadas.", MODULO_NOTAS_10000: "Há o plano de notas ilimitadas."}
+ORDEM_NO_PLANO = {"liberado": 0, "em_breve": 1, "bloqueado": 2}
 
 
 @conta_requerida
@@ -511,23 +538,20 @@ def plano(request):
     cortesia = set(conta.cortesia_vigente(hoje))
     for codigo in list(cortesia):
         cortesia.update(INCLUI.get(codigo, []))  # o básico que vem junto com o premium da cortesia
-    novo = mod.lancado() or conta.beta_estudio_instagram
-    linhas_modulos = []
-    for codigo, nome in MODULOS:
-        if codigo in MODULOS_OCULTOS or (not novo and codigo in SO_DEPOIS_DO_LANCAMENTO):
+    ferramentas = []
+    for item in mod.menu(liberados, "", conta):
+        if not item["modulo"]:
             continue
-        if not novo:
-            nome = ANTES_DO_LANCAMENTO.get(codigo, nome)
-        elif codigo == MODULO_CARROSSEIS:
-            nome = "Estúdio Instagram"
-        if codigo in liberados:
-            origem = "Cortesia" if codigo in cortesia else "Assinatura"
-        else:
-            origem = ""
-        linhas_modulos.append({"codigo": codigo, "nome": nome, "liberado": codigo in liberados, "origem": origem})
+        linha = {"item": item, "estado": item["estado"], "nivel": "", "origem": "", "mais": ""}
+        codigo = next((c for c, _ in NIVEIS_DO_PLANO.get(item["slug"], []) if c in liberados), None)
+        if codigo and item["estado"] != "bloqueado":
+            linha.update(nivel=dict(NIVEIS_DO_PLANO[item["slug"]])[codigo],
+                         origem="Cortesia" if codigo in cortesia else "Assinatura", mais=MAIS_NOTAS.get(codigo, ""))
+        ferramentas.append(linha)
+    ferramentas.sort(key=lambda linha: ORDEM_NO_PLANO.get(linha["estado"], 3))  # o que você tem vem primeiro
     return render(request, "painel/plano.html", _contexto(
         request, "plano",
-        linhas_modulos=linhas_modulos,
+        ferramentas_do_plano=ferramentas,
         assinaturas=conta.assinaturas.all(),
         validacao=resposta_validacao(conta),
     ))
@@ -537,7 +561,8 @@ def plano(request):
 @conta_requerida
 def configuracoes(request):
     conta = conta_logada(request)
-    form_shopee = ShopeeForm(initial={"app_id": conta.shopee_app_id})
+    tem_secret = bool(conta.shopee_secret_cifrado)
+    form_shopee = ShopeeForm(initial={"app_id": conta.shopee_app_id}, tem_secret=tem_secret)
     form_senha = TrocarSenhaForm(conta=conta)
     form_regra = RegraSubIdForm()
     preferencia, _ = RelatorioEmail.objects.get_or_create(conta=conta)
@@ -563,7 +588,7 @@ def configuracoes(request):
             return redirect(f"{request.path}#relatorio")
 
     elif request.method == "POST" and request.POST.get("formulario") == "shopee":
-        form_shopee = ShopeeForm(request.POST)
+        form_shopee = ShopeeForm(request.POST, tem_secret=tem_secret)
         if form_shopee.is_valid():
             app_id = form_shopee.cleaned_data["app_id"].strip()
             secret = form_shopee.cleaned_data["secret"].strip() or cripto.decifrar(conta.shopee_secret_cifrado)

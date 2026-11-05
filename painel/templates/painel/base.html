@@ -1,19 +1,29 @@
-<!doctype html>
+{% load static %}<!doctype html>
 <html lang="pt-BR">
 <head>
 {% include "painel/_cabeca.html" %}
 <title>{% block titulo %}Painel{% endblock %} · Appfiliado</title>
 {% block cabeca %}{% endblock %}
+<script src="{% static 'painel/menu.js' %}" defer></script>
 </head>
 <body>
 <div class="app">
-  <aside class="menu">
-    <a class="marca" href="{% url 'painel_inicio' %}">
-      {% include "painel/_logo.html" %}
-      <span class="marca-texto"><strong>Appfiliado</strong><small>Para afiliados Shopee</small></span>
-    </a>
+  {# Celular: barra fina no topo com o logo e o botão que abre o menu por cima da tela (painel/menu.js). #}
+  <header class="topo-movel">
+    <a class="marca-movel" href="{% url 'painel_inicio' %}">{% include "painel/_logo.html" %}<strong>Appfiliado</strong></a>
+    <button type="button" class="botao-menu" data-abrir-menu aria-controls="menu-principal" aria-expanded="false">{% include "painel/_icone.html" with caminho=icones.menu %}Menu</button>
+  </header>
+  <aside class="menu" id="menu-principal">
+    <div class="menu-topo">
+      <a class="marca" href="{% url 'painel_inicio' %}">
+        {% include "painel/_logo.html" %}
+        <span class="marca-texto"><strong>Appfiliado</strong><small>Para afiliados Shopee</small></span>
+      </a>
+      <button type="button" class="botao-menu botao-fechar-menu" data-fechar-menu>{% include "painel/_icone.html" with caminho=icones.fechar %}Fechar</button>
+    </div>
     <nav aria-label="Menu principal">
-      {% for item in menu %}
+      {% for item in menu %}{% if item.grupo != "conta" %}
+        {% if item.secao %}<span class="menu-secao">{{ item.secao }}</span>{% endif %}
         <a href="{{ item.href }}" class="{% if item.ativo %}ativo{% endif %}"{% if item.ativo %} aria-current="page"{% endif %}>
           {% include "painel/_icone.html" with caminho=item.icone_path %}
           <span class="nome">{{ item.nome }}</span>
@@ -21,17 +31,23 @@
             <span class="cadeado-menu" title="Não incluso no seu plano"><span class="sr">Não incluso no seu plano</span>{% include "painel/_icone.html" with caminho=icones.cadeado %}</span>
           {% elif item.selo_texto %}<span class="selo selo-{{ item.selo_tipo }}">{{ item.selo_texto }}</span>{% endif %}
         </a>
-      {% endfor %}
+      {% endif %}{% endfor %}
     </nav>
     <div class="menu-rodape">
+      <nav class="menu-extra" aria-label="Conta">
+        {% for item in menu %}{% if item.grupo == "conta" %}
+          <a href="{{ item.href }}" class="{% if item.ativo %}ativo{% endif %}"{% if item.ativo %} aria-current="page"{% endif %}>
+            {% include "painel/_icone.html" with caminho=item.icone_path %}<span class="nome">{{ item.nome }}</span>
+          </a>
+        {% endif %}{% endfor %}
+      </nav>
       <div class="cartao-plano">
         <strong>Seu plano</strong>
-        <span>{{ modulos_liberados|length }} módulo{{ modulos_liberados|length|pluralize }} liberado{{ modulos_liberados|length|pluralize }}</span>
-        <a href="{% url 'painel_plano' %}">Ver plano e assinatura</a>
+        <span>{% if ferramentas.liberadas == ferramentas.total %}{{ ferramentas.liberadas }} ferramenta{{ ferramentas.liberadas|pluralize }} liberada{{ ferramentas.liberadas|pluralize }}{% else %}{{ ferramentas.liberadas }} de {{ ferramentas.total }} ferramentas liberadas{% endif %}</span>
+        <a href="{% url 'painel_plano' %}"{% if request.resolver_match.url_name == "painel_plano" %} aria-current="page"{% endif %}>Ver plano e assinatura</a>
       </div>
       <div class="conta-rodape">
         <span title="{{ conta.email }}">{{ conta.email }}</span>
-        <a class="link-plano-movel" href="{% url 'painel_plano' %}">Plano</a>
         <form method="post" action="{% url 'painel_sair' %}">{% csrf_token %}<button type="submit">Sair</button></form>
       </div>
     </div>

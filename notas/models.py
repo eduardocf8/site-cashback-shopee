@@ -233,3 +233,13 @@ class NotaFiscal(models.Model):
 
     def __str__(self):
         return f"{self.get_tipo_display()} {self.numero or '-'} → {self.tomador_nome[:40]} ({self.get_situacao_display()})"
+
+    @property
+    def documento_formatado(self) -> str:
+        """CNPJ ou CPF do tomador com a pontuação (o estrangeiro fica como veio)."""
+        d = self.tomador_documento
+        if self.tomador_tipo == "cnpj" and d.isdigit() and len(d) == 14:
+            return f"{d[:2]}.{d[2:5]}.{d[5:8]}/{d[8:12]}-{d[12:]}"
+        if self.tomador_tipo == "cpf" and d.isdigit() and len(d) == 11:
+            return f"{d[:3]}.{d[3:6]}.{d[6:9]}-{d[9:]}"
+        return d

@@ -1,17 +1,63 @@
 {% extends "painel/base.html" %}
+{% load painel_modulos %}
 {% block titulo %}{{ item.nome }}{% endblock %}
 {% block conteudo %}
-<header class="cabecalho"><div><h1>{{ item.nome }}</h1></div></header>
-<section class="card pagina-modulo">
-  {% if situacao == "bloqueado" %}
-    <span class="circulo">{% include "painel/_icone.html" with caminho=icones.cadeado %}</span>
-    <h2>Não incluso no seu plano</h2>
-    <p class="suave">{{ item.texto_bloqueado }}</p>
-    <a class="botao botao-principal" href="{{ url_planos }}" target="_blank" rel="noopener">Conhecer os planos</a>
-  {% else %}
-    <span class="circulo">{% include "painel/_icone.html" with caminho=item.icone_path|default:"" %}</span>
-    <h2>Chegando em breve</h2>
-    <p class="suave">{{ item.texto_em_breve }}</p>
-  {% endif %}
-</section>
+{% fora_do_plano item menu url_planos as fora %}
+<header class="cabecalho">
+  <div>
+    <div class="titulo-com-selo">
+      <h1>{{ item.nome }}</h1>
+      {% if situacao == "bloqueado" %}<span class="estado estado-bloqueado">Não faz parte do seu plano</span>
+      {% elif situacao == "em_breve" %}<span class="estado estado-em_breve">Em breve</span>{% endif %}
+    </div>
+    {% if item.frase %}<p>{{ item.frase }}</p>{% endif %}
+  </div>
+</header>
+{% if item.beneficios %}
+  {# Ferramenta fora do plano: o que ela faz, com um exemplo, e o caminho pra assinar. #}
+  <section class="card pagina-fora">
+    <div class="pagina-fora-texto">
+      <h2>{{ fora.titulo }}</h2>
+      <ul class="lista-beneficios">
+        {% for titulo, texto in item.beneficios %}
+          <li><span class="marcador feito">{% include "painel/_icone.html" with caminho=icones.check %}</span><div><strong>{{ titulo }}</strong><span class="suave pequeno">{{ texto }}</span></div></li>
+        {% endfor %}
+      </ul>
+      {% if situacao == "em_breve" %}
+        <p class="aviso aviso-info">{{ item.texto_em_breve }}</p>
+        {% if item.slug == "estudio_instagram" %}
+          <p class="suave pequeno">Enquanto ele não chega, os carrosséis que você já criou continuam aqui.</p>
+          <div class="botoes-linha"><a class="botao botao-claro" href="{% url 'painel_carrosseis' %}">Abrir meus carrosséis</a><a class="botao botao-claro" href="{% url 'painel_inicio' %}">Voltar pro Início</a></div>
+        {% else %}
+          <div class="botoes-linha"><a class="botao botao-claro" href="{% url 'painel_inicio' %}">Voltar pro Início</a></div>
+        {% endif %}
+      {% else %}
+        <div class="botoes-linha">
+          <a class="botao botao-principal" href="{{ fora.url }}" target="_blank" rel="noopener">Conhecer os planos</a>
+          <a class="botao botao-claro" href="{% url 'painel_inicio' %}">Voltar pro Início</a>
+        </div>
+        <p class="suave pequeno">{% if fora.continua %}Você continua com {{ fora.continua }}. {% endif %}{{ item.ao_assinar }}</p>
+      {% endif %}
+    </div>
+    {% if item.exemplo %}
+      <div class="pagina-fora-exemplo">
+        <span class="pequeno suave">{{ item.exemplo }}</span>
+        {% include "painel/_exemplo_ferramenta.html" with slug=item.slug %}
+      </div>
+    {% endif %}
+  </section>
+{% else %}
+  <section class="card pagina-modulo">
+    {% if situacao == "bloqueado" %}
+      <span class="circulo">{% include "painel/_icone.html" with caminho=icones.cadeado %}</span>
+      <h2>Não incluso no seu plano</h2>
+      <p class="suave">{{ item.texto_bloqueado }}</p>
+      <a class="botao botao-principal" href="{{ url_planos }}" target="_blank" rel="noopener">Conhecer os planos</a>
+    {% else %}
+      <span class="circulo">{% include "painel/_icone.html" with caminho=item.icone_path|default:"" %}</span>
+      <h2>Chegando em breve</h2>
+      <p class="suave">{{ item.texto_em_breve }}</p>
+    {% endif %}
+  </section>
+{% endif %}
 {% endblock %}

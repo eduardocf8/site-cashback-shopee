@@ -1,0 +1,29 @@
+{# "Configure o bot em 4 passos" (lista de passos compartilhada do painel). Na Conexão de uma conta nova, #}
+{# o passo do WhatsApp já traz o botão que gera o QR Code. #}
+<section class="card config-bot" aria-labelledby="titulo-config-bot">
+  <div class="passos-topo">
+    <div class="config-bot-topo">
+      <h2 id="titulo-config-bot">Configure o bot em {{ bot.passos.total }} passos</h2>
+      <div class="config-bot-progresso"><span class="suave pequeno">{{ bot.passos.feitos }} de {{ bot.passos.total }} feitos</span><div class="passos-barra" aria-hidden="true"><div style="width:{{ bot.passos.pct }}%"></div></div></div>
+    </div>
+  </div>
+  <ol class="passos-lista">
+    {% for p in bot.passos.lista %}
+      <li class="passo{% if p.feito %} feito{% elif p.atual %} atual{% elif p.espera %} depois{% endif %}">
+        <span class="passo-num">{{ forloop.counter }}</span>
+        <div class="passo-texto">
+          <strong>{{ p.titulo }}</strong>
+          {% if p.feito %}<span class="sr">(feito)</span>{% elif p.espera %}<small>Libera depois de {{ p.espera }}</small>{% elif p.atual %}<small>{{ p.ajuda }}</small>{% endif %}
+        </div>
+        {% if not p.feito and not p.espera and not p.sem_botao %}
+          {% if p.chave == "whatsapp" and aba == "conexao" %}
+            <form method="post" action="{% url 'painel_whatsapp_conectar' %}">{% csrf_token %}<button type="submit" class="botao {% if p.atual %}botao-principal{% else %}botao-escuro botao-pequeno{% endif %}">{{ p.acao }}</button></form>
+          {% elif p.chave == "ligar" and aba == "ofertas" %}
+          {% else %}
+            <a class="botao {% if p.atual %}botao-principal{% else %}botao-escuro botao-pequeno{% endif %}" href="{{ p.href }}">{% if p.atual %}{{ p.acao }}{% else %}{{ p.acao|cut:" WhatsApp" }}{% endif %}</a>
+          {% endif %}
+        {% endif %}
+      </li>
+    {% endfor %}
+  </ol>
+</section>

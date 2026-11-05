@@ -3,6 +3,47 @@
  * cada poucos segundos a situação das notas da lista e o resumo do lote: a barra enche, os
  * números sobem e o selo de cada nota muda na hora; depois, a barra dos e-mails. Quando as notas
  * terminam (ou uma nota avulsa sai da fila), a página recarrega para mostrar PDF, XML e mensagens. */
+
+// Campo do relatório: a caixa do painel mostra o nome do arquivo escolhido.
+document.querySelectorAll('input[type=file][data-arquivo]').forEach((campo) => {
+  const caixa = document.querySelector(`label.arquivo-caixa[for="${campo.id}"]`);
+  if (!caixa) return;
+  const nome = caixa.querySelector('[data-arquivo-nome]');
+  const ajuda = caixa.querySelector('[data-arquivo-ajuda]');
+  const textos = [nome.textContent, ajuda.textContent];
+  const mostrar = () => {
+    const arquivo = campo.files && campo.files[0];
+    nome.textContent = arquivo ? arquivo.name : textos[0];
+    ajuda.textContent = arquivo ? 'Arquivo escolhido · clique para trocar' : textos[1];
+    caixa.classList.toggle('escolhido', !!arquivo);
+  };
+  campo.addEventListener('change', mostrar);
+  mostrar();  // o navegador pode manter o arquivo ao voltar pra página
+});
+
+// "Onde emitir": a linha de baixo explica a opção escolhida (Teste ou De verdade).
+document.querySelectorAll('.notas-ambiente').forEach((grupo) => {
+  const mostrar = () => {
+    const escolhido = (grupo.querySelector('input[name="ambiente"]:checked') || {}).value;
+    grupo.querySelectorAll('[data-ambiente]').forEach((linha) => { linha.hidden = linha.dataset.ambiente !== escolhido; });
+  };
+  grupo.addEventListener('change', mostrar);
+  mostrar();
+});
+
+// Configuração: um link pra uma linha (#certificado, #emails...) abre o formulário dela.
+(function () {
+  const abrir = (endereco) => {
+    const alvo = endereco && endereco.length > 1 && document.getElementById(endereco.slice(1));
+    if (alvo && alvo.tagName === 'DETAILS') alvo.open = true;
+  };
+  abrir(window.location.hash);
+  window.addEventListener('hashchange', () => abrir(window.location.hash));
+  document.querySelectorAll('a[href^="#"]').forEach((link) => {
+    link.addEventListener('click', () => abrir(link.getAttribute('href')));
+  });
+})();
+
 (function () {
   const bloco = document.querySelector('[data-acompanhar]');
   if (!bloco) return;

@@ -1,52 +1,60 @@
 {% extends "painel/base.html" %}
 {% block titulo %}Configurações{% endblock %}
 {% block conteudo %}
-<header class="cabecalho"><div><h1>Configurações</h1><p>Sua conta da Shopee, relatório por e-mail, agrupamentos de Sub IDs e sua senha.</p></div></header>
+<header class="cabecalho"><div><h1>Configurações</h1><p>Sua conta da Shopee, o relatório por e-mail, os agrupamentos de Sub IDs e a sua senha.</p></div></header>
 
-<div class="duas-colunas">
-  <section class="card" aria-labelledby="titulo-shopee">
+{# Na ordem do uso: Shopee, relatório, (Lia), Sub IDs e, por último, a senha. #}
+<section class="card config-shopee" id="shopee" aria-labelledby="titulo-shopee">
+  {% if conta.shopee_validado_em %}
     <h2 id="titulo-shopee">Conta de afiliado da Shopee</h2>
-    <p class="status-shopee" style="margin-bottom:8px">
-      <span class="ponto {% if conta.shopee_validado_em %}ok{% endif %}" aria-hidden="true"></span>
-      {% if conta.shopee_validado_em %}Conectada em {{ conta.shopee_validado_em|date:"d/m/Y H:i" }}{% else %}Não conectada{% endif %}
-    </p>
-    <p class="suave pequeno" style="margin-bottom:16px">O AppID e o Secret ficam no portal de afiliados da Shopee, em Open API, e só existem depois que a Shopee libera a API para você. O Secret é guardado criptografado e nunca aparece de novo na tela.</p>
-    <details class="guia-api"{% if not conta.shopee_validado_em %} open{% endif %}>
-      <summary>Ainda não tem o AppID e o Secret? Veja como liberar a API da Shopee</summary>
-      <p class="suave pequeno" style="margin:10px 0">{{ api.RESUMO }}</p>
-      <ol class="guia-api-passos">{% for t, d in api.PASSOS %}<li><strong>{{ t }}.</strong> {{ d }}</li>{% endfor %}</ol>
-      <ul class="guia-api-campos">{% for c, v in api.CAMPOS_FORMULARIO %}<li>{{ c }} <b>{{ v }}</b></li>{% endfor %}</ul>
-      <p class="guia-api-links"><a class="botao botao-escuro" href="{{ api.URL_FORMULARIO }}" target="_blank" rel="noopener">Abrir o formulário da Shopee</a>
-        <a href="{{ api.URL_OPEN_API }}" target="_blank" rel="noopener">Página Open API do afiliado</a></p>
+    {# Já conectada: uma linha com a situação. O formulário só abre em "Trocar AppID e Secret". #}
+    <details class="trocar-credenciais"{% if form_shopee.errors %} open{% endif %}>
+      <summary>
+        <span class="shopee-info">
+          <span class="status-shopee"><span class="ponto ok" aria-hidden="true"></span>Conectada em {{ conta.shopee_validado_em|date:"d/m/Y H:i" }}</span>
+          <span class="suave pequeno">AppID {{ conta.shopee_app_id }} · seus números e ofertas já vêm da Shopee.</span>
+        </span>
+        <span class="botao botao-claro botao-pequeno">Trocar AppID e Secret</span>
+      </summary>
+      <form method="post" class="formulario">
+        {% csrf_token %}
+        <input type="hidden" name="formulario" value="shopee">
+        <div class="grade-campos">{% include "painel/_campos.html" with form=form_shopee %}</div>
+        <div><button type="submit" class="botao botao-principal">Salvar e testar</button></div>
+      </form>
     </details>
+  {% else %}
+    <div class="card-topo"><h2 id="titulo-shopee">Conta de afiliado da Shopee</h2><span class="estado estado-bloqueado">Não conectada</span></div>
+    <p class="suave pequeno card-intro">Cole o AppID e o Secret da Open API da Shopee. É com eles que o painel busca os seus números e as ofertas com o seu link.</p>
     <form method="post" class="formulario">
       {% csrf_token %}
       <input type="hidden" name="formulario" value="shopee">
-      {% include "painel/_campos.html" with form=form_shopee %}
+      <div class="grade-campos">{% include "painel/_campos.html" with form=form_shopee %}</div>
       <div><button type="submit" class="botao botao-principal">Salvar e testar</button></div>
     </form>
-  </section>
+    <details class="guia-api" open>
+      <summary>Ainda não tem o AppID e o Secret? Peça a API pra Shopee em {{ api.PASSOS_PAINEL|length }} passos</summary>
+      <p class="suave pequeno guia-api-resumo">{{ api.RESUMO }}</p>
+      <ol class="guia-api-passos">{% for t, d in api.PASSOS_PAINEL %}<li><strong>{{ t }}.</strong> {{ d }}</li>{% endfor %}</ol>
+      <p class="pequeno guia-api-titulo"><strong>{{ api.TITULO_CAMPOS_FORMULARIO }}</strong></p>
+      <ul class="guia-api-campos respostas-shopee">{% for c, v in api.CAMPOS_FORMULARIO %}<li><span class="suave">{{ c }}</span> <b>{{ v }}</b></li>{% endfor %}</ul>
+      <p class="guia-api-links"><a class="botao botao-escuro" href="{{ api.URL_FORMULARIO }}" target="_blank" rel="noopener">Abrir o formulário da Shopee</a>
+        <a href="{{ api.URL_OPEN_API }}" target="_blank" rel="noopener">Página Open API do afiliado</a></p>
+    </details>
+  {% endif %}
+</section>
 
-  <section class="card" aria-labelledby="titulo-senha">
-    <h2 id="titulo-senha">Trocar senha</h2>
-    <form method="post" class="formulario">
-      {% csrf_token %}
-      <input type="hidden" name="formulario" value="senha">
-      {% include "painel/_campos.html" with form=form_senha %}
-      <div><button type="submit" class="botao botao-escuro">Trocar senha</button></div>
-    </form>
-  </section>
-</div>
-
-<section class="card" id="relatorio" aria-labelledby="titulo-relatorio" style="margin-top:16px">
+<section class="card" id="relatorio" aria-labelledby="titulo-relatorio">
   <h2 id="titulo-relatorio">Relatório diário por e-mail</h2>
-  <p class="suave pequeno" style="margin-bottom:14px">Todo dia, no horário que você escolher: comissão, faturamento e pedidos de ontem e do mês, Sub IDs, produtos mais vendidos{% if "whatsapp" in modulos_liberados %} e as ofertas que o bot enviou{% endif %}. Vai para <strong>{{ conta.email }}</strong>.</p>
+  <p class="suave pequeno card-intro">{% if "whatsapp" in modulos_liberados %}Comissão, faturamento, pedidos, Sub IDs, produtos mais vendidos e as ofertas do bot{% else %}Comissão, faturamento, pedidos, Sub IDs e produtos mais vendidos{% endif %}, todo dia no horário que você escolher. Vai para <strong>{{ conta.email }}</strong>.</p>
   <form method="post" class="formulario">
     {% csrf_token %}
     <input type="hidden" name="formulario" value="relatorio">
     <label class="marcar">{{ form_relatorio.ativo }}<span><strong>Receber o relatório diário por e-mail</strong></span></label>
-    <div class="campo">{% include "painel/_campo.html" with campo=form_relatorio.hora %}</div>
-    <div class="campo">{% include "painel/_campo.html" with campo=form_relatorio.emails_extras %}</div>
+    <div class="grade-campos">
+      <div class="campo">{% include "painel/_campo.html" with campo=form_relatorio.hora %}</div>
+      <div class="campo">{% include "painel/_campo.html" with campo=form_relatorio.emails_extras %}</div>
+    </div>
     {% if preferencia_relatorio.ultimo_erro %}<p class="aviso aviso-warning pequeno">O último envio falhou. Você pode tentar de novo agora com "Enviar e-mail agora".</p>
     {% elif preferencia_relatorio.ultimo_envio_dia and preferencia_relatorio.ativo %}<p class="suave pequeno">Último enviado em {{ preferencia_relatorio.ultimo_envio_dia|date:"d/m" }}.</p>{% endif %}
     <div class="botoes-linha">
@@ -57,13 +65,13 @@
 </section>
 
 {% if whatsapp %}
-<section class="card" id="whatsapp" aria-labelledby="titulo-whatsapp" style="margin-top:16px">
+<section class="card" id="whatsapp" aria-labelledby="titulo-whatsapp">
   <h2 id="titulo-whatsapp">Lia no WhatsApp</h2>
-  <p class="suave pequeno" style="margin-bottom:14px">A Lia é a assistente do Appfiliado no WhatsApp ({{ whatsapp.numero }}). Ela tira dúvidas sobre o Appfiliado a qualquer hora e manda os seus números: mande <strong>resultados</strong>, <strong>metas</strong>, <strong>vendas</strong>, <strong>top</strong> ou <strong>validada</strong> e a resposta chega na hora. Como a Shopee libera as vendas de um dia na manhã seguinte, os números vão até ontem. A exceção é a comissão validada, que sai no mesmo dia. Para buscar os dados mais novos na Shopee, mande <strong>atualizar</strong>.</p>
+  <p class="suave pequeno card-intro">A Lia é a assistente do Appfiliado no WhatsApp ({{ whatsapp.numero }}). Ela tira dúvidas sobre o Appfiliado a qualquer hora e manda os seus números: mande <strong>resultados</strong>, <strong>metas</strong>, <strong>vendas</strong>, <strong>top</strong> ou <strong>validada</strong> e a resposta chega na hora. Como a Shopee libera as vendas de um dia na manhã seguinte, os números vão até ontem. A exceção é a comissão validada, que sai no mesmo dia. Para buscar os dados mais novos na Shopee, mande <strong>atualizar</strong>.</p>
   {% if whatsapp.vinculados %}
   <p class="pequeno" style="margin-bottom:4px"><strong>Números vinculados ({{ whatsapp.vinculados|length }} de {{ whatsapp.maximo }})</strong></p>
   {% for numero in whatsapp.vinculados %}
-  <form method="post" style="display:flex;flex-wrap:wrap;gap:8px 12px;align-items:center;justify-content:space-between;padding:10px 0;border-top:1px solid var(--borda)">
+  <form method="post" class="linha-vinculado">
     {% csrf_token %}
     <input type="hidden" name="formulario" value="whatsapp_desvincular">
     <input type="hidden" name="conversa" value="{{ numero.pk }}">
@@ -94,9 +102,9 @@
 </section>
 {% endif %}
 
-<section class="card" id="sub-ids" aria-labelledby="titulo-sub-ids" style="margin-top:16px">
+<section class="card" id="sub-ids" aria-labelledby="titulo-sub-ids">
   <h2 id="titulo-sub-ids">Agrupar Sub IDs</h2>
-  <p class="suave pequeno" style="margin-bottom:16px">Junte vários Sub IDs num nome só nos seus resultados. Ex: todo Sub ID que <strong>começa com</strong> "grupo" aparece como "Grupos de WhatsApp". Sem diferença entre maiúsculas e minúsculas. Se um Sub ID se encaixar em mais de um agrupamento, vale o primeiro da lista. Para dar um nome às vendas que vieram sem Sub ID, escolha <strong>está vazio</strong>.</p>
+  <p class="suave pequeno card-intro">Junte vários Sub IDs num nome só nos seus resultados. Ex: todo Sub ID que <strong>começa com</strong> "grupo" aparece como "Grupos de WhatsApp".</p>
 
   {% if regras %}
     <ol class="regras">
@@ -126,8 +134,9 @@
     {% csrf_token %}
     <input type="hidden" name="formulario" value="regra_sub_id">
     {% include "painel/_campos.html" with form=form_regra %}
-    <div><button type="submit" class="botao botao-escuro">{% include "painel/_icone.html" with caminho=icones.mais %}Adicionar agrupamento</button></div>
+    <div><button type="submit" class="botao botao-principal">{% include "painel/_icone.html" with caminho=icones.mais %}Adicionar</button></div>
   </form>
+  <p class="suave pequeno dica-regras">Sem diferença entre maiúsculas e minúsculas. Vale o primeiro agrupamento da lista que servir. Para as vendas sem Sub ID, escolha <strong>está vazio</strong>.</p>
   <script>
     // "está vazio" (vendas sem Sub ID) não usa o campo de texto.
     (function () {
@@ -140,5 +149,15 @@
       aplicar();
     })();
   </script>
+</section>
+
+<section class="card" id="senha" aria-labelledby="titulo-senha">
+  <h2 id="titulo-senha">Senha do painel</h2>
+  <form method="post" class="formulario">
+    {% csrf_token %}
+    <input type="hidden" name="formulario" value="senha">
+    <div class="grade-senha">{% include "painel/_campos.html" with form=form_senha %}</div>
+    <div><button type="submit" class="botao botao-principal">Trocar senha</button></div>
+  </form>
 </section>
 {% endblock %}
