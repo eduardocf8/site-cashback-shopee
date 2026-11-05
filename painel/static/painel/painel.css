@@ -1509,4 +1509,224 @@ details.etapa[open] .etapa-abrir::after { transform: rotate(-135deg) translate(-
   .notas-tabela .notas-acoes-grade { grid-template-columns: 52px 52px auto; }
   .notas-tabela td.notas-acoes:not(:has(.notas-acoes-extra > *)) .notas-acoes-grade { grid-template-columns: 52px 52px; }
   .notas-tabela .notas-acoes-grade > .botao { min-height: 34px; }
+/* === resultados (revisão de layout 11/2026) === */
+/* Telas: Resultados, Metas, Radar de ofertas, Conversor de links e os blocos que elas dividem com o Início
+   (_sincronizacao.html, _kpis.html, _conectar_shopee.html). */
+
+/* Texto longo no computador, curto no celular (botões de atualizar, data da tabela dia a dia). */
+.rotulo-curto { display: none; }
+@media (max-width: 700px) {
+  .rotulo-longo { display: none; }
+  .rotulo-curto { display: inline; }
+}
+
+/* Atualizar com a Shopee: no celular, o horário numa linha e os dois botões lado a lado. */
+@media (max-width: 700px) {
+  .cabecalho:has(> .sincronizacao) { gap: 10px; }
+  .sincronizacao { width: 100%; gap: 8px; }
+  .sincronizacao > span { flex-basis: 100%; }
+  .sincronizacao form { width: 100%; flex-wrap: nowrap; }
+  .sincronizacao form .botao { flex: 1 1 0; min-width: 0; padding: 0 8px; gap: 6px; }
+}
+
+/* Números do mês (Resultados e Início): no celular, 2x2 com o valor um pouco menor. */
+.kpis.numeros-mes .kpi { padding: 18px 20px; }
+@media (max-width: 900px) {
+  .kpis.numeros-mes .kpi { padding: 14px; gap: 2px; }
+  .numeros-mes .kpi-titulo { font-size: 12.5px; }
+  .numeros-mes .kpi-valor { font-size: 21px; }
+  .numeros-mes .kpi-detalhe { font-size: 11.5px; line-height: 1.35; }
+}
+
+/* Resultados > barra de filtros: período e origem, cada um numa linha. */
+.barra-filtros { padding: 14px 20px; }
+.linha-filtro { display: flex; align-items: flex-start; gap: 10px; min-width: 0; }
+.linha-filtro + .linha-filtro { border-top: 1px solid var(--trilho); margin-top: 12px; padding-top: 12px; }
+.rotulo-filtro { flex: none; width: 54px; line-height: 32px; font-size: 12px; font-weight: 700; color: var(--suave); text-transform: uppercase; letter-spacing: .04em; }
+.barra-filtros .chips { gap: 5px; min-width: 0; }
+.barra-filtros .chips-pequenos .chip { padding: 0 10px; }
+.barra-filtros .chip .ponto { width: 8px; height: 8px; }
+.outras-datas { display: contents; }
+.outras-datas > summary { list-style: none; cursor: pointer; gap: 6px; border-style: dashed; color: var(--verde); font-weight: 700; }
+.outras-datas > summary::-webkit-details-marker { display: none; }
+.outras-datas > summary.ativo { border-style: solid; color: var(--menu-texto); }
+.outras-datas > summary svg.icone { width: 14px; height: 14px; }
+.outras-datas:not([open]) > form { display: none; }
+.outras-datas > form { flex-basis: 100%; margin-top: 6px; }
+.barra-filtros > .aviso { margin: 12px 0 0; }
+@media (max-width: 700px) {
+  .barra-filtros { padding: 12px 0 12px 16px; }
+  .linha-filtro { flex-direction: column; align-items: stretch; gap: 8px; }
+  .linha-filtro + .linha-filtro { margin-top: 10px; padding-top: 10px; margin-right: 16px; }
+  .linha-filtro + .linha-filtro .chips { margin-right: -16px; }
+  .rotulo-filtro { width: auto; line-height: 1.4; }
+  .chips-rolam { flex-wrap: nowrap; overflow-x: auto; padding: 0 16px 2px 0; scrollbar-width: none; }
+  .chips-rolam::-webkit-scrollbar { display: none; }
+  .chips-rolam > .chip, .chips-rolam .outras-datas > summary { flex: none; }
+  /* Escolhendo as datas, a linha deixa de rolar e as datas aparecem embaixo. */
+  .chips-rolam:has(> .outras-datas[open]) { flex-wrap: wrap; overflow: visible; }
+  .barra-filtros > .aviso { margin-right: 16px; }
+}
+
+/* Resultados > a explicação dos números vira uma linha discreta embaixo deles. */
+.nota-kpis { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 12px; margin-top: -8px; font-size: 12.5px; color: var(--suave); }
+.nota-hoje { display: inline-flex; align-items: flex-start; gap: 6px; }
+.nota-hoje svg.icone { width: 15px; height: 15px; margin-top: 1px; color: var(--amarelo-tinta); }
+.como-contados > summary { list-style: none; cursor: pointer; color: var(--verde); font-weight: 700; text-decoration: underline; text-underline-offset: 2px; }
+.como-contados > summary::-webkit-details-marker { display: none; }
+.como-contados[open] { flex-basis: 100%; }
+.como-corpo { margin-top: 8px; background: var(--card); border: 1px solid var(--borda); border-radius: 12px; padding: 12px 14px; display: grid; gap: 8px; font-size: 13px; }
+.como-corpo p { margin: 0; }
+
+/* Resultados > gráfico: as métricas numa fileira (no celular, rola de lado) e o dia a dia recolhido. */
+.chips-metrica { margin-bottom: 14px; }
+.detalhe-dentro { margin-top: 16px; border-top: 1px solid var(--trilho); padding-top: 12px; }
+.detalhe-dentro > summary { list-style: none; cursor: pointer; display: flex; justify-content: space-between; align-items: center; gap: 10px; font-weight: 700; font-size: 14px; color: var(--verde); }
+.detalhe-dentro > summary::-webkit-details-marker { display: none; }
+.abrir-tabela::before, .fechar-tabela::before { content: "▸"; display: inline-block; margin-right: 8px; }
+.fechar-tabela::before { transform: rotate(90deg); }
+.fechar-tabela, .detalhe-dentro[open] .abrir-tabela { display: none; }
+.detalhe-dentro[open] .fechar-tabela { display: inline; }
+.detalhe-dentro .tabela-rolagem { margin-top: 8px; }
+.detalhe-dentro table.numeros { font-variant-numeric: tabular-nums; }
+.detalhe-dentro table.numeros th small { font-weight: 400; }
+.detalhe-dentro tr.grupo-th > * { border-bottom: 0; padding: 0 8px 0 0; }
+.detalhe-dentro tr.grupo-th th { border-bottom: 1px solid var(--borda); padding-bottom: 4px; font-size: 11.5px; text-transform: uppercase; letter-spacing: .04em; text-align: center; }
+.detalhe-dentro tbody td { padding-top: 8px; padding-bottom: 8px; border-bottom: 0; }
+.detalhe-dentro tbody tr:nth-child(odd) td { background: #FBF9F2; }
+.detalhe-dentro tbody td:first-child { padding-left: 8px; border-radius: 8px 0 0 8px; }
+.detalhe-dentro tbody td:last-child { padding-right: 8px; border-radius: 0 8px 8px 0; }
+@media (max-width: 700px) {
+  .chips-metrica { flex-wrap: nowrap; overflow-x: auto; margin-right: -20px; padding-right: 20px; scrollbar-width: none; }
+  .chips-metrica::-webkit-scrollbar { display: none; }
+  .chips-metrica .chip { flex: none; }
+  .detalhe-dentro table.numeros { font-size: 13px; }
+  .detalhe-dentro table.numeros th { font-size: 12px; }
+  .detalhe-dentro table.numeros th small { display: none; }
+  .detalhe-dentro table.numeros td, .detalhe-dentro table.numeros th { padding-right: 6px; }
+  .detalhe-dentro tbody td:first-child { padding-left: 6px; }
+}
+
+/* Resultados > de onde vieram as vendas, em lista ao lado do gráfico. */
+.origem-card { margin-top: 0; }
+.origem-card .barra-origem { height: 10px; }
+.lista-origem { list-style: none; margin: 12px 0 0; padding: 0; display: flex; flex-direction: column; }
+.lista-origem li { display: grid; grid-template-columns: 10px minmax(0, 1fr) auto; align-items: center; gap: 8px; padding: 7px 0; border-bottom: 1px solid var(--trilho); font-size: 13.5px; }
+.lista-origem li:last-child { border-bottom: 0; }
+.lista-origem li.apagada { opacity: .45; }
+.lista-origem i { width: 10px; height: 10px; border-radius: 3px; }
+.lista-origem .nome { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.lista-origem .nome small { color: var(--suave); font-size: 12px; margin-left: 2px; }
+.lista-origem strong { text-align: right; white-space: nowrap; }
+.origem-card .nota-origem { margin-top: 10px; font-size: 12px; }
+
+/* Resultados no celular: gráfico, origem, meta, Sub IDs e produtos, nessa ordem. */
+#horarios { margin-top: 0; }
+@media (max-width: 900px) { .colunas-independentes .ordem-5 { order: 5; } }
+
+/* Metas (e o cartão "Meta do mês" de Resultados): o mês e a fase primeiro, depois quanto falta. */
+.tres-meses { grid-template-columns: repeat(auto-fit, minmax(min(340px, 100%), 1fr)); }
+.tres-meses > .card { padding: 22px 24px; }
+.meta-completa { gap: 10px; }
+.topo-meta { flex-wrap: nowrap; align-items: flex-start; margin-bottom: 0; }
+.topo-meta > a { flex: none; margin-top: 3px; }
+.titulo-mes { display: flex; align-items: center; gap: 6px 10px; flex-wrap: wrap; min-width: 0; }
+.titulo-mes h2 { margin: 0; }
+.tres-meses .titulo-mes h2 { font-size: 18px; }
+.titulo-mes .selo-fase { align-self: center; }
+.explica-fase { margin: 0 0 6px !important; font-size: 13px; color: var(--suave); line-height: 1.45; }
+.explica-fase strong { color: var(--texto); }
+/* Fases nas cores do painel: prévia (amarelo), em fechamento (verde escuro, é o que está valendo agora), fechada (verde claro). */
+.fase-previa { background: var(--amarelo-suave); color: var(--amarelo-tinta); }
+.fase-fechamento { background: var(--verde); color: var(--menu-texto); }
+.fase-fechada { background: var(--bom-suave); color: var(--bom-tinta); }
+.meta-completa .meta-valor { font-size: 30px; line-height: 1.2; }
+.meta-completa .meta-trilho { height: 14px; margin-top: 2px; }
+.meta-completa .meta-marca { top: -3px; }
+.meta-completa .legenda-meta { flex-wrap: wrap; gap: 4px 16px; margin-top: 0; font-size: 12.5px; }
+.legenda-meta b { color: var(--texto); }
+.legenda-meta small { font-size: 11.5px; }
+.lm-can::before { background: var(--trilho); border: 1px solid var(--borda-forte); }
+.resposta-meta { background: var(--creme); border: 1px solid var(--borda); border-radius: 12px; padding: 12px 14px; display: flex; flex-direction: column; gap: 6px; font-size: 13px; color: var(--suave); }
+.resposta-meta p { margin: 0; }
+.resposta-meta strong { color: var(--texto); }
+.resposta-meta .resposta-principal { font-size: 15px; color: var(--texto); line-height: 1.4; }
+.titulo-faixas { margin-top: 6px; font-size: 12px; font-weight: 700; text-transform: uppercase; letter-spacing: .04em; color: var(--suave); }
+.meta-completa .faixas li { padding: 8px 0; }
+.faixa-falta.possivel { color: var(--verde-2); font-weight: 700; }
+.faixa-falta.possivel::before { content: ""; display: inline-block; width: 10px; height: 10px; border-radius: 3px; margin-right: 6px; vertical-align: -1px;
+  background: repeating-linear-gradient(45deg, #8FC9A3, #8FC9A3 3px, #B9E0C6 3px, #B9E0C6 6px); }
+/* Ao lado de outro cartão (Resultados, "Como fica" em Metas), a coluna é estreita: número e resposta um pouco menores. */
+.duas-colunas .meta-completa .meta-valor { font-size: 26px; }
+.duas-colunas .resposta-meta .resposta-principal { font-size: 14px; }
+@media (max-width: 700px) {
+  .tres-meses > .card { padding: 18px; }
+  .meta-completa .meta-valor { font-size: 26px; }
+  .resposta-meta .resposta-principal { font-size: 14.5px; }
+}
+
+/* Metas > escolher o mês dentro do cartão das faixas (4 lado a lado; 2 por linha no celular). */
+#form-metas > h2 { font-size: 18px; }
+.rotulo-meses { margin: -4px 0 8px !important; font-size: 13px; color: var(--suave); }
+.meses-faixas { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 8px; margin-bottom: 18px; }
+.mes-faixa { display: flex; flex-direction: column; gap: 1px; padding: 9px 12px; border: 1px solid var(--borda); border-radius: 12px; background: #fff; color: var(--texto); text-decoration: none; }
+.mes-faixa:hover { border-color: var(--borda-forte); color: var(--texto); }
+.mes-faixa strong { font-size: 14px; }
+.mes-faixa span { font-size: 12px; color: var(--suave); }
+.mes-faixa.ativo { background: var(--verde); border-color: var(--verde); color: var(--menu-texto); }
+.mes-faixa.ativo span { color: var(--menu-suave); }
+@media (max-width: 700px) { .meses-faixas { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+
+/* Sem a Shopee conectada (Resultados, Radar e Conversor; e o aviso de Metas): o que aparece depois de conectar. */
+.conectar-shopee.pagina-modulo { max-width: 620px; gap: 12px; }
+.conectar-shopee h2 { font-size: 21px; line-height: 1.3; }
+.o-que-aparece { list-style: none; margin: 8px 0 6px; padding: 16px 0 0; border-top: 1px solid var(--trilho); width: 100%; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px 18px; text-align: left; }
+.o-que-aparece li { display: flex; align-items: flex-start; gap: 10px; }
+.o-que-aparece .icone-redondo { width: 36px; height: 36px; border-radius: 10px; flex: none; }
+.o-que-aparece .icone-redondo svg.icone { width: 18px; height: 18px; }
+.o-que-aparece strong { display: block; font-size: 14px; line-height: 1.3; }
+.o-que-aparece small { display: block; font-size: 12.5px; color: var(--suave); margin-top: 2px; }
+.acoes-conectar { display: flex; flex-direction: column; align-items: center; gap: 10px; margin-top: 4px; }
+.aviso-conectar { display: flex; align-items: center; justify-content: space-between; gap: 10px 16px; flex-wrap: wrap; max-width: 720px; font-size: 14px; }
+.aviso-conectar > span { flex: 1 1 300px; }
+@media (max-width: 700px) {
+  .conectar-shopee.pagina-modulo { padding: 28px 20px; margin: 8px auto; }
+  .conectar-shopee .circulo { width: 64px; height: 64px; }
+  .o-que-aparece { grid-template-columns: minmax(0, 1fr); }
+  .acoes-conectar { width: 100%; }
+  .acoes-conectar .botao { width: 100%; }
+}
+
+/* Radar de ofertas: 4 por linha no computador; no celular, cada produto numa linha com a foto pequena. */
+.grade-radar-produtos { grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 12px; }
+.cartao-radar { padding: 10px; gap: 6px; }
+.nome-radar { display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; min-height: 2.7em; }
+.preco-radar { font-size: 17px; }
+.ganho-radar { font-size: 12.5px; }
+.ganho-radar strong { white-space: nowrap; }
+.numeros-radar .suave.pequeno { font-size: 12px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+@media (max-width: 700px) {
+  .filtros-radar .chips { flex-wrap: nowrap; overflow-x: auto; margin-right: -20px; padding-right: 20px; scrollbar-width: none; }
+  .filtros-radar .chips::-webkit-scrollbar { display: none; }
+  .filtros-radar .chip-opcao { flex: none; }
+  .grade-radar-produtos { grid-template-columns: minmax(0, 1fr); gap: 10px; }
+  .cartao-radar { display: grid; grid-template-columns: 96px minmax(0, 1fr); grid-template-areas: "foto nome" "foto nums" "acoes acoes"; column-gap: 12px; row-gap: 4px; padding: 12px; align-items: start; }
+  .foto-radar { grid-area: foto; }
+  .nome-radar { grid-area: nome; min-height: 0; }
+  .numeros-radar { grid-area: nums; }
+  .acoes-radar { grid-area: acoes; grid-template-columns: 1.5fr 1fr 1fr 1fr; margin-top: 8px; }
+  .acoes-radar .copiar-radar { grid-column: auto; }
+  .selo-desconto, .selo-extra { top: 5px; left: 5px; right: auto; font-size: 11px; padding: 1px 6px; }
+  .selo-extra { top: auto; bottom: 5px; }
+}
+
+/* Conversor: "Como sair" no seletor de duas opções; no celular, "Como funciona" vem antes do formulário. */
+.conversor .segmentado span { min-width: 150px; }
+@media (max-width: 900px) {
+  .conversor .como-funciona { order: -1; padding: 16px 18px; }
+  .conversor .como-funciona h2 { font-size: 15px; margin-bottom: 8px; }
+  .conversor .como-funciona .passos-conversor { font-size: 14px; gap: 4px; margin-bottom: 8px; }
+  .conversor .como-funciona > p { font-size: 12.5px; }
+  .conversor .segmentado { width: 100%; }
+  .conversor .segmentado span { min-width: 0; padding: 9px 12px; }
 }

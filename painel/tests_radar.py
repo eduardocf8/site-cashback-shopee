@@ -57,13 +57,14 @@ class TestTelaDoRadar(BasePainel):
 
     def test_mostra_so_produtos_com_preco_com_comissao_de_referencia(self):
         resposta = self.client.get("/radar/")
-        self.assertContains(resposta, "Comissão de referência 10%")
+        self.assertContains(resposta, "Comissão 10%")
+        self.assertContains(resposta, 'title="Comissão de referência:')  # a explicação continua ao passar o mouse
         self.assertContains(resposta, "~R$ 10,00")  # 10% de R$ 100,00
         self.assertContains(resposta, "+4% extra")
         self.assertContains(resposta, 'href="/radar/"')  # no menu
         self.assertEqual(self.nomes(), ["Fone Bluetooth JBL", "Air Fryer 4L", "Caneca térmica"])  # mais vendidos primeiro? ver ordem
         self.assertNotContains(resposta, "atrasada")
-        self.assertContains(resposta, "3 produtos da Shopee")
+        self.assertContains(resposta, "3 produtos com comissão de afiliado")
 
     def test_ordens(self):
         def ordem(consulta):

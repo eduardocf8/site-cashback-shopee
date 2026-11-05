@@ -7,26 +7,28 @@
   <div><h1>Metas da Shopee</h1><p>Opcional: se a Shopee te deu metas no mês, cadastre as faixas de faturamento e o bônus de cada uma.</p></div>
 </header>
 
-<nav class="chips" aria-label="Mês">
-  {% for o in opcoes %}<a class="chip{% if o.ativo %} ativo{% endif %}" href="?mes={{ o.valor }}"{% if o.ativo %} aria-current="true"{% endif %}>{{ o.nome }}<span class="fase-chip">{{ o.fase }}</span></a>{% endfor %}
-</nav>
-
 {% if tres_meses %}
 <section class="tres-meses" aria-label="Os últimos três meses">
   {% for m in tres_meses %}
-    <section class="card">
-      <div class="card-topo"><h2>{{ m.nome_mes }}</h2><a class="pequeno" href="?mes={{ m.mes_valor }}#form-metas">Editar faixas</a></div>
-      {% include "painel/_meta.html" with meta=m %}
-    </section>
+    <section class="card">{% include "painel/_meta.html" with meta=m editar=True %}</section>
   {% endfor %}
 </section>
 {% elif shopee_conectada %}
 <p class="suave pequeno">Cadastre a meta de um mês para acompanhar aqui a prévia, o fechamento e o resultado final de cada um.</p>
+{% else %}
+<div class="aviso aviso-info aviso-conectar">
+  <span>Você já pode cadastrar as faixas. Para acompanhar a prévia, o fechamento e o resultado de cada mês, conecte sua conta da Shopee.</span>
+  <a class="botao botao-principal botao-pequeno" href="{% url 'painel_configuracoes' %}">Conectar a Shopee</a>
+</div>
 {% endif %}
 
 <div class="form-metas{% if situacao_proximo %} duas-colunas{% endif %}">
   <section class="card" id="form-metas">
     <h2>Faixas de {{ nome_mes }}</h2>
+    <p class="rotulo-meses" id="rotulo-meses">Escolha o mês para cadastrar ou mudar as faixas</p>
+    <nav class="meses-faixas" aria-labelledby="rotulo-meses">
+      {% for o in opcoes %}<a class="mes-faixa{% if o.ativo %} ativo{% endif %}" href="?mes={{ o.valor }}#form-metas"{% if o.ativo %} aria-current="true"{% endif %}><strong>{{ o.nome|slice:":-5" }}</strong><span>{{ o.fase }}</span></a>{% endfor %}
+    </nav>
     <form method="post" class="formulario" data-metas>
       {% csrf_token %}
       <input type="hidden" name="mes" value="{{ mes_valor }}">
@@ -47,8 +49,8 @@
               {% for l in linhas %}
                 <tr>
                   <td><label class="sr" for="percentual_{{ l.n }}">Percentual da faixa {{ l.n }}</label><input id="percentual_{{ l.n }}" name="percentual_{{ l.n }}" inputmode="decimal" value="{{ l.percentual|floatformat:'0' }}"></td>
-                  <td><label class="sr" for="faturamento_{{ l.n }}">Faturamento da faixa {{ l.n }}</label><input id="faturamento_{{ l.n }}" name="faturamento_{{ l.n }}" inputmode="decimal" placeholder="Ex: 30.000" value="{% if l.faturamento %}{{ l.faturamento|floatformat:'-2g' }}{% endif %}"></td>
-                  <td><label class="sr" for="bonus_{{ l.n }}">Bônus da faixa {{ l.n }}</label><input id="bonus_{{ l.n }}" name="bonus_{{ l.n }}" inputmode="decimal" placeholder="Ex: 300" value="{% if l.bonus %}{{ l.bonus|floatformat:'-2g' }}{% endif %}"></td>
+                  <td><label class="sr" for="faturamento_{{ l.n }}">Faturamento da faixa {{ l.n }}</label><input id="faturamento_{{ l.n }}" name="faturamento_{{ l.n }}" inputmode="decimal" placeholder="{% if l.n == 1 %}Ex: 30.000{% else %}Em branco: calculado{% endif %}" value="{% if l.faturamento %}{{ l.faturamento|floatformat:'-2g' }}{% endif %}"></td>
+                  <td><label class="sr" for="bonus_{{ l.n }}">Bônus da faixa {{ l.n }}</label><input id="bonus_{{ l.n }}" name="bonus_{{ l.n }}" inputmode="decimal" placeholder="Ex: {% if l.n == 1 %}300{% elif l.n == 2 %}500{% else %}800{% endif %}" value="{% if l.bonus %}{{ l.bonus|floatformat:'-2g' }}{% endif %}"></td>
                 </tr>
               {% endfor %}
             </tbody>
@@ -68,8 +70,7 @@
   </section>
   {% if situacao_proximo %}
   <section class="card">
-    <h2>Como fica {{ nome_mes }}</h2>
-    {% include "painel/_meta.html" with meta=situacao_proximo %}
+    {% with titulo="Como fica "|add:nome_mes %}{% include "painel/_meta.html" with meta=situacao_proximo titulo=titulo futuro=True %}{% endwith %}
   </section>
   {% endif %}
 </div>
