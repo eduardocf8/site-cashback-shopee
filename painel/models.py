@@ -305,8 +305,10 @@ class Sugestao(models.Model):
 
     MELHORIA, NOVA = "melhoria", "nova"
     TIPOS = [(MELHORIA, "Melhorar uma ferramenta que já existe"), (NOVA, "Uma ferramenta nova")]
+    # "carrosseis": o código do antigo gerador, que hoje é o Estúdio Instagram (as sugestões antigas continuam).
     FERRAMENTAS = [
-        ("bot", "Bot de WhatsApp"), ("site", "Meu site"), ("carrosseis", "Carrosséis"), ("notas", "Emissor NFS-e"),
+        ("bot", "Bot de WhatsApp"), ("site", "Meu site"), ("carrosseis", "Estúdio Instagram"),
+        ("automacoes", "Automações Instagram"), ("notas", "Emissor NFS-e"),
         ("radar", "Radar de ofertas"), ("conversor", "Conversor de links"), ("resultados", "Resultados e metas"),
         ("outra", "Outra"),
     ]
