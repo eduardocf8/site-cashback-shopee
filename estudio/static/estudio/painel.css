@@ -68,10 +68,7 @@
 .es-marca-form legend { font-weight: 700; padding: 0 6px; }
 .es-logo-atual { max-height: 72px; max-width: 240px; background: var(--chip); border-radius: 8px; padding: 6px; }
 @media (max-width: 760px) {
-  .es-criar { grid-template-columns: 1fr; }
-  .es-criar-abas { flex-direction: row; overflow-x: auto; }
-  .es-criar-abas button { white-space: nowrap; }
-  .es-criar-abas button small { display: none; }
+  .es-criar { grid-template-columns: 1fr; }  /* as formas de criar ficam em 2x2: ver o bloco da revisão de 11/2026 */
 }
 
 /* ---------- Automações do Instagram ---------- */
@@ -458,4 +455,52 @@
   .ig-form .barra-salvar .chave-liga { flex: none; font-size: 13.5px; }
   .ig-barra-nota { flex: 1; min-width: 0; font-size: 12.5px; }
   .ig-topo-acoes { width: 100%; }
+}
+
+/* ---------- Editor do post: prévia maior, setas compactas e, no celular, prévia primeiro e Publicar sempre à mão ---------- */
+.es-navegar .es-bt { min-width: 44px; min-height: 38px; padding: 0 12px; font-size: 18px; line-height: 1; }
+.es-mini-novo, .es-slide-acoes { display: none; }
+@media (min-width: 1101px) {
+  /* colunas laterais um pouco mais estreitas: a prévia cresce de 300 para uns 410 px */
+  .es-corpo { grid-template-columns: 150px minmax(0, 1fr) 340px; }
+}
+@media (min-width: 1101px) and (max-width: 1200px) {
+  .es-corpo { grid-template-columns: 140px minmax(0, 1fr) 300px; }
+}
+@media (max-width: 760px) {
+  .conteudo:has(.es-acoes-principais) { padding-bottom: calc(92px + env(safe-area-inset-bottom, 0px)); }
+  .es-cabeca { gap: 0; }
+  /* Salvar, Publicar e Mais numa barra presa no pé da tela (o mesmo jeito da .barra-salvar do painel) */
+  .es-acoes-principais { position: fixed; left: 0; right: 0; bottom: 0; z-index: 40; width: auto; display: flex; gap: 8px;
+    padding: 10px 16px calc(10px + env(safe-area-inset-bottom, 0px)); background: var(--card); border-top: 1px solid var(--borda);
+    box-shadow: 0 -4px 14px rgba(31, 58, 46, .08); }
+  .es-acoes-principais .es-bt { min-height: 46px; }
+  .es-mais .es-menu { top: auto; bottom: calc(100% + 8px); }
+  /* a prévia vem logo depois dos ajustes; os slides viram uma faixa embaixo dela */
+  .es-corpo { display: flex; flex-direction: column; align-items: stretch; gap: 12px; }
+  .es-palco { order: 1; gap: 8px; }
+  .es-lista { order: 2; max-height: none; overflow: visible; padding: 0; gap: 8px; }
+  .es-campos { order: 3; }
+  #es-slides { display: flex; gap: 8px; overflow-x: auto; padding: 2px 2px 4px; scrollbar-width: none; }
+  #es-slides::-webkit-scrollbar { display: none; }
+  #es-slides .es-mini { flex: 0 0 78px; min-width: 0; overflow: hidden; padding: 4px; border-radius: 10px; }
+  #es-slides .es-mini-barra { justify-content: center; margin-top: 3px; }
+  #es-slides .es-mini-barra > span:last-child { display: none; }
+  #es-slides .es-mini-barra > span:first-child { text-align: center; font-weight: 700; }
+  .es-mini-novo { flex: 0 0 78px; min-height: 96px; border: 1.5px dashed var(--borda-forte); border-radius: 10px; display: grid; place-items: center;
+    align-content: center; gap: 2px; background: none; font: inherit; font-size: 13px; font-weight: 700; color: var(--texto); cursor: pointer; }
+  .es-mini-novo b { font-size: 22px; line-height: 1; }
+  .es-mini-novo:disabled { opacity: .4; cursor: default; }
+  .es-adicionar { display: none !important; }
+  /* o que fazer com o slide aberto, numa linha só */
+  .es-slide-acoes { display: flex; gap: 6px; }
+  .es-slide-acoes button { flex: 1; min-height: 40px; border: 1px solid var(--borda); background: #FFFFFF; border-radius: 10px; font: inherit; font-size: 13px;
+    font-weight: 600; color: var(--texto); cursor: pointer; padding: 0 6px; white-space: nowrap; }
+  .es-slide-acoes button[hidden] { display: none; }
+  .es-slide-acoes button.perigo { color: var(--perigo); }
+  .es-slide-acoes button:disabled { opacity: .4; cursor: default; }
+  .es-navegar { gap: 8px; }
+  .es-navegar .es-bt { min-height: 40px; }
+  .es-guias-opcao { margin-top: 0; font-size: 13px; }
+  .es-avisos li { margin: 0; }
 }
