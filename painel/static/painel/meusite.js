@@ -189,6 +189,8 @@
   function mostrarPrevia(abrir) {
     if (!cartaoPrevia) return;
     cartaoPrevia.classList.toggle("aberta", abrir);
+    if (abrir) { cartaoPrevia.setAttribute("role", "dialog"); cartaoPrevia.setAttribute("aria-modal", "true"); }
+    else { cartaoPrevia.removeAttribute("role"); cartaoPrevia.removeAttribute("aria-modal"); }
     if (fundoPrevia) fundoPrevia.hidden = !abrir;
     document.documentElement.classList.toggle("previa-aberta", abrir);
     if (abrirPrevia) abrirPrevia.setAttribute("aria-expanded", abrir ? "true" : "false");
