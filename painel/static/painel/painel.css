@@ -1498,6 +1498,8 @@ details.etapa[open] .etapa-abrir::after { transform: rotate(-135deg) translate(-
   .notas-tabela .notas-acoes-grade { grid-template-columns: 52px 52px auto; }
   .notas-tabela td.notas-acoes:not(:has(.notas-acoes-extra > *)) .notas-acoes-grade { grid-template-columns: 52px 52px; }
   .notas-tabela .notas-acoes-grade > .botao { min-height: 34px; }
+}
+
 /* === resultados (revisão de layout 11/2026) === */
 /* Telas: Resultados, Metas, Radar de ofertas, Conversor de links e os blocos que elas dividem com o Início
    (_sincronizacao.html, _kpis.html, _conectar_shopee.html). */
@@ -1719,6 +1721,7 @@ details.etapa[open] .etapa-abrir::after { transform: rotate(-135deg) translate(-
   .conversor .segmentado { width: 100%; }
   .conversor .segmentado span { min-width: 0; padding: 9px 12px; }
 }
+
 /* === geral (revisão de layout 11/2026) === */
 /* Selos de situação nunca quebram em duas linhas (Plano, Início, páginas das ferramentas). */
 .estado { white-space: nowrap; }
@@ -1943,6 +1946,7 @@ form.form-regra { grid-template-columns: minmax(0, 1.2fr) minmax(0, 1fr) minmax(
 .primeiro-acesso .botao { width: 100%; }
 .divisa { display: flex; align-items: center; gap: 12px; color: var(--suave); font-size: 13px; font-weight: 700; }
 .divisa::before, .divisa::after { content: ""; flex: 1; height: 1px; background: var(--borda); }
+
 /* === bot (revisão de layout 11/2026) === */
 /* Cabeçalho de todas as abas: título com as pílulas de estado e as abas em famílias. */
 .cabecalho-bot .linha-titulo-bot { display: flex; align-items: center; flex-wrap: wrap; gap: 8px 16px; }
