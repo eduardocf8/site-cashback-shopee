@@ -21,10 +21,10 @@ CODIGOS = {
     ("carrosseis", 0): "carrosseis", ("carrosseis", 1): "carrosseis_premium",
 }
 LINHA = {
-    ("bot", 0): "até 30 grupos, 60 ofertas por dia em cada, modo campanha e alerta de preço (10 produtos)",
-    ("bot", 1): "até 200 grupos, 300 ofertas por dia em cada, copiar ofertas, IA e alerta de preço (50 produtos)",
-    ("site", 0): "até 3 botões, conversor e vitrine de ofertas",
-    ("site", 1): "até 10 botões, produtos que você escolher e sem a nossa marca",
+    ("bot", 0): "até 30 grupos, 60 ofertas por dia em cada, link de entrada, modo campanha e alerta de preço (10 produtos)",
+    ("bot", 1): "até 200 grupos, 300 ofertas por dia em cada, o próximo grupo criado sozinho, copiar ofertas e IA",
+    ("site", 0): "até 3 botões, conversor e vitrine com até 200 ofertas",
+    ("site", 1): "até 10 botões, vitrine com até 1.000 ofertas e sem a nossa marca",
     ("carrosseis", 0): "3 por dia, com roteiro por IA",
     ("carrosseis", 1): "10 por dia, modelos premium, cores livres e foto própria",
 }
@@ -34,21 +34,28 @@ DESCRICOES = {
                   "Busca por palavra-chave, loja ou categoria, com filtros de comissão, desconto, preço e avaliação",
                   "Horário e dias de envio, Sub ID por grupo e modo simulação para testar antes",
                   "Modo campanha: no 11.11, na Black Friday e nas outras datas, o bot muda sozinho o ritmo, o texto e o cupom",
-                  "Alerta de preço: acompanha até 10 produtos e avisa quando o preço cair, no painel, por e-mail e, se você quiser, nos grupos (conferência a partir de 1 hora)"],
+                  "Alerta de preço: acompanha até 10 produtos e avisa quando o preço cair (em % ou abaixo de um valor em R$, com o desconto do Pix), no painel, por e-mail e, se você quiser, nos grupos",
+                  "Mensagens pra todos os grupos, na hora ou agendadas (até 20 agendadas)",
+                  "Link de entrada: um link só no anúncio ou na bio, que manda cada pessoa pro grupo que ainda tem vaga, com página no seu estilo",
+                  "Aba Grupos: entradas e saídas de cada grupo, aviso quando passa de 95% e o próximo grupo criado pelo painel",
+                  "Resultados do bot: quanto cada grupo vendeu e quais ofertas venderam"],
                  "Precisa de: um número de WhatsApp (conecta pelo QR Code) e a conta de afiliado da Shopee."),
     ("bot", 1): ("Tudo do Standard, com mais alcance e mais automação.",
                  ["Até 200 grupos e canais", "Até 300 ofertas por dia em cada grupo, com intervalo a partir de 3 minutos",
+                  "Cria o próximo grupo sozinho quando os grupos lotam e já coloca no link de entrada",
+                  "Envio por nicho: cada grupo recebe as ofertas do tema dele",
                   "Copia as ofertas de outros grupos e canais e troca pelo seu link de afiliado",
                   "Revisão do texto com IA (corrige o português sem mexer em link, preço ou cupom)",
-                  "Alerta de preço com até 50 produtos, com conferência a partir de 15 minutos"],
+                  "Alerta de preço com até 50 produtos, com conferência a partir de 15 minutos",
+                  "Até 50 mensagens agendadas"],
                  "Precisa de: um número de WhatsApp (conecta pelo QR Code) e a conta de afiliado da Shopee."),
     ("site", 0): ("Seu link na bio (seunome.appfiliado.com.br) com vitrine de ofertas e conversor de links.",
                   ["Até 3 botões, ícones das redes sociais, cores e estilo à sua escolha",
                    "Conversor: o visitante cola um link da Shopee e compra pelo seu link de afiliado",
-                   "Vitrine com as últimas ofertas do bot ou com uma busca na Shopee",
+                   "Vitrine com até 200 ofertas, das últimas do bot ou de uma busca na Shopee",
                    "Cliques contados e Sub ID próprio para ver as vendas do site em Resultados"], ""),
     ("site", 1): ("Tudo do Standard, com mais espaço e a sua marca no lugar da nossa.",
-                  ["Até 10 botões", "Vitrine com os produtos que você escolher",
+                  ["Até 10 botões", "Vitrine com até 1.000 ofertas e os produtos que você escolher",
                    "Sem a marca \"Feito com Appfiliado\" no rodapé"], ""),
     ("carrosseis", 0): ("Cole um link da Shopee e receba um carrossel pronto pro Instagram.",
                         ["3 carrosséis por dia", "Roteiro dos slides, legenda e hashtags escritos por IA",
@@ -105,11 +112,14 @@ def produtos() -> list[dict]:
                     continue  # os 3 iguais são os combos fechados
                 pares = list(zip(escolhidos, niveis))
                 total = sum(PRECOS[m][nv] for m, nv in pares)
+                # Bot + Meu site no mesmo plano é o Pacote Ofertas do site: arte e frase do pacote
+                pacote = escolhidos == ("bot", "site") and niveis[0] == niveis[1]
                 lista.append({
                     "grupo": "Combos personalizados", "nome": "Combo " + " + ".join(f"{NOMES[m]} {NIVEL[nv]}" for m, nv in pares),
                     "mensal": com_desconto(total, fator), "codigos": ", ".join(CODIGOS[p] for p in pares),
-                    "arte": "combo-personalizado",
-                    "frase": f"Combo personalizado com {n} módulos, {int(round((1 - fator) * 100))}% mais barato que separado.",
+                    "arte": f"pacote-ofertas-{'premium' if niveis[0] else 'standard'}" if pacote else "combo-personalizado",
+                    "frase": (f"Pacote Ofertas {NIVEL[niveis[0]]}: Bot de WhatsApp + Meu site, 10% mais barato que separado." if pacote
+                              else f"Combo personalizado com {n} módulos, {int(round((1 - fator) * 100))}% mais barato que separado."),
                     "itens": [f"{NOMES[m]} {NIVEL[nv]}: {LINHA[(m, nv)]}" for m, nv in pares], "precisa": "",
                 })
     return lista

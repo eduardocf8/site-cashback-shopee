@@ -33,20 +33,38 @@ PASSOS = [
      "O menu do painel mostra o que está liberado no seu plano."),
 ]
 MODULOS = [
-    ("Bot de WhatsApp", "Abra a aba <strong>Conexão</strong>, leia o QR Code com o WhatsApp do número que vai mandar as ofertas e conecte. "
-     "Depois, em <strong>Automação</strong>, escolha de onde vêm as ofertas, os grupos de destino e o intervalo, e ligue as ofertas. "
-     "Dica: comece com a opção de <em>simulação</em>, que faz tudo sem enviar nada. "
-     "Em <strong>Campanhas</strong>, marque as datas da Shopee (11.11, Black Friday...) e o bot muda sozinho o ritmo, o texto e o cupom naquele dia. "
-     "Em <strong>Alerta de preço</strong>, escolha produtos para acompanhar e receba o aviso quando baixarem."),
-    ("Meu site", "Escolha o endereço, o nome e a cor, adicione os botões e confira a prévia ao lado. "
-     "Quando estiver bom, marque o site como publicado e coloque o link na bio."),
+    ("Bot de WhatsApp",
+     "Na aba <strong>Conexão</strong>, leia o QR Code com o WhatsApp do número que vai mandar as ofertas. Depois, em "
+     "<strong>Automação</strong>, escolha de onde vêm as ofertas, os grupos de destino e o intervalo e ligue as ofertas. "
+     "Dica: comece pela opção de <em>simulação</em>, que faz tudo sem enviar nada. As outras abas:"
+     "<ul><li><strong>Resultados:</strong> quanto cada grupo vendeu e quais ofertas venderam.</li>"
+     "<li><strong>Campanhas:</strong> marque as datas da Shopee (11.11, Black Friday...) e o bot muda sozinho o ritmo, o texto e o cupom no dia.</li>"
+     "<li><strong>Alerta de preço:</strong> escolha os produtos e receba o aviso quando baixarem, em % ou abaixo de um valor em R$.</li>"
+     "<li><strong>Mensagens:</strong> avisos pra todos os grupos ou só alguns, na hora ou agendados.</li>"
+     "<li><strong>Grupos:</strong> quem entra e quem sai de cada grupo, o aviso quando um passa de 95% e o próximo grupo, criado pelo painel.</li>"
+     "<li><strong>Link de entrada:</strong> um link só pro anúncio ou pra bio, que manda cada pessoa pro grupo que ainda tem vaga. "
+     "No Premium, quando os grupos lotam, o próximo é criado sozinho.</li></ul>"),
+    ("Meu site", "Escolha o endereço, o nome e a cor, adicione os botões e confira a prévia ao lado. Ligue o "
+     "<strong>conversor de links</strong> e a <strong>vitrine de ofertas</strong> (até 200 ofertas no Standard e 1.000 no Premium). "
+     "Quando estiver bom, marque <strong>Site no ar</strong> e coloque o link na bio."),
     ("Gerador de carrosséis", "Cole o link de um produto da Shopee e gere o carrossel. Ajuste os textos no editor e baixe as imagens para postar."),
     ("Emissor NFS-e", "Cadastre o CNPJ, envie o certificado digital A1, informe o serviço e faça uma nota de teste. "
      "Depois, envie o Relatório Mensal da Shopee: sai uma nota por loja, com e-mail para cada vendedor."),
 ]
+# O que vem em todo plano, além do módulo comprado.
+INCLUSOS = [
+    ("Resultados", "As vendas e a comissão por Sub ID, de onde veio cada venda (bot, site ou conversor) e os horários em que elas acontecem."),
+    ("Metas", "A meta do mês com as faixas de bônus da Shopee, quanto falta pra cada uma e quanto vender por dia pra chegar lá."),
+    ("Radar de ofertas", "Os produtos mais vendidos, de maior comissão e com mais desconto, com o seu link de afiliado num toque."),
+    ("Conversor de links", "Cole um texto com links da Shopee e todos viram o seu link de afiliado, com o texto igualzinho."),
+    ("Lia no WhatsApp", "A assistente do Appfiliado. Em <strong>Configurações</strong>, toque em <strong>Vincular meu WhatsApp</strong> e mande "
+     "o código pra ela. Depois é só mandar <strong>resultados</strong>, <strong>metas</strong>, <strong>vendas</strong>, <strong>top</strong> "
+     "ou <strong>validada</strong> e a resposta chega na hora. Dá pra vincular até 2 números."),
+]
 DICAS = [
     "Use <strong>Sub IDs</strong> diferentes para cada canal (grupos, Instagram, site). Em Resultados você vê quanto cada um vendeu.",
     "Ative o <strong>relatório diário por e-mail</strong> em Configurações para receber os números de ontem toda manhã.",
+    "No anúncio ou na bio, use o <strong>link de entrada</strong> em vez do convite de um grupo: quando um grupo enche, o link manda pro próximo sozinho.",
     "O bot usa o WhatsApp de forma não oficial. Use um número só pras ofertas, sem exagerar no volume, para evitar bloqueios.",
 ]
 
@@ -54,26 +72,30 @@ CSS = """
 @page { size: A4; margin: 0; }
 * { box-sizing: border-box; margin: 0; }
 body { font-family: 'DM Sans', Arial, sans-serif; color: #1D2A23; font-size: 11pt; line-height: 1.5; }
-.topo { background: #1F3A2E; color: #F6F3EA; padding: 22mm 18mm 14mm; }
+.topo { background: #1F3A2E; color: #F6F3EA; padding: 18mm 18mm 12mm; }
 .marca { display: flex; align-items: center; gap: 10px; font-size: 15pt; font-weight: 800; }
 .marca .logo { width: 40px; height: 40px; border-radius: 10px; background: #F2C230; color: #1D2A23; display: grid; place-items: center; }
-h1 { font-size: 27pt; font-weight: 800; letter-spacing: -.02em; line-height: 1.1; margin: 14mm 0 3mm; }
+h1 { font-size: 27pt; font-weight: 800; letter-spacing: -.02em; line-height: 1.1; margin: 11mm 0 3mm; }
 .topo p { color: #CFDBD2; font-size: 12pt; max-width: 150mm; }
-.corpo { padding: 9mm 18mm 14mm; }
-h2 { font-size: 14pt; color: #1F3A2E; margin: 8mm 0 3mm; padding-bottom: 2mm; border-bottom: 2px solid #F2C230; }
+.corpo { padding: 8mm 18mm 6mm; }
+h2 { font-size: 14pt; color: #1F3A2E; margin: 6mm 0 3mm; padding-bottom: 2mm; border-bottom: 2px solid #F2C230; }
 .passo { display: flex; gap: 4mm; margin: 0 0 4mm; page-break-inside: avoid; }
 .num { flex: none; width: 8mm; height: 8mm; border-radius: 50%; background: #F2C230; font-weight: 800; display: grid; place-items: center; }
 .passo h3 { font-size: 11.5pt; margin: 0 0 1mm; }
-.modulo { background: #F6F3EA; border-radius: 3mm; padding: 3.5mm 4.5mm; margin: 0 0 3mm; page-break-inside: avoid; }
+.modulo { background: #F6F3EA; border-radius: 3mm; padding: 3mm 4.5mm; margin: 0 0 2.5mm; page-break-inside: avoid; }
 .modulo h3 { font-size: 11pt; color: #1F3A2E; margin-bottom: 1mm; }
-ul { padding-left: 5mm; } li { margin: 0 0 2mm; }
+.modulo ul { margin-top: 1.5mm; } .modulo li { margin: 0 0 1mm; }
+.inclusos { display: grid; grid-template-columns: 1fr 1fr; gap: 3mm; }
+.inclusos .modulo { margin: 0; }
+.inclusos .modulo:last-child { grid-column: 1 / -1; }
+ul { padding-left: 5mm; } li { margin: 0 0 1.5mm; }
 .api { background: #FBF1CF; border-left: 4px solid #F2C230; border-radius: 2mm; padding: 4mm 5mm; margin: 2mm 0 4mm; page-break-inside: avoid; }
 .api h3 { font-size: 12pt; margin-bottom: 2mm; }
 .api ol { padding-left: 5mm; } .api li { margin: 0 0 1.5mm; }
 .api .campos { margin-top: 2mm; font-size: 10pt; }
 .api a { color: #1F3A2E; font-weight: 700; word-break: break-all; }
-.contato { margin-top: 8mm; background: #FBF1CF; border-left: 4px solid #F2C230; border-radius: 2mm; padding: 4mm 5mm; }
-.rodape { margin-top: 8mm; color: #5C6A61; font-size: 9pt; }
+.contato { margin-top: 5mm; background: #FBF1CF; border-left: 4px solid #F2C230; border-radius: 2mm; padding: 4mm 5mm; }
+.rodape { margin-top: 4mm; color: #5C6A61; font-size: 9pt; }
 """
 
 
@@ -82,6 +104,7 @@ def pagina(contato: str) -> str:
         f"<div class='passo'><div class='num'>{i}</div><div><h3>{E(t)}</h3><p>{d}</p></div></div>"
         for i, (t, d) in enumerate(PASSOS, 1))
     modulos = "".join(f"<div class='modulo'><h3>{E(t)}</h3><p>{d}</p></div>" for t, d in MODULOS)
+    inclusos = "".join(f"<div class='modulo'><h3>{E(t)}</h3><p>{d}</p></div>" for t, d in INCLUSOS)
     dicas = "".join(f"<li>{d}</li>" for d in DICAS)
     api = (
         "<div class='api'><h3>Como liberar a API da Shopee</h3><ol>"
@@ -102,6 +125,7 @@ def pagina(contato: str) -> str:
 <div class="corpo">
 <h2>Primeiros passos</h2>{passos}{api}
 <h2>Cada módulo, em poucas linhas</h2>{modulos}
+<h2>Em todo plano</h2><div class="inclusos">{inclusos}</div>
 <h2>Dicas para vender mais</h2><ul>{dicas}</ul>
 {bloco_contato}
 <p class="rodape">O Appfiliado é independente e não tem vínculo oficial com a Shopee. Cancele quando quiser, sem multa,

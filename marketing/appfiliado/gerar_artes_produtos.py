@@ -30,19 +30,28 @@ NOTAS = ("notas", "Emissor NFS-e", "As notas dos vendedores direto do relatório
 
 AVULSOS = [
     ("bot-standard", BOT, "Standard", ["Até 30 grupos e canais", "60 ofertas por dia em cada grupo",
-                                        "Seu link de afiliado em todas"]),
+                                        "Link de entrada que manda pro grupo com vaga", "Alerta de preço e modo campanha"]),
     ("bot-premium", BOT, "Premium", ["Até 200 grupos e canais", "300 ofertas por dia em cada grupo",
-                                      "Copia ofertas de outros grupos e revisa o texto com IA"]),
-    ("site-standard", SITE, "Standard", ["Até 3 botões", "Conversor de links da Shopee",
-                                          "Vitrine com as ofertas do bot ou da busca"]),
-    ("site-premium", SITE, "Premium", ["Até 10 botões", "Vitrine com os produtos que você escolher",
-                                        "Sem a marca Appfiliado"]),
+                                      "Cria o próximo grupo sozinho quando lota", "Envio por nicho, cópia de ofertas e IA"]),
+    ("site-standard", SITE, "Standard", ["Até 3 botões e as suas redes", "Conversor de links da Shopee",
+                                          "Vitrine com até 200 ofertas"]),
+    ("site-premium", SITE, "Premium", ["Até 10 botões", "Vitrine com até 1.000 ofertas",
+                                        "Escolha os produtos da vitrine", "Sem a marca Appfiliado"]),
     ("carrosseis-standard", CARR, "Standard", ["3 carrosséis por dia", "Roteiro escrito por IA",
                                                 "Seu link de afiliado na legenda"]),
     ("carrosseis-premium", CARR, "Premium", ["10 carrosséis por dia", "Mais modelos, cores livres e foto própria",
                                               "IA reescrevendo os slides"]),
 ]
 FAIXAS = [("100", "100"), ("500", "500"), ("2000", "2.000"), ("5000", "5.000"), ("10000", "10.000"), ("ilimitado", None)]
+# Pacote Ofertas (o combo Bot de WhatsApp + Meu site no mesmo plano, 10% mais barato): é o pacote do site.
+PACOTE_OFERTAS = [
+    ("pacote-ofertas-standard", "Standard", ["Bot: 30 grupos e link de entrada", "Meu site: conversor e vitrine",
+                                             "10% mais barato que separado"]),
+    ("pacote-ofertas-premium", "Premium", ["Bot: 200 grupos e o próximo grupo sozinho", "Meu site: 10 botões e sem a nossa marca",
+                                           "10% mais barato que separado"]),
+]
+# O que vem em todo plano (Bot, Meu site e os pacotes), na última linha da arte.
+INCLUSOS = "Em todo plano: Resultados e metas · Radar · Conversor · Lia no WhatsApp"
 BENEFICIOS_NOTAS = ["Uma nota por loja, sem digitar nada", "E-mail com a nota para cada vendedor",
                     "Emitidas no Emissor Nacional do governo"]
 
@@ -56,13 +65,13 @@ body {{ width: 1000px; height: 1000px; font-family: 'DM Sans', Arial, sans-serif
 .conteudo {{ position: absolute; inset: 0; padding: 78px 84px; display: flex; flex-direction: column; }}
 .marca {{ display: flex; align-items: center; gap: 16px; font-size: 32px; font-weight: 800; letter-spacing: -.01em; }}
 .marca .logo {{ width: 74px; height: 74px; border-radius: 18px; background: {AMARELO}; color: {TINTA}; display: grid; place-items: center; }}
-.icones {{ display: flex; gap: 18px; margin-top: 92px; }}
+.icones {{ display: flex; gap: 18px; margin-top: 64px; }}
 .icone {{ width: 128px; height: 128px; border-radius: 30px; background: rgba(246,243,234,.1); display: grid; place-items: center;
   border: 2px solid rgba(246,243,234,.16); }}
 .icone svg {{ width: 66px; height: 66px; fill: none; stroke: {AMARELO}; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }}
 .icones.varios .icone {{ width: 104px; height: 104px; border-radius: 26px; }}
 .icones.varios .icone svg {{ width: 54px; height: 54px; }}
-h1 {{ font-size: 76px; font-weight: 800; letter-spacing: -.025em; line-height: 1.02; margin-top: 40px; }}
+h1 {{ font-size: 76px; font-weight: 800; letter-spacing: -.025em; line-height: 1.02; margin-top: 34px; }}
 .selo {{ display: inline-flex; align-self: flex-start; align-items: center; gap: 10px; margin-top: 22px; padding: 10px 24px;
   border-radius: 999px; font-size: 28px; font-weight: 800; letter-spacing: .04em; text-transform: uppercase; }}
 .selo.standard {{ border: 3px solid rgba(246,243,234,.75); color: {CREME}; }}
@@ -70,8 +79,10 @@ h1 {{ font-size: 76px; font-weight: 800; letter-spacing: -.025em; line-height: 1
 .frase {{ font-size: 30px; line-height: 1.35; color: #CFDBD2; margin-top: 26px; max-width: 760px; }}
 .numero {{ font-size: 64px; font-weight: 800; color: {AMARELO}; margin-top: 22px; letter-spacing: -.02em; line-height: 1.05; }}
 .numero small {{ font-size: 34px; color: {CREME}; font-weight: 700; letter-spacing: 0; }}
-ul {{ list-style: none; padding: 0; margin-top: auto; display: flex; flex-direction: column; gap: 18px; }}
+ul {{ list-style: none; padding: 40px 0 0; margin-top: auto; display: flex; flex-direction: column; gap: 16px; }}
 li {{ display: flex; align-items: center; gap: 18px; font-size: 31px; font-weight: 500; line-height: 1.25; }}
+.inclusos {{ margin-top: 30px; padding-top: 22px; border-top: 2px solid rgba(246,243,234,.14); font-size: 22px;
+  font-weight: 500; color: #CFDBD2; letter-spacing: .01em; }}
 li::before {{ content: ''; flex: none; width: 40px; height: 40px; border-radius: 50%; background: {AMARELO}
   url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath d='M6 12.5l4 4 8-9' fill='none' stroke='%231D2A23' stroke-width='3' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E") center/26px no-repeat; }}
 """
@@ -82,7 +93,7 @@ def _icone(chave: str) -> str:
 
 
 def _pagina(icones: list[str], titulo: str, selo: str = "", frase: str = "", numero: str = "",
-            beneficios: list[str] = ()) -> str:
+            beneficios: list[str] = (), inclusos: str = "") -> str:
     e = html.escape
     classe_icones = "icones varios" if len(icones) > 1 else "icones"
     selo_html = f'<span class="selo {e(selo.lower())}">{"★ " if selo == "Premium" else ""}{e(selo)}</span>' if selo else ""
@@ -94,13 +105,18 @@ def _pagina(icones: list[str], titulo: str, selo: str = "", frase: str = "", num
   {f'<div class="numero">{numero}</div>' if numero else ''}
   {f'<p class="frase">{e(frase)}</p>' if frase else ''}
   <ul>{''.join(f'<li>{e(b)}</li>' for b in beneficios)}</ul>
+  {f'<p class="inclusos">{e(inclusos)}</p>' if inclusos else ''}
 </div></body></html>"""
 
 
 def artes() -> dict[str, str]:
     saida = {}
     for nome, (icone, titulo, frase), nivel, beneficios in AVULSOS:
-        saida[nome] = _pagina([icone], titulo, nivel, frase, beneficios=beneficios)
+        inclusos = INCLUSOS if icone in ("whatsapp", "site") else ""
+        saida[nome] = _pagina([icone], titulo, nivel, frase, beneficios=beneficios, inclusos=inclusos)
+    for nome, nivel, beneficios in PACOTE_OFERTAS:
+        saida[nome] = _pagina(["whatsapp", "site"], "Pacote Ofertas", nivel, "Bot de WhatsApp + Meu site numa assinatura só.",
+                              beneficios=beneficios, inclusos=INCLUSOS)
     for nome, numero in FAIXAS:
         destaque = "Notas ilimitadas<br><small>por mês</small>" if numero is None else f"Até {numero} notas<br><small>por mês</small>"
         saida[f"nfse-{nome}"] = _pagina(["notas"], NOTAS[1], numero=destaque, beneficios=BENEFICIOS_NOTAS)
