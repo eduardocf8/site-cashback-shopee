@@ -3,13 +3,13 @@
 {% block titulo %}Resultados{% endblock %}
 {% block conteudo %}
 <header class="cabecalho">
-  <div><h1>Resultados</h1><p>{% if shopee_conectada %}{% for chave, nome in presets %}{% if chave == periodo.chave and chave != "personalizado" %}{{ nome }} · {% endif %}{% endfor %}{{ periodo.descricao }}{% else %}{{ periodo.descricao }}{% endif %}</p></div>
+  <div><h1>Resultados</h1><p>{% if shopee_conectada %}{% for chave, nome in presets %}{% if chave == periodo.chave and chave != "personalizado" %}{{ nome }} · {% endif %}{% endfor %}{{ periodo.descricao }}{% else %}Quanto você vende e ganha como afiliado Shopee, por período.{% endif %}</p></div>
   {% if shopee_conectada %}{% include "painel/_sincronizacao.html" %}{% endif %}
 </header>
 {% if conta.beta_campanhas_meta %}<p class="pequeno" style="margin:12px 0 0"><a href="{% url 'painel_campanhas_meta' %}"><strong>Campanhas da Meta</strong></a> <small class="selo-canal">Beta</small> · o lucro de cada campanha do Facebook e do Instagram</p>{% endif %}
 
 {% if not shopee_conectada %}
-  {% include "painel/_conectar_shopee.html" %}
+  {% include "painel/_conectar_shopee.html" with tela="resultados" %}
 {% else %}
 {# Filtros da aba inteira: período e origem, cada um numa linha (no celular, cada linha rola de lado). #}
 <section class="card barra-filtros" aria-label="Filtros">

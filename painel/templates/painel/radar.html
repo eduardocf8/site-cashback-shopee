@@ -8,7 +8,7 @@
 </header>
 
 {% if not shopee_conectada %}
-  {% include "painel/_conectar_shopee.html" %}
+  {% include "painel/_conectar_shopee.html" with tela="radar" %}
 {% else %}
 <section class="card filtros-radar" aria-labelledby="titulo-filtros-radar">
   <h2 id="titulo-filtros-radar" class="sr">Filtros</h2>

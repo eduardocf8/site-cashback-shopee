@@ -15,6 +15,11 @@
 </section>
 {% elif shopee_conectada %}
 <p class="suave pequeno">Cadastre a meta de um mês para acompanhar aqui a prévia, o fechamento e o resultado final de cada um.</p>
+{% else %}
+<div class="aviso aviso-info aviso-conectar">
+  <span>Você já pode cadastrar as faixas. Para acompanhar a prévia, o fechamento e o resultado de cada mês, conecte sua conta da Shopee.</span>
+  <a class="botao botao-principal botao-pequeno" href="{% url 'painel_configuracoes' %}">Conectar a Shopee</a>
+</div>
 {% endif %}
 
 <div class="form-metas{% if situacao_proximo %} duas-colunas{% endif %}">
@@ -44,8 +49,8 @@
               {% for l in linhas %}
                 <tr>
                   <td><label class="sr" for="percentual_{{ l.n }}">Percentual da faixa {{ l.n }}</label><input id="percentual_{{ l.n }}" name="percentual_{{ l.n }}" inputmode="decimal" value="{{ l.percentual|floatformat:'0' }}"></td>
-                  <td><label class="sr" for="faturamento_{{ l.n }}">Faturamento da faixa {{ l.n }}</label><input id="faturamento_{{ l.n }}" name="faturamento_{{ l.n }}" inputmode="decimal" placeholder="Ex: 30.000" value="{% if l.faturamento %}{{ l.faturamento|floatformat:'-2g' }}{% endif %}"></td>
-                  <td><label class="sr" for="bonus_{{ l.n }}">Bônus da faixa {{ l.n }}</label><input id="bonus_{{ l.n }}" name="bonus_{{ l.n }}" inputmode="decimal" placeholder="Ex: 300" value="{% if l.bonus %}{{ l.bonus|floatformat:'-2g' }}{% endif %}"></td>
+                  <td><label class="sr" for="faturamento_{{ l.n }}">Faturamento da faixa {{ l.n }}</label><input id="faturamento_{{ l.n }}" name="faturamento_{{ l.n }}" inputmode="decimal" placeholder="{% if l.n == 1 %}Ex: 30.000{% else %}Em branco: calculado{% endif %}" value="{% if l.faturamento %}{{ l.faturamento|floatformat:'-2g' }}{% endif %}"></td>
+                  <td><label class="sr" for="bonus_{{ l.n }}">Bônus da faixa {{ l.n }}</label><input id="bonus_{{ l.n }}" name="bonus_{{ l.n }}" inputmode="decimal" placeholder="Ex: {% if l.n == 1 %}300{% elif l.n == 2 %}500{% else %}800{% endif %}" value="{% if l.bonus %}{{ l.bonus|floatformat:'-2g' }}{% endif %}"></td>
                 </tr>
               {% endfor %}
             </tbody>

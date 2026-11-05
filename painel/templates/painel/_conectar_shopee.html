@@ -1,6 +1,37 @@
-<section class="card pagina-modulo">
-  <span class="circulo">{% include "painel/_icone.html" with caminho=icones.resultados %}</span>
-  <h2>Conecte sua conta da Shopee</h2>
-  <p class="suave">Seus resultados vêm da API de afiliados da Shopee. Cole o AppID e o Secret uma vez e o painel cuida do resto.</p>
-  <a class="botao botao-principal" href="{% url 'painel_configuracoes' %}">Conectar agora</a>
+{# Sem a Shopee conectada: o que a tela mostra depois de conectar e o caminho para quem ainda não tem o AppID. #}
+{# tela: "resultados", "radar" ou "conversor" (muda o título e a lista do que aparece). #}
+<section class="card pagina-modulo conectar-shopee">
+  <span class="circulo">{% if tela == "radar" %}{% include "painel/_icone.html" with caminho=icones.radar %}{% elif tela == "conversor" %}{% include "painel/_icone.html" with caminho=icones.conversor %}{% else %}{% include "painel/_icone.html" with caminho=icones.resultados %}{% endif %}</span>
+  {% if tela == "radar" %}
+    <h2>Conecte sua conta da Shopee para usar o Radar de ofertas</h2>
+    <p class="suave">As ofertas vêm direto da API de afiliados da Shopee. Você cola o AppID e o Secret uma vez e o Radar já mostra os produtos com o seu link.</p>
+    <ul class="o-que-aparece">
+      <li><span class="icone-redondo">{% include "painel/_icone.html" with caminho=icones.resultados %}</span><span><strong>Os mais vendidos, os de maior comissão e os com mais desconto</strong><small>de todas as categorias, atualizados todo dia</small></span></li>
+      <li><span class="icone-redondo">{% include "painel/_icone.html" with caminho=icones.metas %}</span><span><strong>Quanto você ganha em cada venda</strong><small>com a comissão extra do vendedor, quando tem</small></span></li>
+      <li><span class="icone-redondo">{% include "painel/_icone.html" with caminho=icones.configuracoes %}</span><span><strong>Filtros de preço, desconto e avaliação</strong><small>para achar a oferta certa</small></span></li>
+      <li><span class="icone-redondo">{% include "painel/_icone.html" with caminho=icones.copiar %}</span><span><strong>O seu link de afiliado em um clique</strong><small>pronto para copiar e divulgar</small></span></li>
+    </ul>
+  {% elif tela == "conversor" %}
+    <h2>Conecte sua conta da Shopee para converter seus links</h2>
+    <p class="suave">Os links são gerados pela API de afiliados da Shopee. Você cola o AppID e o Secret uma vez e o Conversor troca tudo pelo seu link.</p>
+    <ul class="o-que-aparece">
+      <li><span class="icone-redondo">{% include "painel/_icone.html" with caminho=icones.conversor %}</span><span><strong>Vários links de uma vez</strong><small>cole a mensagem inteira, com o texto e os links</small></span></li>
+      <li><span class="icone-redondo">{% include "painel/_icone.html" with caminho=icones.copiar %}</span><span><strong>O texto fica igual</strong><small>só os links da Shopee viram o seu link de afiliado</small></span></li>
+      <li><span class="icone-redondo">{% include "painel/_icone.html" with caminho=icones.metas %}</span><span><strong>Sub ID em cada link</strong><small>para ver em Resultados de onde veio a venda</small></span></li>
+      <li><span class="icone-redondo">{% include "painel/_icone.html" with caminho=icones.enviar %}</span><span><strong>Pronto para encaminhar</strong><small>copie ou mande direto no grupo pelo bot</small></span></li>
+    </ul>
+  {% else %}
+    <h2>Conecte sua conta da Shopee para ver seus resultados</h2>
+    <p class="suave">Os números vêm direto da API de afiliados da Shopee. Você cola o AppID e o Secret uma vez e o painel atualiza sozinho.</p>
+    <ul class="o-que-aparece">
+      <li><span class="icone-redondo">{% include "painel/_icone.html" with caminho=icones.resultados %}</span><span><strong>Faturamento, comissão e pedidos</strong><small>do dia, da semana ou do mês</small></span></li>
+      <li><span class="icone-redondo">{% include "painel/_icone.html" with caminho=icones.metas %}</span><span><strong>De onde veio cada venda</strong><small>bot, site, conversor e Sub IDs</small></span></li>
+      <li><span class="icone-redondo">{% include "painel/_icone.html" with caminho=icones.carrosseis %}</span><span><strong>Os produtos que mais vendem</strong><small>com a comissão de cada um</small></span></li>
+      <li><span class="icone-redondo">{% include "painel/_icone.html" with caminho=icones.sino %}</span><span><strong>Os horários em que seus clientes compram</strong><small>para mandar oferta na hora certa</small></span></li>
+    </ul>
+  {% endif %}
+  <div class="acoes-conectar">
+    <a class="botao botao-principal" href="{% url 'painel_configuracoes' %}">Conectar a Shopee</a>
+    <a class="pequeno" href="{% url 'painel_configuracoes' %}#titulo-shopee">Ainda não tem o AppID? Veja como liberar</a>
+  </div>
 </section>

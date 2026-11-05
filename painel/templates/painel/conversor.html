@@ -7,7 +7,7 @@
 </header>
 
 {% if not shopee_conectada %}
-  {% include "painel/_conectar_shopee.html" %}
+  {% include "painel/_conectar_shopee.html" with tela="conversor" %}
 {% else %}
 <div class="duas-colunas conversor">
   <section class="card" aria-labelledby="titulo-colar">
