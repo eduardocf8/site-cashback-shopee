@@ -1228,3 +1228,122 @@ fieldset.sem-borda > legend { padding: 0; margin-bottom: 8px; }
 .marcar.premium-travado input { cursor: not-allowed; }
 .marcar.premium-travado .titulo-travado { opacity: .6; }
 .marcar .selo-premium { margin-left: 6px; padding: 1px 7px; border-radius: 999px; background: var(--amarelo); color: #3a2a00; font-size: 11px; font-weight: 700; white-space: nowrap; }
+
+/* ===================================================================================================
+   Componentes compartilhados (revisão de layout de 11/2026). Use estes em vez de criar variantes:
+   - Abas de seção:  <nav class="abas" aria-label="..."><a class="aba ativo" aria-current="page">Texto <i class="pt ok"></i></a>
+                     <span class="abas-sep"></span> ...</nav>  (pt = pontinho de estado; abas-sep = separa famílias)
+   - Situação:       <span class="situacao">Ligada</span> · <span class="situacao parada">Pausada</span> · <span class="situacao erro">Com erro</span>
+   - Pílula de estado no cabeçalho (link opcional): <a class="pilula-estado ok"><i class="ponto"></i>WhatsApp conectado</a> (ok | parado | erro)
+   - Chave liga/desliga: <label class="chave-liga"><input type="checkbox"> Texto</label>
+   - Excluir discreto: <button class="botao-excluir">Excluir</button>
+   - Passos (lista com progresso): <div class="passos-topo">…<div class="passos-barra"><div style="width:33%"></div></div></div>
+       <ol class="passos-lista"><li class="passo feito|atual"><span class="passo-num">1</span><div class="passo-texto">
+       <strong>Título</strong><small>ajuda</small></div><a class="botao ...">Ação</a></li></ol>
+   - Etapa numerada (cartão de formulário): <section class="card etapa"><header class="etapa-topo"><span class="etapa-num">1</span>
+       <div><h2>Título</h2><small>ajuda</small></div></header><div class="etapa-corpo">…</div></section>
+     Recolhível: <details class="card etapa" open><summary class="etapa-topo">…<span class="etapa-resumo">o que está valendo</span>
+       <span class="etapa-abrir">Editar</span></summary><div class="etapa-corpo">…</div></details>
+   - Números do mês: <div class="numeros-mes">…cartões…</div> (4 colunas; 2x2 no celular)
+   =================================================================================================== */
+.abas { display: flex; align-items: stretch; gap: 2px; margin: -4px 0 16px; border-bottom: 1px solid var(--borda);
+  overflow-x: auto; scrollbar-width: none; -webkit-overflow-scrolling: touch; }
+.abas::-webkit-scrollbar { display: none; }
+.aba { flex: none; display: inline-flex; align-items: center; gap: 7px; min-height: 44px; padding: 0 13px; margin-bottom: -1px;
+  color: var(--suave); text-decoration: none; font-weight: 500; font-size: 14.5px; white-space: nowrap;
+  border-bottom: 3px solid transparent; border-radius: 8px 8px 0 0; }
+.aba:hover { color: var(--texto); background: rgba(31, 58, 46, .04); }
+.aba.ativo { color: var(--texto); font-weight: 700; border-bottom-color: var(--verde); }
+.abas-sep { flex: none; width: 1px; background: var(--borda); margin: 12px 6px; }
+.aba .pt { width: 7px; height: 7px; border-radius: 999px; background: var(--borda-forte); flex: none; }
+.aba .pt.ok { background: var(--bom); }
+.aba .pt.erro { background: var(--perigo); }
+@media (max-width: 900px) {
+  .abas { margin-left: -16px; margin-right: -16px; padding: 0 16px; gap: 0;
+    -webkit-mask-image: linear-gradient(90deg, #000 86%, transparent); mask-image: linear-gradient(90deg, #000 86%, transparent); }
+  .aba { padding: 0 12px; font-size: 14.5px; }
+}
+
+.situacao { display: inline-flex; align-items: center; gap: 7px; font-size: 13px; font-weight: 700; color: var(--bom-tinta); white-space: nowrap; }
+.situacao::before { content: ""; width: 8px; height: 8px; border-radius: 999px; background: var(--bom); box-shadow: 0 0 0 3px var(--bom-suave); flex: none; }
+.situacao.parada { color: var(--suave); }
+.situacao.parada::before { background: var(--borda-forte); box-shadow: 0 0 0 3px var(--chip); }
+.situacao.erro { color: var(--perigo); }
+.situacao.erro::before { background: var(--perigo); box-shadow: 0 0 0 3px var(--perigo-suave); }
+
+.pilula-estado { display: inline-flex; align-items: center; gap: 8px; min-height: 32px; padding: 0 13px; border-radius: 999px;
+  font-size: 13px; font-weight: 700; text-decoration: none; border: 1px solid transparent; white-space: nowrap; }
+.pilula-estado .ponto { width: 8px; height: 8px; border-radius: 999px; flex: none; background: var(--borda-forte); }
+.pilula-estado.ok { background: var(--bom-suave); color: var(--bom-tinta); }
+.pilula-estado.ok .ponto { background: var(--bom); }
+.pilula-estado.parado { background: var(--chip); color: var(--suave); }
+.pilula-estado.erro { background: var(--perigo-suave); color: var(--perigo); }
+.pilula-estado.erro .ponto { background: var(--perigo); }
+a.pilula-estado:hover { border-color: currentColor; }
+.pilula-estado small { font-weight: 500; opacity: .85; font-size: 12.5px; }
+
+.chave-liga { display: inline-flex; align-items: center; gap: 9px; font-size: 14px; font-weight: 600; cursor: pointer; }
+.chave-liga input { -webkit-appearance: none; appearance: none; width: 40px; height: 24px; border-radius: 999px; background: var(--borda-forte);
+  position: relative; cursor: pointer; margin: 0; flex: none; transition: background .15s; }
+.chave-liga input::after { content: ""; position: absolute; top: 3px; left: 3px; width: 18px; height: 18px; border-radius: 50%; background: #fff;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, .25); transition: transform .15s; }
+.chave-liga input:checked { background: var(--bom); }
+.chave-liga input:checked::after { transform: translateX(16px); }
+.chave-liga input:focus-visible { outline: 3px solid var(--amarelo); outline-offset: 2px; }
+
+.botao-excluir { background: none; border: 0; padding: 4px; font: inherit; font-size: 13px; font-weight: 700; color: var(--perigo); cursor: pointer; }
+.botao-excluir:hover { text-decoration: underline; }
+
+.passos-topo { display: grid; gap: 4px; }
+.passos-barra { height: 8px; border-radius: 999px; background: var(--trilho); margin: 10px 0 6px; overflow: hidden; }
+.passos-barra > div { height: 100%; background: var(--bom); border-radius: 999px; }
+.passos-lista { list-style: none; margin: 8px 0 0; padding: 0; display: grid; gap: 2px; }
+.passos-lista .passo { display: flex; align-items: center; gap: 14px; padding: 13px 12px; margin: 0 -12px; border-radius: 12px; }
+.passos-lista .passo + .passo { border-top: 1px solid var(--trilho); }
+.passo-num { width: 30px; height: 30px; border-radius: 999px; border: 1.5px solid var(--borda-forte); display: grid; place-items: center;
+  font-weight: 700; font-size: 13px; color: var(--suave); flex: none; }
+.passo-texto { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 1px; }
+.passo-texto small { font-size: 13px; color: var(--suave); }
+.passos-lista .passo.atual { background: var(--amarelo-suave); border-top-color: transparent; }
+.passos-lista .passo.atual + .passo { border-top-color: transparent; }
+.passos-lista .passo.atual .passo-num { background: var(--verde); border-color: var(--verde); color: #fff; }
+.passos-lista .passo.feito .passo-num { background: var(--bom-suave); border-color: var(--bom-suave); color: var(--bom-tinta); font-size: 0; }
+.passos-lista .passo.feito .passo-num::after { content: "✓"; font-size: 14px; }
+.passos-lista .passo.feito strong { color: var(--suave); font-weight: 500; }
+.passos-lista .passo.feito small { display: none; }
+.passos-lista .botao { white-space: nowrap; }
+@media (max-width: 900px) {
+  .passos-lista .passo:not(.atual) small { display: none; }
+  .passos-lista .passo.atual { flex-wrap: wrap; }
+  .passos-lista .passo.atual .passo-texto { width: calc(100% - 44px); flex: none; }
+  .passos-lista .passo.atual .botao { width: calc(100% - 44px); margin-left: 44px; }
+}
+
+.etapa { padding: 0; }
+.etapa-topo { display: grid; grid-template-columns: 32px minmax(0, 1fr) auto; align-items: center; gap: 14px; padding: 16px 20px; }
+.etapa-topo h2 { margin: 0; font-size: 16px; line-height: 1.3; }
+.etapa-topo small, .etapa-resumo { display: block; color: var(--suave); font-size: 13.5px; font-weight: 400; line-height: 1.4; }
+.etapa-num { width: 32px; height: 32px; border-radius: 999px; display: grid; place-items: center; font-weight: 800; font-size: 14px;
+  background: var(--verde); color: #fff; }
+.etapa.feita .etapa-num { background: var(--bom-suave); color: var(--bom-tinta); }
+.etapa-corpo { padding: 4px 20px 22px 66px; display: flex; flex-direction: column; gap: 16px; }
+details.etapa > summary { list-style: none; cursor: pointer; border-radius: var(--raio); }
+details.etapa > summary::-webkit-details-marker { display: none; }
+details.etapa .etapa-num { background: var(--chip); color: var(--verde); }
+details.etapa[open] > summary { border-bottom: 1px solid var(--trilho); border-radius: var(--raio) var(--raio) 0 0; }
+details.etapa[open] .etapa-resumo { display: none; }
+details.etapa[open] .etapa-corpo { padding-top: 18px; }
+.etapa-abrir { display: inline-flex; align-items: center; gap: 6px; font-size: 13px; font-weight: 700; color: var(--verde);
+  border: 1px solid var(--borda); border-radius: 999px; padding: 6px 12px; background: var(--card); white-space: nowrap; }
+.etapa-abrir::after { content: ""; width: 7px; height: 7px; border-right: 2px solid currentColor; border-bottom: 2px solid currentColor;
+  transform: rotate(45deg) translate(-2px, -2px); }
+details.etapa[open] .etapa-abrir::after { transform: rotate(-135deg) translate(-2px, -2px); }
+@media (max-width: 700px) {
+  .etapa-topo { grid-template-columns: 30px minmax(0, 1fr) auto; gap: 12px; padding: 14px 16px; }
+  .etapa-num { width: 30px; height: 30px; }
+  .etapa-corpo { padding: 4px 16px 18px; }
+  details.etapa .etapa-abrir { font-size: 0; padding: 0; border: 0; background: none; width: 22px; height: 22px; justify-content: center; }
+}
+
+.numeros-mes { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 12px; }
+@media (max-width: 900px) { .numeros-mes { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; } }
