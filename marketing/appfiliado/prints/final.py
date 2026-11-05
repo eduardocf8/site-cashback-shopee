@@ -16,6 +16,9 @@ Garrafa Térmica 1L Inox
 👉 https://shopee.com.br/Garrafa-Termica-i.555.112233
 
 Entre no nosso grupo: https://chat.whatsapp.com/AbCdEf123"""
+import datetime as _dt
+_hoje = _dt.date.today()
+MES_PASSADO = (_hoje.replace(day=1) - _dt.timedelta(days=1)).strftime("%Y-%m")
 CSS = ".menu{display:none!important}.app{display:block!important}.conteudo{max-width:none!important}"
 OCULTAR = """(()=>{document.querySelectorAll('*').forEach(e=>{const s=getComputedStyle(e); if((s.position==='fixed'||s.position==='sticky') && /salvar/i.test(e.textContent||'') && e.offsetHeight<80) e.style.display='none';});})()"""
 LIMPA = "(()=>{const w=document.createTreeWalker(document.body,NodeFilter.SHOW_TEXT);let n;while(n=w.nextNode()){n.nodeValue=n.nodeValue.replace('http://localhost:8765/s/achadinhosdabia/','https://achadinhosdabia.appfiliado.com.br').replace('localhost:8765/s/','https://');}})()"
@@ -54,9 +57,9 @@ def antes_dos_cartoes(pg, tag):
 # nome, url, ação antes, onde começa, onde termina (função) ou altura fixa
 SHOTS = [
  ("inicio", "/", None, None, None),
- ("resultados", "/resultados/?periodo=mes", None, None, antes_do_titulo("^Detalhe por dia")),
- ("resultados-produtos", "/resultados/?periodo=mes", None, topo("#produtos"), fim_titulos("^Vendas do período")),
- ("metas", "/metas/", None, None, None),
+ ("resultados", "/resultados/?periodo=30dias", None, None, antes_do_titulo("^Detalhe por dia")),
+ ("resultados-produtos", "/resultados/?periodo=30dias", None, topo("#produtos"), fim_titulos("^Vendas do período")),
+ ("metas", "/metas/?mes=" + MES_PASSADO, None, None, None),  # o mês em fechamento: validado, pendente e até onde chega
  ("radar", "/radar/", RADAR_TXT, None, antes_dos_cartoes),
  ("radar-produtos", "/radar/", None, cartoes, fim_cartoes(8, 3)),
  ("conversor", "/conversor/", converter, None, None),
@@ -80,6 +83,9 @@ def tirar(browser, vp, dsf, tag, indice):
         elif isinstance(acao, str) and acao != "espera": pg.evaluate(acao)
         pg.wait_for_timeout(300)
         pg.evaluate(OCULTAR); pg.evaluate(LIMPA); pg.wait_for_timeout(250)
+        # fotos "lazy" fora da tela não carregam no print da página inteira: carrega todas antes
+        pg.evaluate("document.querySelectorAll('img[loading=lazy]').forEach(i=>i.loading='eager')")
+        pg.wait_for_function("[...document.images].every(i=>i.complete)", timeout=8000)
         y0 = max(0, int(onde(pg))) if onde else 0
         png = pg.screenshot(full_page=True)
         im = Image.open(io.BytesIO(png)).convert("RGB")
