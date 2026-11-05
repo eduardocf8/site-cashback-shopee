@@ -99,10 +99,12 @@ class TestTelaDoRadar(BasePainel):
         self.assertContains(self.client.get("/radar/"), "A atualização dos produtos está atrasada")
 
     def test_botoes_conforme_o_plano(self):
-        resposta = self.client.get("/radar/")  # tem o Bot (sem WhatsApp conectado), não tem Carrosséis
+        resposta = self.client.get("/radar/")  # tem o Bot (sem WhatsApp conectado), não tem o Estúdio
         self.assertContains(resposta, "Conecte o WhatsApp para mandar daqui")
         self.assertContains(resposta, "Alerta</button>")
-        self.assertContains(resposta, 'title="Gerar carrossel: dos Carrosséis"')
+        # o gerador de carrosséis não é mais vendido: o cadeado aponta pro Estúdio Instagram
+        self.assertContains(resposta, 'title="Criar post: do Estúdio Instagram"')
+        self.assertNotContains(resposta, "dos Carrosséis")
         self.conta.modulos_cortesia = "carrosseis"
         self.conta.save()
         resposta = self.client.get("/radar/")

@@ -58,12 +58,14 @@ class Base(TestCase):
 
 
 class TestSoParaQuemTesta(Base):
-    def test_sem_a_chave_nada_aparece(self):
+    def test_sem_a_chave_as_paginas_nao_abrem(self):
         c = conta(beta=False)
         self.entrar(c)
-        self.assertNotContains(self.client.get("/"), "Estúdio Instagram")
+        # Quem tem os códigos (os do antigo gerador de carrosséis) vê o Estúdio como "Em breve" nas listas,
+        # mas as páginas dele só abrem com a chave de teste (ou depois do lançamento).
+        self.assertContains(self.client.get("/"), "Estúdio Instagram")
+        self.assertContains(self.client.get("/m/estudio_instagram/"), "já faz parte do seu plano")
         self.assertEqual(self.client.get("/estudio/").status_code, 404)
-        self.assertEqual(self.client.get("/m/estudio_instagram/").status_code, 404)
         post = PostInstagram.objects.create(conta=c, slides=[{"tipo": "capa", "fundo": {"modo": "cor", "cor": "tema"}}])
         for url in (f"/estudio/{post.pk}/", "/estudio/minha-marca/", "/estudio/imagens/"):
             self.assertEqual(self.client.get(url).status_code, 404, url)
@@ -81,9 +83,9 @@ class TestSoParaQuemTesta(Base):
     def test_lancamento_troca_carrosseis_pelo_estudio_e_automacoes(self):
         estudio, automacoes, carrosseis = (mod.POR_SLUG[s] for s in ("estudio_instagram", "automacoes_instagram", "carrosseis"))
         testa, cliente = SimpleNamespace(beta_estudio_instagram=True), SimpleNamespace(beta_estudio_instagram=False)
-        # antes do lançamento: quem testa já vê como vai ficar; o cliente segue com o Carrosséis
+        # antes do lançamento: quem testa já vê como vai ficar; o Carrosséis saiu das listas para todos
         self.assertEqual([mod.ve_beta(i, testa) for i in (estudio, automacoes, carrosseis)], [True, True, False])
-        self.assertEqual([mod.ve_beta(i, cliente) for i in (estudio, automacoes, carrosseis)], [False, False, True])
+        self.assertEqual([mod.ve_beta(i, cliente) for i in (estudio, automacoes, carrosseis)], [False, False, False])
         with self.settings(APPFILIADO_LANCAMENTO_INSTAGRAM=True):
             self.assertEqual([mod.ve_beta(i, cliente) for i in (estudio, automacoes, carrosseis)], [True, True, False])
 
