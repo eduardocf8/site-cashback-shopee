@@ -171,7 +171,7 @@
   // A prévia mostra o site na largura de um celular (390px) e reduz para caber na moldura.
   var celular = previa && previa.parentNode;
   function encaixar() {
-    if (!celular) return;
+    if (!celular || !celular.clientWidth) return;  // fechada (celular): encaixa quando abrir
     var largura = celular.clientWidth, escala = largura / 390;
     previa.style.width = "390px";
     previa.style.height = (celular.clientHeight / escala) + "px";
@@ -180,4 +180,64 @@
   }
   encaixar();
   if (window.ResizeObserver && celular) new ResizeObserver(encaixar).observe(celular);
+
+  // Celular: a prévia (o mesmo iframe, que continua mudando ao vivo) abre por cima do editor
+  // pelo "Ver prévia" da faixa do Salvar e fecha no X, no fundo escuro ou com Esc.
+  var cartaoPrevia = document.getElementById("previa-site");
+  var abrirPrevia = document.querySelector("[data-abrir-previa]");
+  var fundoPrevia = document.querySelector(".previa-fundo");
+  function mostrarPrevia(abrir) {
+    if (!cartaoPrevia) return;
+    cartaoPrevia.classList.toggle("aberta", abrir);
+    if (fundoPrevia) fundoPrevia.hidden = !abrir;
+    document.documentElement.classList.toggle("previa-aberta", abrir);
+    if (abrirPrevia) abrirPrevia.setAttribute("aria-expanded", abrir ? "true" : "false");
+    if (abrir) {
+      encaixar();
+      var fechar = cartaoPrevia.querySelector("button[data-fechar-previa]");
+      if (fechar) fechar.focus();
+    } else if (abrirPrevia) {
+      abrirPrevia.focus();
+    }
+  }
+  if (abrirPrevia) abrirPrevia.addEventListener("click", function () { mostrarPrevia(true); });
+  document.querySelectorAll("[data-fechar-previa]").forEach(function (el) {
+    el.addEventListener("click", function () { mostrarPrevia(false); });
+  });
+  document.addEventListener("keydown", function (e) {
+    if (e.key === "Escape" && cartaoPrevia && cartaoPrevia.classList.contains("aberta")) mostrarPrevia(false);
+  });
+  // Voltou a ficar largo (girou o tablet, por ex.): a prévia volta pra coluna do lado.
+  if (window.matchMedia) {
+    var largo = window.matchMedia("(min-width: 901px)");
+    var aoMudar = function () { if (largo.matches && cartaoPrevia && cartaoPrevia.classList.contains("aberta")) mostrarPrevia(false); };
+    if (largo.addEventListener) largo.addEventListener("change", aoMudar);
+  }
+
+  // Índice das partes do editor: marca a parte que está na tela enquanto a pessoa rola.
+  var indice = document.querySelector(".secoes-site");
+  if (indice) {
+    var chips = Array.prototype.slice.call(indice.querySelectorAll("a.chip"));
+    var partes = chips.map(function (c) { return document.getElementById(c.getAttribute("href").slice(1)); });
+    var marcada = null, agendado = false;
+    var marcar = function () {
+      agendado = false;
+      var limite = indice.getBoundingClientRect().bottom + 24, atual = 0;
+      partes.forEach(function (parte, i) { if (parte && parte.getBoundingClientRect().top <= limite) atual = i; });
+      // No fim da página a última parte pode não chegar no topo: vale a que está aparecendo.
+      if (window.innerHeight + window.scrollY >= document.documentElement.scrollHeight - 4) atual = partes.length - 1;
+      if (atual === marcada) return;
+      marcada = atual;
+      chips.forEach(function (c, i) {
+        c.classList.toggle("ativo", i === atual);
+        if (i === atual) c.setAttribute("aria-current", "true"); else c.removeAttribute("aria-current");
+      });
+      var chip = chips[atual];  // no celular o índice rola de lado: deixa o chip marcado à vista
+      if (chip.offsetLeft < indice.scrollLeft || chip.offsetLeft + chip.offsetWidth > indice.scrollLeft + indice.clientWidth) {
+        indice.scrollLeft = chip.offsetLeft - 16;
+      }
+    };
+    window.addEventListener("scroll", function () { if (!agendado) { agendado = true; window.requestAnimationFrame(marcar); } }, { passive: true });
+    marcar();
+  }
 })();
