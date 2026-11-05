@@ -14,6 +14,9 @@
   <a class="aba{% if aba == 'resultados' %} ativo{% endif %}" href="{% url 'painel_whatsapp_resultados' %}"{% if aba == 'resultados' %} aria-current="page"{% endif %}>Resultados</a>
 </nav>
 {% endwith %}
-{# No celular as abas rolam de lado: já abre com a aba atual à vista. #}
+{# No celular as abas rolam de lado: já abre com a aba atual à vista; no fim da rolagem, sem o degradê. #}
 <script>(function () { var a = document.querySelector(".abas-bot .aba.ativo"), n = a && a.parentNode;
-  if (n && n.scrollWidth > n.clientWidth) n.scrollLeft = a.offsetLeft - n.offsetLeft - (n.clientWidth - a.offsetWidth) / 2; })();</script>
+  if (!n || n.scrollWidth <= n.clientWidth) return;
+  n.scrollLeft = a.offsetLeft - n.offsetLeft - (n.clientWidth - a.offsetWidth) / 2;
+  function noFim() { n.classList.toggle("no-fim", n.scrollLeft + n.clientWidth >= n.scrollWidth - 2); }
+  n.addEventListener("scroll", noFim, { passive: true }); noFim(); })();</script>

@@ -51,18 +51,22 @@ def _passos_do_bot(conta, conexao, config, aba: str) -> dict | None:
     shopee = bool(conta.shopee_validado_em)
     zap = bool(conexao.conectado_em or conexao.estado == ConexaoWhatsApp.CONECTADO)
     grupos = bool(config and config.grupos)
+    lendo_qr = conexao.estado == ConexaoWhatsApp.AGUARDANDO_QR
     automacao = reverse("painel_whatsapp_ofertas")
     passos = [
         {"chave": "shopee", "titulo": "Conectar sua conta de afiliado da Shopee", "feito": shopee,
          "ajuda": "É com ela que o bot busca as ofertas e gera o seu link de afiliado.",
          "acao": "Conectar", "href": reverse("painel_configuracoes")},
         {"chave": "whatsapp", "titulo": "Conectar o WhatsApp pelo QR Code", "feito": zap,
-         "ajuda": "O Appfiliado entra como mais um aparelho conectado do seu WhatsApp, igual ao WhatsApp Web. "
-                  "Depois não precisa deixar computador nem navegador aberto.",
+         # Com o QR Code já na tela da Conexão, o passo só lembra de ler o código (sem botão).
+         "ajuda": ("Leia o QR Code da aba Conexão com o celular." if lendo_qr else
+                   "O Appfiliado entra como mais um aparelho conectado do seu WhatsApp, igual ao WhatsApp Web. "
+                   "Depois não precisa deixar computador nem navegador aberto."),
+         "sem_botao": lendo_qr and aba == "conexao",
          "acao": "Conectar WhatsApp", "href": reverse("painel_whatsapp")},
         {"chave": "grupos", "titulo": "Escolher os grupos que recebem as ofertas", "feito": grupos,
          "espera": "" if zap else "conectar o WhatsApp",
-         "ajuda": "Marque os grupos em “Onde enviar”, na Automação, e salve.",
+         "ajuda": "Na Automação, marque os grupos em “Onde enviar” e salve.",
          "acao": "Escolher", "href": automacao + "#onde-enviar"},
         {"chave": "ligar", "titulo": "Testar a busca e ligar as ofertas", "feito": False,
          "espera": "escolher os grupos" if not grupos else ("conectar a Shopee" if not shopee else ""),

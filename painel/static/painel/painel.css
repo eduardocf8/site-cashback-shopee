@@ -1357,6 +1357,7 @@ details.etapa[open] .etapa-abrir::after { transform: rotate(-135deg) translate(-
 .abas-bot .aba:first-child { padding-left: 4px; }
 .abas-bot .abas-sep { margin: 13px 5px; }
 @media (max-width: 900px) {
+  .abas-bot.no-fim { -webkit-mask-image: linear-gradient(90deg, transparent 0, #000 24px); mask-image: linear-gradient(90deg, transparent 0, #000 24px); }
   .cabecalho-bot { gap: 12px; }
   .cabecalho-bot .linha-titulo-bot { gap: 10px; }
   .cabecalho-bot .status-bot { gap: 6px; }
@@ -1594,8 +1595,8 @@ details.avancado-anuncio[open] > summary { margin-bottom: -2px; }
 .barra-salvar .aviso-mudou::before { content: ""; width: 8px; height: 8px; border-radius: 999px; background: var(--amarelo); box-shadow: 0 0 0 3px var(--amarelo-suave); }
 .barra-salvar.mudou .aviso-mudou { display: flex; }
 @media (max-width: 700px) {
-  .barra-salvar[data-aparece-ao-mudar] { transition: transform .2s ease; }
   .barra-salvar.esperando { transform: translateY(115%); box-shadow: none; }
+  .barra-salvar.mudou[data-aparece-ao-mudar] { transition: transform .2s ease; }
   .barra-salvar.mudou .aviso-mudou { flex: 1; }
   .barra-salvar.mudou .botao { flex: none; min-width: 140px; }
 }

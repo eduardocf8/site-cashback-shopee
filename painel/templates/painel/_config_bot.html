@@ -15,7 +15,7 @@
           <strong>{{ p.titulo }}</strong>
           {% if p.feito %}<span class="sr">(feito)</span>{% elif p.espera %}<small>Libera depois de {{ p.espera }}</small>{% elif p.atual %}<small>{{ p.ajuda }}</small>{% endif %}
         </div>
-        {% if not p.feito and not p.espera %}
+        {% if not p.feito and not p.espera and not p.sem_botao %}
           {% if p.chave == "whatsapp" and aba == "conexao" %}
             <form method="post" action="{% url 'painel_whatsapp_conectar' %}">{% csrf_token %}<button type="submit" class="botao {% if p.atual %}botao-principal{% else %}botao-escuro botao-pequeno{% endif %}">{{ p.acao }}</button></form>
           {% elif p.chave == "ligar" and aba == "ofertas" %}
