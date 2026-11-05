@@ -27,8 +27,10 @@ def _bloqueio(request, conta):
     situacao = mod.estado(item, conta.modulos_liberados())
     if situacao == "liberado":
         return None
+    # O gerador saiu do produto: quem não tem os códigos dele vê o convite do Estúdio Instagram (mesmos códigos).
+    estudio = mod.POR_SLUG["estudio_instagram"]
     return render(request, "painel/modulo.html", _contexto(
-        request, "carrosseis", item={**item, "icone_path": mod.ICONES["carrosseis"]}, situacao=situacao))
+        request, "carrosseis", item={**estudio, "icone_path": mod.ICONES[estudio["icone"]]}, situacao=situacao))
 
 
 def _do_dono(request, pk):

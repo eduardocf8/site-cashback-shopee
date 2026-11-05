@@ -1,14 +1,33 @@
 {% extends "painel/base_simples.html" %}
 {% block titulo %}Entrar{% endblock %}
 {% block conteudo %}
-<section class="card">
+<section class="card cartao-entrar">
   <h1>Entrar no painel</h1>
-  <p class="suave">Seus resultados, metas e automações de afiliado Shopee num lugar só. Use o e-mail da sua assinatura.</p>
+  <p class="suave">Seus resultados, metas e automações de afiliado Shopee num lugar só.</p>
   <form method="post" class="formulario" style="margin-top:20px">
     {% csrf_token %}
-    {% include "painel/_campos.html" %}
+    {% if form.non_field_errors %}<ul class="erros-form">{% for e in form.non_field_errors %}<li>{{ e }}</li>{% endfor %}</ul>{% endif %}
+    <div class="campo">
+      <label for="{{ form.email.id_for_label }}">{{ form.email.label }}</label>
+      {{ form.email }}
+      <span class="ajuda">O mesmo e-mail que você usou na compra.</span>
+      {% for e in form.email.errors %}<span class="erro">{{ e }}</span>{% endfor %}
+    </div>
+    <div class="campo">
+      <div class="rotulo-com-link">
+        <label for="{{ form.senha.id_for_label }}">{{ form.senha.label }}</label>
+        <a class="pequeno" href="{% url 'painel_esqueci_senha' %}">Esqueci a senha</a>
+      </div>
+      {{ form.senha }}
+      {% for e in form.senha.errors %}<span class="erro">{{ e }}</span>{% endfor %}
+    </div>
     <button type="submit" class="botao botao-principal">Entrar</button>
   </form>
+  {# Quem acabou de assinar ainda não tem senha: o mesmo caminho de "Esqueci a senha" cria a primeira. #}
+  <div class="primeiro-acesso">
+    <span class="divisa">Primeiro acesso?</span>
+    <a class="botao botao-claro" href="{% url 'painel_esqueci_senha' %}">Criar minha senha</a>
+    <span class="pequeno suave">Mandamos um link pro e-mail da compra e você escolhe a sua senha.</span>
+  </div>
 </section>
-<p class="links-abaixo"><a href="{% url 'painel_esqueci_senha' %}">Criar ou recuperar senha</a></p>
 {% endblock %}

@@ -1,0 +1,52 @@
+{% load static %}{# Exemplo estático de cada ferramenta, na página de quem ainda não tem (painel/modulo.html). #}
+{% if slug == "whatsapp" %}
+  <div class="previa-zap">
+    <div class="balao-zap">
+      <img src="{% static 'painel/exemplos/copo.jpg' %}" alt="" width="300" height="300">
+      <div class="previa-texto">🔥 <strong>Copo Térmico 1,2L com Canudo e Alça</strong><br><br>💰 <strong>R$ 39,90</strong> (30% OFF)<br>⭐ 4,9 | 8200 vendidos<br><br>🛒 Compre aqui: <span class="link-previa">https://s.shopee.com.br/8Kz1aQ</span></div>
+    </div>
+  </div>
+{% elif slug == "site" %}
+  <div class="exemplo-site" aria-hidden="true">
+    <span class="exemplo-avatar">A</span>
+    <strong>Achadinhos do dia</strong>
+    <span class="exemplo-frase">As melhores ofertas da Shopee, todo dia ✨</span>
+    <span class="exemplo-botao destaque">💬 Entrar no grupo de ofertas</span>
+    <span class="exemplo-botao">🛍️ Minha vitrine na Shopee</span>
+    <div class="exemplo-vitrine">
+      <span><img src="{% static 'painel/exemplos/copo.jpg' %}" alt=""><b>R$ 39,90</b><small>-30%</small></span>
+      <span><img src="{% static 'painel/exemplos/fone.jpg' %}" alt=""><b>R$ 79,90</b><small>-45%</small></span>
+    </div>
+  </div>
+{% elif slug == "estudio_instagram" %}
+  <div class="exemplo-post" aria-hidden="true">
+    <div class="exemplo-post-topo"><span class="exemplo-avatar pequeno">A</span><strong>@achadinhosdodia</strong></div>
+    <div class="exemplo-post-arte">
+      <img src="{% static 'painel/exemplos/fone.jpg' %}" alt="">
+      <span class="exemplo-post-selo">-45%</span>
+      <div class="exemplo-post-texto"><small>Achado do dia</small><strong>Fone de Ouvido Bluetooth</strong><b>R$ 79,90</b></div>
+    </div>
+    <div class="exemplo-post-pontos"><i class="ativo"></i><i></i><i></i><i></i></div>
+  </div>
+{% elif slug == "automacoes_instagram" %}
+  <div class="exemplo-conversa" aria-hidden="true">
+    <div class="exemplo-comentario"><span class="exemplo-avatar pequeno">M</span><div><strong>maria.compras</strong> QUERO</div></div>
+    <div class="exemplo-comentario resposta"><span class="exemplo-avatar pequeno">A</span><div><strong>achadinhosdodia</strong> @maria.compras te mandei o link na DM 💬</div></div>
+    <div class="exemplo-dm">
+      <small>DM de @achadinhosdodia</small>
+      <p>Oi, Maria! Aqui está o link do produto com o desconto de hoje 👇</p>
+      <span class="exemplo-dm-botao">Ver produto</span>
+    </div>
+  </div>
+{% elif slug == "notas" %}
+  <div class="exemplo-notas" aria-hidden="true">
+    <div class="exemplo-notas-topo"><strong>Outubro/2026</strong><span>4 notas emitidas</span></div>
+    <ul>
+      <li><span>Shopee</span><b>R$ 2.310,55</b><i>Emitida</i></li>
+      <li><span>Casa &amp; Cozinha</span><b>R$ 128,40</b><i>Emitida</i></li>
+      <li><span>Tech Plus Oficial</span><b>R$ 86,10</b><i>Emitida</i></li>
+      <li><span>Beauty Box</span><b>R$ 41,75</b><i>Emitida</i></li>
+    </ul>
+    <small>PDF e XML enviados por e-mail para cada vendedor.</small>
+  </div>
+{% endif %}

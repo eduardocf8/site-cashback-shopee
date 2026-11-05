@@ -109,7 +109,6 @@ svg.icone { width: 18px; height: 18px; flex: none; fill: none; stroke: currentCo
 .cartao-plano a:hover { color: #FFD964; }
 .conta-rodape { display: flex; align-items: center; justify-content: space-between; gap: 8px; padding: 0 8px; font-size: 12px; color: var(--menu-suave); }
 .conta-rodape span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.link-plano-movel { display: none; }
 .conta-rodape button {
   background: none; border: 1px solid var(--verde-2); color: var(--menu-texto);
   border-radius: 8px; padding: 6px 10px; font: inherit; font-weight: 700; cursor: pointer; min-height: 32px;
@@ -252,17 +251,7 @@ tr:last-child td { border-bottom: none; }
 /* ---------- Celular ---------- */
 @media (max-width: 900px) {
   .app { flex-direction: column; }
-  /* O menu "se desmancha" em três faixas (logo, módulos, conta) para a faixa dos módulos
-     ficar presa no topo ao rolar; logo e conta rolam junto com a página. */
-  .menu { display: contents; }
-  .menu > .marca, .menu > nav, .menu > .menu-rodape { background: var(--verde); color: var(--menu-texto); }
-  .menu > .marca { padding: 16px 24px 7px; }
-  .menu nav { flex-direction: row; overflow-x: auto; gap: 6px; padding: 7px 16px 8px; position: sticky; top: 0; z-index: 30; }
-  .menu > .menu-rodape { padding: 6px 16px 16px; }
-  .menu nav a { flex: none; }
-  .menu-rodape { margin-top: 0; }
-  .cartao-plano { display: none; }
-  .link-plano-movel { display: inline; color: var(--amarelo); font-weight: 700; text-decoration: none; }
+  /* O menu vira a barra fina do topo e uma tela por cima (bloco "geral" no fim do arquivo). */
   .conteudo { padding: 20px 16px 32px; }
   .duas-colunas { grid-template-columns: minmax(0, 1fr); }
   /* No celular, uma coluna só, na ordem: gráfico, meta, detalhe, Sub IDs. */
@@ -1730,3 +1719,227 @@ details.etapa[open] .etapa-abrir::after { transform: rotate(-135deg) translate(-
   .conversor .segmentado { width: 100%; }
   .conversor .segmentado span { min-width: 0; padding: 9px 12px; }
 }
+/* === geral (revisão de layout 11/2026) === */
+/* Selos de situação nunca quebram em duas linhas (Plano, Início, páginas das ferramentas). */
+.estado { white-space: nowrap; }
+
+/* Menu lateral separado por assunto; Configurações e Sugerir melhoria no rodapé, junto da conta. */
+.menu { gap: 18px; }
+.menu-topo { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+.menu .botao-fechar-menu { display: none; }
+.menu nav { gap: 1px; }
+.menu nav a { min-height: 38px; }
+.menu-secao { display: block; margin: 14px 10px 4px; font-size: 11px; font-weight: 700; letter-spacing: .08em;
+  text-transform: uppercase; color: #7F998A; }
+.menu-rodape { gap: 10px; }
+.menu nav.menu-extra { padding-top: 10px; border-top: 1px solid var(--verde-2); }
+.menu nav.menu-extra a { min-height: 36px; font-size: 13.5px; }
+.cartao-plano { padding: 11px 14px; gap: 2px; }
+.cartao-plano a[aria-current] { text-decoration: underline; }
+@media (min-width: 901px) and (max-height: 760px) {
+  .menu { gap: 10px; padding-top: 12px; padding-bottom: 12px; }
+  .menu nav a, .menu nav.menu-extra a { min-height: 32px; }
+  .menu-secao { margin: 8px 10px 2px; }
+  .menu-rodape { gap: 6px; }
+  .menu nav.menu-extra { padding-top: 6px; }
+  .cartao-plano { padding: 8px 12px; }
+  .cartao-plano strong { display: none; }
+}
+/* Celular: barra fina presa no topo (logo + Menu) e o menu inteiro numa tela por cima (painel/menu.js). */
+.topo-movel { display: none; }
+.botao-menu { display: inline-flex; align-items: center; gap: 8px; min-height: 42px; padding: 0 14px; border-radius: 10px;
+  border: 1px solid #3B5C4C; background: var(--verde-2); color: var(--menu-texto); font: inherit; font-weight: 700; font-size: 14px;
+  cursor: pointer; }
+.botao-menu svg.icone { width: 20px; height: 20px; }
+.botao-menu:focus-visible { outline: 3px solid var(--amarelo); outline-offset: 2px; }
+@media (max-width: 900px) {
+  .topo-movel { position: sticky; top: 0; z-index: 40; display: flex; align-items: center; justify-content: space-between; gap: 12px;
+    height: 58px; padding: 0 12px 0 16px; background: var(--verde); color: var(--menu-texto); box-shadow: 0 6px 16px -12px rgba(0, 0, 0, .5); }
+  .marca-movel { display: flex; align-items: center; gap: 10px; color: inherit; text-decoration: none; }
+  .marca-movel:hover { color: inherit; }
+  .marca-movel strong { font-size: 17px; letter-spacing: -0.01em; }
+  .topo-movel .logo, .menu .logo { width: 34px; height: 34px; border-radius: 10px; }
+  .topo-movel .logo svg, .menu .logo svg { width: 34px; height: 34px; }
+  .menu { display: none; }
+  .menu.aberto { display: flex; position: fixed; inset: 0; z-index: 60; width: auto; height: 100vh; height: 100dvh;
+    padding: 0 16px calc(20px + env(safe-area-inset-bottom, 0px)); gap: 6px; overflow-y: auto; overscroll-behavior: contain; }
+  .menu-topo { min-height: 58px; margin-right: -4px; }
+  .menu .marca { padding: 0; }
+  .menu .marca small { display: none; }
+  .menu .botao-fechar-menu { display: inline-flex; }
+  .menu nav a { min-height: 44px; font-size: 15px; }
+  .menu-secao { margin: 12px 10px 3px; }
+  .menu-rodape { margin-top: 8px; }
+  .menu nav.menu-extra a { min-height: 44px; font-size: 15px; }
+  .conta-rodape { font-size: 13px; }
+  html.menu-aberto, html.menu-aberto body { overflow: hidden; }
+}
+
+/* Início › primeiros passos (componente .passos-lista, com o próximo passo em destaque). */
+.cartao-passos .passos-topo h2 { margin: 0; font-size: 18px; }
+.cartao-passos .passos-barra { margin-bottom: 4px; }
+.passo-selo { font-size: 11px; font-weight: 700; letter-spacing: .04em; text-transform: uppercase; color: var(--amarelo-tinta); margin-bottom: 2px; }
+.cartao-passos .passos-ocultar { align-items: center; justify-content: flex-end; gap: 6px 18px; margin-top: 8px; }
+.cartao-passos .passos-ajuda { margin-right: auto; }
+.cartao-passos .passos-ocultar .link-botao { color: var(--texto); }
+@media (max-width: 900px) {
+  .cartao-passos .passos-ocultar { justify-content: flex-start; }
+  .cartao-passos .passos-ajuda { width: 100%; }
+}
+
+/* Início › suas ferramentas: o que cada uma faz e "Abrir" (ou "Conhecer"). No celular, uma linha por ferramenta. */
+.ferramentas-inicio h2 { font-size: 16px; margin: 4px 0 12px; }
+.grade-modulos { grid-template-columns: repeat(auto-fill, minmax(min(210px, 100%), 1fr)); gap: 12px; }
+.grade-modulos .modulo-card { padding: 16px; gap: 10px; }
+.grade-modulos .modulo-card:hover { box-shadow: 0 8px 20px -14px rgba(31, 58, 46, .45); }
+.modulo-texto { display: flex; flex-direction: column; gap: 2px; flex: 1; min-width: 0; }
+.modulo-texto strong { font-size: 15px; }
+.modulo-acao { display: inline-flex; align-items: center; gap: 2px; font-size: 13px; font-weight: 700; color: var(--verde); }
+.modulo-acao svg.icone { width: 15px; height: 15px; stroke-width: 2.4; }
+.modulo-card-fora { background: #FBFAF5; }
+.modulo-card-fora .icone-redondo { opacity: .6; }
+.modulo-card-fora .modulo-acao { color: var(--amarelo-tinta); }
+@media (max-width: 900px) {
+  .grade-modulos { gap: 0; background: var(--card); border: 1px solid var(--borda); border-radius: var(--raio); overflow: hidden; }
+  .grade-modulos .modulo-card { flex-direction: row; align-items: center; gap: 12px; border: 0; border-radius: 0;
+    border-bottom: 1px solid var(--trilho); padding: 12px 14px; }
+  .grade-modulos .modulo-card:last-child { border-bottom: 0; }
+  .grade-modulos .modulo-card:hover { box-shadow: none; background: var(--campo); }
+  .grade-modulos .modulo-card .topo .estado { display: none; }
+  .grade-modulos .modulo-acao { font-size: 0; gap: 0; }
+  .grade-modulos .modulo-acao svg.icone { width: 18px; height: 18px; color: var(--suave); }
+  .grade-modulos .modulo-card-fora .modulo-acao { font-size: 12px; }
+}
+
+/* Início › números do mês em 2x2 e os botões de atualizar lado a lado (celular). */
+@media (max-width: 900px) {
+  .cabecalho-inicio { gap: 10px; }
+  .cabecalho-inicio .sincronizacao { width: 100%; display: grid; grid-template-columns: minmax(0, 1fr); gap: 8px; }
+  .cabecalho-inicio .sincronizacao form { display: grid; grid-template-columns: minmax(0, 1.4fr) minmax(0, 1fr); gap: 8px; }
+  .cabecalho-inicio .sincronizacao .botao { padding: 0 10px; line-height: 1.2; text-align: center; }
+  .kpis-do-mes .kpis-topo { flex-direction: column; align-items: flex-start; }
+  .kpis-do-mes .kpis { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
+  .kpis-do-mes .kpi.card { padding: 14px; gap: 2px; }
+  .kpis-do-mes .kpi-titulo { font-size: 12.5px; }
+  .kpis-do-mes .kpi-valor { font-size: 21px; overflow-wrap: anywhere; }
+  .kpis-do-mes .kpi-detalhe { font-size: 11.5px; line-height: 1.35; }
+}
+
+/* Plano e assinatura: uma linha por ferramenta. */
+.lista-plano { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; }
+.lista-plano li { display: flex; align-items: center; gap: 14px; padding: 12px 0; border-top: 1px solid var(--trilho); }
+.lista-plano li:first-child { border-top: 0; }
+.plano-texto { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 1px; }
+.plano-texto strong { font-size: 15px; }
+.plano-fora .icone-redondo, .plano-breve .icone-redondo { opacity: .55; }
+.plano-fora strong { color: var(--suave); }
+.plano-conhecer { display: inline-flex; align-items: center; gap: 2px; font-size: 13px; font-weight: 700; color: var(--amarelo-tinta);
+  text-decoration: none; white-space: nowrap; }
+.plano-conhecer:hover { color: var(--texto); }
+.plano-conhecer svg.icone { width: 15px; height: 15px; stroke-width: 2.4; }
+
+/* Ferramenta fora do plano: o que ela faz (à esquerda) e um exemplo (à direita). */
+.titulo-com-selo { display: flex; align-items: center; gap: 6px 12px; flex-wrap: wrap; }
+.pagina-fora { display: grid; grid-template-columns: minmax(0, 1.25fr) minmax(0, 1fr); gap: 28px; padding: 28px; align-items: start; }
+.pagina-fora h2 { font-size: 20px; margin: 0 0 14px; }
+.pagina-fora-texto > .aviso { margin: 0 0 12px; }
+.pagina-fora-texto > .suave.pequeno { margin-top: 12px; }
+.pagina-fora-texto > p + .botoes-linha { margin-top: 10px; }
+.lista-beneficios { list-style: none; margin: 0 0 22px; padding: 0; display: flex; flex-direction: column; gap: 14px; }
+.lista-beneficios li { display: flex; gap: 12px; align-items: flex-start; }
+.lista-beneficios li > div { display: flex; flex-direction: column; gap: 1px; }
+.lista-beneficios .marcador { width: 24px; height: 24px; margin-top: 1px; }
+.lista-beneficios .marcador svg { width: 13px; height: 13px; }
+.pagina-fora-exemplo { display: flex; flex-direction: column; gap: 8px; }
+.pagina-fora-exemplo .balao-zap { max-width: 280px; }
+.pagina-fora-exemplo .balao-zap img { aspect-ratio: 1; height: auto; object-fit: cover; }
+/* Exemplos: Meu site, post do Estúdio, resposta das Automações e lote do Emissor. */
+.exemplo-avatar { width: 56px; height: 56px; border-radius: 999px; display: grid; place-items: center; background: var(--amarelo);
+  color: var(--verde); font-weight: 800; font-size: 22px; flex: none; }
+.exemplo-avatar.pequeno { width: 28px; height: 28px; font-size: 13px; }
+.exemplo-site { display: flex; flex-direction: column; align-items: center; gap: 8px; padding: 22px 18px; border-radius: 18px;
+  background: var(--verde); color: var(--menu-texto); text-align: center; max-width: 300px; }
+.exemplo-frase { font-size: 13px; color: var(--menu-suave); }
+.exemplo-botao { width: 100%; padding: 10px; border-radius: 10px; background: rgba(255, 255, 255, .1); font-size: 13px; font-weight: 700; }
+.exemplo-botao.destaque { background: var(--amarelo); color: var(--texto); }
+.exemplo-vitrine { width: 100%; display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-top: 4px; }
+.exemplo-vitrine span { display: flex; flex-direction: column; gap: 2px; padding: 6px; border-radius: 10px; background: #fff; color: var(--texto); text-align: left; }
+.exemplo-vitrine img { width: 100%; aspect-ratio: 1; object-fit: cover; border-radius: 7px; }
+.exemplo-vitrine b { font-size: 13px; }
+.exemplo-vitrine small { font-size: 11px; color: var(--bom-tinta); font-weight: 700; }
+.exemplo-post { max-width: 300px; border: 1px solid var(--borda); border-radius: 14px; background: #fff; overflow: hidden; }
+.exemplo-post-topo { display: flex; align-items: center; gap: 8px; padding: 10px 12px; font-size: 13px; }
+.exemplo-post-arte { position: relative; aspect-ratio: 1; background: var(--chip); }
+.exemplo-post-arte img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.exemplo-post-selo { position: absolute; top: 12px; right: 12px; padding: 4px 10px; border-radius: 999px; background: var(--amarelo);
+  font-weight: 800; font-size: 14px; color: var(--texto); }
+.exemplo-post-texto { position: absolute; left: 12px; right: 12px; bottom: 12px; display: flex; flex-direction: column; gap: 1px;
+  padding: 10px 12px; border-radius: 12px; background: var(--verde); color: var(--menu-texto); }
+.exemplo-post-texto small { font-size: 11px; color: var(--amarelo); font-weight: 700; }
+.exemplo-post-texto strong { font-size: 15px; line-height: 1.25; }
+.exemplo-post-texto b { font-size: 18px; }
+.exemplo-post-pontos { display: flex; justify-content: center; gap: 4px; padding: 9px; }
+.exemplo-post-pontos i { width: 6px; height: 6px; border-radius: 999px; background: var(--borda-forte); }
+.exemplo-post-pontos i.ativo { background: #3897F0; }
+.exemplo-conversa { display: flex; flex-direction: column; gap: 10px; max-width: 320px; padding: 14px; border-radius: 14px;
+  border: 1px solid var(--borda); background: #fff; font-size: 13.5px; }
+.exemplo-comentario { display: flex; gap: 8px; align-items: flex-start; }
+.exemplo-comentario strong { margin-right: 4px; }
+.exemplo-comentario.resposta { margin-left: 28px; }
+.exemplo-dm { margin-top: 4px; padding: 12px; border-radius: 14px 14px 14px 4px; background: var(--chip); display: flex; flex-direction: column; gap: 6px; }
+.exemplo-dm small { color: var(--suave); font-size: 11.5px; }
+.exemplo-dm p { margin: 0; }
+.exemplo-dm-botao { align-self: stretch; text-align: center; padding: 8px; border-radius: 9px; background: #fff; font-weight: 700; color: #0B6BCB; }
+.exemplo-notas { max-width: 340px; padding: 14px 16px; border-radius: 14px; border: 1px solid var(--borda); background: #fff; font-size: 13.5px; }
+.exemplo-notas-topo { display: flex; justify-content: space-between; gap: 8px; margin-bottom: 6px; }
+.exemplo-notas-topo span { color: var(--suave); font-size: 12.5px; }
+.exemplo-notas ul { list-style: none; margin: 0 0 8px; padding: 0; }
+.exemplo-notas li { display: grid; grid-template-columns: minmax(0, 1fr) auto auto; gap: 10px; align-items: center; padding: 8px 0; border-top: 1px solid var(--trilho); }
+.exemplo-notas li span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.exemplo-notas li i { font-style: normal; font-size: 11.5px; font-weight: 700; color: var(--bom-tinta); background: var(--bom-suave); padding: 2px 8px; border-radius: 999px; }
+.exemplo-notas small { color: var(--suave); font-size: 12px; }
+@media (max-width: 900px) {
+  .pagina-fora { grid-template-columns: minmax(0, 1fr); padding: 20px; }
+  .pagina-fora h2 { font-size: 18px; }
+  .pagina-fora-exemplo .balao-zap { max-width: 230px; }
+}
+
+/* Configurações: na ordem do uso, com a Shopee resumida quando já está conectada. */
+.card .card-intro { margin-bottom: 14px; }
+.config-shopee .grade-campos { margin-top: 0; }
+.config-shopee .grade-campos > .erros-form { grid-column: 1 / -1; }
+.trocar-credenciais > summary { list-style: none; cursor: pointer; display: flex; align-items: center; justify-content: space-between;
+  gap: 12px; flex-wrap: wrap; }
+.trocar-credenciais > summary::-webkit-details-marker { display: none; }
+.trocar-credenciais > summary:focus-visible { outline: none; }
+.trocar-credenciais > summary:focus-visible .botao { outline: 2px solid var(--verde); outline-offset: 2px; }
+.trocar-credenciais[open] > summary { margin-bottom: 16px; padding-bottom: 16px; border-bottom: 1px solid var(--trilho); }
+.shopee-info { display: flex; flex-direction: column; gap: 4px; min-width: 0; }
+.shopee-info .status-shopee { margin: 0; }
+.config-shopee .guia-api { margin: 18px 0 0; border: 1px solid var(--borda); }
+.card .guia-api-resumo { margin: 10px 0; }
+.card .guia-api-titulo { margin: 14px 0 6px; }
+.respostas-shopee { background: #fff; border: 1px solid var(--borda); border-radius: 10px; padding: 4px 12px; gap: 0; }
+.respostas-shopee li { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 12px; padding: 7px 0; border-bottom: 1px solid var(--trilho); font-size: 13.5px; }
+.respostas-shopee li:last-child { border-bottom: 0; }
+#relatorio .grade-campos { margin-top: 0; }
+form.form-regra { grid-template-columns: minmax(0, 1.2fr) minmax(0, 1fr) minmax(0, 1fr) auto; }
+.card .dica-regras { margin: 10px 0 0; }
+.grade-senha { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 14px; align-items: start; }
+.grade-senha > .erros-form { grid-column: 1 / -1; }
+.linha-vinculado { display: flex; flex-wrap: wrap; gap: 8px 12px; align-items: center; justify-content: space-between; padding: 10px 0; border-top: 1px solid var(--borda); }
+#shopee .botao, #relatorio .botao, #sub-ids .botao, #senha .botao { white-space: nowrap; }
+@media (max-width: 900px) {
+  form.form-regra { grid-template-columns: minmax(0, 1fr); }
+  .grade-senha { grid-template-columns: minmax(0, 1fr); }
+}
+@media (max-width: 700px) { .respostas-shopee li { grid-template-columns: minmax(0, 1fr); gap: 0; } }
+
+/* Entrar: "Esqueci a senha" junto do campo e o primeiro acesso dentro do cartão. */
+.rotulo-com-link { display: flex; justify-content: space-between; align-items: baseline; gap: 8px; }
+.rotulo-com-link label { font-weight: 700; font-size: 13px; }
+.cartao-entrar form .botao { width: 100%; }
+.primeiro-acesso { display: flex; flex-direction: column; gap: 10px; margin-top: 22px; text-align: center; }
+.primeiro-acesso .botao { width: 100%; }
+.divisa { display: flex; align-items: center; gap: 12px; color: var(--suave); font-size: 13px; font-weight: 700; }
+.divisa::before, .divisa::after { content: ""; flex: 1; height: 1px; background: var(--borda); }
