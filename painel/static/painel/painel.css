@@ -1559,3 +1559,13 @@ details.etapa[open] .etapa-abrir::after { transform: rotate(-135deg) translate(-
   .selo-extra { top: auto; bottom: 5px; }
 }
 
+/* Conversor: "Como sair" no seletor de duas opções; no celular, "Como funciona" vem antes do formulário. */
+.conversor .segmentado span { min-width: 150px; }
+@media (max-width: 900px) {
+  .conversor .como-funciona { order: -1; padding: 16px 18px; }
+  .conversor .como-funciona h2 { font-size: 15px; margin-bottom: 8px; }
+  .conversor .como-funciona .passos-conversor { font-size: 14px; gap: 4px; margin-bottom: 8px; }
+  .conversor .como-funciona > p { font-size: 12.5px; }
+  .conversor .segmentado { width: 100%; }
+  .conversor .segmentado span { min-width: 0; padding: 9px 12px; }
+}
