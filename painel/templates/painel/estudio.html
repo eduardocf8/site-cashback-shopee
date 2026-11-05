@@ -9,13 +9,10 @@
     <h1>Estúdio Instagram</h1>
     <p>Crie posts e stories com o seu link de afiliado e publique direto no seu Instagram, na hora ou agendado.</p>
   </div>
-  <div class="linha-botoes">
-    <a class="botao botao-claro" href="{% url 'painel_estudio_publicacoes' %}">Publicações</a>
-    <a class="botao botao-claro" href="{% url 'painel_estudio_marca' %}">Minha marca</a>
-  </div>
+  {% if ig %}{% include "painel/_instagram_conexao.html" %}{% endif %}
 </header>
-
-{% include "painel/_instagram_conexao.html" %}
+{% include "painel/_abas_instagram.html" with modulo="estudio" aba="posts" %}
+{% if not ig %}{% include "painel/_instagram_conexao.html" %}{% endif %}
 
 <section class="card es-criar" aria-label="Criar post">
   <div class="es-criar-abas" role="tablist">
@@ -27,8 +24,14 @@
   <div class="es-criar-corpo">
     <div role="tabpanel" id="aba-produto" aria-labelledby="t-produto">
       {% if not shopee_ok %}
-        <p>Para criar posts com o seu link de afiliado, conecte primeiro sua conta da Shopee.</p>
-        <p><a class="botao botao-escuro" href="{% url 'painel_configuracoes' %}">Conectar a Shopee</a></p>
+        <div class="es-sem-shopee">
+          <h3>Conecte a sua conta da Shopee</h3>
+          <p class="suave">Com ela, você cola o link de um produto e o post sai pronto, com a foto, o preço e o seu link de afiliado.</p>
+          <div class="linha-botoes">
+            <a class="botao botao-escuro" href="{% url 'painel_configuracoes' %}">Conectar a Shopee</a>
+            <button type="button" class="botao botao-claro" data-abrir-aba="t-modelo">Começar de um modelo</button>
+          </div>
+        </div>
       {% else %}
         <form method="post" action="{% url 'painel_estudio_novo' %}" data-espera="Criando o post… (até 1 minuto)">
           {% csrf_token %}<input type="hidden" name="como" value="produto">
@@ -98,7 +101,10 @@
       {% endfor %}
     </div>
   {% else %}
-    <p class="suave">Nenhum post ainda. Cole o link de um produto ou escolha um modelo acima.</p>
+    <div class="es-vazio">
+      <strong>Os seus posts aparecem aqui</strong>
+      <span class="suave">Escolha uma das formas de criar acima. Dá para editar, baixar e publicar depois.</span>
+    </div>
   {% endif %}
 </section>
 </div>
@@ -133,6 +139,8 @@
     });
   }
   document.getElementById('t-modelo').addEventListener('click', () => requestAnimationFrame(desenhar));
+  // "Começar de um modelo" (sem a Shopee conectada): abre a aba dos modelos.
+  document.querySelectorAll('[data-abrir-aba]').forEach((b) => b.addEventListener('click', () => document.getElementById(b.dataset.abrirAba).click()));
   document.fonts.ready.then(desenhar);
 })();
 </script>

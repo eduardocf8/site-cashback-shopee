@@ -6,11 +6,12 @@
 <div class="es-pagina">
 <header class="cabecalho">
   <div>
-    <a class="suave" href="{% url 'painel_estudio_automacoes' %}">← Automações</a>
-    <h1>Histórico das automações</h1>
-    <p>Quem as suas automações responderam, do mais novo para o mais antigo.</p>
+    <h1>Automações Instagram</h1>
+    <p>Quem comentar a palavra certa no seu post{% if plano.premium %} (ou responder o seu story){% endif %} recebe o seu link por DM, na hora.</p>
   </div>
 </header>
+{% include "painel/_abas_instagram.html" with modulo="automacoes" aba="historico" %}
+<p class="ig-sub suave">Quem as suas automações responderam, do mais novo para o mais antigo.</p>
 
 <section class="card ig-filtro">
   <form method="get">
@@ -35,12 +36,11 @@
       <tbody>
         {% for d in pagina %}
           <tr>
-            <td>{{ d.criado_em|date:"d/m/Y H:i" }}</td>
-            <td><a href="{% url 'painel_estudio_automacao' d.automacao.pk %}">{{ d.automacao.nome }}</a><br><small class="suave">{{ d.automacao.get_gatilho_display }}</small></td>
-            <td>{% if d.autor_username %}@{{ d.autor_username }}{% else %}—{% endif %}</td>
-            <td>{{ d.texto|truncatechars:80 }}</td>
-            <td>{% if d.automacao.gatilho == "comentario" and d.automacao.responder_comentario %}{% if d.resposta_ok %}✓{% else %}✗{% endif %}{% else %}—{% endif %}</td>
-            <td>{% if d.na_fila %}Na fila{% elif d.dm_ok %}✓{% elif d.automacao.enviar_dm %}✗{% else %}—{% endif %}{% if d.erro %}<br><small class="ig-erro">{{ d.erro|truncatechars:90 }}</small>{% endif %}</td>
+            <td class="h-quando">{{ d.criado_em|date:"d/m/Y H:i" }}</td>
+            <td class="h-automacao"><a href="{% url 'painel_estudio_automacao' d.automacao.pk %}">{{ d.automacao.nome }}</a><small class="suave">{{ d.automacao.get_gatilho_display }}</small></td>
+            <td class="h-pessoa">{% if d.autor_username %}@{{ d.autor_username }}{% else %}—{% endif %}</td>
+            <td class="h-texto">{{ d.texto|truncatechars:80 }}</td>
+            {% include "painel/_estudio_disparo.html" %}
           </tr>
         {% endfor %}
       </tbody>
@@ -54,7 +54,10 @@
     </nav>
   {% endif %}
 {% else %}
-  <p class="suave">Ninguém foi respondido ainda{% if escolhida %} por esta automação{% endif %}.</p>
+  <div class="es-vazio">
+    <strong>Ninguém foi respondido ainda{% if escolhida %} por esta automação{% endif %}</strong>
+    <span class="suave">Quando alguém escrever a palavra, aparece aqui.</span>
+  </div>
 {% endif %}
 </div>
 {% endblock %}
