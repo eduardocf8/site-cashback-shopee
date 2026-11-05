@@ -2,13 +2,7 @@
 {% load static painel_extras %}
 {% block titulo %}Grupos · Bot de WhatsApp{% endblock %}
 {% block conteudo %}
-<header class="cabecalho">
-  <div>
-    <h1>Bot de WhatsApp</h1>
-    <p>Ofertas da Shopee enviadas com o seu link de afiliado no automático: buscadas pela API ou copiadas de outros grupos e canais.</p>
-  </div>
-</header>
-{% include "painel/_abas_whatsapp.html" with aba="membros" %}
+{% include "painel/_cabecalho_bot.html" with aba="membros" %}
 
 {% if conexao.estado != "conectado" %}<p class="aviso aviso-warning pequeno">Seu WhatsApp não está conectado. As contagens ficam paradas até ele conectar de novo (na aba <a href="{% url 'painel_whatsapp' %}">Conexão</a>).</p>{% endif %}
 

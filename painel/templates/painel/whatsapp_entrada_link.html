@@ -2,13 +2,7 @@
 {% load static painel_extras %}
 {% block titulo %}Link de entrada · Bot de WhatsApp{% endblock %}
 {% block conteudo %}
-<header class="cabecalho">
-  <div>
-    <h1>Bot de WhatsApp</h1>
-    <p>Ofertas da Shopee enviadas com o seu link de afiliado no automático: buscadas pela API ou copiadas de outros grupos e canais.</p>
-  </div>
-</header>
-{% include "painel/_abas_whatsapp.html" with aba="entrada" %}
+{% include "painel/_cabecalho_bot.html" with aba="entrada" %}
 <p class="pequeno" style="margin-top:12px"><a href="{% url 'painel_whatsapp_entrada' %}">← Links de entrada</a></p>
 
 <section class="card secao-form secao-curta" aria-labelledby="titulo-link" style="margin-top:8px">

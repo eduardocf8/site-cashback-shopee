@@ -2,34 +2,43 @@
 {% load static %}
 {% block titulo %}Bot de WhatsApp{% endblock %}
 {% block conteudo %}
-<header class="cabecalho">
-  <div>
-    <h1>Bot de WhatsApp</h1>
-    <p>Conecte seu número pelo QR Code. As ofertas automáticas ficam na aba Automação.</p>
-  </div>
-</header>
-{% include "painel/_abas_whatsapp.html" with aba="conexao" %}
+{% include "painel/_cabecalho_bot.html" with aba="conexao" esconder_passos=primeiro_acesso %}
 
+{% if primeiro_acesso %}
+{# Conta nova: a lista de passos fica no lugar do cartão "Desconectado" e do histórico vazio. #}
+<div id="whatsapp" data-url="{% url 'painel_whatsapp_estado' %}" data-estado="{{ tela.estado }}"
+     data-pendentes="{{ tela.pendentes }}" data-grupos="{{ tela.pedido_grupos|yesno:'1,0' }}"
+     data-sem-resposta="{{ tela.sem_resposta|yesno:'1,0' }}" data-desconectando="{{ tela.desconectando|yesno:'1,0' }}">
+  {% if conexao.erro %}<p class="aviso aviso-warning pequeno">{{ conexao.erro }}</p>{% endif %}
+  {% include "painel/_config_bot.html" %}
+</div>
+{% else %}
 <div class="duas-colunas" id="whatsapp"
      data-url="{% url 'painel_whatsapp_estado' %}" data-estado="{{ tela.estado }}"
      data-pendentes="{{ tela.pendentes }}" data-grupos="{{ tela.pedido_grupos|yesno:'1,0' }}"
      data-sem-resposta="{{ tela.sem_resposta|yesno:'1,0' }}" data-desconectando="{{ tela.desconectando|yesno:'1,0' }}">
   {# Coluna da esquerda: conexão e, logo embaixo, o teste; à direita, o histórico. #}
   <div class="coluna-empilhada">
+    {% if conexao.estado == ConexaoWhatsApp.CONECTADO and not tela.desconectando %}
+    <section class="card conexao-ok" aria-labelledby="titulo-conexao">
+      <span class="icone-zap" aria-hidden="true">{% include "painel/_icone.html" with caminho=icones.whatsapp %}</span>
+      <div class="conexao-ok-texto">
+        <h2 id="titulo-conexao" class="estado-bot"><span class="situacao">WhatsApp conectado</span></h2>
+        <span class="conexao-numero">{{ conexao.numero_formatado }}{% if conexao.nome %} · {{ conexao.nome }}{% endif %}</span>
+        <span class="suave pequeno">Desde {{ conexao.conectado_em|date:"d/m" }} às {{ conexao.conectado_em|date:"H:i" }}. Aparece como “Appfiliado” em Aparelhos conectados no seu celular. Não precisa deixar computador ligado.</span>
+      </div>
+      <form method="post" action="{% url 'painel_whatsapp_desconectar' %}" onsubmit="return confirm('Desconectar o WhatsApp do Appfiliado?');">
+        {% csrf_token %}
+        <button type="submit" class="botao botao-claro botao-pequeno">Desconectar</button>
+      </form>
+    </section>
+    {% else %}
     <section class="card" aria-labelledby="titulo-conexao">
       <h2 id="titulo-conexao">Conexão</h2>
 
       {% if tela.desconectando and conexao.estado != ConexaoWhatsApp.DESCONECTADO %}
         <p class="status-zap"><span class="ponto atencao" aria-hidden="true"></span><strong>Desconectando…</strong> {{ conexao.numero_formatado }}</p>
         <p class="suave pequeno">Em alguns segundos o “Appfiliado” some da lista de aparelhos do celular e esta tela atualiza sozinha.</p>
-
-      {% elif conexao.estado == ConexaoWhatsApp.CONECTADO %}
-        <p class="status-zap"><span class="ponto ok" aria-hidden="true"></span><strong>Conectado</strong> {{ conexao.numero_formatado }}{% if conexao.nome %} · {{ conexao.nome }}{% endif %}</p>
-        <p class="suave pequeno">Desde {{ conexao.conectado_em|date:"d/m" }} às {{ conexao.conectado_em|date:"H:i" }}. O servidor aparece como “Appfiliado” em Aparelhos conectados no seu celular. Não precisa deixar computador ligado.</p>
-        <form method="post" action="{% url 'painel_whatsapp_desconectar' %}" onsubmit="return confirm('Desconectar o WhatsApp do Appfiliado?');" style="margin-top:16px">
-          {% csrf_token %}
-          <button type="submit" class="botao botao-claro botao-pequeno">Desconectar</button>
-        </form>
 
       {% elif conexao.estado == ConexaoWhatsApp.RECONECTANDO %}
         <p class="status-zap"><span class="ponto atencao" aria-hidden="true"></span><strong>Reconectando…</strong> {{ conexao.numero_formatado }}</p>
@@ -66,12 +75,16 @@
         </form>
       {% endif %}
     </section>
+    {% endif %}
     {% if conexao.estado == ConexaoWhatsApp.CONECTADO or conexao.estado == ConexaoWhatsApp.RECONECTANDO %}
-    <section class="card" aria-labelledby="titulo-teste">
-      <div class="card-topo">
-        <h2 id="titulo-teste">Mandar mensagem de teste</h2>
-        <form method="post" action="{% url 'painel_whatsapp_grupos' %}">{% csrf_token %}<button type="submit" class="link-botao pequeno">Atualizar grupos e canais</button></form>
-      </div>
+    {# O teste de envio fica fechado: abre ao tocar (e sozinho enquanto busca os grupos). #}
+    <details class="card etapa sem-numero teste-envio" id="teste-envio"{% if tela.pedido_grupos %} open{% endif %}>
+      <summary class="etapa-topo">
+        <div><h2 id="titulo-teste">Mandar uma mensagem de teste</h2><small>Para conferir se o envio pros grupos está funcionando.</small></div>
+        <span class="etapa-abrir"><span class="se-fechado">Abrir</span><span class="se-aberto">Fechar</span></span>
+      </summary>
+      <div class="etapa-corpo">
+      <form method="post" action="{% url 'painel_whatsapp_grupos' %}">{% csrf_token %}<button type="submit" class="link-botao pequeno">Atualizar grupos e canais</button></form>
       {% if tela.pedido_grupos %}
         <p class="suave pequeno">Buscando seus grupos…</p>
       {% elif not destinos %}
@@ -99,7 +112,8 @@
           <div><button type="submit" class="botao botao-escuro">Enviar</button></div>
         </form>
       {% endif %}
-    </section>
+      </div>
+    </details>
     {% endif %}
   </div>
   <section class="card" aria-labelledby="titulo-historico">
@@ -115,6 +129,7 @@
     {% endif %}
   </section>
 </div>
+{% endif %}
 
 <script src="{% static 'painel/whatsapp.js' %}" defer></script>
 {% endblock %}

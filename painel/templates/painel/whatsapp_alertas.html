@@ -3,13 +3,7 @@
 {% block titulo %}Alerta de preço · Bot de WhatsApp{% endblock %}
 {% block cabeca %}<script src="{% static 'painel/emojis.js' %}" defer></script><script src="{% static 'painel/campanhas.js' %}" defer></script><script src="{% static 'painel/alertas.js' %}" defer></script>{% endblock %}
 {% block conteudo %}
-<header class="cabecalho">
-  <div>
-    <h1>Bot de WhatsApp</h1>
-    <p>Ofertas da Shopee enviadas com o seu link de afiliado no automático: buscadas pela API ou copiadas de outros grupos e canais.</p>
-  </div>
-</header>
-{% include "painel/_abas_whatsapp.html" with aba="alertas" %}
+{% include "painel/_cabecalho_bot.html" with aba="alertas" %}
 
 <section class="card status-ofertas" aria-labelledby="titulo-status-alerta">
   <div class="status-ofertas-texto">

@@ -1347,3 +1347,110 @@ details.etapa[open] .etapa-abrir::after { transform: rotate(-135deg) translate(-
 
 .numeros-mes { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 12px; }
 @media (max-width: 900px) { .numeros-mes { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; } }
+
+/* === bot (revisão de layout 11/2026) === */
+/* Cabeçalho de todas as abas: título com as pílulas de estado e as abas em famílias. */
+.cabecalho-bot .linha-titulo-bot { display: flex; align-items: center; flex-wrap: wrap; gap: 8px 16px; }
+.cabecalho-bot .status-bot { display: flex; flex-wrap: wrap; gap: 8px; }
+.abas.abas-bot { margin-bottom: 4px; gap: 0; }
+.abas-bot .aba { padding: 0 11px; }
+.abas-bot .aba:first-child { padding-left: 4px; }
+.abas-bot .abas-sep { margin: 13px 5px; }
+@media (max-width: 900px) {
+  .cabecalho-bot { gap: 12px; }
+  .cabecalho-bot .linha-titulo-bot { gap: 10px; }
+  .cabecalho-bot .status-bot { gap: 6px; }
+  .cabecalho-bot .pilula-estado { min-height: 30px; padding: 0 11px; font-size: 12.5px; gap: 6px; }
+  .cabecalho-bot .pilula-estado small { display: none; }
+}
+
+/* "Configure o bot em 4 passos" (lista de passos compartilhada). */
+.config-bot-topo { display: flex; align-items: center; justify-content: space-between; gap: 6px 16px; flex-wrap: wrap; }
+.config-bot-topo h2 { margin: 0; }
+.config-bot-progresso { display: flex; align-items: center; gap: 10px; }
+.config-bot-progresso .passos-barra { width: 120px; margin: 0; }
+.config-bot .passos-lista .passo.depois small { display: block; }
+.config-bot .passos-lista .passo.depois strong { color: var(--suave); font-weight: 500; }
+.config-bot .passos-lista .passo.atual small { max-width: 600px; }
+.config-bot .passos-lista form { margin: 0; }
+@media (max-width: 900px) {
+  .config-bot .passos-lista .passo.atual form { width: calc(100% - 44px); margin-left: 44px; }
+  .config-bot .passos-lista .passo.atual form .botao { width: 100%; margin-left: 0; }
+}
+
+/* Cartão de status (Automação, Campanhas, Alerta): a situação em letra grande. */
+.status-ofertas h2.estado-bot { display: flex; align-items: center; flex-wrap: wrap; gap: 8px; margin: 0 0 4px; }
+.estado-bot .situacao { font-size: 20px; font-weight: 800; gap: 10px; letter-spacing: -.01em; white-space: normal; }
+.estado-bot .situacao::before { width: 11px; height: 11px; }
+.estado-bot .situacao:not(.parada):not(.erro) { color: var(--texto); }
+.estado-bot .selo-simulacao { margin-left: 0; }
+.status-ofertas .linha-agora { font-size: 14.5px; }
+.status-ofertas .numero-hoje { color: var(--texto); }
+.falta-ligar { display: flex; flex-direction: column; gap: 4px; font-size: 14px; color: var(--suave); }
+.falta-ligar ul { margin: 0; padding-left: 20px; }
+@media (min-width: 701px) { .status-ofertas { align-items: center; } }
+@media (max-width: 700px) { .status-ofertas-botoes .botao { white-space: nowrap; padding: 0 12px; } }
+
+/* Automação e Campanhas em passos que abrem e fecham (details.etapa compartilhado). */
+.form-etapas { gap: 12px; }
+.etapa-abrir .se-aberto, details.etapa[open] .etapa-abrir .se-fechado { display: none; }
+details.etapa[open] .etapa-abrir .se-aberto { display: inline; }
+.etapa-resumo strong { color: var(--texto); }
+.form-etapas .etapa-corpo fieldset.campo + .campo, .form-etapas .etapa-corpo .campo + fieldset { margin-top: 0; }
+.form-etapas .etapa-corpo .grade-campos { margin-top: 0; }
+.form-etapas .bloco-modo, .form-etapas .bloco-envio { display: flex; flex-direction: column; gap: 16px; margin-top: 0; }
+.form-etapas .formato-envio { margin: 0; }
+.etapa-linha { display: flex; justify-content: space-between; align-items: baseline; gap: 6px 12px; flex-wrap: wrap; }
+.etapa-sub { display: flex; flex-direction: column; gap: 12px; padding-top: 16px; border-top: 1px solid var(--trilho); }
+.subtitulo-etapa { margin: 0; font-size: 14px; }
+.subtitulo-etapa .suave { font-weight: 400; font-size: 13px; }
+.mais-opcoes { font-size: 14px; }
+.mais-opcoes > summary { cursor: pointer; font-weight: 700; color: var(--verde); width: fit-content; }
+.mais-opcoes[open] > summary { margin-bottom: 12px; }
+.formato-cartoes { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.formato-cartoes .marcar { border: 1px solid var(--borda); border-radius: 12px; padding: 12px 14px; background: var(--campo); cursor: pointer; }
+.formato-cartoes .marcar:has(input:checked) { border-color: var(--verde); background: #fff; box-shadow: 0 0 0 1px var(--verde); }
+.form-etapas .opcao-ia { margin-top: 0; }
+.ia-linha { display: flex; align-items: center; gap: 10px; font-size: 14px; color: var(--suave); }
+.ia-linha .selo-breve-claro { font-size: 11.5px; font-weight: 700; padding: 2px 9px; border-radius: 999px; background: var(--chip); color: var(--suave); }
+.ia-linha .selo-premium { padding: 1px 8px; border-radius: 999px; background: var(--amarelo); color: #3a2a00; font-size: 11.5px; font-weight: 700; text-decoration: none; }
+@media (max-width: 700px) { .formato-cartoes { grid-template-columns: 1fr; } }
+
+/* Cartão que abre e fecha sem número (teste de envio, "Como avisar" do alerta). */
+.etapa.sem-numero .etapa-topo { grid-template-columns: minmax(0, 1fr) auto; }
+.etapa.sem-numero .etapa-corpo { padding-left: 20px; }
+@media (max-width: 700px) {
+  .etapa.sem-numero .etapa-topo { grid-template-columns: minmax(0, 1fr) auto; }
+  .etapa.sem-numero .etapa-corpo { padding-left: 16px; }
+}
+
+/* Conexão (conectado): o estado em destaque, com o número e o nome logo abaixo. */
+.conexao-ok { display: flex; align-items: center; gap: 16px; flex-wrap: wrap; }
+.conexao-ok .icone-zap { width: 48px; height: 48px; border-radius: 14px; background: var(--bom-suave); color: var(--bom-tinta); display: grid; place-items: center; flex: none; }
+.conexao-ok .icone-zap svg.icone { width: 24px; height: 24px; }
+.conexao-ok-texto { flex: 1; min-width: 220px; display: flex; flex-direction: column; gap: 2px; }
+.conexao-ok-texto h2.estado-bot { margin: 0; }
+.conexao-ok-texto .situacao { font-size: 19px; }
+.conexao-ok .conexao-numero { font-size: 15px; font-weight: 700; }
+.conexao-ok form { margin: 0; }
+.teste-envio .etapa-corpo form.formulario { gap: 14px; }
+
+/* Últimas ofertas enviadas: produto numa linha, hora · grupo · situação embaixo. */
+.envios-bot { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; }
+.envios-bot li { display: flex; flex-direction: column; gap: 1px; padding: 9px 0; border-bottom: 1px solid var(--trilho); min-width: 0; }
+.envios-bot li:last-child { border-bottom: 0; }
+.envios-bot .envio-produto { font-weight: 600; font-size: 13.5px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.envios-bot .envio-meta { font-size: 12.5px; overflow-wrap: anywhere; }
+.envios-bot details { margin-top: 2px; font-size: 12.5px; }
+
+/* Faixa "Salvar": "Alterações não salvas" quando algo mudou; no celular só aparece depois disso. */
+.barra-salvar { align-items: center; }
+.barra-salvar .aviso-mudou { display: none; align-items: center; gap: 8px; font-size: 13.5px; font-weight: 700; color: var(--texto); }
+.barra-salvar .aviso-mudou::before { content: ""; width: 8px; height: 8px; border-radius: 999px; background: var(--amarelo); box-shadow: 0 0 0 3px var(--amarelo-suave); }
+.barra-salvar.mudou .aviso-mudou { display: flex; }
+@media (max-width: 700px) {
+  .barra-salvar[data-aparece-ao-mudar] { transition: transform .2s ease; }
+  .barra-salvar.esperando { transform: translateY(115%); box-shadow: none; }
+  .barra-salvar.mudou .aviso-mudou { flex: 1; }
+  .barra-salvar.mudou .botao { flex: none; min-width: 140px; }
+}
