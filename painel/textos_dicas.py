@@ -7,10 +7,16 @@ Painel > E-mails de dicas). Formato simples, sem HTML:
 - {nome} = primeiro nome · {imagem} = o print do e-mail · {botao} = o botão amarelo · {numeros} = os
   números da pessoa nos últimos 30 dias (só no e-mail do dia 21).
 - [texto](destino) vira link. Destinos: planos, automacao, campanhas, mensagens, alerta, resultados,
-  radar, conversor, site, carrosseis, notas, configuracoes, sugestoes, inicio, ou um endereço https://.
-- Uma linha começando com [bot], [premium], [site], [carrosséis], [carrosséis premium], [notas], [api]
-  ou [emissor] só aparece pra quem tem isso; com [sem ...] na frente (ex: [sem premium]), só pra quem
-  não tem. [api] = conectou a API da Shopee; [emissor] = vende bem e ainda não tem o Emissor NFS-e."""
+  radar, conversor, site, carrosseis, estudio, marca (Minha marca, no Estúdio), automacoes_instagram,
+  notas, configuracoes, sugestoes, inicio, ou um endereço https://.
+- Uma linha começando com [bot], [premium], [site], [carrosséis], [carrosséis premium], [estúdio],
+  [estúdio premium], [automações], [notas], [api], [emissor] ou [instagram lançado] só aparece pra quem tem
+  isso; com [sem ...] na frente (ex: [sem premium]), só pra quem não tem. Dá pra juntar várias no começo
+  da linha (ex: [instagram lançado] [sem automações]): a linha só aparece se todas valerem.
+  [carrosséis] = tem os códigos do antigo gerador (que viram o Estúdio); [estúdio] e [automações] = o
+  módulo já abre pra pessoa (antes do lançamento, só pras contas de teste); [instagram lançado] = o Estúdio
+  e as Automações já estão à venda; [api] = conectou a API da Shopee; [emissor] = vende bem e ainda não tem
+  o Emissor NFS-e."""
 
 TEXTOS = {
     "historia": {
@@ -121,28 +127,43 @@ Com o Bot de WhatsApp, o modo campanha faz isso tudo sozinho nos seus grupos, in
 
 [site] **No seu site** (o seu link na bio):
 [site] ↳ Deixe o botão mais importante em destaque, como o link do seu grupo VIP
-[site] ↳ Use a vitrine com as ofertas que combinam com o seu público (com o Bot, ela mostra as últimas que ele enviou)
-[site] ↳ Acompanhe os cliques de cada botão e produto no painel
+[site] ↳ Ligue a vitrine de ofertas (com o Bot, ela mostra as últimas que ele mandou nos grupos)
+[site] ↳ Deixe o conversor de links no ar: quem achou algo na Shopee cola o link e compra pelo seu
+[site] ↳ Acompanhe as visitas e os cliques de cada botão e produto no painel
 
 {imagem}
 
-[carrosséis] **Nos carrosséis:** cole o link de um produto e o Appfiliado monta o carrossel com textos feitos por IA e o seu link.
-[carrosséis premium] Minha dica: salve o seu modelo, cor e @ como padrão, e os próximos já saem com a sua cara.
+[estúdio] **No Estúdio Instagram:** cole o link de um produto e a IA monta o post, o carrossel ou os stories com a foto, o preço e o seu link. Você publica na hora ou agenda pro dia e a hora que quiser.
+
+[estúdio] [sem estúdio premium] Minha dica: salve o seu @ em [Minha marca](marca). Os próximos posts já saem com ele.
+[estúdio premium] Minha dica: salve o seu logo, as suas cores e a sua fonte em [Minha marca](marca). Os próximos posts já saem com a sua cara.
+
+[sem estúdio] [carrosséis] **Nos carrosséis:** cole o link de um produto e o Appfiliado monta o carrossel com textos feitos por IA e o seu link. Em breve ele vira o **Estúdio Instagram**, que já faz parte do seu plano: posts, stories e publicação direto no seu perfil.
+
+[sem estúdio] [carrosséis premium] Minha dica: salve o seu modelo, a cor e o @ como padrão. Os próximos carrosséis já saem com a sua cara.
+
+[automações] **Nas Automações Instagram:** quem comentar a palavra certa no seu post (como QUERO) recebe o seu link por DM, na hora. Avise na legenda: "comente QUERO que eu te mando o link".
 
 {botao}
 
 [sem site] Quer um link na bio com vitrine e conversor pro seu público? Conheça o [Meu site](planos).
-[sem carrosséis] Quer posts prontos pro Instagram a partir de um link? Conheça os [Carrosséis](planos).""",
+[instagram lançado] [sem carrosséis] Quer posts e stories prontos pro Instagram a partir de um link? Conheça o [Estúdio Instagram](planos).
+[instagram lançado] [sem automações] Quer mandar o seu link por DM para quem comentar no seu post? Conheça as [Automações Instagram](planos).""",
         "texto_sem": """Grupo de WhatsApp vende muito, mas quem chega pelo Instagram também compra. O segredo é ter um caminho fácil do post até o link.
 
-No Appfiliado, dois módulos fazem esse caminho:
-
-↳ **Meu site:** o seu link na bio, com botões, conversor de links pro seu público e vitrine de ofertas
-↳ **Carrosséis:** cole o link de um produto e receba um carrossel pronto pro Instagram, com textos feitos por IA
+O **Meu site** faz esse caminho: é o seu link na bio, com botões, conversor de links pro seu público e vitrine de ofertas.
 
 {imagem}
 
-Juntando com o que você já tem, sai com desconto de combo: 10% com 2 módulos e 20% com 3.
+[bot] Com o Bot, a vitrine mostra sozinha as últimas ofertas que ele mandou nos seus grupos. Juntos no **Pacote Ofertas**, os dois saem 10% mais baratos.
+[sem bot] Com o Bot de WhatsApp no **Pacote Ofertas**, os dois saem 10% mais baratos.
+
+[instagram lançado] E pro Instagram tem mais dois módulos:
+[sem instagram lançado] E vêm aí mais dois módulos pro Instagram:
+↳ **Estúdio Instagram:** posts e stories prontos a partir do link do produto, publicados direto no seu perfil
+↳ **Automações Instagram:** o seu link por DM para quem comentar no seu post
+
+[instagram lançado] Juntos no **Pacote Instagram**, os dois também saem 10% mais baratos.
 
 {botao}""",
     },

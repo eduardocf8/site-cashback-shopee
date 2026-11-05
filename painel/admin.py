@@ -72,9 +72,11 @@ AJUDA_DO_FORMATO = (
     "Formato: parágrafos separados por linha em branco · **negrito** · linha começando com ↳ vira item · "
     "parágrafo começando com \"Dica:\" ou \"Minha dica:\" vira a caixinha · {nome} = primeiro nome · {imagem} = o print · "
     "{botao} = o botão amarelo · {numeros} = os números da pessoa (dia 21) · [texto](destino) vira link "
-    "(destinos: planos, automacao, campanhas, mensagens, alerta, resultados, radar, conversor, site, carrosseis, notas, "
-    "configuracoes, sugestoes, inicio ou https://...) · linha começando com [bot], [premium], [site], [carrosséis], "
-    "[carrosséis premium], [notas], [api] ou [emissor] só aparece para quem tem; [sem ...] para quem não tem."
+    "(destinos: planos, automacao, campanhas, mensagens, alerta, resultados, radar, conversor, site, carrosseis, estudio, "
+    "marca, automacoes_instagram, notas, configuracoes, sugestoes, inicio ou https://...) · linha começando com [bot], "
+    "[premium], [site], [carrosséis], [carrosséis premium], [estúdio], [estúdio premium], [automações], [notas], [api], "
+    "[emissor] ou [instagram lançado] só aparece para quem tem; [sem ...] para quem não tem. Dá para juntar várias no "
+    "começo da linha: ela só aparece se todas valerem."
 )
 
 
@@ -128,7 +130,7 @@ class TextoEmailDicaAdmin(admin.ModelAdmin):
         texto = TextoEmailDica(chave=salvo.chave, assunto=request.POST.get("assunto", salvo.assunto),
                                texto=request.POST.get("texto", salvo.texto), texto_sem=request.POST.get("texto_sem", salvo.texto_sem))
         variante = request.POST.get("variante", "com")
-        liberados = ["whatsapp", "site", "carrosseis"] if variante == "com" else []
+        liberados = ["whatsapp", "site", "carrosseis", "instagram"] if variante == "com" else []
         exemplo = ContaAppfiliado(email="exemplo@appfiliado.com.br", nome="Ana Lima", shopee_validado_em=timezone.now())
         if request.POST.get("enviar_teste"):
             destino = request.user.email or settings.APPFILIADO_EMAIL_SUPORTE

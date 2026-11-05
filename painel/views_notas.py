@@ -5,6 +5,7 @@ As regras ficam em notas/servicos.py; o envio de verdade é feito pelo worker (n
 import io
 import logging
 import zipfile
+from decimal import Decimal
 
 from django import forms
 from django.contrib import messages
@@ -81,12 +82,33 @@ class ServicoForm(forms.Form):
     codigo_municipal = forms.CharField(label="Código do município (se a prefeitura pedir)", max_length=20,
                                        required=False)
     codigo_nbs = forms.CharField(label="Código NBS", max_length=14, required=False,
-                                 help_text="Vai junto com o IBS/CBS da reforma. Para 17.06: 1.1406.11.00 (campanhas "
-                                           "publicitárias), 1.1406.12.00 (marketing direto) ou 1.1406.19.00 (outros "
-                                           "serviços de propaganda).")
+                                 help_text="No MEI, vai junto com o IBS/CBS da reforma. Para 17.06: 1.1406.11.00 "
+                                           "(campanhas publicitárias), 1.1406.12.00 (marketing direto) ou "
+                                           "1.1406.19.00 (outros serviços de propaganda).")
     inscricao_municipal = forms.CharField(label="Inscrição municipal (se tiver)", max_length=20, required=False)
     descricao_servico = forms.CharField(label="Descrição do serviço", max_length=2000,
                                         widget=forms.Textarea(attrs={"rows": 3}))
+    # Só na ME/EPP: o valor aproximado dos tributos (%) que vai em cada nota.
+    tributos_federal = forms.DecimalField(label="Tributos federais (%)", max_digits=5, decimal_places=2, min_value=0,
+                                          max_value=Decimal("99.99"), localize=True, required=False,
+                                          help_text="Vai em cada nota (Lei 12.741). Para o 17.06.01: 13,45% federal, 0% "
+                                                    "estadual e 4,61% municipal. Se o seu contador passar outros valores, "
+                                                    "troque aqui.")
+    tributos_estadual = forms.DecimalField(label="Tributos estaduais (%)", max_digits=5, decimal_places=2, min_value=0,
+                                           max_value=Decimal("99.99"), localize=True, required=False)
+    tributos_municipal = forms.DecimalField(label="Tributos municipais (%)", max_digits=5, decimal_places=2, min_value=0,
+                                            max_value=Decimal("99.99"), localize=True, required=False)
+
+    CAMPOS_DA_ME = ("tributos_federal", "tributos_estadual", "tributos_municipal")
+
+    def __init__(self, *args, regime="mei", **kwargs):
+        super().__init__(*args, **kwargs)
+        if regime == "simples":
+            self.fields["codigo_nbs"].help_text = ("Na nota de ME/EPP o NBS é obrigatório. Para o 17.06.01: "
+                                                   "1.1406.19.00 (serviços de propaganda).")
+        else:
+            for nome in self.CAMPOS_DA_ME:  # o MEI não informa o valor aproximado dos tributos
+                del self.fields[nome]
 
 
 @sensitive_post_parameters("senha")
@@ -102,12 +124,14 @@ def notas(request):
     form_horario = HorarioEmailForm(initial={"horario": "" if getattr(empresa, "email_horario", None) is None
                                              else str(empresa.email_horario)})
     form_contabilidade = ContabilidadeForm(initial={"email": getattr(empresa, "contabilidade_email", "")})
-    form_cert, form_servico = CertificadoForm(), ServicoForm(initial={
+    regime = getattr(empresa, "regime", "mei")
+    form_cert, form_servico = CertificadoForm(), ServicoForm(regime=regime, initial={
         "codigo_tributacao": getattr(empresa, "codigo_tributacao", ""),
         "codigo_municipal": getattr(empresa, "codigo_municipal", ""),
         "inscricao_municipal": getattr(empresa, "inscricao_municipal", ""),
         "codigo_nbs": _nbs_formatado(getattr(empresa, "codigo_nbs", "")),
         "descricao_servico": getattr(empresa, "descricao_servico", ""),
+        **{nome: getattr(empresa, nome, None) for nome in ServicoForm.CAMPOS_DA_ME},
     })
 
     if request.method == "POST":
@@ -139,11 +163,12 @@ def notas(request):
                 messages.info(request, "Certificado apagado do Appfiliado.")
                 return redirect("painel_notas")
             elif acao == "servico":
-                form_servico = ServicoForm(request.POST)
+                form_servico = ServicoForm(request.POST, regime=empresa.regime)
                 if form_servico.is_valid():
                     d = form_servico.cleaned_data
+                    tributos = tuple(d[nome] for nome in ServicoForm.CAMPOS_DA_ME) if empresa.regime == "simples" else None
                     servicos.salvar_servico(empresa, d["codigo_tributacao"], d["codigo_municipal"],
-                                            d["descricao_servico"], d["inscricao_municipal"], d["codigo_nbs"])
+                                            d["descricao_servico"], d["inscricao_municipal"], d["codigo_nbs"], tributos)
                     messages.success(request, "Serviço salvo.")
                     return redirect("painel_notas")
             elif acao == "horario_email":

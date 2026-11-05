@@ -1618,3 +1618,146 @@ class TestCancelamento(TestCase):
                                            competencia=timezone.localdate(), tomador_documento="1", tomador_nome="X", valor=1)
         admin_cliente.post(f"/admin/notas/notafiscal/{previa.pk}/delete/", {"post": "yes"})
         self.assertFalse(NotaFiscal.objects.filter(pk=previa.pk).exists())  # prévia pode
+
+
+class TestMicroempresa(TestCase):
+    """ME/EPP do Simples (o que a contabilidade pede): NBS 1.1406.19.00, ISS sem exigibilidade suspensa,
+    sem retenção e sem benefício, PIS/COFINS "00 - Nenhum" e não retidos, e o valor aproximado dos
+    tributos em % (13,45 federal, 0 estadual e 4,61 municipal). O MEI continua como era."""
+
+    def setUp(self):
+        cache.clear()
+        self.addCleanup(cache.clear)
+
+    def test_dps_da_me(self):
+        raiz = dps.montar(
+            ambiente="2", emitida_em=dt.datetime(2026, 11, 5, 9, 0, tzinfo=FUSO), serie="1", numero=7,
+            competencia=dt.date(2026, 11, 5), prestador=dps.Prestador(CNPJ, "3550308", "simples"),
+            tomador=dps.Tomador("cnpj", "35635824000112", "SHPS TECNOLOGIA E SERVICOS LTDA."),
+            servico=dps.Servico("170601", "Divulgação", nbs="114061900",
+                                tributos=(Decimal("13.45"), Decimal("0"), Decimal("4.61"))), valor="12.5")
+        dps.validar(raiz)  # passa no esquema oficial 1.01
+        xml = dps.para_bytes(raiz).decode()
+        self.assertIn("<opSimpNac>3</opSimpNac><regApTribSN>1</regApTribSN><regEspTrib>0</regEspTrib>", xml)
+        self.assertIn("<xDescServ>Divulgação</xDescServ><cNBS>114061900</cNBS>", xml)
+        self.assertIn("<tribMun><tribISSQN>1</tribISSQN><tpRetISSQN>1</tpRetISSQN></tribMun>", xml)
+        self.assertIn("<tribFed><piscofins><CST>00</CST><tpRetPisCofins>0</tpRetPisCofins></piscofins></tribFed>", xml)
+        self.assertIn("<totTrib><pTotTrib><pTotTribFed>13.45</pTotTribFed><pTotTribEst>0.00</pTotTribEst>"
+                      "<pTotTribMun>4.61</pTotTribMun></pTotTrib></totTrib>", xml)
+        for ausente in ("exigSusp", "BM", "indTotTrib"):
+            self.assertNotIn(f"<{ausente}>", xml)
+
+    def test_mei_continua_igual(self):
+        xml = dps.para_bytes(dps_exemplo()).decode()
+        self.assertNotIn("tribFed", xml)
+        self.assertNotIn("pTotTrib", xml)
+        self.assertIn("<indTotTrib>0</indTotTrib>", xml)
+        # Mesmo que venham percentuais, o MEI não informa (regra E0710).
+        raiz = dps.montar(
+            ambiente="2", emitida_em=dt.datetime(2026, 11, 5, 9, 0, tzinfo=FUSO), serie="1", numero=7,
+            competencia=dt.date(2026, 11, 5), prestador=dps.Prestador(CNPJ, "3550308", "mei"), tomador=None,
+            servico=dps.Servico("170601", "Divulgação", tributos=(1, 2, 3)), valor="12.5")
+        self.assertIn("<indTotTrib>0</indTotTrib>", dps.para_bytes(raiz).decode())
+
+    def test_nota_da_shopee_em_producao(self):
+        empresa = criar_empresa(criar_conta(), regime="simples", codigo_tributacao="", descricao_servico="")
+        servicos.aplicar_servico_padrao(empresa)
+        self.assertEqual(empresa.codigo_nbs, "114061900")  # o padrão da ME
+        certificado.guardar(empresa, gerar_pfx(), "senha-do-pfx")
+        nota = servicos.emitir_nota_shopee(empresa, "1.500,00")
+        falso = ClienteFalso(emitir=autorizada())
+        with mock.patch.object(servicos, "ClienteSefin", falso):
+            servicos.processar(nota)
+        xml = falso.emitidas[0].decode()
+        self.assertNotIn("<IBSCBS>", xml)
+        self.assertIn("<cNBS>114061900</cNBS>", xml)  # na ME vai mesmo sem o IBS/CBS
+        self.assertIn("<pTotTribFed>13.45</pTotTribFed><pTotTribEst>0.00</pTotTribEst><pTotTribMun>4.61</pTotTribMun>", xml)
+        self.assertIn("<CST>00</CST><tpRetPisCofins>0</tpRetPisCofins>", xml)
+
+    def test_notas_das_assinaturas_nao_informam_os_percentuais(self):
+        empresa = criar_empresa(criar_conta(), regime="simples")
+        nota = NotaFiscal(empresa=empresa, servico_codigo="010501", servico_descricao="Assinatura Appfiliado",
+                          servico_nbs="111032200")
+        servico = servicos._servico(nota, com_ibscbs=False)
+        self.assertEqual((servico.nbs, servico.tributos), ("111032200", None))
+        self.assertEqual(servicos._servico(NotaFiscal(empresa=empresa), False).tributos,
+                         (Decimal("13.45"), Decimal("0"), Decimal("4.61")))
+
+    def test_regime_novo_troca_o_nbs_padrao_e_guarda_o_digitado(self):
+        empresa = criar_empresa(criar_conta(), codigo_nbs="114061100")
+        with mock.patch.object(receita, "consultar", return_value={**DADOS_RECEITA_LOJA, "cnpj": CNPJ, "regime": "simples"}):
+            servicos.atualizar_cadastro(empresa)
+        self.assertEqual(EmpresaNotas.objects.get(pk=empresa.pk).codigo_nbs, "114061900")
+        empresa.codigo_nbs = "114061200"  # marketing direto, digitado pela pessoa
+        empresa.save()
+        with mock.patch.object(receita, "consultar", return_value={**DADOS_RECEITA_LOJA, "cnpj": CNPJ, "regime": "mei"}):
+            servicos.atualizar_cadastro(empresa)
+        self.assertEqual(EmpresaNotas.objects.get(pk=empresa.pk).codigo_nbs, "114061200")
+
+    def test_e0160_vira_me_com_o_nbs_e_os_percentuais(self):
+        empresa = criar_empresa(criar_conta(), codigo_nbs="114061100")
+        certificado.guardar(empresa, gerar_pfx(), "senha-do-pfx")
+        nota = servicos.emitir_nota_shopee(empresa, "10,00")
+        e0160 = Resposta(400, {"erros": [{"Codigo": "E0160", "Descricao": "Opção do Simples não confere."}]})
+        falso = ClienteEmSequencia([e0160, autorizada()])
+        with mock.patch.object(servicos, "ClienteSefin", falso):
+            servicos.processar(nota)
+        segunda = falso.emitidas[1].decode()
+        self.assertIn("<opSimpNac>3</opSimpNac>", segunda)
+        self.assertIn("<cNBS>114061900</cNBS>", segunda)
+        self.assertIn("<pTotTribFed>13.45</pTotTribFed>", segunda)
+        salvo = EmpresaNotas.objects.get(pk=empresa.pk)
+        self.assertEqual((salvo.regime, salvo.codigo_nbs), ("simples", "114061900"))
+
+    def test_salvar_percentuais_e_nbs_obrigatorio(self):
+        empresa = criar_empresa(criar_conta(), regime="simples", codigo_nbs="114061900")
+        servicos.salvar_servico(empresa, "170601", "", "Divulgação e venda de produtos", "", "1.1406.19.00",
+                                (Decimal("12.5"), None, Decimal("3")))
+        salvo = EmpresaNotas.objects.get(pk=empresa.pk)
+        self.assertEqual((salvo.tributos_federal, salvo.tributos_estadual, salvo.tributos_municipal),
+                         (Decimal("12.50"), Decimal("0.00"), Decimal("3.00")))
+        with self.assertRaisesMessage(servicos.ErroNotas, "NBS é obrigatório"):
+            servicos.salvar_servico(empresa, "170601", "", "Divulgação e venda de produtos", "", "")
+        with self.assertRaisesMessage(servicos.ErroNotas, "entre 0 e 99,99%"):
+            servicos.salvar_servico(empresa, "170601", "", "Divulgação e venda de produtos", "", "114061900",
+                                    (Decimal("100"), 0, 0))
+
+
+@override_settings(APPFILIADO_PAINEL_HOSTS=[HOST], ALLOWED_HOSTS=[HOST, "testserver"], APPFILIADO_PAINEL_URL=f"https://{HOST}")
+class TestTelaDaMicroempresa(TestCase):
+    def setUp(self):
+        cache.clear()
+        self.addCleanup(cache.clear)
+        self.conta = criar_conta()
+        self.client = Client(HTTP_HOST=HOST)
+        self.client.post("/entrar/", {"email": "bia@exemplo.com", "senha": SENHA})
+
+    def test_percentuais_so_aparecem_pra_me(self):
+        empresa = criar_empresa(self.conta)
+        self.assertNotContains(self.client.get("/notas/"), "Valor aproximado dos tributos")
+        empresa.regime, empresa.codigo_nbs = "simples", "114061900"
+        empresa.save()
+        pagina = self.client.get("/notas/")
+        self.assertContains(pagina, "Valor aproximado dos tributos (%)")
+        self.assertContains(pagina, 'value="13,45"')
+        self.assertContains(pagina, 'value="4,61"')
+        self.client.post("/notas/", {"acao": "servico", "codigo_tributacao": "170601", "codigo_nbs": "1.1406.19.00",
+                                     "descricao_servico": "Divulgação e venda de produtos", "tributos_federal": "12,9",
+                                     "tributos_estadual": "0", "tributos_municipal": "4,61"})
+        self.assertEqual(EmpresaNotas.objects.get(pk=empresa.pk).tributos_federal, Decimal("12.90"))
+
+
+class TestMigracaoDoNBS(TestCase):
+    def test_me_com_o_nbs_do_mei_passa_pro_da_me(self):
+        import importlib
+
+        from django.apps import apps
+
+        migracao = importlib.import_module("notas.migrations.0009_tributos_da_me")
+        conta = criar_conta()
+        me = criar_empresa(conta, regime="simples", codigo_nbs="114061100")
+        digitado = criar_empresa(conta, cnpj="11222333000181", regime="simples", codigo_nbs="114061200")
+        mei = criar_empresa(conta, cnpj="11444777000161", codigo_nbs="114061100")
+        migracao.nbs_da_me(apps, None)
+        self.assertEqual([EmpresaNotas.objects.get(pk=e.pk).codigo_nbs for e in (me, digitado, mei)],
+                         ["114061900", "114061200", "114061100"])

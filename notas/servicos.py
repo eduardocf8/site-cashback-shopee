@@ -33,8 +33,26 @@ VALOR_TESTE = Decimal("1.00")
 SERVICO_PADRAO_CODIGO = "170601"
 SERVICO_PADRAO_DESCRICAO = "Divulgação e venda de produtos"
 # NBS que a tabela oficial (Anexo VIII da reforma) liga ao 17.06 com cIndOp 100301/cClassTrib
-# 000001: 1.1406.11.00 "Serviços de campanhas publicitárias".
+# 000001: 1.1406.11.00 "Serviços de campanhas publicitárias". É o do MEI (só vai com o IBS/CBS).
 SERVICO_PADRAO_NBS = "114061100"
+# ME/EPP: 1.1406.19.00 (serviços de propaganda), o que a contabilidade pede pra nota de afiliado.
+SERVICO_PADRAO_NBS_ME = "114061900"
+
+
+def nbs_padrao(regime: str) -> str:
+    return SERVICO_PADRAO_NBS_ME if regime == "simples" else SERVICO_PADRAO_NBS
+
+
+def acertar_nbs_do_regime(empresa) -> bool:
+    """Quando o regime muda (MEI <-> ME), troca o NBS padrão de um pelo do outro. Um NBS que a
+    pessoa digitou fica. Só mexe no objeto: quem chama salva. Devolve se trocou."""
+    if empresa.codigo_tributacao not in ("", SERVICO_PADRAO_CODIGO):
+        return False
+    novo = nbs_padrao(empresa.regime)
+    if empresa.codigo_nbs in ("", SERVICO_PADRAO_NBS, SERVICO_PADRAO_NBS_ME) and empresa.codigo_nbs != novo:
+        empresa.codigo_nbs = novo
+        return True
+    return False
 VALOR_MAXIMO = Decimal("999999.99")
 
 
@@ -109,7 +127,8 @@ def atualizar_cadastro(empresa) -> str:
         return ""
     antes = empresa.get_regime_display()
     empresa.regime = dados["regime"]
-    empresa.save(update_fields=["regime", "atualizada_em"])
+    acertar_nbs_do_regime(empresa)
+    empresa.save(update_fields=["regime", "codigo_nbs", "atualizada_em"])
     return f"O regime da empresa mudou na Receita: de {antes} para {empresa.get_regime_display()}. Já atualizamos o cadastro."
 
 
@@ -128,6 +147,8 @@ def cadastrar_empresa(conta, cnpj_digitado: str) -> EmpresaNotas:
         conta=conta, cnpj=dados["cnpj"],
         defaults={k: dados[k] for k in ("razao_social", "municipio_ibge", "municipio_nome", "uf", "regime")},
     )
+    if acertar_nbs_do_regime(empresa):  # cadastrada de novo depois de mudar de regime
+        empresa.save(update_fields=["codigo_nbs", "atualizada_em"])
     aplicar_servico_padrao(empresa)
     return empresa
 
@@ -135,7 +156,7 @@ def cadastrar_empresa(conta, cnpj_digitado: str) -> EmpresaNotas:
 def aplicar_servico_padrao(empresa):
     """Preenche o serviço padrão se a empresa ainda não tem um (nunca troca o que a pessoa salvou)."""
     if not empresa.codigo_nbs and empresa.codigo_tributacao in ("", SERVICO_PADRAO_CODIGO):
-        empresa.codigo_nbs = SERVICO_PADRAO_NBS
+        empresa.codigo_nbs = nbs_padrao(empresa.regime)
         empresa.save(update_fields=["codigo_nbs", "atualizada_em"])
     if empresa.codigo_tributacao or empresa.descricao_servico:
         return
@@ -143,7 +164,8 @@ def aplicar_servico_padrao(empresa):
     empresa.save(update_fields=["codigo_tributacao", "descricao_servico", "atualizada_em"])
 
 
-def salvar_servico(empresa, codigo: str, codigo_municipal: str, descricao: str, inscricao_municipal: str, nbs: str = None):
+def salvar_servico(empresa, codigo: str, codigo_municipal: str, descricao: str, inscricao_municipal: str, nbs: str = None,
+                   tributos: tuple | None = None):
     codigo = re.sub(r"\D", "", codigo or "")
     if len(codigo) != 6:
         raise ErroNotas("O código de tributação nacional tem 6 números (ex: 170601).")
@@ -158,9 +180,20 @@ def salvar_servico(empresa, codigo: str, codigo_municipal: str, descricao: str, 
         nbs = re.sub(r"\D", "", nbs)
         if nbs and len(nbs) != 9:
             raise ErroNotas("O código NBS tem 9 números (ex: 1.1406.11.00).")
+        if not nbs and empresa.regime == "simples":
+            raise ErroNotas("Na nota de ME/EPP o código NBS é obrigatório (ex: 1.1406.19.00).")
         empresa.codigo_nbs = nbs
-    empresa.save(update_fields=["codigo_tributacao", "codigo_municipal", "descricao_servico",
-                                "inscricao_municipal", "codigo_nbs", "atualizada_em"])
+    campos = ["codigo_tributacao", "codigo_municipal", "descricao_servico", "inscricao_municipal", "codigo_nbs"]
+    if tributos is not None:  # valor aproximado dos tributos (%), só da ME/EPP
+        valores = []
+        for nome, valor in zip(("federal", "estadual", "municipal"), tributos):
+            valor = Decimal(0) if valor in (None, "") else Decimal(valor)
+            if not Decimal(0) <= valor < 100:
+                raise ErroNotas(f"O percentual {nome} dos tributos precisa ficar entre 0 e 99,99%.")
+            valores.append(valor.quantize(Decimal("0.01")))
+        empresa.tributos_federal, empresa.tributos_estadual, empresa.tributos_municipal = valores
+        campos += ["tributos_federal", "tributos_estadual", "tributos_municipal"]
+    empresa.save(update_fields=campos + ["atualizada_em"])
 
 
 def pronta_para_emitir(empresa) -> list[str]:
@@ -303,12 +336,17 @@ def _recusa_de_endereco(mensagens) -> bool:
 
 
 def _servico(nota, com_ibscbs: bool) -> dps.Servico:
-    """O serviço da nota: o próprio dela (notas das assinaturas do Appfiliado) ou o da empresa."""
+    """O serviço da nota: o próprio dela (notas das assinaturas do Appfiliado) ou o da empresa.
+    Na ME/EPP o NBS vai sempre e, no serviço da empresa, o valor aproximado dos tributos (%).
+    As notas das assinaturas ainda não informam os percentuais (outro serviço, outros valores)."""
+    e = nota.empresa
+    me = e.regime == "simples"
     if nota.servico_codigo:
         return dps.Servico(nota.servico_codigo, nota.servico_descricao, nota.servico_codigo_municipal,
-                           nota.servico_nbs if com_ibscbs else "")
-    e = nota.empresa
-    return dps.Servico(e.codigo_tributacao, e.descricao_servico, e.codigo_municipal, e.codigo_nbs if com_ibscbs else "")
+                           nota.servico_nbs if com_ibscbs or me else "")
+    tributos = (e.tributos_federal, e.tributos_estadual, e.tributos_municipal) if me else None
+    return dps.Servico(e.codigo_tributacao, e.descricao_servico, e.codigo_municipal,
+                       e.codigo_nbs if com_ibscbs or me else "", tributos)
 
 
 def _montar_assinada(nota, cert, campos=None, end=_PADRAO) -> bytes:
@@ -407,15 +445,16 @@ def processar(nota: NotaFiscal, cert=None, cliente=None) -> NotaFiscal:
             # Regime errado para o governo (ex: virou ME e a base pública ainda dizia MEI):
             # tenta com o outro regime; se passar, o cadastro fica com ele.
             empresa = nota.empresa
-            antes = empresa.regime
+            antes, nbs_antes = empresa.regime, empresa.codigo_nbs
             empresa.regime = "simples" if antes == "mei" else "mei"
+            acertar_nbs_do_regime(empresa)
             nova = cliente.emitir(_montar_assinada(nota, cert, campos))
             if nova.ok:
                 logger.info("Notas: regime de %s corrigido de %s para %s (E0160).", empresa.cnpj, antes, empresa.regime)
-                empresa.save(update_fields=["regime", "atualizada_em"])
+                empresa.save(update_fields=["regime", "codigo_nbs", "atualizada_em"])
                 resposta = nova
             else:
-                empresa.regime = antes
+                empresa.regime, empresa.codigo_nbs = antes, nbs_antes
         if (not resposta.ok and _recusa_de_endereco(resposta.mensagens) and nota.tomador_tipo in ("cnpj", "cpf")
                 and not _assinatura_sem_endereco(nota)):
             resposta = _reenviar_com_outro_endereco(nota, cert, cliente, campos, resposta)

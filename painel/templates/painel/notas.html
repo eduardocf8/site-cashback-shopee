@@ -60,7 +60,7 @@
           <form method="post" class="formulario">
             {% csrf_token %}
             <input type="hidden" name="acao" value="servico">
-            {% include "painel/_campos.html" with form=form_servico %}
+            {% include "painel/_notas_servico_campos.html" with form=form_servico %}
             <div><button type="submit" class="botao botao-principal">Salvar serviço</button></div>
           </form>
         </div>{% endif %}
@@ -198,7 +198,7 @@
           <form method="post" class="formulario">
             {% csrf_token %}
             <input type="hidden" name="acao" value="servico">
-            {% include "painel/_campos.html" with form=form_servico %}
+            {% include "painel/_notas_servico_campos.html" with form=form_servico %}
             <div><button type="submit" class="botao botao-escuro">Salvar serviço</button></div>
           </form>
         </div>
