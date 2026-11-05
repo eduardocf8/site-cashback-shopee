@@ -4,6 +4,8 @@ Cada conta cadastra a empresa (o CNPJ que emite) com o certificado digital A1 de
 As notas são enviadas uma a uma para a API do governo (Sefin Nacional) e ficam
 guardadas aqui com o XML que voltou, para baixar e mandar por e-mail."""
 
+from decimal import Decimal
+
 from django.db import models
 
 from licencas.models import ContaAppfiliado
@@ -32,8 +34,17 @@ class EmpresaNotas(models.Model):
     codigo_tributacao = models.CharField(max_length=6, blank=True)
     codigo_municipal = models.CharField(max_length=20, blank=True)
     descricao_servico = models.TextField(blank=True)
-    # NBS (Nomenclatura Brasileira de Serviços), 9 dígitos: exigido junto com o IBS/CBS.
+    # NBS (Nomenclatura Brasileira de Serviços), 9 dígitos: vai sempre na nota de ME/EPP e, no MEI,
+    # junto com o IBS/CBS.
     codigo_nbs = models.CharField(max_length=9, blank=True)
+    # Valor aproximado dos tributos (Lei 12.741/2012), em %, na nota de ME/EPP do Simples (o MEI não
+    # informa). O padrão é o que a contabilidade passou para o serviço de divulgação (17.06.01).
+    tributos_federal = models.DecimalField("tributos federais (%)", max_digits=5, decimal_places=2,
+                                           default=Decimal("13.45"))
+    tributos_estadual = models.DecimalField("tributos estaduais (%)", max_digits=5, decimal_places=2,
+                                            default=Decimal("0"))
+    tributos_municipal = models.DecimalField("tributos municipais (%)", max_digits=5, decimal_places=2,
+                                             default=Decimal("4.61"))
 
     # Certificado A1 (.pfx) e a senha, cifrados (painel/cripto.py). Nunca saem do servidor.
     certificado_cifrado = models.TextField(blank=True)

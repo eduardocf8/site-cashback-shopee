@@ -679,6 +679,13 @@ summary { cursor: pointer; }  /* "Editar", "Ver mensagem" etc. abrem ao clicar *
 .notas-cancelar .formulario { margin-top: 18px; }
 .notas-cancelar fieldset.campo { border: none; padding: 0; margin: 0; min-width: 0; display: flex; flex-direction: column; gap: 8px; }
 .notas-cancelar fieldset.campo legend { font-weight: 700; font-size: 13px; margin-bottom: 6px; padding: 0; }
+/* Serviço da ME/EPP: o valor aproximado dos tributos (%) num bloco, federal, estadual e municipal lado a lado. */
+fieldset.campo.tributos-me { border: none; padding: 0; margin: 0; min-width: 0; }
+fieldset.campo.tributos-me legend { font-weight: 700; font-size: 13px; margin-bottom: 6px; padding: 0; }
+.tributos-linha { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; }
+.tributos-linha > div { display: flex; flex-direction: column; gap: 4px; }
+.tributos-linha label { font-weight: 400; font-size: 13px; color: var(--suave); }
+.tributos-linha input { width: 100%; text-align: right; }
 .notas-cancelar-avisos { margin: 0; padding-left: 18px; display: flex; flex-direction: column; gap: 4px; }
 .notas-plano { display: flex; flex-direction: column; gap: 8px; }
 .notas-plano p { margin: 0; }

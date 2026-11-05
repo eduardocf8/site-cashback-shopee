@@ -65,7 +65,10 @@ class Servico:
     codigo_tributacao: str  # cTribNac, 6 dígitos
     descricao: str
     codigo_municipal: str = ""
-    nbs: str = ""  # 9 dígitos; só vai junto com o IBS/CBS
+    nbs: str = ""  # 9 dígitos; na ME/EPP vai sempre, no MEI só junto com o IBS/CBS
+    # Valor aproximado dos tributos em % (federal, estadual, municipal), só na nota de ME/EPP.
+    # Vazio = não informa (indTotTrib = 0).
+    tributos: tuple | None = None
 
 
 def id_dps(municipio_ibge: str, cnpj: str, serie: str, numero: int) -> str:
@@ -191,10 +194,22 @@ def _depois_do_tomador(inf, ambiente, prestador, tomador, servico, valor):
     _texto(_grupo(valores, "vServPrest"), "vServ", _valor(valor))
     trib = _grupo(valores, "trib")
     trib_mun = _grupo(trib, "tribMun")
-    _texto(trib_mun, "tribISSQN", 1)  # operação tributável
+    # Operação tributável, sem exigibilidade suspensa e sem benefício municipal (exigSusp e BM não vão).
+    _texto(trib_mun, "tribISSQN", 1)
     _texto(trib_mun, "tpRetISSQN", 1)  # ISS não retido (MEI não pode ter retenção, regra E0583)
+    me = prestador.regime == "simples"
+    if me:
+        # ME/EPP do Simples: PIS/COFINS "00 - Nenhum" (vão no DAS) e "0 - PIS/COFINS/CSLL não retidos".
+        pis = _grupo(_grupo(trib, "tribFed"), "piscofins")
+        _texto(pis, "CST", "00")
+        _texto(pis, "tpRetPisCofins", 0)
     tot = _grupo(trib, "totTrib")
-    _texto(tot, "indTotTrib", 0)  # não informa o valor aproximado dos tributos (MEI: regra E0710)
+    if me and servico.tributos:
+        perc = _grupo(tot, "pTotTrib")  # valores percentuais aproximados (Lei 12.741/2012)
+        for tag, p in zip(("pTotTribFed", "pTotTribEst", "pTotTribMun"), servico.tributos):
+            _texto(perc, tag, _valor(p))
+    else:
+        _texto(tot, "indTotTrib", 0)  # não informa o valor aproximado dos tributos (MEI: regra E0710)
     return inf.getparent()
 
 

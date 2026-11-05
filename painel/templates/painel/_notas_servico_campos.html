@@ -1,0 +1,22 @@
+{# Campos do serviço das notas. Na ME/EPP, o valor aproximado dos tributos (%) vem num bloco só, lado a lado. #}
+{% if form.non_field_errors %}<ul class="erros-form">{% for e in form.non_field_errors %}<li>{{ e }}</li>{% endfor %}</ul>{% endif %}
+{% for campo in form %}{% if campo.name|slice:":9" != "tributos_" %}
+  <div class="campo">
+    <label for="{{ campo.id_for_label }}">{{ campo.label }}</label>
+    {{ campo }}
+    {% if campo.help_text %}<span class="ajuda">{{ campo.help_text }}</span>{% endif %}
+    {% for e in campo.errors %}<span class="erro">{{ e }}</span>{% endfor %}
+  </div>
+{% endif %}{% endfor %}
+{% if form.tributos_federal %}
+  <fieldset class="campo tributos-me">
+    <legend>Valor aproximado dos tributos (%)</legend>
+    <div class="tributos-linha">
+      <div><label for="{{ form.tributos_federal.id_for_label }}">Federal</label>{{ form.tributos_federal }}</div>
+      <div><label for="{{ form.tributos_estadual.id_for_label }}">Estadual</label>{{ form.tributos_estadual }}</div>
+      <div><label for="{{ form.tributos_municipal.id_for_label }}">Municipal</label>{{ form.tributos_municipal }}</div>
+    </div>
+    <span class="ajuda">{{ form.tributos_federal.help_text }}</span>
+    {% for campo in form %}{% if campo.name|slice:":9" == "tributos_" %}{% for e in campo.errors %}<span class="erro">{{ campo.label }}: {{ e }}</span>{% endfor %}{% endif %}{% endfor %}
+  </fieldset>
+{% endif %}
