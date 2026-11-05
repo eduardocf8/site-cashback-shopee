@@ -83,6 +83,10 @@ GRUPOS = [
             ("notas.empresanotas", "Empresas"),
             ("notas.notafiscal", "Notas fiscais"),
         ]),
+        ("Automações Instagram", [
+            ("instagram_painel.avisorecebido", "Avisos recebidos do Instagram"),
+            ("instagram_painel.anunciovisto", "Anúncios vistos"),
+        ]),
     ]),
     ("📸 Automação Instagram", [
         ("Contas", [
