@@ -21,7 +21,7 @@ from meusite.models import CORES, ENDERECOS_RESERVADOS, PEDACOS_RESERVADOS, Site
 
 from . import cripto
 from .autenticacao import conta_logada, conta_requerida
-from .views import _contexto
+from .views_whatsapp import _contexto_bot
 
 MAXIMO_LINKS = 10
 
@@ -86,8 +86,8 @@ def entrada_lista(request):
         estado = entrada.situacao(link)
         links.append({"link": link, "url": url_publica(site, link), "estado": estado,
                       "numeros": entrada.estatisticas(link)})
-    return render(request, "painel/whatsapp_entrada.html", _contexto(
-        request, "whatsapp", site=site, links=links, maximo=MAXIMO_LINKS,
+    return render(request, "painel/whatsapp_entrada.html", _contexto_bot(
+        request, "entrada", site=site, links=links, maximo=MAXIMO_LINKS,
         dominio=settings.APPFILIADO_SITES_DOMINIO or "appfiliado.com.br",
     ))
 
@@ -282,8 +282,8 @@ def entrada_link(request, pk):
             messages.error(request, erro)
     possiveis = sorted(membros.grupos_possiveis(conexao), key=lambda g: entrada.ordem_natural(str(g.get("nome", ""))))
     estado = entrada.situacao(link)
-    return render(request, "painel/whatsapp_entrada_link.html", _contexto(
-        request, "whatsapp", link=link, site=site, url=url_publica(site, link), estado=estado,
+    return render(request, "painel/whatsapp_entrada_link.html", _contexto_bot(
+        request, "entrada", link=link, site=site, url=url_publica(site, link), estado=estado,
         numeros=entrada.estatisticas(link), possiveis=possiveis, escolhidos=set(link.grupos),
         admins=", ".join(grupos_novos._telefone(n) for n in link.admins_dos_novos or []),
         nomes={g["jid"]: g["nome"] for g in estado["grupos"]}, folga=entrada.FOLGA,

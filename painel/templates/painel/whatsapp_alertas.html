@@ -3,21 +3,15 @@
 {% block titulo %}Alerta de preço · Bot de WhatsApp{% endblock %}
 {% block cabeca %}<script src="{% static 'painel/emojis.js' %}" defer></script><script src="{% static 'painel/campanhas.js' %}" defer></script><script src="{% static 'painel/alertas.js' %}" defer></script>{% endblock %}
 {% block conteudo %}
-<header class="cabecalho">
-  <div>
-    <h1>Bot de WhatsApp</h1>
-    <p>Ofertas da Shopee enviadas com o seu link de afiliado no automático: buscadas pela API ou copiadas de outros grupos e canais.</p>
-  </div>
-</header>
-{% include "painel/_abas_whatsapp.html" with aba="alertas" %}
+{% include "painel/_cabecalho_bot.html" with aba="alertas" %}
 
 <section class="card status-ofertas" aria-labelledby="titulo-status-alerta">
   <div class="status-ofertas-texto">
-    <h2 id="titulo-status-alerta" class="status-zap">
-      {% if alerta.ativo %}<span class="ponto ok" aria-hidden="true"></span>Alerta de preço ligado{% else %}<span class="ponto" aria-hidden="true"></span>Alerta de preço pausado{% endif %}
+    <h2 id="titulo-status-alerta" class="estado-bot">
+      {% if alerta.ativo %}<span class="situacao">Alerta de preço ligado</span>{% else %}<span class="situacao parada">Alerta de preço pausado</span>{% endif %}
     </h2>
-    <p class="pequeno">Confere os preços dos produtos abaixo a cada {% if intervalo < 60 %}{{ intervalo }} minutos{% elif intervalo == 60 %}1 hora{% else %}{% widthratio intervalo 60 1 %} horas{% endif %} e avisa quando algum cair pelo menos {{ alerta.queda_minima }}% (ou chegar ao preço escolhido no produto).</p>
-    {% if alerta.ultima_conferencia_em %}<p class="suave pequeno">Última conferência: {{ alerta.ultima_conferencia_em|date:"d/m H:i" }}.{% if alerta.ativo and alerta.proxima_conferencia_em %} Próxima: {{ alerta.proxima_conferencia_em|date:"d/m H:i" }}.{% endif %}</p>{% endif %}
+    {% if alerta.ultima_conferencia_em %}<p class="suave pequeno">Última conferência: {{ alerta.ultima_conferencia_em|date:"d/m H:i" }}.{% if alerta.ativo and alerta.proxima_conferencia_em %} Próxima: {{ alerta.proxima_conferencia_em|date:"d/m H:i" }}.{% endif %}</p>
+    {% elif not alerta.ativo %}<p class="suave pequeno">Ligado, ele confere os preços dos produtos abaixo e avisa quando algum baixar.</p>{% endif %}
     {% if not shopee_conectada %}<p class="aviso aviso-warning pequeno">Conecte sua conta da Shopee em <a href="{% url 'painel_configuracoes' %}">Configurações</a>: é com ela que o alerta confere os preços.</p>{% endif %}
     {% if alerta.ultimo_erro %}<p class="aviso aviso-warning pequeno">{{ alerta.ultimo_erro }}</p>{% endif %}
     {% if not regras.premium %}<p class="suave pequeno">No seu plano: até {{ limite }} produtos, conferindo a partir de 1 hora. No <a href="{{ url_planos }}" target="_blank" rel="noopener">plano Premium</a>: até 50 produtos, a partir de 15 minutos.</p>{% endif %}
@@ -25,13 +19,52 @@
   <div class="status-ofertas-botoes">
     {% if total %}<form method="post">{% csrf_token %}<button type="submit" name="acao" value="conferir" class="botao botao-claro">Conferir agora</button></form>{% endif %}
     <form method="post">{% csrf_token %}
-      {% if alerta.ativo %}<button type="submit" name="acao" value="pausar" class="botao botao-escuro">Pausar</button>
+      {% if alerta.ativo %}<button type="submit" name="acao" value="pausar" class="botao botao-claro">Pausar</button>
       {% else %}<button type="submit" name="acao" value="ligar" class="botao botao-principal">Ligar alerta</button>{% endif %}
     </form>
   </div>
 </section>
 
-<div class="duas-colunas" style="margin-top:16px">
+{# Como avisar: os ajustes ficam fechados, com o resumo do que está valendo. #}
+<details class="card etapa sem-numero ajustes-alerta" id="como-avisar"{% if form.errors %} open{% endif %}>
+  <summary class="etapa-topo">
+    <div><h2>Como avisar</h2><span class="etapa-resumo">{{ como_avisar }}</span></div>
+    <span class="etapa-abrir"><span class="se-fechado">Ajustar</span><span class="se-aberto">Fechar</span></span>
+  </summary>
+  <div class="etapa-corpo">
+    <form method="post" class="formulario form-ofertas form-alerta" novalidate>
+      {% csrf_token %}<input type="hidden" name="acao" value="salvar">
+      <div class="ajustes-colunas">
+        <section aria-labelledby="titulo-config-alerta">
+          <h3 id="titulo-config-alerta">Quando avisar</h3>
+          <div class="grade-campos">
+            <div class="campo">{% include "painel/_campo.html" with campo=form.intervalo_minutos %}</div>
+            <div class="campo">{% include "painel/_campo.html" with campo=form.queda_minima %}</div>
+          </div>
+          <p class="suave pequeno">Ex: com 10%, um produto de R$ 100,00 avisa quando chegar a R$ 90,00. Depois de um alerta, o próximo só vem com uma nova queda de 10% a partir do preço novo.</p>
+          <p class="suave pequeno">Em cada produto, em <strong>Mudar</strong>, dá para escolher outra queda ou um <strong>preço em R$</strong>.</p>
+        </section>
+        <section aria-labelledby="titulo-onde-avisar">
+          <h3 id="titulo-onde-avisar">Onde avisar</h3>
+          <label class="marcar"><input type="checkbox" checked disabled><span><strong>Aqui no painel</strong><span class="ajuda">Sempre: os alertas aparecem nesta aba e na tela Início.</span></span></label>
+          <label class="marcar">{{ form.avisar_email }}<span><strong>Por e-mail</strong><span class="ajuda">Para {{ conta.email }} com o link de afiliado de cada produto.</span></span></label>
+          <label class="marcar">{{ form.enviar_grupos }}<span><strong>Postar nos grupos do WhatsApp</strong><span class="ajuda">O bot posta cada produto que baixou de preço com foto e o seu link nos grupos da Automação.</span></span></label>
+          <div class="bloco-mensagem" data-ligado-por="id_enviar_grupos">
+            {% if not whatsapp_conectado %}<p class="aviso aviso-warning pequeno">Seu WhatsApp não está conectado. Conecte na aba <a href="{% url 'painel_whatsapp' %}">Conexão</a>.</p>{% endif %}
+            <p class="suave pequeno">{% if grupos_da_automacao %}Vai pros mesmos grupos das ofertas: <strong>{% for g in grupos_da_automacao %}{{ g.nome|default:"Grupo" }}{% if not forloop.last %}, {% endif %}{% endfor %}</strong>. Para mudar, use a aba <a href="{% url 'painel_whatsapp_ofertas' %}">Automação</a>.{% else %}Vai pros mesmos grupos das ofertas, mas nenhum está escolhido ainda. Escolha na aba <a href="{% url 'painel_whatsapp_ofertas' %}">Automação</a>.{% endif %}</p>
+            <div class="campo">
+              {% include "painel/_campo.html" with campo=form.modelo_mensagem %}
+              <span class="ajuda">Use os campos: <code>{produto}</code> <code>{preco_antes}</code> <code>{preco_agora}</code> <code>{queda}</code> <code>{link}</code>. Eles viram os dados de cada produto.</span>
+            </div>
+          </div>
+        </section>
+      </div>
+      <div class="barra-salvar no-fim"><button type="submit" class="botao botao-principal">Salvar</button></div>
+    </form>
+  </div>
+</details>
+
+<div class="duas-colunas">
   <div class="coluna-alertas">
     <section class="card" id="produtos" aria-labelledby="titulo-produtos">
       <div class="card-topo"><h2 id="titulo-produtos">Produtos acompanhados</h2><span class="suave pequeno">{{ total }} de {{ limite }}</span></div>
@@ -39,14 +72,54 @@
         <form method="post" class="formulario adicionar-links">
           {% csrf_token %}<input type="hidden" name="acao" value="adicionar_links">
           <div class="campo">
-            <label for="links">Adicionar pelo link</label>
-            <textarea id="links" name="links" rows="2" placeholder="Cole o link de um ou mais produtos da Shopee (um por linha)"></textarea>
+            <label for="links" class="sr">Adicionar pelo link</label>
+            <textarea id="links" name="links" rows="1" placeholder="Cole o link do produto"></textarea>
           </div>
-          <div><button type="submit" class="botao botao-escuro" data-enviando="Adicionando…">Adicionar</button></div>
+          <button type="submit" class="botao botao-escuro" data-enviando="Adicionando…">Adicionar</button>
         </form>
       {% else %}
         <p class="aviso aviso-info pequeno">Você chegou ao limite de {{ limite }} produtos do seu plano. Remova algum para adicionar outro.</p>
       {% endif %}
+
+      {# A vitrine fica dentro dos produtos, fechada (abre sozinha depois de uma busca). #}
+      <details class="vitrine-dentro" id="vitrine"{% if busca %} open{% endif %}>
+        <summary>Ou escolha na vitrine da Shopee e nas últimas ofertas do bot</summary>
+        <p class="suave pequeno">Os 12 mais vendidos com comissão de afiliado, de todas as categorias, atualizados todo dia. A Shopee não libera todo produto para afiliados: não achou? Cole o link acima.</p>
+        <form method="get" action="#vitrine" class="busca-vitrine">
+          <label for="q" class="sr">Buscar produto</label>
+          <input type="search" id="q" name="q" value="{{ busca }}" placeholder="Ex: fone bluetooth, air fryer…" maxlength="120">
+          <button type="submit" class="botao botao-claro">Buscar</button>
+        </form>
+        {% if erro_busca %}<p class="aviso aviso-warning pequeno">{{ erro_busca }}</p>{% endif %}
+        {% if busca and not resultados and not erro_busca %}<p class="suave pequeno">Nenhum produto encontrado para “{{ busca }}”.</p>{% endif %}
+        {% if resultados %}
+          <ul class="grade-vitrine">
+            {% for r in resultados %}
+              <li>
+                {% if r.imagem %}<img src="{{ r.imagem }}" alt="" loading="lazy" referrerpolicy="no-referrer">{% endif %}
+                <span class="vitrine-nome">{{ r.nome|truncatechars:60 }}</span>
+                <strong>{{ r.preco|brl }}</strong>
+                {% if r.acompanhado %}<span class="selo-acompanhando">✓ Acompanhando</span>
+                {% elif not cheio %}<form method="post">{% csrf_token %}<input type="hidden" name="acao" value="adicionar_item"><input type="hidden" name="item_id" value="{{ r.item_id }}"><input type="hidden" name="q" value="{{ busca }}"><button type="submit" class="botao botao-escuro botao-pequeno">Acompanhar</button></form>{% endif %}
+              </li>
+            {% endfor %}
+          </ul>
+        {% endif %}
+        {% if do_bot %}
+          <h3 class="subtitulo-alerta">Das últimas ofertas do bot</h3>
+          <ul class="lista-do-bot">
+            {% for o in do_bot %}
+              <li>
+                {% if o.imagem %}<img src="{{ o.imagem }}" alt="" loading="lazy" referrerpolicy="no-referrer">{% else %}<span class="sem-foto" aria-hidden="true"></span>{% endif %}
+                <span>{{ o.nome|default:"Produto"|truncatechars:70 }}</span>
+                {% if o.acompanhado %}<span class="selo-acompanhando">✓ Acompanhando</span>
+                {% elif not cheio %}<form method="post">{% csrf_token %}<input type="hidden" name="acao" value="adicionar_item"><input type="hidden" name="item_id" value="{{ o.item_id }}"><input type="hidden" name="q" value="{{ busca }}"><button type="submit" class="link-botao pequeno">Acompanhar</button></form>{% endif %}
+              </li>
+            {% endfor %}
+          </ul>
+        {% endif %}
+      </details>
+
       {% if pagina.object_list %}
         <ul class="lista-acompanhados">
           {% for p in pagina %}
@@ -54,14 +127,14 @@
               {% if p.imagem %}<img src="{{ p.imagem }}" alt="" loading="lazy" referrerpolicy="no-referrer">{% else %}<span class="sem-foto" aria-hidden="true"></span>{% endif %}
               <div class="acompanhado-info">
                 <a href="{{ p.link }}" target="_blank" rel="noopener" class="acompanhado-nome">{{ p.nome|truncatechars:80 }}</a>
-                <span class="pequeno">
+                <span class="linha-preco pequeno">
                   <strong class="preco-atual">{{ p.preco_atual|brl }}</strong>{% if p.preco_pix %} <span class="preco-pix">no Pix (−{{ p.desconto_pix }}%): {{ p.preco_pix|brl }}</span>{% endif %}
                   {% if p.variacao is not None and p.variacao != 0 %}<span class="variacao {% if p.variacao < 0 %}desceu{% else %}subiu{% endif %}">{% if p.variacao > 0 %}+{% endif %}{{ p.variacao|floatformat:"-1" }}%</span>{% endif %}
                   {% if p.indisponivel %}<span class="selo-indisponivel">Indisponível</span>{% endif %}
+                  <span class="suave">ao adicionar {{ p.preco_inicial|brl }} · menor {{ p.menor_preco|brl }}{% if p.ultimo_alerta_em %} · último alerta {{ p.ultimo_alerta_em|date:"d/m H:i" }}{% endif %}</span>
                 </span>
-                <span class="suave pequeno">Ao adicionar: {{ p.preco_inicial|brl }} · menor: {{ p.menor_preco|brl }}{% if p.ultimo_alerta_em %} · último alerta {{ p.ultimo_alerta_em|date:"d/m H:i" }}{% endif %}</span>
               </div>
-              <form method="post">{% csrf_token %}<input type="hidden" name="acao" value="remover"><input type="hidden" name="produto" value="{{ p.pk }}"><input type="hidden" name="pagina" value="{{ pagina.number }}"><button type="submit" class="link-botao pequeno">Remover</button></form>
+              <form method="post" class="remover-produto">{% csrf_token %}<input type="hidden" name="acao" value="remover"><input type="hidden" name="produto" value="{{ p.pk }}"><input type="hidden" name="pagina" value="{{ pagina.number }}"><button type="submit" class="remover-icone" title="Parar de acompanhar">{% include "painel/_icone.html" with caminho="M4 7h16M10 11v6M14 11v6M5 7l1 12a2 2 0 0 0 2 2h8a2 2 0 0 0 2-2l1-12M9 7V4h6v3" %}<span class="sr">Remover</span></button></form>
               <div class="aviso-produto" data-aviso>
                 <div class="resumo-aviso"><span class="selo-aviso {{ p.aviso.tipo }}">{{ p.aviso.texto }}{% if p.aviso.detalhe %} <small>· {{ p.aviso.detalhe }}</small>{% endif %}</span><button type="button" class="link-botao pequeno" data-mudar-aviso aria-expanded="false" aria-controls="aviso-{{ p.pk }}">Mudar</button></div>
                 <form method="post" class="editor-aviso" id="aviso-{{ p.pk }}" hidden data-preco="{{ p.preco_atual|default:''|stringformat:'s' }}" data-menor="{{ p.menor_preco|default:''|stringformat:'s' }}" data-base="{{ p.referencia|default:p.preco_atual|default:''|stringformat:'s' }}">
@@ -110,76 +183,10 @@
           </nav>
         {% endif %}
       {% else %}
-        <p class="suave pequeno" style="margin-top:12px">Nenhum produto ainda. Cole um link acima ou escolha na vitrine logo abaixo.</p>
+        <p class="suave pequeno" style="margin-top:12px">Nenhum produto ainda. Cole um link ou escolha na vitrine, logo acima.</p>
       {% endif %}
     </section>
 
-    <section class="card" id="vitrine" aria-labelledby="titulo-vitrine">
-      <h2 id="titulo-vitrine">Escolher na vitrine da Shopee</h2>
-      <p class="suave pequeno">Busca nos produtos da Shopee que têm comissão de afiliado, de todas as categorias, atualizados todos os dias (os 12 mais vendidos). A Shopee limita quantos produtos libera para afiliados, então nem todo produto aparece aqui: não achou? Cole o link do produto em “Adicionar pelo link”.</p>
-      <form method="get" action="#vitrine" class="busca-vitrine">
-        <label for="q" class="sr">Buscar produto</label>
-        <input type="search" id="q" name="q" value="{{ busca }}" placeholder="Ex: fone bluetooth, air fryer…" maxlength="120">
-        <button type="submit" class="botao botao-claro">Buscar</button>
-      </form>
-      {% if erro_busca %}<p class="aviso aviso-warning pequeno">{{ erro_busca }}</p>{% endif %}
-      {% if busca and not resultados and not erro_busca %}<p class="suave pequeno">Nenhum produto encontrado para “{{ busca }}”.</p>{% endif %}
-      {% if resultados %}
-        <ul class="grade-vitrine">
-          {% for r in resultados %}
-            <li>
-              {% if r.imagem %}<img src="{{ r.imagem }}" alt="" loading="lazy" referrerpolicy="no-referrer">{% endif %}
-              <span class="vitrine-nome">{{ r.nome|truncatechars:60 }}</span>
-              <strong>{{ r.preco|brl }}</strong>
-              {% if r.acompanhado %}<span class="selo-acompanhando">✓ Acompanhando</span>
-              {% elif not cheio %}<form method="post">{% csrf_token %}<input type="hidden" name="acao" value="adicionar_item"><input type="hidden" name="item_id" value="{{ r.item_id }}"><input type="hidden" name="q" value="{{ busca }}"><button type="submit" class="botao botao-escuro botao-pequeno">Acompanhar</button></form>{% endif %}
-            </li>
-          {% endfor %}
-        </ul>
-      {% endif %}
-      {% if do_bot %}
-        <h3 class="subtitulo-alerta">Das últimas ofertas do bot</h3>
-        <ul class="lista-do-bot">
-          {% for o in do_bot %}
-            <li>
-              {% if o.imagem %}<img src="{{ o.imagem }}" alt="" loading="lazy" referrerpolicy="no-referrer">{% else %}<span class="sem-foto" aria-hidden="true"></span>{% endif %}
-              <span>{{ o.nome|default:"Produto"|truncatechars:70 }}</span>
-              {% if o.acompanhado %}<span class="selo-acompanhando">✓ Acompanhando</span>
-              {% elif not cheio %}<form method="post">{% csrf_token %}<input type="hidden" name="acao" value="adicionar_item"><input type="hidden" name="item_id" value="{{ o.item_id }}"><input type="hidden" name="q" value="{{ busca }}"><button type="submit" class="link-botao pequeno">Acompanhar</button></form>{% endif %}
-            </li>
-          {% endfor %}
-        </ul>
-      {% endif %}
-    </section>
-
-    <form method="post" class="formulario form-ofertas" novalidate>
-      {% csrf_token %}<input type="hidden" name="acao" value="salvar">
-      <section class="card" aria-labelledby="titulo-config-alerta">
-        <h2 id="titulo-config-alerta">Quando avisar</h2>
-        <div class="grade-campos">
-          <div class="campo">{% include "painel/_campo.html" with campo=form.intervalo_minutos %}</div>
-          <div class="campo">{% include "painel/_campo.html" with campo=form.queda_minima %}</div>
-        </div>
-        <p class="suave pequeno">Ex: com 10%, um produto de R$ 100,00 avisa quando chegar a R$ 90,00. Depois de um alerta, o próximo só vem com uma nova queda de 10% a partir do preço novo.</p>
-        <p class="suave pequeno" style="margin-top:8px">Vale para os produtos novos e para os que estão no padrão. Em cada produto da lista, em <strong>Mudar</strong>, dá para escolher outra queda em % ou um <strong>preço em R$</strong> que ele precisa chegar.</p>
-      </section>
-
-      <section class="card" aria-labelledby="titulo-onde-avisar">
-        <h2 id="titulo-onde-avisar">Onde avisar</h2>
-        <label class="marcar"><input type="checkbox" checked disabled><span><strong>Aqui no painel</strong><span class="ajuda">Sempre: os alertas aparecem nesta aba e na tela Início.</span></span></label>
-        <label class="marcar" style="margin-top:12px">{{ form.avisar_email }}<span><strong>Por e-mail</strong><span class="ajuda">Para {{ conta.email }} com o link de afiliado de cada produto.</span></span></label>
-        <label class="marcar" style="margin-top:12px">{{ form.enviar_grupos }}<span><strong>Postar nos grupos do WhatsApp</strong><span class="ajuda">O bot posta sozinho cada produto que baixou de preço com foto e o seu link de afiliado nos grupos da Automação.</span></span></label>
-        <div class="bloco-mensagem" data-ligado-por="id_enviar_grupos">
-          {% if not whatsapp_conectado %}<p class="aviso aviso-warning pequeno">Seu WhatsApp não está conectado. Conecte na aba <a href="{% url 'painel_whatsapp' %}">Conexão</a>.</p>{% endif %}
-          <p class="suave pequeno">{% if grupos_da_automacao %}Vai pros mesmos grupos das ofertas: <strong>{% for g in grupos_da_automacao %}{{ g.nome|default:"Grupo" }}{% if not forloop.last %}, {% endif %}{% endfor %}</strong>. Para mudar, use a aba <a href="{% url 'painel_whatsapp_ofertas' %}">Automação</a>.{% else %}Vai pros mesmos grupos das ofertas, mas nenhum está escolhido ainda. Escolha na aba <a href="{% url 'painel_whatsapp_ofertas' %}">Automação</a>.{% endif %}</p>
-          <div class="campo">
-            {% include "painel/_campo.html" with campo=form.modelo_mensagem %}
-            <span class="ajuda">Use os campos: <code>{produto}</code> <code>{preco_antes}</code> <code>{preco_agora}</code> <code>{queda}</code> <code>{link}</code>. Eles viram os dados de cada produto.</span>
-          </div>
-        </div>
-      </section>
-      <div class="barra-salvar no-fim"><button type="submit" class="botao botao-principal">Salvar</button></div>
-    </form>
   </div>
 
   <div class="coluna-lateral">

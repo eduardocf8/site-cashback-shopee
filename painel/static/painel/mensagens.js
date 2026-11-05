@@ -71,6 +71,15 @@
   if (remover) remover.addEventListener("change", mostrarFoto);
   mostrarFoto();
 
+  // Ao lado do botão "Adicionar foto": o nome do arquivo escolhido (ou a ajuda, sem arquivo).
+  var nomeDaFoto = document.getElementById("nome-da-foto");
+  if (nomeDaFoto) {
+    arquivo.addEventListener("change", function () {
+      var escolhido = arquivo.files && arquivo.files[0];
+      nomeDaFoto.textContent = escolhido ? "📎 " + escolhido.name : nomeDaFoto.dataset.ajuda;
+    });
+  }
+
   // Hora em 24 h: põe os ":" sozinho ("2030" vira "20:30").
   form.querySelectorAll("input[data-hora]").forEach(function (campo) {
     campo.addEventListener("input", function () {
