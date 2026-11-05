@@ -62,6 +62,11 @@ class ShopeeForm(forms.Form):
         help_text="Deixe em branco para manter o que já está salvo.",
     )
 
+    def __init__(self, *args, tem_secret=True, **kwargs):
+        super().__init__(*args, **kwargs)
+        if not tem_secret:  # ainda não tem nada salvo: o "deixe em branco" não faz sentido
+            self.fields["secret"].help_text = "Fica guardado com criptografia e não aparece de novo na tela."
+
 
 class RegraSubIdForm(forms.Form):
     operador = forms.ChoiceField(label="Se o Sub ID", choices=[])
@@ -418,6 +423,8 @@ class RelatorioEmailForm(forms.ModelForm):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.fields["hora"].required = False
+        self.fields["hora"].help_text = ("Horário de Brasília. Se a Shopee ainda não tiver liberado os números de "
+                                         "ontem, o e-mail vai assim que eles saírem.")
 
     def clean_hora(self):
         # Sem o campo (página aberta antes dele existir), fica o horário que já estava.

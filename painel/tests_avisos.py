@@ -203,16 +203,31 @@ class TestOcultarPrimeirosPassos(BasePainel):
 
     def test_cartao_aparece_com_os_dois_botoes(self):
         r = self.client.get("/")
-        if "Primeiros passos" not in r.content.decode():
+        if "Vamos deixar tudo pronto" not in r.content.decode():
             self.skipTest("esta conta de teste não tem passos pendentes")
-        self.assertContains(r, "Me lembre mais tarde")
-        self.assertContains(r, "Não mostrar novamente")
+        self.assertContains(r, "Esconder por hoje")
+        self.assertContains(r, "Não mostrar mais")
+
+    def test_cartao_numera_os_passos_e_destaca_o_proximo(self):
+        self.conta.modulos_cortesia = "whatsapp,site"
+        self.conta.shopee_validado_em = None
+        self.conta.save()
+        r = self.client.get("/")
+        self.assertContains(r, "Vamos deixar tudo pronto")
+        self.assertContains(r, "0 de 4 feitos. Comece pela Shopee")
+        self.assertContains(r, "Comece por aqui", count=1)
+        self.assertContains(r, "É ela que traz os seus números")  # a linha de ajuda de cada passo
+        self.assertContains(r, 'class="botao botao-principal botao-pequeno" href="/configuracoes/"')
+        self.assertContains(r, "Faltam 4 passos para tudo funcionar no automático.")
+        self.assertNotContains(r, "Fale com a gente")  # sem WhatsApp de suporte configurado
+        with self.settings(APPFILIADO_WHATSAPP_SUPORTE="+55 (11) 99999-0000"):
+            self.assertContains(self.client.get("/"), 'href="https://wa.me/5511999990000"')
 
     def test_lembrar_mais_tarde_esconde_por_12_horas(self):
         self.client.post("/primeiros-passos/ocultar/", {"acao": "depois"})
         self.conta.refresh_from_db()
         self.assertFalse(primeiros_passos.cartao_visivel(self.conta))
-        self.assertNotContains(self.client.get("/"), "Me lembre mais tarde")
+        self.assertNotContains(self.client.get("/"), "Esconder por hoje")
         self.assertFalse(primeiros_passos.cartao_visivel(self.conta, timezone.now() + timedelta(hours=11)))
         self.assertTrue(primeiros_passos.cartao_visivel(self.conta, timezone.now() + timedelta(hours=12, minutes=1)))
         self.assertFalse(self.conta.passos_ocultos)
@@ -222,7 +237,7 @@ class TestOcultarPrimeirosPassos(BasePainel):
         self.conta.refresh_from_db()
         self.assertTrue(self.conta.passos_ocultos)
         self.assertFalse(primeiros_passos.cartao_visivel(self.conta, timezone.now() + timedelta(days=365)))
-        self.assertNotContains(self.client.get("/"), "Primeiros passos")
+        self.assertNotContains(self.client.get("/"), "Vamos deixar tudo pronto")
 
     def test_so_aceita_post(self):
         self.assertEqual(self.client.get("/primeiros-passos/ocultar/").status_code, 405)
