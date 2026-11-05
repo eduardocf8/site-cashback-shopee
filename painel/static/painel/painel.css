@@ -1416,3 +1416,97 @@ details.etapa[open] .etapa-abrir::after { transform: rotate(-135deg) translate(-
   .previa-fundo { position: fixed; inset: 0; z-index: 60; background: rgba(20, 24, 22, .55); }
   html.previa-aberta, html.previa-aberta body { overflow: hidden; }
 }
+
+/* Emissor NFS-e: primeiro uso em 4 passos (as .etapa ligadas por uma linha, o passo da vez com o formulário aberto). */
+.notas-passos { gap: 6px; padding: 22px 22px 10px; }
+.notas-passos .card-topo { margin-bottom: 4px; align-items: flex-start; }
+.notas-passos .card-topo p { margin: 2px 0 0; }
+.notas-etapas { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; }
+.notas-etapas .etapa { position: relative; padding-bottom: 10px; }
+.notas-etapas .etapa:not(:last-child)::before { content: ""; position: absolute; left: 15px; top: 44px; bottom: -4px; width: 2px;
+  border-radius: 2px; background: var(--trilho); }
+.notas-etapas .etapa.feita:not(:last-child)::before { background: var(--bom); }
+.notas-etapas .etapa-topo { padding: 8px 0; }
+.notas-etapas .etapa-topo h3 { margin: 0; font-size: 15px; line-height: 1.3; }
+.notas-etapas .etapa-num svg.icone { width: 16px; height: 16px; stroke-width: 3; }
+.notas-etapas .etapa.feita .etapa-resumo { color: var(--texto); }
+.notas-etapas .etapa.espera .etapa-num { background: #fff; border: 2px solid var(--borda-forte); color: var(--suave); }
+.notas-etapas .etapa.espera h3 { color: var(--suave); font-weight: 600; }
+.notas-etapas .etapa-corpo { margin: 2px 0 14px 46px; padding: 16px; gap: 12px; border: 1px solid var(--borda); border-radius: 12px;
+  background: var(--campo); }
+.notas-etapas .etapa-corpo .campo input { background: #fff; }
+.notas-etapas .notas-cnpj { max-width: none; }
+.notas-etapas .notas-cnpj .campo { max-width: 360px; }
+.notas-etapas-depois { margin: 0 0 10px 46px !important; }
+
+/* Configuração: um cartão só, uma linha por item com o resumo do que vale e o formulário abrindo ali mesmo. */
+.config-notas { padding: 4px 20px; }
+.config-linha + .config-linha { border-top: 1px solid var(--trilho); }
+.config-notas .etapa-topo { grid-template-columns: 38px minmax(0, 1fr) auto; padding: 14px 0; }
+.config-notas .etapa-topo h3 { margin: 0; font-size: 15px; line-height: 1.3; }
+.config-notas .etapa-num { width: 38px; height: 38px; border-radius: 11px; background: var(--chip); color: var(--verde); }
+.config-notas details.etapa[open] > summary { border-bottom: 0; }
+.config-notas details.etapa[open] .etapa-resumo { display: block; }
+.config-notas details.etapa[open] .etapa-abrir { background: var(--chip); }
+.config-notas .etapa-resumo .ponto { display: inline-block; width: 8px; height: 8px; margin-right: 6px; vertical-align: 1px; box-shadow: 0 0 0 3px var(--bom-suave); }
+.config-notas .etapa-corpo, .config-notas details.etapa[open] .etapa-corpo { margin: 0 0 16px 52px; padding: 16px; gap: 12px;
+  border: 1px solid var(--borda); border-radius: 12px; background: var(--campo); }
+.config-notas .etapa-corpo > p, .config-notas .etapa-corpo form { margin: 0; }
+.config-notas .notas-contabilidade-enviar { padding-top: 12px; border-top: 1px solid var(--trilho); }
+.config-notas .botao-excluir { align-self: flex-start; padding: 4px 0; }
+
+/* Cartões de emitir: instrução em passos, campo de arquivo do painel e "Teste | De verdade". */
+.passos-relatorio { margin: 0; gap: 4px; }
+.passos-relatorio li::marker { font-weight: 700; color: var(--verde); }
+.campo-arquivo { position: relative; }
+.campo-arquivo input[type="file"] { position: absolute; left: 0; bottom: 0; width: 1px; height: 1px; opacity: 0; }
+.arquivo-caixa { display: flex; align-items: center; gap: 12px; padding: 12px 14px; border: 1.5px dashed var(--borda-forte); border-radius: 12px;
+  background: var(--campo); cursor: pointer; }
+.campo .arquivo-caixa { font-weight: 400; font-size: 14px; }
+.arquivo-caixa:hover, .arquivo-caixa.escolhido { border-color: var(--verde); background: #fff; }
+.campo-arquivo input:focus-visible + .arquivo-caixa { outline: 3px solid var(--amarelo); outline-offset: 2px; }
+.arquivo-icone { width: 38px; height: 38px; border-radius: 10px; background: var(--chip); color: var(--verde); display: grid; place-items: center; flex: none; }
+.arquivo-texto { display: flex; flex-direction: column; min-width: 0; overflow-wrap: anywhere; }
+.notas-ambiente { gap: 6px; }
+.notas-ambiente .segmentado span { min-width: 112px; padding: 8px 18px; }
+
+/* Lote: filtro em chips com a contagem, data curta junto da situação e "Reenviar" ao lado do e-mail. */
+.filtro-notas { margin-bottom: 10px; }
+.filtro-notas .chip .conta { margin-left: 7px; padding: 0 7px; border-radius: 999px; background: var(--chip); font-size: 12px; font-weight: 700; }
+.filtro-notas .chip.ativo .conta { background: rgba(255, 255, 255, .18); }
+.notas-tabela td { padding-top: 10px; padding-bottom: 10px; }
+.notas-tabela td[data-rotulo="Situação"] { white-space: nowrap; }
+.notas-quando { display: block; margin-top: 3px; }
+.notas-reenviar { display: inline; }
+.notas-tabela .notas-acoes-grade { grid-template-columns: 58px 58px auto; }
+@media (min-width: 701px) { .notas-tabela th.n, .notas-tabela td.n { padding-right: 24px; } }
+@media (max-width: 700px) {
+  .notas-etapas .etapa-corpo, .notas-etapas-depois { margin-left: 42px !important; }
+  .notas-etapas .etapa:not(:last-child)::before { left: 14px; top: 42px; }
+  .notas-etapas .etapa-topo { padding: 8px 0; }
+  .notas-passos { padding: 18px 16px 6px; }
+  .config-notas { padding: 2px 16px; }
+  .config-notas .etapa-topo { padding: 12px 0; gap: 12px; }
+  .config-notas .etapa-corpo, .config-notas details.etapa[open] .etapa-corpo { margin-left: 0; }
+  .config-notas details.etapa .etapa-abrir { font-size: 13px; padding: 6px 12px; border: 1px solid var(--borda); width: auto; height: auto; }
+  .filtro-notas { flex-wrap: nowrap; overflow-x: auto; scrollbar-width: none; margin: 0 -16px 10px; padding: 0 16px 2px; }
+  .filtro-notas::-webkit-scrollbar { display: none; }
+  .filtro-notas .chip { flex: none; }
+  /* Cada nota num cartão compacto: nome e valor na 1ª linha; situação e data juntas; e-mail e arquivos no pé. */
+  .notas-tabela tr { position: relative; gap: 6px 10px; padding: 12px 0 14px; }
+  .notas-tabela td { padding: 0; }
+  .notas-tabela td:first-child .produto-nome { display: block; padding-right: 100px; }
+  .notas-tabela td.n { position: absolute; top: 12px; right: 0; font-weight: 700; font-size: 15px; }
+  .notas-tabela td[data-rotulo]::before { content: none; }
+  .notas-tabela td[data-rotulo="Situação"] { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+  .notas-quando { display: inline; margin: 0; }
+  .notas-tabela td[data-rotulo="E-mail"] { flex: 1 1 100%; color: var(--suave); min-height: 34px; display: flex; align-items: center; flex-wrap: wrap; gap: 0 4px; }
+  .notas-tabela td[data-rotulo="E-mail"]::before { content: "E-mail:"; font-size: 13px; color: var(--suave); }
+  /* PDF e XML no canto, na linha do e-mail (quando não há outra ação na nota, como "Tentar de novo"). */
+  .notas-tabela tr:has(td[data-rotulo="E-mail"]):not(:has(.notas-acoes-extra > *)) td[data-rotulo="E-mail"] { padding-right: 124px; }
+  .notas-tabela tr:has(td[data-rotulo="E-mail"]):not(:has(.notas-acoes-extra > *)) td.notas-acoes { position: absolute; right: 0; bottom: 14px; flex: none; width: auto; }
+  .notas-tabela td.notas-acoes:not(:has(.notas-acoes-extra > *)) .notas-acoes-extra { display: none; }
+  .notas-tabela .notas-acoes-grade { grid-template-columns: 52px 52px auto; }
+  .notas-tabela td.notas-acoes:not(:has(.notas-acoes-extra > *)) .notas-acoes-grade { grid-template-columns: 52px 52px; }
+  .notas-tabela .notas-acoes-grade > .botao { min-height: 34px; }
+}

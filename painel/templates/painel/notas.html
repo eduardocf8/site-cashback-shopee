@@ -8,30 +8,81 @@
 <p class="aviso aviso-info notas-aviso">Versão de teste: comece pelo ambiente de testes do governo (sem valor fiscal) e, quando estiver tudo certo, emita de verdade.</p>
 
 {% include "painel/_notas_pausa.html" %}
-{% if not empresa %}
-  <section class="card notas-cartao" aria-labelledby="titulo-empresa">
-    <h2 id="titulo-empresa">Sua empresa</h2>
-    <p class="suave pequeno">Digite o CNPJ que emite as notas. O resto (razão social, cidade, MEI ou Simples) a gente puxa da Receita Federal.</p>
-    <form method="post" class="formulario notas-cnpj">
-      {% csrf_token %}
-      <input type="hidden" name="acao" value="empresa">
-      <div class="campo"><label for="id_cnpj">CNPJ</label><input type="text" id="id_cnpj" name="cnpj" inputmode="numeric" autocomplete="off" placeholder="00.000.000/0000-00" required maxlength="18"></div>
-      <div><button type="submit" class="botao botao-principal">Buscar e cadastrar</button></div>
-    </form>
+{% if passo_atual %}
+  {# Primeiro uso: os 4 passos, com o formulário do passo da vez aberto ali mesmo. #}
+  <section class="card notas-cartao notas-sem-margem notas-passos" aria-labelledby="titulo-passos">
+    <div class="card-topo">
+      <div><h2 id="titulo-passos">Prepare o emissor em 4 passos</h2>
+        <p class="suave pequeno">{% if passos_feitos == 3 %}Falta só um: {% if passo_atual == 2 %}o certificado digital.{% elif passo_atual == 3 %}o serviço das notas.{% else %}a nota de teste.{% endif %}{% else %}Você só faz isso uma vez.{% endif %}</p></div>
+      <span class="suave pequeno">{{ passos_feitos }} de 4</span>
+    </div>
+    <ol class="notas-etapas">
+      <li class="etapa {% if empresa %}feita{% else %}atual{% endif %}" id="passo-1">
+        <div class="etapa-topo"><span class="etapa-num">{% if empresa %}{% include "painel/_icone.html" with caminho=icones.check %}{% else %}1{% endif %}</span>
+          <div><h3>Sua empresa</h3>{% if empresa %}<span class="etapa-resumo">{{ empresa.razao_social }} · {{ empresa.cnpj_formatado }} · {{ empresa.get_regime_display }}</span>{% endif %}</div></div>
+        {% if not empresa %}<div class="etapa-corpo">
+          <p class="suave pequeno">Digite o CNPJ que emite as notas. Razão social, cidade e regime (MEI ou Simples) a gente puxa da Receita Federal.</p>
+          <form method="post" class="formulario notas-cnpj">
+            {% csrf_token %}
+            <input type="hidden" name="acao" value="empresa">
+            <div class="campo"><label for="id_cnpj">CNPJ</label><input type="text" id="id_cnpj" name="cnpj" inputmode="numeric" autocomplete="off" placeholder="00.000.000/0000-00" required maxlength="18"></div>
+            <div><button type="submit" class="botao botao-principal">Buscar meus dados</button></div>
+          </form>
+        </div>{% endif %}
+      </li>
+      <li class="etapa {% if passo_atual == 2 %}atual{% elif not empresa %}espera{% else %}feita{% endif %}" id="passo-2">
+        <div class="etapa-topo"><span class="etapa-num">{% if empresa and passo_atual != 2 %}{% include "painel/_icone.html" with caminho=icones.check %}{% else %}2{% endif %}</span>
+          <div><h3>Certificado digital A1</h3>{% if not empresa %}<small>O arquivo .pfx (ou .p12) do e-CNPJ e a senha dele. O governo exige, inclusive para MEI.</small>{% elif passo_atual != 2 %}<span class="etapa-resumo">Guardado · vale até {{ empresa.certificado_validade|date:"d/m/Y" }}</span>{% endif %}</div>
+          {% if empresa and passo_atual != 2 %}<a class="link-botao pequeno" href="#certificado">Mudar</a>{% endif %}</div>
+        {% if passo_atual == 2 %}<div class="etapa-corpo">
+          <p class="suave pequeno">{% if certificado_vencido %}O certificado guardado venceu em {{ empresa.certificado_validade|date:"d/m/Y" }}. Envie o novo, com a senha dele.{% else %}É o arquivo .pfx (ou .p12) do e-CNPJ da empresa com a senha dele. O governo exige esse certificado para emitir notas por sistema, inclusive para MEI.{% endif %}</p>
+          <form method="post" enctype="multipart/form-data" class="formulario">
+            {% csrf_token %}
+            <input type="hidden" name="acao" value="certificado">
+            {% include "painel/_notas_arquivo.html" with campo=form_cert.arquivo %}
+            <div class="campo">{% include "painel/_campo.html" with campo=form_cert.senha %}</div>
+            <div><button type="submit" class="botao botao-principal">Guardar certificado</button></div>
+          </form>
+          <p class="suave pequeno">O certificado e a senha ficam guardados criptografados e só são usados para assinar as suas notas. Você pode apagar quando quiser.</p>
+        </div>{% endif %}
+      </li>
+      <li class="etapa {% if passo_atual == 3 %}atual{% elif not empresa or passo_atual == 2 and not servico_ok %}espera{% else %}feita{% endif %}" id="passo-3">
+        {% if passo_atual == 3 or not empresa or passo_atual == 2 and not servico_ok %}
+          <div class="etapa-topo"><span class="etapa-num">3</span>
+            <div><h3>Serviço das notas</h3>{% if passo_atual != 3 %}<small>Já vem preenchido com o que os afiliados costumam usar. É só conferir.</small>{% endif %}</div></div>
+        {% else %}
+          <div class="etapa-topo"><span class="etapa-num">{% include "painel/_icone.html" with caminho=icones.check %}</span>
+            <div><h3>Serviço das notas</h3><span class="etapa-resumo">{{ codigo_servico }} · {{ empresa.descricao_servico|truncatechars:70 }}</span></div>
+            <a class="link-botao pequeno" href="#servico">Mudar</a></div>
+        {% endif %}
+        {% if passo_atual == 3 %}<div class="etapa-corpo">
+          <p class="suave pequeno">Já vem com o código e a descrição que os afiliados costumam usar (17.06.01, divulgação e venda de produtos). Se as suas notas de hoje forem diferentes, troque aqui.</p>
+          <form method="post" class="formulario">
+            {% csrf_token %}
+            <input type="hidden" name="acao" value="servico">
+            {% include "painel/_campos.html" with form=form_servico %}
+            <div><button type="submit" class="botao botao-principal">Salvar serviço</button></div>
+          </form>
+        </div>{% endif %}
+      </li>
+      <li class="etapa {% if passo_atual == 4 %}atual{% elif teste_ok %}feita{% else %}espera{% endif %}" id="passo-4">
+        <div class="etapa-topo"><span class="etapa-num">{% if teste_ok %}{% include "painel/_icone.html" with caminho=icones.check %}{% else %}4{% endif %}</span>
+          <div><h3>Nota de teste</h3>{% if teste_ok %}<span class="etapa-resumo">Deu certo: o governo gerou a nota de teste.</span>{% elif passo_atual != 4 %}<small>Uma nota de R$ 1,00 no ambiente de testes do governo, sem valor fiscal, para conferir se está tudo certo.</small>{% endif %}</div></div>
+        {% if passo_atual == 4 %}<div class="etapa-corpo">
+          <p class="suave pequeno">Vai uma nota de R$ 1,00 pra Shopee no ambiente de testes do governo. Ela não tem valor fiscal e ninguém recebe: serve só para conferir o certificado e o serviço. Leva até 1 minuto.</p>
+          <form method="post" class="notas-testar" onsubmit="this.querySelector('button').disabled=true;this.querySelector('button').textContent='Enviando… (até 1 minuto)'">
+            {% csrf_token %}
+            <input type="hidden" name="acao" value="testar">
+            <button type="submit" class="botao botao-principal">Emitir nota de teste</button>
+          </form>
+        </div>{% endif %}
+      </li>
+    </ol>
+    {% if not empresa %}<p class="suave pequeno notas-etapas-depois">Depois disso, você já emite a nota da Shopee e as notas dos vendedores.</p>{% endif %}
   </section>
-{% else %}
-  {% if falta or not teste_ok %}
-  <section class="card notas-cartao notas-sem-margem" aria-labelledby="titulo-passos">
-    <h2 id="titulo-passos">Para começar a emitir</h2>
-    <ul class="passos">
-      <li><span class="marcador feito">{% include "painel/_icone.html" with caminho=icones.check %}</span><span class="titulo feito-texto">Cadastrar a empresa</span><span class="estado estado-liberado">Feito</span></li>
-      <li><span class="marcador {% if empresa.tem_certificado %}feito{% endif %}">{% include "painel/_icone.html" with caminho=icones.check %}</span><span class="titulo {% if empresa.tem_certificado %}feito-texto{% endif %}">Enviar o certificado digital A1</span>{% if empresa.tem_certificado %}<span class="estado estado-liberado">Feito</span>{% else %}<a class="botao botao-escuro botao-pequeno" href="#certificado">Enviar</a>{% endif %}</li>
-      <li><span class="marcador {% if empresa.codigo_tributacao %}feito{% endif %}">{% include "painel/_icone.html" with caminho=icones.check %}</span><span class="titulo {% if empresa.codigo_tributacao %}feito-texto{% endif %}">Informar o serviço das notas</span>{% if empresa.codigo_tributacao %}<span class="estado estado-liberado">Feito</span>{% else %}<a class="botao botao-escuro botao-pequeno" href="#servico">Informar</a>{% endif %}</li>
-      <li><span class="marcador {% if teste_ok %}feito{% endif %}">{% include "painel/_icone.html" with caminho=icones.check %}</span><span class="titulo {% if teste_ok %}feito-texto{% endif %}">Fazer uma nota de teste</span>{% if teste_ok %}<span class="estado estado-liberado">Feito</span>{% elif not falta %}<a class="botao botao-escuro botao-pequeno" href="#teste">Testar</a>{% endif %}</li>
-    </ul>
-  </section>
-  {% endif %}
+{% endif %}
 
+{% if empresa %}
   <section class="card notas-cartao notas-plano notas-sem-margem" aria-label="Uso do plano">
     {% if plano.limite is None %}
       <p><strong>{{ plano.usadas }}</strong> nota{{ plano.usadas|pluralize }} de verdade em {{ plano.mes }} · <span class="suave">seu plano não tem limite de notas.</span></p>
@@ -45,11 +96,23 @@
   <div class="duas-colunas notas-emitir">
     <section class="card notas-cartao" id="mes" aria-labelledby="titulo-mes">
       <h2 id="titulo-mes">Notas dos vendedores (comissão extra)</h2>
-      <p class="suave pequeno">Na Central do Afiliado da Shopee: <strong>Relatórios › Relatório mensal</strong>, escolha o mês de conclusão e clique em <strong>Exportar</strong>. Envie o arquivo aqui do jeito que baixou (sem abrir no Excel). Sai uma nota por loja e você confere tudo antes de emitir.</p>
+      <ol class="passos-conversor pequeno passos-relatorio">
+        <li>Na Central do Afiliado da Shopee, abra <strong>Relatórios › Relatório mensal</strong>.</li>
+        <li>Escolha o mês de conclusão e clique em <strong>Exportar</strong>.</li>
+        <li>Envie aqui o arquivo do jeito que baixou (sem abrir no Excel).</li>
+      </ol>
+      <p class="suave pequeno">Sai uma nota por loja e você confere tudo antes de emitir.</p>
       <form method="post" enctype="multipart/form-data" class="formulario">
         {% csrf_token %}
         <input type="hidden" name="acao" value="importar">
-        <div class="campo"><label for="id_relatorio">Relatório mensal (.csv ou .xlsx)</label><input type="file" id="id_relatorio" name="relatorio" accept=".csv,.xlsx" required></div>
+        <div class="campo campo-arquivo">
+          <label for="id_relatorio">Relatório mensal</label>
+          <input type="file" id="id_relatorio" name="relatorio" accept=".csv,.xlsx" required data-arquivo>
+          <label class="arquivo-caixa" for="id_relatorio">
+            <span class="arquivo-icone">{% include "painel/_icone.html" with caminho="M12 16V4M7 9l5-5 5 5M4 16v4h16v-4" %}</span>
+            <span class="arquivo-texto"><strong data-arquivo-nome>Escolher o arquivo</strong><span class="suave pequeno" data-arquivo-ajuda>.csv ou .xlsx · nenhum arquivo escolhido</span></span>
+          </label>
+        </div>
         {% include "painel/_notas_ambiente.html" with com_email=True %}
         <div><button type="submit" class="botao botao-principal"{% if falta %} disabled title="Termine os passos de cima primeiro"{% endif %}>Ver a prévia</button></div>
       </form>
@@ -57,7 +120,7 @@
 
     <section class="card notas-cartao" id="shopee" aria-labelledby="titulo-shopee">
       <h2 id="titulo-shopee">Nota da Shopee</h2>
-      <p class="suave pequeno">Uma por mês com o valor bruto da comissão paga pela Shopee na fatura. Depois de autorizada, baixe o PDF e envie na Central do Afiliado até o dia 5.</p>
+      <p class="suave pequeno">Uma por mês, com o valor bruto da comissão que a Shopee pagou na fatura. Depois de autorizada, baixe o PDF e envie na Central do Afiliado <strong>até o dia 5</strong>.</p>
       <form method="post" class="formulario">
         {% csrf_token %}
         <input type="hidden" name="acao" value="shopee">
@@ -81,64 +144,72 @@
     </section>
   {% endif %}
 
+  {# Configuração: uma linha por item com o que está valendo; "Editar" abre o formulário ali mesmo. #}
   <h2 class="notas-secao">Configuração</h2>
-  <div class="duas-colunas">
-    <div class="notas-coluna">
-      <section class="card notas-cartao" aria-labelledby="titulo-empresa">
-        <h2 id="titulo-empresa">Empresa</h2>
-        <dl class="notas-dados">
-          <div><dt>Razão social</dt><dd>{{ empresa.razao_social }}</dd></div>
-          <div><dt>CNPJ</dt><dd>{{ empresa.cnpj_formatado }}</dd></div>
-          <div><dt>Cidade</dt><dd>{{ empresa.municipio_nome }}{% if empresa.uf %} / {{ empresa.uf }}{% endif %}</dd></div>
-          <div><dt>Regime</dt><dd>{{ empresa.get_regime_display }}</dd></div>
-        </dl>
-      </section>
+  <section class="card config-notas" aria-label="Configuração do emissor">
+    <div class="etapa config-linha" id="empresa">
+      <div class="etapa-topo"><span class="etapa-num">{% include "painel/_icone.html" with caminho="M3 21h18M5 21V7l7-4 7 4v14M9 21v-6h6v6" %}</span>
+        <div><h3>Empresa</h3><span class="etapa-resumo">{{ empresa.razao_social }} · CNPJ {{ empresa.cnpj_formatado }}{% if empresa.municipio_nome %} · {{ empresa.municipio_nome }}{% if empresa.uf %} / {{ empresa.uf }}{% endif %}{% endif %} · {{ empresa.get_regime_display }}</span></div></div>
+    </div>
 
-      <section class="card notas-cartao" id="certificado" aria-labelledby="titulo-certificado">
-        <h2 id="titulo-certificado">Certificado digital A1</h2>
-        {% if empresa.tem_certificado %}
-          <p class="status-shopee"><span class="ponto ok" aria-hidden="true"></span>Guardado · vale até {{ empresa.certificado_validade|date:"d/m/Y" }}</p>
-          <p class="suave pequeno">{{ empresa.certificado_titular }}</p>
-          <div class="botoes-linha">
-            <details class="notas-trocar"><summary class="botao botao-claro botao-pequeno">Trocar certificado</summary>
-              <form method="post" enctype="multipart/form-data" class="formulario">
-                {% csrf_token %}
-                <input type="hidden" name="acao" value="certificado">
-                {% include "painel/_campos.html" with form=form_cert %}
-                <div><button type="submit" class="botao botao-escuro">Enviar o novo</button></div>
-              </form>
-            </details>
-            <form method="post" onsubmit="return confirm('Apagar o certificado do Appfiliado? Você não vai conseguir emitir até enviar de novo.')">
-              {% csrf_token %}
-              <input type="hidden" name="acao" value="remover_certificado">
-              <button type="submit" class="botao botao-claro botao-pequeno">Apagar</button>
-            </form>
-          </div>
-        {% else %}
-          <p class="suave pequeno">É o arquivo .pfx (ou .p12) do e-CNPJ da empresa com a senha dele. O governo exige esse certificado para emitir notas por sistema, inclusive para MEI.</p>
+    {% if passo_atual == 2 %}
+      <div class="etapa config-linha" id="certificado">
+        <div class="etapa-topo"><span class="etapa-num">{% include "painel/_icone.html" with caminho="M12 3l7 3v5c0 5-3 8-7 10-4-2-7-5-7-10V6l7-3zM9 12l2 2 4-4" %}</span>
+          <div><h3>Certificado digital A1</h3><span class="etapa-resumo">{% if certificado_vencido %}Venceu em {{ empresa.certificado_validade|date:"d/m/Y" }}{% else %}Ainda não enviado{% endif %}</span></div>
+          <a class="botao botao-claro botao-pequeno" href="#passo-2">Enviar</a></div>
+      </div>
+    {% else %}
+      <details class="etapa config-linha" id="certificado"{% if form_cert.is_bound %} open{% endif %}>
+        <summary class="etapa-topo"><span class="etapa-num">{% include "painel/_icone.html" with caminho="M12 3l7 3v5c0 5-3 8-7 10-4-2-7-5-7-10V6l7-3zM9 12l2 2 4-4" %}</span>
+          <div><h3>Certificado digital A1</h3><span class="etapa-resumo"><span class="ponto ok" aria-hidden="true"></span>Guardado · vale até {{ empresa.certificado_validade|date:"d/m/Y" }}</span></div>
+          <span class="etapa-abrir">Trocar</span></summary>
+        <div class="etapa-corpo">
+          {% if empresa.certificado_titular %}<p class="suave pequeno">{{ empresa.certificado_titular }}</p>{% endif %}
           <form method="post" enctype="multipart/form-data" class="formulario">
             {% csrf_token %}
             <input type="hidden" name="acao" value="certificado">
-            {% include "painel/_campos.html" with form=form_cert %}
-            <div><button type="submit" class="botao botao-principal">Guardar certificado</button></div>
+            {% include "painel/_notas_arquivo.html" with campo=form_cert.arquivo %}
+            <div class="campo">{% include "painel/_campo.html" with campo=form_cert.senha %}</div>
+            <div><button type="submit" class="botao botao-escuro">Enviar o novo</button></div>
           </form>
-        {% endif %}
-        <p class="suave pequeno notas-seguranca">O certificado e a senha ficam guardados criptografados e só são usados para assinar as suas notas. Você pode apagar quando quiser.</p>
-      </section>
+          <form method="post" onsubmit="return confirm('Apagar o certificado do Appfiliado? Você não vai conseguir emitir até enviar de novo.')">
+            {% csrf_token %}
+            <input type="hidden" name="acao" value="remover_certificado">
+            <button type="submit" class="botao-excluir">Apagar o certificado</button>
+          </form>
+          <p class="suave pequeno notas-seguranca">O certificado e a senha ficam guardados criptografados e só são usados para assinar as suas notas. Você pode apagar quando quiser.</p>
+        </div>
+      </details>
+    {% endif %}
 
-      <section class="card notas-cartao" id="servico" aria-labelledby="titulo-servico">
-        <h2 id="titulo-servico">Serviço das notas</h2>
-        <p class="suave pequeno">Já vem com o código e a descrição que os afiliados costumam usar (17.06.01, divulgação e venda de produtos). Se as suas notas de hoje forem diferentes, troque aqui.</p>
-        <form method="post" class="formulario">
-          {% csrf_token %}
-          <input type="hidden" name="acao" value="servico">
-          {% include "painel/_campos.html" with form=form_servico %}
-          <div><button type="submit" class="botao botao-escuro">Salvar serviço</button></div>
-        </form>
-      </section>
+    {% if passo_atual == 3 %}
+      <div class="etapa config-linha" id="servico">
+        <div class="etapa-topo"><span class="etapa-num">{% include "painel/_icone.html" with caminho="M4 5h16v14H4zM8 9h8M8 13h5" %}</span>
+          <div><h3>Serviço das notas</h3><span class="etapa-resumo">Ainda não informado</span></div>
+          <a class="botao botao-claro botao-pequeno" href="#passo-3">Informar</a></div>
+      </div>
+    {% else %}
+      <details class="etapa config-linha" id="servico"{% if form_servico.is_bound %} open{% endif %}>
+        <summary class="etapa-topo"><span class="etapa-num">{% include "painel/_icone.html" with caminho="M4 5h16v14H4zM8 9h8M8 13h5" %}</span>
+          <div><h3>Serviço das notas</h3><span class="etapa-resumo">{% if codigo_servico %}{{ codigo_servico }} · {{ empresa.descricao_servico|truncatechars:70 }}{% else %}Ainda não informado{% endif %}</span></div>
+          <span class="etapa-abrir">{% if codigo_servico %}Editar{% else %}Informar{% endif %}</span></summary>
+        <div class="etapa-corpo">
+          <p class="suave pequeno">Já vem com o código e a descrição que os afiliados costumam usar (17.06.01, divulgação e venda de produtos). Se as suas notas de hoje forem diferentes, troque aqui.</p>
+          <form method="post" class="formulario">
+            {% csrf_token %}
+            <input type="hidden" name="acao" value="servico">
+            {% include "painel/_campos.html" with form=form_servico %}
+            <div><button type="submit" class="botao botao-escuro">Salvar serviço</button></div>
+          </form>
+        </div>
+      </details>
+    {% endif %}
 
-      <section class="card notas-cartao" id="emails" aria-labelledby="titulo-emails">
-        <h2 id="titulo-emails">E-mails pros vendedores</h2>
+    <details class="etapa config-linha" id="emails"{% if form_horario.is_bound %} open{% endif %}>
+      <summary class="etapa-topo"><span class="etapa-num">{% include "painel/_icone.html" with caminho=icones.email %}</span>
+        <div><h3>E-mails pros vendedores</h3><span class="etapa-resumo">{{ horario_emails }}</span></div>
+        <span class="etapa-abrir">Editar</span></summary>
+      <div class="etapa-corpo">
         <p class="suave pequeno">Cada vendedor com e-mail no relatório recebe a nota com o PDF e o XML. Escolha se os e-mails saem logo depois das notas ou num horário do dia.</p>
         <form method="post" class="formulario">
           {% csrf_token %}
@@ -146,10 +217,14 @@
           {% include "painel/_campos.html" with form=form_horario %}
           <div><button type="submit" class="botao botao-escuro">Salvar horário</button></div>
         </form>
-      </section>
+      </div>
+    </details>
 
-      <section class="card notas-cartao" id="contabilidade" aria-labelledby="titulo-contabilidade">
-        <h2 id="titulo-contabilidade">Notas pra contabilidade</h2>
+    <details class="etapa config-linha" id="contabilidade"{% if form_contabilidade.is_bound %} open{% endif %}>
+      <summary class="etapa-topo"><span class="etapa-num">{% include "painel/_icone.html" with caminho="M6 3h9l3 3v15H6zM9 12h6M9 16h6" %}</span>
+        <div><h3>Notas pra contabilidade</h3><span class="etapa-resumo">{% if empresa.contabilidade_email %}Vão para {{ empresa.contabilidade_email }}{% else %}Nenhum e-mail cadastrado ainda{% endif %}</span></div>
+        <span class="etapa-abrir">{% if empresa.contabilidade_email %}Editar{% else %}Cadastrar{% endif %}</span></summary>
+      <div class="etapa-corpo">
         <p class="suave pequeno">Mande pro seu escritório de contabilidade um ZIP com o XML de cada nota de verdade do mês (autorizadas e canceladas) e uma planilha-resumo.</p>
         <form method="post" class="formulario">
           {% csrf_token %}
@@ -158,7 +233,7 @@
           <div><button type="submit" class="botao botao-escuro">Salvar e-mail</button></div>
         </form>
         {% if empresa.contabilidade_email %}
-          <form method="post" class="formulario" style="margin-top:16px">
+          <form method="post" class="formulario notas-contabilidade-enviar">
             {% csrf_token %}
             <input type="hidden" name="acao" value="contabilidade_enviar">
             <div class="campo">
@@ -168,20 +243,9 @@
             <div><button type="submit" class="botao botao-claro">Enviar para {{ empresa.contabilidade_email }}</button></div>
           </form>
         {% endif %}
-      </section>
-    </div>
-
-    <section class="card notas-cartao" id="teste" aria-labelledby="titulo-teste">
-      <h2 id="titulo-teste">Nota de teste</h2>
-      <p class="suave pequeno">Manda uma nota de R$ 1,00 pra Shopee no ambiente de testes do governo. Ela não tem valor fiscal e não aparece para ninguém: serve só para conferir se está tudo certo com o certificado e o serviço.</p>
-      {% if falta %}<p class="aviso aviso-warning pequeno">Antes, falta: {{ falta|join:" e " }}.</p>{% endif %}
-      <form method="post" class="notas-testar" onsubmit="this.querySelector('button').disabled=true;this.querySelector('button').textContent='Enviando… (até 1 minuto)'">
-        {% csrf_token %}
-        <input type="hidden" name="acao" value="testar">
-        <button type="submit" class="botao botao-principal"{% if falta %} disabled{% endif %}>Emitir nota de teste</button>
-      </form>
-    </section>
-  </div>
+      </div>
+    </details>
+  </section>
 
   {% if ultimas %}
     <section class="card notas-cartao" aria-labelledby="titulo-ultimas"{% if avulsas_na_fila %} data-acompanhar="{% url 'painel_notas_andamento' %}"{% endif %}>
