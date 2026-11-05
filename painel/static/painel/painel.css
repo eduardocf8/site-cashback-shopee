@@ -1536,3 +1536,26 @@ details.etapa[open] .etapa-abrir::after { transform: rotate(-135deg) translate(-
   .acoes-conectar .botao { width: 100%; }
 }
 
+/* Radar de ofertas: 4 por linha no computador; no celular, cada produto numa linha com a foto pequena. */
+.grade-radar-produtos { grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 12px; }
+.cartao-radar { padding: 10px; gap: 6px; }
+.nome-radar { display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; min-height: 2.7em; }
+.preco-radar { font-size: 17px; }
+.ganho-radar { font-size: 12.5px; }
+.ganho-radar strong { white-space: nowrap; }
+.numeros-radar .suave.pequeno { font-size: 12px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+@media (max-width: 700px) {
+  .filtros-radar .chips { flex-wrap: nowrap; overflow-x: auto; margin-right: -20px; padding-right: 20px; scrollbar-width: none; }
+  .filtros-radar .chips::-webkit-scrollbar { display: none; }
+  .filtros-radar .chip-opcao { flex: none; }
+  .grade-radar-produtos { grid-template-columns: minmax(0, 1fr); gap: 10px; }
+  .cartao-radar { display: grid; grid-template-columns: 96px minmax(0, 1fr); grid-template-areas: "foto nome" "foto nums" "acoes acoes"; column-gap: 12px; row-gap: 4px; padding: 12px; align-items: start; }
+  .foto-radar { grid-area: foto; }
+  .nome-radar { grid-area: nome; min-height: 0; }
+  .numeros-radar { grid-area: nums; }
+  .acoes-radar { grid-area: acoes; grid-template-columns: 1.5fr 1fr 1fr 1fr; margin-top: 8px; }
+  .acoes-radar .copiar-radar { grid-column: auto; }
+  .selo-desconto, .selo-extra { top: 5px; left: 5px; right: auto; font-size: 11px; padding: 1px 6px; }
+  .selo-extra { top: auto; bottom: 5px; }
+}
+

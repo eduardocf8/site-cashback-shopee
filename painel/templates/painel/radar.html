@@ -34,7 +34,7 @@
     </details>
     <div class="linha-radar"><button type="submit" class="botao botao-principal">Buscar</button></div>
   </form>
-  <p class="suave pequeno">{{ catalogo.total|numero }} produtos da Shopee com comissão de afiliado, de todas as categorias, atualizados todos os dias{% if catalogo.atualizado_em %} (última atualização: {{ catalogo.atualizado_em|date:"d/m \à\s H:i" }}){% endif %}. A Shopee limita quantos produtos libera para afiliados, então nem todo produto do site aparece aqui. Não achou? Mude a palavra-chave ou cole o link no <a href="{% url 'painel_conversor' %}">Conversor</a>.</p>
+  <p class="suave pequeno">{{ catalogo.total|numero }} produtos com comissão de afiliado, atualizados todo dia{% if catalogo.atualizado_em %} (última vez: {{ catalogo.atualizado_em|date:"d/m \à\s H:i" }}){% endif %}. Nem todo produto da Shopee é liberado para afiliados. Não achou? Cole o link no <a href="{% url 'painel_conversor' %}">Conversor</a>.</p>
 </section>
 
 {% if catalogo.atrasado %}<p class="aviso aviso-warning">A atualização dos produtos está atrasada: os preços e a comissão podem estar desatualizados. Ao mandar no grupo ou acompanhar o preço, o Radar sempre consulta o preço de agora na Shopee.</p>{% endif %}
@@ -51,7 +51,7 @@
         <a class="nome-radar" href="{{ p.link }}" target="_blank" rel="noopener">{{ p.nome|truncatechars:80 }}</a>
         <div class="numeros-radar">
           <strong class="preco-radar">{{ p.preco|brl }}</strong>
-          <span class="ganho-radar" title="Comissão de referência: o percentual que a Shopee informa para este produto. A sua comissão real aparece em Resultados.">Comissão de referência {{ p.comissao|floatformat:"-1" }}% · <strong>~{{ p.ganho|brl }}</strong></span>
+          <span class="ganho-radar" title="Comissão de referência: o percentual que a Shopee informa para este produto. A sua comissão real aparece em Resultados.">Comissão {{ p.comissao|floatformat:"-1" }}% · <strong>~{{ p.ganho|brl }}</strong></span>
           <span class="suave pequeno">{% if p.vendas %}{{ p.vendas|numero }} vendidos{% endif %}{% if p.avaliacao %} · ⭐ {{ p.avaliacao|floatformat:1 }}{% endif %}{% if p.loja %} · {{ p.loja|truncatechars:24 }}{% endif %}</span>
         </div>
         <div class="acoes-radar">
