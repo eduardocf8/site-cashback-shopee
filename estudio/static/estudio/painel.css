@@ -254,7 +254,6 @@
   .so-pequeno { display: inline; }
   .es-ajustes > :last-child:nth-child(odd) { grid-column: 1 / -1; }
 }
-}
 @media (min-width: 761px) { .es-cabeca-linha { flex-wrap: nowrap; } .es-titulo-campo { flex: 1 1 0; } }
 /* Miniatura do slide: o nome encurta, os botões ficam na mesma linha. */
 .es-mini-barra { gap: 4px; }
