@@ -149,3 +149,63 @@ class TestEditorNoAdmin(TestCase):
         self.assertEqual((mail.outbox[0].to, mail.outbox[0].subject), (["dono@exemplo.com"], "Assunto novo"))
         self.texto.refresh_from_db()
         self.assertEqual(self.texto.assunto, "O grupo que vende todo dia não é sorte")  # a prévia não salva
+
+
+@override_settings(APPFILIADO_PAINEL_HOSTS=[HOST], ALLOWED_HOSTS=[HOST, "testserver"], APPFILIADO_PAINEL_URL=f"https://{HOST}",
+                   APPFILIADO_EMAIL_REMETENTE="Appfiliado <contato@appfiliado.com.br>")
+class TestDicaDoInstagram(TestCase):
+    """O e-mail do dia 12 (link na bio e Instagram) fala do Estúdio, das Automações e dos pacotes de hoje."""
+
+    def html(self, liberados, beta=False, lancado=False):
+        conta = ContaAppfiliado(email="ana@exemplo.com", nome="Ana Lima", beta_estudio_instagram=beta)
+        with override_settings(APPFILIADO_LANCAMENTO_INSTAGRAM=lancado):
+            return emails_valor.montar(conta, "site_carrosseis", liberados=liberados)[2]
+
+    def test_varias_condicoes_na_mesma_linha(self):
+        texto = "[instagram lançado] [sem automações] Conheça as Automações.\n[estúdio] [sem estúdio premium] Só Standard."
+        base = TestFormatoEditavel().dados()
+        self.assertIn("Conheça as Automações", emails_valor.formatar(texto, {**base, "instagram_lancado": True}))
+        self.assertNotIn("Conheça as Automações", emails_valor.formatar(texto, base))
+        self.assertNotIn("Conheça as Automações",
+                         emails_valor.formatar(texto, {**base, "instagram_lancado": True, "tem_automacoes": True}))
+        self.assertIn("Só Standard", emails_valor.formatar(texto, {**base, "tem_estudio": True}))
+        self.assertNotIn("Só Standard", emails_valor.formatar(texto, {**base, "tem_estudio": True, "premium_estudio": True}))
+
+    def test_sem_modulo_antes_do_lancamento(self):
+        html = self.html(["whatsapp"])
+        self.assertIn("Meu site", html)
+        self.assertIn("Pacote Ofertas", html)
+        self.assertIn("vêm aí mais dois módulos pro Instagram", html)
+        self.assertIn("site-editor.jpg", html)
+        for antigo in ("Carrosséis", "20%", "combo"):
+            self.assertNotIn(antigo, html)
+
+    def test_sem_modulo_depois_do_lancamento(self):
+        html = self.html([], lancado=True)
+        self.assertIn("E pro Instagram tem mais dois módulos", html)
+        self.assertIn("Pacote Instagram", html)
+        self.assertNotIn("vêm aí", html)
+
+    def test_carrosseis_antes_do_estudio_abrir(self):
+        html = self.html(["carrosseis"])
+        self.assertIn("Nos carrosséis:", html)
+        self.assertIn("Em breve ele vira o <strong>Estúdio Instagram</strong>", html)
+        self.assertNotIn("No Estúdio Instagram:", html)
+        self.assertIn("Meu site", html)  # a oferta curta do fim
+
+    def test_estudio_aberto(self):
+        html = self.html(["carrosseis", "carrosseis_premium", "site"], beta=True)
+        self.assertIn("No Estúdio Instagram:", html)
+        self.assertIn("o seu logo, as suas cores e a sua fonte", html)
+        self.assertIn("/estudio/minha-marca/", html)
+        self.assertNotIn("Nos carrosséis:", html)
+        self.assertNotIn("Conheça o <a", html)  # já tem o site e o Estúdio; o Instagram ainda não está à venda
+
+    def test_depois_do_lancamento_oferece_o_que_falta(self):
+        html = self.html(["site"], lancado=True)
+        self.assertIn("Estúdio Instagram</a>", html)
+        self.assertIn("Automações Instagram</a>", html)
+        html = self.html(["site", "carrosseis", "instagram"], lancado=True)
+        self.assertIn("No Estúdio Instagram:", html)
+        self.assertIn("Nas Automações Instagram:", html)
+        self.assertNotIn("Conheça", html)

@@ -20,8 +20,8 @@ from django.template.loader import render_to_string
 from django.utils import timezone
 from django.utils.html import strip_tags
 
-from licencas.models import (MODULO_CARROSSEIS, MODULO_CARROSSEIS_PREMIUM, MODULO_NOTAS, MODULO_SITE, MODULO_WHATSAPP,
-                             MODULO_WHATSAPP_PREMIUM,
+from licencas.models import (MODULO_CARROSSEIS, MODULO_CARROSSEIS_PREMIUM, MODULO_INSTAGRAM, MODULO_INSTAGRAM_PREMIUM,
+                             MODULO_NOTAS, MODULO_SITE, MODULO_WHATSAPP, MODULO_WHATSAPP_PREMIUM,
                              Assinatura, ContaAppfiliado)
 
 from .models import EmailValorEnviado, TextoEmailDica
@@ -90,13 +90,24 @@ def contexto(conta, chave: str, hoje: date | None = None, liberados=None) -> dic
     from .emails import url_do_painel
     from .relatorio import url_do_logo
 
+    from . import modulos
+
     hoje = hoje or timezone.localdate()
     liberados = set(conta.modulos_liberados() if liberados is None else liberados)
+    # Estúdio e Automações Instagram: só conta como "tem" quando a página abre pra pessoa (antes do lançamento,
+    # só com a chave de teste). Quem tem os códigos do antigo gerador e ainda não vê o Estúdio é [carrosséis].
+    ve_estudio = modulos.ve_beta(modulos.POR_SLUG["estudio_instagram"], conta)
+    ve_automacoes = modulos.ve_beta(modulos.POR_SLUG["automacoes_instagram"], conta)
+    tem_codigo_estudio = bool(liberados & {MODULO_CARROSSEIS, MODULO_CARROSSEIS_PREMIUM})
     dados = {
         "nome": (conta.nome or "").split(" ")[0],
         "tem_bot": MODULO_WHATSAPP in liberados, "premium_bot": MODULO_WHATSAPP_PREMIUM in liberados,
         "tem_site": MODULO_SITE in liberados, "tem_carrosseis": MODULO_CARROSSEIS in liberados,
         "premium_carrosseis": MODULO_CARROSSEIS_PREMIUM in liberados,
+        "tem_estudio": tem_codigo_estudio and ve_estudio,
+        "premium_estudio": MODULO_CARROSSEIS_PREMIUM in liberados and ve_estudio,
+        "tem_automacoes": bool(liberados & {MODULO_INSTAGRAM, MODULO_INSTAGRAM_PREMIUM}) and ve_automacoes,
+        "instagram_lancado": modulos.lancado(),
         "tem_notas": MODULO_NOTAS in liberados, "shopee_conectada": bool(conta.shopee_validado_em),
         "url_logo": url_do_logo(), "img": settings.APPFILIADO_PAINEL_URL.rstrip("/") + "/static/painel/emails/",
         "url_parar": link_para_parar(conta),
@@ -107,7 +118,8 @@ def contexto(conta, chave: str, hoje: date | None = None, liberados=None) -> dic
                 "conversor": "painel_conversor", "configuracoes": "painel_configuracoes",
                 "automacao": "painel_whatsapp_ofertas", "campanhas": "painel_whatsapp_campanhas",
                 "mensagens": "painel_whatsapp_mensagens", "alerta": "painel_whatsapp_alertas", "site": "painel_meu_site",
-                "carrosseis": "painel_carrosseis", "notas": "painel_notas", "sugestoes": "painel_sugestoes",
+                "carrosseis": "painel_carrosseis", "estudio": "painel_estudio", "marca": "painel_estudio_marca",
+                "automacoes_instagram": "painel_estudio_automacoes", "notas": "painel_notas", "sugestoes": "painel_sugestoes",
             }.items()},
         },
         "numeros": None, "sugerir_emissor": False,
@@ -133,19 +145,23 @@ def _automatico(chave: str, d: dict) -> tuple[bool, str, tuple[str, str] | None]
         return (True, "bot-campanhas.jpg", ("Abrir as Campanhas", "campanhas")) if tem_bot else \
             (False, "", ("Abrir o Radar", "radar"))
     if chave == "site_carrosseis":
-        if d["tem_site"] or d["tem_carrosseis"]:
+        if d["tem_site"] or d["tem_carrosseis"] or d.get("tem_automacoes"):
             return True, "site-editor.jpg" if d["tem_site"] else "carrossel-editor.jpg", ("Abrir o Appfiliado", "inicio")
-        return False, "carrossel-editor.jpg", ("Ver os planos", "planos")
+        return False, "site-editor.jpg", ("Ver os planos", "planos")
     if chave == "como_vai":
         return True, "", ("Sugerir uma melhoria", "sugestoes")
     return True, "", None
 
 
 def _condicoes(d: dict) -> dict:
+    estudio, automacoes, lancado = d.get("tem_estudio", False), d.get("tem_automacoes", False), d.get("instagram_lancado", False)
     return {"bot": d["tem_bot"], "premium": d["premium_bot"], "site": d["tem_site"], "carrosséis": d["tem_carrosseis"],
             "carrosseis": d["tem_carrosseis"], "carrosséis premium": d["premium_carrosseis"],
             "carrosseis premium": d["premium_carrosseis"], "notas": d["tem_notas"], "api": d["shopee_conectada"],
-            "emissor": d["sugerir_emissor"]}
+            "emissor": d["sugerir_emissor"],
+            "estúdio": estudio, "estudio": estudio, "estúdio premium": d.get("premium_estudio", False),
+            "estudio premium": d.get("premium_estudio", False), "automações": automacoes, "automacoes": automacoes,
+            "instagram lançado": lancado, "instagram lancado": lancado}
 
 
 def _inline(texto: str, d: dict) -> str:
@@ -182,13 +198,16 @@ def formatar(texto: str, d: dict, imagem: str = "", botao: tuple[str, str] | Non
     condicoes = _condicoes(d)
     linhas = []
     for linha in (texto or "").replace("\r\n", "\n").split("\n"):
-        achado = re.match(r"\s*\[(sem )?([a-zçãéí ]+)\]\s+(?!\()", linha, flags=re.I)
-        if achado and achado.group(2).strip().lower() in condicoes:
-            vale = condicoes[achado.group(2).strip().lower()]
-            if bool(achado.group(1)) == bool(vale):
-                continue
+        # Uma ou mais condições no começo da linha (ex.: "[instagram lançado] [sem estúdio] ..."): valem todas.
+        fica = True
+        while fica:
+            achado = re.match(r"\s*\[(sem )?([a-zçáàâãéêíóôõú ]+)\]\s+(?!\()", linha, flags=re.I)
+            if not achado or achado.group(2).strip().lower() not in condicoes:
+                break
+            fica = bool(achado.group(1)) != bool(condicoes[achado.group(2).strip().lower()])
             linha = linha[achado.end():]
-        linhas.append(linha)
+        if fica:
+            linhas.append(linha)
     blocos, atual = [], []
     for linha in linhas + [""]:
         if linha.strip():
