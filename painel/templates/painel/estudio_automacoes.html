@@ -9,42 +9,36 @@
     <h1>Automações Instagram</h1>
     <p>Quem comentar a palavra certa no seu post{% if plano.premium %} (ou responder o seu story){% endif %} recebe o seu link por DM, na hora.</p>
   </div>
-  {% if ig %}
-    <div class="linha-botoes">
-      <a class="botao botao-claro" href="{% url 'painel_estudio_historico' %}">Histórico</a>
-      <a class="botao botao-principal" href="{% url 'painel_estudio_automacao_nova' %}">Nova automação</a>
-    </div>
-  {% endif %}
+  {% if ig %}{% include "painel/_instagram_conexao.html" %}{% endif %}
 </header>
 
-{% include "painel/_instagram_conexao.html" %}
-
-{% if ig %}
-  <section class="card ig-uso">
-    <div>
-      <strong>{{ respondidas|floatformat:"0g" }} pessoa{{ respondidas|pluralize }} respondida{{ respondidas|pluralize }} este mês</strong>
-      <small>Sem limite por mês.{% if plano.ativas %} {{ ligadas }} de {{ plano.ativas }} automações ligadas (no Premium, sem limite, com stories, DMs, botão e Sub ID).{% endif %}</small>
+{% if not ig %}
+  {% include "painel/_instagram_conexao.html" with jeito="comecar" %}
+{% else %}
+  {% include "painel/_abas_instagram.html" with modulo="automacoes" aba="automacoes" %}
+  {% if fila %}
+    <div class="ig-fila">
+      <strong>{{ fila|floatformat:"0g" }} na fila</strong>
+      <small>O Instagram aceita até 750 respostas por hora. As que passam disso saem na hora seguinte, em ordem.</small>
     </div>
-    {% if fila %}
-      <div class="ig-fila">
-        <strong>{{ fila|floatformat:"0g" }} na fila</strong>
-        <small>O Instagram aceita até 750 respostas por hora. As que passam disso saem na hora seguinte, em ordem.</small>
-      </div>
-    {% endif %}
-  </section>
+  {% endif %}
   <section>
-    <h2 class="titulo-secao">Suas automações</h2>
+    <div class="titulo-com-numero">
+      <h2 class="titulo-secao">Suas automações</h2>
+      <span><b>{{ respondidas|floatformat:"0g" }}</b> pessoa{{ respondidas|pluralize }} respondida{{ respondidas|pluralize }} este mês</span>
+    </div>
+    {% if plano.ativas %}<p class="suave pequeno ig-plano-nota">Sem limite por mês. {{ ligadas }} de {{ plano.ativas }} automações ligadas (no Premium, sem limite, com stories, DMs, botão e Sub ID).</p>{% endif %}
     {% if lista %}
       <div class="ig-automacoes">
         {% for item in lista %}
           <article class="card ig-automacao{% if not item.a.ativa or item.fora_do_plano %} pausada{% endif %}">
             <a class="ig-automacao-link" href="{% url 'painel_estudio_automacao' item.a.pk %}">
-              {% if item.a.midia_imagem %}<img src="{{ item.a.midia_imagem }}" alt="" referrerpolicy="no-referrer" loading="lazy">{% else %}<span class="ig-midia-vazia">{% if item.a.gatilho == "direto" %}✉️{% elif item.a.e_anuncio %}📣{% elif item.a.midia_id %}{% if item.a.gatilho == "story" %}Story{% else %}Post{% endif %}{% else %}Todos{% endif %}</span>{% endif %}
+              {% if item.a.midia_imagem %}<img src="{{ item.a.midia_imagem }}" alt="" referrerpolicy="no-referrer" loading="lazy">{% else %}<span class="ig-midia-vazia" title="{% if item.a.gatilho == "direto" %}DM{% elif item.a.e_anuncio %}Anúncio{% elif item.a.midia_id %}{% if item.a.gatilho == "story" %}Um story{% else %}Um post{% endif %}{% elif item.a.gatilho == "story" %}Todos os stories{% else %}Todos os posts{% endif %}"><svg class="icone" viewBox="0 0 24 24" aria-hidden="true"><path d="{% if item.a.gatilho == "direto" %}M3 6h18v12H3zM3 7l9 6 9-6{% elif item.a.e_anuncio %}M4 10v4h3l8 5V5l-8 5H4zM18 9.5a3.5 3.5 0 0 1 0 5{% elif item.a.midia_id %}M4 4h16v16H4zM12 8a4 4 0 1 0 0 8 4 4 0 0 0 0-8z{% else %}M4 4h16v16H4zM4 9.3h16M4 14.7h16M9.3 4v16M14.7 4v16{% endif %}"/></svg></span>{% endif %}
               <div class="ig-automacao-info">
                 <strong class="ig-automacao-nome">{{ item.a.nome }}</strong>
                 <span class="ig-automacao-selos">
-                  <span class="ig-conta{% if item.outra_conta or not item.a.ig_username %} ig-conta-outra{% endif %}" title="{% if item.a.ig_username %}Criada no Instagram @{{ item.a.ig_username }}{% else %}Criada antes de o Appfiliado guardar a conta: responde no Instagram que estiver conectado{% endif %}">{% if item.a.ig_username %}@{{ item.a.ig_username }}{% else %}Instagram não registrado{% endif %}</span>
-                  <span class="ig-estado{% if not item.a.ativa or item.fora_do_plano %} ig-estado-parada{% endif %}">{% if item.fora_do_plano %}Parada{% elif item.a.ativa %}Ligada{% else %}Pausada{% endif %}</span>
+                  <span class="situacao{% if item.fora_do_plano %} erro{% elif not item.a.ativa %} parada{% endif %}">{% if item.fora_do_plano %}Parada{% elif item.a.ativa %}Ligada{% else %}Pausada{% endif %}</span>
+                  {% if item.outra_conta or not item.a.ig_username %}<span class="ig-conta" title="{% if item.a.ig_username %}Criada no Instagram @{{ item.a.ig_username }}{% else %}Criada antes de o Appfiliado guardar a conta: responde no Instagram que estiver conectado{% endif %}">{% if item.a.ig_username %}@{{ item.a.ig_username }}{% else %}Instagram não registrado{% endif %}</span>{% endif %}
                 </span>
                 <span class="ig-automacao-quando">{{ item.quando }}</span>
                 <span class="ig-palavras">{% for p in item.palavras %}<span>{{ p }}</span>{% empty %}<span class="ig-palavra-livre">qualquer texto</span>{% endfor %}{% if item.mais_palavras %}<span class="ig-palavra-mais">+{{ item.mais_palavras }}</span>{% endif %}</span>
@@ -57,14 +51,17 @@
                 <button class="botao botao-pequeno {% if item.a.ativa %}botao-claro{% else %}botao-principal{% endif %}" type="submit">{% if item.a.ativa %}Pausar{% else %}Ligar{% endif %}</button>
               </form>
               <form method="post" action="{% url 'painel_estudio_automacao_excluir' item.a.pk %}" onsubmit="return confirm('Excluir a automação &quot;{{ item.a.nome|escapejs }}&quot;? O histórico dela também sai.')">{% csrf_token %}
-                <button class="botao botao-pequeno botao-claro" type="submit">Excluir</button>
+                <button class="botao-excluir" type="submit">Excluir</button>
               </form>
             </div>
           </article>
         {% endfor %}
       </div>
     {% else %}
-      <p class="suave">Nenhuma automação ainda. Crie a primeira: por exemplo, "comente QUERO e receba o link".</p>
+      <div class="es-vazio">
+        <strong>Nenhuma automação ainda</strong>
+        <span class="suave">Crie a primeira em "Nova automação": por exemplo, "comente QUERO e receba o link".</span>
+      </div>
     {% endif %}
   </section>
 {% endif %}

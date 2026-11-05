@@ -124,11 +124,12 @@
     const no = montar(i, quadro);
     const guias = $('es-guias-camada'); guias.innerHTML = ''; guias.style.width = b.w + 'px'; guias.style.height = b.h + 'px'; guias.style.transform = `scale(${k})`;
     if ($('es-guias').checked) {
-      const z = zonas(s, i), e = b.escala, caixa = (m, cls, rotulo) => {
+      // o rótulo da grade fica no canto direito, para não cobrir o da área segura
+      const z = zonas(s, i), e = b.escala, caixa = (m, cls, rotulo, direita) => {
         const d = el('div', { class: cls, style: `left:${m.l / e}px;top:${m.t / e}px;right:${m.r / e}px;bottom:${m.b / e}px` });
-        d.append(el('span', { style: `left:6px;top:6px;transform:scale(${1 / k});transform-origin:0 0` }, rotulo)); guias.append(d);
+        d.append(el('span', { style: `${direita ? 'right' : 'left'}:6px;top:6px;transform:scale(${1 / k});transform-origin:${direita ? '100% 0' : '0 0'}` }, rotulo)); guias.append(d);
       };
-      if (z.grade) caixa(z.grade, 'grade', 'O que aparece na grade do perfil');
+      if (z.grade) caixa(z.grade, 'grade', 'Grade do perfil', true);
       caixa(z.seguro, '', est.formato === 'story' ? 'Área segura do story' : 'Área segura');
     }
     const avisos = checar(no, s, i, k), ul = $('es-avisos'); ul.innerHTML = '';
@@ -142,22 +143,31 @@
     dentro.style.transform = `scale(${k})`;
     montar(i, dentro);
   }
+  // O que dá para fazer com um slide: subir, descer, duplicar (completo) e apagar.
+  function moverSlide(i, d) { const j = i + d; if (j < 0 || j >= est.slides.length) return; [est.slides[i], est.slides[j]] = [est.slides[j], est.slides[i]]; est.atual = j; tudo(); marcarSujo(); }
+  function duplicarSlide(i) { if (est.slides.length >= cfg.max_slides) return; est.slides.splice(i + 1, 0, copia(est.slides[i])); est.atual = i + 1; tudo(); marcarSujo(); }
+  function apagarSlide(i) { if (est.slides.length === 1 || !confirm('Apagar este slide?')) return; est.slides.splice(i, 1); est.atual = Math.min(est.atual, est.slides.length - 1); tudo(); marcarSujo(); }
+  const parar = (fn) => (ev) => { ev.stopPropagation(); fn(); };
   function desenharLista() {
     const rolagem = document.querySelector('.es-lista'), y = rolagem.scrollTop;
     const lista = $('es-slides'); lista.innerHTML = '';
     est.slides.forEach((s, i) => {
       const img = el('div', { class: 'es-mini-img' });
-      const mover = (d) => (ev) => { ev.stopPropagation(); const j = i + d; [est.slides[i], est.slides[j]] = [est.slides[j], est.slides[i]]; est.atual = j; tudo(); marcarSujo(); };
       const barra = el('div', { class: 'es-mini-barra' }, el('span', {}, `${i + 1}. ${(cfg.tipos[s.tipo] || {}).nome || s.tipo}`),
         el('span', {},
-          el('button', { type: 'button', title: 'Subir', disabled: i === 0, on: { click: mover(-1) } }, '↑'),
-          el('button', { type: 'button', title: 'Descer', disabled: i === est.slides.length - 1, on: { click: mover(1) } }, '↓'),
-          completo && el('button', { type: 'button', title: 'Duplicar', disabled: est.slides.length >= cfg.max_slides, on: { click: (ev) => { ev.stopPropagation(); est.slides.splice(i + 1, 0, copia(s)); est.atual = i + 1; tudo(); marcarSujo(); } } }, '⧉'),
-          el('button', { type: 'button', title: 'Apagar', disabled: est.slides.length === 1, on: { click: (ev) => { ev.stopPropagation(); if (!confirm('Apagar este slide?')) return; est.slides.splice(i, 1); est.atual = Math.min(est.atual, est.slides.length - 1); tudo(); marcarSujo(); } } }, '🗑')));
+          el('button', { type: 'button', title: 'Subir', disabled: i === 0, on: { click: parar(() => moverSlide(i, -1)) } }, '↑'),
+          el('button', { type: 'button', title: 'Descer', disabled: i === est.slides.length - 1, on: { click: parar(() => moverSlide(i, 1)) } }, '↓'),
+          completo && el('button', { type: 'button', title: 'Duplicar', disabled: est.slides.length >= cfg.max_slides, on: { click: parar(() => duplicarSlide(i)) } }, '⧉'),
+          el('button', { type: 'button', title: 'Apagar', disabled: est.slides.length === 1, on: { click: parar(() => apagarSlide(i)) } }, '🗑')));
       const item = el('div', { class: 'es-mini' + (i === est.atual ? ' ativo' : ''), on: { click: () => selecionar(i) } }, img, barra);
       lista.append(item);
       miniatura(i, img, img.clientWidth || lista.clientWidth - 16 || 180);
     });
+    // Estúdio no painel: no celular, os slides viram uma faixa e o "+ Slide" é o último item dela.
+    if (lista.dataset.faixa !== undefined && completo) {
+      lista.append(el('button', { type: 'button', class: 'es-mini-novo', title: 'Novo slide', disabled: est.slides.length >= cfg.max_slides,
+        on: { click: () => $('es-adicionar').click() } }, el('b', { 'aria-hidden': 'true' }, '+'), 'Slide'));
+    }
     $('es-adicionar').disabled = est.slides.length >= cfg.max_slides;
     document.querySelector('.es-adicionar').hidden = !completo;
     rolagem.scrollTop = y;
@@ -185,8 +195,12 @@
   // Deixa o slide aberto visível na lista (só rola se ele estiver fora da área visível).
   function mostrarAtual() {
     const m = document.querySelectorAll('#es-slides .es-mini')[est.atual];
-    const caixa = document.querySelector('.es-lista');
-    if (m && caixa) { // rola só a lista, nunca a página
+    const caixa = document.querySelector('.es-lista'), faixa = $('es-slides');
+    if (m && faixa.scrollWidth > faixa.clientWidth + 1) { // faixa de lado (celular): rola só a faixa
+      const r = m.getBoundingClientRect(), c = faixa.getBoundingClientRect();
+      if (r.left < c.left) faixa.scrollLeft -= c.left - r.left + 8;
+      else if (r.right > c.right) faixa.scrollLeft += r.right - c.right + 8;
+    } else if (m && caixa) { // rola só a lista, nunca a página
       const r = m.getBoundingClientRect(), c = caixa.getBoundingClientRect();
       if (r.top < c.top) caixa.scrollTop -= c.top - r.top + 8;
       else if (r.bottom > c.bottom) caixa.scrollTop += r.bottom - c.bottom + 8;
@@ -194,7 +208,19 @@
     $('es-anterior').disabled = est.atual === 0;
     $('es-proximo').disabled = est.atual === est.slides.length - 1;
     $('es-posicao').textContent = `Slide ${est.atual + 1} de ${est.slides.length}`;
+    const acoes = $('es-slide-acoes'); // a linha de ações do slide aberto (painel, celular)
+    if (acoes) {
+      const b = (a) => acoes.querySelector(`[data-acao=${a}]`), ultimo = est.slides.length - 1;
+      b('subir').disabled = est.atual === 0; b('descer').disabled = est.atual === ultimo;
+      b('duplicar').hidden = !completo; b('duplicar').disabled = est.slides.length >= cfg.max_slides;
+      b('apagar').disabled = est.slides.length === 1;
+    }
   }
+  if ($('es-slide-acoes')) $('es-slide-acoes').addEventListener('click', (ev) => {
+    const a = (ev.target.closest('[data-acao]') || {}).dataset?.acao, i = est.atual;
+    if (a === 'subir') moverSlide(i, -1); else if (a === 'descer') moverSlide(i, 1);
+    else if (a === 'duplicar' && completo) duplicarSlide(i); else if (a === 'apagar') apagarSlide(i);
+  });
   $('es-anterior').addEventListener('click', () => selecionar(est.atual - 1));
   $('es-proximo').addEventListener('click', () => selecionar(est.atual + 1));
 

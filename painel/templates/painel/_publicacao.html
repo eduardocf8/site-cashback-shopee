@@ -9,7 +9,7 @@
   <div class="linha-botoes">
     {% if p.permalink %}<a class="botao botao-claro botao-pequeno" href="{{ p.permalink }}" target="_blank" rel="noopener">Ver no Instagram</a>{% endif %}
     {% if p.estado == "pendente" %}
-      <form method="post" action="{% url 'painel_estudio_publicacao_cancelar' p.pk %}" onsubmit="return confirm('Cancelar esta publicação?')">{% csrf_token %}<button class="botao botao-claro botao-pequeno" type="submit">Cancelar</button></form>
+      <form method="post" action="{% url 'painel_estudio_publicacao_cancelar' p.pk %}" onsubmit="return confirm('Cancelar esta publicação?')">{% csrf_token %}<button class="botao-excluir" type="submit">Cancelar</button></form>
     {% elif p.estado == "erro" %}
       <form method="post" action="{% url 'painel_estudio_publicacao_tentar' p.pk %}">{% csrf_token %}<button class="botao botao-principal botao-pequeno" type="submit">Tentar de novo</button></form>
     {% endif %}

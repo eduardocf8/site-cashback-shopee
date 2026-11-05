@@ -14,7 +14,7 @@
     </label>
     <div class="es-acoes-principais">
       <button type="button" class="es-bt" id="es-salvar">Salvar</button>
-      <button type="button" class="es-bt es-salvar" id="es-publicar" data-url="{% url 'painel_estudio_publicar' post.pk %}">Publicar no Instagram</button>
+      <button type="button" class="es-bt es-salvar" id="es-publicar" data-url="{% url 'painel_estudio_publicar' post.pk %}"><span class="so-grande">Publicar no Instagram</span><span class="so-pequeno">Publicar</span></button>
       <details class="es-mais">
         <summary class="es-bt">Mais <span aria-hidden="true">▾</span></summary>
         <div class="es-menu" role="menu">
@@ -41,7 +41,14 @@
   </div>
   <div class="es-corpo">
     <aside class="es-lista">
-      <div id="es-slides"></div>
+      {# data-faixa: no celular, os slides viram uma faixa com o "+ Slide" no fim e a linha de ações do slide aberto embaixo #}
+      <div id="es-slides" data-faixa></div>
+      <div class="es-slide-acoes" id="es-slide-acoes" role="group" aria-label="Slide aberto">
+        <button type="button" data-acao="subir">↑ Subir</button>
+        <button type="button" data-acao="descer">↓ Descer</button>
+        <button type="button" data-acao="duplicar">⧉ Duplicar</button>
+        <button type="button" data-acao="apagar" class="perigo">Apagar</button>
+      </div>
       <div class="es-adicionar">
         <select id="es-novo-tipo" aria-label="Tipo do novo slide"></select>
         <button type="button" class="es-bt" id="es-adicionar">+ Slide</button>
@@ -50,9 +57,9 @@
     <main class="es-palco">
       <div class="es-palco-area" id="es-palco-area"><div id="es-escala" class="es-escala"><div id="es-quadro"></div><div id="es-guias-camada" class="es-guias"></div></div></div>
       <div class="es-navegar">
-        <button type="button" class="es-bt" id="es-anterior">← Slide anterior</button>
+        <button type="button" class="es-bt" id="es-anterior" aria-label="Slide anterior" title="Slide anterior">←</button>
         <span id="es-posicao"></span>
-        <button type="button" class="es-bt" id="es-proximo">Próximo slide →</button>
+        <button type="button" class="es-bt" id="es-proximo" aria-label="Próximo slide" title="Próximo slide">→</button>
       </div>
       <label class="es-check es-guias-opcao"><input type="checkbox" id="es-guias" checked> Mostrar as margens de segurança</label>
       <ul id="es-avisos" class="es-avisos"></ul>

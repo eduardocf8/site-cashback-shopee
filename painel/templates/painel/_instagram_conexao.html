@@ -1,23 +1,61 @@
-{# O Instagram conectado (ou o botão de conectar). Aparece no Estúdio, nas Publicações e nas Automações. #}
-<section class="card ig-conexao">
-  {% if ig %}
-    <div class="ig-perfil">
-      {% if ig.foto %}<img src="{{ ig.foto }}" alt="" referrerpolicy="no-referrer">{% else %}<span class="ig-sem-foto">@</span>{% endif %}
-      <div>
-        <strong>@{{ ig.username }}</strong>{% if ig.nome %}<small>{{ ig.nome }}</small>{% endif %}
-        <small class="{% if ig.erro %}ig-erro{% else %}ig-ok{% endif %}">{% if ig.erro %}{{ ig.erro }}{% elif ig.avisos_ligados %}Conectado e recebendo os comentários e as DMs.{% else %}Conectado.{% endif %}</small>
+{% comment %} O Instagram conectado (pílula no canto do cabeçalho) ou o convite para conectar.
+   Conectado: incluir dentro do <header class="cabecalho">.
+   Sem Instagram: jeito="comecar" (Automações: os 3 passos e o exemplo) ou a faixa fina (Estúdio e Publicações,
+   onde dá para criar e baixar sem conectar).
+{% endcomment %}
+{% if ig %}
+  <div class="ig-conexao-mini{% if ig.erro %} com-erro{% endif %}">
+    {% if ig.foto %}<img src="{{ ig.foto }}" alt="" referrerpolicy="no-referrer">{% else %}<span class="ig-sem-foto">@</span>{% endif %}
+    <div>
+      <strong>@{{ ig.username }}</strong>
+      {% if ig.erro %}<span class="situacao erro" title="{{ ig.erro }}">{{ ig.erro }}</span>
+      {% else %}<span class="situacao"><span>Conectado{% if ig.avisos_ligados %}<span class="so-grande">, recebendo comentários e DMs</span>{% endif %}</span></span>{% endif %}
+    </div>
+    <form method="post" action="{% url 'painel_instagram_desconectar' %}" onsubmit="return confirm('Desconectar o Instagram? As automações e as publicações agendadas param até você conectar de novo.')">{% csrf_token %}<input type="hidden" name="voltar" value="{{ request.path }}"><button class="link-botao" type="submit">Desconectar</button></form>
+  </div>
+{% elif jeito == "comecar" %}
+  <section class="card ig-comecar">
+    <div>
+      <h2>Conecte o seu Instagram para começar</h2>
+      <p class="suave">Três passos e as suas automações respondem sozinhas, de dia e de noite.</p>
+      <ol class="passos-lista">
+        <li class="passo atual">
+          <span class="passo-num">1</span>
+          <div class="passo-texto"><strong>Conecte o Instagram</strong><small>Precisa ser conta profissional (comercial ou de criador). Dá para mudar no app do Instagram, nas configurações da conta.</small></div>
+          {% if configurado %}<a class="botao botao-principal" id="ig-conectar" href="{% url 'painel_instagram_conectar' %}"><svg class="icone" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 4h16v16H4zM12 8a4 4 0 1 0 0 8 4 4 0 0 0 0-8z"/></svg>Conectar Instagram</a>{% endif %}
+        </li>
+        <li class="passo"><span class="passo-num">2</span><div class="passo-texto"><strong>Crie a automação</strong><small>Escolha o post, a palavra (ex.: QUERO) e a DM com o seu link de afiliado.</small></div></li>
+        <li class="passo"><span class="passo-num">3</span><div class="passo-texto"><strong>Pronto</strong><small>Quem comentar a palavra recebe o link na hora. Você acompanha tudo no Histórico.</small></div></li>
+      </ol>
+      {% if not configurado %}<p class="suave pequeno">A conexão com o Instagram ainda não está configurada no servidor.</p>{% endif %}
+      <p class="ig-permissoes suave"><svg class="icone" viewBox="0 0 24 24" aria-hidden="true"><path d="M6 11h12v10H6zM8 11V8a4 4 0 0 1 8 0v3"/></svg><span>Você entra pelo próprio Instagram e escolhe o que o Appfiliado pode fazer: ler e responder os comentários, mandar DMs e publicar posts. A senha fica com o Instagram.</span></p>
+    </div>
+    <div class="ig-exemplo" aria-label="Exemplo de automação">
+      <span class="ig-exemplo-titulo">Como fica no seu Instagram</span>
+      <div class="ig-previa-rotulo">No post</div>
+      <div class="ig-previa-tela">
+        <div class="ig-com"><span class="ig-ava">C</span><div><b>cliente</b>QUERO<small>agora · Responder</small></div></div>
+        <div class="ig-com resposta"><span class="ig-ava voce">@</span><div><b>seuperfil</b>Te mandei na DM! 📩<small>agora</small></div></div>
+      </div>
+      <div class="ig-previa-rotulo">Na DM</div>
+      <div class="ig-previa-tela">
+        <div class="ig-dm-topo"><span class="ig-ava voce">@</span><div>seuperfil<small>Instagram</small></div></div>
+        <div class="ig-balao"><p>Oi! Aqui está o link que você pediu:</p><span class="ig-bt">Ver produto</span></div>
       </div>
     </div>
-    <form method="post" action="{% url 'painel_instagram_desconectar' %}" onsubmit="return confirm('Desconectar o Instagram? As automações e as publicações agendadas param até você conectar de novo.')">{% csrf_token %}<input type="hidden" name="voltar" value="{{ request.path }}"><button class="botao botao-claro" type="submit">Desconectar</button></form>
-  {% else %}
+  </section>
+{% else %}
+  <section class="card ig-faixa">
+    <span class="ig-faixa-icone"><svg class="icone" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 4h16v16H4zM12 8a4 4 0 1 0 0 8 4 4 0 0 0 0-8z"/></svg></span>
     <div>
-      <h2>Conecte o seu Instagram</h2>
-      <p class="suave">Precisa ser uma conta profissional (comercial ou de criador). Você entra pelo próprio Instagram e escolhe o que o Appfiliado pode fazer: ler os comentários e responder, mandar DMs e publicar posts.</p>
+      <strong>Conecte o Instagram para publicar e agendar daqui</strong>
+      <small>Sem conectar, você já cria os posts e baixa as imagens.</small>
     </div>
-    {% if configurado %}<a class="botao botao-principal" id="ig-conectar" href="{% url 'painel_instagram_conectar' %}">Conectar Instagram</a>
-    {% else %}<p class="suave">A conexão com o Instagram ainda não está configurada no servidor.</p>{% endif %}
-  {% endif %}
-</section>
+    {% if configurado %}<a class="botao botao-claro" id="ig-conectar" href="{% url 'painel_instagram_conectar' %}">Conectar Instagram</a>
+    {% else %}<small class="suave">A conexão com o Instagram ainda não está configurada no servidor.</small>{% endif %}
+  </section>
+{% endif %}
+{% if not ig %}
 <script>
   // Espera o fim do login do Instagram, aberto numa janela à parte. A página do Instagram corta a ligação entre as
   // duas janelas, então a janela do login avisa por BroadcastChannel (e localStorage, nos navegadores antigos).
@@ -39,7 +77,7 @@
   };
   // O login do Instagram abre numa janela menor, ao lado do painel. Se o navegador bloquear, abre aqui mesmo.
   const botaoIg = document.getElementById('ig-conectar');
-  const textoIg = botaoIg ? botaoIg.textContent : '';
+  const textoIg = botaoIg ? botaoIg.innerHTML : '';
   let esperandoIg = false;
   botaoIg?.addEventListener('click', (e) => {
     const l = 560, a = 760, x = window.screenX + Math.max(0, (window.outerWidth - l) / 2), y = window.screenY + Math.max(0, (window.outerHeight - a) / 2);
@@ -49,6 +87,7 @@
     botaoIg.textContent = 'Conectando… (termine na janela do Instagram)';
     if (esperandoIg) return;
     esperandoIg = true;
-    esperarInstagram(() => window.location.reload(), () => { botaoIg.textContent = textoIg; });
+    esperarInstagram(() => window.location.reload(), () => { botaoIg.innerHTML = textoIg; });
   });
 </script>
+{% endif %}

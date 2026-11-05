@@ -1,0 +1,19 @@
+{% comment %} Abas das páginas do Instagram (o mesmo componente .abas do Bot de WhatsApp).
+   modulo="estudio": Posts · Publicações · Minha marca. modulo="automacoes": Automações · Histórico, com "Nova automação" à direita.
+   aba: qual está aberta.
+{% endcomment %}
+{% if modulo == "automacoes" %}
+<div class="ig-abas-linha">
+  <nav class="abas" aria-label="Automações Instagram">
+    <a class="aba{% if aba == 'automacoes' %} ativo{% endif %}" href="{% url 'painel_estudio_automacoes' %}"{% if aba == 'automacoes' %} aria-current="page"{% endif %}>Automações</a>
+    <a class="aba{% if aba == 'historico' %} ativo{% endif %}" href="{% url 'painel_estudio_historico' %}"{% if aba == 'historico' %} aria-current="page"{% endif %}>Histórico</a>
+  </nav>
+  {% if ig %}<a class="botao botao-principal" href="{% url 'painel_estudio_automacao_nova' %}">+ Nova automação</a>{% endif %}
+</div>
+{% else %}
+<nav class="abas ig-abas" aria-label="Estúdio Instagram">
+  <a class="aba{% if aba == 'posts' %} ativo{% endif %}" href="{% url 'painel_estudio' %}"{% if aba == 'posts' %} aria-current="page"{% endif %}>Posts</a>
+  <a class="aba{% if aba == 'publicacoes' %} ativo{% endif %}" href="{% url 'painel_estudio_publicacoes' %}"{% if aba == 'publicacoes' %} aria-current="page"{% endif %}>Publicações</a>
+  <a class="aba{% if aba == 'marca' %} ativo{% endif %}" href="{% url 'painel_estudio_marca' %}"{% if aba == 'marca' %} aria-current="page"{% endif %}>Minha marca</a>
+</nav>
+{% endif %}

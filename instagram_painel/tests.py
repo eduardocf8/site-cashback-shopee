@@ -463,7 +463,7 @@ class TestTelas(TestCase):
         self.assertContains(r, "Não incluso no seu plano")
         self.assertEqual(self.client.post("/estudio/automacoes/nova/").status_code, 403)
         self.assertEqual(self.client.get("/estudio/instagram/conectar/").status_code, 302)
-        self.assertContains(self.client.get("/estudio/publicacoes/"), "Conecte o seu Instagram")
+        self.assertContains(self.client.get("/estudio/publicacoes/"), "Conecte o Instagram para publicar")
 
     def test_automacao_de_outra_conta_nao_abre(self):
         outra = Automacao.objects.create(conta=conta(email="outra@exemplo.com"), nome="x", respostas="ok")

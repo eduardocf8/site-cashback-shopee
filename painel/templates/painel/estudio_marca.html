@@ -6,11 +6,12 @@
 <div class="es-pagina">
 <header class="cabecalho">
   <div>
-    <a class="suave" href="{% url 'painel_estudio' %}">← Estúdio Instagram</a>
-    <h1>Minha marca</h1>
-    <p>O que aparece nos seus posts: o seu @ e, no plano Premium, o seu logo, as suas cores e a sua fonte.</p>
+    <h1>Estúdio Instagram</h1>
+    <p>Crie posts e stories com o seu link de afiliado e publique direto no seu Instagram, na hora ou agendado.</p>
   </div>
 </header>
+{% include "painel/_abas_instagram.html" with modulo="estudio" aba="marca" %}
+<p class="ig-sub suave">O que aparece nos seus posts: o seu @ e, no plano Premium, o seu logo, as suas cores e a sua fonte.</p>
 <section class="card">
   <form class="es-marca-form" method="post" enctype="multipart/form-data">
     {% csrf_token %}

@@ -384,7 +384,7 @@ def _form_contexto(request, conta, form, automacao=None):
     plano = planos_do_app.automacoes(conta)
     gatilhos = [{"valor": v, "nome": n, "livre": v in plano["gatilhos"]} for v, n in Automacao.GATILHOS]
     return _contexto(request, SLUG_AUTOMACOES, form=form, automacao=automacao, ig=_ig(conta), gatilhos=gatilhos, plano=plano,
-                     disparos=automacao.disparos.all()[:50] if automacao else [])
+                     disparos=automacao.disparos.all()[:8] if automacao else [])  # o resto fica no Histórico
 
 
 @_automacoes
@@ -470,6 +470,7 @@ def historico(request, conta):
     pagina = Paginator(disparos, 50).get_page(request.GET.get("pagina"))
     return render(request, "painel/estudio_historico.html", _contexto(
         request, SLUG_AUTOMACOES, pagina=pagina, automacoes=automacoes_, escolhida=escolhida,
+        ig=_ig(conta), plano=planos_do_app.automacoes(conta),
         total=disparos.count(), dms=disparos.filter(dm_ok=True).count(), respostas=disparos.filter(resposta_ok=True).count(),
     ))
 

@@ -68,19 +68,10 @@
 .es-marca-form legend { font-weight: 700; padding: 0 6px; }
 .es-logo-atual { max-height: 72px; max-width: 240px; background: var(--chip); border-radius: 8px; padding: 6px; }
 @media (max-width: 760px) {
-  .es-criar { grid-template-columns: 1fr; }
-  .es-criar-abas { flex-direction: row; overflow-x: auto; }
-  .es-criar-abas button { white-space: nowrap; }
-  .es-criar-abas button small { display: none; }
+  .es-criar { grid-template-columns: 1fr; }  /* as formas de criar ficam em 2x2: ver o bloco da revisão de 11/2026 */
 }
 
 /* ---------- Automações do Instagram ---------- */
-.ig-conexao { display: flex; align-items: center; justify-content: space-between; gap: 16px; flex-wrap: wrap; }
-.ig-conexao form { margin: 0; }
-.ig-perfil { display: flex; align-items: center; gap: 14px; }
-.ig-perfil img, .ig-sem-foto { width: 56px; height: 56px; border-radius: 50%; object-fit: cover; background: var(--chip); display: grid; place-items: center; font-weight: 800; }
-.ig-perfil strong { display: block; font-size: 16px; }
-.ig-perfil small { display: block; font-size: 13px; color: var(--suave); }
 .ig-ok { color: var(--bom-tinta) !important; }
 .ig-erro { color: var(--perigo) !important; font-size: 12px; }
 .ig-automacoes { display: grid; gap: 10px; }
@@ -100,9 +91,6 @@
 .ig-automacao-info > * { grid-column: 2; min-width: 0; }
 .ig-automacao-info > .ig-automacao-nome { grid-column: 2 / 4; grid-row: 1; font-size: 16px; line-height: 1.25; overflow-wrap: anywhere; }
 .ig-automacao-selos { display: flex; flex-wrap: wrap; gap: 6px; }
-.ig-automacao-selos .ig-conta { margin-left: 0; }
-.ig-estado { font-size: 12px; font-weight: 700; padding: 2px 8px; border-radius: 999px; background: var(--bom-suave); color: var(--bom-tinta); }
-.ig-estado-parada { background: var(--chip); color: var(--suave); }
 .ig-automacao-quando { font-size: 13.5px; font-weight: 600; }
 .ig-palavras { display: flex; flex-wrap: wrap; gap: 4px; }
 .ig-palavras span { font-size: 11.5px; font-weight: 700; letter-spacing: .02em; padding: 2px 7px; border-radius: 6px; background: var(--chip); color: var(--texto); }
@@ -112,15 +100,16 @@
 .ig-automacao-numeros span { white-space: nowrap; }
 .ig-automacao-botoes { grid-column: 3; grid-row: 2 / span 4; align-self: end; display: grid; gap: 8px; }
 .ig-automacao-botoes .botao { width: 100%; justify-content: center; }
-.ig-form { display: grid; gap: 16px; max-width: 760px; }
+/* O formulário da automação: o nome, os 4 passos numerados (.etapa do painel.css) e a prévia ao lado. */
+.ig-form { display: grid; grid-template-columns: minmax(0, 1fr) 300px; gap: 16px; align-items: start; }
 .ig-form label { display: flex; flex-direction: column; gap: 4px; font-weight: 600; font-size: 14px; }
 .ig-form label small, .ig-form fieldset > small { font-weight: 400; }
 .ig-form label.es-check { flex-direction: row; align-items: center; gap: 8px; }
 .ig-form input[type=text], .ig-form input[type=url], .ig-form textarea { font: inherit; font-weight: 400; padding: 10px 12px; border: 1px solid var(--borda); border-radius: 10px; background: var(--campo); }
-.ig-form fieldset { border: 1px solid var(--borda); border-radius: 12px; padding: 14px; display: grid; gap: 10px; margin: 0; }
+.ig-form fieldset { border: 0; padding: 0; display: grid; gap: 10px; margin: 0; min-width: 0; }
 .ig-form fieldset[hidden] { display: none; }
-.ig-form legend { font-weight: 700; padding: 0 6px; }
-.ig-gatilhos { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 8px; }
+.ig-form legend { font-weight: 600; font-size: 14px; padding: 0; margin-bottom: 8px; }
+.ig-gatilhos { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 8px; }
 .ig-gatilho { flex-direction: row !important; align-items: center; gap: 8px; border: 1px solid var(--borda); border-radius: 10px; padding: 10px 12px; cursor: pointer; }
 .ig-gatilho:has(input:checked) { border-color: var(--verde); background: var(--bom-suave); }
 .ig-escolhido { display: flex; align-items: center; gap: 12px; }
@@ -157,7 +146,7 @@
 .ig-paginas { align-items: center; justify-content: center; }
 
 /* ---------- Publicar no Instagram ---------- */
-.es-estado { align-self: flex-start; font-size: 11px; font-weight: 800; letter-spacing: .04em; text-transform: uppercase; border-radius: 999px; padding: 3px 9px; background: var(--chip); color: var(--suave); }
+.es-estado { align-self: flex-start; font-size: 12px; font-weight: 700; border-radius: 999px; padding: 2px 9px; background: var(--chip); color: var(--suave); }
 .es-estado-agendado, .es-estado-pendente, .es-estado-publicando { background: var(--amarelo-suave); color: var(--amarelo-tinta); }
 .es-estado-publicado, .es-estado-publicada { background: var(--bom-suave); color: var(--bom-tinta); }
 .es-estado-erro { background: var(--perigo-suave); color: var(--perigo); }
@@ -183,17 +172,14 @@
 .pub-info small { color: var(--suave); font-size: 12.5px; }
 .pub-cartao form { margin: 0; }
 .pub-cartao.pub-cancelada { opacity: .6; }
-.ig-uso { display: flex; align-items: center; justify-content: space-between; gap: 16px; flex-wrap: wrap; padding: 14px 18px; }
-.ig-uso strong { display: block; }
-.ig-uso small { display: block; color: var(--suave); font-size: 12.5px; }
 .ig-fila { background: var(--amarelo-suave); color: var(--amarelo-tinta); border-radius: 10px; padding: 8px 12px; max-width: 420px; }
 .ig-fila small { color: inherit; }
 .ig-gatilho-premium { opacity: .6; cursor: not-allowed; }
 .ig-gatilho .es-selo-teste { margin-left: auto; }
-.ig-premium { display: grid; gap: 8px; border-top: 1px dashed var(--borda); padding-top: 10px; }
+.ig-premium { display: grid; gap: 12px; border-top: 1px solid var(--trilho); padding-top: 14px; }
 .ig-premium-bloqueado { opacity: .6; }
-.ig-conta { display: inline-block; margin-left: 6px; font-size: 12px; font-weight: 700; padding: 2px 8px; border-radius: 999px; background: var(--bom-suave); color: var(--bom-tinta); vertical-align: middle; }
-.ig-conta-outra { background: var(--chip); color: var(--suave); }
+/* selo de informação (a conta): cinza; verde é só para "está funcionando" */
+.ig-conta { display: inline-block; font-size: 12px; font-weight: 600; padding: 2px 8px; border-radius: 999px; background: var(--chip); color: var(--suave); vertical-align: middle; }
 .ig-escolhido[hidden] { display: none; }
 .ig-escolhido { border: 1px solid var(--verde); background: var(--bom-suave); border-radius: 10px; padding: 8px 12px; }
 .ig-escolhido span { flex: 1; font-size: 13.5px; }
@@ -254,7 +240,6 @@
   .so-pequeno { display: inline; }
   .es-ajustes > :last-child:nth-child(odd) { grid-column: 1 / -1; }
 }
-}
 @media (min-width: 761px) { .es-cabeca-linha { flex-wrap: nowrap; } .es-titulo-campo { flex: 1 1 0; } }
 /* Miniatura do slide: o nome encurta, os botões ficam na mesma linha. */
 .es-mini-barra { gap: 4px; }
@@ -269,6 +254,253 @@
 .ig-contador button:hover:not(:disabled) { background: var(--chip); }
 .ig-contador button:disabled { opacity: .35; cursor: not-allowed; }
 .ig-contador output { min-width: 28px; text-align: center; font-weight: 700; font-size: 16px; }
-.ig-botao { display: grid; gap: 6px; padding: 10px 12px; border: 1px solid var(--borda); border-radius: 12px; background: var(--campo); }
+.ig-botao { display: grid; gap: 12px; }
 .ig-botao[hidden] { display: none; }
-.ig-botao-num { font-size: 12px; font-weight: 700; text-transform: uppercase; letter-spacing: .04em; color: var(--suave); }
+
+/* === instagram (revisão de layout 11/2026) === */
+/* ---------- Topo das páginas: a conexão numa pílula no canto do cabeçalho e as abas (.abas do painel.css) ---------- */
+.es-pagina > .cabecalho { align-items: flex-start; }
+@media (min-width: 901px) {
+  .es-pagina > .cabecalho { flex-wrap: nowrap; }
+  .es-pagina > .cabecalho > div:first-child { flex: 1; min-width: 0; }
+}
+.ig-conexao-mini { display: flex; align-items: center; gap: 10px; flex: none; max-width: 100%; margin-top: 2px; padding: 5px 14px 5px 5px;
+  background: var(--card); border: 1px solid var(--borda); border-radius: 999px; font-size: 13.5px; }
+.ig-conexao-mini > img, .ig-conexao-mini > .ig-sem-foto { width: 32px; height: 32px; border-radius: 50%; object-fit: cover; flex: none;
+  background: var(--chip); display: grid; place-items: center; font-weight: 800; }
+.ig-conexao-mini > div { display: flex; flex-direction: column; gap: 1px; min-width: 0; line-height: 1.25; }
+.ig-conexao-mini strong { font-size: 14px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.ig-conexao-mini .situacao { font-size: 12.5px; font-weight: 600; gap: 6px; }
+.ig-conexao-mini .situacao::before { width: 7px; height: 7px; }
+.ig-conexao-mini form { margin: 0 0 0 4px; padding-left: 12px; border-left: 1px solid var(--borda); }
+.ig-conexao-mini .link-botao { font-size: 12.5px; color: var(--suave); white-space: nowrap; }
+.ig-conexao-mini .link-botao:hover { color: var(--perigo); }
+/* com erro (token vencido, permissão tirada): a pílula fica vermelha com o aviso */
+.ig-conexao-mini.com-erro { background: var(--perigo-suave); border-color: #F3C9C4; border-radius: 18px; }
+.ig-conexao-mini.com-erro .situacao { white-space: normal; max-width: 340px; align-items: flex-start; }
+.ig-conexao-mini.com-erro .situacao::before { margin-top: 4px; }
+/* abas: no lugar dos botões soltos e do "← voltar"; "Nova automação" na mesma linha, à direita */
+.es-pagina > .abas, .ig-abas-linha { margin: -6px 0 -4px; }
+.ig-abas-linha { display: flex; align-items: center; justify-content: space-between; gap: 12px; border-bottom: 1px solid var(--borda); }
+.ig-abas-linha > .abas { flex: 0 1 auto; min-width: 0; margin: 0 0 -1px; border-bottom: 0; }
+.ig-abas-linha > .botao { flex: none; margin-bottom: 6px; }
+.ig-sub { margin: -8px 0 0; font-size: 14px; }
+/* "Suas automações" com o número do mês ao lado (no lugar do cartão só para ele) */
+.titulo-com-numero { display: flex; align-items: baseline; justify-content: space-between; gap: 4px 16px; flex-wrap: wrap; margin: 0 0 12px; }
+.titulo-com-numero h2 { margin: 0; }
+.titulo-com-numero > span { font-size: 14px; color: var(--suave); }
+.titulo-com-numero > span b { color: var(--texto); font-size: 16px; }
+.ig-plano-nota { margin: -6px 0 12px; }
+.es-pagina > .ig-fila { max-width: none; padding: 10px 14px; }
+.es-pagina > .ig-fila strong { margin-right: 6px; }
+@media (max-width: 900px) {
+  .ig-conexao-mini { align-self: flex-start; }
+}
+@media (max-width: 700px) {
+  .ig-abas-linha { flex-direction: column; align-items: stretch; gap: 12px; border-bottom: 0; }
+  .ig-abas-linha > .abas { margin: 0 -16px; border-bottom: 1px solid var(--borda); }
+  .ig-abas-linha > .botao { width: 100%; margin: 0; }
+  .ig-sub { margin-top: -6px; }
+}
+
+/* ---------- Primeiro uso: os 3 passos para conectar (Automações) e a faixa fina (Estúdio, Publicações) ---------- */
+.ig-comecar { display: grid; grid-template-columns: minmax(0, 1fr) 300px; gap: 28px; align-items: start; padding: 24px; }
+.ig-comecar h2 { font-size: 20px; margin: 0 0 2px; letter-spacing: -.01em; }
+.ig-comecar .passos-lista { margin-top: 10px; }
+.ig-comecar .passo-num { font-size: 13px; }
+.ig-comecar .botao .icone { width: 18px; height: 18px; }
+.ig-permissoes { font-size: 12.5px; margin: 12px 0 0 !important; display: flex; gap: 8px; align-items: flex-start; }
+.ig-permissoes svg.icone { width: 16px; height: 16px; margin-top: 1px; }
+.ig-faixa { display: flex; align-items: center; gap: 14px; padding: 12px 16px; flex-wrap: wrap; }
+.ig-faixa-icone { width: 36px; height: 36px; border-radius: 10px; background: var(--chip); color: var(--verde); display: grid; place-items: center; flex: none; }
+.ig-faixa > div { flex: 1; min-width: 200px; }
+.ig-faixa strong { display: block; font-size: 14.5px; }
+.ig-faixa small { display: block; color: var(--suave); font-size: 13px; }
+/* "Do link de um produto" sem a Shopee: o que fazer agora e a alternativa que já funciona */
+.es-sem-shopee { display: grid; gap: 12px; max-width: 520px; }
+.es-sem-shopee h3 { margin: 0; font-size: 16px; }
+/* lista vazia: caixa tracejada com o próximo passo */
+.es-vazio { border: 1px dashed var(--borda-forte); border-radius: var(--raio); padding: 22px; text-align: center; display: grid; gap: 4px; justify-items: center; }
+.es-vazio strong { font-size: 15px; }
+@media (max-width: 900px) {
+  .ig-comecar { grid-template-columns: minmax(0, 1fr); padding: 18px; gap: 20px; }
+  .ig-comecar .passos-lista .passo small { display: block; }  /* aqui a frase de cada passo é a explicação: fica no celular */
+}
+@media (max-width: 700px) {
+  .ig-faixa > .botao { width: 100%; }
+}
+
+/* ---------- Prévia do que a pessoa recebe (formulário da automação e o exemplo do primeiro uso) ---------- */
+.ig-exemplo, .ig-previa { display: grid; gap: 10px; min-width: 0; }
+.ig-exemplo-titulo { font-weight: 700; font-size: 14px; }
+.ig-previa-rotulo { font-size: 11px; font-weight: 800; letter-spacing: .06em; text-transform: uppercase; color: var(--suave); margin-bottom: -4px; }
+.ig-previa-rotulo[hidden] { display: none; }
+.ig-previa-tela { background: var(--creme); border: 1px solid var(--borda); border-radius: 12px; padding: 12px; display: grid; gap: 10px; font-size: 13.5px; line-height: 1.4; min-width: 0; }
+.ig-previa-tela[hidden] { display: none; }
+.ig-com { display: flex; gap: 8px; align-items: flex-start; min-width: 0; }
+.ig-com > div { min-width: 0; overflow-wrap: anywhere; }
+.ig-com.resposta { margin-left: 34px; }
+.ig-com[hidden], .ig-dm-topo[hidden], .ig-balao-meu[hidden] { display: none; }
+.ig-ava { width: 26px; height: 26px; border-radius: 50%; flex: none; background: var(--borda-forte); object-fit: cover; display: grid; place-items: center;
+  font-size: 11px; font-weight: 800; color: #fff; }
+.ig-ava.voce { background: var(--amarelo); color: var(--texto); }
+.ig-com.resposta .ig-ava { width: 22px; height: 22px; }
+.ig-com b { margin-right: 4px; }
+.ig-com small { display: block; color: var(--suave); font-size: 11.5px; margin-top: 1px; }
+.ig-dm-topo { display: flex; align-items: center; gap: 8px; font-weight: 700; padding-bottom: 8px; border-bottom: 1px solid var(--borda); min-width: 0; }
+.ig-dm-topo > div { min-width: 0; flex: 1; }
+.ig-dm-topo .ig-ava { width: 28px; height: 28px; }
+.ig-dm-topo small { display: block; font-weight: 400; color: var(--suave); font-size: 11.5px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.ig-dm-topo .ig-post-mini { width: 40px; height: 40px; border-radius: 6px; object-fit: cover; flex: none; }
+.ig-balao { background: #fff; border: 1px solid var(--borda); border-radius: 16px 16px 16px 4px; max-width: 240px; overflow: hidden; }
+.ig-balao p { margin: 0; padding: 9px 12px; white-space: pre-wrap; overflow-wrap: anywhere; }
+.ig-balao .ig-link { color: #0B63B6; }
+.ig-balao .ig-bt { display: block; border-top: 1px solid var(--borda); padding: 8px 12px; text-align: center; font-weight: 700; color: var(--verde); overflow-wrap: anywhere; }
+.ig-balao-meu { justify-self: end; max-width: 220px; background: var(--verde); color: var(--menu-texto); border-radius: 16px 16px 4px 16px; padding: 7px 12px; font-weight: 600; overflow-wrap: anywhere; }
+
+/* ---------- Lista de automações: Excluir discreto, números maiores, ícone sem foto e botões no pé do cartão no celular ---------- */
+.ig-automacao-selos { align-items: center; gap: 6px 10px; }
+.ig-automacao-botoes { justify-items: center; gap: 6px; }
+.ig-automacao-botoes .botao { min-width: 92px; }
+.ig-automacao-numeros { font-size: 13px !important; }
+.ig-automacao-numeros b { font-size: 15px; }
+.ig-midia-vazia svg.icone { width: 22px; height: 22px; color: var(--verde); }
+@media (max-width: 700px) {
+  .ig-automacao { grid-template-columns: 44px minmax(0, 1fr); column-gap: 12px; padding: 14px; }
+  .ig-automacao-link > img, .ig-automacao-link > .ig-midia-vazia { width: 44px; height: 44px; }
+  .ig-automacao-info > .ig-automacao-nome { grid-column: 2; }
+  .ig-automacao-botoes { grid-column: 1 / -1; grid-row: auto; display: flex; align-items: center; justify-content: space-between; gap: 12px;
+    border-top: 1px solid var(--trilho); padding-top: 10px; margin-top: 4px; }
+  .ig-automacao-botoes form:first-child { flex: 1; }
+  .ig-automacao-botoes .botao { min-height: 40px; }
+  .ig-automacao-botoes .botao-excluir { padding: 8px 4px; }
+}
+
+/* ---------- Histórico: resultado em selo colorido; no celular, cada pessoa vira um cartão ---------- */
+.ig-selo { display: inline-flex; align-items: center; gap: 4px; font-size: 12px; font-weight: 700; padding: 2px 8px; border-radius: 999px; white-space: nowrap; }
+.ig-selo-ok { background: var(--bom-suave); color: var(--bom-tinta); }
+.ig-selo-erro { background: var(--perigo-suave); color: var(--perigo); }
+.ig-selo-fila { background: var(--amarelo-suave); color: var(--amarelo-tinta); }
+.ig-selo-nada { color: var(--suave); font-weight: 400; padding-left: 0; }
+.ig-historico td small.suave, .ig-historico td small.ig-erro { display: block; }
+.ig-historico td small.ig-erro { margin-top: 3px; }
+.so-cel { display: none; }
+@media (max-width: 700px) {
+  .so-cel { display: inline; }
+  .so-pc { display: none; }
+  .ig-filtro { gap: 12px; }
+  .ig-filtro form, .ig-filtro label { width: 100%; }
+  .ig-filtro select { min-width: 0; width: 100%; }
+  .ig-numeros { width: 100%; justify-content: space-between; gap: 10px; }
+  .ig-numeros strong { font-size: 20px; }
+  .ig-historico { overflow: visible; padding: 4px 16px; }
+  .ig-historico table, .ig-historico tbody { display: block; }
+  .ig-historico thead { display: none; }
+  .ig-historico tr { display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 6px; padding: 12px 0; border-bottom: 1px solid var(--trilho); }
+  .ig-historico tr:last-child { border-bottom: 0; }
+  .ig-historico td { display: block; padding: 0; border: 0; min-width: 0; }
+  /* no cartão: pessoa e hora, o que escreveu, a automação e os selos */
+  .ig-historico .h-pessoa { order: 1; font-weight: 700; font-size: 15px; }
+  .ig-historico .h-quando { order: 2; margin-left: auto; color: var(--suave); font-size: 12.5px; }
+  .ig-historico .h-texto { order: 3; flex: 1 1 100%; font-size: 14px; overflow-wrap: anywhere; }
+  .ig-historico .h-texto::before { content: "Escreveu: "; color: var(--suave); }
+  .ig-historico .h-automacao { order: 4; flex: 1 1 100%; font-size: 13px; margin-bottom: 4px; }
+  .ig-historico .h-automacao small.suave { display: inline; margin-left: 4px; }
+  .ig-historico .h-automacao small.suave::before { content: "· "; }
+  .ig-historico .h-comentario { order: 5; }
+  .ig-historico .h-dm { order: 6; }
+  .ig-historico td:has(> .ig-selo-nada:only-child) { display: none; }
+  .ig-paginas { justify-content: space-between; }
+}
+
+/* ---------- Estúdio no celular: as 4 formas de criar à vista (2×2) e os posts 2 por linha ---------- */
+@media (max-width: 760px) {
+  .es-criar-abas { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 6px; overflow: visible; padding: 8px; }
+  .es-criar-abas button { white-space: normal; padding: 9px 10px; line-height: 1.25; font-size: 14px; }
+  .es-criar-abas button small { display: block; font-size: 11.5px; margin-top: 2px; }
+  .es-criar-corpo { padding: 16px; }
+  .es-posts { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
+  .es-post { padding: 6px; border-radius: 12px; gap: 6px; }
+  .es-post strong { font-size: 13.5px; }
+  .es-post small { font-size: 11.5px; }
+}
+
+/* ---------- Automação (nova e editar): passos numerados, chave liga/desliga no canto e a prévia ao lado ---------- */
+.ig-topo-acoes { display: flex; align-items: center; gap: 12px; }
+.ig-topo-acoes form { margin: 0; }
+.cabecalho h1 .situacao { vertical-align: middle; margin-left: 6px; }
+.ig-passos { display: grid; gap: 14px; min-width: 0; }
+.ig-passos > .aviso { margin: 0; }
+.ig-nome label { font-size: 16px; font-weight: 700; gap: 10px; }
+.ig-form .etapa-corpo { gap: 14px; padding-left: 20px; }  /* sem o recuo do número: as opções cabem numa linha */
+.ig-form .etapa textarea[name=palavras] { min-height: 0; resize: vertical; }
+.ig-form .chave-liga { flex-direction: row; align-items: center; gap: 9px; font-size: 13px; color: var(--suave); }
+.ig-form .chave-liga:has(input:checked) { color: var(--bom-tinta); }
+/* "Responder" ou "Mandar" desligado: o cartão fecha */
+.ig-com-chave:has(> .etapa-topo .chave-liga input:not(:checked)) > .etapa-corpo { display: none; }
+.ig-link-gerado { overflow-wrap: anywhere; }
+.ig-lado { position: sticky; top: 16px; min-width: 0; }
+.ig-previa h2 { margin: 0; }
+.ig-erro-ativa { grid-column: 1 / -1; margin: 0; }
+.ig-form .barra-salvar { grid-column: 1 / -1; align-items: center; justify-content: space-between; }
+.ig-form .barra-salvar .chave-liga, .ig-form .barra-salvar .chave-liga:has(input:checked) { font-size: 14px; color: var(--texto); }
+@media (max-width: 900px) {
+  /* uma coluna: a prévia vem depois do passo 4 */
+  .ig-form { grid-template-columns: minmax(0, 1fr); }
+  .ig-lado { position: static; }
+}
+@media (max-width: 700px) {
+  .ig-form .etapa-corpo { padding-left: 16px; }
+  .ig-form .etapa .ig-gatilhos { grid-template-columns: minmax(0, 1fr); gap: 6px; }
+  .ig-form .barra-salvar .chave-liga { flex: none; font-size: 13.5px; }
+  .ig-barra-nota { flex: 1; min-width: 0; font-size: 12.5px; }
+  .ig-topo-acoes { width: 100%; }
+}
+
+/* ---------- Editor do post: prévia maior, setas compactas e, no celular, prévia primeiro e Publicar sempre à mão ---------- */
+.es-navegar .es-bt { min-width: 44px; min-height: 38px; padding: 0 12px; font-size: 18px; line-height: 1; }
+.es-mini-novo, .es-slide-acoes { display: none; }
+@media (min-width: 1101px) {
+  /* colunas laterais um pouco mais estreitas: a prévia cresce de 300 para uns 410 px */
+  .es-corpo { grid-template-columns: 150px minmax(0, 1fr) 340px; }
+}
+@media (min-width: 1101px) and (max-width: 1200px) {
+  .es-corpo { grid-template-columns: 140px minmax(0, 1fr) 300px; }
+}
+@media (max-width: 760px) {
+  .conteudo:has(.es-acoes-principais) { padding-bottom: calc(92px + env(safe-area-inset-bottom, 0px)); }
+  .es-cabeca { gap: 0; }
+  /* Salvar, Publicar e Mais numa barra presa no pé da tela (o mesmo jeito da .barra-salvar do painel) */
+  .es-acoes-principais { position: fixed; left: 0; right: 0; bottom: 0; z-index: 40; width: auto; display: flex; gap: 8px;
+    padding: 10px 16px calc(10px + env(safe-area-inset-bottom, 0px)); background: var(--card); border-top: 1px solid var(--borda);
+    box-shadow: 0 -4px 14px rgba(31, 58, 46, .08); }
+  .es-acoes-principais .es-bt { min-height: 46px; }
+  .es-mais .es-menu { top: auto; bottom: calc(100% + 8px); }
+  /* a prévia vem logo depois dos ajustes; os slides viram uma faixa embaixo dela */
+  .es-corpo { display: flex; flex-direction: column; align-items: stretch; gap: 12px; }
+  .es-palco { order: 1; gap: 8px; }
+  .es-lista { order: 2; max-height: none; overflow: visible; padding: 0; gap: 8px; }
+  .es-campos { order: 3; }
+  #es-slides { display: flex; gap: 8px; overflow-x: auto; padding: 2px 2px 4px; scrollbar-width: none; }
+  #es-slides::-webkit-scrollbar { display: none; }
+  #es-slides .es-mini { flex: 0 0 78px; min-width: 0; overflow: hidden; padding: 4px; border-radius: 10px; }
+  #es-slides .es-mini-barra { justify-content: center; margin-top: 3px; }
+  #es-slides .es-mini-barra > span:last-child { display: none; }
+  #es-slides .es-mini-barra > span:first-child { text-align: center; font-weight: 700; }
+  .es-mini-novo { flex: 0 0 78px; min-height: 96px; border: 1.5px dashed var(--borda-forte); border-radius: 10px; display: grid; place-items: center;
+    align-content: center; gap: 2px; background: none; font: inherit; font-size: 13px; font-weight: 700; color: var(--texto); cursor: pointer; }
+  .es-mini-novo b { font-size: 22px; line-height: 1; }
+  .es-mini-novo:disabled { opacity: .4; cursor: default; }
+  .es-adicionar { display: none !important; }
+  /* o que fazer com o slide aberto, numa linha só */
+  .es-slide-acoes { display: flex; gap: 6px; }
+  .es-slide-acoes button { flex: 1; min-height: 40px; border: 1px solid var(--borda); background: #FFFFFF; border-radius: 10px; font: inherit; font-size: 13px;
+    font-weight: 600; color: var(--texto); cursor: pointer; padding: 0 6px; white-space: nowrap; }
+  .es-slide-acoes button[hidden] { display: none; }
+  .es-slide-acoes button.perigo { color: var(--perigo); }
+  .es-slide-acoes button:disabled { opacity: .4; cursor: default; }
+  .es-navegar { gap: 8px; }
+  .es-navegar .es-bt { min-height: 40px; }
+  .es-guias-opcao { margin-top: 0; font-size: 13px; }
+  .es-avisos li { margin: 0; }
+}
