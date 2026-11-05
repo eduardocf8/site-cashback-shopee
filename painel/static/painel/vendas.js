@@ -25,3 +25,16 @@
     busca.addEventListener("search", function () { if (busca.value !== inicial) form.submit(); }); // botão "x" da busca
   }
 })();
+
+// Filtros do topo (período e origem): no celular cada linha rola de lado. Se o chip escolhido
+// ficou fora da vista, a linha já abre rolada até ele (só a rolagem muda; o HTML fica igual).
+(function () {
+  document.querySelectorAll(".chips-rolam").forEach(function (linha) {
+    var ativo = linha.querySelector(".chip.ativo");
+    if (!ativo || linha.scrollWidth <= linha.clientWidth) return;
+    var caixa = linha.getBoundingClientRect(), chip = ativo.getBoundingClientRect();
+    if (chip.right > caixa.right || chip.left < caixa.left) {
+      linha.scrollLeft += chip.left - caixa.left - (caixa.width - chip.width) / 2;
+    }
+  });
+})();

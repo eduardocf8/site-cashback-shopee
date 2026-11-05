@@ -56,3 +56,9 @@ def sem_quebra(texto):
     """Troca os espaços por espaço que não quebra ("R$ 1.234,50" não se parte em duas
     linhas no e-mail do celular)."""
     return str(texto).replace(" ", " ")
+
+
+@register.filter
+def reais(valor):
+    """1234.5 -> "1.234,50" (sem o "R$", para tabelas em que o cabeçalho já diz "(R$)")."""
+    return _formatar(valor, 2)

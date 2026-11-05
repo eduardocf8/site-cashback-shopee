@@ -3,7 +3,7 @@
 {% block titulo %}Resultados{% endblock %}
 {% block conteudo %}
 <header class="cabecalho">
-  <div><h1>Resultados</h1><p>{{ periodo.descricao }}</p></div>
+  <div><h1>Resultados</h1><p>{% if shopee_conectada %}{% for chave, nome in presets %}{% if chave == periodo.chave and chave != "personalizado" %}{{ nome }} · {% endif %}{% endfor %}{{ periodo.descricao }}{% else %}{{ periodo.descricao }}{% endif %}</p></div>
   {% if shopee_conectada %}{% include "painel/_sincronizacao.html" %}{% endif %}
 </header>
 {% if conta.beta_campanhas_meta %}<p class="pequeno" style="margin:12px 0 0"><a href="{% url 'painel_campanhas_meta' %}"><strong>Campanhas da Meta</strong></a> <small class="selo-canal">Beta</small> · o lucro de cada campanha do Facebook e do Instagram</p>{% endif %}
@@ -11,30 +11,55 @@
 {% if not shopee_conectada %}
   {% include "painel/_conectar_shopee.html" %}
 {% else %}
-{% include "painel/_origens.html" %}
-<section class="card filtros" aria-label="Período">
-  <nav class="chips" aria-label="Período">
-    {% for chave, nome in presets %}{% if chave != "personalizado" %}
-      <a class="chip{% if periodo.chave == chave %} ativo{% endif %}" href="{% querystring periodo=chave de=None ate=None agrupar=None %}"{% if periodo.chave == chave %} aria-current="true"{% endif %}>{{ nome }}</a>
-    {% endif %}{% endfor %}
-  </nav>
-  <form method="get" class="filtro-datas">
-    <input type="hidden" name="periodo" value="personalizado">
-    <input type="hidden" name="metrica" value="{{ periodo.metrica }}">
-    {% if origem %}<input type="hidden" name="origem" value="{{ origem }}">{% endif %}
-    <label>De <input type="date" name="de" value="{{ periodo.inicio|date:'Y-m-d' }}"></label>
-    <label>Até <input type="date" name="ate" value="{{ periodo.fim|date:'Y-m-d' }}"></label>
-    <button type="submit" class="botao botao-escuro botao-pequeno">Ver período</button>
-  </form>
+{# Filtros da aba inteira: período e origem, cada um numa linha (no celular, cada linha rola de lado). #}
+<section class="card barra-filtros" aria-label="Filtros">
+  <div class="linha-filtro">
+    <span class="rotulo-filtro" id="rotulo-periodo">Período</span>
+    <nav class="chips chips-pequenos chips-rolam" aria-labelledby="rotulo-periodo">
+      {% for chave, nome in presets %}{% if chave != "personalizado" %}
+        <a class="chip{% if periodo.chave == chave %} ativo{% endif %}" href="{% querystring periodo=chave de=None ate=None agrupar=None %}"{% if periodo.chave == chave %} aria-current="true"{% endif %}>{{ nome|cut:"Últimos " }}</a>
+      {% endif %}{% endfor %}
+      <details class="outras-datas"{% if periodo.chave == "personalizado" %} open{% endif %}>
+        <summary class="chip{% if periodo.chave == "personalizado" %} ativo{% endif %}">{% include "painel/_icone.html" with caminho="M3 5h18v16H3zM3 10h18M8 3v4M16 3v4" %}Escolher datas</summary>
+        <form method="get" class="filtro-datas">
+          <input type="hidden" name="periodo" value="personalizado">
+          <input type="hidden" name="metrica" value="{{ periodo.metrica }}">
+          {% if origem %}<input type="hidden" name="origem" value="{{ origem }}">{% endif %}
+          <label>De <input type="date" name="de" value="{{ periodo.inicio|date:'Y-m-d' }}"></label>
+          <label>Até <input type="date" name="ate" value="{{ periodo.fim|date:'Y-m-d' }}"></label>
+          <button type="submit" class="botao botao-escuro botao-pequeno">Ver período</button>
+        </form>
+      </details>
+    </nav>
+  </div>
+  <div class="linha-filtro">
+    <span class="rotulo-filtro" id="rotulo-origem">Origem</span>
+    <nav class="chips chips-pequenos chips-rolam" aria-labelledby="rotulo-origem">
+      <a class="chip{% if not origem %} ativo{% endif %}" href="{% querystring origem=None pagina=None sub=None %}"{% if not origem %} aria-current="true"{% endif %}>Todas</a>
+      {% for o in resumo_origens.linhas %}<a class="chip{% if origem == o.chave %} ativo{% endif %}" href="{% querystring origem=o.chave pagina=None sub=None %}"{% if origem == o.chave %} aria-current="true"{% endif %}><span class="ponto" style="background:{{ o.cor }}"></span>{{ o.nome }}</a>{% endfor %}
+    </nav>
+  </div>
+  {% if origem_sem_historico %}
+    <p class="aviso aviso-warning pequeno">Com uma origem escolhida, os números saem dos pedidos guardados um a um, e o Appfiliado tem os seus {% if vendas_desde %}desde {{ vendas_desde|date:"d/m/Y" }}{% else %}só depois da primeira busca completa{% endif %}. O começo do período pode ficar faltando.</p>
+  {% endif %}
 </section>
 
 {% include "painel/_kpis.html" with valores=totais legenda=periodo.descricao %}
-{% if inclui_hoje %}
-  <p class="aviso aviso-info pequeno">De hoje só aparece a comissão validada: a Shopee libera faturamento, comissão estimada e pedidos no dia seguinte.</p>
-{% endif %}
+<div class="nota-kpis">
+  {% if inclui_hoje %}<span class="nota-hoje">{% include "painel/_icone.html" with caminho="M12 3a9 9 0 1 0 0 18 9 9 0 0 0 0-18zM12 11v5M12 8h.01" %}De hoje só aparece a comissão validada. O resto a Shopee libera amanhã.</span>{% endif %}
+  <details class="como-contados">
+    <summary>Como os números são contados</summary>
+    <div class="como-corpo">
+      {% if origem %}<p>Mostrando só <strong>{{ nome_origem }}</strong>: os números somam os itens vendidos dessa origem (a comissão estimada é a de cada item).</p>{% endif %}
+      <p><strong>Faturamento</strong> e <strong>pedidos</strong> contam pela data da compra, sem os cancelados - o mesmo critério das metas da Shopee. A <strong>comissão estimada</strong> também conta pela compra e ainda pode mudar. A <strong>validada</strong> conta pela data em que a Shopee confirmou o pedido.</p>
+      <p>De onde veio cada venda: os links novos do Appfiliado levam uma marca de origem; as vendas de links antigos (sem a marca) são separadas pelo Sub ID.</p>
+      {% if sincronizacao.cobertura_inicio %}<p>Dados guardados desde {{ sincronizacao.cobertura_inicio|date:"d/m/Y" }} - a API da Shopee só alcança uns 3 meses para trás.</p>{% endif %}
+    </div>
+  </details>
+</div>
 
 <div class="duas-colunas colunas-independentes">
-  {# Cada coluna empilha os seus cartões (sem buraco quando um cartão é mais alto que o do lado). #}
+  {# Cada coluna empilha os seus cartões (sem buraco quando um cartão é mais alto que o do lado). No celular vira uma coluna só, na ordem dos números ordem-N. #}
   <div class="coluna-empilhada">
     <section class="card ordem-1">
       <div class="card-topo">
@@ -43,73 +68,69 @@
           {% for chave, nome in agrupamentos %}<a class="chip{% if periodo.agrupar == chave %} ativo{% endif %}" href="{% querystring agrupar=chave %}">{{ nome }}</a>{% endfor %}
         </nav>
       </div>
-      <nav class="chips chips-pequenos" aria-label="O que mostrar no gráfico" style="margin-bottom:14px">
+      <nav class="chips chips-pequenos chips-metrica" aria-label="O que mostrar no gráfico">
         {% for chave, nome in metricas %}<a class="chip{% if periodo.metrica == chave %} ativo{% endif %}" href="{% querystring metrica=chave %}">{{ nome }}</a>{% endfor %}
       </nav>
       {% include "painel/_grafico.html" with titulo_grafico=nome_metrica %}
+      {% if linhas %}
+        <details class="detalhe-dentro">
+          <summary>
+            <span class="abrir-tabela">Ver {% if periodo.agrupar == "dia" %}dia a dia{% elif periodo.agrupar == "semana" %}semana a semana{% else %}mês a mês{% endif %} em tabela</span><span class="fechar-tabela">Esconder tabela</span>
+            <span class="suave pequeno">{{ linhas|length }} {% if periodo.agrupar == "dia" %}dia{{ linhas|length|pluralize }}{% elif periodo.agrupar == "semana" %}semana{{ linhas|length|pluralize }}{% else %}{{ linhas|length|pluralize:"mês,meses" }}{% endif %}</span>
+          </summary>
+          <div class="tabela-rolagem">
+            <table class="numeros">
+              <thead>
+                <tr class="grupo-th"><td></td><td></td><td></td><th scope="colgroup" colspan="2">Comissão (R$)</th></tr>
+                <tr><th scope="col">{% if periodo.agrupar == "dia" %}Dia{% elif periodo.agrupar == "semana" %}Semana{% else %}Mês{% endif %}</th><th scope="col">Pedidos</th><th scope="col">Faturamento <small>(R$)</small></th><th scope="col">Estimada</th><th scope="col">Validada</th></tr>
+              </thead>
+              <tbody>
+                {% for l in linhas %}
+                  <tr><td>{% if periodo.agrupar == "dia" %}<span class="rotulo-longo">{{ l.rotulo }}</span><span class="rotulo-curto">{{ l.inicio|date:"d/m" }}</span>{% else %}{{ l.rotulo }}{% endif %}</td><td>{{ l.pedidos|numero }}</td><td>{{ l.faturamento|reais }}</td><td>{{ l.comissao_estimada|reais }}</td><td>{{ l.comissao_validada|reais }}</td></tr>
+                {% endfor %}
+              </tbody>
+            </table>
+          </div>
+        </details>
+      {% endif %}
     </section>
-    <section class="card ordem-3">
-      <h2>Detalhe {% if periodo.agrupar == "dia" %}por dia{% elif periodo.agrupar == "semana" %}por semana{% else %}por mês{% endif %}</h2>
-      <div class="tabela-rolagem">
-        <table class="numeros">
-          <thead><tr><th scope="col">Período</th><th scope="col">Pedidos</th><th scope="col">Faturamento</th><th scope="col">Estimada</th><th scope="col">Validada</th></tr></thead>
-          <tbody>
-            {% for l in linhas %}
-              <tr><td>{{ l.rotulo }}</td><td>{{ l.pedidos|numero }}</td><td>{{ l.faturamento|brl }}</td><td>{{ l.comissao_estimada|brl }}</td><td>{{ l.comissao_validada|brl }}</td></tr>
-            {% endfor %}
-          </tbody>
-        </table>
-      </div>
+    <section class="card ordem-5" id="produtos" aria-labelledby="titulo-produtos">
+      <div class="card-topo"><h2 id="titulo-produtos">Produtos mais vendidos</h2><span class="suave pequeno">Lista completa no Excel</span></div>
+      {% if ranking %}
+        <div class="tabela-rolagem">
+          <table class="tabela-vendas tabela-ranking">
+            <thead><tr><th scope="col"><span class="sr">Posição</span></th><th scope="col">Produto</th><th scope="col" class="n">Unid.</th><th scope="col" class="n">Faturamento</th><th scope="col" class="n">Comissão</th></tr></thead>
+            <tbody>
+              {% for p in ranking %}
+                <tr>
+                  <td class="posicao">{{ forloop.counter }}</td>
+                  <td><div class="produto-venda">{% include "painel/_foto_produto.html" with url=p.imagem_url %}<div class="produto-nome"><span>{{ p.nome|default:"Produto sem nome" }}</span><div class="barra-ranking" aria-hidden="true"><span style="width:{{ p.barra }}%"></span></div></div></div></td>
+                  <td class="n" data-rotulo="Unidades">{{ p.unidades|numero }}</td>
+                  <td class="n" data-rotulo="Faturamento">{{ p.faturamento|brl }}</td>
+                  <td class="n" data-rotulo="Comissão"><strong>{{ p.comissao|brl }}</strong></td>
+                </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+      {% else %}
+        <p class="suave pequeno">{% if tem_vendas_guardadas %}Nenhum produto vendido nesse período.{% else %}Os produtos vendidos aparecem aqui depois da próxima atualização com a Shopee.{% endif %}</p>
+      {% endif %}
     </section>
   </div>
   <div class="coluna-empilhada">
-    <section class="card ordem-2">
-      {% if meta and meta.metas %}
-        <h2>Meta do mês</h2>
-        {% include "painel/_meta.html" %}
-      {% else %}
-        <div class="card-topo"><h2>Comissão por Sub ID</h2><a class="pequeno" href="{% url 'painel_configuracoes' %}#sub-ids">Agrupar</a></div>
-        {% include "painel/_sub_ids.html" %}
-      {% endif %}
-    </section>
+    {% include "painel/_origens.html" %}
     {% if meta and meta.metas %}
-      <section class="card ordem-4"><div class="card-topo"><h2>Comissão por Sub ID</h2><a class="pequeno" href="{% url 'painel_configuracoes' %}#sub-ids">Agrupar</a></div>{% include "painel/_sub_ids.html" %}</section>
-    {% else %}
-      <section class="card ordem-4">
-        <h2>Como os números são contados</h2>
-        {% if origem %}<p class="suave pequeno" style="margin-bottom:8px">Mostrando só <strong>{{ nome_origem }}</strong>: os números somam os itens vendidos dessa origem (a comissão estimada é a de cada item).</p>{% endif %}
-        <p class="suave pequeno"><strong>Faturamento</strong> e <strong>pedidos</strong> contam pela data da compra, sem os cancelados - o mesmo critério das metas da Shopee. A <strong>comissão estimada</strong> também conta pela compra e ainda pode mudar. A <strong>validada</strong> conta pela data em que a Shopee confirmou o pedido.</p>
-        {% if sincronizacao.cobertura_inicio %}<p class="suave pequeno" style="margin-top:8px">Dados guardados desde {{ sincronizacao.cobertura_inicio|date:"d/m/Y" }} - a API da Shopee só alcança uns 3 meses para trás.</p>{% endif %}
-      </section>
+      <section class="card ordem-3"><h2>Meta do mês</h2>{% include "painel/_meta.html" %}</section>
     {% endif %}
+    <section class="card ordem-4">
+      <div class="card-topo"><h2>Comissão por Sub ID</h2><a class="pequeno" href="{% url 'painel_configuracoes' %}#sub-ids">Agrupar</a></div>
+      {% include "painel/_sub_ids.html" %}
+    </section>
   </div>
 </div>
 
 {% include "painel/_horarios.html" %}
-
-<section class="card" id="produtos" aria-labelledby="titulo-produtos">
-  <div class="card-topo"><h2 id="titulo-produtos">Produtos mais vendidos</h2><span class="suave pequeno">Lista completa no Excel</span></div>
-  {% if ranking %}
-    <div class="tabela-rolagem">
-      <table class="tabela-vendas tabela-ranking">
-        <thead><tr><th scope="col"><span class="sr">Posição</span></th><th scope="col">Produto</th><th scope="col" class="n">Unid.</th><th scope="col" class="n">Faturamento</th><th scope="col" class="n">Comissão</th></tr></thead>
-        <tbody>
-          {% for p in ranking %}
-            <tr>
-              <td class="posicao">{{ forloop.counter }}</td>
-              <td><div class="produto-venda">{% include "painel/_foto_produto.html" with url=p.imagem_url %}<div class="produto-nome"><span>{{ p.nome|default:"Produto sem nome" }}</span><div class="barra-ranking" aria-hidden="true"><span style="width:{{ p.barra }}%"></span></div></div></div></td>
-              <td class="n" data-rotulo="Unidades">{{ p.unidades|numero }}</td>
-              <td class="n" data-rotulo="Faturamento">{{ p.faturamento|brl }}</td>
-              <td class="n" data-rotulo="Comissão"><strong>{{ p.comissao|brl }}</strong></td>
-            </tr>
-          {% endfor %}
-        </tbody>
-      </table>
-    </div>
-  {% else %}
-    <p class="suave pequeno">{% if tem_vendas_guardadas %}Nenhum produto vendido nesse período.{% else %}Os produtos vendidos aparecem aqui depois da próxima atualização com a Shopee.{% endif %}</p>
-  {% endif %}
-</section>
 
 <section class="card" id="vendas" aria-labelledby="titulo-vendas" data-tela="{{ tela_vendas }}">
   <div class="card-topo">
