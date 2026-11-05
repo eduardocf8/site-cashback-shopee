@@ -121,7 +121,7 @@
   <div class="coluna-empilhada">
     {% include "painel/_origens.html" %}
     {% if meta and meta.metas %}
-      <section class="card ordem-3"><h2>Meta do mês</h2>{% include "painel/_meta.html" %}</section>
+      <section class="card ordem-3">{% include "painel/_meta.html" with titulo="Meta do mês" ver_metas=True %}</section>
     {% endif %}
     <section class="card ordem-4">
       <div class="card-topo"><h2>Comissão por Sub ID</h2><a class="pequeno" href="{% url 'painel_configuracoes' %}#sub-ids">Agrupar</a></div>
