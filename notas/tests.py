@@ -360,7 +360,39 @@ class TestTelas(TestCase):
         servicos.aplicar_servico_padrao(empresa)
         empresa.refresh_from_db()
         self.assertEqual(empresa.codigo_tributacao, "100801")
-        self.assertContains(self.client.get("/notas/"), "Enviar o certificado digital A1")
+        # Passo a passo: empresa e serviço feitos; o certificado é o passo da vez, com o formulário aberto.
+        pagina = self.client.get("/notas/").content.decode()
+        self.assertIn("Prepare o emissor em 4 passos", pagina)
+        self.assertIn("2 de 4", pagina)
+        self.assertIn('<li class="etapa atual" id="passo-2">', pagina)
+        self.assertEqual(pagina.count('name="arquivo"'), 1)  # o formulário do certificado só no passo, não na Configuração
+        self.assertIn("Guardar certificado", pagina)
+        self.assertIn('href="#passo-2">Enviar</a>', pagina)
+
+    def test_primeiro_acesso_mostra_os_4_passos(self):
+        pagina = self.client.get("/notas/").content.decode()
+        for trecho in ("Prepare o emissor em 4 passos", "0 de 4", "Buscar meus dados", "Certificado digital A1",
+                       "Serviço das notas", "Nota de teste"):
+            self.assertIn(trecho, pagina)
+        self.assertNotIn("Configuração", pagina)
+
+    def test_passos_somem_depois_da_nota_de_teste(self):
+        empresa = criar_empresa(self.conta)
+        certificado.guardar(empresa, gerar_pfx(), "senha-do-pfx")
+        pagina = self.client.get("/notas/").content.decode()
+        self.assertIn("Falta só um: a nota de teste.", pagina)
+        self.assertIn("Emitir nota de teste", pagina)
+        self.assertIn('href="#certificado">Mudar</a>', pagina)
+        NotaFiscal.objects.create(empresa=empresa, tipo="teste", competencia=dt.date(2026, 10, 1), tomador_documento="1",
+                                  tomador_nome="Shopee", valor=1, serie="1", numero=1, dps_id="D", situacao="autorizada")
+        pagina = self.client.get("/notas/").content.decode()
+        self.assertNotIn("Prepare o emissor em 4 passos", pagina)
+        self.assertNotIn("Emitir nota de teste", pagina)
+        # Configuração em linhas: o resumo do que vale e o formulário de cada uma ali mesmo.
+        self.assertIn('<details class="etapa config-linha" id="certificado">', pagina)
+        self.assertIn("17.06.01 · Divulgação de produtos em mídias sociais", pagina)
+        self.assertIn("Nenhum e-mail cadastrado ainda", pagina)
+        self.assertEqual(pagina.count('name="arquivo"'), 1)
 
     def test_recusa_lucro_presumido(self):
         dados = {"cnpj": CNPJ, "razao_social": "X", "municipio_ibge": "3550308", "municipio_nome": "", "uf": "SP",
@@ -1013,6 +1045,28 @@ class TestAndamento(TestCase):
         self.assertContains(inicio, "data-acompanhar")
         self.assertContains(inicio, "se atualiza sozinha")
 
+
+    def test_lista_do_lote_com_filtro_em_chips(self):
+        from .models import LoteNotas
+
+        lote = servicos.importar_relatorio(self.empresa, relatorio_csv(), "r.csv", "1")
+        servicos.confirmar_lote(lote)
+        lote.notas.update(situacao="autorizada", xml_nfse=xml_nfse(), email_situacao="enviado",
+                          autorizada_em=timezone.now(), enviada_em=timezone.now())
+        LoteNotas.objects.filter(pk=lote.pk).update(estado="concluido")
+        total = lote.notas.count()
+        pagina = self.client.get(f"/notas/lote/{lote.pk}/").content.decode()
+        self.assertIn(f'aria-current="page">Todas<span class="conta">{total}</span>', pagina)
+        self.assertIn('Com problema<span class="conta">0</span>', pagina)
+        self.assertNotIn("<select", pagina)
+        nota = lote.notas.filter(tomador_tipo="cnpj").first()
+        self.assertIn(nota.documento_formatado, pagina)  # CNPJ com pontuação
+        self.assertRegex(nota.documento_formatado, r"^\d{2}\.\d{3}\.\d{3}/\d{4}-\d{2}$")
+        self.assertIn('class="link-botao pequeno">Reenviar</button>', pagina)  # ao lado de "Enviado"
+        self.assertNotIn("Reenviar e-mail</button>", pagina)
+        filtrada = self.client.get(f"/notas/lote/{lote.pk}/?ver=problemas").content.decode()
+        self.assertIn('aria-current="page">Com problema', filtrada)
+        self.assertIn("Nenhuma nota aqui.", filtrada)
 
     def test_barra_dos_emails_continua_depois_das_notas(self):
         from .models import LoteNotas

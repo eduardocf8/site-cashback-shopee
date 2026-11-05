@@ -74,7 +74,7 @@
       <li class="notas-chip{% if not email.sem_email %} vazio{% endif %}"><strong data-campo="email_sem">{{ email.sem_email }}</strong> sem e-mail no relatório</li>
       <li class="notas-chip notas-chip-ruim{% if not email.falharam %} vazio{% endif %}"><strong data-campo="email_falharam">{{ email.falharam }}</strong> falharam</li>
     </ul>
-    {% if email.falharam %}<p class="notas-etapa-dica">Pras que falharam, use "Reenviar e-mail" na lista abaixo.</p>{% endif %}
+    {% if email.falharam %}<p class="notas-etapa-dica">Pras que falharam, use "Reenviar" na coluna E-mail da lista abaixo.</p>{% endif %}
   </article>
   {% endif %}
 </section>
@@ -92,15 +92,12 @@
 
 <section class="card notas-cartao" aria-labelledby="titulo-notas">
   <h2 id="titulo-notas">Notas</h2>
+  <nav class="chips chips-vendas filtro-notas" aria-label="Mostrar">
+    {% for chave, nome, qtd in filtros %}<a class="chip{% if filtro == chave %} ativo{% endif %}" href="?ver={{ chave }}{% if busca %}&amp;busca={{ busca|urlencode }}{% endif %}"{% if filtro == chave %} aria-current="page"{% endif %}>{{ nome }}<span class="conta">{{ qtd|numero }}</span></a>{% endfor %}
+  </nav>
   <form method="get" class="filtros-vendas">
+    <input type="hidden" name="ver" value="{{ filtro }}">
     <input type="search" name="busca" value="{{ busca }}" placeholder="Buscar loja, razão social ou CNPJ" aria-label="Buscar">
-    <select name="ver" aria-label="Mostrar" onchange="this.form.submit()">
-      <option value="todas"{% if filtro == "todas" %} selected{% endif %}>Todas</option>
-      <option value="autorizadas"{% if filtro == "autorizadas" %} selected{% endif %}>Autorizadas</option>
-      <option value="problemas"{% if filtro == "problemas" %} selected{% endif %}>Com problema</option>
-      <option value="fila"{% if filtro == "fila" %} selected{% endif %}>Na fila / prévia</option>
-    </select>
-    <button type="submit" class="botao botao-claro botao-pequeno">Filtrar</button>
   </form>
   {% if pagina.object_list %}
     {% if lote.ambiente == "1" %}{% include "painel/_notas_tabela.html" with notas=pagina.object_list com_email=True voltar="lote" sem_selo=True %}

@@ -124,7 +124,8 @@ h1 { font-size: 22px; font-weight: 700; margin: 0; overflow-wrap: anywhere; }
   </section>
   {% endif %}
 
-  {% if site.vitrine != "nenhuma" or previa %}
+  {# Sem nenhuma oferta, a vitrine não aparece pros seguidores; na prévia do painel aparece, pra dona ver onde vai ficar. #}
+  {% if previa or site.vitrine != "nenhuma" and produtos %}
   <section aria-labelledby="titulo-vitrine" id="secao-vitrine"{% if site.vitrine == "nenhuma" %} hidden{% endif %}>
     <div class="topo-vitrine"><h2 id="titulo-vitrine">Ofertas de hoje</h2>{% if atualizado_em %}<span>{% if atualizado_em|date:"Ymd" == hoje_ymd %}atualizado às {{ atualizado_em|date:"H:i" }}{% else %}atualizado em {{ atualizado_em|date:"d/m" }}{% endif %}</span>{% endif %}</div>
     {% if categorias|length > 1 %}

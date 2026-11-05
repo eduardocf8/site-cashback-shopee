@@ -1,0 +1,10 @@
+{# Campo de arquivo no estilo do painel (caixa tracejada; notas.js mostra o nome do arquivo escolhido). #}
+<div class="campo campo-arquivo">
+  <label for="{{ campo.id_for_label }}">{{ campo.label }}</label>
+  {{ campo }}
+  <label class="arquivo-caixa" for="{{ campo.id_for_label }}">
+    <span class="arquivo-icone">{% include "painel/_icone.html" with caminho="M12 16V4M7 9l5-5 5 5M4 16v4h16v-4" %}</span>
+    <span class="arquivo-texto"><strong data-arquivo-nome>Escolher o arquivo</strong><span class="suave pequeno" data-arquivo-ajuda>Nenhum arquivo escolhido</span></span>
+  </label>
+  {% for e in campo.errors %}<span class="erro">{{ e }}</span>{% endfor %}
+</div>

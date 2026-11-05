@@ -4,64 +4,94 @@
 {% block conteudo %}
 <header class="cabecalho">
   <div><h1>Meu site</h1><p>Seu link na bio: perfil, botões, conversor de links e vitrine de ofertas.</p></div>
-  {% if url_publica %}<div class="botoes-linha"><a class="botao botao-claro botao-pequeno" href="{{ url_publica }}" target="_blank" rel="noopener">Ver meu site ↗</a><button type="button" class="botao botao-escuro botao-pequeno" data-copiar="{{ url_publica }}">Copiar link</button></div>{% endif %}
+  {% if url_publica %}<div class="botoes-linha site-acoes">
+    {% if site.publicado %}<span class="pilula-estado ok"><i class="ponto"></i>Site no ar</span>{% else %}<span class="pilula-estado parado"><i class="ponto"></i>Fora do ar</span>{% endif %}
+    <a class="botao botao-claro botao-pequeno" href="{{ url_publica }}" target="_blank" rel="noopener">Ver meu site ↗</a>
+    {% if not passos_site %}<button type="button" class="botao botao-escuro botao-pequeno" data-copiar="{{ url_publica }}">Copiar link</button>{% endif %}
+  </div>{% endif %}
 </header>
+
+{% if passos_site %}
+  <section class="card passos-site" aria-labelledby="titulo-passos-site">
+    <div class="passos-topo">
+      <div class="card-topo"><h2 id="titulo-passos-site">Deixe seu site pronto</h2><span class="suave pequeno">{{ passos_site.feitos }} de 4</span></div>
+      <div class="passos-barra"><div style="width:{{ passos_site.progresso }}%"></div></div>
+    </div>
+    <ol class="passos-lista">
+      <li class="passo feito"><span class="passo-num">1</span><div class="passo-texto"><strong>Escolher o nome e o endereço</strong></div><span class="estado estado-liberado">Feito</span></li>
+      <li class="passo{% if passos_site.perfil %} feito{% elif passos_site.atual == 2 %} atual{% endif %}"><span class="passo-num">2</span>
+        <div class="passo-texto"><strong>Pôr sua foto e uma frase curta</strong><small>Seus seguidores reconhecem você logo de cara.</small></div>
+        {% if passos_site.perfil %}<span class="estado estado-liberado">Feito</span>{% else %}<a class="botao botao-escuro botao-pequeno" href="#sec-perfil">Colocar</a>{% endif %}</li>
+      <li class="passo{% if passos_site.botao %} feito{% elif passos_site.atual == 3 %} atual{% endif %}"><span class="passo-num">3</span>
+        <div class="passo-texto"><strong>Criar o primeiro botão</strong><small>Ex.: o link do seu grupo de ofertas no WhatsApp.</small></div>
+        {% if passos_site.botao %}<span class="estado estado-liberado">Feito</span>{% else %}<a class="botao botao-escuro botao-pequeno" href="#botoes">Criar</a>{% endif %}</li>
+      <li class="passo{% if passos_site.vitrine %} feito{% elif passos_site.atual == 4 %} atual{% endif %}"><span class="passo-num">4</span>
+        <div class="passo-texto"><strong>Encher a vitrine de ofertas</strong><small>{% if site.vitrine == "bot" %}Seu bot ainda não mandou ofertas. Use uma busca na Shopee.{% elif site.vitrine_pedida %}A vitrine está sendo montada com a Shopee.{% else %}Mostre ofertas da Shopee com o seu link de afiliado.{% endif %}</small></div>
+        {% if passos_site.vitrine %}<span class="estado estado-liberado">Feito</span>{% else %}<a class="botao botao-escuro botao-pequeno" href="#sec-vitrine">Escolher</a>{% endif %}</li>
+    </ol>
+    {% if url_publica %}<div class="passos-final">
+      <span><strong>Tudo pronto?</strong> Cole o link do site na bio do Instagram.</span>
+      <span class="link-site">{{ link_curto }}</span>
+      <button type="button" class="botao botao-principal botao-pequeno" data-copiar="{{ url_publica }}">Copiar link</button>
+    </div>{% endif %}
+  </section>
+{% else %}
+  <div class="numeros-mes numeros-site-topo" role="group" aria-label="Cliques nos últimos {{ cliques.dias }} dias">
+    <div class="card kpi"><span class="kpi-titulo">Visitas no site</span><strong class="kpi-valor">{{ cliques.visitas|numero }}</strong><span class="kpi-detalhe">nos últimos {{ cliques.dias }} dias</span></div>
+    <div class="card kpi"><span class="kpi-titulo">Cliques nos botões</span><strong class="kpi-valor">{{ cliques.botoes|numero }}</strong><span class="kpi-detalhe">nos últimos {{ cliques.dias }} dias</span></div>
+    <div class="card kpi"><span class="kpi-titulo">Cliques nos produtos</span><strong class="kpi-valor">{{ cliques.produtos|numero }}</strong><span class="kpi-detalhe">nos últimos {{ cliques.dias }} dias</span></div>
+    <div class="card kpi"><span class="kpi-titulo">Usos do conversor</span><strong class="kpi-valor">{{ cliques.conversor|numero }}</strong><span class="kpi-detalhe">nos últimos {{ cliques.dias }} dias</span></div>
+  </div>
+{% endif %}
 
 <div class="duas-colunas site-editor">
   <form method="post" id="form-site" class="form-ofertas" novalidate>
     {% csrf_token %}
     <input type="hidden" name="acao" value="salvar">
 
-    <section class="card" aria-labelledby="titulo-endereco">
-      <div class="card-topo"><h2 id="titulo-endereco">Endereço</h2>
-        <label class="marcar pequeno">{{ form.publicado }}<span>Site no ar</span></label></div>
-      <div class="endereco-site">
-        {% if not dominio_sites %}<span class="suave">{{ prefixo_sem_dominio }}</span>{% endif %}{{ form.endereco }}{% if dominio_sites %}<span class="suave">.{{ dominio_sites }}</span>{% endif %}
-      </div>
-      <span class="ajuda suave pequeno">{{ form.endereco.help_text }}</span>
-      {% for e in form.endereco.errors %}<span class="erro">{{ e }}</span>{% endfor %}
-      {% if url_publica %}<p class="pequeno" style="margin-top:8px">Seu link: <a href="{{ url_publica }}" target="_blank" rel="noopener"><strong>{{ url_publica }}</strong></a></p>{% endif %}
-    </section>
+    <nav class="chips chips-pequenos secoes-site" aria-label="Partes do site">
+      <a class="chip ativo" href="#sec-perfil">Perfil</a><a class="chip" href="#sec-aparencia">Aparência</a><a class="chip" href="#botoes">Botões</a><a class="chip" href="#sec-redes">Redes sociais</a><a class="chip" href="#sec-conversor">Conversor</a><a class="chip" href="#sec-vitrine">Vitrine</a><a class="chip" href="#sec-endereco">Endereço</a>
+    </nav>
 
-    <section class="card" aria-labelledby="titulo-perfil">
+    <section class="card secao-site" id="sec-perfil" aria-labelledby="titulo-perfil">
       <h2 id="titulo-perfil">Perfil</h2>
+      <p class="suave pequeno sub">O topo do site: foto, nome e uma frase sobre você.</p>
       <div class="foto-editor">
         <div class="foto-site" style="background:{{ site.cor }}">{% if site.foto %}<img src="/s/{{ site.endereco }}/foto.jpg?previa=1&v={{ site.foto_versao }}" alt="">{% else %}{{ site.nome|default:site.endereco|slice:":1"|upper }}{% endif %}</div>
         <div class="botoes-linha">
-          <label class="botao botao-claro botao-pequeno" for="campo-foto">Trocar foto</label>
+          <label class="botao botao-claro botao-pequeno" for="campo-foto">{% if site.foto %}Trocar foto{% else %}Colocar foto{% endif %}</label>
           <input type="file" id="campo-foto" name="foto" accept="image/*" form="form-foto" hidden>
           {% if site.foto %}<button type="submit" form="form-remover-foto" class="link-botao pequeno">Tirar a foto</button>{% endif %}
         </div>
       </div>
       <div class="campo">{% include "painel/_campo.html" with campo=form.nome %}</div>
       <div class="campo" style="margin-top:12px">{% include "painel/_campo.html" with campo=form.frase %}</div>
-      <fieldset class="campo" style="margin-top:12px">
+    </section>
+
+    <section class="card secao-site" id="sec-aparencia" aria-labelledby="titulo-aparencia">
+      <h2 id="titulo-aparencia">Aparência</h2>
+      <p class="suave pequeno sub">O estilo e a cor valem pro site todo.</p>
+      <fieldset class="campo">
         <legend>{{ form.layout.label }}</legend>
         <div class="opcoes-chip" id="layout-site">{% for opcao in form.layout %}<label class="chip-opcao">{{ opcao.tag }}<span>{{ opcao.choice_label }}</span></label>{% endfor %}</div>
       </fieldset>
-      <fieldset class="campo" style="margin-top:14px">
+      <fieldset class="campo" style="margin-top:16px">
         <legend>{{ form.cor.label }}</legend>
         <div class="cores-site">{% for opcao in form.cor %}{% if opcao.data.value == "outra" %}<label class="cor-site cor-outra" title="Outra cor">{{ opcao.tag }}<span style="background:{{ form.cor_outra.value|default:'#E8541E' }}"></span></label><input type="color" name="cor_outra" id="seletor-cor" value="{{ form.cor_outra.value|default:'#E8541E' }}" aria-label="Escolher outra cor">{% else %}<label class="cor-site" title="{{ opcao.choice_label }}">{{ opcao.tag }}<span style="background:{{ opcao.data.value }}"></span></label>{% endif %}{% endfor %}</div>
-        <p class="suave pequeno" style="margin:8px 0 0">O último círculo abre o seletor para escolher qualquer cor.</p>
         {% for e in form.cor.errors %}<span class="erro">{{ e }}</span>{% endfor %}
-      </fieldset>
-      <fieldset class="campo" style="margin-top:22px">
-        <legend>Redes sociais <span class="suave" style="font-weight:400">(ícones embaixo dos botões, opcional)</span></legend>
-        <div class="grade-campos" style="margin-top:4px">
-          {% for campo in form.campos_das_redes %}<div class="campo">{% include "painel/_campo.html" with campo=campo %}</div>{% endfor %}
-        </div>
       </fieldset>
     </section>
 
-    <section class="card" id="botoes" aria-labelledby="titulo-botoes">
+    <section class="card secao-site" id="botoes" aria-labelledby="titulo-botoes">
       <div class="card-topo"><h2 id="titulo-botoes">Botões</h2><span class="suave pequeno">{{ botoes|length }} de {{ maximo_botoes }}</span></div>
+      <p class="suave pequeno sub">Os links que seus seguidores mais procuram. Use as setas para pôr o mais importante em cima.</p>
       {% if botoes|length > maximo_botoes %}<p class="aviso aviso-warning pequeno">Seu plano mostra até {{ maximo_botoes }} botões no site: os de baixo ficam escondidos. Apague alguns ou passe pro <a href="{{ url_planos }}" target="_blank" rel="noopener">plano Premium</a>.</p>{% endif %}
       {% if botoes %}
         <ul class="lista-botoes">
           {% for b in botoes %}
             <li>
               <div class="botao-linha">
-                <div class="botao-info"><strong>{{ b.texto }}</strong>{% if b.destaque %} <span class="selo-ia">destaque</span>{% endif %}<br><span class="suave pequeno">{{ b.url|truncatechars:48 }} · {{ b.cliques_30 }} clique{{ b.cliques_30|pluralize }} em 30 dias</span></div>
+                <div class="botao-info"><strong>{{ b.texto }}</strong>{% if b.destaque %} <span class="selo-ia">destaque</span>{% endif %}<br><span class="suave pequeno">{{ b.url|truncatechars:48 }} · {{ b.cliques_30|numero }} clique{{ b.cliques_30|pluralize }} em 30 dias</span></div>
                 <div class="botao-acoes">
                   <button type="submit" form="botao-{{ b.pk }}" name="acao" value="botao_subir" class="icone-botao" title="Subir" aria-label="Subir este botão" {% if forloop.first %}disabled{% endif %}><svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true"><path d="M6 15l6-6 6 6" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
                   <button type="submit" form="botao-{{ b.pk }}" name="acao" value="botao_descer" class="icone-botao" title="Descer" aria-label="Descer este botão" {% if forloop.last %}disabled{% endif %}><svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true"><path d="M6 9l6 6 6-6" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
@@ -93,16 +123,27 @@
       {% endif %}
     </section>
 
-    <section class="card" aria-labelledby="titulo-conversor">
+    <section class="card secao-site" id="sec-redes" aria-labelledby="titulo-redes">
+      <h2 id="titulo-redes">Redes sociais</h2>
+      <p class="suave pequeno sub">Viram ícones embaixo dos botões. Preencha só as que você usa.</p>
+      <div class="grade-campos">
+        {% for campo in form.campos_das_redes %}<div class="campo">{% include "painel/_campo.html" with campo=campo %}</div>{% endfor %}
+      </div>
+    </section>
+
+    <section class="card secao-site" id="sec-conversor" aria-labelledby="titulo-conversor">
       <h2 id="titulo-conversor">Conversor de links</h2>
       <label class="marcar">{{ form.mostrar_conversor }}<span><strong>{{ form.mostrar_conversor.label }}</strong><span class="ajuda">Quem visita cola um link da Shopee e já vai pra Shopee pelo seu link de afiliado.</span></span></label>
-      <div class="campo" style="margin-top:12px">{% include "painel/_campo.html" with campo=form.conversor_titulo %}</div>
-      <div class="campo" style="margin-top:12px">{% include "painel/_campo.html" with campo=form.conversor_texto %}</div>
-      <div class="campo" style="margin-top:12px">{% include "painel/_campo.html" with campo=form.conversor_botao %}</div>
+      <details class="textos-conversor"{% if form.conversor_titulo.value or form.conversor_texto.value or form.conversor_botao.value or form.conversor_titulo.errors or form.conversor_texto.errors or form.conversor_botao.errors %} open{% endif %}>
+        <summary class="pequeno"><strong>Mudar os textos do conversor</strong> <span class="suave">(título, texto e botão)</span></summary>
+        <div class="campo">{% include "painel/_campo.html" with campo=form.conversor_titulo %}</div>
+        <div class="campo">{% include "painel/_campo.html" with campo=form.conversor_texto %}</div>
+        <div class="campo">{% include "painel/_campo.html" with campo=form.conversor_botao %}</div>
+      </details>
       <div class="campo" style="margin-top:12px">{% include "painel/_campo.html" with campo=form.sub_id %}</div>
     </section>
 
-    <section class="card" aria-labelledby="titulo-vitrine">
+    <section class="card secao-site" id="sec-vitrine" aria-labelledby="titulo-vitrine">
       <h2 id="titulo-vitrine">Vitrine de ofertas</h2>
       <fieldset class="campo" id="fonte-vitrine">
         <legend>{{ form.vitrine.label }}</legend>
@@ -130,10 +171,14 @@
         <div class="campo">{% include "painel/_campo.html" with campo=form.links_manuais %}</div>
       </div>
       <div class="campo" style="margin-top:12px" data-sem-vitrine-esconde>{% include "painel/_campo.html" with campo=form.sub_id_vitrine %}</div>
+      {% if vitrine_vazia_do_bot %}
+        <p class="aviso aviso-info pequeno vitrine-vazia" data-vitrine="bot"><strong>A vitrine está vazia porque o seu bot ainda não enviou ofertas.</strong> Até lá, escolha <strong>Uma busca na Shopee</strong> acima: em instantes ela se enche de produtos.</p>
+      {% else %}
       <p class="pequeno" style="margin-top:10px" data-vitrine-status>
         {% if site.vitrine == "nenhuma" %}{% elif site.vitrine_pedida %}<span class="suave">Montando a vitrine com a Shopee…{% if total_links > 50 %} {{ lidos|numero }} de {{ total_links|numero }} produtos lidos.{% endif %}</span>
         {% else %}<strong>{{ total_produtos|numero }}</strong> produto{{ total_produtos|pluralize }} na vitrine agora{% if site.vitrine_atualizada_em and site.vitrine != "bot" %} · atualizada em {{ site.vitrine_atualizada_em|date:"d/m H:i" }}{% endif %}.{% endif %}
       </p>
+      {% endif %}
       {% if site.vitrine_erro %}<p class="aviso aviso-warning pequeno">{{ site.vitrine_erro }}</p>{% endif %}
       {% if produtos_vitrine and site.vitrine != "nenhuma" %}
         <details class="produtos-vitrine" id="produtos-vitrine" data-sem-vitrine-esconde{% if abrir_produtos %} open{% endif %}>
@@ -159,28 +204,43 @@
           {% endif %}
         </details>
       {% endif %}
+      {% if cliques.top_produtos %}
+        <div class="mais-clicados">
+          <h3>Produtos mais clicados nos últimos {{ cliques.dias }} dias</h3>
+          <ol class="top-produtos">{% for p in cliques.top_produtos %}<li><span>{{ p.alvo_nome|truncatechars:50 }}</span><strong>{{ p.soma|numero }}</strong></li>{% endfor %}</ol>
+        </div>
+      {% endif %}
     </section>
 
-    <div class="barra-salvar"><button type="submit" class="botao botao-principal">Salvar</button></div>
+    <section class="card secao-site" id="sec-endereco" aria-labelledby="titulo-endereco">
+      <div class="card-topo"><h2 id="titulo-endereco">Endereço do site</h2>
+        <label class="marcar pequeno">{{ form.publicado }}<span>Site no ar</span></label></div>
+      <div class="endereco-site">
+        {% if not dominio_sites %}<span class="suave">{{ prefixo_sem_dominio }}</span>{% endif %}{{ form.endereco }}{% if dominio_sites %}<span class="suave">.{{ dominio_sites }}</span>{% endif %}
+      </div>
+      <span class="ajuda suave pequeno">{{ form.endereco.help_text }}</span>
+      {% for e in form.endereco.errors %}<span class="erro">{{ e }}</span>{% endfor %}
+      {% if url_publica %}<p class="pequeno" style="margin-top:8px">Seu link: <a href="{{ url_publica }}" target="_blank" rel="noopener"><strong>{{ url_publica }}</strong></a></p>{% endif %}
+      {% if not sem_marca %}<p class="suave pequeno nota-marca">O rodapé do site mostra "Feito com Appfiliado". No <a href="{{ url_planos }}" target="_blank" rel="noopener">plano Premium</a> do Meu site ele sai e você ganha até 10 botões e a vitrine com os produtos que escolher.</p>{% endif %}
+    </section>
+
+    <div class="barra-salvar">
+      <span class="lembrete">As mudanças só vão pro ar quando você salvar.</span>
+      <button type="button" class="botao botao-claro ver-previa" data-abrir-previa aria-controls="previa-site" aria-expanded="false">{% include "painel/_icone.html" with caminho="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7S2 12 2 12zM12 9a3 3 0 1 0 0 6 3 3 0 0 0 0-6z" %}Ver prévia</button>
+      <button type="submit" class="botao botao-principal">Salvar</button>
+    </div>
   </form>
 
   <div class="coluna-lateral">
-    <section class="card" aria-labelledby="titulo-cliques">
-      <h2 id="titulo-cliques">Cliques nos últimos {{ cliques.dias }} dias</h2>
-      <div class="numeros-site">
-        <div><strong>{{ cliques.visitas }}</strong><span>visitas</span></div>
-        <div><strong>{{ cliques.botoes }}</strong><span>em botões</span></div>
-        <div><strong>{{ cliques.produtos }}</strong><span>em produtos</span></div>
-        <div><strong>{{ cliques.conversor }}</strong><span>no conversor</span></div>
+    <div class="previa-fundo" data-fechar-previa hidden></div>
+    <section class="card previa-site" id="previa-site" aria-labelledby="titulo-previa">
+      <span class="alca" aria-hidden="true"></span>
+      <div class="card-topo previa-topo">
+        <div class="previa-titulo"><h2 id="titulo-previa">Prévia<span class="so-janela"> do seu site</span></h2>
+          <span class="suave pequeno so-janela">Muda enquanto você edita. Salve para ir pro ar.</span></div>
+        <span class="suave pequeno so-coluna">muda enquanto você edita</span>
+        <button type="button" class="icone-botao so-janela" data-fechar-previa aria-label="Fechar a prévia"><svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"/></svg></button>
       </div>
-      {% if cliques.top_produtos %}
-        <h3 class="pequeno" style="margin:14px 0 6px">Produtos mais clicados</h3>
-        <ol class="top-produtos">{% for p in cliques.top_produtos %}<li><span>{{ p.alvo_nome|truncatechars:50 }}</span><strong>{{ p.soma }}</strong></li>{% endfor %}</ol>
-      {% endif %}
-      {% if not sem_marca %}<p class="suave pequeno" style="margin-top:12px">O rodapé do site mostra "Feito com Appfiliado". No <a href="{{ url_planos }}" target="_blank" rel="noopener">plano Premium</a> do Meu site ele sai e você ganha até 10 botões e a vitrine com os produtos que escolher.</p>{% endif %}
-    </section>
-    <section class="card previa-site" aria-labelledby="titulo-previa">
-      <div class="card-topo"><h2 id="titulo-previa">Prévia</h2><span class="suave pequeno">{% if site.publicado %}No ar{% else %}Fora do ar{% endif %}</span></div>
       <div class="celular"><iframe id="previa" src="{{ url_previa }}" title="Prévia do seu site"></iframe></div>
     </section>
   </div>
