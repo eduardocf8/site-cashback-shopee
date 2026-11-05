@@ -4,9 +4,20 @@
 {% block conteudo %}
 {% include "painel/_cabecalho_bot.html" with aba="entrada" %}
 
-<section class="card" style="margin-top:16px" aria-labelledby="titulo-entrada">
-  <h2 id="titulo-entrada">Link de entrada nos grupos</h2>
-  <p class="suave pequeno">Um link para colocar no anúncio. Ele abre uma página leve com o seu pixel do Meta e um botão que leva a pessoa pro primeiro grupo da lista que ainda tem vaga. Quando um grupo enche, o link passa sozinho pro próximo, sem você trocar nada no anúncio.</p>
+<section class="card" aria-labelledby="titulo-entrada">
+  <div class="entrada-topo">
+    <div>
+      <h2 id="titulo-entrada">Links de entrada nos grupos</h2>
+      <p class="suave pequeno">Um link só pro seu anúncio. Ele leva cada pessoa pro primeiro grupo com vaga e passa sozinho pro próximo quando um enche.</p>
+    </div>
+    {% if site.endereco and links|length < maximo %}
+    <form method="post">
+      {% csrf_token %}
+      <input type="hidden" name="acao" value="novo">
+      <button type="submit" class="botao {% if links %}botao-claro{% else %}botao-principal{% endif %}">+ Criar link de entrada</button>
+    </form>
+    {% endif %}
+  </div>
 
   {% if not site.endereco %}
     <form method="post" class="formulario" style="margin-top:14px">
@@ -23,28 +34,33 @@
     {% for item in links %}
       <article class="cartao-entrada">
         <div class="ce-topo">
-          <div>
-            <a href="{% url 'painel_whatsapp_entrada_link' item.link.pk %}"><strong>{{ item.link.titulo }}</strong></a>
-            {% if not item.link.ativo %}<span class="selo-canal">Pausado</span>{% endif %}
-            <div class="suave pequeno">{{ item.url }}</div>
+          <div class="ce-nome">
+            <a href="{% url 'painel_whatsapp_entrada_link' item.link.pk %}">{{ item.link.titulo }}</a>
+            {% if not item.link.ativo %}<span class="situacao parada">Pausado</span>{% endif %}
+            <span class="ce-url">{{ item.url }}</span>
           </div>
-          <a class="botao botao-claro" href="{% url 'painel_whatsapp_entrada_link' item.link.pk %}">Editar</a>
+          <div class="ce-acoes">
+            {% if item.url %}<button type="button" class="botao botao-claro botao-pequeno" data-copiar="{{ item.url }}">Copiar link</button>{% endif %}
+            <a class="botao botao-claro botao-pequeno" href="{% url 'painel_whatsapp_entrada_link' item.link.pk %}">Editar</a>
+          </div>
         </div>
-        <div class="suave pequeno">
-          {% if item.estado.da_vez %}Mandando para <strong>{{ item.estado.da_vez.nome }}</strong> ({{ item.estado.da_vez.membros|numero }} de {{ item.link.limite_por_grupo|numero }}).{% elif item.link.grupos %}<span class="erro">Nenhum grupo com vaga e link de convite.</span>{% else %}Escolha os grupos do link.{% endif %}
-          Últimos 7 dias: {{ item.numeros.sete.visitas|numero }} visita{{ item.numeros.sete.visitas|pluralize }} e {{ item.numeros.sete.cliques|numero }} clique{{ item.numeros.sete.cliques|pluralize }}.
+        {% if item.estado.da_vez %}
+          <div class="situacao-link ok"><span class="situacao">Mandando pro grupo</span><span><strong>{{ item.estado.da_vez.nome }}</strong> ({{ item.estado.da_vez.membros|numero }} de {{ item.link.limite_por_grupo|numero }})</span></div>
+        {% elif item.link.grupos %}
+          <div class="situacao-link sem-vaga"><span class="icone-situacao" aria-hidden="true">!</span><span><strong>Nenhum grupo com vaga.</strong> Quem clica no anúncio vê o aviso de “grupos cheios”. <a href="{% url 'painel_whatsapp_entrada_link' item.link.pk %}#grupos-do-link">Resolver →</a></span></div>
+        {% else %}
+          <div class="situacao-link sem-vaga"><span class="icone-situacao" aria-hidden="true">!</span><span><strong>Nenhum grupo escolhido.</strong> <a href="{% url 'painel_whatsapp_entrada_link' item.link.pk %}#grupos-do-link">Escolher os grupos →</a></span></div>
+        {% endif %}
+        <div class="ce-numeros">
+          <span><b>{{ item.numeros.sete.visitas|numero }}</b>visita{{ item.numeros.sete.visitas|pluralize }} em 7 dias</span>
+          <span><b>{{ item.numeros.sete.cliques|numero }}</b>clique{{ item.numeros.sete.cliques|pluralize }} no botão</span>
+          <span><b>{% if item.numeros.sete.taxa is None %}—{% else %}{{ item.numeros.sete.taxa }}%{% endif %}</b>taxa de clique</span>
         </div>
       </article>
     {% empty %}
       <p class="suave pequeno" style="margin-top:12px">Você ainda não tem nenhum link de entrada.</p>
     {% endfor %}
-    {% if links|length < maximo %}
-    <form method="post" style="margin-top:14px">
-      {% csrf_token %}
-      <input type="hidden" name="acao" value="novo">
-      <button type="submit" class="botao botao-principal">Criar link de entrada</button>
-    </form>
-    {% endif %}
   {% endif %}
 </section>
+<script src="{% static 'painel/membros.js' %}" defer></script>
 {% endblock %}

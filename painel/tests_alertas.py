@@ -138,7 +138,8 @@ class TestAvisoDeCadaProduto(BasePainel):
 
     def test_escolher_preco_em_reais_ou_queda_em_porcentagem(self):
         html = self.client.get("/whatsapp/alertas/").content.decode()
-        self.assertIn("Avisa com queda de 10%", html)
+        # O selo começa pelo preço que dispara o alerta e depois diz a regra.
+        self.assertIn("📉 Avisa em R$ 90,00 ou menos <small>· queda de 10%, padrão</small>", html)
         self.assertIn("chegar a R$", html)
         resposta = self.client.post("/whatsapp/alertas/", {"acao": "aviso", "produto": self.produto.pk, "tipo": "reais",
                                                             "valor_reais": "89,90", "valor_pct": "10"})

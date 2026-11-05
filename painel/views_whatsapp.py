@@ -507,6 +507,45 @@ def _marcar_data(request, campanha, hoje):
     })
 
 
+CAMPOS_DAS_ETAPAS_DA_CAMPANHA = {
+    "datas": ["datas_ligadas"],
+    "ritmo": ["intervalo_minutos", "limite_diario", "horario_inicio", "horario_fim"],
+    "busca": ["palavra_chave", "comissao_minima", "desconto_minimo"],
+    "texto": ["mensagem_ativa", "frase_abertura", "cupom"],
+    "pagina": ["pagina_ativa", "link_campanha", "titulo_pagina", "texto_pagina", "link_campanha_a_cada"],
+}
+
+
+def _etapas_da_campanha(campanha, form, datas, proxima, quando) -> dict:
+    """A linha de resumo de cada passo da aba Campanhas (o que está salvo) e quais já abrem."""
+    marcadas = sum(1 for d in datas if d["ligada"])
+    contagem = f"{marcadas} data{'s' if marcadas != 1 else ''} marcada{'s' if marcadas != 1 else ''}" if marcadas else ""
+    resumo = {"datas": " · ".join(p for p in [
+        f"Próxima: {proxima['nome']}, {proxima['data']:%d/%m} ({quando})" if proxima else "", contagem,
+    ] if p) or "Nenhuma data marcada"}
+    resumo["ritmo"] = " · ".join([
+        f"1 oferta a cada {campanha.intervalo_minutos} min" if campanha.intervalo_minutos else "intervalo da Automação",
+        f"até {campanha.limite_diario} no dia" if campanha.limite_diario else "limite da Automação",
+        f"das {campanha.horario_inicio:%H:%M} às {campanha.horario_fim:%H:%M}",
+    ])
+    busca = [f"“{campanha.palavra_chave}”"] if campanha.palavra_chave else []
+    if campanha.desconto_minimo:
+        busca.append(f"desconto {campanha.desconto_minimo}%+")
+    if campanha.comissao_minima:
+        busca.append(f"comissão {campanha.comissao_minima}%+")
+    resumo["busca"] = " · ".join(busca) or "Como na Automação"
+    if campanha.mensagem_ativa:
+        texto = [f"Frase: {campanha.frase_abertura}" if campanha.frase_abertura else "sem frase de abertura",
+                 f"cupom {campanha.cupom}" if campanha.cupom else "cupom da Automação"]
+        resumo["texto"] = " · ".join(texto)
+    else:
+        resumo["texto"] = "Como na Automação"
+    resumo["pagina"] = (f"Ligada: a cada {campanha.link_campanha_a_cada} ofertas" if campanha.pagina_ativa
+                        else "Desligada: no dia da campanha vão só as ofertas")
+    abertas = [etapa for etapa, campos in CAMPOS_DAS_ETAPAS_DA_CAMPANHA.items() if any(c in form.errors for c in campos)]
+    return {"resumo": resumo, "abertas": abertas}
+
+
 @conta_requerida
 def whatsapp_campanhas(request):
     conta = conta_logada(request)
@@ -546,12 +585,13 @@ def whatsapp_campanhas(request):
         messages.error(request, "Confira os campos marcados.")
     hoje_campanha = campanhas.campanha_do_dia(campanha, hoje)
     proxima = campanhas.proxima_ligada(campanha, hoje)
+    datas = campanhas.proximas_datas(campanha, hoje)
+    quando = campanhas.quando(proxima["faltam"]) if proxima else ""
     return render(request, "painel/whatsapp_campanhas.html", _contexto_bot(
         request, "campanhas",
         campanha=campanha, config=config, form=form, regras=regras,
-        datas=campanhas.proximas_datas(campanha, hoje),
-        hoje_campanha=hoje_campanha, proxima=proxima,
-        quando=campanhas.quando(proxima["faltam"]) if proxima else "",
+        datas=datas, hoje_campanha=hoje_campanha, proxima=proxima, quando=quando,
+        etapas=_etapas_da_campanha(campanha, form, datas, proxima, quando),
         previa=_previa(campanha, config),
         previa_pagina=_previa_da_pagina(campanha, hoje_campanha or proxima),
     ))
@@ -637,6 +677,34 @@ def _acao_do_alerta(request, conta, alerta, regras_da_conta):
     return voltar
 
 
+def _aviso_na_lista(produto, queda_padrao: int) -> dict:
+    """O selo de cada produto começa pelo que importa: o preço que dispara o alerta
+    ("📉 Avisa em R$ 89,91 ou menos · queda de 10%, padrão"). Só muda a ordem do texto."""
+    resumo = alertas.resumo_do_aviso(produto, queda_padrao)
+    if resumo["tipo"] not in ("pct", "padrao") or "ou menos" not in resumo["detalhe"]:
+        return resumo
+    limite = resumo["detalhe"].split(" · ")[-1]
+    queda = alertas.queda_do_produto(produto, queda_padrao)
+    return {**resumo, "texto": f"📉 Avisa em {limite}",
+            "detalhe": f"queda de {queda}%" + (", padrão" if resumo["tipo"] == "padrao" else "")}
+
+
+def _como_avisar(alerta, intervalo: int, grupos: int) -> str:
+    """O resumo do cartão "Como avisar" (o que está salvo)."""
+    if intervalo < 60:
+        cada = f"{intervalo} minutos"
+    else:
+        horas = intervalo // 60
+        cada = "1 hora" if horas == 1 else f"{horas} horas"
+    onde = ["no painel"]
+    if alerta.avisar_email:
+        onde.append("por e-mail")
+    if alerta.enviar_grupos:
+        onde.append(f"no{'s' if grupos != 1 else ''} {grupos} grupo{'s' if grupos != 1 else ''}" if grupos else "nos grupos")
+    return " · ".join([f"Confere a cada {cada}", f"avisa com queda de {alerta.queda_minima}% ou mais",
+                       ", ".join(onde[:-1]) + " e " + onde[-1] if len(onde) > 1 else onde[0]])
+
+
 @conta_requerida
 def whatsapp_alertas(request):
     conta = conta_logada(request)
@@ -663,7 +731,7 @@ def whatsapp_alertas(request):
     total = todos.count()
     pagina = Paginator(todos, PRODUTOS_POR_PAGINA).get_page(request.GET.get("pagina"))
     for produto in pagina:
-        produto.aviso = alertas.resumo_do_aviso(produto, alerta.queda_minima)
+        produto.aviso = _aviso_na_lista(produto, alerta.queda_minima)
         produto.preco_pix = alertas.no_pix(produto.preco_atual, produto.desconto_pix) if produto.tipo_aviso == "reais" else None
     acompanhados = set(todos.values_list("item_id", flat=True))
     do_bot = []
@@ -678,15 +746,17 @@ def whatsapp_alertas(request):
     AlertaDisparado.objects.filter(conta=conta, visto=False).update(visto=True)  # quem abriu a tela já viu
     exemplo = alertas.montar_mensagem(alerta.modelo_mensagem, EXEMPLO_DE_PRODUTO["nome"], 129.9, 99.9, 23.1,
                                       "https://s.shopee.com.br/seu-link")
+    grupos_da_automacao = grupos_do_plano(_config_ofertas(conta))
+    intervalo = alertas.intervalo_efetivo(alerta, regras_da_conta)
     return render(request, "painel/whatsapp_alertas.html", _contexto_bot(
         request, "alertas",
         alerta=alerta, form=form, regras=regras_da_conta, pagina=pagina, total=total,
         paginas=pagina.paginator.get_elided_page_range(pagina.number, on_each_side=1, on_ends=1),
         limite=regras_da_conta["alerta_produtos"], cheio=total >= regras_da_conta["alerta_produtos"],
-        grupos_da_automacao=grupos_do_plano(_config_ofertas(conta)),
+        grupos_da_automacao=grupos_da_automacao,
         busca=busca, resultados=[{**r, "acompanhado": r["item_id"] in acompanhados} for r in resultados or []],
         erro_busca=erro_busca, do_bot=do_bot, disparados=disparados, exemplo=exemplo,
-        intervalo=alertas.intervalo_efetivo(alerta, regras_da_conta),
+        intervalo=intervalo, como_avisar=_como_avisar(alerta, intervalo, len(grupos_da_automacao)),
         whatsapp_conectado=conexao.estado == ConexaoWhatsApp.CONECTADO,
         shopee_conectada=bool(conta.shopee_validado_em),
     ))
@@ -800,7 +870,7 @@ def whatsapp_mensagens(request):
     return render(request, "painel/whatsapp_mensagens.html", _contexto_bot(
         request, "mensagens", form=form, editando=editando, agendadas=lista, disparos=_disparos(conta),
         conexao=conexao, regras=regras, maximo=regras["mensagens_agendadas"], grupos_por_nicho=_grupos_por_nicho(config),
-        tem_grupos_no_bot=bool(config and config.grupos),
+        tem_grupos_no_bot=bool(config and config.grupos), total_grupos_bot=len(grupos_do_plano(config)) if config else 0,
     ))
 
 
@@ -943,8 +1013,14 @@ def whatsapp_membros(request):
                  "automacao": grupos_novos.vagas_na_automacao(conta),
                  "por_dia": grupos_novos.POR_DIA, "bases": sorted(membros.grupos_possiveis(conexao), key=lambda g: str(g.get("nome", "")).lower())}
     possiveis = sorted(membros.grupos_possiveis(conexao), key=lambda g: (g["jid"] not in escolhidos, str(g.get("nome", "")).lower()))
+    # Enquanto não há dias suficientes de contagem, os cartões dizem quando o número aparece.
+    desde = timezone.localtime(dados["monitorando_desde"]).date() if dados["monitorando_desde"] else None
+    mais_cheio = max((linha for linha in dados["linhas"] if linha["quase_cheio"]), key=lambda linha: linha["lotacao"], default=None)
     return render(request, "painel/whatsapp_membros.html", _contexto_bot(
         request, "membros", conexao=conexao, dados=dados, possiveis=possiveis, escolhidos=escolhidos,
+        desde=desde, a_partir_7d=desde + timedelta(days=7) if desde else None,
+        a_partir_30d=desde + timedelta(days=30) if desde else None,
+        saldo_hoje=dados["entradas"] - dados["saidas"], mais_cheio=mais_cheio,
         escolhendo=(request.GET.get("escolher") == "1" or not dados["quantos"]) and not criar,
         grafico=_grafico_de_membros(dados["serie"], dados["monitorando_desde"]),
         limite_do_whatsapp=membros.LIMITE_DO_WHATSAPP,
