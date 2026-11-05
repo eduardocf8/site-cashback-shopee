@@ -716,12 +716,12 @@ PAGINAS = {m: (lambda m=m, f=f: _apresentar(m, f())) for m, f in {"bot": bot, "s
 # {ferramenta: {número da seção: [(arquivo, legenda, texto alternativo)]}}. São telas reais do painel com dados de exemplo.
 PRINTS = {
     "bot": {0: [("bot-conexao", "Conectado como mais um aparelho, com o histórico da conexão.", "Tela de conexão do Bot de WhatsApp")],
-            1: [("bot-ofertas", "De onde vêm as ofertas, os filtros e o histórico do que foi enviado.", "Tela de ofertas automáticas do Bot de WhatsApp")],
+            1: [("bot-ofertas", "A automação em 5 passos, do grupo ao horário, e o histórico do que foi enviado.", "Tela de ofertas automáticas do Bot de WhatsApp")],
             4: [("bot-campanhas", "Marque as datas da Shopee e o bot muda de ritmo e de texto sozinho.", "Tela do modo campanha do Bot de WhatsApp")],
             5: [("bot-alerta", "Produtos acompanhados, últimos alertas e a mensagem que vai pros grupos.", "Tela do alerta de preço do Bot de WhatsApp")]},
     "site": {0: [("site-pronto", "O editor e, ao lado, o site pronto: 3 botões, 4 redes sociais, o conversor de links e a vitrine de ofertas em carrossel.",
                   "Exemplo de site pronto no celular, com botões, redes sociais, conversor de links e vitrine de ofertas")],
-             2: [("site-botoes", "Seus botões, o conversor de links e a prévia ao lado.", "Botões e conversor de links do Meu site")]},
+             2: [("site-botoes", "Seus botões, as redes sociais e o conversor de links.", "Botões e conversor de links do Meu site")]},
     "carrosseis": {5: [("carrossel-editor", "O carrossel pronto, com os textos de cada slide para ajustar.", "Editor de carrosséis com o primeiro slide pronto")]},
     "radar": {1: [("radar", "Busca por palavra-chave, categoria, preço, comissão e desconto.", "Tela de filtros do Radar de ofertas")],
               2: [("radar-produtos", "Cada produto com foto, desconto, comissão e atalhos para divulgar.", "Produtos do Radar de ofertas com comissão e desconto")]},
@@ -739,25 +739,25 @@ PRINTS = {
 
 # Tamanhos (largura, altura) de cada imagem no computador e no celular, em pixels de tela. Saem do final.py.
 TAMANHOS = {
-    "bot-alerta": (1100, 2400, 420, 2300),
-    "bot-campanhas": (1100, 1345, 420, 2300),
-    "bot-conexao": (1100, 972, 420, 1373),
-    "bot-ofertas": (1100, 2400, 420, 2300),
-    "carrossel-editor": (1100, 1726, 420, 1757),
-    "conversor": (1100, 1088, 420, 1453),
-    "inicio": (1100, 1001, 420, 2300),
-    "metas": (1100, 1921, 420, 2286),
-    "notas": (1100, 1102, 420, 1710),
+    "bot-alerta": (1100, 1058, 420, 1895),
+    "bot-campanhas": (1100, 1104, 420, 1652),
+    "bot-conexao": (1100, 410, 420, 775),
+    "bot-ofertas": (1100, 1040, 420, 1728),
+    "carrossel-editor": (1100, 1728, 420, 1759),
+    "conversor": (1100, 1101, 420, 1386),
+    "inicio": (1100, 1248, 420, 1852),
+    "metas": (1100, 1472, 420, 2235),
+    "notas": (1100, 1323, 420, 2019),
     "notas-lote": (1100, 1250, 420, 1700),
-    "radar": (1100, 577, 420, 703),
-    "radar-produtos": (1100, 1033, 420, 1785),
-    "resultados": (1100, 1111, 420, 2300),
-    "resultados-produtos": (1100, 2045, 420, 2300),
+    "radar": (1100, 577, 420, 620),
+    "radar-produtos": (1100, 936, 420, 568),
+    "resultados": (1100, 826, 420, 1414),
+    "resultados-produtos": (1100, 2400, 420, 2300),
     "site-pronto": (380, 1129, 300, 891),  # o site visto pelo visitante, num celular (marketing/appfiliado/prints/site_pronto.py)
     "lia-whatsapp": (340, 856, 340, 856),  # conversa com a Lia num celular (marketing/appfiliado/prints/lia_whatsapp.py)
-    "site-botoes": (1100, 1206, 420, 1387),
-    "site-editor": (1100, 1249, 420, 2300),
-    "site-editor-form": (712, 1159, 420, 1462),  # recorte do site-editor só com a coluna do formulário
+    "site-botoes": (1100, 1389, 420, 1841),
+    "site-editor": (1100, 961, 420, 843),
+    "site-editor-form": (728, 1324, 420, 1634),  # recorte do site-editor só com a coluna do formulário
 }
 
 

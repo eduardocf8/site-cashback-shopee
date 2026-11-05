@@ -19,9 +19,16 @@ Entre no nosso grupo: https://chat.whatsapp.com/AbCdEf123"""
 import datetime as _dt
 _hoje = _dt.date.today()
 MES_PASSADO = (_hoje.replace(day=1) - _dt.timedelta(days=1)).strftime("%Y-%m")
-CSS = ".menu{display:none!important}.app{display:block!important}.conteudo{max-width:none!important}"
+CSS = ".menu,.topo-movel{display:none!important}.app{display:block!important}.conteudo{max-width:none!important}"
 OCULTAR = """(()=>{document.querySelectorAll('*').forEach(e=>{const s=getComputedStyle(e); if((s.position==='fixed'||s.position==='sticky') && /salvar/i.test(e.textContent||'') && e.offsetHeight<80) e.style.display='none';});})()"""
 LIMPA = "(()=>{const w=document.createTreeWalker(document.body,NodeFilter.SHOW_TEXT);let n;while(n=w.nextNode()){n.nodeValue=n.nodeValue.replace('http://localhost:8765/s/achadinhosdabia/','https://achadinhosdabia.appfiliado.com.br').replace('localhost:8765/s/','https://');}})()"
+# Resultados: o print do site mostra números, gráfico e origem (a meta tem o print dela, em Metas)
+SEM_META = """(()=>{[...document.querySelectorAll('h2,h3')].filter(e=>/^(Meta do mês|Comissão por Sub ID)/.test(e.textContent.trim())).forEach(h=>h.closest('section,.card,article').style.display='none');})()"""
+# Alerta de preço: 4 produtos bastam pro print (a lista inteira vai longe)
+ALERTA_4 = """(()=>{document.querySelectorAll('.lista-acompanhados > li').forEach((li,i)=>{if(i>3) li.style.display='none';});})()"""
+# Só o formulário do Meu site (vai ao lado do site pronto): perfil, aparência, redes sociais e endereço
+EDITOR_FORM = """(()=>{const s=document.querySelector('.secoes-site'); if(s) s.style.display='none';
+ ['#titulo-botoes','#titulo-conversor','#titulo-vitrine'].forEach(q=>{const h=document.querySelector(q); if(h) h.closest('section,.card').style.display='none';});})()"""
 RADAR_TXT = """(()=>{const p=[...document.querySelectorAll('p')].find(e=>/produtos da Shopee com comiss/.test(e.textContent)); if(p) p.innerHTML=p.innerHTML.replace(/^\\s*\\d+ produtos/,'30.412 produtos');})()"""
 
 def converter(pg):
@@ -51,24 +58,31 @@ def fim_cartoes(desktop, celular):
         n = celular if tag else desktop
         return pg.evaluate(f"(()=>{{const c=[...document.querySelectorAll('main img')].filter(e=>/8766/.test(e.src)).map(e=>e.closest('article,li,.card'))[{n}-1]; return c.getBoundingClientRect().bottom+scrollY+16;}})()")
     return f
+def fim_conteudo(pg, tag):
+    """Fim do último cartão da página (sem o rodapé)."""
+    return pg.evaluate("Math.max(...[...document.querySelectorAll('main .card')].filter(e=>e.offsetParent).map(e=>e.getBoundingClientRect().bottom+scrollY))+16")
+def direita(sel):
+    """Corte na lateral: termina na borda direita do elemento (ex.: só a coluna do formulário)."""
+    return lambda pg: pg.evaluate(f"document.querySelector({sel!r}).getBoundingClientRect().right+16")
 def antes_dos_cartoes(pg, tag):
     return cartoes(pg) - 8
 
 # nome, url, ação antes, onde começa, onde termina (função) ou altura fixa
 SHOTS = [
  ("inicio", "/", None, None, None),
- ("resultados", "/resultados/?periodo=30dias", None, None, antes_do_titulo("^Detalhe por dia")),
+ ("resultados", "/resultados/?periodo=30dias", SEM_META, None, fim_titulos("^Faturamento por", "^De onde vieram")),
  ("resultados-produtos", "/resultados/?periodo=30dias", None, topo("#produtos"), fim_titulos("^Vendas do período")),
  ("metas", "/metas/?mes=" + MES_PASSADO, None, None, None),  # o mês em fechamento: validado, pendente e até onde chega
  ("radar", "/radar/", RADAR_TXT, None, antes_dos_cartoes),
  ("radar-produtos", "/radar/", None, cartoes, fim_cartoes(8, 3)),
  ("conversor", "/conversor/", converter, None, None),
- ("bot-conexao", "/whatsapp/", None, None, None),
- ("bot-ofertas", "/whatsapp/ofertas/", None, None, fim_titulos("^Onde e quando")),
+ ("bot-conexao", "/whatsapp/", None, None, fim_conteudo),
+ ("bot-ofertas", "/whatsapp/ofertas/", None, None, fim_titulos("^Modo simulação", "^Últimas ofertas enviadas")),
  ("bot-campanhas", "/whatsapp/campanhas/", None, None, fim_titulos("^Ritmo nesses dias", "^Como funciona", "^Prévia de uma oferta")),
- ("bot-alerta", "/whatsapp/alertas/", None, None, fim_titulos("^Quando avisar", "^Prévia da mensagem")),
+ ("bot-alerta", "/whatsapp/alertas/", ALERTA_4, None, fim_titulos("^Produtos acompanhados", "^Prévia da mensagem")),
  ("site-editor", "/meu-site/", None, None, fim_titulos("^Perfil", "^Prévia")),
  ("site-botoes", "/meu-site/", None, botoes, fim_titulos("^Conversor de links")),
+ ("site-editor-form", "/meu-site/", EDITOR_FORM, topo("#sec-perfil"), fim_titulos("^Endereço do site"), direita("#form-site")),
  ("carrossel-editor", "/carrosseis/2/", "espera", None, None),
  ("notas-lote", "/notas/lote/2/", None, None, lambda pg, tag: 1250 if not tag else 1700),
  ("notas", "/notas/", None, None, fim_titulos("^Notas dos vendedores", "^Nota da Shopee")),
@@ -77,7 +91,7 @@ SHOTS = [
 def tirar(browser, vp, dsf, tag, indice):
     ctx = browser.new_context(viewport=vp, device_scale_factor=dsf); pg = ctx.new_page()
     pg.goto(B + "/entrar/"); pg.fill("input[name=email]", "bia@exemplo.com"); pg.fill("input[type=password]", "uma-senha-boa-123"); pg.click("button[type=submit]"); pg.wait_for_load_state()
-    for nome, url, acao, onde, fim in SHOTS:
+    for nome, url, acao, onde, fim, *lado in SHOTS:
         pg.goto(B + url); pg.wait_for_load_state("networkidle"); pg.add_style_tag(content=CSS); pg.wait_for_timeout(1200 if acao != "espera" else 3000)
         if callable(acao): acao(pg); pg.add_style_tag(content=CSS)
         elif isinstance(acao, str) and acao != "espera": pg.evaluate(acao)
@@ -91,7 +105,8 @@ def tirar(browser, vp, dsf, tag, indice):
         im = Image.open(io.BytesIO(png)).convert("RGB")
         y1 = int(fim(pg, tag)) if fim else im.height // int(dsf)
         y1 = min(y1, y0 + (2400 if not tag else 2300))
-        crop = im.crop((0, int(y0 * dsf), im.width, min(im.height, int(y1 * dsf))))
+        x1 = min(im.width, int(lado[0](pg) * dsf)) if lado else im.width
+        crop = im.crop((0, int(y0 * dsf), x1, min(im.height, int(y1 * dsf))))
         crop.save(f"{OUT}{nome}{tag}.webp", "WEBP", quality=82 if tag == "" else 80, method=6)
         indice[nome + tag] = (crop.width // int(dsf), crop.height // int(dsf)); print(nome + tag, crop.size)
     ctx.close()
