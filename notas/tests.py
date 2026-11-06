@@ -963,17 +963,31 @@ class TestNBSeCertificado(TestCase):
         self.empresa = criar_empresa(criar_conta(), codigo_tributacao="", descricao_servico="")
         certificado.guardar(self.empresa, gerar_pfx(), "senha-do-pfx")
 
-    def test_nbs_padrao_e_so_vai_com_ibscbs(self):
+    def test_nbs_padrao_vai_em_toda_nota(self):
         servicos.aplicar_servico_padrao(self.empresa)
-        self.assertEqual(self.empresa.codigo_nbs, "114061100")
+        self.assertEqual(self.empresa.codigo_nbs, "114061900")  # MEI também: 1.1406.19.00
         falso = ClienteFalso(emitir=autorizada())
         with mock.patch.object(servicos, "ClienteSefin", falso):
             servicos.emitir_teste(self.empresa)  # ambiente de testes: com IBS/CBS
             nota = servicos.emitir_nota_shopee(self.empresa, "10,00")  # produção: sem IBS/CBS por enquanto
             servicos.processar(nota)
         teste, producao = (x.decode() for x in falso.emitidas)
-        self.assertIn("<xDescServ>Divulgação e venda de produtos</xDescServ><cNBS>114061100</cNBS>", teste)
-        self.assertNotIn("cNBS", producao)
+        self.assertIn("<xDescServ>Divulgação e venda de produtos</xDescServ><cNBS>114061900</cNBS>", teste)
+        self.assertIn("<cNBS>114061900</cNBS>", producao)  # vai mesmo sem o IBS/CBS
+        with self.assertRaisesMessage(servicos.ErroNotas, "NBS é obrigatório"):
+            servicos.salvar_servico(self.empresa, "170601", "", "Divulgação e venda de produtos", "", "")
+
+    def test_migracao_passa_o_nbs_antigo_pro_novo(self):
+        import importlib
+
+        from django.apps import apps
+
+        migracao = importlib.import_module("notas.migrations.0013_nbs_padrao_para_todos")
+        antigo = criar_empresa(criar_conta("outra@exemplo.com"), cnpj="11222333000181", codigo_nbs="114061100")
+        digitado = criar_empresa(criar_conta("mais@exemplo.com"), cnpj="11444777000161", codigo_nbs="114061200")
+        migracao.nbs_novo(apps, None)
+        self.assertEqual(EmpresaNotas.objects.get(pk=antigo.pk).codigo_nbs, "114061900")
+        self.assertEqual(EmpresaNotas.objects.get(pk=digitado.pk).codigo_nbs, "114061200")
 
     def test_nbs_editavel_e_validado(self):
         servicos.salvar_servico(self.empresa, "170601", "", "Divulgação e venda de produtos", "", "1.1406.19.00")
@@ -1690,7 +1704,7 @@ class TestMicroempresa(TestCase):
         self.assertEqual(servicos._servico(NotaFiscal(empresa=empresa), False).tributos,
                          (Decimal("13.45"), Decimal("0"), Decimal("4.61")))
 
-    def test_regime_novo_troca_o_nbs_padrao_e_guarda_o_digitado(self):
+    def test_nbs_padrao_antigo_vira_o_novo_e_o_digitado_fica(self):
         empresa = criar_empresa(criar_conta(), codigo_nbs="114061100")
         with mock.patch.object(receita, "consultar", return_value={**DADOS_RECEITA_LOJA, "cnpj": CNPJ, "regime": "simples"}):
             servicos.atualizar_cadastro(empresa)
@@ -1868,3 +1882,116 @@ class TestNomeDaEmpresa(TestCase):
             aviso = servicos.atualizar_cadastro(self.empresa)
         self.assertEqual(aviso, "O nome da empresa mudou na Receita para BIA COMERCIO LTDA. Já atualizamos o cadastro.")
         self.assertEqual(EmpresaNotas.objects.get(pk=self.empresa.pk).razao_social, "BIA COMERCIO LTDA")
+
+
+@override_settings(APPFILIADO_PAINEL_HOSTS=[HOST], ALLOWED_HOSTS=[HOST, "testserver"], APPFILIADO_PAINEL_URL=f"https://{HOST}")
+class TestVendedorSemNome(TestCase):
+    """A Shopee não manda o nome do vendedor pessoa física: a linha vira nota esperando o nome, que
+    a pessoa digita na prévia ou depois; sem o nome, o lote sai sem ela e ela fica pendente."""
+
+    def setUp(self):
+        cache.clear()
+        self.addCleanup(cache.clear)
+        receita_falsa = mock.patch.object(receita, "consultar", return_value={"regime": "mei"})
+        receita_falsa.start()
+        self.addCleanup(receita_falsa.stop)
+        self.conta = criar_conta()
+        self.empresa = criar_empresa(self.conta)
+        certificado.guardar(self.empresa, gerar_pfx(), "senha-do-pfx")
+        self.linhas = [
+            ("Sep 2026", "loja_um", "1001", "R$0,86", "11222333000181", "", "", "LOJA UM LTDA", "", "BR", "", "um@loja.com"),
+            ("Sep 2026", "Variedades da _Ana", "1005", "R$0,60", "", "52998224725", "", "", "Av. B, 2 - Centro, Santos - SP",
+             "BR", "", "ana@exemplo.com"),
+        ]
+
+    def importar(self, ambiente="1"):
+        return servicos.importar_relatorio(self.empresa, relatorio_csv(self.linhas), "r.csv", ambiente)
+
+    def test_vira_nota_esperando_o_nome_e_o_lote_sai_sem_ela(self):
+        lote = self.importar()
+        self.assertEqual(lote.ignoradas, [])
+        pendente = lote.notas.get(loja_id="1005")
+        self.assertEqual((pendente.situacao, pendente.tomador_tipo, pendente.tomador_nome), ("sem_nome", "cpf", ""))
+        self.assertEqual(servicos.confirmar_lote(lote), 1)  # só a que tem nome
+        self.assertEqual(NotaFiscal.objects.get(pk=pendente.pk).situacao, "sem_nome")
+        # Depois do lote emitido: com o nome, vai pra fila na hora, com o e-mail agendado.
+        self.assertEqual(servicos.preencher_nome(pendente, "  Ana   Souza "), "fila")
+        nota = NotaFiscal.objects.get(pk=pendente.pk)
+        self.assertEqual((nota.situacao, nota.tomador_nome, nota.email_situacao), ("fila", "Ana Souza", "pendente"))
+        self.assertEqual(nota.competencia, timezone.localdate())
+
+    def test_nome_na_previa_entra_no_lote(self):
+        lote = self.importar()
+        self.assertEqual(servicos.preencher_nome(lote.notas.get(loja_id="1005"), "Ana Souza"), "previa")
+        self.assertEqual(servicos.confirmar_lote(lote), 2)
+
+    def test_nome_invalido_e_nao_emitir(self):
+        lote = self.importar()
+        pendente = lote.notas.get(loja_id="1005")
+        for ruim in ("", "  a ", "12345678"):
+            with self.assertRaisesMessage(servicos.ErroNotas, "nome do vendedor"):
+                servicos.preencher_nome(pendente, ruim)
+        self.assertTrue(servicos.tirar_nota_sem_nome(pendente))
+        self.assertFalse(lote.notas.filter(loja_id="1005").exists())
+
+    def test_importar_de_novo_nao_duplica_a_pendente(self):
+        lote = self.importar()
+        servicos.confirmar_lote(lote)
+        novo = self.importar()
+        self.assertEqual([i["motivo"] for i in novo.ignoradas if i["loja"] == "Variedades da _Ana"],
+                         ["já está em outro lote, esperando o nome"])
+
+    def test_tela_do_lote(self):
+        lote = self.importar()
+        cliente = Client(HTTP_HOST=HOST)
+        cliente.post("/entrar/", {"email": "bia@exemplo.com", "senha": SENHA})
+        pagina = cliente.get(f"/notas/lote/{lote.pk}/").content.decode()
+        self.assertIn("1 nota esperando o nome do vendedor", pagina)
+        self.assertIn("Emitir 1 nota", pagina)  # a pendente não entra na conta do lote
+        self.assertIn("ana@exemplo.com", pagina)
+        pendente = lote.notas.get(loja_id="1005")
+        cliente.post(f"/notas/lote/{lote.pk}/", {"acao": "nome", "nota": pendente.pk, "nome": "Ana Souza"})
+        self.assertEqual(NotaFiscal.objects.get(pk=pendente.pk).situacao, "previa")
+        outra = lote.notas.create(empresa=self.empresa, ambiente="1", tipo=NotaFiscal.TIPO_VENDEDOR,
+                                  competencia=timezone.localdate(), situacao=NotaFiscal.FALTA_NOME, loja_id="1006",
+                                  tomador_tipo="cpf", tomador_documento="52998224725", valor=Decimal("1"))
+        self.assertIn("1 esperando o nome", cliente.get("/notas/").content.decode())
+        cliente.post(f"/notas/lote/{lote.pk}/", {"acao": "nao_emitir", "nota": outra.pk})
+        self.assertFalse(NotaFiscal.objects.filter(pk=outra.pk).exists())
+
+
+class TestExteriorEDescricao(TestCase):
+    """E-mail em português e inglês para o vendedor do exterior; mês das vendas na descrição das notas
+    dos vendedores (a nota da Shopee fica com a descrição de sempre)."""
+
+    def setUp(self):
+        cache.clear()
+        self.addCleanup(cache.clear)
+        self.empresa = criar_empresa(criar_conta())
+        certificado.guardar(self.empresa, gerar_pfx(), "senha-do-pfx")
+        self.lote = servicos.importar_relatorio(self.empresa, relatorio_csv(), "r.csv", "1")
+
+    def test_email_do_exterior_em_portugues_e_ingles(self):
+        from . import email
+
+        china = self.lote.notas.get(loja_id="1003")
+        china.numero_nfse, china.chave, china.xml_nfse = "77", "X" * 50, xml_nfse("77")
+        with mock.patch.object(danfse, "pdf", return_value=b"%PDF"):
+            mensagem = email.montar(china)
+            nacional = self.lote.notas.get(loja_id="1001")
+            nacional.numero_nfse, nacional.xml_nfse = "78", xml_nfse("78")
+            so_portugues = email.montar(nacional)
+        self.assertIn("Segue a nota fiscal de serviço", mensagem.body)
+        self.assertIn("Attached is the Brazilian service invoice (NFS-e)", mensagem.body)
+        self.assertIn("for sales completed in September 2026", mensagem.body)
+        self.assertIn("Service invoice no. 77", mensagem.subject)
+        self.assertTrue(mensagem.body.rstrip().endswith(f"Enviado pelo Appfiliado em nome de {self.empresa.razao_social}."))
+        self.assertNotIn("Attached is", so_portugues.body)
+        self.assertNotIn("Service invoice", so_portugues.subject)
+
+    def test_mes_das_vendas_na_descricao(self):
+        nota = self.lote.notas.get(loja_id="1001")
+        self.assertEqual(servicos._servico(nota, False).descricao,
+                         "Divulgação de produtos em mídias sociais - vendas de setembro/2026")
+        shopee = servicos.emitir_nota_shopee(self.empresa, "10,00")
+        self.assertEqual(servicos._servico(shopee, False).descricao, "Divulgação de produtos em mídias sociais")

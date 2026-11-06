@@ -10,6 +10,49 @@ from . import danfse
 
 MESES = ["janeiro", "fevereiro", "março", "abril", "maio", "junho", "julho", "agosto", "setembro",
          "outubro", "novembro", "dezembro"]
+MONTHS = ["January", "February", "March", "April", "May", "June", "July", "August", "September",
+          "October", "November", "December"]
+
+
+def _do_exterior(nota) -> bool:
+    """Vendedor do exterior (identificação fiscal estrangeira): o e-mail vai em português e inglês."""
+    return nota.tomador_tipo == "nif"
+
+
+def _em_ingles(nota) -> str:
+    empresa = nota.empresa
+    referencia = ""
+    if nota.lote_id:
+        mes = nota.lote.mes_referencia
+        referencia = f" for sales completed in {MONTHS[mes.month - 1]} {mes.year}"
+    loja = f" ({nota.loja_nome})" if nota.loja_nome else ""
+    return (
+        "\n---\n\n"
+        f"Hello, {nota.tomador_nome}!\n\n"
+        f"Attached is the Brazilian service invoice (NFS-e) for the extra commission paid by your shop{loja} "
+        f"in the Shopee Affiliate Program{referencia}.\n\n"
+        f"Service provider: {empresa.razao_social} (CNPJ {empresa.cnpj_formatado})\n"
+        f"Invoice number: {nota.numero_nfse or '-'}\n"
+        f"Amount: {_brl(nota.valor)} (Brazilian reais)\n"
+        f"Access key: {nota.chave}\n\n"
+        "The PDF and XML files are attached. You can also look up the invoice at "
+        "https://www.nfse.gov.br/consultapublica with the access key.\n\n"
+        "Questions? Just reply to this e-mail.\n"
+    )
+
+
+def _cancelamento_em_ingles(nota) -> str:
+    empresa = nota.empresa
+    return (
+        "\n---\n\n"
+        f"Hello, {nota.tomador_nome}!\n\n"
+        f"The Brazilian service invoice (NFS-e) no. {nota.numero_nfse or '-'} issued by {empresa.razao_social} "
+        f"(CNPJ {empresa.cnpj_formatado}) for your shop has been cancelled.\n\n"
+        f"Invoice amount: {_brl(nota.valor)} (Brazilian reais)\n"
+        f"Access key: {nota.chave}\n\n"
+        "The cancelled invoice is no longer valid. The PDF marked as cancelled is attached.\n\n"
+        "Questions? Just reply to this e-mail.\n"
+    )
 
 
 def _brl(valor) -> str:
@@ -68,11 +111,16 @@ def montar(nota, connection=None) -> EmailMessage:
         f"Chave de acesso: {nota.chave}\n\n"
         "O PDF e o XML da nota estão em anexo. Você também pode consultar a nota em "
         "https://www.nfse.gov.br/consultapublica com a chave de acesso.\n\n"
-        "Dúvidas? É só responder este e-mail.\n\n"
-        f"Enviado pelo Appfiliado em nome de {empresa.razao_social}.\n"
+        "Dúvidas? É só responder este e-mail.\n"
     )
+    assunto = f"Nota fiscal de serviço nº {nota.numero_nfse or nota.numero} - {empresa.razao_social}"
+    if _do_exterior(nota):
+        corpo += _em_ingles(nota)
+        assunto = (f"Nota fiscal de serviço nº {nota.numero_nfse or nota.numero} / Service invoice no. "
+                   f"{nota.numero_nfse or nota.numero} - {empresa.razao_social}")
+    corpo += f"\nEnviado pelo Appfiliado em nome de {empresa.razao_social}.\n"
     mensagem = EmailMessage(
-        subject=f"Nota fiscal de serviço nº {nota.numero_nfse or nota.numero} - {empresa.razao_social}",
+        subject=assunto,
         body=corpo,
         from_email=settings.NOTAS_EMAIL_REMETENTE or settings.APPFILIADO_EMAIL_REMETENTE,
         to=[nota.tomador_email],
@@ -99,11 +147,16 @@ def montar_cancelamento(nota, connection=None) -> EmailMessage:
         f"Motivo: {motivo} - {nota.cancelamento_justificativa}\n\n"
         "A nota cancelada não tem mais valor fiscal. O PDF com a marca de cancelada está em anexo, e a "
         "situação também aparece em https://www.nfse.gov.br/consultapublica com a chave de acesso.\n\n"
-        "Dúvidas? É só responder este e-mail.\n\n"
-        f"Enviado pelo Appfiliado em nome de {empresa.razao_social}.\n"
+        "Dúvidas? É só responder este e-mail.\n"
     )
+    assunto = f"Nota fiscal de serviço nº {nota.numero_nfse or nota.numero} cancelada - {empresa.razao_social}"
+    if _do_exterior(nota):
+        corpo += _cancelamento_em_ingles(nota)
+        assunto = (f"Nota fiscal de serviço nº {nota.numero_nfse or nota.numero} cancelada / Service invoice "
+                   f"cancelled - {empresa.razao_social}")
+    corpo += f"\nEnviado pelo Appfiliado em nome de {empresa.razao_social}.\n"
     mensagem = EmailMessage(
-        subject=f"Nota fiscal de serviço nº {nota.numero_nfse or nota.numero} cancelada - {empresa.razao_social}",
+        subject=assunto,
         body=corpo,
         from_email=settings.NOTAS_EMAIL_REMETENTE or settings.APPFILIADO_EMAIL_REMETENTE,
         to=[nota.tomador_email],

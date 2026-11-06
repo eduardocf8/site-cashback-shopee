@@ -20,6 +20,7 @@
     <div><span>Valor total</span><strong>{{ resumo.valor|brl }}</strong></div>
     <div><span>Fora da prévia</span><strong>{{ lote.ignoradas|length }}</strong></div>
   </div>
+  {% if sem_nome %}<p class="aviso aviso-warning pequeno">{{ sem_nome|length }} nota{{ sem_nome|length|pluralize }} espera{{ sem_nome|length|pluralize:"m" }} o nome do vendedor e fica{{ sem_nome|length|pluralize:"m" }} fora até você preencher. <a href="#sem-nome">Preencher agora</a></p>{% endif %}
   <p class="pequeno">Confira a lista. Nada foi enviado ainda. Ao confirmar, as notas vão pra fila e saem sozinhas, uma a uma (pode fechar a página){% if lote.ambiente == "1" %} e cada vendedor com e-mail recebe a nota com o PDF e o XML{% endif %}.</p>
   {% if falta %}<p class="aviso aviso-warning pequeno">Antes de emitir, falta: {{ falta|join:" e " }}.</p>{% endif %}
   {% if lote.ambiente == "1" and plano.limite is not None %}
@@ -80,12 +81,41 @@
 </section>
 {% endif %}
 
+{% if sem_nome %}
+  <section class="card notas-cartao notas-sem-nome" id="sem-nome" aria-labelledby="titulo-sem-nome">
+    <h2 id="titulo-sem-nome">{{ sem_nome|length }} nota{{ sem_nome|length|pluralize }} esperando o nome do vendedor</h2>
+    <p class="suave pequeno">A Shopee não manda no relatório o nome do vendedor pessoa física, e a nota precisa dele. Digite o nome como está no documento (dá para perguntar pelo e-mail).
+      {% if lote.estado == "previa" %}Com o nome, a nota entra nesta prévia. Se deixar para depois, o lote sai sem ela e ela fica aqui, pendente.{% else %}Com o nome, a nota vai pra fila e sai em alguns minutos.{% endif %}</p>
+    <ul class="notas-sem-nome-lista">
+      {% for n in sem_nome %}
+        <li>
+          <div class="notas-sem-nome-quem">
+            <strong>{{ n.loja_nome|default:n.loja_id }}</strong>
+            <span class="suave pequeno">{% if n.tomador_tipo == "cpf" %}CPF{% elif n.tomador_tipo == "cnpj" %}CNPJ{% else %}Documento{% endif %} {{ n.documento_formatado }}{% if n.tomador_email %} · <a href="mailto:{{ n.tomador_email }}">{{ n.tomador_email }}</a>{% endif %}</span>
+          </div>
+          <strong class="notas-sem-nome-valor">{{ n.valor|brl }}</strong>
+          <form method="post" class="notas-sem-nome-form">
+            {% csrf_token %}<input type="hidden" name="acao" value="nome"><input type="hidden" name="nota" value="{{ n.pk }}">
+            <label class="sr" for="nome-{{ n.pk }}">Nome do vendedor</label>
+            <input type="text" id="nome-{{ n.pk }}" name="nome" maxlength="150" placeholder="Nome do vendedor" required autocomplete="off">
+            <button type="submit" class="botao botao-escuro">{% if lote.estado == "previa" %}Incluir na prévia{% else %}Emitir{% endif %}</button>
+          </form>
+          <form method="post" onsubmit="return confirm('Tirar esta nota do lote? Ela não vai ser emitida.')">
+            {% csrf_token %}<input type="hidden" name="acao" value="nao_emitir"><input type="hidden" name="nota" value="{{ n.pk }}">
+            <button type="submit" class="botao-excluir">Não emitir</button>
+          </form>
+        </li>
+      {% endfor %}
+    </ul>
+  </section>
+{% endif %}
+
 {% if lote.ignoradas %}
   <details class="card notas-cartao notas-ignoradas">
     <summary><strong>{{ lote.ignoradas|length }} linha{{ lote.ignoradas|length|pluralize }} do relatório não vira{{ lote.ignoradas|length|pluralize:"m" }} nota</strong> <span class="suave pequeno">(ver quais e por quê)</span></summary>
     <div class="tabela-rolagem"><table class="tabela-vendas">
       <thead><tr><th scope="col">Linha</th><th scope="col">Loja</th><th scope="col" class="n">Valor</th><th scope="col">Motivo</th></tr></thead>
-      <tbody>{% for i in lote.ignoradas %}<tr><td>{{ i.linha }}</td><td><strong>{{ i.nome }}</strong><span class="suave pequeno notas-sub">{{ i.loja }}</span></td><td class="n" data-rotulo="Valor">{% if i.valor %}R$ {{ i.valor }}{% endif %}</td><td data-rotulo="Motivo">{{ i.motivo }}</td></tr>{% endfor %}</tbody>
+      <tbody>{% for i in lote.ignoradas %}<tr><td>{{ i.linha }}</td><td><strong>{{ i.nome }}</strong><span class="suave pequeno notas-sub">{{ i.loja }}</span></td><td class="n" data-rotulo="Valor">{% if i.valor %}{{ i.valor|brl }}{% endif %}</td><td data-rotulo="Motivo">{{ i.motivo }}</td></tr>{% endfor %}</tbody>
     </table></div>
   </details>
 {% endif %}
@@ -97,7 +127,7 @@
   </nav>
   <form method="get" class="filtros-vendas">
     <input type="hidden" name="ver" value="{{ filtro }}">
-    <input type="search" name="busca" value="{{ busca }}" placeholder="Buscar loja, razão social ou CNPJ" aria-label="Buscar">
+    <input type="search" name="busca" value="{{ busca }}" placeholder="Buscar loja, nome, CNPJ ou CPF" aria-label="Buscar">
   </form>
   {% if pagina.object_list %}
     {% if lote.ambiente == "1" %}{% include "painel/_notas_tabela.html" with notas=pagina.object_list com_email=True voltar="lote" sem_selo=True %}

@@ -38,8 +38,7 @@ class EmpresaNotas(models.Model):
     codigo_tributacao = models.CharField(max_length=6, blank=True)
     codigo_municipal = models.CharField(max_length=20, blank=True)
     descricao_servico = models.TextField(blank=True)
-    # NBS (Nomenclatura Brasileira de Serviços), 9 dígitos: vai sempre na nota de ME/EPP e, no MEI,
-    # junto com o IBS/CBS.
+    # NBS (Nomenclatura Brasileira de Serviços), 9 dígitos: vai em toda nota (MEI e ME/EPP).
     codigo_nbs = models.CharField(max_length=9, blank=True)
     # Valor aproximado dos tributos (Lei 12.741/2012), em %, na nota de ME/EPP do Simples (o MEI não
     # informa). O padrão é o que a contabilidade passou para o serviço de divulgação (17.06.01).
@@ -160,13 +159,16 @@ class NotaFiscal(models.Model):
              (TIPO_ASSINATURA, "Assinatura do Appfiliado")]
 
     PREVIA = "previa"  # importada, esperando a pessoa confirmar o lote
+    # Linha do relatório sem o nome do vendedor (a Shopee não manda o de pessoa física): fica
+    # pendente no lote até a pessoa digitar o nome (servicos.preencher_nome).
+    FALTA_NOME = "sem_nome"
     FILA = "fila"
     ENVIANDO = "enviando"
     AUTORIZADA = "autorizada"
     RECUSADA = "recusada"
     ERRO = "erro"  # não deu para saber a resposta (queda, tempo esgotado): conferir antes de reenviar
     CANCELADA = "cancelada"
-    SITUACOES = [(PREVIA, "Prévia"), (FILA, "Na fila"), (ENVIANDO, "Enviando"), (AUTORIZADA, "Autorizada"),
+    SITUACOES = [(PREVIA, "Prévia"), (FALTA_NOME, "Falta o nome"), (FILA, "Na fila"), (ENVIANDO, "Enviando"), (AUTORIZADA, "Autorizada"),
                  (RECUSADA, "Recusada"), (ERRO, "Sem resposta"), (CANCELADA, "Cancelada")]
 
     EMAIL_PENDENTE = "pendente"
