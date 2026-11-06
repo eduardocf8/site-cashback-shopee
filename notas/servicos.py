@@ -126,16 +126,26 @@ def atualizar_cadastro(empresa) -> str:
     if dados["regime"] not in ("mei", "simples"):
         raise ErroNotas("Pela Receita Federal, a empresa não está mais no MEI nem no Simples Nacional. "
                         "Por enquanto o emissor atende só esses dois regimes.")
-    if dados["regime"] == empresa.regime:
+    # O que o governo já confirmou numa nota vale mais: a base pública da Receita demora a atualizar.
+    hoje = timezone.localdate()
+    nome_do_governo = empresa.nome_confirmado_em and hoje - empresa.nome_confirmado_em < REGIME_DO_GOVERNO_VALE
+    regime_do_governo = empresa.regime_confirmado_em and hoje - empresa.regime_confirmado_em < REGIME_DO_GOVERNO_VALE
+    avisos, campos = [], []
+    nome = dados.get("razao_social") or ""
+    if nome and nome != empresa.razao_social and not nome_do_governo:
+        empresa.razao_social = nome
+        campos.append("razao_social")
+        avisos.append(f"O nome da empresa mudou na Receita para {nome}.")
+    if dados["regime"] != empresa.regime and not regime_do_governo:
+        antes = empresa.get_regime_display()
+        empresa.regime = dados["regime"]
+        acertar_nbs_do_regime(empresa)
+        campos += ["regime", "codigo_nbs"]
+        avisos.append(f"O regime da empresa mudou na Receita: de {antes} para {empresa.get_regime_display()}.")
+    if not campos:
         return ""
-    if empresa.regime_confirmado_em and timezone.localdate() - empresa.regime_confirmado_em < REGIME_DO_GOVERNO_VALE:
-        # O governo já confirmou o regime numa nota; a base pública da Receita demora a atualizar.
-        return ""
-    antes = empresa.get_regime_display()
-    empresa.regime = dados["regime"]
-    acertar_nbs_do_regime(empresa)
-    empresa.save(update_fields=["regime", "codigo_nbs", "atualizada_em"])
-    return f"O regime da empresa mudou na Receita: de {antes} para {empresa.get_regime_display()}. Já atualizamos o cadastro."
+    empresa.save(update_fields=campos + ["atualizada_em"])
+    return " ".join(avisos) + " Já atualizamos o cadastro."
 
 
 def cadastrar_empresa(conta, cnpj_digitado: str) -> EmpresaNotas:
@@ -394,6 +404,28 @@ def _autorizar(nota, chave: str, xml: str, mensagens=None):
     nota.numero_nfse = _numero_da_nfse(xml)[:20] if xml else ""
     nota.mensagens = mensagens or []
     nota.autorizada_em = timezone.now()
+    if xml and nota.ambiente == AMBIENTE_PRODUCAO:
+        _acertar_nome_pela_nota(nota.empresa, xml)
+
+
+def _nome_do_emitente(xml: str) -> str:
+    try:
+        nome = etree.fromstring(xml.encode("utf-8")).findtext(f".//{{{dps.NS}}}emit/{{{dps.NS}}}xNome")
+    except (etree.XMLSyntaxError, ValueError):
+        return ""
+    return " ".join((nome or "").split())[:150]
+
+
+def _acertar_nome_pela_nota(empresa, xml: str):
+    """A razão social que o governo pôs na nota autorizada é a oficial (ex: mudou ao sair do MEI)."""
+    nome = _nome_do_emitente(xml)
+    if not nome:
+        return
+    if nome != empresa.razao_social:
+        logger.info("Notas: razão social de %s atualizada pela nota: %s -> %s.", empresa.cnpj, empresa.razao_social, nome)
+    empresa.razao_social = nome
+    empresa.nome_confirmado_em = timezone.localdate()
+    empresa.save(update_fields=["razao_social", "nome_confirmado_em", "atualizada_em"])
 
 
 def _reenviar_com_outro_endereco(nota, cert, cliente, campos, resposta):

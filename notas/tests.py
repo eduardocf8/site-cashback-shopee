@@ -1809,7 +1809,7 @@ class TestReenvioComOutroRegime(TestCase):
         with mock.patch.object(servicos, "ClienteSefin", ClienteEmSequencia([self.e0160, autorizada()])):
             servicos.processar(nota)
         empresa = EmpresaNotas.objects.get(pk=self.empresa.pk)
-        mei = {**DADOS_RECEITA_LOJA, "cnpj": CNPJ, "regime": "mei"}
+        mei = {**DADOS_RECEITA_LOJA, "cnpj": CNPJ, "regime": "mei", "razao_social": empresa.razao_social}
         with mock.patch.object(receita, "consultar", return_value=mei):
             self.assertEqual(servicos.atualizar_cadastro(empresa), "")
         self.assertEqual(EmpresaNotas.objects.get(pk=empresa.pk).regime, "simples")
@@ -1827,3 +1827,44 @@ class TestReenvioComOutroRegime(TestCase):
         resposta.json.return_value["data_exclusao_do_mei"] = "2099-01-01"
         with mock.patch.object(receita.requests, "get", return_value=resposta):
             self.assertEqual(receita.consultar(CNPJ)["regime"], "mei")
+
+
+class TestNomeDaEmpresa(TestCase):
+    """A razão social muda (ex: ao sair do MEI): vem da nota autorizada em produção (o nome que o
+    governo põe nela) ou da Receita, e a nota vale mais que a base pública, que demora a atualizar."""
+
+    def setUp(self):
+        cache.clear()
+        self.addCleanup(cache.clear)
+        self.empresa = criar_empresa(criar_conta(), razao_social="12.345.678 BIA LIMA")
+        certificado.guardar(self.empresa, gerar_pfx(), "senha-do-pfx")
+
+    def autorizada_com_nome(self, nome):
+        xml = (f'<NFSe xmlns="{dps.NS}" versao="1.01"><infNFSe Id="NFS1"><nNFSe>42</nNFSe><emit><CNPJ>{CNPJ}</CNPJ>'
+               f'<xNome>{nome}</xNome></emit></infNFSe></NFSe>')
+        return Resposta(201, {"chaveAcesso": "3550308" + "1" * 43,
+                              "nfseXmlGZipB64": base64.b64encode(gzip.compress(xml.encode())).decode()})
+
+    def test_nota_de_producao_traz_o_nome_novo(self):
+        nota = servicos.emitir_nota_shopee(self.empresa, "10,00")
+        with mock.patch.object(servicos, "ClienteSefin", ClienteFalso(emitir=self.autorizada_com_nome("BIA COMERCIO LTDA"))):
+            servicos.processar(nota)
+        salvo = EmpresaNotas.objects.get(pk=self.empresa.pk)
+        self.assertEqual((salvo.razao_social, salvo.nome_confirmado_em), ("BIA COMERCIO LTDA", timezone.localdate()))
+        # A Receita ainda com o nome antigo não desfaz.
+        with mock.patch.object(receita, "consultar", return_value={**DADOS_RECEITA_LOJA, "cnpj": CNPJ, "regime": "mei",
+                                                                   "razao_social": "12.345.678 BIA LIMA"}):
+            servicos.atualizar_cadastro(salvo)
+        self.assertEqual(EmpresaNotas.objects.get(pk=self.empresa.pk).razao_social, "BIA COMERCIO LTDA")
+
+    def test_nota_de_teste_nao_muda_o_nome(self):
+        with mock.patch.object(servicos, "ClienteSefin", ClienteFalso(emitir=self.autorizada_com_nome("OUTRO NOME LTDA"))):
+            servicos.emitir_teste(self.empresa)
+        self.assertEqual(EmpresaNotas.objects.get(pk=self.empresa.pk).razao_social, "12.345.678 BIA LIMA")
+
+    def test_nome_novo_pela_receita(self):
+        with mock.patch.object(receita, "consultar", return_value={**DADOS_RECEITA_LOJA, "cnpj": CNPJ, "regime": "mei",
+                                                                   "razao_social": "BIA COMERCIO LTDA"}):
+            aviso = servicos.atualizar_cadastro(self.empresa)
+        self.assertEqual(aviso, "O nome da empresa mudou na Receita para BIA COMERCIO LTDA. Já atualizamos o cadastro.")
+        self.assertEqual(EmpresaNotas.objects.get(pk=self.empresa.pk).razao_social, "BIA COMERCIO LTDA")
