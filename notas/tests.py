@@ -820,7 +820,14 @@ class TestIBSCBS(TestCase):
         self.assertNotIn("regApIBSCBSSN", xml)  # MEI não informa
         simples = dps_exemplo(regime="simples")
         dps.com_campos_novos(simples, {"IBSCBS"})
+        self.assertNotIn("regApIBSCBSSN", dps.para_bytes(simples).decode())  # opcional: só quando o ambiente pede
+        simples = dps_exemplo(regime="simples")
+        dps.com_campos_novos(simples, {"IBSCBS", "regApIBSCBSSN"})
         self.assertIn("<regApTribSN>1</regApTribSN><regApIBSCBSSN>1</regApIBSCBSSN>", dps.para_bytes(simples).decode())
+        pede = [{"codigo": "E1235", "descricao": "The element 'regTrib' in namespace 'x' has invalid child element "
+                                                  "'regEspTrib' in namespace 'x'. List of possible elements expected: "
+                                                  "'regApIBSCBSSN' in namespace 'x'."}]
+        self.assertEqual(dps.ajuste_de_campos(pede, {"IBSCBS"}), {"IBSCBS", "regApIBSCBSSN"})
         self.assertEqual(dps.ajuste_de_campos([{"codigo": "E0855", "descricao": ERRO_IBSCBS_REAL}], {"finNFSe"}),
                          {"finNFSe", "IBSCBS"})
 
@@ -1761,3 +1768,62 @@ class TestMigracaoDoNBS(TestCase):
         migracao.nbs_da_me(apps, None)
         self.assertEqual([EmpresaNotas.objects.get(pk=e.pk).codigo_nbs for e in (me, digitado, mei)],
                          ["114061900", "114061200", "114061100"])
+
+
+
+class TestReenvioComOutroRegime(TestCase):
+    """Recusa E0160 (o governo diz que a empresa não é mais MEI): reenvia como ME, com os ajustes de
+    esquema, e o que o governo responder como ME é o que vale (e o que aparece na tela)."""
+
+    def setUp(self):
+        cache.clear()
+        self.addCleanup(cache.clear)
+        self.empresa = criar_empresa(criar_conta(), codigo_nbs="114061100")
+        certificado.guardar(self.empresa, gerar_pfx(), "senha-do-pfx")
+        self.e0160 = Resposta(400, {"erros": [{"Codigo": "E0160", "Descricao": "Opção do Simples não confere."}]})
+
+    def test_como_me_recusada_por_outro_motivo_fica_me_e_mostra_o_motivo(self):
+        nota = servicos.emitir_nota_shopee(self.empresa, "10,00")
+        outro = Resposta(400, {"erros": [{"Codigo": "E0712", "Descricao": "Outro problema da nota de ME."}]})
+        with mock.patch.object(servicos, "ClienteSefin", ClienteEmSequencia([self.e0160, outro])):
+            servicos.processar(nota)
+        self.assertEqual(nota.situacao, "recusada")
+        self.assertEqual([m["codigo"] for m in nota.mensagens], ["E0712"])
+        salvo = EmpresaNotas.objects.get(pk=self.empresa.pk)
+        self.assertEqual((salvo.regime, salvo.codigo_nbs), ("simples", "114061900"))
+        self.assertEqual(salvo.regime_confirmado_em, timezone.localdate())
+
+    def test_reenvio_como_me_tambem_se_ajusta_ao_esquema(self):
+        nota = servicos.emitir_nota_shopee(self.empresa, "10,00", ambiente=AMBIENTE_TESTE)
+        pede = Resposta(400, {"erros": [{"Codigo": "E1235", "Descricao": (
+            "The element 'regTrib' in namespace 'x' has invalid child element 'regEspTrib' in namespace 'x'. "
+            "List of possible elements expected: 'regApIBSCBSSN' in namespace 'x'.")}]})
+        falso = ClienteEmSequencia([self.e0160, pede, autorizada()])
+        with mock.patch.object(servicos, "ClienteSefin", falso):
+            servicos.processar(nota)
+        self.assertEqual(nota.situacao, "autorizada")
+        self.assertIn("<regApIBSCBSSN>1</regApIBSCBSSN>", falso.emitidas[2].decode())
+
+    def test_receita_atrasada_nao_desfaz_o_regime_do_governo(self):
+        nota = servicos.emitir_nota_shopee(self.empresa, "10,00")
+        with mock.patch.object(servicos, "ClienteSefin", ClienteEmSequencia([self.e0160, autorizada()])):
+            servicos.processar(nota)
+        empresa = EmpresaNotas.objects.get(pk=self.empresa.pk)
+        mei = {**DADOS_RECEITA_LOJA, "cnpj": CNPJ, "regime": "mei"}
+        with mock.patch.object(receita, "consultar", return_value=mei):
+            self.assertEqual(servicos.atualizar_cadastro(empresa), "")
+        self.assertEqual(EmpresaNotas.objects.get(pk=empresa.pk).regime, "simples")
+        empresa.regime_confirmado_em = timezone.localdate() - dt.timedelta(days=120)  # já faz tempo: a Receita vale
+        with mock.patch.object(receita, "consultar", return_value=mei):
+            self.assertIn("para MEI", servicos.atualizar_cadastro(empresa))
+
+    def test_receita_com_data_de_saida_do_mei(self):
+        resposta = mock.Mock(status_code=200)
+        resposta.json.return_value = {"razao_social": "LOJA", "codigo_municipio_ibge": 3550308, "uf": "SP",
+                                      "opcao_pelo_mei": True, "data_exclusao_do_mei": "2026-11-01",
+                                      "opcao_pelo_simples": True, "descricao_situacao_cadastral": "ATIVA"}
+        with mock.patch.object(receita.requests, "get", return_value=resposta):
+            self.assertEqual(receita.consultar(CNPJ)["regime"], "simples")
+        resposta.json.return_value["data_exclusao_do_mei"] = "2099-01-01"
+        with mock.patch.object(receita.requests, "get", return_value=resposta):
+            self.assertEqual(receita.consultar(CNPJ)["regime"], "mei")

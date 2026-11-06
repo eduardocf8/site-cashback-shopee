@@ -5,6 +5,7 @@ Nenhuma das duas pede chave."""
 
 import logging
 import re
+from datetime import date
 
 import requests
 
@@ -59,6 +60,9 @@ def consultar(cnpj: str) -> dict:
         except ValueError:
             continue
         mei = bool(d.get("opcao_pelo_mei"))
+        saiu_do_mei = str(d.get("data_exclusao_do_mei") or "")[:10]
+        if mei and re.fullmatch(r"\d{4}-\d{2}-\d{2}", saiu_do_mei) and saiu_do_mei <= date.today().isoformat():
+            mei = False  # já saiu do MEI (desenquadramento), mesmo com a opção ainda marcada
         tipo = (d.get("descricao_tipo_de_logradouro") or "").strip()
         rua = (d.get("logradouro") or "").strip()
         return {

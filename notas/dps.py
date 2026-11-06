@@ -261,7 +261,7 @@ def com_campos_novos(raiz: etree._Element, campos) -> etree._Element:
         dest = etree.Element(f"{{{NS}}}indDest")
         dest.text = "0"
         (toma if toma is not None else inf.find(f"{{{NS}}}prest")).addnext(dest)
-    if "regApIBSCBSSN" in campos or "IBSCBS" in campos:
+    if "regApIBSCBSSN" in campos:  # opcional: só quando o ambiente pede (ver ajuste_de_campos)
         reg = inf.find(f"{{{NS}}}prest/{{{NS}}}regTrib")
         if reg.findtext(f"{{{NS}}}opSimpNac") == "3":  # só ME/EPP do Simples; MEI não informa
             ap = etree.Element(f"{{{NS}}}regApIBSCBSSN")
