@@ -54,6 +54,9 @@ def acertar_nbs_do_regime(empresa) -> bool:
         return True
     return False
 VALOR_MAXIMO = Decimal("999999.99")
+# Depois que o governo confirma o regime numa nota (recusa E0160 e o outro regime passa), a base
+# pública da Receita (que demora a atualizar) não desfaz por esse tempo.
+REGIME_DO_GOVERNO_VALE = timedelta(days=90)
 
 
 class ErroNotas(ValueError):
@@ -124,6 +127,9 @@ def atualizar_cadastro(empresa) -> str:
         raise ErroNotas("Pela Receita Federal, a empresa não está mais no MEI nem no Simples Nacional. "
                         "Por enquanto o emissor atende só esses dois regimes.")
     if dados["regime"] == empresa.regime:
+        return ""
+    if empresa.regime_confirmado_em and timezone.localdate() - empresa.regime_confirmado_em < REGIME_DO_GOVERNO_VALE:
+        # O governo já confirmou o regime numa nota; a base pública da Receita demora a atualizar.
         return ""
     antes = empresa.get_regime_display()
     empresa.regime = dados["regime"]
@@ -411,6 +417,26 @@ def _reenviar_com_outro_endereco(nota, cert, cliente, campos, resposta):
     return resposta
 
 
+def _recusa_de_regime(mensagens) -> bool:
+    """E0160: a opção pelo Simples (MEI ou ME/EPP) da DPS não bate com o cadastro do governo no mês."""
+    return any(m.get("codigo") == "E0160" for m in mensagens)
+
+
+def _emitir_ajustando(nota, cert, cliente, campos):
+    """Emite e, se o governo recusar por causa de um campo novo do esquema, ajusta e reenvia na hora."""
+    resposta = cliente.emitir(_montar_assinada(nota, cert, campos))
+    for _ in range(8):
+        ajustados = dps.ajuste_de_campos(resposta.mensagens, campos) if not resposta.ok else None
+        if ajustados is None:
+            break
+        logger.warning("Notas: ambiente %s recusou %s; tentando com os campos novos %s.", nota.ambiente,
+                       [f"{m['codigo']} {m['descricao'][:300]}" for m in resposta.mensagens], sorted(ajustados))
+        campos = ajustados
+        _guardar_campos(nota.ambiente, campos)
+        resposta = cliente.emitir(_montar_assinada(nota, cert, campos))
+    return resposta, campos
+
+
 def processar(nota: NotaFiscal, cert=None, cliente=None) -> NotaFiscal:
     """Envia uma nota (ou confere uma que ficou sem resposta). Nunca levanta exceção:
     o resultado fica na própria nota."""
@@ -430,28 +456,23 @@ def processar(nota: NotaFiscal, cert=None, cliente=None) -> NotaFiscal:
                 _autorizar(nota, chave, consulta.xml_nfse() if consulta.ok else "")
                 nota.save()
                 return nota
-        campos = campos_novos(nota.ambiente)
-        resposta = cliente.emitir(_montar_assinada(nota, cert, campos))
-        for _ in range(8):  # o governo mudou o esquema: ajusta e reenvia na hora
-            ajustados = dps.ajuste_de_campos(resposta.mensagens, campos) if not resposta.ok else None
-            if ajustados is None:
-                break
-            logger.warning("Notas: ambiente %s recusou %s; tentando com os campos novos %s.", nota.ambiente,
-                           [f"{m['codigo']} {m['descricao'][:300]}" for m in resposta.mensagens], sorted(ajustados))
-            campos = ajustados
-            _guardar_campos(nota.ambiente, campos)
-            resposta = cliente.emitir(_montar_assinada(nota, cert, campos))
-        if not resposta.ok and any(m["codigo"] == "E0160" for m in resposta.mensagens):
-            # Regime errado para o governo (ex: virou ME e a base pública ainda dizia MEI):
-            # tenta com o outro regime; se passar, o cadastro fica com ele.
+        resposta, campos = _emitir_ajustando(nota, cert, cliente, campos_novos(nota.ambiente))
+        if not resposta.ok and _recusa_de_regime(resposta.mensagens):
+            # Regime errado para o governo (ex: virou ME e a base pública ainda dizia MEI): tenta com o
+            # outro. Se o governo não reclamar mais do regime (a nota passou, ou foi recusada por outro
+            # motivo), o cadastro fica com ele e a tela mostra essa resposta, que é a que interessa.
             empresa = nota.empresa
             antes, nbs_antes = empresa.regime, empresa.codigo_nbs
             empresa.regime = "simples" if antes == "mei" else "mei"
             acertar_nbs_do_regime(empresa)
-            nova = cliente.emitir(_montar_assinada(nota, cert, campos))
-            if nova.ok:
+            nova, campos = _emitir_ajustando(nota, cert, cliente, campos)
+            if nova.ok or not _recusa_de_regime(nova.mensagens):
                 logger.info("Notas: regime de %s corrigido de %s para %s (E0160).", empresa.cnpj, antes, empresa.regime)
-                empresa.save(update_fields=["regime", "codigo_nbs", "atualizada_em"])
+                if not nova.ok:
+                    logger.warning("Notas: com o regime %s, a nota %s foi recusada por outro motivo: %s", empresa.regime,
+                                   nota.pk, [f"{m['codigo']} {m['descricao'][:300]}" for m in nova.mensagens])
+                empresa.regime_confirmado_em = timezone.localdate()
+                empresa.save(update_fields=["regime", "codigo_nbs", "regime_confirmado_em", "atualizada_em"])
                 resposta = nova
             else:
                 empresa.regime, empresa.codigo_nbs = antes, nbs_antes

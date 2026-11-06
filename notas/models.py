@@ -28,6 +28,8 @@ class EmpresaNotas(models.Model):
     uf = models.CharField(max_length=2, blank=True)
     inscricao_municipal = models.CharField(max_length=20, blank=True)
     regime = models.CharField(max_length=10, choices=REGIMES, default=REGIME_MEI)
+    # Quando o governo confirmou o regime numa nota (ver servicos.processar, recusa E0160).
+    regime_confirmado_em = models.DateField(null=True, blank=True)
 
     # O serviço que vai em todas as notas (código nacional de 6 dígitos, código do
     # município quando a prefeitura pede, e a descrição).
