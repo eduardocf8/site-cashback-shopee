@@ -383,8 +383,14 @@ def _sub_id_sugerido(nome: str) -> str:
 def _form_contexto(request, conta, form, automacao=None):
     plano = planos_do_app.automacoes(conta)
     gatilhos = [{"valor": v, "nome": n, "livre": v in plano["gatilhos"]} for v, n in Automacao.GATILHOS]
+    from instagram_painel import anteriores
+
+    busca = None
+    if automacao and automacao.gatilho in anteriores.GATILHOS:
+        busca = {"ultima": anteriores.ultimo(automacao), "motivo": anteriores.motivo_para_nao_buscar(automacao)}
     return _contexto(request, SLUG_AUTOMACOES, form=form, automacao=automacao, ig=_ig(conta), gatilhos=gatilhos, plano=plano,
-                     disparos=automacao.disparos.all()[:8] if automacao else [])  # o resto fica no Histórico
+                     disparos=automacao.disparos.all()[:8] if automacao else [],  # o resto fica no Histórico
+                     busca=busca)
 
 
 @_automacoes
@@ -448,6 +454,23 @@ def automacao_ligar(request, conta, pk):
     if request.POST.get("voltar") == "lista":
         return redirect("painel_estudio_automacoes")
     return redirect("painel_estudio_automacao", pk=a.pk)
+
+
+@require_POST
+@_automacoes
+def automacao_anteriores(request, conta, pk):
+    """"Responder quem já comentou": o worker busca no Instagram e põe na fila quem ainda não recebeu."""
+    from instagram_painel import anteriores
+
+    a = get_object_or_404(Automacao, pk=pk, conta=conta)
+    try:
+        anteriores.pedir(a)
+    except anteriores.ErroAnteriores as erro:
+        messages.error(request, str(erro))
+    else:
+        quem = "quem comentou nos últimos 7 dias" if a.gatilho == Automacao.COMENTARIO else "quem mandou DM nas últimas 24 horas"
+        messages.success(request, f"Buscando {quem}. Em alguns minutos, quem ainda não recebeu entra na fila.")
+    return redirect(reverse("painel_estudio_automacao", kwargs={"pk": a.pk}) + "#anteriores")
 
 
 @require_POST

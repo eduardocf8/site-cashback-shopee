@@ -132,6 +132,26 @@ def stories_no_ar(token: str) -> list[dict]:
     return dados.get("data", [])
 
 
+def comentarios(token: str, midia_id: str, depois: str = "") -> tuple[list[dict], str]:
+    """Uma página (até 50) dos comentários de primeiro nível de um post, e o cursor da próxima ("" no fim).
+    Cada um: {id, text, timestamp, username, from: {id, username}}."""
+    params = {"fields": "id,text,timestamp,username,from", "limit": 50}
+    if depois:
+        params["after"] = depois
+    dados = _chamar("GET", f"{midia_id}/comments", token, params=params)
+    paginas = dados.get("paging") or {}
+    return dados.get("data", []), ((paginas.get("cursors") or {}).get("after", "") if paginas.get("next") else "")
+
+
+def conversas_recentes(token: str, limite: int = 50) -> list[dict]:
+    """As conversas da DM mais recentes, cada uma com as últimas mensagens:
+    {updated_time, messages: {data: [{id, created_time, from: {id, username}, message}]}}."""
+    dados = _chamar("GET", "me/conversations", token, params={
+        "platform": "instagram", "limit": limite,
+        "fields": "updated_time,messages.limit(20){id,created_time,from,message}"})
+    return dados.get("data", [])
+
+
 # --- respostas ---------------------------------------------------------------------------------
 
 def responder_comentario(token: str, comentario_id: str, texto: str) -> str:
