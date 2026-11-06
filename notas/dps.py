@@ -65,7 +65,7 @@ class Servico:
     codigo_tributacao: str  # cTribNac, 6 dígitos
     descricao: str
     codigo_municipal: str = ""
-    nbs: str = ""  # 9 dígitos; na ME/EPP vai sempre, no MEI só junto com o IBS/CBS
+    nbs: str = ""  # 9 dígitos (vai em toda nota, MEI e ME/EPP)
     # Valor aproximado dos tributos em % (federal, estadual, municipal), só na nota de ME/EPP.
     # Vazio = não informa (indTotTrib = 0).
     tributos: tuple | None = None

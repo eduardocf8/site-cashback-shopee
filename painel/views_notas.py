@@ -81,10 +81,10 @@ class ServicoForm(forms.Form):
                                         help_text="6 números, como aparece na sua nota (ex: 17.06.01 → 170601).")
     codigo_municipal = forms.CharField(label="Código do município (se a prefeitura pedir)", max_length=20,
                                        required=False)
-    codigo_nbs = forms.CharField(label="Código NBS", max_length=14, required=False,
-                                 help_text="No MEI, vai junto com o IBS/CBS da reforma. Para 17.06: 1.1406.11.00 "
-                                           "(campanhas publicitárias), 1.1406.12.00 (marketing direto) ou "
-                                           "1.1406.19.00 (outros serviços de propaganda).")
+    codigo_nbs = forms.CharField(label="Código NBS", max_length=14,
+                                 help_text="Obrigatório. Para o 17.06.01: 1.1406.19.00 (serviços de propaganda). "
+                                           "Outros do 17.06: 1.1406.11.00 (campanhas publicitárias) e 1.1406.12.00 "
+                                           "(marketing direto).")
     inscricao_municipal = forms.CharField(label="Inscrição municipal (se tiver)", max_length=20, required=False)
     descricao_servico = forms.CharField(label="Descrição do serviço", max_length=2000,
                                         widget=forms.Textarea(attrs={"rows": 3}))
@@ -103,10 +103,7 @@ class ServicoForm(forms.Form):
 
     def __init__(self, *args, regime="mei", **kwargs):
         super().__init__(*args, **kwargs)
-        if regime == "simples":
-            self.fields["codigo_nbs"].help_text = ("Na nota de ME/EPP o NBS é obrigatório. Para o 17.06.01: "
-                                                   "1.1406.19.00 (serviços de propaganda).")
-        else:
+        if regime != "simples":
             for nome in self.CAMPOS_DA_ME:  # o MEI não informa o valor aproximado dos tributos
                 del self.fields[nome]
 

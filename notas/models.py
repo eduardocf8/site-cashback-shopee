@@ -38,8 +38,7 @@ class EmpresaNotas(models.Model):
     codigo_tributacao = models.CharField(max_length=6, blank=True)
     codigo_municipal = models.CharField(max_length=20, blank=True)
     descricao_servico = models.TextField(blank=True)
-    # NBS (Nomenclatura Brasileira de Serviços), 9 dígitos: vai sempre na nota de ME/EPP e, no MEI,
-    # junto com o IBS/CBS.
+    # NBS (Nomenclatura Brasileira de Serviços), 9 dígitos: vai em toda nota (MEI e ME/EPP).
     codigo_nbs = models.CharField(max_length=9, blank=True)
     # Valor aproximado dos tributos (Lei 12.741/2012), em %, na nota de ME/EPP do Simples (o MEI não
     # informa). O padrão é o que a contabilidade passou para o serviço de divulgação (17.06.01).

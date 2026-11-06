@@ -32,27 +32,24 @@ VALOR_TESTE = Decimal("1.00")
 # publicidade, inclusive promoção de vendas). A pessoa pode trocar na tela.
 SERVICO_PADRAO_CODIGO = "170601"
 SERVICO_PADRAO_DESCRICAO = "Divulgação e venda de produtos"
-# NBS que a tabela oficial (Anexo VIII da reforma) liga ao 17.06 com cIndOp 100301/cClassTrib
-# 000001: 1.1406.11.00 "Serviços de campanhas publicitárias". É o do MEI (só vai com o IBS/CBS).
-SERVICO_PADRAO_NBS = "114061100"
-# ME/EPP: 1.1406.19.00 (serviços de propaganda), o que a contabilidade pede pra nota de afiliado.
-SERVICO_PADRAO_NBS_ME = "114061900"
+# NBS do serviço padrão (MEI e ME/EPP): 1.1406.19.00 (serviços de propaganda), o que a
+# contabilidade pede para a nota de afiliado. Vai em toda nota (o Emissor Nacional exige).
+SERVICO_PADRAO_NBS = "114061900"
+# O padrão de antes (1.1406.11.00, campanhas publicitárias): quem ainda está com ele passa pro novo.
+NBS_PADRAO_ANTIGO = "114061100"
 
 
-def nbs_padrao(regime: str) -> str:
-    return SERVICO_PADRAO_NBS_ME if regime == "simples" else SERVICO_PADRAO_NBS
-
-
-def acertar_nbs_do_regime(empresa) -> bool:
-    """Quando o regime muda (MEI <-> ME), troca o NBS padrão de um pelo do outro. Um NBS que a
-    pessoa digitou fica. Só mexe no objeto: quem chama salva. Devolve se trocou."""
+def acertar_nbs_padrao(empresa) -> bool:
+    """Troca o NBS padrão antigo (ou vazio) pelo de agora, no serviço padrão. Um NBS que a pessoa
+    digitou fica. Só mexe no objeto: quem chama salva. Devolve se trocou."""
     if empresa.codigo_tributacao not in ("", SERVICO_PADRAO_CODIGO):
         return False
-    novo = nbs_padrao(empresa.regime)
-    if empresa.codigo_nbs in ("", SERVICO_PADRAO_NBS, SERVICO_PADRAO_NBS_ME) and empresa.codigo_nbs != novo:
-        empresa.codigo_nbs = novo
+    if empresa.codigo_nbs in ("", NBS_PADRAO_ANTIGO):
+        empresa.codigo_nbs = SERVICO_PADRAO_NBS
         return True
     return False
+
+
 VALOR_MAXIMO = Decimal("999999.99")
 # Depois que o governo confirma o regime numa nota (recusa E0160 e o outro regime passa), a base
 # pública da Receita (que demora a atualizar) não desfaz por esse tempo.
@@ -139,7 +136,7 @@ def atualizar_cadastro(empresa) -> str:
     if dados["regime"] != empresa.regime and not regime_do_governo:
         antes = empresa.get_regime_display()
         empresa.regime = dados["regime"]
-        acertar_nbs_do_regime(empresa)
+        acertar_nbs_padrao(empresa)
         campos += ["regime", "codigo_nbs"]
         avisos.append(f"O regime da empresa mudou na Receita: de {antes} para {empresa.get_regime_display()}.")
     if not campos:
@@ -163,7 +160,7 @@ def cadastrar_empresa(conta, cnpj_digitado: str) -> EmpresaNotas:
         conta=conta, cnpj=dados["cnpj"],
         defaults={k: dados[k] for k in ("razao_social", "municipio_ibge", "municipio_nome", "uf", "regime")},
     )
-    if acertar_nbs_do_regime(empresa):  # cadastrada de novo depois de mudar de regime
+    if acertar_nbs_padrao(empresa):  # cadastrada de novo (ex: com o NBS padrão antigo)
         empresa.save(update_fields=["codigo_nbs", "atualizada_em"])
     aplicar_servico_padrao(empresa)
     return empresa
@@ -172,7 +169,7 @@ def cadastrar_empresa(conta, cnpj_digitado: str) -> EmpresaNotas:
 def aplicar_servico_padrao(empresa):
     """Preenche o serviço padrão se a empresa ainda não tem um (nunca troca o que a pessoa salvou)."""
     if not empresa.codigo_nbs and empresa.codigo_tributacao in ("", SERVICO_PADRAO_CODIGO):
-        empresa.codigo_nbs = nbs_padrao(empresa.regime)
+        empresa.codigo_nbs = SERVICO_PADRAO_NBS
         empresa.save(update_fields=["codigo_nbs", "atualizada_em"])
     if empresa.codigo_tributacao or empresa.descricao_servico:
         return
@@ -196,8 +193,8 @@ def salvar_servico(empresa, codigo: str, codigo_municipal: str, descricao: str, 
         nbs = re.sub(r"\D", "", nbs)
         if nbs and len(nbs) != 9:
             raise ErroNotas("O código NBS tem 9 números (ex: 1.1406.11.00).")
-        if not nbs and empresa.regime == "simples":
-            raise ErroNotas("Na nota de ME/EPP o código NBS é obrigatório (ex: 1.1406.19.00).")
+        if not nbs:
+            raise ErroNotas("O código NBS é obrigatório (ex: 1.1406.19.00).")
         empresa.codigo_nbs = nbs
     campos = ["codigo_tributacao", "codigo_municipal", "descricao_servico", "inscricao_municipal", "codigo_nbs"]
     if tributos is not None:  # valor aproximado dos tributos (%), só da ME/EPP
@@ -351,18 +348,29 @@ def _recusa_de_endereco(mensagens) -> bool:
                for m in mensagens)
 
 
-def _servico(nota, com_ibscbs: bool) -> dps.Servico:
+def _servico(nota, com_ibscbs: bool = False) -> dps.Servico:
     """O serviço da nota: o próprio dela (notas das assinaturas do Appfiliado) ou o da empresa.
-    Na ME/EPP o NBS vai sempre e, no serviço da empresa, o valor aproximado dos tributos (%).
-    As notas das assinaturas ainda não informam os percentuais (outro serviço, outros valores)."""
+    O NBS vai sempre (MEI e ME/EPP); na ME/EPP, no serviço da empresa, vai também o valor aproximado
+    dos tributos (%). As notas das assinaturas ainda não informam os percentuais (outro serviço)."""
     e = nota.empresa
     me = e.regime == "simples"
     if nota.servico_codigo:
         return dps.Servico(nota.servico_codigo, nota.servico_descricao, nota.servico_codigo_municipal,
-                           nota.servico_nbs if com_ibscbs or me else "")
+                           nota.servico_nbs)
     tributos = (e.tributos_federal, e.tributos_estadual, e.tributos_municipal) if me else None
-    return dps.Servico(e.codigo_tributacao, e.descricao_servico, e.codigo_municipal,
-                       e.codigo_nbs if com_ibscbs or me else "", tributos)
+    return dps.Servico(e.codigo_tributacao, _descricao(nota), e.codigo_municipal, e.codigo_nbs, tributos)
+
+
+def _descricao(nota) -> str:
+    """A descrição do serviço da empresa; nas notas dos vendedores, com o mês das vendas do relatório
+    (ex: "Divulgação e venda de produtos - vendas de outubro/2026"), para conferir com a Shopee."""
+    descricao = nota.empresa.descricao_servico
+    if nota.lote_id and nota.tipo == NotaFiscal.TIPO_VENDEDOR:
+        mes = nota.lote.mes_referencia
+        sufixo = f" - vendas de {MESES[mes.month - 1]}/{mes.year}"
+        if sufixo not in descricao:
+            descricao = descricao[:2000 - len(sufixo)] + sufixo
+    return descricao
 
 
 def _montar_assinada(nota, cert, campos=None, end=_PADRAO) -> bytes:
@@ -496,7 +504,7 @@ def processar(nota: NotaFiscal, cert=None, cliente=None) -> NotaFiscal:
             empresa = nota.empresa
             antes, nbs_antes = empresa.regime, empresa.codigo_nbs
             empresa.regime = "simples" if antes == "mei" else "mei"
-            acertar_nbs_do_regime(empresa)
+            acertar_nbs_padrao(empresa)
             nova, campos = _emitir_ajustando(nota, cert, cliente, campos)
             if nova.ok or not _recusa_de_regime(nova.mensagens):
                 logger.info("Notas: regime de %s corrigido de %s para %s (E0160).", empresa.cnpj, antes, empresa.regime)

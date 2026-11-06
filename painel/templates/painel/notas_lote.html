@@ -127,7 +127,7 @@
   </nav>
   <form method="get" class="filtros-vendas">
     <input type="hidden" name="ver" value="{{ filtro }}">
-    <input type="search" name="busca" value="{{ busca }}" placeholder="Buscar loja, razão social ou CNPJ" aria-label="Buscar">
+    <input type="search" name="busca" value="{{ busca }}" placeholder="Buscar loja, nome, CNPJ ou CPF" aria-label="Buscar">
   </form>
   {% if pagina.object_list %}
     {% if lote.ambiente == "1" %}{% include "painel/_notas_tabela.html" with notas=pagina.object_list com_email=True voltar="lote" sem_selo=True %}
