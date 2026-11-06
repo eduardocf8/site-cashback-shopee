@@ -1868,3 +1868,79 @@ class TestNomeDaEmpresa(TestCase):
             aviso = servicos.atualizar_cadastro(self.empresa)
         self.assertEqual(aviso, "O nome da empresa mudou na Receita para BIA COMERCIO LTDA. Já atualizamos o cadastro.")
         self.assertEqual(EmpresaNotas.objects.get(pk=self.empresa.pk).razao_social, "BIA COMERCIO LTDA")
+
+
+@override_settings(APPFILIADO_PAINEL_HOSTS=[HOST], ALLOWED_HOSTS=[HOST, "testserver"], APPFILIADO_PAINEL_URL=f"https://{HOST}")
+class TestVendedorSemNome(TestCase):
+    """A Shopee não manda o nome do vendedor pessoa física: a linha vira nota esperando o nome, que
+    a pessoa digita na prévia ou depois; sem o nome, o lote sai sem ela e ela fica pendente."""
+
+    def setUp(self):
+        cache.clear()
+        self.addCleanup(cache.clear)
+        receita_falsa = mock.patch.object(receita, "consultar", return_value={"regime": "mei"})
+        receita_falsa.start()
+        self.addCleanup(receita_falsa.stop)
+        self.conta = criar_conta()
+        self.empresa = criar_empresa(self.conta)
+        certificado.guardar(self.empresa, gerar_pfx(), "senha-do-pfx")
+        self.linhas = [
+            ("Sep 2026", "loja_um", "1001", "R$0,86", "11222333000181", "", "", "LOJA UM LTDA", "", "BR", "", "um@loja.com"),
+            ("Sep 2026", "Variedades da _Ana", "1005", "R$0,60", "", "52998224725", "", "", "Av. B, 2 - Centro, Santos - SP",
+             "BR", "", "ana@exemplo.com"),
+        ]
+
+    def importar(self, ambiente="1"):
+        return servicos.importar_relatorio(self.empresa, relatorio_csv(self.linhas), "r.csv", ambiente)
+
+    def test_vira_nota_esperando_o_nome_e_o_lote_sai_sem_ela(self):
+        lote = self.importar()
+        self.assertEqual(lote.ignoradas, [])
+        pendente = lote.notas.get(loja_id="1005")
+        self.assertEqual((pendente.situacao, pendente.tomador_tipo, pendente.tomador_nome), ("sem_nome", "cpf", ""))
+        self.assertEqual(servicos.confirmar_lote(lote), 1)  # só a que tem nome
+        self.assertEqual(NotaFiscal.objects.get(pk=pendente.pk).situacao, "sem_nome")
+        # Depois do lote emitido: com o nome, vai pra fila na hora, com o e-mail agendado.
+        self.assertEqual(servicos.preencher_nome(pendente, "  Ana   Souza "), "fila")
+        nota = NotaFiscal.objects.get(pk=pendente.pk)
+        self.assertEqual((nota.situacao, nota.tomador_nome, nota.email_situacao), ("fila", "Ana Souza", "pendente"))
+        self.assertEqual(nota.competencia, timezone.localdate())
+
+    def test_nome_na_previa_entra_no_lote(self):
+        lote = self.importar()
+        self.assertEqual(servicos.preencher_nome(lote.notas.get(loja_id="1005"), "Ana Souza"), "previa")
+        self.assertEqual(servicos.confirmar_lote(lote), 2)
+
+    def test_nome_invalido_e_nao_emitir(self):
+        lote = self.importar()
+        pendente = lote.notas.get(loja_id="1005")
+        for ruim in ("", "  a ", "12345678"):
+            with self.assertRaisesMessage(servicos.ErroNotas, "nome do vendedor"):
+                servicos.preencher_nome(pendente, ruim)
+        self.assertTrue(servicos.tirar_nota_sem_nome(pendente))
+        self.assertFalse(lote.notas.filter(loja_id="1005").exists())
+
+    def test_importar_de_novo_nao_duplica_a_pendente(self):
+        lote = self.importar()
+        servicos.confirmar_lote(lote)
+        novo = self.importar()
+        self.assertEqual([i["motivo"] for i in novo.ignoradas if i["loja"] == "Variedades da _Ana"],
+                         ["já está em outro lote, esperando o nome"])
+
+    def test_tela_do_lote(self):
+        lote = self.importar()
+        cliente = Client(HTTP_HOST=HOST)
+        cliente.post("/entrar/", {"email": "bia@exemplo.com", "senha": SENHA})
+        pagina = cliente.get(f"/notas/lote/{lote.pk}/").content.decode()
+        self.assertIn("1 nota esperando o nome do vendedor", pagina)
+        self.assertIn("Emitir 1 nota", pagina)  # a pendente não entra na conta do lote
+        self.assertIn("ana@exemplo.com", pagina)
+        pendente = lote.notas.get(loja_id="1005")
+        cliente.post(f"/notas/lote/{lote.pk}/", {"acao": "nome", "nota": pendente.pk, "nome": "Ana Souza"})
+        self.assertEqual(NotaFiscal.objects.get(pk=pendente.pk).situacao, "previa")
+        outra = lote.notas.create(empresa=self.empresa, ambiente="1", tipo=NotaFiscal.TIPO_VENDEDOR,
+                                  competencia=timezone.localdate(), situacao=NotaFiscal.FALTA_NOME, loja_id="1006",
+                                  tomador_tipo="cpf", tomador_documento="52998224725", valor=Decimal("1"))
+        self.assertIn("1 esperando o nome", cliente.get("/notas/").content.decode())
+        cliente.post(f"/notas/lote/{lote.pk}/", {"acao": "nao_emitir", "nota": outra.pk})
+        self.assertFalse(NotaFiscal.objects.filter(pk=outra.pk).exists())

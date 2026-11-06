@@ -160,13 +160,16 @@ class NotaFiscal(models.Model):
              (TIPO_ASSINATURA, "Assinatura do Appfiliado")]
 
     PREVIA = "previa"  # importada, esperando a pessoa confirmar o lote
+    # Linha do relatório sem o nome do vendedor (a Shopee não manda o de pessoa física): fica
+    # pendente no lote até a pessoa digitar o nome (servicos.preencher_nome).
+    FALTA_NOME = "sem_nome"
     FILA = "fila"
     ENVIANDO = "enviando"
     AUTORIZADA = "autorizada"
     RECUSADA = "recusada"
     ERRO = "erro"  # não deu para saber a resposta (queda, tempo esgotado): conferir antes de reenviar
     CANCELADA = "cancelada"
-    SITUACOES = [(PREVIA, "Prévia"), (FILA, "Na fila"), (ENVIANDO, "Enviando"), (AUTORIZADA, "Autorizada"),
+    SITUACOES = [(PREVIA, "Prévia"), (FALTA_NOME, "Falta o nome"), (FILA, "Na fila"), (ENVIANDO, "Enviando"), (AUTORIZADA, "Autorizada"),
                  (RECUSADA, "Recusada"), (ERRO, "Sem resposta"), (CANCELADA, "Cancelada")]
 
     EMAIL_PENDENTE = "pendente"

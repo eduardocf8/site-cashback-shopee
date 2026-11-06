@@ -48,6 +48,8 @@ COLUNAS = {
     "email": "email",
 }
 OBRIGATORIAS = {"mes", "loja_id", "valor", "nome"}
+# A Shopee não manda o nome do vendedor pessoa física: a linha vira nota esperando o nome.
+PROBLEMA_SEM_NOME = "sem razão social"
 
 
 class ErroRelatorio(ValueError):
@@ -204,7 +206,7 @@ def ler(dados: bytes, nome_arquivo: str = "") -> list[Linha]:
         if linha.valor is None or linha.valor <= 0:
             linha.problemas.append("valor da comissão inválido")
         if not linha.nome:
-            linha.problemas.append("sem razão social")
+            linha.problemas.append(PROBLEMA_SEM_NOME)
         if not documento:
             linha.problemas.append("sem CNPJ, CPF ou identificação estrangeira")
         elif tipo == "cnpj" and not cnpj_valido(documento):

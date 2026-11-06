@@ -246,7 +246,10 @@ def notas(request):
         # Notas das assinaturas do Appfiliado (só na conta que as emite: notas/assinaturas.py).
         contexto["assinaturas"] = empresa.notas.filter(tipo=NotaFiscal.TIPO_ASSINATURA)[:20]
         contexto["avulsas_na_fila"] = any(n.situacao in (NotaFiscal.FILA, NotaFiscal.ENVIANDO) for n in contexto["ultimas"])
-        contexto["lotes"] = empresa.lotes.all()[:12]
+        from django.db.models import Count, Q
+
+        contexto["lotes"] = empresa.lotes.annotate(
+            sem_nome=Count("notas", filter=Q(notas__situacao=NotaFiscal.FALTA_NOME)))[:12]
         contexto["teste_ok"] = empresa.notas.filter(tipo=NotaFiscal.TIPO_TESTE, situacao=NotaFiscal.AUTORIZADA).exists()
         contexto["plano"] = servicos.uso_do_plano(empresa)
         contexto.update(_passos(empresa, contexto["teste_ok"]))
@@ -321,12 +324,24 @@ def lote(request, pk):
             elif acao == "reenviar_problemas":
                 quantas = servicos.reenviar_problemas(lote)
                 messages.info(request, f"{quantas} nota(s) de volta para a fila.")
+            elif acao in ("nome", "nao_emitir"):
+                nota = get_object_or_404(lote.notas, pk=request.POST.get("nota"), situacao=NotaFiscal.FALTA_NOME)
+                if acao == "nao_emitir":
+                    servicos.tirar_nota_sem_nome(nota)
+                    messages.info(request, f"A nota de {nota.loja_nome or nota.loja_id} saiu do lote.")
+                elif servicos.preencher_nome(nota, request.POST.get("nome", "")) == "fila":
+                    messages.success(request, f"Nome salvo. A nota de {nota.loja_nome or nota.loja_id} foi pra fila.")
+                else:
+                    messages.success(request, f"Nome salvo. A nota de {nota.loja_nome or nota.loja_id} entrou na prévia.")
+                return redirect(reverse("painel_notas_lote", kwargs={"pk": lote.pk}) + "#sem-nome")
         except servicos.ErroNotas as erro:
             messages.error(request, str(erro))
         return redirect("painel_notas_lote", pk=lote.pk)
 
     filtro = request.GET.get("ver", "todas")
-    notas = lote.notas.all().order_by("pk")
+    # As que esperam o nome do vendedor ficam num cartão à parte (nem na lista, nem nas contas do lote).
+    sem_nome = lote.notas.filter(situacao=NotaFiscal.FALTA_NOME).order_by("pk")
+    notas = lote.notas.exclude(situacao=NotaFiscal.FALTA_NOME).order_by("pk")
     if FILTROS.get(filtro):
         notas = notas.filter(situacao__in=FILTROS[filtro])
     busca = request.GET.get("busca", "").strip()
@@ -337,7 +352,7 @@ def lote(request, pk):
     pagina = Paginator(notas, 50).get_page(request.GET.get("pagina"))
     email = servicos.andamento_emails(lote)
     plano = servicos.uso_do_plano(lote.empresa)
-    resumo = servicos.resumo(lote.notas.all())
+    resumo = servicos.resumo(lote.notas.exclude(situacao=NotaFiscal.FALTA_NOME))
     if lote.estado == LoteNotas.PREVIA and lote.ambiente == AMBIENTE_PRODUCAO and plano["restam"] is not None:
         plano["sobram"] = plano["restam"] - resumo["total"]  # negativo: o lote passa do plano
     por = resumo["por"]
@@ -348,7 +363,7 @@ def lote(request, pk):
     return render(request, "painel/notas_lote.html", _contexto(
         request, "notas", lote=lote, empresa=lote.empresa, resumo=resumo, filtros=filtros,
         pagina=pagina, filtro=filtro, busca=busca, falta=servicos.pronta_para_emitir(lote.empresa),
-        email=email, atualizar=_acompanhar(lote, email), plano=plano,
+        email=email, atualizar=_acompanhar(lote, email), plano=plano, sem_nome=sem_nome,
     ))
 
 
@@ -376,7 +391,7 @@ def andamento(request):
     if request.GET.get("lote", "").isdigit():
         lote = LoteNotas.objects.filter(pk=int(request.GET["lote"]), empresa__conta=conta).first()
         if lote:
-            r = servicos.resumo(lote.notas.all())
+            r = servicos.resumo(lote.notas.exclude(situacao=NotaFiscal.FALTA_NOME))
             resposta["lote"] = {
                 "estado": lote.estado, "total": r["total"], "progresso": r["progresso"],
                 "autorizadas": r["por"][NotaFiscal.AUTORIZADA]["qtd"],

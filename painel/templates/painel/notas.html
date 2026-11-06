@@ -138,6 +138,7 @@
         {% for l in lotes %}
           <li><a href="{% url 'painel_notas_lote' l.pk %}"><strong>Vendas de {{ l.mes_referencia|date:"F/Y" }}</strong><span class="suave pequeno">{{ l.criado_em|date:"d/m H:i" }} · {{ l.nome_arquivo|default:"arquivo" }}</span></a>
             {% if l.ambiente == "2" %}<span class="selo-venda selo-pendente">Teste</span>{% endif %}
+            {% if l.sem_nome %}<a class="selo-venda selo-pendente" href="{% url 'painel_notas_lote' l.pk %}#sem-nome">{{ l.sem_nome }} esperando o nome</a>{% endif %}
             <span class="estado {% if l.estado == 'concluido' %}estado-liberado{% elif l.estado == 'emitindo' %}estado-bloqueado{% else %}estado-em_breve{% endif %}">{{ l.get_estado_display }}</span></li>
         {% endfor %}
       </ul>

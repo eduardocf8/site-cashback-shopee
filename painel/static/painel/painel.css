@@ -679,6 +679,22 @@ summary { cursor: pointer; }  /* "Editar", "Ver mensagem" etc. abrem ao clicar *
 .notas-cancelar .formulario { margin-top: 18px; }
 .notas-cancelar fieldset.campo { border: none; padding: 0; margin: 0; min-width: 0; display: flex; flex-direction: column; gap: 8px; }
 .notas-cancelar fieldset.campo legend { font-weight: 700; font-size: 13px; margin-bottom: 6px; padding: 0; }
+/* Lote: notas esperando o nome do vendedor (pessoa física sem nome no relatório). */
+.notas-sem-nome { border-color: var(--amarelo); }
+.notas-sem-nome h2 { margin: 0 0 4px; }
+.notas-sem-nome-lista { list-style: none; margin: 12px 0 0; padding: 0; display: flex; flex-direction: column; }
+.notas-sem-nome-lista > li { display: grid; grid-template-columns: minmax(0, 1.2fr) auto minmax(0, 1.6fr) auto; gap: 8px 16px;
+  align-items: center; padding: 12px 0; border-top: 1px solid var(--borda); }
+.notas-sem-nome-quem { display: flex; flex-direction: column; gap: 2px; min-width: 0; overflow-wrap: anywhere; }
+.notas-sem-nome-form { display: flex; gap: 8px; }
+.notas-sem-nome-form input { flex: 1; min-width: 0; min-height: 44px; padding: 0 14px; border-radius: 10px;
+  border: 1px solid var(--borda); background: var(--campo); font: inherit; color: inherit; }
+.notas-sem-nome-form input:focus { outline: 2px solid var(--verde); outline-offset: 1px; background: #fff; }
+@media (max-width: 700px) {
+  .notas-sem-nome-lista > li { grid-template-columns: minmax(0, 1fr) auto; }
+  .notas-sem-nome-form { grid-column: 1 / -1; flex-wrap: wrap; }
+  .notas-sem-nome-form input, .notas-sem-nome-form .botao { flex: 1 1 100%; }
+}
 /* Serviço da ME/EPP: o valor aproximado dos tributos (%) num bloco, federal, estadual e municipal lado a lado. */
 fieldset.campo.tributos-me { border: none; padding: 0; margin: 0; min-width: 0; }
 fieldset.campo.tributos-me legend { font-weight: 700; font-size: 13px; margin-bottom: 6px; padding: 0; }

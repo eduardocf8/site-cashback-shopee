@@ -645,16 +645,17 @@ def emitir_nota_shopee(empresa, valor_digitado: str, ambiente=AMBIENTE_PRODUCAO)
 
 # ---------- Relatório Mensal da Shopee (uma nota por loja) ----------
 
-def _ja_emitidas(empresa, ambiente, mes) -> set:
-    """IDs de loja desse mês que já têm nota (ou estão na fila) em outro lote."""
-    return set(NotaFiscal.objects.filter(
+def _ja_emitidas(empresa, ambiente, mes) -> dict:
+    """IDs de loja desse mês que já têm nota (ou estão na fila, ou esperam o nome) em outro lote,
+    com a situação dela."""
+    return dict(NotaFiscal.objects.filter(
         empresa=empresa, ambiente=ambiente, tipo=NotaFiscal.TIPO_VENDEDOR, lote__mes_referencia=mes,
-    ).exclude(situacao__in=[NotaFiscal.PREVIA, NotaFiscal.CANCELADA]).values_list("loja_id", flat=True))
+    ).exclude(situacao__in=[NotaFiscal.PREVIA, NotaFiscal.CANCELADA]).values_list("loja_id", "situacao"))
 
 
 def importar_relatorio(empresa, dados: bytes, nome_arquivo: str, ambiente=AMBIENTE_PRODUCAO) -> LoteNotas:
     """Lê o relatório e monta a prévia: uma nota por linha, sem enviar nada ainda."""
-    from .relatorio import ErroRelatorio, ler
+    from .relatorio import PROBLEMA_SEM_NOME, ErroRelatorio, ler
 
     try:
         linhas = ler(dados, nome_arquivo)
@@ -676,12 +677,15 @@ def importar_relatorio(empresa, dados: bytes, nome_arquivo: str, ambiente=AMBIEN
         ignoradas, notas, vistas, sem_endereco = [], [], set(), []
         for l in linhas:
             motivo = ""
-            if l.problemas:
+            # Só falta o nome (a Shopee não manda o do vendedor pessoa física): vira nota pendente.
+            so_falta_nome = l.problemas == [PROBLEMA_SEM_NOME]
+            if l.problemas and not so_falta_nome:
                 motivo = ", ".join(l.problemas)
             elif l.estrangeira and (not l.pais or l.pais == "BR"):
                 motivo = "loja do exterior sem o país no relatório"
             elif l.loja_id in ja:
-                motivo = "já tem nota deste mês"
+                motivo = ("já está em outro lote, esperando o nome" if ja[l.loja_id] == NotaFiscal.FALTA_NOME
+                          else "já tem nota deste mês")
                 if l.endereco:
                     sem_endereco.append((l.loja_id, l.endereco))
             elif l.loja_id in vistas:
@@ -695,7 +699,8 @@ def importar_relatorio(empresa, dados: bytes, nome_arquivo: str, ambiente=AMBIEN
             vistas.add(l.loja_id)
             notas.append(NotaFiscal(
                 empresa=empresa, lote=lote, ambiente=ambiente, tipo=NotaFiscal.TIPO_VENDEDOR, competencia=hoje,
-                situacao=NotaFiscal.PREVIA, loja_id=l.loja_id, loja_nome=l.loja_nome,
+                situacao=NotaFiscal.FALTA_NOME if so_falta_nome else NotaFiscal.PREVIA,
+                loja_id=l.loja_id, loja_nome=l.loja_nome,
                 tomador_tipo=l.tipo_documento, tomador_documento=l.documento, tomador_nome=l.nome,
                 tomador_email=l.email[:254], tomador_pais=l.pais if l.estrangeira else "", valor=l.valor,
                 tomador_endereco=l.endereco,
@@ -754,6 +759,50 @@ def confirmar_lote(lote) -> int:
         lote.estado, lote.competencia, lote.confirmado_em = LoteNotas.EMITINDO, hoje, timezone.now()
         lote.save(update_fields=["estado", "competencia", "confirmado_em"])
     return com_email + sem_email
+
+
+def preencher_nome(nota, nome: str) -> str:
+    """O nome do vendedor que faltava no relatório. Com o lote ainda em prévia, a nota entra na
+    prévia; com o lote já emitido, vai pra fila na hora (conta no plano). Devolve "previa" ou "fila"."""
+    nome = " ".join((nome or "").split())[:150]
+    if len(nome) < 3 or not re.search(r"[^\W\d_]", nome):
+        raise ErroNotas("Digite o nome do vendedor (como está no documento dele).")
+    with transaction.atomic():
+        _travar_plano(nota.empresa)
+        nota = NotaFiscal.objects.select_for_update().get(pk=nota.pk)
+        if nota.situacao != NotaFiscal.FALTA_NOME:
+            return ""
+        lote = LoteNotas.objects.select_for_update().get(pk=nota.lote_id)
+        nota.tomador_nome = nome
+        if lote.estado == LoteNotas.PREVIA:
+            nota.situacao = NotaFiscal.PREVIA
+            nota.save(update_fields=["tomador_nome", "situacao", "atualizada_em"])
+            return "previa"
+        falta = pronta_para_emitir(nota.empresa)
+        if falta:
+            raise ErroNotas("Antes de emitir, falta: " + " e ".join(falta) + ".")
+        conferir_plano(nota.empresa, 1, nota.ambiente)
+        envia_email = nota.ambiente == AMBIENTE_PRODUCAO
+        nota.situacao, nota.competencia = NotaFiscal.FILA, timezone.localdate()
+        if not envia_email:
+            nota.email_situacao = NotaFiscal.EMAIL_NAO
+        elif nota.tomador_email:
+            nota.email_situacao = NotaFiscal.EMAIL_PENDENTE
+            nota.email_enviar_em = proximo_envio_de_email(nota.empresa)
+        else:
+            nota.email_situacao = NotaFiscal.EMAIL_SEM
+        nota.save(update_fields=["tomador_nome", "situacao", "competencia", "email_situacao", "email_enviar_em",
+                                 "atualizada_em"])
+        if lote.estado == LoteNotas.CONCLUIDO:
+            lote.estado = LoteNotas.EMITINDO
+            lote.save(update_fields=["estado"])
+    return "fila"
+
+
+def tirar_nota_sem_nome(nota) -> bool:
+    """"Não emitir": tira do lote a nota que esperava o nome (nunca foi ao governo)."""
+    apagadas, _ = NotaFiscal.objects.filter(pk=nota.pk, situacao=NotaFiscal.FALTA_NOME).delete()
+    return bool(apagadas)
 
 
 def reenviar_problemas(lote) -> int:
