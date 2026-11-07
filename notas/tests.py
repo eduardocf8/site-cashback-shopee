@@ -28,7 +28,7 @@ from licencas.models import ContaAppfiliado
 from painel import modulos as mod
 
 from . import certificado, danfse, dps, endereco, receita, servicos
-from .models import AMBIENTE_TESTE, EmpresaNotas, NotaFiscal
+from .models import AMBIENTE_TESTE, EmpresaNotas, LoteNotas, NotaFiscal
 from .sefin import ErroSefin, Resposta
 
 HOST = "app.appfiliado.com.br"
@@ -2056,3 +2056,39 @@ class TestProblemasDoLote(TestCase):
         resposta = self.cliente.post(self.url, {"acao": "reenviar_emails"}, follow=True)
         self.assertContains(resposta, "Espere meia hora")
         self.assertEqual(self.lote.notas.filter(email_situacao=NotaFiscal.EMAIL_FALHOU).count(), 2)
+
+
+class TestPdfComOutrasLetras(TestCase):
+    """Vendedor da China, da Coreia...: o PDF (e o e-mail, que leva o PDF) sai com o nome como está na nota."""
+
+    def nfse(self, nome, pais="CN"):
+        raiz = dps.montar(ambiente="1", emitida_em=dt.datetime(2026, 11, 6, 21, 55, tzinfo=FUSO), serie="1", numero=4070,
+                          competencia=dt.date(2026, 11, 6), prestador=dps.Prestador(CNPJ, "3550308", "simples"),
+                          tomador=dps.Tomador("nif", "71137709-000-09-25-8", nome, pais=pais),
+                          servico=dps.Servico("170601", "Divulgação", nbs="114061900"), valor="0.54")
+        corpo = dps.para_bytes(raiz).decode().split("?>", 1)[-1]
+        return (f'<NFSe xmlns="{dps.NS}" versao="1.01"><infNFSe Id="NFS1"><xLocEmi>São Paulo</xLocEmi><nNFSe>4070</nNFSe>'
+                f"<dhProc>2026-11-06T21:55:10-03:00</dhProc><emit><CNPJ>{CNPJ}</CNPJ><xNome>LOJA TESTE LTDA</xNome></emit>"
+                f"<valores><vLiq>0.54</vLiq></valores>{corpo}</infNFSe></NFSe>")
+
+    def test_chines_e_coreano(self):
+        for nome, pais in (("香港瑞智國際貿易有限公司", "CN"), ("주식회사 한빛무역", "KR")):
+            arquivo = danfse.pdf(self.nfse(nome, pais))
+            self.assertTrue(arquivo.startswith(b"%PDF"))
+            self.assertIn(b"WenQuanYi", arquivo)  # a fonte com chinês/coreano foi embutida
+        latino = danfse.pdf(self.nfse("SHENZHEN CO LTD"))
+        self.assertNotIn(b"WenQuanYi", latino)  # nome só com letras latinas: o PDF de sempre, sem fonte embutida
+
+
+@override_settings(APPFILIADO_PAINEL_HOSTS=[HOST], ALLOWED_HOSTS=[HOST, "testserver"], APPFILIADO_PAINEL_URL=f"https://{HOST}")
+class TestOrdemDosRelatorios(TestCase):
+    def test_relatorios_importados_do_mais_novo_pro_mais_velho(self):
+        conta = criar_conta()
+        empresa = criar_empresa(conta)
+        velho = servicos.importar_relatorio(empresa, relatorio_csv(mes="Sep 2026"), "setembro.csv", "2")
+        novo = servicos.importar_relatorio(empresa, relatorio_csv(mes="Oct 2026"), "outubro.csv", "2")
+        LoteNotas.objects.filter(pk=velho.pk).update(criado_em=timezone.now() - dt.timedelta(days=20))
+        cliente = Client(HTTP_HOST=HOST)
+        cliente.post("/entrar/", {"email": "bia@exemplo.com", "senha": SENHA})
+        pagina = cliente.get("/notas/").content.decode()
+        self.assertLess(pagina.index(f"/notas/lote/{novo.pk}/"), pagina.index(f"/notas/lote/{velho.pk}/"))

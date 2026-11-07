@@ -668,6 +668,12 @@ summary { cursor: pointer; }  /* "Editar", "Ver mensagem" etc. abrem ao clicar *
 .notas-lotes li:last-child { border-bottom: none; }
 .notas-lotes a { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px; color: inherit; text-decoration: none; }
 .notas-lotes a:hover strong { text-decoration: underline; }
+/* O selo "N esperando o nome" também é um link, mas fica do tamanho do texto, como os outros selos. */
+.notas-lotes a.selo-venda { flex: none; display: inline-flex; flex-direction: row; white-space: nowrap; }
+.notas-lotes a.selo-venda:hover { text-decoration: underline; }
+/* Sem espaço (celular, vários selos), os selos descem para a linha de baixo em vez de espremer o título. */
+.notas-lotes li { flex-wrap: wrap; }
+.notas-lotes li > a:first-child { flex: 1 1 220px; }
 .notas-voltar { font-size: 14px; color: var(--suave); }
 .notas-numeros { display: grid; grid-template-columns: repeat(auto-fit, minmax(130px, 1fr)); gap: 12px; }
 .notas-numeros div { display: flex; flex-direction: column; gap: 2px; }
