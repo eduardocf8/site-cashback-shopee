@@ -13,7 +13,7 @@ from datetime import timezone as fuso
 from django.utils import timezone
 
 from . import api
-from .models import Automacao, ContaInstagram, Repasse
+from .models import Automacao, ContaInstagram, Disparo, Repasse
 from .webhook import PRAZO_COMENTARIO, PRAZO_DM, _escolher, _plano_cobre, _registrar, bate, valendo
 
 logger = logging.getLogger(__name__)
@@ -54,6 +54,31 @@ def motivo_para_nao_buscar(automacao, ig=None) -> str:
 
 def ultimo(automacao):
     return automacao.repasses.order_by("-pedido_em").first()
+
+
+DEMORANDO = timedelta(minutes=10)  # na fila há mais que isso: o worker deve estar reiniciando
+
+
+def andamento(r: Repasse | None) -> dict | None:
+    """Para a tela: em que pé está a busca e, depois dela, quantas das pessoas achadas já receberam."""
+    if r is None:
+        return None
+    from django.db.models import Count, Q
+
+    agora = timezone.now()
+    info = {"r": r, "buscando": r.estado in (Repasse.FILA, Repasse.BUSCANDO),
+            "demorando": r.estado == Repasse.FILA and agora - r.pedido_em > DEMORANDO}
+    if r.estado == Repasse.PRONTO and r.enfileirados:
+        d = Disparo.objects.filter(automacao=r.automacao, anterior=True, criado_em__gte=r.pedido_em).aggregate(
+            esperando=Count("pk", filter=Q(na_fila=True)),
+            ok=Count("pk", filter=Q(na_fila=False) & (Q(dm_ok=True) | Q(resposta_ok=True))),
+            falha=Count("pk", filter=Q(na_fila=False, dm_ok=False, resposta_ok=False)))
+        info.update(na_fila=d["esperando"], receberam=d["ok"], nao_deu=d["falha"])
+    else:
+        info.update(na_fila=0, receberam=0, nao_deu=0)
+    # A tela continua se atualizando enquanto a busca roda ou ainda tem gente esperando a vez na fila.
+    info["acompanhar"] = info["buscando"] or info["na_fila"] > 0
+    return info
 
 
 def pedir(automacao) -> Repasse:

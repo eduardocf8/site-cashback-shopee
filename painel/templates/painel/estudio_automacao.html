@@ -170,25 +170,23 @@
 
 {% if busca %}
   {# "Responder quem já comentou": quem comentou (ou mandou DM) antes de a automação estar ligada. #}
-  <section class="card ig-anteriores" id="anteriores">
-    <div class="ig-anteriores-texto">
-      <h2>{% if automacao.gatilho == "direto" %}Quem mandou DM antes{% else %}Quem comentou antes{% endif %}</h2>
-      <p class="suave pequeno">{% if automacao.gatilho == "direto" %}Manda a automação para quem já mandou DM com a palavra antes de ela estar ligada. O Instagram só deixa responder DMs de até 24 horas atrás.{% else %}Manda a automação para quem já comentou a palavra {% if automacao.midia_id %}neste post{% else %}nos seus posts mais recentes{% endif %} antes de ela estar ligada. O Instagram só deixa mandar a DM para comentários de até 7 dias atrás.{% endif %} Quem já recebeu desta automação fica de fora.</p>
-      {% with r=busca.ultima %}{% if r %}
-        <p class="ig-anteriores-resultado pequeno" aria-live="polite">
-          {% if r.estado == "fila" or r.estado == "buscando" %}<span class="situacao">Buscando</span> Pedido às {{ r.pedido_em|date:"H:i" }}. Em alguns minutos, quem ainda não recebeu entra na fila.
-          {% elif r.estado == "erro" %}<span class="situacao erro">Não deu</span> {{ r.mensagem }}
-          {% else %}<span class="situacao">Busca de {{ r.terminado_em|date:"d/m H:i" }}</span>
-            <b>{{ r.enfileirados }}</b> pessoa{{ r.enfileirados|pluralize }} na fila{% if r.pulados %} · {{ r.pulados }} já tinha{{ r.pulados|pluralize:"m" }} recebido{% endif %}{% if r.sem_palavra %} · {{ r.sem_palavra }} sem a palavra{% endif %}{% if r.de_outra %} · {{ r.de_outra }} com outra automação{% endif %}.
-          {% endif %}
-        </p>
-      {% endif %}{% endwith %}
-      {% if busca.motivo %}<p class="suave pequeno">{{ busca.motivo }}</p>{% endif %}
-    </div>
-    <form method="post" action="{% url 'painel_estudio_automacao_anteriores' automacao.pk %}">{% csrf_token %}
-      <button class="botao botao-escuro" type="submit"{% if busca.motivo or busca.ultima.estado == "fila" or busca.ultima.estado == "buscando" %} disabled{% endif %}>{% if automacao.gatilho == "direto" %}Responder quem já mandou DM{% else %}Responder quem já comentou{% endif %}</button>
-    </form>
-  </section>
+  {% include "painel/_automacao_anteriores.html" %}
+  <script>
+  (function () {
+    // Enquanto a busca roda (ou ainda tem gente esperando a vez na fila), o cartão se atualiza sozinho.
+    function acompanhar() {
+      var cartao = document.getElementById('anteriores');
+      if (!cartao || !cartao.dataset.acompanhar) return;
+      setTimeout(function () {
+        fetch(cartao.dataset.acompanhar, {headers: {'X-Requested-With': 'fetch'}, credentials: 'same-origin'})
+          .then(function (r) { return r.ok && r.status === 200 ? r.text() : null; })
+          .then(function (html) { if (html) { cartao.outerHTML = html; } acompanhar(); })
+          .catch(acompanhar);
+      }, 8000);
+    }
+    acompanhar();
+  })();
+  </script>
 {% endif %}
 
 {% if automacao %}

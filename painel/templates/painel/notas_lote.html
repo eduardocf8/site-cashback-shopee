@@ -54,7 +54,8 @@
       {% if lote.estado == "emitindo" %}<li class="notas-chip notas-chip-espera"><strong data-campo="fila">{{ resumo.por.fila.qtd|add:resumo.por.enviando.qtd }}</strong> na fila</li>{% endif %}
     </ul>
     {% if resumo.por.recusada.qtd or resumo.por.erro.qtd %}
-      <form method="post" class="notas-etapa-acao">{% csrf_token %}<input type="hidden" name="acao" value="reenviar_problemas"><button type="submit" class="botao botao-claro botao-pequeno">{% include "painel/_icone.html" with caminho=icones.atualizar %}Tentar de novo as que deram problema</button></form>
+      <form method="post" class="notas-etapa-acao">{% csrf_token %}<input type="hidden" name="acao" value="reenviar_problemas"><button type="submit" class="botao botao-claro botao-pequeno">{% include "painel/_icone.html" with caminho=icones.atualizar %}Tentar de novo as {{ resumo.por.recusada.qtd|add:resumo.por.erro.qtd }} que deram problema</button></form>
+      {% if resumo.por.erro.qtd %}<p class="notas-etapa-dica">As "sem resposta" (o governo não respondeu) o Appfiliado tenta de novo sozinho, até 12 vezes seguidas, a cada 10 segundos. Se ainda assim não sair, use "Tentar de novo" mais tarde.</p>{% endif %}
     {% endif %}
   </article>
   {% if email %}
@@ -75,7 +76,10 @@
       <li class="notas-chip{% if not email.sem_email %} vazio{% endif %}"><strong data-campo="email_sem">{{ email.sem_email }}</strong> sem e-mail no relatório</li>
       <li class="notas-chip notas-chip-ruim{% if not email.falharam %} vazio{% endif %}"><strong data-campo="email_falharam">{{ email.falharam }}</strong> falharam</li>
     </ul>
-    {% if email.falharam %}<p class="notas-etapa-dica">Pras que falharam, use "Reenviar" na coluna E-mail da lista abaixo.</p>{% endif %}
+    {% if email.falharam %}
+      <form method="post" class="notas-etapa-acao">{% csrf_token %}<input type="hidden" name="acao" value="reenviar_emails"><button type="submit" class="botao botao-claro botao-pequeno">{% include "painel/_icone.html" with caminho=icones.email %}Reenviar os {{ email.falharam }} e-mail{{ email.falharam|pluralize }} que falharam</button></form>
+      <p class="notas-etapa-dica"><a href="?ver=emails_falharam#titulo-notas">Ver quais falharam</a> (o motivo aparece ao passar o mouse em "Falhou").</p>
+    {% endif %}
   </article>
   {% endif %}
 </section>

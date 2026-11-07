@@ -709,6 +709,7 @@ fieldset.campo.tributos-me legend { font-weight: 700; font-size: 13px; margin-bo
 .notas-ignoradas summary { cursor: pointer; }
 .notas-ignoradas[open] summary { margin-bottom: 8px; }
 .notas-erro-email { color: var(--perigo); font-weight: 700; cursor: help; }
+.notas-desistiu { color: var(--perigo); }
 .notas-tabela td:first-child { min-width: 220px; }
 .notas-acoes .botao + .botao { margin-left: 6px; }
 @media (max-width: 700px) {

@@ -385,9 +385,7 @@ def _form_contexto(request, conta, form, automacao=None):
     gatilhos = [{"valor": v, "nome": n, "livre": v in plano["gatilhos"]} for v, n in Automacao.GATILHOS]
     from instagram_painel import anteriores
 
-    busca = None
-    if automacao and automacao.gatilho in anteriores.GATILHOS:
-        busca = {"ultima": anteriores.ultimo(automacao), "motivo": anteriores.motivo_para_nao_buscar(automacao)}
+    busca = _busca_dos_anteriores(automacao) if automacao else None
     return _contexto(request, SLUG_AUTOMACOES, form=form, automacao=automacao, ig=_ig(conta), gatilhos=gatilhos, plano=plano,
                      disparos=automacao.disparos.all()[:8] if automacao else [],  # o resto fica no Histórico
                      busca=busca)
@@ -454,6 +452,25 @@ def automacao_ligar(request, conta, pk):
     if request.POST.get("voltar") == "lista":
         return redirect("painel_estudio_automacoes")
     return redirect("painel_estudio_automacao", pk=a.pk)
+
+
+def _busca_dos_anteriores(automacao):
+    from instagram_painel import anteriores
+
+    if automacao.gatilho not in anteriores.GATILHOS:
+        return None
+    return {"andamento": anteriores.andamento(anteriores.ultimo(automacao)),
+            "motivo": anteriores.motivo_para_nao_buscar(automacao)}
+
+
+@_automacoes
+def automacao_anteriores_situacao(request, conta, pk):
+    """O cartão "Quem comentou antes" de novo, para a tela se atualizar sozinha durante a busca e o envio."""
+    a = get_object_or_404(Automacao, pk=pk, conta=conta)
+    busca = _busca_dos_anteriores(a)
+    if not busca:
+        return HttpResponse(status=204)
+    return render(request, "painel/_automacao_anteriores.html", {"automacao": a, "busca": busca})
 
 
 @require_POST

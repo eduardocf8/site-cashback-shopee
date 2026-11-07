@@ -140,3 +140,36 @@ class TestTelaDosAnteriores(TestCase):
         pagina = self.client.get(f"/estudio/automacoes/{self.a.pk}/").content.decode()
         self.assertIn("<b>12</b> pessoas na fila", pagina)
         self.assertIn("3 já tinham recebido", pagina)
+
+
+@override_settings(APPFILIADO_PAINEL_HOSTS=[HOST], ALLOWED_HOSTS=[HOST, "testserver"], APPFILIADO_PAINEL_URL=f"https://{HOST}")
+class TestAndamentoNaTela(TestCase):
+    """O cartão se atualiza sozinho (situacao/) enquanto a busca roda e enquanto tem gente na fila."""
+
+    def setUp(self):
+        self.c = conta()
+        self.ig = conectada(self.c)
+        self.a = Automacao.objects.create(conta=self.c, ig_id=IG_ID, ig_username="achadosdabia", nome="Garrafa",
+                                          gatilho=Automacao.COMENTARIO, midia_id="m1", palavras="quero", texto_dm="Oi")
+        self.client = Client(HTTP_HOST=HOST)
+        self.client.post("/entrar/", {"email": "bia@exemplo.com", "senha": SENHA})
+        self.url = f"/estudio/automacoes/{self.a.pk}/anteriores/situacao/"
+
+    def test_acompanha_a_busca_e_o_envio(self):
+        r = anteriores.pedir(self.a)
+        cartao = self.client.get(self.url).content.decode()
+        self.assertIn("data-acompanhar", cartao)
+        self.assertIn("A busca começa em instantes", cartao)
+        Repasse.objects.filter(pk=r.pk).update(pedido_em=timezone.now() - timedelta(minutes=15))
+        self.assertIn("pode estar reiniciando", self.client.get(self.url).content.decode())
+        with mock.patch.object(api, "comentarios", return_value=([comentario("c1", "1", "quero"),
+                                                                  comentario("c2", "2", "quero")], "")):
+            anteriores.processar()
+        Disparo.objects.filter(evento_id="c1").update(na_fila=False, dm_ok=True, enviado_em=timezone.now())
+        cartao = self.client.get(self.url).content.decode()
+        self.assertIn("Enviando: <b>1</b> de 2 já receberam", cartao)
+        self.assertIn("data-acompanhar", cartao)
+        Disparo.objects.filter(evento_id="c2").update(na_fila=False, erro="Não enviada: passou do prazo do Instagram.")
+        cartao = self.client.get(self.url).content.decode()
+        self.assertIn("Pronto: <b>1</b> de 2 receberam (1 não deu", cartao)
+        self.assertNotIn("data-acompanhar", cartao)  # acabou: para de perguntar
