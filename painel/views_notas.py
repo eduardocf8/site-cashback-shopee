@@ -245,8 +245,9 @@ def notas(request):
         contexto["avulsas_na_fila"] = any(n.situacao in (NotaFiscal.FILA, NotaFiscal.ENVIANDO) for n in contexto["ultimas"])
         from django.db.models import Count, Q
 
+        # O mais novo primeiro (com a contagem, o Django não usa a ordem padrão do modelo: precisa dizer).
         contexto["lotes"] = empresa.lotes.annotate(
-            sem_nome=Count("notas", filter=Q(notas__situacao=NotaFiscal.FALTA_NOME)))[:12]
+            sem_nome=Count("notas", filter=Q(notas__situacao=NotaFiscal.FALTA_NOME))).order_by("-criado_em")[:12]
         contexto["teste_ok"] = empresa.notas.filter(tipo=NotaFiscal.TIPO_TESTE, situacao=NotaFiscal.AUTORIZADA).exists()
         contexto["plano"] = servicos.uso_do_plano(empresa)
         contexto.update(_passos(empresa, contexto["teste_ok"]))
