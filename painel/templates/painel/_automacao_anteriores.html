@@ -1,0 +1,30 @@
+{% with i=busca.andamento %}
+<section class="card ig-anteriores" id="anteriores"{% if i.acompanhar %} data-acompanhar="{% url 'painel_estudio_automacao_anteriores_situacao' automacao.pk %}"{% endif %}>
+  <div class="ig-anteriores-texto">
+    <h2>{% if automacao.gatilho == "direto" %}Quem mandou DM antes{% else %}Quem comentou antes{% endif %}</h2>
+    <p class="suave pequeno">{% if automacao.gatilho == "direto" %}Manda a automação para quem já mandou DM com a palavra antes de ela estar ligada. O Instagram só deixa responder DMs de até 24 horas atrás.{% else %}Manda a automação para quem já comentou a palavra {% if automacao.midia_id %}neste post{% else %}nos seus posts mais recentes{% endif %} antes de ela estar ligada. O Instagram só deixa mandar a DM para comentários de até 7 dias atrás.{% endif %} Quem já recebeu desta automação fica de fora.</p>
+    {% if i %}{% with r=i.r %}
+      <p class="ig-anteriores-resultado pequeno" aria-live="polite">
+        {% if r.estado == "fila" %}<span class="situacao">Na fila</span>
+          {% if i.demorando %}Pedido às {{ r.pedido_em|date:"H:i" }}. O servidor das automações pode estar reiniciando: a busca começa sozinha assim que ele voltar.
+          {% else %}Pedido às {{ r.pedido_em|date:"H:i" }}. A busca começa em instantes.{% endif %}
+        {% elif r.estado == "buscando" %}<span class="situacao">Buscando</span> {% if automacao.gatilho == "direto" %}Lendo as DMs{% else %}Lendo os comentários{% endif %} (pedido às {{ r.pedido_em|date:"H:i" }}).
+        {% elif r.estado == "erro" %}<span class="situacao erro">Não deu</span> {{ r.mensagem }}
+        {% else %}<span class="situacao">Busca de {{ r.terminado_em|date:"d/m H:i" }}</span>
+          <b>{{ r.enfileirados }}</b> pessoa{{ r.enfileirados|pluralize }} na fila{% if r.pulados %} · {{ r.pulados }} já tinha{{ r.pulados|pluralize:"m" }} recebido{% endif %}{% if r.sem_palavra %} · {{ r.sem_palavra }} sem a palavra{% endif %}{% if r.de_outra %} · {{ r.de_outra }} com outra automação{% endif %}.
+        {% endif %}
+      </p>
+      {% if r.estado == "pronto" and r.enfileirados %}
+        <p class="ig-anteriores-envio pequeno">
+          {% if i.na_fila %}Enviando: <b>{{ i.receberam }}</b> de {{ r.enfileirados }} já receberam. As outras saem aos poucos, no ritmo que o Instagram deixa.
+          {% else %}Pronto: <b>{{ i.receberam }}</b> de {{ r.enfileirados }} receberam{% if i.nao_deu %} ({{ i.nao_deu }} não deu: veja no histórico){% endif %}.{% endif %}
+        </p>
+      {% endif %}
+    {% endwith %}{% endif %}
+    {% if busca.motivo %}<p class="suave pequeno">{{ busca.motivo }}</p>{% endif %}
+  </div>
+  <form method="post" action="{% url 'painel_estudio_automacao_anteriores' automacao.pk %}">{% csrf_token %}
+    <button class="botao botao-escuro" type="submit"{% if busca.motivo or i.buscando %} disabled{% endif %}>{% if automacao.gatilho == "direto" %}Responder quem já mandou DM{% else %}Responder quem já comentou{% endif %}</button>
+  </form>
+</section>
+{% endwith %}

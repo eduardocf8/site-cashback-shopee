@@ -79,6 +79,8 @@ urlpatterns = [
     path("estudio/automacoes/<int:pk>/excluir/", views_instagram.automacao_excluir, name="painel_estudio_automacao_excluir"),
     path("estudio/automacoes/<int:pk>/anteriores/", views_instagram.automacao_anteriores,
          name="painel_estudio_automacao_anteriores"),
+    path("estudio/automacoes/<int:pk>/anteriores/situacao/", views_instagram.automacao_anteriores_situacao,
+         name="painel_estudio_automacao_anteriores_situacao"),
     path("estudio/automacoes/historico/", views_instagram.historico, name="painel_estudio_historico"),
     path("estudio/instagram/conectar/", views_instagram.conectar, name="painel_instagram_conectar"),
     path("estudio/instagram/retorno/", views_instagram.retorno, name="painel_instagram_retorno"),
