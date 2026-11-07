@@ -321,6 +321,14 @@ def lote(request, pk):
             elif acao == "reenviar_problemas":
                 quantas = servicos.reenviar_problemas(lote)
                 messages.info(request, f"{quantas} nota(s) de volta para a fila.")
+            elif acao == "reenviar_emails":
+                # Uma vez a cada meia hora por lote: o reenvio não pode virar um jeito de bombardear os vendedores.
+                if not cache.add(f"notas:reenvio-lote:{lote.pk}", 1, 30 * 60):
+                    raise servicos.ErroNotas("Os e-mails que falharam foram reenviados há pouco. Espere meia hora "
+                                             "para mandar de novo.")
+                quantos = servicos.reenviar_emails_que_falharam(lote)
+                messages.info(request, f"{quantos} e-mail(s) vão sair de novo em alguns minutos." if quantos
+                              else "Nenhum e-mail com falha para reenviar.")
             elif acao in ("nome", "nao_emitir"):
                 nota = get_object_or_404(lote.notas, pk=request.POST.get("nota"), situacao=NotaFiscal.FALTA_NOME)
                 if acao == "nao_emitir":
@@ -339,7 +347,9 @@ def lote(request, pk):
     # As que esperam o nome do vendedor ficam num cartão à parte (nem na lista, nem nas contas do lote).
     sem_nome = lote.notas.filter(situacao=NotaFiscal.FALTA_NOME).order_by("pk")
     notas = lote.notas.exclude(situacao=NotaFiscal.FALTA_NOME).order_by("pk")
-    if FILTROS.get(filtro):
+    if filtro == "emails_falharam":
+        notas = notas.filter(email_situacao=NotaFiscal.EMAIL_FALHOU)
+    elif FILTROS.get(filtro):
         notas = notas.filter(situacao__in=FILTROS[filtro])
     busca = request.GET.get("busca", "").strip()
     if busca:
@@ -357,6 +367,9 @@ def lote(request, pk):
                                              for chave, situacoes in FILTROS.items() if situacoes}}
     filtros = [(chave, nome, contagem[chave]) for chave, nome in
                (("todas", "Todas"), ("autorizadas", "Autorizadas"), ("problemas", "Com problema"), ("fila", "Na fila"))]
+    falharam = resumo["emails"].get(NotaFiscal.EMAIL_FALHOU, 0)
+    if falharam or filtro == "emails_falharam":
+        filtros.append(("emails_falharam", "E-mail falhou", falharam))
     return render(request, "painel/notas_lote.html", _contexto(
         request, "notas", lote=lote, empresa=lote.empresa, resumo=resumo, filtros=filtros,
         pagina=pagina, filtro=filtro, busca=busca, falta=servicos.pronta_para_emitir(lote.empresa),

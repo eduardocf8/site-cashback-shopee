@@ -1995,3 +1995,64 @@ class TestExteriorEDescricao(TestCase):
                          "Divulgação de produtos em mídias sociais - vendas de setembro/2026")
         shopee = servicos.emitir_nota_shopee(self.empresa, "10,00")
         self.assertEqual(servicos._servico(shopee, False).descricao, "Divulgação de produtos em mídias sociais")
+
+
+@override_settings(APPFILIADO_PAINEL_HOSTS=[HOST], ALLOWED_HOSTS=[HOST, "testserver"], APPFILIADO_PAINEL_URL=f"https://{HOST}")
+class TestProblemasDoLote(TestCase):
+    """Nota sem resposta: a fila tenta de novo sozinha (e a tela diz quando). E-mails que falharam:
+    filtro na lista e reenvio de todos de uma vez (uma vez a cada meia hora por lote)."""
+
+    def setUp(self):
+        cache.clear()
+        self.addCleanup(cache.clear)
+        receita_falsa = mock.patch.object(receita, "consultar", return_value={"regime": "mei"})
+        receita_falsa.start()
+        self.addCleanup(receita_falsa.stop)
+        self.conta = criar_conta()
+        self.empresa = criar_empresa(self.conta)
+        certificado.guardar(self.empresa, gerar_pfx(), "senha-do-pfx")
+        self.lote = servicos.importar_relatorio(self.empresa, relatorio_csv(), "r.csv", "1")
+        servicos.confirmar_lote(self.lote)
+        self.cliente = Client(HTTP_HOST=HOST)
+        self.cliente.post("/entrar/", {"email": "bia@exemplo.com", "senha": SENHA})
+        self.url = f"/notas/lote/{self.lote.pk}/"
+
+    def test_sem_resposta_tenta_12_vezes_seguidas_e_depois_avisa(self):
+        from . import fila
+
+        nota = self.lote.notas.get(loja_id="1001")
+        NotaFiscal.objects.filter(pk=nota.pk).update(situacao=NotaFiscal.ERRO, tentativas=1, enviada_em=timezone.now())
+        nota.refresh_from_db()
+        self.assertEqual(nota.proxima_tentativa, nota.atualizada_em + dt.timedelta(seconds=10))
+        pagina = self.cliente.get(self.url).content.decode()
+        self.assertIn("Tentando de novo sozinho (1 de 12)", pagina)
+        self.assertIn("até 12 vezes seguidas, a cada 10 segundos", pagina)
+        self.assertTrue(fila.tem_fila())  # o worker volta em 5 segundos
+        self.assertNotIn(nota.pk, [pk for pk, _ in fila._a_enviar()])  # ainda não deu 10 segundos
+        NotaFiscal.objects.filter(pk=nota.pk).update(tentativas=11, atualizada_em=timezone.now() - dt.timedelta(seconds=11))
+        self.assertIn(nota.pk, [pk for pk, _ in fila._a_enviar()])
+        NotaFiscal.objects.filter(pk=nota.pk).update(tentativas=12, atualizada_em=timezone.now() - dt.timedelta(seconds=11))
+        nota.refresh_from_db()
+        self.assertIsNone(nota.proxima_tentativa)
+        self.assertNotIn(nota.pk, [pk for pk, _ in fila._a_enviar()])  # chegou no limite: para
+        self.assertIn("O governo não respondeu em 12 tentativas", self.cliente.get(self.url).content.decode())
+        self.cliente.post(f"/notas/{nota.pk}/reenviar/", {"voltar": "lote"})
+        self.assertEqual(NotaFiscal.objects.get(pk=nota.pk).situacao, NotaFiscal.FILA)  # "Tentar de novo" manda já
+
+    def test_emails_que_falharam_filtro_e_reenvio_de_todos(self):
+        autorizadas = self.lote.notas.filter(loja_id__in=["1001", "1003"])
+        autorizadas.update(situacao=NotaFiscal.AUTORIZADA, email_situacao=NotaFiscal.EMAIL_FALHOU)
+        pagina = self.cliente.get(self.url).content.decode()
+        self.assertIn("Reenviar os 2 e-mails que falharam", pagina)
+        self.assertIn("E-mail falhou", pagina)
+        so_falharam = self.cliente.get(self.url + "?ver=emails_falharam").content.decode()
+        self.assertIn("LOJA UM LTDA", so_falharam)
+        self.assertNotIn("LOJA DOIS LTDA", so_falharam)
+        self.cliente.post(self.url, {"acao": "reenviar_emails"})
+        self.assertEqual(set(self.lote.notas.filter(email_situacao=NotaFiscal.EMAIL_PENDENTE,
+                                                    loja_id__in=["1001", "1003"]).values_list("loja_id", flat=True)),
+                         {"1001", "1003"})
+        autorizadas.update(email_situacao=NotaFiscal.EMAIL_FALHOU)
+        resposta = self.cliente.post(self.url, {"acao": "reenviar_emails"}, follow=True)
+        self.assertContains(resposta, "Espere meia hora")
+        self.assertEqual(self.lote.notas.filter(email_situacao=NotaFiscal.EMAIL_FALHOU).count(), 2)

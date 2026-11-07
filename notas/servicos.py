@@ -830,6 +830,16 @@ def reenviar_problemas(lote) -> int:
     return quantas
 
 
+def reenviar_emails_que_falharam(lote) -> int:
+    """Põe de volta para sair os e-mails do lote que falharam (só notas autorizadas, de verdade e com
+    e-mail). Devolve quantos."""
+    if lote.ambiente != AMBIENTE_PRODUCAO:
+        return 0
+    return lote.notas.filter(situacao=NotaFiscal.AUTORIZADA, email_situacao=NotaFiscal.EMAIL_FALHOU).exclude(
+        tomador_email="").update(email_situacao=NotaFiscal.EMAIL_PENDENTE, email_enviar_em=None,
+                                  atualizada_em=timezone.now())
+
+
 def reenviar_nota(nota) -> None:
     """Tentar de novo uma nota que deu problema: volta para a fila (o worker envia - nunca aqui,
     na hora, para não correr junto com ele). ErroNotas se o plano do mês não tem vaga."""

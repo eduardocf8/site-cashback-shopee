@@ -18,13 +18,11 @@ from django.utils import timezone
 from cashback_shopee.ses_email_backend import LimiteDeEnvio
 
 from . import certificado, email, servicos
-from .models import LoteNotas, NotaFiscal
+from .models import ESPERA_ENTRE_TENTATIVAS, TENTATIVAS_MAXIMAS, LoteNotas, NotaFiscal
 from .sefin import ClienteSefin
 
 logger = logging.getLogger(__name__)
 
-TENTATIVAS_MAXIMAS = 12  # com 10 minutos entre elas: aguenta umas 2 horas de instabilidade
-ESPERA_ENTRE_TENTATIVAS = timedelta(minutes=10)
 ENVIANDO_TRAVADA = timedelta(minutes=15)  # worker caiu no meio do envio
 EMAILS_POR_VOLTA = 600
 
@@ -42,6 +40,7 @@ def _a_enviar():
         situacao=NotaFiscal.ERRO)
     return (NotaFiscal.objects.filter(
         Q(situacao=NotaFiscal.FILA)
+        # sem resposta: tenta de novo em 10 segundos, até 12 vezes seguidas
         | Q(situacao=NotaFiscal.ERRO, tentativas__lt=TENTATIVAS_MAXIMAS, atualizada_em__lt=agora - ESPERA_ENTRE_TENTATIVAS))
         .exclude(empresa__emissao_pausada__gt="")
         # Notas de verdade antes das de teste: um lote grande no ambiente de testes não
@@ -221,8 +220,12 @@ def fechar_lotes():
 
 
 def tem_fila() -> bool:
+    """Tem nota para sair agora (o worker volta em 5 segundos, não em 30): na fila, enviando, ou sem
+    resposta esperando uma das novas tentativas automáticas."""
     try:
-        return NotaFiscal.objects.filter(situacao__in=[NotaFiscal.FILA, NotaFiscal.ENVIANDO]).exclude(
+        return NotaFiscal.objects.filter(
+            Q(situacao__in=[NotaFiscal.FILA, NotaFiscal.ENVIANDO])
+            | Q(situacao=NotaFiscal.ERRO, tentativas__lt=TENTATIVAS_MAXIMAS)).exclude(
             empresa__emissao_pausada__gt="").exists()
     except Exception:  # noqa: BLE001 - banco fora do ar: espera o normal
         return False

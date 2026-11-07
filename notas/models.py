@@ -4,6 +4,7 @@ Cada conta cadastra a empresa (o CNPJ que emite) com o certificado digital A1 de
 As notas são enviadas uma a uma para a API do governo (Sefin Nacional) e ficam
 guardadas aqui com o XML que voltou, para baixar e mandar por e-mail."""
 
+from datetime import timedelta
 from decimal import Decimal
 
 from django.db import models
@@ -150,6 +151,13 @@ class LoteNotas(models.Model):
         return f"{self.empresa} · {self.mes_referencia:%m/%Y} ({self.get_estado_display()})"
 
 
+# Nota "sem resposta" (o governo não respondeu): a fila (notas/fila.py) tenta de novo sozinha, até 12
+# vezes seguidas, com 10 segundos entre elas (quase sempre era só uma demora do momento). Se ainda
+# assim não sair, a tela avisa para a pessoa tentar de novo mais tarde ("Tentar de novo").
+TENTATIVAS_MAXIMAS = 12
+ESPERA_ENTRE_TENTATIVAS = timedelta(seconds=10)
+
+
 class NotaFiscal(models.Model):
     TIPO_SHOPEE = "shopee"
     TIPO_VENDEDOR = "vendedor"
@@ -250,6 +258,18 @@ class NotaFiscal(models.Model):
 
     def __str__(self):
         return f"{self.get_tipo_display()} {self.numero or '-'} → {self.tomador_nome[:40]} ({self.get_situacao_display()})"
+
+    @property
+    def proxima_tentativa(self):
+        """Quando a fila tenta de novo sozinha uma nota sem resposta (None: não vai tentar mais)."""
+        if self.situacao != self.ERRO or self.tentativas >= TENTATIVAS_MAXIMAS or not self.atualizada_em:
+            return None
+        return self.atualizada_em + ESPERA_ENTRE_TENTATIVAS
+
+    @property
+    def desistiu_de_tentar(self) -> bool:
+        """Sem resposta depois de todas as tentativas automáticas: agora só com "Tentar de novo"."""
+        return self.situacao == self.ERRO and self.tentativas >= TENTATIVAS_MAXIMAS
 
     @property
     def documento_formatado(self) -> str:
