@@ -279,11 +279,13 @@ def uma_volta(agora=None) -> list[str]:
 
 
 def rodar():
+    from .anteriores import processar as buscar_anteriores
     from .webhook import enviar_fila
 
     while True:
         close_old_connections()
-        for nome, volta in (("publicações", uma_volta), ("respostas das automações", enviar_fila)):
+        for nome, volta in (("publicações", uma_volta), ("quem comentou antes", buscar_anteriores),
+                            ("respostas das automações", enviar_fila)):
             try:
                 for linha in volta():
                     logger.info(linha)

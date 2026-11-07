@@ -118,11 +118,37 @@ class Disparo(models.Model):
     # Passou do limite por hora do Instagram (post viralizando): espera na fila e sai na hora seguinte.
     na_fila = models.BooleanField(default=False, db_index=True)
     enviado_em = models.DateTimeField(null=True, blank=True, db_index=True)
+    # Quem comentou (ou mandou DM) antes e foi achado pelo botão "Responder quem já comentou" (ver
+    # anteriores.py): quando foi o comentário/a mensagem, que é de onde conta o prazo do Instagram.
+    anterior = models.BooleanField(default=False)
+    evento_em = models.DateTimeField(null=True, blank=True)
     criado_em = models.DateTimeField(auto_now_add=True)
 
     class Meta:
         ordering = ["-criado_em"]
         constraints = [models.UniqueConstraint(fields=["automacao", "evento_id"], name="disparo_unico_por_evento")]
+
+
+class Repasse(models.Model):
+    """Um pedido de "Responder quem já comentou" (ou quem já mandou DM) de uma automação: o worker busca
+    no Instagram o que ainda está no prazo e põe na fila quem ainda não recebeu (ver anteriores.py)."""
+
+    FILA, BUSCANDO, PRONTO, ERRO = "fila", "buscando", "pronto", "erro"
+    ESTADOS = [(FILA, "Na fila"), (BUSCANDO, "Buscando"), (PRONTO, "Pronto"), (ERRO, "Erro")]
+
+    automacao = models.ForeignKey(Automacao, on_delete=models.CASCADE, related_name="repasses")
+    estado = models.CharField(max_length=10, choices=ESTADOS, default=FILA, db_index=True)
+    encontrados = models.PositiveIntegerField(default=0)  # comentários/mensagens no prazo
+    enfileirados = models.PositiveIntegerField(default=0)  # entraram na fila agora
+    pulados = models.PositiveIntegerField(default=0)  # a pessoa já tinha recebido (ou já está na fila)
+    sem_palavra = models.PositiveIntegerField(default=0)  # não escreveram uma das palavras
+    de_outra = models.PositiveIntegerField(default=0)  # bateram com outra automação, que vem antes
+    mensagem = models.CharField(max_length=300, blank=True)
+    pedido_em = models.DateTimeField(auto_now_add=True)
+    terminado_em = models.DateTimeField(null=True, blank=True)
+
+    class Meta:
+        ordering = ["-pedido_em"]
 
 
 class AnuncioVisto(models.Model):

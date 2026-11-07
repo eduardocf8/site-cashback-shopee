@@ -408,7 +408,7 @@ def enviar_fila(agora=None) -> list[str]:
         enviadas = 0
         for d in fila[:max(0, _vagas_na_hora(ig.conta, agora))]:
             prazo = PRAZO_COMENTARIO if d.automacao.gatilho == Automacao.COMENTARIO else PRAZO_DM
-            if agora - d.criado_em > prazo:
+            if agora - (d.evento_em or d.criado_em) > prazo:  # o prazo conta do comentário/da mensagem
                 Disparo.objects.filter(pk=d.pk).update(na_fila=False, erro="Não enviada: passou do prazo do Instagram para responder.")
                 continue
             if d.automacao.ig_id and d.automacao.ig_id != ig.ig_id:
